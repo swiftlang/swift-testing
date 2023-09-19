@@ -1,0 +1,164 @@
+# Contributing to `swift-testing`
+
+There are many ways to contribute to this project. If you are making changes
+that do not materially affect the user-facing semantics of `swift-testing`, such
+as fixing bugs or writing documentation, feel free to open a pull request (PR)
+directly.
+
+Larger changes that _do_ materially change the semantics of `swift-testing`,
+such as new APIs or modifications to existing APIs, must undergo community
+discussion prior to being accepted.
+
+> [!IMPORTANT]
+> Since this package is currently experimental, a formal process for proposing
+> and reviewing significant changes has not yet been established. Until that
+> happens, please start a new discussion thread on the
+> [Swift forums](https://forums.swift.org) about any such changes prior to
+> submitting a PR.
+
+To learn how to write tests using the testing library, rather than how to
+contribute to the testing library itself, see
+[Getting Started](https://github.com/apple/swift-testing/tree/main/Sources/Testing/Testing.docc/TemporaryGettingStarted.md).
+For more information about making contributions to the Swift project in general,
+see the [Swift Contribution Guide](https://swift.org/contributing).
+
+## Reporting issues
+
+Issues are tracked using the testing library's
+[GitHub Issue Tracker](https://github.com/apple/swift-testing/issues).
+
+Fill in the fields of the relevant template form offered on that page when
+creating new issues. For bug report issues, please include a minimal example
+which reproduces the issue. Where possible, attach the example as a Swift
+package, or include a URL to the package hosted on GitHub or another public
+hosting service.
+
+## Setting up the development environment
+
+First, clone the `swift-testing` repository from
+[https://github.com/apple/swift-testing](https://github.com/apple/swift-testing).
+
+If you are preparing to make a contribution, you should fork the repository first
+and clone the fork which will make opening PRs easier.
+
+### Using Xcode (easiest)
+
+1. Install the latest beta or release Xcode from
+   [https://developer.apple.com/xcode](https://developer.apple.com/xcode).
+1. Open the `Package.swift` file from the cloned `swift-testing` repository in
+   Xcode.
+1. Select the `swift-testing-Package` scheme (if not already selected) and the
+   "My Mac" run destination.
+1. Use Xcode to inspect, edit, build, or test the code.
+
+### Using the command line
+
+If you are using macOS and have Xcode installed, you can use Swift from the
+command line immediately.
+
+If you are not using macOS or do not have Xcode installed, you need to download
+and install a toolchain.
+
+#### Installing a toolchain
+
+1. Download a toolchain. A recent **development snapshot** toolchain is required
+   to build the testing library. Visit
+   [swift.org](https://www.swift.org/download/#trunk-development-main) and
+   download the most recent toolchain from the section titled
+   **Snapshots — Trunk Development (main)**.
+
+   Be aware that development snapshot toolchains are not intended for day-to-day
+   development and may contain defects that affect the programs built with them.
+1. Install the toolchain and confirm it can be located successfully:
+
+   **macOS with Xcode installed**:
+   
+   ```bash
+   $> export TOOLCHAINS=swift
+   $> xcrun --find swift
+   /Library/Developer/Toolchains/swift-latest.xctoolchain/usr/bin/swift
+   ```
+   
+   **Non-macOS or macOS without Xcode**:
+   
+   ```bash
+   $> export PATH=/path/to/swift-toolchain/usr/bin:"${PATH}"
+   $> which swift
+   /path/to/swift-toolchain/usr/bin/swift
+   ```
+
+## Local development
+
+With a Swift toolchain installed and the `swift-testing` repository cloned, you
+are ready to make changes and test them locally.
+
+### Building
+
+```bash
+$> swift build
+```
+
+### Testing
+
+```bash
+$> swift test
+```
+
+<!-- FIXME: Uncomment this once the the `swift test` command support running
+  specific `swift-testing` tests.
+
+To learn how to run only specific tests or other testing options, run `swift
+test --help` to view the usage documentation.
+-->
+
+## Using Docker on macOS to test for Linux
+
+1. Install [Docker Desktop for Mac](https://www.docker.com/products/docker-desktop).
+
+1. Run the following command from the root of this repository to build the
+   Docker image:
+
+    ```bash
+    $> docker build -t swift-testing:latest .
+    ```
+
+1. Run the following command to run the test suite:
+
+    ```bash
+    $> docker run -v "$(pwd)":/swift-testing swift-testing sh -c 'swift test --package-path /swift-testing --skip-update'
+    ```
+
+1. To interactively run the test suite or do other development, first log into
+   the container with:
+
+    ```bash
+    $> docker run -i -t -v "$(pwd)":/swift-testing swift-testing /bin/bash
+    ```
+
+    And then run `swift test` or other commands within the container:
+
+    ```bash
+    $> cd /swift-testing
+    $> swift test
+    ```
+
+## Code style
+
+Code should use two spaces for indentation. Block comments including markup
+should be limited to 80 columns.
+
+Refer to the testing library's
+[documentation style guide](Documentation/StyleGuide.md) for more information.
+
+## Community and support
+
+To connect with the Swift community:
+
+* Use the [Swift Forums](https://forums.swift.org)
+* Contact the [code owners](CODEOWNERS)
+
+## Additional resources
+
+* [Swift.org Contributing page](https://swift.org/contributing/)
+* [License](https://swift.org/LICENSE.txt)
+* [Code of Conduct](https://swift.org/community/#code-of-conduct)

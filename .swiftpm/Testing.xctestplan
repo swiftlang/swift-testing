@@ -1,0 +1,31 @@
+{
+  "configurations" : [
+    {
+      "id" : "BF6DCB8A-163C-4014-93D6-96B417187A12",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : false
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "TestingTests",
+        "name" : "TestingTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:",
+        "identifier" : "TestingMacrosTests",
+        "name" : "TestingMacrosTests"
+      }
+    }
+  ],
+  "version" : 1
+}
