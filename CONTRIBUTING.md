@@ -123,7 +123,7 @@ test --help` to view the usage documentation.
 1. Run the following command to run the test suite:
 
     ```bash
-    $> docker run -v "$(pwd)":/swift-testing swift-testing sh -c 'swift test --package-path /swift-testing --skip-update'
+    $> docker run -v "$(pwd)":/swift-testing -w /swift-testing swift-testing swift test --skip-update
     ```
 
 1. To interactively run the test suite or do other development, first log into
