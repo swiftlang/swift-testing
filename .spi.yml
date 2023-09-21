@@ -1,0 +1,6 @@
+version: 1
+metadata:
+  authors: Apple Inc.
+builder:
+  configs:
+    - documentation_targets: [Testing]
