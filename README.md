@@ -19,7 +19,8 @@ and expressive capabilities. It gives developers more confidence with less code.
 > change or removal without notice.
 >
 > We welcome feedback and ideas from the Swift community. Please join us in the
-> [Swift forums](https://forums.swift.org) and let us know what you think!
+> [Swift forums](https://forums.swift.org/c/related-projects/swift-testing/103)
+> and let us know what you think!
 
 ## Feature overview
 
