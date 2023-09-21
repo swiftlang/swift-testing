@@ -530,6 +530,11 @@ extension Event.Recorder {
           context.testData.insertValue(testData, at: id)
         }
       }
+      let parameterCount = if let parameters = event.test?.parameters {
+        parameters.count
+      } else {
+        0
+      }
       let labeledArguments = if let testCase = event.testCase, let parameters = event.test?.parameters {
         testCase.labeledArguments(using: parameters)
       } else {
@@ -557,10 +562,10 @@ extension Event.Recorder {
       }
 
       let atSourceLocation = issue.sourceLocation.map { " at \($0)" } ?? ""
-      if labeledArguments.isEmpty {
+      if parameterCount == 0 {
         return "\(symbol) Test \(testName) recorded a\(known) issue\(atSourceLocation): \(issue.kind)\(difference)\(issueComments)\n"
       } else {
-        return "\(symbol) Test \(testName) recorded a\(known) issue with \(labeledArguments.count.counting("argument")) \(labeledArguments)\(atSourceLocation): \(issue.kind)\(difference)\(issueComments)\n"
+        return "\(symbol) Test \(testName) recorded a\(known) issue with \(parameterCount.counting("argument")) \(labeledArguments)\(atSourceLocation): \(issue.kind)\(difference)\(issueComments)\n"
       }
 
     case .testCaseStarted:
