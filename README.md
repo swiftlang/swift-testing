@@ -47,11 +47,11 @@ for various platforms:
 
 | **Platform** | **Status** |
 |---|---|
-| **macOS** | Supported |
+| **macOS** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=pr-swift-testing-macos)](https://ci.swift.org/job/pr-swift-testing-macos/) |
 | **iOS** | Supported |
 | **watchOS** | Supported |
 | **tvOS** | Supported |
-| **Ubuntu 22.04** | Supported |
+| **Ubuntu 22.04** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=pr-swift-testing-linux-main)](https://ci.swift.org/job/pr-swift-testing-linux-main/) |
 | **Windows** | Pending support for macros |
 
 ## Documentation
