@@ -45,14 +45,14 @@ concurrency, and parameterize test functions across wide ranges of inputs.
 The table below describes the current level of support that `swift-testing` has
 for various platforms:
 
-| **Platform** | **Status** |
-|---|---|
-| **macOS** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=pr-swift-testing-macos)](https://ci.swift.org/job/pr-swift-testing-macos/) |
-| **iOS** | Supported |
-| **watchOS** | Supported |
-| **tvOS** | Supported |
-| **Ubuntu 22.04** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=pr-swift-testing-linux-main)](https://ci.swift.org/job/pr-swift-testing-linux-main/) |
-| **Windows** | Pending support for macros |
+| **Platform** | **CI Status** | **Support Status** |
+|-|:-:|-|
+| **macOS** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=pr-swift-testing-macos)](https://ci.swift.org/job/pr-swift-testing-macos/) | Supported |
+| **iOS** | | Supported |
+| **watchOS** | | Supported |
+| **tvOS** | | Supported |
+| **Ubuntu 22.04** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=pr-swift-testing-linux-main)](https://ci.swift.org/job/pr-swift-testing-linux-main/) | Supported |
+| **Windows** | | Pending support for macros |
 
 ## Documentation
 
