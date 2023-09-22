@@ -95,13 +95,11 @@ struct SendableTests: Sendable {
   @Test(.hidden, arguments: FixtureData.zeroUpTo100)
   func parameterizedBorrowingAsync(i: borrowing Int) async {}
 
-#if FIXED_112795074
   @Test(.hidden, arguments: FixtureData.zeroUpTo100)
   func parameterizedConsuming(i: consuming Int) {}
 
   @Test(.hidden, arguments: FixtureData.zeroUpTo100)
   func parameterizedConsumingAsync(i: consuming Int) async { }
-#endif
 }
 
 @Suite("Named Sendable test type", .hidden)
