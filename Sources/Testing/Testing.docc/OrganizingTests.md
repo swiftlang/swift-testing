@@ -79,7 +79,7 @@ Are equivalent to:
 }
 ```
 
-## Constraits on test suite types
+## Constraints on test suite types
 
 If a type is used as a test suite, it is subject to some constraints that are
 not otherwise applied to Swift types.
