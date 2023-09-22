@@ -25,3 +25,9 @@ struct ZipTests {
     #expect(i == j)
   }
 }
+
+import Foundation
+
+@Test func whatEnvironmentVariablesAreAvailableInSwiftCI() {
+  dump(ProcessInfo.processInfo.environment)
+}
