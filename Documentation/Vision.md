@@ -720,7 +720,7 @@ of elements from _N_ collections.
 
 In existing test solutions available to Swift developers, there is limited
 diagnostic information available for a failed expectation such as
-`assert(2 > 1)`. The expression is reduced at runtime to a simple boolean value
+`assert(2 < 1)`. The expression is reduced at runtime to a simple boolean value
 with no context (such as the original source code) available to include in a
 test’s output.
 
