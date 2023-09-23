@@ -4,3 +4,4 @@ metadata:
 builder:
   configs:
     - documentation_targets: [Testing]
+      swift_version: 5.9
