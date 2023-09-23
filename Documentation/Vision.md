@@ -729,12 +729,12 @@ By adopting
 we can give developers _implicitly expressive_ test
 expectations. The expectation shown below, upon failure, can capture not just
 the boolean value `false`, but also the left-hand and right-hand operands and
-the operator itself (that is, `x`, `1`, and `>` respectively) and expand any
+the operator itself (that is, `x`, `1`, and `<` respectively) and expand any
 sub-expressions to their evaluated values, such as `x → 2`:
 
 ```swift
 let x = 2
-#expect(x > 1)  // failed: (x → 2) > 1
+#expect(x < 1)  // failed: (x → 2) < 1
 ```
 
 #### Handling optionals
