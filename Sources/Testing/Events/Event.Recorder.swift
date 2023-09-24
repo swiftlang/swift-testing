@@ -379,6 +379,18 @@ extension Tag {
   }
 }
 
+extension String {
+  static func moveCursorUp(lines: Int) -> Self {
+    "\(_ansiEscapeCodePrefix)\(lines)A"
+  }
+  static var eraseTheEntireLine: Self {
+    "\(_ansiEscapeCodePrefix)2K"
+  }
+  static var erasePreviousLine: Self {
+    moveCursorUp(lines: 1) + eraseTheEntireLine
+  }
+}
+
 extension Test.Case {
   /// The arguments of this test case, formatted for presentation, prefixed by
   /// their corresponding parameter label when available.
@@ -481,14 +493,30 @@ extension Event.Recorder {
       let testData = testDataGraph?.value ?? .init()
       let issues = _issueCounts(in: testDataGraph)
       let duration = testData.startInstant.descriptionOfDuration(to: event.instant)
-      if issues.issueCount > 0 {
-        let symbol = _Symbol.fail.stringValue(options: options)
-        let comments = _formattedComments(for: test, options: options).map { "\($0)\n" } ?? ""
-        return "\(symbol) Test \(testName) failed after \(duration)\(issues.description).\n\(comments)"
-      } else {
-        let symbol = _Symbol.pass(hasKnownIssues: issues.knownIssueCount > 0).stringValue(options: options)
-        return "\(symbol) Test \(testName) passed after \(duration)\(issues.description).\n"
+      let resultString: String = {
+        if issues.issueCount > 0 {
+          let symbol = _Symbol.fail.stringValue(options: options)
+          let comments = _formattedComments(for: test, options: options).map { "\($0)\n" } ?? ""
+          return "\(symbol) Test \(testName) failed after \(duration)\(issues.description).\n\(comments)"
+        } else {
+          let symbol = _Symbol.pass(hasKnownIssues: issues.knownIssueCount > 0).stringValue(options: options)
+          return "\(symbol) Test \(testName) passed after \(duration)\(issues.description).\n"
+        }
+      }()
+      
+      guard options.contains(.useANSIEscapeCodes) else {
+        return resultString
       }
+      return String.erasePreviousLine + resultString
+      
+    case let .testProgressTick(tick):
+      let symbol: String = {
+        let available: [String] = ["🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"]
+        let index = tick % available.count
+        return available[index]
+      }()
+      let tick = "\(symbol) Test \(testName) running.\n"
+      return String.erasePreviousLine + tick
 
     case let .testSkipped(skipInfo):
       let test = event.test!

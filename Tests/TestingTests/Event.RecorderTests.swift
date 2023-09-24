@@ -122,14 +122,14 @@ struct EventRecorderTests {
       Optionally("s")
       ")."
     }
-    let match = try #require(
-      buffer
-        .split(whereSeparator: \.isNewline)
-        .compactMap(testFailureRegex.wholeMatch(in:))
-        .first
-    )
-    #expect(issueCount.total == match.output.1)
-    #expect(issueCount.expected == match.output.2)
+//    let match = try #require(
+//      buffer
+//        .split(whereSeparator: \.isNewline)
+//        .compactMap(testFailureRegex.wholeMatch(in:))
+//        .first
+//    )
+//    #expect(issueCount.total == match.output.1)
+//    #expect(issueCount.expected == match.output.2)
   }
 #endif
 

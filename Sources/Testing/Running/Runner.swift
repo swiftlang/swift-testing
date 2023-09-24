@@ -243,8 +243,26 @@ extension Runner {
     // Exit early if the task has already been cancelled.
     try Task.checkCancellation()
 
+    @Sendable func progress(
+      tick: Int = 0
+    ) async throws {
+      try await Test.Clock.sleep(for: .milliseconds(150))
+      
+      Event(.testProgressTick(tick: tick), for: step.test, testCase: testCase).post(configuration: configuration)
+      
+      try await progress(
+        tick: tick + 1
+      )
+    }
+    
+    let tickTask = Task {
+      try Task.checkCancellation()
+      try await progress()
+    }
+    
     Event(.testCaseStarted, for: step.test, testCase: testCase).post(configuration: configuration)
     defer {
+      tickTask.cancel()
       Event(.testCaseEnded, for: step.test, testCase: testCase).post(configuration: configuration)
     }
 

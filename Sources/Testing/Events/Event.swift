@@ -33,6 +33,10 @@ public struct Event: Sendable {
 
     /// A test started.
     case testStarted
+    
+    /// A test has been running for another "tick", used internally to drive
+    /// be able to update ASN1 terminal code based Progress UI, like yarn.
+    case testProgressTick(tick: Int)
 
     /// A test case started.
     @_spi(ExperimentalParameterizedTesting)
