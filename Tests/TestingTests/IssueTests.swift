@@ -431,6 +431,10 @@ final class IssueTests: XCTestCase {
         #expect(throws: type) {}
       }
       genericExpectThrows(Never.self)
+      func zero() throws -> Int { throw MyError() }
+      #expect(throws: MyError.self) {
+        try zero()
+      }
     }.run(configuration: configuration)
 
     await fulfillment(of: [expectationFailed], timeout: 0.0)
@@ -438,7 +442,7 @@ final class IssueTests: XCTestCase {
 
   func testErrorCheckingWithExpect_Mismatching() async throws {
     let expectationFailed = expectation(description: "Expectation failed")
-    expectationFailed.expectedFulfillmentCount = 10
+    expectationFailed.expectedFulfillmentCount = 11
 
     var configuration = Configuration()
     configuration.eventHandler = { event in
@@ -493,6 +497,10 @@ final class IssueTests: XCTestCase {
         }
       }
       genericExpectThrows(Never.self)
+      func zero() throws -> Int { 0 }
+      #expect(throws: MyError.self) {
+        try zero()
+      }
     }.run(configuration: configuration)
 
     await fulfillment(of: [expectationFailed], timeout: 0.0)

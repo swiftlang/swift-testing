@@ -482,9 +482,9 @@ public func __checkCast<V, T>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkClosureCall<E>(
+public func __checkClosureCall<E, T>(
   throws errorType: E.Type,
-  performing expression: () throws -> Void,
+  performing expression: () throws -> T,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
@@ -519,9 +519,9 @@ public func __checkClosureCall<E>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkClosureCall<E>(
+public func __checkClosureCall<E, T>(
   throws errorType: E.Type,
-  performing expression: () async throws -> Void,
+  performing expression: () async throws -> T,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
@@ -559,9 +559,9 @@ public func __checkClosureCall<E>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkClosureCall(
+public func __checkClosureCall<T>(
   throws _: Never.Type,
-  performing expression: () throws -> Void,
+  performing expression: () throws -> T,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
@@ -570,7 +570,7 @@ public func __checkClosureCall(
   var success = true
   var mismatchExplanationValue: String? = nil
   do {
-    try expression()
+    _ = try expression()
   } catch {
     success = false
     mismatchExplanationValue = "an error was thrown when none was expected: \(_description(of: error))"
@@ -595,9 +595,9 @@ public func __checkClosureCall(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkClosureCall(
+public func __checkClosureCall<T>(
   throws _: Never.Type,
-  performing expression: () async throws -> Void,
+  performing expression: () async throws -> T,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
@@ -606,7 +606,7 @@ public func __checkClosureCall(
   var success = true
   var mismatchExplanationValue: String? = nil
   do {
-    try await expression()
+    _ = try await expression()
   } catch {
     success = false
     mismatchExplanationValue = "an error was thrown when none was expected: \(_description(of: error))"
@@ -631,9 +631,9 @@ public func __checkClosureCall(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkClosureCall<E>(
+public func __checkClosureCall<E, T>(
   throws error: E,
-  performing expression: () throws -> Void,
+  performing expression: () throws -> T,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
@@ -657,9 +657,9 @@ public func __checkClosureCall<E>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkClosureCall<E>(
+public func __checkClosureCall<E, T>(
   throws error: E,
-  performing expression: () async throws -> Void,
+  performing expression: () async throws -> T,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
@@ -684,8 +684,8 @@ public func __checkClosureCall<E>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkClosureCall(
-  performing expression: () throws -> Void,
+public func __checkClosureCall<T>(
+  performing expression: () throws -> T,
   throws errorMatcher: (any Error) throws -> Bool,
   mismatchExplanation: ((any Error) -> String)? = nil,
   sourceCode: SourceCode,
@@ -696,8 +696,13 @@ public func __checkClosureCall(
   var errorMatches = false
   var mismatchExplanationValue: String? = nil
   do {
-    try expression()
-    mismatchExplanationValue = "an error was expected but none was thrown"
+    let result = try expression()
+
+    var explanation = "an error was expected but none was thrown"
+    if type(of: result) != Void.self {
+      explanation += " and \"\(result)\" was returned"
+    }
+    mismatchExplanationValue = explanation
   } catch {
     do {
       errorMatches = try errorMatcher(error)
@@ -726,8 +731,8 @@ public func __checkClosureCall(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkClosureCall(
-  performing expression: () async throws -> Void,
+public func __checkClosureCall<T>(
+  performing expression: () async throws -> T,
   throws errorMatcher: (any Error) async throws -> Bool,
   mismatchExplanation: ((any Error) -> String)? = nil,
   sourceCode: SourceCode,
@@ -738,8 +743,13 @@ public func __checkClosureCall(
   var errorMatches = false
   var mismatchExplanationValue: String? = nil
   do {
-    try await expression()
-    mismatchExplanationValue = "an error was expected but none was thrown"
+    let result = try await expression()
+
+    var explanation = "an error was expected but none was thrown"
+    if type(of: result) != Void.self {
+      explanation += " and \"\(result)\" was returned"
+    }
+    mismatchExplanationValue = explanation
   } catch {
     do {
       errorMatches = try await errorMatcher(error)
