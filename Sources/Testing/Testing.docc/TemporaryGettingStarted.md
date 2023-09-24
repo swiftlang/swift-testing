@@ -26,7 +26,7 @@ their Swift packages.
   removed in a future release.
 
 To learn how to contribute to the testing library itself, see
-[Contributing to `swift-testing`](https://github.com/apple/swift-testing/CONTRIBUTING.md).
+[Contributing to `swift-testing`](https://github.com/apple/swift-testing/blob/main/CONTRIBUTING.md).
 
 ### Downloading a development toolchain
 
