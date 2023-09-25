@@ -341,7 +341,7 @@ to access the name of a test inside its own body or for an entity observing
 test events to query test names.
 
 A testing library should include a robust mechanism to uniquely identify tests
-and identifiers should be stable across test runs. If is is possible to
+and identifiers should be stable across test runs. If it is possible to
 customize a test’s display name, the testing library should decide which name
 is authoritative and included in the unique identifier. Also, function
 overloading could make certain test function names ambiguous without additional
