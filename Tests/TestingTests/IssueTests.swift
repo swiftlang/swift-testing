@@ -431,9 +431,9 @@ final class IssueTests: XCTestCase {
         #expect(throws: type) {}
       }
       genericExpectThrows(Never.self)
-      func zero() throws -> Int { throw MyError() }
+      func nonVoidReturning() throws -> Int { throw MyError() }
       #expect(throws: MyError.self) {
-        try zero()
+        try nonVoidReturning()
       }
     }.run(configuration: configuration)
 
@@ -497,9 +497,61 @@ final class IssueTests: XCTestCase {
         }
       }
       genericExpectThrows(Never.self)
-      func zero() throws -> Int { 0 }
+      func nonVoidReturning() throws -> Int { 0 }
       #expect(throws: MyError.self) {
-        try zero()
+        try nonVoidReturning()
+      }
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [expectationFailed], timeout: 0.0)
+  }
+
+  func testErrorCheckingWithExpect_mismatchedErrorDescription() async throws {
+    let expectationFailed = expectation(description: "Expectation failed")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      guard case let .expectationFailed(expectation) = issue.kind else {
+        XCTFail("Unexpected issue kind \(issue.kind)")
+        return
+      }
+      XCTAssertEqual(expectation.mismatchedErrorDescription, "an error was expected but none was thrown")
+      expectationFailed.fulfill()
+    }
+
+    await Test {
+      func voidReturning() throws {}
+      #expect(throws: MyError.self) {
+        try voidReturning()
+      }
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [expectationFailed], timeout: 0.0)
+  }
+
+  func testErrorCheckingWithExpect_mismatchedErrorDescription_nonVoid() async throws {
+    let expectationFailed = expectation(description: "Expectation failed")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      guard case let .expectationFailed(expectation) = issue.kind else {
+        XCTFail("Unexpected issue kind \(issue.kind)")
+        return
+      }
+      XCTAssertEqual(expectation.mismatchedErrorDescription, "an error was expected but none was thrown and \"0\" was returned")
+      expectationFailed.fulfill()
+    }
+
+    await Test {
+      func nonVoidReturning() throws -> Int { 0 }
+      #expect(throws: MyError.self) {
+        try nonVoidReturning()
       }
     }.run(configuration: configuration)
 
@@ -540,6 +592,10 @@ final class IssueTests: XCTestCase {
         await #expect(throws: type) { () async in }
       }
       await genericExpectThrows(Never.self)
+      func nonVoidReturning() async throws -> Int { throw MyError() }
+      await #expect(throws: MyError.self) {
+        try await nonVoidReturning()
+      }
     }.run(configuration: configuration)
 
     await fulfillment(of: [expectationFailed], timeout: 0.0)
@@ -547,7 +603,7 @@ final class IssueTests: XCTestCase {
 
   func testErrorCheckingWithExpectAsync_Mismatching() async throws {
     let expectationFailed = expectation(description: "Expectation failed")
-    expectationFailed.expectedFulfillmentCount = 10
+    expectationFailed.expectedFulfillmentCount = 11
 
     var configuration = Configuration()
     configuration.eventHandler = { event in
@@ -594,6 +650,62 @@ final class IssueTests: XCTestCase {
         }
       }
       await genericExpectThrows(Never.self)
+      func nonVoidReturning() async throws -> Int { 0 }
+      await #expect(throws: MyError.self) {
+        try await nonVoidReturning()
+      }
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [expectationFailed], timeout: 0.0)
+  }
+
+  func testErrorCheckingWithExpectAsync_mismatchedErrorDescription() async throws {
+    let expectationFailed = expectation(description: "Expectation failed")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      guard case let .expectationFailed(expectation) = issue.kind else {
+        XCTFail("Unexpected issue kind \(issue.kind)")
+        return
+      }
+      XCTAssertEqual(expectation.mismatchedErrorDescription, "an error was expected but none was thrown")
+      expectationFailed.fulfill()
+    }
+
+    await Test {
+      func voidReturning() async throws {}
+      await #expect(throws: MyError.self) {
+        try await voidReturning()
+      }
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [expectationFailed], timeout: 0.0)
+  }
+
+  func testErrorCheckingWithExpectAsync_mismatchedErrorDescription_nonVoid() async throws {
+    let expectationFailed = expectation(description: "Expectation failed")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      guard case let .expectationFailed(expectation) = issue.kind else {
+        XCTFail("Unexpected issue kind \(issue.kind)")
+        return
+      }
+      XCTAssertEqual(expectation.mismatchedErrorDescription, "an error was expected but none was thrown and \"0\" was returned")
+      expectationFailed.fulfill()
+    }
+
+    await Test {
+      func nonVoidReturning() async throws -> Int { 0 }
+      await #expect(throws: MyError.self) {
+        try await nonVoidReturning()
+      }
     }.run(configuration: configuration)
 
     await fulfillment(of: [expectationFailed], timeout: 0.0)
