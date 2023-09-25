@@ -40,6 +40,10 @@ private protocol _ConditionMacro: ExpressionMacro, Sendable {
 
 // MARK: -
 
+/// The token used as the label of the source location argument passed to
+/// `#expect()` and `#require()`.
+private let _sourceLocationLabel = TokenSyntax.identifier("sourceLocation")
+
 /// The token used as a mandatory label on any (first) trailing closure used
 /// with `#expect()` or `#require()`.
 private let _trailingClosureLabel = TokenSyntax.identifier("performing")
@@ -65,6 +69,9 @@ extension _ConditionMacro {
       // never the first argument.)
       commentIndex = macroArguments.dropFirst().lastIndex { $0.label == nil }
     }
+    let sourceLocationArgumentIndex = macroArguments.lazy
+      .compactMap(\.label)
+      .firstIndex { $0.tokenKind == _sourceLocationLabel.tokenKind }
 
     // Construct the argument list to __check().
     let expandedFunctionName: TokenSyntax
@@ -75,6 +82,7 @@ extension _ConditionMacro {
         // Include all arguments other than the "comment" argument here.
         checkArguments += macroArguments.indices.lazy
           .filter { $0 != commentIndex }
+          .filter { $0 != sourceLocationArgumentIndex }
           .map { macroArguments[$0] }
 
         // The trailing closure should be the focus of the source code capture.
@@ -94,6 +102,7 @@ extension _ConditionMacro {
         // arguments here.
         checkArguments += macroArguments.dropFirst().indices.lazy
           .filter { $0 != commentIndex }
+          .filter { $0 != sourceLocationArgumentIndex }
           .map { macroArguments[$0] }
 
         checkArguments.append(Argument(label: "sourceCode", expression: conditionArgument.sourceCode))
@@ -115,7 +124,12 @@ extension _ConditionMacro {
       ))
 
       checkArguments.append(Argument(label: "isRequired", expression: BooleanLiteralExprSyntax(isThrowing)))
-      checkArguments.append(Argument(label: "sourceLocation", expression: createSourceLocationExpr(of: macro, context: context)))
+
+      if let sourceLocationArgumentIndex {
+        checkArguments.append(macroArguments[sourceLocationArgumentIndex])
+      } else {
+        checkArguments.append(Argument(label: _sourceLocationLabel, expression: createSourceLocationExpr(of: macro, context: context)))
+      }
     }
 
     // Construct and return the call to __check().

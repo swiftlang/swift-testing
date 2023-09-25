@@ -72,6 +72,8 @@ struct ConditionMacroTests {
         ##"Testing.__checkFunctionCall(a.self, calling: { $0.b(c: $1) }, d, sourceCode: .__functionCall("a", "b", ("c", "d")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(a.b { c })"##:
         ##"Testing.__checkValue(a.b { c }, sourceCode: .__fromComponents("a.b { c }"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+      ##"#expect(a, sourceLocation: someValue)"##:
+        ##"Testing.__checkValue(a, sourceCode: .__fromComponents("a"), comments: [], isRequired: false, sourceLocation: someValue).__expected()"##,
     ]
   )
   func expectMacro(input: String, expectedOutput: String) throws {
@@ -132,6 +134,8 @@ struct ConditionMacroTests {
         ##"Testing.__checkFunctionCall(a.self, calling: { $0.b(c: $1) }, d, sourceCode: .__functionCall("a", "b", ("c", "d")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(a.b { c })"##:
         ##"Testing.__checkValue(a.b { c }, sourceCode: .__fromComponents("a.b { c }"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+      ##"#require(a, sourceLocation: someValue)"##:
+        ##"Testing.__checkValue(a, sourceCode: .__fromComponents("a"), comments: [], isRequired: true, sourceLocation: someValue).__required()"##,
     ]
   )
   func requireMacro(input: String, expectedOutput: String) throws {

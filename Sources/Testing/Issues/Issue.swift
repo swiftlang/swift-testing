@@ -17,7 +17,7 @@ public struct Issue: Sendable {
     case unconditional
 
     /// An issue due to a failed expectation, such as those produced by
-    /// ``expect(_:_:)``.
+    /// ``expect(_:_:sourceLocation:)``.
     ///
     /// - Parameters:
     ///   - expectation: The expectation that failed.

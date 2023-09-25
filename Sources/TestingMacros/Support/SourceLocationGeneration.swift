@@ -22,6 +22,13 @@ import SwiftSyntaxMacros
 /// - Returns: An expression value that initializes an instance of
 ///   ``SourceLocation`` for `expr`.
 func createSourceLocationExpr(of expr: some SyntaxProtocol, context: some MacroExpansionContext) -> ExprSyntax {
+  if expr.isProtocol((any FreestandingMacroExpansionSyntax).self) {
+    // Freestanding macro expressions can just use Testing.SourceLocation()
+    // directly and do not need to talk to the macro context to get source
+    // location info.
+    return "Testing.SourceLocation()"
+  }
+
   // Get the equivalent source location in both `#fileID` and `#filePath` modes
   guard let fileIDSourceLoc: AbstractSourceLocation = context.location(of: expr),
         let filePathSourceLoc: AbstractSourceLocation = context.location(of: expr, at: .afterLeadingTrivia, filePathMode: .filePath)

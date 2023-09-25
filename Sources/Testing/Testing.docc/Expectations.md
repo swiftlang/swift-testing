@@ -21,9 +21,9 @@ built-in expectation APIs.
 
 ### Validating behavior using expectations
 
-- ``expect(_:_:)``
-- ``require(_:_:)-6lago``
-- ``require(_:_:)-3wq2g``
+- ``expect(_:_:sourceLocation:)``
+- ``require(_:_:sourceLocation:)-6lago``
+- ``require(_:_:sourceLocation:)-3wq2g``
 
 ### Validating asynchronous behavior using confirmations
 
