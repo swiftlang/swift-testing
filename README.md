@@ -56,7 +56,8 @@ for various platforms:
 
 ## Documentation
 
-The detailed documentation for `swift-testing` can be found on the [Swift Package Index](https://swiftpackageindex.com/apple/swift-testing/main/documentation/testing).
+The detailed documentation for `swift-testing` can be found on the
+[Swift Package Index](https://swiftpackageindex.com/apple/swift-testing/main/documentation/testing).
 
 Here, you can delve into comprehensive guides, tutorials, and API references to make the most out of `swift-testing`.
 
