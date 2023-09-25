@@ -83,7 +83,8 @@
 ///
 /// If `expression` does not throw an error, or if it throws an error that is
 /// not an instance of `errorType`, an ``Issue`` is recorded for the test that
-/// is running in the current task.
+/// is running in the current task. Any value returned by `expression` is
+/// discarded.
 ///
 /// If the thrown error need only equal another instance of [`Error`](https://developer.apple.com/documentation/swift/error),
 /// use ``expect(throws:_:performing:)-1s3lx`` instead. If `expression` should
@@ -111,7 +112,8 @@
 /// ```
 ///
 /// If `expression` throws an error, an ``Issue`` is recorded for the test that
-/// is running in the current task.
+/// is running in the current task. Any value returned by `expression` is
+/// discarded.
 ///
 /// Test functions can be annotated with `throws` and can throw errors which are
 /// then recorded as [issues](doc:Issues) when the test runs. If the intent is
@@ -156,7 +158,7 @@
 /// If `expression` does not throw an error, or if it throws an error that is
 /// not an instance of `errorType`, an ``Issue`` is recorded for the test that
 /// is running in the current task and an instance of ``ExpectationFailedError``
-/// is thrown.
+/// is thrown. Any value returned by `expression` is discarded.
 ///
 /// If the thrown error need only equal another instance of [`Error`](https://developer.apple.com/documentation/swift/error),
 /// use ``require(throws:_:performing:)-84jir`` instead.
@@ -206,7 +208,7 @@
 ///
 /// If `expression` does not throw an error, or if it throws an error that is
 /// not equal to `error`, an ``Issue`` is recorded for the test that is running
-/// in the current task.
+/// in the current task. Any value returned by `expression` is discarded.
 ///
 /// If the thrown error need only be an instance of a particular type, use
 /// ``expect(throws:_:performing:)-2j0od`` instead. If `expression` should
@@ -241,6 +243,7 @@
 /// If `expression` does not throw an error, or if it throws an error that is
 /// not equal to `error`, an ``Issue`` is recorded for the test that is running
 /// in the current task and an instance of ``ExpectationFailedError`` is thrown.
+/// Any value returned by `expression` is discarded.
 ///
 /// If the thrown error need only be an instance of a particular type, use
 /// ``require(throws:_:performing:)-8762f`` instead.
@@ -276,7 +279,8 @@
 /// If `expression` does not throw an error, if it throws an error that is
 /// not matched by `errorMatcher`, or if `errorMatcher` throws an error
 /// (including the error passed to it), an ``Issue`` is recorded for the test
-/// that is running in the current task.
+/// that is running in the current task. Any value returned by `expression` is
+/// discarded.
 ///
 /// If the thrown error need only be an instance of a particular type, use
 /// ``expect(throws:_:performing:)-2j0od`` instead. If the thrown error need
@@ -318,7 +322,8 @@
 /// not matched by `errorMatcher`, or if `errorMatcher` throws an error
 /// (including the error passed to it), an ``Issue`` is recorded for the test
 /// that is running in the current task and an instance of
-/// ``ExpectationFailedError`` is thrown.
+/// ``ExpectationFailedError`` is thrown. Any value returned by `expression` is
+/// discarded.
 ///
 /// If the thrown error need only be an instance of a particular type, use
 /// ``require(throws:_:performing:)-8762f`` instead. If the thrown error need
