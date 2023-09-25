@@ -194,8 +194,8 @@ XCTest uses a family of approximately 40 functions to assert test requirements.
 These functions are collectively referred to as
 [`XCTAssert()`](https://developer.apple.com/documentation/xctest/1500669-xctassert).
 The testing library has two replacements, ``expect(_:_:sourceLocation:)`` and
-``require(_:_:sourceLocation:)-6lago``. They both behave similarly to
-`XCTAssert()` except that ``require(_:_:sourceLocation:)-6lago`` will throw an
+``require(_:_:sourceLocation:)-5l63q``. They both behave similarly to
+`XCTAssert()` except that ``require(_:_:sourceLocation:)-5l63q`` will throw an
 error if its condition is not met:
 
 @Row {
@@ -233,7 +233,7 @@ error if its condition is not met:
 
 XCTest also has a function, [`XCTUnwrap()`](https://developer.apple.com/documentation/xctest/3380195-xctunwrap),
 that tests if an optional value is `nil` and throws an error if it is. When
-using the testing library, you can use ``require(_:_:sourceLocation:)-3wq2g``
+using the testing library, you can use ``require(_:_:sourceLocation:)-6w9oo``
 with optional expressions to unwrap them:
 
 @Row {
