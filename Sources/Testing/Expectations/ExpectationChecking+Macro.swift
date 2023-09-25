@@ -171,13 +171,13 @@ public func __checkBinaryOperation<T, U>(
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
 public func __checkFunctionCall<T, each U>(
-  _ lhs: T, calling memberFunctionCall: (T, repeat each U) throws -> Bool, _ arguments: repeat each U,
+  _ lhs: T, calling functionCall: (T, repeat each U) throws -> Bool, _ arguments: repeat each U,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) rethrows -> Result<Void, any Error> {
-  let condition = try memberFunctionCall(lhs, repeat each arguments)
+  let condition = try functionCall(lhs, repeat each arguments)
   return __checkValue(
     condition,
     sourceCode: sourceCode,
@@ -200,13 +200,13 @@ public func __checkFunctionCall<T, each U>(
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
 public func __checkInoutFunctionCall<T, /*each*/ U>(
-  _ lhs: T, calling memberFunctionCall: (T, inout /*repeat each*/ U) throws -> Bool, _ arguments: inout /*repeat each*/ U,
+  _ lhs: T, calling functionCall: (T, inout /*repeat each*/ U) throws -> Bool, _ arguments: inout /*repeat each*/ U,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) rethrows -> Result<Void, any Error> {
-  let condition = try memberFunctionCall(lhs, /*repeat each*/ &arguments)
+  let condition = try functionCall(lhs, /*repeat each*/ &arguments)
   return __checkValue(
     condition,
     sourceCode: sourceCode,
@@ -230,13 +230,13 @@ public func __checkInoutFunctionCall<T, /*each*/ U>(
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
 public func __checkFunctionCall<T, each U, R>(
-  _ lhs: T, calling memberFunctionCall: (T, repeat each U) throws -> R?, _ arguments: repeat each U,
+  _ lhs: T, calling functionCall: (T, repeat each U) throws -> R?, _ arguments: repeat each U,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) rethrows -> Result<R, any Error> {
-  let optionalValue = try memberFunctionCall(lhs, repeat each arguments)
+  let optionalValue = try functionCall(lhs, repeat each arguments)
   return __checkValue(
     optionalValue,
     sourceCode: sourceCode,
@@ -260,13 +260,13 @@ public func __checkFunctionCall<T, each U, R>(
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
 public func __checkInoutFunctionCall<T, /*each*/ U, R>(
-  _ lhs: T, calling memberFunctionCall: (T, inout /*repeat each*/ U) throws -> R?, _ arguments: inout /*repeat each*/ U,
+  _ lhs: T, calling functionCall: (T, inout /*repeat each*/ U) throws -> R?, _ arguments: inout /*repeat each*/ U,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) rethrows -> Result<R, any Error> {
-  let optionalValue = try memberFunctionCall(lhs, /*repeat each*/ &arguments)
+  let optionalValue = try functionCall(lhs, /*repeat each*/ &arguments)
   return __checkValue(
     optionalValue,
     sourceCode: sourceCode,
