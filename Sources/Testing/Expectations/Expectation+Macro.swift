@@ -83,15 +83,16 @@
 ///
 /// If `expression` does not throw an error, or if it throws an error that is
 /// not an instance of `errorType`, an ``Issue`` is recorded for the test that
-/// is running in the current task.
+/// is running in the current task. Any value returned by `expression` is
+/// discarded.
 ///
 /// If the thrown error need only equal another instance of [`Error`](https://developer.apple.com/documentation/swift/error),
 /// use ``expect(throws:_:performing:)-1s3lx`` instead. If `expression` should
 /// _never_ throw any error, use ``expect(throws:_:performing:)-jtjw`` instead.
-@freestanding(expression) public macro expect<E>(
+@freestanding(expression) public macro expect<E, R>(
   throws errorType: E.Type,
   _ comment: @autoclosure () -> Comment? = nil,
-  performing expression: () async throws -> Void
+  performing expression: () async throws -> R
 ) = #externalMacro(module: "TestingMacros", type: "ExpectMacro") where E: Error
 
 /// Check that an expression never throws an error.
@@ -111,7 +112,8 @@
 /// ```
 ///
 /// If `expression` throws an error, an ``Issue`` is recorded for the test that
-/// is running in the current task.
+/// is running in the current task. Any value returned by `expression` is
+/// discarded.
 ///
 /// Test functions can be annotated with `throws` and can throw errors which are
 /// then recorded as [issues](doc:Issues) when the test runs. If the intent is
@@ -124,10 +126,10 @@
 /// ``expect(throws:_:performing:)-2j0od`` instead. If the thrown error need
 /// only equal another instance of [`Error`](https://developer.apple.com/documentation/swift/error),
 /// use ``expect(throws:_:performing:)-1s3lx`` instead.
-@freestanding(expression) public macro expect(
+@freestanding(expression) public macro expect<R>(
   throws _: Never.Type,
   _ comment: @autoclosure () -> Comment? = nil,
-  performing expression: () async throws -> Void
+  performing expression: () async throws -> R
 ) = #externalMacro(module: "TestingMacros", type: "ExpectMacro")
 
 /// Check that an expression always throws an error of a given type, and throw
@@ -156,17 +158,17 @@
 /// If `expression` does not throw an error, or if it throws an error that is
 /// not an instance of `errorType`, an ``Issue`` is recorded for the test that
 /// is running in the current task and an instance of ``ExpectationFailedError``
-/// is thrown.
+/// is thrown. Any value returned by `expression` is discarded.
 ///
 /// If the thrown error need only equal another instance of [`Error`](https://developer.apple.com/documentation/swift/error),
 /// use ``require(throws:_:performing:)-84jir`` instead.
 ///
 /// If `expression` should _never_ throw, simply invoke the code without using
 /// this macro. The test will then fail if an error is thrown.
-@freestanding(expression) public macro require<E>(
+@freestanding(expression) public macro require<E, R>(
   throws errorType: E.Type,
   _ comment: @autoclosure () -> Comment? = nil,
-  performing expression: () async throws -> Void
+  performing expression: () async throws -> R
 ) = #externalMacro(module: "TestingMacros", type: "RequireMacro") where E: Error
 
 /// Check that an expression never throws an error, and throw an error if it
@@ -179,10 +181,10 @@
 /// - Throws: An instance of ``ExpectationFailedError`` if `expression` throws
 ///   any error. The error thrown by `expression` is not rethrown.
 @available(*, deprecated, message: "try #require(throws: Never.self) is redundant. Invoke non-throwing test code directly instead.")
-@freestanding(expression) public macro require(
+@freestanding(expression) public macro require<R>(
   throws _: Never.Type,
   _ comment: @autoclosure () -> Comment? = nil,
-  performing expression: () async throws -> Void
+  performing expression: () async throws -> R
 ) = #externalMacro(module: "TestingMacros", type: "RequireMacro")
 
 // MARK: - Matching instances of equatable errors
@@ -206,15 +208,15 @@
 ///
 /// If `expression` does not throw an error, or if it throws an error that is
 /// not equal to `error`, an ``Issue`` is recorded for the test that is running
-/// in the current task.
+/// in the current task. Any value returned by `expression` is discarded.
 ///
 /// If the thrown error need only be an instance of a particular type, use
 /// ``expect(throws:_:performing:)-2j0od`` instead. If `expression` should
 /// _never_ throw any error, use ``expect(throws:_:performing:)-jtjw`` instead.
-@freestanding(expression) public macro expect<E>(
+@freestanding(expression) public macro expect<E, R>(
   throws error: E,
   _ comment: @autoclosure () -> Comment? = nil,
-  performing expression: () async throws -> Void
+  performing expression: () async throws -> R
 ) = #externalMacro(module: "TestingMacros", type: "ExpectMacro") where E: Error & Equatable
 
 /// Check that an expression always throws a specific error, and throw an error
@@ -241,13 +243,14 @@
 /// If `expression` does not throw an error, or if it throws an error that is
 /// not equal to `error`, an ``Issue`` is recorded for the test that is running
 /// in the current task and an instance of ``ExpectationFailedError`` is thrown.
+/// Any value returned by `expression` is discarded.
 ///
 /// If the thrown error need only be an instance of a particular type, use
 /// ``require(throws:_:performing:)-8762f`` instead.
-@freestanding(expression) public macro require<E>(
+@freestanding(expression) public macro require<E, R>(
   throws error: E,
   _ comment: @autoclosure () -> Comment? = nil,
-  performing expression: () async throws -> Void
+  performing expression: () async throws -> R
 ) = #externalMacro(module: "TestingMacros", type: "RequireMacro") where E: Error & Equatable
 
 // MARK: - Arbitrary error matching
@@ -276,16 +279,17 @@
 /// If `expression` does not throw an error, if it throws an error that is
 /// not matched by `errorMatcher`, or if `errorMatcher` throws an error
 /// (including the error passed to it), an ``Issue`` is recorded for the test
-/// that is running in the current task.
+/// that is running in the current task. Any value returned by `expression` is
+/// discarded.
 ///
 /// If the thrown error need only be an instance of a particular type, use
 /// ``expect(throws:_:performing:)-2j0od`` instead. If the thrown error need
 /// only equal another instance of [`Error`](https://developer.apple.com/documentation/swift/error),
 /// use ``expect(throws:_:performing:)-1s3lx`` instead. If an error should
 /// _never_ be thrown, use ``expect(throws:_:performing:)-jtjw`` instead.
-@freestanding(expression) public macro expect(
+@freestanding(expression) public macro expect<R>(
   _ comment: @autoclosure () -> Comment? = nil,
-  performing expression: () async throws -> Void,
+  performing expression: () async throws -> R,
   throws errorMatcher: (any Error) async throws -> Bool
 ) = #externalMacro(module: "TestingMacros", type: "ExpectMacro")
 
@@ -318,7 +322,8 @@
 /// not matched by `errorMatcher`, or if `errorMatcher` throws an error
 /// (including the error passed to it), an ``Issue`` is recorded for the test
 /// that is running in the current task and an instance of
-/// ``ExpectationFailedError`` is thrown.
+/// ``ExpectationFailedError`` is thrown. Any value returned by `expression` is
+/// discarded.
 ///
 /// If the thrown error need only be an instance of a particular type, use
 /// ``require(throws:_:performing:)-8762f`` instead. If the thrown error need
@@ -327,8 +332,8 @@
 ///
 /// If `expression` should _never_ throw, simply invoke the code without using
 /// this macro. The test will then fail if an error is thrown.
-@freestanding(expression) public macro require(
+@freestanding(expression) public macro require<R>(
   _ comment: @autoclosure () -> Comment? = nil,
-  performing expression: () async throws -> Void,
+  performing expression: () async throws -> R,
   throws errorMatcher: (any Error) async throws -> Bool
 ) = #externalMacro(module: "TestingMacros", type: "RequireMacro")
