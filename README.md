@@ -65,5 +65,6 @@ Here, you can delve into comprehensive guides, tutorials, and API references to 
 
 `swift-testing` is under active development. We are working to integrate it with
 the rest of the Swift ecosystem, but you can try it out today by following the
-steps in our [Getting Started](Sources/Testing/Testing.docc/TemporaryGettingStarted.md)
+steps in our
+[Getting Started](https://swiftpackageindex.com/apple/swift-testing/main/documentation/testing/temporarygettingstarted)
 article.
