@@ -482,9 +482,9 @@ public func __checkCast<V, T>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkClosureCall<E, R>(
+public func __checkClosureCall<E>(
   throws errorType: E.Type,
-  performing expression: () throws -> R,
+  performing expression: () throws -> some Any,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
@@ -519,9 +519,9 @@ public func __checkClosureCall<E, R>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkClosureCall<E, R>(
+public func __checkClosureCall<E>(
   throws errorType: E.Type,
-  performing expression: () async throws -> R,
+  performing expression: () async throws -> some Any,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
@@ -559,9 +559,9 @@ public func __checkClosureCall<E, R>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkClosureCall<R>(
+public func __checkClosureCall(
   throws _: Never.Type,
-  performing expression: () throws -> R,
+  performing expression: () throws -> some Any,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
@@ -595,9 +595,9 @@ public func __checkClosureCall<R>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkClosureCall<R>(
+public func __checkClosureCall(
   throws _: Never.Type,
-  performing expression: () async throws -> R,
+  performing expression: () async throws -> some Any,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
@@ -631,9 +631,9 @@ public func __checkClosureCall<R>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkClosureCall<E, R>(
+public func __checkClosureCall<E>(
   throws error: E,
-  performing expression: () throws -> R,
+  performing expression: () throws -> some Any,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
@@ -657,9 +657,9 @@ public func __checkClosureCall<E, R>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkClosureCall<E, R>(
+public func __checkClosureCall<E>(
   throws error: E,
-  performing expression: () async throws -> R,
+  performing expression: () async throws -> some Any,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
