@@ -19,10 +19,11 @@ import SwiftSyntaxMacros
 ///
 /// ## Macro arguments
 ///
-/// Overloads of these macros that evaluate an expression take exactly two
-/// arguments, a "condition" argument and a `Comment?`-typed argument. The
-/// "condition" argument may be expanded into additional arguments based on its
-/// representation in the syntax tree.
+/// Overloads of these macros that evaluate an expression take exactly three
+/// arguments: a "condition" argument, a `Comment?`-typed argument with no
+/// label, and an optional `SourceLocation`-typed argument with the label
+/// `sourceLocation`. The "condition" argument may be expanded into additional
+/// arguments based on its representation in the syntax tree.
 ///
 /// ## Macro arguments with trailing closures
 ///
