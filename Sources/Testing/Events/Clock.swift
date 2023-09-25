@@ -295,7 +295,7 @@ extension Test.Clock.Instant: InstantProtocol {
 ///   - nanoseconds: The duration, in nanoseconds.
 ///
 /// - Returns: A string describing the specified duration.
-private func _descriptionOfNanoseconds(_ nanoseconds: Int64) -> String {
+func _descriptionOfNanoseconds(_ nanoseconds: Int64) -> String {
   let (seconds, nanosecondsRemaining) = nanoseconds.quotientAndRemainder(dividingBy: 1_000_000_000)
   var milliseconds = nanosecondsRemaining / 1_000_000
   if seconds == 0 && milliseconds == 0 && nanosecondsRemaining > 0 {

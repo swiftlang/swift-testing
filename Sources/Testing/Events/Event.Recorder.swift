@@ -510,12 +510,24 @@ extension Event.Recorder {
       return String.erasePreviousLine + resultString
       
     case let .testProgressTick(tick):
+      let elapsed: String = {
+        let test = event.test!
+        let id = test.id
+        let testDataGraph = context.testData.subgraph(at: id.keyPathRepresentation)
+        let testData = testDataGraph?.value ?? .init()
+        let duration = testData.startInstant.duration(to: event.instant)
+        let seconds = duration.components.seconds
+        let hundredsOfMS = duration.components.attoseconds / Int64(1e17)
+        let nanoseconds = seconds * Int64(1e9) + hundredsOfMS * Int64(1e8)
+        let elapsed = _descriptionOfNanoseconds(nanoseconds)
+        return elapsed
+      }()
       let symbol: String = {
         let available: [String] = ["🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"]
         let index = tick % available.count
         return available[index]
       }()
-      let tick = "\(symbol) Test \(testName) running.\n"
+      let tick = "\(symbol) Test \(testName) running, for \(elapsed).\n"
       return String.erasePreviousLine + tick
 
     case let .testSkipped(skipInfo):

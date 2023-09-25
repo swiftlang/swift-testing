@@ -246,7 +246,7 @@ extension Runner {
     @Sendable func progress(
       tick: Int = 0
     ) async throws {
-      try await Test.Clock.sleep(for: .milliseconds(150))
+      try await Test.Clock.sleep(for: .milliseconds(100))
       
       Event(.testProgressTick(tick: tick), for: step.test, testCase: testCase).post(configuration: configuration)
       
