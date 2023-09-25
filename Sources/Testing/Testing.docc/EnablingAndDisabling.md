@@ -112,7 +112,7 @@ func allIngredientsAvailable(for food: Food) -> Bool { ... }
 @Test(
   "Can make sundaes",
   .enabled(if: Season.current == .summer),
-  .enabled(if: allIngredientsAvailable(for: .sundae)),
+  .enabled(if: allIngredientsAvailable(for: .sundae))
 )
 func makeSundae() async throws { ... }
 ```
