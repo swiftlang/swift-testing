@@ -44,24 +44,18 @@ conformance. It is also generally recommended that a Swift structure or actor be
 used instead of a class because it allows the Swift compiler to better-enforce
 concurrency safety:
 
-@Row {
-  @Column {
-    ```swift
-    // Before
-    class FoodTruckTests: XCTestCase {
-      ...
-    }
-    ```
-  }
-  @Column {
-    ```swift
-    // After
-    struct FoodTruckTests {
-      ...
-    }
-    ```
-  }
+```swift
+// Before
+class FoodTruckTests: XCTestCase {
+  ...
 }
+```
+```swift
+// After
+struct FoodTruckTests {
+  ...
+}
+```
 
 If you use a class as a test suite, it must be declared `final`.
 
@@ -76,70 +70,56 @@ and [`tearDown()`](https://developer.apple.com/documentation/xctest/xctest/38564
 family of functions. When writing tests using the testing library, implement
 `init()` and/or `deinit` instead:
 
-@Row {
-  @Column {
-    ```swift
-    // Before
-    class FoodTruckTests: XCTestCase {
-      var batteryLevel: NSNumber!
-      override func setUp() async throws {
-        batteryLevel = 100
-      }
-      ...
-    }
-    ```
+```swift
+// Before
+class FoodTruckTests: XCTestCase {
+  var batteryLevel: NSNumber!
+  override func setUp() async throws {
+    batteryLevel = 100
   }
-  @Column {
-    ```swift
-    // After
-    struct FoodTruckTests {
-      var batteryLevel: NSNumber
-      init() async throws {
-        batteryLevel = 100
-      }
-      ...
-    }
-    ```
-  }
+  ...
 }
+```  
+```swift
+// After
+struct FoodTruckTests {
+  var batteryLevel: NSNumber
+  init() async throws {
+    batteryLevel = 100
+  }
+  ...
+}
+```
 
 The use of `async` and `throws` is optional. If teardown is needed, declare your
 test suite as a `final` class or as an actor rather than as a structure and
 implement `deinit`:
-
-@Row {
-  @Column {
-    ```swift
-    // Before
-    class FoodTruckTests: XCTestCase {
-      var batteryLevel: NSNumber!
-      override func setUp() async throws {
-        batteryLevel = 100
-      }
-      override func tearDown() {
-        batteryLevel = 0 // drain the battery
-      }
-      ...
-    }
-    ```
+```swift
+// Before
+class FoodTruckTests: XCTestCase {
+  var batteryLevel: NSNumber!
+  override func setUp() async throws {
+    batteryLevel = 100
   }
-  @Column {
-    ```swift
-    // After
-    final class FoodTruckTests {
-      var batteryLevel: NSNumber
-      init() async throws {
-        batteryLevel = 100
-      }
-      deinit {
-        batteryLevel = 0 // drain the battery
-      }
-      ...
-    }
-    ```
+  override func tearDown() {
+    batteryLevel = 0 // drain the battery
   }
+  ...
 }
-
+```
+```swift
+// After
+final class FoodTruckTests {
+  var batteryLevel: NSNumber
+  init() async throws {
+    batteryLevel = 100
+  }
+  deinit {
+    batteryLevel = 0 // drain the battery
+  }
+  ...
+}
+```
 <!--
 - Bug: `deinit` cannot be asynchronous or throwing, unlike `tearDown()`.
   ((103616215)[rdar://103616215])
@@ -154,26 +134,20 @@ and its name must start with `test`. The testing library does not require a test
 function to have any particular name. Instead, it identifies a test function by
 the presence of the `@Test` attribute:
 
-@Row {
-  @Column {
-    ```swift
-    // Before
-    class FoodTruckTests: XCTestCase {
-      func testEngineWorks() { ... }
-      ...
-    }
-    ```
-  }
-  @Column {
-    ```swift
-    // After
-    struct FoodTruckTests {
-      @Test func engineWorks() { ... }
-      ...
-    }
-    ```
-  }
+```swift
+// Before
+class FoodTruckTests: XCTestCase {
+  func testEngineWorks() { ... }
+  ...
 }
+```
+```swift
+// After
+struct FoodTruckTests {
+  @Test func engineWorks() { ... }
+  ...
+}
+```
 
 As with XCTest, the testing library allows test functions to be marked `async`
 and/or `throws` and to be isolated to a global actor (for example, by using the
@@ -197,72 +171,59 @@ The testing library has two replacements, ``expect(_:_:)`` and
 ``require(_:_:)-6lago``. They both behave similarly to `XCTAssert()` except that
 ``require(_:_:)-6lago`` will throw an error if its condition is not met:
 
-@Row {
-  @Column {
-    ```swift
-    // Before
-    class FoodTruckTests: XCTestCase {
-      func testEngineWorks() throws {
-        let engine = FoodTruck.shared.engine
-        XCTAssertNotNil(engine.parts.first)
-        XCTAssertGreaterThan(engine.batteryLevel, 0)
-        try engine.start()
-        XCTAssertTrue(engine.isRunning)
-      }
-      ...
-    }
-    ```
+```swift
+// Before
+class FoodTruckTests: XCTestCase {
+  func testEngineWorks() throws {
+    let engine = FoodTruck.shared.engine
+    XCTAssertNotNil(engine.parts.first)
+    XCTAssertGreaterThan(engine.batteryLevel, 0)
+    try engine.start()
+    XCTAssertTrue(engine.isRunning)
   }
-  @Column {
-    ```swift
-    // After
-    struct FoodTruckTests {
-      @Test func engineWorks() throws {
-        let engine = FoodTruck.shared.engine
-        try #require(engine.parts.first != nil)
-        #expect(engine.batteryLevel > 0)
-        try engine.start()
-        #expect(engine.isRunning)
-      }
-      ...
-    }
-    ```
-  }
+  ...
 }
-
+```
+```swift
+// After
+struct FoodTruckTests {
+  @Test func engineWorks() throws {
+    let engine = FoodTruck.shared.engine
+    try #require(engine.parts.first != nil)
+    #expect(engine.batteryLevel > 0)
+    try engine.start()
+    #expect(engine.isRunning)
+  }
+  ...
+}
+```
 XCTest also has a function, [`XCTUnwrap()`](https://developer.apple.com/documentation/xctest/3380195-xctunwrap),
 that tests if an optional value is `nil` and throws an error if it is. When
 using the testing library, you can use ``require(_:_:)-3wq2g`` with optional
 expressions to unwrap them:
 
-@Row {
-  @Column {
-    ```swift
-    // Before
-    class FoodTruckTests: XCTestCase {
-      func testEngineWorks() throws {
-        let engine = FoodTruck.shared.engine
-        let part = try XCTUnwrap(engine.parts.first)
-        ...
-      }
-      ...
-    }
-    ```
+```swift
+// Before
+class FoodTruckTests: XCTestCase {
+  func testEngineWorks() throws {
+    let engine = FoodTruck.shared.engine
+    let part = try XCTUnwrap(engine.parts.first)
+    ...
   }
-  @Column {
-    ```swift
-    // After
-    struct FoodTruckTests {
-      @Test func engineWorks() throws {
-        let engine = FoodTruck.shared.engine
-        let part = try #require(engine.parts.first)
-        ...
-      }
-      ...
-    }
-    ```
-  }
+  ...
 }
+```
+```swift
+// After
+struct FoodTruckTests {
+  @Test func engineWorks() throws {
+    let engine = FoodTruck.shared.engine
+    let part = try #require(engine.parts.first)
+    ...
+  }
+  ...
+}
+```
 
 Finally, XCTest has a function, [`XCTFail()`](https://developer.apple.com/documentation/xctest/1500970-xctfail),
 that causes a test to fail immediately and unconditionally. This function is
@@ -270,40 +231,34 @@ useful when the syntax of the language prevents the use of an `XCTAssert()`
 function. To record an unconditional issue using the testing library, use the
 ``Issue/record(_:fileID:filePath:line:column:)`` function:
 
-@Row {
-  @Column {
-    ```swift
-    // Before
-    class FoodTruckTests: XCTestCase {
-      func testEngineWorks() {
-        let engine = FoodTruck.shared.engine
-        guard case .electric = engine else {
-          XCTFail("Engine is not electric")
-          return
-        }
-        ...
-      }
-      ...
+```swift
+// Before
+class FoodTruckTests: XCTestCase {
+  func testEngineWorks() {
+    let engine = FoodTruck.shared.engine
+    guard case .electric = engine else {
+      XCTFail("Engine is not electric")
+      return
     }
-    ```
+    ...
   }
-  @Column {
-    ```swift
-    // After
-    struct FoodTruckTests {
-      @Test func engineWorks() {
-        let engine = FoodTruck.shared.engine
-        guard case .electric = engine else {
-          Issue.record("Engine is not electric")
-          return
-        }
-        ...
-      }
-      ...
-    }
-    ```
-  }
+  ...
 }
+```
+```swift
+// After
+struct FoodTruckTests {
+  @Test func engineWorks() {
+    let engine = FoodTruck.shared.engine
+    guard case .electric = engine else {
+      Issue.record("Engine is not electric")
+      return
+    }
+    ...
+  }
+  ...
+}
+```
 
 -----
 
@@ -359,47 +314,40 @@ Instead, the requirement is expected to be _confirmed_ (the equivalent of
 _fulfilling_ an expectation) before `confirmation()` returns, and an issue is
 recorded otherwise:
 
-@Row {
-  @Column {
-    ```swift
-    // Before
-    class FoodTruckTests: XCTestCase {
-      func testTruckEvents() async {
-        let soldFood = expectation(description: "…")
-        FoodTruck.shared.eventHandler = { event in
-          if case .soldFood = event {
-            soldFood.fulfill()
-          }
-        }
-        await Customer().buy(.soup)
-        await fulfillment(of: [soldFood])
-        ...
+```swift
+// Before
+class FoodTruckTests: XCTestCase {
+  func testTruckEvents() async {
+    let soldFood = expectation(description: "…")
+    FoodTruck.shared.eventHandler = { event in
+      if case .soldFood = event {
+        soldFood.fulfill()
       }
-      ...
     }
-    ```
+    await Customer().buy(.soup)
+    await fulfillment(of: [soldFood])
+    ...
   }
-  @Column {
-    ```swift
-    // After
-    struct FoodTruckTests {
-      @Test func truckEvents() async {
-        await confirmation("…") { soldFood in
-          FoodTruck.shared.eventHandler = { event in
-            if case .soldFood = event {
-              soldFood()
-            }
-          }
-          await Customer().buy(.soup)
-        }
-        ...
-      }
-      ...
-    }
-    ```
-  }
+  ...
 }
-
+```
+```swift
+// After
+struct FoodTruckTests {
+  @Test func truckEvents() async {
+    await confirmation("…") { soldFood in
+      FoodTruck.shared.eventHandler = { event in
+        if case .soldFood = event {
+          soldFood()
+        }
+      }
+      await Customer().buy(.soup)
+    }
+    ...
+  }
+  ...
+}
+```
 ### Converting XCTSkip(), XCTSkipIf(), and XCTSkipUnless() calls
 
 When using XCTest, the [`XCTSkip`](https://developer.apple.com/documentation/xctest/xctskip)
@@ -411,35 +359,28 @@ allows developers to skip a test function or an entire test suite before it
 starts running using the ``ConditionTrait`` trait type. Annotate a test suite or
 test function with an instance of this trait type to control whether it runs:
 
-@Row {
-  @Column {
-    ```swift
-    // Before
-    class FoodTruckTests: XCTestCase {
-      func testArepasAreTasty() throws {
-        try XCTSkipIf(CashRegister.isEmpty)
-        try XCTSkipUnless(FoodTruck.sells(.arepas))
-        ...
-      }
-      ...
-    }
-    ```
+```swift
+// Before
+class FoodTruckTests: XCTestCase {
+  func testArepasAreTasty() throws {
+    try XCTSkipIf(CashRegister.isEmpty)
+    try XCTSkipUnless(FoodTruck.sells(.arepas))
+    ...
   }
-  @Column {
-    ```swift
-    // After
-    @Suite(.disabled(if: CashRegister.isEmpty))
-    struct FoodTruckTests {
-      @Test(.enabled(if: FoodTruck.sells(.arepas)))
-      func arepasAreTasty() {
-        ...
-      }
-      ...
-    }
-    ```
-  }
+  ...
 }
-
+```
+```swift
+// After
+@Suite(.disabled(if: CashRegister.isEmpty))
+struct FoodTruckTests {
+  @Test(.enabled(if: FoodTruck.sells(.arepas)))
+  func arepasAreTasty() {
+    ...
+  }
+  ...
+}
+```
 ### Converting XCTExpectFailure() calls
 
 A test may have a known issue that sometimes or always prevents it from passing.
@@ -455,36 +396,30 @@ asynchronous variants:
 This function can be used to annotate a section of a test as having a known
 issue:
 
-@Row {
-  @Column {
-    ```swift
-    // Before
-    class FoodTruckTests: XCTestCase {
-      func testGrillWorks() async {
-        XCTExpectFailure("Grill is out of fuel") {
-          try FoodTruck.shared.grill.start()
-        }
-        ...
-      }
-      ...
+```swift
+// Before
+class FoodTruckTests: XCTestCase {
+  func testGrillWorks() async {
+    XCTExpectFailure("Grill is out of fuel") {
+      try FoodTruck.shared.grill.start()
     }
-    ```
+    ...
   }
-  @Column {
-    ```swift
-    // After
-    struct FoodTruckTests {
-      @Test func grillWorks() async {
-        withKnownIssue("Grill is out of fuel") {
-          try FoodTruck.shared.grill.start()
-        }
-        ...
-      }
-      ...
-    }
-    ```
-  }
+  ...
 }
+```
+```swift
+// After
+struct FoodTruckTests {
+  @Test func grillWorks() async {
+    withKnownIssue("Grill is out of fuel") {
+      try FoodTruck.shared.grill.start()
+    }
+    ...
+  }
+  ...
+}
+```
 
 - Note: The XCTest function [`XCTExpectFailure(_:options:)`](https://developer.apple.com/documentation/xctest/3727245-xctexpectfailure),
   which does not take a closure and which affects the remainder of the test,
@@ -496,42 +431,36 @@ If a test may fail intermittently, the call to
 using the testing library, specify that the known issue is _intermittent_
 instead:
 
-@Row {
-  @Column {
-    ```swift
-    // Before
-    class FoodTruckTests: XCTestCase {
-      func testGrillWorks() async {
-        XCTExpectFailure(
-          "Grill may need fuel",
-          options: .nonStrict()
-        ) {
-          try FoodTruck.shared.grill.start()
-        }
-        ...
-      }
-      ...
+```swift
+// Before
+class FoodTruckTests: XCTestCase {
+  func testGrillWorks() async {
+    XCTExpectFailure(
+      "Grill may need fuel",
+      options: .nonStrict()
+    ) {
+      try FoodTruck.shared.grill.start()
     }
-    ```
+    ...
   }
-  @Column {
-    ```swift
-    // After
-    struct FoodTruckTests {
-      @Test func grillWorks() async {
-        withKnownIssue(
-          "Grill may need fuel", 
-          isIntermittent: true
-        ) {
-          try FoodTruck.shared.grill.start()
-        }
-        ...
-      }
-      ...
-    }
-    ```
-  }
+  ...
 }
+```
+```swift
+// After
+struct FoodTruckTests {
+  @Test func grillWorks() async {
+    withKnownIssue(
+      "Grill may need fuel", 
+      isIntermittent: true
+    ) {
+      try FoodTruck.shared.grill.start()
+    }
+    ...
+  }
+  ...
+}
+```
 
 Additional options can be specified when calling `XCTExpectFailure()`:
 
@@ -551,48 +480,42 @@ additional arguments with similar behavior:
 To conditionally enable known-issue matching and/or to match only certain kinds
 of issues:
 
-@Row {
-  @Column {
-    ```swift
-    // Before
-    class FoodTruckTests: XCTestCase {
-      func testGrillWorks() async {
-        let options = XCTExpectedFailure.Options()
-        options.isEnabled = FoodTruck.shared.hasGrill
-        options.issueMatcher = { issue in
-          issue.type == thrownError
-        }
-        XCTExpectFailure(
-          "Grill is out of fuel",
-          options: options
-        ) {
-          try FoodTruck.shared.grill.start()
-        }
-        ...
-      }
-      ...
+```swift
+// Before
+class FoodTruckTests: XCTestCase {
+  func testGrillWorks() async {
+    let options = XCTExpectedFailure.Options()
+    options.isEnabled = FoodTruck.shared.hasGrill
+    options.issueMatcher = { issue in
+      issue.type == thrownError
     }
-    ```
-  }
-  @Column {
-    ```swift
-    // After
-    struct FoodTruckTests {
-      @Test func grillWorks() async {
-        withKnownIssue("Grill is out of fuel") {
-          try FoodTruck.shared.grill.start()
-        } when: {
-          FoodTruck.shared.hasGrill
-        } matching: { issue in
-          issue.error != nil 
-        }
-        ...
-      }
-      ...
+    XCTExpectFailure(
+      "Grill is out of fuel",
+      options: options
+    ) {
+      try FoodTruck.shared.grill.start()
     }
-    ```
+    ...
   }
+  ...
 }
+```
+```swift
+// After
+struct FoodTruckTests {
+  @Test func grillWorks() async {
+    withKnownIssue("Grill is out of fuel") {
+      try FoodTruck.shared.grill.start()
+    } when: {
+      FoodTruck.shared.hasGrill
+    } matching: { issue in
+      issue.error != nil 
+    }
+    ...
+  }
+  ...
+}
+```
 
 ## See Also
 
