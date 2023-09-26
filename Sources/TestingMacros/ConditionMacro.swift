@@ -80,7 +80,8 @@ extension _ConditionMacro {
     do {
       if let trailingClosureIndex {
 
-        // Include all arguments other than the "comment" argument here.
+        // Include all arguments other than the "comment" and "sourceLocation"
+        // arguments here.
         checkArguments += macroArguments.indices.lazy
           .filter { $0 != commentIndex }
           .filter { $0 != sourceLocationArgumentIndex }
@@ -99,8 +100,8 @@ extension _ConditionMacro {
         let conditionArgument = parseCondition(from: macroArguments.first!.expression, for: macro, in: context)
         checkArguments += conditionArgument.arguments
 
-        // Include all arguments other than the "condition" and "comment"
-        // arguments here.
+        // Include all arguments other than the "condition", "comment", and
+        // "sourceLocation" arguments here.
         checkArguments += macroArguments.dropFirst().indices.lazy
           .filter { $0 != commentIndex }
           .filter { $0 != sourceLocationArgumentIndex }
