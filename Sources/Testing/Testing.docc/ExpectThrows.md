@@ -29,17 +29,17 @@ runtime not to mark the test as failing when those issues occur.
 
 ### Validating that errors are thrown
 
-- ``expect(throws:_:performing:)-2j0od``
-- ``expect(throws:_:performing:)-1s3lx``
-- ``expect(_:performing:throws:)``
-- ``require(throws:_:performing:)-8762f``
-- ``require(throws:_:performing:)-84jir``
-- ``require(_:performing:throws:)``
+- ``expect(throws:_:sourceLocation:performing:)-79piu``
+- ``expect(throws:_:sourceLocation:performing:)-1xr34``
+- ``expect(_:sourceLocation:performing:throws:)``
+- ``require(throws:_:sourceLocation:performing:)-76bjn``
+- ``require(throws:_:sourceLocation:performing:)-7v83e``
+- ``require(_:sourceLocation:performing:throws:)``
 
 ### Validating that errors are not thrown
 
-- ``expect(throws:_:performing:)-jtjw``
-- ``require(throws:_:performing:)-4a80i``
+- ``expect(throws:_:sourceLocation:performing:)-5lzjz``
+- ``require(throws:_:sourceLocation:performing:)-36uzc``
 
 ### Recording known issues in tests
 

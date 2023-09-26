@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable import Testing
+@testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalTestRunning) import Testing
 
 @Suite("SourceLocation Tests")
 struct SourceLocationTests {
@@ -116,6 +116,26 @@ struct SourceLocationTests {
       let loc1 = SourceLocation(fileID: "A/B", filePath: "A", line: 1, column: 1)
       let loc2 = SourceLocation(fileID: "A/B", filePath: "B", line: 1, column: 1)
       #expect(loc1 == loc2)
+    }
+  }
+
+  @Test("Custom source location argument to #expect()")
+  func customSourceLocationArgument() async {
+    await confirmation("Source location matched custom") { sourceLocationMatched in
+      let lineNumber = Int.random(in: 999_999 ..< 1_999_999)
+
+      var configuration = Configuration()
+      configuration.eventHandler = { event in
+        guard case let .issueRecorded(issue) = event.kind else {
+          return
+        }
+        if issue.sourceLocation?.line == lineNumber {
+          sourceLocationMatched()
+        }
+      }
+      await Test {
+        #expect(Bool(false), sourceLocation: SourceLocation(fileID: "A/B", line: lineNumber))
+      }.run(configuration: configuration)
     }
   }
 }

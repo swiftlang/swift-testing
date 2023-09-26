@@ -19,10 +19,11 @@ import SwiftSyntaxMacros
 ///
 /// ## Macro arguments
 ///
-/// Overloads of these macros that evaluate an expression take exactly two
-/// arguments, a "condition" argument and a `Comment?`-typed argument. The
-/// "condition" argument may be expanded into additional arguments based on its
-/// representation in the syntax tree.
+/// Overloads of these macros that evaluate an expression take exactly three
+/// arguments: a "condition" argument, a `Comment?`-typed argument with no
+/// label, and an optional `SourceLocation`-typed argument with the label
+/// `sourceLocation`. The "condition" argument may be expanded into additional
+/// arguments based on its representation in the syntax tree.
 ///
 /// ## Macro arguments with trailing closures
 ///
@@ -39,6 +40,10 @@ private protocol _ConditionMacro: ExpressionMacro, Sendable {
 }
 
 // MARK: -
+
+/// The token used as the label of the source location argument passed to
+/// `#expect()` and `#require()`.
+private let _sourceLocationLabel = TokenSyntax.identifier("sourceLocation")
 
 /// The token used as a mandatory label on any (first) trailing closure used
 /// with `#expect()` or `#require()`.
@@ -65,6 +70,9 @@ extension _ConditionMacro {
       // never the first argument.)
       commentIndex = macroArguments.dropFirst().lastIndex { $0.label == nil }
     }
+    let sourceLocationArgumentIndex = macroArguments.lazy
+      .compactMap(\.label)
+      .firstIndex { $0.tokenKind == _sourceLocationLabel.tokenKind }
 
     // Construct the argument list to __check().
     let expandedFunctionName: TokenSyntax
@@ -72,9 +80,11 @@ extension _ConditionMacro {
     do {
       if let trailingClosureIndex {
 
-        // Include all arguments other than the "comment" argument here.
+        // Include all arguments other than the "comment" and "sourceLocation"
+        // arguments here.
         checkArguments += macroArguments.indices.lazy
           .filter { $0 != commentIndex }
+          .filter { $0 != sourceLocationArgumentIndex }
           .map { macroArguments[$0] }
 
         // The trailing closure should be the focus of the source code capture.
@@ -90,10 +100,11 @@ extension _ConditionMacro {
         let conditionArgument = parseCondition(from: macroArguments.first!.expression, for: macro, in: context)
         checkArguments += conditionArgument.arguments
 
-        // Include all arguments other than the "condition" and "comment"
-        // arguments here.
+        // Include all arguments other than the "condition", "comment", and
+        // "sourceLocation" arguments here.
         checkArguments += macroArguments.dropFirst().indices.lazy
           .filter { $0 != commentIndex }
+          .filter { $0 != sourceLocationArgumentIndex }
           .map { macroArguments[$0] }
 
         checkArguments.append(Argument(label: "sourceCode", expression: conditionArgument.sourceCode))
@@ -115,7 +126,12 @@ extension _ConditionMacro {
       ))
 
       checkArguments.append(Argument(label: "isRequired", expression: BooleanLiteralExprSyntax(isThrowing)))
-      checkArguments.append(Argument(label: "sourceLocation", expression: createSourceLocationExpr(of: macro, context: context)))
+
+      if let sourceLocationArgumentIndex {
+        checkArguments.append(macroArguments[sourceLocationArgumentIndex])
+      } else {
+        checkArguments.append(Argument(label: _sourceLocationLabel, expression: createSourceLocationExpr(of: macro, context: context)))
+      }
     }
 
     // Construct and return the call to __check().

@@ -81,8 +81,8 @@ extension Issue {
   /// - Returns: The issue that was recorded.
   ///
   /// Use this function if, while running a test, an issue occurs that cannot be
-  /// represented as an expectation (using the ``expect(_:_:)`` or
-  /// ``require(_:_:)-6lago`` macros.)
+  /// represented as an expectation (using the ``expect(_:_:sourceLocation:)``
+  /// or ``require(_:_:sourceLocation:)-5l63q`` macros.)
   @discardableResult public static func record(
     _ comment: Comment? = nil,
     fileID: String = #fileID,
