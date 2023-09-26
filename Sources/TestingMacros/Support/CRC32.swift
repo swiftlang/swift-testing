@@ -10,7 +10,7 @@
 
 /// The precomputed CRC-32 lookup table.
 ///
-/// This table is used by the ``_crc32(_:)`` function below. It is borrowed from
+/// This table is used by the ``crc32(_:)`` function below. It is borrowed from
 /// the [Swift standard library](https://github.com/apple/swift/blob/main/stdlib/public/Backtracing/Elf.swift).
 private let _crc32Table: [UInt32] = [
   0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f,
