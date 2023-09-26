@@ -192,11 +192,18 @@ extension [Event.Recorder.Option] {
     // On macOS, if we are writing to a TTY (i.e. Terminal.app) and the SF Pro
     // font is installed, we can use SF Symbols characters in place of Unicode
     // pictographs. Other platforms do not generally have this font installed.
-    if useANSIEscapeCodes {
+    // In case rendering with SF Symbols is causing problems (e.g. a third-party
+    // terminal app is being used that doesn't support them), allow explicitly
+    // toggling them with an environment variable.
+    var useSFSymbols = false
+    if let environmentVariable = Environment.flag(named: "SWT_SF_SYMBOLS_ENABLED") {
+      useSFSymbols = environmentVariable
+    } else if useANSIEscapeCodes {
       var statStruct = stat()
-      if 0 == stat("/Library/Fonts/SF-Pro.ttf", &statStruct) {
-        result.append(.useSFSymbols)
-      }
+      useSFSymbols = (0 == stat("/Library/Fonts/SF-Pro.ttf", &statStruct))
+    }
+    if useSFSymbols {
+      result.append(.useSFSymbols)
     }
 #endif
 
