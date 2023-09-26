@@ -26,7 +26,7 @@ public struct Runner: Sendable {
   /// - Parameters:
   ///   - tests: The tests to run.
   ///   - configuration: The configuration to use for running.
-  public init(testing tests: [Test], configuration: Configuration = .init()) async {
+  public init(testing tests: some Sequence<Test>, configuration: Configuration = .init()) async {
     self.plan = await Plan(tests: tests, configuration: configuration)
     self.configuration = configuration
   }
