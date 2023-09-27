@@ -542,7 +542,7 @@ public func __invokeXCTestCaseMethod<T>(
 @_alwaysEmitConformanceMetadata
 public protocol __TestContainer {
   /// The set of tests contained by this type.
-  static var __tests: [Test] { get }
+  static var __tests: [Test] { get async }
 }
 
 extension Test {
@@ -554,38 +554,42 @@ extension Test {
   ///
   /// The order of values in this sequence is unspecified.
   static var all: some Sequence<Test> {
-    // Convert the raw sequence of tests to a dictionary keyed by ID.
-    var result = testsByID(_all)
+    get async {
+      // Convert the raw sequence of tests to a dictionary keyed by ID.
+      var result = await testsByID(_all)
 
-    // Ensure test suite types that don't have the @Suite attribute are still
-    // represented in the result.
-    _synthesizeSuiteTypes(into: &result)
+      // Ensure test suite types that don't have the @Suite attribute are still
+      // represented in the result.
+      _synthesizeSuiteTypes(into: &result)
 
-    return result.values
+      return result.values
+    }
   }
 
   /// All available ``Test`` instances in the process, according to the runtime.
   ///
   /// The order of values in this sequence is unspecified. This sequence may
   /// contain duplicates; callers should use ``all`` instead.
-  private static var _all: some Sequence<Test> {
-    var result = [Self]()
+  private static var _all: some Sequence<Self> {
+    get async {
+      await withTaskGroup(of: [Self].self) { taskGroup in
+        swt_enumerateTypes({ typeName, _ in
+          // strstr() lets us avoid copying either string before comparing.
+          Self._testContainerTypeNameMagic.withCString { testContainerTypeNameMagic in
+            nil != strstr(typeName, testContainerTypeNameMagic)
+          }
+        }, /*typeEnumerator:*/ { type, context in
+          if let context, let type = unsafeBitCast(type, to: Any.Type.self) as? any __TestContainer.Type {
+            let taskGroup = context.assumingMemoryBound(to: ThrowingTaskGroup<[Self], any Error>.self)
+            taskGroup.pointee.addTask {
+              return await type.__tests
+            }
+          }
+        }, &taskGroup)
 
-    withUnsafeMutablePointer(to: &result) { result in
-      swt_enumerateTypes({ typeName, _ in
-        // strstr() lets us avoid copying either string before comparing.
-        Self._testContainerTypeNameMagic.withCString { testContainerTypeNameMagic in
-          nil != strstr(typeName, testContainerTypeNameMagic)
-        }
-      }, /*typeEnumerator:*/ { type, context in
-        if let context, let type = unsafeBitCast(type, to: Any.Type.self) as? any __TestContainer.Type {
-          let result = context.assumingMemoryBound(to: Array<Self>.self)
-          result.pointee.append(contentsOf: type.__tests)
-        }
-      }, result)
+        return await taskGroup.reduce(into: [], +=)
+      }
     }
-
-    return result
   }
 
   /// Create a dictionary mapping the IDs of a sequence of tests to those tests.
