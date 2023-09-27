@@ -137,9 +137,9 @@ extension _ConditionMacro {
     // Construct and return the call to __check().
     let call: ExprSyntax = "Testing.\(expandedFunctionName)(\(LabeledExprListSyntax(checkArguments)))"
     if isThrowing {
-      return "\(raw: macro.leadingTrivia)\(call).__required()\(raw: macro.trailingTrivia)"
+      return "\(call).__required()"
     }
-    return "\(raw: macro.leadingTrivia)\(call).__expected()\(raw: macro.trailingTrivia)"
+    return "\(call).__expected()"
   }
 
   /// Get the complete argument list for a given macro, including any trailing
