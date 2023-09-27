@@ -482,7 +482,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       @frozen public enum \(enumName): Testing.__TestContainer {
         public static var __tests: [Testing.Test] {
           get async {[
-            .__function(
+            await .__function(
               named: \(literal: functionDecl.completeName),
               in: \(typealiasExpr),
               xcTestCompatibleSelector: \(selectorExpr ?? "nil"),

@@ -174,9 +174,15 @@ struct TestsWithStaticMemberAccessBySelfKeyword {
 
 @Suite(.hidden)
 struct TestsWithAsyncArguments {
-  static func asyncCollection() async -> [Int] { [] }
+  static func asyncCollection() async -> [Int] {
+    []
+  }
+  static func asyncFailingCollection() async throws -> [Int] {
+    throw MyError()
+  }
 
   @Test(.hidden, arguments: await asyncCollection()) func f(i: Int) {}
+  @Test(.hidden, arguments: try await asyncFailingCollection()) func fails(i: Int) {}
 }
 
 @Suite("Miscellaneous tests")

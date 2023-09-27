@@ -803,5 +803,17 @@ final class RunnerTests: XCTestCase {
     await runTest(for: DeprecatedVersionTests.self, configuration: configuration)
     await fulfillment(of: [testStarted, testSkipped], timeout: 0.0)
   }
+
+  func testFailingArgument() async throws {
+    let testFailed = expectation(description: "Test failed")
+    var configuration = Configuration()
+    configuration.eventHandler = { event in
+      if case let .issueRecorded(issue) = event.kind, issue.error is MyError {
+        testFailed.fulfill()
+      }
+    }
+    await runTest(for: TestsWithAsyncArguments.self, configuration: configuration)
+    await fulfillment(of: [testFailed], timeout: 0.0)
+  }
 }
 #endif

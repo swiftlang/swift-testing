@@ -170,7 +170,7 @@ extension Test {
     sourceLocation: SourceLocation,
     parameters: [__ParameterInfo] = [],
     testFunction: @escaping @Sendable () async throws -> Void
-  ) -> Self {
+  ) async -> Self {
     let caseGenerator = Case.Generator(testFunction: testFunction)
     return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: [])
   }
@@ -218,6 +218,37 @@ extension Test {
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where C: Collection & Sendable, C.Element: Sendable
 
 extension Test {
+  /// Create an instance of ``Test`` representing a test that has failed to
+  /// resolve during planning due to an error thrown by an argument.
+  ///
+  /// The test produced by this function, when run, immediately records an issue
+  /// describing the error that was thrown.
+  private static func _functionForFailedArgumentResolution(
+    named testFunctionName: String,
+    in containingType: Any.Type?,
+    xcTestCompatibleSelector: __XCTestCompatibleSelector?,
+    displayName: String? = nil,
+    traits: [any TestTrait],
+    sourceLocation: SourceLocation,
+    error: any Error
+  ) async -> Self {
+    let backtrace = Backtrace.current()
+    return await __function(
+      named: testFunctionName,
+      in: containingType,
+      xcTestCompatibleSelector: xcTestCompatibleSelector,
+      traits: traits,
+      sourceLocation: sourceLocation
+    ) {
+      Issue.record(
+        .errorCaught(error),
+        comments: ["Error thrown while getting arguments"],
+        backtrace: backtrace,
+        sourceLocation: sourceLocation
+      )
+    }
+  }
+
   /// Create an instance of ``Test`` for a parameterized function.
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
@@ -228,14 +259,26 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
-    arguments collection: C,
+    arguments collection: @autoclosure () async throws -> C,
     sourceLocation: SourceLocation,
     parameters: [__ParameterInfo],
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
-  ) -> Self where C: Collection & Sendable, C.Element: Sendable {
-    let caseGenerator = Case.Generator(arguments: collection, testFunction: testFunction)
-    let parameters = parameters.map(ParameterInfo.init)
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+  ) async -> Self where C: Collection & Sendable, C.Element: Sendable {
+    do {
+      let collection = try await collection()
+      let caseGenerator = Case.Generator(arguments: collection, testFunction: testFunction)
+      let parameters = parameters.map(ParameterInfo.init)
+      return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    } catch {
+      return await _functionForFailedArgumentResolution(
+        named: testFunctionName,
+        in: containingType,
+        xcTestCompatibleSelector: xcTestCompatibleSelector,
+        traits: traits,
+        sourceLocation: sourceLocation,
+        error: error
+      )
+    }
   }
 }
 
@@ -356,14 +399,27 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
-    arguments collection1: C1, _ collection2: C2,
+    arguments collection1: @autoclosure () async throws -> C1, _ collection2: @autoclosure () async throws -> C2,
     sourceLocation: SourceLocation,
     parameters: [__ParameterInfo],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
-  ) -> Self where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
-    let caseGenerator = Case.Generator(arguments: collection1, collection2, testFunction: testFunction)
-    let parameters = parameters.map(ParameterInfo.init)
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+  ) async -> Self where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
+    do {
+      let collection1 = try await collection1()
+      let collection2 = try await collection2()
+      let caseGenerator = Case.Generator(arguments: collection1, collection2, testFunction: testFunction)
+      let parameters = parameters.map(ParameterInfo.init)
+      return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    } catch {
+      return await _functionForFailedArgumentResolution(
+        named: testFunctionName,
+        in: containingType,
+        xcTestCompatibleSelector: xcTestCompatibleSelector,
+        traits: traits,
+        sourceLocation: sourceLocation,
+        error: error
+      )
+    }
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
@@ -376,16 +432,28 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
-    arguments zippedCollections: Zip2Sequence<C1, C2>,
+    arguments zippedCollections: @autoclosure () async throws -> Zip2Sequence<C1, C2>,
     sourceLocation: SourceLocation,
     parameters: [__ParameterInfo],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
-  ) -> Self where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
-    let caseGenerator = Case.Generator(arguments: zippedCollections) {
-      try await testFunction($0, $1)
+  ) async -> Self where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
+    do {
+      let zippedCollections = try await zippedCollections()
+      let caseGenerator = Case.Generator(arguments: zippedCollections) {
+        try await testFunction($0, $1)
+      }
+      let parameters = parameters.map(ParameterInfo.init)
+      return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    } catch {
+      return await _functionForFailedArgumentResolution(
+        named: testFunctionName,
+        in: containingType,
+        xcTestCompatibleSelector: xcTestCompatibleSelector,
+        traits: traits,
+        sourceLocation: sourceLocation,
+        error: error
+      )
     }
-    let parameters = parameters.map(ParameterInfo.init)
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 }
 
