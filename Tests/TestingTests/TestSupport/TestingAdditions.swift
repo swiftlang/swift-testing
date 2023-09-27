@@ -21,8 +21,8 @@ import XCTest
 ///
 /// - Returns: The test instance representing the specified type, or `nil` if
 ///   none is found.
-func test(for containingType: Any.Type) -> Test? {
-  Test.all.first {
+func test(for containingType: Any.Type) async -> Test? {
+  await Test.all.first {
     $0.isSuite && $0.containingType == containingType
   }
 }
@@ -35,8 +35,8 @@ func test(for containingType: Any.Type) -> Test? {
 ///
 /// - Returns: The test instance representing the specified test function, or
 ///   `nil` if none is found.
-func testFunction(named name: String, in containingType: Any.Type) -> Test? {
-  Test.all.first {
+func testFunction(named name: String, in containingType: Any.Type) async -> Test? {
+  await Test.all.first {
     $0.name == name && !$0.isSuite && $0.containingType == containingType
   }
 }

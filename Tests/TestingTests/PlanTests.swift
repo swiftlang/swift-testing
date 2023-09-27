@@ -14,10 +14,10 @@
 struct PlanTests {
   @Test("Selected tests")
   func selectedTests() async throws {
-    let outerTestType = try #require(test(for: SendableTests.self))
-    let testA = try #require(testFunction(named: "succeeds()", in: SendableTests.self))
-    let innerTestType = try #require(test(for: SendableTests.NestedSendableTests.self))
-    let testB = try #require(testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
 
     let tests = [
       outerTestType,
@@ -38,10 +38,10 @@ struct PlanTests {
 
   @Test("Multiple selected tests")
   func multipleSelectedTests() async throws {
-    let outerTestType = try #require(test(for: SendableTests.self))
-    let testA = try #require(testFunction(named: "succeeds()", in: SendableTests.self))
-    let innerTestType = try #require(test(for: SendableTests.NestedSendableTests.self))
-    let testB = try #require(testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
 
     let tests = [
       outerTestType,
@@ -63,9 +63,9 @@ struct PlanTests {
 
   @Test("Recursive trait application")
   func recursiveTraitApplication() async throws {
-    let outerTestType = try #require(test(for: OuterTest.self))
+    let outerTestType = try #require(await test(for: OuterTest.self))
     // Intentionally omitting intermediate tests here...
-    let deeplyNestedTest = try #require(testFunction(named: "example()", in: OuterTest.IntermediateType.InnerTest.self))
+    let deeplyNestedTest = try #require(await testFunction(named: "example()", in: OuterTest.IntermediateType.InnerTest.self))
 
     let tests = [outerTestType, deeplyNestedTest]
 
@@ -80,10 +80,10 @@ struct PlanTests {
 
   @Test("Relative order of recursively applied traits")
   func recursiveTraitOrder() async throws {
-    let testSuiteA = try #require(test(for: RelativeTraitOrderingTests.A.self))
-    let testSuiteB = try #require(test(for: RelativeTraitOrderingTests.A.B.self))
-    let testSuiteC = try #require(test(for: RelativeTraitOrderingTests.A.B.C.self))
-    let testFuncX = try #require(testFunction(named: "x()", in: RelativeTraitOrderingTests.A.B.C.self))
+    let testSuiteA = try #require(await test(for: RelativeTraitOrderingTests.A.self))
+    let testSuiteB = try #require(await test(for: RelativeTraitOrderingTests.A.B.self))
+    let testSuiteC = try #require(await test(for: RelativeTraitOrderingTests.A.B.C.self))
+    let testFuncX = try #require(await testFunction(named: "x()", in: RelativeTraitOrderingTests.A.B.C.self))
 
     let tests = [testSuiteA, testSuiteB, testSuiteC, testFuncX]
 
