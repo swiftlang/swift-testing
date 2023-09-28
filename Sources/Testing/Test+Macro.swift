@@ -579,10 +579,10 @@ extension Test {
             nil != strstr(typeName, testContainerTypeNameMagic)
           }
         }, /*typeEnumerator:*/ { type, context in
-          if let context, let type = unsafeBitCast(type, to: Any.Type.self) as? any __TestContainer.Type {
-            let taskGroup = context.assumingMemoryBound(to: ThrowingTaskGroup<[Self], any Error>.self)
+          if let type = unsafeBitCast(type, to: Any.Type.self) as? any __TestContainer.Type {
+            let taskGroup = context!.assumingMemoryBound(to: ThrowingTaskGroup<[Self], any Error>.self)
             taskGroup.pointee.addTask {
-              return await type.__tests
+              await type.__tests
             }
           }
         }, &taskGroup)
