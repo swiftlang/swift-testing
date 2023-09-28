@@ -172,11 +172,15 @@ struct TestsWithStaticMemberAccessBySelfKeyword {
 @Test(.hidden, arguments: [0]) func A(🙃: Int) {}
 @Test(.hidden, arguments: [0]) func A(🙂: Int) {}
 
-@Suite(.hidden)
+func asyncTrait() async -> some SuiteTrait & TestTrait {
+  .comment("")
+}
+
+@Suite(.hidden, await asyncTrait())
 struct TestsWithAsyncArguments {
   static func asyncCollection() async -> [Int] { [] }
 
-  @Test(.hidden, arguments: await asyncCollection()) func f(i: Int) {}
+  @Test(.hidden, await asyncTrait(), arguments: await asyncCollection()) func f(i: Int) {}
 }
 
 @Suite("Miscellaneous tests")
