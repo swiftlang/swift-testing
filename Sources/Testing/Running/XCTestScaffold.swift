@@ -242,7 +242,7 @@ extension [Event.Recorder.Option] {
     // invokes the testing library, for example.
 #if SWT_TARGET_OS_APPLE || os(Linux)
     var statStruct = stat()
-    if 0 == fstat(STDERR_FILENO, &statStruct) && swt_isFIFO(statStruct.st_mode) {
+    if 0 == fstat(STDERR_FILENO, &statStruct) && swt_S_ISFIFO(statStruct.st_mode) {
       return true
     }
 #elseif os(Windows)
