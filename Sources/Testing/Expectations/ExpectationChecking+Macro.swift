@@ -527,8 +527,8 @@ public func __checkClosureCall<E>(
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) async -> Result<Void, any Error> where E: Error {
-  await if errorType == Never.self {
-    __checkClosureCall(
+  if errorType == Never.self {
+    await __checkClosureCall(
       throws: Never.self,
       performing: expression,
       sourceCode: sourceCode,
@@ -537,7 +537,7 @@ public func __checkClosureCall<E>(
       sourceLocation: sourceLocation
     )
   } else {
-    __checkClosureCall(
+    await __checkClosureCall(
       performing: expression,
       throws: { $0 is E },
       mismatchExplanation: { "expected error of type \(errorType), but \(_description(of: $0)) was thrown instead" },
