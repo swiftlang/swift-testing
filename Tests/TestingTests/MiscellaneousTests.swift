@@ -172,28 +172,35 @@ struct TestsWithStaticMemberAccessBySelfKeyword {
 @Test(.hidden, arguments: [0]) func A(🙃: Int) {}
 @Test(.hidden, arguments: [0]) func A(🙂: Int) {}
 
+@Suite(.hidden)
+struct TestsWithAsyncArguments {
+  static func asyncCollection() async -> [Int] { [] }
+
+  @Test(.hidden, arguments: await asyncCollection()) func f(i: Int) {}
+}
+
 @Suite("Miscellaneous tests")
 struct MiscellaneousTests {
   @Test("Free function's name")
   func unnamedFreeFunctionTest() async throws {
-    let testFunction = try #require(Test.all.first(where: { $0.name.contains("freeSyncFunction") }))
+    let testFunction = try #require(await Test.all.first(where: { $0.name.contains("freeSyncFunction") }))
     #expect(testFunction.name == "freeSyncFunction()")
   }
 
   @Test("Test suite type's name")
   func unnamedMemberFunctionTest() async throws {
-    let testType = try #require(test(for: SendableTests.self))
+    let testType = try #require(await test(for: SendableTests.self))
     #expect(testType.name == "SendableTests")
   }
 
   @Test("Free function has custom display name")
   func namedFreeFunctionTest() async throws {
-    #expect(Test.all.first { $0.displayName == "Named Free Sync Function" && !$0.isSuite && $0.containingType == nil } != nil)
+    #expect(await Test.all.first { $0.displayName == "Named Free Sync Function" && !$0.isSuite && $0.containingType == nil } != nil)
   }
 
   @Test("Member function has custom display name")
   func namedMemberFunctionTest() async throws {
-    let testType = try #require(test(for: NamedSendableTests.self))
+    let testType = try #require(await test(for: NamedSendableTests.self))
     #expect(testType.displayName == "Named Sendable test type")
   }
 
@@ -301,34 +308,34 @@ struct MiscellaneousTests {
   @Test("Test.underestimatedCaseCount property")
   func underestimatedCaseCount() async throws {
     do {
-      let test = try #require(testFunction(named: "parameterized(i:)", in: NonSendableTests.self))
+      let test = try #require(await testFunction(named: "parameterized(i:)", in: NonSendableTests.self))
       #expect(test.underestimatedCaseCount == FixtureData.zeroUpTo100.count)
     }
     do {
-      let test = try #require(testFunction(named: "parameterized2(i:j:)", in: NonSendableTests.self))
+      let test = try #require(await testFunction(named: "parameterized2(i:j:)", in: NonSendableTests.self))
       #expect(test.underestimatedCaseCount == FixtureData.zeroUpTo100.count * FixtureData.smallStringArray.count)
     }
     do {
-      let test = try #require(testFunction(named: "parameterized(i:)", in: SendableTests.self))
+      let test = try #require(await testFunction(named: "parameterized(i:)", in: SendableTests.self))
       #expect(test.underestimatedCaseCount == FixtureData.zeroUpTo100.count)
     }
 #if !SWT_NO_GLOBAL_ACTORS
     do {
-      let test = try #require(testFunction(named: "parameterized(i:)", in: MainActorIsolatedTests.self))
+      let test = try #require(await testFunction(named: "parameterized(i:)", in: MainActorIsolatedTests.self))
       #expect(test.underestimatedCaseCount == FixtureData.zeroUpTo100.count)
     }
     do {
-      let test = try #require(testFunction(named: "parameterizedNonisolated(i:)", in: MainActorIsolatedTests.self))
+      let test = try #require(await testFunction(named: "parameterizedNonisolated(i:)", in: MainActorIsolatedTests.self))
       #expect(test.underestimatedCaseCount == FixtureData.zeroUpTo100.count)
     }
 #endif
 
     do {
-      let thisTest = try #require(testFunction(named: "succeeds()", in: SendableTests.self))
+      let thisTest = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
       #expect(thisTest.underestimatedCaseCount == 1)
     }
     do {
-      let thisTest = try #require(test(for: SendableTests.self))
+      let thisTest = try #require(await test(for: SendableTests.self))
       #expect(thisTest.underestimatedCaseCount == nil)
     }
   }
@@ -336,18 +343,18 @@ struct MiscellaneousTests {
   @Test("Test.parameters property")
   func parametersProperty() async throws {
     do {
-      let theTest = try #require(test(for: SendableTests.self))
+      let theTest = try #require(await test(for: SendableTests.self))
       #expect(theTest.parameters == nil)
     }
 
     do {
-      let test = try #require(testFunction(named: "succeeds()", in: SendableTests.self))
+      let test = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
       let parameters = try #require(test.parameters)
       #expect(parameters.isEmpty)
     } catch {}
 
     do {
-      let test = try #require(testFunction(named: "parameterized(i:)", in: NonSendableTests.self))
+      let test = try #require(await testFunction(named: "parameterized(i:)", in: NonSendableTests.self))
       let parameters = try #require(test.parameters)
       #expect(parameters.count == 1)
       let firstParameter = try #require(parameters.first)
@@ -356,7 +363,7 @@ struct MiscellaneousTests {
     } catch {}
 
     do {
-      let test = try #require(testFunction(named: "parameterized2(i:j:)", in: NonSendableTests.self))
+      let test = try #require(await testFunction(named: "parameterized2(i:j:)", in: NonSendableTests.self))
       let parameters = try #require(test.parameters)
       #expect(parameters.count == 2)
       let firstParameter = try #require(parameters.first)
@@ -476,7 +483,7 @@ struct MiscellaneousTests {
     let line = 12345
     let column = 67890
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-    let testFunction = Test.__function(named: "myTestFunction()", in: nil, xcTestCompatibleSelector: nil, displayName: nil, traits: [], sourceLocation: sourceLocation) {}
+    let testFunction = await Test.__function(named: "myTestFunction()", in: nil, xcTestCompatibleSelector: nil, displayName: nil, traits: [], sourceLocation: sourceLocation) {}
     #expect(String(describing: testFunction.id) == "Module/myTestFunction()/Y.swift:12345:67890")
   }
 

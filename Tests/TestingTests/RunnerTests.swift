@@ -246,8 +246,8 @@ final class RunnerTests: XCTestCase {
   }
 
   func testConditionTraitsAreEvaluatedOutermostToInnermost() async throws {
-    let testSuite = try #require(test(for: NeverRunTests.self))
-    let testFunc = try #require(testFunction(named: "duelingConditions()", in: NeverRunTests.self))
+    let testSuite = try #require(await test(for: NeverRunTests.self))
+    let testFunc = try #require(await testFunction(named: "duelingConditions()", in: NeverRunTests.self))
 
     var configuration = Configuration()
     configuration.selectedTests = .init(testIDs: [testSuite.id])
@@ -313,11 +313,11 @@ final class RunnerTests: XCTestCase {
   }
 
   func testHardCodedPlan() async throws {
-    let tests = try [
-      XCTUnwrap(testFunction(named: "succeeds()", in: SendableTests.self)),
-      XCTUnwrap(testFunction(named: "succeedsAsync()", in: SendableTests.self)),
-      XCTUnwrap(testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self)),
-    ]
+    let tests = try await [
+      testFunction(named: "succeeds()", in: SendableTests.self),
+      testFunction(named: "succeedsAsync()", in: SendableTests.self),
+      testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self),
+    ].map { try XCTUnwrap($0) }
     let steps: [Runner.Plan.Step] = tests
       .map { .init(test: $0, action: .skip()) }
     let plan = Runner.Plan(steps: steps)
