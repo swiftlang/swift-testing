@@ -580,7 +580,7 @@ extension Test {
           }
         }, /*typeEnumerator:*/ { type, context in
           if let type = unsafeBitCast(type, to: Any.Type.self) as? any __TestContainer.Type {
-            let taskGroup = context!.assumingMemoryBound(to: ThrowingTaskGroup<[Self], any Error>.self)
+            let taskGroup = context!.assumingMemoryBound(to: TaskGroup<[Self]>.self)
             taskGroup.pointee.addTask {
               await type.__tests
             }
