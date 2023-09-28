@@ -28,9 +28,10 @@ static FILE *swt_stderr(void) {
 #if __has_include(<sys/stat.h>) && defined(S_ISFIFO)
 /// Check if a given `mode_t` value indicates that a file is a pipe (FIFO.)
 ///
-/// This function is necessary because the mode flag macros are not all
-/// imported into Swift.
-static bool swt_isFIFO(mode_t mode) {
+/// This function is exactly equivalent to the `S_ISFIFO()` macro. It is
+/// necessary because the mode flag macros are not imported into Swift
+/// consistently across platforms.
+static bool swt_S_ISFIFO(mode_t mode) {
   return S_ISFIFO(mode);
 }
 #endif
