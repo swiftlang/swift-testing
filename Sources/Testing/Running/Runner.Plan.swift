@@ -67,6 +67,12 @@ extension Runner {
       stepGraph.compactMap(\.value).sorted { $0.test.sourceLocation < $1.test.sourceLocation }
     }
 
+    /// Retrieves the test associated with the specified ID in this plan, if
+    /// any.
+    public subscript(_ testID: Test.ID) -> Test? {
+      stepGraph[testID.keyPathRepresentation]??.test
+    }
+
     /// Initialize an instance of this type with the specified graph of test
     /// plan steps.
     ///

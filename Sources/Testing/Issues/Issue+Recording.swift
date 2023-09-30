@@ -27,14 +27,14 @@ extension Issue {
   ///     used to construct an instance of ``SourceContext``.
   ///   - sourceLocation: The source location of the issue. This value is used
   ///     to construct an instance of ``SourceContext``.
-  ///   - configuration: The test configuration to use when recording the issue.
-  ///     The default value is ``Configuration/current``.
+  ///   - runner: The test runner to use when recording the issue. The default
+  ///     value is ``Runner/current``.
   ///
   /// - Returns: The issue that was recorded.
   @discardableResult
-  static func record(_ kind: Kind, comments: [Comment], backtrace: Backtrace?, sourceLocation: SourceLocation, configuration: Configuration? = nil) -> Issue {
+  static func record(_ kind: Kind, comments: [Comment], backtrace: Backtrace?, sourceLocation: SourceLocation, runner: Runner? = nil) -> Issue {
     let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: sourceLocation)
-    return record(kind, comments: comments, sourceContext: sourceContext, configuration: configuration)
+    return record(kind, comments: comments, sourceContext: sourceContext, runner: runner)
   }
 
   /// Record a new issue with the specified properties.
@@ -44,14 +44,14 @@ extension Issue {
   ///   - comments: An array of comments describing the issue. This array may be
   ///     empty.
   ///   - sourceContext: The source context of the issue.
-  ///   - configuration: The test configuration to use when recording the issue.
-  ///     The default value is ``Configuration/current``.
+  ///   - runner: The test runner to use when recording the issue. The default
+  ///     value is ``Runner/current``.
   ///
   /// - Returns: The issue that was recorded.
   @discardableResult
-  static func record(_ kind: Kind, comments: [Comment], sourceContext: SourceContext, configuration: Configuration? = nil) -> Issue {
+  static func record(_ kind: Kind, comments: [Comment], sourceContext: SourceContext, runner: Runner? = nil) -> Issue {
     let issue = Issue(kind: kind, comments: comments, sourceContext: sourceContext)
-    issue.record(configuration: configuration)
+    issue.record(runner: runner)
     return issue
   }
 
@@ -59,18 +59,18 @@ extension Issue {
   /// current event handler.
   ///
   /// - Parameters:
-  ///   - configuration: The test configuration to use when recording the issue.
-  ///     The default value is ``Configuration/current``.
-  func record(configuration: Configuration? = nil) {
+  ///   - runner: The test runner to use when recording the issue. The default
+  ///     value is ``Runner/current``.
+  func record(runner: Runner? = nil) {
     // If this issue matches via the known issue matcher, set a copy of it to be
     // known and record the copy instead.
     if !isKnown, let issueMatcher = Self.currentKnownIssueMatcher, issueMatcher(self) {
       var selfCopy = self
       selfCopy.isKnown = true
-      return selfCopy.record(configuration: configuration)
+      return selfCopy.record(runner: runner)
     }
 
-    Event(.issueRecorded(self)).post(configuration: configuration)
+    Event(.issueRecorded(self)).post(runner: runner)
   }
 
   /// Record an issue when a running test fails unexpectedly.

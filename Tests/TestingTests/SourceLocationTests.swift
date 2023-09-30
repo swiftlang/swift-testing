@@ -125,7 +125,7 @@ struct SourceLocationTests {
       let lineNumber = Int.random(in: 999_999 ..< 1_999_999)
 
       var configuration = Configuration()
-      configuration.eventHandler = { event in
+      configuration.eventHandler = { event, _ in
         guard case let .issueRecorded(issue) = event.kind else {
           return
         }

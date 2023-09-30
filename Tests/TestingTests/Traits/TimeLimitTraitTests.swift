@@ -110,7 +110,7 @@ struct TimeLimitTraitTests {
     await confirmation("Issue recorded", expectedCount: 10) { issueRecorded in
       var configuration = Configuration()
       configuration.testTimeLimitGranularity = .milliseconds(1)
-      configuration.eventHandler = { event in
+      configuration.eventHandler = { event, _ in
         guard case let .issueRecorded(issue) = event.kind,
               case .timeLimitExceeded = issue.kind else {
           return
@@ -131,7 +131,7 @@ struct TimeLimitTraitTests {
       var configuration = Configuration()
       configuration.testTimeLimitGranularity = .milliseconds(1)
       configuration.maximumTestTimeLimit = .milliseconds(10)
-      configuration.eventHandler = { event in
+      configuration.eventHandler = { event, _ in
         guard case let .issueRecorded(issue) = event.kind,
               case .timeLimitExceeded = issue.kind else {
           return
@@ -150,7 +150,7 @@ struct TimeLimitTraitTests {
       var configuration = Configuration()
       configuration.testTimeLimitGranularity = .milliseconds(1)
       configuration.defaultTestTimeLimit = .milliseconds(10)
-      configuration.eventHandler = { event in
+      configuration.eventHandler = { event, _ in
         guard case let .issueRecorded(issue) = event.kind,
               case .timeLimitExceeded = issue.kind else {
           return
@@ -171,7 +171,7 @@ struct TimeLimitTraitTests {
       var configuration = Configuration()
       configuration.testTimeLimitGranularity = .milliseconds(1)
       configuration.maximumTestTimeLimit = .milliseconds(10)
-      configuration.eventHandler = { event in
+      configuration.eventHandler = { event, _ in
         guard case let .issueRecorded(issue) = event.kind,
               case .timeLimitExceeded = issue.kind else {
           return
@@ -222,10 +222,10 @@ struct TimeLimitTraitTests {
     await confirmation("Issue recorded") { issueRecorded in
       var configuration = Configuration()
       configuration.testTimeLimitGranularity = .milliseconds(1)
-      configuration.eventHandler = { event in
+      configuration.eventHandler = { event, context in
         guard case let .issueRecorded(issue) = event.kind,
               case .timeLimitExceeded = issue.kind,
-              let test = event.test,
+              let test = context.test(for: event),
               let testCase = event.testCase
         else {
           return

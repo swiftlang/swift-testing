@@ -50,8 +50,8 @@ struct EventRecorderTests {
     var configuration = Configuration()
     configuration.deliverExpectationCheckedEvents = true
     let eventRecorder = Event.Recorder(options: options, writingUsing: stream.write)
-    configuration.eventHandler = {
-      eventRecorder.record($0)
+    configuration.eventHandler = { event, context in
+      eventRecorder.record(event, in: context)
     }
 
     await runTest(for: WrittenTests.self, configuration: configuration)
@@ -97,8 +97,8 @@ struct EventRecorderTests {
 
     var configuration = Configuration()
     let eventRecorder = Event.Recorder(writingUsing: stream.write)
-    configuration.eventHandler = {
-      eventRecorder.record($0)
+    configuration.eventHandler = { event, context in
+      eventRecorder.record(event, in: context)
     }
 
     await runTest(for: PredictablyFailingTests.self, configuration: configuration)
@@ -140,8 +140,8 @@ struct EventRecorderTests {
 
     var configuration = Configuration()
     let eventRecorder = Event.Recorder(writingUsing: stream.write)
-    configuration.eventHandler = {
-      eventRecorder.record($0)
+    configuration.eventHandler = { event, context in
+      eventRecorder.record(event, in: context)
     }
 
     await Test(name: "Innocuous Test Name") {
@@ -163,8 +163,8 @@ struct EventRecorderTests {
 
     var configuration = Configuration()
     let eventRecorder = Event.Recorder(writingUsing: stream.write)
-    configuration.eventHandler = {
-      eventRecorder.record($0)
+    configuration.eventHandler = { event, context in
+      eventRecorder.record(event, in: context)
     }
 
     await runTest(for: PredictablyFailingTests.self, configuration: configuration)

@@ -73,7 +73,7 @@ final class RunnerTests: XCTestCase {
   func testYieldingError() async throws {
     let errorObserved = expectation(description: "Error was thrown and caught")
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       if case let .issueRecorded(issue) = event.kind, issue.error is MyError {
         errorObserved.fulfill()
       }
@@ -92,11 +92,11 @@ final class RunnerTests: XCTestCase {
     let otherTestEnded = expectation(description: "The other test (the one which didn't throw an error) ended")
     var configuration = Configuration()
     configuration.isParallelizationEnabled = false
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, context in
       if case let .issueRecorded(issue) = event.kind, issue.error is MyError {
         issueRecorded.fulfill()
       }
-      if case .testEnded = event.kind, let test = event.test, test.displayName == "test2" {
+      if case .testEnded = event.kind, let test = context.test(for: event), test.name == "test2" {
         otherTestEnded.fulfill()
       }
     }
@@ -111,7 +111,7 @@ final class RunnerTests: XCTestCase {
   func testYieldsIssueWhenErrorThrownFromParallelizedTest() async throws {
     let errorObserved = expectation(description: "Error was thrown and caught")
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       if case let .issueRecorded(issue) = event.kind, issue.error is MyError {
         errorObserved.fulfill()
       }
@@ -123,7 +123,7 @@ final class RunnerTests: XCTestCase {
   func testYieldsIssueWhenErrorThrownFromTestCase() async throws {
     let errorObserved = expectation(description: "Error was thrown and caught")
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       if case let .issueRecorded(issue) = event.kind, let error = issue.error as? MyParameterizedError, error.index == randomNumber {
         errorObserved.fulfill()
       }
@@ -137,7 +137,7 @@ final class RunnerTests: XCTestCase {
     let testSkipped = expectation(description: "Test was skipped")
     let planStepEnded = expectation(description: "Plan step ended")
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       if case .planStepStarted = event.kind {
         planStepStarted.fulfill()
       } else if case let .testSkipped(skipInfo) = event.kind, skipInfo.comment == nil {
@@ -161,7 +161,7 @@ final class RunnerTests: XCTestCase {
   func testTestIsSkippedWhenDisabledWithComment() async throws {
     let testSkipped = expectation(description: "Test was skipped")
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       if case let .testSkipped(skipInfo) = event.kind, skipInfo.comment == "Some comment" {
         testSkipped.fulfill()
       }
@@ -177,7 +177,7 @@ final class RunnerTests: XCTestCase {
     let testSkipped = expectation(description: "Test was skipped")
     testSkipped.expectedFulfillmentCount = 4
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       if case let .testSkipped(skipInfo) = event.kind, skipInfo.comment == "Some comment" {
         testSkipped.fulfill()
       }
@@ -213,7 +213,7 @@ final class RunnerTests: XCTestCase {
 
   func testTestIsNotSkippedWithPassingConditionTraits() async throws {
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       if case .testSkipped = event.kind {
         XCTFail("Test should not be skipped")
       }
@@ -262,7 +262,7 @@ final class RunnerTests: XCTestCase {
   func testTestActionIsRecordIssueDueToErrorThrownByConditionTrait() async throws {
     let testRecordedIssue = expectation(description: "Test recorded an issue")
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       if case let .issueRecorded(issue) = event.kind, case let .errorCaught(recordedError) = issue.kind {
         XCTAssert(recordedError is MyError)
         testRecordedIssue.fulfill()
@@ -325,7 +325,7 @@ final class RunnerTests: XCTestCase {
     let testStarted = expectation(description: "Test was skipped")
     testStarted.isInverted = true
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       if case .testStarted = event.kind {
         testStarted.fulfill()
       }
@@ -339,7 +339,7 @@ final class RunnerTests: XCTestCase {
   func testExpectationCheckedEventHandlingWhenDisabled() async {
     var configuration = Configuration()
     configuration.deliverExpectationCheckedEvents = false
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       if case .expectationChecked = event.kind {
         XCTFail("Expectation checked event was posted unexpectedly")
       }
@@ -372,7 +372,7 @@ final class RunnerTests: XCTestCase {
 
     var configuration = Configuration()
     configuration.deliverExpectationCheckedEvents = true
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .expectationChecked(expectation) = event.kind else {
         return
       }
@@ -415,7 +415,7 @@ final class RunnerTests: XCTestCase {
     let testStarted = expectation(description: "Test started")
     testStarted.expectedFulfillmentCount = 4
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       if case .testStarted = event.kind {
         testStarted.fulfill()
       }
@@ -436,7 +436,7 @@ final class RunnerTests: XCTestCase {
     let testStarted = expectation(description: "Test started")
     testStarted.expectedFulfillmentCount = 2
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       if case .testStarted = event.kind {
         testStarted.fulfill()
       }
@@ -459,7 +459,7 @@ final class RunnerTests: XCTestCase {
     let testStarted = expectation(description: "Test started")
     testStarted.expectedFulfillmentCount = 4
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       if case .testStarted = event.kind {
         testStarted.fulfill()
       }
@@ -482,7 +482,7 @@ final class RunnerTests: XCTestCase {
     let testStarted = expectation(description: "Test started")
     testStarted.expectedFulfillmentCount = 4
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       if case .testStarted = event.kind {
         testStarted.fulfill()
       }
@@ -523,7 +523,7 @@ final class RunnerTests: XCTestCase {
     testStarted.expectedFulfillmentCount = 5
 #endif
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       if case .testStarted = event.kind {
         testStarted.fulfill()
       }
@@ -590,7 +590,7 @@ final class RunnerTests: XCTestCase {
     testSkipped.expectedFulfillmentCount = 2
 #endif
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       if case .testStarted = event.kind {
         testStarted.fulfill()
       } else if case .testSkipped = event.kind {
@@ -677,7 +677,7 @@ final class RunnerTests: XCTestCase {
     testStarted.expectedFulfillmentCount = 3
     testSkipped.expectedFulfillmentCount = 2
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       if case .testStarted = event.kind {
         testStarted.fulfill()
       } else if case .testSkipped = event.kind {
@@ -702,7 +702,7 @@ final class RunnerTests: XCTestCase {
     let testStarted = expectation(description: "Test started")
     testStarted.expectedFulfillmentCount = 2
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       if case .testStarted = event.kind {
         testStarted.fulfill()
       }
@@ -793,7 +793,7 @@ final class RunnerTests: XCTestCase {
 #endif
     testSkipped.isInverted = true
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       if case .testStarted = event.kind {
         testStarted.fulfill()
       } else if case .testSkipped = event.kind {

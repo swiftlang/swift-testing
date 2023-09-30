@@ -15,7 +15,7 @@ import XCTest
 final class IssueTests: XCTestCase {
   func testExpect() async throws {
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -36,7 +36,7 @@ final class IssueTests: XCTestCase {
 
   func testErrorThrownFromExpect() async throws {
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -59,7 +59,7 @@ final class IssueTests: XCTestCase {
 
   func testRequire() async throws {
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -80,7 +80,7 @@ final class IssueTests: XCTestCase {
 
   func testOptionalUnwrapping() async throws {
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -103,7 +103,7 @@ final class IssueTests: XCTestCase {
 
   func testOptionalUnwrappingWithCoalescing() async throws {
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       if case let .issueRecorded(issue) = event.kind {
         XCTFail("Unexpected issue kind \(issue.kind)")
       }
@@ -119,7 +119,7 @@ final class IssueTests: XCTestCase {
     let expectationFailed = expectation(description: "Expectation failed")
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -152,7 +152,7 @@ final class IssueTests: XCTestCase {
     let expectationFailed = expectation(description: "Expectation failed")
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -176,7 +176,7 @@ final class IssueTests: XCTestCase {
     let expectationFailed = expectation(description: "Expectation failed")
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -200,7 +200,7 @@ final class IssueTests: XCTestCase {
     let expectationFailed = expectation(description: "Expectation failed")
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -223,7 +223,7 @@ final class IssueTests: XCTestCase {
     let expectationFailed = expectation(description: "Expectation failed")
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -244,7 +244,7 @@ final class IssueTests: XCTestCase {
     expectationFailed.expectedFulfillmentCount = 2
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -267,7 +267,7 @@ final class IssueTests: XCTestCase {
     expectationFailed.expectedFulfillmentCount = 2
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -298,7 +298,7 @@ final class IssueTests: XCTestCase {
 
     var configuration = Configuration()
     configuration.deliverExpectationCheckedEvents = true
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .expectationChecked(expectation) = event.kind else {
         return
       }
@@ -318,7 +318,7 @@ final class IssueTests: XCTestCase {
       let issueRecorded = expectation(description: "Issue recorded")
 
       var configuration = Configuration()
-      configuration.eventHandler = { event in
+      configuration.eventHandler = { event, _ in
         guard case let .issueRecorded(issue) = event.kind,
               case let .expectationFailed(expectation) = issue.kind,
               let expandedExpressionDescription = expectation.expandedExpressionDescription
@@ -353,7 +353,7 @@ final class IssueTests: XCTestCase {
     let requireRecorded = expectation(description: "#require recorded")
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -397,7 +397,7 @@ final class IssueTests: XCTestCase {
     expectationFailed.isInverted = true
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -445,7 +445,7 @@ final class IssueTests: XCTestCase {
     expectationFailed.expectedFulfillmentCount = 11
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -510,7 +510,7 @@ final class IssueTests: XCTestCase {
     let expectationFailed = expectation(description: "Expectation failed")
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -536,7 +536,7 @@ final class IssueTests: XCTestCase {
     let expectationFailed = expectation(description: "Expectation failed")
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -563,7 +563,7 @@ final class IssueTests: XCTestCase {
     expectationFailed.isInverted = true
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -606,7 +606,7 @@ final class IssueTests: XCTestCase {
     expectationFailed.expectedFulfillmentCount = 11
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -663,7 +663,7 @@ final class IssueTests: XCTestCase {
     let expectationFailed = expectation(description: "Expectation failed")
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -689,7 +689,7 @@ final class IssueTests: XCTestCase {
     let expectationFailed = expectation(description: "Expectation failed")
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -716,7 +716,7 @@ final class IssueTests: XCTestCase {
     let expectationFailed = expectation(description: "Expectation failed")
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -743,7 +743,7 @@ final class IssueTests: XCTestCase {
     let expectationFailed = expectation(description: "Expectation failed")
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -770,7 +770,7 @@ final class IssueTests: XCTestCase {
     let expectationFailed = expectation(description: "Expectation failed")
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -798,7 +798,7 @@ final class IssueTests: XCTestCase {
     let expectationFailed = expectation(description: "Expectation failed")
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -823,7 +823,7 @@ final class IssueTests: XCTestCase {
 
   func testFail() async throws {
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -843,12 +843,12 @@ final class IssueTests: XCTestCase {
 #if !SWT_NO_UNSTRUCTURED_TASKS
   func testFailWithoutCurrentTest() async throws {
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
       XCTAssertFalse(issue.isKnown)
-      XCTAssertNil(event.test)
+      XCTAssertNil(event.testID)
     }
 
     await Test {
@@ -861,7 +861,7 @@ final class IssueTests: XCTestCase {
 
   func testFailBecauseOfError() async throws {
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -881,7 +881,7 @@ final class IssueTests: XCTestCase {
 
   func testErrorPropertyValidForThrownErrors() async throws {
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -895,7 +895,7 @@ final class IssueTests: XCTestCase {
 
   func testErrorPropertyNilForOtherIssueKinds() async throws {
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -909,7 +909,7 @@ final class IssueTests: XCTestCase {
 
   func testGetSourceLocationProperty() async throws {
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -953,7 +953,7 @@ final class IssueTests: XCTestCase {
 
   func testCollectionDifference() async {
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -977,7 +977,7 @@ final class IssueTests: XCTestCase {
 
   func testCollectionDifferenceSkippedForStrings() async {
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -995,7 +995,7 @@ final class IssueTests: XCTestCase {
 
   func testNegatedExpressions() async {
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       if case let .issueRecorded(issue) = event.kind {
         XCTFail("Unexpected issue \(issue)")
       }
@@ -1012,7 +1012,7 @@ final class IssueTests: XCTestCase {
 
   func testNegatedExpressionsHaveCorrectSourceCode() async {
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -1026,7 +1026,7 @@ final class IssueTests: XCTestCase {
 
   func testLazyExpectDoesNotEvaluateRightHandValue() async {
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }

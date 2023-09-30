@@ -21,7 +21,7 @@ struct BacktraceTests {
         throw BacktracedError()
       }
       var configuration = Configuration()
-      configuration.eventHandler = { event in
+      configuration.eventHandler = { event, _ in
         if case let .issueRecorded(issue) = event.kind,
            let backtrace = issue.sourceContext.backtrace,
            !backtrace.addresses.isEmpty {

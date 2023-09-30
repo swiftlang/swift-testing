@@ -19,7 +19,7 @@ final class KnownIssueTests: XCTestCase {
     let issueRecorded = expectation(description: "Issue recorded")
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -41,7 +41,7 @@ final class KnownIssueTests: XCTestCase {
     let issueRecorded = expectation(description: "Issue recorded")
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -68,7 +68,7 @@ final class KnownIssueTests: XCTestCase {
     let issueRecorded = expectation(description: "Issue recorded")
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -101,7 +101,7 @@ final class KnownIssueTests: XCTestCase {
     let knownIssueNotRecorded = expectation(description: "Known issue not recorded")
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -130,7 +130,7 @@ final class KnownIssueTests: XCTestCase {
     let issueRecorded = expectation(description: "Issue recorded")
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind,
             case .expectationFailed = issue.kind else {
         return
@@ -158,7 +158,7 @@ final class KnownIssueTests: XCTestCase {
     let issueRecorded = expectation(description: "Issue recorded")
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind,
             case .expectationFailed = issue.kind else {
         return
@@ -186,7 +186,7 @@ final class KnownIssueTests: XCTestCase {
     issueRecorded.expectedFulfillmentCount = 2
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -212,7 +212,7 @@ final class KnownIssueTests: XCTestCase {
     issueRecorded.expectedFulfillmentCount = 2
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -238,7 +238,7 @@ final class KnownIssueTests: XCTestCase {
     let issueRecorded = expectation(description: "Issue recorded")
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -264,7 +264,7 @@ final class KnownIssueTests: XCTestCase {
     issueMatcherCalled.isInverted = true
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case .issueRecorded = event.kind else {
         return
       }
@@ -293,7 +293,7 @@ final class KnownIssueTests: XCTestCase {
     issueMatcherCalled.isInverted = true
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case .issueRecorded = event.kind else {
         return
       }
@@ -323,7 +323,7 @@ final class KnownIssueTests: XCTestCase {
     knownIssueNotRecorded.isInverted = true
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -354,7 +354,7 @@ final class KnownIssueTests: XCTestCase {
     knownIssueNotRecorded.isInverted = true
 
     var configuration = Configuration()
-    configuration.eventHandler = { event in
+    configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }

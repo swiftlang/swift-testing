@@ -431,7 +431,7 @@ public func __ifMainActorIsolationEnforced<R>(
   _ thenBody: @Sendable @MainActor () async throws -> R,
   else elseBody: @Sendable () async throws -> R
 ) async throws -> R where R: Sendable {
-  if Configuration.current?.isMainActorIsolationEnforced == true {
+  if Runner.current?.configuration.isMainActorIsolationEnforced == true {
     try await thenBody()
   } else {
     try await elseBody()

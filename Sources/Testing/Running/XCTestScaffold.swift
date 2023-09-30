@@ -142,8 +142,8 @@ public enum XCTestScaffold: Sendable {
     var configuration = Configuration()
     let testCase = UncheckedSendable(rawValue: testCase)
     configuration.isParallelizationEnabled = false
-    configuration.eventHandler = { event in
-      eventRecorder.record(event)
+    configuration.eventHandler = { event, context in
+      eventRecorder.record(event, in: context)
 
       guard case let .issueRecorded(issue) = event.kind else {
         return

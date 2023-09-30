@@ -101,11 +101,11 @@ public struct Event: Sendable {
   /// The kind of event.
   public var kind: Kind
 
-  /// The test for which this event occurred.
+  /// The ID of the test for which this event occurred.
   ///
   /// If an event occurred independently of any test, or if the running test
   /// cannot be determined, the value of this property is `nil`.
-  public var test: Test?
+  public var testID: Test.ID?
 
   /// The test case for which this event occurred.
   ///
@@ -129,7 +129,7 @@ public struct Event: Sendable {
   ///     of this argument is `.now`.
   init(_ kind: Kind, for test: Test? = .current, testCase: Test.Case? = .current, instant: Test.Clock.Instant = .now) {
     self.kind = kind
-    self.test = test
+    self.testID = test?.id
     self.testCase = testCase
     self.instant = instant
   }
@@ -143,37 +143,75 @@ extension Event {
   ///
   /// - Parameters:
   ///   - event: An event that needs to be handled.
-  public typealias Handler = @Sendable (Event) -> Void
+  ///   - context: The context associated with the event.
+  public typealias Handler = @Sendable (_ event: consuming Event, _ context: consuming Context) -> Void
+
+  /// A type which provides context about a posted ``Event``.
+  ///
+  /// An instance of this type is provided along with each ``Event`` that is
+  /// passed to an ``Event/Handler``.
+  public struct Context: Sendable {
+    /// The runner which ran the test which caused this instance's associated
+    /// event to be posted.
+    ///
+    /// This runner may be used within a ``Event/Handler`` to retrieve the
+    /// ``Test`` (if any) that a particular ``Event`` references via its
+    /// ``Event/testID`` property.
+    @_spi(ExperimentalTestRunning)
+    public var runner: Runner
+
+    /// Get the test which the specified event was associated with using this
+    /// context instance.
+    ///
+    /// - Parameters
+    ///   - event: The event whose associated test should be retrieved.
+    ///
+    /// - Returns: The ``Test`` which `event` was associated with, if any. If
+    ///   `event` was not associated with a particular test, `nil` is returned.
+    ///
+    /// This uses the event's ``Event/testID`` property to look up the
+    /// corresponding ``Test`` instance.
+    public func test(for event: Event) -> Test? {
+      guard let testID = event.testID else {
+        return nil
+      }
+      return runner.plan[testID]
+    }
+  }
 
   /// Post this event to the currently-installed event handler.
   ///
   /// - Parameters:
-  ///   - configuration: The configuration whose event handler should handle
-  ///     this event. If `nil` is passed, the current task's configuration is
+  ///   - runner: The runner whose configuration's event handler should handle
+  ///     this event. If `nil` is passed, the current task's runner is
   ///     used, if known.
   ///
   /// Prefer using this function over invoking event handlers directly. If
-  /// `configuration` is not `nil`, `self` is passed to its
-  /// ``Configuration/eventHandler`` property. If `configuration` is `nil`, and
-  /// ``Configuration/current`` is _not_ `nil`, its event handler is used
-  /// instead. If there is no current configuration, the event is posted to
-  /// the event handlers of all configurations set as current across all tasks
-  /// in the process.
-  func post(configuration: Configuration? = nil) {
-    if let configuration = configuration ?? Configuration.current {
+  /// `runner` is not `nil`, `self` is passed to the value of the
+  /// ``Configuration/eventHandler`` property of its ``Runner/configuration``.
+  /// If `runner` is `nil`, and ``Runner/current`` is _not_ `nil`, its
+  /// configuration's event handler is used instead. If there is no current
+  /// runner, the event is posted to the event handlers of all runners'
+  /// configurations which have been set as current across all tasks in the
+  /// process.
+  func post(runner: Runner? = nil) {
+    if let runner = runner ?? Runner.current {
+      let configuration = runner.configuration
+
       // The caller specified a configuration, or the current task has an
       // associated configuration. Post to either configuration's event handler.
       switch kind {
       case .expectationChecked where !configuration.deliverExpectationCheckedEvents:
         break
       default:
-        configuration.handleEvent(self)
+        let context = Event.Context(runner: runner)
+        configuration.handleEvent(self, in: context)
       }
     } else {
       // The current task does NOT have an associated configuration. This event
       // will be lost! Post it to every registered event handler to avoid that.
-      for configuration in Configuration.all {
-        post(configuration: configuration)
+      for runner in Runner.all {
+        post(runner: runner)
       }
     }
   }
