@@ -330,6 +330,58 @@ their equivalents in the testing library:
 | `try XCTUnwrap(x)` | `try #require(x)` |
 | `XCTFail("…")` | `Issue.record("…")` |
 
+#### Continuing or halting after test failures
+
+An instance of an `XCTestCase` subclass can set its
+[`continueAfterFailure`](https://developer.apple.com/documentation/xctest/xctestcase/1496260-continueafterfailure)
+property to `false` to cause a test to stop running after a failure occurs.
+XCTest stops an affected test by throwing an Objective-C exception at the
+time the failure occurs.
+
+- Note: `continueAfterFailure` is not fully supported when using the
+  [swift-corelibs-xctest](https://github.com/apple/swift-corelibs-xctest)
+  library on non-Apple platforms.
+
+The behavior of an exception thrown through a Swift stack frame is undefined. If
+an exception is thrown through an `async` Swift function, it typically causes
+the process to terminate abnormally, preventing other tests from running.
+
+The testing library does not use exceptions to stop test functions. Instead, use
+the ``require(_:_:sourceLocation:)-5l63q`` macro, which throws a Swift error on
+failure:
+
+@Row {
+  @Column {
+    ```swift
+    // Before
+    class FoodTruckTests: XCTestCase {
+      func testTruck() async {
+        continueAfterFailure = false
+        XCTAssertTrue(FoodTruck.shared.isLicensed)
+        ...
+      }
+      ...
+    }
+    ```
+  }
+  @Column {
+    ```swift
+    // After
+    struct FoodTruckTests {
+      @Test func truck() throws {
+        try #require(FoodTruck.shared.isLicensed)
+        ...
+      }
+      ...
+    }
+    ```
+  }
+}
+
+When using either `continueAfterFailure` or
+``require(_:_:sourceLocation:)-5l63q``, other tests will continue to run after
+the failed test method or test function.
+
 #### Converting XCTestExpectation and XCTWaiter
 
 XCTest has a class, [`XCTestExpectation`](https://developer.apple.com/documentation/xctest/xctestexpectation),
