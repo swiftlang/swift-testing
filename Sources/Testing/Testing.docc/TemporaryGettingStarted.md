@@ -55,7 +55,7 @@ can be used with):
 
 ```swift
 platforms: [
-  .macOS("13.0"), .iOS("16.0"), .watchOS("9.0"), .tvOS("16.0"), .visionOS("1.0")
+  .macOS(.v13), .iOS(.v16), .watchOS(.v9), .tvOS(.v16), .visionOS(.v1)
 ],
 ```
 
