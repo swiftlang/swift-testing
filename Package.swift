@@ -17,11 +17,11 @@ let package = Package(
   name: "swift-testing",
 
   platforms: [
-    .macOS("13.0"),
-    .iOS("16.0"),
-    .watchOS("9.0"),
-    .tvOS("16.0"),
-    .custom("visionos", versionString: "1.0"),
+    .macOS(.v13),
+    .iOS(.v16),
+    .watchOS(.v9),
+    .tvOS(.v16),
+    .visionOS(.v1),
   ],
 
   products: [
@@ -120,7 +120,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
         "-Xfrontend", "-define-availability", "-Xfrontend", "_swiftVersionAPI:macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0",
       ]),
       .enableUpcomingFeature("ExistentialAny"),
-      .define("SWT_TARGET_OS_APPLE", .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .custom("visionos")])),
+      .define("SWT_TARGET_OS_APPLE", .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])),
     ]
   }
 }
