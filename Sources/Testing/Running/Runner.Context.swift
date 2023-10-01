@@ -13,8 +13,8 @@ extension Runner {
   /// instance, the tests it runs, and other objects it interacts with.
   ///
   /// This type is intended for use via the task-local
-  /// ``Runner/_Context/current`` property.
-  fileprivate struct _Context: Sendable {
+  /// ``Runner/Context/current`` property.
+  fileprivate struct Context: Sendable {
     /// The runner that is running on the current task, if any.
     var runner: Runner?
 
@@ -26,14 +26,16 @@ extension Runner {
 
     /// The context related to the runner running on the current task.
     @TaskLocal
-    fileprivate static var current: Self = .init()
+    static var current: Self = .init()
   }
 }
+
+// MARK: - Current runner
 
 extension Runner {
   /// The runner that is running on the current task, if any.
   public static var current: Self? {
-    _Context.current.runner
+    Context.current.runner
   }
 
   /// Call a function while the value of ``Runner/current`` is set.
@@ -51,9 +53,9 @@ extension Runner {
       runner._removeFromAll(identifiedBy: id)
     }
 
-    var context = _Context.current
+    var context = Context.current
     context.runner = runner
-    return try _Context.$current.withValue(context, operation: body)
+    return try Context.$current.withValue(context, operation: body)
   }
 
   /// Call a function while the value of ``Runner/current`` is set.
@@ -71,9 +73,9 @@ extension Runner {
       runner._removeFromAll(identifiedBy: id)
     }
 
-    var context = _Context.current
+    var context = Context.current
     context.runner = runner
-    return try await _Context.$current.withValue(context, operation: body)
+    return try await Context.$current.withValue(context, operation: body)
   }
 
   /// A type containing the mutable state tracked by ``Runner/_all`` and,
@@ -132,7 +134,7 @@ extension Runner {
 extension Test {
   /// The test that is running on the current task, if any.
   public static var current: Self? {
-    Runner._Context.current.test
+    Runner.Context.current.test
   }
 
   /// Call a function while the value of ``Test/current`` is set.
@@ -145,9 +147,9 @@ extension Test {
   ///
   /// - Throws: Whatever is thrown by `body`.
   static func withCurrent<R>(_ test: Self, perform body: () throws -> R) rethrows -> R {
-    var context = Runner._Context.current
+    var context = Runner.Context.current
     context.test = test
-    return try Runner._Context.$current.withValue(context, operation: body)
+    return try Runner.Context.$current.withValue(context, operation: body)
   }
 
   /// Call a function while the value of ``Test/current`` is set.
@@ -160,16 +162,16 @@ extension Test {
   ///
   /// - Throws: Whatever is thrown by `body`.
   static func withCurrent<R>(_ test: Self, perform body: () async throws -> R) async rethrows -> R {
-    var context = Runner._Context.current
+    var context = Runner.Context.current
     context.test = test
-    return try await Runner._Context.$current.withValue(context, operation: body)
+    return try await Runner.Context.$current.withValue(context, operation: body)
   }
 }
 
 extension Test.Case {
   /// The test case that is running on the current task, if any.
   public static var current: Self? {
-    Runner._Context.current.testCase
+    Runner.Context.current.testCase
   }
 
   /// Call a function while the value of ``Test/Case/current`` is set.
@@ -182,9 +184,9 @@ extension Test.Case {
   ///
   /// - Throws: Whatever is thrown by `body`.
   static func withCurrent<R>(_ testCase: Self, perform body: () throws -> R) rethrows -> R {
-    var context = Runner._Context.current
+    var context = Runner.Context.current
     context.testCase = testCase
-    return try Runner._Context.$current.withValue(context, operation: body)
+    return try Runner.Context.$current.withValue(context, operation: body)
   }
 
   /// Call a function while the value of ``Test/Case/current`` is set.
@@ -197,8 +199,8 @@ extension Test.Case {
   ///
   /// - Throws: Whatever is thrown by `body`.
   static func withCurrent<R>(_ testCase: Self, perform body: () async throws -> R) async rethrows -> R {
-    var context = Runner._Context.current
+    var context = Runner.Context.current
     context.testCase = testCase
-    return try await Runner._Context.$current.withValue(context, operation: body)
+    return try await Runner.Context.$current.withValue(context, operation: body)
   }
 }
