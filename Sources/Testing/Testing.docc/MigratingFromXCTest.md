@@ -335,7 +335,7 @@ their equivalents in the testing library:
 An instance of an `XCTestCase` subclass can set its
 [`continueAfterFailure`](https://developer.apple.com/documentation/xctest/xctestcase/1496260-continueafterfailure)
 property to `false` to cause a test to stop running after a failure occurs.
-XCTest stops an affected test method by throwing an Objective-C exception at the
+XCTest stops an affected test by throwing an Objective-C exception at the
 time the failure occurs.
 
 - Note: `continueAfterFailure` is not fully supported when using the
