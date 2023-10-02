@@ -67,26 +67,6 @@ extension Configuration {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrent<R>(_ configuration: Self, perform body: () throws -> R) rethrows -> R {
-    let id = configuration._addToAll()
-    defer {
-      configuration._removeFromAll(identifiedBy: id)
-    }
-
-    var context = Runner.Context.current
-    context.configuration = configuration
-    return try Runner.Context.$current.withValue(context, operation: body)
-  }
-
-  /// Call a function while the value of ``Configuration/current`` is set.
-  ///
-  /// - Parameters:
-  ///   - configuration: The new value to set for ``Configuration/current``.
-  ///   - body: A function to call.
-  ///
-  /// - Returns: Whatever is returned by `body`.
-  ///
-  /// - Throws: Whatever is thrown by `body`.
   static func withCurrent<R>(_ configuration: Self, perform body: () async throws -> R) async rethrows -> R {
     let id = configuration._addToAll()
     defer {
@@ -166,21 +146,6 @@ extension Test {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrent<R>(_ test: Self, perform body: () throws -> R) rethrows -> R {
-    var context = Runner.Context.current
-    context.test = test
-    return try Runner.Context.$current.withValue(context, operation: body)
-  }
-
-  /// Call a function while the value of ``Test/current`` is set.
-  ///
-  /// - Parameters:
-  ///   - test: The new value to set for ``Test/current``.
-  ///   - body: A function to call.
-  ///
-  /// - Returns: Whatever is returned by `body`.
-  ///
-  /// - Throws: Whatever is thrown by `body`.
   static func withCurrent<R>(_ test: Self, perform body: () async throws -> R) async rethrows -> R {
     var context = Runner.Context.current
     context.test = test
@@ -192,21 +157,6 @@ extension Test.Case {
   /// The test case that is running on the current task, if any.
   public static var current: Self? {
     Runner.Context.current.testCase
-  }
-
-  /// Call a function while the value of ``Test/Case/current`` is set.
-  ///
-  /// - Parameters:
-  ///   - testCase: The new value to set for ``Test/Case/current``.
-  ///   - body: A function to call.
-  ///
-  /// - Returns: Whatever is returned by `body`.
-  ///
-  /// - Throws: Whatever is thrown by `body`.
-  static func withCurrent<R>(_ testCase: Self, perform body: () throws -> R) rethrows -> R {
-    var context = Runner.Context.current
-    context.testCase = testCase
-    return try Runner.Context.$current.withValue(context, operation: body)
   }
 
   /// Call a function while the value of ``Test/Case/current`` is set.
