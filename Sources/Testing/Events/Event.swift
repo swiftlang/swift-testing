@@ -150,7 +150,7 @@ public struct Event: Sendable {
     // ensure their task local-derived values are the same.
     let event = Event(kind, testID: test?.id, instant: instant)
     let context = Event.Context(test: test, testCase: testCase)
-    event.post(in: context, configuration: configuration)
+    event._post(in: context, configuration: configuration)
   }
 }
 
@@ -214,7 +214,7 @@ extension Event {
   /// instead. If there is no current configuration, the event is posted to
   /// the event handlers of all configurations set as current across all tasks
   /// in the process.
-  private func post(in context: Context, configuration: Configuration? = nil) {
+  private func _post(in context: Context, configuration: Configuration? = nil) {
     if let configuration = configuration ?? Configuration.current {
       // The caller specified a configuration, or the current task has an
       // associated configuration. Post to either configuration's event handler.
@@ -228,7 +228,7 @@ extension Event {
       // The current task does NOT have an associated configuration. This event
       // will be lost! Post it to every registered event handler to avoid that.
       for configuration in Configuration.all {
-        post(in: context, configuration: configuration)
+        _post(in: context, configuration: configuration)
       }
     }
   }
