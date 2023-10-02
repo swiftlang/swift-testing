@@ -15,8 +15,8 @@ extension Runner {
   /// This type is intended for use via the task-local
   /// ``Runner/Context/current`` property.
   fileprivate struct Context: Sendable {
-    /// The runner that is running on the current task, if any.
-    var runner: Runner?
+    /// The configuration for the current task, if any.
+    var configuration: Configuration?
 
     /// The test that is running on the current task, if any.
     var test: Test?
@@ -30,79 +30,99 @@ extension Runner {
   }
 }
 
-// MARK: - Current runner
-
 extension Runner {
-  /// The runner that is running on the current task, if any.
+  /// Modify the event handler of this instance's ``Configuration`` to ensure it
+  /// is invoked using the current ``Context`` value.
+  ///
+  /// This is meant to be called prior to running tests using this instance. It
+  /// allows any events posted during the call to this instance's event handler
+  /// to be directed to the previously-configured event handler, if any.
+  ///
+  /// In practice, the primary scenario where this is important is when running
+  /// the testing library's own tests.
+  mutating func configureEventHandlerContext() {
+    let existingContext = Context.current
+    configuration.eventHandler = { [eventHandler = configuration.eventHandler] event, context in
+      Context.$current.withValue(existingContext) {
+        eventHandler(event, context)
+      }
+    }
+  }
+}
+
+// MARK: - Current configuration
+
+extension Configuration {
+  /// The configuration for the current task, if any.
   public static var current: Self? {
-    Context.current.runner
+    Runner.Context.current.configuration
   }
 
-  /// Call a function while the value of ``Runner/current`` is set.
+  /// Call a function while the value of ``Configuration/current`` is set.
   ///
   /// - Parameters:
-  ///   - runner: The new value to set for ``Runner/current``.
+  ///   - configuration: The new value to set for ``Configuration/current``.
   ///   - body: A function to call.
   ///
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrent<R>(_ runner: Self, perform body: () throws -> R) rethrows -> R {
-    let id = runner._addToAll()
+  static func withCurrent<R>(_ configuration: Self, perform body: () throws -> R) rethrows -> R {
+    let id = configuration._addToAll()
     defer {
-      runner._removeFromAll(identifiedBy: id)
+      configuration._removeFromAll(identifiedBy: id)
     }
 
-    var context = Context.current
-    context.runner = runner
-    return try Context.$current.withValue(context, operation: body)
+    var context = Runner.Context.current
+    context.configuration = configuration
+    return try Runner.Context.$current.withValue(context, operation: body)
   }
 
-  /// Call a function while the value of ``Runner/current`` is set.
+  /// Call a function while the value of ``Configuration/current`` is set.
   ///
   /// - Parameters:
-  ///   - runner: The new value to set for ``Runner/current``.
+  ///   - configuration: The new value to set for ``Configuration/current``.
   ///   - body: A function to call.
   ///
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  static func withCurrent<R>(_ runner: Self, perform body: () async throws -> R) async rethrows -> R {
-    let id = runner._addToAll()
+  static func withCurrent<R>(_ configuration: Self, perform body: () async throws -> R) async rethrows -> R {
+    let id = configuration._addToAll()
     defer {
-      runner._removeFromAll(identifiedBy: id)
+      configuration._removeFromAll(identifiedBy: id)
     }
 
-    var context = Context.current
-    context.runner = runner
-    return try await Context.$current.withValue(context, operation: body)
+    var context = Runner.Context.current
+    context.configuration = configuration
+    return try await Runner.Context.$current.withValue(context, operation: body)
   }
 
-  /// A type containing the mutable state tracked by ``Runner/_all`` and,
-  /// indirectly, by ``Runner/all``.
+  /// A type containing the mutable state tracked by ``Configuration/_all`` and,
+  /// indirectly, by ``Configuration/all``.
   private struct _All: Sendable {
-    /// All instances of ``Runner`` set as current, keyed by their unique
+    /// All instances of ``Configuration`` set as current, keyed by their unique
     /// identifiers.
-    var instances = [UInt64: Runner]()
+    var instances = [UInt64: Configuration]()
 
-    /// The next available unique identifier for an event handler.
+    /// The next available unique identifier for a configuration.
     var nextID: UInt64 = 0
   }
 
-  /// Mutable storage for ``Runner/all``.
+  /// Mutable storage for ``Configuration/all``.
   @Locked
   private static var _all = _All()
 
   /// A collection containing all instances of this type that are currently set
-  /// as the current runner for a task.
+  /// as the current configuration for a task.
   ///
   /// This property is used when an event is posted in a context where the value
-  /// of ``Runner/current`` is `nil`, such as from a detached task.
+  /// of ``Configuration/current`` is `nil`, such as from a detached task.
   static var all: some Collection<Self> {
     _all.instances.values
   }
 
-  /// Add this instance to ``Runner/all``.
+  /// Add this instance to ``Configuration/all``.
   ///
   /// - Returns: A unique number identifying `self` that can be
   ///   passed to `_removeFromAll(identifiedBy:)`` to unregister it.
@@ -115,7 +135,7 @@ extension Runner {
     }
   }
 
-  /// Remove this instance from ``Runner/all``.
+  /// Remove this instance from ``Configuration/all``.
   ///
   /// - Parameters:
   ///   - id: The unique identifier of this instance, as previously returned by

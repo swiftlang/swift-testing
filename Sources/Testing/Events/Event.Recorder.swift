@@ -416,7 +416,7 @@ extension Event.Recorder {
   /// - Returns: A string description of the event, or `nil` if there is nothing
   ///   useful to output for this event.
   func _record(_ event: Event, in eventContext: Event.Context) -> String? {
-    let test = eventContext.test(for: event)
+    let test = eventContext.test
     var testName: String
     if let displayName = test?.displayName {
       testName = "\"\(displayName)\""

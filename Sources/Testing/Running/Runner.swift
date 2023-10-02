@@ -109,7 +109,7 @@ extension Runner {
         comments: [],
         backtrace: Backtrace(forFirstThrowOf: error),
         sourceLocation: sourceLocation,
-        runner: self
+        configuration: configuration
       )
     }
   }
@@ -145,18 +145,18 @@ extension Runner {
 
     // Determine what action to take for this step.
     if let step = stepGraph.value {
-      Event(.planStepStarted(step), for: step.test).post(runner: self)
+      Event.post(.planStepStarted(step), for: step.test, configuration: configuration)
 
       // Determine what kind of event to send for this step based on its action.
       switch step.action {
       case .run:
-        Event(.testStarted, for: step.test).post(runner: self)
+        Event.post(.testStarted, for: step.test, configuration: configuration)
         shouldSendTestEnded = true
       case let .skip(skipInfo):
-        Event(.testSkipped(skipInfo), for: step.test).post(runner: self)
+        Event.post(.testSkipped(skipInfo), for: step.test, configuration: configuration)
         shouldSendTestEnded = false
       case let .recordIssue(issue):
-        Event(.issueRecorded(issue), for: step.test).post(runner: self)
+        Event.post(.issueRecorded(issue), for: step.test, configuration: configuration)
         shouldSendTestEnded = false
       }
     } else {
@@ -165,9 +165,9 @@ extension Runner {
     defer {
       if let step = stepGraph.value {
         if shouldSendTestEnded {
-          Event(.testEnded, for: step.test).post(runner: self)
+          Event.post(.testEnded, for: step.test, configuration: configuration)
         }
-        Event(.planStepEnded(step), for: step.test).post(runner: self)
+        Event.post(.planStepEnded(step), for: step.test, configuration: configuration)
       }
     }
 
@@ -243,9 +243,9 @@ extension Runner {
     // Exit early if the task has already been cancelled.
     try Task.checkCancellation()
 
-    Event(.testCaseStarted, for: step.test, testCase: testCase).post(runner: self)
+    Event.post(.testCaseStarted, for: step.test, testCase: testCase, configuration: configuration)
     defer {
-      Event(.testCaseEnded, for: step.test, testCase: testCase).post(runner: self)
+      Event.post(.testCaseEnded, for: step.test, testCase: testCase, configuration: configuration)
     }
 
     try await Test.Case.withCurrent(testCase) {
@@ -259,7 +259,7 @@ extension Runner {
             comments: [],
             backtrace: .current(),
             sourceLocation: sourceLocation,
-            runner: self
+            configuration: configuration
           )
         }
       }
@@ -283,26 +283,12 @@ extension Runner {
   /// or `self.configuration` when it should use a modified copy of either.
   private static func _run(_ runner: Self) async {
     var runner = runner
+    runner.configureEventHandlerContext()
 
-    // If there is a current runner already installed, that means we're
-    // recursively running tests (i.e. it's the testing library's own tests.)
-    // When delivering events to the new runner's event handler, temporarily
-    // make the previous runner the "current" one so that any events posted
-    // while calling the new event handler are redirected to the previous one.
-    if let previousRunner = Runner.current {
-      var configuration = runner.configuration
-      configuration.eventHandler = { [eventHandler = configuration.eventHandler] event, context in
-        Runner.withCurrent(previousRunner) {
-          eventHandler(event, context)
-        }
-      }
-      runner.configuration = configuration
-    }
-
-    await Runner.withCurrent(runner) {
-      Event(.runStarted, for: nil, testCase: nil).post(runner: runner)
+    await Configuration.withCurrent(runner.configuration) {
+      Event.post(.runStarted, for: nil, testCase: nil, configuration: runner.configuration)
       defer {
-        Event(.runEnded, for: nil, testCase: nil).post(runner: runner)
+        Event.post(.runEnded, for: nil, testCase: nil, configuration: runner.configuration)
       }
 
       await withTaskGroup(of: Void.self) { [runner] taskGroup in

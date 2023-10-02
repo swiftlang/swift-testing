@@ -19,7 +19,7 @@ extension Configuration {
   /// library. Typically this only involves passing the event to this instance's
   /// `eventHandler` but this method may also be used as a customization point
   /// to change how the event is passed to the event handler.
-  func handleEvent(_ event: consuming Event, in context: consuming Event.Context) {
+  func handleEvent(_ event: borrowing Event, in context: borrowing Event.Context) {
     eventHandler(event, context)
   }
 }

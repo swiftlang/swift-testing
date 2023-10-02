@@ -225,7 +225,7 @@ struct TimeLimitTraitTests {
       configuration.eventHandler = { event, context in
         guard case let .issueRecorded(issue) = event.kind,
               case .timeLimitExceeded = issue.kind,
-              let test = context.test(for: event),
+              let test = context.test,
               let testCase = event.testCase
         else {
           return

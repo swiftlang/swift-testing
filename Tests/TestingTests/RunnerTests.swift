@@ -96,7 +96,7 @@ final class RunnerTests: XCTestCase {
       if case let .issueRecorded(issue) = event.kind, issue.error is MyError {
         issueRecorded.fulfill()
       }
-      if case .testEnded = event.kind, let test = context.test(for: event), test.name == "test2" {
+      if case .testEnded = event.kind, let test = context.test, test.name == "test2" {
         otherTestEnded.fulfill()
       }
     }
