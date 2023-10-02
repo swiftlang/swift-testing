@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+import _Backtracing
+
 /// Combine an instance of ``KnownIssueMatcher`` with any previously-set one.
 ///
 /// - Parameters:

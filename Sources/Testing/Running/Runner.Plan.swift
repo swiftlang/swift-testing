@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+import _Backtracing
+
 @_spi(ExperimentalTestRunning)
 extension Runner {
   /// A type describing a runner plan.

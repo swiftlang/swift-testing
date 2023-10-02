@@ -9,63 +9,7 @@
 //
 
 @_implementationOnly import TestingInternals
-
-/// A type representing a backtrace or stack trace.
-public struct Backtrace: Sendable {
-  /// The addresses in this backtrace.
-  public var addresses: [UnsafeRawPointer?]
-
-  /// Initialize an instance of this type with the specified addresses.
-  ///
-  /// - Parameters:
-  ///   - addresses: The addresses in the backtrace.
-  public init(addresses: some Sequence<UnsafeRawPointer?>) {
-    self.addresses = Array(addresses)
-  }
-
-  /// Get the current backtrace.
-  ///
-  /// - Parameters:
-  ///   - addressCount: The maximum number of addresses to include in the
-  ///     backtrace. If the current call stack is larger than this value, the
-  ///     resulting backtrace will be truncated to only the most recent
-  ///     `addressCount` symbols.
-  ///
-  /// - Returns: A new instance of this type representing the backtrace of the
-  ///   current thread. When supported by the operating system, the backtrace
-  ///   continues across suspension points.
-  ///
-  /// The number of symbols captured in this backtrace is an implementation
-  /// detail.
-  public static func current(maximumAddressCount addressCount: Int = 128) -> Self {
-    // NOTE: the exact argument/return types for backtrace() vary across
-    // platforms, hence the use of .init() when calling it below.
-    let addresses = [UnsafeRawPointer?](unsafeUninitializedCapacity: addressCount) { addresses, initializedCount in
-      addresses.withMemoryRebound(to: UnsafeMutableRawPointer?.self) { addresses in
-#if SWT_TARGET_OS_APPLE
-        if #available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *) {
-          initializedCount = backtrace_async(addresses.baseAddress!, addresses.count, nil)
-        } else {
-          initializedCount = .init(backtrace(addresses.baseAddress!, .init(addresses.count)))
-        }
-#elseif os(Linux)
-        initializedCount = .init(backtrace(addresses.baseAddress!, .init(addresses.count)))
-#elseif os(Windows)
-        initializedCount = Int(RtlCaptureStackBackTrace(0, ULONG(addresses.count), addresses.baseAddress!, nil))
-#else
-        initializedCount = 0
-#endif
-      }
-    }
-    return Self(addresses: addresses)
-  }
-}
-
-// MARK: - Equatable, Hashable
-
-extension Backtrace: Equatable, Hashable {}
-
-// MARK: - Backtraces for thrown errors
+import _Backtracing
 
 extension Backtrace {
   /// An entry in the error-mapping cache.
@@ -124,7 +68,9 @@ extension Backtrace {
     _oldWillThrowHandler?(errorAddress)
 
     let errorObject = unsafeBitCast(errorAddress, to: (any AnyObject & Sendable).self)
-    let backtrace = Backtrace.current()
+    guard let backtrace = try? Backtrace.capture() else {
+      return
+    }
     let newEntry = _ErrorMappingCacheEntry(errorObject: errorObject, backtrace: backtrace)
 
     Self.$_errorMappingCache.withLock { cache in

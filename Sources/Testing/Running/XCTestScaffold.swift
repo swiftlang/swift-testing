@@ -11,12 +11,13 @@
 #if !SWT_NO_XCTEST_SCAFFOLDING
 @_implementationOnly import TestingInternals
 import XCTest
+import _Backtracing
 
 #if SWT_TARGET_OS_APPLE
 extension XCTSourceCodeContext {
   convenience init(_ sourceContext: SourceContext) {
-    let addresses = sourceContext.backtrace?.addresses.map { address in
-      UInt(bitPattern: address) as NSNumber
+    let addresses = sourceContext.backtrace?.frames.map { address in
+      address.adjustedProgramCounter as NSNumber
     } ?? []
     let sourceLocation = sourceContext.sourceLocation.map { sourceLocation in
       XCTSourceCodeLocation(

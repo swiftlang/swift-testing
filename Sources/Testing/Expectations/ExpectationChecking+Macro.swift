@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+import _Backtracing
+
 /// Check that an expectation has passed after a condition has been evaluated
 /// and throw an error if it failed.
 ///
@@ -87,7 +89,7 @@ public func __checkValue(
 
   // Ensure the backtrace is captured here so it has fewer extraneous frames
   // from the testing framework which aren't relevant to the user.
-  let backtrace = Backtrace.current()
+  let backtrace = try? Backtrace.capture()
   Issue.record(.expectationFailed(expectation), comments: comments(), backtrace: backtrace, sourceLocation: sourceLocation)
   return .failure(ExpectationFailedError(expectation: expectation))
 }
@@ -710,7 +712,7 @@ public func __checkClosureCall<R>(
         mismatchExplanationValue = mismatchExplanation?(error) ?? "unexpected error \(_description(of: error)) was thrown"
       }
     } catch let secondError {
-      Issue.record(.errorCaught(secondError), comments: comments(), backtrace: .current(), sourceLocation: sourceLocation)
+      Issue.record(.errorCaught(secondError), comments: comments(), backtrace: try? .capture(), sourceLocation: sourceLocation)
       mismatchExplanationValue = "a second error \(_description(of: secondError)) was thrown when checking error \(_description(of: error))"
     }
   }
@@ -757,7 +759,7 @@ public func __checkClosureCall<R>(
         mismatchExplanationValue = mismatchExplanation?(error) ?? "unexpected error \(_description(of: error)) was thrown"
       }
     } catch let secondError {
-      Issue.record(.errorCaught(secondError), comments: comments(), backtrace: .current(), sourceLocation: sourceLocation)
+      Issue.record(.errorCaught(secondError), comments: comments(), backtrace: try? .capture(), sourceLocation: sourceLocation)
       mismatchExplanationValue = "a second error \(_description(of: secondError)) was thrown when checking error \(_description(of: error))"
     }
   }

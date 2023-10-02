@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+import _Backtracing
+
 /// A type that runs tests according to a given configuration.
 @_spi(ExperimentalTestRunning)
 public struct Runner: Sendable {
@@ -257,7 +259,7 @@ extension Runner {
           Issue.record(
             .timeLimitExceeded(timeLimitComponents: timeLimit),
             comments: [],
-            backtrace: .current(),
+            backtrace: try? .capture(),
             sourceLocation: sourceLocation,
             configuration: configuration
           )

@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+import _Backtracing
+
 /// A type representing the call stack backtrace and source location of a
 /// particular call.
 ///
@@ -29,10 +31,8 @@ public struct SourceContext: Sendable {
   ///     the current backtrace (obtained via
   ///     ``Backtrace/current(maximumAddressCount:)``).
   ///   - sourceLocation: The source location associated with the new instance.
-  public init(backtrace: Backtrace? = .current(), sourceLocation: SourceLocation? = nil) {
+  public init(backtrace: Backtrace? = try? .capture(), sourceLocation: SourceLocation? = nil) {
     self.backtrace = backtrace
     self.sourceLocation = sourceLocation
   }
 }
-
-extension SourceContext: Equatable, Hashable {}

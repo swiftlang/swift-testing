@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+import _Backtracing
+
 extension Issue {
   /// The known issue matcher, as set by `withKnownIssue()`, associated with the
   /// current task.
@@ -91,7 +93,7 @@ extension Issue {
     column: Int = #column
   ) -> Self {
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-    let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
+    let sourceContext = SourceContext(backtrace: try? .capture(), sourceLocation: sourceLocation)
     let issue = Issue(kind: .unconditional, comments: Array(comment), sourceContext: sourceContext)
     issue.record()
     return issue
@@ -118,7 +120,7 @@ extension Issue {
     column: Int = #column
   ) -> Self {
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-    let backtrace = Backtrace(forFirstThrowOf: error) ?? Backtrace.current()
+    let backtrace = try? Backtrace(forFirstThrowOf: error) ?? .capture()
     let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: sourceLocation)
     let issue = Issue(kind: .errorCaught(error), comments: Array(comment), sourceContext: sourceContext)
     issue.record()

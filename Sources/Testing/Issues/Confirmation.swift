@@ -106,7 +106,7 @@ public func confirmation<R>(
       Issue.record(
         .confirmationMiscounted(actual: actualCount, expected: expectedCount),
         comments: Array(comment),
-        backtrace: .current(),
+        backtrace: try? .capture(),
         sourceLocation: SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
       )
     }

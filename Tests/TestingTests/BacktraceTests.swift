@@ -9,6 +9,7 @@
 //
 
 @testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalTestRunning) import Testing
+import _Backtracing
 
 struct BacktracedError: Error {}
 
@@ -24,19 +25,13 @@ struct BacktraceTests {
       configuration.eventHandler = { event in
         if case let .issueRecorded(issue) = event.kind,
            let backtrace = issue.sourceContext.backtrace,
-           !backtrace.addresses.isEmpty {
+           !backtrace.frames.isEmpty {
           hadBacktrace()
         }
       }
       let runner = await Runner(testing: [test], configuration: configuration)
       await runner.run()
     }
-  }
-
-  @Test("Backtrace.current() is populated")
-  func currentBacktrace() throws {
-    let backtrace = try #require(Backtrace.current())
-    #expect(!backtrace.addresses.isEmpty)
   }
 
   @Test("An unthrown error has no backtrace")
