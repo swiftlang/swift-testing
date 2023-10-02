@@ -147,7 +147,7 @@ private func _parseCondition(from expr: ExprSyntax, leftOperand lhs: ExprSyntax,
       Argument(expression: "{ $0 \(op.trimmed) $1() }"),
       Argument(expression: "{ \(rhs.trimmed) }")
     ],
-    sourceCode: createSourceCodeExpr(from: lhs, op, rhs)
+    sourceCode: createSourceCodeExprForBinaryOperation(lhs, op, rhs)
   )
 }
 
@@ -169,7 +169,7 @@ private func _parseCondition(from expr: IsExprSyntax, for macro: some Freestandi
       Argument(expression: expression),
       Argument(label: .identifier("is"), expression: "\(type.trimmed).self")
     ],
-    sourceCode: createSourceCodeExpr(from: expression, expr.isKeyword, type)
+    sourceCode: createSourceCodeExprForBinaryOperation(expression, expr.isKeyword, type)
   )
 }
 
@@ -193,7 +193,7 @@ private func _parseCondition(from expr: AsExprSyntax, for macro: some Freestandi
         Argument(expression: expression),
         Argument(label: .identifier("as"), expression: "\(type.trimmed).self")
       ],
-      sourceCode: createSourceCodeExpr(from: expression, TokenSyntax.unknown("as?"), type)
+      sourceCode: createSourceCodeExprForBinaryOperation(expression, TokenSyntax.unknown("as?"), type)
     )
 
   case .exclamationMark where !type.isNamed("Bool", inModuleNamed: "Swift") && !type.isOptional:
@@ -345,7 +345,7 @@ private func _parseCondition(from expr: FunctionCallExprSyntax, for macro: some 
   return Condition(
     expandedFunctionName,
     arguments: conditionArguments,
-    sourceCode: createSourceCodeExprForMemberFunctionCall(memberAccessExpr?.base, functionName, argumentList)
+    sourceCode: createSourceCodeExprForFunctionCall(memberAccessExpr?.base, functionName, argumentList)
   )
 }
 

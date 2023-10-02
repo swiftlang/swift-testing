@@ -267,7 +267,7 @@ struct TestDeclarationMacroTests {
     let (output, _) = try parse("@Test(.tags(\"1\", .x), .tags([\"ABC\"]), .unrelated) func f() {}")
     #expect(output.contains("\"1\""))
     #expect(!output.contains("Testing.Tag.__tag(\"1\", sourceCode: "))
-    #expect(output.contains("Testing.Tag.__tag(.x, sourceCode: .__fromComponents(\".x\"))"))
+    #expect(output.contains("Testing.Tag.__tag(.x, sourceCode: .__fromSyntaxNode(\".x\"))"))
     #expect(output.contains("\"ABC\""))
     #expect(!output.contains("Testing.Tag.__tag(\"ABC\", sourceCode: "))
     #expect(output.contains(".unrelated"))
