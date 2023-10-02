@@ -145,18 +145,18 @@ extension Runner {
 
     // Determine what action to take for this step.
     if let step = stepGraph.value {
-      Event(.planStepStarted(step), for: step.test).post(configuration: configuration)
+      Event.post(.planStepStarted(step), for: step.test, configuration: configuration)
 
       // Determine what kind of event to send for this step based on its action.
       switch step.action {
       case .run:
-        Event(.testStarted, for: step.test).post(configuration: configuration)
+        Event.post(.testStarted, for: step.test, configuration: configuration)
         shouldSendTestEnded = true
       case let .skip(skipInfo):
-        Event(.testSkipped(skipInfo), for: step.test).post(configuration: configuration)
+        Event.post(.testSkipped(skipInfo), for: step.test, configuration: configuration)
         shouldSendTestEnded = false
       case let .recordIssue(issue):
-        Event(.issueRecorded(issue), for: step.test).post(configuration: configuration)
+        Event.post(.issueRecorded(issue), for: step.test, configuration: configuration)
         shouldSendTestEnded = false
       }
     } else {
@@ -165,14 +165,14 @@ extension Runner {
     defer {
       if let step = stepGraph.value {
         if shouldSendTestEnded {
-          Event(.testEnded, for: step.test).post(configuration: configuration)
+          Event.post(.testEnded, for: step.test, configuration: configuration)
         }
-        Event(.planStepEnded(step), for: step.test).post(configuration: configuration)
+        Event.post(.planStepEnded(step), for: step.test, configuration: configuration)
       }
     }
 
     if let step = stepGraph.value, case .run = step.action, let testCases = step.test.testCases {
-      try await Test.$_current.withValue(step.test) {
+      try await Test.withCurrent(step.test) {
         try await _withErrorHandling(for: step, sourceLocation: step.test.sourceLocation) {
           try await _runTestCases(testCases, within: step)
         }
@@ -243,12 +243,12 @@ extension Runner {
     // Exit early if the task has already been cancelled.
     try Task.checkCancellation()
 
-    Event(.testCaseStarted, for: step.test, testCase: testCase).post(configuration: configuration)
+    Event.post(.testCaseStarted, for: step.test, testCase: testCase, configuration: configuration)
     defer {
-      Event(.testCaseEnded, for: step.test, testCase: testCase).post(configuration: configuration)
+      Event.post(.testCaseEnded, for: step.test, testCase: testCase, configuration: configuration)
     }
 
-    try await Test.Case.$_current.withValue(testCase) {
+    try await Test.Case.withCurrent(testCase) {
       let sourceLocation = step.test.sourceLocation
       try await _withErrorHandling(for: step, sourceLocation: sourceLocation) {
         try await withTimeLimit(for: step.test, configuration: configuration) {
@@ -283,26 +283,12 @@ extension Runner {
   /// or `self.configuration` when it should use a modified copy of either.
   private static func _run(_ runner: Self) async {
     var runner = runner
-
-    // If there is a current configuration already installed, that means we're
-    // recursively running tests (i.e. it's the testing library's own tests.)
-    // Temporarily place that configuration back in control during the event
-    // handler's execution so that any events triggered by the event handler
-    // call to the previous event handler.
-    if let previousConfiguration = Configuration.current {
-      var configuration = runner.configuration
-      configuration.eventHandler = { [eventHandler = configuration.eventHandler] event in
-        Configuration.withCurrent(previousConfiguration) {
-          eventHandler(event)
-        }
-      }
-      runner.configuration = configuration
-    }
+    runner.configureEventHandlerRuntimeState()
 
     await Configuration.withCurrent(runner.configuration) {
-      Event(.runStarted, for: nil, testCase: nil).post(configuration: runner.configuration)
+      Event.post(.runStarted, for: nil, testCase: nil, configuration: runner.configuration)
       defer {
-        Event(.runEnded, for: nil, testCase: nil).post(configuration: runner.configuration)
+        Event.post(.runEnded, for: nil, testCase: nil, configuration: runner.configuration)
       }
 
       await withTaskGroup(of: Void.self) { [runner] taskGroup in
@@ -313,24 +299,4 @@ extension Runner {
       }
     }
   }
-}
-
-// MARK: - Current test and test case
-
-extension Test {
-  /// Mutable storage for ``Test/current``.
-  @TaskLocal
-  fileprivate static var _current: Self?
-
-  /// The test that is running on the current task, if any.
-  public static var current: Self? { _current }
-}
-
-extension Test.Case {
-  /// Mutable storage for ``Test/Case/current``.
-  @TaskLocal
-  fileprivate static var _current: Self?
-
-  /// The test case that is running on the current task, if any.
-  public static var current: Self? { _current }
 }

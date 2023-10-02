@@ -411,19 +411,21 @@ extension Event.Recorder {
   ///
   /// - Parameters:
   ///   - event: The event to record.
+  ///   - eventContext: The context associated with the event.
   ///
   /// - Returns: A string description of the event, or `nil` if there is nothing
   ///   useful to output for this event.
-  func _record(_ event: Event) -> String? {
+  func _record(_ event: Event, in eventContext: Event.Context) -> String? {
+    let test = eventContext.test
     var testName: String
-    if let displayName = event.test?.displayName {
+    if let displayName = test?.displayName {
       testName = "\"\(displayName)\""
-    } else if let test = event.test {
+    } else if let test {
       testName = test.name
     } else {
       testName = "«unknown»"
     }
-    if options.contains(.useANSIEscapeCodes), let tags = event.test?.tags {
+    if options.contains(.useANSIEscapeCodes), let tags = test?.tags {
       let colorDots = tags
         .sorted(by: <)
         .compactMap { $0.ansiEscapeCode(options: options) }
@@ -462,7 +464,7 @@ extension Event.Recorder {
       break
 
     case .testStarted:
-      let test = event.test!
+      let test = test!
       $context.withLock { context in
         context.testData.insertValue(.init(), at: test.id.keyPathRepresentation)
         if test.isSuite {
@@ -475,7 +477,7 @@ extension Event.Recorder {
       return "\(symbol) Test \(testName) started.\n"
 
     case .testEnded:
-      let test = event.test!
+      let test = test!
       let id = test.id
       let testDataGraph = context.testData.subgraph(at: id.keyPathRepresentation)
       let testData = testDataGraph?.value ?? .init()
@@ -491,7 +493,7 @@ extension Event.Recorder {
       }
 
     case let .testSkipped(skipInfo):
-      let test = event.test!
+      let test = test!
       $context.withLock { context in
         if test.isSuite {
           context.suiteCount += 1
@@ -518,7 +520,7 @@ extension Event.Recorder {
       break
 
     case let .issueRecorded(issue):
-      if let test = event.test {
+      if let test {
         let id = test.id.keyPathRepresentation
         $context.withLock { context in
           var testData = context.testData[id].flatMap { $0 } ?? .init()
@@ -530,12 +532,12 @@ extension Event.Recorder {
           context.testData.insertValue(testData, at: id)
         }
       }
-      let parameterCount = if let parameters = event.test?.parameters {
+      let parameterCount = if let parameters = test?.parameters {
         parameters.count
       } else {
         0
       }
-      let labeledArguments = if let testCase = event.testCase, let parameters = event.test?.parameters {
+      let labeledArguments = if let testCase = eventContext.testCase, let parameters = test?.parameters {
         testCase.labeledArguments(using: parameters)
       } else {
         ""
@@ -569,7 +571,7 @@ extension Event.Recorder {
       }
 
     case .testCaseStarted:
-      guard let testCase = event.testCase, testCase.isParameterized, let parameters = event.test?.parameters else {
+      guard let testCase = eventContext.testCase, testCase.isParameterized, let parameters = test?.parameters else {
         break
       }
       let symbol = _Symbol.default.stringValue(options: options)
@@ -604,11 +606,12 @@ extension Event.Recorder {
   ///
   /// - Parameters:
   ///   - event: The event to record.
+  ///   - context: The context associated with the event.
   ///
   /// - Returns: Whether any output was written using the recorder's write
   ///   function.
-  @discardableResult public func record(_ event: Event) -> Bool {
-    if let output = _record(event) {
+  @discardableResult public func record(_ event: Event, in context: Event.Context) -> Bool {
+    if let output = _record(event, in: context) {
       write(output)
       return true
     }

@@ -16,7 +16,7 @@ struct ConfirmationTests {
   func successfulConfirmations() async {
     await confirmation("Issue recorded", expectedCount: 0) { issueRecorded in
       var configuration = Configuration()
-      configuration.eventHandler = { event in
+      configuration.eventHandler = { event, _ in
         if case .issueRecorded = event.kind {
           issueRecorded()
         }
@@ -31,7 +31,7 @@ struct ConfirmationTests {
   func unsuccessfulConfirmations() async {
     await confirmation("Issue recorded", expectedCount: 3) { issueRecorded in
       var configuration = Configuration()
-      configuration.eventHandler = { event in
+      configuration.eventHandler = { event, _ in
         if case let .issueRecorded(issue) = event.kind,
            case .confirmationMiscounted = issue.kind {
           issueRecorded()

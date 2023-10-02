@@ -73,7 +73,7 @@ struct ObjCInteropTests {
   func objCMethodsCurrentlyUnsupported() async throws {
     await confirmation("XCTestCase issue recorded", expectedCount: 10) { issueRecorded in
       var configuration = Configuration()
-      configuration.eventHandler = { event in
+      configuration.eventHandler = { event, _ in
         if case let .issueRecorded(issue) = event.kind,
            case .apiMisused = issue.kind,
            let comment = issue.comments.first,

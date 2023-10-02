@@ -133,7 +133,7 @@ public struct Configuration: Sendable {
 
   /// The event handler to which events should be passed when they occur.
   @_spi(ExperimentalEventHandling)
-  public var eventHandler: Event.Handler = { _ in }
+  public var eventHandler: Event.Handler = { _, _ in }
 
   // MARK: - Test selection
 

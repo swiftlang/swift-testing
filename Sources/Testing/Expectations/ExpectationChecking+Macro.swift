@@ -72,7 +72,7 @@ public func __checkValue(
   // If the current event handler is not configured to handle events of this
   // kind, this event is discarded.
   var expectation = Expectation(sourceCode: sourceCode, isPassing: condition, isRequired: isRequired, sourceLocation: sourceLocation)
-  Event(.expectationChecked(expectation)).post()
+  Event.post(.expectationChecked(expectation))
 
   // Early exit if the expectation passed.
   if condition {

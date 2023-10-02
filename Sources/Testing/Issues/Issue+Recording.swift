@@ -70,7 +70,7 @@ extension Issue {
       return selfCopy.record(configuration: configuration)
     }
 
-    Event(.issueRecorded(self)).post(configuration: configuration)
+    Event.post(.issueRecorded(self), configuration: configuration)
   }
 
   /// Record an issue when a running test fails unexpectedly.
