@@ -283,7 +283,7 @@ extension Runner {
   /// or `self.configuration` when it should use a modified copy of either.
   private static func _run(_ runner: Self) async {
     var runner = runner
-    runner.configureEventHandlerContext()
+    runner.configureEventHandlerRuntimeState()
 
     await Configuration.withCurrent(runner.configuration) {
       Event.post(.runStarted, for: nil, testCase: nil, configuration: runner.configuration)

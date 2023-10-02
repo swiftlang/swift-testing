@@ -107,15 +107,6 @@ public struct Event: Sendable {
   /// cannot be determined, the value of this property is `nil`.
   public var testID: Test.ID?
 
-  /// The test case for which this event occurred.
-  ///
-  /// The test case indicates which element in the iterated sequence is
-  /// associated with this event. For non-parameterized tests, a single test
-  /// case is synthesized. For test suite types (as opposed to test functions),
-  /// the value of this property is `nil`.
-  @_spi(ExperimentalParameterizedTesting)
-  public var testCase: Test.Case?
-
   /// The instant at which the event occurred.
   public var instant: Test.Clock.Instant
 
@@ -124,7 +115,6 @@ public struct Event: Sendable {
   /// - Parameters:
   ///   - kind: The kind of event that occurred.
   ///   - testID: The ID of the test for which the event occurred, if any.
-  ///   - testCase: The test case for which the event occurred, if any.
   ///   - instant: The instant at which the event occurred. The default value
   ///     of this argument is `.now`.
   ///
@@ -132,10 +122,9 @@ public struct Event: Sendable {
   /// ``post(_:for:testCase:instant:configuration)`` instead since that ensures
   /// any task local-derived values in the associated ``Event/Context`` match
   /// the event.
-  init(_ kind: Kind, testID: Test.ID?, testCase: Test.Case?, instant: Test.Clock.Instant = .now) {
+  init(_ kind: Kind, testID: Test.ID?, instant: Test.Clock.Instant = .now) {
     self.kind = kind
     self.testID = testID
-    self.testCase = testCase
     self.instant = instant
   }
 
@@ -143,7 +132,7 @@ public struct Event: Sendable {
   ///
   /// - Parameters:
   ///   - kind: The kind of event that occurred.
-  ///   - testID: The test for which the event occurred, if any.
+  ///   - test: The test for which the event occurred, if any.
   ///   - testCase: The test case for which the event occurred, if any.
   ///   - instant: The instant at which the event occurred. The default value
   ///     of this argument is `.now`.
@@ -159,9 +148,9 @@ public struct Event: Sendable {
   ) {
     // Create both the event and its associated context here at same point, to
     // ensure their task local-derived values are the same.
-    let event = Event(kind, testID: test?.id, testCase: testCase, instant: instant)
+    let event = Event(kind, testID: test?.id, instant: instant)
     let context = Event.Context(test: test, testCase: testCase)
-    event.post(context: context, configuration: configuration)
+    event.post(in: context, configuration: configuration)
   }
 }
 
@@ -183,17 +172,26 @@ extension Event {
   public struct Context: Sendable {
     /// The test for which this instance's associated ``Event`` occurred, if
     /// any.
+    ///
+    /// If an event occurred independently of any test, or if the running test
+    /// cannot be determined, the value of this property is `nil`.
     public var test: Test?
 
     /// The test case for which this instance's associated ``Event`` occurred,
     /// if any.
+    ///
+    /// The test case indicates which element in the iterated sequence is
+    /// associated with this event. For non-parameterized tests, a single test
+    /// case is synthesized. For test suite types (as opposed to test
+    /// functions), the value of this property is `nil`.
+    @_spi(ExperimentalParameterizedTesting)
     public var testCase: Test.Case?
 
     /// Initialize a new instance of this type.
     ///
     /// - Parameters:
-    ///   - testID: The test for which this instance's associated event
-    ///     occurred, if any.
+    ///   - test: The test for which this instance's associated event occurred,
+    ///     if any.
     ///   - testCase: The test case for which this instance's associated event
     ///     occurred, if any.
     init(test: Test? = .current, testCase: Test.Case? = .current) {
@@ -216,7 +214,7 @@ extension Event {
   /// instead. If there is no current configuration, the event is posted to
   /// the event handlers of all configurations set as current across all tasks
   /// in the process.
-  private func post(context: Context, configuration: Configuration? = nil) {
+  private func post(in context: Context, configuration: Configuration? = nil) {
     if let configuration = configuration ?? Configuration.current {
       // The caller specified a configuration, or the current task has an
       // associated configuration. Post to either configuration's event handler.
@@ -230,7 +228,7 @@ extension Event {
       // The current task does NOT have an associated configuration. This event
       // will be lost! Post it to every registered event handler to avoid that.
       for configuration in Configuration.all {
-        post(context: context, configuration: configuration)
+        post(in: context, configuration: configuration)
       }
     }
   }

@@ -10,17 +10,17 @@
 
 @testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalTestRunning) import Testing
 
-@Suite("Runner.Context Tests")
-struct Runner_ContextTests {
+@Suite("Runner.RuntimeState Tests")
+struct Runner_RuntimeStateTests {
   // This confirms that the `eventHandler` of a nested runner's configuration
-  // has the context of the "outer" runner, so that task local data is handled
-  // appropriately.
-  @Test func contextScopedEventHandler() async {
+  // has the runtime state of the "outer" runner, so that task local data is
+  // handled appropriately.
+  @Test func runnerStateScopedEventHandler() async {
     var configuration = Configuration()
     configuration.eventHandler = { _, _ in
       // Inside this event handler, the current Test should be the outer `@Test`
       // function, not the temporary `Test` created below.
-      #expect(Test.current?.name == "contextScopedEventHandler()")
+      #expect(Test.current?.name == "runnerStateScopedEventHandler()")
     }
 
     await Test(name: "foo") {}.run(configuration: configuration)

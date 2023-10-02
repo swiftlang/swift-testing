@@ -537,7 +537,7 @@ extension Event.Recorder {
       } else {
         0
       }
-      let labeledArguments = if let testCase = event.testCase, let parameters = test?.parameters {
+      let labeledArguments = if let testCase = eventContext.testCase, let parameters = test?.parameters {
         testCase.labeledArguments(using: parameters)
       } else {
         ""
@@ -571,7 +571,7 @@ extension Event.Recorder {
       }
 
     case .testCaseStarted:
-      guard let testCase = event.testCase, testCase.isParameterized, let parameters = test?.parameters else {
+      guard let testCase = eventContext.testCase, testCase.isParameterized, let parameters = test?.parameters else {
         break
       }
       let symbol = _Symbol.default.stringValue(options: options)

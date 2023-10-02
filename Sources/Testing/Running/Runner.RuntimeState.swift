@@ -9,12 +9,13 @@
 //
 
 extension Runner {
-  /// A type which collects the task-scoped context for a running ``Runner``
-  /// instance, the tests it runs, and other objects it interacts with.
+  /// A type which collects the task-scoped runtime state for a running
+  /// ``Runner`` instance, the tests it runs, and other objects it interacts
+  /// with.
   ///
   /// This type is intended for use via the task-local
-  /// ``Runner/Context/current`` property.
-  fileprivate struct Context: Sendable {
+  /// ``Runner/RuntimeState/current`` property.
+  fileprivate struct RuntimeState: Sendable {
     /// The configuration for the current task, if any.
     var configuration: Configuration?
 
@@ -24,7 +25,7 @@ extension Runner {
     /// The test case that is running on the current task, if any.
     var testCase: Test.Case?
 
-    /// The context related to the runner running on the current task.
+    /// The runtime state related to the runner running on the current task.
     @TaskLocal
     static var current: Self = .init()
   }
@@ -32,7 +33,7 @@ extension Runner {
 
 extension Runner {
   /// Modify the event handler of this instance's ``Configuration`` to ensure it
-  /// is invoked using the current ``Context`` value.
+  /// is invoked using the current ``RuntimeState`` value.
   ///
   /// This is meant to be called prior to running tests using this instance. It
   /// allows any events posted during the call to this instance's event handler
@@ -40,10 +41,10 @@ extension Runner {
   ///
   /// In practice, the primary scenario where this is important is when running
   /// the testing library's own tests.
-  mutating func configureEventHandlerContext() {
-    let existingContext = Context.current
+  mutating func configureEventHandlerRuntimeState() {
+    let existingRuntimeState = RuntimeState.current
     configuration.eventHandler = { [eventHandler = configuration.eventHandler] event, context in
-      Context.$current.withValue(existingContext) {
+      RuntimeState.$current.withValue(existingRuntimeState) {
         eventHandler(event, context)
       }
     }
@@ -55,7 +56,7 @@ extension Runner {
 extension Configuration {
   /// The configuration for the current task, if any.
   public static var current: Self? {
-    Runner.Context.current.configuration
+    Runner.RuntimeState.current.configuration
   }
 
   /// Call a function while the value of ``Configuration/current`` is set.
@@ -73,9 +74,9 @@ extension Configuration {
       configuration._removeFromAll(identifiedBy: id)
     }
 
-    var context = Runner.Context.current
-    context.configuration = configuration
-    return try await Runner.Context.$current.withValue(context, operation: body)
+    var runtimeState = Runner.RuntimeState.current
+    runtimeState.configuration = configuration
+    return try await Runner.RuntimeState.$current.withValue(runtimeState, operation: body)
   }
 
   /// A type containing the mutable state tracked by ``Configuration/_all`` and,
@@ -134,7 +135,7 @@ extension Configuration {
 extension Test {
   /// The test that is running on the current task, if any.
   public static var current: Self? {
-    Runner.Context.current.test
+    Runner.RuntimeState.current.test
   }
 
   /// Call a function while the value of ``Test/current`` is set.
@@ -147,16 +148,16 @@ extension Test {
   ///
   /// - Throws: Whatever is thrown by `body`.
   static func withCurrent<R>(_ test: Self, perform body: () async throws -> R) async rethrows -> R {
-    var context = Runner.Context.current
-    context.test = test
-    return try await Runner.Context.$current.withValue(context, operation: body)
+    var runtimeState = Runner.RuntimeState.current
+    runtimeState.test = test
+    return try await Runner.RuntimeState.$current.withValue(runtimeState, operation: body)
   }
 }
 
 extension Test.Case {
   /// The test case that is running on the current task, if any.
   public static var current: Self? {
-    Runner.Context.current.testCase
+    Runner.RuntimeState.current.testCase
   }
 
   /// Call a function while the value of ``Test/Case/current`` is set.
@@ -169,8 +170,8 @@ extension Test.Case {
   ///
   /// - Throws: Whatever is thrown by `body`.
   static func withCurrent<R>(_ testCase: Self, perform body: () async throws -> R) async rethrows -> R {
-    var context = Runner.Context.current
-    context.testCase = testCase
-    return try await Runner.Context.$current.withValue(context, operation: body)
+    var runtimeState = Runner.RuntimeState.current
+    runtimeState.testCase = testCase
+    return try await Runner.RuntimeState.$current.withValue(runtimeState, operation: body)
   }
 }
