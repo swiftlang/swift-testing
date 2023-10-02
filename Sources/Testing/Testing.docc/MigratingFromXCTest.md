@@ -453,7 +453,7 @@ recorded otherwise:
   }
 }
 
-### Converting XCTSkip(), XCTSkipIf(), and XCTSkipUnless() calls
+#### Converting XCTSkip(), XCTSkipIf(), and XCTSkipUnless() calls
 
 When using XCTest, the [`XCTSkip`](https://developer.apple.com/documentation/xctest/xctskip)
 error type can be thrown to bypass the remainder of a test function. As well,
@@ -493,7 +493,7 @@ test function with an instance of this trait type to control whether it runs:
   }
 }
 
-### Converting XCTExpectFailure() calls
+#### Converting XCTExpectFailure() calls
 
 A test may have a known issue that sometimes or always prevents it from passing.
 When written using XCTest, such tests can call
