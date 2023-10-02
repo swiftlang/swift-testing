@@ -65,7 +65,7 @@ private let _crc32Table: [UInt32] = [
 ///
 /// - Returns: The CRC-32 code computed for `bytes`.
 ///
-/// A starting value is `0` is assumed. This function is adapted from the
+/// A starting value of `0` is assumed. This function is adapted from the
 /// [Swift standard library](https://github.com/apple/swift/blob/main/stdlib/public/Backtracing/Elf.swift).
 func crc32(_ bytes: some Sequence<UInt8>) -> UInt32 {
   ~bytes.reduce(~0) { crcValue, byte in
