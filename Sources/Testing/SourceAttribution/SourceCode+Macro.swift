@@ -8,10 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-// NOTE: the overloads of `__fromComponents()` in this file all use the same
-// function name and unlabelled parameters so that the macro expansion code in
-// SourceCodeCapturing.swift does not need to be aware of different functions.
-
 extension SourceCode {
   /// Create an instance of ``SourceCode`` representing a complete syntax node.
   ///
@@ -20,7 +16,7 @@ extension SourceCode {
   ///     statement, etc.)
   ///
   /// - Returns: A new instance of ``SourceCode``.
-  public static func __fromComponents(_ syntaxNode: String) -> Self {
+  public static func __fromSyntaxNode(_ syntaxNode: String) -> Self {
     Self(kind: .syntaxNode(syntaxNode))
   }
 
@@ -32,7 +28,7 @@ extension SourceCode {
   ///   - rhs: The right-hand operand.
   ///
   /// - Returns: A new instance of ``SourceCode``.
-  public static func __fromComponents(_ lhs: String, _ op: String, _ rhs: String) -> Self {
+  public static func __fromBinaryOperation(_ lhs: String, _ op: String, _ rhs: String) -> Self {
     Self(kind: .binaryOperation(lhs: lhs, operator: op, rhs: rhs))
   }
 

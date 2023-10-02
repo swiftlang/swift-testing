@@ -11,40 +11,49 @@
 import SwiftSyntax
 
 /// Get an expression initializing an instance of ``SourceCode`` from an
-/// arbitrary sequence of syntax nodes.
+/// arbitrary syntax node.
 ///
 /// - Parameters:
-///   - nodes: One or more syntax nodes from which to construct an instance of
-///     ``SourceCode``. If an element in this sequence is `nil`, a `nil` literal
-///     is passed instead of a string literal.
+///   - node: A syntax node from which to construct an instance of
+///     ``SourceCode``.
 ///
 /// - Returns: An expression value that initializes an instance of
-///   ``SourceCode`` for the syntax nodes in `nodes`.
-func createSourceCodeExpr(from nodes: (any SyntaxProtocol)?...) -> ExprSyntax {
-  let arguments = LabeledExprListSyntax {
-    for node in nodes {
-      if let node {
-        LabeledExprSyntax(expression: StringLiteralExprSyntax(content: node.trimmedDescription))
-      } else {
-        LabeledExprSyntax(expression: NilLiteralExprSyntax())
-      }
-    }
-  }
-
-  return ".__fromComponents(\(arguments))"
+///   ``SourceCode`` for the specified syntax node.
+func createSourceCodeExpr(from node: any SyntaxProtocol) -> ExprSyntax {
+  ".__fromSyntaxNode(\(literal: node.trimmedDescription))"
 }
 
 /// Get an expression initializing an instance of ``SourceCode`` from an
-/// arbitrary sequence of syntax nodes.
+/// arbitrary sequence of syntax nodes representing a binary operation.
 ///
 /// - Parameters:
-///   - value: The value on which the member function is being called.
+///   - lhs: The left-hand operand.
+///   - operator: The operator.
+///   - rhs: The right-hand operand.
+///
+/// - Returns: An expression value that initializes an instance of
+///   ``SourceCode`` for the specified syntax nodes.
+func createSourceCodeExprForBinaryOperation(_ lhs: some SyntaxProtocol, _ `operator`: some SyntaxProtocol, _ rhs: some SyntaxProtocol) -> ExprSyntax {
+  let arguments = LabeledExprListSyntax {
+    LabeledExprSyntax(expression: StringLiteralExprSyntax(content: lhs.trimmedDescription))
+    LabeledExprSyntax(expression: StringLiteralExprSyntax(content: `operator`.trimmedDescription))
+    LabeledExprSyntax(expression: StringLiteralExprSyntax(content: rhs.trimmedDescription))
+  }
+
+  return ".__fromBinaryOperation(\(arguments))"
+}
+
+/// Get an expression initializing an instance of ``SourceCode`` from an
+/// arbitrary sequence of syntax nodes representing a function call.
+///
+/// - Parameters:
+///   - value: The value on which the member function is being called, if any.
 ///   - functionName: The name of the member function being called.
 ///   - arguments: The arguments to the member function.
 ///
 /// - Returns: An expression value that initializes an instance of
 ///   ``SourceCode`` for the specified syntax nodes.
-func createSourceCodeExprForMemberFunctionCall(_ value: (some SyntaxProtocol)?, _ functionName: some SyntaxProtocol, _ arguments: some Sequence<Argument>) -> ExprSyntax {
+func createSourceCodeExprForFunctionCall(_ value: (some SyntaxProtocol)?, _ functionName: some SyntaxProtocol, _ arguments: some Sequence<Argument>) -> ExprSyntax {
   let arguments = LabeledExprListSyntax {
     if let value {
       LabeledExprSyntax(expression: StringLiteralExprSyntax(content: value.trimmedDescription))
