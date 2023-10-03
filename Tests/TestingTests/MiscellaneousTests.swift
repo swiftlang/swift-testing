@@ -389,19 +389,6 @@ struct MiscellaneousTests {
     #expect(tests.map(\.displayName) == ["A", "B", "C", "D", "E", "F", "G"])
   }
 
-  @Test("Parameterizing using lazy collections",
-    .disabled("Lazy collections are not sendable, so are not selected during overload resolution (favoring arrays instead.)"),
-    .bug("rdar://104169208")
-  )
-  func testParameterizedOverLazyCollection() async throws {
-    // Test that functional transformations on the collection are supported.
-    let range = 1 ... 100
-    let test = Test(arguments: range.lazy.map(-)) { i in
-      #expect(i < 0)
-    }
-    await test.run()
-  }
-
   @Test("Parameterizing over a collection with a poor underestimatedCount property")
   func testParameterizedOverCollectionWithBadUnderestimatedCount() async throws {
     struct PoorlyEstimatedCollection<C>: Collection where C: Collection & Sendable {
@@ -487,7 +474,7 @@ struct MiscellaneousTests {
     let line = 12345
     let column = 67890
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-    let testFunction = await Test.__function(named: "myTestFunction()", in: nil, xcTestCompatibleSelector: nil, displayName: nil, traits: [], sourceLocation: sourceLocation) {}
+    let testFunction = Test.__function(named: "myTestFunction()", in: nil, xcTestCompatibleSelector: nil, displayName: nil, traits: [], sourceLocation: sourceLocation) {}
     #expect(String(describing: testFunction.id) == "Module/myTestFunction()/Y.swift:12345:67890")
   }
 
