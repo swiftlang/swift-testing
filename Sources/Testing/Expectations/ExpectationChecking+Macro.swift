@@ -108,17 +108,17 @@ public func __checkValue(
 /// - Throws: Whatever is thrown by `op`.
 private func _callBinaryOperator<T, U, R>(
   _ lhs: T,
-  _ op: (T, () -> U) throws -> R,
-  _ rhs: () -> U
-) rethrows -> (result: R, rhs: U?) {
+  _ op: (T, () -> U) -> R,
+  _ rhs: @autoclosure () -> U
+) -> (result: R, rhs: U?) {
   // The compiler normally doesn't allow a nonescaping closure to call another
   // nonescaping closure, but our use cases are safe (e.g. `true && false`) and
   // we cannot force one function or the other to be escaping. Use
   // withoutActuallyEscaping() to tell the compiler that what we're doing is
   // okay. SEE: https://github.com/apple/swift-evolution/blob/main/proposals/0176-enforce-exclusive-access-to-memory.md#restrictions-on-recursive-uses-of-non-escaping-closures
   var rhsValue: U?
-  let result: R = try withoutActuallyEscaping(rhs) { rhs in
-    try op(lhs, {
+  let result: R = withoutActuallyEscaping(rhs) { rhs in
+    op(lhs, {
       if rhsValue == nil {
         rhsValue = rhs()
       }
@@ -140,13 +140,13 @@ private func _callBinaryOperator<T, U, R>(
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
 public func __checkBinaryOperation<T, U>(
-  _ lhs: T, _ op: (T, () -> U) throws -> Bool, _ rhs: () -> U,
+  _ lhs: T, _ op: (T, () -> U) -> Bool, _ rhs: @autoclosure () -> U,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<Void, any Error> {
-  let (condition, rhs) = try _callBinaryOperator(lhs, op, rhs)
+) -> Result<Void, any Error> {
+  let (condition, rhs) = _callBinaryOperator(lhs, op, rhs())
   return __checkValue(
     condition,
     sourceCode: sourceCode,
@@ -288,13 +288,13 @@ public func __checkInoutFunctionCall<T, /*each*/ U, R>(
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
 public func __checkBinaryOperation<T>(
-  _ lhs: T, _ op: (T, () -> T) -> Bool, _ rhs: () -> T,
+  _ lhs: T, _ op: (T, () -> T) -> Bool, _ rhs: @autoclosure () -> T,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) -> Result<Void, any Error> where T: BidirectionalCollection, T.Element: Equatable {
-  let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
+  let (condition, rhs) = _callBinaryOperator(lhs, op, rhs())
   func difference() -> String? {
     guard let rhs else {
       return nil
@@ -335,13 +335,13 @@ public func __checkBinaryOperation<T>(
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
 public func __checkBinaryOperation(
-  _ lhs: String, _ op: (String, () -> String) -> Bool, _ rhs: () -> String,
+  _ lhs: String, _ op: (String, () -> String) -> Bool, _ rhs: @autoclosure () -> String,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) -> Result<Void, any Error> {
-  let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
+  let (condition, rhs) = _callBinaryOperator(lhs, op, rhs())
   return __checkValue(
     condition,
     sourceCode: sourceCode,
@@ -428,13 +428,13 @@ public func __checkValue<T>(
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
 public func __checkBinaryOperation<T>(
-  _ lhs: T?, _ op: (T?, () -> T?) -> T?, _ rhs: () -> T?,
+  _ lhs: T?, _ op: (T?, () -> T?) -> T?, _ rhs: @autoclosure () -> T?,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) -> Result<T, any Error> {
-  let (optionalValue, rhs) = _callBinaryOperator(lhs, op, rhs)
+  let (optionalValue, rhs) = _callBinaryOperator(lhs, op, rhs())
   return __checkValue(
     optionalValue != nil,
     sourceCode: sourceCode,

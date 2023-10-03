@@ -29,15 +29,15 @@ struct ConditionMacroTests {
       ##"#expect(false, "Custom message")"##:
         ##"Testing.__checkValue(false, sourceCode: .__fromSyntaxNode("false"), comments: ["Custom message"], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(2 > 1)"##:
-        ##"Testing.__checkBinaryOperation(2, { $0 > $1() }, { 1 }, sourceCode: .__fromBinaryOperation("2", ">", "1"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkBinaryOperation(2, { $0 > $1() }, 1, sourceCode: .__fromBinaryOperation("2", ">", "1"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(((true || false) && true) || Bool.random())"##:
-        ##"Testing.__checkBinaryOperation(((true || false) && true), { $0 || $1() }, { Bool.random() }, sourceCode: .__fromBinaryOperation("((true || false) && true)", "||", "Bool.random()"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkBinaryOperation(((true || false) && true), { $0 || $1() }, Bool.random(), sourceCode: .__fromBinaryOperation("((true || false) && true)", "||", "Bool.random()"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(9 > 8 && 7 > 6, "Some comment")"##:
-        ##"Testing.__checkBinaryOperation(9 > 8, { $0 && $1() }, { 7 > 6 }, sourceCode: .__fromBinaryOperation("9 > 8", "&&", "7 > 6"), comments: ["Some comment"], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkBinaryOperation(9 > 8, { $0 && $1() }, 7 > 6, sourceCode: .__fromBinaryOperation("9 > 8", "&&", "7 > 6"), comments: ["Some comment"], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(!Bool.random())"##:
         ##"Testing.__checkValue(!Bool.random(), sourceCode: .__fromSyntaxNode("!Bool.random()"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect((true && false))"##:
-        ##"Testing.__checkBinaryOperation(true, { $0 && $1() }, { false }, sourceCode: .__fromBinaryOperation("true", "&&", "false"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkBinaryOperation(true, { $0 && $1() }, false, sourceCode: .__fromBinaryOperation("true", "&&", "false"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(try x())"##:
         ##"Testing.__checkValue(try x(), sourceCode: .__fromSyntaxNode("try x()"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(1 is Int)"##:
@@ -91,15 +91,15 @@ struct ConditionMacroTests {
       ##"#require(false, "Custom message")"##:
         ##"Testing.__checkValue(false, sourceCode: .__fromSyntaxNode("false"), comments: ["Custom message"], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(2 > 1)"##:
-        ##"Testing.__checkBinaryOperation(2, { $0 > $1() }, { 1 }, sourceCode: .__fromBinaryOperation("2", ">", "1"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkBinaryOperation(2, { $0 > $1() }, 1, sourceCode: .__fromBinaryOperation("2", ">", "1"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(((true || false) && true) || Bool.random())"##:
-        ##"Testing.__checkBinaryOperation(((true || false) && true), { $0 || $1() }, { Bool.random() }, sourceCode: .__fromBinaryOperation("((true || false) && true)", "||", "Bool.random()"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkBinaryOperation(((true || false) && true), { $0 || $1() }, Bool.random(), sourceCode: .__fromBinaryOperation("((true || false) && true)", "||", "Bool.random()"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(9 > 8 && 7 > 6, "Some comment")"##:
-        ##"Testing.__checkBinaryOperation(9 > 8, { $0 && $1() }, { 7 > 6 }, sourceCode: .__fromBinaryOperation("9 > 8", "&&", "7 > 6"), comments: ["Some comment"], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkBinaryOperation(9 > 8, { $0 && $1() }, 7 > 6, sourceCode: .__fromBinaryOperation("9 > 8", "&&", "7 > 6"), comments: ["Some comment"], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(!Bool.random())"##:
         ##"Testing.__checkValue(!Bool.random(), sourceCode: .__fromSyntaxNode("!Bool.random()"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require((true && false))"##:
-        ##"Testing.__checkBinaryOperation(true, { $0 && $1() }, { false }, sourceCode: .__fromBinaryOperation("true", "&&", "false"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkBinaryOperation(true, { $0 && $1() }, false, sourceCode: .__fromBinaryOperation("true", "&&", "false"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(try x())"##:
         ##"Testing.__checkValue(try x(), sourceCode: .__fromSyntaxNode("try x()"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(1 is Int)"##:
@@ -149,9 +149,9 @@ struct ConditionMacroTests {
       ##"#require(Optional<Int>.none)"##:
         ##"Testing.__checkValue(Optional<Int>.none, sourceCode: .__fromSyntaxNode("Optional<Int>.none"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(nil ?? 123)"##:
-        ##"Testing.__checkBinaryOperation(nil, { $0 ?? $1() }, { 123 }, sourceCode: .__fromBinaryOperation("nil", "??", "123"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkBinaryOperation(nil, { $0 ?? $1() }, 123, sourceCode: .__fromBinaryOperation("nil", "??", "123"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(123 ?? nil)"##:
-        ##"Testing.__checkBinaryOperation(123, { $0 ?? $1() }, { nil }, sourceCode: .__fromBinaryOperation("123", "??", "nil"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkBinaryOperation(123, { $0 ?? $1() }, nil, sourceCode: .__fromBinaryOperation("123", "??", "nil"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(123 as? Double)"##:
         ##"Testing.__checkCast(123,as: Double.self, sourceCode: .__fromBinaryOperation("123", "as?", "Double"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(123 as Double)"##:
@@ -276,7 +276,7 @@ struct ConditionMacroTests {
     let rawExpectedOutput = ##"""
       @Test("Random number generation") func rng() {
         let number = Int.random(in: 1 ..< .max)
-        Testing.__checkBinaryOperation((number > 0 && foo() != bar(at: 9)), { $0 != $1() }, { !true }, sourceCode: .__fromBinaryOperation("(number > 0 && foo() != bar(at: 9))", "!=", "!true"), comments: ["\(number) must be greater than 0"], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()
+        Testing.__checkBinaryOperation((number > 0 && foo() != bar(at: 9)), { $0 != $1() }, !true, sourceCode: .__fromBinaryOperation("(number > 0 && foo() != bar(at: 9))", "!=", "!true"), comments: ["\(number) must be greater than 0"], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()
       }
     """##
 
