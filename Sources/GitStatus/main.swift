@@ -32,12 +32,13 @@ let generatedSourceURL = URL(fileURLWithPath: CommandLine.arguments[2], isDirect
 func _runGit(passing arguments: String..., readingUpToCount maxOutputCount: Int) -> String? {
 #if os(macOS) || os(Linux) || os(Windows)
   let path: String
-  var arguments = ["-C", repoPath] + arguments
+  let commonArguments = ["-C", repoPath] + arguments
 #if os(Windows)
   path = "C:\\Program Files\\Git\\cmd\\git.exe"
+  let arguments = commonArguments
 #else
   path = "/usr/bin/env"
-  arguments = CollectionOfOne("git") + arguments
+  let arguments = CollectionOfOne("git") + commonArguments
 #endif
 
   let process = Process()
