@@ -308,11 +308,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     }
 
     // Generate a thunk function that invokes the actual function.
-    // NOTE: `thunkBody` is not actually an expression. It's better-represented
-    // as an instance of CodeBlockItemListSyntax, but due to its size it is
-    // easier to express using string interpolation than by directly creating an
-    // instance of CodeBlockItemListSyntax.
-    var thunkBody: ExprSyntax
+    var thunkBody: CodeBlockItemListSyntax
     if functionDecl.availability(when: .unavailable).first != nil {
       thunkBody = ""
     } else if let typeName {
