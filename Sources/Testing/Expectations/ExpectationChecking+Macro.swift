@@ -109,7 +109,7 @@ public func __checkValue(
 private func _callBinaryOperator<T, U, R>(
   _ lhs: T,
   _ op: (T, () -> U) -> R,
-  _ rhs: @autoclosure () -> U
+  _ rhs: () -> U
 ) -> (result: R, rhs: U?) {
   // The compiler normally doesn't allow a nonescaping closure to call another
   // nonescaping closure, but our use cases are safe (e.g. `true && false`) and
@@ -146,7 +146,7 @@ public func __checkBinaryOperation<T, U>(
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) -> Result<Void, any Error> {
-  let (condition, rhs) = _callBinaryOperator(lhs, op, rhs())
+  let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
   return __checkValue(
     condition,
     sourceCode: sourceCode,
@@ -294,7 +294,7 @@ public func __checkBinaryOperation<T>(
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) -> Result<Void, any Error> where T: BidirectionalCollection, T.Element: Equatable {
-  let (condition, rhs) = _callBinaryOperator(lhs, op, rhs())
+  let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
   func difference() -> String? {
     guard let rhs else {
       return nil
@@ -341,7 +341,7 @@ public func __checkBinaryOperation(
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) -> Result<Void, any Error> {
-  let (condition, rhs) = _callBinaryOperator(lhs, op, rhs())
+  let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
   return __checkValue(
     condition,
     sourceCode: sourceCode,
@@ -434,7 +434,7 @@ public func __checkBinaryOperation<T>(
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) -> Result<T, any Error> {
-  let (optionalValue, rhs) = _callBinaryOperator(lhs, op, rhs())
+  let (optionalValue, rhs) = _callBinaryOperator(lhs, op, rhs)
   return __checkValue(
     optionalValue != nil,
     sourceCode: sourceCode,
