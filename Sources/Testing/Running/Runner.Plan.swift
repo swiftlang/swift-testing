@@ -122,6 +122,7 @@ extension Runner.Plan {
     }
   }
 
+  // TODO: Update DocC
   /// Determine if a test is included in the selected test IDs, if any are
   /// configured.
   ///
@@ -133,11 +134,11 @@ extension Runner.Plan {
   /// - Returns: Whether or not the specified test is selected. If
   ///   `selectedTests` is `nil`, `test` is considered selected if it is not
   ///   hidden.
-  private static func _isTestIncluded(_ test: Test, in selectedTests: Test.ID.Selection?) -> Bool {
-    guard let selectedTests else {
+  private static func _isTestIncluded(_ test: Test, using predicate: Configuration.TestPredicate?) -> Bool {
+    guard let predicate else {
       return !test.isHidden
     }
-    return selectedTests.contains(test)
+    return predicate(test)
   }
 
   /// Construct a graph of runner plan steps for the specified tests.
@@ -160,8 +161,7 @@ extension Runner.Plan {
     // them, in which case it will be .recordIssue().
     var testGraph = Graph<String, Test?>()
     var actionGraph = Graph<String, Action>(value: .run)
-    let selectedTests = configuration.selectedTests
-    for test in tests where _isTestIncluded(test, in: selectedTests) {
+    for test in tests where _isTestIncluded(test, using: configuration.testSelectionFilter) {
       let idComponents = test.id.keyPathRepresentation
       testGraph.insertValue(test, at: idComponents)
       actionGraph.insertValue(.run, at: idComponents, intermediateValue: .run)

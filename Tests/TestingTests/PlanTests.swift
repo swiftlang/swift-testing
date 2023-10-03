@@ -12,6 +12,9 @@
 
 @Suite("Runner.Plan Tests")
 struct PlanTests {
+  // TODO: Potentially update the names of tests below which reference "selected
+  // tests" based on naming changes elsewhere.
+
   @Test("Selected tests")
   func selectedTests() async throws {
     let outerTestType = try #require(await test(for: SendableTests.self))
@@ -27,7 +30,9 @@ struct PlanTests {
     ]
 
     var configuration = Configuration()
-    configuration.selectedTestIDs = [innerTestType.id]
+    configuration.testSelectionFilter = { test in
+      Test.ID.Selection(testIDs: [innerTestType.id]).contains(test)
+    }
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
     #expect(plan.steps.contains(where: { $0.test == outerTestType }))
@@ -51,7 +56,9 @@ struct PlanTests {
     ]
 
     var configuration = Configuration()
-    configuration.selectedTestIDs = [innerTestType.id, outerTestType.id]
+    configuration.testSelectionFilter = { test in
+      Test.ID.Selection(testIDs: [innerTestType.id, outerTestType.id]).contains(test)
+    }
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
     let planTests = plan.steps.map(\.test)
@@ -70,7 +77,9 @@ struct PlanTests {
     let tests = [outerTestType, deeplyNestedTest]
 
     var configuration = Configuration()
-    configuration.selectedTestIDs = [outerTestType.id, deeplyNestedTest.id]
+    configuration.testSelectionFilter = { test in
+      Test.ID.Selection(testIDs: [outerTestType.id, deeplyNestedTest.id]).contains(test)
+    }
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
 
@@ -88,7 +97,9 @@ struct PlanTests {
     let tests = [testSuiteA, testSuiteB, testSuiteC, testFuncX]
 
     var configuration = Configuration()
-    configuration.selectedTestIDs = [testSuiteA.id]
+    configuration.testSelectionFilter = { test in
+      Test.ID.Selection(testIDs: [testSuiteA.id]).contains(test)
+    }
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
     let testFuncXWithTraits = try #require(plan.steps.map(\.test).first { $0.name == "x()" })

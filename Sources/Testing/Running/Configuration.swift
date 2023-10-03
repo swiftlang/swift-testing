@@ -137,38 +137,16 @@ public struct Configuration: Sendable {
 
   // MARK: - Test selection
 
-  /// The selected tests to run, if any.
-  ///
-  /// This property should be used for testing membership (whether a test ID has
-  /// been selected) since it is more optimized for that use case. It also
-  /// provides the backing storage for ``selectedTestIDs``.
-  ///
-  /// This property is optional and defaults to `nil` because it is possible to
-  /// select specific tests to run but not provide any tests in that list. That
-  /// is a supported use case: it results in zero tests being run and no issues
-  /// recorded.
-  ///
-  /// A practical example of when this situation can happen is when testing is
-  /// configured via an Xcode Test Plan, the "Automatically Include New Tests"
-  /// option is disabled, and zero tests are enabled.
-  var selectedTests: Test.ID.Selection?
+  // TODO: Write DocC documenting this typealias.
+  //
+  // (Note: this typealias may also be used to eventually implement a similar
+  // filter property for **skipped** tests. But that doesn't need to be
+  // mentioned in the DocC.)
+  public typealias TestPredicate = @Sendable (Test) -> Bool
 
-  /// The IDs of the selected tests to run, if any.
-  ///
-  /// This property is optional and defaults to `nil` because it is possible to
-  /// select specific tests to run but not provide any tests in that list. That
-  /// is a supported use case: it results in zero tests being run and no issues
-  /// recorded.
-  ///
-  /// A practical example of when this situation can happen is when testing is
-  /// configured via an Xcode Test Plan, the "Automatically Include New Tests"
-  /// option is disabled, and zero tests are enabled.
-  public var selectedTestIDs: Set<Test.ID>? {
-    get {
-      selectedTests?.testIDs
-    }
-    set {
-      selectedTests = newValue.map { .init(testIDs: $0) }
-    }
-  }
+  // TODO: Choose better name for this property.
+  //
+  // TODO: Write DocC documenting this property, explaining its purpose and
+  // potentially including an example of its most common usage patterns.
+  public var testSelectionFilter: TestPredicate?
 }

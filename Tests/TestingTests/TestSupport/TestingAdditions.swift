@@ -67,7 +67,9 @@ func runTest(for containingType: Any.Type, configuration: Configuration = .init(
 /// If no test is found representing `containingType`, nothing is run.
 func runTestFunction(named name: String, in containingType: Any.Type, configuration: Configuration = .init()) async {
   var configuration = configuration
-  configuration.selectedTestIDs = [Test.ID(type: containingType).child(named: name)]
+  configuration.testSelectionFilter = { test in
+    Test.ID.Selection(testIDs: [Test.ID(type: containingType).child(named: name)]).contains(test)
+  }
 
   let runner = await Runner(configuration: configuration)
   await runner.run()
@@ -90,7 +92,9 @@ extension Runner {
     let moduleName = String(fileID[..<fileID.lastIndex(of: "/")!])
 
     var configuration = configuration
-    configuration.selectedTestIDs = [Test.ID(moduleName: moduleName, nameComponents: [testName], sourceLocation: nil)]
+    configuration.testSelectionFilter = { test in
+      Test.ID.Selection(testIDs: [Test.ID(moduleName: moduleName, nameComponents: [testName], sourceLocation: nil)]).contains(test)
+    }
 
     await self.init(configuration: configuration)
   }
@@ -104,7 +108,9 @@ extension Runner.Plan {
   ///   - configuration: The configuration to use for planning.
   init(selecting containingType: Any.Type, configuration: Configuration = .init()) async {
     var configuration = configuration
-    configuration.selectedTestIDs = [Test.ID(type: containingType)]
+    configuration.testSelectionFilter = { test in
+      Test.ID.Selection(testIDs: [Test.ID(type: containingType)]).contains(test)
+    }
 
     await self.init(configuration: configuration)
   }
@@ -286,6 +292,10 @@ extension Test.ID.Selection {
     self.init(testIDs: testIDs.lazy.map(Test.ID.init(_:)))
   }
 }
+
+// TODO: Provide some convenience utilities for our own unit tests to streamline
+// creating a `Configuration` consisting of a selected tests predicate based on
+// a `Test.ID.Selection` and eliminate boilerplate.
 
 /// Whether or not to enable "noisy" tests that produce a lot of output.
 ///

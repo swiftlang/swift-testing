@@ -250,7 +250,9 @@ final class RunnerTests: XCTestCase {
     let testFunc = try #require(await testFunction(named: "duelingConditions()", in: NeverRunTests.self))
 
     var configuration = Configuration()
-    configuration.selectedTests = .init(testIDs: [testSuite.id])
+    configuration.testSelectionFilter = { test in
+      Test.ID.Selection(testIDs: [testSuite.id]).contains(test)
+    }
 
     let runner = await Runner(testing: [
       testSuite,
@@ -294,11 +296,15 @@ final class RunnerTests: XCTestCase {
       (SendableTests.self, "disabled()"),
     ]
 
-    var configuration = Configuration()
-    configuration.selectedTestIDs = Set(tests.map {
+    let selectedTestIDs = Set(tests.map {
       Test.ID(type: $0).child(named: $1)
     })
-    XCTAssertEqual(false, configuration.selectedTestIDs?.isEmpty)
+    XCTAssertFalse(selectedTestIDs.isEmpty)
+
+    var configuration = Configuration()
+    configuration.testSelectionFilter = { test in
+      Test.ID.Selection(testIDs: selectedTestIDs).contains(test)
+    }
 
     let runner = await Runner(configuration: configuration)
     let plan = runner.plan
