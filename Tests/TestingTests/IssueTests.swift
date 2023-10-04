@@ -11,6 +11,7 @@
 #if canImport(XCTest)
 import XCTest
 @testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalTestRunning) import Testing
+@_implementationOnly import TestingInternals
 
 final class IssueTests: XCTestCase {
   func testExpect() async throws {
@@ -1192,6 +1193,29 @@ final class IssueTests: XCTestCase {
 
     await Test(arguments: E.allCases) { e in
       #expect(e == .b)
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [expectationFailed], timeout: 0.0)
+  }
+
+  func testCEnumDescription() async {
+    let expectationFailed = expectation(description: "Expectation failed")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      if case let .expectationFailed(expectation) = issue.kind,
+         let desc = expectation.expandedExpressionDescription {
+        expectationFailed.fulfill()
+        XCTAssertTrue(desc.contains(".A → SWTTestEnumeration"))
+        XCTAssertFalse(desc.contains(".SWTTestEnumeration"))
+      }
+    }
+
+    await Test(arguments: [SWTTestEnumeration.A, SWTTestEnumeration.B]) { e in
+      #expect(e == .A)
     }.run(configuration: configuration)
 
     await fulfillment(of: [expectationFailed], timeout: 0.0)

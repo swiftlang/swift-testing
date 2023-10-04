@@ -68,7 +68,7 @@ public struct SourceCode: Sendable {
         return "<not evaluated>"
       }
 
-      let valueDescription = String(describingTestArgument: value)
+      let valueDescription = String(describingForTest: value)
 
       if valueDescription == "(Function)" {
         // Hack: don't print string representations of function calls.

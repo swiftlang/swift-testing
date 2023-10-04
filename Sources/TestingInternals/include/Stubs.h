@@ -36,6 +36,12 @@ static bool swt_S_ISFIFO(mode_t mode) {
 }
 #endif
 
+/// A type used by the testing library's own tests to validate how C
+/// enumerations are presented in test output.
+enum __attribute__((enum_extensibility(open))) SWTTestEnumeration {
+  SWTTestEnumerationA, SWTTestEnumerationB
+};
+
 SWT_ASSUME_NONNULL_END
 
 #endif

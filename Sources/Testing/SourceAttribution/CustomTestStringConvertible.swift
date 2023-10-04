@@ -79,17 +79,37 @@
 ///
 /// ## See Also
 ///
-/// - ``Swift/String/init(describingTestArgument:)``
+/// - ``Swift/String/init(describingForTest:)``
 public protocol CustomTestStringConvertible {
   /// A description of this instance to use when presenting it in a test's
   /// output.
   ///
   /// Do not use this property directly. To get the test description of a value,
-  /// use ``Swift/String/init(describingTestArgument:)``.
+  /// use ``Swift/String/init(describingForTest:)``.
   var testDescription: String { get }
 }
 
 extension String {
+  /// Describe a case from an enumeration declared in C, Objective-C, or C++.
+  ///
+  /// - Parameters:
+  ///   - value: The value to describe.
+  ///
+  /// - Returns: A description of `value`, or `nil` if `value` does not appear
+  ///   to be a C enumeration case.
+  private static func _describeCEnumCase(_ value: some RawRepresentable) -> String? {
+    // If the default description equals the name of the type of the value, that
+    // type conforms to RawRepresentable, and that type is an enum, then we're
+    // presumably dealing with a C enumeration. Note that String(describing:)
+    // will produce a different string for `some RawRepresentable` than for
+    // `Any`, so we're casting back to `Any` here in order to do the comparison.
+    let typeDesc = String(describing: type(of: value))
+    if String(describing: value as Any) == typeDesc {
+      return "\(typeDesc)(rawValue: \(String(describingForTest: value.rawValue)))"
+    }
+    return nil
+  }
+
   /// Initialize this instance so that it can be presented in a test's output.
   ///
   /// - Parameters:
@@ -98,18 +118,24 @@ extension String {
   /// ## See Also
   ///
   /// - ``CustomTestStringConvertible``
-  public init(describingTestArgument value: Any) {
+  public init(describingForTest value: Any) {
     if let value = value as? any CustomTestStringConvertible {
       self = value.testDescription
-    } else {
+    } else if let value = value as? any CustomStringConvertible {
       self.init(describing: value)
-      if !(value is any CustomStringConvertible) && Mirror(reflecting: value).displayStyle == .enum {
+    } else if Mirror(reflecting: value).displayStyle == .enum {
+      if let value = value as? any RawRepresentable, let cEnumDescription = Self._describeCEnumCase(value) {
+        self = cEnumDescription
+      } else {
         // Add a leading period to enumeration cases to more closely match their
         // source representation. This cannot be done generically because
         // enumerations do not universally or automatically conform to some
         // protocol that can be detected at runtime.
-        self = ".\(self)"
+        self = ".\(value)"
       }
+    } else {
+      // Use the generic description of the value.
+      self.init(describing: value)
     }
   }
 }
@@ -120,7 +146,7 @@ extension Optional: CustomTestStringConvertible {
   public var testDescription: String {
     switch self {
     case let .some(unwrappedValue):
-      String(describingTestArgument: unwrappedValue)
+      String(describingForTest: unwrappedValue)
     case nil:
       "nil"
     }
