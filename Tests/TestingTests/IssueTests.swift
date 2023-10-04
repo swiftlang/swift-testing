@@ -1109,10 +1109,10 @@ final class IssueTests: XCTestCase {
     await fulfillment(of: [expectationFailed], timeout: 0.0)
   }
 
-  func testCustomFailureStringConvertible() async {
-    struct Food: CustomFailureStringConvertible {
+  func testCustomTestStringConvertible() async {
+    struct Food: CustomTestStringConvertible {
       func addSeasoning() -> Bool { false }
-      var failureDescription: String {
+      var testDescription: String {
         "Delicious Food, Yay!"
       }
     }
@@ -1133,6 +1133,65 @@ final class IssueTests: XCTestCase {
 
     await Test {
       #expect(Food().addSeasoning())
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [expectationFailed], timeout: 0.0)
+  }
+
+  func testEnumDescription() async {
+    enum E: CaseIterable {
+      case a
+      case b
+    }
+
+    let expectationFailed = expectation(description: "Expectation failed")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      if case let .expectationFailed(expectation) = issue.kind,
+         let desc = expectation.expandedExpressionDescription {
+        expectationFailed.fulfill()
+        XCTAssertTrue(desc.contains(".b"))
+        XCTAssertFalse(desc.contains("→ .b"))
+      }
+    }
+
+    await Test(arguments: E.allCases) { e in
+      #expect(e == .b)
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [expectationFailed], timeout: 0.0)
+  }
+
+  func testEnumWithCustomDescription() async {
+    enum E: CaseIterable, CustomStringConvertible {
+      case a
+      case b
+      var description: String {
+        "customDesc"
+      }
+    }
+
+    let expectationFailed = expectation(description: "Expectation failed")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      if case let .expectationFailed(expectation) = issue.kind,
+         let desc = expectation.expandedExpressionDescription {
+        expectationFailed.fulfill()
+        XCTAssertTrue(desc.contains(".b → customDesc"))
+        XCTAssertFalse(desc.contains(".customDesc"))
+      }
+    }
+
+    await Test(arguments: E.allCases) { e in
+      #expect(e == .b)
     }.run(configuration: configuration)
 
     await fulfillment(of: [expectationFailed], timeout: 0.0)
