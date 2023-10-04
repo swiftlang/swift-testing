@@ -30,31 +30,61 @@
 /// The expanded representation of the condition expression will be derived from
 /// `String(describing: food)`. If that string is unsuitable for display in a
 /// test's output, then the type can be made to conform to
-/// ``CustomExpressionExpandable`` and the value of the instance's
-/// ``descriptionInExpectationFailure`` property will be used instead.
-public protocol CustomExpectationFailureRepresentable {
+/// ``CustomFailureStringConvertible`` and the value of the instance's
+/// ``failureDescription`` property will be used instead.
+///
+/// ## See Also
+///
+/// - ``String/init(describingFailureOf:)``
+public protocol CustomFailureStringConvertible {
   /// A description of this instance to use when describing it in an expectation
   /// failure.
-  var descriptionInExpectationFailure: String { get }
+  var failureDescription: String { get }
 }
 
-extension Optional: CustomExpectationFailureRepresentable {
-  public var descriptionInExpectationFailure: String {
+extension String {
+  /// Initialize this instance to the description of a value as part of an
+  /// expectation failure.
+  ///
+  /// - Parameters:
+  ///   - value: The value to describe.
+  ///
+  /// ## See Also
+  ///
+  /// - ``CustomFailureStringConvertible``
+  public init(describingFailureOf value: some Any) {
+    if let value = value as? any CustomFailureStringConvertible {
+      self = value.failureDescription
+    } else {
+      self.init(describing: value)
+    }
+  }
+}
+
+// MARK: - Built-in implementations
+
+extension Optional: CustomFailureStringConvertible {
+  public var failureDescription: String {
     switch self {
     case let .some(unwrappedValue):
-      if let unwrappedValue = unwrappedValue as? any CustomExpectationFailureRepresentable {
-        unwrappedValue.descriptionInExpectationFailure
-      } else {
-        String(describing: unwrappedValue)
-      }
+      String(describingFailureOf: unwrappedValue)
     case nil:
       "nil"
     }
   }
 }
 
-extension _OptionalNilComparisonType: CustomExpectationFailureRepresentable {
-  public var descriptionInExpectationFailure: String {
+extension _OptionalNilComparisonType: CustomFailureStringConvertible {
+  public var failureDescription: String {
     "nil"
   }
 }
+
+extension CustomFailureStringConvertible where Self: StringProtocol {
+  public var failureDescription: String {
+    "\"\(self)\""
+  }
+}
+
+extension String: CustomFailureStringConvertible {}
+extension Substring: CustomFailureStringConvertible {}

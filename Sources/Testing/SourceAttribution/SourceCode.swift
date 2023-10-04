@@ -68,7 +68,7 @@ public struct SourceCode: Sendable {
         return "<not evaluated>"
       }
 
-      let valueDescription = formattedDescription(of: value)
+      let valueDescription = String(describingFailureOf: value)
 
       if valueDescription == "(Function)" {
         // Hack: don't print string representations of function calls.
@@ -106,27 +106,6 @@ public struct SourceCode: Sendable {
       }
       return "\(functionName)(\(argumentList))"
     }
-  }
-}
-
-/// Generate a formatted description of a specified value.
-///
-/// - Parameters:
-///   - value: The value to format a description for.
-///
-/// - Returns: A formatted description of the specified value, including any
-///   punctuation.
-///
-/// If `value` is a `nil` Optional value, returns `"nil"`. If `value` conforms
-/// to `StringProtocol`, returns the string wrapped in double quotes. Otherwise,
-/// returns the output of calling passing `value` to `String(describing:)`.
-func formattedDescription(of value: some Any) -> String {
-  if let value = value as? any CustomExpectationFailureRepresentable {
-    value.descriptionInExpectationFailure
-  } else if value is any StringProtocol {
-    "\"\(value)\""
-  } else {
-    String(describing: value)
   }
 }
 

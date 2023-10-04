@@ -1109,10 +1109,10 @@ final class IssueTests: XCTestCase {
     await fulfillment(of: [expectationFailed], timeout: 0.0)
   }
 
-  func testCustomExpectationFailureRepresentable() async {
-    struct Food: CustomExpectationFailureRepresentable {
+  func testCustomFailureStringConvertible() async {
+    struct Food: CustomFailureStringConvertible {
       func addSeasoning() -> Bool { false }
-      var descriptionInExpectationFailure: String {
+      var failureDescription: String {
         "Delicious Food, Yay!"
       }
     }
