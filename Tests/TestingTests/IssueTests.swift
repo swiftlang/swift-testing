@@ -1209,7 +1209,7 @@ final class IssueTests: XCTestCase {
       if case let .expectationFailed(expectation) = issue.kind,
          let desc = expectation.expandedExpressionDescription {
         expectationFailed.fulfill()
-        XCTAssertTrue(desc.contains(".A → SWTTestEnumeration"))
+        XCTAssertTrue(desc.contains(".A → SWTTestEnumeration(rawValue: \(SWTTestEnumeration.A.rawValue))"))
         XCTAssertFalse(desc.contains(".SWTTestEnumeration"))
       }
     }
