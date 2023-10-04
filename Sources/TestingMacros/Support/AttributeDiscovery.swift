@@ -66,16 +66,19 @@ struct AttributeInfo {
   /// The traits applied to the attribute, if any.
   var traits = [ExprSyntax]()
 
-  /// Whether or not this attribute specifies arguments to the associated test
-  /// function.
-  var hasFunctionArguments: Bool {
-    otherArguments.lazy
-      .compactMap(\.label?.tokenKind)
-      .contains(.identifier("arguments"))
-  }
+  /// Parameterized arguments to the test function, if any.
+  var functionArguments = [Argument]()
 
   /// Additional arguments passed to the attribute, if any.
   var otherArguments = [Argument]()
+
+  private static func _splitArgumentsAtLabel(_ arguments: some BidirectionalCollection<Argument>) -> (before: [Argument], after: [Argument]) {
+    let labelledArgumentIndex = arguments.firstIndex(where: { $0.label != nil }) ?? arguments.endIndex
+    return (
+      Array(arguments[arguments.startIndex ..< labelledArgumentIndex]),
+      Array(arguments[labelledArgumentIndex...])
+    )
+  }
 
   /// The source location of the attribute.
   ///
@@ -127,15 +130,9 @@ struct AttributeInfo {
     // are the remaining unlabelled arguments. The first labelled argument (if
     // present) is the start of subsequent context-specific arguments.
     if !otherArguments.isEmpty {
-      if let labelledArgumentIndex = otherArguments.firstIndex(where: { $0.label != nil }) {
-        // There is an argument with a label, so splice there.
-        traits = otherArguments[otherArguments.startIndex ..< labelledArgumentIndex].map(\.expression)
-        otherArguments = Array(otherArguments[labelledArgumentIndex...])
-      } else {
-        // No argument has a label, so all the remaining arguments are traits.
-        traits = otherArguments.map(\.expression)
-        otherArguments.removeAll(keepingCapacity: false)
-      }
+      let splitArguments = Self._splitArgumentsAtLabel(otherArguments)
+      traits = splitArguments.before.map(\.expression)
+      otherArguments = splitArguments.after
     }
 
     // Combine traits from other sources (leading comments and availability
@@ -143,6 +140,16 @@ struct AttributeInfo {
     traits += createCommentTraitExprs(for: declaration)
     if let declaration = declaration.asProtocol((any WithAttributesSyntax).self) {
       traits += createAvailabilityTraitExprs(for: declaration, in: context)
+    }
+
+    // Look for any parameterized arguments and splice them out. This logic is
+    // similar to, but not identical to, the logic to split out traits because
+    // the first parameterized argument *does* have a label, but the first trait
+    // does not have one.
+    if let firstOtherArgument = otherArguments.first, firstOtherArgument.label?.tokenKind == .identifier("arguments") {
+      let splitArguments = Self._splitArgumentsAtLabel(otherArguments.dropFirst())
+      functionArguments = CollectionOfOne(firstOtherArgument) + splitArguments.before
+      otherArguments = splitArguments.after
     }
 
     // Use the start of the test attribute's name as the canonical source
@@ -199,6 +206,44 @@ struct AttributeInfo {
     }
   }
 
+  private func _cartesianProduct(of collectionArguments: [Argument]) -> ExprSyntax {
+    if collectionArguments.isEmpty {
+      preconditionFailure("Passed empty parameterized arguments array to \(#function)")
+    }
+
+    let closureArgsExpr = ClosureShorthandParameterListSyntax {
+      for i in 0 ..< collectionArguments.count {
+        ClosureShorthandParameterSyntax(name: .identifier("__collection\(i)"))
+      }
+    }
+    let resultTupleExpr = TupleExprSyntax {
+      for i in 0 ..< collectionArguments.count {
+        LabeledExprSyntax(expression: "__arg\(raw: i)" as ExprSyntax)
+      }
+    }
+
+    let lastIndex = collectionArguments.count - 1
+    var mappingExpr: ExprSyntax = """
+      __collection\(raw: lastIndex).lazy.map { __arg\(raw: lastIndex) in
+        \(resultTupleExpr)
+      }
+    """
+    for (index, _) in collectionArguments.enumerated().reversed().dropFirst() {
+      mappingExpr = """
+      __collection\(raw: index).lazy.flatMap { __arg\(raw: index) in
+        \(mappingExpr)
+      }
+      """
+    }
+
+    let cartesianProductExpr: ExprSyntax = """
+    __cartesianProduct(\(LabeledExprListSyntax(collectionArguments))) { \(closureArgsExpr) in
+      \(mappingExpr)
+    }
+    """
+    return cartesianProductExpr.formatted().cast(ExprSyntax.self)
+  }
+
   /// Convert this instance to a series of arguments suitable for passing to a
   /// function like `.__type()` or `.__function()`.
   ///
@@ -218,6 +263,14 @@ struct AttributeInfo {
         ArrayElementSyntax(expression: traitExpr)
       }
     }))
+    switch functionArguments.count {
+    case 0:
+      break
+    case 1:
+      arguments += functionArguments
+    default:
+      arguments.append(Argument(label: "arguments", expression: _cartesianProduct(of: functionArguments)))
+    }
     arguments += otherArguments
     arguments.append(Argument(label: "sourceLocation", expression: sourceLocation))
 

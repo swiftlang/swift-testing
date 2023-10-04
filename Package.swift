@@ -113,6 +113,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .unsafeFlags([
         "-strict-concurrency=complete",
         "-require-explicit-sendable",
+        "-Xfrontend", "-dump-macro-expansions",
 
         "-Xfrontend", "-define-availability", "-Xfrontend", "_clockAPI:macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0",
         "-Xfrontend", "-define-availability", "-Xfrontend", "_distantFuture:macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0",

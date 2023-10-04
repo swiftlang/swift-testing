@@ -435,7 +435,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
 
     // Parse the @Test attribute.
     let attributeInfo = AttributeInfo(byParsing: testAttribute, on: functionDecl, in: context)
-    if attributeInfo.hasFunctionArguments != !functionDecl.signature.parameterClause.parameters.isEmpty {
+    if attributeInfo.functionArguments.isEmpty != functionDecl.signature.parameterClause.parameters.isEmpty {
       // The attribute has arguments but the function does not (or vice versa.)
       // Note we do not consider the count of each argument list because tuple
       // destructuring means the counts might not match but the function is

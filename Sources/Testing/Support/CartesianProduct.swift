@@ -22,33 +22,31 @@
 ///   - Bug: The testing library should support variadic generics.
 ///     ([103416861](rdar://103416861))
 /// }
-struct CartesianProduct<C1, C2>: LazySequenceProtocol where C1: Collection, C2: Collection {
-  fileprivate var collection1: C1
-  fileprivate var collection2: C2
+public struct __CartesianProduct<S>: LazySequenceProtocol where S: LazySequenceProtocol {
+  private var _sequenceGenerator: @Sendable () -> S
+
+  fileprivate init(underestimatedCount: Int, sequenceGenerator: @escaping @Sendable () -> S) {
+    self.underestimatedCount = underestimatedCount
+    _sequenceGenerator = sequenceGenerator
+  }
 
   // MARK: - Sequence
 
-  typealias Element = (C1.Element, C2.Element)
+  public typealias Element = S.Element
 
-  func makeIterator() -> some IteratorProtocol<Element> {
-    collection1.lazy.flatMap { e1 in
-      collection2.lazy.map { e2 in
-        (e1, e2)
-      }
-    }.makeIterator()
+  public func makeIterator() -> some IteratorProtocol<Element> {
+    _sequenceGenerator().makeIterator()
   }
 
-  var underestimatedCount: Int {
-    let (result, overflowed) = collection1.underestimatedCount
-      .multipliedReportingOverflow(by: collection2.underestimatedCount)
-    if overflowed {
-      return .max
-    }
-    return result
-  }
+  public private(set) var underestimatedCount: Int
 }
 
-extension CartesianProduct: Sendable where C1: Sendable, C2: Sendable {}
+extension __CartesianProduct: Sendable where S: Sendable {}
+
+private func _multiplyCount(_ count: inout Int, by newCount: Int) {
+  let (result, overflowed) = count.multipliedReportingOverflow(by: newCount)
+  count = overflowed ? .max : result
+}
 
 /// Creates the Cartesian product of two collections.
 ///
@@ -68,6 +66,11 @@ extension CartesianProduct: Sendable where C1: Sendable, C2: Sendable {}
 ///   - Bug: The testing library should support variadic generics.
 ///     ([103416861](rdar://103416861))
 /// }
-func cartesianProduct<C1, C2>(_ collection1: C1, _ collection2: C2) -> CartesianProduct<C1, C2> where C1: Collection, C2: Collection {
-  CartesianProduct(collection1: collection1, collection2: collection2)
+public func __cartesianProduct<each C, S>(arguments collections: repeat each C, sequenceGenerator: @escaping @Sendable (repeat each C) -> S) -> __CartesianProduct<S> where repeat each C: Collection & Sendable {
+  var underestimatedCount = 1
+  repeat _multiplyCount(&underestimatedCount, by: (each collections).underestimatedCount)
+  let sequenceGenerator: @Sendable () -> S = {
+    sequenceGenerator(repeat each collections)
+  }
+  return __CartesianProduct(underestimatedCount: underestimatedCount, sequenceGenerator: sequenceGenerator)
 }

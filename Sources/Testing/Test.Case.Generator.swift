@@ -87,22 +87,20 @@ extension Test.Case {
     }
 
     /// Initialize an instance of this type that iterates over the specified
-    /// collections of argument values.
+    /// collection of argument values.
     ///
     /// - Parameters:
-    ///   - collection1: The first collection of argument values for which test
-    ///     cases should be generated.
-    ///   - collection2: The second collection of argument values for which test
-    ///     cases should be generated.
+    ///   - collection: The collection of argument values for which test cases
+    ///     should be generated.
     ///   - testFunction: The test function to which each generated test case
     ///     passes an argument value from `collection`.
-    init<C1, C2>(
-      arguments collection1: C1, _ collection2: C2,
-      testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
-    ) where S == CartesianProduct<C1, C2> {
-      self.init(sequence: cartesianProduct(collection1, collection2)) { index, element in
-        Test.Case(index: index, arguments: [element.0, element.1]) {
-          try await testFunction(element.0, element.1)
+    init<C>(
+      arguments collection: __CartesianProduct<C>,
+      testFunction: @escaping @Sendable (S.Element) async throws -> Void
+    ) where S == __CartesianProduct<C> {
+      self.init(sequence: collection) { index, element in
+        Test.Case(index: index, arguments: [element]) {
+          try await testFunction(element)
         }
       }
     }

@@ -237,6 +237,26 @@ extension Test {
     let parameters = parameters.map(ParameterInfo.init)
     return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
+
+  /// Create an instance of ``Test`` for a parameterized function.
+  ///
+  /// - Warning: This function is used to implement the `@Test` macro. Do not
+  ///   call it directly.
+  public static func __function<C>(
+    named testFunctionName: String,
+    in containingType: Any.Type?,
+    xcTestCompatibleSelector: __XCTestCompatibleSelector?,
+    displayName: String? = nil,
+    traits: [any TestTrait],
+    arguments collection: __CartesianProduct<C>,
+    sourceLocation: SourceLocation,
+    parameters: [__ParameterInfo],
+    testFunction: @escaping @Sendable (C.Element) async throws -> Void
+  ) -> Self where __CartesianProduct<C>: Sendable, __CartesianProduct<C>.Element: Sendable {
+    let caseGenerator = Case.Generator(arguments: collection, testFunction: testFunction)
+    let parameters = parameters.map(ParameterInfo.init)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+  }
 }
 
 // MARK: - @Test(arguments:_:)
@@ -346,26 +366,6 @@ extension Test {
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable
 
 extension Test {
-  /// Create an instance of ``Test`` for a parameterized function.
-  ///
-  /// - Warning: This function is used to implement the `@Test` macro. Do not
-  ///   call it directly.
-  public static func __function<C1, C2>(
-    named testFunctionName: String,
-    in containingType: Any.Type?,
-    xcTestCompatibleSelector: __XCTestCompatibleSelector?,
-    displayName: String? = nil,
-    traits: [any TestTrait],
-    arguments collection1: C1, _ collection2: C2,
-    sourceLocation: SourceLocation,
-    parameters: [__ParameterInfo],
-    testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
-  ) -> Self where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
-    let caseGenerator = Case.Generator(arguments: collection1, collection2, testFunction: testFunction)
-    let parameters = parameters.map(ParameterInfo.init)
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
-  }
-
   /// Create an instance of ``Test`` for a parameterized function.
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not

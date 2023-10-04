@@ -19,10 +19,16 @@ struct CartesianProductTests {
   /// The first collection in the Cartesian product is the uppercase English
   /// Latin alphabet, shuffled. The second collection contains 100 randomly
   /// generated positive integers.
-  func computeCartesianProduct() -> (c1: [Character], c2: [Int], product: CartesianProduct<[Character], [Int]>) {
+  func computeCartesianProduct<S>() -> (c1: [Character], c2: [Int], product: __CartesianProduct<S>) where S: LazySequenceProtocol, S.Element == (Character, Int) {
     let c1 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".shuffled()
     let c2 = (0 ..< 100).map { _ in Int.random(in: 1 ... .max ) }
-    let product = cartesianProduct(c1, c2)
+    let product = __cartesianProduct(arguments: c1, c2) { c1, c2 in
+      c1.lazy.flatMap { e1 in
+        c2.lazy.map { e2 in
+          (e1, e2)
+        }
+      }
+    }
     return (c1, c2, product)
   }
 
