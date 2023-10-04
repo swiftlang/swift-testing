@@ -134,7 +134,7 @@ extension Runner.Plan {
   /// - Returns: Whether or not the specified test is selected. If
   ///   `selectedTests` is `nil`, `test` is considered selected if it is not
   ///   hidden.
-  private static func _isTestIncluded(_ test: Test, using predicate: Configuration.TestPredicate?) -> Bool {
+  private static func _isTestIncluded(_ test: Test, using predicate: Configuration.TestFilter?) -> Bool {
     guard let predicate else {
       return !test.isHidden
     }
@@ -161,7 +161,7 @@ extension Runner.Plan {
     // them, in which case it will be .recordIssue().
     var testGraph = Graph<String, Test?>()
     var actionGraph = Graph<String, Action>(value: .run)
-    for test in tests where _isTestIncluded(test, using: configuration.testSelectionFilter) {
+    for test in tests where _isTestIncluded(test, using: configuration.testFilter) {
       let idComponents = test.id.keyPathRepresentation
       testGraph.insertValue(test, at: idComponents)
       actionGraph.insertValue(.run, at: idComponents, intermediateValue: .run)

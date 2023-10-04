@@ -29,9 +29,10 @@ struct PlanTests {
       testB,
     ]
 
+    let selection = Test.ID.Selection(testIDs: [innerTestType.id])
     var configuration = Configuration()
-    configuration.testSelectionFilter = { test in
-      Test.ID.Selection(testIDs: [innerTestType.id]).contains(test)
+    configuration.testFilter = { test in
+        selection.contains(test)
     }
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
@@ -56,8 +57,9 @@ struct PlanTests {
     ]
 
     var configuration = Configuration()
-    configuration.testSelectionFilter = { test in
-      Test.ID.Selection(testIDs: [innerTestType.id, outerTestType.id]).contains(test)
+    let selection = Test.ID.Selection(testIDs: [innerTestType.id, outerTestType.id])
+    configuration.testFilter = { test in
+        selection.contains(test)
     }
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
@@ -77,7 +79,7 @@ struct PlanTests {
     let tests = [outerTestType, deeplyNestedTest]
 
     var configuration = Configuration()
-    configuration.testSelectionFilter = { test in
+    configuration.testFilter = { test in
       Test.ID.Selection(testIDs: [outerTestType.id, deeplyNestedTest.id]).contains(test)
     }
 
@@ -97,8 +99,9 @@ struct PlanTests {
     let tests = [testSuiteA, testSuiteB, testSuiteC, testFuncX]
 
     var configuration = Configuration()
-    configuration.testSelectionFilter = { test in
-      Test.ID.Selection(testIDs: [testSuiteA.id]).contains(test)
+    let selection = Test.ID.Selection(testIDs: [testSuiteA.id])
+    configuration.testFilter = { test in
+      selection.contains(test)
     }
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)

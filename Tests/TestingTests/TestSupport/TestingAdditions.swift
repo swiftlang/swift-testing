@@ -67,8 +67,9 @@ func runTest(for containingType: Any.Type, configuration: Configuration = .init(
 /// If no test is found representing `containingType`, nothing is run.
 func runTestFunction(named name: String, in containingType: Any.Type, configuration: Configuration = .init()) async {
   var configuration = configuration
-  configuration.testSelectionFilter = { test in
-    Test.ID.Selection(testIDs: [Test.ID(type: containingType).child(named: name)]).contains(test)
+  let testID = Test.ID.Selection(testIDs: [Test.ID(type: containingType).child(named: name)])
+  configuration.testFilter = { test in
+    testID.contains(test)
   }
 
   let runner = await Runner(configuration: configuration)
@@ -92,8 +93,9 @@ extension Runner {
     let moduleName = String(fileID[..<fileID.lastIndex(of: "/")!])
 
     var configuration = configuration
-    configuration.testSelectionFilter = { test in
-      Test.ID.Selection(testIDs: [Test.ID(moduleName: moduleName, nameComponents: [testName], sourceLocation: nil)]).contains(test)
+    let selection = Test.ID.Selection(testIDs: [Test.ID(moduleName: moduleName, nameComponents: [testName], sourceLocation: nil)])
+    configuration.testFilter = { test in
+        selection.contains(test)
     }
 
     await self.init(configuration: configuration)
@@ -108,8 +110,9 @@ extension Runner.Plan {
   ///   - configuration: The configuration to use for planning.
   init(selecting containingType: Any.Type, configuration: Configuration = .init()) async {
     var configuration = configuration
-    configuration.testSelectionFilter = { test in
-      Test.ID.Selection(testIDs: [Test.ID(type: containingType)]).contains(test)
+    let selection = Test.ID.Selection(testIDs: [Test.ID(type: containingType)])
+    configuration.testFilter = { test in
+      selection.contains(test)
     }
 
     await self.init(configuration: configuration)

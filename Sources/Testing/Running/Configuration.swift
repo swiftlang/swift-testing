@@ -137,16 +137,25 @@ public struct Configuration: Sendable {
 
   // MARK: - Test selection
 
-  // TODO: Write DocC documenting this typealias.
-  //
-  // (Note: this typealias may also be used to eventually implement a similar
-  // filter property for **skipped** tests. But that doesn't need to be
-  // mentioned in the DocC.)
-  public typealias TestPredicate = @Sendable (Test) -> Bool
+  /// A function that handles filtering tests.
+  ///
+  /// - Parameters:
+  ///   - test: An test that needs to be filtered.
+  /// - Returns: A Boolean value representing if the test satisfied the filter.
+  public typealias TestFilter = @Sendable (Test) -> Bool
 
-  // TODO: Choose better name for this property.
-  //
-  // TODO: Write DocC documenting this property, explaining its purpose and
-  // potentially including an example of its most common usage patterns.
-  public var testSelectionFilter: TestPredicate?
+  /// The test filter to which tests should be filtered when run.
+  public var testFilter: TestFilter?
+
+  /// The granularity to enforce test filtering.
+  /// 
+  /// By default, all tests are run and no filter is set.
+  @_spi(ExperimentalTestFilter)
+  public mutating func setTestFilter(toMatch selection: Set<Test.ID>?) {
+      if let selectedTests = selection.map({ Test.ID.Selection(testIDs: $0) }) {
+          self.testFilter = { test in
+              selectedTests.contains(test)
+          }
+      }
+  }
 }
