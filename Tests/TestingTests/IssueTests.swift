@@ -1061,5 +1061,81 @@ final class IssueTests: XCTestCase {
 
     await fulfillment(of: [rhsCalled], timeout: 0.0)
   }
+
+  func testOptionalOperand() async {
+    let expectationFailed = expectation(description: "Expectation failed")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      if case let .expectationFailed(expectation) = issue.kind,
+         let desc = expectation.expandedExpressionDescription {
+        expectationFailed.fulfill()
+        XCTAssertTrue(desc.contains("7"))
+        XCTAssertFalse(desc.contains("Optional(7)"))
+      }
+    }
+
+    await Test {
+      let nonNilOptional: Int? = 7
+      #expect(nonNilOptional == 8)
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [expectationFailed], timeout: 0.0)
+  }
+
+  func testNilOptionalOperand() async {
+    let expectationFailed = expectation(description: "Expectation failed")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      if case let .expectationFailed(expectation) = issue.kind,
+         let desc = expectation.expandedExpressionDescription {
+        expectationFailed.fulfill()
+        XCTAssertTrue(desc.contains("nil"))
+      }
+    }
+
+    await Test {
+      let nilOptional: Int? = nil
+      #expect(nilOptional == 8)
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [expectationFailed], timeout: 0.0)
+  }
+
+  func testCustomExpectationFailureRepresentable() async {
+    struct Food: CustomExpectationFailureRepresentable {
+      func addSeasoning() -> Bool { false }
+      var descriptionInExpectationFailure: String {
+        "Delicious Food, Yay!"
+      }
+    }
+
+    let expectationFailed = expectation(description: "Expectation failed")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      if case let .expectationFailed(expectation) = issue.kind,
+         let desc = expectation.expandedExpressionDescription {
+        expectationFailed.fulfill()
+        XCTAssertTrue(desc.contains("Delicious Food, Yay!"))
+      }
+    }
+
+    await Test {
+      #expect(Food().addSeasoning())
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [expectationFailed], timeout: 0.0)
+  }
 }
 #endif

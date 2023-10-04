@@ -38,6 +38,7 @@ built-in expectation APIs.
 
 - ``Expectation``
 - ``ExpectationFailedError``
+- ``CustomExpectationFailureRepresentable``
 - ``SourceCode``
 
 ### Representing source locations

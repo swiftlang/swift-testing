@@ -121,8 +121,8 @@ public struct SourceCode: Sendable {
 /// to `StringProtocol`, returns the string wrapped in double quotes. Otherwise,
 /// returns the output of calling passing `value` to `String(describing:)`.
 func formattedDescription(of value: some Any) -> String {
-  if value is _OptionalNilComparisonType {
-    "nil"
+  if let value = value as? any CustomExpectationFailureRepresentable {
+    value.descriptionInExpectationFailure
   } else if value is any StringProtocol {
     "\"\(value)\""
   } else {
