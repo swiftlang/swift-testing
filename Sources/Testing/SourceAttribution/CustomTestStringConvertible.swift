@@ -90,26 +90,6 @@ public protocol CustomTestStringConvertible {
 }
 
 extension String {
-  /// Describe a case from an enumeration declared in C, Objective-C, or C++.
-  ///
-  /// - Parameters:
-  ///   - value: The value to describe.
-  ///
-  /// - Returns: A description of `value`, or `nil` if `value` does not appear
-  ///   to be a C enumeration case.
-  private static func _describeCEnumCase(_ value: some RawRepresentable) -> String? {
-    // If the default description equals the name of the type of the value, that
-    // type conforms to RawRepresentable, and that type is an enum, then we're
-    // presumably dealing with a C enumeration. Note that String(describing:)
-    // will produce a different string for `some RawRepresentable` than for
-    // `Any`, so we're casting back to `Any` here in order to do the comparison.
-    let typeDesc = String(describing: type(of: value))
-    if String(describing: value as Any) == typeDesc {
-      return "\(typeDesc)(rawValue: \(String(describingForTest: value.rawValue)))"
-    }
-    return nil
-  }
-
   /// Initialize this instance so that it can be presented in a test's output.
   ///
   /// - Parameters:
@@ -119,20 +99,25 @@ extension String {
   ///
   /// - ``CustomTestStringConvertible``
   public init(describingForTest value: Any) {
+    lazy var valueType = type(of: value)
     if let value = value as? any CustomTestStringConvertible {
       self = value.testDescription
     } else if let value = value as? any CustomStringConvertible {
       self.init(describing: value)
-    } else if Mirror(reflecting: value).displayStyle == .enum {
-      if let value = value as? any RawRepresentable, let cEnumDescription = Self._describeCEnumCase(value) {
-        self = cEnumDescription
-      } else {
-        // Add a leading period to enumeration cases to more closely match their
-        // source representation. This cannot be done generically because
-        // enumerations do not universally or automatically conform to some
-        // protocol that can be detected at runtime.
-        self = ".\(value)"
-      }
+    } else if let value = value as? any CustomDebugStringConvertible {
+      self.init(reflecting: value)
+    } else if let value = value as? any RawRepresentable, isImportedFromC(valueType) {
+      // Present raw-representable C types, which we assume to be imported
+      // enumerations, in a consistent fashion. The case names of C enumerations
+      // are not statically visible, so instead present the enumeration type's
+      // name along with the raw value of `value`.
+      self = "\(type(of: value))(rawValue: \(String(describingForTest: value.rawValue)))"
+    } else if isSwiftEnumeration(valueType) {
+      // Add a leading period to enumeration cases to more closely match their
+      // source representation. This cannot be done generically because
+      // enumerations do not universally or automatically conform to some
+      // protocol that can be detected at runtime.
+      self = ".\(value)"
     } else {
       // Use the generic description of the value.
       self.init(describing: value)
