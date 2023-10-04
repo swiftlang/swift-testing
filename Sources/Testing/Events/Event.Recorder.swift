@@ -84,6 +84,12 @@ extension Event {
 
         /// The number of known issues recorded for the test.
         var knownIssueCount = 0
+
+        /// Any bugs associated with this test.
+        ///
+        /// The value of this property is `nil` unless an issue has been
+        /// recorded for the corresponding test.
+        var associatedBugs: [Bug]?
       }
 
       /// Data tracked on a per-test basis.
@@ -529,6 +535,9 @@ extension Event.Recorder {
           } else {
             testData.issueCount += 1
           }
+          if testData.associatedBugs == nil {
+            testData.associatedBugs = test.associatedBugs
+          }
           context.testData.insertValue(testData, at: id)
         }
       }
@@ -591,7 +600,7 @@ extension Event.Recorder {
 
       if issues.issueCount > 0 {
         let symbol = _Symbol.fail.stringValue(options: options)
-        return "\(symbol) Test run with \(testCount.counting("test")) failed after \(duration)\(issues.description).\n"
+        return "\(symbol) Test run with \(testCount.counting("test")) failed after \(duration)\(issues.description).\n\(_insights(from: context, options: options))"
       } else {
         let symbol = _Symbol.pass(hasKnownIssues: issues.knownIssueCount > 0).stringValue(options: options)
         return "\(symbol) Test run with \(testCount.counting("test")) passed after \(duration)\(issues.description).\n"
@@ -599,6 +608,62 @@ extension Event.Recorder {
     }
 
     return nil
+  }
+
+  private func _insights(from context: Context, options: Set<Event.Recorder.Option>) -> String {
+    var result = [String]()
+
+    var arrowCharacter = "\u{21B3}" // DOWNWARDS ARROW WITH TIP RIGHTWARDS
+#if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
+    if options.contains(.useSFSymbols) {
+      arrowCharacter = "\u{100135}" // arrow.turn.down.right
+      if options.contains(.useANSIEscapeCodes) {
+        arrowCharacter += " "
+      }
+    }
+#endif
+
+    let associatedBugs = context.testData
+      .compactMap { testData in
+        testData.value?.associatedBugs
+      }.flatMap { $0 }
+    for bug in Set(associatedBugs).sorted(by: <) {
+      switch bug.relationship {
+      case .verifiesFix:
+        result.append("\(arrowCharacter) Bug \(bug.identifier) is reproducing when it was expected to be fixed.\n")
+      case .reproducesBug, .uncoveredBug:
+        result.append("\(arrowCharacter) Bug \(bug.identifier) is still reproducing.\n")
+      default:
+        break
+      }
+    }
+
+    // If ANSI escape codes are enabled, dim the comments relative to the
+    // primary test output.
+    if options.contains(.useANSIEscapeCodes) {
+      result = result.map { "\(_ansiEscapeCodePrefix)91m\($0)\(_resetANSIEscapeCode)" }
+    }
+
+    if !result.isEmpty {
+      var lightbulbCharacter = "\u{263C}" // Unicode: WHITE SUN WITH RAYS
+      if options.contains(.useSFSymbols) {
+        lightbulbCharacter = "\u{1006ED}" // SF Symbols: lightbulb
+        if options.contains(.useANSIEscapeCodes) {
+          lightbulbCharacter += " "
+        }
+      }
+      if options.contains(.useANSIEscapeCodes) {
+        lightbulbCharacter = "\(_ansiEscapeCodePrefix)93m\(lightbulbCharacter)\(_resetANSIEscapeCode)"
+      }
+      var title = "Insights"
+      if options.contains(.useANSIEscapeCodes) {
+        title = "\(_ansiEscapeCodePrefix)1m\(title)\(_resetANSIEscapeCode)\n"
+      }
+      title = "\n\(lightbulbCharacter) \(title)"
+      result.insert(title, at: result.startIndex)
+    }
+
+    return result.joined()
   }
 
   /// Record the specified event by generating a representation of it as a

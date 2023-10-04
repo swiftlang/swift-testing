@@ -81,4 +81,12 @@ struct BugTests {
     let traits: Set<Bug> = [.bug(12345), .bug(12345), .bug(12345, relationship: .uncoveredBug), .bug("67890")]
     #expect(traits.count == 2)
   }
+
+  @Test(.bug(12345, relationship: .verifiesFix)) func f() {
+    #expect(1 == 2)
+  }
+
+  @Test(.bug(123456789, relationship: .reproducesBug)) func g() {
+    #expect(1 == 2)
+  }
 }

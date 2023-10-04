@@ -75,3 +75,10 @@ func createSourceCodeExprForFunctionCall(_ value: (some SyntaxProtocol)?, _ func
 
   return ".__functionCall(\(arguments))"
 }
+
+struct S {
+  internal init<Declaration: DeclSyntaxProtocol>(_ declaration: Declaration) throws {
+    guard let property = declaration.as(VariableDeclSyntax.self) else { fatalError() }
+    _ = property
+  }
+}
