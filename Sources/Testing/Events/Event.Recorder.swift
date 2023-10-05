@@ -391,7 +391,7 @@ extension Test.Case {
   fileprivate func labeledArguments(using parameters: [Test.ParameterInfo]) -> String {
     arguments(pairedWith: parameters).lazy
       .map { parameter, argument in
-        let argumentDescription = formattedDescription(of: argument)
+        let argumentDescription = String(describingForTest: argument)
 
         let label = parameter.secondName ?? parameter.firstName
         guard label != "_" else {
