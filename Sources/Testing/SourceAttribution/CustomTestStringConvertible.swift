@@ -25,11 +25,8 @@
 /// For example, consider the following type:
 ///
 /// ```swift
-/// enum Food {
-///   case paella
-///   case oden
-///   case ragu
-///   ...
+/// enum Food: CaseIterable {
+///   case paella, oden, ragu
 /// }
 /// ```
 ///
@@ -37,7 +34,7 @@
 /// function:
 ///
 /// ```swift
-/// @Test(arguments: [.paella, .oden, .ragu])
+/// @Test(arguments: Food.allCases)
 /// func isDelicious(_ food: Food) { ... }
 /// ```
 ///

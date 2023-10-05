@@ -47,7 +47,7 @@ enum Food {
   case burger, iceCream, burrito, noodleBowl, kebab
 }
 
-@Test("All foods available", arguments: [.burger, .iceCream, .burrito, .noodleBowl, .kebab])
+@Test("All foods available", arguments: [Food.burger, .iceCream, .burrito, .noodleBowl, .kebab])
 func foodAvailable(_ food: Food) async throws {
   let foodTruck = FoodTruck(selling: food)
   #expect(await foodTruck.cook(food))
