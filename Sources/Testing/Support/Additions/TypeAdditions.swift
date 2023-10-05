@@ -29,7 +29,7 @@ func nameComponents(of type: Any.Type) -> [String] {
 /// - Returns: Whether or not the type is a Swift `enum` type.
 ///
 /// Per the [Swift mangling ABI](https://github.com/apple/swift/blob/main/docs/ABI/Mangling.rst),
-/// enumeration types are mangled as `'O'`.
+/// enumeration types are mangled as `"O"`.
 func isSwiftEnumeration(_ type: Any.Type) -> Bool {
   guard let mangledTypeName = _mangledTypeName(type), let lastCharacter = mangledTypeName.last else {
     return false

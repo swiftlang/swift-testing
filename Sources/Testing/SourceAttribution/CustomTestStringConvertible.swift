@@ -98,8 +98,10 @@ extension String {
   /// ## See Also
   ///
   /// - ``CustomTestStringConvertible``
-  public init(describingForTest value: Any) {
-    lazy var valueType = type(of: value)
+  public init<T>(describingForTest value: T) {
+    // The mangled type name SPI doesn't handle generic types very well, so we
+    // ask for the dynamic type of `value` (type(of:)) instead of just T.self.
+    lazy var valueType = type(of: value as Any)
     if let value = value as? any CustomTestStringConvertible {
       self = value.testDescription
     } else if let value = value as? any CustomStringConvertible {
@@ -111,12 +113,10 @@ extension String {
       // enumerations, in a consistent fashion. The case names of C enumerations
       // are not statically visible, so instead present the enumeration type's
       // name along with the raw value of `value`.
-      self = "\(type(of: value))(rawValue: \(String(describingForTest: value.rawValue)))"
+      self = "\(valueType)(rawValue: \(String(describingForTest: value.rawValue)))"
     } else if isSwiftEnumeration(valueType) {
       // Add a leading period to enumeration cases to more closely match their
-      // source representation. This cannot be done generically because
-      // enumerations do not universally or automatically conform to some
-      // protocol that can be detected at runtime.
+      // source representation. SEE: _adHocPrint_unlocked() in the stdlib.
       self = ".\(value)"
     } else {
       // Use the generic description of the value.
