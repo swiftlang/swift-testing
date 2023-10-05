@@ -98,7 +98,7 @@ extension String {
   /// ## See Also
   ///
   /// - ``CustomTestStringConvertible``
-  public init<T>(describingForTest value: T) {
+  public init(describingForTest value: some Any) {
     // The mangled type name SPI doesn't handle generic types very well, so we
     // ask for the dynamic type of `value` (type(of:)) instead of just T.self.
     lazy var valueType = type(of: value as Any)
