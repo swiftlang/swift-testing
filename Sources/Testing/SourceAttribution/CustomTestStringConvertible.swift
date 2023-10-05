@@ -45,9 +45,9 @@
 /// the default description of a value may not be adequately descriptive:
 ///
 /// ```
-/// ◇ Passing argument food → .paella to isDelicious(\_:)
-/// ◇ Passing argument food → .oden to isDelicious(\_:)
-/// ◇ Passing argument food → .ragu to isDelicious(\_:)
+/// ◇ Passing argument food → .paella to isDelicious(_:)
+/// ◇ Passing argument food → .oden to isDelicious(_:)
+/// ◇ Passing argument food → .ragu to isDelicious(_:)
 /// ```
 ///
 /// By adopting ``CustomTestStringConvertible``, customized descriptions can be
@@ -72,9 +72,9 @@
 /// ``testDescription`` property:
 ///
 /// ```
-/// ◇ Passing argument food → paella valenciana to isDelicious(\_:)
-/// ◇ Passing argument food → おでん to isDelicious(\_:)
-/// ◇ Passing argument food → ragù alla bolognese to isDelicious(\_:)
+/// ◇ Passing argument food → paella valenciana to isDelicious(_:)
+/// ◇ Passing argument food → おでん to isDelicious(_:)
+/// ◇ Passing argument food → ragù alla bolognese to isDelicious(_:)
 /// ```
 ///
 /// ## See Also
