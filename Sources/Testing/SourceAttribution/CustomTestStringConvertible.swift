@@ -106,6 +106,8 @@ extension String {
       self = value.testDescription
     } else if let value = value as? any CustomStringConvertible {
       self.init(describing: value)
+    } else if let value = value as? any TextOutputStreamable {
+      self.init(describing: value)
     } else if let value = value as? any CustomDebugStringConvertible {
       self.init(reflecting: value)
     } else if let value = value as? any RawRepresentable, isImportedFromC(valueType) {
