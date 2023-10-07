@@ -94,7 +94,7 @@ public func confirmation<R>(
   _ comment: Comment? = nil,
   expectedCount: Int = 1,
   fileID: String = #fileID,
-  filePath: StaticString = #filePath,
+  filePath: String = #filePath,
   line: Int = #line,
   column: Int = #column,
   _ body: (Confirmation) async throws -> R

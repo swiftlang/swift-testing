@@ -65,7 +65,7 @@ public struct SourceLocation: Sendable {
   /// - Warning: This property is provided temporarily to aid in integrating the
   ///   testing library with existing tools such as Swift Package Manager. It
   ///   will be removed in a future release.
-  public var _filePath: StaticString
+  public var _filePath: String
 
   /// The line in the source file.
   public var line: Int {
@@ -83,7 +83,7 @@ public struct SourceLocation: Sendable {
 
   public init(
     fileID: String = #fileID,
-    filePath: StaticString = #filePath,
+    filePath: String = #filePath,
     line: Int = #line,
     column: Int = #column
   ) {

@@ -68,10 +68,10 @@ struct SourceLocationTests {
   @Test("SourceLocation._filePath property")
   func sourceLocationFilePath() {
     var sourceLocation = SourceLocation()
-    #expect(String(describing: sourceLocation._filePath) == #filePath)
+    #expect(sourceLocation._filePath == #filePath)
 
     sourceLocation._filePath = "A"
-    #expect(String(describing: sourceLocation._filePath) == "A")
+    #expect(sourceLocation._filePath == "A")
   }
 
   @Test("SourceLocation comparisons")

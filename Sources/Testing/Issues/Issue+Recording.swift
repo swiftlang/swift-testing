@@ -86,7 +86,7 @@ extension Issue {
   @discardableResult public static func record(
     _ comment: Comment? = nil,
     fileID: String = #fileID,
-    filePath: StaticString = #filePath,
+    filePath: String = #filePath,
     line: Int = #line,
     column: Int = #column
   ) -> Self {
@@ -113,7 +113,7 @@ extension Issue {
     _ error: any Error,
     _ comment: Comment? = nil,
     fileID: String = #fileID,
-    filePath: StaticString = #filePath,
+    filePath: String = #filePath,
     line: Int = #line,
     column: Int = #column
   ) -> Self {
