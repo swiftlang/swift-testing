@@ -31,9 +31,7 @@ struct PlanTests {
 
     let selection = Test.ID.Selection(testIDs: [innerTestType.id])
     var configuration = Configuration()
-    configuration.testFilter = { test in
-        selection.contains(test)
-    }
+    configuration.setTestFilter(toMatch: selection)
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
     #expect(plan.steps.contains(where: { $0.test == outerTestType }))
@@ -58,9 +56,7 @@ struct PlanTests {
 
     var configuration = Configuration()
     let selection = Test.ID.Selection(testIDs: [innerTestType.id, outerTestType.id])
-    configuration.testFilter = { test in
-        selection.contains(test)
-    }
+    configuration.setTestFilter(toMatch: selection)
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
     let planTests = plan.steps.map(\.test)

@@ -130,15 +130,16 @@ extension Runner.Plan {
   ///   - test: The test to query.
   ///   - selectedTests: The selected test IDs to use in determining whether
   ///     `test` is selected, if one is configured.
+  ///   - filter: The filter to decide if the test is included.
   ///
   /// - Returns: Whether or not the specified test is selected. If
   ///   `selectedTests` is `nil`, `test` is considered selected if it is not
   ///   hidden.
-  private static func _isTestIncluded(_ test: Test, using predicate: Configuration.TestFilter?) -> Bool {
-    guard let predicate else {
+  private static func _isTestIncluded(_ test: Test, using filter: Configuration.TestFilter?) -> Bool {
+    guard let filter else {
       return !test.isHidden
     }
-    return predicate(test)
+    return filter(test)
   }
 
   /// Construct a graph of runner plan steps for the specified tests.

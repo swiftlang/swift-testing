@@ -150,12 +150,17 @@ public struct Configuration: Sendable {
   /// The granularity to enforce test filtering.
   /// 
   /// By default, all tests are run and no filter is set.
-  @_spi(ExperimentalTestFilter)
   public mutating func setTestFilter(toMatch selection: Set<Test.ID>?) {
-      if let selectedTests = selection.map({ Test.ID.Selection(testIDs: $0) }) {
-          self.testFilter = { test in
-              selectedTests.contains(test)
-          }
-      }
+      self.setTestFilter(toMatch: selection.map({ Test.ID.Selection(testIDs: $0) }))
+  }
+    
+  mutating func setTestFilter(toMatch selection: Test.ID.Selection?) {
+    guard let selectedTests = selection else {
+        self.testFilter = nil
+        return
+    }
+    self.testFilter = { test in
+        selectedTests.contains(test)
+    }
   }
 }

@@ -94,9 +94,7 @@ extension Runner {
 
     var configuration = configuration
     let selection = Test.ID.Selection(testIDs: [Test.ID(moduleName: moduleName, nameComponents: [testName], sourceLocation: nil)])
-    configuration.testFilter = { test in
-        selection.contains(test)
-    }
+    configuration.setTestFilter(toMatch: selection)
 
     await self.init(configuration: configuration)
   }
