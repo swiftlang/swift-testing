@@ -294,10 +294,6 @@ extension Test.ID.Selection {
   }
 }
 
-// TODO: Provide some convenience utilities for our own unit tests to streamline
-// creating a `Configuration` consisting of a selected tests predicate based on
-// a `Test.ID.Selection` and eliminate boilerplate.
-
 /// Whether or not to enable "noisy" tests that produce a lot of output.
 ///
 /// This flag can be used with `.enabled(if:)` to disable noisy tests unless the
