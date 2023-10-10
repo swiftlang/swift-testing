@@ -12,15 +12,35 @@
 
 /// A type representing a backtrace or stack trace.
 public struct Backtrace: Sendable {
+  /// A type describing an address in a backtrace.
+  ///
+  /// If a `nil` address is present in a backtrace, it is represented as `0`.
+  public typealias Address = UInt64
+
   /// The addresses in this backtrace.
-  public var addresses: [UnsafeRawPointer?]
+  public var addresses: [Address]
 
   /// Initialize an instance of this type with the specified addresses.
   ///
   /// - Parameters:
   ///   - addresses: The addresses in the backtrace.
-  public init(addresses: some Sequence<UnsafeRawPointer?>) {
+  public init(addresses: some Sequence<Address>) {
     self.addresses = Array(addresses)
+  }
+
+  /// Initialize an instance of this type with the specified addresses.
+  ///
+  /// - Parameters:
+  ///   - addresses: The addresses in the backtrace.
+  ///
+  /// The pointers in `addresses` are converted to instances of `Address`. Any
+  /// `nil` addresses are represented as `0`.
+  public init(addresses: some Sequence<UnsafeRawPointer?>) {
+    self.init(
+      addresses: addresses.lazy
+        .map(UInt.init(bitPattern:))
+        .map(Address.init)
+    )
   }
 
   /// Get the current backtrace.
@@ -64,6 +84,22 @@ public struct Backtrace: Sendable {
 // MARK: - Equatable, Hashable
 
 extension Backtrace: Equatable, Hashable {}
+
+// MARK: - Codable
+
+// Explicitly implement Codable support by encoding and decoding the addresses
+// array directly. Doing this avoids an extra level of indirection in the
+// encoded form of a backtrace.
+
+extension Backtrace: Codable {
+  public init(from decoder: any Decoder) throws {
+    try self.init(addresses: [Address](from: decoder))
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    try addresses.encode(to: encoder)
+  }
+}
 
 // MARK: - Backtraces for thrown errors
 
