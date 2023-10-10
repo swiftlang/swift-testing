@@ -122,7 +122,6 @@ extension Runner.Plan {
     }
   }
 
-  // TODO: Update DocC
   /// Determine if a test is included in the selected test IDs, if any are
   /// configured.
   ///

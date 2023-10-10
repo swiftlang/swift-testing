@@ -12,8 +12,6 @@
 
 @Suite("Runner.Plan Tests")
 struct PlanTests {
-  // TODO: Potentially update the names of tests below which reference "selected
-  // tests" based on naming changes elsewhere.
 
   @Test("Selected tests")
   func selectedTests() async throws {
