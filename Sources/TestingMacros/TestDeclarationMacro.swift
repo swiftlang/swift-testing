@@ -476,8 +476,8 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       @available(*, unavailable, message: "This type is an implementation detail of the testing library. It cannot be used directly.")
       @available(*, deprecated)
       @frozen public enum \(enumName): Testing.__TestContainer {
-        public static var __tests: [Testing.Test] {
-          get async {[
+        public static func __tests() async -> [Testing.Test] {
+          [
             .__function(
               named: \(literal: functionDecl.completeName),
               in: \(typealiasExpr),
@@ -486,7 +486,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
               parameters: \(raw: functionDecl.testFunctionParameterList),
               testFunction: \(thunkDecl.name)
             )
-          ]}
+          ]
         }
       }
       """

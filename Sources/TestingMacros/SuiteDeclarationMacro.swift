@@ -159,13 +159,13 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
       @available(*, unavailable, message: "This type is an implementation detail of the testing library. It cannot be used directly.")
       @available(*, deprecated)
       @frozen public enum \(enumName): Testing.__TestContainer {
-        public static var __tests: [Testing.Test] {
-          get async {[
+        public static func __tests() async -> [Testing.Test] {
+          [
             .__type(
               \(declaration.type.trimmed).self,
               \(raw: attributeInfo.functionArgumentList(in: context))
             )
-          ]}
+          ]
         }
       }
       """

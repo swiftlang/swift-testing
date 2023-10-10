@@ -542,7 +542,29 @@ public func __invokeXCTestCaseMethod<T>(
 @_alwaysEmitConformanceMetadata
 public protocol __TestContainer {
   /// The set of tests contained by this type.
-  static var __tests: [Test] { get async }
+  ///
+  /// - Note: This property will be removed in a future update to the testing
+  ///   library. It remains here for binary compatibility with recently-compiled
+  ///   test targets.
+  static var __tests: [Test] { get }
+
+  /// Get the set of tests contained by this type.
+  ///
+  /// - Returns: An array of ``Test`` instances.
+  ///
+  /// - Warning: This method is used to implement the `@Test` macro. Do not use
+  ///   it directly.
+  static func __tests() async -> [Test]
+}
+
+extension __TestContainer {
+  public static var __tests: [Test] {
+    []
+  }
+
+  public static func __tests() async -> [Test] {
+    []
+  }
 }
 
 extension Test {
@@ -582,7 +604,7 @@ extension Test {
           if let type = unsafeBitCast(type, to: Any.Type.self) as? any __TestContainer.Type {
             let taskGroup = context!.assumingMemoryBound(to: TaskGroup<[Self]>.self)
             taskGroup.pointee.addTask {
-              await type.__tests
+              await type.__tests() + type.__tests
             }
           }
         }, &taskGroup)
