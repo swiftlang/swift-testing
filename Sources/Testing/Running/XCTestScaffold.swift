@@ -15,9 +15,7 @@ import XCTest
 #if SWT_TARGET_OS_APPLE
 extension XCTSourceCodeContext {
   convenience init(_ sourceContext: SourceContext) {
-    let addresses = sourceContext.backtrace?.addresses.map { address in
-      UInt(bitPattern: address) as NSNumber
-    } ?? []
+    let addresses = sourceContext.backtrace?.addresses.map { $0 as NSNumber } ?? []
     let sourceLocation = sourceContext.sourceLocation.map { sourceLocation in
       XCTSourceCodeLocation(
         filePath: sourceLocation._filePath,

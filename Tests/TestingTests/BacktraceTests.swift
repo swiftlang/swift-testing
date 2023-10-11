@@ -9,6 +9,7 @@
 //
 
 @testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalTestRunning) import Testing
+import Foundation
 
 struct BacktracedError: Error {}
 
@@ -42,5 +43,13 @@ struct BacktraceTests {
   @Test("An unthrown error has no backtrace")
   func noBacktraceForNewError() throws {
     #expect(Backtrace(forFirstThrowOf: BacktracedError()) == nil)
+  }
+
+  @Test("Encoding/decoding")
+  func encodingAndDecoding() throws {
+    let original = Backtrace.current()
+    let data = try JSONEncoder().encode(original)
+    let copy = try JSONDecoder().decode(Backtrace.self, from: data)
+    #expect(original == copy)
   }
 }
