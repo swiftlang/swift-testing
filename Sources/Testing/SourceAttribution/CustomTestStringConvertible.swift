@@ -107,13 +107,13 @@ extension String {
       self.init(describing: value)
     } else if let value = value as? any CustomDebugStringConvertible {
       self.init(reflecting: value)
-    } else if let value = value as? any RawRepresentable, isImportedFromC(valueType) {
+    } else if #available(_mangledTypeNameAPI, *), let value = value as? any RawRepresentable, isImportedFromC(valueType) {
       // Present raw-representable C types, which we assume to be imported
       // enumerations, in a consistent fashion. The case names of C enumerations
       // are not statically visible, so instead present the enumeration type's
       // name along with the raw value of `value`.
       self = "\(valueType)(rawValue: \(String(describingForTest: value.rawValue)))"
-    } else if isSwiftEnumeration(valueType) {
+    } else if #available(_mangledTypeNameAPI, *), isSwiftEnumeration(valueType) {
       // Add a leading period to enumeration cases to more closely match their
       // source representation. SEE: _adHocPrint_unlocked() in the stdlib.
       self = ".\(value)"

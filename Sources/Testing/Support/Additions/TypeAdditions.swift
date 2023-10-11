@@ -30,6 +30,7 @@ func nameComponents(of type: Any.Type) -> [String] {
 ///
 /// Per the [Swift mangling ABI](https://github.com/apple/swift/blob/main/docs/ABI/Mangling.rst),
 /// enumeration types are mangled as `"O"`.
+@available(_mangledTypeNameAPI, *)
 func isSwiftEnumeration(_ type: Any.Type) -> Bool {
   guard let mangledTypeName = _mangledTypeName(type), let lastCharacter = mangledTypeName.last else {
     return false
@@ -49,6 +50,7 @@ func isSwiftEnumeration(_ type: Any.Type) -> Bool {
 /// module. That module has a standardized mangling of `"So"`. The presence of
 /// those characters at the start of a type's mangled name indicates that it is
 /// an imported type.
+@available(_mangledTypeNameAPI, *)
 func isImportedFromC(_ type: Any.Type) -> Bool {
   guard let mangledTypeName = _mangledTypeName(type), mangledTypeName.count > 2 else {
     return false
