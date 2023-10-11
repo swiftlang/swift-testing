@@ -33,7 +33,7 @@ public struct Backtrace: Sendable {
   /// - Parameters:
   ///   - addresses: The addresses in the backtrace.
   ///
-  /// The pointers in `addresses` are converted to instances of `Address`. Any
+  /// The pointers in `addresses` are converted to instances of ``Address``. Any
   /// `nil` addresses are represented as `0`.
   public init(addresses: some Sequence<UnsafeRawPointer?>) {
     self.init(
