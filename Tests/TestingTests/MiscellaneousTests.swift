@@ -470,7 +470,7 @@ struct MiscellaneousTests {
     #expect(String(describing: typeTest.id) == "TestingTests/SendableTests")
 
     let fileID = "Module/Y.swift"
-    let filePath: StaticString = "/Y.swift"
+    let filePath = "/Y.swift"
     let line = 12345
     let column = 67890
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)

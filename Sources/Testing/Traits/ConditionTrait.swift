@@ -130,7 +130,7 @@ extension Trait where Self == ConditionTrait {
     if condition: @autoclosure @escaping @Sendable () throws -> Bool,
     _ comment: Comment? = nil,
     fileID: String = #fileID,
-    filePath: StaticString = #filePath,
+    filePath: String = #filePath,
     line: Int = #line,
     column: Int = #column
   ) -> Self {
@@ -152,7 +152,7 @@ extension Trait where Self == ConditionTrait {
   public static func enabled(
     _ comment: Comment? = nil,
     fileID: String = #fileID,
-    filePath: StaticString = #filePath,
+    filePath: String = #filePath,
     line: Int = #line,
     column: Int = #column,
     _ condition: @escaping @Sendable () async throws -> Bool
@@ -171,7 +171,7 @@ extension Trait where Self == ConditionTrait {
   public static func disabled(
     _ comment: Comment? = nil,
     fileID: String = #fileID,
-    filePath: StaticString = #filePath,
+    filePath: String = #filePath,
     line: Int = #line,
     column: Int = #column
   ) -> Self {
@@ -200,7 +200,7 @@ extension Trait where Self == ConditionTrait {
     if condition: @autoclosure @escaping @Sendable () throws -> Bool,
     _ comment: Comment? = nil,
     fileID: String = #fileID,
-    filePath: StaticString = #filePath,
+    filePath: String = #filePath,
     line: Int = #line,
     column: Int = #column
   ) -> Self {
@@ -222,7 +222,7 @@ extension Trait where Self == ConditionTrait {
   public static func disabled(
     _ comment: Comment? = nil,
     fileID: String = #fileID,
-    filePath: StaticString = #filePath,
+    filePath: String = #filePath,
     line: Int = #line,
     column: Int = #column,
     _ condition: @escaping @Sendable () async throws -> Bool

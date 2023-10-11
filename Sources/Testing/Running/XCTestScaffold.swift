@@ -20,7 +20,7 @@ extension XCTSourceCodeContext {
     } ?? []
     let sourceLocation = sourceContext.sourceLocation.map { sourceLocation in
       XCTSourceCodeLocation(
-        filePath: String(describing: sourceLocation._filePath),
+        filePath: sourceLocation._filePath,
         lineNumber: sourceLocation.line
       )
     }
@@ -162,8 +162,10 @@ public enum XCTestScaffold: Sendable {
       // does not behave as it might appear. The `expected` argument determines
       // if the issue represents an assertion failure or a thrown error.
       if !issue.isKnown {
-        let sourceLocation = issue.sourceLocation ?? .init()
-        XCTFail(String(describing: issue), file: sourceLocation._filePath, line: UInt(sourceLocation.line))
+        testCase.rawValue.recordFailure(withDescription: String(describing: issue),
+                                        inFile: issue.sourceLocation?._filePath ?? "<unknown>",
+                                        atLine: issue.sourceLocation?.line ?? 0,
+                                        expected: true)
       }
 #endif
     }
