@@ -1139,7 +1139,11 @@ final class IssueTests: XCTestCase {
     await fulfillment(of: [expectationFailed], timeout: 0.0)
   }
 
-  func testEnumDescription() async {
+  func testEnumDescription() async throws {
+    guard #available(_mangledTypeNameAPI, *) else {
+      throw XCTSkip("Unavailable")
+    }
+
     enum E: CaseIterable {
       case a
       case b
@@ -1198,7 +1202,11 @@ final class IssueTests: XCTestCase {
     await fulfillment(of: [expectationFailed], timeout: 0.0)
   }
 
-  func testCEnumDescription() async {
+  func testCEnumDescription() async throws {
+    guard #available(_mangledTypeNameAPI, *) else {
+      throw XCTSkip("Unavailable")
+    }
+
     let expectationFailed = expectation(description: "Expectation failed")
 
     var configuration = Configuration()
