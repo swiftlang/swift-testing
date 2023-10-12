@@ -150,3 +150,109 @@ extension SourceCode: CustomStringConvertible, CustomDebugStringConvertible {
     return String(describing: kind)
   }
 }
+
+// MARK: - Codable
+
+extension SourceCode: Codable {}
+
+extension SourceCode.Kind: Codable {
+  enum CodingKeys: CodingKey {
+    case syntaxNode
+    case binaryOperation
+    case functionCall
+
+    enum SyntaxNodeKeys: CodingKey {
+      case text
+    }
+
+    enum BinaryOperationKeys: CodingKey {
+      case lhs
+      case `operator`
+      case rhs
+    }
+
+    enum FunctionCallKeys: CodingKey {
+      case value
+      case functionName
+      case arguments
+
+      enum ArgumentKeys: CodingKey {
+        case label
+        case value
+      }
+    }
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    if let syntaxNodeContainer = try? container.nestedContainer(keyedBy: CodingKeys.SyntaxNodeKeys.self,
+                                                                forKey: .syntaxNode) {
+      self = .syntaxNode(try syntaxNodeContainer.decode(String.self,
+                                                        forKey: .text))
+    } else if let binaryOperationContainer = try? container.nestedContainer(keyedBy: CodingKeys.BinaryOperationKeys.self,
+                                                                            forKey: .binaryOperation) {
+      self = .binaryOperation(lhs: try binaryOperationContainer.decode(String.self,
+                                                                       forKey: .lhs),
+                              operator: try binaryOperationContainer.decode(String.self,
+                                                                            forKey: .operator),
+                              rhs: try binaryOperationContainer.decode(String.self,
+                                                                       forKey: .rhs))
+    } else if let functionCallContainer = try? container.nestedContainer(keyedBy: CodingKeys.FunctionCallKeys.self,
+                                                                         forKey: .functionCall) {
+      self = .functionCall(value: try functionCallContainer.decodeIfPresent(String.self,
+                                                                            forKey: .value),
+                           functionName: try functionCallContainer.decode(String.self,
+                                                                          forKey: .functionName),
+                           arguments: try {
+        var argumentsContainer = try functionCallContainer.nestedUnkeyedContainer(forKey: .arguments)
+
+        var arguments = [(label: String?, value: String)]()
+        while !argumentsContainer.isAtEnd {
+          let argumentContainer = try argumentsContainer.nestedContainer(keyedBy: CodingKeys.FunctionCallKeys.ArgumentKeys.self)
+          let label = try argumentContainer.decodeIfPresent(String.self, forKey: .label)
+          let value = try argumentContainer.decode(String.self, forKey: .value)
+          arguments.append((label: label, value: value))
+        }
+        return arguments
+      }())
+    } else {
+      throw DecodingError.valueNotFound(
+        Self.self,
+        DecodingError.Context(
+          codingPath: decoder.codingPath,
+          debugDescription: "Value found did not match any of the existing cases for SourceCode.Kind."
+        )
+      )
+    }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    switch self {
+    case let .syntaxNode(text):
+      var syntaxNodeContainer = container.nestedContainer(keyedBy: CodingKeys.SyntaxNodeKeys.self,
+                                                          forKey: .syntaxNode)
+      try syntaxNodeContainer.encode(text, forKey: .text)
+    case let .binaryOperation(lhs: lhs, operator: `operator`, rhs: rhs):
+      var binaryOperationContainer = container.nestedContainer(keyedBy: CodingKeys.BinaryOperationKeys.self,
+                                                               forKey: .binaryOperation)
+      try binaryOperationContainer.encode(lhs, forKey: .lhs)
+      try binaryOperationContainer.encode(`operator`, forKey: .operator)
+      try binaryOperationContainer.encode(rhs, forKey: .rhs)
+    case let .functionCall(value: value,
+                           functionName: functionName,
+                           arguments: arguments):
+      var functionCallContainer = container.nestedContainer(keyedBy: CodingKeys.FunctionCallKeys.self,
+                                                            forKey: .functionCall)
+      try functionCallContainer.encodeIfPresent(value, forKey: .value)
+      try functionCallContainer.encode(functionName, forKey: .functionName)
+
+      var argumentsContainer = functionCallContainer.nestedUnkeyedContainer(forKey: .arguments)
+      for argument in arguments {
+        var argumentContainer = argumentsContainer.nestedContainer(keyedBy: CodingKeys.FunctionCallKeys.ArgumentKeys.self)
+        try argumentContainer.encode(argument.label, forKey: .label)
+        try argumentContainer.encode(argument.value, forKey: .value)
+      }
+    }
+  }
+}

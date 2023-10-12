@@ -1220,5 +1220,121 @@ final class IssueTests: XCTestCase {
 
     await fulfillment(of: [expectationFailed], timeout: 0.0)
   }
+
+  func testCodableIssueKind_unconditional() async throws {
+    let unconditionalIssueKind = Issue.Kind.unconditional
+    let encodedUnconditionalIssueKind = try JSONEncoder().encode(unconditionalIssueKind)
+    let decodedUnconditionalIssueKind = try JSONDecoder().decode(Issue.Kind.self, from: encodedUnconditionalIssueKind)
+    XCTAssert(unconditionalIssueKind.hasEqualBase(with: decodedUnconditionalIssueKind))
+  }
+
+  func testCodableIssueKind_expectationFailed() async throws {
+    let expectationFailedIssueKind = Issue.Kind.expectationFailed(
+      Expectation(isPassing: false,
+                  isRequired: true,
+                  sourceLocation: SourceLocation()
+                 )
+    )
+    let encodedExpectationFailedIssueKind = try JSONEncoder().encode(expectationFailedIssueKind)
+    let decodedExpectationFailedIssueKind = try JSONDecoder().decode(Issue.Kind.self, from: encodedExpectationFailedIssueKind)
+    XCTAssert(expectationFailedIssueKind.hasEqualBase(with: decodedExpectationFailedIssueKind))
+  }
+
+  func testCodableIssueKind_confirmationMiscounted() async throws {
+    let originalActual = 42
+    let originalExpected = 13
+    let confirmationMiscountedIssueKind = Issue.Kind.confirmationMiscounted(
+      actual: originalActual,
+      expected: originalExpected
+    )
+    let encodedConfirmationMiscountedIssueKind = try JSONEncoder().encode(confirmationMiscountedIssueKind)
+    let decodedConfirmationMiscountedIssueKind = try JSONDecoder().decode(Issue.Kind.self, from: encodedConfirmationMiscountedIssueKind)
+    XCTAssert(confirmationMiscountedIssueKind.hasEqualBase(with: decodedConfirmationMiscountedIssueKind))
+
+    if case let .confirmationMiscounted(actual, expected) = decodedConfirmationMiscountedIssueKind {
+      XCTAssertEqual(actual, originalActual)
+      XCTAssertEqual(expected, originalExpected)
+    } else {
+      XCTFail("Expected `decodedConfirmationMiscountedIssueKind` to be `.confirmationMiscounted` but it is \(decodedConfirmationMiscountedIssueKind).")
+    }
+  }
+
+  func testCodableIssueKind_errorCaught() async throws {
+    let errorCaughtIssueKind = Issue.Kind.errorCaught(
+      NSError(domain: "Domain",
+              code: 13,
+              userInfo: [NSLocalizedDescriptionKey: "A localized description of the error."]
+             )
+    )
+    let encodedErrorCaughtIssueKind = try JSONEncoder().encode(errorCaughtIssueKind)
+    let decodedErrorCaughtIssueKind = try JSONDecoder().decode(Issue.Kind.self, from: encodedErrorCaughtIssueKind)
+    XCTAssert(errorCaughtIssueKind.hasEqualBase(with: decodedErrorCaughtIssueKind))
+
+    if case let .errorCaught(anyDecodedError) = decodedErrorCaughtIssueKind {
+      let decodedError = try XCTUnwrap(anyDecodedError as? Issue.Kind.DecodedError)
+      XCTAssertEqual(decodedError.stringRepresentation, #"Error Domain=Domain Code=13 "A localized description of the error." UserInfo={NSLocalizedDescription=A localized description of the error.}"#)
+    } else {
+      XCTFail("Expected `decodedErrorCaughtIssueKind` to be `.errorCaught` but it is \(decodedErrorCaughtIssueKind).")
+    }
+  }
+
+  func testCodableIssueKind_timeLimitExceededIssueKind() async throws {
+    let timeLimitExceededIssueKindIssueKind = Issue.Kind.timeLimitExceeded(timeLimitComponents: (0, 1))
+    let encodedTimeLimitExceededIssueKindIssueKind = try JSONEncoder().encode(timeLimitExceededIssueKindIssueKind)
+    let decodedTimeLimitExceededIssueKindIssueKind = try JSONDecoder().decode(Issue.Kind.self, from: encodedTimeLimitExceededIssueKindIssueKind)
+    XCTAssert(timeLimitExceededIssueKindIssueKind.hasEqualBase(with: decodedTimeLimitExceededIssueKindIssueKind))
+
+    if case let .timeLimitExceeded(timeLimitComponents) = decodedTimeLimitExceededIssueKindIssueKind {
+      XCTAssertEqual(timeLimitComponents.0, 0)
+      XCTAssertEqual(timeLimitComponents.1, 1)
+    } else {
+      XCTFail("Expected `decodedTimeLimitExceededIssueKindIssueKind` to be `.timeLimitExceeded` but it is \(decodedTimeLimitExceededIssueKindIssueKind).")
+    }
+  }
+
+  func testCodableIssueKind_knownIssueNotRecorded() async throws {
+    let knownIssueNotRecordedIssueKind = Issue.Kind.knownIssueNotRecorded
+    let encodedKnownIssueNotRecordedIssueKind = try JSONEncoder().encode(knownIssueNotRecordedIssueKind)
+    let decodedKnownIssueNotRecordedIssueKind = try JSONDecoder().decode(Issue.Kind.self, from: encodedKnownIssueNotRecordedIssueKind)
+    XCTAssert(knownIssueNotRecordedIssueKind.hasEqualBase(with: decodedKnownIssueNotRecordedIssueKind))
+  }
+
+  func testCodableIssueKind_apiMisused() async throws {
+    let apiMisusedIssueKind = Issue.Kind.apiMisused
+    let encodedAPIMisusedIssueKind = try JSONEncoder().encode(apiMisusedIssueKind)
+    let decodedAPIMisusedIssueKind = try JSONDecoder().decode(Issue.Kind.self, from: encodedAPIMisusedIssueKind)
+    XCTAssert(apiMisusedIssueKind.hasEqualBase(with: decodedAPIMisusedIssueKind))
+  }
+
+  func testCodableIssueKind_system() async throws {
+    let systemIssueKind = Issue.Kind.system
+    let encodedSystemIssueKind = try JSONEncoder().encode(systemIssueKind)
+    let decodedSystemIssueKind = try JSONDecoder().decode(Issue.Kind.self, from: encodedSystemIssueKind)
+    XCTAssert(systemIssueKind.hasEqualBase(with: decodedSystemIssueKind))
+  }
 }
+
+extension Issue.Kind {
+  /// Compares the non-payload part of the ``Issue.Kind`` enum for equality.
+  /// - Parameter other: The ``Issue.Kind`` to compare to.
+  /// - Returns: ``true`` if `self` and ``other`` are the same value (ignoring
+  ///             payloads).
+  fileprivate func hasEqualBase(with other: Issue.Kind) -> Bool {
+    switch (self, other) {
+    case
+      (.unconditional, .unconditional),
+      (.expectationFailed, .expectationFailed),
+      (.confirmationMiscounted, .confirmationMiscounted),
+      (.errorCaught, .errorCaught),
+      (.knownIssueNotRecorded, .knownIssueNotRecorded),
+      (.timeLimitExceeded, .timeLimitExceeded),
+      (.apiMisused, .apiMisused),
+      (.system, .system):
+      return true
+    default:
+      return false
+    }
+  }
+}
+
 #endif

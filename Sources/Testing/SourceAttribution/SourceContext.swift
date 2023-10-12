@@ -36,3 +36,5 @@ public struct SourceContext: Sendable {
 }
 
 extension SourceContext: Equatable, Hashable {}
+
+extension SourceContext: Codable {}

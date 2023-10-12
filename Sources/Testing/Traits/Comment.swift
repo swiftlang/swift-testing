@@ -87,9 +87,15 @@ extension Comment: ExpressibleByStringLiteral, ExpressibleByStringInterpolation,
   }
 }
 
-// MARK: - Equatable, Hashable, Comparable
+// MARK: - Equatable, Hashable
 
 extension Comment: Equatable, Hashable {}
+
+// MARK: - Codable
+
+extension Comment: Codable {}
+
+extension Comment.Kind: Codable {}
 
 // MARK: - Trait, TestTrait, SuiteTrait
 

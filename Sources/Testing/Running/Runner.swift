@@ -145,7 +145,7 @@ extension Runner {
 
     // Determine what action to take for this step.
     if let step = stepGraph.value {
-      Event.post(.planStepStarted(step), for: step.test, configuration: configuration)
+      Event.post(.planStepStarted, for: step.test, configuration: configuration)
 
       // Determine what kind of event to send for this step based on its action.
       switch step.action {
@@ -167,7 +167,7 @@ extension Runner {
         if shouldSendTestEnded {
           Event.post(.testEnded, for: step.test, configuration: configuration)
         }
-        Event.post(.planStepEnded(step), for: step.test, configuration: configuration)
+        Event.post(.planStepEnded, for: step.test, configuration: configuration)
       }
     }
 

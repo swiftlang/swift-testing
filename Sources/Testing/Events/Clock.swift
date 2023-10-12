@@ -338,3 +338,41 @@ extension Test.Clock.Instant {
 #endif
   }
 }
+
+@available(_clockAPI, *)
+extension Test.Clock.Instant: Codable {
+  private enum CodingKeys: CodingKey {
+    case suspending
+    case wall
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+#if SWT_TARGET_OS_APPLE
+    let suspending = SuspendingClock.Instant(self)
+#endif
+    try container.encode(suspending, forKey: .suspending)
+
+#if !SWT_NO_UTC_CLOCK
+    try container.encode(Duration(wall), forKey: .wall)
+#endif
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    let suspending = try container.decode(SuspendingClock.Instant.self, forKey: .suspending)
+#if SWT_TARGET_OS_APPLE
+    uptime = timespec(unsafeBitCast(suspending, to: Duration.self))
+#else
+    self.suspending = suspending
+#endif
+
+#if !SWT_NO_UTC_CLOCK
+    // Only decode it if present - if it wasn't encoded we fall back to the
+    // current wall clock time (via its default value).
+    if let wall = try container.decodeIfPresent(Duration.self, forKey: .wall) {
+      self.wall = timespec(wall)
+    }
+#endif
+  }
+}

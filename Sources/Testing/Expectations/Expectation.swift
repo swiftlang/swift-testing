@@ -62,3 +62,7 @@ public struct ExpectationFailedError: Error {
   /// The expectation that failed.
   public var expectation: Expectation
 }
+
+// MARK: Codable
+
+extension Expectation: Codable {}

@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+import Foundation
 @testable @_spi(ExperimentalEventHandling) import Testing
 @_implementationOnly import TestingInternals
 
@@ -118,5 +119,16 @@ struct ClockTests {
     #expect(instant1.nanosecondsSince1970 + offsetNanoseconds == instant2.nanosecondsSince1970)
 #endif
     #expect(duration == .nanoseconds(offsetNanoseconds))
+  }
+
+  @available(_clockAPI, *)
+  @Test("Codable")
+  func codable() async throws {
+    let instant = Test.Clock.Instant().advanced(by: .nanoseconds(100))
+    let decoded = try JSONDecoder().decode(Test.Clock.Instant.self,
+                                           from: JSONEncoder().encode(instant))
+
+    #expect(instant == decoded)
+    #expect(instant != Test.Clock.Instant())
   }
 }

@@ -179,3 +179,118 @@ extension Issue.Kind: CustomStringConvertible {
     }
   }
 }
+
+// MARK: - Codable
+
+extension Issue: Codable {}
+
+extension Issue.Kind: Codable {
+  enum CodingKeys: CodingKey {
+    case unconditional
+    case expectationFailed
+    case confirmationMiscounted
+    case errorCaught
+    case timeLimitExceeded
+    case knownIssueNotRecorded
+    case apiMisused
+    case system
+
+    enum ExpectationFailedKeys: CodingKey {
+      case expectation
+    }
+
+    enum ConfirmationMiscountedKeys: CodingKey {
+      case actual
+      case expected
+    }
+
+    enum ErrorCaughtKeys: CodingKey {
+      case error
+    }
+
+    enum TimeLimitExceededKeys: CodingKey {
+      case seconds
+      case attoseconds
+    }
+  }
+
+  /// We can't encode / decode arbitrary Errors, so when we encode them we use
+  /// their String representation (via `String(describing:)`), and when we
+  /// decode them we use this type (since we need a concrete type, and the
+  /// original type might not even exist where the decoding is happening).
+  @_spi(ExperimentalTestRunning)
+  public struct DecodedError: Error, Sendable, Codable {
+    let stringRepresentation: String
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    if try container.decodeIfPresent(Bool.self, forKey: .unconditional) != nil {
+      self = .unconditional
+    } else if let expectationFailedContainer = try? container.nestedContainer(keyedBy: CodingKeys.ExpectationFailedKeys.self,
+                                                                              forKey: .expectationFailed) {
+      self = .expectationFailed(try expectationFailedContainer.decode(Expectation.self, forKey: .expectation))
+    } else if let confirmationMiscountedContainer = try? container.nestedContainer(keyedBy: CodingKeys.ConfirmationMiscountedKeys.self,
+                                                                                   forKey: .confirmationMiscounted) {
+      self = .confirmationMiscounted(actual: try confirmationMiscountedContainer.decode(Int.self,
+                                                                                        forKey: .actual),
+                                     expected: try confirmationMiscountedContainer.decode(Int.self,
+                                                                                          forKey: .expected))
+    } else if let errorCaught = try? container.nestedContainer(keyedBy: CodingKeys.ErrorCaughtKeys.self,
+                                                               forKey: .errorCaught) {
+      self = .errorCaught(try errorCaught.decode(DecodedError.self, forKey: .error))
+    } else if let timeLimitExceededContainer = try? container.nestedContainer(keyedBy: CodingKeys.TimeLimitExceededKeys.self,
+                                                                              forKey: .timeLimitExceeded) {
+      self = .timeLimitExceeded(timeLimitComponents: (seconds: try timeLimitExceededContainer.decode(Int64.self,
+                                                                                                     forKey: .seconds),
+                                                      attoseconds: try timeLimitExceededContainer.decode(Int64.self,
+                                                                                                         forKey: .attoseconds)))
+    } else if try container.decodeIfPresent(Bool.self, forKey: .knownIssueNotRecorded) != nil {
+      self = .knownIssueNotRecorded
+    } else if try container.decodeIfPresent(Bool.self, forKey: .apiMisused) != nil {
+      self = .apiMisused
+    } else if try container.decodeIfPresent(Bool.self, forKey: .system) != nil {
+      self = .system
+    } else {
+      throw DecodingError.valueNotFound(
+        Self.self,
+        DecodingError.Context(
+          codingPath: decoder.codingPath,
+          debugDescription: "Value found did not match any of the existing cases for Issue.Kind."
+        )
+      )
+    }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    switch self {
+    case .unconditional:
+      try container.encode(true, forKey: .unconditional)
+    case let .expectationFailed(expectation):
+      var errorCaughtContainer = container.nestedContainer(keyedBy: CodingKeys.ExpectationFailedKeys.self,
+                                                           forKey: .expectationFailed)
+      try errorCaughtContainer.encode(expectation, forKey: .expectation)
+    case let .confirmationMiscounted(actual, expected):
+      var confirmationMiscountedContainer = container.nestedContainer(keyedBy: CodingKeys.ConfirmationMiscountedKeys.self,
+                                                                      forKey: .confirmationMiscounted)
+      try confirmationMiscountedContainer.encode(actual, forKey: .actual)
+      try confirmationMiscountedContainer.encode(expected, forKey: .expected)
+    case let .errorCaught(error):
+      var errorCaughtContainer = container.nestedContainer(keyedBy: CodingKeys.ErrorCaughtKeys.self, forKey: .errorCaught)
+      let encodeError = DecodedError(stringRepresentation: String(describing: error))
+      try errorCaughtContainer.encode(encodeError, forKey: .error)
+    case let .timeLimitExceeded(timeLimitComponents):
+      var timeLimitExceededContainer = container.nestedContainer(keyedBy: CodingKeys.TimeLimitExceededKeys.self,
+                                                                 forKey: .timeLimitExceeded)
+      try timeLimitExceededContainer.encode(timeLimitComponents.seconds, forKey: .seconds)
+      try timeLimitExceededContainer.encode(timeLimitComponents.attoseconds, forKey: .attoseconds)
+    case .knownIssueNotRecorded:
+      try container.encode(true, forKey: .knownIssueNotRecorded)
+    case .apiMisused:
+      try container.encode(true, forKey: .apiMisused)
+    case .system:
+      try container.encode(true, forKey: .system)
+    }
+  }
+}

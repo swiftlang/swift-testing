@@ -29,7 +29,7 @@ public struct Event: Sendable {
     /// ``Test`` being run, skipped, or another action, so this event will only
     /// be followed by a ``testStarted`` event if the step's test is run.
     @_spi(ExperimentalTestRunning)
-    case planStepStarted(_ step: Runner.Plan.Step)
+    case planStepStarted
 
     /// A test started.
     case testStarted
@@ -89,7 +89,7 @@ public struct Event: Sendable {
     /// This is posted when a ``Runner`` finishes processing a
     /// ``Runner/Plan/Step``.
     @_spi(ExperimentalTestRunning)
-    case planStepEnded(Runner.Plan.Step)
+    case planStepEnded
 
     /// A test run ended.
     ///
@@ -233,3 +233,9 @@ extension Event {
     }
   }
 }
+
+// MARK: Codable
+
+extension Event: Codable {}
+
+extension Event.Kind: Codable {}

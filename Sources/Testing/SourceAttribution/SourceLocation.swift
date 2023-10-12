@@ -134,3 +134,7 @@ extension SourceLocation: CustomStringConvertible, CustomDebugStringConvertible 
     return "\(fileID):\(line):\(column)"
   }
 }
+
+// MARK: - Codable
+
+extension SourceLocation: Codable {}
