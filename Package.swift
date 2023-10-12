@@ -111,7 +111,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
   static var packageSettings: Self {
     [
       .unsafeFlags([
-        "-strict-concurrency=complete",
         "-require-explicit-sendable",
 
         "-Xfrontend", "-define-availability", "-Xfrontend", "_clockAPI:macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0",
@@ -120,6 +119,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
         "-Xfrontend", "-define-availability", "-Xfrontend", "_swiftVersionAPI:macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0",
         "-Xfrontend", "-define-availability", "-Xfrontend", "_mangledTypeNameAPI:macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0",
       ]),
+      .enableExperimentalFeature("StrictConcurrency"),
       .enableUpcomingFeature("ExistentialAny"),
       .define("SWT_TARGET_OS_APPLE", .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])),
     ]
