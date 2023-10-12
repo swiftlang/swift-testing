@@ -32,13 +32,23 @@ public struct Event: Sendable {
     case planStepStarted(_ step: Runner.Plan.Step)
 
     /// A test started.
+    ///
+    /// The test that started is contained in the ``Event/Context`` instance
+    /// that was passed to the event handler along with this event. Its ID is
+    /// available from the event's ``Event/testID`` property.
     case testStarted
 
     /// A test case started.
+    ///
+    /// The test case that started is contained in the ``Event/Context``
+    /// instance that was passed to the event handler along with this event.
     @_spi(ExperimentalParameterizedTesting)
     case testCaseStarted
 
     /// A test case ended.
+    ///
+    /// The test case that ended is contained in the ``Event/Context`` instance
+    /// that was passed to the event handler along with this event.
     @_spi(ExperimentalParameterizedTesting)
     case testCaseEnded
 
@@ -67,12 +77,20 @@ public struct Event: Sendable {
     case issueRecorded(_ issue: Issue)
 
     /// A test ended.
+    ///
+    /// The test that ended is contained in the ``Event/Context`` instance that
+    /// was passed to the event handler along with this event. Its ID is
+    /// available from the event's ``Event/testID`` property.
     case testEnded
 
     /// A test was skipped.
     ///
     /// - Parameters:
     ///   - skipInfo: A ``SkipInfo`` containing details about this skipped test.
+    ///
+    /// The test that was skipped is contained in the ``Event/Context`` instance
+    /// that was passed to the event handler along with this event. Its ID is
+    /// available from the event's ``Event/testID`` property.
     case testSkipped(_ skipInfo: SkipInfo)
 
 #if !SWIFT_PACKAGE
@@ -203,6 +221,7 @@ extension Event {
   /// Post this event to the currently-installed event handler.
   ///
   /// - Parameters:
+  ///   - context: The context associated with this event.
   ///   - configuration: The configuration whose event handler should handle
   ///     this event. If `nil` is passed, the current task's configuration is
   ///     used, if known.
@@ -214,7 +233,7 @@ extension Event {
   /// instead. If there is no current configuration, the event is posted to
   /// the event handlers of all configurations set as current across all tasks
   /// in the process.
-  private func _post(in context: Context, configuration: Configuration? = nil) {
+  private borrowing func _post(in context: borrowing Context, configuration: Configuration? = nil) {
     if let configuration = configuration ?? Configuration.current {
       // The caller specified a configuration, or the current task has an
       // associated configuration. Post to either configuration's event handler.
