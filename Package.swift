@@ -113,11 +113,13 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .unsafeFlags([
         "-require-explicit-sendable",
 
+        "-Xfrontend", "-define-availability", "-Xfrontend", "_mangledTypeNameAPI:macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0",
+        "-Xfrontend", "-define-availability", "-Xfrontend", "_backtraceAsyncAPI:macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0",
         "-Xfrontend", "-define-availability", "-Xfrontend", "_clockAPI:macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0",
-        "-Xfrontend", "-define-availability", "-Xfrontend", "_distantFuture:macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0",
         "-Xfrontend", "-define-availability", "-Xfrontend", "_regexAPI:macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0",
         "-Xfrontend", "-define-availability", "-Xfrontend", "_swiftVersionAPI:macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0",
-        "-Xfrontend", "-define-availability", "-Xfrontend", "_mangledTypeNameAPI:macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0",
+
+        "-Xfrontend", "-define-availability", "-Xfrontend", "_distantFuture:macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0",
       ]),
       .enableExperimentalFeature("StrictConcurrency"),
       .enableUpcomingFeature("ExistentialAny"),

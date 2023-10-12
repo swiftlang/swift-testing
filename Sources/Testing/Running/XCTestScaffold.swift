@@ -258,11 +258,8 @@ extension [Event.Recorder.Option] {
   /// codes.
   private static var _standardErrorSupports256ColorANSIEscapeCodes: Bool {
 #if SWT_TARGET_OS_APPLE || os(Linux)
-    // The `contains(_:)` overload used here comes from _StringProcessing module
-    // instead of the stdlib. This may be lowered in the future, but for now,
-    // simply limit the check for 256 colors to these newer OSes.
-    if #available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *) {
-      return Environment.variable(named: "TERM")?.contains("256") == true
+    if let termVariable = Environment.variable(named: "TERM") {
+      return strstr(termVariable, "256") != nil
     }
     return false
 #elseif os(Windows)
