@@ -165,6 +165,14 @@ extension Event {
   ///   - context: The context associated with the event.
   public typealias Handler = @Sendable (_ event: borrowing Event, _ context: borrowing Context) -> Void
 
+  /// A function that handles serializable events that occur while tests are running.
+  ///
+  /// - Parameters:
+  ///   - event: An event that needs to be handled.
+  ///   - context: The context associated with the event.
+  @_spi(ExperimentalEventHandling)
+  public typealias HandlerForSerializableEvents = @Sendable (_ event: borrowing Event.Snapshot, _ context: borrowing Context) -> Void
+
   /// A type which provides context about a posted ``Event``.
   ///
   /// An instance of this type is provided along with each ``Event`` that is
@@ -234,8 +242,134 @@ extension Event {
   }
 }
 
-// MARK: Codable
+// MARK: Snapshot
 
-extension Event: Codable {}
+extension Event {
+  /// A serializable event that occurred during testing.
+  public struct Snapshot: Sendable, Codable {
 
-extension Event.Kind: Codable {}
+    /// The kind of event.
+    public var kind: Kind.Snapshot
+
+    /// The ID of the test for which this event occurred.
+    ///
+    /// If an event occurred independently of any test, or if the running test
+    /// cannot be determined, the value of this property is `nil`.
+    public var testID: Test.ID?
+
+    /// The instant at which the event occurred.
+    public var instant: Test.Clock.Instant
+
+    init(event: Event) {
+      kind = Event.Kind.Snapshot(event: event.kind)
+      testID = event.testID
+      instant = event.instant
+    }
+  }
+}
+
+extension Event.Kind {
+  /// A serializable enumeration describing the various kinds of event that can be observed.
+  @_spi(ExperimentalEventHandling)
+  public enum Snapshot: Sendable, Codable {
+    /// A test run started.
+    ///
+    /// This is the first event posted after ``Runner/run()`` is called.
+    @_spi(ExperimentalTestRunning)
+    case runStarted
+
+    /// A step in the runner plan started.
+    ///
+    /// - Parameters:
+    ///   - step: The step in the runner plan which started.
+    ///
+    /// This is posted when a ``Runner`` begins processing a
+    /// ``Runner/Plan/Step``. Processing this step may result in its associated
+    /// ``Test`` being run, skipped, or another action, so this event will only
+    /// be followed by a ``testStarted`` event if the step's test is run.
+    @_spi(ExperimentalTestRunning)
+    case planStepStarted
+
+    /// A test started.
+    case testStarted
+
+    /// A test case started.
+    @_spi(ExperimentalParameterizedTesting)
+    case testCaseStarted
+
+    /// A test case ended.
+    @_spi(ExperimentalParameterizedTesting)
+    case testCaseEnded
+
+    /// An expectation was checked with `#expect()` or `#require()`.
+    ///
+    /// - Parameters:
+    ///   - expectation: The expectation which was checked.
+    ///
+    /// By default, events of this kind are not generated because they occur
+    /// frequently in a typical test run and can generate significant
+    /// backpressure on the event handler.
+    ///
+    /// Failed expectations also, unless expected to fail, generate events of
+    /// kind ``Event/Kind-swift.enum/issueRecorded(_:)``. Those events are
+    /// always posted to the current event handler.
+    ///
+    /// To enable events of this kind, set
+    /// ``Configuration/deliverExpectationCheckedEvents`` to `true` before
+    /// running tests.
+    case expectationChecked(_ expectation: Expectation.Snapshot)
+
+    /// An issue was recorded.
+    ///
+    /// - Parameters:
+    ///   - issue: The issue which was recorded.
+    case issueRecorded(_ issue: Issue.Snapshot)
+
+    /// A test ended.
+    case testEnded
+
+    /// A test was skipped.
+    ///
+    /// - Parameters:
+    ///   - skipInfo: A ``SkipInfo`` containing details about this skipped test.
+    case testSkipped(_ skipInfo: SkipInfo)
+
+#if !SWIFT_PACKAGE
+    @_documentation(visibility: private)
+    @available(*, deprecated, renamed: "testSkipped")
+    case testBypassed(_ bypassInfo: BypassInfo)
+#endif
+
+    /// A step in the runner plan ended.
+    ///
+    /// - Parameters:
+    ///   - step: The step in the runner plan which ended.
+    ///
+    /// This is posted when a ``Runner`` finishes processing a
+    /// ``Runner/Plan/Step``.
+    @_spi(ExperimentalTestRunning)
+    case planStepEnded
+
+    /// A test run ended.
+    ///
+    /// This is the last event posted before ``Runner/run()`` returns.
+    @_spi(ExperimentalTestRunning)
+    case runEnded
+
+    init(event: Event.Kind) {
+      switch event {
+      case .runStarted: self = .runStarted
+      case .planStepStarted: self = .planStepStarted
+      case .testStarted: self = .testStarted
+      case .testCaseStarted: self = .testCaseStarted
+      case .testCaseEnded: self = .testCaseEnded
+      case let .expectationChecked(expectation): self = Snapshot.expectationChecked(Expectation.Snapshot.init(expectation: expectation))
+      case let .issueRecorded(issue): self = .issueRecorded(Issue.Snapshot(issue: issue))
+      case .testEnded: self = .testEnded
+      case let .testSkipped(skipInfo): self = .testSkipped(skipInfo)
+      case .planStepEnded: self = .planStepEnded
+      case .runEnded: self = .runEnded
+      }
+    }
+  }
+}

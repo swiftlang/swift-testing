@@ -135,6 +135,10 @@ public struct Configuration: Sendable {
   @_spi(ExperimentalEventHandling)
   public var eventHandler: Event.Handler = { _, _ in }
 
+  /// The event handler to which serializable events should be passed when they occur.
+  @_spi(ExperimentalEventHandling)
+  public var serializedEventHandler: Event.HandlerForSerializableEvents = { _, _ in }
+
   // MARK: - Test selection
 
   /// The selected tests to run, if any.

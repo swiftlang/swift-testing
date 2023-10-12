@@ -1222,33 +1222,36 @@ final class IssueTests: XCTestCase {
   }
 
   func testCodableIssueKind_unconditional() async throws {
-    let unconditionalIssueKind = Issue.Kind.unconditional
+    let unconditionalIssueKind = Issue.Kind.Snapshot.unconditional
     let encodedUnconditionalIssueKind = try JSONEncoder().encode(unconditionalIssueKind)
-    let decodedUnconditionalIssueKind = try JSONDecoder().decode(Issue.Kind.self, from: encodedUnconditionalIssueKind)
+    let decodedUnconditionalIssueKind = try JSONDecoder().decode(Issue.Kind.Snapshot.self, from: encodedUnconditionalIssueKind)
     XCTAssert(unconditionalIssueKind.hasEqualBase(with: decodedUnconditionalIssueKind))
   }
 
   func testCodableIssueKind_expectationFailed() async throws {
-    let expectationFailedIssueKind = Issue.Kind.expectationFailed(
-      Expectation(isPassing: false,
-                  isRequired: true,
-                  sourceLocation: SourceLocation()
-                 )
+    let expectationFailedIssueKind = Issue.Kind.Snapshot.expectationFailed(
+      Expectation.Snapshot(
+        expectation: Expectation(
+          isPassing: false,
+          isRequired: true,
+          sourceLocation: SourceLocation()
+        )
+      )
     )
     let encodedExpectationFailedIssueKind = try JSONEncoder().encode(expectationFailedIssueKind)
-    let decodedExpectationFailedIssueKind = try JSONDecoder().decode(Issue.Kind.self, from: encodedExpectationFailedIssueKind)
+    let decodedExpectationFailedIssueKind = try JSONDecoder().decode(Issue.Kind.Snapshot.self, from: encodedExpectationFailedIssueKind)
     XCTAssert(expectationFailedIssueKind.hasEqualBase(with: decodedExpectationFailedIssueKind))
   }
 
   func testCodableIssueKind_confirmationMiscounted() async throws {
     let originalActual = 42
     let originalExpected = 13
-    let confirmationMiscountedIssueKind = Issue.Kind.confirmationMiscounted(
+    let confirmationMiscountedIssueKind = Issue.Kind.Snapshot.confirmationMiscounted(
       actual: originalActual,
       expected: originalExpected
     )
     let encodedConfirmationMiscountedIssueKind = try JSONEncoder().encode(confirmationMiscountedIssueKind)
-    let decodedConfirmationMiscountedIssueKind = try JSONDecoder().decode(Issue.Kind.self, from: encodedConfirmationMiscountedIssueKind)
+    let decodedConfirmationMiscountedIssueKind = try JSONDecoder().decode(Issue.Kind.Snapshot.self, from: encodedConfirmationMiscountedIssueKind)
     XCTAssert(confirmationMiscountedIssueKind.hasEqualBase(with: decodedConfirmationMiscountedIssueKind))
 
     if case let .confirmationMiscounted(actual, expected) = decodedConfirmationMiscountedIssueKind {
@@ -1260,18 +1263,18 @@ final class IssueTests: XCTestCase {
   }
 
   func testCodableIssueKind_errorCaught() async throws {
-    let errorCaughtIssueKind = Issue.Kind.errorCaught(
+    let errorCaughtIssueKind = Issue.Kind.Snapshot.errorCaught(
       NSError(domain: "Domain",
               code: 13,
               userInfo: [NSLocalizedDescriptionKey: "A localized description of the error."]
              )
     )
     let encodedErrorCaughtIssueKind = try JSONEncoder().encode(errorCaughtIssueKind)
-    let decodedErrorCaughtIssueKind = try JSONDecoder().decode(Issue.Kind.self, from: encodedErrorCaughtIssueKind)
+    let decodedErrorCaughtIssueKind = try JSONDecoder().decode(Issue.Kind.Snapshot.self, from: encodedErrorCaughtIssueKind)
     XCTAssert(errorCaughtIssueKind.hasEqualBase(with: decodedErrorCaughtIssueKind))
 
     if case let .errorCaught(anyDecodedError) = decodedErrorCaughtIssueKind {
-      let decodedError = try XCTUnwrap(anyDecodedError as? Issue.Kind.DecodedError)
+      let decodedError = try XCTUnwrap(anyDecodedError as? Issue.Kind.Snapshot.DecodedError)
       XCTAssertEqual(decodedError.stringRepresentation, #"Error Domain=Domain Code=13 "A localized description of the error." UserInfo={NSLocalizedDescription=A localized description of the error.}"#)
     } else {
       XCTFail("Expected `decodedErrorCaughtIssueKind` to be `.errorCaught` but it is \(decodedErrorCaughtIssueKind).")
@@ -1279,9 +1282,9 @@ final class IssueTests: XCTestCase {
   }
 
   func testCodableIssueKind_timeLimitExceededIssueKind() async throws {
-    let timeLimitExceededIssueKindIssueKind = Issue.Kind.timeLimitExceeded(timeLimitComponents: (0, 1))
+    let timeLimitExceededIssueKindIssueKind = Issue.Kind.Snapshot.timeLimitExceeded(timeLimitComponents: (0, 1))
     let encodedTimeLimitExceededIssueKindIssueKind = try JSONEncoder().encode(timeLimitExceededIssueKindIssueKind)
-    let decodedTimeLimitExceededIssueKindIssueKind = try JSONDecoder().decode(Issue.Kind.self, from: encodedTimeLimitExceededIssueKindIssueKind)
+    let decodedTimeLimitExceededIssueKindIssueKind = try JSONDecoder().decode(Issue.Kind.Snapshot.self, from: encodedTimeLimitExceededIssueKindIssueKind)
     XCTAssert(timeLimitExceededIssueKindIssueKind.hasEqualBase(with: decodedTimeLimitExceededIssueKindIssueKind))
 
     if case let .timeLimitExceeded(timeLimitComponents) = decodedTimeLimitExceededIssueKindIssueKind {
@@ -1293,33 +1296,33 @@ final class IssueTests: XCTestCase {
   }
 
   func testCodableIssueKind_knownIssueNotRecorded() async throws {
-    let knownIssueNotRecordedIssueKind = Issue.Kind.knownIssueNotRecorded
+    let knownIssueNotRecordedIssueKind = Issue.Kind.Snapshot.knownIssueNotRecorded
     let encodedKnownIssueNotRecordedIssueKind = try JSONEncoder().encode(knownIssueNotRecordedIssueKind)
-    let decodedKnownIssueNotRecordedIssueKind = try JSONDecoder().decode(Issue.Kind.self, from: encodedKnownIssueNotRecordedIssueKind)
+    let decodedKnownIssueNotRecordedIssueKind = try JSONDecoder().decode(Issue.Kind.Snapshot.self, from: encodedKnownIssueNotRecordedIssueKind)
     XCTAssert(knownIssueNotRecordedIssueKind.hasEqualBase(with: decodedKnownIssueNotRecordedIssueKind))
   }
 
   func testCodableIssueKind_apiMisused() async throws {
-    let apiMisusedIssueKind = Issue.Kind.apiMisused
+    let apiMisusedIssueKind = Issue.Kind.Snapshot.apiMisused
     let encodedAPIMisusedIssueKind = try JSONEncoder().encode(apiMisusedIssueKind)
-    let decodedAPIMisusedIssueKind = try JSONDecoder().decode(Issue.Kind.self, from: encodedAPIMisusedIssueKind)
+    let decodedAPIMisusedIssueKind = try JSONDecoder().decode(Issue.Kind.Snapshot.self, from: encodedAPIMisusedIssueKind)
     XCTAssert(apiMisusedIssueKind.hasEqualBase(with: decodedAPIMisusedIssueKind))
   }
 
   func testCodableIssueKind_system() async throws {
-    let systemIssueKind = Issue.Kind.system
+    let systemIssueKind = Issue.Kind.Snapshot.system
     let encodedSystemIssueKind = try JSONEncoder().encode(systemIssueKind)
-    let decodedSystemIssueKind = try JSONDecoder().decode(Issue.Kind.self, from: encodedSystemIssueKind)
+    let decodedSystemIssueKind = try JSONDecoder().decode(Issue.Kind.Snapshot.self, from: encodedSystemIssueKind)
     XCTAssert(systemIssueKind.hasEqualBase(with: decodedSystemIssueKind))
   }
 }
 
-extension Issue.Kind {
+extension Issue.Kind.Snapshot {
   /// Compares the non-payload part of the ``Issue.Kind`` enum for equality.
   /// - Parameter other: The ``Issue.Kind`` to compare to.
   /// - Returns: ``true`` if `self` and ``other`` are the same value (ignoring
   ///             payloads).
-  fileprivate func hasEqualBase(with other: Issue.Kind) -> Bool {
+  fileprivate func hasEqualBase(with other: Issue.Kind.Snapshot) -> Bool {
     switch (self, other) {
     case
       (.unconditional, .unconditional),
