@@ -415,7 +415,7 @@ extension Event.Recorder {
   ///
   /// - Returns: A string description of the event, or `nil` if there is nothing
   ///   useful to output for this event.
-  func _record(_ event: Event, in eventContext: Event.Context) -> String? {
+  func _record(_ event: borrowing Event, in eventContext: borrowing Event.Context) -> String? {
     let test = eventContext.test
     var testName: String
     if let displayName = test?.displayName {
@@ -438,8 +438,8 @@ extension Event.Recorder {
 
     switch event.kind {
     case .runStarted:
-      $context.withLock { context in
-        context.runStartInstant = event.instant
+      $context.withLock { [instant = event.instant] context in
+        context.runStartInstant = instant
       }
       let symbol = _Symbol.default.stringValue(options: options)
       var comments: [Comment] = [
@@ -610,7 +610,7 @@ extension Event.Recorder {
   ///
   /// - Returns: Whether any output was written using the recorder's write
   ///   function.
-  @discardableResult public func record(_ event: Event, in context: Event.Context) -> Bool {
+  @discardableResult public func record(_ event: borrowing Event, in context: borrowing Event.Context) -> Bool {
     if let output = _record(event, in: context) {
       write(output)
       return true
