@@ -145,8 +145,8 @@ The compiler will emit an error when presented with a test suite that does not
 meet this requirement.
 
 - Bug: Inherited availability is not always visible to the compiler during
-  expansion of the ``Suite(_:)`` and ``Suite(_:_:)`` macros. A test function may
-  crash when run on an unsupported system. ([110974351](rdar://110974351))
+  expansion of the ``Suite(_:_:)`` macro. A test function may crash when run on
+  an unsupported system. ([110974351](rdar://110974351))
 
 ### Classes must be final
 
@@ -166,5 +166,4 @@ class MenuItemTests { ... } // ❌ ERROR: this class is not final
 
 ## Topics
 
-- ``Suite(_:)``
 - ``Suite(_:_:)``
