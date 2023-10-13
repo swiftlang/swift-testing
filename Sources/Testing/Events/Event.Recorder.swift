@@ -435,10 +435,11 @@ extension Event.Recorder {
         testName = "\(colorDots)\(_resetANSIEscapeCode) \(testName)"
       }
     }
+    let instant = event.instant
 
     switch event.kind {
     case .runStarted:
-      $context.withLock { [instant = event.instant] context in
+      $context.withLock { context in
         context.runStartInstant = instant
       }
       let symbol = _Symbol.default.stringValue(options: options)
@@ -482,7 +483,7 @@ extension Event.Recorder {
       let testDataGraph = context.testData.subgraph(at: id.keyPathRepresentation)
       let testData = testDataGraph?.value ?? .init()
       let issues = _issueCounts(in: testDataGraph)
-      let duration = testData.startInstant.descriptionOfDuration(to: event.instant)
+      let duration = testData.startInstant.descriptionOfDuration(to: instant)
       if issues.issueCount > 0 {
         let symbol = _Symbol.fail.stringValue(options: options)
         let comments = _formattedComments(for: test, options: options).map { "\($0)\n" } ?? ""
@@ -586,12 +587,8 @@ extension Event.Recorder {
 
       let testCount = context.testCount
       let issues = _issueCounts(in: context.testData)
-      let runStartInstant = if let runStartInstant = context.runStartInstant {
-        runStartInstant
-      } else {
-        event.instant
-      }
-      let duration = runStartInstant.descriptionOfDuration(to: event.instant)
+      let runStartInstant = context.runStartInstant ?? instant
+      let duration = runStartInstant.descriptionOfDuration(to: instant)
 
       if issues.issueCount > 0 {
         let symbol = _Symbol.fail.stringValue(options: options)
