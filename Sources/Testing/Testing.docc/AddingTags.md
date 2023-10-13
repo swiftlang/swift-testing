@@ -46,6 +46,42 @@ func licenseValid() { ... }
 The testing library does not assign any semantic meaning to any tags, nor does
 the presence or absence of tags affect how the testing library runs tests.
 
+## Customizing a tag's appearance
+
+By default, a tag does not appear in a test's output when the test is run. It is
+possible to assign colors to tags defined in a package so that when the test is
+run, the tag is visible in its output.
+
+To add colors to tags, create a directory at the root of your package named
+`".swift-testing"` and add a file named `"tag-colors.json"` to it. This file
+should contain a JSON object (a dictionary) whose keys are strings representing
+tags and whose values represent tag colors. Tag colors can be represented using
+several formats:
+
+- The strings `"red"`, `"orange"`, `"yellow"`, `"green"`, `"blue"`, or
+  `"purple"`, representing corresponding predefined instances of ``Tag``, i.e.
+  ``Tag/red``, ``Tag/orange``, ``Tag/yellow``, ``Tag/green``, ``Tag/blue``, and
+  ``Tag/purple``;
+- A string of the form `"#RRGGBB"`, containing a hexadecimal representation of
+  the color in a device-independent RGB color space; or
+- The `null` literal value, representing "no color."
+
+For example, to set the color of the tag `"critical"` to orange and the color of
+the tag `.legallyRequired` to teal, the contents of `"tag-colors.json"` can
+be set to:
+
+```json
+{
+  "critical": "red",
+  ".legallyRequired": "#66FFCC"
+}
+```
+
+- Note: Where possible, use the raw values of tags (from their ``Tag/rawValue``
+  properties) as the keys in this object rather than using Swift source
+  expressions like `".legallyRequired"` to ensure that tag colors are applied
+  everywhere a tag is used.
+
 ## Topics
 
 - ``Trait/tags(_:)-yg0i``

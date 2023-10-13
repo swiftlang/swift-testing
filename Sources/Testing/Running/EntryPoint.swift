@@ -230,6 +230,9 @@ extension [Event.Recorder.Option] {
     }
 #endif
 
+    // Load tag colors from user/package preferences on disk.
+    result += tagColorOptions()
+
     return result
   }
 

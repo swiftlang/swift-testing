@@ -45,7 +45,7 @@ extension Tag.List: CustomStringConvertible {
     tags.lazy.map { tag in
       if let sourceCode = tag.sourceCode {
         return String(describing: sourceCode)
-      } else if tag.isColor {
+      } else if tag.isPredefinedColor {
         return ".\(tag.rawValue)"
       }
       return "\"\(tag.rawValue)\""

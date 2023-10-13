@@ -26,48 +26,6 @@ public struct Tag: RawRepresentable, Sendable {
   }
 }
 
-// MARK: - Color tags
-
-extension Tag {
-  /// A tag representing the color red.
-  public static var red: Self { "red" }
-
-  /// A tag representing the color orange.
-  public static var orange: Self { "orange" }
-
-  /// A tag representing the color yellow.
-  public static var yellow: Self { "yellow" }
-
-  /// A tag representing the color green.
-  public static var green: Self { "green" }
-
-  /// A tag representing the color blue.
-  public static var blue: Self { "blue" }
-
-  /// A tag representing the color purple.
-  public static var purple: Self { "purple" }
-
-  /// Whether or not this tag represents a color predefined by the testing
-  /// library.
-  ///
-  /// Color tags are any of these values:
-  ///
-  /// - ``Tag/red``
-  /// - ``Tag/orange``
-  /// - ``Tag/yellow``
-  /// - ``Tag/green``
-  /// - ``Tag/blue``
-  /// - ``Tag/purple``
-  public var isColor: Bool {
-    switch self {
-    case .red, .orange, .yellow, .green, .blue, .purple:
-      return true
-    default:
-      return false
-    }
-  }
-}
-
 // MARK: - ExpressibleByStringLiteral
 
 extension Tag: ExpressibleByStringLiteral, CustomStringConvertible {
@@ -91,40 +49,20 @@ extension Tag: Equatable, Hashable, Comparable {
     hasher.combine(rawValue)
   }
 
-  /// The index of this color, relative to other colors.
-  ///
-  /// The value of this property can be used for sorting color tags distinctly
-  /// from other (string-based) tags.
-  private var _colorIndex: Int? {
-    switch self {
-    case .red:
-      return 0
-    case .orange:
-      return 1
-    case .yellow:
-      return 2
-    case .green:
-      return 3
-    case .blue:
-      return 4
-    case .purple:
-      return 5
-    default:
-      return nil
-    }
+  public static func <(lhs: Tag, rhs: Tag) -> Bool {
+    lhs.rawValue < rhs.rawValue
+  }
+}
+
+// MARK: - Codable
+
+extension Tag: Codable {
+  public func encode(to encoder: any Encoder) throws {
+    try rawValue.encode(to: encoder)
   }
 
-  public static func <(lhs: Tag, rhs: Tag) -> Bool {
-    switch (lhs._colorIndex, rhs._colorIndex) {
-    case let (.some(lhs), .some(rhs)):
-      return lhs < rhs
-    case (.some, .none):
-      return true
-    case (.none, .some):
-      return false
-    default:
-      return lhs.rawValue < rhs.rawValue
-    }
+  public init(from decoder: any Decoder) throws {
+    try self.init(rawValue: String(from: decoder))
   }
 }
 
