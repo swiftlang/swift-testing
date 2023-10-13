@@ -586,7 +586,11 @@ extension Event.Recorder {
 
       let testCount = context.testCount
       let issues = _issueCounts(in: context.testData)
-      let runStartInstant = context.runStartInstant ?? event.instant
+      let runStartInstant = if let runStartInstant = context.runStartInstant {
+        runStartInstant
+      } else {
+        event.instant
+      }
       let duration = runStartInstant.descriptionOfDuration(to: event.instant)
 
       if issues.issueCount > 0 {
