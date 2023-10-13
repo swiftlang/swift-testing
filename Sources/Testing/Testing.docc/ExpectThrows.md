@@ -43,9 +43,9 @@ runtime not to mark the test as failing when those issues occur.
 
 ### Recording known issues in tests
 
-- ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:)-4txq1``
-- ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:)-8ibg4``
-- ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:when:matching:)-3n2cc``
-- ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:when:matching:)-5bsda``
+- ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:)-5pxnd``
+- ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:)-30kgk``
+- ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:when:matching:)-68e5g``
+- ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:when:matching:)-7azqg``
 - ``Issue``
 - ``KnownIssueMatcher``

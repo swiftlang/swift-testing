@@ -502,8 +502,8 @@ to tell XCTest and its infrastructure that the issue should not cause the test
 to fail. The testing library has an equivalent function with synchronous and
 asynchronous variants:
 
-- ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:)-4txq1``
-- ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:)-8ibg4``
+- ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:)-5pxnd``
+- ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:)-30kgk``
 
 This function can be used to annotate a section of a test as having a known
 issue:
@@ -598,8 +598,8 @@ Additional options can be specified when calling `XCTExpectFailure()`:
 The testing library includes overloads of `withKnownIssue()` that take
 additional arguments with similar behavior:
 
-- ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:when:matching:)-3n2cc``
-- ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:when:matching:)-5bsda``
+- ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:when:matching:)-68e5g``
+- ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:when:matching:)-7azqg``
 
 To conditionally enable known-issue matching and/or to match only certain kinds
 of issues:

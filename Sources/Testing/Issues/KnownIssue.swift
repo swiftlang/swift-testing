@@ -110,7 +110,7 @@ public typealias KnownIssueMatcher = @Sendable (_ issue: Issue) -> Bool
 /// Because all errors thrown by `body` are caught as known issues, this
 /// function is not throwing. If only some errors or issues are known to occur
 /// while others should continue to cause test failures, use
-/// ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:when:matching:)-3n2cc``
+/// ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:when:matching:)-68e5g``
 /// instead.
 public func withKnownIssue(
   _ comment: Comment? = nil,
@@ -164,7 +164,7 @@ public func withKnownIssue(
 ///
 /// It is not necessary to specify both `precondition` and `issueMatcher` if
 /// only one is relevant. If all errors and issues should be considered known
-/// issues, use ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:)-4txq1``
+/// issues, use ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:)-5pxnd``
 /// instead.
 ///
 /// - Note: `issueMatcher` may be invoked more than once for the same issue.
@@ -225,7 +225,7 @@ public func withKnownIssue(
 /// Because all errors thrown by `body` are caught as known issues, this
 /// function is not throwing. If only some errors or issues are known to occur
 /// while others should continue to cause test failures, use
-/// ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:when:matching:)-5bsda``
+/// ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:when:matching:)-7azqg``
 /// instead.
 public func withKnownIssue(
   _ comment: Comment? = nil,
@@ -279,7 +279,7 @@ public func withKnownIssue(
 ///
 /// It is not necessary to specify both `precondition` and `issueMatcher` if
 /// only one is relevant. If all errors and issues should be considered known
-/// issues, use ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:)-8ibg4``
+/// issues, use ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:)-30kgk``
 /// instead.
 ///
 /// - Note: `issueMatcher` may be invoked more than once for the same issue.

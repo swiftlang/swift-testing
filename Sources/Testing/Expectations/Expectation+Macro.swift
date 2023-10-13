@@ -131,11 +131,10 @@
 /// discarded.
 ///
 /// Test functions can be annotated with `throws` and can throw errors which are
-/// then recorded as [issues](doc:Issues) when the test runs. If the intent is
-/// for a test to fail when an error is thrown by `expression`, rather than to
-/// explicitly check that an error is _not_ thrown by it, do not use this macro.
-/// Instead, simply call the code in question and allow it to throw an error
-/// naturally.
+/// then recorded as issues when the test runs. If the intent is for a test to
+/// fail when an error is thrown by `expression`, rather than to explicitly
+/// check that an error is _not_ thrown by it, do not use this macro. Instead,
+/// simply call the code in question and allow it to throw an error naturally.
 ///
 /// If the thrown error need only be an instance of a particular type, use
 /// ``expect(throws:_:sourceLocation:performing:)-79piu`` instead. If the thrown
