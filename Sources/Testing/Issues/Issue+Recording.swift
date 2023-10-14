@@ -71,6 +71,15 @@ extension Issue {
     }
 
     Event.post(.issueRecorded(self), configuration: configuration)
+
+    if !isKnown {
+      // Since this is not a known issue, invoke the failure breakpoint.
+      //
+      // Do this after posting the event above, to allow the issue to be printed
+      // to the console first (assuming the event handler does this), since that
+      // can help explain the failure.
+      failureBreakpoint()
+    }
   }
 
   /// Record an issue when a running test fails unexpectedly.
@@ -124,4 +133,23 @@ extension Issue {
     issue.record()
     return issue
   }
+}
+
+/// A function called by the testing library when a failure occurs.
+///
+/// Whenever a test failure (specifically, a non-known ``Issue``) is recorded,
+/// the testing library calls this function synchronously. This facilitates
+/// interactive debugging of test failures by allowing a symbolic breakpoint to
+/// be added specifying the symbol name of this function
+/// (`SWTFailureBreakpoint`), so that the debugger may pause execution and allow
+/// a user to inspect the process state. This function performs no action of its
+/// own.
+///
+/// This function is not part of the public interface of the testing library,
+/// but it is exported and its symbol name must remain stable.
+@_cdecl("SWTFailureBreakpoint")
+@inline(never)
+@usableFromInline
+func failureBreakpoint() {
+  // Empty.
 }
