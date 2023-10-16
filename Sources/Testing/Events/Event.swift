@@ -90,7 +90,7 @@ public struct Event: Sendable {
     ///
     /// The test that was skipped is contained in the ``Event/Context`` instance
     /// that was passed to the event handler along with this event. Its ID is
-    /// available from the event's ``Event/testID`` property.
+    /// available from this event's ``Event/testID`` property.
     case testSkipped(_ skipInfo: SkipInfo)
 
 #if !SWIFT_PACKAGE
