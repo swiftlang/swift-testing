@@ -31,9 +31,9 @@ public struct SourceLocation: Sendable {
   /// instance's ``fileID`` property is `"FoodTruck/WheelTests.swift"`, the
   /// file name is `"WheelTests.swift"`.
   ///
-  /// The structure of file IDs is described in the documentation for the
+  /// The structure of file IDs is described in the documentation for
   /// [`#fileID`](https://developer.apple.com/documentation/swift/fileID())
-  /// macro in the Swift standard library.
+  /// in the Swift standard library.
   ///
   /// ## See Also
   ///
