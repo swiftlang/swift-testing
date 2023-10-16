@@ -56,14 +56,16 @@
 /// not we throw that error during macro resolution without affecting any errors
 /// thrown by the condition expression passed to it.
 ///
+/// This overload serves as the bottleneck that all other overloads call.
+///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkValue(
+func __checkValue(
   _ condition: Bool,
   sourceCode: SourceCode,
   expandedExpressionDescription: @autoclosure () -> String? = nil,
   mismatchedErrorDescription: @autoclosure () -> String? = nil,
-  difference: @autoclosure () -> String? = nil,
+  difference: @autoclosure () -> Difference? = nil,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -83,13 +85,40 @@ public func __checkValue(
   // only evaluated and included lazily upon failure.
   expectation.expandedExpressionDescription = expandedExpressionDescription()
   expectation.mismatchedErrorDescription = mismatchedErrorDescription()
-  expectation.differenceDescription = difference()
+  expectation.difference = difference()
 
   // Ensure the backtrace is captured here so it has fewer extraneous frames
   // from the testing framework which aren't relevant to the user.
   let backtrace = Backtrace.current()
   Issue.record(.expectationFailed(expectation), comments: comments(), backtrace: backtrace, sourceLocation: sourceLocation)
   return .failure(ExpectationFailedError(expectation: expectation))
+}
+
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed.
+///
+/// This overload is the fallback overload used when no other more-precise
+/// overload applies.
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+public func __checkValue(
+  _ condition: Bool,
+  sourceCode: SourceCode,
+  expandedExpressionDescription: @autoclosure () -> String? = nil,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) -> Result<Void, any Error> {
+  __checkValue(
+    condition,
+    sourceCode: sourceCode,
+    expandedExpressionDescription: expandedExpressionDescription(),
+    difference: nil,
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
 }
 
 // MARK: - Binary operators
@@ -147,10 +176,17 @@ public func __checkBinaryOperation<T, U>(
   sourceLocation: SourceLocation
 ) -> Result<Void, any Error> {
   let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
+  func difference() -> Difference? {
+    guard let rhs else {
+      return nil
+    }
+    return Difference(comparingValue: lhs, to: rhs)
+  }
   return __checkValue(
     condition,
     sourceCode: sourceCode,
     expandedExpressionDescription: sourceCode.expandWithOperands(lhs, rhs),
+    difference: difference(),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -287,33 +323,20 @@ public func __checkInoutFunctionCall<T, /*each*/ U, R>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkBinaryOperation<T>(
-  _ lhs: T, _ op: (T, () -> T) -> Bool, _ rhs: @autoclosure () -> T,
+public func __checkBinaryOperation<T, U>(
+  _ lhs: T, _ op: (T, () -> U) -> Bool, _ rhs: @autoclosure () -> U,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> where T: BidirectionalCollection, T.Element: Equatable {
+) -> Result<Void, any Error> where T: BidirectionalCollection, T.Element: Equatable, U: BidirectionalCollection, T.Element == U.Element {
   let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
-  func difference() -> String? {
+  func difference() -> Difference? {
     guard let rhs else {
       return nil
     }
-    let difference = lhs.difference(from: rhs)
-    let insertions = difference.insertions.map(\.element)
-    let removals = difference.removals.map(\.element)
-    switch (!insertions.isEmpty, !removals.isEmpty) {
-    case (true, true):
-      return "inserted \(insertions), removed \(removals)"
-    case (true, false):
-      return "inserted \(insertions)"
-    case (false, true):
-      return "removed \(removals)"
-    case (false, false):
-      return ""
-    }
+    return Difference(from: lhs, to: rhs)
   }
-
   return __checkValue(
     condition,
     sourceCode: sourceCode,
@@ -334,19 +357,27 @@ public func __checkBinaryOperation<T>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkBinaryOperation(
-  _ lhs: String, _ op: (String, () -> String) -> Bool, _ rhs: @autoclosure () -> String,
+public func __checkBinaryOperation<T, U>(
+  _ lhs: T, _ op: (T, () -> U) -> Bool, _ rhs: @autoclosure () -> U,
   sourceCode: SourceCode,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> {
+) -> Result<Void, any Error> where T: StringProtocol, U: StringProtocol {
   let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
+  func difference() -> Difference? {
+    guard let rhs else {
+      return nil
+    }
+    let lhsSplit = lhs.split(whereSeparator: \.isNewline).map { String($0) }
+    let rhsSplit = rhs.split(whereSeparator: \.isNewline).map { String($0) }
+    return Difference(from: lhsSplit, to: rhsSplit)
+  }
   return __checkValue(
     condition,
     sourceCode: sourceCode,
     expandedExpressionDescription: sourceCode.expandWithOperands(lhs, rhs),
-    difference: nil,
+    difference: difference(),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -372,7 +403,6 @@ public func __checkCast<V, T>(
     value is T,
     sourceCode: sourceCode,
     expandedExpressionDescription: sourceCode.expandWithOperands(value, type(of: value as Any)),
-    difference: nil,
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
