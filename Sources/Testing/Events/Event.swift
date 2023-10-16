@@ -35,7 +35,7 @@ public struct Event: Sendable {
     ///
     /// The test that started is contained in the ``Event/Context`` instance
     /// that was passed to the event handler along with this event. Its ID is
-    /// available from the event's ``Event/testID`` property.
+    /// available from this event's ``Event/testID`` property.
     case testStarted
 
     /// A test case started.
