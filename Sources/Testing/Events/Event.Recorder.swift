@@ -415,7 +415,7 @@ extension Event.Recorder {
   ///
   /// - Returns: A string description of the event, or `nil` if there is nothing
   ///   useful to output for this event.
-  func _record(_ event: Event, in eventContext: Event.Context) -> String? {
+  func _record(_ event: borrowing Event, in eventContext: borrowing Event.Context) -> String? {
     let test = eventContext.test
     var testName: String
     if let displayName = test?.displayName {
@@ -435,11 +435,12 @@ extension Event.Recorder {
         testName = "\(colorDots)\(_resetANSIEscapeCode) \(testName)"
       }
     }
+    let instant = event.instant
 
     switch event.kind {
     case .runStarted:
       $context.withLock { context in
-        context.runStartInstant = event.instant
+        context.runStartInstant = instant
       }
       let symbol = _Symbol.default.stringValue(options: options)
       var comments: [Comment] = [
@@ -482,7 +483,7 @@ extension Event.Recorder {
       let testDataGraph = context.testData.subgraph(at: id.keyPathRepresentation)
       let testData = testDataGraph?.value ?? .init()
       let issues = _issueCounts(in: testDataGraph)
-      let duration = testData.startInstant.descriptionOfDuration(to: event.instant)
+      let duration = testData.startInstant.descriptionOfDuration(to: instant)
       if issues.issueCount > 0 {
         let symbol = _Symbol.fail.stringValue(options: options)
         let comments = _formattedComments(for: test, options: options).map { "\($0)\n" } ?? ""
@@ -586,8 +587,8 @@ extension Event.Recorder {
 
       let testCount = context.testCount
       let issues = _issueCounts(in: context.testData)
-      let runStartInstant = context.runStartInstant ?? event.instant
-      let duration = runStartInstant.descriptionOfDuration(to: event.instant)
+      let runStartInstant = context.runStartInstant ?? instant
+      let duration = runStartInstant.descriptionOfDuration(to: instant)
 
       if issues.issueCount > 0 {
         let symbol = _Symbol.fail.stringValue(options: options)
@@ -610,7 +611,7 @@ extension Event.Recorder {
   ///
   /// - Returns: Whether any output was written using the recorder's write
   ///   function.
-  @discardableResult public func record(_ event: Event, in context: Event.Context) -> Bool {
+  @discardableResult public func record(_ event: borrowing Event, in context: borrowing Event.Context) -> Bool {
     if let output = _record(event, in: context) {
       write(output)
       return true
