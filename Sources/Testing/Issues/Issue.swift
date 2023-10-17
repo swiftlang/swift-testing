@@ -204,7 +204,7 @@ extension Issue {
     /// Initialize an issue instance with the specified details.
     ///
     /// - Parameter issue: The original issue that gets snapshotted.
-    init(snapshotting issue: Issue) {
+    public init(snapshotting issue: Issue) {
       self.kind = Issue.Kind.Snapshot(snapshotting: issue.kind)
       self.comments = issue.comments
       self.sourceContext = issue.sourceContext
@@ -275,7 +275,7 @@ extension Issue.Kind {
 
     /// Snapshots an ``Issue.Kind``.
     /// - Parameter kind: The original ``Issue.Kind`` to snapshot.
-    init(snapshotting kind: Issue.Kind) {
+    public init(snapshotting kind: Issue.Kind) {
       self = switch kind {
       case .unconditional:
           .unconditional
