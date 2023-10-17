@@ -47,3 +47,7 @@ public struct SkipInfo: Sendable {
 // This conforms to `Error` because throwing an instance of this type is how a
 // custom trait can signal that the test it is attached to should be skipped.
 extension SkipInfo: Error {}
+
+// MARK: - Codable
+
+extension SkipInfo: Codable {}

@@ -123,3 +123,7 @@ extension Test.ID: CustomStringConvertible {
     keyPathRepresentation.joined(separator: "/")
   }
 }
+
+// MARK: - Codable
+
+extension Test.ID: Codable {}
