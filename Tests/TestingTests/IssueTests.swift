@@ -8,10 +8,11 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+@testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalTestRunning) @_spi(ExperimentalSnapshotting) import Testing
+@_implementationOnly import TestingInternals
+
 #if canImport(XCTest)
 import XCTest
-@testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalTestRunning) import Testing
-@_implementationOnly import TestingInternals
 
 final class IssueTests: XCTestCase {
   func testExpect() async throws {
@@ -1230,3 +1231,29 @@ final class IssueTests: XCTestCase {
   }
 }
 #endif
+
+struct IssueCodingTests {
+
+  @Test("Codable",
+        arguments: [
+          Issue.Kind.apiMisused,
+          Issue.Kind.confirmationMiscounted(actual: 13, expected: 42),
+          Issue.Kind.errorCaught(NSError(domain: "Domain", code: 13, userInfo: ["UserInfoKey": "UserInfoValue"])),
+          Issue.Kind.expectationFailed(Expectation(isPassing: true, isRequired: true, sourceLocation: SourceLocation())),
+          Issue.Kind.knownIssueNotRecorded,
+          Issue.Kind.system,
+          Issue.Kind.timeLimitExceeded(timeLimitComponents: (13, 42)),
+          Issue.Kind.unconditional,
+        ]
+  )
+  func testCodable(issueKind: Issue.Kind) async throws {
+    let issue = Issue(kind: issueKind,
+                      comments: ["Comment"],
+                      sourceContext: SourceContext(backtrace: Backtrace.current(), sourceLocation: SourceLocation()))
+    let issueSnapshot = Issue.Snapshot(snapshotting: issue)
+    let encoded = try JSONEncoder().encode(issueSnapshot)
+    let decoded = try JSONDecoder().decode(Issue.Snapshot.self, from: encoded)
+
+    #expect(String(describing: decoded) == String(describing: issueSnapshot))
+  }
+}

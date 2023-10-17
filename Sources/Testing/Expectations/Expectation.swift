@@ -113,7 +113,7 @@ extension Expectation {
 
     /// Creates a snapshot expectation from a real ``Expectation``.
     /// - Parameter expectation: The real expectation.
-    init(expectation: Expectation) {
+    init(snapshotting expectation: Expectation) {
       self.sourceCodeDescription = String(describing: expectation.sourceCode)
       self.mismatchedErrorDescription = expectation.mismatchedErrorDescription
       self.expandedExpressionDescription = expectation.expandedExpressionDescription
