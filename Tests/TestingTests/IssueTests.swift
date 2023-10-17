@@ -966,8 +966,8 @@ final class IssueTests: XCTestCase {
         return XCTFail("Unexpected nil difference")
       }
       let differenceDescription = String(describing: difference)
-      XCTAssertTrue(differenceDescription.contains("+ 6"))
-      XCTAssertTrue(differenceDescription.contains("- 3"))
+      XCTAssertTrue(differenceDescription.contains("+   6"))
+      XCTAssertTrue(differenceDescription.contains("-   3"))
     }
 
     await Test {

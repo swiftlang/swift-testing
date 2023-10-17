@@ -318,42 +318,9 @@ public func __checkInoutFunctionCall<T, /*each*/ U, R>(
 /// Check that an expectation has passed after a condition has been evaluated
 /// and throw an error if it failed.
 ///
-/// This overload is used to implement difference-reporting support when
-/// comparing collections.
-///
-/// - Warning: This function is used to implement the `#expect()` and
-///   `#require()` macros. Do not call it directly.
-public func __checkBinaryOperation<T, U>(
-  _ lhs: T, _ op: (T, () -> U) -> Bool, _ rhs: @autoclosure () -> U,
-  sourceCode: SourceCode,
-  comments: @autoclosure () -> [Comment],
-  isRequired: Bool,
-  sourceLocation: SourceLocation
-) -> Result<Void, any Error> where T: BidirectionalCollection, T.Element: Equatable, U: BidirectionalCollection, T.Element == U.Element {
-  let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
-  func difference() -> Difference? {
-    guard let rhs else {
-      return nil
-    }
-    return Difference(from: lhs, to: rhs)
-  }
-  return __checkValue(
-    condition,
-    sourceCode: sourceCode,
-    expandedExpressionDescription: sourceCode.expandWithOperands(lhs, rhs),
-    difference: difference(),
-    comments: comments(),
-    isRequired: isRequired,
-    sourceLocation: sourceLocation
-  )
-}
-
-/// Check that an expectation has passed after a condition has been evaluated
-/// and throw an error if it failed.
-///
 /// This overload is necessary because `String` satisfies the requirements for
-/// the difference-calculating overload above, but the output from that overload
-/// may be unexpectedly complex.
+/// the generic overload above, but the output from that overload splits the
+/// strings into individual characters for display.
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.

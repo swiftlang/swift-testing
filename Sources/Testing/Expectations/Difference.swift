@@ -90,18 +90,22 @@ public struct Difference: Sendable {
       String.init(describing:)
     }
 
-    self.init(
-      elements: result.lazy
-        .flatMap { $0 }
-        .map { (describe($0.value), $0.kind) }
-        .reduce(into: []) { (result: inout _, element: Element) in
-          if element.kind == .remove, let previous = result.last, previous.kind == .insert {
-            result[result.index(before: result.endIndex)] = (previous.value, .replace(oldValue: element.value))
-          } else {
-            result.append(element)
-          }
+    // Flatten the arrays of arrays of elements into a single array and convert
+    // values to strings. Finally, merge pairs of removals/insertions (i.e.
+    // where an element was replaced with another element) because it's easier
+    // to do after the array of arrays has been flatted.
+    let elements: some Sequence<Element> = result.lazy
+      .flatMap { $0 }
+      .map { (describe($0.value), $0.kind) as Element }
+      .reduce(into: []) { result, element in
+        if element.kind == .remove, let previous = result.last, previous.kind == .insert {
+          result[result.index(before: result.endIndex)] = (previous.value, .replace(oldValue: element.value))
+        } else {
+          result.append(element)
         }
-    )
+      }
+
+    self.init(elements: elements)
   }
 
   /// Get a string reflecting a value, similar to how it might have been
@@ -117,12 +121,19 @@ public struct Difference: Sendable {
   /// `CustomReflectable`, the resulting string will be derived from the value's
   /// custom mirror.
   private static func _reflect<T>(_ value: T) -> String? {
-    let mirrorChildren = Mirror(reflecting: value).children
+    let mirror = Mirror(reflecting: value)
+    let mirrorChildren = mirror.children
     if mirrorChildren.isEmpty {
       return nil
     }
 
     let typeName = _typeName(T.self, qualified: true)
+    let separator = switch mirror.displayStyle {
+    case .tuple, .collection, .set, .dictionary:
+      ",\n"
+    default:
+      "\n"
+    }
     let children = mirrorChildren.lazy
       .map { child in
         if let label = child.label {
@@ -130,12 +141,28 @@ public struct Difference: Sendable {
         } else {
           "  \(String(describingForTest: child.value))"
         }
-      }.joined(separator: "\n")
-    return """
-    \(typeName)(
-    \(children)
-    )
-    """
+      }.joined(separator: separator)
+
+    switch mirror.displayStyle {
+    case .tuple:
+      return """
+      (
+      \(children)
+      )
+      """
+    case .collection, .set, .dictionary:
+      return """
+      [
+      \(children)
+      ]
+      """
+    default:
+      return """
+      \(typeName)(
+      \(children)
+      )
+      """
+    }
   }
 
   /// Initialize an instance of this type by comparing the reflections of two
