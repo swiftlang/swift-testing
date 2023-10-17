@@ -95,6 +95,8 @@ extension Comment: Equatable, Hashable {}
 
 extension Comment: Codable {}
 
+extension Comment.Kind: Codable {}
+
 // MARK: - Trait, TestTrait, SuiteTrait
 
 extension Comment: TestTrait, SuiteTrait {
