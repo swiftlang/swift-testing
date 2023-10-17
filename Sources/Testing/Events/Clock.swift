@@ -338,3 +338,79 @@ extension Test.Clock.Instant {
 #endif
   }
 }
+
+extension Test.Clock.Instant: Codable {
+
+  /// The keys used to encode a ``Test.Clock.Instant``.`
+  private enum _CodingKeys: CodingKey {
+    /// Encodes and decodes to ``uptime`` on Apple platforms, ``suspending`` on
+    /// other platforms.
+    case suspending
+
+    /// Encodes and decodes the wall clock time.
+    case wall
+  }
+
+  /// A ``Codable`` container for a ``timespec``.
+  ///
+  /// This is a helper type to provide a platform-independent encoding of
+  /// `Test.Clock.Instant` components.
+  private struct _TimespecContainer: Codable {
+    /// The number of seconds to encode / decode.
+    var seconds: Int64
+
+    /// The number of nanoseconds to encode / decode.
+    var nanoseconds: Int64
+
+    init(_ timespec: timespec) {
+      seconds = Int64(timespec.tv_sec)
+      nanoseconds = Int64(timespec.tv_nsec)
+    }
+
+    /// The ``timespec`` created from the ``seconds`` and ``nanoseconds``
+    /// components.
+    var timespecValue: timespec {
+      timespec(tv_sec: .init(clamping: seconds),
+               tv_nsec: .init(clamping: nanoseconds))
+    }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    // Depending on the platform we encode the uptime / suspending time
+    // Since a platform can only have one of them set we use the same key to
+    // encode them. That allows us to have a consistent cross-platform encoding.
+    // The platform that decodes the value possibly uses the same value for the
+    // other property (ie. `suspending` encoded on non-Darwin would be decoded
+    // on Darwin as `uptime`.
+    let suspendingTimespecContainer: _TimespecContainer
+#if SWT_TARGET_OS_APPLE
+    suspendingTimespecContainer = _TimespecContainer(uptime)
+#else
+    suspendingTimespecContainer = _TimespecContainer(timespec(suspending))
+#endif
+    var container = encoder.container(keyedBy: _CodingKeys.self)
+    try container.encode(suspendingTimespecContainer, forKey: .suspending)
+
+#if !SWT_NO_UTC_CLOCK
+    try container.encode(_TimespecContainer(wall), forKey: .wall)
+#endif
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: _CodingKeys.self)
+    let suspendingTimespecContainer = try container.decode(_TimespecContainer.self, forKey: .suspending)
+#if SWT_TARGET_OS_APPLE
+    uptime = suspendingTimespecContainer.timespecValue
+#else
+    self.suspending = SuspendingClock.Instant(suspendingTimespecContainer.timespecValue)
+#endif
+
+#if !SWT_NO_UTC_CLOCK
+    // Only decode it if present - if it wasn't encoded we fall back to the
+    // current wall clock time (via its default value).
+    if let wallTimespecContainer = try container.decodeIfPresent(_TimespecContainer.self, forKey: .wall) {
+      self.wall = wallTimespecContainer.timespecValue
+    }
+#endif
+  }
+}
