@@ -75,8 +75,6 @@ struct EventRecorderTests {
       #expect(!buffer.contains("●"))
     }
 
-    #expect(buffer.contains(#"+ "xyz""#))
-
     if testsWithSignificantIOAreEnabled {
       print(buffer, terminator: "")
     }

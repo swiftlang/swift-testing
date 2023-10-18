@@ -56,20 +56,28 @@ public struct Difference: Sendable {
   /// - Parameters:
   ///   - lhs: The "old" state of the collection to compare.
   ///   - rhs: The "new" state of the collection to compare.
-  ///   - describingForTest: Whether or not to convert values in `lhs` and `rhs`
-  ///     to strings using ``Swift/String/init(describingForTest:)``.
-  init<T, U>(from lhs: T, to rhs: U, describingForTest: Bool = true)
-  where T: BidirectionalCollection, T.Element: Equatable, U: BidirectionalCollection, T.Element == U.Element {
+  init?<T, U>(from lhs: T, to rhs: U) {
+    let lhsDump = String(describingForTestComparison: lhs)
+      .split(whereSeparator: \.isNewline)
+      .map(String.init)
+    let rhsDump = String(describingForTestComparison: rhs)
+      .split(whereSeparator: \.isNewline)
+      .map(String.init)
+
+    guard lhsDump.count > 1 || rhsDump.count > 1 else {
+      return nil
+    }
+
     // Compute the difference between the two elements. Sort the resulting set
     // of changes by their offsets, and ensure that insertions come before
     // removals located at the same offset. This helps to ensure that the offset
     // values do not drift as we walk the changeset.
-    let difference = rhs.difference(from: lhs)
+    let difference = rhsDump.difference(from: lhsDump)
 
     // Walk the initial string and slowly transform it into the final string.
     // Add an additional "scratch" string that is used to store a removal marker
     // if the last character is removed.
-    var result: [[(value: T.Element, kind: ElementKind?)]] = lhs.map { [($0, nil)] } + CollectionOfOne([])
+    var result: [[Element]] = lhsDump.map { [($0, nil)] } + CollectionOfOne([])
     for change in difference.removals.reversed() {
       // Remove the character at the specified index, then re-insert it into the
       // slot at the previous index (with the marker character applied.) The
@@ -84,19 +92,12 @@ public struct Difference: Sendable {
       result.insert([(change.element, kind: .insert)], at: change.offset)
     }
 
-    let describe: (T.Element) -> String = if describingForTest {
-      String.init(describingForTest:)
-    } else {
-      String.init(describing:)
-    }
-
-    // Flatten the arrays of arrays of elements into a single array and convert
-    // values to strings. Finally, merge pairs of removals/insertions (i.e.
-    // where an element was replaced with another element) because it's easier
-    // to do after the array of arrays has been flatted.
+    // Flatten the arrays of arrays of elements into a single array, then merge
+    // pairs of removals/insertions (i.e. where an element was replaced with
+    // another element) because it's easier to do after the array of arrays has
+    // been flatted.
     let elements: some Sequence<Element> = result.lazy
       .flatMap { $0 }
-      .map { (describe($0.value), $0.kind) as Element }
       .reduce(into: []) { result, element in
         if element.kind == .remove, let previous = result.last, previous.kind == .insert {
           result[result.index(before: result.endIndex)] = (previous.value, .replace(oldValue: element.value))
@@ -106,83 +107,6 @@ public struct Difference: Sendable {
       }
 
     self.init(elements: elements)
-  }
-
-  /// Get a string reflecting a value, similar to how it might have been
-  /// initialized and suitable for display as part of a difference.
-  ///
-  /// - Parameters:
-  ///   - value: The value to reflect.
-  ///
-  /// - Returns: A string reflecting `value`, or `nil` if its reflection is
-  ///   trivial.
-  ///
-  /// This function uses `Mirror`, so if the type of `value` conforms to
-  /// `CustomReflectable`, the resulting string will be derived from the value's
-  /// custom mirror.
-  private static func _reflect<T>(_ value: T) -> String? {
-    let mirror = Mirror(reflecting: value)
-    let mirrorChildren = mirror.children
-    if mirrorChildren.isEmpty {
-      return nil
-    }
-
-    let typeName = _typeName(T.self, qualified: true)
-    let separator = switch mirror.displayStyle {
-    case .tuple, .collection, .set, .dictionary:
-      ",\n"
-    default:
-      "\n"
-    }
-    let children = mirrorChildren.lazy
-      .map { child in
-        if let label = child.label {
-          "  \(label): \(String(describingForTest: child.value))"
-        } else {
-          "  \(String(describingForTest: child.value))"
-        }
-      }.joined(separator: separator)
-
-    switch mirror.displayStyle {
-    case .tuple:
-      return """
-      (
-      \(children)
-      )
-      """
-    case .collection, .set, .dictionary:
-      return """
-      [
-      \(children)
-      ]
-      """
-    default:
-      return """
-      \(typeName)(
-      \(children)
-      )
-      """
-    }
-  }
-
-  /// Initialize an instance of this type by comparing the reflections of two
-  /// values.
-  ///
-  /// - Parameters:
-  ///   - lhs: The "old" value to compare.
-  ///   - rhs: The "new" value to compare.
-  init?<T, U>(comparingValue lhs: T, to rhs: U) {
-    guard let lhsDump = Self._reflect(lhs), let rhsDump = Self._reflect(rhs) else {
-      return nil
-    }
-
-    let lhsDumpLines = lhsDump.split(whereSeparator: \.isNewline)
-    let rhsDumpLines = rhsDump.split(whereSeparator: \.isNewline)
-    if lhsDumpLines.count > 1 || rhsDumpLines.count > 1 {
-      self.init(from: lhsDumpLines, to: rhsDumpLines, describingForTest: false)
-    } else {
-      return nil
-    }
   }
 }
 

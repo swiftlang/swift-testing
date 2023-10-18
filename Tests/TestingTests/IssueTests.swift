@@ -991,14 +991,58 @@ final class IssueTests: XCTestCase {
         return XCTFail("Unexpected nil difference")
       }
       let differenceDescription = String(describing: difference)
-
-      XCTAssertTrue(differenceDescription.contains(#"+ "Ht was the best of times, it was the blurst of times! Go chvappy way...""#))
-      XCTAssertTrue(differenceDescription.contains(#"- "It was the best of times, it was the worst of times. Oh happy day!""#))
+      XCTAssertTrue(differenceDescription.contains(#"- consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse"#))
+      XCTAssertTrue(differenceDescription.contains(#"+ potato salad. Duis aute irure dolor in reprehenderit in voluptate velit esse"#))
     }
 
     await Test {
-      let lhs = "It was the best of times, it was the worst of times. Oh happy day!"
-      let rhs = "Ht was the best of times, it was the blurst of times! Go chvappy way..."
+      let lhs = """
+      Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod
+      tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
+      quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
+      consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse
+      cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat
+      non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+      """
+      let rhs = """
+      Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod
+      tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
+      quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
+      potato salad. Duis aute irure dolor in reprehenderit in voluptate velit esse
+      cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat
+      non dentistry, sunt in culpa qui officia deserunt mollit anim id est laborum.
+      """
+      #expect(lhs == rhs)
+    }.run(configuration: configuration)
+  }
+
+  func testComplexStructureDifference() async {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      guard case let .expectationFailed(expectation) = issue.kind else {
+        XCTFail("Unexpected issue kind \(issue.kind)")
+        return
+      }
+      guard let difference = expectation.difference else {
+        return XCTFail("Unexpected nil difference")
+      }
+      let differenceDescription = String(describing: difference)
+      print(differenceDescription)
+      XCTAssertTrue(differenceDescription.contains(#"+   y: "def""#))
+      XCTAssertTrue(differenceDescription.contains(#"-   y: "abc""#))
+    }
+
+    struct S: Equatable {
+      var x: Int
+      var y: String
+    }
+
+    await Test {
+      let lhs = S(x: 123, y: "abc")
+      let rhs = S(x: 123, y: "def")
       #expect(lhs == rhs)
     }.run(configuration: configuration)
   }
