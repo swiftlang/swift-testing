@@ -141,6 +141,7 @@ public struct Configuration: Sendable {
   ///
   /// - Parameters:
   ///   - test: An test that needs to be filtered.
+  ///   
   /// - Returns: A Boolean value representing if the test satisfied the filter.
   public typealias TestFilter = @Sendable (Test) -> Bool
 
@@ -150,10 +151,17 @@ public struct Configuration: Sendable {
   /// The granularity to enforce test filtering.
   /// 
   /// By default, all tests are run and no filter is set.
+  /// - Parameters:
+  ///   - selection: An set of test ids to be filtered.
   public mutating func setTestFilter(toMatch selection: Set<Test.ID>?) {
-      self.setTestFilter(toMatch: selection.map({ Test.ID.Selection(testIDs: $0) }))
+      self.setTestFilter(toMatch: selection.map(Test.ID.Selection.init))
   }
-    
+  
+  /// The granularity to enforce test filtering.
+  ///
+  /// By default, all tests are run and no filter is set.
+  /// - Parameters:
+  ///   - selection: An selection of test ids to be filtered.
   mutating func setTestFilter(toMatch selection: Test.ID.Selection?) {
     guard let selectedTests = selection else {
         self.testFilter = nil

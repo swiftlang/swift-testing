@@ -127,8 +127,6 @@ extension Runner.Plan {
   ///
   /// - Parameters:
   ///   - test: The test to query.
-  ///   - selectedTests: The selected test IDs to use in determining whether
-  ///     `test` is selected, if one is configured.
   ///   - filter: The filter to decide if the test is included.
   ///
   /// - Returns: Whether or not the specified test is selected. If

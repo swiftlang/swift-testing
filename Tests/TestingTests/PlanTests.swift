@@ -7,12 +7,11 @@
 // See https://swift.org/LICENSE.txt for license information
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
-
+    
 @testable @_spi(ExperimentalTestRunning) import Testing
 
 @Suite("Runner.Plan Tests")
 struct PlanTests {
-
   @Test("Selected tests")
   func selectedTests() async throws {
     let outerTestType = try #require(await test(for: SendableTests.self))
@@ -73,8 +72,9 @@ struct PlanTests {
     let tests = [outerTestType, deeplyNestedTest]
 
     var configuration = Configuration()
+    let selection = Test.ID.Selection(testIDs: [outerTestType.id, deeplyNestedTest.id])
     configuration.testFilter = { test in
-      Test.ID.Selection(testIDs: [outerTestType.id, deeplyNestedTest.id]).contains(test)
+      selection.contains(test)
     }
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
