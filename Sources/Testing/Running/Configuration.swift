@@ -137,38 +137,38 @@ public struct Configuration: Sendable {
 
   // MARK: - Test selection
 
-  /// The selected tests to run, if any.
+  /// A function that handles filtering tests.
   ///
-  /// This property should be used for testing membership (whether a test ID has
-  /// been selected) since it is more optimized for that use case. It also
-  /// provides the backing storage for ``selectedTestIDs``.
-  ///
-  /// This property is optional and defaults to `nil` because it is possible to
-  /// select specific tests to run but not provide any tests in that list. That
-  /// is a supported use case: it results in zero tests being run and no issues
-  /// recorded.
-  ///
-  /// A practical example of when this situation can happen is when testing is
-  /// configured via an Xcode Test Plan, the "Automatically Include New Tests"
-  /// option is disabled, and zero tests are enabled.
-  var selectedTests: Test.ID.Selection?
+  /// - Parameters:
+  ///   - test: An test that needs to be filtered.
+  ///   
+  /// - Returns: A Boolean value representing if the test satisfied the filter.
+  public typealias TestFilter = @Sendable (Test) -> Bool
 
-  /// The IDs of the selected tests to run, if any.
+  /// The test filter to which tests should be filtered when run.
+  public var testFilter: TestFilter?
+
+  /// The granularity to enforce test filtering.
+  /// 
+  /// By default, all tests are run and no filter is set.
+  /// - Parameters:
+  ///   - selection: An set of test ids to be filtered.
+  public mutating func setTestFilter(toMatch selection: Set<Test.ID>?) {
+      self.setTestFilter(toMatch: selection.map(Test.ID.Selection.init))
+  }
+  
+  /// The granularity to enforce test filtering.
   ///
-  /// This property is optional and defaults to `nil` because it is possible to
-  /// select specific tests to run but not provide any tests in that list. That
-  /// is a supported use case: it results in zero tests being run and no issues
-  /// recorded.
-  ///
-  /// A practical example of when this situation can happen is when testing is
-  /// configured via an Xcode Test Plan, the "Automatically Include New Tests"
-  /// option is disabled, and zero tests are enabled.
-  public var selectedTestIDs: Set<Test.ID>? {
-    get {
-      selectedTests?.testIDs
+  /// By default, all tests are run and no filter is set.
+  /// - Parameters:
+  ///   - selection: An selection of test ids to be filtered.
+  mutating func setTestFilter(toMatch selection: Test.ID.Selection?) {
+    guard let selectedTests = selection else {
+        self.testFilter = nil
+        return
     }
-    set {
-      selectedTests = newValue.map { .init(testIDs: $0) }
+    self.testFilter = { test in
+        selectedTests.contains(test)
     }
   }
 }

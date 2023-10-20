@@ -7,7 +7,7 @@
 // See https://swift.org/LICENSE.txt for license information
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
-
+    
 @testable @_spi(ExperimentalTestRunning) import Testing
 
 @Suite("Runner.Plan Tests")
@@ -26,8 +26,9 @@ struct PlanTests {
       testB,
     ]
 
+    let selection = Test.ID.Selection(testIDs: [innerTestType.id])
     var configuration = Configuration()
-    configuration.selectedTestIDs = [innerTestType.id]
+    configuration.setTestFilter(toMatch: selection)
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
     #expect(plan.steps.contains(where: { $0.test == outerTestType }))
@@ -51,7 +52,8 @@ struct PlanTests {
     ]
 
     var configuration = Configuration()
-    configuration.selectedTestIDs = [innerTestType.id, outerTestType.id]
+    let selection = Test.ID.Selection(testIDs: [innerTestType.id, outerTestType.id])
+    configuration.setTestFilter(toMatch: selection)
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
     let planTests = plan.steps.map(\.test)
@@ -70,7 +72,10 @@ struct PlanTests {
     let tests = [outerTestType, deeplyNestedTest]
 
     var configuration = Configuration()
-    configuration.selectedTestIDs = [outerTestType.id, deeplyNestedTest.id]
+    let selection = Test.ID.Selection(testIDs: [outerTestType.id, deeplyNestedTest.id])
+    configuration.testFilter = { test in
+      selection.contains(test)
+    }
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
 
@@ -88,7 +93,10 @@ struct PlanTests {
     let tests = [testSuiteA, testSuiteB, testSuiteC, testFuncX]
 
     var configuration = Configuration()
-    configuration.selectedTestIDs = [testSuiteA.id]
+    let selection = Test.ID.Selection(testIDs: [testSuiteA.id])
+    configuration.testFilter = { test in
+      selection.contains(test)
+    }
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
     let testFuncXWithTraits = try #require(plan.steps.map(\.test).first { $0.name == "x()" })
