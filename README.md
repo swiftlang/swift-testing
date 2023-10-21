@@ -47,11 +47,11 @@ for various platforms:
 
 | **Platform** | **CI Status** | **Support Status** |
 |-|:-:|-|
-| **macOS** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=pr-swift-testing-macos)](https://ci.swift.org/job/pr-swift-testing-macos/) | Supported |
+| **macOS** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-5.10-macos)](https://ci.swift.org/job/swift-testing-main-swift-5.10-macos/) | Supported |
 | **iOS** | | Supported |
 | **watchOS** | | Supported |
 | **tvOS** | | Supported |
-| **Ubuntu 22.04** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=pr-swift-testing-linux-main)](https://ci.swift.org/job/pr-swift-testing-linux-main/) | Supported |
+| **Ubuntu 22.04** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-5.10-linux)](https://ci.swift.org/job/swift-testing-main-swift-5.10-linux/) | Supported |
 | **Windows** | | Pending support for macros |
 
 ## Documentation
