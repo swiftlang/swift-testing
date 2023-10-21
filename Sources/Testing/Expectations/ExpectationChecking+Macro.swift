@@ -159,6 +159,79 @@ public func __checkBinaryOperation<T, U>(
 
 // MARK: - Function calls
 
+#if compiler(<5.10) && os(Windows) // BUG: rdar://117304252
+public func __checkFunctionCall<T>(
+  _ lhs: T, calling functionCall: (T) throws -> Bool,
+  sourceCode: SourceCode,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) rethrows -> Result<Void, any Error> {
+  let condition = try functionCall(lhs)
+  return __checkValue(
+    condition,
+    sourceCode: sourceCode,
+    expandedExpressionDescription: sourceCode.expandWithOperands(lhs),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+public func __checkFunctionCall<T, U>(
+  _ lhs: T, calling functionCall: (T, U) throws -> Bool, _ arguments: U,
+  sourceCode: SourceCode,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) rethrows -> Result<Void, any Error> {
+  let condition = try functionCall(lhs, arguments)
+  return __checkValue(
+    condition,
+    sourceCode: sourceCode,
+    expandedExpressionDescription: sourceCode.expandWithOperands(lhs, arguments),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+public func __checkFunctionCall<T, U1, U2>(
+  _ lhs: T, calling functionCall: (T, U1, U2) throws -> Bool, _ arguments1: U1, _ arguments2: U2,
+  sourceCode: SourceCode,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) rethrows -> Result<Void, any Error> {
+  let condition = try functionCall(lhs, arguments1, arguments2)
+  return __checkValue(
+    condition,
+    sourceCode: sourceCode,
+    expandedExpressionDescription: sourceCode.expandWithOperands(lhs, arguments1, arguments2),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+public func __checkFunctionCall<T, U1, U2, U3>(
+  _ lhs: T, calling functionCall: (T, U1, U2, U3) throws -> Bool, _ arguments1: U1, _ arguments2: U2, _ arguments3: U3,
+  sourceCode: SourceCode,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) rethrows -> Result<Void, any Error> {
+  let condition = try functionCall(lhs, arguments1, arguments2, arguments3)
+  return __checkValue(
+    condition,
+    sourceCode: sourceCode,
+    expandedExpressionDescription: sourceCode.expandWithOperands(lhs, arguments1, arguments2, arguments3),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+#else
 /// Check that an expectation has passed after a condition has been evaluated
 /// and throw an error if it failed.
 ///
@@ -187,6 +260,7 @@ public func __checkFunctionCall<T, each U>(
     sourceLocation: sourceLocation
   )
 }
+#endif
 
 /// Check that an expectation has passed after a condition has been evaluated
 /// and throw an error if it failed.
@@ -217,6 +291,79 @@ public func __checkInoutFunctionCall<T, /*each*/ U>(
   )
 }
 
+#if compiler(<5.10) && os(Windows) // BUG: rdar://117304252
+public func __checkFunctionCall<T, R>(
+  _ lhs: T, calling functionCall: (T) throws -> R?,
+  sourceCode: SourceCode,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) rethrows -> Result<R, any Error> {
+  let optionalValue = try functionCall(lhs)
+  return __checkValue(
+    optionalValue,
+    sourceCode: sourceCode,
+    expandedExpressionDescription: sourceCode.expandWithOperands(lhs),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+public func __checkFunctionCall<T, U, R>(
+  _ lhs: T, calling functionCall: (T, U) throws -> R?, _ arguments: U,
+  sourceCode: SourceCode,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) rethrows -> Result<R, any Error> {
+  let optionalValue = try functionCall(lhs, arguments)
+  return __checkValue(
+    optionalValue,
+    sourceCode: sourceCode,
+    expandedExpressionDescription: sourceCode.expandWithOperands(lhs, arguments),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+public func __checkFunctionCall<T, U1, U2, R>(
+  _ lhs: T, calling functionCall: (T, U1, U2) throws -> R?, _ arguments1: U1, _ arguments2: U2,
+  sourceCode: SourceCode,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) rethrows -> Result<R, any Error> {
+  let optionalValue = try functionCall(lhs, arguments1, arguments2)
+  return __checkValue(
+    optionalValue,
+    sourceCode: sourceCode,
+    expandedExpressionDescription: sourceCode.expandWithOperands(lhs, arguments1, arguments2),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+public func __checkFunctionCall<T, U1, U2, U3, R>(
+  _ lhs: T, calling functionCall: (T, U1, U2, U3) throws -> R?, _ arguments1: U1, _ arguments2: U2, _ arguments3: U3,
+  sourceCode: SourceCode,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) rethrows -> Result<R, any Error> {
+  let optionalValue = try functionCall(lhs, arguments1, arguments2, arguments3)
+  return __checkValue(
+    optionalValue,
+    sourceCode: sourceCode,
+    expandedExpressionDescription: sourceCode.expandWithOperands(lhs, arguments1, arguments2, arguments3),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+#else
 /// Check that an expectation has passed after a condition has been evaluated
 /// and throw an error if it failed.
 ///
@@ -246,6 +393,7 @@ public func __checkFunctionCall<T, each U, R>(
     sourceLocation: sourceLocation
   )
 }
+#endif
 
 /// Check that an expectation has passed after a condition has been evaluated
 /// and throw an error if it failed.
