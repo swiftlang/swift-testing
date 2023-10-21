@@ -31,8 +31,8 @@ public struct Expectation: Sendable {
   @_spi(ExperimentalEventHandling)
   public var expandedExpressionDescription: String?
 
-  /// An array of changes that collectively describe the difference between two
-  /// values or collections that have been compared.
+  /// An opaque value that describes the difference between two values or
+  /// collections that have been compared.
   ///
   /// If this expectation did not involve the comparison of two values or
   /// collections, the value of this property is `nil`.

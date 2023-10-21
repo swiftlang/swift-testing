@@ -1030,7 +1030,6 @@ final class IssueTests: XCTestCase {
         return XCTFail("Unexpected nil difference")
       }
       let differenceDescription = String(describing: difference)
-      print(differenceDescription)
       XCTAssertTrue(differenceDescription.contains(#"+   y: "def""#))
       XCTAssertTrue(differenceDescription.contains(#"-   y: "abc""#))
     }
