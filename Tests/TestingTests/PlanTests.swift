@@ -73,9 +73,7 @@ struct PlanTests {
 
     var configuration = Configuration()
     let selection = Test.ID.Selection(testIDs: [outerTestType.id, deeplyNestedTest.id])
-    configuration.testFilter = { test in
-      selection.contains(test)
-    }
+    configuration.setTestFilter(toMatch: selection)
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
 
@@ -94,9 +92,7 @@ struct PlanTests {
 
     var configuration = Configuration()
     let selection = Test.ID.Selection(testIDs: [testSuiteA.id])
-    configuration.testFilter = { test in
-      selection.contains(test)
-    }
+    configuration.setTestFilter(toMatch: selection)
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
     let testFuncXWithTraits = try #require(plan.steps.map(\.test).first { $0.name == "x()" })

@@ -67,10 +67,8 @@ func runTest(for containingType: Any.Type, configuration: Configuration = .init(
 /// If no test is found representing `containingType`, nothing is run.
 func runTestFunction(named name: String, in containingType: Any.Type, configuration: Configuration = .init()) async {
   var configuration = configuration
-  let testID = Test.ID.Selection(testIDs: [Test.ID(type: containingType).child(named: name)])
-  configuration.testFilter = { test in
-    testID.contains(test)
-  }
+  let selection = Test.ID.Selection(testIDs: [Test.ID(type: containingType).child(named: name)])
+  configuration.setTestFilter(toMatch: selection)
 
   let runner = await Runner(configuration: configuration)
   await runner.run()
@@ -109,9 +107,7 @@ extension Runner.Plan {
   init(selecting containingType: Any.Type, configuration: Configuration = .init()) async {
     var configuration = configuration
     let selection = Test.ID.Selection(testIDs: [Test.ID(type: containingType)])
-    configuration.testFilter = { test in
-      selection.contains(test)
-    }
+    configuration.setTestFilter(toMatch: selection)
 
     await self.init(configuration: configuration)
   }
