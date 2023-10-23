@@ -69,7 +69,7 @@ extension Test.ID {
     /// A test ID is considered contained in the selection if it has been
     /// explicitly added or if it has a descendant or ancestor which has been
     /// explicitly added.
-    @Sendable  func contains(_ testID: Test.ID) -> Bool {
+    @Sendable func contains(_ testID: Test.ID) -> Bool {
       contains(testID.keyPathRepresentation)
     }
 
