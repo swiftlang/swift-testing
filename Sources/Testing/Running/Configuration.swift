@@ -155,7 +155,7 @@ public struct Configuration: Sendable {
   ///
   /// By default, all tests are run and no filter is set.
   public mutating func setTestFilter(toMatch selection: Set<Test.ID>?) {
-      setTestFilter(toMatch: selection.map(Test.ID.Selection.init))
+    setTestFilter(toMatch: selection.map(Test.ID.Selection.init))
   }
   
   /// The granularity to enforce test filtering.

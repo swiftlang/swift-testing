@@ -201,8 +201,8 @@ public enum XCTestScaffold: Sendable {
     //
     // This environment variable stands in for `swift test --filter`.
     let testIDs: [Test.ID]? = Environment.variable(named: "SWT_SELECTED_TEST_IDS").map { testIDs in
-      testIDs.split(separator: ";").map { testID in
-        Test.ID(testID.split(separator: "/").map(String.init))
+      testIDs.split(separator: ";", omittingEmptySubsequences: true).map { testID in
+        Test.ID(testID.split(separator: "/", omittingEmptySubsequences: true).map(String.init))
       }
     }
     if let testIDs {
