@@ -224,6 +224,7 @@ private func _reflect<T>(_ value: T) -> String? {
 
   let children = mirrorChildren.lazy
     .map { child in
+      // TODO: handle multi-line descriptions elegantly
       if let label = child.label {
         "  \(label): \(String(describingForTest: child.value))"
       } else {
