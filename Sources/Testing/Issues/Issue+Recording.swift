@@ -141,14 +141,14 @@ extension Issue {
 /// the testing library calls this function synchronously. This facilitates
 /// interactive debugging of test failures by allowing a symbolic breakpoint to
 /// be added specifying the symbol name of this function
-/// (`SWTFailureBreakpoint`), so that the debugger may pause execution and allow
-/// a user to inspect the process state. This function performs no action of its
-/// own.
+/// (`swt_failureBreakpoint`), so that the debugger may pause execution and
+/// allow a user to inspect the process state. This function performs no action
+/// of its own.
 ///
 /// This function is not part of the public interface of the testing library,
 /// but it is exported and its symbol name must remain stable.
-@_cdecl("SWTFailureBreakpoint")
-@inline(never)
+@_cdecl("swt_failureBreakpoint")
+@inline(never) @_optimize(none)
 @usableFromInline
 func failureBreakpoint() {
   // Empty.
