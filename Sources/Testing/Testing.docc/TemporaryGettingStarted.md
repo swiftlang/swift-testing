@@ -30,10 +30,20 @@ To learn how to contribute to the testing library itself, see
 
 ### Downloading a development toolchain
 
-A recent **development snapshot** toolchain is required to use the testing
+A recent **Swift 5.10 development snapshot** toolchain is required to use the
+testing library. Visit [swift.org](https://www.swift.org/download/#swift-510-development)
+to download and install a toolchain from the section titled
+**Snapshots — Swift 5.10 Development**.
+
+@Comment {
+  - Bug: A compiler bug in the Swift main branch is temporarily preventing its
+    use with the testing library. ([swift-#69096](https://github.com/apple/swift/issues/69096))
+}
+
+<!--A recent **development snapshot** toolchain is required to use the testing
 library. Visit [swift.org](https://www.swift.org/download/#trunk-development-main)
 to download and install a toolchain from the section titled
-**Snapshots — Trunk Development (main)**.
+**Snapshots — Trunk Development (main)**.-->
 
 Be aware that development snapshot toolchains are not intended for day-to-day
 development and may contain defects that affect the programs built with them.
@@ -109,7 +119,8 @@ export TOOLCHAINS=swift
 
 In Xcode, open the **Xcode** menu, then the Toolchains submenu, and select the
 development toolchain from the list of toolchains presented to you&mdash;it will
-be presented with a name such as "Swift Development Toolchain 2023-01-01 (a)".
+<!--be presented with a name such as "Swift Development Toolchain 2023-01-01 (a)".-->
+be presented with a name such as "Swift 5.10 Development Snapshot 2023-01-01 (a)".
 
 ### Running tests
 
