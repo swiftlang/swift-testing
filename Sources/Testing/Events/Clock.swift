@@ -64,6 +64,23 @@ extension Test {
 // MARK: - Converting to other clocks
 
 extension timespec {
+  /// Initialize an instance of this type from an instance of
+  /// `SuspendingClock.Instant`.
+  ///
+  /// - Parameters:
+  ///   - instant: The instant to initialize this instance from.
+  ///
+  /// The resulting instance of `timespec` measures the duration between the
+  /// suspending clock's epoch and `instant`.
+  ///
+  /// This initializer is not part of the public interface of the testing
+  /// library.
+  @available(_clockAPI, *)
+  init(_ instant: SuspendingClock.Instant) {
+    let duration = unsafeBitCast(instant, to: Duration.self)
+    self.init(duration)
+  }
+
   /// Initialize an instance of this type from an instance of `Duration`.
   ///
   /// - Parameters:
@@ -131,11 +148,25 @@ extension SuspendingClock.Instant {
   ///   - testClockInstant: The equivalent instant on ``Test/Clock``.
   public init(_ testClockInstant: Test.Clock.Instant) {
 #if SWT_TARGET_OS_APPLE
-    let duration = Duration(testClockInstant.uptime)
-    self = unsafeBitCast(duration, to: Self.self)
+    self.init(testClockInstant.uptime)
 #else
     self = testClockInstant.suspending
 #endif
+  }
+
+  /// Initialize an instance of this type from an instance of `timespec`.
+  ///
+  /// - Parameters:
+  ///   - ts: The `timespec` value to initialize this instance from.
+  ///
+  /// The resulting instance of `SuspendingClock.Instant` is equal to the
+  /// suspending clock's epoch offset by `ts` seconds and nanoseconds.
+  ///
+  /// This initializer is not part of the public interface of the testing
+  /// library.
+  init(_ ts: timespec) {
+    let duration = Duration(ts)
+    self = unsafeBitCast(duration, to: Self.self)
   }
 }
 
