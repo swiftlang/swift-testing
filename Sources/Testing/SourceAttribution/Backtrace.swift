@@ -129,11 +129,11 @@ extension Backtrace {
 
   /// Storage for the error-mapping cache.
   ///
-  /// Keys in this map are the raw addresses of the heap-allocated `SwiftError`
-  /// and `NSError` boxes around thrown Swift errors. Addresses are, of course,
-  /// dangerous to hold without also holding references to the relevant objects,
-  /// but using `AnyObject` as a key would result in thrown errors never being
-  /// deallocated.
+  /// Keys in this map are the object identifiers (i.e. the addresses) of the
+  /// heap-allocated `SwiftError` and `NSError` boxes around thrown Swift
+  /// errors. Addresses are, of course, dangerous to hold without also holding
+  /// references to the relevant objects, but using `AnyObject` as a key would
+  /// result in thrown errors never being deallocated.
   ///
   /// To ensure the keys remain valid, a _weak_ reference to the error object is
   /// held in the value. When an error is looked up by key, we check if the weak
@@ -144,7 +144,7 @@ extension Backtrace {
   ///
   /// Access to this dictionary is guarded by a lock.
   @Locked
-  private static var _errorMappingCache = [UnsafeRawPointer: _ErrorMappingCacheEntry]()
+  private static var _errorMappingCache = [ObjectIdentifier: _ErrorMappingCacheEntry]()
 
   /// The previous `swift_willThrow` handler, if any.
   @Locked
@@ -160,14 +160,15 @@ extension Backtrace {
     _oldWillThrowHandler?(errorAddress)
 
     let errorObject = unsafeBitCast(errorAddress, to: (any AnyObject & Sendable).self)
+    let errorID = ObjectIdentifier(errorObject)
     let backtrace = Backtrace.current()
     let newEntry = _ErrorMappingCacheEntry(errorObject: errorObject, backtrace: backtrace)
 
     Self.$_errorMappingCache.withLock { cache in
-      let oldEntry = cache[errorAddress]
+      let oldEntry = cache[errorID]
       if oldEntry?.errorObject == nil {
         // Either no entry yet, or its weak reference was zeroed.
-        cache[errorAddress] = newEntry
+        cache[errorID] = newEntry
       }
     }
   }
@@ -216,9 +217,9 @@ extension Backtrace {
   ///   existential containers with different addresses.
   @inline(never)
   init?(forFirstThrowOf error: any Error) {
-    let errorAddress = unsafeBitCast(error, to: UnsafeRawPointer.self)
+    let errorID = ObjectIdentifier(unsafeBitCast(error, to: AnyObject.self))
     let entry = Self.$_errorMappingCache.withLock { cache in
-      cache[errorAddress]
+      cache[errorID]
     }
     if let entry, entry.errorObject != nil {
       // There was an entry and its weak reference is still valid.
