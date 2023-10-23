@@ -251,9 +251,7 @@ final class RunnerTests: XCTestCase {
 
     var configuration = Configuration()
     let selection = Test.ID.Selection(testIDs: [testSuite.id])
-    configuration.testFilter = { test in
-      selection.contains(test)
-    }
+    configuration.setTestFilter(toMatch: selection)
 
     let runner = await Runner(testing: [
       testSuite,
@@ -304,9 +302,7 @@ final class RunnerTests: XCTestCase {
 
     var configuration = Configuration()
     let selection = Test.ID.Selection(testIDs: selectedTestIDs)
-    configuration.testFilter = { test in
-      selection.contains(test)
-    }
+    configuration.setTestFilter(toMatch: selection)
 
     let runner = await Runner(configuration: configuration)
     let plan = runner.plan

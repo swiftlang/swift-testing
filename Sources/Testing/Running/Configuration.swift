@@ -149,26 +149,23 @@ public struct Configuration: Sendable {
   public var testFilter: TestFilter?
 
   /// The granularity to enforce test filtering.
-  /// 
-  /// By default, all tests are run and no filter is set.
   /// - Parameters:
-  ///   - selection: An set of test ids to be filtered.
+  ///   - selection: A set of test IDs to be filtered. If `nil`, the current
+  ///     selection is cleared.
+  ///
+  /// By default, all tests are run and no filter is set.
   public mutating func setTestFilter(toMatch selection: Set<Test.ID>?) {
-      self.setTestFilter(toMatch: selection.map(Test.ID.Selection.init))
+    setTestFilter(toMatch: selection.map(Test.ID.Selection.init))
   }
   
   /// The granularity to enforce test filtering.
   ///
-  /// By default, all tests are run and no filter is set.
   /// - Parameters:
-  ///   - selection: An selection of test ids to be filtered.
+  ///   - selection: A selection of test IDs to be filtered. If `nil`, the
+  ///     current selection is cleared.
+  ///
+  /// By default, all tests are run and no filter is set.
   mutating func setTestFilter(toMatch selection: Test.ID.Selection?) {
-    guard let selectedTests = selection else {
-        self.testFilter = nil
-        return
-    }
-    self.testFilter = { test in
-        selectedTests.contains(test)
-    }
+    testFilter = selection.map { $0.contains }
   }
 }

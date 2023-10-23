@@ -110,6 +110,33 @@ public enum XCTestScaffold: Sendable {
   ///   testing library with existing tools such as Swift Package Manager. It
   ///   will be removed in a future release.
   ///
+  /// ### Filtering tests
+  ///
+  /// This function does not support the `--filter` argument passed to
+  /// `swift test`. Instead, set the `SWT_SELECTED_TEST_IDS` environment
+  /// variable to the ``Test/ID`` of the test that should run (or, if multiple
+  /// tests should be run, their IDs separated by `";"`.)
+  ///
+  /// A test ID is composed of its module name, containing type name, and (if
+  /// the test is a function rather than a suite), the name of the function
+  /// including parentheses and any parameter labels. For example, given the
+  /// following test functions in a module named `"MyTests"`:
+  ///
+  /// ```swift
+  /// struct MySuite {
+  ///   @Test func hello() { ... }
+  ///   @Test(arguments: 0 ..< 10) func world(i: Int) { ... }
+  /// }
+  /// ```
+  ///
+  /// Their IDs are the strings `"MyTests/MySuite/hello()"` and
+  /// `"MyTests/MySuite/world(i:)"` respectively, and they can be passed as the
+  /// environment variable value
+  /// `"MyTests/MySuite/hello();MyTests/MySuite/world(i:)"`.
+  ///
+  /// - Note: The module name of a test target in a Swift package is typically
+  ///   the name of the test target.
+  ///
   /// ### Configuring output
   ///
   /// By default, this function uses
@@ -166,6 +193,20 @@ public enum XCTestScaffold: Sendable {
                                         expected: true)
       }
 #endif
+    }
+
+    // If the SWT_SELECTED_TEST_IDS environment variable is set, split it into
+    // test IDs (separated by ";", test ID components separated by "/") and set
+    // the configuration's test filter to match it.
+    //
+    // This environment variable stands in for `swift test --filter`.
+    let testIDs: [Test.ID]? = Environment.variable(named: "SWT_SELECTED_TEST_IDS").map { testIDs in
+      testIDs.split(separator: ";", omittingEmptySubsequences: true).map { testID in
+        Test.ID(testID.split(separator: "/", omittingEmptySubsequences: true).map(String.init))
+      }
+    }
+    if let testIDs {
+      configuration.setTestFilter(toMatch: Set(testIDs))
     }
 
     let runner = await Runner(configuration: configuration)
