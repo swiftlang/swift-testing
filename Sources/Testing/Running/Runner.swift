@@ -114,6 +114,41 @@ extension Runner {
     }
   }
 
+  /// Perform a function for each element in a sequence, parallelizing the calls
+  /// to the function if the current configuration has parallelization enabled.
+  ///
+  /// - Parameters:
+  ///   - sequence: A sequence of values to pass to `body`.
+  ///   - body: A function to invoke once per element in `sequence`.
+  ///
+  /// - Throws: Whatever is thrown by `body`, or `CancellationError` if the
+  ///   current task is cancelled during execution of this function.
+  ///
+  /// If the ``Configuration/isParallelizationEnabled`` property of this
+  /// runner's ``configuration`` is `true`, each call to `body` is made from a
+  /// separate child task of a task group. Otherwise, a task group is created
+  /// but all calls to `body` are made serially within the same child task.
+  private func _forEach<S>(
+    in sequence: S,
+    _ body: @escaping @Sendable (S.Element) async throws -> Void
+  ) async throws where S: Sequence & Sendable, S.Element: Sendable {
+    if configuration.isParallelizationEnabled {
+      try await withThrowingTaskGroup(of: Void.self) { taskGroup in
+        for i in sequence {
+          _ = taskGroup.addTaskUnlessCancelled {
+            try await body(i)
+          }
+        }
+        try await taskGroup.waitForAll()
+      }
+    } else {
+      for i in sequence {
+        try Task.checkCancellation()
+        try await body(i)
+      }
+    }
+  }
+
   /// Run this test.
   ///
   /// - Parameters:
@@ -174,57 +209,16 @@ extension Runner {
     if let step = stepGraph.value, case .run = step.action, let testCases = step.test.testCases {
       try await Test.withCurrent(step.test) {
         try await _withErrorHandling(for: step, sourceLocation: step.test.sourceLocation) {
-          try await _runTestCases(testCases, within: step)
+          try await _forEach(in: testCases) { testCase in
+            try await _runTestCase(testCase, within: step)
+          }
         }
       }
     }
 
     let childGraphs = stepGraph.children.sorted { $0.key < $1.key }
-    try await withThrowingTaskGroup(of: Void.self) { taskGroup in
-      if configuration.isParallelizationEnabled {
-        for (_, childGraph) in childGraphs {
-          _ = taskGroup.addTaskUnlessCancelled {
-            try await _runStep(atRootOf: childGraph, depth: depth + 1)
-          }
-        }
-        try await taskGroup.waitForAll()
-      } else {
-        _ = taskGroup.addTaskUnlessCancelled {
-          for (_, childGraph) in childGraphs {
-            try await _runStep(atRootOf: childGraph, depth: depth + 1)
-          }
-        }
-        try await taskGroup.waitForAll()
-      }
-    }
-  }
-
-  /// Run a sequence of test cases.
-  ///
-  /// - Parameters:
-  ///   - testCases: The test cases to be run.
-  ///   - step: The runner plan step associated with this test case.
-  ///
-  /// - Throws: Whatever is thrown from a test case's body. Thrown errors are
-  ///   normally reported as test failures.
-  ///
-  /// If parallelization is supported and enabled, the generated test cases will
-  /// be run in parallel using a task group.
-  private func _runTestCases(_ testCases: some TestCases, within step: Plan.Step) async throws {
-    if configuration.isParallelizationEnabled {
-      try await withThrowingTaskGroup(of: Void.self) { taskGroup in
-        for testCase in testCases {
-          _ = taskGroup.addTaskUnlessCancelled {
-            try await _runTestCase(testCase, within: step)
-          }
-        }
-        try await taskGroup.waitForAll()
-      }
-    } else {
-      for testCase in testCases {
-        try Task.checkCancellation()
-        try await _runTestCase(testCase, within: step)
-      }
+    try await _forEach(in: childGraphs) { _, childGraph in
+      try await _runStep(atRootOf: childGraph, depth: depth + 1)
     }
   }
 
@@ -291,6 +285,9 @@ extension Runner {
         Event.post(.runEnded, for: nil, testCase: nil, configuration: runner.configuration)
       }
 
+      // Run the root step in a task group with a single child task so that, if
+      // the code under test cancels the current task, it does not cancel the
+      // parent task that initially invoked the runner.
       await withTaskGroup(of: Void.self) { [runner] taskGroup in
         _ = taskGroup.addTaskUnlessCancelled {
           try? await runner._runStep(atRootOf: runner.plan.stepGraph, depth: 0)
