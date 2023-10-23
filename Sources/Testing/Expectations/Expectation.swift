@@ -69,9 +69,9 @@ extension Expectation {
   /// A serializable type describing an expectation that has been evaluated.
   @_spi(ExperimentalSnapshotting)
   public struct Snapshot: Sendable, Codable {
-    /// The source code of the expression evaluated by this expectation, if
-    /// available at compile time.
-    public var sourceCode: String?
+    /// The source code description (as a String) of the expression evaluated by
+    /// this expectation, if available at compile time.
+    public var sourceCodeDescription: String?
 
     /// A description of the error mismatch that occurred, if any.
     ///
@@ -114,7 +114,7 @@ extension Expectation {
     /// Creates a snapshot expectation from a real ``Expectation``.
     /// - Parameter expectation: The real expectation.
     init(expectation: Expectation) {
-      self.sourceCode = String(describing: expectation.sourceCode)
+      self.sourceCodeDescription = String(describing: expectation.sourceCode)
       self.mismatchedErrorDescription = expectation.mismatchedErrorDescription
       self.expandedExpressionDescription = expectation.expandedExpressionDescription
       self.differenceDescription = expectation.differenceDescription
