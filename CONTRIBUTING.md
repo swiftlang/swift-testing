@@ -59,11 +59,23 @@ and install a toolchain.
 
 #### Installing a toolchain
 
+<!--
+  - Bug: A compiler bug in the Swift main branch is temporarily preventing its
+    use with the testing library. ([swift-#69096](https://github.com/apple/swift/issues/69096))
+-->
+
+<!--
 1. Download a toolchain. A recent **development snapshot** toolchain is required
    to build the testing library. Visit
    [swift.org](https://www.swift.org/download/#trunk-development-main) and
    download the most recent toolchain from the section titled
    **Snapshots — Trunk Development (main)**.
+-->
+
+1. A recent **Swift 5.10 development snapshot** toolchain is required to build
+   the testing library. Visit [swift.org](https://www.swift.org/download/#swift-510-development)
+   to download and install a toolchain from the section titled
+   **Snapshots — Swift 5.10 Development**.
 
    Be aware that development snapshot toolchains are not intended for day-to-day
    development and may contain defects that affect the programs built with them.
