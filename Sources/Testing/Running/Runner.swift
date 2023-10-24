@@ -269,9 +269,6 @@ extension Runner {
   ///
   /// - Parameters:
   ///   - runner: The runner to run.
-  ///   - configuration: The configuration to use for running. The value of this
-  ///     argument temporarily replaces the value of `runner`'s
-  ///     ``Runner/configuration`` property.
   ///
   /// This function is `static` so that it cannot accidentally reference `self`
   /// or `self.configuration` when it should use a modified copy of either.
