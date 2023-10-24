@@ -179,3 +179,225 @@ extension Issue.Kind: CustomStringConvertible {
     }
   }
 }
+
+// MARK: - Codable
+
+extension Issue {
+  /// A serializable type describing a failure or warning which occurred during a test.
+  @_spi(ExperimentalSnapshotting)
+  public struct Snapshot: Sendable, Codable {
+    /// The kind of issue this value represents.
+    public var kind: Kind.Snapshot
+
+    /// Any comments provided by the developer and associated with this issue.
+    ///
+    /// If no comment was supplied when the issue occurred, the value of this
+    /// property is the empty array.
+    public var comments: [Comment]
+
+    /// A ``SourceContext`` indicating where and how this issue occurred.
+    public var sourceContext: SourceContext
+
+    /// Whether or not this issue is known to occur.
+    public var isKnown = false
+
+    /// Initialize an issue instance with the specified details.
+    ///
+    /// - Parameter issue: The original issue that gets snapshotted.
+    init(snapshotting issue: Issue) {
+      self.kind = Issue.Kind.Snapshot(snapshotting: issue.kind)
+      self.comments = issue.comments
+      self.sourceContext = issue.sourceContext
+      self.isKnown = issue.isKnown
+    }
+  }
+}
+
+extension Issue.Kind {
+  /// Serializable kinds of issues which may be recorded.
+  @_spi(ExperimentalSnapshotting)
+  public enum Snapshot: Sendable, Codable {
+    /// An issue which occurred unconditionally, for example by using
+    /// ``Issue/record(_:fileID:filePath:line:column:)``.
+    case unconditional
+
+    /// An issue due to a failed expectation, such as those produced by
+    /// ``expect(_:_:sourceLocation:)``.
+    ///
+    /// - Parameters:
+    ///   - expectation: The expectation that failed.
+    case expectationFailed(_ expectation: Expectation.Snapshot)
+
+    /// An issue due to a confirmation being confirmed the wrong number of
+    /// times.
+    ///
+    /// - Parameters:
+    ///   - actual: The number of times ``Confirmation/confirm(count:)`` was
+    ///     actually called.
+    ///   - expected: The expected number of times
+    ///     ``Confirmation/confirm(count:)`` should have been called.
+    ///
+    /// This issue can occur when calling
+    /// ``confirmation(_:expectedCount:fileID:filePath:line:column:_:)`` when
+    /// the confirmation passed to these functions' `body` closures is confirmed
+    /// too few or too many times.
+    case confirmationMiscounted(actual: Int, expected: Int)
+
+    /// An issue due to an `Error` being thrown by a test function and caught by
+    /// the testing library.
+    ///
+    /// - Parameters:
+    ///   - errorDescription: The String representation of the error which was
+    ///                       associated with this issue.
+    case errorCaught(_ errorDescription: String)
+
+    /// An issue due to a test reaching its time limit and timing out.
+    ///
+    /// - Parameters:
+    ///   - timeLimitComponents: The time limit reached by the test.
+    ///
+    /// @Comment {
+    ///   - Bug: The associated value of this enumeration case should be an
+    ///     instance of `Duration`, but the testing library's deployment target
+    ///     predates the introduction of that type.
+    /// }
+    case timeLimitExceeded(timeLimitComponents: (seconds: Int64, attoseconds: Int64))
+
+    /// A known issue was expected, but was not recorded.
+    case knownIssueNotRecorded
+
+    /// An issue occurred due to misuse of the testing library.
+    case apiMisused
+
+    /// An issue due to a failure in the underlying system, not due to a failure
+    /// within the tests being run.
+    case system
+
+    /// Snapshots an ``Issue.Kind``.
+    /// - Parameter kind: The original ``Issue.Kind`` to snapshot.
+    init(snapshotting kind: Issue.Kind) {
+      self = switch kind {
+      case .unconditional:
+          .unconditional
+      case let .expectationFailed(expectation):
+          .expectationFailed(Expectation.Snapshot(snapshotting: expectation))
+      case let .confirmationMiscounted(actual: actual, expected: expected):
+          .confirmationMiscounted(actual: actual, expected: expected)
+      case let .errorCaught(error):
+          .errorCaught(String(describing: error))
+      case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
+          .timeLimitExceeded(timeLimitComponents: timeLimitComponents)
+      case .knownIssueNotRecorded:
+          .knownIssueNotRecorded
+      case .apiMisused:
+          .apiMisused
+      case .system:
+          .system
+      }
+    }
+
+    /// The keys used to encode ``Issue.Kind``.
+    private enum _CodingKeys: CodingKey {
+      case unconditional
+      case expectationFailed
+      case confirmationMiscounted
+      case errorCaught
+      case timeLimitExceeded
+      case knownIssueNotRecorded
+      case apiMisused
+      case system
+
+      /// The keys used to encode ``Issue.Kind.expectationFailed``.
+      enum _ExpectationFailedKeys: CodingKey {
+        case expectation
+      }
+
+      /// The keys used to encode ``Issue.Kind.confirmationMiscount``.
+      enum _ConfirmationMiscountedKeys: CodingKey {
+        case actual
+        case expected
+      }
+
+      /// The keys used to encode``Issue.Kind.errorCaught``.
+      enum _ErrorCaughtKeys: CodingKey {
+        case error
+      }
+
+      /// The keys used to encode ``Issue.Kind.timeLimitExceeds``.
+      enum _TimeLimitExceededKeys: CodingKey {
+        case seconds
+        case attoseconds
+      }
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try decoder.container(keyedBy: _CodingKeys.self)
+      if try container.decodeIfPresent(Bool.self, forKey: .unconditional) != nil {
+        self = .unconditional
+      } else if let expectationFailedContainer = try? container.nestedContainer(keyedBy: _CodingKeys._ExpectationFailedKeys.self,
+                                                                                forKey: .expectationFailed) {
+        self = .expectationFailed(try expectationFailedContainer.decode(Expectation.Snapshot.self, forKey: .expectation))
+      } else if let confirmationMiscountedContainer = try? container.nestedContainer(keyedBy: _CodingKeys._ConfirmationMiscountedKeys.self,
+                                                                                     forKey: .confirmationMiscounted) {
+        self = .confirmationMiscounted(actual: try confirmationMiscountedContainer.decode(Int.self,
+                                                                                          forKey: .actual),
+                                       expected: try confirmationMiscountedContainer.decode(Int.self,
+                                                                                            forKey: .expected))
+      } else if let errorCaught = try? container.nestedContainer(keyedBy: _CodingKeys._ErrorCaughtKeys.self,
+                                                                 forKey: .errorCaught) {
+        self = .errorCaught(try errorCaught.decode(String.self, forKey: .error))
+      } else if let timeLimitExceededContainer = try? container.nestedContainer(keyedBy: _CodingKeys._TimeLimitExceededKeys.self,
+                                                                                forKey: .timeLimitExceeded) {
+        self = .timeLimitExceeded(timeLimitComponents: (seconds: try timeLimitExceededContainer.decode(Int64.self,
+                                                                                                       forKey: .seconds),
+                                                        attoseconds: try timeLimitExceededContainer.decode(Int64.self,
+                                                                                                           forKey: .attoseconds)))
+      } else if try container.decodeIfPresent(Bool.self, forKey: .knownIssueNotRecorded) != nil {
+        self = .knownIssueNotRecorded
+      } else if try container.decodeIfPresent(Bool.self, forKey: .apiMisused) != nil {
+        self = .apiMisused
+      } else if try container.decodeIfPresent(Bool.self, forKey: .system) != nil {
+        self = .system
+      } else {
+        throw DecodingError.valueNotFound(
+          Self.self,
+          DecodingError.Context(
+            codingPath: decoder.codingPath,
+            debugDescription: "Value found did not match any of the existing cases for Issue.Kind."
+          )
+        )
+      }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: _CodingKeys.self)
+      switch self {
+      case .unconditional:
+        try container.encode(true, forKey: .unconditional)
+      case let .expectationFailed(expectation):
+        var errorCaughtContainer = container.nestedContainer(keyedBy: _CodingKeys._ExpectationFailedKeys.self,
+                                                             forKey: .expectationFailed)
+        try errorCaughtContainer.encode(expectation, forKey: .expectation)
+      case let .confirmationMiscounted(actual, expected):
+        var confirmationMiscountedContainer = container.nestedContainer(keyedBy: _CodingKeys._ConfirmationMiscountedKeys.self,
+                                                                        forKey: .confirmationMiscounted)
+        try confirmationMiscountedContainer.encode(actual, forKey: .actual)
+        try confirmationMiscountedContainer.encode(expected, forKey: .expected)
+      case let .errorCaught(error):
+        var errorCaughtContainer = container.nestedContainer(keyedBy: _CodingKeys._ErrorCaughtKeys.self, forKey: .errorCaught)
+        try errorCaughtContainer.encode(error, forKey: .error)
+      case let .timeLimitExceeded(timeLimitComponents):
+        var timeLimitExceededContainer = container.nestedContainer(keyedBy: _CodingKeys._TimeLimitExceededKeys.self,
+                                                                   forKey: .timeLimitExceeded)
+        try timeLimitExceededContainer.encode(timeLimitComponents.seconds, forKey: .seconds)
+        try timeLimitExceededContainer.encode(timeLimitComponents.attoseconds, forKey: .attoseconds)
+      case .knownIssueNotRecorded:
+        try container.encode(true, forKey: .knownIssueNotRecorded)
+      case .apiMisused:
+        try container.encode(true, forKey: .apiMisused)
+      case .system:
+        try container.encode(true, forKey: .system)
+      }
+    }
+  }
+}

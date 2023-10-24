@@ -372,7 +372,7 @@ extension Test.Clock.Instant {
 
 extension Test.Clock.Instant: Codable {
 
-  /// The keys used to encode a ``Test.Clock.Instant``.`
+  /// The keys used to encode a ``Test.Clock.Instant``.
   private enum _CodingKeys: CodingKey {
     /// Encodes and decodes to ``uptime`` on Apple platforms, ``suspending`` on
     /// other platforms.
