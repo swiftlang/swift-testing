@@ -162,4 +162,21 @@ public struct Configuration: Sendable {
       testFilter = selection.contains
     }
   }
+
+  /// The selected test cases to run.
+  private(set) var selectedTestCases = Test.ID.CaseSelection()
+
+  /// Set the selected test case IDs for a specified test ID.
+  ///
+  /// - Parameters:
+  ///   - testCaseIDs: The test case IDs to set as selected for `testID`.
+  ///   - testID: The test ID for which to set selected test cases.
+  ///
+  /// If `testCaseIDs` is `nil`, there is no selection and all test cases in the
+  /// test identified by `testID` should run. If `testCaseIDs` is an empty
+  /// array, none of the test cases for `testID` should run.
+  @_spi(ExperimentalParameterizedTesting)
+  public mutating func setSelectedTestCaseIDs(_ testCaseIDs: (some Collection<Test.Case.ID>)?, for testID: Test.ID) {
+    selectedTestCases[testID] = testCaseIDs.map { Test.Case.ID.Selection(testCaseIDs: $0) }
+  }
 }

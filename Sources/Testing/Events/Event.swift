@@ -113,11 +113,18 @@ public struct Event: Sendable {
   /// The kind of event.
   public var kind: Kind
 
-  /// The ID of the test for which this event occurred.
+  /// The ID of the test for which this event occurred, if any.
   ///
   /// If an event occurred independently of any test, or if the running test
   /// cannot be determined, the value of this property is `nil`.
   public var testID: Test.ID?
+
+  /// The ID of the test case for which this event occurred, if any.
+  ///
+  /// If an event occurred independently of any test case, or if the running
+  /// test case cannot be determined, the value of this property is `nil`.
+  @_spi(ExperimentalParameterizedTesting)
+  public var testCaseID: Test.Case.ID?
 
   /// The instant at which the event occurred.
   public var instant: Test.Clock.Instant
@@ -127,6 +134,8 @@ public struct Event: Sendable {
   /// - Parameters:
   ///   - kind: The kind of event that occurred.
   ///   - testID: The ID of the test for which the event occurred, if any.
+  ///   - testCaseID: The ID of the test case for which the event occurred, if
+  ///     any.
   ///   - instant: The instant at which the event occurred. The default value
   ///     of this argument is `.now`.
   ///
@@ -134,9 +143,10 @@ public struct Event: Sendable {
   /// ``post(_:for:testCase:instant:configuration)`` instead since that ensures
   /// any task local-derived values in the associated ``Event/Context`` match
   /// the event.
-  init(_ kind: Kind, testID: Test.ID?, instant: Test.Clock.Instant = .now) {
+  init(_ kind: Kind, testID: Test.ID?, testCaseID: Test.Case.ID?, instant: Test.Clock.Instant = .now) {
     self.kind = kind
     self.testID = testID
+    self.testCaseID = testCaseID
     self.instant = instant
   }
 
@@ -160,7 +170,7 @@ public struct Event: Sendable {
   ) {
     // Create both the event and its associated context here at same point, to
     // ensure their task local-derived values are the same.
-    let event = Event(kind, testID: test?.id, instant: instant)
+    let event = Event(kind, testID: test?.id, testCaseID: testCase?.id, instant: instant)
     let context = Event.Context(test: test, testCase: testCase)
     event._post(in: context, configuration: configuration)
   }

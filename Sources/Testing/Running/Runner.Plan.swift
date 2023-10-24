@@ -55,6 +55,14 @@ extension Runner {
       /// The test to be passed to an instance of ``Runner``.
       public var test: Test
 
+      /// The selected test cases within ``test`` to run, if any.
+      ///
+      /// If the value of this property is `nil`, there is no selection and all
+      /// test cases in this instance's associated ``Test`` should run. If the
+      /// value of this property is an empty array, none of its test cases
+      /// should run.
+      var selectedTestCaseIDs: Test.Case.ID.Selection?
+
       /// The action to perform with ``Test/Plan/Step/test``.
       public var action: Action
     }
@@ -208,9 +216,13 @@ extension Runner.Plan {
       (action, recursivelyApply: action.isRecursive)
     }
 
-    // Zip the tests and actions together and return them.
+    // Zip the tests and actions together and return them, along with any
+    // additional details, as a Step.
     return zip(testGraph, actionGraph).mapValues { test, action in
-      test.map { Step(test: $0, action: action) }
+      test.map { test in
+        let selectedTestCaseIDs = configuration.selectedTestCases[test]
+        return Step(test: test, selectedTestCaseIDs: selectedTestCaseIDs, action: action)
+      }
     }
   }
 

@@ -19,6 +19,13 @@ extension Test {
     /// A type representing an argument passed to a parameter of a parameterized
     /// test function.
     public struct Argument: Sendable {
+      /// The unique ID of this parameterized test argument.
+      ///
+      /// The uniqueness of this value is narrow: it is considered unique only
+      /// within the scope of the parameter of the test function this argument
+      /// was passed to.
+      public var id: String
+
       /// The value of this parameterized test argument.
       public var value: any Sendable
 
@@ -61,7 +68,9 @@ extension Test {
       body: @escaping @Sendable () async throws -> Void
     ) {
       let arguments = zip(values, parameters).map { value, parameter in
-        Argument(value: value, parameter: parameter)
+        let context = Argument.Context(parameter: parameter)
+        let id = String(identifyingTestArgument: value, in: context)
+        return Argument(id: id, value: value, parameter: parameter)
       }
       self.init(arguments: arguments, body: body)
     }
