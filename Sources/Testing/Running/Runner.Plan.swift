@@ -159,16 +159,26 @@ extension Runner.Plan {
     // them, in which case it will be .recordIssue().
     var testGraph = Graph<String, Test?>()
     var actionGraph = Graph<String, Action>(value: .run)
-    for test in tests where _isTestIncluded(test, using: configuration.testFilter) {
+    for test in tests {
       let idComponents = test.id.keyPathRepresentation
       testGraph.insertValue(test, at: idComponents)
       actionGraph.insertValue(.run, at: idComponents, intermediateValue: .run)
     }
 
     // Ensure the trait lists are complete for all nested tests. (Make sure to
-    // do this before we start calling prepare(for:) or we'll miss the
-    // recursively-added ones.)
+    // do this before we start calling configuration.testFilter or prepare(for:)
+    // or we'll miss the recursively-added traits.)
     _recursivelyApplyTraits(to: &testGraph)
+
+    // Remove any tests that should be filtered out per the runner's
+    // configuration. The action graph is not modified here: actions that lose
+    // their corresponding tests are effectively filtered out by the call to
+    // zip() near the end of the function.
+    testGraph = testGraph.mapValues { test in
+      test.flatMap { test in
+        _isTestIncluded(test, using: configuration.testFilter) ? test : nil
+      }
+    }
 
     // For each test value, determine the appropriate action for it.
     await testGraph.forEach { keyPath, test in
