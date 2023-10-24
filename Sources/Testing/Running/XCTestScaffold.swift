@@ -168,22 +168,32 @@ public enum XCTestScaffold: Sendable {
   ///
   /// - <doc:TemporaryGettingStarted>
   public static func runAllTests(hostedBy testCase: XCTestCase) async {
-    let eventRecorder = Event.Recorder(options: .forStandardError) { string in
-      let stderr = swt_stderr()
-      fputs(string, stderr)
-      fflush(stderr)
-    }
-
+    let testCase = UncheckedSendable(rawValue: testCase)
 #if SWT_TARGET_OS_APPLE
     let isProcessLaunchedByXcode = Environment.variable(named: "XCTestSessionIdentifier") != nil
 #endif
 
-    var configuration = Configuration()
-    let testCase = UncheckedSendable(rawValue: testCase)
-    configuration.isParallelizationEnabled = false
-    configuration.eventHandler = { event, context in
-      eventRecorder.record(event, in: context)
+    // If the SWT_SELECTED_TEST_IDS environment variable is set, split it into
+    // test IDs (separated by ";", test ID components separated by "/") and set
+    // the configuration's test filter to match it.
+    //
+    // This environment variable stands in for `swift test --filter`.
+    let testIDs: [Test.ID]? = Environment.variable(named: "SWT_SELECTED_TEST_IDS").map { testIDs in
+      testIDs.split(separator: ";", omittingEmptySubsequences: true).map { testID in
+        Test.ID(testID.split(separator: "/", omittingEmptySubsequences: true).map(String.init))
+      }
+    }
+    // If the SWT_SELECTED_TAGS environment variable is set, split it by ";"
+    // (similar to test IDs above) and check if tests' tags overlap.
+    let tags: Set<Tag>? = Environment.variable(named: "SWT_SELECTED_TAGS")
+      .map { tags in
+        tags
+          .split(separator: ";", omittingEmptySubsequences: true)
+          .map(String.init)
+          .map(Tag.init(rawValue:))
+      }.map(Set.init)
 
+    await runTests(identifiedBy: testIDs, taggedWith: tags) { event, context in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -208,42 +218,6 @@ public enum XCTestScaffold: Sendable {
       }
 #endif
     }
-
-    // If the SWT_SELECTED_TEST_IDS environment variable is set, split it into
-    // test IDs (separated by ";", test ID components separated by "/") and set
-    // the configuration's test filter to match it.
-    //
-    // This environment variable stands in for `swift test --filter`.
-    let testIDs: [Test.ID]? = Environment.variable(named: "SWT_SELECTED_TEST_IDS")
-      .map { testIDs in
-        testIDs.split(separator: ";", omittingEmptySubsequences: true).map { testID in
-          Test.ID(testID.split(separator: "/", omittingEmptySubsequences: true).map(String.init))
-        }
-      }
-    if let testIDs {
-      configuration.setTestFilter(toMatch: Set(testIDs))
-    }
-
-    // If the SWT_SELECTED_TAGS environment variable is set, split it by ";"
-    // (similar to test IDs above) and check if tests' tags overlap.
-    let tags: Set<Tag>? = Environment.variable(named: "SWT_SELECTED_TAGS")
-      .map { tags in
-        tags
-          .split(separator: ";", omittingEmptySubsequences: true)
-          .map(String.init)
-          .map(Tag.init(rawValue:))
-      }.map(Set.init)
-    if let tags {
-      // Check if the test's tags intersect the set of selected tags. If there
-      // was a previous filter function, it must also pass.
-      let oldTestFilter = configuration.testFilter ?? { _ in true }
-      configuration.testFilter = { test in
-        !tags.isDisjoint(with: test.tags) && oldTestFilter(test)
-      }
-    }
-
-    let runner = await Runner(configuration: configuration)
-    await runner.run()
   }
 }
 
@@ -251,7 +225,7 @@ public enum XCTestScaffold: Sendable {
 
 extension [Event.Recorder.Option] {
   /// The set of options to use when writing to the standard error stream.
-  fileprivate static var forStandardError: Self {
+  static var forStandardError: Self {
     var result = Self()
 
     let useANSIEscapeCodes = _standardErrorSupportsANSIEscapeCodes
