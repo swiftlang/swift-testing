@@ -42,7 +42,7 @@ public func __swiftPMEntryPoint() async -> CInt {
 }
 #endif
 
-/// The common implementation of `__main()` and
+/// The common implementation of `__swiftPMEntryPoint()` and
 /// ``XCTestScaffold/runAllTests(hostedBy:)``.
 ///
 /// - Parameters:
