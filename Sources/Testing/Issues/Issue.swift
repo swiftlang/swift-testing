@@ -322,12 +322,6 @@ extension Issue.Kind {
       enum _ErrorCaughtKeys: CodingKey {
         case error
       }
-
-      /// The keys used to encode ``Issue.Kind.timeLimitExceeds``.
-      enum _TimeLimitExceededKeys: CodingKey {
-        case seconds
-        case attoseconds
-      }
     }
 
     public init(from decoder: any Decoder) throws {
@@ -346,12 +340,8 @@ extension Issue.Kind {
       } else if let errorCaught = try? container.nestedContainer(keyedBy: _CodingKeys._ErrorCaughtKeys.self,
                                                                  forKey: .errorCaught) {
         self = .errorCaught(try errorCaught.decode(String.self, forKey: .error))
-      } else if let timeLimitExceededContainer = try? container.nestedContainer(keyedBy: _CodingKeys._TimeLimitExceededKeys.self,
-                                                                                forKey: .timeLimitExceeded) {
-        self = .timeLimitExceeded(timeLimitComponents: (seconds: try timeLimitExceededContainer.decode(Int64.self,
-                                                                                                       forKey: .seconds),
-                                                        attoseconds: try timeLimitExceededContainer.decode(Int64.self,
-                                                                                                           forKey: .attoseconds)))
+      } else if let timeLimit = try container.decodeIfPresent(TimeValue.self, forKey: .timeLimitExceeded) {
+        self = .timeLimitExceeded(timeLimitComponents: timeLimit.components)
       } else if try container.decodeIfPresent(Bool.self, forKey: .knownIssueNotRecorded) != nil {
         self = .knownIssueNotRecorded
       } else if try container.decodeIfPresent(Bool.self, forKey: .apiMisused) != nil {
@@ -387,10 +377,7 @@ extension Issue.Kind {
         var errorCaughtContainer = container.nestedContainer(keyedBy: _CodingKeys._ErrorCaughtKeys.self, forKey: .errorCaught)
         try errorCaughtContainer.encode(error, forKey: .error)
       case let .timeLimitExceeded(timeLimitComponents):
-        var timeLimitExceededContainer = container.nestedContainer(keyedBy: _CodingKeys._TimeLimitExceededKeys.self,
-                                                                   forKey: .timeLimitExceeded)
-        try timeLimitExceededContainer.encode(timeLimitComponents.seconds, forKey: .seconds)
-        try timeLimitExceededContainer.encode(timeLimitComponents.attoseconds, forKey: .attoseconds)
+        try container.encode(TimeValue(timeLimitComponents), forKey: .timeLimitExceeded)
       case .knownIssueNotRecorded:
         try container.encode(true, forKey: .knownIssueNotRecorded)
       case .apiMisused:
