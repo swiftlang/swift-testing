@@ -20,14 +20,13 @@ extension Test {
   public struct Clock: Sendable {
     /// An instant on the testing clock.
     public struct Instant: Sendable {
-      /// The corresponding suspending-clock time.
-      ///
-      /// The testing library's availability on Apple platforms is earlier than
-      /// that of the Swift Clock API, so we don't use `SuspendingClock`
-      /// directly on them and instead derive a value from platform API.
+      /// The suspending-clock time corresponding to this instant.
       fileprivate(set) var suspending: TimeValue = {
 #if SWT_TARGET_OS_APPLE
-        // SuspendingClock corresponds to CLOCK_UPTIME_RAW on Darwin.
+        // The testing library's availability on Apple platforms is earlier than
+        // that of the Swift Clock API, so we don't use `SuspendingClock`
+        // directly on them and instead derive a value from platform-specific
+        // API. SuspendingClock corresponds to CLOCK_UPTIME_RAW on Darwin.
         // SEE: https://github.com/apple/swift/blob/main/stdlib/public/Concurrency/Clock.cpp
         var uptime = timespec()
         _ = clock_gettime(CLOCK_UPTIME_RAW, &uptime)
@@ -39,11 +38,7 @@ extension Test {
       }()
 
 #if !SWT_NO_UTC_CLOCK
-      /// The corresponding wall-clock time, in seconds and nanoseconds.
-      ///
-      /// This value is stored as an instance of `timespec` rather than an
-      /// instance of `Duration` because the latter type requires that the Swift
-      /// clocks API be available.
+      /// The wall-clock time corresponding to this instant.
       fileprivate(set) var wall: TimeValue = {
         var wall = timespec()
         timespec_get(&wall, TIME_UTC)
