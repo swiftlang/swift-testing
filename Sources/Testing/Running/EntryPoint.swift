@@ -22,7 +22,7 @@
 /// - Warning: This function is used by Swift Package Manager. Do not call it
 ///   directly.
 @_spi(SwiftPackageManagerSupport)
-public func __swiftPMEntryPoint() async -> CInt {
+public func swiftPMEntryPoint() async -> CInt {
   let args = CommandLine.arguments()
   // We do not use --dump-tests-json to handle test list requests. If that
   // argument is passed, just exit early.
@@ -42,7 +42,7 @@ public func __swiftPMEntryPoint() async -> CInt {
 }
 #endif
 
-/// The common implementation of `__swiftPMEntryPoint()` and
+/// The common implementation of ``swiftPMEntryPoint()`` and
 /// ``XCTestScaffold/runAllTests(hostedBy:)``.
 ///
 /// - Parameters:
