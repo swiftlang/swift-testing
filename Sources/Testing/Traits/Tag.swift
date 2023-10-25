@@ -83,6 +83,14 @@ extension Tag: ExpressibleByStringLiteral, CustomStringConvertible {
 // MARK: - Equatable, Hashable, Comparable
 
 extension Tag: Equatable, Hashable, Comparable {
+  public static func ==(lhs: Self, rhs: Self) -> Bool {
+    lhs.rawValue == rhs.rawValue
+  }
+
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(rawValue)
+  }
+
   /// The index of this color, relative to other colors.
   ///
   /// The value of this property can be used for sorting color tags distinctly
