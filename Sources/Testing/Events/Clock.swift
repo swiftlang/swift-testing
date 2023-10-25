@@ -20,23 +20,23 @@ extension Test {
   public struct Clock: Sendable {
     /// An instant on the testing clock.
     public struct Instant: Sendable {
-#if SWT_TARGET_OS_APPLE
-      /// The number of nanoseconds that have passed since the system started.
+      /// The corresponding suspending-clock time.
       ///
       /// The testing library's availability on Apple platforms is earlier than
-      /// that of the Swift Clock API, so we don't use SuspendingClock directly
-      /// on them.
-      fileprivate(set) var uptime: timespec = {
+      /// that of the Swift Clock API, so we don't use `SuspendingClock`
+      /// directly on them and instead derive a value from platform API.
+      fileprivate(set) var suspending: TimeValue = {
+#if SWT_TARGET_OS_APPLE
         // SuspendingClock corresponds to CLOCK_UPTIME_RAW on Darwin.
         // SEE: https://github.com/apple/swift/blob/main/stdlib/public/Concurrency/Clock.cpp
         var uptime = timespec()
         _ = clock_gettime(CLOCK_UPTIME_RAW, &uptime)
-        return uptime
-      }()
+        return TimeValue(uptime)
 #else
-      /// The corresponding suspending-clock time.
-      fileprivate var suspending = SuspendingClock.Instant.now
+        /// The corresponding suspending-clock time.
+        TimeValue(SuspendingClock.Instant.now)
 #endif
+      }()
 
 #if !SWT_NO_UTC_CLOCK
       /// The corresponding wall-clock time, in seconds and nanoseconds.
@@ -44,10 +44,10 @@ extension Test {
       /// This value is stored as an instance of `timespec` rather than an
       /// instance of `Duration` because the latter type requires that the Swift
       /// clocks API be available.
-      fileprivate var wall: timespec = {
+      fileprivate(set) var wall: TimeValue = {
         var wall = timespec()
         timespec_get(&wall, TIME_UTC)
-        return wall
+        return TimeValue(wall)
       }()
 #endif
 
@@ -61,82 +61,7 @@ extension Test {
   }
 }
 
-// MARK: - Converting to other clocks
-
-extension timespec {
-  /// Initialize an instance of this type from an instance of
-  /// `SuspendingClock.Instant`.
-  ///
-  /// - Parameters:
-  ///   - instant: The instant to initialize this instance from.
-  ///
-  /// The resulting instance of `timespec` measures the duration between the
-  /// suspending clock's epoch and `instant`.
-  ///
-  /// This initializer is not part of the public interface of the testing
-  /// library.
-  @available(_clockAPI, *)
-  init(_ instant: SuspendingClock.Instant) {
-    let duration = unsafeBitCast(instant, to: Duration.self)
-    self.init(duration)
-  }
-
-  /// Initialize an instance of this type from an instance of `Duration`.
-  ///
-  /// - Parameters:
-  ///   - duration: The duration to initialize this instance from.
-  ///
-  /// The standard library includes an initializer of this form, but it is not
-  /// available on all platforms.
-  ///
-  /// This initializer is not part of the public interface of the testing
-  /// library.
-  @available(_clockAPI, *)
-  init(_ duration: Duration) {
-    self.init(duration.components)
-  }
-
-  /// Initialize an instance of this type from a tuple containing seconds and
-  /// attoseconds values.
-  ///
-  /// - Parameters:
-  ///   - components: A tuple containing the seconds and attoseconds values to
-  ///     initialize this instance from. The `attoseconds` element is truncated
-  ///     to nanoseconds.
-  ///
-  /// This initializer is not part of the public interface of the testing
-  /// library.
-  init(_ components: (seconds: Int64, attoseconds: Int64)) {
-    self.init(
-      tv_sec: .init(components.seconds),
-      tv_nsec: .init(components.attoseconds / 1_000_000_000)
-    )
-  }
-
-  /// The number of nanoseconds represented by this instance.
-  ///
-  /// This property is not part of the public interface of the testing library.
-  var nanoseconds: Int64 {
-    (Int64(tv_sec) * 1_000_000_000) + Int64(tv_nsec)
-  }
-}
-
-@available(_clockAPI, *)
-extension Duration {
-  /// Initialize an instance of this type from an instance of `timespec`.
-  ///
-  /// - Parameters:
-  ///   - ts: The `timespec` value to initialize this instance from.
-  ///
-  /// The standard library includes an initializer of this form, but it is not
-  /// available on all platforms.
-  ///
-  /// This initializer is not part of the public interface of the testing
-  /// library.
-  init(_ ts: timespec) {
-    self = .seconds(ts.tv_sec) + .nanoseconds(ts.tv_nsec)
-  }
-}
+// MARK: -
 
 @_spi(ExperimentalEventHandling)
 @available(_clockAPI, *)
@@ -147,39 +72,21 @@ extension SuspendingClock.Instant {
   /// - Parameters:
   ///   - testClockInstant: The equivalent instant on ``Test/Clock``.
   public init(_ testClockInstant: Test.Clock.Instant) {
-#if SWT_TARGET_OS_APPLE
-    self.init(testClockInstant.uptime)
-#else
-    self = testClockInstant.suspending
-#endif
-  }
-
-  /// Initialize an instance of this type from an instance of `timespec`.
-  ///
-  /// - Parameters:
-  ///   - ts: The `timespec` value to initialize this instance from.
-  ///
-  /// The resulting instance of `SuspendingClock.Instant` is equal to the
-  /// suspending clock's epoch offset by `ts` seconds and nanoseconds.
-  ///
-  /// This initializer is not part of the public interface of the testing
-  /// library.
-  init(_ ts: timespec) {
-    let duration = Duration(ts)
-    self = unsafeBitCast(duration, to: Self.self)
+    self.init(testClockInstant.suspending)
   }
 }
 
 #if !SWT_NO_UTC_CLOCK
 @_spi(ExperimentalEventHandling)
 extension Test.Clock.Instant {
-  /// The number of nanoseconds since 1970 represented by this instance.
+  /// The duration since 1970 represented by this instance as a tuple of seconds
+  /// and attoseconds.
   ///
   /// The value of this property is the equivalent of `self` on the wall clock.
   /// It is suitable for display to the user, but not for fine timing
   /// calculations.
-  public var nanosecondsSince1970: Int64 {
-    wall.nanoseconds
+  public var timeComponentsSince1970: (seconds: Int64, attoseconds: Int64) {
+    wall.components
   }
 
   /// The duration since 1970 represented by this instance.
@@ -259,31 +166,15 @@ extension Test.Clock: _Concurrency.Clock {
 @_spi(ExperimentalEventHandling)
 extension Test.Clock.Instant: Equatable, Hashable, Comparable {
   public static func ==(lhs: Self, rhs: Self) -> Bool {
-#if SWT_TARGET_OS_APPLE
-    lhs.uptime.tv_sec == rhs.uptime.tv_sec && lhs.uptime.tv_nsec == rhs.uptime.tv_nsec
-#else
     lhs.suspending == rhs.suspending
-#endif
   }
 
   public func hash(into hasher: inout Hasher) {
-#if SWT_TARGET_OS_APPLE
-    hasher.combine(uptime.tv_sec)
-    hasher.combine(uptime.tv_nsec)
-#else
     hasher.combine(suspending)
-#endif
   }
 
   public static func <(lhs: Self, rhs: Self) -> Bool {
-#if SWT_TARGET_OS_APPLE
-    if lhs.uptime.tv_sec != rhs.uptime.tv_sec {
-      return lhs.uptime.tv_sec < rhs.uptime.tv_sec
-    }
-    return lhs.uptime.tv_nsec < rhs.uptime.tv_nsec
-#else
     lhs.suspending < rhs.suspending
-#endif
   }
 }
 
@@ -297,49 +188,20 @@ extension Test.Clock.Instant: InstantProtocol {
   public func advanced(by duration: Duration) -> Self {
     var result = self
 
-#if SWT_TARGET_OS_APPLE
-    result.uptime = timespec(Duration(uptime) + duration)
-#else
-    result.suspending = suspending.advanced(by: duration)
-#endif
+    result.suspending = TimeValue(Duration(result.suspending) + duration)
 #if !SWT_NO_UTC_CLOCK
-    result.wall = timespec(result.durationSince1970 + duration)
+    result.wall = TimeValue(Duration(result.wall) + duration)
 #endif
 
     return result
   }
 
   public func duration(to other: Test.Clock.Instant) -> Duration {
-#if SWT_TARGET_OS_APPLE
-    Duration(other.uptime) - Duration(uptime)
-#else
-    suspending.duration(to: other.suspending)
-#endif
+    Duration(other.suspending) - Duration(suspending)
   }
 }
 
 // MARK: - Duration descriptions
-
-/// Get a description of a duration in nanoseconds.
-///
-/// - Parameters:
-///   - nanoseconds: The duration, in nanoseconds.
-///
-/// - Returns: A string describing the specified duration.
-private func _descriptionOfNanoseconds(_ nanoseconds: Int64) -> String {
-  let (seconds, nanosecondsRemaining) = nanoseconds.quotientAndRemainder(dividingBy: 1_000_000_000)
-  var milliseconds = nanosecondsRemaining / 1_000_000
-  if seconds == 0 && milliseconds == 0 && nanosecondsRemaining > 0 {
-    milliseconds = 1
-  }
-
-  return withUnsafeTemporaryAllocation(of: CChar.self, capacity: 512) { buffer in
-    withVaList([CLongLong(seconds), CInt(milliseconds)]) { args in
-      _ = vsnprintf(buffer.baseAddress!, buffer.count, "%lld.%03d seconds", args)
-    }
-    return String(cString: buffer.baseAddress!)
-  }
-}
 
 /// Get a description of a duration represented as a tuple containing seconds
 /// and attoseconds.
@@ -350,7 +212,19 @@ private func _descriptionOfNanoseconds(_ nanoseconds: Int64) -> String {
 /// - Returns: A string describing the specified duration, up to millisecond
 ///   accuracy.
 func descriptionOfTimeComponents(_ components: (seconds: Int64, attoseconds: Int64)) -> String {
-  _descriptionOfNanoseconds(timespec(components).nanoseconds)
+  let (secondsFromAttoseconds, attosecondsRemaining) = components.attoseconds.quotientAndRemainder(dividingBy: 1_000_000_000_000_000_000)
+  let seconds = components.seconds + secondsFromAttoseconds
+  var milliseconds = attosecondsRemaining / 1_000_000_000_000_000
+  if seconds == 0 && milliseconds == 0 && attosecondsRemaining > 0 {
+    milliseconds = 1
+  }
+
+  return withUnsafeTemporaryAllocation(of: CChar.self, capacity: 512) { buffer in
+    withVaList([CLongLong(seconds), CInt(milliseconds)]) { args in
+      _ = vsnprintf(buffer.baseAddress!, buffer.count, "%lld.%03d seconds", args)
+    }
+    return String(cString: buffer.baseAddress!)
+  }
 }
 
 extension Test.Clock.Instant {
@@ -363,85 +237,16 @@ extension Test.Clock.Instant {
   ///   up to millisecond accuracy.
   func descriptionOfDuration(to other: Test.Clock.Instant) -> String {
 #if SWT_TARGET_OS_APPLE
-    _descriptionOfNanoseconds(other.uptime.nanoseconds - uptime.nanoseconds)
+    let otherNanoseconds = (other.suspending.seconds * 1_000_000_000) + (other.suspending.attoseconds / 1_000_000_000)
+    let selfNanoseconds = (suspending.seconds * 1_000_000_000) + (suspending.attoseconds / 1_000_000_000)
+    let (seconds, nanosecondsRemaining) = (otherNanoseconds - selfNanoseconds).quotientAndRemainder(dividingBy: 1_000_000_000)
+    return descriptionOfTimeComponents((seconds, nanosecondsRemaining * 1_000_000_000))
 #else
-    descriptionOfTimeComponents(suspending.duration(to: other.suspending).components)
+    return descriptionOfTimeComponents((Duration(other.suspending) - Duration(suspending)).components)
 #endif
   }
 }
 
-extension Test.Clock.Instant: Codable {
+// MARK: - Codable
 
-  /// The keys used to encode a ``Test.Clock.Instant``.
-  private enum _CodingKeys: CodingKey {
-    /// Encodes and decodes to ``uptime`` on Apple platforms, ``suspending`` on
-    /// other platforms.
-    case suspending
-
-    /// Encodes and decodes the wall clock time.
-    case wall
-  }
-
-  /// A ``Codable`` container for a ``timespec``.
-  ///
-  /// This is a helper type to provide a platform-independent encoding of
-  /// `Test.Clock.Instant` components.
-  private struct _TimespecContainer: Codable {
-    /// The number of seconds to encode / decode.
-    var seconds: Int64
-
-    /// The number of nanoseconds to encode / decode.
-    var nanoseconds: Int64
-
-    init(_ timespec: timespec) {
-      seconds = Int64(timespec.tv_sec)
-      nanoseconds = Int64(timespec.tv_nsec)
-    }
-
-    /// The ``timespec`` created from the ``seconds`` and ``nanoseconds``
-    /// components.
-    var timespecValue: timespec {
-      timespec(tv_sec: .init(clamping: seconds),
-               tv_nsec: .init(clamping: nanoseconds))
-    }
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    // Depending on the platform we encode the uptime / suspending time
-    // Since a platform can only have one of them set we use the same key to
-    // encode them. That allows us to have a consistent cross-platform encoding.
-    // The platform that decodes the value possibly uses the same value for the
-    // other property (ie. `suspending` encoded on non-Darwin would be decoded
-    // on Darwin as `uptime`.
-    let suspendingTimespecContainer: _TimespecContainer
-#if SWT_TARGET_OS_APPLE
-    suspendingTimespecContainer = _TimespecContainer(uptime)
-#else
-    suspendingTimespecContainer = _TimespecContainer(timespec(suspending))
-#endif
-    var container = encoder.container(keyedBy: _CodingKeys.self)
-    try container.encode(suspendingTimespecContainer, forKey: .suspending)
-
-#if !SWT_NO_UTC_CLOCK
-    try container.encode(_TimespecContainer(wall), forKey: .wall)
-#endif
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try decoder.container(keyedBy: _CodingKeys.self)
-    let suspendingTimespecContainer = try container.decode(_TimespecContainer.self, forKey: .suspending)
-#if SWT_TARGET_OS_APPLE
-    uptime = suspendingTimespecContainer.timespecValue
-#else
-    self.suspending = SuspendingClock.Instant(suspendingTimespecContainer.timespecValue)
-#endif
-
-#if !SWT_NO_UTC_CLOCK
-    // Only decode it if present - if it wasn't encoded we fall back to the
-    // current wall clock time (via its default value).
-    if let wallTimespecContainer = try container.decodeIfPresent(_TimespecContainer.self, forKey: .wall) {
-      self.wall = wallTimespecContainer.timespecValue
-    }
-#endif
-  }
-}
+extension Test.Clock.Instant: Codable {}

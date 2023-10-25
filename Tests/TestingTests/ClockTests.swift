@@ -35,12 +35,12 @@ struct ClockTests {
     let instants = Set([instant1, instant1, instant2])
     #expect(instants.count == 2)
 
-#if SWT_TARGET_OS_APPLE
-    #expect(Test.Clock.Instant.now.uptime.tv_sec > 0)
-    #expect(Test.Clock.Instant.now.uptime.tv_nsec >= 0)
-#endif
+    let now = Test.Clock.Instant.now
+    #expect(now.suspending.seconds > 0)
+    #expect(now.suspending.attoseconds >= 0)
 #if !SWT_NO_UTC_CLOCK
-    #expect(Test.Clock.Instant.now.nanosecondsSince1970 > 0)
+    #expect(now.wall.seconds > 0)
+    #expect(now.wall.attoseconds >= 0)
 #endif
   }
 
@@ -66,13 +66,13 @@ struct ClockTests {
 
 #if !SWT_NO_UTC_CLOCK
   @available(_clockAPI, *)
-  @Test("Clock.Instant.nanosecondsSince1970 property")
-  func nanosecondsSince1970() async throws {
-    let instant1 = Test.Clock.Instant.now.nanosecondsSince1970
+  @Test("Clock.Instant.timeComponentsSince1970 property")
+  func timeComponentsSince1970() async throws {
+    let instant1 = Test.Clock.Instant.now.timeComponentsSince1970
     try await Test.Clock.sleep(for: .nanoseconds(50_000_000))
-    let instant2 = Test.Clock.Instant.now.nanosecondsSince1970
+    let instant2 = Test.Clock.Instant.now.timeComponentsSince1970
 
-    #expect(instant1 < instant2)
+    #expect(instant1.seconds < instant2.seconds || instant1.attoseconds < instant2.attoseconds)
   }
 #endif
 
@@ -116,7 +116,7 @@ struct ClockTests {
 
     #expect(SuspendingClock.Instant(instant1).advanced(by: .nanoseconds(offsetNanoseconds)) == SuspendingClock.Instant(instant2))
 #if !SWT_NO_UTC_CLOCK
-    #expect(instant1.nanosecondsSince1970 + offsetNanoseconds == instant2.nanosecondsSince1970)
+    #expect(instant1.durationSince1970 + .nanoseconds(offsetNanoseconds) == instant2.durationSince1970)
 #endif
     #expect(duration == .nanoseconds(offsetNanoseconds))
   }
