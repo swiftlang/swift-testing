@@ -10,7 +10,6 @@
 
 @_implementationOnly import TestingInternals
 
-#if !SWT_TARGET_OS_APPLE
 /// The entry point to the testing library used by Swift Package Manager.
 ///
 /// - Returns: The result of invoking the testing library. The type of this
@@ -22,15 +21,13 @@
 /// - Warning: This function is used by Swift Package Manager. Do not call it
 ///   directly.
 @_spi(SwiftPackageManagerSupport)
+@_disfavoredOverload
 public func swiftPMEntryPoint() async -> CInt {
   let args = CommandLine.arguments()
-  // We do not use --dump-tests-json to handle test list requests. If that
-  // argument is passed, just exit early.
-  if args.contains("--dump-tests-json") {
-    return EXIT_SUCCESS
-  }
+  _ = args
 
   @Locked var exitCode = EXIT_SUCCESS
+
   await runTests { event, _ in
     if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
       $exitCode.withLock { exitCode in
@@ -38,9 +35,25 @@ public func swiftPMEntryPoint() async -> CInt {
       }
     }
   }
+
   return exitCode
 }
-#endif
+
+/// The entry point to the testing library used by Swift Package Manager.
+///
+/// This function examines the command-line arguments to the current process
+/// and then invokes available tests in the current process. When the tests
+/// complete, the process is terminated. If tests were successful, an exit code
+/// of `EXIT_SUCCESS` is used; otherwise, a (possibly platform-specific) value
+/// such as `EXIT_FAILURE` is used instead.
+///
+/// - Warning: This function is used by Swift Package Manager. Do not call it
+///   directly.
+@_spi(SwiftPackageManagerSupport)
+public func swiftPMEntryPoint() async -> Never {
+  let exitCode: CInt = await swiftPMEntryPoint()
+  exit(exitCode)
+}
 
 /// The common implementation of ``swiftPMEntryPoint()`` and
 /// ``XCTestScaffold/runAllTests(hostedBy:)``.
