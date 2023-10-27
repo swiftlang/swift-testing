@@ -70,7 +70,7 @@ let package = Package(
         // Testing module. This target's module is never distributed to users,
         // but as an additional guard against accidental misuse, this specifies
         // the unit test target as the only allowable client.
-        .unsafeFlags(["-Xfrontend", "-allowable-client", "-Xfrontend", "TestingMacrosTests"]),
+//        .unsafeFlags(["-Xfrontend", "-allowable-client", "-Xfrontend", "TestingMacrosTests"]),
       ]
     ),
     .testTarget(
@@ -110,17 +110,9 @@ extension Array where Element == PackageDescription.SwiftSetting {
   /// Analogous to project-level build settings in an Xcode project.
   static var packageSettings: Self {
     [
-      .unsafeFlags([
-        "-require-explicit-sendable",
-
-        "-Xfrontend", "-define-availability", "-Xfrontend", "_mangledTypeNameAPI:macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0",
-        "-Xfrontend", "-define-availability", "-Xfrontend", "_backtraceAsyncAPI:macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0",
-        "-Xfrontend", "-define-availability", "-Xfrontend", "_clockAPI:macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0",
-        "-Xfrontend", "-define-availability", "-Xfrontend", "_regexAPI:macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0",
-        "-Xfrontend", "-define-availability", "-Xfrontend", "_swiftVersionAPI:macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0",
-
-        "-Xfrontend", "-define-availability", "-Xfrontend", "_distantFuture:macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0",
-      ]),
+//      .unsafeFlags([
+//        "-require-explicit-sendable",
+//      ]),
       .enableExperimentalFeature("StrictConcurrency"),
       .enableUpcomingFeature("ExistentialAny"),
       .define("SWT_TARGET_OS_APPLE", .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])),

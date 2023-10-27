@@ -59,7 +59,7 @@ extension Test {
 // MARK: -
 
 @_spi(ExperimentalEventHandling)
-@available(_clockAPI, *)
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 extension SuspendingClock.Instant {
   /// Initialize this instant to the equivalent of the same instant on the
   /// testing library's clock.
@@ -89,7 +89,7 @@ extension Test.Clock.Instant {
   /// The value of this property is the equivalent of `self` on the wall clock.
   /// It is suitable for display to the user, but not for fine timing
   /// calculations.
-  @available(_clockAPI, *)
+  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
   public var durationSince1970: Duration {
     Duration(wall)
   }
@@ -110,7 +110,7 @@ extension Test.Clock {
   /// This function is not part of the public interface of the testing library.
   /// It is primarily used by the testing library's own tests. External clients
   /// can use ``sleep(for:tolerance:)`` or ``sleep(until:tolerance:)`` instead.
-  @available(_clockAPI, *)
+  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
   static func sleep(for duration: Duration) async throws {
 #if SWT_NO_UNSTRUCTURED_TASKS
     let timeValue = TimeValue(duration)
@@ -129,7 +129,7 @@ extension Test.Clock {
 // MARK: - Clock
 
 @_spi(ExperimentalEventHandling)
-@available(_clockAPI, *)
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 extension Test.Clock: _Concurrency.Clock {
   public typealias Duration = SuspendingClock.Duration
 
@@ -177,7 +177,7 @@ extension Test.Clock.Instant: Equatable, Hashable, Comparable {
 // MARK: - InstantProtocol
 
 @_spi(ExperimentalEventHandling)
-@available(_clockAPI, *)
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 extension Test.Clock.Instant: InstantProtocol {
   public typealias Duration = Swift.Duration
 

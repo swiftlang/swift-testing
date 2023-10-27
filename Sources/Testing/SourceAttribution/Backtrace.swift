@@ -63,7 +63,7 @@ public struct Backtrace: Sendable {
     let addresses = [UnsafeRawPointer?](unsafeUninitializedCapacity: addressCount) { addresses, initializedCount in
       addresses.withMemoryRebound(to: UnsafeMutableRawPointer?.self) { addresses in
 #if SWT_TARGET_OS_APPLE
-        if #available(_backtraceAsyncAPI, *) {
+        if #available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *) {
           initializedCount = backtrace_async(addresses.baseAddress!, addresses.count, nil)
         } else {
           initializedCount = .init(backtrace(addresses.baseAddress!, .init(addresses.count)))

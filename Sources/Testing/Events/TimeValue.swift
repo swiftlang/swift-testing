@@ -43,12 +43,12 @@ struct TimeValue: Sendable {
     self.init((Int64(timespec.tv_sec), Int64(timespec.tv_nsec) * 1_000_000_000))
   }
 
-  @available(_clockAPI, *)
+  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
   init(_ duration: Duration) {
     self.init(duration.components)
   }
 
-  @available(_clockAPI, *)
+  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
   init(_ instant: SuspendingClock.Instant) {
     self.init(unsafeBitCast(instant, to: Duration.self))
   }
@@ -71,14 +71,14 @@ extension TimeValue: Codable {}
 
 // MARK: -
 
-@available(_clockAPI, *)
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 extension Duration {
   init(_ timeValue: TimeValue) {
     self.init(secondsComponent: timeValue.seconds, attosecondsComponent: timeValue.attoseconds)
   }
 }
 
-@available(_clockAPI, *)
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 extension SuspendingClock.Instant {
   init(_ timeValue: TimeValue) {
     self = unsafeBitCast(Duration(timeValue), to: SuspendingClock.Instant.self)

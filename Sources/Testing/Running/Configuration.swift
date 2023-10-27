@@ -39,7 +39,7 @@ public struct Configuration: Sendable {
 
   /// Storage for the ``defaultTestTimeLimit`` property.
   private var _defaultTestTimeLimit: (any Sendable)? = {
-    guard #available(_clockAPI, *) else {
+    guard #available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *) else {
       return nil
     }
     return Environment.variable(named: "SWT_DEFAULT_TEST_TIME_LIMIT_NANOSECONDS")
@@ -55,7 +55,7 @@ public struct Configuration: Sendable {
   ///
   /// To determine the actual time limit that applies to an instance of
   /// ``Test`` at runtime, use ``Test/adjustedTimeLimit(configuration:)``.
-  @available(_clockAPI, *)
+  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
   public var defaultTestTimeLimit: Duration? {
     get {
       _defaultTestTimeLimit as? Duration
@@ -67,7 +67,7 @@ public struct Configuration: Sendable {
 
   /// Storage for the ``maximumTestTimeLimit`` property.
   private var _maximumTestTimeLimit: (any Sendable)? = {
-    guard #available(_clockAPI, *) else {
+    guard #available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *) else {
       return nil
     }
     return Environment.variable(named: "SWT_MAXIMUM_TEST_TIME_LIMIT_NANOSECONDS")
@@ -84,7 +84,7 @@ public struct Configuration: Sendable {
   ///
   /// To determine the actual time limit that applies to an instance of
   /// ``Test`` at runtime, use ``Test/adjustedTimeLimit(configuration:)``.
-  @available(_clockAPI, *)
+  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
   public var maximumTestTimeLimit: Duration? {
     get {
       _maximumTestTimeLimit as? Duration
@@ -96,7 +96,7 @@ public struct Configuration: Sendable {
 
   /// Storage for the ``testTimeLimitGranularity`` property.
   private var _testTimeLimitGranularity: (any Sendable)? = {
-    guard #available(_clockAPI, *) else {
+    guard #available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *) else {
       return nil
     }
     return Environment.variable(named: "SWT_TEST_TIME_LIMIT_GRANULARITY_NANOSECONDS")
@@ -109,7 +109,7 @@ public struct Configuration: Sendable {
   /// By default, test time limit granularity is limited to intervals of one
   /// minute (60 seconds.) If finer or coarser granularity is required, the
   /// value of this property can be adjusted.
-  @available(_clockAPI, *)
+  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
   public var testTimeLimitGranularity: Duration {
     get {
       (_testTimeLimitGranularity as? Duration) ?? .seconds(60)
