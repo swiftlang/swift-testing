@@ -657,14 +657,14 @@ func example4() {
 #### Nesting / subgrouping tests
 
 Earlier examples showed how related tests may be grouped together by placing
-them within a type conforming to `Suite`. This technique also allows forming
-sub-groups by nesting one `Suite`-conforming type inside another:
+them within a type. This technique also allows forming sub-groups by nesting
+one type containing tests inside another:
 
 ```swift
 struct OuterTests {
   @Test func outerExample() { /* ... */ }
 
-  @Test(.tags("edge-case"))
+  @Suite(.tags("edge-case"))
   struct InnerTests {
     @Test func innerExample1() { /* ... */ }
     @Test func innerExample2() { /* ... */ }
