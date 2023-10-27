@@ -84,3 +84,9 @@ extension SuspendingClock.Instant {
     self = unsafeBitCast(Duration(timeValue), to: SuspendingClock.Instant.self)
   }
 }
+
+extension timespec {
+  init(_ timeValue: TimeValue) {
+    self.init(tv_sec: .init(timeValue.seconds), tv_nsec: .init(timeValue.attoseconds / 1_000_000_000))
+  }
+}

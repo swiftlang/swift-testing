@@ -113,7 +113,8 @@ extension Test.Clock {
   @available(_clockAPI, *)
   static func sleep(for duration: Duration) async throws {
 #if SWT_NO_UNSTRUCTURED_TASKS
-    var ts = timespec(duration)
+    let timeValue = TimeValue(duration)
+    var ts = timespec(timeValue)
     var tsRemaining = ts
     while 0 != nanosleep(&ts, &tsRemaining) {
       try Task.checkCancellation()
@@ -140,7 +141,7 @@ extension Test.Clock: _Concurrency.Clock {
 #if SWT_TARGET_OS_APPLE
     var res = timespec()
     _ = clock_getres(CLOCK_UPTIME_RAW, &res)
-    return Duration(res)
+    return Duration(TimeValue(res))
 #else
     SuspendingClock().minimumResolution
 #endif
