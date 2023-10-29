@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@_implementationOnly import TestingInternals
+internal import TestingInternals
 
 /// A container type representing a time value that is suitable for storage,
 /// conversion, encoding, and decoding.

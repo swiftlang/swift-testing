@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@_implementationOnly import TestingInternals
+private import TestingInternals
 
 /// A property wrapper that wraps a value requiring access from a synchronous
 /// caller during concurrent execution.

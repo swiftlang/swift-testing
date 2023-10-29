@@ -9,7 +9,7 @@
 //
 
 #if _runtime(_ObjC)
-import ObjectiveC
+public import ObjectiveC
 #endif
 
 /// A type representing a test or suite.
