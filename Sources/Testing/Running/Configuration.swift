@@ -15,12 +15,16 @@ public struct Configuration: Sendable {
   /// configuration.
   public init() {}
 
+  // MARK: - Parallelization
+
   /// Whether or not to parallelize the execution of tests and test cases (by
   /// default.)
   static var isParallelizationEnabledByDefault: Bool { Environment.flag(named: "SWT_ENABLE_PARALLELIZATION") ?? true }
 
   /// Whether or not to parallelize the execution of tests and test cases.
   public var isParallelizationEnabled = Self.isParallelizationEnabledByDefault
+
+  // MARK: - Main actor isolation
 
 #if !SWT_NO_GLOBAL_ACTORS
   /// Whether or not synchronous test functions need to run on the main actor

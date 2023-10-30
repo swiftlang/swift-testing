@@ -71,6 +71,15 @@ extension Issue {
     }
 
     Event.post(.issueRecorded(self), configuration: configuration)
+
+    if !isKnown {
+      // Since this is not a known issue, invoke the failure breakpoint.
+      //
+      // Do this after posting the event above, to allow the issue to be printed
+      // to the console first (assuming the event handler does this), since that
+      // can help explain the failure.
+      failureBreakpoint()
+    }
   }
 
   /// Record an issue when a running test fails unexpectedly.
@@ -124,4 +133,30 @@ extension Issue {
     issue.record()
     return issue
   }
+}
+
+/// A function called by the testing library when a failure occurs.
+///
+/// Whenever a test failure (specifically, a non-known ``Issue``) is recorded,
+/// the testing library calls this function synchronously. This facilitates
+/// interactive debugging of test failures: If you add a symbolic breakpoint
+/// specifying the name of this function, the debugger will pause execution and
+/// allow you to inspect the process state.
+///
+/// When creating a symbolic breakpoint for this function, it is recommended
+/// that you constrain it to the `Testing` module to avoid collisions with
+/// similarly-named functions in other modules. If you are using LLDB, you can
+/// use the following command to create the breakpoint:
+///
+/// ```lldb
+/// (lldb) breakpoint set -s Testing -n "failureBreakpoint()"
+/// ```
+///
+/// This function performs no action of its own. It is not part of the public
+/// interface of the testing library, but it is exported and its symbol name
+/// must remain stable.
+@inline(never) @_optimize(none)
+@usableFromInline
+func failureBreakpoint() {
+  // Empty.
 }
