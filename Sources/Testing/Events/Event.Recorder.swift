@@ -122,7 +122,7 @@ private let _resetANSIEscapeCode = "\(_ansiEscapeCodePrefix)0m"
 extension Event.Recorder {
   /// An enumeration describing the symbols used as prefixes when writing
   /// output.
-  private enum _Symbol {
+  fileprivate enum Symbol {
     /// The default symbol to use.
     case `default`
 
@@ -137,6 +137,10 @@ extension Event.Recorder {
 
     /// The symbol to use when an expectation includes a difference description.
     case difference
+
+    /// A warning or caution symbol to use when the developer should be aware of
+    /// some condition.
+    case warning
 
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
     /// The SF Symbols character corresponding to this instance.
@@ -162,6 +166,9 @@ extension Event.Recorder {
       case .difference:
         // SF Symbol: plus.forwardslash.minus
         return "\u{10017A}"
+      case .warning:
+        // SF Symbol: exclamationmark.triangle.fill
+        return "\u{1001FF}"
       }
     }
 #endif
@@ -190,6 +197,9 @@ extension Event.Recorder {
       case .difference:
         // Unicode: PLUS-MINUS SIGN
         return "\u{00B1}"
+      case .warning:
+        // Unicode: WARNING SIGN + VARIATION SELECTOR-15 (disable emoji)
+        return "\u{26A0}\u{FE0E}"
       }
 #elseif os(Windows)
       // The default Windows console font (Consolas) has limited Unicode
@@ -215,6 +225,9 @@ extension Event.Recorder {
       case .difference:
         // Unicode: PLUS-MINUS SIGN
         return "\u{00B1}"
+      case .warning:
+        // Unicode: EXCLAMATION MARK
+        return "\u{0021}"
       }
 #else
 #warning("Platform-specific implementation missing: Unicode characters unavailable")
@@ -251,6 +264,8 @@ extension Event.Recorder {
           return "\(_ansiEscapeCodePrefix)92m\(symbolCharacter)\(_resetANSIEscapeCode)"
         case .fail:
           return "\(_ansiEscapeCodePrefix)91m\(symbolCharacter)\(_resetANSIEscapeCode)"
+        case .warning:
+          return "\(_ansiEscapeCodePrefix)93m\(symbolCharacter)\(_resetANSIEscapeCode)"
         }
       }
       return "\(symbolCharacter)"
@@ -442,7 +457,7 @@ extension Event.Recorder {
       $context.withLock { context in
         context.runStartInstant = instant
       }
-      let symbol = _Symbol.default.stringValue(options: options)
+      let symbol = Symbol.default.stringValue(options: options)
       var comments: [Comment] = [
         "Swift Version: \(swiftStandardLibraryVersion)",
         "Testing Library Version: \(testingLibraryVersion)",
@@ -474,7 +489,7 @@ extension Event.Recorder {
           context.testCount += 1
         }
       }
-      let symbol = _Symbol.default.stringValue(options: options)
+      let symbol = Symbol.default.stringValue(options: options)
       return "\(symbol) Test \(testName) started.\n"
 
     case .testEnded:
@@ -485,11 +500,11 @@ extension Event.Recorder {
       let issues = _issueCounts(in: testDataGraph)
       let duration = testData.startInstant.descriptionOfDuration(to: instant)
       if issues.issueCount > 0 {
-        let symbol = _Symbol.fail.stringValue(options: options)
+        let symbol = Symbol.fail.stringValue(options: options)
         let comments = _formattedComments(for: test, options: options).map { "\($0)\n" } ?? ""
         return "\(symbol) Test \(testName) failed after \(duration)\(issues.description).\n\(comments)"
       } else {
-        let symbol = _Symbol.pass(hasKnownIssues: issues.knownIssueCount > 0).stringValue(options: options)
+        let symbol = Symbol.pass(hasKnownIssues: issues.knownIssueCount > 0).stringValue(options: options)
         return "\(symbol) Test \(testName) passed after \(duration)\(issues.description).\n"
       }
 
@@ -502,7 +517,7 @@ extension Event.Recorder {
           context.testCount += 1
         }
       }
-      let symbol = _Symbol.skip.stringValue(options: options)
+      let symbol = Symbol.skip.stringValue(options: options)
       if let comment = skipInfo.comment {
         return "\(symbol) Test \(testName) skipped: \"\(comment.rawValue)\"\n"
       } else {
@@ -546,16 +561,16 @@ extension Event.Recorder {
       let symbol: String
       let known: String
       if issue.isKnown {
-        symbol = _Symbol.pass(hasKnownIssues: true).stringValue(options: options)
+        symbol = Symbol.pass(hasKnownIssues: true).stringValue(options: options)
         known = " known"
       } else {
-        symbol = _Symbol.fail.stringValue(options: options)
+        symbol = Symbol.fail.stringValue(options: options)
         known = "n"
       }
 
       var difference = ""
       if case let .expectationFailed(expectation) = issue.kind, let differenceDescription = expectation.differenceDescription {
-        let differenceSymbol = _Symbol.difference.stringValue(options: options)
+        let differenceSymbol = Symbol.difference.stringValue(options: options)
         difference = "\n\(differenceSymbol) \(differenceDescription)"
       }
 
@@ -575,7 +590,7 @@ extension Event.Recorder {
       guard let testCase = eventContext.testCase, testCase.isParameterized, let parameters = test?.parameters else {
         break
       }
-      let symbol = _Symbol.default.stringValue(options: options)
+      let symbol = Symbol.default.stringValue(options: options)
 
       return "\(symbol) Passing \(parameters.count.counting("argument")) \(testCase.labeledArguments(using: parameters)) to \(testName)\n"
 
@@ -591,10 +606,10 @@ extension Event.Recorder {
       let duration = runStartInstant.descriptionOfDuration(to: instant)
 
       if issues.issueCount > 0 {
-        let symbol = _Symbol.fail.stringValue(options: options)
+        let symbol = Symbol.fail.stringValue(options: options)
         return "\(symbol) Test run with \(testCount.counting("test")) failed after \(duration)\(issues.description).\n"
       } else {
-        let symbol = _Symbol.pass(hasKnownIssues: issues.knownIssueCount > 0).stringValue(options: options)
+        let symbol = Symbol.pass(hasKnownIssues: issues.knownIssueCount > 0).stringValue(options: options)
         return "\(symbol) Test run with \(testCount.counting("test")) passed after \(duration)\(issues.description).\n"
       }
     }
@@ -618,4 +633,22 @@ extension Event.Recorder {
     }
     return false
   }
+}
+
+// MARK: -
+
+/// Get a message warning the user of some condition in the library that may
+/// affect test results.
+///
+/// - Parameters:
+///   - message: The message to present to the user.
+///   - options: The options that should be used when formatting the resulting
+///     message.
+///
+/// - Returns: The described message, formatted for display using `options`.
+///
+/// The caller is responsible for presenting this message to the user.
+func warning(_ message: String, options: [Event.Recorder.Option]) -> String {
+  let symbol = Event.Recorder.Symbol.warning.stringValue(options: Set(options))
+  return "\(symbol) \(message)"
 }

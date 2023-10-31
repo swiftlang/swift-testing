@@ -167,7 +167,20 @@ public enum XCTestScaffold: Sendable {
   /// ## See Also
   ///
   /// - <doc:TemporaryGettingStarted>
+#if SWIFT_PM_SUPPORTS_SWIFT_TESTING
+  @available(*, deprecated, message: "This version of Swift Package Manager supports running swift-testing tests directly.")
+#endif
   public static func runAllTests(hostedBy testCase: XCTestCase) async {
+#if SWIFT_PM_SUPPORTS_SWIFT_TESTING
+    let message = warning("This version of Swift Package Manager supports running swift-testing tests directly.", options: .forStandardError)
+#if SWT_TARGET_OS_APPLE
+    let stderr = swt_stderr()
+    fputs(message, stderr)
+    fflush(stderr)
+#else
+    print(message)
+#endif
+#else
     let testCase = UncheckedSendable(rawValue: testCase)
 #if SWT_TARGET_OS_APPLE
     let isProcessLaunchedByXcode = Environment.variable(named: "XCTestSessionIdentifier") != nil
@@ -218,6 +231,7 @@ public enum XCTestScaffold: Sendable {
       }
 #endif
     }
+#endif
   }
 }
 #endif
