@@ -168,11 +168,11 @@ public enum XCTestScaffold: Sendable {
   ///
   /// - <doc:TemporaryGettingStarted>
 #if SWIFT_PM_SUPPORTS_SWIFT_TESTING
-  @available(*, deprecated, message: "This version of Swift Package Manager supports running swift-testing tests directly.")
+  @available(*, deprecated, message: "This version of Swift Package Manager supports running swift-testing tests directly. This function has no effect.")
 #endif
   public static func runAllTests(hostedBy testCase: XCTestCase) async {
 #if SWIFT_PM_SUPPORTS_SWIFT_TESTING
-    let message = warning("This version of Swift Package Manager supports running swift-testing tests directly.", options: .forStandardError)
+    let message = warning("This version of Swift Package Manager supports running swift-testing tests directly. Ignoring call to \(#function).", options: .forStandardError)
 #if SWT_TARGET_OS_APPLE
     let stderr = swt_stderr()
     fputs(message, stderr)
