@@ -223,16 +223,18 @@ static SWTMachHeaderList getMachHeaders(void) {
   /// testing library is not tasked with the same performance constraints as
   /// Swift's runtime library, we just use a `std::vector` guarded by an unfair
   /// lock.
-  static constinit SWTMachHeaderList machHeaders;
+  static constinit SWTMachHeaderList *machHeaders = nullptr;
   static constinit os_unfair_lock lock = OS_UNFAIR_LOCK_INIT;
 
   static constinit dispatch_once_t once = 0;
   dispatch_once_f(&once, nullptr, [] (void *) {
-    machHeaders.reserve(_dyld_image_count());
+    machHeaders = (SWTMachHeaderList *)std::malloc(sizeof(SWTMachHeaderList));
+    ::new (machHeaders) SWTMachHeaderList();
+    machHeaders->reserve(_dyld_image_count());
 
     objc_addLoadImageFunc([] (const mach_header *mh) {
       os_unfair_lock_lock(&lock); {
-        machHeaders.push_back(reinterpret_cast<SWTMachHeaderList::value_type>(mh));
+        machHeaders->push_back(reinterpret_cast<SWTMachHeaderList::value_type>(mh));
       } os_unfair_lock_unlock(&lock);
     });
   });
@@ -241,7 +243,7 @@ static SWTMachHeaderList getMachHeaders(void) {
   // make a copy of whatever has been loaded so far.
   SWTMachHeaderList result;
   os_unfair_lock_lock(&lock); {
-    result = machHeaders;
+    result = *machHeaders;
   } os_unfair_lock_unlock(&lock);
   return result;
 }
