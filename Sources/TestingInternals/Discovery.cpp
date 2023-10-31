@@ -12,7 +12,6 @@
 
 #include <atomic>
 #include <iterator>
-#include <span>
 #include <type_traits>
 #include <vector>
 
@@ -316,12 +315,12 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
 
 void swt_enumerateTypes(SWTTypeNameFilter nameFilter, SWTTypeEnumerator body, void *context) {
   enumerateTypeMetadataSections([=] (const void *section, size_t size) {
-    auto records = std::span {
-      reinterpret_cast<const SWTTypeMetadataRecord *>(section),
-      size / sizeof(SWTTypeMetadataRecord)
-    };
+    auto records = reinterpret_cast<const SWTTypeMetadataRecord *>(section);
+    size_t recordCount = size / sizeof(SWTTypeMetadataRecord);
 
-    for (const auto& record : records) {
+    for (size_t i = 0; i < recordCount; i++) {
+      const auto& record = records[i];
+
       auto contextDescriptor = record.getContextDescriptor();
       if (!contextDescriptor) {
         // This type metadata record is invalid (or we don't understand how to
