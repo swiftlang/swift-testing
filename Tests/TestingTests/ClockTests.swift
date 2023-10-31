@@ -10,7 +10,7 @@
 
 import Foundation
 @testable @_spi(ExperimentalEventHandling) import Testing
-@_implementationOnly import TestingInternals
+import TestingInternals
 
 @Suite("Clock API Tests")
 struct ClockTests {

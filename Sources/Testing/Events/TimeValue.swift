@@ -8,7 +8,9 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@_implementationOnly import TestingInternals
+// `internal` because `TimeValue.init(_ timespec:)` below is internal and
+// references a type (`timespec`) which comes from this import.
+internal import TestingInternals
 
 /// A container type representing a time value that is suitable for storage,
 /// conversion, encoding, and decoding.

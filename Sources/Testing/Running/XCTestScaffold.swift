@@ -9,8 +9,8 @@
 //
 
 #if !SWT_NO_XCTEST_SCAFFOLDING
-@_implementationOnly import TestingInternals
-import XCTest
+private import TestingInternals
+public import XCTest
 
 #if SWT_TARGET_OS_APPLE
 extension XCTSourceCodeContext {

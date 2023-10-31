@@ -8,10 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@_implementationOnly import TestingInternals
+private import TestingInternals
 
 #if _runtime(_ObjC)
-import ObjectiveC
+public import ObjectiveC
 
 /// An XCTest-compatible Objective-C selector.
 ///
@@ -45,7 +45,7 @@ public typealias __XCTestCompatibleSelector = Never
 }
 
 #if !SWT_NO_XCTEST_SCAFFOLDING
-import XCTest
+public import XCTest
 #endif
 
 /// This file provides support for the `@Test` macro. Other than the macro

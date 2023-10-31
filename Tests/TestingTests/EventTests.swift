@@ -10,7 +10,7 @@
 
 import Foundation
 @testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalParameterizedTesting) @_spi(ExperimentalSnapshotting) @_spi(ExperimentalTestRunning) import Testing
-@_implementationOnly import TestingInternals
+import TestingInternals
 
 struct EventTests {
   @Test("Event's and Event.Kinds's Codable Conformances",
