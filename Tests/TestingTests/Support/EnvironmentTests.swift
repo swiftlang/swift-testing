@@ -29,8 +29,8 @@ struct EnvironmentTests {
 
   @Test("Read true environment flags",
     arguments: [
-      "1", "\(UInt64.max)", "\(Int64.max)", "\(Int64.min)",
-      "\(UInt64.random(in: 1 ... .max))", "\(Int64.random(in: .min ..< 0))",
+      "1", String(describing: UInt64.max), String(describing: Int64.min),
+      String(describing: UInt64.random(in: 1 ... .max)), String(describing: Int64.random(in: .min ..< 0)),
       "YES", "yes", "yEs", "TRUE", "true", "tRuE",
     ]
   )
