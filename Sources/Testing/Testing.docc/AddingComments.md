@@ -92,3 +92,9 @@ As in normal code, comments on tests are generally most useful when:
 
 If a test is related to a bug or issue, consider using the ``Bug`` trait instead
 of comments. For more information, review <doc:AssociatingBugs>.
+
+
+## Topics
+
+- ``Trait/comment(_:)``
+- ``Comment``

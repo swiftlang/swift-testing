@@ -82,3 +82,10 @@ The testing library defines several kinds of common bug/test relationship:
 
 <!-- Keep `.unspecified` as the last row above in order to imply it is a
 fallback. -->
+
+## Topics
+
+- <doc:BugIdentifiers>
+- ``Trait/bug(_:relationship:)-duvt``
+- ``Trait/bug(_:relationship:)-40riy``
+- ``Bug``

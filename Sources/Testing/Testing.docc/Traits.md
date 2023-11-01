@@ -23,41 +23,11 @@ types that customize the behavior of test functions and test suites.
 
 ## Topics
 
-### Defining conditions for a test
-
 - <doc:EnablingAndDisabling>
-- ``Trait/enabled(if:_:fileID:filePath:line:column:)``
-- ``Trait/enabled(_:fileID:filePath:line:column:_:)``
-- ``Trait/disabled(_:fileID:filePath:line:column:)``
-- ``Trait/disabled(if:_:fileID:filePath:line:column:)``
-- ``Trait/disabled(_:fileID:filePath:line:column:_:)``
-- ``ConditionTrait``
-
-### Adding tags to a test
-
-- ``Trait/tags(_:)-yg0i``
-- ``Trait/tags(_:)-272p``
-- ``Tag``
-- ``Tag/List``
-
-### Adding a comment to a test
-
+- <doc:AddingTags>
 - <doc:AddingComments>
-- ``Trait/comment(_:)``
-- ``Comment``
-
-### Referencing an issue or bug report from a test
-
 - <doc:AssociatingBugs>
-- <doc:BugIdentifiers>
-- ``Trait/bug(_:relationship:)-duvt``
-- ``Trait/bug(_:relationship:)-40riy``
-- ``Bug``
-
-### Limiting the execution time of a test
-
-- ``TimeLimitTrait``
-- ``Trait/timeLimit(_:)``
+- <doc:LimitingExecutionTime>
 
 ### Creating a custom trait
 
