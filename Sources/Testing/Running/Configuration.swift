@@ -17,39 +17,22 @@ public struct Configuration: Sendable {
 
   // MARK: - Parallelization
 
-  /// Whether or not to parallelize the execution of tests and test cases (by
-  /// default.)
-  static var isParallelizationEnabledByDefault: Bool { Environment.flag(named: "SWT_ENABLE_PARALLELIZATION") ?? true }
-
   /// Whether or not to parallelize the execution of tests and test cases.
-  public var isParallelizationEnabled = Self.isParallelizationEnabledByDefault
+  public var isParallelizationEnabled = true
 
   // MARK: - Main actor isolation
 
 #if !SWT_NO_GLOBAL_ACTORS
-  /// Whether or not synchronous test functions need to run on the main actor
-  /// (by default.)
-  ///
-  /// This property is available on platforms where UI testing is implemented.
-  static var isMainActorIsolationEnforcedByDefault: Bool { Environment.flag(named: "SWT_MAIN_ACTOR_ISOLATED") ?? false }
-
   /// Whether or not synchronous test functions need to run on the main actor.
   ///
   /// This property is available on platforms where UI testing is implemented.
-  public var isMainActorIsolationEnforced = Self.isMainActorIsolationEnforcedByDefault
+  public var isMainActorIsolationEnforced = false
 #endif
 
   // MARK: - Time limits
 
   /// Storage for the ``defaultTestTimeLimit`` property.
-  private var _defaultTestTimeLimit: (any Sendable)? = {
-    guard #available(_clockAPI, *) else {
-      return nil
-    }
-    return Environment.variable(named: "SWT_DEFAULT_TEST_TIME_LIMIT_NANOSECONDS")
-      .flatMap(UInt64.init)
-      .map(Duration.nanoseconds)
-  }()
+  private var _defaultTestTimeLimit: (any Sendable)?
 
   /// The default amount of time a test may run for before timing out if it does
   /// not have an instance of ``TimeLimitTrait`` applied to it.
@@ -70,14 +53,7 @@ public struct Configuration: Sendable {
   }
 
   /// Storage for the ``maximumTestTimeLimit`` property.
-  private var _maximumTestTimeLimit: (any Sendable)? = {
-    guard #available(_clockAPI, *) else {
-      return nil
-    }
-    return Environment.variable(named: "SWT_MAXIMUM_TEST_TIME_LIMIT_NANOSECONDS")
-      .flatMap(UInt64.init)
-      .map(Duration.nanoseconds)
-  }()
+  private var _maximumTestTimeLimit: (any Sendable)?
 
   /// The maximum amount of time a test may run for before timing out,
   /// regardless of the value of ``defaultTestTimeLimit`` or individual
@@ -99,14 +75,7 @@ public struct Configuration: Sendable {
   }
 
   /// Storage for the ``testTimeLimitGranularity`` property.
-  private var _testTimeLimitGranularity: (any Sendable)? = {
-    guard #available(_clockAPI, *) else {
-      return nil
-    }
-    return Environment.variable(named: "SWT_TEST_TIME_LIMIT_GRANULARITY_NANOSECONDS")
-      .flatMap(UInt64.init)
-      .map(Duration.nanoseconds)
-  }()
+  private var _testTimeLimitGranularity: (any Sendable)?
 
   /// The granularity to enforce on test time limits.
   ///

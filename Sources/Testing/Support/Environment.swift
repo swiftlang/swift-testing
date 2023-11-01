@@ -89,39 +89,4 @@ enum Environment {
       return first == "t" || first == "T" || first == "y" || first == "Y"
     }
   }
-
-  /// Set the environment variable with the specified name.
-  ///
-  /// - Parameters:
-  ///   - value: The new value for the specified environment variable. Pass
-  ///     `nil` to remove the variable from the current process' environment.
-  ///   - name: The name of the environment variable.
-  ///
-  /// - Returns: Whether or not the environment variable was successfully set.
-  @discardableResult
-  static func setVariable(_ value: String?, named name: String) -> Bool {
-#if SWT_NO_ENVIRONMENT_VARIABLES
-    $_environment.withLock { environment in
-      environment[name] = value
-    }
-    return true
-#elseif SWT_TARGET_OS_APPLE || os(Linux)
-    if let value {
-      return 0 == setenv(name, value, 1)
-    }
-    return 0 == unsetenv(name)
-#elseif os(Windows)
-    name.withCString(encodedAs: UTF16.self) { name in
-      if let value {
-        return value.withCString(encodedAs: UTF16.self) { value in
-          SetEnvironmentVariableW(name, value)
-        }
-      }
-      return SetEnvironmentVariableW(name, nil)
-    }
-#else
-#warning("Platform-specific implementation missing: environment variables unavailable")
-    false
-#endif
-  }
 }

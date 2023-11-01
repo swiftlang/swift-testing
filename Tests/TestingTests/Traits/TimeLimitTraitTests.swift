@@ -69,42 +69,6 @@ struct TimeLimitTraitTests {
   }
 
   @available(_clockAPI, *)
-  @Test("Configuration.defaultTestTimeLimit environment variable")
-  func defaultTimeLimitEnvironmentVariable() throws {
-    let oldEnvironmentVariable = Environment.variable(named: "SWT_DEFAULT_TEST_TIME_LIMIT_NANOSECONDS")
-    Environment.setVariable("1234567890", named: "SWT_DEFAULT_TEST_TIME_LIMIT_NANOSECONDS")
-    defer {
-      Environment.setVariable(oldEnvironmentVariable, named: "SWT_DEFAULT_TEST_TIME_LIMIT_NANOSECONDS")
-    }
-    let configuration = Configuration()
-    #expect(configuration.defaultTestTimeLimit == .nanoseconds(1234567890))
-  }
-
-  @available(_clockAPI, *)
-  @Test("Configuration.maximumTestTimeLimit environment variable")
-  func maximumTimeLimitEnvironmentVariable() throws {
-    let oldEnvironmentVariable = Environment.variable(named: "SWT_MAXIMUM_TEST_TIME_LIMIT_NANOSECONDS")
-    Environment.setVariable("1234567890", named: "SWT_MAXIMUM_TEST_TIME_LIMIT_NANOSECONDS")
-    defer {
-      Environment.setVariable(oldEnvironmentVariable, named: "SWT_MAXIMUM_TEST_TIME_LIMIT_NANOSECONDS")
-    }
-    let configuration = Configuration()
-    #expect(configuration.maximumTestTimeLimit == .nanoseconds(1234567890))
-  }
-
-  @available(_clockAPI, *)
-  @Test("Configuration.testTimeLimitGranularity environment variable")
-  func timeLimitGranularityEnvironmentVariable() throws {
-    let oldEnvironmentVariable = Environment.variable(named: "SWT_TEST_TIME_LIMIT_GRANULARITY_NANOSECONDS")
-    Environment.setVariable("1234567890", named: "SWT_TEST_TIME_LIMIT_GRANULARITY_NANOSECONDS")
-    defer {
-      Environment.setVariable(oldEnvironmentVariable, named: "SWT_TEST_TIME_LIMIT_GRANULARITY_NANOSECONDS")
-    }
-    let configuration = Configuration()
-    #expect(configuration.testTimeLimitGranularity == .nanoseconds(1234567890))
-  }
-
-  @available(_clockAPI, *)
   @Test("Test times out when overrunning .timeLimit() trait")
   func testTimesOutDueToTrait() async throws {
     await confirmation("Issue recorded", expectedCount: 10) { issueRecorded in
