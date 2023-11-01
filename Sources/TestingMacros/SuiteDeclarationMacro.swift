@@ -156,8 +156,12 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
     let enumName = context.makeUniqueName("__🟠$test_container__suite__\(typeName)")
     result.append(
       """
+      #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS)
       @available(*, unavailable, message: "This type is an implementation detail of the testing library. It cannot be used directly.")
       @available(*, deprecated)
+      #else
+      @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
+      #endif
       @frozen public enum \(enumName): Testing.__TestContainer {
         public static var __tests: [Testing.Test] {
           get async {[
