@@ -467,7 +467,7 @@ struct MiscellaneousTests {
   @Test("Test.id property")
   func id() async throws {
     let typeTest = Test.__type(SendableTests.self, displayName: "SendableTests", traits: [], sourceLocation: .init())
-    #expect(String(describing: typeTest.id) == "TestingTests/SendableTests")
+    #expect(String(describing: typeTest.id) == "TestingTests.SendableTests")
 
     let fileID = "Module/Y.swift"
     let filePath = "/Y.swift"
@@ -475,7 +475,7 @@ struct MiscellaneousTests {
     let column = 67890
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
     let testFunction = Test.__function(named: "myTestFunction()", in: nil, xcTestCompatibleSelector: nil, displayName: nil, traits: [], sourceLocation: sourceLocation) {}
-    #expect(String(describing: testFunction.id) == "Module/myTestFunction()/Y.swift:12345:67890")
+    #expect(String(describing: testFunction.id) == "Module.myTestFunction()/Y.swift:12345:67890")
   }
 
   @Test("Test.ID.parent property")

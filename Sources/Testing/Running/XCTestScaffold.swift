@@ -206,7 +206,21 @@ public enum XCTestScaffold: Sendable {
           .map(Tag.init(rawValue:))
       }.map(Set.init)
 
-    await runTests(identifiedBy: testIDs, taggedWith: tags) { event, context in
+    var configuration = Configuration()
+    configuration.isParallelizationEnabled = false
+    if let testIDs {
+      configuration.setTestFilter(toMatch: Set(testIDs))
+    }
+    if let tags {
+      // Check if the test's tags intersect the set of selected tags. If there
+      // was a previous filter function, it must also pass.
+      let oldTestFilter = configuration.testFilter ?? { _ in true }
+      configuration.testFilter = { test in
+        !tags.isDisjoint(with: test.tags) && oldTestFilter(test)
+      }
+    }
+
+    configuration.eventHandler = { event, context in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -231,6 +245,8 @@ public enum XCTestScaffold: Sendable {
       }
 #endif
     }
+
+    await runTests(configuration: configuration)
 #endif
   }
 }
