@@ -24,7 +24,8 @@ be marked as failing if it runs for an excessive amount of time. Use the
 ``Trait/timeLimit(_:)`` trait as an upper bound:
 
 ```swift
-@Test(.timeLimit(.seconds(60 * 60)) func serve100CustomersInOneHour() async {
+@Test(.timeLimit(.seconds(60 * 60))
+func serve100CustomersInOneHour() async {
   for _ in 0 ..< 100 {
     let customer = await Customer.next()
     await customer.order()
@@ -33,8 +34,9 @@ be marked as failing if it runs for an excessive amount of time. Use the
 }
 ```
 
-If the above test function takes longer than 60 × 60 seconds (i.e. one hour) to
-execute, the task in which it is running will be [cancelled](https://developer.apple.com/documentation/swift/task/cancel())
+If the above test function takes longer than 60 &times; 60 seconds (i.e. one
+hour) to execute, the task in which it is running will be
+[cancelled](https://developer.apple.com/documentation/swift/task/cancel())
 and the test will fail with an issue of kind
 ``Issue/Kind-swift.enum/timeLimitExceeded(timeLimitComponents:)``.
 
@@ -55,8 +57,8 @@ test functions and child test suites within that suite.
 ### Time limits applied to parameterized tests
 
 When a time limit is applied to a parameterized test function, it is applied to
-each invocation _separately_ so that if only some inputs cause failures, then
-successful inputs are not incorrectly marked as failing too.
+each invocation _separately_ so that if only some arguments cause failures, then
+successful arguments are not incorrectly marked as failing too.
 
 ## Topics
 

@@ -32,7 +32,7 @@ and those tags are then applied to the corresponding test at runtime. If they
 are applied to a test suite, then all tests in that suite inherit those tags.
 
 Tags themselves are instances of ``Tag`` and can be expressed as string literals
-or as named constants declared elsewhere in a test target:
+or as named constants declared elsewhere:
 
 ```swift
 extension Tag {
