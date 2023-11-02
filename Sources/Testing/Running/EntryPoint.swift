@@ -25,20 +25,32 @@ private import TestingInternals
 public func swiftPMEntryPoint() async -> CInt {
   @Locked var exitCode = EXIT_SUCCESS
 
-  let args = CommandLine.arguments()
-  if args.count == 2 && args[1] == "--list-tests" {
-    await _listTestsForSwiftPM(Test.all)
-  } else {
-    var configuration = _configurationForSwiftPMEntryPoint(withArguments: args)
-    configuration.eventHandler = { event, _ in
-      if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
-        $exitCode.withLock { exitCode in
-          exitCode = EXIT_FAILURE
+  do {
+    let args = CommandLine.arguments()
+    if args.count == 2 && args[1] == "--list-tests" {
+      for testID in await listTestsForSwiftPM(Test.all) {
+        print(testID)
+      }
+    } else {
+      var configuration = try configurationForSwiftPMEntryPoint(withArguments: args)
+      configuration.eventHandler = { event, _ in
+        if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
+          $exitCode.withLock { exitCode in
+            exitCode = EXIT_FAILURE
+          }
         }
       }
-    }
 
-    await runTests(configuration: configuration)
+      await runTests(configuration: configuration)
+    }
+  } catch {
+    let stderr = swt_stderr()
+    fputs(String(describing: error), stderr)
+    fflush(stderr)
+
+    $exitCode.withLock { exitCode in
+      exitCode = EXIT_FAILURE
+    }
   }
 
   return exitCode
@@ -67,7 +79,9 @@ public func swiftPMEntryPoint() async -> Never {
 ///
 /// - Parameters:
 ///   - tests: The tests to list.
-private func _listTestsForSwiftPM(_ tests: some Sequence<Test>) {
+///
+/// - Returns: An array of strings representing the IDs of `tests`.
+func listTestsForSwiftPM(_ tests: some Sequence<Test>) -> [String] {
   // Filter out hidden tests and test suites. Hidden tests should not generally
   // be presented to the user, and suites (XCTestCase classes) are not included
   // in the equivalent XCTest-based output.
@@ -78,7 +92,7 @@ private func _listTestsForSwiftPM(_ tests: some Sequence<Test>) {
   // Group tests by the name components of the tests' IDs. If the name
   // components of two tests' IDs are ambiguous, present their source locations
   // to disambiguate.
-  let allTestIDs = Dictionary(
+  return Dictionary(
     grouping: tests.lazy.map(\.id),
     by: \.nameComponents
   ).values.lazy
@@ -93,11 +107,6 @@ private func _listTestsForSwiftPM(_ tests: some Sequence<Test>) {
         }
     }.map(String.init(describing:))
     .sorted(by: <)
-
-  // Print all the test IDs to the console in neutral sorted order.
-  for testID in allTestIDs {
-    print(testID)
-  }
 }
 
 /// Get an instance of ``Configuration`` given a sequence of command-line
@@ -110,9 +119,11 @@ private func _listTestsForSwiftPM(_ tests: some Sequence<Test>) {
 ///   responsible for setting this instance's ``Configuration/eventHandler``
 ///   property.
 ///
+/// - Throws: If an argument is invalid, such as a malformed regular expression.
+///
 /// This function generally assumes that Swift Package Manager has already
 /// validated the passed arguments.
-private func _configurationForSwiftPMEntryPoint(withArguments args: [String]) -> Configuration {
+func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> Configuration {
   var configuration = Configuration()
   configuration.isParallelizationEnabled = false
 
@@ -135,19 +146,19 @@ private func _configurationForSwiftPMEntryPoint(withArguments args: [String]) ->
     if let filterArgIndex = args.firstIndex(of: "--filter"), filterArgIndex < args.endIndex {
       let filterArg = args[args.index(after: filterArgIndex)]
 
-      let regex = try? UncheckedSendable(rawValue: Regex(filterArg))
+      let regex = try UncheckedSendable(rawValue: Regex(filterArg))
       filters.append { test in
         let id = String(describing: test.id)
-        return regex.map(\.rawValue).map(id.contains) ?? false
+        return id.contains(regex.rawValue)
       }
     }
     if let skipArgIndex = args.firstIndex(of: "--skip"), skipArgIndex < args.endIndex {
       let skipArg = args[args.index(after: skipArgIndex)]
 
-      let regex = try? UncheckedSendable(rawValue: Regex(skipArg))
+      let regex = try UncheckedSendable(rawValue: Regex(skipArg))
       filters.append { test in
         let id = String(describing: test.id)
-        return regex.map(\.rawValue).map { !id.contains($0) } ?? true
+        return !id.contains(regex.rawValue)
       }
     }
   }
