@@ -199,30 +199,6 @@ extension Test.Clock.Instant: InstantProtocol {
 
 // MARK: - Duration descriptions
 
-/// Get a description of a duration represented as a tuple containing seconds
-/// and attoseconds.
-///
-/// - Parameters:
-///   - components: The duration.
-///
-/// - Returns: A string describing the specified duration, up to millisecond
-///   accuracy.
-func descriptionOfTimeComponents(_ components: (seconds: Int64, attoseconds: Int64)) -> String {
-  let (secondsFromAttoseconds, attosecondsRemaining) = components.attoseconds.quotientAndRemainder(dividingBy: 1_000_000_000_000_000_000)
-  let seconds = components.seconds + secondsFromAttoseconds
-  var milliseconds = attosecondsRemaining / 1_000_000_000_000_000
-  if seconds == 0 && milliseconds == 0 && attosecondsRemaining > 0 {
-    milliseconds = 1
-  }
-
-  return withUnsafeTemporaryAllocation(of: CChar.self, capacity: 512) { buffer in
-    withVaList([CLongLong(seconds), CInt(milliseconds)]) { args in
-      _ = vsnprintf(buffer.baseAddress!, buffer.count, "%lld.%03d seconds", args)
-    }
-    return String(cString: buffer.baseAddress!)
-  }
-}
-
 extension Test.Clock.Instant {
   /// Get a description of the duration between this instance and another.
   ///
@@ -236,9 +212,9 @@ extension Test.Clock.Instant {
     let otherNanoseconds = (other.suspending.seconds * 1_000_000_000) + (other.suspending.attoseconds / 1_000_000_000)
     let selfNanoseconds = (suspending.seconds * 1_000_000_000) + (suspending.attoseconds / 1_000_000_000)
     let (seconds, nanosecondsRemaining) = (otherNanoseconds - selfNanoseconds).quotientAndRemainder(dividingBy: 1_000_000_000)
-    return descriptionOfTimeComponents((seconds, nanosecondsRemaining * 1_000_000_000))
+    return String(describing: TimeValue((seconds, nanosecondsRemaining * 1_000_000_000)))
 #else
-    return descriptionOfTimeComponents((Duration(other.suspending) - Duration(suspending)).components)
+    return String(describing: TimeValue(Duration(other.suspending) - Duration(suspending)))
 #endif
   }
 }

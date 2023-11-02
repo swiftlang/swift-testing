@@ -71,6 +71,26 @@ extension TimeValue: Equatable, Hashable, Comparable {
 
 extension TimeValue: Codable {}
 
+// MARK: - CustomStringConvertible
+
+extension TimeValue: CustomStringConvertible {
+  var description: String {
+    let (secondsFromAttoseconds, attosecondsRemaining) = attoseconds.quotientAndRemainder(dividingBy: 1_000_000_000_000_000_000)
+    let seconds = seconds + secondsFromAttoseconds
+    var milliseconds = attosecondsRemaining / 1_000_000_000_000_000
+    if seconds == 0 && milliseconds == 0 && attosecondsRemaining > 0 {
+      milliseconds = 1
+    }
+
+    return withUnsafeTemporaryAllocation(of: CChar.self, capacity: 512) { buffer in
+      withVaList([CLongLong(seconds), CInt(milliseconds)]) { args in
+        _ = vsnprintf(buffer.baseAddress!, buffer.count, "%lld.%03d seconds", args)
+      }
+      return String(cString: buffer.baseAddress!)
+    }
+  }
+}
+
 // MARK: -
 
 @available(_clockAPI, *)

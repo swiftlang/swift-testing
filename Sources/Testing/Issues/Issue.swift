@@ -169,7 +169,7 @@ extension Issue.Kind: CustomStringConvertible {
     case let .errorCaught(error):
       "Caught error: \(error)"
     case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
-      "Time limit was exceeded: \(descriptionOfTimeComponents(timeLimitComponents))"
+      "Time limit was exceeded: \(TimeValue(timeLimitComponents))"
     case .knownIssueNotRecorded:
       "Known issue was not recorded"
     case .apiMisused:
