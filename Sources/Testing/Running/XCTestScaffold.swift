@@ -31,11 +31,10 @@ extension XCTSourceCodeContext {
 /// This type is not part of the public interface of the testing library.
 struct TimeoutError: Error, CustomStringConvertible {
   /// The time limit exceeded by the test that timed out.
-  var timeLimitComponents: (seconds: Int64, attoseconds: Int64)
+  var timeLimit: TimeValue
 
   var description: String {
-    let timeLimitDescription = descriptionOfTimeComponents(timeLimitComponents)
-    return "Timed out after \(timeLimitDescription) seconds."
+    "Timed out after \(timeLimit) seconds."
   }
 }
 
@@ -52,7 +51,7 @@ extension XCTIssue {
     case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
       issueType = .thrownError
       if error == nil {
-        error = TimeoutError(timeLimitComponents: timeLimitComponents)
+        error = TimeoutError(timeLimit: TimeValue(timeLimitComponents))
       }
     case .unconditional:
       issueType = .assertionFailure
