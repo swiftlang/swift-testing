@@ -23,16 +23,33 @@ private import TestingInternals
 @_spi(SwiftPackageManagerSupport)
 @_disfavoredOverload
 public func swiftPMEntryPoint() async -> CInt {
-  let args = CommandLine.arguments()
-  _ = args
-
   @Locked var exitCode = EXIT_SUCCESS
 
-  await runTests { event, _ in
-    if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
-      $exitCode.withLock { exitCode in
-        exitCode = EXIT_FAILURE
+  do {
+    let args = CommandLine.arguments()
+    if args.count == 2 && args[1] == "--list-tests" {
+      for testID in await listTestsForSwiftPM(Test.all) {
+        print(testID)
       }
+    } else {
+      var configuration = try configurationForSwiftPMEntryPoint(withArguments: args)
+      configuration.eventHandler = { event, _ in
+        if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
+          $exitCode.withLock { exitCode in
+            exitCode = EXIT_FAILURE
+          }
+        }
+      }
+
+      await runTests(configuration: configuration)
+    }
+  } catch {
+    let stderr = swt_stderr()
+    fputs(String(describing: error), stderr)
+    fflush(stderr)
+
+    $exitCode.withLock { exitCode in
+      exitCode = EXIT_FAILURE
     }
   }
 
@@ -55,39 +72,124 @@ public func swiftPMEntryPoint() async -> Never {
   exit(exitCode)
 }
 
+// MARK: -
+
+/// List all of the given tests in the "specifier" format used by Swift Package
+/// Manager.
+///
+/// - Parameters:
+///   - tests: The tests to list.
+///
+/// - Returns: An array of strings representing the IDs of `tests`.
+func listTestsForSwiftPM(_ tests: some Sequence<Test>) -> [String] {
+  // Filter out hidden tests and test suites. Hidden tests should not generally
+  // be presented to the user, and suites (XCTestCase classes) are not included
+  // in the equivalent XCTest-based output.
+  let tests = tests.lazy
+    .filter { !$0.isSuite }
+    .filter { !$0.isHidden }
+
+  // Group tests by the name components of the tests' IDs. If the name
+  // components of two tests' IDs are ambiguous, present their source locations
+  // to disambiguate.
+  return Dictionary(
+    grouping: tests.lazy.map(\.id),
+    by: \.nameComponents
+  ).values.lazy
+    .map { ($0, isAmbiguous: $0.count > 1) }
+    .flatMap { testIDs, isAmbiguous in
+      testIDs.lazy
+        .map { testID in
+          if !isAmbiguous, testID.sourceLocation != nil {
+            return testID.parent ?? testID
+          }
+          return testID
+        }
+    }.map(String.init(describing:))
+    .sorted(by: <)
+}
+
+/// Get an instance of ``Configuration`` given a sequence of command-line
+/// arguments passed from Swift Package Manager.
+///
+/// - Parameters:
+///   - args: The command-line arguments to interpret.
+///
+/// - Returns: An instance of ``Configuration``. Note that the caller is
+///   responsible for setting this instance's ``Configuration/eventHandler``
+///   property.
+///
+/// - Throws: If an argument is invalid, such as a malformed regular expression.
+///
+/// This function generally assumes that Swift Package Manager has already
+/// validated the passed arguments.
+func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> Configuration {
+  var configuration = Configuration()
+  configuration.isParallelizationEnabled = false
+
+  // Do not consider the executable path AKA argv[0].
+  let args = args.dropFirst()
+
+  // Parallelization
+  if args.contains("--parallel") {
+    configuration.isParallelizationEnabled = true
+  }
+
+  // Filtering
+  // NOTE: Regex is not marked Sendable, but because the regexes we use are
+  // constructed solely from a string, they are safe to send across isolation
+  // boundaries.
+  var filters = [Configuration.TestFilter]()
+  if #available(_regexAPI, *) {
+    if let filterArgIndex = args.firstIndex(of: "--filter"), filterArgIndex < args.endIndex {
+      let filterArg = args[args.index(after: filterArgIndex)]
+
+      let regex = try UncheckedSendable(rawValue: Regex(filterArg))
+      filters.append { test in
+        let id = String(describing: test.id)
+        return id.contains(regex.rawValue)
+      }
+    }
+    if let skipArgIndex = args.firstIndex(of: "--skip"), skipArgIndex < args.endIndex {
+      let skipArg = args[args.index(after: skipArgIndex)]
+
+      let regex = try UncheckedSendable(rawValue: Regex(skipArg))
+      filters.append { test in
+        let id = String(describing: test.id)
+        return !id.contains(regex.rawValue)
+      }
+    }
+  }
+  filters.append { test in
+    // Don't run the fixture tests in the testing library's own test targets.
+    !test.isHidden
+  }
+  configuration.testFilter = { [filters] test in
+    filters.allSatisfy { filter in
+      filter(test)
+    }
+  }
+
+  return configuration
+}
+
 /// The common implementation of ``swiftPMEntryPoint()`` and
 /// ``XCTestScaffold/runAllTests(hostedBy:)``.
 ///
 /// - Parameters:
-///   - testIDs: The test IDs to run. If `nil`, all tests are run.
-///   - tags: The tags to filter by (only tests with one or more of these tags
-///     will be run.)
-///   - eventHandler: An event handler to invoke after events are written to
-///     the standard error stream.
-func runTests(identifiedBy testIDs: [Test.ID]? = nil, taggedWith tags: Set<Tag>? = nil, eventHandler: @escaping Event.Handler = { _, _ in }) async {
+///   - configuration: The configuration to use for running.
+func runTests(configuration: Configuration) async {
   let eventRecorder = Event.Recorder(options: .forStandardError) { string in
     let stderr = swt_stderr()
     fputs(string, stderr)
     fflush(stderr)
   }
 
-  var configuration = Configuration()
-  configuration.isParallelizationEnabled = false
+  var configuration = configuration
+  let oldEventHandler = configuration.eventHandler
   configuration.eventHandler = { event, context in
     eventRecorder.record(event, in: context)
-    eventHandler(event, context)
-  }
-  
-  if let testIDs {
-    configuration.setTestFilter(toMatch: Set(testIDs))
-  }
-  if let tags {
-    // Check if the test's tags intersect the set of selected tags. If there
-    // was a previous filter function, it must also pass.
-    let oldTestFilter = configuration.testFilter ?? { _ in true }
-    configuration.testFilter = { test in
-      !tags.isDisjoint(with: test.tags) && oldTestFilter(test)
-    }
+    oldEventHandler(event, context)
   }
 
   let runner = await Runner(configuration: configuration)

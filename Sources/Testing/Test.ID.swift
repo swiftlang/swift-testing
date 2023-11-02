@@ -120,7 +120,15 @@ extension Test: Identifiable {
 
 extension Test.ID: CustomStringConvertible {
   public var description: String {
-    keyPathRepresentation.joined(separator: "/")
+    // Match the "specifier" format used by `swift test` with XCTest. The module
+    // name is separated from the rest of the ID by a period, and the name
+    // components are separated by slashes. The source location of the test
+    // is, when present, treated as an additional name component.
+    var result = "\(moduleName).\(nameComponents.joined(separator: "/"))"
+    if let sourceLocation {
+      result += "/\(sourceLocation)"
+    }
+    return result
   }
 }
 
