@@ -127,10 +127,8 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
   var configuration = Configuration()
   configuration.isParallelizationEnabled = false
 
-  guard let separatorArgIndex = args.firstIndex(of: "--") else {
-    return configuration
-  }
-  let args = args[args.index(after: separatorArgIndex)...]
+  // Do not consider the executable path AKA argv[0].
+  let args = args.dropFirst()
 
   // Parallelization
   if args.contains("--parallel") {

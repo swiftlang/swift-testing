@@ -14,16 +14,16 @@
 struct SwiftPMTests {
   @Test("--parallel argument")
   func parallel() throws {
-    var configuration = try configurationForSwiftPMEntryPoint(withArguments: ["--"])
+    var configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH"])
     #expect(!configuration.isParallelizationEnabled)
     
-    configuration = try configurationForSwiftPMEntryPoint(withArguments: ["--", "--parallel"])
+    configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--parallel"])
     #expect(configuration.isParallelizationEnabled)
   }
 
   @Test("No --filter or --skip argument")
   func defaultFiltering() throws {
-    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["--"])
+    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH"])
     let testFilter = try #require(configuration.testFilter)
     let test1 = Test(name: "hello") {}
     #expect(testFilter(test1))
@@ -33,7 +33,7 @@ struct SwiftPMTests {
 
   @Test("--filter argument")
   func filter() throws {
-    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["--", "--filter", "hello"])
+    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--filter", "hello"])
     let testFilter = try #require(configuration.testFilter)
     let test1 = Test(name: "hello") {}
     #expect(testFilter(test1))
@@ -44,16 +44,16 @@ struct SwiftPMTests {
   @Test("--filter or --skip argument with bad regex")
   func badArguments() throws {
     #expect(throws: (any Error).self) {
-      _ = try configurationForSwiftPMEntryPoint(withArguments: ["--", "--filter", "("])
+      _ = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--filter", "("])
     }
     #expect(throws: (any Error).self) {
-      _ = try configurationForSwiftPMEntryPoint(withArguments: ["--", "--skip", ")"])
+      _ = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--skip", ")"])
     }
   }
 
   @Test("--skip argument")
   func skip() throws {
-    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["--", "--skip", "hello"])
+    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--skip", "hello"])
     let testFilter = try #require(configuration.testFilter)
     let test1 = Test(name: "hello") {}
     #expect(!testFilter(test1))
@@ -63,7 +63,7 @@ struct SwiftPMTests {
 
   @Test(".hidden trait")
   func hidden() throws {
-    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["--"])
+    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH"])
     let testFilter = try #require(configuration.testFilter)
     let test1 = Test(name: "hello") {}
     #expect(testFilter(test1))
@@ -73,7 +73,7 @@ struct SwiftPMTests {
 
   @Test("--filter/--skip arguments and .hidden trait")
   func filterAndSkipAndHidden() throws {
-    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["--", "--filter", "hello", "--skip", "hello2"])
+    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--filter", "hello", "--skip", "hello2"])
     let testFilter = try #require(configuration.testFilter)
     let test1 = Test(name: "hello") {}
     #expect(testFilter(test1))
