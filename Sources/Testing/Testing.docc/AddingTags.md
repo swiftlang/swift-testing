@@ -52,11 +52,16 @@ By default, a tag does not appear in a test's output when the test is run. It is
 possible to assign colors to tags defined in a package so that when the test is
 run, the tag is visible in its output.
 
-To add colors to tags, create a directory at the root of your package named
+To add colors to tags, create a directory in your home directory named
 `".swift-testing"` and add a file named `"tag-colors.json"` to it. This file
 should contain a JSON object (a dictionary) whose keys are strings representing
-tags and whose values represent tag colors. Tag colors can be represented using
-several formats:
+tags and whose values represent tag colors.
+
+- Note: On Windows, create the `".swift-testing"` directory in the
+  `"AppData\Local"` directory inside your home directory instead of directly
+  inside it.
+
+Tag colors can be represented using several formats:
 
 - The strings `"red"`, `"orange"`, `"yellow"`, `"green"`, `"blue"`, or
   `"purple"`, representing corresponding predefined instances of ``Tag``, i.e.
