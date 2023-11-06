@@ -44,10 +44,6 @@ public typealias __XCTestCompatibleSelector = Never
 #endif
 }
 
-#if !SWT_NO_XCTEST_SCAFFOLDING
-public import XCTest
-#endif
-
 /// This file provides support for the `@Test` macro. Other than the macro
 /// itself, the symbols in this file should not be used directly and are subject
 /// to change as the testing library evolves.
@@ -480,7 +476,15 @@ public func __ifMainActorIsolationEnforced<R>(
 // TODO: implement a hook in XCTest that __invokeXCTestCaseMethod() can call to
 // run an XCTestCase nested in the current @Test function.
 
-#if !SWT_NO_XCTEST_SCAFFOLDING
+/// The `XCTestCase` Objective-C class.
+let xcTestCaseClass: AnyClass? = {
+#if _runtime(_ObjC)
+  objc_getClass("XCTestCase") as? AnyClass
+#else
+  _typeByName("6XCTest0A4CaseC") as? AnyClass // _mangledTypeName(XCTest.XCTestCase.self)
+#endif
+}()
+
 /// Run a test function as an `XCTestCase`-compatible method.
 ///
 /// This overload is used when XCTest can be directly imported and the compiler
@@ -492,35 +496,10 @@ public func __invokeXCTestCaseMethod<T>(
   _ selector: __XCTestCompatibleSelector?,
   onInstanceOf xcTestCaseSubclass: T.Type,
   sourceLocation: SourceLocation
-) async throws -> Bool where T: XCTestCase {
-  Issue.record(
-    .apiMisused,
-    comments: ["The @Test attribute cannot be applied to methods on a subclass of XCTestCase."],
-    backtrace: nil,
-    sourceLocation: sourceLocation
-  )
-  return true
-}
-#elseif _runtime(_ObjC)
-/// The `XCTestCase` Objective-C class.
-let xcTestCaseClass: AnyClass? = objc_getClass("XCTestCase") as? AnyClass
-
-/// Run a test function as an `XCTestCase`-compatible method.
-///
-/// This overload is used when XCTest can't be imported, or for classes that
-/// the compiler can't statically tell are subclasses of `XCTestCase`. If XCTest
-/// can be imported, this overload is not needed.
-///
-/// - Warning: This function is used to implement the `@Test` macro. Do not call
-///   it directly.
-public func __invokeXCTestCaseMethod<T>(
-  _ selector: __XCTestCompatibleSelector?,
-  onInstanceOf xcTestCaseSubclass: T.Type,
-  sourceLocation: SourceLocation
-) async throws -> Bool where T: NSObject {
+) async throws -> Bool where T: AnyObject {
   // Any NSObject subclass might end up on this code path, so only record an
   // issue if it is really an XCTestCase subclass.
-  guard let xcTestCaseClass, xcTestCaseSubclass.isSubclass(of: xcTestCaseClass) else {
+  guard let xcTestCaseClass, isClass(xcTestCaseSubclass, subclassOf: xcTestCaseClass) else {
     return false
   }
   Issue.record(
@@ -531,7 +510,6 @@ public func __invokeXCTestCaseMethod<T>(
   )
   return true
 }
-#endif
 
 // MARK: - Discovery
 

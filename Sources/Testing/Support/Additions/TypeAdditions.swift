@@ -67,3 +67,22 @@ func isImportedFromC(_ type: Any.Type) -> Bool {
   let endIndex = mangledTypeName.index(mangledTypeName.startIndex, offsetBy: 2)
   return mangledTypeName[..<endIndex] == "So"
 }
+
+/// Check if a class is a subclass (or equal to) another class.
+///
+/// - Parameters:
+///   - subclass: The (possible) subclass to check.
+///   - superclass The (possible) superclass to check.
+///
+/// - Returns: Whether `subclass` is a subclass of, or is equal to,
+///   `superclass`.
+func isClass(_ subclass: AnyClass, subclassOf superclass: AnyClass) -> Bool {
+  if subclass == superclass {
+    true
+  } else if let subclassImmediateSuperclass = _getSuperclass(subclass) {
+    isClass(subclassImmediateSuperclass, subclassOf: superclass)
+  } else {
+    false
+  }
+}
+

@@ -8,24 +8,35 @@
  See https://swift.org/CONTRIBUTORS.txt for Swift project authors
  */
 
-#if canImport(XCTest) && _runtime(_ObjC)
 import XCTest
 @testable @_spi(ExperimentalTestRunning) @_spi(ExperimentalEventHandling) import Testing
 
 final class NonXCTestCaseClassTests: NSObject {
-  @Test func testFunctionThatLooksLikeXCTest() {
+  @Test("Methods on non-XCTestCase subclasses are supported")
+  func testFunctionThatLooksLikeXCTest() {
+    // By virtue of this test running without generating an issue, we can
+    // assert that it didn't hit the XCTestCase API misuse code path.
+#if _runtime(_ObjC)
     #expect(Test.current?.xcTestCompatibleSelector != nil)
+#endif
   }
 }
 
-@Suite("Objective-C Interop Tests")
-struct ObjCInteropTests {
+@Suite("Objective-C/XCTest Interop Tests")
+struct ObjCAndXCTestInteropTests {
   @TaskLocal static var areObjCClassTestsEnabled = false
 
   class IndirectXCTestCase: XCTestCase {}
 
-  @Suite(.hidden, .enabled(if: ObjCInteropTests.areObjCClassTestsEnabled))
+  @Suite(.hidden, .enabled(if: ObjCAndXCTestInteropTests.areObjCClassTestsEnabled))
   final class ObjCClassTests: IndirectXCTestCase {
+#if !SWT_TARGET_OS_APPLE
+  convenience init() {
+    self.init(name: "") { _ in }
+  }
+#endif
+
+#if _runtime(_ObjC)
     @Test(.hidden)
     @objc(testExplicitName) func wrongAnswer() {}
 
@@ -40,6 +51,7 @@ struct ObjCInteropTests {
 
     @Test(.hidden)
     @objc(`testExplicitNameWithBackticks`) func wrongAnswerWithBackticks() {}
+#endif
 
     @Test(.hidden)
     func testImplicitName() {}
@@ -57,7 +69,8 @@ struct ObjCInteropTests {
     func testAsynchronousThrowing() async throws {}
   }
 
-  @Test("Objective-C selectors")
+#if _runtime(_ObjC)
+  @Test("Objective-C selectors are discovered")
   func objCSelectors() async throws {
     let testPlan = await Runner.Plan(selecting: ObjCClassTests.self)
     let steps = testPlan.steps.filter { !$0.test.isSuite }
@@ -68,10 +81,16 @@ struct ObjCInteropTests {
       #expect(testCaseClass.instancesRespond(to: selector))
     }
   }
+#endif
 
-  @Test("Objective-C methods are currently unsupported")
-  func objCMethodsCurrentlyUnsupported() async throws {
-    await confirmation("XCTestCase issue recorded", expectedCount: 10) { issueRecorded in
+  @Test("XCTest test methods are currently unsupported")
+  func xctestMethodsCurrentlyUnsupported() async throws {
+#if _runtime(_ObjC)
+    let expectedCount = 10
+#else
+    let expectedCount = 5
+#endif
+    await confirmation("XCTestCase issue recorded", expectedCount: expectedCount) { issueRecorded in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
         if case let .issueRecorded(issue) = event.kind,
@@ -87,4 +106,3 @@ struct ObjCInteropTests {
     }
   }
 }
-#endif
