@@ -52,10 +52,45 @@ extension Event {
       /// output is being rendered, the effect of this option is unspecified.
       case useSFSymbols
 #endif
+
+      /// Use the specified mapping of tags to color.
+      ///
+      /// - Parameters:
+      ///   - tagColors: A dictionary whose keys are tags and whose values are
+      ///     the colors to use for those tags.
+      ///
+      /// When this option is used, tags on tests that have assigned colors in
+      /// the associated `tagColors` dictionary are presented as colored dots
+      /// prior to the tests' names.
+      ///
+      /// If this option is specified more than once, the associated `tagColors`
+      /// dictionaries of each option are merged. If the keys of those
+      /// dictionaries overlap, the result is unspecified.
+      ///
+      /// The tags ``Tag/red``, ``Tag/orange``, ``Tag/yellow``, ``Tag/green``,
+      /// ``Tag/blue``, and ``Tag/purple`` always have assigned colors even if
+      /// this option is not specified, and those colors cannot be overridden by
+      /// this option.
+      ///
+      /// This option is ignored unless ``useANSIEscapeCodes`` is also
+      /// specified.
+      case useTagColors(_ tagColors: [Tag: Tag.Color])
     }
 
     /// The options for this event recorder.
     var options: Set<Option>
+
+    /// The set of predefined tag colors that are always set even when
+    /// ``Option/useTagColors(_:)`` is not specified.
+    private static let _predefinedTagColors: [Tag: Tag.Color] = [
+      .red: .red, .orange: .orange, .yellow: .yellow,
+      .green: .green, .blue: .blue, .purple: .purple,
+    ]
+
+    /// The tag colors this event recorder should use.
+    ///
+    /// The initial value of this property is derived from `options`.
+    var tagColors: [Tag: Tag.Color]
 
     /// The write function for this event recorder.
     var write: @Sendable (String) -> Void
@@ -106,10 +141,19 @@ extension Event {
     /// the output is not meant to be machine-readable and is subject to change.
     public init(options: [Option] = [], writingUsing write: @escaping @Sendable (String) -> Void) {
       self.options = Set(options)
+      self.tagColors = options.reduce(into: Self._predefinedTagColors) { tagColors, option in
+        if case let .useTagColors(someTagColors) = option {
+          tagColors.merge(someTagColors, uniquingKeysWith: { lhs, _ in lhs })
+        }
+      }
       self.write = write
     }
   }
 }
+
+// MARK: - Equatable, Hashable
+
+extension Event.Recorder.Option: Equatable, Hashable {}
 
 // MARK: -
 
@@ -359,23 +403,32 @@ extension Event.Recorder {
   }
 }
 
-extension Tag {
-  /// Get an ANSI escape code that sets the foreground text color to this tag's
-  /// corresponding color, if applicable.
+extension Tag.Color {
+  /// Get an ANSI escape code that sets the foreground text color to this color.
   ///
   /// - Parameters:
   ///   - options: Options to use when writing this tag.
   ///
-  /// - Returns: The corresponding ANSI escape code, or `nil` if `self` does not
-  ///    represent a color.
+  /// - Returns: The corresponding ANSI escape code. If the
+  ///   ``Event/Recorder/Option/useANSIEscapeCodes`` option is not specified,
+  ///   returns `nil`.
   fileprivate func ansiEscapeCode(options: Set<Event.Recorder.Option>) -> String? {
+    guard options.contains(.useANSIEscapeCodes) else {
+      return nil
+    }
+    if options.contains(.use256ColorANSIEscapeCodes) {
+      // The formula for converting an RGB value to a 256-color ANSI color
+      // code can be found at https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit
+      let r = (Int(redComponent) * 5) / Int(UInt8.max)
+      let g = (Int(greenComponent) * 5) / Int(UInt8.max)
+      let b = (Int(blueComponent) * 5) / Int(UInt8.max)
+      let index = 16 + 36 * r + 6 * g + b
+      return "\(_ansiEscapeCodePrefix)38;5;\(index)m"
+    }
     switch self {
     case .red:
       return "\(_ansiEscapeCodePrefix)91m"
     case .orange:
-      if options.contains(.use256ColorANSIEscapeCodes) {
-        return "\(_ansiEscapeCodePrefix)38;5;208m"
-      }
       return "\(_ansiEscapeCodePrefix)33m"
     case .yellow:
       return "\(_ansiEscapeCodePrefix)93m"
@@ -384,11 +437,9 @@ extension Tag {
     case .blue:
       return "\(_ansiEscapeCodePrefix)94m"
     case .purple:
-      if options.contains(.use256ColorANSIEscapeCodes) {
-        return "\(_ansiEscapeCodePrefix)38;5;128m"
-      }
       return "\(_ansiEscapeCodePrefix)95m"
     default:
+      // TODO: HSL or HSV conversion followed by conversion to 16 colors.
       return nil
     }
   }
@@ -421,6 +472,34 @@ extension Test.Case {
 // MARK: -
 
 extension Event.Recorder {
+  /// Generate a printable string describing the colors of a set of tags
+  /// suitable for display in test output.
+  ///
+  /// - Parameters:
+  ///   - tags: The tags for which colors are needed.
+  ///
+  /// - Returns: A string describing the colors of `tags` as bullet characters
+  ///   with ANSI escape codes used to colorize them. If ANSI escape codes are
+  ///   not enabled or if no tag colors are set, returns the empty string.
+  private func _colorDots(for tags: Set<Tag>) -> String {
+    let unsortedColors = tags.lazy
+      .compactMap { tag in
+        if let tagColor = tagColors[tag] {
+          return tagColor
+        } else if let sourceCode = tag.sourceCode.map(String.init(describing:)) {
+          // If the color is defined under a key such as ".foo" and the tag was
+          // created from the expression `.foo`, we can find that too.
+          return tagColors[Tag(rawValue: sourceCode)]
+        }
+        return nil
+      }
+    return Set(unsortedColors)
+      .sorted(by: <).lazy
+      .compactMap { $0.ansiEscapeCode(options: options) }
+      .map { "\($0)\u{25CF}" } // Unicode: BLACK CIRCLE
+      .joined()
+  }
+
   /// Record the specified event by generating a representation of it as a
   /// human-readable string.
   ///
@@ -441,11 +520,7 @@ extension Event.Recorder {
       testName = "«unknown»"
     }
     if options.contains(.useANSIEscapeCodes), let tags = test?.tags {
-      let colorDots = tags
-        .sorted(by: <)
-        .compactMap { $0.ansiEscapeCode(options: options) }
-        .map { "\($0)\u{25CF}" } // Unicode: BLACK CIRCLE
-        .joined()
+      let colorDots = _colorDots(for: tags)
       if !colorDots.isEmpty {
         testName = "\(colorDots)\(_resetANSIEscapeCode) \(testName)"
       }

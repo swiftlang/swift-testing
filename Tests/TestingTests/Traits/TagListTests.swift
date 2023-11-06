@@ -8,7 +8,11 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ExperimentalTestRunning) import Testing
+@testable @_spi(ExperimentalTestRunning) @_spi(ExperimentalEventHandling) import Testing
+
+#if canImport(Foundation)
+import Foundation
+#endif
 
 @Suite("Tag/Tag List Tests", .tags("trait"))
 struct TagListTests {
@@ -59,14 +63,12 @@ struct TagListTests {
     #expect(String(describing: trait) == "\"hello\", \"world\", .red, .orange, .yellow, .green, .blue, .purple, Source.code.value")
   }
 
-  @Test("Tag.List comparisons",
-    arguments: [(Tag.red, Tag("A")), (.red, .orange), (.red, .purple), ("A", "B"), ("A", "Z")]
-  )
-  func tagListComparison(lhs: Tag, rhs: Tag) throws {
-    #expect(lhs != rhs)
-    #expect(lhs < rhs)
-    #expect(rhs > lhs)
-    #expect(!(rhs < lhs))
+  @Test("Tag.List comparisons")
+  func tagListComparison() throws {
+    #expect(Tag("A") != Tag("B"))
+    #expect(Tag("A") < Tag("B"))
+    #expect(Tag("B") > Tag("A"))
+    #expect(!(Tag("B") < Tag("A")))
   }
 
   @Test("Test.tags property")
@@ -92,6 +94,64 @@ struct TagListTests {
     #expect(tagSourceCode.contains { String(describing: $0) == ".namedConstant" })
     #expect(tagSourceCode.contains { String(describing: $0) == "Tag.functionCall(\"abc\")" })
   }
+
+#if !SWT_NO_TAG_COLORS && canImport(Foundation)
+  @Test(
+    "Colors are read from the repository",
+    .tags("alpha", "beta", "gamma", "delta", .namedConstant)
+  )
+  func tagColorsReadFromRepository() throws {
+    let tempDirURL = FileManager.default.temporaryDirectory
+    let jsonURL = tempDirURL.appendingPathComponent("tag-colors.json", isDirectory: false)
+    let jsonContent = """
+    {
+    "alpha": "red",
+    "beta": "#00CCFF",
+    "gamma": "#AABBCC",
+    "delta": null,
+
+    "encode red": "red",
+    "encode orange": "orange",
+    "encode yellow": "yellow",
+    "encode green": "green",
+    "encode blue": "blue",
+    "encode purple": "purple"
+    }
+    """
+    try jsonContent.write(to: jsonURL, atomically: true, encoding: .utf8)
+    defer {
+      try? FileManager.default.removeItem(at: jsonURL)
+    }
+
+    let tagColorOptions = Testing.tagColorOptions(fromFileInDirectoryAtPath: tempDirURL.path)
+    let tagColors = try #require(
+      tagColorOptions.lazy
+        .compactMap { option in
+          if case let .useTagColors(tagColors) = option {
+            return tagColors
+          }
+          return nil
+        }.first
+    )
+    #expect(tagColors["alpha"] == .red)
+    #expect(tagColors["beta"] == .rgb(0, 0xCC, 0xFF))
+    #expect(tagColors["gamma"] == .rgb(0xAA, 0xBB, 0xCC))
+    #expect(tagColors["delta"] == nil)
+
+    #expect(tagColors["encode red"] == .red)
+    #expect(tagColors["encode orange"] == .orange)
+    #expect(tagColors["encode yellow"] == .yellow)
+    #expect(tagColors["encode green"] == .green)
+    #expect(tagColors["encode blue"] == .blue)
+    #expect(tagColors["encode purple"] == .purple)
+  }
+
+  @Test("No colors are read from a bad path")
+  func noTagColorsReadFromBadPath() throws {
+    let tagColorOptions = Testing.tagColorOptions(fromFileInDirectoryAtPath: "Directory/That/Does/Not/Exist")
+    #expect(tagColorOptions.isEmpty)
+  }
+#endif
 }
 
 // MARK: - Fixtures
