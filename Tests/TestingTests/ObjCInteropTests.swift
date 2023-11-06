@@ -22,14 +22,10 @@ final class NonXCTestCaseClassTests: NSObject {
   }
 }
 
-@Suite("Objective-C/XCTest Interop Tests")
-struct ObjCAndXCTestInteropTests {
-  @TaskLocal static var areObjCClassTestsEnabled = false
+class IndirectXCTestCase: XCTestCase {}
 
-  class IndirectXCTestCase: XCTestCase {}
-
-  @Suite(.hidden, .enabled(if: ObjCAndXCTestInteropTests.areObjCClassTestsEnabled))
-  final class ObjCClassTests: IndirectXCTestCase {
+@Suite(.hidden, .enabled(if: ObjCAndXCTestInteropTests.areObjCClassTestsEnabled))
+final class ObjCClassTests: IndirectXCTestCase {
 #if !SWT_TARGET_OS_APPLE
   convenience init() {
     self.init(name: "") { _ in }
@@ -37,37 +33,41 @@ struct ObjCAndXCTestInteropTests {
 #endif
 
 #if _runtime(_ObjC)
-    @Test(.hidden)
-    @objc(testExplicitName) func wrongAnswer() {}
+  @Test(.hidden)
+  @objc(testExplicitName) func wrongAnswer() {}
 
-    @Test(.hidden)
-    @objc(testExplicitNameWithCompletionHandler:) func wrongAnswerAsync() async {}
+  @Test(.hidden)
+  @objc(testExplicitNameWithCompletionHandler:) func wrongAnswerAsync() async {}
 
-    @Test(.hidden)
-    @objc(testExplicitNameThrowsFunError:) func wrongAnswerThrows() throws {}
+  @Test(.hidden)
+  @objc(testExplicitNameThrowsFunError:) func wrongAnswerThrows() throws {}
 
-    @Test(.hidden)
-    @objc(testExplicitNameAsyncThrowsWithCompletionHandler:) func wrongAnswerAsyncThrows() async throws {}
+  @Test(.hidden)
+  @objc(testExplicitNameAsyncThrowsWithCompletionHandler:) func wrongAnswerAsyncThrows() async throws {}
 
-    @Test(.hidden)
-    @objc(`testExplicitNameWithBackticks`) func wrongAnswerWithBackticks() {}
+  @Test(.hidden)
+  @objc(`testExplicitNameWithBackticks`) func wrongAnswerWithBackticks() {}
 #endif
 
-    @Test(.hidden)
-    func testImplicitName() {}
+  @Test(.hidden)
+  func testImplicitName() {}
 
-    @Test(.hidden)
-    func `testImplicitNameWithBackticks`() {}
+  @Test(.hidden)
+  func `testImplicitNameWithBackticks`() {}
 
-    @Test(.hidden)
-    func testAsynchronous() async {}
+  @Test(.hidden)
+  func testAsynchronous() async {}
 
-    @Test(.hidden)
-    func testThrowing() throws {}
+  @Test(.hidden)
+  func testThrowing() throws {}
 
-    @Test(.hidden)
-    func testAsynchronousThrowing() async throws {}
-  }
+  @Test(.hidden)
+  func testAsynchronousThrowing() async throws {}
+}
+
+@Suite("Objective-C/XCTest Interop Tests")
+struct ObjCAndXCTestInteropTests {
+  @TaskLocal static var areObjCClassTestsEnabled = false
 
 #if _runtime(_ObjC)
   @Test("Objective-C selectors are discovered")
