@@ -10,11 +10,8 @@
 
 private import TestingInternals
 
-// We do not want to link to Foundation normally, but this file already links to
-// XCTest which links to Foundation, so the dependency already exists and we can
-// make use of it here to support JSON decoding.
 #if canImport(Foundation)
-import Foundation
+private import Foundation
 #endif
 
 #if !SWT_NO_TAG_COLORS
@@ -54,14 +51,7 @@ private var _appDataDirectoryPath: String? {
 /// On Apple platforms and on Linux, this path is equivalent to
 /// `"~/.swift-testing"`. On Windows, it is equivalent to
 /// `"%HOMEPATH%\AppData\Local\.swift-testing"`.
-///
-/// The value of this property can be overridden by setting the
-/// `"SWT_SWIFT_TESTING_DIRECTORY_PATH"` environment variable.
 var swiftTestingDirectoryPath: String {
-  if let pathVariable = Environment.variable(named: "SWT_SWIFT_TESTING_DIRECTORY_PATH") {
-    return pathVariable
-  }
-
   // The (default) name of the .swift-testing directory.
   let swiftTestingDirectoryName = ".swift-testing"
 
@@ -95,8 +85,8 @@ var swiftTestingDirectoryPath: String {
 /// dictionary) where the keys are tags' string values and the values represent
 /// tag colors. For a list of the supported formats for tag colors in this
 /// dictionary, see <doc:AddingTags>.
-func tagColorOptions(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String = swiftTestingDirectoryPath) -> some Collection<Event.Recorder.Option> {
-#if !SWT_NO_TAG_COLORS
+func tagColorOptions(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String = swiftTestingDirectoryPath) -> [Event.Recorder.Option] {
+#if !SWT_NO_TAG_COLORS && canImport(Foundation)
   // Find the path to the tag-colors.json file.
   let tagColorsURL = URL(fileURLWithPath: swiftTestingDirectoryPath, isDirectory: true)
     .appendingPathComponent("tag-colors.json", isDirectory: false)
