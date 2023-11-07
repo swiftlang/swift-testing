@@ -251,7 +251,7 @@ final class RunnerTests: XCTestCase {
 
     var configuration = Configuration()
     let selection = Test.ID.Selection(testIDs: [testSuite.id])
-    configuration.setTestFilter(toMatch: selection)
+    configuration.setTestFilter(toMatch: selection, includeHiddenTests: true)
 
     let runner = await Runner(testing: [
       testSuite,
@@ -302,7 +302,7 @@ final class RunnerTests: XCTestCase {
 
     var configuration = Configuration()
     let selection = Test.ID.Selection(testIDs: selectedTestIDs)
-    configuration.setTestFilter(toMatch: selection)
+    configuration.setTestFilter(toMatch: selection, includeHiddenTests: true)
 
     let runner = await Runner(configuration: configuration)
     let plan = runner.plan

@@ -68,7 +68,7 @@ func runTest(for containingType: Any.Type, configuration: Configuration = .init(
 func runTestFunction(named name: String, in containingType: Any.Type, configuration: Configuration = .init()) async {
   var configuration = configuration
   let selection = Test.ID.Selection(testIDs: [Test.ID(type: containingType).child(named: name)])
-  configuration.setTestFilter(toMatch: selection)
+  configuration.setTestFilter(toMatch: selection, includeHiddenTests: true)
 
   let runner = await Runner(configuration: configuration)
   await runner.run()
@@ -92,7 +92,7 @@ extension Runner {
 
     var configuration = configuration
     let selection = Test.ID.Selection(testIDs: [Test.ID(moduleName: moduleName, nameComponents: [testName], sourceLocation: nil)])
-    configuration.setTestFilter(toMatch: selection)
+    configuration.setTestFilter(toMatch: selection, includeHiddenTests: true)
 
     await self.init(configuration: configuration)
   }
@@ -107,7 +107,7 @@ extension Runner.Plan {
   init(selecting containingType: Any.Type, configuration: Configuration = .init()) async {
     var configuration = configuration
     let selection = Test.ID.Selection(testIDs: [Test.ID(type: containingType)])
-    configuration.setTestFilter(toMatch: selection)
+    configuration.setTestFilter(toMatch: selection, includeHiddenTests: true)
 
     await self.init(configuration: configuration)
   }
