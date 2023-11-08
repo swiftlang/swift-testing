@@ -131,16 +131,16 @@ public struct Configuration: Sendable {
     setTestFilter(toMatch: selection, includeHiddenTests: false)
   }
 
-    /// The granularity to enforce test filtering.
-    /// - Parameters:
-    ///   - selection: A set of test IDs to be filtered. If `nil`, the current
-    ///     selection is cleared.
-    ///   - includeHiddenTests: If false, a test annotated with the `.hidden` trait will not be included, even if its ID is present in `selection`.
-    ///
-    /// By default, all tests are run and no filter is set.
-    mutating func setTestFilter(toMatch selection: Set<Test.ID>?, includeHiddenTests: Bool) {
-      setTestFilter(toMatch: selection.map(Test.ID.Selection.init), includeHiddenTests: includeHiddenTests)
-    }
+  /// The granularity to enforce test filtering.
+  /// - Parameters:
+  ///   - selection: A set of test IDs to be filtered. If `nil`, the current
+  ///     selection is cleared.
+  ///   - includeHiddenTests: If false, a test annotated with the `.hidden` trait will not be included, even if its ID is present in `selection`.
+  ///
+  /// By default, all tests are run and no filter is set.
+  mutating func setTestFilter(toMatch selection: Set<Test.ID>?, includeHiddenTests: Bool) {
+    setTestFilter(toMatch: selection.map(Test.ID.Selection.init), includeHiddenTests: includeHiddenTests)
+  }
 
   /// The granularity to enforce test filtering.
   ///
