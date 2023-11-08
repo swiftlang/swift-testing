@@ -121,6 +121,7 @@ struct ClockTests {
     #expect(duration == .nanoseconds(offsetNanoseconds))
   }
 
+  @available(_clockAPI, *)
   @Test("Codable")
   func codable() async throws {
     let now = Test.Clock.Instant()
