@@ -14,7 +14,7 @@ extension Event {
   ///
   /// The format of the output is not meant to be machine-readable and is
   /// subject to change.
-  public struct Recorder: Sendable {
+  public struct ConsoleOutputRecorder: Sendable {
     /// An enumeration describing options to use when writing events to a
     /// stream.
     public enum Option: Sendable {
@@ -96,8 +96,8 @@ extension Event {
     var write: @Sendable (String) -> Void
 
     /// A type that contains mutable context for
-    /// ``Event/write(using:options:context:)``.
-    fileprivate struct Context {
+    /// ``Event/ConsoleOutputRecorder``.
+    private struct _Context {
       /// The instant at which the run started.
       var runStartInstant: Test.Clock.Instant?
 
@@ -112,7 +112,7 @@ extension Event {
       /// A type describing data tracked on a per-test basis.
       struct TestData {
         /// The instant at which the test started.
-        var startInstant: Test.Clock.Instant = .now
+        var startInstant: Test.Clock.Instant
 
         /// The number of issues recorded for the test.
         var issueCount = 0
@@ -127,7 +127,7 @@ extension Event {
 
     /// This event recorder's mutable context about events it has received,
     /// which may be used to inform how subsequent events are written.
-    @Locked private var context = Context()
+    @Locked private var _context = _Context()
 
     /// Initialize a new event recorder.
     ///
@@ -153,7 +153,7 @@ extension Event {
 
 // MARK: - Equatable, Hashable
 
-extension Event.Recorder.Option: Equatable, Hashable {}
+extension Event.ConsoleOutputRecorder.Option: Equatable, Hashable {}
 
 // MARK: -
 
@@ -163,7 +163,7 @@ private let _ansiEscapeCodePrefix = "\u{001B}["
 /// The ANSI escape code to reset text output to default settings.
 private let _resetANSIEscapeCode = "\(_ansiEscapeCodePrefix)0m"
 
-extension Event.Recorder {
+extension Event.ConsoleOutputRecorder {
   /// An enumeration describing the symbols used as prefixes when writing
   /// output.
   fileprivate enum Symbol {
@@ -286,7 +286,7 @@ extension Event.Recorder {
     ///
     /// - Returns: A string representation of `self` appropriate for writing to
     ///   a stream.
-    func stringValue(options: Set<Event.Recorder.Option>) -> String {
+    func stringValue(options: Set<Event.ConsoleOutputRecorder.Option>) -> String {
       var symbolCharacter = String(_unicodeCharacter)
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
       if options.contains(.useSFSymbols) {
@@ -324,7 +324,7 @@ extension Event.Recorder {
   ///
   /// - Returns: A formatted string representing `comments`, or `nil` if there
   ///   are none.
-  private func _formattedComments(_ comments: [Comment], options: Set<Event.Recorder.Option>) -> String? {
+  private func _formattedComments(_ comments: [Comment], options: Set<Event.ConsoleOutputRecorder.Option>) -> String? {
     if comments.isEmpty {
       return nil
     }
@@ -368,7 +368,7 @@ extension Event.Recorder {
   ///
   /// - Returns: A formatted string representing the comments attached to `test`,
   ///   or `nil` if there are none.
-  private func _formattedComments(for test: Test, options: Set<Event.Recorder.Option>) -> String? {
+  private func _formattedComments(for test: Test, options: Set<Event.ConsoleOutputRecorder.Option>) -> String? {
     _formattedComments(test.comments(from: Comment.self), options: options)
   }
 
@@ -379,7 +379,7 @@ extension Event.Recorder {
   ///   - graph: The graph to walk while counting issues.
   ///
   /// - Returns: A tuple containing the number of issues recorded in `graph`.
-  private func _issueCounts(in graph: Graph<String, Event.Recorder.Context.TestData?>?) -> (issueCount: Int, knownIssueCount: Int, totalIssueCount: Int, description: String) {
+  private func _issueCounts(in graph: Graph<String, Event.ConsoleOutputRecorder._Context.TestData?>?) -> (issueCount: Int, knownIssueCount: Int, totalIssueCount: Int, description: String) {
     guard let graph else {
       return (0, 0, 0, "")
     }
@@ -412,7 +412,7 @@ extension Tag.Color {
   /// - Returns: The corresponding ANSI escape code. If the
   ///   ``Event/Recorder/Option/useANSIEscapeCodes`` option is not specified,
   ///   returns `nil`.
-  fileprivate func ansiEscapeCode(options: Set<Event.Recorder.Option>) -> String? {
+  fileprivate func ansiEscapeCode(options: Set<Event.ConsoleOutputRecorder.Option>) -> String? {
     guard options.contains(.useANSIEscapeCodes) else {
       return nil
     }
@@ -471,7 +471,7 @@ extension Test.Case {
 
 // MARK: -
 
-extension Event.Recorder {
+extension Event.ConsoleOutputRecorder: EventRecorder {
   /// Generate a printable string describing the colors of a set of tags
   /// suitable for display in test output.
   ///
@@ -509,7 +509,7 @@ extension Event.Recorder {
   ///
   /// - Returns: A string description of the event, or `nil` if there is nothing
   ///   useful to output for this event.
-  func _record(_ event: borrowing Event, in eventContext: borrowing Event.Context) -> String? {
+  private func _record(_ event: borrowing Event, in eventContext: borrowing Event.Context) -> String? {
     let test = eventContext.test
     var testName: String
     if let displayName = test?.displayName {
@@ -529,7 +529,7 @@ extension Event.Recorder {
 
     switch event.kind {
     case .runStarted:
-      $context.withLock { context in
+      $_context.withLock { context in
         context.runStartInstant = instant
       }
       let symbol = Symbol.default.stringValue(options: options)
@@ -556,8 +556,8 @@ extension Event.Recorder {
 
     case .testStarted:
       let test = test!
-      $context.withLock { context in
-        context.testData[test.id.keyPathRepresentation] = .init()
+      $_context.withLock { context in
+        context.testData[test.id.keyPathRepresentation] = .init(startInstant: instant)
         if test.isSuite {
           context.suiteCount += 1
         } else {
@@ -570,8 +570,8 @@ extension Event.Recorder {
     case .testEnded:
       let test = test!
       let id = test.id
-      let testDataGraph = context.testData.subgraph(at: id.keyPathRepresentation)
-      let testData = testDataGraph?.value ?? .init()
+      let testDataGraph = _context.testData.subgraph(at: id.keyPathRepresentation)
+      let testData = testDataGraph?.value ?? .init(startInstant: instant)
       let issues = _issueCounts(in: testDataGraph)
       let duration = testData.startInstant.descriptionOfDuration(to: instant)
       if issues.issueCount > 0 {
@@ -585,7 +585,7 @@ extension Event.Recorder {
 
     case let .testSkipped(skipInfo):
       let test = test!
-      $context.withLock { context in
+      $_context.withLock { context in
         if test.isSuite {
           context.suiteCount += 1
         } else {
@@ -613,8 +613,8 @@ extension Event.Recorder {
     case let .issueRecorded(issue):
       if let test {
         let id = test.id.keyPathRepresentation
-        $context.withLock { context in
-          var testData = context.testData[id] ?? .init()
+        $_context.withLock { context in
+          var testData = context.testData[id] ?? .init(startInstant: instant)
           if issue.isKnown {
             testData.knownIssueCount += 1
           } else {
@@ -673,7 +673,7 @@ extension Event.Recorder {
       break
 
     case .runEnded:
-      let context = $context.wrappedValue
+      let context = $_context.wrappedValue
 
       let testCount = context.testCount
       let issues = _issueCounts(in: context.testData)
@@ -692,15 +692,6 @@ extension Event.Recorder {
     return nil
   }
 
-  /// Record the specified event by generating a representation of it as a
-  /// human-readable string and writing it using this instance's write function.
-  ///
-  /// - Parameters:
-  ///   - event: The event to record.
-  ///   - context: The context associated with the event.
-  ///
-  /// - Returns: Whether any output was written using the recorder's write
-  ///   function.
   @discardableResult public func record(_ event: borrowing Event, in context: borrowing Event.Context) -> Bool {
     if let output = _record(event, in: context) {
       write(output)
@@ -723,7 +714,7 @@ extension Event.Recorder {
 /// - Returns: The described message, formatted for display using `options`.
 ///
 /// The caller is responsible for presenting this message to the user.
-func warning(_ message: String, options: [Event.Recorder.Option]) -> String {
-  let symbol = Event.Recorder.Symbol.warning.stringValue(options: Set(options))
+func warning(_ message: String, options: [Event.ConsoleOutputRecorder.Option]) -> String {
+  let symbol = Event.ConsoleOutputRecorder.Symbol.warning.stringValue(options: Set(options))
   return "\(symbol) \(message)"
 }

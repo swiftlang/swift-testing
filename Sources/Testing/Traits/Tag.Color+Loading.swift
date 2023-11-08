@@ -86,7 +86,7 @@ var swiftTestingDirectoryPath: String {
 /// dictionary) where the keys are tags' string values and the values represent
 /// tag colors. For a list of the supported formats for tag colors in this
 /// dictionary, see <doc:AddingTags>.
-func tagColorOptions(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String = swiftTestingDirectoryPath) -> [Event.Recorder.Option] {
+func tagColorOptions(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String = swiftTestingDirectoryPath) -> [Event.ConsoleOutputRecorder.Option] {
 #if !SWT_NO_TAG_COLORS && canImport(Foundation)
   // Find the path to the tag-colors.json file.
   let tagColorsURL = URL(fileURLWithPath: swiftTestingDirectoryPath, isDirectory: true)

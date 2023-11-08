@@ -8,10 +8,18 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ExperimentalTestRunning) import Testing
+@testable @_spi(ExperimentalTestRunning) @_spi(ExperimentalEventHandling) import Testing
+import Foundation
 
 @Suite("Swift Package Manager Integration Tests")
 struct SwiftPMTests {
+  @Test("Command line arguments are available")
+  func commandLineArguments() {
+    // We can't meaningfully check the actual values of this process' arguments,
+    // but we can check that the arguments() function has a non-empty result.
+    #expect(!CommandLine.arguments().isEmpty)
+  }
+
   @Test("--parallel argument")
   func parallel() throws {
     var configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH"])
@@ -81,6 +89,28 @@ struct SwiftPMTests {
     #expect(!testFilter(test2))
     let test3 = Test(.hidden, name: "hello2") {}
     #expect(!testFilter(test3))
+  }
+
+  @Test("--xunit-output argument")
+  func xunitOutput() throws {
+    // Test that a bad path produces an error.
+    #expect(throws: CError.self) {
+      _ = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--xunit-output", "/nonexistent/path/we/cannot/write/to"])
+    }
+
+    // Test that a file is opened when requested. Testing of the actual output
+    // occurs in EventRecorderTests.
+    let temporaryFileURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: false)
+    defer {
+      try? FileManager.default.removeItem(at: temporaryFileURL)
+    }
+    do {
+      let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--xunit-output", temporaryFileURL.path])
+      let eventContext = Event.Context()
+      configuration.eventHandler(Event(.runStarted, testID: nil), eventContext)
+      configuration.eventHandler(Event(.runEnded, testID: nil), eventContext)
+    }
+    #expect(try temporaryFileURL.checkResourceIsReachable())
   }
 
   @Test("list subcommand")

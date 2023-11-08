@@ -16,12 +16,19 @@
 
 SWT_ASSUME_NONNULL_BEGIN
 
+/// The C file handle type.
+///
+/// This typedef is necessary because `FILE *` may be imported into Swift as
+/// either `OpaquePointer` or `UnsafeMutablePointer<FILE>` depending on the
+/// current platform.
+typedef FILE *SWT_FILEHandle;
+
 /// Get the standard error stream.
 ///
 /// This function is provided because directly accessing `stderr` from Swift
 /// triggers concurrency warnings on some platforms about accessing shared
 /// mutable state.
-static FILE *swt_stderr(void) {
+static SWT_FILEHandle swt_stderr(void) {
   return stderr;
 }
 
