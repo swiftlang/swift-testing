@@ -316,22 +316,22 @@ final class RunnerTests: XCTestCase {
     XCTAssertEqual(skipInfo.comment, "Some comment")
   }
 
-  func testPlanExcludesHiddenTests() async throws {
-    @Suite(.hidden) struct S {
-      @Test(.hidden) func f() {}
-    }
+  @Suite(.hidden) struct S {
+    @Test(.hidden) func f() {}
+  }
 
+  func testPlanExcludesHiddenTests() async throws {
     let selectedTestIDs: Set<Test.ID> = [
       Test.ID(type: S.self).child(named: "f()")
     ]
 
     var configuration = Configuration()
-    configuration.setTestFilter(toMatch: selectedTestIDs, includeHiddenTests: false)
+    configuration.setTestFilter(toMatch: .init(testIDs: selectedTestIDs), includeHiddenTests: false)
 
     let runner = await Runner(configuration: configuration)
     let plan = runner.plan
 
-    XCTAssert(plan.steps.count == 0)
+    XCTAssertEqual(plan.steps.count, 0)
   }
 
   func testHardCodedPlan() async throws {
