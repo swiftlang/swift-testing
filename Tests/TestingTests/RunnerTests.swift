@@ -251,7 +251,7 @@ final class RunnerTests: XCTestCase {
 
     var configuration = Configuration()
     let selection = Test.ID.Selection(testIDs: [testSuite.id])
-    configuration.setTestFilter(toMatch: selection)
+    configuration.setTestFilter(toMatch: selection, includeHiddenTests: true)
 
     let runner = await Runner(testing: [
       testSuite,
@@ -302,7 +302,7 @@ final class RunnerTests: XCTestCase {
 
     var configuration = Configuration()
     let selection = Test.ID.Selection(testIDs: selectedTestIDs)
-    configuration.setTestFilter(toMatch: selection)
+    configuration.setTestFilter(toMatch: selection, includeHiddenTests: true)
 
     let runner = await Runner(configuration: configuration)
     let plan = runner.plan
@@ -314,6 +314,29 @@ final class RunnerTests: XCTestCase {
       return
     }
     XCTAssertEqual(skipInfo.comment, "Some comment")
+  }
+
+  @Suite(.hidden) struct S {
+    @Test(.hidden) func f() {}
+  }
+
+  func testPlanExcludesHiddenTests() async throws {
+    let selectedTestIDs: Set<Test.ID> = [
+      Test.ID(type: S.self).child(named: "f()")
+    ]
+
+    var configuration1 = Configuration()
+    configuration1.setTestFilter(toMatch: .init(testIDs: selectedTestIDs), includeHiddenTests: false)
+
+    var configuration2 = Configuration()
+    configuration2.setTestFilter(toMatch: selectedTestIDs)
+
+    for configuration in [configuration1, configuration2] {
+      let runner = await Runner(configuration: configuration)
+      let plan = runner.plan
+
+      XCTAssertEqual(plan.steps.count, 0)
+    }
   }
 
   func testHardCodedPlan() async throws {
