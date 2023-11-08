@@ -325,13 +325,18 @@ final class RunnerTests: XCTestCase {
       Test.ID(type: S.self).child(named: "f()")
     ]
 
-    var configuration = Configuration()
-    configuration.setTestFilter(toMatch: .init(testIDs: selectedTestIDs), includeHiddenTests: false)
+    var configuration1 = Configuration()
+    configuration1.setTestFilter(toMatch: .init(testIDs: selectedTestIDs), includeHiddenTests: false)
 
-    let runner = await Runner(configuration: configuration)
-    let plan = runner.plan
+    var configuration2 = Configuration()
+    configuration2.setTestFilter(toMatch: selectedTestIDs)
 
-    XCTAssertEqual(plan.steps.count, 0)
+    for configuration in [configuration1, configuration2] {
+      let runner = await Runner(configuration: configuration)
+      let plan = runner.plan
+
+      XCTAssertEqual(plan.steps.count, 0)
+    }
   }
 
   func testHardCodedPlan() async throws {
