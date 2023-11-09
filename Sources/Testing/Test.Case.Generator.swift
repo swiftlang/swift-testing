@@ -31,11 +31,10 @@ extension Test.Case {
     /// A closure that maps an element from `_sequence` to a test case instance.
     ///
     /// - Parameters:
-    ///   - index: The zero-based index of the element.
     ///   - element: The element from `_sequence`.
     ///
     /// - Returns: A test case instance that tests `element`.
-    private var _mapElement: @Sendable (_ index: Int, _ element: S.Element) -> Test.Case
+    private var _mapElement: @Sendable (_ element: S.Element) -> Test.Case
 
     /// Initialize an instance of this type.
     ///
@@ -46,7 +45,7 @@ extension Test.Case {
     ///     corresponding instance of ``Test/Case``.
     private init(
       sequence: S,
-      mapElement: @escaping @Sendable (_ index: Int, _ element: S.Element) -> Test.Case
+      mapElement: @escaping @Sendable (_ element: S.Element) -> Test.Case
     ) {
       _sequence = sequence
       _mapElement = mapElement
@@ -62,8 +61,8 @@ extension Test.Case {
     ) where S == CollectionOfOne<Void> {
       // A beautiful hack to give us the right number of cases: iterate over a
       // collection containing a single Void value.
-      self.init(sequence: CollectionOfOne(())) { _, _ in
-        Test.Case(index: 0, arguments: [], body: testFunction)
+      self.init(sequence: CollectionOfOne(())) { _ in
+        Test.Case(arguments: [], body: testFunction)
       }
     }
 
@@ -79,8 +78,8 @@ extension Test.Case {
       arguments collection: S,
       testFunction: @escaping @Sendable (S.Element) async throws -> Void
     ) where S: Collection {
-      self.init(sequence: collection) { index, element in
-        Test.Case(index: index, arguments: [element]) {
+      self.init(sequence: collection) { element in
+        Test.Case(arguments: [element]) {
           try await testFunction(element)
         }
       }
@@ -100,8 +99,8 @@ extension Test.Case {
       arguments collection1: C1, _ collection2: C2,
       testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
     ) where S == CartesianProduct<C1, C2> {
-      self.init(sequence: cartesianProduct(collection1, collection2)) { index, element in
-        Test.Case(index: index, arguments: [element.0, element.1]) {
+      self.init(sequence: cartesianProduct(collection1, collection2)) { element in
+        Test.Case(arguments: [element.0, element.1]) {
           try await testFunction(element.0, element.1)
         }
       }
@@ -119,8 +118,8 @@ extension Test.Case {
       arguments zippedCollections: Zip2Sequence<C1, C2>,
       testFunction: @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
     ) where S == Zip2Sequence<C1, C2> {
-      self.init(sequence: zippedCollections) { index, element in
-        Test.Case(index: index, arguments: [element]) {
+      self.init(sequence: zippedCollections) { element in
+        Test.Case(arguments: [element]) {
           try await testFunction(element)
         }
       }
@@ -132,7 +131,7 @@ extension Test.Case {
 
 extension Test.Case.Generator: Sequence {
   func makeIterator() -> some IteratorProtocol<Test.Case> {
-    _sequence.enumerated().lazy.map(_mapElement).makeIterator()
+    _sequence.lazy.map(_mapElement).makeIterator()
   }
 
   var underestimatedCount: Int {
