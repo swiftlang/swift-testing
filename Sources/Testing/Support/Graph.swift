@@ -79,7 +79,7 @@ struct Graph<K, V> where K: Hashable {
   ///   present.
   ///
   /// - Complexity: O(*n*) where *n* is the number of elements in `keyPath`.
-  subscript(keyPath: some Collection<K>) -> V? {
+  @_disfavoredOverload subscript(keyPath: some Collection<K>) -> V? {
     subgraph(at: keyPath)?.value
   }
 
@@ -93,7 +93,7 @@ struct Graph<K, V> where K: Hashable {
   ///   present.
   ///
   /// - Complexity: O(*n*) where *n* is the number of elements in `keyPath`.
-  subscript(keyPath: K...) -> V? {
+  @_disfavoredOverload subscript(keyPath: K...) -> V? {
     self[keyPath]
   }
 
@@ -223,6 +223,58 @@ extension Graph {
     self.init(value: nil, children: children)
   }
 
+  /// Get or set the leaf value at the node identified by the specified sequence
+  /// of keys.
+  ///
+  /// - Parameters:
+  ///   - keyPath: A sequence of keys leading to the node of interest.
+  ///
+  /// - Returns: The value at the specified node, or `nil` if the node is not
+  ///   present.
+  ///
+  /// When setting the value at `keyPath`, intermediate nodes are created as
+  /// needed and are given `nil` values. To specify a different value for
+  /// intermediate nodes, use ``insertValue(_:at:intermediateValue:)`` instead.
+  ///
+  /// - Complexity: To get a value, O(*n*) where *n* is the number of elements
+  ///   in `keyPath`. To set a value, O(*m* + *n*) where *n* is the number of
+  ///   elements in `keyPath` and *m* is the number of children at the
+  ///   penultimate node in `keyPath`.
+  subscript<U>(keyPath: some Collection<K>) -> V where V == U? {
+    get {
+      subgraph(at: keyPath)?.value
+    }
+    set {
+      insertValue(newValue, at: keyPath)
+    }
+  }
+
+  /// Get or set the leaf value at the node identified by the specified sequence
+  /// of keys.
+  ///
+  /// - Parameters:
+  ///   - keyPath: A sequence of keys leading to the node of interest.
+  ///
+  /// - Returns: The value at the specified node, or `nil` if the node is not
+  ///   present.
+  ///
+  /// When setting the value at `keyPath`, intermediate nodes are created as
+  /// needed and are given `nil` values. To specify a different value for
+  /// intermediate nodes, use ``insertValue(_:at:intermediateValue:)`` instead.
+  ///
+  /// - Complexity: To get a value, O(*n*) where *n* is the number of elements
+  ///   in `keyPath`. To set a value, O(*m* + *n*) where *n* is the number of
+  ///   elements in `keyPath` and *m* is the number of children at the
+  ///   penultimate node in `keyPath`.
+  subscript<U>(keyPath: K...) -> V where V == U? {
+    get {
+      self[keyPath]
+    }
+    set {
+      self[keyPath] = newValue
+    }
+  }
+
   /// Set the leaf value at the node identified by the specified sequence of
   /// keys.
   ///
@@ -250,8 +302,6 @@ extension Graph {
   /// - Parameters:
   ///   - newValue: The leaf value to set at the specified node.
   ///   - keyPath: A sequence of keys leading to the node of interest.
-  ///   - intermediateValue: A value to use when creating nodes intermediate to
-  ///     the one identified by `keyPath`.
   ///
   /// - Returns: The old value at `keyPath`, or `nil` if no value was present.
   ///

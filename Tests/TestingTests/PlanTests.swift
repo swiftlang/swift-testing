@@ -109,9 +109,9 @@ struct PlanTests {
     // The tests themselves are nested deeper, under the source location, so
     // we're just checking here that the key path has been constructed correctly
     // up to the function names.
-    #expect((plan.stepGraph[nameComponents(of: SendableTests.self) + CollectionOfOne("succeeds()")] as Any?) != nil)
-    #expect((plan.stepGraph[nameComponents(of: SendableTests.self) + CollectionOfOne("static()")] as Any?) != nil)
-    #expect((plan.stepGraph[nameComponents(of: SendableTests.self) + CollectionOfOne("reserved1(reserved2:)")] as Any?) != nil)
+    #expect(plan.stepGraph.subgraph(at: nameComponents(of: SendableTests.self) + CollectionOfOne("succeeds()")) != nil)
+    #expect(plan.stepGraph.subgraph(at: nameComponents(of: SendableTests.self) + CollectionOfOne("static()")) != nil)
+    #expect(plan.stepGraph.subgraph(at: nameComponents(of: SendableTests.self) + CollectionOfOne("reserved1(reserved2:)")) != nil)
   }
 
   @Test("Runner.Plan.independentlyRunnableSteps property")
