@@ -16,7 +16,7 @@ struct Test_CaseTests {
   struct ArgumentsPairedWith {
     @Test("Single parameter")
     func singleParameter() throws {
-      let testCase = Test.Case(index: 0, arguments: ["value"]) {}
+      let testCase = Test.Case(arguments: ["value"]) {}
       let pairedArguments = Array(testCase.arguments(pairedWith: [Test.ParameterInfo(firstName: "foo")]))
       #expect(pairedArguments.count == 1)
 
@@ -28,7 +28,7 @@ struct Test_CaseTests {
 
     @Test("Two parameters")
     func twoParameters() throws {
-      let testCase = Test.Case(index: 0, arguments: [
+      let testCase = Test.Case(arguments: [
         "value",
         123,
       ]) {}
@@ -54,7 +54,7 @@ struct Test_CaseTests {
 
     @Test("One-value tuple parameter")
     func oneValueTupleParameter() throws {
-      let testCase = Test.Case(index: 0, arguments: [("value")]) {}
+      let testCase = Test.Case(arguments: [("value")]) {}
       let pairedArguments = Array(testCase.arguments(pairedWith: [Test.ParameterInfo(firstName: "foo")]))
       #expect(pairedArguments.count == 1)
 
@@ -66,7 +66,7 @@ struct Test_CaseTests {
 
     @Test("Two-value tuple parameter")
     func twoValueTupleParameter() throws {
-      let testCase = Test.Case(index: 0, arguments: [("value", 123)]) {}
+      let testCase = Test.Case(arguments: [("value", 123)]) {}
       let pairedArguments = Array(testCase.arguments(pairedWith: [
         Test.ParameterInfo(firstName: "foo"),
         Test.ParameterInfo(firstName: "bar"),

@@ -16,9 +16,6 @@ extension Test {
   /// Tests that are _not_ parameterized map to a single instance of
   /// ``Test/Case``.
   public struct Case: Sendable {
-    /// The zero-based index of this test case.
-    public var index: Int
-
     /// The parameterized inputs to this test case.
     public var arguments: [any Sendable]
 
