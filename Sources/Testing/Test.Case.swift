@@ -83,8 +83,7 @@ extension Test {
 /// ([96960993](rdar://96960993)). It is also not possible to have a value of
 /// an underlying generic sequence type without specifying its generic
 /// parameters.
-@_spi(ExperimentalParameterizedTesting)
-public protocol TestCases: Sequence & Sendable where Element == Test.Case {
+protocol TestCases: Sequence<Test.Case> & Sendable {
   /// Whether this sequence is for a parameterized test.
   ///
   /// Both non-parameterized and parameterized tests may have an associated

@@ -94,19 +94,26 @@ public struct Test: Sendable {
   @_spi(ExperimentalTestRunning)
   public var xcTestCompatibleSelector: __XCTestCompatibleSelector?
 
+  /// Storage for the ``testCases`` property.
+  private var _testCases: (any TestCases)?
+
   /// The set of test cases associated with this test, if any.
   ///
   /// For parameterized tests, each test case is associated with a single
   /// combination of parameterized inputs. For non-parameterized tests, a single
   /// test case is synthesized. For test suite types (as opposed to test
   /// functions), the value of this property is `nil`.
+  ///
+  /// The value of this property is guaranteed to be `Sendable`.
   @_spi(ExperimentalParameterizedTesting)
-  public var testCases: (any TestCases)?
+  public var testCases: (any Sequence<Test.Case>)? {
+    _testCases as? any Sequence<Test.Case>
+  }
 
   /// Whether or not this test is parameterized.
   @_spi(ExperimentalParameterizedTesting)
   public var isParameterized: Bool {
-    testCases?.isParameterized ?? false
+    _testCases?.isParameterized ?? false
   }
 
   /// The test function parameters, if any.
@@ -127,6 +134,26 @@ public struct Test: Sendable {
   /// A test suite can be declared using the ``Suite(_:_:)`` macro.
   public var isSuite: Bool {
     containingType != nil && testCases == nil
+  }
+
+  init(
+    name: String,
+    displayName: String? = nil,
+    traits: [any Trait],
+    sourceLocation: SourceLocation,
+    containingType: Any.Type? = nil,
+    xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
+    testCases: (any TestCases)? = nil,
+    parameters: [ParameterInfo]? = nil
+  ) {
+    self.name = name
+    self.displayName = displayName
+    self.traits = traits
+    self.sourceLocation = sourceLocation
+    self.containingType = containingType
+    self.xcTestCompatibleSelector = xcTestCompatibleSelector
+    self._testCases = testCases
+    self.parameters = parameters
   }
 }
 
