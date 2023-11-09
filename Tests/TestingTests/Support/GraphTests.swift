@@ -66,6 +66,28 @@ struct GraphTests {
     #expect(graph["C1", "C2", "C3"] == nil)
   }
 
+  @Test("subscript([K]) operator (sparse)")
+  func subscriptWithOptionals() {
+    let graph = Graph<String, Int?>(value: 123, children: [
+      "C1": Graph(value: 456),
+      "C2": Graph(value: nil, children: [
+        "C3": Graph(value: 2468),
+      ]),
+    ])
+    #expect(graph["C2", "C3"] == 2468)
+    #expect(graph["C0", "C2", "C3"] == nil)
+    #expect(graph["C1", "C2", "C3"] == nil)
+  }
+
+  @Test("subscript([K]) operator (sparse, mutating)")
+  func mutatingSubscriptWithOptionals() {
+    var graph = Graph<String, Int?>()
+    graph["C1", "C2", "C3", "C4", "C5"] = 123
+    #expect(graph["C1"] == nil)
+    #expect(graph["C1", "C2", "C3", "C4"] == nil)
+    #expect(graph["C1", "C2", "C3", "C4", "C5"] == 123)
+  }
+
   @Test("updateValue(_:at:) function")
   func update() {
     var graph = Graph<String, Int>(value: 123, children: [

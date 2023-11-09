@@ -557,7 +557,7 @@ extension Event.Recorder {
     case .testStarted:
       let test = test!
       $context.withLock { context in
-        context.testData.insertValue(.init(), at: test.id.keyPathRepresentation)
+        context.testData[test.id.keyPathRepresentation] = .init()
         if test.isSuite {
           context.suiteCount += 1
         } else {
@@ -614,13 +614,13 @@ extension Event.Recorder {
       if let test {
         let id = test.id.keyPathRepresentation
         $context.withLock { context in
-          var testData = context.testData[id].flatMap { $0 } ?? .init()
+          var testData = context.testData[id] ?? .init()
           if issue.isKnown {
             testData.knownIssueCount += 1
           } else {
             testData.issueCount += 1
           }
-          context.testData.insertValue(testData, at: id)
+          context.testData[id] = testData
         }
       }
       let parameterCount = if let parameters = test?.parameters {
