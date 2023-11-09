@@ -113,7 +113,10 @@ public struct Test: Sendable {
   /// Whether or not this test is parameterized.
   @_spi(ExperimentalParameterizedTesting)
   public var isParameterized: Bool {
-    _testCases?.isParameterized ?? false
+    guard let parameterCount = parameters?.count else {
+      return false
+    }
+    return parameterCount != 0
   }
 
   /// The test function parameters, if any.

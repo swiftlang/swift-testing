@@ -80,11 +80,4 @@ extension Test {
 /// ([96960993](rdar://96960993)). It is also not possible to have a value of
 /// an underlying generic sequence type without specifying its generic
 /// parameters.
-protocol TestCases: Sequence<Test.Case> & Sendable {
-  /// Whether this sequence is for a parameterized test.
-  ///
-  /// Both non-parameterized and parameterized tests may have an associated
-  /// sequence of ``Test/Case`` instances, so this can be used to distinguish
-  /// between them.
-  var isParameterized: Bool { get }
-}
+protocol TestCases: Sequence<Test.Case> & Sendable {}
