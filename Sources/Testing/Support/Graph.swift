@@ -236,7 +236,10 @@ extension Graph {
   /// needed and are given `nil` values. To specify a different value for
   /// intermediate nodes, use ``insertValue(_:at:intermediateValue:)`` instead.
   ///
-  /// - Complexity: O(*n*) where *n* is the number of elements in `keyPath`.
+  /// - Complexity: To get a value, O(*n*) where *n* is the number of elements
+  ///   in `keyPath`. To set a value, O(*m* + *n*) where *n* is the number of
+  ///   elements in `keyPath` and *m* is the number of children at the
+  ///   penultimate node in `keyPath`.
   subscript<U>(keyPath: some Collection<K>) -> V where V == U? {
     get {
       subgraph(at: keyPath)?.value
@@ -285,10 +288,9 @@ extension Graph {
   /// intermediate to it, the graph is not modified. To add a value when none
   /// previously exists, use ``insertValue(_:at:intermediateValue:)``.
   ///
-  /// - Complexity: To get a value, O(*n*) where *n* is the number of elements
-  ///   in `keyPath`. To set a value, O(*m* + *n*) where *n* is the number of
-  ///   elements in `keyPath` and *m* is the number of children at the
-  ///   penultimate node in `keyPath`.
+  /// - Complexity: O(*m* + *n*) where *n* is the number of elements in
+  ///   `keyPath` and *m* is the number of children at the penultimate node in
+  ///   `keyPath`.
   @discardableResult
   mutating func updateValue<U>(_ newValue: V, at keyPath: some Collection<K>) -> V where V == U? {
     (updateValue(newValue, at: keyPath) as V?) ?? nil
