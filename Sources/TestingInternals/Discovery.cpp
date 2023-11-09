@@ -228,7 +228,7 @@ static SWTMachHeaderList getMachHeaders(void) {
 
   static constinit dispatch_once_t once = 0;
   dispatch_once_f(&once, nullptr, [] (void *) {
-    machHeaders = (SWTMachHeaderList *)std::malloc(sizeof(SWTMachHeaderList));
+    machHeaders = reinterpret_cast<SWTMachHeaderList *>(std::malloc(sizeof(SWTMachHeaderList)));
     ::new (machHeaders) SWTMachHeaderList();
     machHeaders->reserve(_dyld_image_count());
 
