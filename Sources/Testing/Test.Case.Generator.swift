@@ -141,8 +141,4 @@ extension Test.Case.Generator: Sequence {
 
 // MARK: - TestCases
 
-extension Test.Case.Generator: TestCases {
-  var isParameterized: Bool {
-    S.self != CollectionOfOne<Void>.self
-  }
-}
+extension Test.Case.Generator: TestCases {}
