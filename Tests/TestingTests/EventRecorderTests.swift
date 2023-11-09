@@ -12,7 +12,11 @@
 #if !os(Windows)
 import RegexBuilder
 #endif
+#if SWT_TARGET_OS_APPLE
 import Foundation
+#else
+import FoundationXML
+#endif
 
 @Suite("EventRecorder Tests")
 struct EventRecorderTests {

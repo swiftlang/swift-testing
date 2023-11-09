@@ -32,6 +32,14 @@ static SWT_FILEHandle swt_stderr(void) {
   return stderr;
 }
 
+/// Get the current C error.
+///
+/// This function is provided because `errno` is a complex macro on some
+/// platforms and cannot be imported directly into Swift.
+static int swt_errno(void) {
+  return errno;
+}
+
 #if __has_include(<sys/stat.h>) && defined(S_ISFIFO)
 /// Check if a given `mode_t` value indicates that a file is a pipe (FIFO.)
 ///

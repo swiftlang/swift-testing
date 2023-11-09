@@ -143,7 +143,7 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 
     // Open the XML file for writing.
     guard let file = fopen(xunitOutputPath, "wb") else {
-      throw CError(rawValue: errno)
+      throw CError(rawValue: swt_errno())
     }
 
     // Create a simple type that contains the C file handle we created and
