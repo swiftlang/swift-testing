@@ -362,6 +362,7 @@ struct MiscellaneousTests {
       let parameters = try #require(test.parameters)
       #expect(parameters.count == 1)
       let firstParameter = try #require(parameters.first)
+      #expect(firstParameter.index == 0)
       #expect(firstParameter.firstName == "i")
       #expect(firstParameter.secondName == nil)
     } catch {}
@@ -371,9 +372,11 @@ struct MiscellaneousTests {
       let parameters = try #require(test.parameters)
       #expect(parameters.count == 2)
       let firstParameter = try #require(parameters.first)
+      #expect(firstParameter.index == 0)
       #expect(firstParameter.firstName == "i")
       #expect(firstParameter.secondName == nil)
       let secondParameter = try #require(parameters.last)
+      #expect(secondParameter.index == 1)
       #expect(secondParameter.firstName == "j")
       #expect(secondParameter.secondName == "k")
     } catch {}
@@ -436,7 +439,7 @@ struct MiscellaneousTests {
     let monomorphicTestFunctionParameters = try #require(monomorphicTestFunction.parameters)
     #expect(monomorphicTestFunctionParameters.isEmpty)
 
-    let parameterizedTestFunction = Test(arguments: 0 ..< 100, parameters: [Test.ParameterInfo(firstName: "i")]) { _ in }
+    let parameterizedTestFunction = Test(arguments: 0 ..< 100, parameters: [Test.ParameterInfo(index: 0, firstName: "i")]) { _ in }
     #expect(parameterizedTestFunction.isParameterized)
     let parameterizedTestFunctionTestCases = try #require(parameterizedTestFunction.testCases)
     #expect(parameterizedTestFunctionTestCases.underestimatedCount == 100)
@@ -446,8 +449,8 @@ struct MiscellaneousTests {
     #expect(parameterizedTestFunctionFirstParameter.firstName == "i")
 
     let parameterizedTestFunction2 = Test(arguments: 0 ..< 100, 0 ..< 100, parameters: [
-      Test.ParameterInfo(firstName: "i"),
-      Test.ParameterInfo(firstName: "j", secondName: "value"),
+      Test.ParameterInfo(index: 0, firstName: "i"),
+      Test.ParameterInfo(index: 1, firstName: "j", secondName: "value"),
     ]) { _, _ in }
     #expect(parameterizedTestFunction2.isParameterized)
     let parameterizedTestFunction2TestCases = try #require(parameterizedTestFunction2.testCases)

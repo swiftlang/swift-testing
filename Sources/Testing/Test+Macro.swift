@@ -172,6 +172,19 @@ extension Test {
   }
 }
 
+extension [Test.__ParameterInfo] {
+  /// An array of ``Test/ParameterInfo`` values based on this array of parameter
+  /// tuples.
+  ///
+  /// This conversion derives the value of the `index` property of the resulting
+  /// parameter instances from the position of the tuple in the original array.
+  fileprivate var parameters: [Test.ParameterInfo] {
+    enumerated().map { index, parameter in
+      Test.ParameterInfo(index: index, firstName: parameter.firstName, secondName: parameter.secondName)
+    }
+  }
+}
+
 // MARK: - @Test(arguments:)
 
 /// This macro declaration is necessary to help the compiler disambiguate
@@ -226,12 +239,11 @@ extension Test {
     traits: [any TestTrait],
     arguments collection: C,
     sourceLocation: SourceLocation,
-    parameters: [__ParameterInfo],
+    parameters paramTuples: [__ParameterInfo],
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
   ) -> Self where C: Collection & Sendable, C.Element: Sendable {
     let caseGenerator = Case.Generator(arguments: collection, testFunction: testFunction)
-    let parameters = parameters.map(ParameterInfo.init)
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: paramTuples.parameters)
   }
 }
 
@@ -354,12 +366,11 @@ extension Test {
     traits: [any TestTrait],
     arguments collection1: C1, _ collection2: C2,
     sourceLocation: SourceLocation,
-    parameters: [__ParameterInfo],
+    parameters paramTuples: [__ParameterInfo],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let caseGenerator = Case.Generator(arguments: collection1, collection2, testFunction: testFunction)
-    let parameters = parameters.map(ParameterInfo.init)
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: paramTuples.parameters)
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
@@ -374,14 +385,13 @@ extension Test {
     traits: [any TestTrait],
     arguments zippedCollections: Zip2Sequence<C1, C2>,
     sourceLocation: SourceLocation,
-    parameters: [__ParameterInfo],
+    parameters paramTuples: [__ParameterInfo],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let caseGenerator = Case.Generator(arguments: zippedCollections) {
       try await testFunction($0, $1)
     }
-    let parameters = parameters.map(ParameterInfo.init)
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: paramTuples.parameters)
   }
 }
 

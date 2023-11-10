@@ -65,6 +65,10 @@ extension Test {
   /// obtain the arguments of a particular ``Test/Case`` paired with their
   /// corresponding parameters, use ``Test/Case/arguments(pairedWith:)``.
   public struct ParameterInfo: Sendable {
+    /// The zero-based index of this parameter within its associated test's
+    /// parameter list.
+    public var index: Int
+
     /// The first name of this parameter.
     public var firstName: String
 

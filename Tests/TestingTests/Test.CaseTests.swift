@@ -17,7 +17,7 @@ struct Test_CaseTests {
     @Test("Single parameter")
     func singleParameter() throws {
       let testCase = Test.Case(arguments: ["value"]) {}
-      let pairedArguments = Array(testCase.arguments(pairedWith: [Test.ParameterInfo(firstName: "foo")]))
+      let pairedArguments = Array(testCase.arguments(pairedWith: [Test.ParameterInfo(index: 0, firstName: "foo")]))
       #expect(pairedArguments.count == 1)
 
       let (parameter, opaqueArgument) = try #require(pairedArguments.first)
@@ -33,8 +33,8 @@ struct Test_CaseTests {
         123,
       ]) {}
       let pairedArguments = Array(testCase.arguments(pairedWith: [
-        Test.ParameterInfo(firstName: "foo"),
-        Test.ParameterInfo(firstName: "bar"),
+        Test.ParameterInfo(index: 0, firstName: "foo"),
+        Test.ParameterInfo(index: 1, firstName: "bar"),
       ]))
       #expect(pairedArguments.count == 2)
 
@@ -55,7 +55,7 @@ struct Test_CaseTests {
     @Test("One-value tuple parameter")
     func oneValueTupleParameter() throws {
       let testCase = Test.Case(arguments: [("value")]) {}
-      let pairedArguments = Array(testCase.arguments(pairedWith: [Test.ParameterInfo(firstName: "foo")]))
+      let pairedArguments = Array(testCase.arguments(pairedWith: [Test.ParameterInfo(index: 0, firstName: "foo")]))
       #expect(pairedArguments.count == 1)
 
       let (parameter, opaqueArgument) = try #require(pairedArguments.first)
@@ -68,8 +68,8 @@ struct Test_CaseTests {
     func twoValueTupleParameter() throws {
       let testCase = Test.Case(arguments: [("value", 123)]) {}
       let pairedArguments = Array(testCase.arguments(pairedWith: [
-        Test.ParameterInfo(firstName: "foo"),
-        Test.ParameterInfo(firstName: "bar"),
+        Test.ParameterInfo(index: 0, firstName: "foo"),
+        Test.ParameterInfo(index: 1, firstName: "bar"),
       ]))
       #expect(pairedArguments.count == 2)
 
