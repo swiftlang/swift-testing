@@ -41,10 +41,19 @@ enum Environment {
     name.withCString(encodedAs: UTF16.self) { name in
       func getVariable(maxCount: Int) -> String? {
         withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: maxCount) { buffer in
+          SetLastError(DWORD(ERROR_SUCCESS))
           let count = GetEnvironmentVariableW(name, buffer.baseAddress!, DWORD(buffer.count))
-          if count <= 0 {
-            // Failed to get the environment variable. Presumably it is not set.
-            return nil
+          if count == 0 {
+            return switch GetLastError() {
+            case DWORD(ERROR_SUCCESS):
+              // Empty String
+              ""
+            case DWORD(ERROR_ENVVAR_NOT_FOUND):
+              // The environment variable wasn't set.
+              nil
+            case let errorCode:
+              fatalError("unexpected error code: \(errorCode) when getting environment variable '\(name)'")
+            }
           } else if count > buffer.count {
             // Try again with the larger count.
             return getVariable(maxCount: Int(count))
