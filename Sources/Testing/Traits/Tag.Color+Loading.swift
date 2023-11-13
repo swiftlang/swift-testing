@@ -36,7 +36,8 @@ private var _homeDirectoryPath: String? {
 /// The path to the current user's App Data directory, if known.
 private var _appDataDirectoryPath: String? {
   var appDataDirectoryPath: PWSTR? = nil
-  if S_OK == SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, NULL, &appDataDirectoryPath), let appDataDirectoryPath {
+  var FOLDERID_LocalAppData = FOLDERID_LocalAppData
+  if S_OK == SHGetKnownFolderPath(&FOLDERID_LocalAppData, 0, nil, &appDataDirectoryPath), let appDataDirectoryPath {
     defer {
       CoTaskMemFree(appDataDirectoryPath)
     }
