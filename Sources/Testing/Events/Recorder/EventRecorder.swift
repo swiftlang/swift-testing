@@ -8,6 +8,14 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+/// A protocol describing types that can record events that occur during
+/// testing.
+///
+/// Types that conform to this protocol provide an interface for recording
+/// events; the exact meaning of "record" in this context is specific to each
+/// type, but typically involves transforming events into some output format
+/// such as human-readable text or machine-readable structured data and writing
+/// it to an output stream.
 @_spi(ExperimentalEventHandling)
 public protocol EventRecorder: Sendable {
   /// Record the specified event by generating a representation of it in this
