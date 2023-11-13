@@ -377,6 +377,9 @@ extension Test {
 
   /// Create an instance of ``Test`` for a parameterized function.
   ///
+  /// This initializer overload is specialized for collections of 2-tuples to
+  /// efficiently de-structure their elements when appropriate.
+  ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
   public static func __function<C, E1, E2>(
@@ -396,6 +399,10 @@ extension Test {
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
+  ///
+  /// This initializer overload is specialized for dictionary collections, to
+  /// efficiently de-structure their elements (which are known to be 2-tuples)
+  /// when appropriate.
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
