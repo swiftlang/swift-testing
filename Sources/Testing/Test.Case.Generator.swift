@@ -144,6 +144,9 @@ extension Test.Case {
     ///   - testFunction: The test function to which each generated test case
     ///     passes an argument value from `sequence`.
     ///
+    /// This initializer overload is specialized for sequences of 2-tuples to
+    /// efficiently de-structure their elements when appropriate.
+    ///
     /// @Comment {
     ///   - Bug: The testing library should support variadic generics.
     ///     ([103416861](rdar://103416861))
@@ -178,6 +181,9 @@ extension Test.Case {
     ///     should be generated.
     ///   - testFunction: The test function to which each generated test case
     ///     passes an argument value from `collection`.
+    ///
+    /// This initializer overload is specialized for collections of 2-tuples to
+    /// efficiently de-structure their elements when appropriate.
     ///
     /// @Comment {
     ///   - Bug: The testing library should support variadic generics.
@@ -219,6 +225,10 @@ extension Test.Case {
     ///     should be generated.
     ///   - testFunction: The test function to which each generated test case
     ///     passes an argument value from `dictionary`.
+    ///
+    /// This initializer overload is specialized for dictionary collections, to
+    /// efficiently de-structure their elements (which are known to be 2-tuples)
+    /// when appropriate.
     init<Key, Value>(
       arguments dictionary: Dictionary<Key, Value>,
       parameters: [Test.ParameterInfo],
