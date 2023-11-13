@@ -100,7 +100,7 @@ let package = Package(
   cxxLanguageStandard: .cxx20
 )
 
-// https://github.com/apple/swift-package-manager/issues/6367
+// BUG: swift-package-manager-#6367
 #if !os(Windows)
 package.targets.append(contentsOf: [
   .testTarget(
