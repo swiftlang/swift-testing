@@ -72,15 +72,39 @@ extension Test.Case {
     /// - Parameters:
     ///   - collection: The collection of argument values for which test cases
     ///     should be generated.
+    ///   - parameters: The parameters of the test function for which test cases
+    ///     should be generated.
     ///   - testFunction: The test function to which each generated test case
     ///     passes an argument value from `collection`.
+    ///
+    /// This initializer is disfavored since it relies on `Mirror` to
+    /// de-structure elements of tuples. Other initializers which are
+    /// specialized to handle collections of tuple types more efficiently should
+    /// be preferred.
+    @_disfavoredOverload
     init(
       arguments collection: S,
+      parameters: [Test.ParameterInfo],
       testFunction: @escaping @Sendable (S.Element) async throws -> Void
     ) where S: Collection {
-      self.init(sequence: collection) { element in
-        Test.Case(arguments: [element]) {
-          try await testFunction(element)
+      if parameters.count > 1 {
+        self.init(sequence: collection) { element in
+          let mirror = Mirror(reflecting: element)
+          let values: [any Sendable] = if mirror.displayStyle == .tuple {
+            mirror.children.map { unsafeBitCast($0.value, to: (any Sendable).self) }
+          } else {
+            [element]
+          }
+
+          return Test.Case(values: values, parameters: parameters) {
+            try await testFunction(element)
+          }
+        }
+      } else {
+        self.init(sequence: collection) { element in
+          Test.Case(values: [element], parameters: parameters) {
+            try await testFunction(element)
+          }
         }
       }
     }
@@ -93,17 +117,78 @@ extension Test.Case {
     ///     cases should be generated.
     ///   - collection2: The second collection of argument values for which test
     ///     cases should be generated.
+    ///   - parameters: The parameters of the test function for which test cases
+    ///     should be generated.
     ///   - testFunction: The test function to which each generated test case
     ///     passes an argument value from `collection`.
     init<C1, C2>(
       arguments collection1: C1, _ collection2: C2,
+      parameters: [Test.ParameterInfo],
       testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
     ) where S == CartesianProduct<C1, C2> {
       self.init(sequence: cartesianProduct(collection1, collection2)) { element in
-        Test.Case(arguments: [element.0, element.1]) {
+        Test.Case(values: [element.0, element.1], parameters: parameters) {
           try await testFunction(element.0, element.1)
         }
       }
+    }
+
+    /// Initialize an instance of this type that iterates over the specified
+    /// sequence of 2-tuple argument values.
+    ///
+    /// - Parameters:
+    ///   - sequence: The sequence of 2-tuple argument values for which test
+    ///     cases should be generated.
+    ///   - parameters: The parameters of the test function for which test cases
+    ///     should be generated.
+    ///   - testFunction: The test function to which each generated test case
+    ///     passes an argument value from `sequence`.
+    ///
+    /// @Comment {
+    ///   - Bug: The testing library should support variadic generics.
+    ///     ([103416861](rdar://103416861))
+    /// }
+    private init<E1, E2>(
+      sequence: S,
+      parameters: [Test.ParameterInfo],
+      testFunction: @escaping @Sendable ((E1, E2)) async throws -> Void
+    ) where S.Element == (E1, E2), E1: Sendable, E2: Sendable {
+      if parameters.count > 1 {
+        self.init(sequence: sequence) { element in
+          Test.Case(values: [element.0, element.1], parameters: parameters) {
+            try await testFunction(element)
+          }
+        }
+      } else {
+        self.init(sequence: sequence) { element in
+          Test.Case(values: [element], parameters: parameters) {
+            try await testFunction(element)
+          }
+        }
+      }
+    }
+
+    /// Initialize an instance of this type that iterates over the specified
+    /// collection of 2-tuple argument values.
+    ///
+    /// - Parameters:
+    ///   - collection: The collection of 2-tuple argument values for which test
+    ///     cases should be generated.
+    ///   - parameters: The parameters of the test function for which test cases
+    ///     should be generated.
+    ///   - testFunction: The test function to which each generated test case
+    ///     passes an argument value from `collection`.
+    ///
+    /// @Comment {
+    ///   - Bug: The testing library should support variadic generics.
+    ///     ([103416861](rdar://103416861))
+    /// }
+    init<E1, E2>(
+      arguments collection: S,
+      parameters: [Test.ParameterInfo],
+      testFunction: @escaping @Sendable ((E1, E2)) async throws -> Void
+    ) where S: Collection, S.Element == (E1, E2) {
+      self.init(sequence: collection, parameters: parameters, testFunction: testFunction)
     }
 
     /// Initialize an instance of this type that iterates over the specified
@@ -112,15 +197,44 @@ extension Test.Case {
     /// - Parameters:
     ///   - zippedCollections: A zipped sequence of argument values for which
     ///     test cases should be generated.
+    ///   - parameters: The parameters of the test function for which test cases
+    ///     should be generated.
     ///   - testFunction: The test function to which each generated test case
     ///     passes an argument value from `zippedCollections`.
     init<C1, C2>(
       arguments zippedCollections: Zip2Sequence<C1, C2>,
+      parameters: [Test.ParameterInfo],
       testFunction: @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
-    ) where S == Zip2Sequence<C1, C2> {
-      self.init(sequence: zippedCollections) { element in
-        Test.Case(arguments: [element]) {
-          try await testFunction(element)
+    ) where S == Zip2Sequence<C1, C2>, C1: Collection, C2: Collection {
+      self.init(sequence: zippedCollections, parameters: parameters, testFunction: testFunction)
+    }
+
+    /// Initialize an instance of this type that iterates over the specified
+    /// dictionary of argument values.
+    ///
+    /// - Parameters:
+    ///   - dictionary: A dictionary of argument values for which test cases
+    ///     should be generated.
+    ///   - parameters: The parameters of the test function for which test cases
+    ///     should be generated.
+    ///   - testFunction: The test function to which each generated test case
+    ///     passes an argument value from `dictionary`.
+    init<Key, Value>(
+      arguments dictionary: Dictionary<Key, Value>,
+      parameters: [Test.ParameterInfo],
+      testFunction: @escaping @Sendable ((Key, Value)) async throws -> Void
+    ) where S == Dictionary<Key, Value> {
+      if parameters.count > 1 {
+        self.init(sequence: dictionary) { element in
+          Test.Case(values: [element.key, element.value], parameters: parameters) {
+            try await testFunction(element)
+          }
+        }
+      } else {
+        self.init(sequence: dictionary) { element in
+          Test.Case(values: [element], parameters: parameters) {
+            try await testFunction(element)
+          }
         }
       }
     }

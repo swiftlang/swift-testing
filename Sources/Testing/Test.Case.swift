@@ -16,34 +16,54 @@ extension Test {
   /// Tests that are _not_ parameterized map to a single instance of
   /// ``Test/Case``.
   public struct Case: Sendable {
-    /// The parameterized inputs to this test case.
-    public var arguments: [any Sendable]
+    /// A type representing an argument passed to a parameter of a parameterized
+    /// test function.
+    public struct Argument: Sendable {
+      /// The value of this parameterized test argument.
+      public var value: any Sendable
 
-    /// Returns a sequence of this test case's arguments paired with the
-    /// specified test function parameters.
+      /// The parameter of the test function to which this argument was passed.
+      public var parameter: ParameterInfo
+    }
+
+    /// The arguments passed to this test case.
+    ///
+    /// If the argument was a tuple but its elements were passed to distinct
+    /// parameters of the test function, each element of the tuple will be
+    /// represented as a separate ``Argument`` instance paired with the
+    /// ``Test/ParameterInfo`` to which it was passed. However, if the test
+    /// function has a single tuple parameter, the tuple will be preserved and
+    /// represented as one ``Argument`` instance.
+    ///
+    /// Non-parameterized test functions will have a single test case instance,
+    /// and the value of this property will be an empty array for such test
+    /// cases.
+    public var arguments: [Argument]
+
+    init(
+      arguments: [Argument],
+      body: @escaping @Sendable () async throws -> Void
+    ) {
+      self.arguments = arguments
+      self.body = body
+    }
+
+    /// Initialize a test case by pairing values with their corresponding
+    /// parameters to form the ``arguments`` array.
     ///
     /// - Parameters:
-    ///   - parameters: The parameters to pair this test case's arguments with.
-    ///
-    /// - Returns: A sequence with each argument in this test case paired with
-    ///   its corresponding parameter from the specified test function
-    ///   parameters.
-    ///
-    /// If the count of `arguments` does not equal the count of `parameters` and
-    /// the elements in `arguments` are tuples, the arguments included in the
-    /// returned sequence will be replaced by the flattened list of those
-    /// tuples' values.
-    public func arguments(pairedWith parameters: [ParameterInfo]) -> some Sequence<(ParameterInfo, any Sendable)> {
-      if parameters.count > 1 && arguments.count == 1 {
-        let argument = arguments[0]
-        let mirror = Mirror(reflecting: argument)
-        if mirror.displayStyle == .tuple {
-          let desugaredArguments = mirror.children.map { unsafeBitCast($0.value, to: (any Sendable).self) }
-          return zip(parameters, desugaredArguments)
-        }
+    ///   - values: The values passed to the parameters for this test case.
+    ///   - parameters: The parameters of the test function for this test case.
+    ///   - body: The body closure of this test case.
+    init(
+      values: [any Sendable],
+      parameters: [ParameterInfo],
+      body: @escaping @Sendable () async throws -> Void
+    ) {
+      let arguments = zip(values, parameters).map { value, parameter in
+        Argument(value: value, parameter: parameter)
       }
-
-      return zip(parameters, arguments)
+      self.init(arguments: arguments, body: body)
     }
 
     /// Whether or not this test case is from a parameterized test.
@@ -63,7 +83,7 @@ extension Test {
   /// This represents the parameter itself, and does not contain a specific
   /// value that might be passed via this parameter to a test function. To
   /// obtain the arguments of a particular ``Test/Case`` paired with their
-  /// corresponding parameters, use ``Test/Case/arguments(pairedWith:)``.
+  /// corresponding parameters, use ``Test/Case/arguments``.
   public struct ParameterInfo: Sendable {
     /// The zero-based index of this parameter within its associated test's
     /// parameter list.
