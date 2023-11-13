@@ -13,7 +13,7 @@ extension Event {
   /// them as human-readable strings.
   ///
   /// The format of the output is not meant to be machine-readable and is
-  /// subject to change.
+  /// subject to change. For machine-readable output, use ``JUnitXMLRecorder``.
   public struct ConsoleOutputRecorder: Sendable {
     /// An enumeration describing options to use when writing events to a
     /// stream.

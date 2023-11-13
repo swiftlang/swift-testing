@@ -91,13 +91,16 @@ struct SwiftPMTests {
     #expect(!testFilter(test3))
   }
 
-  @Test("--xunit-output argument")
-  func xunitOutput() throws {
+  @Test("--xunit-output argument (bad path)")
+  func xunitOutputWithBadPath() {
     // Test that a bad path produces an error.
     #expect(throws: CError.self) {
       _ = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--xunit-output", "/nonexistent/path/we/cannot/write/to"])
     }
+  }
 
+  @Test("--xunit-output argument (writes to file)")
+  func xunitOutputIsWrittenToFile() throws {
     // Test that a file is opened when requested. Testing of the actual output
     // occurs in EventRecorderTests.
     let temporaryFileURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: false)

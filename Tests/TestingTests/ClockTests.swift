@@ -121,6 +121,7 @@ struct ClockTests {
     #expect(duration == .nanoseconds(offsetNanoseconds))
   }
 
+  @available(_clockAPI, *)
   @Test("Codable")
   func codable() async throws {
     let now = Test.Clock.Instant()
@@ -130,5 +131,19 @@ struct ClockTests {
 
     #expect(instant == decoded)
     #expect(instant != now)
+  }
+
+  @available(_clockAPI, *)
+  @Test("Clock.Instant.nanoseconds(until:) method",
+    arguments: [
+      (Duration.zero, 0),
+      (.nanoseconds(1), 1),
+      (.seconds(1), 1_000_000_000),
+      (Duration(secondsComponent: 0, attosecondsComponent: 1), 0),
+    ]
+  )
+  func nanoseconds(until offset: Duration, nanoseconds: Int) {
+    let now = Test.Clock.Instant.now
+    #expect(now.nanoseconds(until: now.advanced(by: offset)) == nanoseconds)
   }
 }
