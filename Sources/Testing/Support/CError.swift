@@ -20,6 +20,8 @@ struct CError: Error, RawRepresentable {
   var rawValue: CInt
 }
 
+// MARK: - CustomStringConvertible
+
 extension CError: CustomStringConvertible {
   var description: String {
     String(cString: strerror(rawValue))
