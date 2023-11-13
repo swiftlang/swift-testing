@@ -101,7 +101,7 @@ extension Test.Clock.Instant {
   ///
   /// - Returns: The number of nanoseconds between `self` and `other`. If
   ///   `other` is ordered before this instance, the result is negative.
-  func nanoseconds(until other: Test.Clock.Instant) -> Int64 {
+  func nanoseconds(until other: Self) -> Int64 {
     if other < self {
       return -other.nanoseconds(until: self)
     }
