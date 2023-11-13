@@ -76,14 +76,6 @@ let package = Package(
         .unsafeFlags(["-Xfrontend", "-allowable-client", "-Xfrontend", "TestingMacrosTests"]),
       ]
     ),
-    .testTarget(
-      name: "TestingMacrosTests",
-      dependencies: [
-        "Testing",
-        "TestingMacros",
-      ],
-      swiftSettings: .packageSettings
-    ),
 
     // "Support" targets: These contain C family code and are used exclusively
     // by other targets above, not directly included in product libraries.
@@ -107,6 +99,20 @@ let package = Package(
 
   cxxLanguageStandard: .cxx20
 )
+
+// BUG: swift-package-manager-#6367
+#if !os(Windows)
+package.targets.append(contentsOf: [
+  .testTarget(
+    name: "TestingMacrosTests",
+    dependencies: [
+      "Testing",
+      "TestingMacros",
+    ],
+    swiftSettings: .packageSettings
+  )
+])
+#endif
 
 extension Array where Element == PackageDescription.SwiftSetting {
   /// Settings intended to be applied to every Swift target in this package.
