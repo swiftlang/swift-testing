@@ -96,6 +96,9 @@ extension Test.Clock.Instant {
 
   /// Get the number of nanoseconds from this instance to another.
   ///
+  /// - Parameters:
+  ///   - other: The later instant.
+  ///
   /// - Returns: The number of nanoseconds between `self` and `other`. If
   ///   `other` is ordered before this instance, the result is negative.
   func nanoseconds(until other: Test.Clock.Instant) -> Int64 {
