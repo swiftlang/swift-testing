@@ -15,8 +15,6 @@ import TestingInternals
 struct CErrorTests {
   @Test("CError.description property", arguments: 1 ..< 100)
   func errorDescription(errorCode: CInt) {
-    // The set of error codes actually defined by standard C is quite narrow.
-    // EDOM is one of the few defined codes.
     let description = String(describing: CError(rawValue: errorCode))
     #expect(!description.isEmpty)
     description.withCString { description in
