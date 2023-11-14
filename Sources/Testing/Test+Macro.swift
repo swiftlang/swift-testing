@@ -402,7 +402,9 @@ extension Test {
   ///
   /// This initializer overload is specialized for dictionary collections, to
   /// efficiently de-structure their elements (which are known to be 2-tuples)
-  /// when appropriate.
+  /// when appropriate. This overload is distinct from those for other
+  /// collections of 2-tuples because the `Element` tuple type for
+  /// `Dictionary` includes labels (`(key: Key, value: Value)`).
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
