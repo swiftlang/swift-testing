@@ -97,10 +97,10 @@ struct TagListTests {
 
 #if !SWT_NO_TAG_COLORS && canImport(Foundation)
   @Test(
-    "Colors are read from the repository",
+    "Colors are read from disk",
     .tags("alpha", "beta", "gamma", "delta", .namedConstant)
   )
-  func tagColorsReadFromRepository() throws {
+  func tagColorsReadFromDisk() throws {
     let tempDirURL = FileManager.default.temporaryDirectory
     let jsonURL = tempDirURL.appendingPathComponent("tag-colors.json", isDirectory: false)
     let jsonContent = """
@@ -123,16 +123,7 @@ struct TagListTests {
       try? FileManager.default.removeItem(at: jsonURL)
     }
 
-    let tagColorOptions = Testing.tagColorOptions(fromFileInDirectoryAtPath: tempDirURL.path)
-    let tagColors = try #require(
-      tagColorOptions.lazy
-        .compactMap { option in
-          if case let .useTagColors(tagColors) = option {
-            return tagColors
-          }
-          return nil
-        }.first
-    )
+    let tagColors = try Testing.loadTagColors(fromFileInDirectoryAtPath: tempDirURL.path)
     #expect(tagColors["alpha"] == .red)
     #expect(tagColors["beta"] == .rgb(0, 0xCC, 0xFF))
     #expect(tagColors["gamma"] == .rgb(0xAA, 0xBB, 0xCC))
@@ -148,8 +139,9 @@ struct TagListTests {
 
   @Test("No colors are read from a bad path")
   func noTagColorsReadFromBadPath() throws {
-    let tagColorOptions = Testing.tagColorOptions(fromFileInDirectoryAtPath: "Directory/That/Does/Not/Exist")
-    #expect(tagColorOptions.isEmpty)
+    #expect(throws: (any Error).self) {
+      try Testing.loadTagColors(fromFileInDirectoryAtPath: "Directory/That/Does/Not/Exist")
+    }
   }
 #endif
 }
