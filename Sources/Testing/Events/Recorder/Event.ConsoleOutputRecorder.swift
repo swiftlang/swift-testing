@@ -448,22 +448,16 @@ extension Tag.Color {
 extension Test.Case {
   /// The arguments of this test case, formatted for presentation, prefixed by
   /// their corresponding parameter label when available.
-  ///
-  /// - Parameters:
-  ///   - parameters: The parameters to pair this test case's arguments with.
-  ///
-  /// - Returns: A string containing each argument prefixed with its
-  ///   corresponding parameter label when available.
-  fileprivate func labeledArguments(using parameters: [Test.ParameterInfo]) -> String {
-    arguments(pairedWith: parameters).lazy
-      .map { parameter, argument in
-        let argumentDescription = String(describingForTest: argument)
+  fileprivate var labeledArguments: String {
+    arguments.lazy
+      .map { argument in
+        let valueDescription = String(describingForTest: argument.value)
 
-        let label = parameter.secondName ?? parameter.firstName
+        let label = argument.parameter.secondName ?? argument.parameter.firstName
         guard label != "_" else {
-          return argumentDescription
+          return valueDescription
         }
-        return "\(label) → \(argumentDescription)"
+        return "\(label) → \(valueDescription)"
       }
       .joined(separator: ", ")
   }
@@ -628,8 +622,8 @@ extension Event.ConsoleOutputRecorder: EventRecorder {
       } else {
         0
       }
-      let labeledArguments = if let testCase = eventContext.testCase, let parameters = test?.parameters {
-        testCase.labeledArguments(using: parameters)
+      let labeledArguments = if let testCase = eventContext.testCase {
+        testCase.labeledArguments
       } else {
         ""
       }
@@ -662,12 +656,12 @@ extension Event.ConsoleOutputRecorder: EventRecorder {
       }
 
     case .testCaseStarted:
-      guard let testCase = eventContext.testCase, testCase.isParameterized, let parameters = test?.parameters else {
+      guard let testCase = eventContext.testCase, testCase.isParameterized else {
         break
       }
       let symbol = Symbol.default.stringValue(options: options)
 
-      return "\(symbol) Passing \(parameters.count.counting("argument")) \(testCase.labeledArguments(using: parameters)) to \(testName)\n"
+      return "\(symbol) Passing \(testCase.arguments.count.counting("argument")) \(testCase.labeledArguments) to \(testName)\n"
 
     case .testCaseEnded:
       break

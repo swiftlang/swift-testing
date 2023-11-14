@@ -242,8 +242,9 @@ extension Test {
     parameters paramTuples: [__ParameterInfo],
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
   ) -> Self where C: Collection & Sendable, C.Element: Sendable {
-    let caseGenerator = Case.Generator(arguments: collection, testFunction: testFunction)
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: paramTuples.parameters)
+    let parameters = paramTuples.parameters
+    let caseGenerator = Case.Generator(arguments: collection, parameters: parameters, testFunction: testFunction)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 }
 
@@ -369,8 +370,58 @@ extension Test {
     parameters paramTuples: [__ParameterInfo],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
-    let caseGenerator = Case.Generator(arguments: collection1, collection2, testFunction: testFunction)
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: paramTuples.parameters)
+    let parameters = paramTuples.parameters
+    let caseGenerator = Case.Generator(arguments: collection1, collection2, parameters: parameters, testFunction: testFunction)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+  }
+
+  /// Create an instance of ``Test`` for a parameterized function.
+  ///
+  /// This initializer overload is specialized for collections of 2-tuples to
+  /// efficiently de-structure their elements when appropriate.
+  ///
+  /// - Warning: This function is used to implement the `@Test` macro. Do not
+  ///   call it directly.
+  public static func __function<C, E1, E2>(
+    named testFunctionName: String,
+    in containingType: Any.Type?,
+    xcTestCompatibleSelector: __XCTestCompatibleSelector?,
+    displayName: String? = nil,
+    traits: [any TestTrait],
+    arguments collection: C,
+    sourceLocation: SourceLocation,
+    parameters paramTuples: [__ParameterInfo],
+    testFunction: @escaping @Sendable ((E1, E2)) async throws -> Void
+  ) -> Self where C: Collection & Sendable, C.Element == (E1, E2), E1: Sendable, E2: Sendable {
+    let parameters = paramTuples.parameters
+    let caseGenerator = Case.Generator(arguments: collection, parameters: parameters, testFunction: testFunction)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+  }
+
+  /// Create an instance of ``Test`` for a parameterized function.
+  ///
+  /// This initializer overload is specialized for dictionary collections, to
+  /// efficiently de-structure their elements (which are known to be 2-tuples)
+  /// when appropriate. This overload is distinct from those for other
+  /// collections of 2-tuples because the `Element` tuple type for
+  /// `Dictionary` includes labels (`(key: Key, value: Value)`).
+  ///
+  /// - Warning: This function is used to implement the `@Test` macro. Do not
+  ///   call it directly.
+  public static func __function<Key, Value>(
+    named testFunctionName: String,
+    in containingType: Any.Type?,
+    xcTestCompatibleSelector: __XCTestCompatibleSelector?,
+    displayName: String? = nil,
+    traits: [any TestTrait],
+    arguments dictionary: Dictionary<Key, Value>,
+    sourceLocation: SourceLocation,
+    parameters paramTuples: [__ParameterInfo],
+    testFunction: @escaping @Sendable ((Key, Value)) async throws -> Void
+  ) -> Self where Key: Sendable, Value: Sendable {
+    let parameters = paramTuples.parameters
+    let caseGenerator = Case.Generator(arguments: dictionary, parameters: parameters, testFunction: testFunction)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
@@ -388,10 +439,11 @@ extension Test {
     parameters paramTuples: [__ParameterInfo],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
-    let caseGenerator = Case.Generator(arguments: zippedCollections) {
+    let parameters = paramTuples.parameters
+    let caseGenerator = Case.Generator(arguments: zippedCollections, parameters: parameters) {
       try await testFunction($0, $1)
     }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: paramTuples.parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 }
 
