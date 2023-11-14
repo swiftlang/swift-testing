@@ -77,26 +77,22 @@ var swiftTestingDirectoryPath: String {
 ///   - swiftTestingDirectoryPath: The `".swift-testing"` directory from which
 ///     tag color data should be read.
 ///
-/// - Returns: A sequence of zero or more ``Event/Recorder/Option`` values
-///   representing the tag colors read from the file.
+/// - Returns: A dictionary keyed by tag whose values are the colors to use for
+///   those tags.
 ///
-/// This function attempts to read the contents of the file
-/// `"tag-colors.json"` in the directory specified by
-/// `swiftTestingDirectoryPath`. The file is assumed to contain a JSON object (a
-/// dictionary) where the keys are tags' string values and the values represent
-/// tag colors. For a list of the supported formats for tag colors in this
-/// dictionary, see <doc:AddingTags>.
-func tagColorOptions(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String = swiftTestingDirectoryPath) -> [Event.ConsoleOutputRecorder.Option] {
+/// - Throws: Any error that occurred while reading or decoding the JSON file.
+///
+/// This function attempts to read the contents of the file `"tag-colors.json"`
+/// in the directory specified by `swiftTestingDirectoryPath`. The file is
+/// assumed to contain a JSON object (a dictionary) where the keys are tags'
+/// string values and the values represent tag colors. For a list of the
+/// supported formats for tag colors in this dictionary, see <doc:AddingTags>.
+func loadTagColors(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String = swiftTestingDirectoryPath) throws -> [Tag: Tag.Color] {
 #if !SWT_NO_TAG_COLORS && canImport(Foundation)
-  // Find the path to the tag-colors.json file.
+  // Find the path to the tag-colors.json file and try to load its contents.
   let tagColorsURL = URL(fileURLWithPath: swiftTestingDirectoryPath, isDirectory: true)
     .appendingPathComponent("tag-colors.json", isDirectory: false)
-
-  // Try to read from the JSON file. If we can't, ignore the error and just
-  // don't load any tag colors.
-  guard let tagColorsData = try? Data(contentsOf: tagColorsURL, options: [.mappedIfSafe]) else {
-    return []
-  }
+  let tagColorsData = try Data(contentsOf: tagColorsURL, options: [.mappedIfSafe])
 
   // By default, a dictionary with non-string keys is encoded to and decoded
   // from JSON as an array, so we decode the dictionary as if its keys are plain
@@ -105,11 +101,8 @@ func tagColorOptions(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String
   // nil is a valid decoded color value (representing "no color") that we can
   // use for merging tag color data from multiple sources, but it is not valid
   // as an actual tag color, so we have a step here that filters it.
-  return (try? JSONDecoder().decode([String: Tag.Color?].self, from: tagColorsData))
-    .map { $0.map { (Tag(rawValue: $0), $1) } }
-    .map { Dictionary(uniqueKeysWithValues: $0) }
-    .map { $0.compactMapValues { $0 } }
-    .map { [.useTagColors($0)] } ?? []
+  return try JSONDecoder().decode([Tag: Tag.Color?].self, from: tagColorsData)
+    .compactMapValues { $0 }
 #else
   []
 #endif

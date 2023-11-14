@@ -54,9 +54,9 @@ extension Tag: Equatable, Hashable, Comparable {
   }
 }
 
-// MARK: - Codable
+// MARK: - Codable, CodingKeyRepresentable
 
-extension Tag: Codable {
+extension Tag: Codable, CodingKeyRepresentable {
   public func encode(to encoder: any Encoder) throws {
     try rawValue.encode(to: encoder)
   }
