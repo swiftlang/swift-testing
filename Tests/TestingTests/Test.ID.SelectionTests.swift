@@ -95,14 +95,4 @@ struct Test_ID_SelectionTests {
     #expect(selection.contains(["A", "X", "Y"]))
     #expect(!selection.contains(["X"]))
   }
-
-  @Test("Test.ID.Selection.testIDs property")
-  func testIDsSet() {
-    let testIDs: Set<Test.ID> = [
-      Test.ID(["A"]),
-      Test.ID(["A", "B"]),
-    ]
-    let selection = Test.ID.Selection(testIDs: testIDs)
-    #expect(selection.testIDs == testIDs)
-  }
 }

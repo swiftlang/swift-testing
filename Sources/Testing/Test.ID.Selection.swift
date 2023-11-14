@@ -27,80 +27,78 @@ extension Test.ID {
     /// `contains(_:)` methods.
     private var _testIDsGraph = Graph<String, Bool>(value: false)
 
-    /// A `Set` representing the test IDs which have been explicitly added.
-    ///
-    /// May include test IDs that are redundant and overlap with others.
-    private(set) var testIDs: Set<Test.ID>
-
     /// Initialize an instance of this type with the specified test IDs.
     ///
     /// - Parameters:
     ///   - testIDs: The test IDs to include in the selection.
     init(testIDs: some Collection<Test.ID>) {
-      self.testIDs = Set(testIDs)
       _testIDsGraph = .init(value: false)
-      for testID in self.testIDs {
+      for testID in testIDs {
         _testIDsGraph.insertValue(true, at: testID.keyPathRepresentation, intermediateValue: false)
       }
     }
+  }
+}
 
-    /// Determine if the selection contains the ID for the specified test.
-    ///
-    /// - Parameters:
-    ///   - test: The test whose ID should be queried.
-    ///
-    /// - Returns: Whether or not the selection contains the ID for the
-    ///   specified test.
-    ///
-    /// A test ID is considered contained in the selection if it has been
-    /// explicitly added or if it has a descendant or ancestor which has been
-    /// explicitly added.
-    @Sendable func contains(_ test: Test) -> Bool {
-      contains(test.id)
-    }
+// MARK: - Querying membership
 
-    /// Determine if the selection contains a specified test ID.
-    ///
-    /// - Parameters:
-    ///   - testID: The test ID to query.
-    ///
-    /// - Returns: Whether or not the selection contains the specified test ID.
-    ///
-    /// A test ID is considered contained in the selection if it has been
-    /// explicitly added or if it has a descendant or ancestor which has been
-    /// explicitly added.
-    @Sendable func contains(_ testID: Test.ID) -> Bool {
-      contains(testID.keyPathRepresentation)
-    }
+extension Test.ID.Selection {
+  /// Determine if the selection contains the ID for the specified test.
+  ///
+  /// - Parameters:
+  ///   - test: The test whose ID should be queried.
+  ///
+  /// - Returns: Whether or not the selection contains the ID for the
+  ///   specified test.
+  ///
+  /// A test ID is considered contained in the selection if it has been
+  /// explicitly added or if it has a descendant or ancestor which has been
+  /// explicitly added.
+  @Sendable func contains(_ test: Test) -> Bool {
+    contains(test.id)
+  }
 
-    /// Determine if the selection contains a test ID with the specified fully-
-    /// qualified name components.
-    ///
-    /// - Parameters:
-    ///   - fullyQualifiedNameComponents: The fully-qualified name components of
-    ///     the test ID to query.
-    ///
-    /// - Returns: Whether or not the selection contains a test ID with the
-    ///   specified fully-qualified name components.
-    ///
-    /// A test ID is considered contained in the selection if it has been
-    /// explicitly added or if it has a descendant or ancestor which has been
-    /// explicitly added.
-    func contains(_ fullyQualifiedNameComponents: some Collection<String>) -> Bool {
-      var isContained = false
+  /// Determine if the selection contains a specified test ID.
+  ///
+  /// - Parameters:
+  ///   - testID: The test ID to query.
+  ///
+  /// - Returns: Whether or not the selection contains the specified test ID.
+  ///
+  /// A test ID is considered contained in the selection if it has been
+  /// explicitly added or if it has a descendant or ancestor which has been
+  /// explicitly added.
+  @Sendable func contains(_ testID: Test.ID) -> Bool {
+    contains(testID.keyPathRepresentation)
+  }
 
-      for value in _testIDsGraph.takeValues(at: fullyQualifiedNameComponents) {
-        switch value {
-        case .some(false):
-          isContained = true
-        case .some(true):
-          return true
-        case nil:
-          return false
-        }
+  /// Determine if the selection contains a test ID with the specified fully-
+  /// qualified name components.
+  ///
+  /// - Parameters:
+  ///   - fullyQualifiedNameComponents: The fully-qualified name components of
+  ///     the test ID to query.
+  ///
+  /// - Returns: Whether or not the selection contains a test ID with the
+  ///   specified fully-qualified name components.
+  ///
+  /// A test ID is considered contained in the selection if it has been
+  /// explicitly added or if it has a descendant or ancestor which has been
+  /// explicitly added.
+  func contains(_ fullyQualifiedNameComponents: some Collection<String>) -> Bool {
+    var isContained = false
+
+    for value in _testIDsGraph.takeValues(at: fullyQualifiedNameComponents) {
+      switch value {
+      case .some(false):
+        isContained = true
+      case .some(true):
+        return true
+      case nil:
+        return false
       }
-
-      return isContained
     }
+
+    return isContained
   }
 }
