@@ -122,23 +122,6 @@ extension Runner.Plan {
     }
   }
 
-  /// Determine if a test is included in the selected test IDs, if any are
-  /// configured.
-  ///
-  /// - Parameters:
-  ///   - test: The test to query.
-  ///   - filter: The filter to decide if the test is included.
-  ///
-  /// - Returns: Whether or not the specified test is selected. If
-  ///   `selectedTests` is `nil`, `test` is considered selected if it is not
-  ///   hidden.
-  private static func _isTestIncluded(_ test: Test, using filter: Configuration.TestFilter?) -> Bool {
-    guard let filter else {
-      return !test.isHidden
-    }
-    return filter(test)
-  }
-
   /// Construct a graph of runner plan steps for the specified tests.
   ///
   /// - Parameters:
@@ -176,7 +159,7 @@ extension Runner.Plan {
     // zip() near the end of the function.
     testGraph = testGraph.mapValues { test in
       test.flatMap { test in
-        _isTestIncluded(test, using: configuration.testFilter) ? test : nil
+        configuration.testFilter(test) ? test : nil
       }
     }
 
