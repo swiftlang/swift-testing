@@ -49,7 +49,7 @@ struct NeverRunTests {
 final class RunnerTests: XCTestCase {
   func testDefaultInit() async throws {
     let runner = await Runner()
-    XCTAssertFalse(runner.tests.contains { $0.isHidden })
+    XCTAssertFalse(runner.tests.contains(where: \.isHidden))
   }
 
   func testTestsProperty() async throws {

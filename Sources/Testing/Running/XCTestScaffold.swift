@@ -213,7 +213,7 @@ public enum XCTestScaffold: Sendable {
     if let tags {
       // Check if the test's tags intersect the set of selected tags. If there
       // was a previous filter function, it must also pass.
-      let oldTestFilter = configuration.testFilter ?? { _ in true }
+      let oldTestFilter = configuration.testFilter
       configuration.testFilter = { test in
         !tags.isDisjoint(with: test.tags) && oldTestFilter(test)
       }

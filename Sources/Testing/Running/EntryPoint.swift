@@ -193,10 +193,6 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
       }
     }
   }
-  filters.append { test in
-    // Don't run the fixture tests in the testing library's own test targets.
-    !test.isHidden
-  }
   configuration.testFilter = { [filters] test in
     filters.allSatisfy { filter in
       filter(test)

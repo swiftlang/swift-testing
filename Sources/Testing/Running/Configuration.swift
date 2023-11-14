@@ -118,38 +118,48 @@ public struct Configuration: Sendable {
   /// - Returns: A Boolean value representing if the test satisfied the filter.
   public typealias TestFilter = @Sendable (Test) -> Bool
 
+  /// Storage for ``testFilter``.
+  private var _testFilter: TestFilter = { !$0.isHidden }
+
   /// The test filter to which tests should be filtered when run.
-  public var testFilter: TestFilter?
+  public var testFilter: TestFilter {
+    get {
+      _testFilter
+    }
+    set {
+      // By default, the test filter should always filter out hidden tests. This
+      // is the appropriate behavior for external clients of this SPI. If the
+      // testing library needs to enable hidden tests in its own test targets,
+      // it should use setTestFilter(toMatch:includeHiddenTests:) instead.
+      _testFilter = { test in
+        !test.isHidden && newValue(test)
+      }
+    }
+  }
 
   /// Filter tests to run to those specified via a set of test IDs.
   ///
   /// - Parameters:
-  ///   - selection: A set of test IDs to be filtered. If `nil`, the current
-  ///     selection is cleared.
+  ///   - selection: A set of test IDs to be filtered.
   ///
   /// By default, all tests are run and no filter is set.
-  public mutating func setTestFilter(toMatch selection: Set<Test.ID>?) {
-    setTestFilter(toMatch: selection.map(Test.ID.Selection.init), includeHiddenTests: false)
+  public mutating func setTestFilter(toMatch selection: Set<Test.ID>) {
+    setTestFilter(toMatch: Test.ID.Selection(testIDs: selection), includeHiddenTests: false)
   }
 
-  /// Filter tests to run to those specified via a Test.ID.Selection instance.
+  /// Filter tests to run to those specified by a selection of test IDs.
   ///
   /// - Parameters:
-  ///   - selection: A selection of test IDs to be filtered. If `nil`, the
-  ///     current selection is cleared.
-  ///   - includeHiddenTests: If false, a test annotated with the `.hidden` trait will not be included, even if its ID is present in `selection`.
+  ///   - selection: A selection of test IDs to be filtered.
+  ///   - includeHiddenTests: If false, a test annotated with the `.hidden`
+  ///     trait will not be included, even if its ID is present in `selection`.
   ///
   /// By default, all tests are run and no filter is set.
-  mutating func setTestFilter(toMatch selection: Test.ID.Selection?, includeHiddenTests: Bool) {
-    if let selection {
-      testFilter = { test in
-        if includeHiddenTests || !test.isHidden {
-          return selection.contains(test)
-        }
-        return false
-      }
+  mutating func setTestFilter(toMatch selection: Test.ID.Selection, includeHiddenTests: Bool) {
+    if includeHiddenTests {
+      _testFilter = selection.contains
     } else {
-      testFilter = nil
+      testFilter = selection.contains
     }
   }
 }
