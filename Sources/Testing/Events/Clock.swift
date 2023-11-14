@@ -93,6 +93,22 @@ extension Test.Clock.Instant {
   public var durationSince1970: Duration {
     Duration(wall)
   }
+
+  /// Get the number of nanoseconds from this instance to another.
+  ///
+  /// - Parameters:
+  ///   - other: The later instant.
+  ///
+  /// - Returns: The number of nanoseconds between `self` and `other`. If
+  ///   `other` is ordered before this instance, the result is negative.
+  func nanoseconds(until other: Self) -> Int64 {
+    if other < self {
+      return -other.nanoseconds(until: self)
+    }
+    let otherNanoseconds = (other.suspending.seconds * 1_000_000_000) + (other.suspending.attoseconds / 1_000_000_000)
+    let selfNanoseconds = (suspending.seconds * 1_000_000_000) + (suspending.attoseconds / 1_000_000_000)
+    return otherNanoseconds - selfNanoseconds
+  }
 }
 #endif
 
@@ -209,9 +225,7 @@ extension Test.Clock.Instant {
   ///   up to millisecond accuracy.
   func descriptionOfDuration(to other: Test.Clock.Instant) -> String {
 #if SWT_TARGET_OS_APPLE
-    let otherNanoseconds = (other.suspending.seconds * 1_000_000_000) + (other.suspending.attoseconds / 1_000_000_000)
-    let selfNanoseconds = (suspending.seconds * 1_000_000_000) + (suspending.attoseconds / 1_000_000_000)
-    let (seconds, nanosecondsRemaining) = (otherNanoseconds - selfNanoseconds).quotientAndRemainder(dividingBy: 1_000_000_000)
+    let (seconds, nanosecondsRemaining) = nanoseconds(until: other).quotientAndRemainder(dividingBy: 1_000_000_000)
     return String(describing: TimeValue((seconds, nanosecondsRemaining * 1_000_000_000)))
 #else
     return String(describing: TimeValue(Duration(other.suspending) - Duration(suspending)))

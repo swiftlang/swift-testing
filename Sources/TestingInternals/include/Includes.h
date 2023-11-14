@@ -26,6 +26,7 @@
 ///
 /// - Note: Avoid including headers that aren't actually used.
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

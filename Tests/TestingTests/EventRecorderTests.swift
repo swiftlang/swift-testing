@@ -12,8 +12,13 @@
 #if !os(Windows)
 import RegexBuilder
 #endif
+#if SWT_TARGET_OS_APPLE
+import Foundation
+#else
+import FoundationXML
+#endif
 
-@Suite("Event.Recorder Tests")
+@Suite("EventRecorder Tests")
 struct EventRecorderTests {
   final class Stream: TextOutputStream, Sendable {
     let buffer = Locked<String>(wrappedValue: "")
@@ -25,8 +30,8 @@ struct EventRecorderTests {
     }
   }
 
-  private static var optionCombinations: [[Event.Recorder.Option]] {
-    var result: [[Event.Recorder.Option]] = [
+  private static var optionCombinations: [[Event.ConsoleOutputRecorder.Option]] {
+    var result: [[Event.ConsoleOutputRecorder.Option]] = [
       [],
       [.useANSIEscapeCodes],
       [.use256ColorANSIEscapeCodes],
@@ -44,12 +49,12 @@ struct EventRecorderTests {
   }
 
   @Test("Writing events", arguments: optionCombinations)
-  func writingToStream(options: [Event.Recorder.Option]) async throws {
+  func writingToStream(options: [Event.ConsoleOutputRecorder.Option]) async throws {
     let stream = Stream()
 
     var configuration = Configuration()
     configuration.deliverExpectationCheckedEvents = true
-    let eventRecorder = Event.Recorder(options: options, writingUsing: stream.write)
+    let eventRecorder = Event.ConsoleOutputRecorder(options: options, writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
     }
@@ -96,7 +101,7 @@ struct EventRecorderTests {
     let stream = Stream()
 
     var configuration = Configuration()
-    let eventRecorder = Event.Recorder(writingUsing: stream.write)
+    let eventRecorder = Event.ConsoleOutputRecorder(writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
     }
@@ -139,7 +144,7 @@ struct EventRecorderTests {
     let stream = Stream()
 
     var configuration = Configuration()
-    let eventRecorder = Event.Recorder(writingUsing: stream.write)
+    let eventRecorder = Event.ConsoleOutputRecorder(writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
     }
@@ -162,7 +167,7 @@ struct EventRecorderTests {
     let stream = Stream()
 
     var configuration = Configuration()
-    let eventRecorder = Event.Recorder(writingUsing: stream.write)
+    let eventRecorder = Event.ConsoleOutputRecorder(writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
     }
@@ -202,6 +207,33 @@ struct EventRecorderTests {
     #expect(match.output.2 == 4)
   }
 #endif
+
+  @Test("JUnitXMLRecorder outputs valid XML")
+  func junitXMLIsValid() async throws {
+    let stream = Stream()
+
+    var configuration = Configuration()
+    configuration.deliverExpectationCheckedEvents = true
+    let eventRecorder = Event.JUnitXMLRecorder(writingUsing: stream.write)
+    configuration.eventHandler = { event, context in
+      eventRecorder.record(event, in: context)
+    }
+
+    await runTest(for: WrittenTests.self, configuration: configuration)
+
+    // There is no formal schema for us to test against, so we're just testing
+    // that the XML can be parsed by Foundation.
+
+    let xmlString = stream.buffer.wrappedValue
+    #expect(xmlString.hasPrefix("<?xml"))
+    let xmlData = try #require(xmlString.data(using: .utf8))
+    #expect(xmlData.count > 1024)
+    let parser = XMLParser(data: xmlData)
+    #expect(parser.parse())
+    if let error = parser.parserError {
+      throw error
+    }
+  }
 }
 
 // MARK: - Fixtures
@@ -261,13 +293,21 @@ struct EventRecorderTests {
   }
 
   @Test(.hidden) func diffyDuck() {
-    #expect([1, 2, 3] == [1, 2])
+    #expect([1, 2, 3] as Array == [1, 2] as Array)
   }
 
   @Test(.hidden) func woefulWombat() {
     #expect(throws: MyError.self) {
       throw MyDescriptiveError(description: "Woe!")
     }
+  }
+
+  @Test(.hidden) func quotationalQuokka() throws {
+    throw MyDescriptiveError(description: #""Quotation marks!""#)
+  }
+
+  @Test(.hidden) func cornyUnicorn🦄() throws {
+    throw MyDescriptiveError(description: #"🦄"#)
   }
 }
 

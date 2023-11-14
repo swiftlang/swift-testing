@@ -33,12 +33,14 @@ public func swiftPMEntryPoint() async -> CInt {
       }
     } else {
       var configuration = try configurationForSwiftPMEntryPoint(withArguments: args)
-      configuration.eventHandler = { event, _ in
+      let oldEventHandler = configuration.eventHandler
+      configuration.eventHandler = { event, context in
         if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
           $exitCode.withLock { exitCode in
             exitCode = EXIT_FAILURE
           }
         }
+        oldEventHandler(event, context)
       }
 
       await runTests(configuration: configuration)
@@ -135,6 +137,37 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
     configuration.isParallelizationEnabled = true
   }
 
+  // XML output
+  if let xunitOutputIndex = args.firstIndex(of: "--xunit-output"), xunitOutputIndex < args.endIndex {
+    let xunitOutputPath = args[args.index(after: xunitOutputIndex)]
+
+    // Open the XML file for writing.
+    guard let file = fopen(xunitOutputPath, "wb") else {
+      throw CError(rawValue: swt_errno())
+    }
+
+    // Create a simple type that contains the C file handle we created and
+    // ensures it is closed when it goes out of scope.
+    struct FileCloser: @unchecked Sendable, ~Copyable {
+      var file: SWT_FILEHandle
+      deinit {
+        fclose(file)
+      }
+    }
+
+    // Set up the XML recorder.
+    let xmlRecorder = Event.JUnitXMLRecorder { [file = FileCloser(file: file)] string in
+      fputs(string, file.file)
+      fflush(file.file)
+    }
+
+    let oldEventHandler = configuration.eventHandler
+    configuration.eventHandler = { event, context in
+      _ = xmlRecorder.record(event, in: context)
+      oldEventHandler(event, context)
+    }
+  }
+
   // Filtering
   // NOTE: Regex is not marked Sendable, but because the regexes we use are
   // constructed solely from a string, they are safe to send across isolation
@@ -179,7 +212,7 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 /// - Parameters:
 ///   - configuration: The configuration to use for running.
 func runTests(configuration: Configuration) async {
-  let eventRecorder = Event.Recorder(options: .forStandardError) { string in
+  let eventRecorder = Event.ConsoleOutputRecorder(options: .forStandardError) { string in
     let stderr = swt_stderr()
     fputs(string, stderr)
     fflush(stderr)
@@ -198,7 +231,7 @@ func runTests(configuration: Configuration) async {
 
 // MARK: - Command-line interface options
 
-extension [Event.Recorder.Option] {
+extension [Event.ConsoleOutputRecorder.Option] {
   /// The set of options to use when writing to the standard error stream.
   static var forStandardError: Self {
     var result = Self()
