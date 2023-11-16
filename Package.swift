@@ -17,10 +17,11 @@ let package = Package(
   name: "swift-testing",
 
   platforms: [
-    .macOS(.v13),
-    .iOS(.v16),
-    .watchOS(.v9),
-    .tvOS(.v16),
+    .macOS(.v10_15),
+    .iOS(.v13),
+    .watchOS(.v6),
+    .tvOS(.v13),
+    .macCatalyst(.v13),
     .visionOS(.v1),
   ],
 
