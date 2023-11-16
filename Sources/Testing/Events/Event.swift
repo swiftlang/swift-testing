@@ -93,12 +93,6 @@ public struct Event: Sendable {
     /// available from this event's ``Event/testID`` property.
     case testSkipped(_ skipInfo: SkipInfo)
 
-#if !SWIFT_PACKAGE
-    @_documentation(visibility: private)
-    @available(*, deprecated, renamed: "testSkipped")
-    case testBypassed(_ bypassInfo: BypassInfo)
-#endif
-
     /// A step in the runner plan ended.
     ///
     /// - Parameters:

@@ -593,12 +593,6 @@ extension Event.ConsoleOutputRecorder: EventRecorder {
         return "\(symbol) Test \(testName) skipped.\n"
       }
 
-#if !SWIFT_PACKAGE
-    case .testBypassed:
-      // Deprecated, replaced by `.testSkipped` above.
-      break
-#endif
-
     case .expectationChecked:
       // Suppress events of this kind from output as they are not generally
       // interesting in human-readable output.
