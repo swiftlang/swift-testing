@@ -113,7 +113,7 @@ extension Test {
     sourceLocation: SourceLocation
   ) -> Self {
     let typeName = _typeName(containingType, qualified: false)
-    return Self(name: typeName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, testCases: nil)
+    return Self(name: typeName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType)
   }
 }
 

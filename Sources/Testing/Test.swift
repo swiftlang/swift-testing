@@ -95,7 +95,7 @@ public struct Test: Sendable {
   public var xcTestCompatibleSelector: __XCTestCompatibleSelector?
 
   /// Storage for the ``testCases`` property.
-  private var _testCases: (any TestCases)?
+  private var _testCases: Test.Cases?
 
   /// The set of test cases associated with this test, if any.
   ///
@@ -103,11 +103,9 @@ public struct Test: Sendable {
   /// combination of parameterized inputs. For non-parameterized tests, a single
   /// test case is synthesized. For test suite types (as opposed to test
   /// functions), the value of this property is `nil`.
-  ///
-  /// The value of this property is guaranteed to be `Sendable`.
   @_spi(ExperimentalParameterizedTesting)
-  public var testCases: (any Sequence<Test.Case>)? {
-    _testCases as? any Sequence<Test.Case>
+  public var testCases: (some Sequence<Test.Case> & Sendable)? {
+    _testCases
   }
 
   /// Whether or not this test is parameterized.
@@ -139,15 +137,31 @@ public struct Test: Sendable {
     containingType != nil && testCases == nil
   }
 
+  /// Initialize an instance of this type representing a test suite type.
   init(
+    name: String,
+    displayName: String? = nil,
+    traits: [any Trait],
+    sourceLocation: SourceLocation,
+    containingType: Any.Type
+  ) {
+    self.name = name
+    self.displayName = displayName
+    self.traits = traits
+    self.sourceLocation = sourceLocation
+    self.containingType = containingType
+  }
+
+  /// Initialize an instance of this type representing a test function.
+  init<S>(
     name: String,
     displayName: String? = nil,
     traits: [any Trait],
     sourceLocation: SourceLocation,
     containingType: Any.Type? = nil,
     xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
-    testCases: (any TestCases)? = nil,
-    parameters: [ParameterInfo]? = nil
+    testCases: Test.Case.Generator<S>,
+    parameters: [ParameterInfo]
   ) {
     self.name = name
     self.displayName = displayName
@@ -155,7 +169,7 @@ public struct Test: Sendable {
     self.sourceLocation = sourceLocation
     self.containingType = containingType
     self.xcTestCompatibleSelector = xcTestCompatibleSelector
-    self._testCases = testCases
+    self._testCases = Test.Cases(testCases)
     self.parameters = parameters
   }
 }

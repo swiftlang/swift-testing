@@ -96,12 +96,3 @@ extension Test {
     public var secondName: String?
   }
 }
-
-/// A type-erased protocol describing a sequence of ``Test/Case`` instances.
-///
-/// This protocol is necessary because it is not currently possible to express
-/// `Sequence<Test.Case> & Sendable` as an existential (`any`)
-/// ([96960993](rdar://96960993)). It is also not possible to have a value of
-/// an underlying generic sequence type without specifying its generic
-/// parameters.
-protocol TestCases: Sequence<Test.Case> & Sendable {}
