@@ -265,6 +265,53 @@ extension Test.Case.Generator: Sequence {
   }
 }
 
-// MARK: - TestCases
+// MARK: - Type-erasing to Sequence<Test.Case>
 
-extension Test.Case.Generator: TestCases {}
+/// A type-erased protocol describing a sequence of ``Test/Case`` instances.
+///
+/// This protocol is necessary because it is not currently possible to express
+/// `Sequence<Test.Case> & Sendable` as an existential (`any`)
+/// ([96960993](rdar://96960993)). It is also not possible to have a value of
+/// an underlying generic sequence type without specifying its generic
+/// parameters.
+private protocol _TestCases: Sequence<Test.Case> & Sendable {}
+
+extension Test.Case.Generator: _TestCases {}
+
+extension Test {
+  /// A type-erasing wrapper for a `_TestCases`-conforming type.
+  ///
+  /// See the documentation for the `_TestCases` protocol explaining why this
+  /// type erasure is necessary.
+  struct Cases: Sequence, Sendable {
+    /// The type-erased sequence of test cases this instance wraps.
+    private var _sequence: any _TestCases
+
+    init<S>(_ testCases: Test.Case.Generator<S>) {
+      _sequence = testCases
+    }
+
+    /// A type-erasing wrapper for an iterator of a `_TestCases`-conforming
+    /// type.
+    struct Iterator: IteratorProtocol {
+      /// The type-erased test case iterator this instance wraps.
+      private var _iterator: any IteratorProtocol<Test.Case>
+
+      fileprivate init(iterator: any IteratorProtocol<Test.Case>) {
+        _iterator = iterator
+      }
+
+      mutating func next() -> Test.Case? {
+        _iterator.next()
+      }
+    }
+
+    func makeIterator() -> Iterator {
+      Iterator(iterator: _sequence.makeIterator())
+    }
+
+    var underestimatedCount: Int {
+      _sequence.underestimatedCount
+    }
+  }
+}
