@@ -18,7 +18,9 @@ import Foundation
 import FoundationXML
 #endif
 
+#if FIXED_118452948
 @Suite("EventRecorder Tests")
+#endif
 struct EventRecorderTests {
   final class Stream: TextOutputStream, Sendable {
     let buffer = Locked<String>(wrappedValue: "")
