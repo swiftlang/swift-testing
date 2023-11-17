@@ -95,7 +95,13 @@ public struct Test: Sendable {
   public var xcTestCompatibleSelector: __XCTestCompatibleSelector?
 
   /// Storage for the ``testCases`` property.
-  private var _testCases: Test.Cases?
+  ///
+  /// This use of `UncheckedSendable` and of `AnySequence` is necessary because
+  /// it is not currently possible to express `Sequence<Test.Case> & Sendable`
+  /// as an existential (`any`) ([96960993](rdar://96960993)). It is also not
+  /// possible to have a value of an underlying generic sequence type without
+  /// specifying its generic parameters.
+  private var _testCases: UncheckedSendable<AnySequence<Test.Case>>?
 
   /// The set of test cases associated with this test, if any.
   ///
@@ -105,7 +111,7 @@ public struct Test: Sendable {
   /// functions), the value of this property is `nil`.
   @_spi(ExperimentalParameterizedTesting)
   public var testCases: (some Sequence<Test.Case> & Sendable)? {
-    _testCases
+    _testCases?.rawValue
   }
 
   /// Whether or not this test is parameterized.
@@ -169,7 +175,7 @@ public struct Test: Sendable {
     self.sourceLocation = sourceLocation
     self.containingType = containingType
     self.xcTestCompatibleSelector = xcTestCompatibleSelector
-    self._testCases = Test.Cases(testCases)
+    self._testCases = .init(rawValue: .init(testCases))
     self.parameters = parameters
   }
 }
