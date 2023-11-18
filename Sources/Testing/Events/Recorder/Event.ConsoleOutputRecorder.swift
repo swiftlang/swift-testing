@@ -186,6 +186,9 @@ extension Event.ConsoleOutputRecorder {
     /// some condition.
     case warning
 
+    /// The symbol to use when presenting details about an event to the user.
+    case details
+
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
     /// The SF Symbols character corresponding to this instance.
     private var _sfSymbolCharacter: Character {
@@ -213,6 +216,9 @@ extension Event.ConsoleOutputRecorder {
       case .warning:
         // SF Symbol: exclamationmark.triangle.fill
         return "\u{1001FF}"
+      case .details:
+        // SF Symbol: arrow.turn.down.right
+        return "\u{100135}"
       }
     }
 #endif
@@ -244,6 +250,9 @@ extension Event.ConsoleOutputRecorder {
       case .warning:
         // Unicode: WARNING SIGN + VARIATION SELECTOR-15 (disable emoji)
         return "\u{26A0}\u{FE0E}"
+      case .details:
+        // Unicode: DOWNWARDS ARROW WITH TIP RIGHTWARDS
+        return "\u{21B3}"
       }
 #elseif os(Windows)
       // The default Windows console font (Consolas) has limited Unicode
@@ -272,6 +281,9 @@ extension Event.ConsoleOutputRecorder {
       case .warning:
         // Unicode: EXCLAMATION MARK
         return "\u{0021}"
+      case .details:
+        // Unicode: GREATER-THAN SIGN
+        return "\u{003E}"
       }
 #else
 #warning("Platform-specific implementation missing: Unicode characters unavailable")
@@ -310,6 +322,8 @@ extension Event.ConsoleOutputRecorder {
           return "\(_ansiEscapeCodePrefix)91m\(symbolCharacter)\(_resetANSIEscapeCode)"
         case .warning:
           return "\(_ansiEscapeCodePrefix)93m\(symbolCharacter)\(_resetANSIEscapeCode)"
+        case .details:
+          return symbolCharacter
         }
       }
       return "\(symbolCharacter)"
@@ -331,21 +345,13 @@ extension Event.ConsoleOutputRecorder {
 
     // Insert an arrow character at the start of each comment, then indent any
     // additional lines in the comment to align them with the arrow.
-    var arrowCharacter = "\u{21B3}" // DOWNWARDS ARROW WITH TIP RIGHTWARDS
-#if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
-    if options.contains(.useSFSymbols) {
-      arrowCharacter = "\u{100135}" // arrow.turn.down.right
-      if options.contains(.useANSIEscapeCodes) {
-        arrowCharacter += " "
-      }
-    }
-#endif
+    let arrowSymbol = Symbol.details.stringValue(options: options)
     let comments = comments.lazy
       .flatMap { comment in
         let lines = comment.rawValue.split(whereSeparator: \.isNewline)
         if let firstLine = lines.first {
           let remainingLines = lines.dropFirst()
-          return CollectionOfOne("\(arrowCharacter) \(firstLine)") + remainingLines.map { "  \($0)" }
+          return CollectionOfOne("\(arrowSymbol) \(firstLine)") + remainingLines.map { "  \($0)" }
         }
         return []
       }.joined(separator: "\n")
