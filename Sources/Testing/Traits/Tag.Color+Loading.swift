@@ -14,7 +14,7 @@ private import TestingInternals
 private import Foundation
 #endif
 
-#if !SWT_NO_TAG_COLORS
+#if !SWT_NO_FILE_IO
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst)) || os(Linux)
 /// The path to the current user's home directory, if known.
 private var _homeDirectoryPath: String? {
@@ -69,7 +69,6 @@ var swiftTestingDirectoryPath: String {
 #endif
   return ""
 }
-#endif
 
 /// Read tag colors out of the file `"tag-colors.json"` in a given directory.
 ///
@@ -88,7 +87,6 @@ var swiftTestingDirectoryPath: String {
 /// string values and the values represent tag colors. For a list of the
 /// supported formats for tag colors in this dictionary, see <doc:AddingTags>.
 func loadTagColors(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String = swiftTestingDirectoryPath) throws -> [Tag: Tag.Color] {
-#if !SWT_NO_TAG_COLORS && canImport(Foundation)
   // Find the path to the tag-colors.json file and try to load its contents.
   let tagColorsURL = URL(fileURLWithPath: swiftTestingDirectoryPath, isDirectory: true)
     .appendingPathComponent("tag-colors.json", isDirectory: false)
@@ -103,7 +101,5 @@ func loadTagColors(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String =
   // as an actual tag color, so we have a step here that filters it.
   return try JSONDecoder().decode([Tag: Tag.Color?].self, from: tagColorsData)
     .compactMapValues { $0 }
-#else
-  []
-#endif
 }
+#endif

@@ -71,9 +71,9 @@ extension SuspendingClock.Instant {
   }
 }
 
-#if !SWT_NO_UTC_CLOCK
 @_spi(ExperimentalEventHandling)
 extension Test.Clock.Instant {
+#if !SWT_NO_UTC_CLOCK
   /// The duration since 1970 represented by this instance as a tuple of seconds
   /// and attoseconds.
   ///
@@ -93,6 +93,7 @@ extension Test.Clock.Instant {
   public var durationSince1970: Duration {
     Duration(wall)
   }
+#endif
 
   /// Get the number of nanoseconds from this instance to another.
   ///
@@ -110,7 +111,6 @@ extension Test.Clock.Instant {
     return otherNanoseconds - selfNanoseconds
   }
 }
-#endif
 
 // MARK: - Sleeping
 
