@@ -137,6 +137,7 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
     configuration.isParallelizationEnabled = true
   }
 
+#if !SWT_NO_FILE_IO
   // XML output
   if let xunitOutputIndex = args.firstIndex(of: "--xunit-output"), xunitOutputIndex < args.endIndex {
     let xunitOutputPath = args[args.index(after: xunitOutputIndex)]
@@ -167,6 +168,7 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
       oldEventHandler(event, context)
     }
   }
+#endif
 
   // Filtering
   // NOTE: Regex is not marked Sendable, but because the regexes we use are
@@ -232,6 +234,7 @@ extension [Event.ConsoleOutputRecorder.Option] {
   static var forStandardError: Self {
     var result = Self()
 
+#if !SWT_NO_FILE_IO
     let useANSIEscapeCodes = _standardErrorSupportsANSIEscapeCodes
     if useANSIEscapeCodes {
       result.append(.useANSIEscapeCodes)
@@ -263,10 +266,12 @@ extension [Event.ConsoleOutputRecorder.Option] {
     if let tagColors = try? loadTagColors() {
       result.append(.useTagColors(tagColors))
     }
+#endif
 
     return result
   }
 
+#if !SWT_NO_FILE_IO
   /// Whether or not the current process's standard error stream is capable of
   /// accepting and rendering ANSI escape codes.
   private static var _standardErrorSupportsANSIEscapeCodes: Bool {
@@ -325,4 +330,5 @@ extension [Event.ConsoleOutputRecorder.Option] {
     true
 #endif
   }
+#endif
 }

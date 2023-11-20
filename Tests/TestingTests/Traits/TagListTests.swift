@@ -95,7 +95,7 @@ struct TagListTests {
     #expect(tagSourceCode.contains { String(describing: $0) == "Tag.functionCall(\"abc\")" })
   }
 
-#if !SWT_NO_TAG_COLORS && canImport(Foundation)
+#if !SWT_NO_FILE_IO
   @Test(
     "Colors are read from disk",
     .tags("alpha", "beta", "gamma", "delta", .namedConstant)
