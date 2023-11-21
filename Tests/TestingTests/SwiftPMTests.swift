@@ -9,7 +9,9 @@
 //
 
 @testable @_spi(ExperimentalTestRunning) @_spi(ExperimentalEventHandling) import Testing
+#if canImport(Foundation)
 import Foundation
+#endif
 
 @Suite("Swift Package Manager Integration Tests")
 struct SwiftPMTests {
@@ -91,6 +93,7 @@ struct SwiftPMTests {
     #expect(!testFilter(test3))
   }
 
+#if !SWT_NO_FILE_IO
   @Test("--xunit-output argument (bad path)")
   func xunitOutputWithBadPath() {
     // Test that a bad path produces an error.
@@ -115,6 +118,7 @@ struct SwiftPMTests {
     }
     #expect(try temporaryFileURL.checkResourceIsReachable())
   }
+#endif
 
   @Test("list subcommand")
   func list() async throws {

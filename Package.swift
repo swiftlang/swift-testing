@@ -43,10 +43,7 @@ let package = Package(
         "TestingInternals",
         "TestingMacros",
       ],
-      swiftSettings: .packageSettings + [
-        .enableExperimentalFeature("AccessLevelOnImport"),
-        .enableUpcomingFeature("InternalImportsByDefault"),
-      ],
+      swiftSettings: .packageSettings,
       plugins: ["GitStatusPlugin"]
     ),
     .testTarget(
@@ -133,6 +130,8 @@ extension Array where Element == PackageDescription.SwiftSetting {
       ]),
       .enableExperimentalFeature("StrictConcurrency"),
       .enableUpcomingFeature("ExistentialAny"),
+      .enableExperimentalFeature("AccessLevelOnImport"),
+      .enableUpcomingFeature("InternalImportsByDefault"),
       .define("SWT_TARGET_OS_APPLE", .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])),
     ]
   }

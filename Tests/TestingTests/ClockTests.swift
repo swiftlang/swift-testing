@@ -8,9 +8,11 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Foundation)
 import Foundation
+#endif
 @testable @_spi(ExperimentalEventHandling) import Testing
-import TestingInternals
+private import TestingInternals
 
 @Suite("Clock API Tests")
 struct ClockTests {
@@ -121,6 +123,7 @@ struct ClockTests {
     #expect(duration == .nanoseconds(offsetNanoseconds))
   }
 
+#if canImport(Foundation)
   @available(_clockAPI, *)
   @Test("Codable")
   func codable() async throws {
@@ -132,6 +135,7 @@ struct ClockTests {
     #expect(instant == decoded)
     #expect(instant != now)
   }
+#endif
 
   @available(_clockAPI, *)
   @Test("Clock.Instant.nanoseconds(until:) method",
