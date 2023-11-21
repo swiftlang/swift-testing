@@ -9,12 +9,11 @@
 //
 
 @testable import Testing
-import TestingInternals
-import Foundation
+private import TestingInternals
 
 @Suite("Environment Tests")
 struct EnvironmentTests {
-  var name = "SWT_ENVIRONMENT_VARIABLE_\(UUID())"
+  var name = "SWT_ENVIRONMENT_VARIABLE_\(UInt64.random(in: 0 ... .max))"
 
   @Test("Read environment variable")
   func readEnvironmentVariable() throws {

@@ -8,11 +8,14 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Foundation)
 import Foundation
+#endif
 @testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalParameterizedTesting) @_spi(ExperimentalSnapshotting) @_spi(ExperimentalTestRunning) import Testing
-import TestingInternals
+private import TestingInternals
 
 struct EventTests {
+#if canImport(Foundation)
   @Test("Event's and Event.Kinds's Codable Conformances",
         arguments: [
           Event.Kind.expectationChecked(
@@ -63,4 +66,5 @@ struct EventTests {
 
     #expect(String(describing: decoded) == String(describing: eventSnapshot))
   }
+#endif
 }

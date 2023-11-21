@@ -12,9 +12,9 @@
 #if !os(Windows)
 import RegexBuilder
 #endif
-#if SWT_TARGET_OS_APPLE
+#if SWT_TARGET_OS_APPLE && canImport(Foundation)
 import Foundation
-#else
+#elseif canImport(FoundationXML)
 import FoundationXML
 #endif
 
@@ -210,6 +210,7 @@ struct EventRecorderTests {
   }
 #endif
 
+#if canImport(Foundation) || canImport(FoundationXML)
   @Test("JUnitXMLRecorder outputs valid XML")
   func junitXMLIsValid() async throws {
     let stream = Stream()
@@ -236,6 +237,7 @@ struct EventRecorderTests {
       throw error
     }
   }
+#endif
 }
 
 // MARK: - Fixtures

@@ -9,7 +9,7 @@
 //
 
 @testable @_spi(InternalDiagnostics) @_spi(ExperimentalTestRunning) import Testing
-import TestingInternals
+private import TestingInternals
 
 // NOTE: The tests in this file are here to exercise Plan.dump(), but they are
 // not intended to actually test that the output is in a particular format since
