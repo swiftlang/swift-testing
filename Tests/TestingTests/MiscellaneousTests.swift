@@ -309,41 +309,6 @@ struct MiscellaneousTests {
     await valueGrid.validateCells()
   }
 
-  @Test("Test.underestimatedCaseCount property")
-  func underestimatedCaseCount() async throws {
-    do {
-      let test = try #require(await testFunction(named: "parameterized(i:)", in: NonSendableTests.self))
-      #expect(test.underestimatedCaseCount == FixtureData.zeroUpTo100.count)
-    }
-    do {
-      let test = try #require(await testFunction(named: "parameterized2(i:j:)", in: NonSendableTests.self))
-      #expect(test.underestimatedCaseCount == FixtureData.zeroUpTo100.count * FixtureData.smallStringArray.count)
-    }
-    do {
-      let test = try #require(await testFunction(named: "parameterized(i:)", in: SendableTests.self))
-      #expect(test.underestimatedCaseCount == FixtureData.zeroUpTo100.count)
-    }
-#if !SWT_NO_GLOBAL_ACTORS
-    do {
-      let test = try #require(await testFunction(named: "parameterized(i:)", in: MainActorIsolatedTests.self))
-      #expect(test.underestimatedCaseCount == FixtureData.zeroUpTo100.count)
-    }
-    do {
-      let test = try #require(await testFunction(named: "parameterizedNonisolated(i:)", in: MainActorIsolatedTests.self))
-      #expect(test.underestimatedCaseCount == FixtureData.zeroUpTo100.count)
-    }
-#endif
-
-    do {
-      let thisTest = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
-      #expect(thisTest.underestimatedCaseCount == 1)
-    }
-    do {
-      let thisTest = try #require(await test(for: SendableTests.self))
-      #expect(thisTest.underestimatedCaseCount == nil)
-    }
-  }
-
   @Test("Test.parameters property")
   func parametersProperty() async throws {
     do {
@@ -429,19 +394,19 @@ struct MiscellaneousTests {
   func parameterizationRelatedProperties() async throws {
     let typeTest = Test.__type(SendableTests.self, displayName: "", traits: [], sourceLocation: .init())
     #expect(!typeTest.isParameterized)
-    #expect(typeTest.testCases == nil)
+    #expect(await typeTest.testCases == nil)
     #expect(typeTest.parameters == nil)
 
     let monomorphicTestFunction = Test {}
     #expect(!monomorphicTestFunction.isParameterized)
-    let monomorphicTestFunctionTestCases = try #require(monomorphicTestFunction.testCases)
+    let monomorphicTestFunctionTestCases = try #require(await monomorphicTestFunction.testCases)
     #expect(monomorphicTestFunctionTestCases.underestimatedCount == 1)
     let monomorphicTestFunctionParameters = try #require(monomorphicTestFunction.parameters)
     #expect(monomorphicTestFunctionParameters.isEmpty)
 
     let parameterizedTestFunction = Test(arguments: 0 ..< 100, parameters: [Test.ParameterInfo(index: 0, firstName: "i")]) { _ in }
     #expect(parameterizedTestFunction.isParameterized)
-    let parameterizedTestFunctionTestCases = try #require(parameterizedTestFunction.testCases)
+    let parameterizedTestFunctionTestCases = try #require(await parameterizedTestFunction.testCases)
     #expect(parameterizedTestFunctionTestCases.underestimatedCount == 100)
     let parameterizedTestFunctionParameters = try #require(parameterizedTestFunction.parameters)
     #expect(parameterizedTestFunctionParameters.count == 1)
@@ -453,7 +418,7 @@ struct MiscellaneousTests {
       Test.ParameterInfo(index: 1, firstName: "j", secondName: "value"),
     ]) { _, _ in }
     #expect(parameterizedTestFunction2.isParameterized)
-    let parameterizedTestFunction2TestCases = try #require(parameterizedTestFunction2.testCases)
+    let parameterizedTestFunction2TestCases = try #require(await parameterizedTestFunction2.testCases)
     #expect(parameterizedTestFunction2TestCases.underestimatedCount == 100 * 100)
     let parameterizedTestFunction2Parameters = try #require(parameterizedTestFunction2.parameters)
     #expect(parameterizedTestFunction2Parameters.count == 2)

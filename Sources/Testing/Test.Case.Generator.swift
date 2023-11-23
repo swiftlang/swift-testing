@@ -26,7 +26,7 @@ extension Test.Case {
     /// `Sequence` to allow the storage of computed sequences over collections
     /// (such as `CartesianProduct` or `Zip2Sequence`) that are safe to iterate
     /// multiple times.
-    private var _sequence: S
+    private var _sequence: @Sendable () async -> S
 
     /// A closure that maps an element from `_sequence` to a test case instance.
     ///
@@ -44,7 +44,7 @@ extension Test.Case {
     ///   - mapElement: A function that maps each element in `sequence` to a
     ///     corresponding instance of ``Test/Case``.
     private init(
-      sequence: S,
+      sequence: @escaping @Sendable () async -> S,
       mapElement: @escaping @Sendable (_ element: S.Element) -> Test.Case
     ) {
       _sequence = sequence
@@ -61,7 +61,9 @@ extension Test.Case {
     ) where S == CollectionOfOne<Void> {
       // A beautiful hack to give us the right number of cases: iterate over a
       // collection containing a single Void value.
-      self.init(sequence: CollectionOfOne(())) { _ in
+      self.init {
+        CollectionOfOne(())
+      } mapElement: { _ in
         Test.Case(arguments: [], body: testFunction)
       }
     }
@@ -83,7 +85,7 @@ extension Test.Case {
     /// be preferred.
     @_disfavoredOverload
     init(
-      arguments collection: S,
+      arguments collection: @escaping @Sendable () async -> S,
       parameters: [Test.ParameterInfo],
       testFunction: @escaping @Sendable (S.Element) async throws -> Void
     ) where S: Collection {
@@ -122,11 +124,13 @@ extension Test.Case {
     ///   - testFunction: The test function to which each generated test case
     ///     passes an argument value from `collection`.
     init<C1, C2>(
-      arguments collection1: C1, _ collection2: C2,
+      arguments collection1: @escaping @Sendable () async -> C1, _ collection2: @escaping @Sendable () async -> C2,
       parameters: [Test.ParameterInfo],
       testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
     ) where S == CartesianProduct<C1, C2> {
-      self.init(sequence: cartesianProduct(collection1, collection2)) { element in
+      self.init {
+        await cartesianProduct(collection1(), collection2())
+      } mapElement: { element in
         Test.Case(values: [element.0, element.1], parameters: parameters) {
           try await testFunction(element.0, element.1)
         }
@@ -152,7 +156,7 @@ extension Test.Case {
     ///     ([103416861](rdar://103416861))
     /// }
     private init<E1, E2>(
-      sequence: S,
+      sequence: @escaping @Sendable () async -> S,
       parameters: [Test.ParameterInfo],
       testFunction: @escaping @Sendable ((E1, E2)) async throws -> Void
     ) where S.Element == (E1, E2), E1: Sendable, E2: Sendable {
@@ -190,7 +194,7 @@ extension Test.Case {
     ///     ([103416861](rdar://103416861))
     /// }
     init<E1, E2>(
-      arguments collection: S,
+      arguments collection: @escaping @Sendable () async -> S,
       parameters: [Test.ParameterInfo],
       testFunction: @escaping @Sendable ((E1, E2)) async throws -> Void
     ) where S: Collection, S.Element == (E1, E2) {
@@ -208,7 +212,7 @@ extension Test.Case {
     ///   - testFunction: The test function to which each generated test case
     ///     passes an argument value from `zippedCollections`.
     init<C1, C2>(
-      arguments zippedCollections: Zip2Sequence<C1, C2>,
+      arguments zippedCollections: @escaping @Sendable () async -> Zip2Sequence<C1, C2>,
       parameters: [Test.ParameterInfo],
       testFunction: @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
     ) where S == Zip2Sequence<C1, C2>, C1: Collection, C2: Collection {
@@ -232,7 +236,7 @@ extension Test.Case {
     /// collections of 2-tuples because the `Element` tuple type for
     /// `Dictionary` includes labels (`(key: Key, value: Value)`).
     init<Key, Value>(
-      arguments dictionary: Dictionary<Key, Value>,
+      arguments dictionary: @escaping @Sendable () async -> Dictionary<Key, Value>,
       parameters: [Test.ParameterInfo],
       testFunction: @escaping @Sendable ((Key, Value)) async throws -> Void
     ) where S == Dictionary<Key, Value> {
@@ -253,14 +257,15 @@ extension Test.Case {
   }
 }
 
-// MARK: - Sequence
+// MARK: - Sequence generation
 
-extension Test.Case.Generator: Sequence {
-  func makeIterator() -> some IteratorProtocol<Test.Case> {
-    _sequence.lazy.map(_mapElement).makeIterator()
-  }
-
-  var underestimatedCount: Int {
-    _sequence.underestimatedCount
+extension Test.Case.Generator {
+  /// Generate a sequence of test cases corresponding to the sequence of
+  /// elements passed to this instance during instantiation.
+  ///
+  /// - Returns:
+  ///   A sequence of ``Test/Case`` instances.
+  func generate() async -> some Sequence<Test.Case> {
+    await _sequence().lazy.map(_mapElement)
   }
 }
