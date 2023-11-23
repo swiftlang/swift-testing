@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-import SwiftSyntax
+public import SwiftSyntax
 import SwiftSyntaxMacros
 
 /// A type describing the expansion of the `@Suite` attribute macro.

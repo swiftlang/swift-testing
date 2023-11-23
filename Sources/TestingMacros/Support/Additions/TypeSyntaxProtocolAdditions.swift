@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-import SwiftSyntax
+public import SwiftSyntax
 
 extension TypeSyntaxProtocol {
   /// Whether or not this type is an optional type (`T?`, `Optional<T>`, etc.)

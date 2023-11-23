@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-import SwiftSyntax
+public import SwiftSyntax
 import SwiftSyntaxMacros
 
 /// A structure describing a single platform/version pair from an `@available()`

@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-import SwiftSyntax
+public import SwiftSyntax
 
 extension VersionTupleSyntax {
   /// A type describing the major, minor, and patch components of a version
