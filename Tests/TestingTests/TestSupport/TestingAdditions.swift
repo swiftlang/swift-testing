@@ -195,7 +195,17 @@ extension Test {
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-    let caseGenerator = Case.Generator(arguments: { collection1 }, { collection2 }, parameters: parameters, testFunction: testFunction)
+    let caseGenerator = Case.Generator(
+      arguments: {
+        collection1.lazy.flatMap { e1 in
+          collection2.lazy.map { e2 in
+            (e1, e2)
+          }
+        }
+      },
+      parameters: parameters,
+      testFunction: testFunction
+    )
     self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingType: nil, testCases: caseGenerator, parameters: parameters)
   }
 

@@ -357,6 +357,12 @@ extension Test {
 extension Test {
   /// Create an instance of ``Test`` for a parameterized function.
   ///
+  /// A [Cartesian product](https://en.wikipedia.org/wiki/Cartesian_product) of
+  /// two sets is the ordered set containing each pair of elements in those two
+  /// sets. For example, if the inputs are `[1, 2, 3]` and `["a", "b", "c"]`,
+  /// the Cartesian product is the set
+  /// `[(1, "a"), (1, "b"), (1, "c"), (2, "a"), (2, "b"), ... (3, "c")]`.
+  ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
   public static func __function<C1, C2>(
@@ -371,7 +377,19 @@ extension Test {
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let parameters = paramTuples.parameters
-    let caseGenerator = Case.Generator(arguments: collection1, collection2, parameters: parameters, testFunction: testFunction)
+    let caseGenerator = Case.Generator(
+      arguments: {
+        let collection1 = await collection1()
+        let collection2 = await collection2()
+        return collection1.lazy.flatMap { e1 in
+          collection2.lazy.map { e2 in
+            (e1, e2)
+          }
+        }
+      },
+      parameters: parameters,
+      testFunction: testFunction
+    )
     return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 

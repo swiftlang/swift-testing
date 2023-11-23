@@ -24,8 +24,7 @@ extension Test.Case {
     /// The sequence _must_ be iterable multiple times. Hence, initializers
     /// accept only _collections_, not sequences. The constraint here is only to
     /// `Sequence` to allow the storage of computed sequences over collections
-    /// (such as `CartesianProduct` or `Zip2Sequence`) that are safe to iterate
-    /// multiple times.
+    /// (such as `Zip2Sequence`) that are safe to iterate multiple times.
     private var _sequence: @Sendable () async -> S
 
     /// A closure that maps an element from `_sequence` to a test case instance.
@@ -107,32 +106,6 @@ extension Test.Case {
           Test.Case(values: [element], parameters: parameters) {
             try await testFunction(element)
           }
-        }
-      }
-    }
-
-    /// Initialize an instance of this type that iterates over the specified
-    /// collections of argument values.
-    ///
-    /// - Parameters:
-    ///   - collection1: The first collection of argument values for which test
-    ///     cases should be generated.
-    ///   - collection2: The second collection of argument values for which test
-    ///     cases should be generated.
-    ///   - parameters: The parameters of the test function for which test cases
-    ///     should be generated.
-    ///   - testFunction: The test function to which each generated test case
-    ///     passes an argument value from `collection`.
-    init<C1, C2>(
-      arguments collection1: @escaping @Sendable () async -> C1, _ collection2: @escaping @Sendable () async -> C2,
-      parameters: [Test.ParameterInfo],
-      testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
-    ) where S == CartesianProduct<C1, C2> {
-      self.init {
-        await cartesianProduct(collection1(), collection2())
-      } mapElement: { element in
-        Test.Case(values: [element.0, element.1], parameters: parameters) {
-          try await testFunction(element.0, element.1)
         }
       }
     }

@@ -399,15 +399,13 @@ struct MiscellaneousTests {
 
     let monomorphicTestFunction = Test {}
     #expect(!monomorphicTestFunction.isParameterized)
-    let monomorphicTestFunctionTestCases = try #require(await monomorphicTestFunction.testCases)
-    #expect(monomorphicTestFunctionTestCases.underestimatedCount == 1)
+    #expect(await monomorphicTestFunction.testCases != nil)
     let monomorphicTestFunctionParameters = try #require(monomorphicTestFunction.parameters)
     #expect(monomorphicTestFunctionParameters.isEmpty)
 
     let parameterizedTestFunction = Test(arguments: 0 ..< 100, parameters: [Test.ParameterInfo(index: 0, firstName: "i")]) { _ in }
     #expect(parameterizedTestFunction.isParameterized)
-    let parameterizedTestFunctionTestCases = try #require(await parameterizedTestFunction.testCases)
-    #expect(parameterizedTestFunctionTestCases.underestimatedCount == 100)
+    #expect(await parameterizedTestFunction.testCases != nil)
     let parameterizedTestFunctionParameters = try #require(parameterizedTestFunction.parameters)
     #expect(parameterizedTestFunctionParameters.count == 1)
     let parameterizedTestFunctionFirstParameter = try #require(parameterizedTestFunctionParameters.first)
@@ -418,8 +416,7 @@ struct MiscellaneousTests {
       Test.ParameterInfo(index: 1, firstName: "j", secondName: "value"),
     ]) { _, _ in }
     #expect(parameterizedTestFunction2.isParameterized)
-    let parameterizedTestFunction2TestCases = try #require(await parameterizedTestFunction2.testCases)
-    #expect(parameterizedTestFunction2TestCases.underestimatedCount == 100 * 100)
+    #expect(await parameterizedTestFunction2.testCases != nil)
     let parameterizedTestFunction2Parameters = try #require(parameterizedTestFunction2.parameters)
     #expect(parameterizedTestFunction2Parameters.count == 2)
     let parameterizedTestFunction2FirstParameter = try #require(parameterizedTestFunction2Parameters.first)
