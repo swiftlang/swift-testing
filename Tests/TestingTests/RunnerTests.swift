@@ -738,6 +738,7 @@ final class RunnerTests: XCTestCase {
     await fulfillment(of: [testStarted], timeout: 0.0)
   }
 
+#if SWT_TARGET_OS_APPLE
   @Suite(.hidden) struct AvailabilityOfArguments {
     @available(macOS 999.0, iOS 999.0, watchOS 999.0, tvOS 999.0, *)
     struct Arg: Sendable {
@@ -771,6 +772,7 @@ final class RunnerTests: XCTestCase {
     await runTest(for: AvailabilityOfArguments.self, configuration: configuration)
     await fulfillment(of: [suiteStarted, testStarted], timeout: 0.0)
   }
+#endif
 
 #if !SWT_NO_GLOBAL_ACTORS
   @TaskLocal static var isMainActorIsolationEnforced = false
