@@ -52,8 +52,8 @@ extension String {
   init(identifyingTestArgument argument: some Sendable, in context: Test.Case.Argument.Context) {
     self = if let argument = argument as? any CustomTestArgument {
       argument.argumentID(in: context)
-    } else if let argument = argument as? any Identifiable<String> {
-      argument.id
+    } else if let argument = argument as? any Identifiable, let id = argument.id as? String {
+      id
     } else {
       String(describing: argument)
     }
