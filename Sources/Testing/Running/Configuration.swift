@@ -116,7 +116,7 @@ public struct Configuration: Sendable {
   ///   - test: An test that needs to be filtered.
   ///   
   /// - Returns: A Boolean value representing if the test satisfied the filter.
-  public typealias TestFilter = @Sendable (Test) -> Bool
+  public typealias TestFilter = @Sendable (_ test: Test) -> Bool
 
   /// Storage for ``testFilter``.
   private var _testFilter: TestFilter = { !$0.isHidden }
@@ -163,20 +163,32 @@ public struct Configuration: Sendable {
     }
   }
 
-  /// The selected test cases to run.
-  private(set) var selectedTestCases = Test.ID.CaseSelection()
-
-  /// Set the selected test case IDs for a specified test ID.
+  /// A function that handles filtering test cases.
   ///
   /// - Parameters:
-  ///   - testCaseIDs: The test case IDs to set as selected for `testID`.
-  ///   - testID: The test ID for which to set selected test cases.
+  ///   - testCase: The test case to be filtered.
+  ///   - test: The test which `testCase` is associated with.
   ///
-  /// If `testCaseIDs` is `nil`, there is no selection and all test cases in the
-  /// test identified by `testID` should run. If `testCaseIDs` is an empty
-  /// array, none of the test cases for `testID` should run.
+  /// - Returns: A Boolean value representing if the test case satisfied the
+  ///   filter.
   @_spi(ExperimentalParameterizedTesting)
-  public mutating func setSelectedTestCaseIDs(_ testCaseIDs: (some Collection<Test.Case.ID>)?, for testID: Test.ID) {
-    selectedTestCases[testID] = testCaseIDs.map { Test.Case.ID.Selection(testCaseIDs: $0) }
-  }
+  public typealias TestCaseFilter = @Sendable (_ testCase: Test.Case, _ test: Test) -> Bool
+
+  /// The filter which should be applied to a specified test's associated test
+  /// cases when they are run, if any.
+  ///
+  /// This property allows optionally filtering the test cases of a
+  /// parameterized test function. The value of this property is invoked once
+  /// for each test function which is run, and if the result is non-`nil`, the
+  /// resulting test case filter function is then invoked once for each of the
+  /// test's associated test cases to determine if they should run. If the
+  /// result of invoking this property is `nil`, then all of the test cases of
+  /// the test will be run (i.e. no filter will be applied).
+  ///
+  /// ## See Also
+  ///
+  /// - ``testFilter-swift.property``
+  /// - ``setTestFilter(toMatch:)``
+  @_spi(ExperimentalParameterizedTesting)
+  public var testCaseFilter: @Sendable (_ test: Test) -> TestCaseFilter? = { _ in nil }
 }

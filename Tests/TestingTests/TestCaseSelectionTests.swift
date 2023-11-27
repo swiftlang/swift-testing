@@ -14,13 +14,16 @@
 struct TestCaseSelectionTests {
   @Test("Multiple arguments passed to one parameter, selecting one case")
   func oneParameterSelectingOneCase() async {
-    let test = Test(arguments: ["a", "b"], parameters: [Test.ParameterInfo(index: 0, firstName: "value")]) { value in
+    let fixtureTest = Test(arguments: ["a", "b"], parameters: [Test.ParameterInfo(index: 0, firstName: "value")]) { value in
       #expect(value == "a")
     }
 
     var configuration = Configuration()
-    if let selectedTestID = test.id.parent {
-      configuration.setSelectedTestCaseIDs([Test.Case.ID(argumentIDs: ["a"])], for: selectedTestID)
+    configuration.testCaseFilter = { test in
+      guard test == fixtureTest else { return nil }
+      return { testCase, _ in
+        testCase.id == Test.Case.ID(argumentIDs: ["a"])
+      }
     }
 
     await confirmation { testStarted in
@@ -33,22 +36,25 @@ struct TestCaseSelectionTests {
         }
       }
 
-      await test.run(configuration: configuration)
+      await fixtureTest.run(configuration: configuration)
     }
   }
 
   @Test("Multiple arguments passed to one parameter, selecting a subset of cases")
   func oneParameterSelectingMultipleCases() async {
-    let test = Test(arguments: ["a", "b", "c"], parameters: [Test.ParameterInfo(index: 0, firstName: "value")]) { value in
+    let fixtureTest = Test(arguments: ["a", "b", "c"], parameters: [Test.ParameterInfo(index: 0, firstName: "value")]) { value in
       #expect(value != "b")
     }
 
     var configuration = Configuration()
-    if let selectedTestID = test.id.parent {
-      configuration.setSelectedTestCaseIDs([
-        Test.Case.ID(argumentIDs: ["a"]),
-        Test.Case.ID(argumentIDs: ["c"]),
-      ], for: selectedTestID)
+    configuration.testCaseFilter = { test in
+      guard test == fixtureTest else { return nil }
+      return { testCase, _ in
+        Set<Test.Case.ID>([
+          Test.Case.ID(argumentIDs: ["a"]),
+          Test.Case.ID(argumentIDs: ["c"]),
+        ]).contains(testCase.id)
+      }
     }
 
     await confirmation(expectedCount: 2) { testStarted in
@@ -61,14 +67,14 @@ struct TestCaseSelectionTests {
         }
       }
 
-      let runner = await Runner(testing: [test], configuration: configuration)
+      let runner = await Runner(testing: [fixtureTest], configuration: configuration)
       await runner.run()
     }
   }
 
   @Test("Two collections, each with multiple arguments, passed to two parameters, selecting one case")
   func twoParametersSelectingOneCase() async {
-    let test = Test(
+    let fixtureTest = Test(
       arguments: ["a", "b"], [1, 2],
       parameters: [
         Test.ParameterInfo(index: 0, firstName: "stringValue"),
@@ -79,8 +85,11 @@ struct TestCaseSelectionTests {
     }
 
     var configuration = Configuration()
-    if let selectedTestID = test.id.parent {
-      configuration.setSelectedTestCaseIDs([Test.Case.ID(argumentIDs: ["b", "2"])], for: selectedTestID)
+    configuration.testCaseFilter = { test in
+      guard test == fixtureTest else { return nil }
+      return { testCase, _ in
+        testCase.id == Test.Case.ID(argumentIDs: ["b", "2"])
+      }
     }
 
     await confirmation { testStarted in
@@ -93,13 +102,13 @@ struct TestCaseSelectionTests {
         }
       }
 
-      await test.run(configuration: configuration)
+      await fixtureTest.run(configuration: configuration)
     }
   }
 
   @Test("Multiple arguments conforming to CustomTestArgument, passed to one parameter, selecting one case")
   func oneParameterAcceptingCustomTestArgumentSelectingOneCase() async {
-    let test = Test(arguments: [
+    let fixtureTest = Test(arguments: [
       MyCustomTestArgument(id: "a"),
       MyCustomTestArgument(id: "b"),
     ], parameters: [Test.ParameterInfo(index: 0, firstName: "value")]) { arg in
@@ -107,8 +116,11 @@ struct TestCaseSelectionTests {
     }
 
     var configuration = Configuration()
-    if let selectedTestID = test.id.parent {
-      configuration.setSelectedTestCaseIDs([Test.Case.ID(argumentIDs: ["a"])], for: selectedTestID)
+    configuration.testCaseFilter = { test in
+      guard test == fixtureTest else { return nil }
+      return { testCase, _ in
+        testCase.id == Test.Case.ID(argumentIDs: ["a"])
+      }
     }
 
     await confirmation { testStarted in
@@ -121,13 +133,13 @@ struct TestCaseSelectionTests {
         }
       }
 
-      await test.run(configuration: configuration)
+      await fixtureTest.run(configuration: configuration)
     }
   }
 
   @Test("Multiple arguments conforming to Identifiable, passed to one parameter, selecting one case")
   func oneParameterAcceptingIdentifiableArgumentSelectingOneCase() async {
-    let test = Test(arguments: [
+    let fixtureTest = Test(arguments: [
       MyCustomIdentifiableArgument(id: "a"),
       MyCustomIdentifiableArgument(id: "b"),
     ], parameters: [Test.ParameterInfo(index: 0, firstName: "value")]) { arg in
@@ -135,8 +147,11 @@ struct TestCaseSelectionTests {
     }
 
     var configuration = Configuration()
-    if let selectedTestID = test.id.parent {
-      configuration.setSelectedTestCaseIDs([Test.Case.ID(argumentIDs: ["a"])], for: selectedTestID)
+    configuration.testCaseFilter = { test in
+      guard test == fixtureTest else { return nil }
+      return { testCase, _ in
+        testCase.id == Test.Case.ID(argumentIDs: ["a"])
+      }
     }
 
     await confirmation { testStarted in
@@ -149,7 +164,7 @@ struct TestCaseSelectionTests {
         }
       }
 
-      await test.run(configuration: configuration)
+      await fixtureTest.run(configuration: configuration)
     }
   }
 }

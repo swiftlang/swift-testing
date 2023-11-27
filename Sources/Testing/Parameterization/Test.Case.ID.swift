@@ -42,3 +42,15 @@ extension Test.Case.ID: CustomStringConvertible {
 // MARK: - Codable
 
 extension Test.Case.ID: Codable {}
+
+// MARK: - Equatable, Hashable
+
+extension Test.Case: Equatable, Hashable {
+  public static func ==(lhs: Self, rhs: Self) -> Bool {
+    lhs.id == rhs.id
+  }
+
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(id)
+  }
+}
