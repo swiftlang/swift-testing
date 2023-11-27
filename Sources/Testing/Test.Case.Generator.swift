@@ -19,13 +19,17 @@ extension Test.Case {
   ///     ([103416861](rdar://103416861))
   /// }
   struct Generator<S>: Sendable where S: Sequence & Sendable, S.Element: Sendable {
-    /// The underlying sequence of argument values.
+    /// A closure that produces the underlying sequence of argument values.
     ///
-    /// The sequence _must_ be iterable multiple times. Hence, initializers
-    /// accept only _collections_, not sequences. The constraint here is only to
-    /// `Sequence` to allow the storage of computed sequences over collections
-    /// (such as `CartesianProduct` or `Zip2Sequence`) that are safe to iterate
-    /// multiple times.
+    /// The resulting sequence _must_ be iterable multiple times. Hence,
+    /// initializers accept only _collections_, not sequences. The constraint
+    /// here is only to `Sequence` to allow the storage of computed sequences
+    /// over collections (such as `CartesianProduct` or `Zip2Sequence`) that are
+    /// safe to iterate multiple times.
+    ///
+    /// This property is a closure rather than an instance of `S` so that it can
+    /// be lazily evaluated rather than requiring evaluation as soon as the
+    /// owning instance of ``Test`` is initialized.
     private var _sequence: @Sendable () async -> S
 
     /// A closure that maps an element from `_sequence` to a test case instance.
@@ -39,10 +43,10 @@ extension Test.Case {
     /// Initialize an instance of this type.
     ///
     /// - Parameters:
-    ///   - sequence: The sequence of argument values for which test cases
-    ///     should be generated.
-    ///   - mapElement: A function that maps each element in `sequence` to a
-    ///     corresponding instance of ``Test/Case``.
+    ///   - sequence: A closure that produces the sequence of argument values
+    ///     for which test cases should be generated.
+    ///   - mapElement: A function that maps each element in the result of
+    ///     `sequence` to a corresponding instance of ``Test/Case``.
     private init(
       sequence: @escaping @Sendable () async -> S,
       mapElement: @escaping @Sendable (_ element: S.Element) -> Test.Case
@@ -265,6 +269,8 @@ extension Test.Case.Generator {
   ///
   /// - Returns:
   ///   A sequence of ``Test/Case`` instances.
+  ///
+  /// Each call to this function generates a new sequence.
   func generate() async -> some Sequence<Test.Case> {
     await _sequence().lazy.map(_mapElement)
   }
