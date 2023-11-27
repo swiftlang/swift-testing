@@ -738,6 +738,42 @@ final class RunnerTests: XCTestCase {
     await fulfillment(of: [testStarted], timeout: 0.0)
   }
 
+#if SWT_TARGET_OS_APPLE
+  @Suite(.hidden) struct AvailabilityOfArguments {
+    @available(macOS 999.0, iOS 999.0, watchOS 999.0, tvOS 999.0, *)
+    struct Arg: Sendable {
+      init() {
+        XCTFail("Unexpectedly initialized an instance of \(Self.self)")
+      }
+    }
+
+    @available(macOS 999.0, iOS 999.0, watchOS 999.0, tvOS 999.0, *)
+    @Test(.hidden, arguments: [Arg(), Arg(), Arg()])
+    func f(arg: Arg) {}
+  }
+
+  func testAvailabilityOfArguments() async throws {
+    let suiteStarted = expectation(description: "Test suite started")
+    let testStarted = expectation(description: "Test suite started")
+    testStarted.isInverted = true
+    var configuration = Configuration()
+    configuration.eventHandler = { event, context in
+      switch event.kind {
+      case .testStarted:
+        if true == context.test?.isSuite {
+          suiteStarted.fulfill()
+        } else {
+          testStarted.fulfill()
+        }
+      default:
+        break
+      }
+    }
+    await runTest(for: AvailabilityOfArguments.self, configuration: configuration)
+    await fulfillment(of: [suiteStarted, testStarted], timeout: 0.0)
+  }
+#endif
+
 #if !SWT_NO_GLOBAL_ACTORS
   @TaskLocal static var isMainActorIsolationEnforced = false
 

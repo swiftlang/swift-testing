@@ -171,7 +171,7 @@ extension Runner {
       }
     }
 
-    if let step = stepGraph.value, case .run = step.action, let testCases = step.test.testCases {
+    if let step = stepGraph.value, case .run = step.action, let testCases = await step.test.testCases {
       try await Test.withCurrent(step.test) {
         try await _withErrorHandling(for: step, sourceLocation: step.test.sourceLocation) {
           try await _runTestCases(testCases, within: step)

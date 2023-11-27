@@ -218,7 +218,10 @@ struct AttributeInfo {
         ArrayElementSyntax(expression: traitExpr)
       }
     }))
-    arguments += otherArguments
+    // TODO: extract arguments: ... here, rather than assuming all "other" arguments are parameterized inputs
+    arguments += otherArguments.map { argument in
+      Argument(label: argument.label, expression: "{ \(argument.expression.trimmed) }")
+    }
     arguments.append(Argument(label: "sourceLocation", expression: sourceLocation))
 
     return LabeledExprListSyntax(arguments)
