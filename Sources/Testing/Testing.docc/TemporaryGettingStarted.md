@@ -17,12 +17,12 @@ Start running tests in a new or existing XCTest-based test target.
 
 ## Overview
 
-The testing library is integrated with Swift Package Manager's `swift test`
-command and can be used to write and run tests alongside, or in place of,
-tests written using XCTest.
+The testing library has experimental integration with Swift Package Manager's
+`swift test` command and can be used to write and run tests alongside, or in
+place of, tests written using XCTest. This document describes how to start using
+the testing library to write and run tests.
 
-This document describes how to start using the testing library to write and run
-tests. To learn how to contribute to the testing library itself, see
+To learn how to contribute to the testing library itself, see
 [Contributing to `swift-testing`](https://github.com/apple/swift-testing/blob/main/CONTRIBUTING.md).
 
 ### Downloading a development toolchain
