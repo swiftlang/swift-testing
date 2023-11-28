@@ -34,6 +34,7 @@ let package = Package(
 
   dependencies: [
     .package(url: "https://github.com/apple/swift-syntax.git", from: "509.0.0"),
+    .package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "3.0.0"),
   ],
 
   targets: [
@@ -42,6 +43,7 @@ let package = Package(
       dependencies: [
         "TestingInternals",
         "TestingMacros",
+        .product(name: "Crypto", package: "swift-crypto"),
       ],
       swiftSettings: .packageSettings,
       plugins: ["GitStatusPlugin"]
@@ -63,6 +65,7 @@ let package = Package(
         .product(name: "SwiftParser", package: "swift-syntax"),
         .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
         .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+        .product(name: "Crypto", package: "swift-crypto"),
       ],
       swiftSettings: .packageSettings + [
         // The only target which needs the ability to import this macro

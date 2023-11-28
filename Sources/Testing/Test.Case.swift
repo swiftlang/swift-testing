@@ -8,6 +8,9 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import Crypto
+private import Foundation
+
 @_spi(ExperimentalParameterizedTesting)
 extension Test {
   /// A single test case from a parameterized ``Test``.
@@ -94,5 +97,70 @@ extension Test {
 
     /// The second name of this parameter, if specified.
     public var secondName: String?
+  }
+}
+
+// MARK: - Identifiable
+
+@_spi(ExperimentalParameterizedTesting)
+public protocol CustomTestArgumentEncodable: Encodable {
+  func encode(to encoder: any Encoder, for testCase: Test.Case) throws
+}
+
+extension Test.Case.Argument {
+  private struct _CustomEncodableBox<T>: Encodable where T: CustomTestArgumentEncodable {
+    var value: T
+    var testCase: Test.Case
+
+    func encode(to encoder: any Encoder) throws {
+      try value.encode(to: encoder, for: testCase)
+    }
+  }
+
+  fileprivate func jsonData(for testCase: Test.Case) throws -> Data {
+    if let customEncodableValue = value as? any CustomTestArgumentEncodable {
+      // The developer has implemented the "escape hatch" protocol for custom
+      // encoding, so we'll use it in place of Encodable.
+      func openAndEncode(_ value: some CustomTestArgumentEncodable) throws -> Data {
+        try JSONEncoder().encode(_CustomEncodableBox(value: value, testCase: testCase))
+      }
+      return try openAndEncode(customEncodableValue)
+    }
+
+    // If either the value or its ID (if Identifiable) is encodable, we can
+    // encode that and use it to represent this argument.
+    var encodableValue: (any Encodable)?
+    encodableValue = value as? any Encodable
+    if encodableValue == nil, let identifiableValue = value as? any Identifiable {
+      encodableValue = identifiableValue.id as? any Encodable
+    }
+
+    if let encodableValue {
+      return try JSONEncoder().encode(encodableValue)
+    }
+    return try JSONEncoder().encode(Optional<String>.none) // "nil"
+  }
+}
+
+extension Test.Case: Identifiable {
+  public struct ID: Sendable, Codable, Equatable, Hashable {
+    /// The underlying opaque sequence of bytes that identify this test case's
+    /// arguments.
+    fileprivate var bytes: Data
+  }
+
+  public var id: ID {
+    if let jsonData = try? JSONEncoder().encode(arguments.map { try $0.jsonData(for: self) }) {
+      // If a data representation is particularly long, convert it to a SHA-256
+      // hash to save memory.
+      if jsonData.count > 32 {
+        return ID(bytes: Data(SHA256.hash(data: jsonData)))
+      }
+      return ID(bytes: jsonData)
+    }
+
+    // Cannot encode these arguments; this test case cannot be independently
+    // re-run, so return the marker ID.
+    return ID(bytes: Data())
   }
 }

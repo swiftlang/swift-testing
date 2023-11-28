@@ -10,6 +10,7 @@
 
 public import SwiftSyntax
 import SwiftSyntaxMacros
+private import Crypto
 
 extension FunctionDeclSyntax {
   /// Whether or not this function a `static` or `class` function.
@@ -181,8 +182,17 @@ extension MacroExpansionContext {
     // may still occur, but we only need it to be _unlikely_. CRC-32 is good
     // enough for our purposes.
     if !identifierCharacters.allSatisfy(\.isASCII) {
-      let crcValue = crc32(identifierCharacters.utf8)
-      let suffix = String(crcValue, radix: 16, uppercase: false)
+      var sha256 = Crypto.SHA256()
+      if identifierCharacters.isContiguousUTF8 {
+        identifierCharacters.utf8.withContiguousStorageIfAvailable { utf8 in
+          sha256.update(bufferPointer: .init(utf8))
+        }
+      } else {
+        Array(identifierCharacters.utf8).withUnsafeBytes {
+          sha256.update(bufferPointer: $0)
+        }
+      }
+      let suffix = String(describing: sha256.finalize())
       return makeUniqueName("\(prefix)\(identifier)_\(suffix)")
     }
 
