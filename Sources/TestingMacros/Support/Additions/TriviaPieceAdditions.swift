@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-public import SwiftSyntax
+import SwiftSyntax
 
 extension TriviaPiece {
   /// The number of newline characters represented by this trivia piece.

@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-public import SwiftSyntax
+import SwiftSyntax
 import SwiftSyntaxMacros
 
 /// Get an expression initializing an instance of ``SourceLocation`` from an

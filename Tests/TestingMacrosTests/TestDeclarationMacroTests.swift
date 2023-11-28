@@ -13,7 +13,7 @@ import Testing
 
 import SwiftDiagnostics
 import SwiftParser
-public import SwiftSyntax
+import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 

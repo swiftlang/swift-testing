@@ -9,14 +9,14 @@
 //
 
 public import SwiftSyntax
-import SwiftSyntaxMacros
+public import SwiftSyntaxMacros
 
 /// A type describing the expansion of the `@Suite` attribute macro.
 ///
 /// This type is used to implement the `@Suite` attribute macro. Do not use it
 /// directly.
-public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
-  public static func expansion(
+@usableFromInline struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
+  @usableFromInline static func expansion(
     of node: AttributeSyntax,
     providingMembersOf declaration: some DeclGroupSyntax,
     in context: some MacroExpansionContext
@@ -25,7 +25,7 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
     return _createTestContainerDecls(for: declaration, suiteAttribute: node, in: context)
   }
 
-  public static func expansion(
+  @usableFromInline static func expansion(
     of node: AttributeSyntax,
     providingPeersOf declaration: some DeclSyntaxProtocol,
     in context: some MacroExpansionContext
@@ -157,8 +157,8 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
     result.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-      @frozen public enum \(enumName): Testing.__TestContainer {
-        public static var __tests: [Testing.Test] {
+      @frozen enum \(enumName): Testing.__TestContainer {
+        static var __tests: [Testing.Test] {
           get async {[
             .__type(
               \(declaration.type.trimmed).self,

@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-public import SwiftSyntax
+import SwiftSyntax
 
 /// Get an expression initializing an instance of ``SourceCode`` from an
 /// arbitrary syntax node.

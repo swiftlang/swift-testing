@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-public import SwiftSyntax
+import SwiftSyntax
 
 extension DeclGroupSyntax {
   /// The type declared or extended by this instance.

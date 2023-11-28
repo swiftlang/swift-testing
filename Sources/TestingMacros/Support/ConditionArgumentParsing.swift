@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-public import SwiftSyntax
+import SwiftSyntax
 import SwiftSyntaxMacros
 
 /// The result of parsing the condition argument passed to `#expect()` or

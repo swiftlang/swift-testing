@@ -9,14 +9,14 @@
 //
 
 public import SwiftSyntax
-import SwiftSyntaxMacros
+public import SwiftSyntaxMacros
 
 /// A type describing the expansion of the `@Test` attribute macro.
 ///
 /// This type is used to implement the `@Test` attribute macro. Do not use it
 /// directly.
-public struct TestDeclarationMacro: PeerMacro, Sendable {
-  public static func expansion(
+@usableFromInline struct TestDeclarationMacro: PeerMacro, Sendable {
+  @usableFromInline static func expansion(
     of node: AttributeSyntax,
     providingPeersOf declaration: some DeclSyntaxProtocol,
     in context: some MacroExpansionContext
@@ -474,8 +474,8 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     result.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-      @frozen public enum \(enumName): Testing.__TestContainer {
-        public static var __tests: [Testing.Test] {
+      @frozen enum \(enumName): Testing.__TestContainer {
+        static var __tests: [Testing.Test] {
           get async {[
             .__function(
               named: \(literal: functionDecl.completeName),

@@ -14,7 +14,7 @@ import Testing
 import SwiftDiagnostics
 import SwiftOperators
 import SwiftParser
-public import SwiftSyntax
+import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 import SwiftSyntaxMacroExpansion

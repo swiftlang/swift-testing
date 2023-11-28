@@ -9,7 +9,7 @@
 //
 
 public import SwiftSyntax
-import SwiftSyntaxMacros
+public import SwiftSyntaxMacros
 
 /// A protocol containing the common implementation for the expansions of the
 /// `#expect()` and `#require()` macros.
@@ -34,7 +34,7 @@ import SwiftSyntaxMacros
 /// The `__check()` function that implements expansions of these macros must
 /// take any developer-supplied arguments _before_ the ones inserted during
 /// macro expansion (starting with the `"sourceCode"` argument.)
-private protocol _ConditionMacro: ExpressionMacro, Sendable {
+@usableFromInline protocol ConditionMacro: ExpressionMacro, Sendable {
   /// Whether or not the macro's expansion may throw an error.
   static var isThrowing: Bool { get }
 }
@@ -49,8 +49,8 @@ private let _sourceLocationLabel = TokenSyntax.identifier("sourceLocation")
 /// with `#expect()` or `#require()`.
 private let _trailingClosureLabel = TokenSyntax.identifier("performing")
 
-extension _ConditionMacro {
-  public static func expansion(
+extension ConditionMacro {
+  @usableFromInline static func expansion(
     of macro: some FreestandingMacroExpansionSyntax,
     in context: some MacroExpansionContext
   ) throws -> ExprSyntax {
@@ -188,8 +188,8 @@ extension _ConditionMacro {
 // MARK: -
 
 /// A type describing the expansion of the `#expect()` macro.
-public struct ExpectMacro: _ConditionMacro {
-  fileprivate static var isThrowing: Bool {
+@usableFromInline struct ExpectMacro: ConditionMacro {
+  @usableFromInline static var isThrowing: Bool {
     false
   }
 }
@@ -197,8 +197,8 @@ public struct ExpectMacro: _ConditionMacro {
 // MARK: -
 
 /// A type describing the expansion of the `#require()` macro.
-public struct RequireMacro: _ConditionMacro {
-  fileprivate static var isThrowing: Bool {
+@usableFromInline struct RequireMacro: ConditionMacro {
+  @usableFromInline static var isThrowing: Bool {
     true
   }
 }
