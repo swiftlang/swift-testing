@@ -9,7 +9,7 @@
 //
 
 public import SwiftSyntax
-import SwiftSyntaxMacros
+public import SwiftSyntaxMacros
 
 /// A type describing the expansion of the `@Suite` attribute macro.
 ///
@@ -157,8 +157,8 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
     result.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-      @frozen public enum \(enumName): Testing.__TestContainer {
-        public static var __tests: [Testing.Test] {
+      @frozen enum \(enumName): Testing.__TestContainer {
+        static var __tests: [Testing.Test] {
           get async {[
             .__type(
               \(declaration.type.trimmed).self,

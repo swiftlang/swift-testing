@@ -9,7 +9,7 @@
 //
 
 public import SwiftSyntax
-import SwiftSyntaxMacros
+public import SwiftSyntaxMacros
 
 /// A protocol containing the common implementation for the expansions of the
 /// `#expect()` and `#require()` macros.

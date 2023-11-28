@@ -9,7 +9,7 @@
 //
 
 public import SwiftSyntax
-import SwiftSyntaxMacros
+public import SwiftSyntaxMacros
 
 extension WithAttributesSyntax {
   /// The set of availability attributes on this instance.
