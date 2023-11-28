@@ -9,7 +9,7 @@
 //
 
 public import SwiftSyntax
-import SwiftSyntaxMacros
+public import SwiftSyntaxMacros
 
 /// The result of parsing the condition argument passed to `#expect()` or
 /// `#require()`.

@@ -9,7 +9,7 @@
 //
 
 public import SwiftSyntax
-import SwiftSyntaxMacros
+public import SwiftSyntaxMacros
 
 extension FunctionDeclSyntax {
   /// Whether or not this function a `static` or `class` function.

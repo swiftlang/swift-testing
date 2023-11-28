@@ -10,7 +10,7 @@
 
 #if canImport(SwiftCompilerPlugin)
 import SwiftCompilerPlugin
-import SwiftSyntaxMacros
+public import SwiftSyntaxMacros
 
 /// The main entry point for the compiler plugin executable that provides macros
 /// for the `swift-testing` package.
