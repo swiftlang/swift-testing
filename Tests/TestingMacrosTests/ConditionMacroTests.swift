@@ -16,7 +16,7 @@ import SwiftOperators
 import SwiftParser
 public import SwiftSyntax
 import SwiftSyntaxBuilder
-import SwiftSyntaxMacros
+public import SwiftSyntaxMacros
 
 @Suite("ConditionMacro Tests")
 struct ConditionMacroTests {

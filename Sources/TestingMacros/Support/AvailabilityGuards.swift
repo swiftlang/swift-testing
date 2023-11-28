@@ -9,7 +9,7 @@
 //
 
 public import SwiftSyntax
-import SwiftSyntaxMacros
+public import SwiftSyntaxMacros
 
 /// A structure describing a single platform/version pair from an `@available()`
 /// attribute.

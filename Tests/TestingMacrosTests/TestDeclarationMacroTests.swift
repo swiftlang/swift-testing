@@ -15,7 +15,7 @@ import SwiftDiagnostics
 import SwiftParser
 public import SwiftSyntax
 import SwiftSyntaxBuilder
-import SwiftSyntaxMacros
+public import SwiftSyntaxMacros
 
 @Suite("TestDeclarationMacro Tests")
 struct TestDeclarationMacroTests {

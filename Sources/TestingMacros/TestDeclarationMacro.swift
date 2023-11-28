@@ -9,7 +9,7 @@
 //
 
 public import SwiftSyntax
-import SwiftSyntaxMacros
+public import SwiftSyntaxMacros
 
 /// A type describing the expansion of the `@Test` attribute macro.
 ///

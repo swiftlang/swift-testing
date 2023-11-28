@@ -16,7 +16,7 @@ import SwiftOperators
 import SwiftParser
 public import SwiftSyntax
 import SwiftSyntaxBuilder
-import SwiftSyntaxMacros
+public import SwiftSyntaxMacros
 import SwiftSyntaxMacroExpansion
 
 @Suite("Unique Identifier Tests")

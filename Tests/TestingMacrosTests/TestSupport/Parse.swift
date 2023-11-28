@@ -15,7 +15,7 @@ import SwiftOperators
 import SwiftParser
 public import SwiftSyntax
 import SwiftSyntaxBuilder
-import SwiftSyntaxMacros
+public import SwiftSyntaxMacros
 import SwiftSyntaxMacroExpansion
 
 fileprivate let allMacros: [String: any Macro.Type] = [
