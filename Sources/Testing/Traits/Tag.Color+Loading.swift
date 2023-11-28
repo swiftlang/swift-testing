@@ -11,6 +11,7 @@
 @_implementationOnly import TestingInternals
 
 #if canImport(Foundation)
+// TODO: mark private when access levels on import are implemented and stable
 import Foundation
 #endif
 
