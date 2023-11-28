@@ -10,7 +10,7 @@
 
 // `internal` because `TimeValue.init(_ timespec:)` below is internal and
 // references a type (`timespec`) which comes from this import.
-internal import TestingInternals
+@_implementationOnly import TestingInternals
 
 /// A container type representing a time value that is suitable for storage,
 /// conversion, encoding, and decoding.

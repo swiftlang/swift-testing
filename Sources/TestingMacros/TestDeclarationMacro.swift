@@ -8,15 +8,15 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-public import SwiftSyntax
-public import SwiftSyntaxMacros
+import SwiftSyntax
+import SwiftSyntaxMacros
 
 /// A type describing the expansion of the `@Test` attribute macro.
 ///
 /// This type is used to implement the `@Test` attribute macro. Do not use it
 /// directly.
-@usableFromInline struct TestDeclarationMacro: PeerMacro, Sendable {
-  @usableFromInline static func expansion(
+public struct TestDeclarationMacro: PeerMacro, Sendable {
+  public static func expansion(
     of node: AttributeSyntax,
     providingPeersOf declaration: some DeclSyntaxProtocol,
     in context: some MacroExpansionContext

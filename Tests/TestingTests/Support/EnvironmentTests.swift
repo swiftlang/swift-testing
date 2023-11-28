@@ -9,7 +9,7 @@
 //
 
 @testable import Testing
-private import TestingInternals
+@_implementationOnly import TestingInternals
 
 @Suite("Environment Tests")
 struct EnvironmentTests {

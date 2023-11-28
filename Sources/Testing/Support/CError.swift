@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import TestingInternals
+@_implementationOnly import TestingInternals
 
 /// A type representing an error from a C function such as `fopen()`.
 ///

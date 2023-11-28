@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import TestingInternals
+@_implementationOnly import TestingInternals
 
 @_spi(ExperimentalEventHandling)
 extension Test {

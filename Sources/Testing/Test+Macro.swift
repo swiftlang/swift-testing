@@ -8,10 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import TestingInternals
+@_implementationOnly import TestingInternals
 
 #if _runtime(_ObjC)
-public import ObjectiveC
+import ObjectiveC
 
 /// An XCTest-compatible Objective-C selector.
 ///

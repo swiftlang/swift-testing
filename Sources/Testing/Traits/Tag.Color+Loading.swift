@@ -8,10 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import TestingInternals
+@_implementationOnly import TestingInternals
 
 #if canImport(Foundation)
-private import Foundation
+import Foundation
 #endif
 
 #if !SWT_NO_FILE_IO

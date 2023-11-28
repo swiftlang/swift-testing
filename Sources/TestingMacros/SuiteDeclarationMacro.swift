@@ -8,15 +8,15 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-public import SwiftSyntax
-public import SwiftSyntaxMacros
+import SwiftSyntax
+import SwiftSyntaxMacros
 
 /// A type describing the expansion of the `@Suite` attribute macro.
 ///
 /// This type is used to implement the `@Suite` attribute macro. Do not use it
 /// directly.
-@usableFromInline struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
-  @usableFromInline static func expansion(
+public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
+  public static func expansion(
     of node: AttributeSyntax,
     providingMembersOf declaration: some DeclGroupSyntax,
     in context: some MacroExpansionContext
@@ -25,7 +25,7 @@ public import SwiftSyntaxMacros
     return _createTestContainerDecls(for: declaration, suiteAttribute: node, in: context)
   }
 
-  @usableFromInline static func expansion(
+  public static func expansion(
     of node: AttributeSyntax,
     providingPeersOf declaration: some DeclSyntaxProtocol,
     in context: some MacroExpansionContext

@@ -9,7 +9,7 @@
 //
 
 @testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalTestRunning) @_spi(ExperimentalSnapshotting) import Testing
-private import TestingInternals
+@_implementationOnly import TestingInternals
 
 #if canImport(XCTest)
 import XCTest
