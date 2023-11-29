@@ -71,18 +71,6 @@ public func __swiftPMEntryPoint() async -> Never {
   exit(exitCode)
 }
 
-/// Call `__swiftPMEntryPoint()`.
-///
-/// This function is an old alias of `__swiftPMEntryPoint()`. It will be removed
-/// in the near future.
-///
-/// - Warning: This function is used by Swift Package Manager. Do not call it
-///   directly.
-@_spi(SwiftPackageManagerSupport)
-public func swiftPMEntryPoint() async -> Never {
-  await __swiftPMEntryPoint()
-}
-
 // MARK: -
 
 /// List all of the given tests in the "specifier" format used by Swift Package
