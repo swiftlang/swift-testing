@@ -11,7 +11,7 @@
 extension Event {
   /// A type which handles ``Event`` instances and outputs representations of
   /// them as JUnit-compatible XML.
-  public struct JUnitXMLRecorder: Sendable, ~Copyable {
+  public struct JUnitXMLRecorder: Sendable {
     /// The write function for this event recorder.
     var write: @Sendable (String) -> Void
 
@@ -65,9 +65,7 @@ extension Event {
   }
 }
 
-// MARK: -
-
-extension Event.JUnitXMLRecorder {
+extension Event.JUnitXMLRecorder: EventRecorder {
   /// Record the specified event by generating a representation of it as a
   /// human-readable string.
   ///
@@ -205,15 +203,6 @@ extension Event.JUnitXMLRecorder {
     string.lazy.map(_escapeForXML).joined()
   }
 
-  /// Record the specified event by generating a representation of it in this
-  /// instance's output format and writing it to this instance's destination.
-  ///
-  /// - Parameters:
-  ///   - event: The event to record.
-  ///   - context: The context associated with the event.
-  ///
-  /// - Returns: Whether any output was produced and written to this instance's
-  ///   destination.
   @discardableResult public func record(_ event: borrowing Event, in context: borrowing Event.Context) -> Bool {
     if let output = _record(event, in: context) {
       write(output)
