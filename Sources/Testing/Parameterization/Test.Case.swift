@@ -86,8 +86,7 @@ extension Test {
       body: @escaping @Sendable () async throws -> Void
     ) throws {
       let arguments = try zip(values, parameters).map { value, parameter in
-        let context = Argument.Context(parameter: parameter)
-        let id = try Argument.ID(identifying: value, in: context)
+        let id = try Argument.ID(identifying: value, parameter: parameter)
         return Argument(id: id, value: value, parameter: parameter)
       }
       self.init(arguments: arguments, body: body)

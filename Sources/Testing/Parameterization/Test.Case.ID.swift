@@ -53,19 +53,12 @@ extension Test.Case.ID: Codable {}
 
 // MARK: - Equatable
 
-@available(*, unavailable, message: "Test.Case is not Equatable.")
-extension Test.Case: Equatable {
-  public static func == (lhs: Test.Case, rhs: Test.Case) -> Bool {
-    // We cannot safely implement Equatable for Test.Case because its values are
-    // type-erased. It does conform to `Identifiable`, but its ID type is
-    // composed of the IDs of its arguments, and those IDs are not always
-    // available (for example, if the type of an argument is not Codable). Thus,
-    // we cannot check for equality of test cases based on this, because if two
-    // test cases had different arguments, but the type of those arguments is
-    // not Codable, they both will have a `nil` ID and would incorrectly be
-    // considered equal.
-    //
-    // `Test.Case.ID` is Equatable, however.
-    fatalError("Test.Case is not Equatable")
-  }
-}
+// We cannot safely implement Equatable for Test.Case because its values are
+// type-erased. It does conform to `Identifiable`, but its ID type is composed
+// of the IDs of its arguments, and those IDs are not always available (for
+// example, if the type of an argument is not Codable). Thus, we cannot check
+// for equality of test cases based on this, because if two test cases had
+// different arguments, but the type of those arguments is not Codable, they
+// both will have a `nil` ID and would incorrectly be considered equal.
+//
+// `Test.Case.ID` is Equatable, however.

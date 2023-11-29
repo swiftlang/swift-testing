@@ -16,11 +16,10 @@ private import Foundation
 /// encoded, which is used to match against when running specific arguments.
 @_spi(ExperimentalParameterizedTesting)
 public protocol CustomTestArgumentEncodable: Sendable {
-  /// Encode this test argument, using the provided context.
+  /// Encode this test argument.
   ///
   /// - Parameters:
-  ///   - context: Context about this argument which may be useful in encoding
-  ///     a representation of it which is unique to a specific usage of it.
+  ///   - encoder: The encoder to write data to.
   ///
   /// - Throws: Any error encountered during encoding.
   ///
@@ -44,7 +43,7 @@ public protocol CustomTestArgumentEncodable: Sendable {
   /// described above are sufficient. If the type of the argument is made to
   /// conform to ``CustomTestArgumentEncodable``, then the encoded
   /// representation formed by calling this method is used.
-  func encodeTestArgument(to encoder: any Encoder, in context: Test.Case.Argument.Context) throws
+  func encode(to encoder: any Encoder) throws
 }
 
 extension Test.Case.Argument.ID {
@@ -52,7 +51,8 @@ extension Test.Case.Argument.ID {
   ///
   /// - Parameters:
   ///   - value: The value of a test argument for which to get an ID.
-  ///   - context: The context in which the argument was passed.
+  ///   - parameter: The parameter of the test function to which this argument
+  ///     value was passed.
   ///
   /// - Returns: `nil` if an ID cannot be formed from the specified test
   ///   argument value.
@@ -64,14 +64,18 @@ extension Test.Case.Argument.ID {
   /// ## See Also
   ///
   /// - ``CustomTestArgumentEncodable``
-  init?(identifying value: some Sendable, in context: Test.Case.Argument.Context) throws {
+  init?(identifying value: some Sendable, parameter: Test.ParameterInfo) throws {
 #if canImport(Foundation)
     guard Configuration.current?.isTestArgumentEncodingEnabled ?? false else {
       return nil
     }
 
+    func _customArgumentWrapper(for value: some CustomTestArgumentEncodable) -> some Encodable {
+      _CustomArgumentWrapper(value: value)
+    }
+
     let encodableValue: (any Encodable)? = if let customEncodable = value as? any CustomTestArgumentEncodable {
-      _customArgumentWrapper(for: customEncodable, in: context)
+      _customArgumentWrapper(for: customEncodable)
     } else if let encodable = value as? any Encodable {
       encodable
     } else if let identifiable = value as? any Identifiable, let encodableID = identifiable.id as? any Encodable {
@@ -84,7 +88,7 @@ extension Test.Case.Argument.ID {
       return nil
     }
 
-    self = .init(bytes: try Self._encode(encodableValue))
+    self = .init(bytes: try Self._encode(encodableValue, parameter: parameter))
 #else
     nil
 #endif
@@ -97,15 +101,20 @@ extension Test.Case.Argument.ID {
   ///
   /// - Parameters:
   ///   - value: The value to encode.
+  ///   - parameter: The parameter of the test function to which this argument
+  ///     value was passed.
   ///
   /// - Returns: An array of bytes containing the encoded representation.
   ///
   /// - Throws: Any error encountered during encoding.
-  private static func _encode(_ value: some Encodable) throws -> [UInt8] {
+  private static func _encode(_ value: some Encodable, parameter: Test.ParameterInfo) throws -> [UInt8] {
     let encoder = JSONEncoder()
 
     // Keys must be sorted to ensure deterministic matching of encoded data.
     encoder.outputFormatting.insert(.sortedKeys)
+
+    // Set user info keys which clients may wish to use during encoding.
+    encoder.userInfo[._testParameterUserInfoKey] = parameter
 
     return .init(try encoder.encode(value))
   }
@@ -118,34 +127,28 @@ private struct _CustomArgumentWrapper<T>: Encodable where T: CustomTestArgumentE
   /// encoding logic.
   var value: T
 
-  /// The context in which the custom test argument was used.
-  var context: Test.Case.Argument.Context
-
   func encode(to encoder: any Encoder) throws {
-    try value.encodeTestArgument(to: encoder, in: context)
+    try value.encode(to: encoder)
   }
 }
 
-/// Create an encodable wrapper for a value which conforms to
-/// ``CustomTestArgumentEncodable``.
-///
-/// - Parameters:
-///   - value: The value which implements custom test argument encoding logic.
-///   - context: The context in which the custom test argument was used.
-///
-/// - Returns: An encodable wrapper for the specified value.
-private func _customArgumentWrapper(for value: some CustomTestArgumentEncodable, in context: Test.Case.Argument.Context) -> some Encodable {
-  _CustomArgumentWrapper(value: value, context: context)
+// MARK: - Additional coding user info
+
+extension CodingUserInfoKey {
+  /// A coding user info key whose value is a ``Test/ParameterInfo``.
+  fileprivate static var _testParameterUserInfoKey: Self {
+    Self(rawValue: "org.swift.testing.coding-user-info-key.parameter")!
+  }
 }
 
-// MARK: - Argument context
-
-extension Test.Case.Argument {
-  /// A type describing the context in which an argument was passed to a
-  /// parameterized test function.
-  public struct Context: Sendable {
-    /// The parameter of the test function to which this instance's associated
-    /// argument was passed.
-    public var parameter: Test.ParameterInfo
+extension Encoder {
+  /// The test parameter which the test argument being encoded was passed to, if
+  /// any.
+  ///
+  /// The value of this property is non-`nil` when this encoder is being used to
+  /// encode an argument passed to a parameterized test function.
+  @_spi(ExperimentalParameterizedTesting)
+  public var parameter: Test.ParameterInfo? {
+    userInfo[._testParameterUserInfoKey] as? Test.ParameterInfo
   }
 }
