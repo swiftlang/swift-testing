@@ -114,7 +114,7 @@ public struct Configuration: Sendable {
   ///
   /// - Parameters:
   ///   - test: An test that needs to be filtered.
-  ///   
+  ///
   /// - Returns: A Boolean value representing if the test satisfied the filter.
   public typealias TestFilter = @Sendable (_ test: Test) -> Bool
 
@@ -163,6 +163,8 @@ public struct Configuration: Sendable {
     }
   }
 
+  // MARK: - Test case selection
+
   /// A function that handles filtering test cases.
   ///
   /// - Parameters:
@@ -191,4 +193,8 @@ public struct Configuration: Sendable {
   /// - ``setTestFilter(toMatch:)``
   @_spi(ExperimentalParameterizedTesting)
   public var testCaseFilter: @Sendable (_ test: Test) -> TestCaseFilter? = { _ in nil }
+
+  /// Whether or not to enable the encoding of arguments to parameterized test
+  /// functions.
+  public var isTestArgumentEncodingEnabled = false
 }

@@ -18,16 +18,24 @@ extension Test.Case: Identifiable {
   public struct ID: Sendable, Equatable, Hashable {
     /// The IDs of the arguments of this instance's associated ``Test/Case``, in
     /// the order they appear in ``Test/Case/arguments``.
-    public var argumentIDs: [String]
+    ///
+    /// The value of this property is `nil` if _any_ of the associated test
+    /// case's arguments has a `nil` ID.
+    public var argumentIDs: [Argument.ID]?
 
     @_spi(ExperimentalTestRunning)
-    public init(argumentIDs: [String]) {
+    public init(argumentIDs: [Argument.ID]?) {
       self.argumentIDs = argumentIDs
     }
   }
 
   public var id: ID {
-    ID(argumentIDs: arguments.map(\.id))
+    let argumentIDs = arguments.compactMap(\.id)
+    guard argumentIDs.count == arguments.count else {
+      return ID(argumentIDs: nil)
+    }
+
+    return ID(argumentIDs: argumentIDs)
   }
 }
 
@@ -35,7 +43,7 @@ extension Test.Case: Identifiable {
 
 extension Test.Case.ID: CustomStringConvertible {
   public var description: String {
-    argumentIDs.joined(separator: "/")
+    "argumentIDs: \(String(describing: argumentIDs))"
   }
 }
 
@@ -43,14 +51,21 @@ extension Test.Case.ID: CustomStringConvertible {
 
 extension Test.Case.ID: Codable {}
 
-// MARK: - Equatable, Hashable
+// MARK: - Equatable
 
-extension Test.Case: Equatable, Hashable {
-  public static func ==(lhs: Self, rhs: Self) -> Bool {
-    lhs.id == rhs.id
-  }
-
-  public func hash(into hasher: inout Hasher) {
-    hasher.combine(id)
+@available(*, unavailable, message: "Test.Case is not Equatable.")
+extension Test.Case: Equatable {
+  public static func == (lhs: Test.Case, rhs: Test.Case) -> Bool {
+    // We cannot safely implement Equatable for Test.Case because its values are
+    // type-erased. It does conform to `Identifiable`, but its ID type is
+    // composed of the IDs of its arguments, and those IDs are not always
+    // available (for example, if the type of an argument is not Codable). Thus,
+    // we cannot check for equality of test cases based on this, because if two
+    // test cases had different arguments, but the type of those arguments is
+    // not Codable, they both will have a `nil` ID and would incorrectly be
+    // considered equal.
+    //
+    // `Test.Case.ID` is Equatable, however.
+    fatalError("Test.Case is not Equatable")
   }
 }

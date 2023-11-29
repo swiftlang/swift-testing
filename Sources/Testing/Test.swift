@@ -75,7 +75,7 @@ public struct Test: Sendable {
   /// (`any`) ([96960993](rdar://96960993)). It is also not possible to have a
   /// value of an underlying generic sequence type without specifying its
   /// generic parameters.
-  private var _testCases: (@Sendable () async -> AnySequence<Test.Case>)?
+  private var _testCases: (@Sendable () async throws -> AnySequence<Test.Case>)?
 
   /// The set of test cases associated with this test, if any.
   ///
@@ -84,14 +84,17 @@ public struct Test: Sendable {
   /// test case is synthesized. For test suite types (as opposed to test
   /// functions), the value of this property is `nil`.
   ///
+  /// - Throws: Any error encountered while attempting to encode the test
+  ///   arguments.
+  ///
   /// - Warning: The parameterized inputs to a test may have limited
   ///   availability if the test has the `@available` attribute applied to it.
   ///   This property does not evaluate availability, and the effect of reading
   ///   it on a platform where the inputs are unavailable is undefined.
   @_spi(ExperimentalParameterizedTesting)
   public var testCases: (some Sequence<Test.Case> & Sendable)? {
-    get async {
-      await _testCases?()
+    get async throws {
+      try await _testCases?()
     }
   }
 
@@ -156,7 +159,7 @@ public struct Test: Sendable {
     self.sourceLocation = sourceLocation
     self.containingType = containingType
     self.xcTestCompatibleSelector = xcTestCompatibleSelector
-    self._testCases = { await .init(testCases.generate()) }
+    self._testCases = { try await .init(testCases.generate()) }
     self.parameters = parameters
   }
 }

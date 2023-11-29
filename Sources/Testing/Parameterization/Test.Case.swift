@@ -19,12 +19,28 @@ extension Test {
     /// A type representing an argument passed to a parameter of a parameterized
     /// test function.
     public struct Argument: Sendable {
-      /// The unique ID of this parameterized test argument.
+      /// A type representing the stable, unique identifier of a parameterized
+      /// test argument.
+      public struct ID: Sendable {
+        /// The raw bytes of this instance's identifier.
+        public var bytes: [UInt8]
+      }
+
+      /// The ID of this parameterized test argument, if any.
       ///
       /// The uniqueness of this value is narrow: it is considered unique only
       /// within the scope of the parameter of the test function this argument
       /// was passed to.
-      public var id: String
+      ///
+      /// The value of this property is `nil` when an ID cannot be formed. This
+      /// may occur if the type of ``value`` does not conform to one of the
+      /// protocols used for encoding a stable and unique representation of the
+      /// value.
+      ///
+      /// ## See Also
+      ///
+      /// - ``CustomTestArgumentEncodable``
+      public var id: ID?
 
       /// The value of this parameterized test argument.
       public var value: any Sendable
@@ -62,14 +78,16 @@ extension Test {
     ///   - values: The values passed to the parameters for this test case.
     ///   - parameters: The parameters of the test function for this test case.
     ///   - body: The body closure of this test case.
+    ///
+    /// - Throws: Any error encountered attempting to encode test arguments.
     init(
       values: [any Sendable],
       parameters: [ParameterInfo],
       body: @escaping @Sendable () async throws -> Void
-    ) {
-      let arguments = zip(values, parameters).map { value, parameter in
+    ) throws {
+      let arguments = try zip(values, parameters).map { value, parameter in
         let context = Argument.Context(parameter: parameter)
-        let id = String(identifyingTestArgument: value, in: context)
+        let id = try Argument.ID(identifying: value, in: context)
         return Argument(id: id, value: value, parameter: parameter)
       }
       self.init(arguments: arguments, body: body)
@@ -105,3 +123,11 @@ extension Test {
     public var secondName: String?
   }
 }
+
+// MARK: - Codable
+
+extension Test.Case.Argument.ID: Codable {}
+
+// MARK: - Equatable, Hashable
+
+extension Test.Case.Argument.ID: Hashable {}

@@ -13,16 +13,18 @@
 @Suite("Test.Case Selection Tests")
 struct TestCaseSelectionTests {
   @Test("Multiple arguments passed to one parameter, selecting one case")
-  func oneParameterSelectingOneCase() async {
+  func oneParameterSelectingOneCase() async throws {
     let fixtureTest = Test(arguments: ["a", "b"], parameters: [Test.ParameterInfo(index: 0, firstName: "value")]) { value in
       #expect(value == "a")
     }
 
-    var configuration = Configuration()
+    let firstTestCase = try #require(await fixtureTest.testCasesWithArgumentEncodingEnabled?.first { _ in true })
+
+    var configuration = baseConfiguration
     configuration.testCaseFilter = { test in
       guard test == fixtureTest else { return nil }
       return { testCase, _ in
-        testCase.id == Test.Case.ID(argumentIDs: ["a"])
+        testCase.id == firstTestCase.id
       }
     }
 
@@ -41,18 +43,22 @@ struct TestCaseSelectionTests {
   }
 
   @Test("Multiple arguments passed to one parameter, selecting a subset of cases")
-  func oneParameterSelectingMultipleCases() async {
+  func oneParameterSelectingMultipleCases() async throws {
     let fixtureTest = Test(arguments: ["a", "b", "c"], parameters: [Test.ParameterInfo(index: 0, firstName: "value")]) { value in
       #expect(value != "b")
     }
 
-    var configuration = Configuration()
+    let testCases = Array(try #require(await fixtureTest.testCasesWithArgumentEncodingEnabled))
+    let firstTestCaseID = try #require(testCases.first?.id)
+    let lastTestCaseID = try #require(testCases.last?.id)
+
+    var configuration = baseConfiguration
     configuration.testCaseFilter = { test in
       guard test == fixtureTest else { return nil }
       return { testCase, _ in
         Set<Test.Case.ID>([
-          Test.Case.ID(argumentIDs: ["a"]),
-          Test.Case.ID(argumentIDs: ["c"]),
+          firstTestCaseID,
+          lastTestCaseID
         ]).contains(testCase.id)
       }
     }
@@ -73,7 +79,7 @@ struct TestCaseSelectionTests {
   }
 
   @Test("Two collections, each with multiple arguments, passed to two parameters, selecting one case")
-  func twoParametersSelectingOneCase() async {
+  func twoParametersSelectingOneCase() async throws {
     let fixtureTest = Test(
       arguments: ["a", "b"], [1, 2],
       parameters: [
@@ -84,11 +90,20 @@ struct TestCaseSelectionTests {
       #expect(stringValue == "b" && intValue == 2)
     }
 
-    var configuration = Configuration()
+    let selectedTestCase = try #require(await fixtureTest.testCasesWithArgumentEncodingEnabled?.first { testCase in
+      guard let firstArg = testCase.arguments.first?.value as? String,
+            let secondArg = testCase.arguments.last?.value as? Int
+      else {
+        return false
+      }
+      return firstArg == "b" && secondArg == 2
+    })
+
+    var configuration = baseConfiguration
     configuration.testCaseFilter = { test in
       guard test == fixtureTest else { return nil }
       return { testCase, _ in
-        testCase.id == Test.Case.ID(argumentIDs: ["b", "2"])
+        testCase.id == selectedTestCase.id
       }
     }
 
@@ -106,20 +121,22 @@ struct TestCaseSelectionTests {
     }
   }
 
-  @Test("Multiple arguments conforming to CustomTestArgument, passed to one parameter, selecting one case")
-  func oneParameterAcceptingCustomTestArgumentSelectingOneCase() async {
+  @Test("Multiple arguments conforming to CustomTestArgumentEncodable, passed to one parameter, selecting one case")
+  func oneParameterAcceptingCustomTestArgumentSelectingOneCase() async throws {
     let fixtureTest = Test(arguments: [
-      MyCustomTestArgument(id: "a"),
-      MyCustomTestArgument(id: "b"),
+      MyCustomTestArgument(x: 1, y: "a"),
+      MyCustomTestArgument(x: 2, y: "b"),
     ], parameters: [Test.ParameterInfo(index: 0, firstName: "value")]) { arg in
-      #expect(arg.id == "a")
+      #expect(arg.x == 1 && arg.y == "a")
     }
 
-    var configuration = Configuration()
+    let firstTestCase = try #require(await fixtureTest.testCasesWithArgumentEncodingEnabled?.first { _ in true })
+
+    var configuration = baseConfiguration
     configuration.testCaseFilter = { test in
       guard test == fixtureTest else { return nil }
       return { testCase, _ in
-        testCase.id == Test.Case.ID(argumentIDs: ["a"])
+        testCase.id == firstTestCase.id
       }
     }
 
@@ -138,7 +155,7 @@ struct TestCaseSelectionTests {
   }
 
   @Test("Multiple arguments conforming to Identifiable, passed to one parameter, selecting one case")
-  func oneParameterAcceptingIdentifiableArgumentSelectingOneCase() async {
+  func oneParameterAcceptingIdentifiableArgumentSelectingOneCase() async throws {
     let fixtureTest = Test(arguments: [
       MyCustomIdentifiableArgument(id: "a"),
       MyCustomIdentifiableArgument(id: "b"),
@@ -146,11 +163,13 @@ struct TestCaseSelectionTests {
       #expect(arg.id == "a")
     }
 
-    var configuration = Configuration()
+    let selectedTestCase = try #require(await fixtureTest.testCasesWithArgumentEncodingEnabled?.first { _ in true })
+
+    var configuration = baseConfiguration
     configuration.testCaseFilter = { test in
       guard test == fixtureTest else { return nil }
       return { testCase, _ in
-        testCase.id == Test.Case.ID(argumentIDs: ["a"])
+        testCase.id == selectedTestCase.id
       }
     }
 
@@ -167,19 +186,28 @@ struct TestCaseSelectionTests {
       await fixtureTest.run(configuration: configuration)
     }
   }
+
+  private var baseConfiguration: Configuration {
+    var configuration = Configuration()
+    configuration.isTestArgumentEncodingEnabled = true
+    return configuration
+  }
 }
 
-// MARK: - Fixture argument types
+// MARK: - Fixture parameter types
 
-private struct MyCustomTestArgument: CustomTestArgument, CustomStringConvertible {
-  var id: String
+private struct MyCustomTestArgument: CustomTestArgumentEncodable, Equatable {
+  var x: Int
+  var y: String
 
-  func argumentID(in _: Test.Case.Argument.Context) -> String {
-    id
+  private enum CodingKeys: CodingKey {
+    case x, y
   }
 
-  var description: String {
-    fatalError("Should not be called")
+  func encodeTestArgument(to encoder: any Encoder, in context: Test.Case.Argument.Context) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(x, forKey: .x)
+    try container.encode(y, forKey: .y)
   }
 }
 

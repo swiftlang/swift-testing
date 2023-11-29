@@ -59,7 +59,7 @@ struct EventTests {
     let testID = Test.ID(moduleName: "ModuleName",
                          nameComponents: ["NameComponent1", "NameComponent2"],
                          sourceLocation: SourceLocation())
-    let testCaseID = Test.Case.ID(argumentIDs: ["a"])
+    let testCaseID = Test.Case.ID(argumentIDs: [.init(bytes: .init("a".utf8))])
     let event = Event(kind, testID: testID, testCaseID: testCaseID, instant: .now)
     let eventSnapshot = Event.Snapshot(snapshotting: event)
     let encoded = try JSONEncoder().encode(eventSnapshot)
