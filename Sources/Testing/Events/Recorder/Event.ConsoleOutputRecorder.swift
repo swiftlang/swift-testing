@@ -14,7 +14,7 @@ extension Event {
   ///
   /// The format of the output is not meant to be machine-readable and is
   /// subject to change. For machine-readable output, use ``JUnitXMLRecorder``.
-  public struct ConsoleOutputRecorder: Sendable {
+  public struct ConsoleOutputRecorder: Sendable, ~Copyable {
     /// An enumeration describing options to use when writing events to a
     /// stream.
     public enum Option: Sendable {
@@ -471,7 +471,7 @@ extension Test.Case {
 
 // MARK: -
 
-extension Event.ConsoleOutputRecorder: EventRecorder {
+extension Event.ConsoleOutputRecorder {
   /// Generate a printable string describing the colors of a set of tags
   /// suitable for display in test output.
   ///
@@ -482,6 +482,7 @@ extension Event.ConsoleOutputRecorder: EventRecorder {
   ///   with ANSI escape codes used to colorize them. If ANSI escape codes are
   ///   not enabled or if no tag colors are set, returns the empty string.
   private func _colorDots(for tags: Set<Tag>) -> String {
+    let tagColors = tagColors
     let unsortedColors = tags.lazy
       .compactMap { tag in
         if let tagColor = tagColors[tag] {
@@ -493,6 +494,8 @@ extension Event.ConsoleOutputRecorder: EventRecorder {
         }
         return nil
       }
+
+    let options = options
     return Set(unsortedColors)
       .sorted(by: <).lazy
       .compactMap { $0.ansiEscapeCode(options: options) }
@@ -686,6 +689,15 @@ extension Event.ConsoleOutputRecorder: EventRecorder {
     return nil
   }
 
+  /// Record the specified event by generating a representation of it in this
+  /// instance's output format and writing it to this instance's destination.
+  ///
+  /// - Parameters:
+  ///   - event: The event to record.
+  ///   - context: The context associated with the event.
+  ///
+  /// - Returns: Whether any output was produced and written to this instance's
+  ///   destination.
   @discardableResult public func record(_ event: borrowing Event, in context: borrowing Event.Context) -> Bool {
     if let output = _record(event, in: context) {
       write(output)

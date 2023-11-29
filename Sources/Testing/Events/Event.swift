@@ -10,7 +10,7 @@
 
 /// An event that occurred during testing.
 @_spi(ExperimentalEventHandling)
-public struct Event: Sendable {
+public struct Event: Sendable, ~Copyable {
   /// An enumeration describing the various kinds of event that can be observed.
   public enum Kind: Sendable {
     /// A test run started.
@@ -181,7 +181,7 @@ extension Event {
   ///
   /// An instance of this type is provided along with each ``Event`` that is
   /// passed to an ``Event/Handler``.
-  public struct Context: Sendable {
+  public struct Context: Sendable, ~Copyable {
     /// The test for which this instance's associated ``Event`` occurred, if
     /// any.
     ///
@@ -268,7 +268,7 @@ extension Event {
 
     /// Snapshots an ``Event``.
     /// - Parameter event: The original ``Event`` to snapshot.
-    public init(snapshotting event: Event) {
+    public init(snapshotting event: borrowing Event) {
       kind = Event.Kind.Snapshot(snapshotting: event.kind)
       testID = event.testID
       instant = event.instant
