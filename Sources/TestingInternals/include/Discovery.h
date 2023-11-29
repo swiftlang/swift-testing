@@ -23,7 +23,7 @@ SWT_ASSUME_NONNULL_BEGIN
 ///   - typeMetadata: A type metadata pointer that can be bitcast to `Any.Type`.
 ///   - context: An arbitrary pointer passed by the caller to
 ///     `swt_enumerateTypes()`.
-typedef void (* SWTTypeEnumerator)(void *typeMetadata, void *_Null_unspecified context);
+typedef void (* SWTTypeEnumerator)(void *typeMetadata, void *_Null_unspecified context) SWT_SWIFT_NAME(TypeEnumerator);
 
 /// The type name filter that is called by `swt_enumerateTypes()`.
 ///
@@ -34,7 +34,7 @@ typedef void (* SWTTypeEnumerator)(void *typeMetadata, void *_Null_unspecified c
 ///
 /// - Returns: Whether or not the type named by `typeName` should be passed to
 ///   the corresponding enumerator function.
-typedef bool (* SWTTypeNameFilter)(const char *typeName, void *_Null_unspecified context);
+typedef bool (* SWTTypeNameFilter)(const char *typeName, void *_Null_unspecified context) SWT_SWIFT_NAME(TypeNameFilter);
 
 /// Enumerate all types known to Swift found in the current process.
 ///
@@ -53,7 +53,7 @@ SWT_EXTERN void swt_enumerateTypes(
   void *_Null_unspecified context,
   SWTTypeEnumerator body,
   SWTTypeNameFilter _Nullable nameFilter
-) SWT_SWIFT_NAME(swt_enumerateTypes(_:_:withNamesMatching:));
+) SWT_SWIFT_NAME(enumerateTypes(_:_:withNamesMatching:));
 
 SWT_ASSUME_NONNULL_END
 

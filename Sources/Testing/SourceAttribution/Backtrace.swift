@@ -148,7 +148,7 @@ extension Backtrace {
 
   /// The previous `swift_willThrow` handler, if any.
   @Locked
-  private static var _oldWillThrowHandler: SWTWillThrowHandler?
+  private static var _oldWillThrowHandler: WillThrowHandler?
 
   /// Handle a thrown error.
   ///
@@ -177,7 +177,7 @@ extension Backtrace {
   /// only once.
   private static let _startCachingForThrownErrors: Void = {
     $_oldWillThrowHandler.withLock { oldWillThrowHandler in
-      oldWillThrowHandler = swt_setWillThrowHandler { _willThrow($0) }
+      oldWillThrowHandler = setWillThrowHandler { _willThrow($0) }
     }
   }()
 

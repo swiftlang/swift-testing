@@ -21,7 +21,7 @@ SWT_ASSUME_NONNULL_BEGIN
 ///   - error: The error that is about to be thrown. This pointer refers to an
 ///     instance of `SwiftError` or (on platforms with Objective-C interop) an
 ///     instance of `NSError`.
-typedef void (* SWT_SENDABLE SWTWillThrowHandler)(void *error);
+typedef void (* SWT_SENDABLE SWTWillThrowHandler)(void *error) SWT_SWIFT_NAME(WillThrowHandler);
 
 /// Set the callback function that fires when an instance of `Swift.Error` is
 /// thrown.
@@ -39,7 +39,7 @@ typedef void (* SWT_SENDABLE SWTWillThrowHandler)(void *error);
 /// ## See Also
 ///
 /// ``SWTWillThrowHandler``
-SWT_EXTERN SWTWillThrowHandler SWT_SENDABLE _Nullable swt_setWillThrowHandler(SWTWillThrowHandler SWT_SENDABLE _Nullable handler);
+SWT_EXTERN SWTWillThrowHandler SWT_SENDABLE _Nullable swt_setWillThrowHandler(SWTWillThrowHandler SWT_SENDABLE _Nullable handler) SWT_SWIFT_NAME(setWillThrowHandler(_:));
 
 SWT_ASSUME_NONNULL_END
 

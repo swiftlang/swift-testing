@@ -21,14 +21,14 @@ SWT_ASSUME_NONNULL_BEGIN
 /// This typedef is necessary because `FILE *` may be imported into Swift as
 /// either `OpaquePointer` or `UnsafeMutablePointer<FILE>` depending on the
 /// current platform.
-typedef FILE *SWT_FILEHandle;
+typedef FILE *SWT_FILE SWT_SWIFT_NAME(FILE);
 
 /// Get the standard error stream.
 ///
 /// This function is provided because directly accessing `stderr` from Swift
 /// triggers concurrency warnings on some platforms about accessing shared
 /// mutable state.
-static SWT_FILEHandle swt_stderr(void) {
+static inline SWT_FILE swt_stderr(void) SWT_SWIFT_NAME(getter:stderr()) {
   return stderr;
 }
 
@@ -36,7 +36,7 @@ static SWT_FILEHandle swt_stderr(void) {
 ///
 /// This function is provided because `errno` is a complex macro on some
 /// platforms and cannot be imported directly into Swift.
-static int swt_errno(void) {
+static inline int swt_errno(void) SWT_SWIFT_NAME(getter:errno()) {
   return errno;
 }
 
@@ -46,7 +46,7 @@ static int swt_errno(void) {
 /// This function is exactly equivalent to the `S_ISFIFO()` macro. It is
 /// necessary because the mode flag macros are not imported into Swift
 /// consistently across platforms.
-static bool swt_S_ISFIFO(mode_t mode) {
+static inline bool swt_S_ISFIFO(mode_t mode) SWT_SWIFT_NAME(S_ISFIFO(_:)) {
   return S_ISFIFO(mode);
 }
 #endif

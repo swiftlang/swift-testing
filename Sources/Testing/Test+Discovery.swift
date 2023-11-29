@@ -48,7 +48,7 @@ extension Test {
   private static var _all: some Sequence<Self> {
     get async {
       await withTaskGroup(of: [Self].self) { taskGroup in
-        swt_enumerateTypes(&taskGroup) { type, context in
+        enumerateTypes(&taskGroup) { type, context in
           if let type = unsafeBitCast(type, to: Any.Type.self) as? any __TestContainer.Type {
             let taskGroup = context!.assumingMemoryBound(to: TaskGroup<[Self]>.self)
             taskGroup.pointee.addTask {

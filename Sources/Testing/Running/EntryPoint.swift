@@ -46,7 +46,6 @@ public func swiftPMEntryPoint() async -> CInt {
       await runTests(configuration: configuration)
     }
   } catch {
-    let stderr = swt_stderr()
     fputs(String(describing: error), stderr)
     fflush(stderr)
 
@@ -144,13 +143,13 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 
     // Open the XML file for writing.
     guard let file = fopen(xunitOutputPath, "wb") else {
-      throw CError(rawValue: swt_errno())
+      throw CError(rawValue: errno)
     }
 
     // Create a simple type that contains the C file handle we created and
     // ensures it is closed when it goes out of scope.
     struct FileCloser: @unchecked Sendable, ~Copyable {
-      var file: SWT_FILEHandle
+      var file: FILE
       deinit {
         fclose(file)
       }
@@ -211,7 +210,6 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 ///   - configuration: The configuration to use for running.
 func runTests(configuration: Configuration) async {
   let eventRecorder = Event.ConsoleOutputRecorder(options: .forStandardError) { string in
-    let stderr = swt_stderr()
     fputs(string, stderr)
     fflush(stderr)
   }
@@ -304,7 +302,7 @@ extension [Event.ConsoleOutputRecorder.Option] {
     // invokes the testing library, for example.
 #if SWT_TARGET_OS_APPLE || os(Linux)
     var statStruct = stat()
-    if 0 == fstat(STDERR_FILENO, &statStruct) && swt_S_ISFIFO(statStruct.st_mode) {
+    if 0 == fstat(STDERR_FILENO, &statStruct) && S_ISFIFO(statStruct.st_mode) {
       return true
     }
 #elseif os(Windows)

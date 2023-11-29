@@ -49,24 +49,32 @@ a leading underscore (except for those `public` symbols mentioned above.)
 Exported C and C++ symbols that are exported should be given the prefix `swt_`
 and should otherwise be named using the same lowerCamelCase naming rules as in
 Swift. Use the `SWT_EXTERN` macro to ensure that symbols are consistently
-visible in C, C++, and Swift. For example:
+visible in C, C++, and Swift. Use the `SWT_SWIFT_NAME()` macro if the symbol
+will be used from Swift to refine the name and remove the prefix. For example:
 
 ```c
-SWT_EXTERN bool swt_isDebugModeEnabled(void);
+SWT_EXTERN bool swt_getGriddleTemperature(void) SWT_SWIFT_NAME(griddleTemperature());
 
-SWT_EXTERN void swt_setDebugModeEnabled(bool isEnabled);
+SWT_EXTERN void swt_sell(food_t food, toppings_t toppings) SWT_SWIFT_NAME(sell(_:toppedWith:)) {
+  ...
+}
 ```
 
 C and C++ types should be given the prefix `SWT` and should otherwise be named
-using the same UpperCamelCase naming rules as in Swift. For example:
+using the same UpperCamelCase naming rules as in Swift. `SWT_SWIFT_NAME()`
+should be used to remove the prefix for types visible in Swift. For example:
 
 ```c
-typedef intmax_t SWTBigInteger;
+typedef intmax_t SWTEmployeeCount SWT_SWIFT_NAME(EmployeeCount);
 
-typedef struct SWTContainer {
+typedef struct SWTDeepFryer {
+  float temperature;
   ...
-} SWTContainer;
+} SWTDeepFryer SWT_SWIFT_NAME(DeepFryer);
 ```
+
+The use of `SWT_SWIFT_NAME()` is not required for symbols that are neither
+visible to nor used in Swift code. 
 
 #### Documenting symbols
 
