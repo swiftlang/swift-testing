@@ -105,7 +105,7 @@ struct SwiftPMTests {
   @Test("--xunit-output argument (writes to file)")
   func xunitOutputIsWrittenToFile() throws {
     // Test that a file is opened when requested. Testing of the actual output
-    // occurs in EventRecorderTests.
+    // occurs in ConsoleOutputRecorderTests.
     let temporaryFileURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: false)
     defer {
       try? FileManager.default.removeItem(at: temporaryFileURL)

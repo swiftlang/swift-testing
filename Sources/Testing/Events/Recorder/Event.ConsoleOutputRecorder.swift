@@ -95,39 +95,7 @@ extension Event {
     /// The write function for this event recorder.
     var write: @Sendable (String) -> Void
 
-    /// A type that contains mutable context for
-    /// ``Event/ConsoleOutputRecorder``.
-    private struct _Context {
-      /// The instant at which the run started.
-      var runStartInstant: Test.Clock.Instant?
-
-      /// The number of tests started or skipped during the run.
-      ///
-      /// This value does not include test suites.
-      var testCount = 0
-
-      /// The number of test suites started or skipped during the run.
-      var suiteCount = 0
-
-      /// A type describing data tracked on a per-test basis.
-      struct TestData {
-        /// The instant at which the test started.
-        var startInstant: Test.Clock.Instant
-
-        /// The number of issues recorded for the test.
-        var issueCount = 0
-
-        /// The number of known issues recorded for the test.
-        var knownIssueCount = 0
-      }
-
-      /// Data tracked on a per-test basis.
-      var testData = Graph<String, TestData?>()
-    }
-
-    /// This event recorder's mutable context about events it has received,
-    /// which may be used to inform how subsequent events are written.
-    @Locked private var _context = _Context()
+    private var _humanReadableOutputRecorder = HumanReadableOutputRecorder()
 
     /// Initialize a new event recorder.
     ///
@@ -155,7 +123,7 @@ extension Event {
 
 extension Event.ConsoleOutputRecorder.Option: Equatable, Hashable {}
 
-// MARK: -
+// MARK: - ANSI Escape Code support
 
 /// The ANSI escape code prefix.
 private let _ansiEscapeCodePrefix = "\u{001B}["
@@ -163,249 +131,43 @@ private let _ansiEscapeCodePrefix = "\u{001B}["
 /// The ANSI escape code to reset text output to default settings.
 private let _resetANSIEscapeCode = "\(_ansiEscapeCodePrefix)0m"
 
-extension Event.ConsoleOutputRecorder {
-  /// An enumeration describing the symbols used as prefixes when writing
-  /// output.
-  fileprivate enum Symbol {
-    /// The default symbol to use.
-    case `default`
-
-    /// The symbol to use when a test is skipped.
-    case skip
-
-    /// The symbol to use when a test passes.
-    case pass(hasKnownIssues: Bool = false)
-
-    /// The symbol to use when a test fails.
-    case fail
-
-    /// The symbol to use when an expectation includes a difference description.
-    case difference
-
-    /// A warning or caution symbol to use when the developer should be aware of
-    /// some condition.
-    case warning
-
-    /// The symbol to use when presenting details about an event to the user.
-    case details
-
+extension Event.Symbol {
+  /// Get the string value for this symbol with the given write options.
+  ///
+  /// - Parameters:
+  ///   - options: Options to use when writing this symbol.
+  ///
+  /// - Returns: A string representation of `self` appropriate for writing to
+  ///   a stream.
+  fileprivate func stringValue(options: Set<Event.ConsoleOutputRecorder.Option>) -> String {
+    var symbolCharacter = String(unicodeCharacter)
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
-    /// The SF Symbols character corresponding to this instance.
-    private var _sfSymbolCharacter: Character {
-      switch self {
-      case .default:
-        // SF Symbol: diamond
-        return "\u{1007C8}"
-      case .skip:
-        // SF Symbol: arrow.triangle.turn.up.right.diamond.fill
-        return "\u{10065F}"
-      case let .pass(hasKnownIssues):
-        if hasKnownIssues {
-          // SF Symbol: xmark.diamond.fill
-          return "\u{100884}"
-        } else {
-          // SF Symbol: checkmark.diamond.fill
-          return "\u{10105B}"
-        }
-      case .fail:
-        // SF Symbol: xmark.diamond.fill
-        return "\u{100884}"
-      case .difference:
-        // SF Symbol: plus.forwardslash.minus
-        return "\u{10017A}"
-      case .warning:
-        // SF Symbol: exclamationmark.triangle.fill
-        return "\u{1001FF}"
-      case .details:
-        // SF Symbol: arrow.turn.down.right
-        return "\u{100135}"
-      }
-    }
-#endif
-
-    /// The Unicode character corresponding to this instance.
-    private var _unicodeCharacter: Character {
-#if SWT_TARGET_OS_APPLE || os(Linux)
-      switch self {
-      case .default:
-        // Unicode: WHITE DIAMOND
-        return "\u{25C7}"
-      case .skip:
-        // Unicode: HEAVY BALLOT X
-        return "\u{2718}"
-      case let .pass(hasKnownIssues):
-        if hasKnownIssues {
-          // Unicode: HEAVY BALLOT X
-          return "\u{2718}"
-        } else {
-          // Unicode: HEAVY CHECK MARK
-          return "\u{2714}"
-        }
-      case .fail:
-        // Unicode: HEAVY BALLOT X
-        return "\u{2718}"
-      case .difference:
-        // Unicode: PLUS-MINUS SIGN
-        return "\u{00B1}"
-      case .warning:
-        // Unicode: WARNING SIGN + VARIATION SELECTOR-15 (disable emoji)
-        return "\u{26A0}\u{FE0E}"
-      case .details:
-        // Unicode: DOWNWARDS ARROW WITH TIP RIGHTWARDS
-        return "\u{21B3}"
-      }
-#elseif os(Windows)
-      // The default Windows console font (Consolas) has limited Unicode
-      // support, so substitute some other characters that it does have.
-      switch self {
-      case .default:
-        // Unicode: LOZENGE
-        return "\u{25CA}"
-      case .skip:
-        // Unicode: MULTIPLICATION SIGN
-        return "\u{00D7}"
-      case let .pass(hasKnownIssues):
-        if hasKnownIssues {
-          // Unicode: MULTIPLICATION SIGN
-          return "\u{00D7}"
-        } else {
-          // Unicode: SQUARE ROOT
-          return "\u{221A}"
-        }
-      case .fail:
-        // Unicode: MULTIPLICATION SIGN
-        return "\u{00D7}"
-      case .difference:
-        // Unicode: PLUS-MINUS SIGN
-        return "\u{00B1}"
-      case .warning:
-        // Unicode: EXCLAMATION MARK
-        return "\u{0021}"
-      case .details:
-        // Unicode: GREATER-THAN SIGN
-        return "\u{003E}"
-      }
-#else
-#warning("Platform-specific implementation missing: Unicode characters unavailable")
-      return " "
-#endif
-    }
-
-    /// Get the string value for this symbol with the given write options.
-    ///
-    /// - Parameters:
-    ///   - options: Options to use when writing this symbol.
-    ///
-    /// - Returns: A string representation of `self` appropriate for writing to
-    ///   a stream.
-    func stringValue(options: Set<Event.ConsoleOutputRecorder.Option>) -> String {
-      var symbolCharacter = String(_unicodeCharacter)
-#if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
-      if options.contains(.useSFSymbols) {
-        symbolCharacter = String(_sfSymbolCharacter)
-        if options.contains(.useANSIEscapeCodes) {
-          symbolCharacter += " "
-        }
-      }
-#endif
-
+    if options.contains(.useSFSymbols) {
+      symbolCharacter = String(sfSymbolCharacter)
       if options.contains(.useANSIEscapeCodes) {
-        switch self {
-        case .default, .skip, .difference:
-          return "\(_ansiEscapeCodePrefix)90m\(symbolCharacter)\(_resetANSIEscapeCode)"
-        case let .pass(hasKnownIssues):
-          if hasKnownIssues {
-            return "\(_ansiEscapeCodePrefix)90m\(symbolCharacter)\(_resetANSIEscapeCode)"
-          }
-          return "\(_ansiEscapeCodePrefix)92m\(symbolCharacter)\(_resetANSIEscapeCode)"
-        case .fail:
-          return "\(_ansiEscapeCodePrefix)91m\(symbolCharacter)\(_resetANSIEscapeCode)"
-        case .warning:
-          return "\(_ansiEscapeCodePrefix)93m\(symbolCharacter)\(_resetANSIEscapeCode)"
-        case .details:
-          return symbolCharacter
-        }
+        symbolCharacter += " "
       }
-      return "\(symbolCharacter)"
     }
-  }
+#endif
 
-  /// Get a string representing an array of comments, formatted for output.
-  ///
-  /// - Parameters:
-  ///   - comments: The comments that should be formatted.
-  ///   - options: Options to use when writing the comments.
-  ///
-  /// - Returns: A formatted string representing `comments`, or `nil` if there
-  ///   are none.
-  private func _formattedComments(_ comments: [Comment], options: Set<Event.ConsoleOutputRecorder.Option>) -> String? {
-    if comments.isEmpty {
-      return nil
-    }
-
-    // Insert an arrow character at the start of each comment, then indent any
-    // additional lines in the comment to align them with the arrow.
-    let arrowSymbol = Symbol.details.stringValue(options: options)
-    let comments = comments.lazy
-      .flatMap { comment in
-        let lines = comment.rawValue.split(whereSeparator: \.isNewline)
-        if let firstLine = lines.first {
-          let remainingLines = lines.dropFirst()
-          return CollectionOfOne("\(arrowSymbol) \(firstLine)") + remainingLines.map { "  \($0)" }
-        }
-        return []
-      }.joined(separator: "\n")
-
-    // If ANSI escape codes are enabled, dim the comments relative to the
-    // primary test output.
     if options.contains(.useANSIEscapeCodes) {
-      return "\(_ansiEscapeCodePrefix)90m\(comments)\(_resetANSIEscapeCode)"
+      switch self {
+      case .default, .skip, .difference:
+        return "\(_ansiEscapeCodePrefix)90m\(symbolCharacter)\(_resetANSIEscapeCode)"
+      case let .pass(knownIssueCount):
+        if knownIssueCount > 0 {
+          return "\(_ansiEscapeCodePrefix)90m\(symbolCharacter)\(_resetANSIEscapeCode)"
+        }
+        return "\(_ansiEscapeCodePrefix)92m\(symbolCharacter)\(_resetANSIEscapeCode)"
+      case .fail:
+        return "\(_ansiEscapeCodePrefix)91m\(symbolCharacter)\(_resetANSIEscapeCode)"
+      case .warning:
+        return "\(_ansiEscapeCodePrefix)93m\(symbolCharacter)\(_resetANSIEscapeCode)"
+      case .details:
+        return symbolCharacter
+      }
     }
-
-    return comments
-  }
-
-  /// Get a string representing the comments attached to a test, formatted for
-  /// output.
-  ///
-  /// - Parameters:
-  ///   - test: The test whose comments should be formatted.
-  ///   - options: Options to use when writing the comments.
-  ///
-  /// - Returns: A formatted string representing the comments attached to `test`,
-  ///   or `nil` if there are none.
-  private func _formattedComments(for test: Test, options: Set<Event.ConsoleOutputRecorder.Option>) -> String? {
-    _formattedComments(test.comments(from: Comment.self), options: options)
-  }
-
-  /// Get the total number of issues recorded in a graph of test data
-  /// structures.
-  ///
-  /// - Parameters:
-  ///   - graph: The graph to walk while counting issues.
-  ///
-  /// - Returns: A tuple containing the number of issues recorded in `graph`.
-  private func _issueCounts(in graph: Graph<String, Event.ConsoleOutputRecorder._Context.TestData?>?) -> (issueCount: Int, knownIssueCount: Int, totalIssueCount: Int, description: String) {
-    guard let graph else {
-      return (0, 0, 0, "")
-    }
-    let issueCount = graph.compactMap(\.value?.issueCount).reduce(into: 0, +=)
-    let knownIssueCount = graph.compactMap(\.value?.knownIssueCount).reduce(into: 0, +=)
-    let totalIssueCount = issueCount + knownIssueCount
-
-    // Construct a string describing the issue counts.
-    let description = switch (issueCount > 0, knownIssueCount > 0) {
-    case (true, true):
-      " with \(totalIssueCount.counting("issue")) (including \(knownIssueCount.counting("known issue")))"
-    case (false, true):
-      " with \(knownIssueCount.counting("known issue"))"
-    case (true, false):
-      " with \(totalIssueCount.counting("issue"))"
-    case(false, false):
-      ""
-    }
-
-    return (issueCount, knownIssueCount, totalIssueCount,  description)
+    return "\(symbolCharacter)"
   }
 }
 
@@ -451,27 +213,7 @@ extension Tag.Color {
   }
 }
 
-extension Test.Case {
-  /// The arguments of this test case, formatted for presentation, prefixed by
-  /// their corresponding parameter label when available.
-  fileprivate var labeledArguments: String {
-    arguments.lazy
-      .map { argument in
-        let valueDescription = String(describingForTest: argument.value)
-
-        let label = argument.parameter.secondName ?? argument.parameter.firstName
-        guard label != "_" else {
-          return valueDescription
-        }
-        return "\(label) → \(valueDescription)"
-      }
-      .joined(separator: ", ")
-  }
-}
-
-// MARK: -
-
-extension Event.ConsoleOutputRecorder: EventRecorder {
+extension Event.ConsoleOutputRecorder {
   /// Generate a printable string describing the colors of a set of tags
   /// suitable for display in test output.
   ///
@@ -481,7 +223,7 @@ extension Event.ConsoleOutputRecorder: EventRecorder {
   /// - Returns: A string describing the colors of `tags` as bullet characters
   ///   with ANSI escape codes used to colorize them. If ANSI escape codes are
   ///   not enabled or if no tag colors are set, returns the empty string.
-  private func _colorDots(for tags: Set<Tag>) -> String {
+  fileprivate func colorDots(for tags: Set<Tag>) -> String {
     let unsortedColors = tags.lazy
       .compactMap { tag in
         if let tagColor = tagColors[tag] {
@@ -493,222 +235,62 @@ extension Event.ConsoleOutputRecorder: EventRecorder {
         }
         return nil
       }
-    return Set(unsortedColors)
+
+    var result: String = Set(unsortedColors)
       .sorted(by: <).lazy
       .compactMap { $0.ansiEscapeCode(options: options) }
       .map { "\($0)\u{25CF}" } // Unicode: BLACK CIRCLE
       .joined()
-  }
-
-  /// Record the specified event by generating a representation of it as a
-  /// human-readable string.
-  ///
-  /// - Parameters:
-  ///   - event: The event to record.
-  ///   - eventContext: The context associated with the event.
-  ///
-  /// - Returns: A string description of the event, or `nil` if there is nothing
-  ///   useful to output for this event.
-  private func _record(_ event: borrowing Event, in eventContext: borrowing Event.Context) -> String? {
-    let test = eventContext.test
-    var testName: String
-    if let displayName = test?.displayName {
-      testName = "\"\(displayName)\""
-    } else if let test {
-      testName = test.name
-    } else {
-      testName = "«unknown»"
+    if !result.isEmpty {
+      result += "\(_resetANSIEscapeCode) "
     }
-    if options.contains(.useANSIEscapeCodes), let tags = test?.tags {
-      let colorDots = _colorDots(for: tags)
-      if !colorDots.isEmpty {
-        testName = "\(colorDots)\(_resetANSIEscapeCode) \(testName)"
-      }
-    }
-    let instant = event.instant
-
-    switch event.kind {
-    case .runStarted:
-      $_context.withLock { context in
-        context.runStartInstant = instant
-      }
-      let symbol = Symbol.default.stringValue(options: options)
-      var comments: [Comment] = [
-        "Swift Version: \(swiftStandardLibraryVersion)",
-        "Testing Library Version: \(testingLibraryVersion)",
-      ]
-#if targetEnvironment(simulator)
-      comments.append("OS Version (Simulator): \(simulatorVersion)")
-      comments.append("OS Version (Host): \(operatingSystemVersion)")
-#else
-      comments.append("OS Version: \(operatingSystemVersion)")
-#endif
-      if let comments = _formattedComments(comments, options: options) {
-        return "\(symbol) Test run started.\n\(comments)\n"
-      } else {
-        return "\(symbol) Test run started.\n"
-      }
-
-    case .planStepStarted, .planStepEnded:
-      // Suppress events of these kinds from output as they are not generally
-      // interesting in human-readable output.
-      break
-
-    case .testStarted:
-      let test = test!
-      $_context.withLock { context in
-        context.testData[test.id.keyPathRepresentation] = .init(startInstant: instant)
-        if test.isSuite {
-          context.suiteCount += 1
-        } else {
-          context.testCount += 1
-        }
-      }
-      let symbol = Symbol.default.stringValue(options: options)
-      return "\(symbol) Test \(testName) started.\n"
-
-    case .testEnded:
-      let test = test!
-      let id = test.id
-      let testDataGraph = _context.testData.subgraph(at: id.keyPathRepresentation)
-      let testData = testDataGraph?.value ?? .init(startInstant: instant)
-      let issues = _issueCounts(in: testDataGraph)
-      let duration = testData.startInstant.descriptionOfDuration(to: instant)
-      if issues.issueCount > 0 {
-        let symbol = Symbol.fail.stringValue(options: options)
-        let comments = _formattedComments(for: test, options: options).map { "\($0)\n" } ?? ""
-        return "\(symbol) Test \(testName) failed after \(duration)\(issues.description).\n\(comments)"
-      } else {
-        let symbol = Symbol.pass(hasKnownIssues: issues.knownIssueCount > 0).stringValue(options: options)
-        return "\(symbol) Test \(testName) passed after \(duration)\(issues.description).\n"
-      }
-
-    case let .testSkipped(skipInfo):
-      let test = test!
-      $_context.withLock { context in
-        if test.isSuite {
-          context.suiteCount += 1
-        } else {
-          context.testCount += 1
-        }
-      }
-      let symbol = Symbol.skip.stringValue(options: options)
-      if let comment = skipInfo.comment {
-        return "\(symbol) Test \(testName) skipped: \"\(comment.rawValue)\"\n"
-      } else {
-        return "\(symbol) Test \(testName) skipped.\n"
-      }
-
-    case .expectationChecked:
-      // Suppress events of this kind from output as they are not generally
-      // interesting in human-readable output.
-      break
-
-    case let .issueRecorded(issue):
-      if let test {
-        let id = test.id.keyPathRepresentation
-        $_context.withLock { context in
-          var testData = context.testData[id] ?? .init(startInstant: instant)
-          if issue.isKnown {
-            testData.knownIssueCount += 1
-          } else {
-            testData.issueCount += 1
-          }
-          context.testData[id] = testData
-        }
-      }
-      let parameterCount = if let parameters = test?.parameters {
-        parameters.count
-      } else {
-        0
-      }
-      let labeledArguments = if let testCase = eventContext.testCase {
-        testCase.labeledArguments
-      } else {
-        ""
-      }
-      let symbol: String
-      let known: String
-      if issue.isKnown {
-        symbol = Symbol.pass(hasKnownIssues: true).stringValue(options: options)
-        known = " known"
-      } else {
-        symbol = Symbol.fail.stringValue(options: options)
-        known = "n"
-      }
-
-      var difference = ""
-      if case let .expectationFailed(expectation) = issue.kind, let differenceDescription = expectation.differenceDescription {
-        let differenceSymbol = Symbol.difference.stringValue(options: options)
-        difference = "\n\(differenceSymbol) \(differenceDescription)"
-      }
-
-      var issueComments = ""
-      if let formattedComments = _formattedComments(issue.comments, options: options) {
-        issueComments = "\n\(formattedComments)"
-      }
-
-      let atSourceLocation = issue.sourceLocation.map { " at \($0)" } ?? ""
-      if parameterCount == 0 {
-        return "\(symbol) Test \(testName) recorded a\(known) issue\(atSourceLocation): \(issue.kind)\(difference)\(issueComments)\n"
-      } else {
-        return "\(symbol) Test \(testName) recorded a\(known) issue with \(parameterCount.counting("argument")) \(labeledArguments)\(atSourceLocation): \(issue.kind)\(difference)\(issueComments)\n"
-      }
-
-    case .testCaseStarted:
-      guard let testCase = eventContext.testCase, testCase.isParameterized else {
-        break
-      }
-      let symbol = Symbol.default.stringValue(options: options)
-
-      return "\(symbol) Passing \(testCase.arguments.count.counting("argument")) \(testCase.labeledArguments) to \(testName)\n"
-
-    case .testCaseEnded:
-      break
-
-    case .runEnded:
-      let context = $_context.wrappedValue
-
-      let testCount = context.testCount
-      let issues = _issueCounts(in: context.testData)
-      let runStartInstant = context.runStartInstant ?? instant
-      let duration = runStartInstant.descriptionOfDuration(to: instant)
-
-      if issues.issueCount > 0 {
-        let symbol = Symbol.fail.stringValue(options: options)
-        return "\(symbol) Test run with \(testCount.counting("test")) failed after \(duration)\(issues.description).\n"
-      } else {
-        let symbol = Symbol.pass(hasKnownIssues: issues.knownIssueCount > 0).stringValue(options: options)
-        return "\(symbol) Test run with \(testCount.counting("test")) passed after \(duration)\(issues.description).\n"
-      }
-    }
-
-    return nil
-  }
-
-  @discardableResult public func record(_ event: borrowing Event, in context: borrowing Event.Context) -> Bool {
-    if let output = _record(event, in: context) {
-      write(output)
-      return true
-    }
-    return false
+    return result
   }
 }
 
 // MARK: -
 
-/// Get a message warning the user of some condition in the library that may
-/// affect test results.
-///
-/// - Parameters:
-///   - message: The message to present to the user.
-///   - options: The options that should be used when formatting the resulting
-///     message.
-///
-/// - Returns: The described message, formatted for display using `options`.
-///
-/// The caller is responsible for presenting this message to the user.
-func warning(_ message: String, options: [Event.ConsoleOutputRecorder.Option]) -> String {
-  let symbol = Event.ConsoleOutputRecorder.Symbol.warning.stringValue(options: Set(options))
-  return "\(symbol) \(message)"
+extension Event.ConsoleOutputRecorder {
+  /// Record the specified event by generating a representation of it in this
+  /// instance's output format and writing it to this instance's destination.
+  ///
+  /// - Parameters:
+  ///   - event: The event to record.
+  ///   - context: The context associated with the event.
+  ///
+  /// - Returns: Whether any output was produced and written to this instance's
+  ///   destination.
+  @discardableResult public func record(_ event: borrowing Event, in context: borrowing Event.Context) -> Bool {
+    let messages = _humanReadableOutputRecorder.record(event, in: context)
+    for message in messages {
+      let symbol = message.symbol?.stringValue(options: options) ?? " "
+
+      if case .details = message.symbol, options.contains(.useANSIEscapeCodes) {
+        // Special-case the detail symbol to apply grey to the entire line of
+        // text instead of just the symbol.
+        write("\(_ansiEscapeCodePrefix)90m\(symbol) \(message.stringValue)\(_resetANSIEscapeCode)\n")
+      } else {
+        let colorDots = context.test.map(\.tags).map(colorDots(for:)) ?? ""
+        write("\(symbol) \(colorDots)\(message.stringValue)\n")
+      }
+    }
+    return !messages.isEmpty
+  }
+
+
+  /// Get a message warning the user of some condition in the library that may
+  /// affect test results.
+  ///
+  /// - Parameters:
+  ///   - message: The message to present to the user.
+  ///   - options: The options that should be used when formatting the resulting
+  ///     message.
+  ///
+  /// - Returns: The described message, formatted for display using `options`.
+  ///
+  /// The caller is responsible for presenting this message to the user.
+  static func warning(_ message: String, options: [Event.ConsoleOutputRecorder.Option]) -> String {
+    let symbol = Event.Symbol.warning.stringValue(options: Set(options))
+    return "\(symbol) \(message)"
+  }
 }

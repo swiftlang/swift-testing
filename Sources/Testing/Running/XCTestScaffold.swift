@@ -171,7 +171,10 @@ public enum XCTestScaffold: Sendable {
 #endif
   public static func runAllTests(hostedBy testCase: XCTestCase) async {
 #if SWIFT_PM_SUPPORTS_SWIFT_TESTING
-    let message = warning("This version of Swift Package Manager supports running swift-testing tests directly. Ignoring call to \(#function).", options: .forStandardError)
+    let message = Event.ConsoleOutputRecorder.warning(
+      "This version of Swift Package Manager supports running swift-testing tests directly. Ignoring call to \(#function).",
+      options: .forStandardError
+    )
 #if SWT_TARGET_OS_APPLE
     let stderr = swt_stderr()
     fputs(message, stderr)

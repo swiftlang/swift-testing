@@ -65,7 +65,7 @@ extension Event {
   }
 }
 
-extension Event.JUnitXMLRecorder: EventRecorder {
+extension Event.JUnitXMLRecorder {
   /// Record the specified event by generating a representation of it as a
   /// human-readable string.
   ///
