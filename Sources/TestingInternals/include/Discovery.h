@@ -51,8 +51,8 @@ typedef bool (* SWTTypeNameFilter)(const char *typeName, void *_Null_unspecified
 /// deduping type metadata pointers passed to `body`.
 SWT_EXTERN void swt_enumerateTypes(
   void *_Null_unspecified context,
-  SWTTypeEnumerator body, SWTTypeNameFilter
-  _Nullable nameFilter
+  SWTTypeEnumerator body,
+  SWTTypeNameFilter _Nullable nameFilter
 ) SWT_SWIFT_NAME(swt_enumerateTypes(_:_:withNamesMatching:));
 
 SWT_ASSUME_NONNULL_END
