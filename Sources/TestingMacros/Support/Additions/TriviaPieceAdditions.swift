@@ -8,7 +8,11 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if swift(>=5.11)
+import SwiftSyntax
+#else
 public import SwiftSyntax
+#endif
 
 extension TriviaPiece {
   /// The number of newline characters represented by this trivia piece.

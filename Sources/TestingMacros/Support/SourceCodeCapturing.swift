@@ -8,7 +8,11 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if swift(>=5.11)
+import SwiftSyntax
+#else
 public import SwiftSyntax
+#endif
 
 /// Get an expression initializing an instance of ``SourceCode`` from an
 /// arbitrary syntax node.
