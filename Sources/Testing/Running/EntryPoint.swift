@@ -20,9 +20,7 @@ private import TestingInternals
 ///
 /// - Warning: This function is used by Swift Package Manager. Do not call it
 ///   directly.
-@_spi(SwiftPackageManagerSupport)
-@_disfavoredOverload
-public func swiftPMEntryPoint() async -> CInt {
+@_disfavoredOverload public func __swiftPMEntryPoint() async -> CInt {
   @Locked var exitCode = EXIT_SUCCESS
 
   do {
@@ -68,10 +66,21 @@ public func swiftPMEntryPoint() async -> CInt {
 ///
 /// - Warning: This function is used by Swift Package Manager. Do not call it
 ///   directly.
+public func __swiftPMEntryPoint() async -> Never {
+  let exitCode: CInt = await __swiftPMEntryPoint()
+  exit(exitCode)
+}
+
+/// Call `__swiftPMEntryPoint()`.
+///
+/// This function is an old alias of `__swiftPMEntryPoint()`. It will be removed
+/// in the near future.
+///
+/// - Warning: This function is used by Swift Package Manager. Do not call it
+///   directly.
 @_spi(SwiftPackageManagerSupport)
 public func swiftPMEntryPoint() async -> Never {
-  let exitCode: CInt = await swiftPMEntryPoint()
-  exit(exitCode)
+  await __swiftPMEntryPoint()
 }
 
 // MARK: -
