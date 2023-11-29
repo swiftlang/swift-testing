@@ -49,7 +49,11 @@ typedef bool (* SWTTypeNameFilter)(const char *typeName, void *_Null_unspecified
 /// it is present in an image's metadata table multiple times, or if it is an
 /// Objective-C class implemented in Swift.) Callers are responsible for
 /// deduping type metadata pointers passed to `body`.
-SWT_EXTERN void swt_enumerateTypes(SWTTypeNameFilter _Nullable nameFilter, SWTTypeEnumerator body, void *_Null_unspecified context);
+SWT_EXTERN void swt_enumerateTypes(
+  void *_Null_unspecified context,
+  SWTTypeEnumerator body, SWTTypeNameFilter
+  _Nullable nameFilter
+) SWT_SWIFT_NAME(swt_enumerateTypes(_:_:withNamesMatching:));
 
 SWT_ASSUME_NONNULL_END
 
