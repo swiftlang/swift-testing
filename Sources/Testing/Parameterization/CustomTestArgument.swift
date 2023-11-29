@@ -30,9 +30,9 @@ public protocol CustomTestArgumentEncodable: Sendable {
   /// need to be human-readable.
   ///
   /// By default, the testing library checks whether a test argument conforms to
-  /// `Encodable` and encodes it using `encode(to:)` if it does. This is
-  /// sufficient for many types, but for some types the `Encodable`-provided
-  /// representation may contain large data payloads that cause poor
+  /// `Encodable` and encodes it using `encodeTestArgument(to:)` if it does.
+  /// This is sufficient for many types, but for some types the `Encodable`-
+  /// provided representation may contain large data payloads that cause poor
   /// performance, are not stable and unique, or are otherwise deemed unsuitable
   /// for testing. If the type of the argument does not conform to `Encodable`
   /// but it does conform to `Identifiable` and its associated `ID` type
@@ -43,7 +43,7 @@ public protocol CustomTestArgumentEncodable: Sendable {
   /// described above are sufficient. If the type of the argument is made to
   /// conform to ``CustomTestArgumentEncodable``, then the encoded
   /// representation formed by calling this method is used.
-  func encode(to encoder: any Encoder) throws
+  func encodeTestArgument(to encoder: some Encoder) throws
 }
 
 extension Test.Case.Argument.ID {
@@ -128,7 +128,7 @@ private struct _CustomArgumentWrapper<T>: Encodable where T: CustomTestArgumentE
   var value: T
 
   func encode(to encoder: any Encoder) throws {
-    try value.encode(to: encoder)
+    try value.encodeTestArgument(to: encoder)
   }
 }
 

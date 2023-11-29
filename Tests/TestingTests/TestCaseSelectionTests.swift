@@ -204,7 +204,7 @@ private struct MyCustomTestArgument: CustomTestArgumentEncodable, Equatable {
     case x, y
   }
 
-  func encode(to encoder: any Encoder) throws {
+  func encodeTestArgument(to encoder: some Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encode(x, forKey: .x)
     try container.encode(y, forKey: .y)
