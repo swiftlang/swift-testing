@@ -315,7 +315,7 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
 
 #pragma mark -
 
-void swt_enumerateTypes(SWTTypeNameFilter nameFilter, SWTTypeEnumerator body, void *context) {
+void swt_enumerateTypes(void *context, SWTTypeEnumerator body, SWTTypeNameFilter nameFilter) {
   enumerateTypeMetadataSections([=] (const void *section, size_t size) {
     auto records = reinterpret_cast<const SWTTypeMetadataRecord *>(section);
     size_t recordCount = size / sizeof(SWTTypeMetadataRecord);

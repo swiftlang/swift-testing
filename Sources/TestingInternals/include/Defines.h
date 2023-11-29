@@ -29,4 +29,7 @@
 /// An attribute that marks some value as being `Sendable` in Swift.
 #define SWT_SENDABLE __attribute__((swift_attr("@Sendable")))
 
+/// An attribute that renames a C symbol in Swift.
+#define SWT_SWIFT_NAME(name) __attribute__((swift_name(#name)))
+
 #endif // SWT_DEFINES_H
