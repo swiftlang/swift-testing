@@ -145,16 +145,14 @@ struct TestDeclarationMacroTests {
       #"@available(moofOS 9, dogCow 30, *) @Test func f() {}"#:
         [
           #".__available("moofOS", introduced: (9, nil, nil), "#,
-          #"guard #available (moofOS 9, *) else"#,
           #".__available("dogCow", introduced: (30, nil, nil), "#,
-          #"guard #available (dogCow 30, *) else"#,
+          #"guard #available (moofOS 9, *), #available (dogCow 30, *) else"#,
         ],
       #"@available(moofOS, introduced: 9) @available(dogCow, introduced: 30) @Test func f() {}"#:
         [
           #".__available("moofOS", introduced: (9, nil, nil), "#,
-          #"guard #available (moofOS 9, *) else"#,
           #".__available("dogCow", introduced: (30, nil, nil), "#,
-          #"guard #available (dogCow 30, *) else"#,
+          #"guard #available (moofOS 9, *), #available (dogCow 30, *) else"#,
         ],
       #"@available(*, unavailable, message: "Clarus!") @Test func f() {}"#:
         [#".__unavailable(message: "Clarus!", "#],
