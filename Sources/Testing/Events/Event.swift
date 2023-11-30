@@ -168,27 +168,11 @@ public struct Event: Sendable {
     instant: Test.Clock.Instant = .now,
     configuration: Configuration? = nil
   ) {
+    // Create both the event and its associated context here at same point, to
+    // ensure their task local-derived values are the same.
+    let event = Event(kind, testID: test?.id, testCaseID: testCase?.id, instant: instant)
     let context = Event.Context(test: test, testCase: testCase)
-
-    // Storage for the lazily-derived test case ID, so that we only perform the
-    // encoding at most once.
-    lazy var encodedTestCaseID: Test.Case.ID? = testCase?.id
-
-    withConfiguration(configuration) { configuration in
-      let testCaseID: Test.Case.ID? = if testCase != nil {
-        // If this event is for a test case but this configuration does not have
-        // test argument encoding enabled, include a test case ID for this event
-        // which has `nil` for its `argumentIDs` property. This avoids the
-        // potentially expensive step of encoding the test case's arguments, but
-        // ensures that the event's `testCaseID` property is non-`nil`.
-        configuration.isTestArgumentEncodingEnabled ? encodedTestCaseID : .init(argumentIDs: nil)
-      } else {
-        nil
-      }
-
-      let event = Event(kind, testID: test?.id, testCaseID: testCaseID, instant: instant)
-      event._post(in: context, configuration: configuration)
-    }
+    event._post(in: context, configuration: configuration)
   }
 }
 
@@ -243,15 +227,32 @@ extension Event {
   /// - Parameters:
   ///   - context: The context associated with this event.
   ///   - configuration: The configuration whose event handler should handle
-  ///     this event.
-  private borrowing func _post(in context: borrowing Context, configuration: Configuration) {
-    // The caller specified a configuration, or the current task has an
-    // associated configuration. Post to either configuration's event handler.
-    switch kind {
-    case .expectationChecked where !configuration.deliverExpectationCheckedEvents:
-      break
-    default:
-      configuration.handleEvent(self, in: context)
+  ///     this event. If `nil` is passed, the current task's configuration is
+  ///     used, if known.
+  ///
+  /// Prefer using this function over invoking event handlers directly. If
+  /// `configuration` is not `nil`, `self` is passed to its
+  /// ``Configuration/eventHandler`` property. If `configuration` is `nil`, and
+  /// ``Configuration/current`` is _not_ `nil`, its event handler is used
+  /// instead. If there is no current configuration, the event is posted to
+  /// the event handlers of all configurations set as current across all tasks
+  /// in the process.
+  private borrowing func _post(in context: borrowing Context, configuration: Configuration? = nil) {
+    if let configuration = configuration ?? Configuration.current {
+      // The caller specified a configuration, or the current task has an
+      // associated configuration. Post to either configuration's event handler.
+      switch kind {
+      case .expectationChecked where !configuration.deliverExpectationCheckedEvents:
+        break
+      default:
+        configuration.handleEvent(self, in: context)
+      }
+    } else {
+      // The current task does NOT have an associated configuration. This event
+      // will be lost! Post it to every registered event handler to avoid that.
+      for configuration in Configuration.all {
+        _post(in: context, configuration: configuration)
+      }
     }
   }
 }
