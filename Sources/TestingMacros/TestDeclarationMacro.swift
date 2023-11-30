@@ -239,6 +239,17 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     }
   }
 
+  /// The `static` keyword, if `typeName` is not `nil`.
+  ///
+  /// - Parameters:
+  ///   - typeName: The name of the type containing the macro being expanded.
+  ///
+  /// - Returns: A token representing the `static` keyword, or one representing
+  ///   nothing if `typeName` is `nil`.
+  private static func staticKeyword(for typeName: TypeSyntax?) -> TokenSyntax {
+    (typeName != nil) ? .keyword(.static) : .unknown("")
+  }
+
   /// Create a thunk function with a normalized signature that calls a
   /// developer-supplied test function.
   ///
@@ -364,12 +375,10 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       in: context
     )
 
-    let staticKeyword = typeName != nil ? "static" : ""
-
     let thunkName = context.makeUniqueName(thunking: functionDecl)
     let thunkDecl: DeclSyntax = """
     @available(*, deprecated, message: "This function is an implementation detail of the testing library. Do not use it directly.")
-    @Sendable private \(raw: staticKeyword) func \(thunkName)\(thunkParamsExpr) async throws -> Void {
+    @Sendable private \(staticKeyword(for: typeName)) func \(thunkName)\(thunkParamsExpr) async throws -> Void {
       \(thunkBody)
     }
     """
@@ -465,7 +474,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
 
     // If this function has arguments, then it can only be referenced (let alone
     // called) if the types of those arguments are available at runtime.
-    if attributeInfo.hasFunctionArguments {
+    if attributeInfo.hasFunctionArguments && !functionDecl.availabilityAttributes.isEmpty {
       // Create an alternative thunk that produces a Test instance with no body
       // or arguments. We can then use this thunk in place of the "real" one in
       // case the availability checks fail below.
@@ -477,26 +486,26 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       result.append(
         """
         @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-        private \(raw: typeName != nil ? "static" : "") var \(unavailableTestName): Testing.Test {
-          get async {
+        private \(staticKeyword(for: typeName)) nonisolated func \(unavailableTestName)() async -> [Testing.Test] {
+          [
             .__function(
               named: \(literal: functionDecl.completeName),
               in: \(typealiasExpr),
               xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
-              \(raw: attributeInfo.functionArgumentList(in: context))
-            ) {
-              Swift.fatalError("Unreachable")
-            }
-          }
+              \(raw: attributeInfo.functionArgumentList(in: context)),
+              testFunction: {}
+            )
+          ]
         }
         """
       )
 
-      // Add availability guards if needed.
+      // Add availability guards if needed. If none are needed, the extra thunk
+      // is unused.
       testsBody = createSyntaxNode(
         guardingForAvailabilityOf: functionDecl,
         beforePerforming: testsBody,
-        orExitingWith: "return [await \(unavailableTestName)]",
+        orExitingWith: "return await \(unavailableTestName)()",
         in: context
       )
     }
