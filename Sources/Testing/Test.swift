@@ -75,7 +75,7 @@ public struct Test: Sendable {
   /// (`any`) ([96960993](rdar://96960993)). It is also not possible to have a
   /// value of an underlying generic sequence type without specifying its
   /// generic parameters.
-  private var _testCases: (@Sendable () async throws -> AnySequence<Test.Case>)?
+  private var _testCases: (@Sendable () async -> AnySequence<Test.Case>)?
 
   /// The set of test cases associated with this test, if any.
   ///
@@ -93,8 +93,8 @@ public struct Test: Sendable {
   ///   it on a platform where the inputs are unavailable is undefined.
   @_spi(ExperimentalParameterizedTesting)
   public var testCases: (some Sequence<Test.Case> & Sendable)? {
-    get async throws {
-      try await _testCases?()
+    get async {
+      await _testCases?()
     }
   }
 
@@ -159,7 +159,7 @@ public struct Test: Sendable {
     self.sourceLocation = sourceLocation
     self.containingType = containingType
     self.xcTestCompatibleSelector = xcTestCompatibleSelector
-    self._testCases = { try await .init(testCases.generate()) }
+    self._testCases = { await .init(testCases.generate()) }
     self.parameters = parameters
   }
 }

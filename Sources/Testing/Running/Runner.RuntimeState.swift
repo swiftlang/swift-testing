@@ -130,6 +130,31 @@ extension Configuration {
   }
 }
 
+/// Call a function on the configuration which is most relevant to the caller.
+///
+/// - Parameters:
+///   - configuration: The specific configuration to use when invoking `body`,
+///     if any.
+///   - body: The function to call.
+///
+/// This invokes the provided function on either the specified configuration, if
+/// it is non-`nil`, the current task's configuration, if it is non-`nil`, or
+/// else all registered configurations across all tasks in the process.
+func withConfiguration(_ configuration: Configuration? = nil, _ body: (Configuration) throws -> Void) rethrows -> Void {
+  if let configuration = configuration ?? Configuration.current {
+    // The caller specified a configuration, or the current task has an
+    // associated configuration. Perform `body` with this configuration.
+    try body(configuration)
+  } else {
+    // The current task does NOT have an associated configuration. We don't want
+    // this action to be lost, so perform `body` with every configuration which
+    // has been registered as current.
+    for configuration in Configuration.all {
+      try body(configuration)
+    }
+  }
+}
+
 // MARK: - Current test and test case
 
 extension Test {

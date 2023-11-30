@@ -66,16 +66,12 @@ extension Test.Case.Argument.ID {
   /// - ``CustomTestArgumentEncodable``
   init?(identifying value: some Sendable, parameter: Test.ParameterInfo) throws {
 #if canImport(Foundation)
-    guard Configuration.current?.isTestArgumentEncodingEnabled ?? false else {
-      return nil
-    }
-
-    func _customArgumentWrapper(for value: some CustomTestArgumentEncodable) -> some Encodable {
-      _CustomArgumentWrapper(value: value)
+    func customArgumentWrapper(for value: some CustomTestArgumentEncodable) -> some Encodable {
+      _CustomArgumentWrapper(rawValue: value)
     }
 
     let encodableValue: (any Encodable)? = if let customEncodable = value as? any CustomTestArgumentEncodable {
-      _customArgumentWrapper(for: customEncodable)
+      customArgumentWrapper(for: customEncodable)
     } else if let encodable = value as? any Encodable {
       encodable
     } else if let identifiable = value as? any Identifiable, let encodableID = identifiable.id as? any Encodable {
@@ -122,13 +118,17 @@ extension Test.Case.Argument.ID {
 }
 
 /// A encodable type which wraps a ``CustomTestArgumentEncodable`` value.
-private struct _CustomArgumentWrapper<T>: Encodable where T: CustomTestArgumentEncodable {
+private struct _CustomArgumentWrapper<T>: RawRepresentable, Encodable where T: CustomTestArgumentEncodable {
   /// The value this instance wraps, which implements custom test argument
   /// encoding logic.
-  var value: T
+  var rawValue: T
+
+  init?(rawValue: T) {
+    self.rawValue = rawValue
+  }
 
   func encode(to encoder: any Encoder) throws {
-    try value.encodeTestArgument(to: encoder)
+    try rawValue.encodeTestArgument(to: encoder)
   }
 }
 
@@ -148,7 +148,7 @@ extension Encoder {
   /// The value of this property is non-`nil` when this encoder is being used to
   /// encode an argument passed to a parameterized test function.
   @_spi(ExperimentalParameterizedTesting)
-  public var parameter: Test.ParameterInfo? {
+  public var testParameter: Test.ParameterInfo? {
     userInfo[._testParameterUserInfoKey] as? Test.ParameterInfo
   }
 }

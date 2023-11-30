@@ -394,7 +394,7 @@ struct MiscellaneousTests {
   func parameterizationRelatedProperties() async throws {
     let typeTest = Test.__type(SendableTests.self, displayName: "", traits: [], sourceLocation: .init())
     #expect(!typeTest.isParameterized)
-    #expect(try await typeTest.testCases == nil)
+    #expect(await typeTest.testCases == nil)
     #expect(typeTest.parameters == nil)
 
     let monomorphicTestFunction = Test {}

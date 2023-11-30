@@ -21,7 +21,7 @@ struct Test_Case_Argument_IDTests {
       arguments: [123],
       parameters: [Test.ParameterInfo(index: 0, firstName: "value")]
     ) { _ in }
-    let testCases = try #require(await test.testCasesWithArgumentEncodingEnabled)
+    let testCases = try #require(await test.testCases)
     let testCase = try #require(testCases.first { _ in true })
     #expect(testCase.arguments.count == 1)
     let argument = try #require(testCase.arguments.first)
@@ -35,7 +35,7 @@ struct Test_Case_Argument_IDTests {
       arguments: [MyCustomTestArgument(x: 123, y: "abc")],
       parameters: [Test.ParameterInfo(index: 0, firstName: "value")]
     ) { _ in }
-    let testCases = try #require(await test.testCasesWithArgumentEncodingEnabled)
+    let testCases = try #require(await test.testCases)
     let testCase = try #require(testCases.first { _ in true })
     #expect(testCase.arguments.count == 1)
     let argument = try #require(testCase.arguments.first)
@@ -52,7 +52,7 @@ struct Test_Case_Argument_IDTests {
       arguments: [MyIdentifiableArgument(id: "abc")],
       parameters: [Test.ParameterInfo(index: 0, firstName: "value")]
     ) { _ in }
-    let testCases = try #require(await test.testCasesWithArgumentEncodingEnabled)
+    let testCases = try #require(await test.testCases)
     let testCase = try #require(testCases.first { _ in true })
     #expect(testCase.arguments.count == 1)
     let argument = try #require(testCase.arguments.first)
@@ -85,23 +85,4 @@ extension MyCustomTestArgument: Encodable {}
 
 private struct MyIdentifiableArgument: Identifiable {
   var id: String
-}
-
-// MARK: - Test helpers
-
-func withTestArgumentEncodingEnabled<R>(_ body: () async throws -> R) async rethrows -> R {
-  var configuration = Configuration.current ?? .init()
-  configuration.isTestArgumentEncodingEnabled = true
-
-  return try await Configuration.withCurrent(configuration, perform: body)
-}
-
-extension Test {
-  var testCasesWithArgumentEncodingEnabled: (some Sequence<Test.Case> & Sendable)? {
-    get async throws {
-      try await withTestArgumentEncodingEnabled {
-        try await self.testCases
-      }
-    }
-  }
 }

@@ -18,9 +18,9 @@ struct TestCaseSelectionTests {
       #expect(value == "a")
     }
 
-    let firstTestCase = try #require(await fixtureTest.testCasesWithArgumentEncodingEnabled?.first { _ in true })
+    let firstTestCase = try #require(await fixtureTest.testCases?.first { _ in true })
 
-    var configuration = baseConfiguration
+    var configuration = Configuration()
     configuration.testCaseFilter = { test in
       guard test == fixtureTest else { return nil }
       return { testCase, _ in
@@ -48,11 +48,11 @@ struct TestCaseSelectionTests {
       #expect(value != "b")
     }
 
-    let testCases = Array(try #require(await fixtureTest.testCasesWithArgumentEncodingEnabled))
+    let testCases = Array(try #require(await fixtureTest.testCases))
     let firstTestCaseID = try #require(testCases.first?.id)
     let lastTestCaseID = try #require(testCases.last?.id)
 
-    var configuration = baseConfiguration
+    var configuration = Configuration()
     configuration.testCaseFilter = { test in
       guard test == fixtureTest else { return nil }
       return { testCase, _ in
@@ -90,7 +90,7 @@ struct TestCaseSelectionTests {
       #expect(stringValue == "b" && intValue == 2)
     }
 
-    let selectedTestCase = try #require(await fixtureTest.testCasesWithArgumentEncodingEnabled?.first { testCase in
+    let selectedTestCase = try #require(await fixtureTest.testCases?.first { testCase in
       guard let firstArg = testCase.arguments.first?.value as? String,
             let secondArg = testCase.arguments.last?.value as? Int
       else {
@@ -99,7 +99,7 @@ struct TestCaseSelectionTests {
       return firstArg == "b" && secondArg == 2
     })
 
-    var configuration = baseConfiguration
+    var configuration = Configuration()
     configuration.testCaseFilter = { test in
       guard test == fixtureTest else { return nil }
       return { testCase, _ in
@@ -130,9 +130,9 @@ struct TestCaseSelectionTests {
       #expect(arg.x == 1 && arg.y == "a")
     }
 
-    let firstTestCase = try #require(await fixtureTest.testCasesWithArgumentEncodingEnabled?.first { _ in true })
+    let firstTestCase = try #require(await fixtureTest.testCases?.first { _ in true })
 
-    var configuration = baseConfiguration
+    var configuration = Configuration()
     configuration.testCaseFilter = { test in
       guard test == fixtureTest else { return nil }
       return { testCase, _ in
@@ -163,9 +163,9 @@ struct TestCaseSelectionTests {
       #expect(arg.id == "a")
     }
 
-    let selectedTestCase = try #require(await fixtureTest.testCasesWithArgumentEncodingEnabled?.first { _ in true })
+    let selectedTestCase = try #require(await fixtureTest.testCases?.first { _ in true })
 
-    var configuration = baseConfiguration
+    var configuration = Configuration()
     configuration.testCaseFilter = { test in
       guard test == fixtureTest else { return nil }
       return { testCase, _ in
@@ -185,12 +185,6 @@ struct TestCaseSelectionTests {
 
       await fixtureTest.run(configuration: configuration)
     }
-  }
-
-  private var baseConfiguration: Configuration {
-    var configuration = Configuration()
-    configuration.isTestArgumentEncodingEnabled = true
-    return configuration
   }
 }
 

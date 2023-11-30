@@ -38,10 +38,7 @@ extension Test.Case {
     ///   - element: The element from `_sequence`.
     ///
     /// - Returns: A test case instance that tests `element`.
-    ///
-    /// - Throws: Any error encountered while attempting to map the element to
-    ///   a test case instance.
-    private var _mapElement: @Sendable (_ element: S.Element) throws -> Test.Case
+    private var _mapElement: @Sendable (_ element: S.Element) -> Test.Case
 
     /// Initialize an instance of this type.
     ///
@@ -52,7 +49,7 @@ extension Test.Case {
     ///     `sequence` to a corresponding instance of ``Test/Case``.
     private init(
       sequence: @escaping @Sendable () async -> S,
-      mapElement: @escaping @Sendable (_ element: S.Element) throws -> Test.Case
+      mapElement: @escaping @Sendable (_ element: S.Element) -> Test.Case
     ) {
       _sequence = sequence
       _mapElement = mapElement
@@ -105,13 +102,13 @@ extension Test.Case {
             [element]
           }
 
-          return try Test.Case(values: values, parameters: parameters) {
+          return Test.Case(values: values, parameters: parameters) {
             try await testFunction(element)
           }
         }
       } else {
         self.init(sequence: collection) { element in
-          try Test.Case(values: [element], parameters: parameters) {
+          Test.Case(values: [element], parameters: parameters) {
             try await testFunction(element)
           }
         }
@@ -138,7 +135,7 @@ extension Test.Case {
       self.init {
         await cartesianProduct(collection1(), collection2())
       } mapElement: { element in
-        try Test.Case(values: [element.0, element.1], parameters: parameters) {
+        Test.Case(values: [element.0, element.1], parameters: parameters) {
           try await testFunction(element.0, element.1)
         }
       }
@@ -169,13 +166,13 @@ extension Test.Case {
     ) where S.Element == (E1, E2), E1: Sendable, E2: Sendable {
       if parameters.count > 1 {
         self.init(sequence: sequence) { element in
-          try Test.Case(values: [element.0, element.1], parameters: parameters) {
+          Test.Case(values: [element.0, element.1], parameters: parameters) {
             try await testFunction(element)
           }
         }
       } else {
         self.init(sequence: sequence) { element in
-          try Test.Case(values: [element], parameters: parameters) {
+          Test.Case(values: [element], parameters: parameters) {
             try await testFunction(element)
           }
         }
@@ -249,13 +246,13 @@ extension Test.Case {
     ) where S == Dictionary<Key, Value> {
       if parameters.count > 1 {
         self.init(sequence: dictionary) { element in
-          try Test.Case(values: [element.key, element.value], parameters: parameters) {
+          Test.Case(values: [element.key, element.value], parameters: parameters) {
             try await testFunction(element)
           }
         }
       } else {
         self.init(sequence: dictionary) { element in
-          try Test.Case(values: [element], parameters: parameters) {
+          Test.Case(values: [element], parameters: parameters) {
             try await testFunction(element)
           }
         }
@@ -277,7 +274,7 @@ extension Test.Case.Generator {
   ///   a test case instance.
   ///
   /// Each call to this function generates a new sequence.
-  func generate() async throws -> some Sequence<Test.Case> {
-    try await _sequence().lazy.map(_mapElement)
+  func generate() async -> some Sequence<Test.Case> {
+    await _sequence().lazy.map(_mapElement)
   }
 }

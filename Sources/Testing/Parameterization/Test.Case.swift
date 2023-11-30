@@ -40,7 +40,12 @@ extension Test {
       /// ## See Also
       ///
       /// - ``CustomTestArgumentEncodable``
-      public var id: ID?
+      public var id: ID? {
+        // FIXME: Capture the error and propagate to the user, not as a test
+        // failure but as an advisory warning. A missing argument ID will
+        // prevent re-running the test case, but is not a blocking issue.
+        try? Argument.ID(identifying: value, parameter: parameter)
+      }
 
       /// The value of this parameterized test argument.
       public var value: any Sendable
@@ -84,10 +89,9 @@ extension Test {
       values: [any Sendable],
       parameters: [ParameterInfo],
       body: @escaping @Sendable () async throws -> Void
-    ) throws {
-      let arguments = try zip(values, parameters).map { value, parameter in
-        let id = try Argument.ID(identifying: value, parameter: parameter)
-        return Argument(id: id, value: value, parameter: parameter)
+    ) {
+      let arguments = zip(values, parameters).map { value, parameter in
+        Argument(value: value, parameter: parameter)
       }
       self.init(arguments: arguments, body: body)
     }
