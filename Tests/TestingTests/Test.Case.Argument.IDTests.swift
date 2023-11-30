@@ -21,7 +21,7 @@ struct Test_Case_Argument_IDTests {
       arguments: [123],
       parameters: [Test.ParameterInfo(index: 0, firstName: "value")]
     ) { _ in }
-    let testCases = try #require(await test.testCases)
+    let testCases = try #require(test.testCases)
     let testCase = try #require(testCases.first { _ in true })
     #expect(testCase.arguments.count == 1)
     let argument = try #require(testCase.arguments.first)
@@ -35,7 +35,7 @@ struct Test_Case_Argument_IDTests {
       arguments: [MyCustomTestArgument(x: 123, y: "abc")],
       parameters: [Test.ParameterInfo(index: 0, firstName: "value")]
     ) { _ in }
-    let testCases = try #require(await test.testCases)
+    let testCases = try #require(test.testCases)
     let testCase = try #require(testCases.first { _ in true })
     #expect(testCase.arguments.count == 1)
     let argument = try #require(testCase.arguments.first)
@@ -52,7 +52,7 @@ struct Test_Case_Argument_IDTests {
       arguments: [MyIdentifiableArgument(id: "abc")],
       parameters: [Test.ParameterInfo(index: 0, firstName: "value")]
     ) { _ in }
-    let testCases = try #require(await test.testCases)
+    let testCases = try #require(test.testCases)
     let testCase = try #require(testCases.first { _ in true })
     #expect(testCase.arguments.count == 1)
     let argument = try #require(testCase.arguments.first)

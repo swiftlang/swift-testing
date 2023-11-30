@@ -18,7 +18,7 @@ struct TestCaseSelectionTests {
       #expect(value == "a")
     }
 
-    let firstTestCase = try #require(await fixtureTest.testCases?.first { _ in true })
+    let firstTestCase = try #require(fixtureTest.testCases?.first { _ in true })
 
     var configuration = Configuration()
     configuration.testCaseFilter = { testCase, _ in
@@ -45,7 +45,7 @@ struct TestCaseSelectionTests {
       #expect(value != "b")
     }
 
-    let testCases = Array(try #require(await fixtureTest.testCases))
+    let testCases = Array(try #require(fixtureTest.testCases))
     let firstTestCaseID = try #require(testCases.first?.id)
     let lastTestCaseID = try #require(testCases.last?.id)
 
@@ -84,7 +84,7 @@ struct TestCaseSelectionTests {
       #expect(stringValue == "b" && intValue == 2)
     }
 
-    let selectedTestCase = try #require(await fixtureTest.testCases?.first { testCase in
+    let selectedTestCase = try #require(fixtureTest.testCases?.first { testCase in
       guard let firstArg = testCase.arguments.first?.value as? String,
             let secondArg = testCase.arguments.last?.value as? Int
       else {
@@ -121,7 +121,7 @@ struct TestCaseSelectionTests {
       #expect(arg.x == 1 && arg.y == "a")
     }
 
-    let firstTestCase = try #require(await fixtureTest.testCases?.first { _ in true })
+    let firstTestCase = try #require(fixtureTest.testCases?.first { _ in true })
 
     var configuration = Configuration()
     configuration.testCaseFilter = { testCase, _ in
@@ -151,7 +151,7 @@ struct TestCaseSelectionTests {
       #expect(arg.id == "a")
     }
 
-    let selectedTestCase = try #require(await fixtureTest.testCases?.first { _ in true })
+    let selectedTestCase = try #require(fixtureTest.testCases?.first { _ in true })
 
     var configuration = Configuration()
     configuration.testCaseFilter = { testCase, _ in
