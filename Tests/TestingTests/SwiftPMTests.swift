@@ -113,8 +113,8 @@ struct SwiftPMTests {
     do {
       let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--xunit-output", temporaryFileURL.path])
       let eventContext = Event.Context()
-      configuration.eventHandler(Event(.runStarted, testID: nil), eventContext)
-      configuration.eventHandler(Event(.runEnded, testID: nil), eventContext)
+      configuration.eventHandler(Event(.runStarted, testID: nil, testCaseID: nil), eventContext)
+      configuration.eventHandler(Event(.runEnded, testID: nil, testCaseID: nil), eventContext)
     }
     #expect(try temporaryFileURL.checkResourceIsReachable())
   }

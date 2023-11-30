@@ -114,9 +114,9 @@ public struct Configuration: Sendable {
   ///
   /// - Parameters:
   ///   - test: An test that needs to be filtered.
-  ///   
+  ///
   /// - Returns: A Boolean value representing if the test satisfied the filter.
-  public typealias TestFilter = @Sendable (Test) -> Bool
+  public typealias TestFilter = @Sendable (_ test: Test) -> Bool
 
   /// Storage for ``testFilter``.
   private var _testFilter: TestFilter = { !$0.isHidden }
@@ -162,4 +162,21 @@ public struct Configuration: Sendable {
       testFilter = selection.contains
     }
   }
+
+  // MARK: - Test case selection
+
+  /// A function that handles filtering test cases.
+  ///
+  /// - Parameters:
+  ///   - testCase: The test case to be filtered.
+  ///   - test: The test which `testCase` is associated with.
+  ///
+  /// - Returns: A Boolean value representing if the test case satisfied the
+  ///   filter.
+  @_spi(ExperimentalParameterizedTesting)
+  public typealias TestCaseFilter = @Sendable (_ testCase: Test.Case, _ test: Test) -> Bool
+
+  /// The test case filter to which test cases should be filtered when run.
+  @_spi(ExperimentalParameterizedTesting)
+  public var testCaseFilter: TestCaseFilter = { _, _ in true }
 }

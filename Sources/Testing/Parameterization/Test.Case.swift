@@ -19,6 +19,34 @@ extension Test {
     /// A type representing an argument passed to a parameter of a parameterized
     /// test function.
     public struct Argument: Sendable {
+      /// A type representing the stable, unique identifier of a parameterized
+      /// test argument.
+      public struct ID: Sendable {
+        /// The raw bytes of this instance's identifier.
+        public var bytes: [UInt8]
+      }
+
+      /// The ID of this parameterized test argument, if any.
+      ///
+      /// The uniqueness of this value is narrow: it is considered unique only
+      /// within the scope of the parameter of the test function this argument
+      /// was passed to.
+      ///
+      /// The value of this property is `nil` when an ID cannot be formed. This
+      /// may occur if the type of ``value`` does not conform to one of the
+      /// protocols used for encoding a stable and unique representation of the
+      /// value.
+      ///
+      /// ## See Also
+      ///
+      /// - ``CustomTestArgumentEncodable``
+      public var id: ID? {
+        // FIXME: Capture the error and propagate to the user, not as a test
+        // failure but as an advisory warning. A missing argument ID will
+        // prevent re-running the test case, but is not a blocking issue.
+        try? Argument.ID(identifying: value, parameter: parameter)
+      }
+
       /// The value of this parameterized test argument.
       public var value: any Sendable
 
@@ -96,3 +124,11 @@ extension Test {
     public var secondName: String?
   }
 }
+
+// MARK: - Codable
+
+extension Test.Case.Argument.ID: Codable {}
+
+// MARK: - Equatable, Hashable
+
+extension Test.Case.Argument.ID: Hashable {}
