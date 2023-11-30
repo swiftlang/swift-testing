@@ -270,9 +270,6 @@ extension Test.Case.Generator {
   /// - Returns:
   ///   A sequence of ``Test/Case`` instances.
   ///
-  /// - Throws: Any error encountered while attempting to map an element to
-  ///   a test case instance.
-  ///
   /// Each call to this function generates a new sequence.
   func generate() async -> some Sequence<Test.Case> {
     await _sequence().lazy.map(_mapElement)

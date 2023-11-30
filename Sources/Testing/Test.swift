@@ -84,9 +84,6 @@ public struct Test: Sendable {
   /// test case is synthesized. For test suite types (as opposed to test
   /// functions), the value of this property is `nil`.
   ///
-  /// - Throws: Any error encountered while attempting to encode the test
-  ///   arguments.
-  ///
   /// - Warning: The parameterized inputs to a test may have limited
   ///   availability if the test has the `@available` attribute applied to it.
   ///   This property does not evaluate availability, and the effect of reading
