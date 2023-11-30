@@ -37,108 +37,132 @@ extension Event {
 
     /// The symbol to use when presenting details about an event to the user.
     case details
+  }
+}
+
+#if SWT_TARGET_OS_APPLE
+// MARK: - SF Symbols
+
+extension Event.Symbol {
+  /// The SF&nbsp;Symbols character and name corresponding to this instance.
+  private var _sfSymbolInfo: (privateUseAreaCharacter: Character, name: String) {
+    switch self {
+    case .default:
+      ("\u{1007C8}", "diamond")
+    case .skip:
+      ("\u{10065F}", "arrow.triangle.turn.up.right.diamond.fill")
+    case let .pass(knownIssueCount):
+      if knownIssueCount > 0 {
+        ("\u{100884}", "xmark.diamond.fill")
+      } else {
+        ("\u{10105B}", "checkmark.diamond.fill")
+      }
+    case .fail:
+      ("\u{100884}", "xmark.diamond.fill")
+    case .difference:
+      ("\u{10017A}", "plus.forwardslash.minus")
+    case .warning:
+      ("\u{1001FF}", "exclamationmark.triangle.fill")
+    case .details:
+      ("\u{100135}", "arrow.turn.down.right")
+    }
+  }
 
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
-    /// The SF Symbols character corresponding to this instance.
-    var sfSymbolCharacter: Character {
-      switch self {
-      case .default:
-        // SF Symbol: diamond
-        return "\u{1007C8}"
-      case .skip:
-        // SF Symbol: arrow.triangle.turn.up.right.diamond.fill
-        return "\u{10065F}"
-      case let .pass(knownIssueCount):
-        if knownIssueCount > 0 {
-          // SF Symbol: xmark.diamond.fill
-          return "\u{100884}"
-        } else {
-          // SF Symbol: checkmark.diamond.fill
-          return "\u{10105B}"
-        }
-      case .fail:
-        // SF Symbol: xmark.diamond.fill
-        return "\u{100884}"
-      case .difference:
-        // SF Symbol: plus.forwardslash.minus
-        return "\u{10017A}"
-      case .warning:
-        // SF Symbol: exclamationmark.triangle.fill
-        return "\u{1001FF}"
-      case .details:
-        // SF Symbol: arrow.turn.down.right
-        return "\u{100135}"
-      }
-    }
+  /// The SF&nbsp;Symbols character corresponding to this instance.
+  ///
+  /// This property is not part of the public interface of the testing library.
+  /// Developers should use ``sfSymbolName`` instead.
+  var sfSymbolCharacter: Character {
+    _sfSymbolInfo.privateUseAreaCharacter
+  }
 #endif
 
-    /// The Unicode character corresponding to this instance.
-    var unicodeCharacter: Character {
+  /// The name of the SF&nbsp;Symbol to use to represent this instance.
+  ///
+  /// Each instance of this type has a corresponding
+  /// [SF&nbsp;Symbol](https://developer.apple.com/sf-symbols/) that can be used
+  /// to represent it in a user interface. SF&nbsp;Symbols are only available on
+  /// Apple platforms.
+  public var sfSymbolName: String {
+    _sfSymbolInfo.name
+  }
+}
+#endif
+
+// MARK: - Unicode
+
+extension Event.Symbol {
+  /// The Unicode character corresponding to this instance.
+  ///
+  /// Each instance of this type has a corresponding Unicode character that can
+  /// be used to represent it in text-based output. The value of this property
+  /// is platform-dependent.
+  public var unicodeCharacter: Character {
 #if SWT_TARGET_OS_APPLE || os(Linux)
-      switch self {
-      case .default:
-        // Unicode: WHITE DIAMOND
-        return "\u{25C7}"
-      case .skip:
+    switch self {
+    case .default:
+      // Unicode: WHITE DIAMOND
+      return "\u{25C7}"
+    case .skip:
+      // Unicode: HEAVY BALLOT X
+      return "\u{2718}"
+    case let .pass(knownIssueCount):
+      if knownIssueCount > 0 {
         // Unicode: HEAVY BALLOT X
         return "\u{2718}"
-      case let .pass(knownIssueCount):
-        if knownIssueCount > 0 {
-          // Unicode: HEAVY BALLOT X
-          return "\u{2718}"
-        } else {
-          // Unicode: HEAVY CHECK MARK
-          return "\u{2714}"
-        }
-      case .fail:
-        // Unicode: HEAVY BALLOT X
-        return "\u{2718}"
-      case .difference:
-        // Unicode: PLUS-MINUS SIGN
-        return "\u{00B1}"
-      case .warning:
-        // Unicode: WARNING SIGN + VARIATION SELECTOR-15 (disable emoji)
-        return "\u{26A0}\u{FE0E}"
-      case .details:
-        // Unicode: DOWNWARDS ARROW WITH TIP RIGHTWARDS
-        return "\u{21B3}"
+      } else {
+        // Unicode: HEAVY CHECK MARK
+        return "\u{2714}"
       }
+    case .fail:
+      // Unicode: HEAVY BALLOT X
+      return "\u{2718}"
+    case .difference:
+      // Unicode: PLUS-MINUS SIGN
+      return "\u{00B1}"
+    case .warning:
+      // Unicode: WARNING SIGN + VARIATION SELECTOR-15 (disable emoji)
+      return "\u{26A0}\u{FE0E}"
+    case .details:
+      // Unicode: DOWNWARDS ARROW WITH TIP RIGHTWARDS
+      return "\u{21B3}"
+    }
 #elseif os(Windows)
-      // The default Windows console font (Consolas) has limited Unicode
-      // support, so substitute some other characters that it does have.
-      switch self {
-      case .default:
-        // Unicode: LOZENGE
-        return "\u{25CA}"
-      case .skip:
+    // The default Windows console font (Consolas) has limited Unicode support,
+    // so substitute some other characters that it does have.
+    switch self {
+    case .default:
+      // Unicode: LOZENGE
+      return "\u{25CA}"
+    case .skip:
+      // Unicode: MULTIPLICATION SIGN
+      return "\u{00D7}"
+    case let .pass(knownIssueCount):
+      if knownIssueCount > 0 {
         // Unicode: MULTIPLICATION SIGN
         return "\u{00D7}"
-      case let .pass(knownIssueCount):
-        if knownIssueCount > 0 {
-          // Unicode: MULTIPLICATION SIGN
-          return "\u{00D7}"
-        } else {
-          // Unicode: SQUARE ROOT
-          return "\u{221A}"
-        }
-      case .fail:
-        // Unicode: MULTIPLICATION SIGN
-        return "\u{00D7}"
-      case .difference:
-        // Unicode: PLUS-MINUS SIGN
-        return "\u{00B1}"
-      case .warning:
-        // Unicode: EXCLAMATION MARK
-        return "\u{0021}"
-      case .details:
-        // Unicode: GREATER-THAN SIGN
-        return "\u{003E}"
+      } else {
+        // Unicode: SQUARE ROOT
+        return "\u{221A}"
       }
+    case .fail:
+      // Unicode: MULTIPLICATION SIGN
+      return "\u{00D7}"
+    case .difference:
+      // Unicode: PLUS-MINUS SIGN
+      return "\u{00B1}"
+    case .warning:
+      // Unicode: EXCLAMATION MARK
+      return "\u{0021}"
+    case .details:
+      // Unicode: GREATER-THAN SIGN
+      return "\u{003E}"
+    }
 #else
 #warning("Platform-specific implementation missing: Unicode characters unavailable")
-      return " "
+    return " "
 #endif
-    }
   }
 }
 
