@@ -176,25 +176,7 @@ public struct Configuration: Sendable {
   @_spi(ExperimentalParameterizedTesting)
   public typealias TestCaseFilter = @Sendable (_ testCase: Test.Case, _ test: Test) -> Bool
 
-  /// The filter which should be applied to a specified test's associated test
-  /// cases when they are run, if any.
-  ///
-  /// This property allows optionally filtering the test cases of a
-  /// parameterized test function. The value of this property is invoked once
-  /// for each test function which is run, and if the result is non-`nil`, the
-  /// resulting test case filter function is then invoked once for each of the
-  /// test's associated test cases to determine if they should run. If the
-  /// result of invoking this property is `nil`, then all of the test cases of
-  /// the test will be run (i.e. no filter will be applied).
-  ///
-  /// ## See Also
-  ///
-  /// - ``testFilter-swift.property``
-  /// - ``setTestFilter(toMatch:)``
+  /// The test case filter to which test cases should be filtered when run.
   @_spi(ExperimentalParameterizedTesting)
-  public var testCaseFilter: @Sendable (_ test: Test) -> TestCaseFilter? = { _ in nil }
-
-  /// Whether or not to enable the encoding of arguments to parameterized test
-  /// functions.
-  public var isTestArgumentEncodingEnabled = false
+  public var testCaseFilter: TestCaseFilter = { _, _ in true }
 }

@@ -21,11 +21,8 @@ struct TestCaseSelectionTests {
     let firstTestCase = try #require(await fixtureTest.testCases?.first { _ in true })
 
     var configuration = Configuration()
-    configuration.testCaseFilter = { test in
-      guard test == fixtureTest else { return nil }
-      return { testCase, _ in
-        testCase.id == firstTestCase.id
-      }
+    configuration.testCaseFilter = { testCase, _ in
+      testCase.id == firstTestCase.id
     }
 
     await confirmation { testStarted in
@@ -53,14 +50,11 @@ struct TestCaseSelectionTests {
     let lastTestCaseID = try #require(testCases.last?.id)
 
     var configuration = Configuration()
-    configuration.testCaseFilter = { test in
-      guard test == fixtureTest else { return nil }
-      return { testCase, _ in
-        Set<Test.Case.ID>([
-          firstTestCaseID,
-          lastTestCaseID
-        ]).contains(testCase.id)
-      }
+    configuration.testCaseFilter = { testCase, _ in
+      Set<Test.Case.ID>([
+        firstTestCaseID,
+        lastTestCaseID
+      ]).contains(testCase.id)
     }
 
     await confirmation(expectedCount: 2) { testStarted in
@@ -100,11 +94,8 @@ struct TestCaseSelectionTests {
     })
 
     var configuration = Configuration()
-    configuration.testCaseFilter = { test in
-      guard test == fixtureTest else { return nil }
-      return { testCase, _ in
-        testCase.id == selectedTestCase.id
-      }
+    configuration.testCaseFilter = { testCase, _ in
+      testCase.id == selectedTestCase.id
     }
 
     await confirmation { testStarted in
@@ -133,11 +124,8 @@ struct TestCaseSelectionTests {
     let firstTestCase = try #require(await fixtureTest.testCases?.first { _ in true })
 
     var configuration = Configuration()
-    configuration.testCaseFilter = { test in
-      guard test == fixtureTest else { return nil }
-      return { testCase, _ in
-        testCase.id == firstTestCase.id
-      }
+    configuration.testCaseFilter = { testCase, _ in
+      testCase.id == firstTestCase.id
     }
 
     await confirmation { testStarted in
@@ -166,11 +154,8 @@ struct TestCaseSelectionTests {
     let selectedTestCase = try #require(await fixtureTest.testCases?.first { _ in true })
 
     var configuration = Configuration()
-    configuration.testCaseFilter = { test in
-      guard test == fixtureTest else { return nil }
-      return { testCase, _ in
-        testCase.id == selectedTestCase.id
-      }
+    configuration.testCaseFilter = { testCase, _ in
+      testCase.id == selectedTestCase.id
     }
 
     await confirmation { testStarted in

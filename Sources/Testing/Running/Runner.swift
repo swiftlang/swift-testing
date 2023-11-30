@@ -211,10 +211,9 @@ extension Runner {
   /// If parallelization is supported and enabled, the generated test cases will
   /// be run in parallel using a task group.
   private func _runTestCases(_ testCases: some Sequence<Test.Case>, within step: Plan.Step) async throws {
-    // If this step's test has an associated test case filter, apply it.
-    let testCaseFilter = configuration.testCaseFilter(step.test)
+    // Apply the configuration's test case filter.
     let testCases = testCases.lazy.filter { testCase in
-      testCaseFilter?(testCase, step.test) ?? true
+      configuration.testCaseFilter(testCase, step.test)
     }
 
     if configuration.isParallelizationEnabled {
