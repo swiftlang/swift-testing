@@ -83,8 +83,6 @@ extension Test {
     ///   - values: The values passed to the parameters for this test case.
     ///   - parameters: The parameters of the test function for this test case.
     ///   - body: The body closure of this test case.
-    ///
-    /// - Throws: Any error encountered attempting to encode test arguments.
     init(
       values: [any Sendable],
       parameters: [ParameterInfo],
