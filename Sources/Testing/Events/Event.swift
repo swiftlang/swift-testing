@@ -222,7 +222,7 @@ extension Event {
     }
   }
 
-  /// Post this event to the event handler of the specified configuration.
+  /// Post this event to the currently-installed event handler.
   ///
   /// - Parameters:
   ///   - context: The context associated with this event.
