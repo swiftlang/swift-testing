@@ -170,14 +170,18 @@ public struct Event: Sendable {
   ) {
     let context = Event.Context(test: test, testCase: testCase)
 
+    // Storage for the lazily-derived test case ID, so that we only perform the
+    // encoding at most once.
+    lazy var encodedTestCaseID: Test.Case.ID? = testCase?.id
+
     withConfiguration(configuration) { configuration in
-      let testCaseID: Test.Case.ID? = if let testCase {
+      let testCaseID: Test.Case.ID? = if testCase != nil {
         // If this event is for a test case but this configuration does not have
         // test argument encoding enabled, include a test case ID for this event
         // which has `nil` for its `argumentIDs` property. This avoids the
         // potentially expensive step of encoding the test case's arguments, but
         // ensures that the event's `testCaseID` property is non-`nil`.
-        configuration.isTestArgumentEncodingEnabled ? testCase.id : .init(argumentIDs: nil)
+        configuration.isTestArgumentEncodingEnabled ? encodedTestCaseID : .init(argumentIDs: nil)
       } else {
         nil
       }
