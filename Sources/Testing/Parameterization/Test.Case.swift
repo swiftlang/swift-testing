@@ -127,8 +127,68 @@ extension Test {
 
 // MARK: - Codable
 
+extension Test.ParameterInfo: Codable {}
 extension Test.Case.Argument.ID: Codable {}
 
 // MARK: - Equatable, Hashable
 
+extension Test.ParameterInfo: Equatable {}
 extension Test.Case.Argument.ID: Hashable {}
+
+// MARK: - Snapshotting
+
+extension Test.Case {
+  /// A serializable snapshot of a ``Test/Case`` instance.
+  @_spi(ExperimentalSnapshotting)
+  public struct Snapshot: Sendable, Codable {
+    /// The ID of this test case.
+    public var id: ID
+
+    /// The arguments passed to this test case.
+    public var arguments: [Argument.Snapshot]
+
+    /// Initialize an instance of this type by snapshotting the specified test
+    /// case.
+    ///
+    /// - Parameters:
+    ///   - testCase: The original test case to snapshot.
+    init(snapshotting testCase: Test.Case) {
+      id = testCase.id
+      arguments = testCase.arguments.map(Test.Case.Argument.Snapshot.init)
+    }
+  }
+}
+
+extension Test.Case.Argument {
+  /// A serializable snapshot of a ``Test/Case/Argument`` instance.
+  @_spi(ExperimentalSnapshotting)
+  public struct Snapshot: Sendable, Codable {
+    /// The ID of this parameterized test argument, if any.
+    public var id: Test.Case.Argument.ID?
+
+    /// A description of this parameterized test argument's
+    /// ``Test/Case/Argument/value`` property, formatted using
+    /// `String(describingForTest:)`.
+    public var valueDescription: String
+
+    /// A debug description of this parameterized test argument's
+    /// ``Test/Case/Argument/value`` property, formatted using
+    /// `String(reflecting:)`.
+    public var valueDebugDescription: String?
+
+    /// The parameter of the test function to which this argument was passed.
+    public var parameter: Test.ParameterInfo
+
+    /// Initialize an instance of this type by snapshotting the specified test
+    /// case argument.
+    ///
+    /// - Parameters:
+    ///   - argument: The original test case argument to snapshot.
+    init(snapshotting argument: Test.Case.Argument) {
+      id = argument.id
+      valueDescription = String(describingForTest: argument.value)
+      valueDebugDescription = String(reflecting: argument.value)
+      parameter = argument.parameter
+    }
+  }
+}

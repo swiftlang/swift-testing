@@ -172,3 +172,60 @@ extension Test: Equatable, Hashable {
     hasher.combine(id)
   }
 }
+
+// MARK: - Snapshotting
+
+extension Test {
+  /// A serializable snapshot of a ``Test`` instance.
+  @_spi(ExperimentalSnapshotting)
+  public struct Snapshot: Sendable, Codable, Identifiable {
+    /// The ID of this test.
+    public var id: Test.ID
+
+    /// The name of this test.
+    ///
+    /// ## See Also
+    ///
+    /// - ``Test/name``
+    public var name: String
+
+    /// The customized display name of this test, if any.
+    public var displayName: String?
+
+    // FIXME: Include traits as well.
+
+    /// The source location of this test.
+    public var sourceLocation: SourceLocation
+
+    /// The set of test cases associated with this test, if any.
+    ///
+    /// ## See Also
+    ///
+    /// - ``Test/testCases``
+    @_spi(ExperimentalParameterizedTesting)
+    public var testCases: [Test.Case.Snapshot]?
+
+    /// The test function parameters, if any.
+    ///
+    /// ## See Also
+    ///
+    /// - ``Test/parameters``
+    @_spi(ExperimentalParameterizedTesting)
+    public var parameters: [ParameterInfo]?
+
+    /// Initialize an instance of this type by snapshotting the specified test.
+    ///
+    /// - Parameters:
+    ///   - test: The original test to snapshot.
+    public init(snapshotting test: Test) async {
+      id = test.id
+      name = test.name
+      displayName = test.displayName
+      sourceLocation = test.sourceLocation
+      // FIXME: Remove this `await` and make this function non-`async` once
+      // pending changes in #146 land.
+      testCases = await test.testCases?.map(Test.Case.Snapshot.init)
+      parameters = test.parameters
+    }
+  }
+}
