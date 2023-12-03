@@ -180,7 +180,7 @@ extension Issue.Kind: CustomStringConvertible {
   }
 }
 
-// MARK: - Codable
+// MARK: - Snapshotting
 
 extension Issue {
   /// A serializable type describing a failure or warning which occurred during a test.

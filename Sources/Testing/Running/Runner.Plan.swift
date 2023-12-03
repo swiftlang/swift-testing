@@ -55,7 +55,7 @@ extension Runner {
       /// The test to be passed to an instance of ``Runner``.
       public var test: Test
 
-      /// The action to perform with ``Test/Plan/Step/test``.
+      /// The action to perform with ``test``.
       public var action: Action
     }
 
@@ -280,5 +280,134 @@ extension Runner.Plan {
   /// `f()` is dependent on `E`.
   public var independentlyRunnableSteps: [Step] {
     _independentlyRunnableSteps(in: stepGraph)
+  }
+}
+
+// MARK: - Snapshotting
+
+extension Runner.Plan {
+  /// A serializable snapshot of a ``Runner/Plan-swift.struct`` instance.
+  @_spi(ExperimentalSnapshotting)
+  public struct Snapshot: Sendable {
+    /// The graph of the steps in this runner plan.
+    private var _stepGraph: Graph<String, Step.Snapshot?> = .init(value: nil)
+
+    /// Initialize an instance of this type by snapshotting the specified plan.
+    ///
+    /// - Parameters:
+    ///   - plan: The original plan to snapshot.
+    public init(snapshotting plan: Runner.Plan) async {
+      await plan.stepGraph.forEach { keyPath, step in
+        let step: Runner.Plan.Step.Snapshot? = if let step {
+          await Step.Snapshot(snapshotting: step)
+        } else {
+          nil
+        }
+        _stepGraph.insertValue(step, at: keyPath)
+      }
+    }
+
+    /// The steps of this runner plan.
+    public var steps: some Collection<Step.Snapshot> {
+      _stepGraph.compactMap(\.value)
+    }
+  }
+}
+
+extension Runner.Plan.Snapshot: Codable {
+  /// The coding keys used for serializing a
+  /// ``Runner/Plan-swift.struct/Snapshot`` instance.
+  private enum _CodingKeys: CodingKey {
+    /// The tests contained by this plan, stored as an unkeyed container of
+    /// ``Test/Snapshot`` instances.
+    case tests
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: _CodingKeys.self)
+
+    var testsContainer = try container.nestedUnkeyedContainer(forKey: .tests)
+
+    // Decode elements incrementally, rather than all at once, to avoid needing
+    // an array containing all tests.
+    while !testsContainer.isAtEnd {
+      let step = try testsContainer.decode(Runner.Plan.Step.Snapshot.self)
+      let idComponents = step.test.id.keyPathRepresentation
+      _stepGraph.insertValue(step, at: idComponents)
+    }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: _CodingKeys.self)
+
+    var testsContainer = container.nestedUnkeyedContainer(forKey: .tests)
+
+    // Encode elements incrementally, rather than all at once, to avoid needing
+    // an array containing all tests.
+    try _stepGraph.forEach { _, step in
+      guard let step else { return }
+      try testsContainer.encode(step)
+    }
+  }
+}
+
+extension Runner.Plan.Step {
+  /// A serializable snapshot of a ``Runner/Plan-swift.struct/Step`` instance.
+  @_spi(ExperimentalSnapshotting)
+  public struct Snapshot: Sendable, Codable {
+    /// The test referenced by this instance.
+    public var test: Test.Snapshot
+
+    /// The action to perform with ``test``.
+    public var action: Runner.Plan.Action.Snapshot
+
+    /// Initialize an instance of this type by snapshotting the specified step.
+    ///
+    /// - Parameters:
+    ///   - step: The original step to snapshot.
+    init(snapshotting step: Runner.Plan.Step) async {
+      test = await Test.Snapshot(snapshotting: step.test)
+      action = Runner.Plan.Action.Snapshot(snapshotting: step.action)
+    }
+  }
+}
+
+extension Runner.Plan.Action {
+  /// A serializable snapshot of a ``Runner/Plan-swift.struct/Step/Action``
+  /// instance.
+  @_spi(ExperimentalSnapshotting)
+  public enum Snapshot: Sendable, Codable {
+    /// The test should be run.
+    case run
+
+    /// The test should be skipped.
+    ///
+    /// - Parameters:
+    ///   - skipInfo: A ``SkipInfo`` representing the details of this skip.
+    case skip(_ skipInfo: SkipInfo)
+
+    /// The test should record an issue due to a failure during
+    /// planning.
+    ///
+    /// - Parameters:
+    ///   - issue: A snapshot of the issue representing the failure encountered
+    ///     during planning.
+    case recordIssue(_ issue: Issue.Snapshot)
+
+    /// Initialize an instance of this type by snapshotting the specified
+    /// action.
+    ///
+    /// - Parameters:
+    ///   - action: The original action to snapshot.
+    init(snapshotting action: Runner.Plan.Action) {
+      self = switch action {
+      case .run:
+        .run
+      case let .skip(skipInfo):
+        .skip(skipInfo)
+      case let .recordIssue(issue):
+        .recordIssue(Issue.Snapshot(snapshotting: issue))
+      }
+    }
   }
 }
