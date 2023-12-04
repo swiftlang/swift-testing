@@ -25,7 +25,7 @@ struct Runner_Plan_SnapshotTests {
     configuration.setTestFilter(toMatch: .init(testIDs: [suite.id]), includeHiddenTests: true)
 
     let plan = await Runner.Plan(configuration: configuration)
-    let snapshot = await Runner.Plan.Snapshot(snapshotting: plan)
+    let snapshot = Runner.Plan.Snapshot(snapshotting: plan)
     let decoded = try JSONDecoder().decode(Runner.Plan.Snapshot.self, from: JSONEncoder().encode(snapshot))
 
     try #require(decoded.steps.count == snapshot.steps.count)

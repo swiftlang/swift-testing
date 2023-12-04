@@ -18,9 +18,9 @@ import Foundation
 struct Test_SnapshotTests {
 #if canImport(Foundation)
   @Test("Codable")
-  func codable() async throws {
+  func codable() throws {
     let test = try #require(Test.current)
-    let snapshot = await Test.Snapshot(snapshotting: test)
+    let snapshot = Test.Snapshot(snapshotting: test)
     let decoded = try JSONDecoder().decode(Test.Snapshot.self, from: JSONEncoder().encode(snapshot))
 
     #expect(decoded.id == snapshot.id)

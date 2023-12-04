@@ -236,14 +236,12 @@ extension Test {
     ///
     /// - Parameters:
     ///   - test: The original test to snapshot.
-    public init(snapshotting test: Test) async {
+    public init(snapshotting test: Test) {
       id = test.id
       name = test.name
       displayName = test.displayName
       sourceLocation = test.sourceLocation
-      // FIXME: Remove this `await` and make this function non-`async` once
-      // pending changes in #146 land.
-      testCases = await test.testCases?.map(Test.Case.Snapshot.init)
+      testCases = test.testCases?.map(Test.Case.Snapshot.init)
       parameters = test.parameters
     }
   }
