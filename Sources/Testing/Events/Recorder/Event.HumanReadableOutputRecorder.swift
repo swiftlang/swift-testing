@@ -262,7 +262,7 @@ extension Event.HumanReadableOutputRecorder {
       }
       return if let comment = skipInfo.comment {
         [
-          Message(symbol: .skip, stringValue: "Test \(testName) skipped: \"\(comment.rawValue)")
+          Message(symbol: .skip, stringValue: "Test \(testName) skipped: \"\(comment.rawValue)\"")
         ]
       } else {
         [
