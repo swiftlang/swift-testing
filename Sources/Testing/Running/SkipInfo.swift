@@ -48,6 +48,10 @@ public struct SkipInfo: Sendable {
 // custom trait can signal that the test it is attached to should be skipped.
 extension SkipInfo: Error {}
 
+// MARK: - Equatable, Hashable
+
+extension SkipInfo: Equatable, Hashable {}
+
 // MARK: - Codable
 
 extension SkipInfo: Codable {}

@@ -257,7 +257,7 @@ extension Event {
   }
 }
 
-// MARK: - Snapshot
+// MARK: - Snapshotting
 
 extension Event {
   /// A serializable event that occurred during testing.

@@ -63,7 +63,7 @@ public struct ExpectationFailedError: Error {
   public var expectation: Expectation
 }
 
-// MARK: - Snapshot
+// MARK: - Snapshotting
 
 extension Expectation {
   /// A serializable type describing an expectation that has been evaluated.
