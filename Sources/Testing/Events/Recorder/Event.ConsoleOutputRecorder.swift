@@ -96,6 +96,7 @@ extension Event {
     /// The write function for this event recorder.
     var write: @Sendable (String) -> Void
 
+    /// The underlying human-readable recorder.
     private var _humanReadableOutputRecorder = HumanReadableOutputRecorder()
 
     /// Initialize a new event recorder.
