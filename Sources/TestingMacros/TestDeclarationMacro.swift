@@ -239,6 +239,17 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     }
   }
 
+  /// The `static` keyword, if `typeName` is not `nil`.
+  ///
+  /// - Parameters:
+  ///   - typeName: The name of the type containing the macro being expanded.
+  ///
+  /// - Returns: A token representing the `static` keyword, or one representing
+  ///   nothing if `typeName` is `nil`.
+  private static func _staticKeyword(for typeName: TypeSyntax?) -> TokenSyntax {
+    (typeName != nil) ? .keyword(.static) : .unknown("")
+  }
+
   /// Create a thunk function with a normalized signature that calls a
   /// developer-supplied test function.
   ///
@@ -358,29 +369,16 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     }
 
     // Add availability guards if needed.
-    for availabilityGuard in createAvailabilityGuardStmts(for: functionDecl, in: context).reversed() {
-      thunkBody = """
-      \(availabilityGuard)
-      \(thunkBody)
-      """
-    }
-
-    // If this function has a minimum or maximum Swift version requirement, we
-    // need to scope its body with #if/#endif.
-    if let swiftVersionGuard = createSwiftVersionGuardExpr(for: functionDecl, in: context) {
-      thunkBody = """
-      #if \(swiftVersionGuard)
-      \(thunkBody)
-      #endif
-      """
-    }
-
-    let staticKeyword = typeName != nil ? "static" : ""
+    thunkBody = createSyntaxNode(
+      guardingForAvailabilityOf: functionDecl,
+      beforePerforming: thunkBody,
+      in: context
+    )
 
     let thunkName = context.makeUniqueName(thunking: functionDecl)
     let thunkDecl: DeclSyntax = """
     @available(*, deprecated, message: "This function is an implementation detail of the testing library. Do not use it directly.")
-    @Sendable private \(raw: staticKeyword) func \(thunkName)\(thunkParamsExpr) async throws -> Void {
+    @Sendable private \(_staticKeyword(for: typeName)) func \(thunkName)\(thunkParamsExpr) async throws -> Void {
       \(thunkBody)
     }
     """
@@ -460,6 +458,58 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     )
     result.append(DeclSyntax(thunkDecl))
 
+    // Create the expression that returns the Test instance for the function.
+    var testsBody: CodeBlockItemListSyntax = """
+    return [
+      .__function(
+        named: \(literal: functionDecl.completeName),
+        in: \(typealiasExpr),
+        xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
+        \(raw: attributeInfo.functionArgumentList(in: context)),
+        parameters: \(raw: functionDecl.testFunctionParameterList),
+        testFunction: \(thunkDecl.name)
+      )
+    ]
+    """
+
+    // If this function has arguments, then it can only be referenced (let alone
+    // called) if the types of those arguments are available at runtime.
+    if attributeInfo.hasFunctionArguments && !functionDecl.availabilityAttributes.isEmpty {
+      // Create an alternative thunk that produces a Test instance with no body
+      // or arguments. We can then use this thunk in place of the "real" one in
+      // case the availability checks fail below.
+      let unavailableTestName = context.makeUniqueName(thunking: functionDecl)
+
+      // TODO: don't assume otherArguments is only parameterized function arguments
+      var attributeInfo = attributeInfo
+      attributeInfo.otherArguments = []
+      result.append(
+        """
+        @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
+        private \(_staticKeyword(for: typeName)) nonisolated func \(unavailableTestName)() async -> [Testing.Test] {
+          [
+            .__function(
+              named: \(literal: functionDecl.completeName),
+              in: \(typealiasExpr),
+              xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
+              \(raw: attributeInfo.functionArgumentList(in: context)),
+              testFunction: {}
+            )
+          ]
+        }
+        """
+      )
+
+      // Add availability guards if needed. If none are needed, the extra thunk
+      // is unused.
+      testsBody = createSyntaxNode(
+        guardingForAvailabilityOf: functionDecl,
+        beforePerforming: testsBody,
+        orExitingWith: "return await \(unavailableTestName)()",
+        in: context
+      )
+    }
+
     // The emitted type must be public or the compiler can optimize it away
     // (since it is not actually used anywhere that the compiler can see.)
     //
@@ -476,16 +526,9 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
       @frozen enum \(enumName): Testing.__TestContainer {
         static var __tests: [Testing.Test] {
-          get async {[
-            .__function(
-              named: \(literal: functionDecl.completeName),
-              in: \(typealiasExpr),
-              xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
-              \(raw: attributeInfo.functionArgumentList(in: context)),
-              parameters: \(raw: functionDecl.testFunctionParameterList),
-              testFunction: \(thunkDecl.name)
-            )
-          ]}
+          get async {
+            \(raw: testsBody)
+          }
         }
       }
       """
@@ -494,4 +537,3 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     return result
   }
 }
-

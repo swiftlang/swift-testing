@@ -46,51 +46,6 @@ struct Availability {
 
 // MARK: -
 
-/// Create an expression that acts as an availability guard (i.e.
-/// `guard #available(...) else { ... }`).
-///
-/// - Parameters:
-///   - decl: The declaration annotated with availability attributes.
-///   - exitStatement: The scope-exiting statement to evaluate if `decl` is
-///     unavailable at runtime. The default expression is `return`.
-///   - context: The macro context in which the expression is being parsed.
-///
-/// - Returns: An array containing one or more `guard` and/or `if` statements
-///   that test availability based on the attributes on `decl` and return
-///   `returnValue` if any availability constraints are not met. If `decl` has
-///   no `@available` attributes, the empty array is returned.
-func createAvailabilityGuardStmts(
-  for decl: some DeclSyntaxProtocol & WithAttributesSyntax,
-  exitingWith exitStatement: StmtSyntax = StmtSyntax(ReturnStmtSyntax()),
-  in context: some MacroExpansionContext
-) -> [StmtSyntax] {
-  var result = [StmtSyntax]()
-
-  result += decl.availability(when: .introduced).lazy
-    .filter { !$0.isSwift }
-    .compactMap(\.platformVersion)
-    .map { platformVersion in
-      """
-      guard #available(\(platformVersion), *) else {
-        \(exitStatement)
-      }
-      """
-    }
-
-  result += decl.availability(when: .obsoleted).lazy
-    .filter { !$0.isSwift }
-    .compactMap(\.platformVersion)
-    .map { platformVersion in
-      """
-      guard #unavailable(\(platformVersion)) else {
-        \(exitStatement)
-      }
-      """
-    }
-
-  return result
-}
-
 /// Create an expression that contains a test trait for availability (i.e.
 /// `.enabled(if: ...)`) for a given availability version.
 ///
@@ -199,37 +154,106 @@ func createAvailabilityTraitExprs(
   return result
 }
 
-/// Create an expression that acts as an availability guard based on the
-/// Swift language version at compile time (i.e. `swift(>=...)`).
+/// Create a syntax node that checks for availability based on a declaration
+/// and, either invokes some other syntax node or exits early.
 ///
 /// - Parameters:
-///   - decl: The expression annotated with availability attributes.
+///   - decl: The declaration annotated with availability attributes.
+///   - node: The node to evaluate if `decl` is available at runtime. This node
+///     may be any arbitrary syntax.
+///   - exitStatement: The scope-exiting statement to evaluate if `decl` is
+///     unavailable at runtime. The default expression is `return`.
 ///   - context: The macro context in which the expression is being parsed.
 ///
-/// - Returns: An instance of `ExprSyntax` that can be used as the condition of
-///   a `#if` statement to guard access to other code based on the Swift
-///   language version, or `nil` if no constraints are in place.
-func createSwiftVersionGuardExpr(
-  for decl: some DeclSyntaxProtocol & WithAttributesSyntax,
+/// - Returns: A syntax node containing one or more `guard`, `if`, and/or `#if`
+///   statements that test availability based on the attributes on `decl` and
+///   exit early with `exitStatement` if any availability constraints are not
+///   met. If `decl` has no `@available` attributes, a copy of `node` is
+///   returned.
+func createSyntaxNode(
+  guardingForAvailabilityOf decl: some DeclSyntaxProtocol & WithAttributesSyntax,
+  beforePerforming node: some SyntaxProtocol,
+  orExitingWith exitStatement: StmtSyntax = StmtSyntax(ReturnStmtSyntax()),
   in context: some MacroExpansionContext
-) -> ExprSyntax? {
-  let introducedVersion = decl.availability(when: .introduced).lazy
-    .filter(\.isSwift)
-    .compactMap(\.version?.components)
-    .max()
-  let obsoletedVersion = decl.availability(when: .obsoleted).lazy
-    .filter(\.isSwift)
-    .compactMap(\.version?.components)
-    .min()
+) -> CodeBlockItemListSyntax {
+  var result: CodeBlockItemListSyntax = "\(node)"
 
-  switch (introducedVersion, obsoletedVersion) {
-  case let (.some(introducedVersion), .some(obsoletedVersion)):
-    return "swift(>=\(raw: introducedVersion)) && swift(<\(raw: obsoletedVersion))"
-  case let (.some(introducedVersion), _):
-    return "swift(>=\(raw: introducedVersion))"
-  case let (_, .some(obsoletedVersion)):
-    return "swift(<\(raw: obsoletedVersion))"
-  default:
-    return nil
+  // Create an expression that acts as an availability guard (i.e.
+  // `guard #available(...) else { ... }`). The expression is evaluated before
+  // `node` to allow for early exit.
+  do {
+    let availableExprs: [ExprSyntax] = decl.availability(when: .introduced).lazy
+      .filter { !$0.isSwift }
+      .compactMap(\.platformVersion)
+      .map { "#available(\($0), *)" }
+    if !availableExprs.isEmpty {
+      let conditionList = ConditionElementListSyntax {
+        for availableExpr in availableExprs {
+          availableExpr
+        }
+      }
+      result = """
+      guard \(conditionList) else {
+        \(exitStatement)
+      }
+      \(result)
+      """
+    }
   }
+
+  // As above, but for unavailability (`#unavailable(...)`.)
+  do {
+    let unavailableExprs: [ExprSyntax] = decl.availability(when: .obsoleted).lazy
+      .filter { !$0.isSwift }
+      .compactMap(\.platformVersion)
+      .map { "#unavailable(\($0))" }
+    if !unavailableExprs.isEmpty {
+      let conditionList = ConditionElementListSyntax {
+        for unavailableExpr in unavailableExprs {
+          unavailableExpr
+        }
+      }
+      result = """
+      guard \(conditionList) else {
+        \(exitStatement)
+      }
+      \(result)
+      """
+    }
+  }
+
+  // If this function has a minimum or maximum Swift version requirement, we
+  // need to scope its body with #if/#endif.
+  do {
+    let introducedVersion = decl.availability(when: .introduced).lazy
+      .filter(\.isSwift)
+      .compactMap(\.version?.components)
+      .max()
+    let obsoletedVersion = decl.availability(when: .obsoleted).lazy
+      .filter(\.isSwift)
+      .compactMap(\.version?.components)
+      .min()
+
+    let swiftVersionGuardExpr: ExprSyntax? = switch (introducedVersion, obsoletedVersion) {
+    case let (.some(introducedVersion), .some(obsoletedVersion)):
+      "swift(>=\(raw: introducedVersion)) && swift(<\(raw: obsoletedVersion))"
+    case let (.some(introducedVersion), _):
+      "swift(>=\(raw: introducedVersion))"
+    case let (_, .some(obsoletedVersion)):
+      "swift(<\(raw: obsoletedVersion))"
+    default:
+      nil
+    }
+    if let swiftVersionGuardExpr {
+      result = """
+      #if \(swiftVersionGuardExpr)
+      \(result)
+      #else
+      \(exitStatement)
+      #endif
+      """
+    }
+  }
+
+  return result
 }

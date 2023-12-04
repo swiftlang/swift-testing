@@ -53,6 +53,32 @@ public struct Test: Sendable {
   /// The source location of this test.
   public var sourceLocation: SourceLocation
 
+  /// The (underestimated) number of iterations that will need to occur during
+  /// testing.
+  ///
+  /// The value of this property is inherently capped at `Int.max`. In practice,
+  /// the number of iterations that can run in a reasonable timespan will be
+  /// significantly lower.
+  ///
+  /// For instances of ``Test`` that represent non-parameterized test functions
+  /// (that is, test functions that do not iterate over a sequence of inputs),
+  /// the value of this property is always `1`. For instances of ``Test`` that
+  /// represent test suite types, the value of this property is always `nil`.
+  ///
+  /// For more information about underestimated counts, see the documentation
+  /// for [`Sequence`](https://developer.apple.com/documentation/swift/array/underestimatedcount-4ggqp).
+  @_spi(ExperimentalParameterizedTesting)
+  public var underestimatedCaseCount: Int? {
+    // NOTE: it is important that we only expose an _underestimated_ count for
+    // two reasons:
+    // 1. If the total number of cases exceeds `.max` due to combinatoric
+    //    complexity, `count` would be too low; and
+    // 2. We reserve the right to support async sequences as input in the
+    //    future, and async sequences do not have `count` properties (but an
+    //    underestimated count of `0` is still technically correct.)
+    testCases?.underestimatedCount
+  }
+
   /// The type containing this test, if any.
   ///
   /// If a test is associated with a free function or static function, the value
@@ -70,12 +96,12 @@ public struct Test: Sendable {
 
   /// Storage for the ``testCases`` property.
   ///
-  /// This use of `AnySequence` is necessary because it is not currently
-  /// possible to express `Sequence<Test.Case> & Sendable` as an existential
-  /// (`any`) ([96960993](rdar://96960993)). It is also not possible to have a
-  /// value of an underlying generic sequence type without specifying its
-  /// generic parameters.
-  private var _testCases: (@Sendable () async -> AnySequence<Test.Case>)?
+  /// This use of `UncheckedSendable` and of `AnySequence` is necessary because
+  /// it is not currently possible to express `Sequence<Test.Case> & Sendable`
+  /// as an existential (`any`) ([96960993](rdar://96960993)). It is also not
+  /// possible to have a value of an underlying generic sequence type without
+  /// specifying its generic parameters.
+  private var _testCases: UncheckedSendable<AnySequence<Test.Case>>?
 
   /// The set of test cases associated with this test, if any.
   ///
@@ -83,16 +109,9 @@ public struct Test: Sendable {
   /// combination of parameterized inputs. For non-parameterized tests, a single
   /// test case is synthesized. For test suite types (as opposed to test
   /// functions), the value of this property is `nil`.
-  ///
-  /// - Warning: The parameterized inputs to a test may have limited
-  ///   availability if the test has the `@available` attribute applied to it.
-  ///   This property does not evaluate availability, and the effect of reading
-  ///   it on a platform where the inputs are unavailable is undefined.
   @_spi(ExperimentalParameterizedTesting)
   public var testCases: (some Sequence<Test.Case> & Sendable)? {
-    get async {
-      await _testCases?()
-    }
+    _testCases?.rawValue
   }
 
   /// Whether or not this test is parameterized.
@@ -121,7 +140,7 @@ public struct Test: Sendable {
   ///
   /// A test suite can be declared using the ``Suite(_:_:)`` macro.
   public var isSuite: Bool {
-    containingType != nil && _testCases == nil
+    containingType != nil && testCases == nil
   }
 
   /// Initialize an instance of this type representing a test suite type.
@@ -156,7 +175,7 @@ public struct Test: Sendable {
     self.sourceLocation = sourceLocation
     self.containingType = containingType
     self.xcTestCompatibleSelector = xcTestCompatibleSelector
-    self._testCases = { await .init(testCases.generate()) }
+    self._testCases = .init(rawValue: .init(testCases))
     self.parameters = parameters
   }
 }

@@ -235,7 +235,7 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
-    arguments collection: @escaping @Sendable () async -> C,
+    arguments collection: C,
     sourceLocation: SourceLocation,
     parameters paramTuples: [__ParameterInfo],
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
@@ -363,7 +363,7 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
-    arguments collection1: @escaping @Sendable () async -> C1, _ collection2: @escaping @Sendable () async -> C2,
+    arguments collection1: C1, _ collection2: C2,
     sourceLocation: SourceLocation,
     parameters paramTuples: [__ParameterInfo],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
@@ -386,7 +386,7 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
-    arguments collection: @escaping @Sendable () async -> C,
+    arguments collection: C,
     sourceLocation: SourceLocation,
     parameters paramTuples: [__ParameterInfo],
     testFunction: @escaping @Sendable ((E1, E2)) async throws -> Void
@@ -412,7 +412,7 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
-    arguments dictionary: @escaping @Sendable () async -> Dictionary<Key, Value>,
+    arguments dictionary: Dictionary<Key, Value>,
     sourceLocation: SourceLocation,
     parameters paramTuples: [__ParameterInfo],
     testFunction: @escaping @Sendable ((Key, Value)) async throws -> Void
@@ -432,7 +432,7 @@ extension Test {
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
-    arguments zippedCollections: @escaping @Sendable () async -> Zip2Sequence<C1, C2>,
+    arguments zippedCollections: Zip2Sequence<C1, C2>,
     sourceLocation: SourceLocation,
     parameters paramTuples: [__ParameterInfo],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
