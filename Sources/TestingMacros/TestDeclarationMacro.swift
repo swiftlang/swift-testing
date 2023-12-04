@@ -246,7 +246,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
   ///
   /// - Returns: A token representing the `static` keyword, or one representing
   ///   nothing if `typeName` is `nil`.
-  private static func staticKeyword(for typeName: TypeSyntax?) -> TokenSyntax {
+  private static func _staticKeyword(for typeName: TypeSyntax?) -> TokenSyntax {
     (typeName != nil) ? .keyword(.static) : .unknown("")
   }
 
@@ -378,7 +378,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     let thunkName = context.makeUniqueName(thunking: functionDecl)
     let thunkDecl: DeclSyntax = """
     @available(*, deprecated, message: "This function is an implementation detail of the testing library. Do not use it directly.")
-    @Sendable private \(staticKeyword(for: typeName)) func \(thunkName)\(thunkParamsExpr) async throws -> Void {
+    @Sendable private \(_staticKeyword(for: typeName)) func \(thunkName)\(thunkParamsExpr) async throws -> Void {
       \(thunkBody)
     }
     """
@@ -486,7 +486,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       result.append(
         """
         @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-        private \(staticKeyword(for: typeName)) nonisolated func \(unavailableTestName)() async -> [Testing.Test] {
+        private \(_staticKeyword(for: typeName)) nonisolated func \(unavailableTestName)() async -> [Testing.Test] {
           [
             .__function(
               named: \(literal: functionDecl.completeName),
