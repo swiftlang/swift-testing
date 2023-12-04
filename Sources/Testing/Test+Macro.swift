@@ -547,8 +547,9 @@ let xcTestCaseClass: AnyClass? = {
 
 /// Run a test function as an `XCTestCase`-compatible method.
 ///
-/// This overload is used when XCTest can be directly imported and the compiler
-/// can tell that the test suite type is a subclass of `XCTestCase`.
+/// This overload is used for types that are classes. If the type is not a
+/// subclass of `XCTestCase`, or if XCTest is not loaded in the current process,
+/// this function returns immediately.
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not call
 ///   it directly.
@@ -557,8 +558,8 @@ public func __invokeXCTestCaseMethod<T>(
   onInstanceOf xcTestCaseSubclass: T.Type,
   sourceLocation: SourceLocation
 ) async throws -> Bool where T: AnyObject {
-  // Any NSObject subclass might end up on this code path, so only record an
-  // issue if it is really an XCTestCase subclass.
+  // All classes will end up on this code path, so only record an issue if it is
+  // really an XCTestCase subclass.
   guard let xcTestCaseClass, isClass(xcTestCaseSubclass, subclassOf: xcTestCaseClass) else {
     return false
   }
