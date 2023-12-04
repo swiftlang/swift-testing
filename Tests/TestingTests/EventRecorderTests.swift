@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalTestRunning) import Testing
+@testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalEventRecording) @_spi(ExperimentalTestRunning) import Testing
 #if !os(Windows)
 import RegexBuilder
 #endif
@@ -19,7 +19,7 @@ import FoundationXML
 #endif
 
 #if FIXED_118452948
-@Suite("EventRecorder Tests")
+@Suite("Event Recorder Tests")
 #endif
 struct EventRecorderTests {
   final class Stream: TextOutputStream, Sendable {

@@ -11,6 +11,7 @@
 extension Event {
   /// A type which handles ``Event`` instances and outputs representations of
   /// them as JUnit-compatible XML.
+  @_spi(ExperimentalEventRecording)
   public struct JUnitXMLRecorder: Sendable {
     /// The write function for this event recorder.
     var write: @Sendable (String) -> Void
@@ -65,7 +66,7 @@ extension Event {
   }
 }
 
-extension Event.JUnitXMLRecorder: EventRecorder {
+extension Event.JUnitXMLRecorder {
   /// Record the specified event by generating a representation of it as a
   /// human-readable string.
   ///
