@@ -17,6 +17,7 @@ extension Event {
   ///
   /// The format of the output is not meant to be machine-readable and is
   /// subject to change. For machine-readable output, use ``JUnitXMLRecorder``.
+  @_spi(ExperimentalEventRecording)
   public struct HumanReadableOutputRecorder: Sendable {
     /// A type describing a human-readable message produced by an instance of
     /// ``Event/HumanReadableOutputRecorder``.
@@ -63,8 +64,6 @@ extension Event {
     @Locked private var _context = _Context()
 
     /// Initialize a new human-readable event recorder.
-    ///
-    /// - Parameters:
     ///
     /// Output from the testing library is converted to "messages" using the
     /// ``Event/HumanReadableOutputRecorder/record(_:)`` function. The format of

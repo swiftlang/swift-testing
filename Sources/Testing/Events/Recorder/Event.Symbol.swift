@@ -11,6 +11,7 @@
 extension Event {
   /// An enumeration describing the symbols used as prefixes when recording an
   /// event.
+  @_spi(ExperimentalEventRecording)
   public enum Symbol: Sendable {
     /// The default symbol to use.
     case `default`
