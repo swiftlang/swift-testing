@@ -13,23 +13,23 @@ public import SwiftSyntaxMacros
 
 /// A structure describing a single platform/version pair from an `@available()`
 /// attribute.
-struct Availability {
+package struct Availability {
   /// The attribute from which this instance was generated.
-  var attribute: AttributeSyntax
+  package var attribute: AttributeSyntax
 
   /// The platform name, such as `"macOS"`, if any.
-  var platformName: TokenSyntax?
+  package var platformName: TokenSyntax?
 
   /// The platform version, such as 1.2.3, if any.
-  var version: VersionTupleSyntax?
+  package var version: VersionTupleSyntax?
 
   /// The `message` argument to the attribute, if any.
-  var message: SimpleStringLiteralExprSyntax?
+  package var message: SimpleStringLiteralExprSyntax?
 
   /// An instance of `PlatformVersionSyntax` representing the same availability
   /// as this instance, if this instance can be represented as an instance of
   /// that type.
-  var platformVersion: PlatformVersionSyntax? {
+  package var platformVersion: PlatformVersionSyntax? {
     platformName.map { platformName in
       PlatformVersionSyntax(
         platform: platformName.trimmed.with(\.trailingTrivia, .space),
@@ -39,7 +39,7 @@ struct Availability {
   }
 
   /// Whether or not this instance represents Swift language availability.
-  var isSwift: Bool {
+  package var isSwift: Bool {
     platformName?.textWithoutBackticks == "swift"
   }
 }
@@ -170,7 +170,7 @@ func createAvailabilityTraitExprs(
 ///   exit early with `exitStatement` if any availability constraints are not
 ///   met. If `decl` has no `@available` attributes, a copy of `node` is
 ///   returned.
-func createSyntaxNode(
+package func createSyntaxNode(
   guardingForAvailabilityOf decl: some DeclSyntaxProtocol & WithAttributesSyntax,
   beforePerforming node: some SyntaxProtocol,
   orExitingWith exitStatement: StmtSyntax = StmtSyntax(ReturnStmtSyntax()),

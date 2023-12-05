@@ -21,7 +21,7 @@ public import SwiftSyntaxMacros
 ///
 /// - Returns: An expression value that initializes an instance of
 ///   ``SourceLocation`` for `expr`.
-func createSourceLocationExpr(of expr: some SyntaxProtocol, context: some MacroExpansionContext) -> ExprSyntax {
+package func createSourceLocationExpr(of expr: some SyntaxProtocol, context: some MacroExpansionContext) -> ExprSyntax {
   if expr.isProtocol((any FreestandingMacroExpansionSyntax).self) {
     // Freestanding macro expressions can just use Testing.SourceLocation()
     // directly and do not need to talk to the macro context to get source

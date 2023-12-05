@@ -19,19 +19,19 @@ public import SwiftSyntax
 ///   another node erases its source location information, so we cannot convert
 ///   expressions to `LabeledExprSyntax` instances until we no longer need that
 ///   information. ([swift-syntax-#1961](https://github.com/apple/swift-syntax/issues/1961))
-struct Argument {
+package struct Argument {
   /// The argument's label, if present.
-  var label: TokenSyntax?
+  package var label: TokenSyntax?
 
   /// The argument expression.
-  var expression: ExprSyntax
+  package var expression: ExprSyntax
 
-  init(label: TokenSyntax? = nil, expression: ExprSyntax) {
+  package init(label: TokenSyntax? = nil, expression: ExprSyntax) {
     self.label = label
     self.expression = expression
   }
 
-  init(label: TokenSyntax? = nil, expression: some ExprSyntaxProtocol) {
+  package init(label: TokenSyntax? = nil, expression: some ExprSyntaxProtocol) {
     self.label = label
     self.expression = ExprSyntax(expression)
   }
@@ -43,7 +43,7 @@ struct Argument {
   ///
   /// The resulting instance of ``Argument`` preserves any source location
   /// information present in `labeledExpr`.
-  init(_ labeledExpr: LabeledExprSyntax) {
+  package init(_ labeledExpr: LabeledExprSyntax) {
     self.init(label: labeledExpr.label, expression: labeledExpr.expression)
   }
 
@@ -55,7 +55,7 @@ struct Argument {
   ///
   /// The resulting instance of ``Argument`` preserves any source location
   /// information present in `trailingClosure`.
-  init(_ trailingClosure: MultipleTrailingClosureElementSyntax) {
+  package init(_ trailingClosure: MultipleTrailingClosureElementSyntax) {
     self.init(label: trailingClosure.label, expression: trailingClosure.closure)
   }
 }
@@ -70,7 +70,7 @@ extension LabeledExprSyntax {
   ///
   /// The resulting instance of `LabeledExprSyntax` does _not_ preserve any
   /// source location information present in `argument`.
-  init(_ argument: Argument) {
+  package init(_ argument: Argument) {
     self.init(label: argument.label?.text, expression: argument.expression.trimmed)
   }
 }
@@ -87,7 +87,7 @@ extension LabeledExprListSyntax {
   /// The resulting instance of `LabeledExprListSyntax` is suitable for
   /// passing as arguments to a function such as `__check()`. It does not
   /// include leading or trailing parentheses, nor a final trailing comma.
-  init(_ arguments: some Sequence<Argument>) {
+  package init(_ arguments: some Sequence<Argument>) {
     self.init {
       for labeledExpr in arguments.lazy.map(LabeledExprSyntax.init) {
         labeledExpr

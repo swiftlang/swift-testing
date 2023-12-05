@@ -13,7 +13,7 @@ public import SwiftSyntaxMacros
 
 extension WithAttributesSyntax {
   /// The set of availability attributes on this instance.
-  var availabilityAttributes: [AttributeSyntax] {
+  package var availabilityAttributes: [AttributeSyntax] {
     attributes.lazy
       .compactMap { attribute in
         if case let .attribute(attribute) = attribute {
@@ -41,7 +41,7 @@ extension WithAttributesSyntax {
   ///
   /// The values in the resulting array can be used to construct expressions
   /// such as `if #available(macOS 999.0, *)`.
-  func availability(when whenKeyword: Keyword) -> [Availability] {
+  package func availability(when whenKeyword: Keyword) -> [Availability] {
     availabilityAttributes.flatMap { attribute -> [Availability] in
       guard case let .availability(specList) = attribute.arguments else {
         return []
@@ -100,7 +100,7 @@ extension WithAttributesSyntax {
 
   /// The first `@available(*, noasync)` or `@_unavailableFromAsync` attribute
   /// on this instance, if any.
-  var noasyncAttribute: AttributeSyntax? {
+  package var noasyncAttribute: AttributeSyntax? {
     availability(when: .noasync).first?.attribute ?? attributes.lazy
       .compactMap { attribute in
         if case let .attribute(attribute) = attribute {
@@ -120,7 +120,7 @@ extension WithAttributesSyntax {
   ///
   /// - Returns: An array of `AttributeSyntax` corresponding to the attached
   ///   `@Test` attributes, or the empty array if none is attached.
-  func attributes(named name: String, inModuleNamed moduleName: String = "Testing", in context: some MacroExpansionContext) -> [AttributeSyntax] {
+  package func attributes(named name: String, inModuleNamed moduleName: String = "Testing", in context: some MacroExpansionContext) -> [AttributeSyntax] {
     attributes.lazy.compactMap { attribute in
       if case let .attribute(attribute) = attribute {
         return attribute
@@ -134,7 +134,7 @@ extension WithAttributesSyntax {
 
 extension AttributeSyntax {
   /// The text of this attribute's name.
-  var attributeNameText: String {
+  package var attributeNameText: String {
     attributeName
       .tokens(viewMode: .fixedUp)
       .map(\.textWithoutBackticks)

@@ -14,7 +14,7 @@ public import SwiftSyntaxMacros
 
 /// A type describing diagnostic messages emitted by this module's macro during
 /// evaluation.
-struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
+package struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   /// Create a diagnostic message for the macro with the specified name
   /// stating that its condition will always pass or fail.
   ///
@@ -24,7 +24,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - macro: The macro expression.
   ///
   /// - Returns: A diagnostic message.
-  static func condition(_ condition: ExprSyntax, isAlways value: Bool, in macro: some FreestandingMacroExpansionSyntax) -> Self {
+  package static func condition(_ condition: ExprSyntax, isAlways value: Bool, in macro: some FreestandingMacroExpansionSyntax) -> Self {
     Self(
       syntax: Syntax(condition),
       message: "#\(macro.macro.textWithoutBackticks)(_:_:) will always \(value ? "pass" : "fail") here; use Bool(\(condition)) to silence this warning",
@@ -40,7 +40,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - macro: The macro expression.
   ///
   /// - Returns: A diagnostic message.
-  static func asExclamationMarkIsEvaluatedEarly(_ expr: AsExprSyntax, in macro: some FreestandingMacroExpansionSyntax) -> Self {
+  package static func asExclamationMarkIsEvaluatedEarly(_ expr: AsExprSyntax, in macro: some FreestandingMacroExpansionSyntax) -> Self {
     return Self(
       syntax: Syntax(expr.asKeyword),
       message: "The expression \(expr.trimmed) will be evaluated before #\(macro.macro.textWithoutBackticks)(_:_:) is invoked; use as? instead of as! to silence this warning",
@@ -106,7 +106,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - decl: The generic declaration in question.
   ///
   /// - Returns: A diagnostic message.
-  static func multipleAttributesNotSupported(_ attributes: [AttributeSyntax], on decl: some SyntaxProtocol) -> Self {
+  package static func multipleAttributesNotSupported(_ attributes: [AttributeSyntax], on decl: some SyntaxProtocol) -> Self {
     precondition(!attributes.isEmpty)
     return Self(
       syntax: Syntax(attributes.last!),
@@ -124,7 +124,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - genericClause: The child node on `decl` that makes it generic.
   ///
   /// - Returns: A diagnostic message.
-  static func genericDeclarationNotSupported(_ decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax, becauseOf genericClause: some SyntaxProtocol) -> Self {
+  package static func genericDeclarationNotSupported(_ decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax, becauseOf genericClause: some SyntaxProtocol) -> Self {
     Self(
       syntax: Syntax(genericClause),
       message: "The @\(attribute.attributeNameText) attribute cannot be applied to a generic \(_kindString(for: decl)).",
@@ -145,7 +145,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   /// - Bug: This combination of attributes requires the ability to resolve
   ///   semantic availability and fully-qualified names for types at macro
   ///   expansion time. ([104081994](rdar://104081994))
-  static func availabilityAttributeNotSupported(_ availabilityAttribute: AttributeSyntax, on decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
+  package static func availabilityAttributeNotSupported(_ availabilityAttribute: AttributeSyntax, on decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
     Self(
       syntax: Syntax(availabilityAttribute),
       message: "The @\(attribute.attributeNameText) attribute cannot be applied to this \(_kindString(for: decl)) because it has been marked \(availabilityAttribute.trimmed).",
@@ -161,7 +161,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - decl: The declaration in question.
   ///
   /// - Returns: A diagnostic message.
-  static func attributeNotSupported(_ attribute: AttributeSyntax, on decl: some SyntaxProtocol) -> Self {
+  package static func attributeNotSupported(_ attribute: AttributeSyntax, on decl: some SyntaxProtocol) -> Self {
     Self(
       syntax: Syntax(decl),
       message: "The @\(attribute.attributeNameText) attribute cannot be applied to \(_kindString(for: decl, includeA: true)).",
@@ -177,7 +177,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - decl: The extension declaration in question.
   ///
   /// - Returns: A diagnostic message.
-  static func attributeHasNoEffect(_ attribute: AttributeSyntax, on decl: ExtensionDeclSyntax) -> Self {
+  package static func attributeHasNoEffect(_ attribute: AttributeSyntax, on decl: ExtensionDeclSyntax) -> Self {
     Self(
       syntax: Syntax(decl),
       message: "The @\(attribute.attributeNameText) attribute has no effect when applied to an extension and should be removed.",
@@ -193,7 +193,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - functionDecl: The declaration in question.
   ///
   /// - Returns: A diagnostic message.
-  static func attributeArgumentCountIncorrect(_ attribute: AttributeSyntax, on functionDecl: FunctionDeclSyntax) -> Self {
+  package static func attributeArgumentCountIncorrect(_ attribute: AttributeSyntax, on functionDecl: FunctionDeclSyntax) -> Self {
     let expectedArgumentCount = functionDecl.signature.parameterClause.parameters.count
     switch expectedArgumentCount {
     case 0:
@@ -226,7 +226,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - attribute: The `@Test` or `@Suite` attribute.
   ///
   /// - Returns: A diagnostic message.
-  static func xcTestCaseNotSupported(_ decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
+  package static func xcTestCaseNotSupported(_ decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
     Self(
       syntax: Syntax(decl),
       message: "The @\(attribute.attributeNameText) attribute cannot be applied to a subclass of XCTestCase.",
@@ -242,7 +242,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - attribute: The `@Test` or `@Suite` attribute.
   ///
   /// - Returns: A diagnostic message.
-  static func nonFinalClassNotSupported(_ decl: ClassDeclSyntax, whenUsing attribute: AttributeSyntax) -> Self {
+  package static func nonFinalClassNotSupported(_ decl: ClassDeclSyntax, whenUsing attribute: AttributeSyntax) -> Self {
     Self(
       syntax: Syntax(decl),
       message: "The @\(attribute.attributeNameText) attribute cannot be applied to non-final class \(decl.name.textWithoutBackticks).",
@@ -259,7 +259,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - attribute: The `@Test` or `@Suite` attribute.
   ///
   /// - Returns: A diagnostic message.
-  static func specifierNotSupported(_ specifier: TokenSyntax, on parameter: FunctionParameterSyntax, whenUsing attribute: AttributeSyntax) -> Self {
+  package static func specifierNotSupported(_ specifier: TokenSyntax, on parameter: FunctionParameterSyntax, whenUsing attribute: AttributeSyntax) -> Self {
     Self(
       syntax: Syntax(parameter),
       message: "The @\(attribute.attributeNameText) attribute cannot be applied to a function with a parameter marked '\(specifier.textWithoutBackticks)'.",
@@ -276,7 +276,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - attribute: The `@Test` or `@Suite` attribute.
   ///
   /// - Returns: A diagnostic message.
-  static func returnTypeNotSupported(_ returnType: TypeSyntax, on decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
+  package static func returnTypeNotSupported(_ returnType: TypeSyntax, on decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
     return Self(
       syntax: Syntax(returnType),
       message: "The result of this \(_kindString(for: decl)) will be discarded during testing.",
@@ -284,13 +284,13 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
-  var syntax: Syntax
+  package var syntax: Syntax
 
   // MARK: - DiagnosticMessage
 
-  var message: String
-  var diagnosticID = MessageID(domain: "org.swift.testing", id: "macros")
-  var severity: DiagnosticSeverity
+  package var message: String
+  package var diagnosticID = MessageID(domain: "org.swift.testing", id: "macros")
+  package var severity: DiagnosticSeverity
 }
 
 // MARK: -
@@ -302,7 +302,7 @@ extension MacroExpansionContext {
   ///   - message: The diagnostic message to emit. The `node` and `position`
   ///     arguments to `Diagnostic.init()` are derived from the message's
   ///     `syntax` property.
-  func diagnose(_ message: DiagnosticMessage) {
+  package func diagnose(_ message: DiagnosticMessage) {
     diagnose(
       Diagnostic(
         node: message.syntax,
@@ -317,7 +317,7 @@ extension MacroExpansionContext {
   ///
   /// - Parameters:
   ///   - message: The message to emit into the build log.
-  func debug(_ message: some Any, node: some SyntaxProtocol) {
+  package func debug(_ message: some Any, node: some SyntaxProtocol) {
     diagnose(DiagnosticMessage(syntax: Syntax(node), message: String(describing: message), severity: .warning))
   }
 }

@@ -56,7 +56,7 @@ private final class _SelfRemover<C>: SyntaxRewriter where C: MacroExpansionConte
 }
 
 /// A type describing information parsed from a `@Test` or `@Suite` attribute.
-struct AttributeInfo {
+package struct AttributeInfo {
   /// The attribute node that was parsed to produce this instance.
   var attribute: AttributeSyntax
 

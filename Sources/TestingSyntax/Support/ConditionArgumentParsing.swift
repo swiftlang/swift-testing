@@ -13,20 +13,20 @@ public import SwiftSyntaxMacros
 
 /// The result of parsing the condition argument passed to `#expect()` or
 /// `#require()`.
-struct Condition {
+package struct Condition {
   /// The name of the function to call in the macro expansion (e.g.
   /// `__check()`.)
-  var expandedFunctionName: TokenSyntax
+  package var expandedFunctionName: TokenSyntax
 
   /// The condition as one or more arguments to the evaluation function,
   /// suitable for passing as partial arguments to a call to `__check()`.
-  var arguments: [Argument]
+  package var arguments: [Argument]
 
   /// The condition's source code as an expression that produces an instance of
   /// the testing library's `SourceCode` type.
-  var sourceCode: ExprSyntax
+  package var sourceCode: ExprSyntax
 
-  init(_ expandedFunctionName: String, arguments: [Argument], sourceCode: ExprSyntax) {
+  package init(_ expandedFunctionName: String, arguments: [Argument], sourceCode: ExprSyntax) {
     self.expandedFunctionName = .identifier(expandedFunctionName)
     self.arguments = arguments
     self.sourceCode = sourceCode
@@ -39,7 +39,7 @@ struct Condition {
   ///   - expr: The expression.
   ///   - sourceCodeNode: The node from which to derive the `sourceCode`
   ///     property. If `nil`, `expr` is used.
-  init(expression expr: some ExprSyntaxProtocol, sourceCodeNode: Syntax? = nil) {
+  package init(expression expr: some ExprSyntaxProtocol, sourceCodeNode: Syntax? = nil) {
     let sourceCodeNode: Syntax = sourceCodeNode ?? Syntax(expr)
     self.init(
       "__checkValue",
@@ -399,7 +399,7 @@ private func _parseCondition(from expr: ExprSyntax, for macro: some Freestanding
 ///   - context: The macro context in which the expression is being parsed.
 ///
 /// - Returns: An instance of ``Condition`` describing `expr`.
-func parseCondition(from expr: ExprSyntax, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
+package func parseCondition(from expr: ExprSyntax, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
   let result = _parseCondition(from: expr, for: macro, in: context)
   if result.arguments.count == 1, let onlyArgument = result.arguments.first {
     _diagnoseTrivialBooleanValue(from: onlyArgument.expression, for: macro, in: context)

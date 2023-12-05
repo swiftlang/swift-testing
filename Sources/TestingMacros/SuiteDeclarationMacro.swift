@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import TestingSyntax
 public import SwiftSyntax
 public import SwiftSyntaxMacros
 

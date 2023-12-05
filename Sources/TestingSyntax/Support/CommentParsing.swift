@@ -123,7 +123,7 @@ private func _trimTriviaToLastDoubleNewline(_ trivia: Trivia) -> some Sequence<T
 ///
 /// - Returns: An array of expressions producing ``Comment`` instances. If
 ///   `node` has no code comments, an empty array is returned.
-func createCommentTraitExprs(for node: some SyntaxProtocol) -> [ExprSyntax] {
+package func createCommentTraitExprs(for node: some SyntaxProtocol) -> [ExprSyntax] {
   _trimTriviaToLastDoubleNewline(node.leadingTrivia).compactMap { triviaPiece in
     switch triviaPiece {
     case .lineComment(let comment):

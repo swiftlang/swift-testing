@@ -13,14 +13,14 @@ public import SwiftSyntaxMacros
 
 extension FunctionDeclSyntax {
   /// Whether or not this function a `static` or `class` function.
-  var isStaticOrClass: Bool {
+  package var isStaticOrClass: Bool {
     modifiers.lazy
       .map(\.name.tokenKind)
       .contains { $0 == .keyword(.class) || $0 == .keyword(.static) }
   }
 
   /// Whether or not this function is a `mutating` function.
-  var isMutating: Bool {
+  package var isMutating: Bool {
     modifiers.lazy
       .map(\.name.tokenKind)
       .contains(.keyword(.mutating))
@@ -28,7 +28,7 @@ extension FunctionDeclSyntax {
 
   /// The name of this function including parentheses, parameter labels, and
   /// colons.
-  var completeName: String {
+  package var completeName: String {
     var result = [name.textWithoutBackticks, "(",]
 
     for parameter in signature.parameterClause.parameters {
@@ -41,7 +41,7 @@ extension FunctionDeclSyntax {
   }
 
   /// An array of tuples representing this function's parameters.
-  var testFunctionParameterList: ArrayExprSyntax {
+  package var testFunctionParameterList: ArrayExprSyntax {
     ArrayExprSyntax {
       for parameter in signature.parameterClause.parameters {
         ArrayElementSyntax(expression: parameter.testFunctionParameter)
@@ -58,7 +58,7 @@ extension FunctionDeclSyntax {
   /// - Note: This property does not validate that a function declaration
   ///   actually has a corresponding selector or can be called from Objective-C.
   ///   That information can only be determined at runtime.
-  var xcTestCompatibleSelector: ObjCSelectorPieceListSyntax? {
+  package var xcTestCompatibleSelector: ObjCSelectorPieceListSyntax? {
     // First, look for an @objc attribute with an explicit selector, and use
     // that if found.
     let objcAttribute = attributes.lazy
@@ -137,7 +137,7 @@ extension MacroExpansionContext {
   ///
   /// - Returns: A unique name to use for a thunk function that thunks
   ///   `functionDecl`.
-  func makeUniqueName(thunking functionDecl: FunctionDeclSyntax, withPrefix prefix: String = "") -> TokenSyntax {
+  package func makeUniqueName(thunking functionDecl: FunctionDeclSyntax, withPrefix prefix: String = "") -> TokenSyntax {
     // Find all the tokens of the function declaration including argument
     // types, specifiers, etc. (but not any attributes nor the body of the
     // function.) Use them as the base name we pass to makeUniqueName(). This

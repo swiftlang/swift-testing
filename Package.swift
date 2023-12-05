@@ -54,8 +54,8 @@ let package = Package(
       swiftSettings: .packageSettings
     ),
 
-    .macro(
-      name: "TestingMacros",
+    .target(
+      name: "TestingSyntax",
       dependencies: [
         .product(name: "SwiftDiagnostics", package: "swift-syntax"),
         .product(name: "SwiftSyntax", package: "swift-syntax"),
@@ -64,15 +64,20 @@ let package = Package(
         .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
         .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
       ],
-      swiftSettings: .packageSettings + [
-        // The only target which needs the ability to import this macro
-        // implementation target's module is its unit test target. Users of the
-        // macros this target implements use them via their declarations in the
-        // Testing module. This target's module is never distributed to users,
-        // but as an additional guard against accidental misuse, this specifies
-        // the unit test target as the only allowable client.
-        .unsafeFlags(["-Xfrontend", "-allowable-client", "-Xfrontend", "TestingMacrosTests"]),
-      ]
+      swiftSettings: .packageSettings
+    ),
+    .macro(
+      name: "TestingMacros",
+      dependencies: [
+        "TestingSyntax",
+        .product(name: "SwiftDiagnostics", package: "swift-syntax"),
+        .product(name: "SwiftSyntax", package: "swift-syntax"),
+        .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
+        .product(name: "SwiftParser", package: "swift-syntax"),
+        .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+        .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+      ],
+      swiftSettings: .packageSettings
     ),
 
     // "Support" targets: These contain C family code and are used exclusively
@@ -105,6 +110,7 @@ package.targets.append(contentsOf: [
     name: "TestingMacrosTests",
     dependencies: [
       "Testing",
+      "TestingSyntax",
       "TestingMacros",
     ],
     swiftSettings: .packageSettings
