@@ -22,7 +22,7 @@ struct Runner_Plan_SnapshotTests {
     let suite = try #require(await test(for: Runner_Plan_SnapshotFixtures.self))
 
     var configuration = Configuration()
-    configuration.uncheckedTestFilter = makeTestFilter(matching: .init(testIDs: [suite.id]), includeHiddenTests: true)
+    configuration.uncheckedTestFilter = makeTestFilter(matching: .init(testIDs: [suite.id]))
 
     let plan = await Runner.Plan(configuration: configuration)
     let snapshot = Runner.Plan.Snapshot(snapshotting: plan)

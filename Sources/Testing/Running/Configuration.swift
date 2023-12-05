@@ -177,29 +177,10 @@ public struct Configuration: Sendable {
 /// - Parameters:
 ///   - selection: A set of test IDs to be filtered.
 ///
-/// By default, all tests are run and no filter is set.
+/// - Returns: A test filter that filters tests to those specified by
+///   `selection`.
 @_spi(ExperimentalTestRunning)
 public func makeTestFilter(matching selection: some Collection<Test.ID>) -> Configuration.TestFilter {
   let selection = Test.ID.Selection(testIDs: selection)
-  return makeTestFilter(matching: selection, includeHiddenTests: false)
+  return selection.contains
 }
-
-/// Make a test filter that filters tests to those specified by a set of test
-/// IDs, optionally including or excluding hidden tests.
-///
-/// - Parameters:
-///   - selection: A selection of test IDs to be filtered.
-///   - includeHiddenTests: If false, a test annotated with the `.hidden`
-///     trait will not be included, even if its ID is present in `selection`.
-///
-/// By default, all tests are run and no filter is set.
-func makeTestFilter(matching selection: Test.ID.Selection, includeHiddenTests: Bool) -> Configuration.TestFilter {
-  if includeHiddenTests {
-    return selection.contains
-  } else {
-    return { test in
-      !test.isHidden && selection.contains(test)
-    }
-  }
-}
-
