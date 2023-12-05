@@ -251,7 +251,7 @@ final class RunnerTests: XCTestCase {
 
     var configuration = Configuration()
     let selection = Test.ID.Selection(testIDs: [testSuite.id])
-    configuration.setTestFilter(toMatch: selection, includeHiddenTests: true)
+    configuration.uncheckedTestFilter = makeTestFilter(matching: selection, includeHiddenTests: true)
 
     let runner = await Runner(testing: [
       testSuite,
@@ -302,7 +302,7 @@ final class RunnerTests: XCTestCase {
 
     var configuration = Configuration()
     let selection = Test.ID.Selection(testIDs: selectedTestIDs)
-    configuration.setTestFilter(toMatch: selection, includeHiddenTests: true)
+    configuration.uncheckedTestFilter = makeTestFilter(matching: selection, includeHiddenTests: true)
 
     let runner = await Runner(configuration: configuration)
     let plan = runner.plan
@@ -326,10 +326,10 @@ final class RunnerTests: XCTestCase {
     ]
 
     var configuration1 = Configuration()
-    configuration1.setTestFilter(toMatch: .init(testIDs: selectedTestIDs), includeHiddenTests: false)
+    configuration1.testFilter = makeTestFilter(matching: .init(testIDs: selectedTestIDs), includeHiddenTests: false)
 
     var configuration2 = Configuration()
-    configuration2.setTestFilter(toMatch: selectedTestIDs)
+    configuration2.testFilter = makeTestFilter(matching: selectedTestIDs)
 
     for configuration in [configuration1, configuration2] {
       let runner = await Runner(configuration: configuration)

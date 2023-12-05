@@ -118,7 +118,7 @@ public struct Configuration: Sendable {
   /// - Returns: A Boolean value representing if the test satisfied the filter.
   public typealias TestFilter = @Sendable (_ test: Test) -> Bool
 
-  /// Storage for ``testFilter``.
+  /// Storage for ``testFilter-swift.property``.
   private var _testFilter: TestFilter = { !$0.isHidden }
 
   /// The test filter to which tests should be filtered when run.
@@ -130,36 +130,24 @@ public struct Configuration: Sendable {
       // By default, the test filter should always filter out hidden tests. This
       // is the appropriate behavior for external clients of this SPI. If the
       // testing library needs to enable hidden tests in its own test targets,
-      // it should use setTestFilter(toMatch:includeHiddenTests:) instead.
+      // it can instead use `uncheckedTestFilter`.
       _testFilter = { test in
         !test.isHidden && newValue(test)
       }
     }
   }
 
-  /// Filter tests to run to those specified via a set of test IDs.
+  /// The test filter to which tests should be filtered when run.
   ///
-  /// - Parameters:
-  ///   - selection: A set of test IDs to be filtered.
-  ///
-  /// By default, all tests are run and no filter is set.
-  public mutating func setTestFilter(toMatch selection: Set<Test.ID>) {
-    setTestFilter(toMatch: Test.ID.Selection(testIDs: selection), includeHiddenTests: false)
-  }
-
-  /// Filter tests to run to those specified by a selection of test IDs.
-  ///
-  /// - Parameters:
-  ///   - selection: A selection of test IDs to be filtered.
-  ///   - includeHiddenTests: If false, a test annotated with the `.hidden`
-  ///     trait will not be included, even if its ID is present in `selection`.
-  ///
-  /// By default, all tests are run and no filter is set.
-  mutating func setTestFilter(toMatch selection: Test.ID.Selection, includeHiddenTests: Bool) {
-    if includeHiddenTests {
-      _testFilter = selection.contains
-    } else {
-      testFilter = selection.contains
+  /// Unlike ``testFilter-swift.property``, this property does not impose any
+  /// checks for hidden tests. It is used by the testing library to run hidden
+  /// tests; other callers should always use ``testFilter-swift.property``.
+  var uncheckedTestFilter: TestFilter {
+    get {
+      _testFilter
+    }
+    set {
+      _testFilter = newValue
     }
   }
 
@@ -180,3 +168,38 @@ public struct Configuration: Sendable {
   @_spi(ExperimentalParameterizedTesting)
   public var testCaseFilter: TestCaseFilter = { _, _ in true }
 }
+
+// MARK: - Test filter factory functions
+
+/// Make a test filter that filters tests to those specified by a set of test
+/// IDs.
+///
+/// - Parameters:
+///   - selection: A set of test IDs to be filtered.
+///
+/// By default, all tests are run and no filter is set.
+@_spi(ExperimentalTestRunning)
+public func makeTestFilter(matching selection: some Collection<Test.ID>) -> Configuration.TestFilter {
+  let selection = Test.ID.Selection(testIDs: selection)
+  return makeTestFilter(matching: selection, includeHiddenTests: false)
+}
+
+/// Make a test filter that filters tests to those specified by a set of test
+/// IDs, optionally including or excluding hidden tests.
+///
+/// - Parameters:
+///   - selection: A selection of test IDs to be filtered.
+///   - includeHiddenTests: If false, a test annotated with the `.hidden`
+///     trait will not be included, even if its ID is present in `selection`.
+///
+/// By default, all tests are run and no filter is set.
+func makeTestFilter(matching selection: Test.ID.Selection, includeHiddenTests: Bool) -> Configuration.TestFilter {
+  if includeHiddenTests {
+    return selection.contains
+  } else {
+    return { test in
+      !test.isHidden && selection.contains(test)
+    }
+  }
+}
+
