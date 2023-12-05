@@ -211,7 +211,7 @@ public enum XCTestScaffold: Sendable {
     var configuration = Configuration()
     configuration.isParallelizationEnabled = false
     if let testIDs {
-      configuration.setTestFilter(toMatch: Set(testIDs))
+      configuration.testFilter = makeTestFilter(matching: testIDs)
     }
     if let tags {
       // Check if the test's tags intersect the set of selected tags. If there
