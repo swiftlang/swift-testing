@@ -67,7 +67,7 @@ func runTest(for containingType: Any.Type, configuration: Configuration = .init(
 /// If no test is found representing `containingType`, nothing is run.
 func runTestFunction(named name: String, in containingType: Any.Type, configuration: Configuration = .init()) async {
   var configuration = configuration
-  let selection = Test.ID.Selection(testIDs: [Test.ID(type: containingType).child(named: name)])
+  let selection = [Test.ID(type: containingType).child(named: name)]
   configuration.uncheckedTestFilter = makeTestFilter(matching: selection)
 
   let runner = await Runner(configuration: configuration)
@@ -91,7 +91,7 @@ extension Runner {
     let moduleName = String(fileID[..<fileID.lastIndex(of: "/")!])
 
     var configuration = configuration
-    let selection = Test.ID.Selection(testIDs: [Test.ID(moduleName: moduleName, nameComponents: [testName], sourceLocation: nil)])
+    let selection = [Test.ID(moduleName: moduleName, nameComponents: [testName], sourceLocation: nil)]
     configuration.uncheckedTestFilter = makeTestFilter(matching: selection)
 
     await self.init(configuration: configuration)
@@ -106,7 +106,7 @@ extension Runner.Plan {
   ///   - configuration: The configuration to use for planning.
   init(selecting containingType: Any.Type, configuration: Configuration = .init()) async {
     var configuration = configuration
-    let selection = Test.ID.Selection(testIDs: [Test.ID(type: containingType)])
+    let selection = [Test.ID(type: containingType)]
     configuration.uncheckedTestFilter = makeTestFilter(matching: selection)
 
     await self.init(configuration: configuration)
@@ -288,10 +288,6 @@ extension Test.ID.Selection {
   init(testIDs: some Collection<[String]>) {
     self.init(testIDs: testIDs.lazy.map(Test.ID.init(_:)))
   }
-}
-
-func makeTestFilter(matching selection: Test.ID.Selection) -> Configuration.TestFilter {
-  selection.contains
 }
 
 extension Configuration {

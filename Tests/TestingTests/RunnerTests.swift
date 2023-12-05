@@ -250,7 +250,7 @@ final class RunnerTests: XCTestCase {
     let testFunc = try #require(await testFunction(named: "duelingConditions()", in: NeverRunTests.self))
 
     var configuration = Configuration()
-    let selection = Test.ID.Selection(testIDs: [testSuite.id])
+    let selection = [testSuite.id]
     configuration.uncheckedTestFilter = makeTestFilter(matching: selection)
 
     let runner = await Runner(testing: [
@@ -301,8 +301,7 @@ final class RunnerTests: XCTestCase {
     XCTAssertFalse(selectedTestIDs.isEmpty)
 
     var configuration = Configuration()
-    let selection = Test.ID.Selection(testIDs: selectedTestIDs)
-    configuration.uncheckedTestFilter = makeTestFilter(matching: selection)
+    configuration.uncheckedTestFilter = makeTestFilter(matching: selectedTestIDs)
 
     let runner = await Runner(configuration: configuration)
     let plan = runner.plan
@@ -326,7 +325,7 @@ final class RunnerTests: XCTestCase {
     ]
 
     var configuration1 = Configuration()
-    configuration1.testFilter = makeTestFilter(matching: .init(testIDs: selectedTestIDs))
+    configuration1.testFilter = makeTestFilter(matching: selectedTestIDs)
 
     var configuration2 = Configuration()
     configuration2.testFilter = makeTestFilter(matching: selectedTestIDs)
