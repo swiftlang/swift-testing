@@ -293,6 +293,6 @@ extension Event.ConsoleOutputRecorder {
   /// The caller is responsible for presenting this message to the user.
   static func warning(_ message: String, options: [Event.ConsoleOutputRecorder.Option]) -> String {
     let symbol = Event.Symbol.warning.stringValue(options: Set(options))
-    return "\(symbol) \(message)"
+    return "\(symbol) \(message)\n"
   }
 }
