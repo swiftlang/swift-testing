@@ -171,7 +171,8 @@ public struct Configuration: Sendable {
 
 // MARK: - Test filter factory functions
 
-/// Filter tests to run to those specified via a set of test IDs.
+/// Make a test filter that filters tests to those specified by a set of test
+/// IDs.
 ///
 /// - Parameters:
 ///   - selection: A set of test IDs to be filtered.
@@ -183,7 +184,8 @@ public func makeTestFilter(matching selection: some Collection<Test.ID>) -> Conf
   return makeTestFilter(matching: selection, includeHiddenTests: false)
 }
 
-/// Filter tests to run to those specified by a selection of test IDs.
+/// Make a test filter that filters tests to those specified by a set of test
+/// IDs, optionally including or excluding hidden tests.
 ///
 /// - Parameters:
 ///   - selection: A selection of test IDs to be filtered.
