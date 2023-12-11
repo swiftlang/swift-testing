@@ -45,12 +45,12 @@ struct TimeValue: Sendable {
     self.init((Int64(timespec.tv_sec), Int64(timespec.tv_nsec) * 1_000_000_000))
   }
 
-  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+  @available(_clockAPI, *)
   init(_ duration: Duration) {
     self.init(duration.components)
   }
 
-  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+  @available(_clockAPI, *)
   init(_ instant: SuspendingClock.Instant) {
     self.init(unsafeBitCast(instant, to: Duration.self))
   }
@@ -93,14 +93,14 @@ extension TimeValue: CustomStringConvertible {
 
 // MARK: -
 
-@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+@available(_clockAPI, *)
 extension Duration {
   init(_ timeValue: TimeValue) {
     self.init(secondsComponent: timeValue.seconds, attosecondsComponent: timeValue.attoseconds)
   }
 }
 
-@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+@available(_clockAPI, *)
 extension SuspendingClock.Instant {
   init(_ timeValue: TimeValue) {
     self = unsafeBitCast(Duration(timeValue), to: SuspendingClock.Instant.self)

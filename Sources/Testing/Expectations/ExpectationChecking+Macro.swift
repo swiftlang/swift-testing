@@ -785,7 +785,7 @@ public func __checkClosureCall<R>(
 private func _description(of error: some Error) -> String {
   let errorDescription = "\"\(error)\""
   let errorType = type(of: error as Any)
-  if #available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *) {
+  if #available(_regexAPI, *) {
     if errorDescription.contains(String(describing: errorType)) {
       return errorDescription
     }

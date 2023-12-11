@@ -589,7 +589,7 @@ final class RunnerTests: XCTestCase {
       func f() {}
 
       @Test(.hidden)
-      @available(macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0, *)
+      @available(_distantFuture, *)
       func g() {}
     }
 
@@ -716,12 +716,12 @@ final class RunnerTests: XCTestCase {
 
   @Suite(.hidden) struct AvailableWithDefinedAvailabilityTests {
     @Test(.hidden)
-    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+    @available(_clockAPI, *)
     func clockAPI() {}
   }
 
   func testAvailableWithDefinedAvailability() async throws {
-    guard #available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *) else {
+    guard #available(_clockAPI, *) else {
       throw XCTSkip("Test method is unavailable here.")
     }
 

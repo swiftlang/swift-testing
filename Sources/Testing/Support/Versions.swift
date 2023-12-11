@@ -142,7 +142,7 @@ var testingLibraryVersion: String {
 ///
 /// This value is not part of the public interface of the testing library.
 let swiftStandardLibraryVersion: String = {
-  if #available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *) {
+  if #available(_swiftVersionAPI, *) {
     return String(describing: _SwiftStdlibVersion.current)
   }
   return "unknown"
