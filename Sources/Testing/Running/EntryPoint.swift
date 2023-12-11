@@ -172,7 +172,7 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
   // constructed solely from a string, they are safe to send across isolation
   // boundaries.
   var filters = [Configuration.TestFilter]()
-  if #available(_regexAPI, *) {
+  if #available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *) {
     if let filterArgIndex = args.firstIndex(of: "--filter"), filterArgIndex < args.endIndex {
       let filterArg = args[args.index(after: filterArgIndex)]
 
