@@ -86,13 +86,14 @@ extension XCTIssue {
 /// A type providing temporary tools for integrating the testing library and
 /// the XCTest framework.
 ///
-/// - Warning: This type is provided temporarily to aid in integrating the
-///   testing library with existing tools such as Swift Package Manager. It
-///   will be removed in a future release.
-///
 /// ## See Also
 ///
 /// - <doc:TemporaryGettingStarted>
+#if SWIFT_PM_SUPPORTS_SWIFT_TESTING
+@available(*, deprecated, message: "This version of Swift Package Manager supports running swift-testing tests directly. This type will be removed in a future release.")
+#else
+@available(swift, deprecated: 100000.0, message: "This type is provided temporarily to aid in integrating the testing library with existing tools such as Swift Package Manager. It will be removed in a future release.")
+#endif
 public enum XCTestScaffold: Sendable {
   /// Run all tests found in the current process and write output to the
   /// standard error stream.
@@ -104,10 +105,6 @@ public enum XCTestScaffold: Sendable {
   /// Output from the testing library is written to the standard error stream.
   /// The format of the output is not meant to be machine-readable and is
   /// subject to change.
-  ///
-  /// - Warning: This function is provided temporarily to aid in integrating the
-  ///   testing library with existing tools such as Swift Package Manager. It
-  ///   will be removed in a future release.
   ///
   /// ### Filtering tests
   ///
@@ -167,7 +164,9 @@ public enum XCTestScaffold: Sendable {
   ///
   /// - <doc:TemporaryGettingStarted>
 #if SWIFT_PM_SUPPORTS_SWIFT_TESTING
-  @available(*, deprecated, message: "This version of Swift Package Manager supports running swift-testing tests directly. This function has no effect.")
+  @available(*, deprecated, message: "This version of Swift Package Manager supports running swift-testing tests directly. This function has no effect and will be removed in a future release.")
+#else
+  @available(swift, deprecated: 100000.0, message: "This function is provided temporarily to aid in integrating the testing library with existing tools such as Swift Package Manager. It will be removed in a future release.")
 #endif
   public static func runAllTests(hostedBy testCase: XCTestCase) async {
 #if SWIFT_PM_SUPPORTS_SWIFT_TESTING
