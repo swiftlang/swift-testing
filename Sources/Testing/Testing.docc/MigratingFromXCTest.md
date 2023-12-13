@@ -27,6 +27,27 @@ Before the testing library can be used, it must be added as a dependency of your
 Swift package or Xcode project. For more information on how to add it, see the
 [Getting Started](doc:TemporaryGettingStarted) guide.
 
+### Importing the testing library
+
+XCTest and the testing library are available from different modules. Instead of importing the XCTest module, import the Testing module:
+
+@Row {
+  @Column {
+    ```swift
+    // Before
+    import XCTest
+    ```
+  }
+  @Column {
+    ```swift
+    // After
+    import Testing
+    ```
+  }
+}
+
+A single source file can contain tests written with XCTest as well as other tests written with the testing library. Import both XCTest and Testing if a source file contains mixed test content.
+
 ### Converting test classes
 
 XCTest groups related sets of test methods in test classes: classes that inherit
