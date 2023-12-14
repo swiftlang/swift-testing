@@ -45,4 +45,16 @@ extension SourceCode {
   public static func __functionCall(_ value: String?, _ functionName: String, _ arguments: (label: String?, value: String)...) -> Self {
     Self(kind: .functionCall(value: value, functionName: functionName, arguments: arguments))
   }
+
+  /// Create an instance of ``SourceCode`` representing a property access.
+  ///
+  /// - Parameters:
+  ///   - value: The value whose property was accessed.
+  ///   - keyPath: The key path, relative to `value`, that was accessed, not
+  ///     including a leading backslash or period.
+  ///
+  /// - Returns: A new instance of ``SourceCode``.
+  public static func __fromPropertyAccess(_ value: String, _ keyPath: String) -> Self {
+    Self(kind: .propertyAccess(value: value, keyPath: keyPath))
+  }
 }
