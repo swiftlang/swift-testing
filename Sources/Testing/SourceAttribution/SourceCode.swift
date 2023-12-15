@@ -37,6 +37,14 @@ public struct SourceCode: Sendable {
     ///   - functionName: The name of the function that was called.
     ///   - arguments: The arguments passed to the function.
     case functionCall(value: String?, functionName: String, arguments: [(label: String?, value: String)])
+
+    /// The source code represets a property access.
+    ///
+    /// - Parameters:
+    ///   - value: The value whose property was accessed.
+    ///   - keyPath: The key path, relative to `value`, that was accessed, not
+    ///     including a leading backslash or period.
+    case propertyAccess(value: String, keyPath: String)
   }
 
   /// The kind of syntax node represented by this instance.
@@ -105,6 +113,9 @@ public struct SourceCode: Sendable {
         return "\(sourceCodeAndValue(value, lhs)).\(functionName)(\(argumentList))"
       }
       return "\(functionName)(\(argumentList))"
+    case let .propertyAccess(value, keyPath):
+      let rhs = additionalValuesArray.first
+      return "\(sourceCodeAndValue(value, lhs)).\(sourceCodeAndValue(keyPath, rhs ?? nil, includeParenthesesIfNeeded: false))"
     }
   }
 }
@@ -143,6 +154,8 @@ extension SourceCode: CustomStringConvertible, CustomDebugStringConvertible {
         return "\(value).\(functionName)(\(argumentList))"
       }
       return "\(functionName)(\(argumentList))"
+    case let .propertyAccess(value, keyPath):
+      return "\(value).\(keyPath)"
     }
   }
 

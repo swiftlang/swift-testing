@@ -66,6 +66,12 @@ struct ConditionMacroTests {
         ##"Testing.__checkValue(a.b(&c, d), sourceCode: .__fromSyntaxNode("a.b(&c, d)"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(a.b(try c()))"##:
         ##"Testing.__checkValue(a.b(try c()), sourceCode: .__fromSyntaxNode("a.b(try c())"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+      ##"#expect(a?.b(c))"##:
+        ##"Testing.__checkFunctionCall(a.self, calling: { $0?.b($1) }, c, sourceCode: .__functionCall("a", "b", (nil, "c")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+      ##"#expect(a???.b(c))"##:
+        ##"Testing.__checkFunctionCall(a.self, calling: { $0???.b($1) }, c, sourceCode: .__functionCall("a", "b", (nil, "c")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+      ##"#expect(a?.b.c(d))"##:
+        ##"Testing.__checkFunctionCall(a?.b.self, calling: { $0?.c($1) }, d, sourceCode: .__functionCall("a?.b", "c", (nil, "d")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect({}())"##:
         ##"Testing.__checkValue({}(), sourceCode: .__fromSyntaxNode("{}()"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(a.b(c: d))"##:
@@ -74,6 +80,12 @@ struct ConditionMacroTests {
         ##"Testing.__checkValue(a.b { c }, sourceCode: .__fromSyntaxNode("a.b { c }"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(a, sourceLocation: someValue)"##:
         ##"Testing.__checkValue(a, sourceCode: .__fromSyntaxNode("a"), comments: [], isRequired: false, sourceLocation: someValue).__expected()"##,
+      ##"#expect(a.isB)"##:
+        ##"Testing.__checkPropertyAccess(a.self, getting: { $0.isB }, sourceCode: .__fromPropertyAccess("a", "isB"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+      ##"#expect(a???.isB)"##:
+        ##"Testing.__checkPropertyAccess(a.self, getting: { $0???.isB }, sourceCode: .__fromPropertyAccess("a", "isB"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+      ##"#expect(a?.b.isB)"##:
+        ##"Testing.__checkPropertyAccess(a?.b.self, getting: { $0?.isB }, sourceCode: .__fromPropertyAccess("a?.b", "isB"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
     ]
   )
   func expectMacro(input: String, expectedOutput: String) throws {
@@ -128,6 +140,12 @@ struct ConditionMacroTests {
         ##"Testing.__checkValue(a.b(&c, d), sourceCode: .__fromSyntaxNode("a.b(&c, d)"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(a.b(try c()))"##:
         ##"Testing.__checkValue(a.b(try c()), sourceCode: .__fromSyntaxNode("a.b(try c())"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+      ##"#require(a?.b(c))"##:
+        ##"Testing.__checkFunctionCall(a.self, calling: { $0?.b($1) }, c, sourceCode: .__functionCall("a", "b", (nil, "c")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+      ##"#require(a???.b(c))"##:
+        ##"Testing.__checkFunctionCall(a.self, calling: { $0???.b($1) }, c, sourceCode: .__functionCall("a", "b", (nil, "c")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+      ##"#require(a?.b.c(d))"##:
+        ##"Testing.__checkFunctionCall(a?.b.self, calling: { $0?.c($1) }, d, sourceCode: .__functionCall("a?.b", "c", (nil, "d")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require({}())"##:
         ##"Testing.__checkValue({}(), sourceCode: .__fromSyntaxNode("{}()"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(a.b(c: d))"##:
@@ -136,6 +154,12 @@ struct ConditionMacroTests {
         ##"Testing.__checkValue(a.b { c }, sourceCode: .__fromSyntaxNode("a.b { c }"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(a, sourceLocation: someValue)"##:
         ##"Testing.__checkValue(a, sourceCode: .__fromSyntaxNode("a"), comments: [], isRequired: true, sourceLocation: someValue).__required()"##,
+      ##"#require(a.isB)"##:
+        ##"Testing.__checkPropertyAccess(a.self, getting: { $0.isB }, sourceCode: .__fromPropertyAccess("a", "isB"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+      ##"#require(a???.isB)"##:
+        ##"Testing.__checkPropertyAccess(a.self, getting: { $0???.isB }, sourceCode: .__fromPropertyAccess("a", "isB"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+      ##"#require(a?.b.isB)"##:
+        ##"Testing.__checkPropertyAccess(a?.b.self, getting: { $0?.isB }, sourceCode: .__fromPropertyAccess("a?.b", "isB"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
     ]
   )
   func requireMacro(input: String, expectedOutput: String) throws {
@@ -147,7 +171,7 @@ struct ConditionMacroTests {
   @Test("Unwrapping #require() macro",
     arguments: [
       ##"#require(Optional<Int>.none)"##:
-        ##"Testing.__checkValue(Optional<Int>.none, sourceCode: .__fromSyntaxNode("Optional<Int>.none"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkPropertyAccess(Optional<Int>.self, getting: { $0.none }, sourceCode: .__fromPropertyAccess("Optional<Int>", "none"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(nil ?? 123)"##:
         ##"Testing.__checkBinaryOperation(nil, { $0 ?? $1() }, 123, sourceCode: .__fromBinaryOperation("nil", "??", "123"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(123 ?? nil)"##:

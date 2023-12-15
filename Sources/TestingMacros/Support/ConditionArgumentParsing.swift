@@ -243,11 +243,65 @@ private func _parseCondition(from expr: ClosureExprSyntax, for macro: some Frees
   return Condition(expression: expr)
 }
 
+/// Extract the underlying expression from an optional-chained expression as
+/// well as the number of question marks required to reach it.
+///
+/// - Parameters:
+///   - expr: The expression to examine, typically the `base` expression of a
+///     `MemberAccessExprSyntax` instance.
+///
+/// - Returns: A copy of `expr` with trailing question marks from optional
+///   chaining removed, as well as a string containing the number of question
+///   marks needed to access a member of `expr` after it has been assigned to
+///   another variable. If `expr` does not contain any optional chaining, it is
+///   returned verbatim along with the empty string.
+///
+/// This function is used when expanding member accesses (either functions or
+/// properties) that could contain optional chaining expressions such as
+/// `foo?.bar()`. Since, in this case, `bar()` is ultimately going to be called
+/// on a closure argument (i.e. `$0`), it is necessary to determine the number
+/// of question mark characters needed to correctly construct that expression
+/// and to capture the underlying expression of `foo?` without question marks so
+/// that it remains syntactically correct when used without `bar()`.
+private func _exprFromOptionalChainedExpr(_ expr: some ExprSyntaxProtocol) -> (ExprSyntax, questionMarks: String) {
+  let originalExpr = expr
+  var expr = ExprSyntax(expr)
+  var questionMarkCount = 0
+
+  while let optionalExpr = expr.as(OptionalChainingExprSyntax.self) {
+    // If the rightmost base expression is an optional-chained member access
+    // expression (e.g. "bar?" in the member access expression
+    // "foo.bar?.isQuux"), drop the question mark.
+    expr = optionalExpr.expression
+    questionMarkCount += 1
+  }
+
+  // If the rightmost expression Check if any of the member accesses in the expression use optional
+  // chaining and, if one does, ensure we preserve optional chaining in the
+  // macro expansion.
+  if questionMarkCount == 0 {
+    func isOptionalChained(_ expr: some ExprSyntaxProtocol) -> Bool {
+      if expr.is(OptionalChainingExprSyntax.self) {
+        return true
+      } else if let memberAccessBaseExpr = expr.as(MemberAccessExprSyntax.self)?.base {
+        return isOptionalChained(memberAccessBaseExpr)
+      }
+      return false
+    }
+    if isOptionalChained(originalExpr) {
+      questionMarkCount = 1
+    }
+  }
+
+  let questionMarks = String(repeating: "?", count: questionMarkCount)
+
+  return (expr, questionMarks)
+}
+
 /// Parse a condition argument from a member function call.
 ///
 /// - Parameters:
 ///   - expr: The function call expression.
-///   - memberAccessExpr: The called expression of `expr`.
 ///   - macro: The macro expression being expanded.
 ///   - context: The macro context in which the expression is being parsed.
 ///
@@ -310,15 +364,20 @@ private func _parseCondition(from expr: FunctionCallExprSyntax, for macro: some 
     .map(\.expression)
     .map { Argument(expression: $0) }
 
+  var baseExprForSourceCode: ExprSyntax?
   var conditionArguments = [Argument]()
-  if let memberAccessExpr, let baseExpr = memberAccessExpr.base {
+  if let memberAccessExpr, var baseExpr = memberAccessExpr.base {
+    let questionMarks: String
+    (baseExpr, questionMarks) = _exprFromOptionalChainedExpr(baseExpr)
+    baseExprForSourceCode = baseExpr
+
     conditionArguments.append(Argument(expression: "\(baseExpr.trimmed).self")) // BUG: rdar://113152370
     conditionArguments.append(
       Argument(
         label: "calling",
         expression: """
         {
-          $0.\(functionName.trimmed)(\(LabeledExprListSyntax(indexedArguments)))
+          $0\(raw: questionMarks).\(functionName.trimmed)(\(LabeledExprListSyntax(indexedArguments)))
         }
         """
       )
@@ -345,7 +404,37 @@ private func _parseCondition(from expr: FunctionCallExprSyntax, for macro: some 
   return Condition(
     expandedFunctionName,
     arguments: conditionArguments,
-    sourceCode: createSourceCodeExprForFunctionCall(memberAccessExpr?.base, functionName, argumentList)
+    sourceCode: createSourceCodeExprForFunctionCall(baseExprForSourceCode, functionName, argumentList)
+  )
+}
+
+/// Parse a condition argument from a property access.
+///
+/// - Parameters:
+///   - expr: The member access expression.
+///   - macro: The macro expression being expanded.
+///   - context: The macro context in which the expression is being parsed.
+///
+/// - Returns: An instance of ``Condition`` describing `expr`.
+private func _parseCondition(from expr: MemberAccessExprSyntax, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
+  // Only handle member access expressions where the base expression is known
+  // and where there are no argument names (which would otherwise indicate a
+  // reference to a member function which wouldn't resolve to anything useful at
+  // runtime.)
+  guard var baseExpr = expr.base, expr.declName.argumentNames == nil else {
+    return Condition(expression: expr)
+  }
+
+  let questionMarks: String
+  (baseExpr, questionMarks) = _exprFromOptionalChainedExpr(baseExpr)
+
+  return Condition(
+    "__checkPropertyAccess",
+    arguments: [
+      Argument(expression: "\(baseExpr.trimmed).self"),
+      Argument(label: "getting", expression: "{ $0\(raw: questionMarks).\(expr.declName.baseName) }")
+    ],
+    sourceCode: createSourceCodeExprForPropertyAccess(baseExpr, expr.declName)
   )
 }
 
@@ -375,9 +464,11 @@ private func _parseCondition(from expr: ExprSyntax, for macro: some Freestanding
     return _parseCondition(from: closureExpr, for: macro, in: context)
   }
 
-  // Handle function calls.
+  // Handle function calls and member accesses.
   if let functionCallExpr = expr.as(FunctionCallExprSyntax.self) {
     return _parseCondition(from: functionCallExpr, for: macro, in: context)
+  } else if let memberAccessExpr = expr.as(MemberAccessExprSyntax.self) {
+    return _parseCondition(from: memberAccessExpr, for: macro, in: context)
   }
 
   // Parentheses are parsed as if they were tuples, so (true && false) appears

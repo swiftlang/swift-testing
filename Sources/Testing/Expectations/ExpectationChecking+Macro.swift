@@ -277,6 +277,67 @@ public func __checkInoutFunctionCall<T, /*each*/ U, R>(
   )
 }
 
+// MARK: - Property access
+
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed.
+///
+/// This overload is used by property accesses:
+///
+/// ```swift
+/// #expect(x.isFoodTruck)
+/// ```
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+public func __checkPropertyAccess<T>(
+  _ lhs: T, getting memberAccess: (T) -> Bool,
+  sourceCode: SourceCode,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) -> Result<Void, any Error> {
+  let condition = memberAccess(lhs)
+  return __checkValue(
+    condition,
+    sourceCode: sourceCode,
+    expandedExpressionDescription: sourceCode.expandWithOperands(lhs, condition),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed.
+///
+/// This overload is used to conditionally unwrap optional values produced from
+/// expanded property accesses:
+///
+/// ```swift
+/// let z = try #require(x.nearestFoodTruck)
+/// ```
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+public func __checkPropertyAccess<T, U>(
+  _ lhs: T, getting memberAccess: (T) -> U?,
+  sourceCode: SourceCode,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) -> Result<U, any Error> {
+  let optionalValue = memberAccess(lhs)
+  return __checkValue(
+    optionalValue,
+    sourceCode: sourceCode,
+    expandedExpressionDescription: sourceCode.expandWithOperands(lhs, optionalValue),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
 // MARK: - Collection diffing
 
 /// Check that an expectation has passed after a condition has been evaluated

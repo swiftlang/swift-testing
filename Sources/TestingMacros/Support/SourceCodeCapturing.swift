@@ -75,3 +75,12 @@ func createSourceCodeExprForFunctionCall(_ value: (some SyntaxProtocol)?, _ func
 
   return ".__functionCall(\(arguments))"
 }
+
+func createSourceCodeExprForPropertyAccess(_ value: ExprSyntax, _ keyPath: DeclReferenceExprSyntax) -> ExprSyntax {
+  let arguments = LabeledExprListSyntax {
+    LabeledExprSyntax(expression: StringLiteralExprSyntax(content: value.trimmedDescription))
+    LabeledExprSyntax(expression: StringLiteralExprSyntax(content: keyPath.baseName.trimmedDescription))
+  }
+
+  return ".__fromPropertyAccess(\(arguments))"
+}
