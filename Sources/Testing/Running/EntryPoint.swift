@@ -172,26 +172,31 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
   // constructed solely from a string, they are safe to send across isolation
   // boundaries.
   var filters = [Configuration.TestFilter]()
-  if #available(_regexAPI, *) {
-    if let filterArgIndex = args.firstIndex(of: "--filter"), filterArgIndex < args.endIndex {
-      let filterArg = args[args.index(after: filterArgIndex)]
-
-      let regex = try UncheckedSendable(rawValue: Regex(filterArg))
-      filters.append { test in
-        let id = String(describing: test.id)
-        return id.contains(regex.rawValue)
-      }
+  if let filterArgIndex = args.firstIndex(of: "--filter"), filterArgIndex < args.endIndex {
+    guard #available(_regexAPI, *) else {
+      throw _EntryPointError.featureUnavailable("The '--filter' option is not supported on this OS version.")
     }
-    if let skipArgIndex = args.firstIndex(of: "--skip"), skipArgIndex < args.endIndex {
-      let skipArg = args[args.index(after: skipArgIndex)]
 
-      let regex = try UncheckedSendable(rawValue: Regex(skipArg))
-      filters.append { test in
-        let id = String(describing: test.id)
-        return !id.contains(regex.rawValue)
-      }
+    let filterArg = args[args.index(after: filterArgIndex)]
+    let regex = try UncheckedSendable(rawValue: Regex(filterArg))
+    filters.append { test in
+      let id = String(describing: test.id)
+      return id.contains(regex.rawValue)
     }
   }
+  if let skipArgIndex = args.firstIndex(of: "--skip"), skipArgIndex < args.endIndex {
+    guard #available(_regexAPI, *) else {
+      throw _EntryPointError.featureUnavailable("The '--skip' option is not supported on this OS version.")
+    }
+
+    let skipArg = args[args.index(after: skipArgIndex)]
+    let regex = try UncheckedSendable(rawValue: Regex(skipArg))
+    filters.append { test in
+      let id = String(describing: test.id)
+      return !id.contains(regex.rawValue)
+    }
+  }
+
   configuration.testFilter = { [filters] test in
     filters.allSatisfy { filter in
       filter(test)
@@ -328,4 +333,24 @@ extension [Event.ConsoleOutputRecorder.Option] {
 #endif
   }
 #endif
+}
+
+// MARK: - Error reporting
+
+/// A type describing an error encountered in the entry point.
+private enum _EntryPointError: Error {
+  /// A feature is unavailable.
+  ///
+  /// - Parameters:
+  ///   - explanation: An explanation of the problem.
+  case featureUnavailable(_ explanation: String)
+}
+
+extension _EntryPointError: CustomStringConvertible {
+  var description: String {
+    switch self {
+    case let .featureUnavailable(explanation):
+      explanation
+    }
+  }
 }
