@@ -31,4 +31,42 @@ struct Test_SnapshotTests {
     #expect(decoded.parameters == snapshot.parameters)
   }
 #endif
+
+  @Test("isParameterized property")
+  func isParameterized() async throws {
+    do {
+      let test = try #require(Test.current)
+      let snapshot = Test.Snapshot(snapshotting: test)
+      #expect(!snapshot.isParameterized)
+    }
+    do {
+      let test = try #require(await testFunction(named: "parameterized(i:)", in: MainActorIsolatedTests.self))
+      let snapshot = Test.Snapshot(snapshotting: test)
+      #expect(snapshot.isParameterized)
+    }
+    do {
+      let suite = try #require(await test(for: Self.self))
+      let snapshot = Test.Snapshot(snapshotting: suite)
+      #expect(!snapshot.isParameterized)
+    }
+  }
+
+  @Test("isSuite property")
+  func isSuite() async throws {
+    do {
+      let test = try #require(Test.current)
+      let snapshot = Test.Snapshot(snapshotting: test)
+      #expect(!snapshot.isSuite)
+    }
+    do {
+      let test = try #require(await testFunction(named: "parameterized(i:)", in: MainActorIsolatedTests.self))
+      let snapshot = Test.Snapshot(snapshotting: test)
+      #expect(!snapshot.isSuite)
+    }
+    do {
+      let suite = try #require(await test(for: Self.self))
+      let snapshot = Test.Snapshot(snapshotting: suite)
+      #expect(snapshot.isSuite)
+    }
+  }
 }

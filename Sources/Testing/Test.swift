@@ -244,5 +244,27 @@ extension Test {
       testCases = test.testCases?.map(Test.Case.Snapshot.init)
       parameters = test.parameters
     }
+
+    /// Whether or not this test is parameterized.
+    ///
+    /// ## See Also
+    ///
+    /// - ``Test/isParameterized``
+    @_spi(ExperimentalParameterizedTesting)
+    public var isParameterized: Bool {
+      guard let parameterCount = parameters?.count else {
+        return false
+      }
+      return parameterCount != 0
+    }
+
+    /// Whether or not this instance is a test suite containing other tests.
+    ///
+    /// ## See Also
+    ///
+    /// - ``Test/isSuite``
+    public var isSuite: Bool {
+      testCases == nil
+    }
   }
 }
