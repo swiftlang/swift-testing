@@ -24,6 +24,11 @@ extension Test {
       public struct ID: Sendable {
         /// The raw bytes of this instance's identifier.
         public var bytes: [UInt8]
+
+        @_spi(ExperimentalTestRunning)
+        public init(bytes: [UInt8]) {
+          self.bytes = bytes
+        }
       }
 
       /// The ID of this parameterized test argument, if any.
