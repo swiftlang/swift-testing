@@ -321,6 +321,8 @@ their equivalents in the testing library:
 | `XCTAssertNotEqual(x, y)` | `#expect(x != y)` |
 | `XCTAssertIdentical(x, y)` | `#expect(x === y)` |
 | `XCTAssertNotIdentical(x, y)` | `#expect(x !== y)` |
+| `XCTAssertEqual(x, y, accuracy: 0.5)` | `#expect((x == y) ± 0.5)` |
+| `XCTAssertNotEqual(x, y, accuracy: 0.5)` | `#expect((x != y) ± 0.5)` |
 | `XCTAssertGreaterThan(x, y)` | `#expect(x > y)` |
 | `XCTAssertGreaterThanOrEqual(x, y)` | `#expect(x >= y)` |
 | `XCTAssertLessThanOrEqual(x, y)` | `#expect(x <= y)` |
