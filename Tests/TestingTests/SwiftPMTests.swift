@@ -42,7 +42,7 @@ struct SwiftPMTests {
   }
 
   @Test("--filter argument")
-  @available(_regexAPI, *)
+  @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
   func filter() throws {
     let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--filter", "hello"])
     let testFilter = try #require(configuration.testFilter)
@@ -63,7 +63,7 @@ struct SwiftPMTests {
   }
 
   @Test("--skip argument")
-  @available(_regexAPI, *)
+  @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
   func skip() throws {
     let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--skip", "hello"])
     let testFilter = try #require(configuration.testFilter)
@@ -84,7 +84,7 @@ struct SwiftPMTests {
   }
 
   @Test("--filter/--skip arguments and .hidden trait")
-  @available(_regexAPI, *)
+  @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
   func filterAndSkipAndHidden() throws {
     let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--filter", "hello", "--skip", "hello2"])
     let testFilter = try #require(configuration.testFilter)

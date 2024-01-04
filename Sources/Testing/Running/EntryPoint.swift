@@ -173,7 +173,7 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
   // boundaries.
   var filters = [Configuration.TestFilter]()
   if let filterArgIndex = args.firstIndex(of: "--filter"), filterArgIndex < args.endIndex {
-    guard #available(_regexAPI, *) else {
+    guard #available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *) else {
       throw _EntryPointError.featureUnavailable("The '--filter' option is not supported on this OS version.")
     }
 
@@ -185,7 +185,7 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
     }
   }
   if let skipArgIndex = args.firstIndex(of: "--skip"), skipArgIndex < args.endIndex {
-    guard #available(_regexAPI, *) else {
+    guard #available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *) else {
       throw _EntryPointError.featureUnavailable("The '--skip' option is not supported on this OS version.")
     }
 

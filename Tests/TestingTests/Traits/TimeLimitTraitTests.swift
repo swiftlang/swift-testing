@@ -12,14 +12,14 @@
 
 @Suite("TimeLimitTrait Tests", .tags("trait"))
 struct TimeLimitTraitTests {
-  @available(_clockAPI, *)
+  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
   @Test(".timeLimit() factory method")
   func timeLimitTrait() throws {
     let test = Test(.timeLimit(.seconds(20))) {}
     #expect(test.timeLimit == .seconds(20))
   }
 
-  @available(_clockAPI, *)
+  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
   @Test("adjustedTimeLimit(configuration:) function")
   func adjustedTimeLimitMethod() throws {
     for seconds in 1 ... 59 {
@@ -37,7 +37,7 @@ struct TimeLimitTraitTests {
     }
   }
 
-  @available(_clockAPI, *)
+  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
   @Test("Configuration.maximumTestTimeLimit property")
   func maximumTimeLimit() throws {
     var configuration = Configuration()
@@ -47,7 +47,7 @@ struct TimeLimitTraitTests {
     #expect(adjustedTimeLimit == .seconds(99))
   }
 
-  @available(_clockAPI, *)
+  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
   @Test("Configuration.defaultTestTimeLimit property")
   func defaultTimeLimit() throws {
     var configuration = Configuration()
@@ -57,7 +57,7 @@ struct TimeLimitTraitTests {
     #expect(adjustedTimeLimit == .seconds(120))
   }
 
-  @available(_clockAPI, *)
+  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
   @Test("Configuration.defaultTestTimeLimit property set higher than maximum")
   func defaultTimeLimitGreaterThanMaximum() throws {
     var configuration = Configuration()
@@ -68,7 +68,7 @@ struct TimeLimitTraitTests {
     #expect(adjustedTimeLimit == .seconds(130))
   }
 
-  @available(_clockAPI, *)
+  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
   @Test("Test times out when overrunning .timeLimit() trait")
   func testTimesOutDueToTrait() async throws {
     await confirmation("Issue recorded", expectedCount: 10) { issueRecorded in
@@ -88,7 +88,7 @@ struct TimeLimitTraitTests {
     }
   }
 
-  @available(_clockAPI, *)
+  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
   @Test("Test times out when overrunning .timeLimit() trait (inherited)")
   func testTimesOutDueToInheritedTrait() async throws {
     await confirmation("Issue recorded", expectedCount: 10) { issueRecorded in
@@ -107,7 +107,7 @@ struct TimeLimitTraitTests {
     }
   }
 
-  @available(_clockAPI, *)
+  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
   @Test("Test times out when overrunning default time limit")
   func testTimesOutDueToDefaultTimeLimit() async throws {
     await confirmation("Issue recorded", expectedCount: 10) { issueRecorded in
@@ -128,7 +128,7 @@ struct TimeLimitTraitTests {
     }
   }
 
-  @available(_clockAPI, *)
+  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
   @Test("Test times out when overrunning maximum time limit")
   func testTimesOutDueToMaximumTimeLimit() async throws {
     await confirmation("Issue recorded", expectedCount: 10) { issueRecorded in
@@ -149,7 +149,7 @@ struct TimeLimitTraitTests {
     }
   }
 
-  @available(_clockAPI, *)
+  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
   @Test("Test does not block until end of time limit")
   func doesNotWaitUntilEndOfTimeLimit() async throws {
     let timeAwaited = await Test.Clock().measure {
@@ -164,7 +164,7 @@ struct TimeLimitTraitTests {
     #expect(timeAwaited < .seconds(1))
   }
 
-  @available(_clockAPI, *)
+  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
   @Test("Cancelled tests can exit early (cancellation checking works)")
   func cancelledTestExitsEarly() async throws {
     let timeAwaited = await Test.Clock().measure {
@@ -180,7 +180,7 @@ struct TimeLimitTraitTests {
     #expect(timeAwaited < .seconds(1))
   }
 
-  @available(_clockAPI, *)
+  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
   @Test("Time limit exceeded event includes its associated Test")
   func timeLimitExceededEventProperties() async throws {
     await confirmation("Issue recorded") { issueRecorded in
@@ -235,7 +235,7 @@ struct TimeLimitTraitTests {
 func timeLimitIfAvailable(milliseconds: UInt64) -> any SuiteTrait {
   // @available can't be applied to a suite type, so we can't mark the suite as
   // available only on newer OSes.
-  if #available(_clockAPI, *) {
+  if #available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *) {
     .timeLimit(.milliseconds(milliseconds))
   } else {
     .disabled(".timeLimit() not available")
@@ -244,7 +244,7 @@ func timeLimitIfAvailable(milliseconds: UInt64) -> any SuiteTrait {
 
 @Suite(.hidden, timeLimitIfAvailable(milliseconds: 10))
 struct TestTypeThatTimesOut {
-  @available(_clockAPI, *)
+  @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
   @Test(.hidden, arguments: 0 ..< 10)
   func f(i: Int) async throws {
     try await Test.Clock.sleep(for: .milliseconds(100))

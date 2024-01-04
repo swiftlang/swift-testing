@@ -13,7 +13,7 @@
 /// To add this trait to a test, use one of the following functions:
 ///
 /// - ``Trait/timeLimit(_:)``
-@available(_clockAPI, *)
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 public struct TimeLimitTrait: TestTrait, SuiteTrait {
   /// The maximum amount of time a test may run for before timing out.
   public var timeLimit: Duration
@@ -29,7 +29,7 @@ public struct TimeLimitTrait: TestTrait, SuiteTrait {
 
 // MARK: -
 
-@available(_clockAPI, *)
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 extension Trait where Self == TimeLimitTrait {
   /// Construct a time limit trait that causes a test to time out if it runs for
   /// too long.
@@ -55,7 +55,7 @@ extension Trait where Self == TimeLimitTrait {
 
 // MARK: -
 
-@available(_clockAPI, *)
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 extension Test {
   /// The maximum amount of time the cases of this test may run for.
   ///
@@ -123,7 +123,7 @@ extension Test {
 /// and `body` is cancelled.
 ///
 /// This function is not part of the public interface of the testing library.
-@available(_clockAPI, *)
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 func withTimeLimit(
   _ timeLimit: Duration,
   _ body: @escaping @Sendable () async throws -> Void,
@@ -170,7 +170,7 @@ func withTimeLimit(
   _ body: @escaping @Sendable () async throws -> Void,
   timeoutHandler: @escaping @Sendable (_ timeLimit: (seconds: Int64, attoseconds: Int64)) -> Void
 ) async throws {
-  if #available(_clockAPI, *),
+  if #available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *),
      let timeLimit = test.adjustedTimeLimit(configuration: configuration) {
 #if SWT_NO_UNSTRUCTURED_TASKS
     // This environment may not support full concurrency, so check if the body
