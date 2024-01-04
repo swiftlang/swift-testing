@@ -278,7 +278,7 @@ extension Event {
 
     /// Snapshots an ``Event``.
     /// - Parameter event: The original ``Event`` to snapshot.
-    public init(snapshotting event: Event) {
+    public init(snapshotting event: borrowing Event) {
       kind = Event.Kind.Snapshot(snapshotting: event.kind)
       testID = event.testID
       instant = event.instant
