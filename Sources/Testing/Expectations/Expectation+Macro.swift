@@ -76,7 +76,7 @@
 /// - Parameters:
 ///   - errorType: The type of error that is expected to be thrown. If
 ///     `expression` could throw _any_ error, or the specific type of thrown
-///     error is unimportant, pass `any Error.self`.
+///     error is unimportant, pass `(any Error).self`.
 ///   - comment: A comment describing the expectation.
 ///   - sourceLocation: The source location to which recorded expectations and
 ///     issues should be attributed.
@@ -153,7 +153,7 @@
 /// - Parameters:
 ///   - errorType: The type of error that is expected to be thrown. If
 ///     `expression` could throw _any_ error, or the specific type of thrown
-///     error is unimportant, pass `any Error.self`.
+///     error is unimportant, pass `(any Error).self`.
 ///   - comment: A comment describing the expectation.
 ///   - sourceLocation: The source location to which recorded expectations and
 ///     issues should be attributed.

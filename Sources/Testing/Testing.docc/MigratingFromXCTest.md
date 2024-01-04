@@ -349,7 +349,7 @@ their equivalents in the testing library:
 | `XCTAssertGreaterThanOrEqual(x, y)` | `#expect(x >= y)` |
 | `XCTAssertLessThanOrEqual(x, y)` | `#expect(x <= y)` |
 | `XCTAssertLessThan(x, y)` | `#expect(x < y)` |
-| `XCTAssertThrowsError(try f())` | `#expect(throws: any Error.self) { try f() }` |
+| `XCTAssertThrowsError(try f())` | `#expect(throws: (any Error).self) { try f() }` |
 | `XCTAssertNoThrow(try f())` | `#expect(throws: Never.self) { try f() }` |
 | `try XCTUnwrap(x)` | `try #require(x)` |
 | `XCTFail("…")` | `Issue.record("…")` |
