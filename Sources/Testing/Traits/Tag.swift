@@ -56,15 +56,7 @@ extension Tag: Equatable, Hashable, Comparable {
 
 // MARK: - Codable, CodingKeyRepresentable
 
-extension Tag: Codable, CodingKeyRepresentable {
-  public func encode(to encoder: any Encoder) throws {
-    try rawValue.encode(to: encoder)
-  }
-
-  public init(from decoder: any Decoder) throws {
-    try self.init(rawValue: String(from: decoder))
-  }
-}
+extension Tag: Codable, CodingKeyRepresentable {}
 
 // MARK: -
 
