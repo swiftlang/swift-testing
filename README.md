@@ -11,7 +11,13 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 -->
 
 `swift-testing` is a modern, open-source testing library for Swift with powerful
-and expressive capabilities. It gives developers more confidence with less code.
+and expressive capabilities. It gives developers more confidence with less code:
+
+```swift
+@Test func helloWorld() {
+  #expect("hello" != "world")
+}
+```
 
 > [!IMPORTANT]
 > This package is under active, ongoing development. Its contents, including all
