@@ -22,13 +22,16 @@ struct SwiftPMTests {
     #expect(!CommandLine.arguments().isEmpty)
   }
 
-  @Test("--parallel argument")
+  @Test("--parallel/--no-parallel argument")
   func parallel() throws {
     var configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH"])
-    #expect(!configuration.isParallelizationEnabled)
+    #expect(configuration.isParallelizationEnabled)
     
     configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--parallel"])
     #expect(configuration.isParallelizationEnabled)
+
+    configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--no-parallel"])
+    #expect(!configuration.isParallelizationEnabled)
   }
 
   @Test("No --filter or --skip argument")

@@ -129,9 +129,10 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
   // Do not consider the executable path AKA argv[0].
   let args = args.dropFirst()
 
-  // Parallelization
-  if args.contains("--parallel") {
-    configuration.isParallelizationEnabled = true
+  // Parallelization (on by default)
+  configuration.isParallelizationEnabled = true
+  if args.contains("--no-parallel") {
+    configuration.isParallelizationEnabled = false
   }
 
 #if !SWT_NO_FILE_IO
