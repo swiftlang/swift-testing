@@ -19,7 +19,6 @@ struct Runner_Plan_SnapshotTests {
 #if canImport(Foundation)
   @Test("Codable")
   func codable() async throws {
-#if SWT_FIXED_120559184
     let suite = try #require(await test(for: Runner_Plan_SnapshotFixtures.self))
 
     var configuration = Configuration()
@@ -49,7 +48,6 @@ struct Runner_Plan_SnapshotTests {
         Issue.record("Decoded step does not match the original snapshotted step: decodedStep: \(decodedStep), snapshotStep: \(snapshotStep)")
       }
     }
-#endif
   }
 #endif
 }
