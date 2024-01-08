@@ -11,10 +11,7 @@
 extension Tag {
   /// A type representing one or more tags applied to a test.
   ///
-  /// To add this trait to a test, use one of the following functions:
-  ///
-  /// - ``Trait/tags(_:)-yg0i``
-  /// - ``Trait/tags(_:)-272p``
+  /// To add this trait to a test, use ``Trait/tags(_:)``.
   public struct List {
     /// The list of tags contained in this instance.
     ///
@@ -59,6 +56,26 @@ extension Tag.List: TestTrait, SuiteTrait {
   public var isRecursive: Bool {
     true
   }
+
+  public func addingSourceCode(
+    _ sourceCode: @autoclosure () -> SourceCode,
+    arguments: @autoclosure () -> [(label: String?, sourceCode: SourceCode)]
+  ) -> Self {
+    let arguments = arguments()
+    guard tags.count == arguments.count else {
+      // There is a mismatch between the number of arguments and the number of
+      // tags actually present, so bail.
+      return self
+    }
+
+    let tags = zip(tags, arguments).lazy
+      .map { tag, labelAndSourceCode in
+        var tag = tag
+        tag.sourceCode = labelAndSourceCode.sourceCode
+        return tag
+      }
+    return Self(tags: tags)
+  }
 }
 
 extension Trait where Self == Tag.List {
@@ -69,16 +86,6 @@ extension Trait where Self == Tag.List {
   ///
   /// - Returns: An instance of ``Tag/List`` containing the specified tags.
   public static func tags(_ tags: Tag...) -> Self {
-    Self(tags: tags)
-  }
-
-  /// Construct a list of tags to apply to a test.
-  ///
-  /// - Parameters:
-  ///   - tags: A sequence containing tags to apply to the test.
-  ///
-  /// - Returns: An instance of ``Tag/List`` containing the specified tags.
-  public static func tags(_ tags: some Sequence<Tag>) -> Self {
     Self(tags: tags)
   }
 }

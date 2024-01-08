@@ -24,17 +24,9 @@ struct TagListTests {
     #expect(trait.tags == [Tag(rawValue: "hello")])
   }
 
-  @Test(".tags() factory method with two string")
+  @Test(".tags() factory method with two strings")
   func tagListFactoryMethodWithTwoStrings() throws {
     let trait = Tag.List.tags("hello", "world")
-    #expect((trait as Any) is Tag.List)
-    #expect(trait.tags == ["hello", "world"])
-    #expect(trait.tags == [Tag(rawValue: "hello"), Tag(rawValue: "world")])
-  }
-
-  @Test(".tags() factory method with a collection of strings")
-  func tagListFactoryMethodWithCollectionOfStrings() throws {
-    let trait = Tag.List.tags(["hello", "world"])
     #expect((trait as Any) is Tag.List)
     #expect(trait.tags == ["hello", "world"])
     #expect(trait.tags == [Tag(rawValue: "hello"), Tag(rawValue: "world")])
@@ -93,6 +85,7 @@ struct TagListTests {
     let tagSourceCode = plan.steps.flatMap(\.test.tags).compactMap(\.sourceCode)
     #expect(tagSourceCode.contains { String(describing: $0) == ".namedConstant" })
     #expect(tagSourceCode.contains { String(describing: $0) == "Tag.functionCall(\"abc\")" })
+    #expect(!tagSourceCode.contains { String(describing: $0) == "\"extra-tag\"" })
   }
 
 #if !SWT_NO_FILE_IO
@@ -155,8 +148,8 @@ extension Tag {
   }
 }
 
-func someTags() -> some Sequence<Tag> {
-  ["FromFunctionCall1", "FromFunctionCall2"]
+func someExtraTags(_ tag: Tag) -> Tag.List {
+  .tags("FromFunctionCall1", "FromFunctionCall2", tag)
 }
 
 @Suite(.hidden, .tags("FromType"))
@@ -168,10 +161,9 @@ struct TagTests {
     .hidden,
     Tag.List.tags("FromFunctionPartiallyQualified"),
     Testing.Tag.List.tags("FromFunctionFullyQualified"),
-    .tags(["FromFunctionArray1", "FromFunctionArray2"]),
+    .tags("Tag1", "Tag2"),
     .tags(.namedConstant, Tag.functionCall("abc")),
-    .tags(["FromConcatArray1.1", "FromConcatArray1.2"] as [Tag] + ["FromConcatArray2.1"] as [Tag]),
-    .tags(someTags())
+    someExtraTags("extra-tag")
   )
   func variations() async throws {}
 }

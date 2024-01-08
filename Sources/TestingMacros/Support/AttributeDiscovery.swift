@@ -155,52 +155,32 @@ struct AttributeInfo {
     sourceLocation = createSourceLocationExpr(of: attribute.attributeName, context: context)
   }
 
-  /// Expand any statically-discoverable tags in this instance's ``traits``
-  /// property to include their source code representations.
+  /// Provide source code representations to all traits in this instance's
+  /// ``traits`` property.
   ///
   /// - Parameters:
   ///   - context: The macro context in which the expression is being parsed.
   ///
-  /// - Returns: A copy of ``traits`` with any statically discoverable tags
-  ///   expanded to include their source code representations.
-  private func _traitExprsWithExpandedTags(in context: some MacroExpansionContext) -> [ExprSyntax] {
+  /// - Returns: A copy of ``traits`` expanded to include their source code
+  ///   representations. Whether or not that source code is consumed at runtime
+  ///   is an implementation detail of each trait type.
+  private func _traitExprsWithSourceCodeAdded(in context: some MacroExpansionContext) -> [ExprSyntax] {
     traits.lazy.map { trait in
-      guard let functionCall = trait.as(FunctionCallExprSyntax.self),
-            let calledExpression = functionCall.calledExpression.as(MemberAccessExprSyntax.self) else {
-        return trait
-      }
-
-      switch calledExpression.tokens(viewMode: .fixedUp).map(\.textWithoutBackticks).joined() {
-      case ".tags", "Tag.List.tags", "Testing.Tag.List.tags":
-        let tags = functionCall.arguments.lazy
-          .map(\.expression)
-          .flatMap { tag in
-            // Flatten any array literals present in .tags(). For example:
-            // @Test(..., .tags(["A", "B"]), .tags("C")) -> ["A", "B", "C"]
-            if let tagArray = tag.as(ArrayExprSyntax.self) {
-              return tagArray.elements.map(\.expression)
+      var argumentSourceCodeExprs = ArrayExprSyntax {}
+      if let functionCall = trait.as(FunctionCallExprSyntax.self) {
+        argumentSourceCodeExprs = ArrayExprSyntax {
+          for argument in functionCall.arguments {
+            if let label = argument.label {
+              ArrayElementSyntax(expression: "(\(literal: label.textWithoutBackticks), \(createSourceCodeExpr(from: argument.expression)))" as ExprSyntax)
+            } else {
+              ArrayElementSyntax(expression: "(nil, \(createSourceCodeExpr(from: argument.expression)))" as ExprSyntax)
             }
-            return [tag]
           }
-        let tagArguments = tags.lazy
-          .map(\.trimmed)
-          .map { tag -> ExprSyntax in
-            switch tag.kind {
-            case .memberAccessExpr, .functionCallExpr:
-              let sourceCodeExpr = createSourceCodeExpr(from: tag)
-              return "Testing.Tag.__tag(\(tag), sourceCode: \(sourceCodeExpr))"
-            default:
-              return tag
-            }
-          }.map { Argument(expression: $0) }
-
-        return "Testing.Tag.List.tags(\(LabeledExprListSyntax(tagArguments)))"
-      default:
-        break
+        }
       }
 
-      // The called expression did not match a pattern we recognize.
-      return trait
+      let sourceCodeExpr = createSourceCodeExpr(from: trait)
+      return "\(trait.trimmed).addingSourceCode(\(sourceCodeExpr), arguments: \(argumentSourceCodeExprs))"
     }
   }
 
@@ -219,7 +199,7 @@ struct AttributeInfo {
       arguments.append(Argument(label: .identifier("displayName"), expression: displayName))
     }
     arguments.append(Argument(label: .identifier("traits"), expression: ArrayExprSyntax {
-      for traitExpr in _traitExprsWithExpandedTags(in: context) {
+      for traitExpr in _traitExprsWithSourceCodeAdded(in: context) {
         ArrayElementSyntax(expression: traitExpr)
       }
     }))

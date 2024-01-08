@@ -26,10 +26,10 @@ source files, and even test targets.
 
 ## Adding tags
 
-To add a tag to a test, use the ``Trait/tags(_:)-yg0i`` or
-``Trait/tags(_:)-272p`` trait. These traits take sequences of tags as arguments,
-and those tags are then applied to the corresponding test at runtime. If they
-are applied to a test suite, then all tests in that suite inherit those tags.
+To add a tag to a test, use the ``Trait/tags(_:)`` trait. These traits take
+sequences of tags as arguments, and those tags are then applied to the
+corresponding test at runtime. If they are applied to a test suite, then all
+tests in that suite inherit those tags.
 
 Tags themselves are instances of ``Tag`` and can be expressed as string literals
 or as named constants declared elsewhere:
@@ -89,7 +89,6 @@ be set to:
 
 ## Topics
 
-- ``Trait/tags(_:)-yg0i``
-- ``Trait/tags(_:)-272p``
+- ``Trait/tags(_:)``
 - ``Tag``
 - ``Tag/List``
