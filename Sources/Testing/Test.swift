@@ -53,32 +53,6 @@ public struct Test: Sendable {
   /// The source location of this test.
   public var sourceLocation: SourceLocation
 
-  /// The (underestimated) number of iterations that will need to occur during
-  /// testing.
-  ///
-  /// The value of this property is inherently capped at `Int.max`. In practice,
-  /// the number of iterations that can run in a reasonable timespan will be
-  /// significantly lower.
-  ///
-  /// For instances of ``Test`` that represent non-parameterized test functions
-  /// (that is, test functions that do not iterate over a sequence of inputs),
-  /// the value of this property is always `1`. For instances of ``Test`` that
-  /// represent test suite types, the value of this property is always `nil`.
-  ///
-  /// For more information about underestimated counts, see the documentation
-  /// for [`Sequence`](https://developer.apple.com/documentation/swift/array/underestimatedcount-4ggqp).
-  @_spi(ExperimentalParameterizedTesting)
-  public var underestimatedCaseCount: Int? {
-    // NOTE: it is important that we only expose an _underestimated_ count for
-    // two reasons:
-    // 1. If the total number of cases exceeds `.max` due to combinatoric
-    //    complexity, `count` would be too low; and
-    // 2. We reserve the right to support async sequences as input in the
-    //    future, and async sequences do not have `count` properties (but an
-    //    underestimated count of `0` is still technically correct.)
-    testCases?.underestimatedCount
-  }
-
   /// The type containing this test, if any.
   ///
   /// If a test is associated with a free function or static function, the value

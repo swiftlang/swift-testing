@@ -309,41 +309,6 @@ struct MiscellaneousTests {
     await valueGrid.validateCells()
   }
 
-  @Test("Test.underestimatedCaseCount property")
-  func underestimatedCaseCount() async throws {
-    do {
-      let test = try #require(await testFunction(named: "parameterized(i:)", in: NonSendableTests.self))
-      #expect(test.underestimatedCaseCount == FixtureData.zeroUpTo100.count)
-    }
-    do {
-      let test = try #require(await testFunction(named: "parameterized2(i:j:)", in: NonSendableTests.self))
-      #expect(test.underestimatedCaseCount == FixtureData.zeroUpTo100.count * FixtureData.smallStringArray.count)
-    }
-    do {
-      let test = try #require(await testFunction(named: "parameterized(i:)", in: SendableTests.self))
-      #expect(test.underestimatedCaseCount == FixtureData.zeroUpTo100.count)
-    }
-#if !SWT_NO_GLOBAL_ACTORS
-    do {
-      let test = try #require(await testFunction(named: "parameterized(i:)", in: MainActorIsolatedTests.self))
-      #expect(test.underestimatedCaseCount == FixtureData.zeroUpTo100.count)
-    }
-    do {
-      let test = try #require(await testFunction(named: "parameterizedNonisolated(i:)", in: MainActorIsolatedTests.self))
-      #expect(test.underestimatedCaseCount == FixtureData.zeroUpTo100.count)
-    }
-#endif
-
-    do {
-      let thisTest = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
-      #expect(thisTest.underestimatedCaseCount == 1)
-    }
-    do {
-      let thisTest = try #require(await test(for: SendableTests.self))
-      #expect(thisTest.underestimatedCaseCount == nil)
-    }
-  }
-
   @Test("Test.parameters property")
   func parametersProperty() async throws {
     do {
