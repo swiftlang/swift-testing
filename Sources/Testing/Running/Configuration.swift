@@ -161,11 +161,9 @@ public struct Configuration: Sendable {
   ///
   /// - Returns: A Boolean value representing if the test case satisfied the
   ///   filter.
-  @_spi(ExperimentalParameterizedTesting)
   public typealias TestCaseFilter = @Sendable (_ testCase: Test.Case, _ test: Test) -> Bool
 
   /// The test case filter to which test cases should be filtered when run.
-  @_spi(ExperimentalParameterizedTesting)
   public var testCaseFilter: TestCaseFilter = { _, _ in true }
 }
 

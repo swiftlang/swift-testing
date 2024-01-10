@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ExperimentalTestRunning) @_spi(ExperimentalParameterizedTesting) @_spi(ExperimentalEventHandling) import Testing
+@testable @_spi(ExperimentalTestRunning) @_spi(ExperimentalEventHandling) import Testing
 #if canImport(XCTest)
 import XCTest
 #endif

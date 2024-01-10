@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@_spi(ExperimentalParameterizedTesting)
+@_spi(ExperimentalTestRunning)
 extension Test.Case: Identifiable {
   /// The ID of a test case.
   ///
@@ -23,7 +23,6 @@ extension Test.Case: Identifiable {
     /// case's arguments has a `nil` ID.
     public var argumentIDs: [Argument.ID]?
 
-    @_spi(ExperimentalTestRunning)
     public init(argumentIDs: [Argument.ID]?) {
       self.argumentIDs = argumentIDs
     }

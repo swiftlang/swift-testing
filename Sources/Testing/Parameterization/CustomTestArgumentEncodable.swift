@@ -14,7 +14,6 @@ private import Foundation
 
 /// A protocol for customizing how arguments passed to parameterized tests are
 /// encoded, which is used to match against when running specific arguments.
-@_spi(ExperimentalParameterizedTesting)
 public protocol CustomTestArgumentEncodable: Sendable {
   /// Encode this test argument.
   ///

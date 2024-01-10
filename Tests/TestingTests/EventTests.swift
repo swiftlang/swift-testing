@@ -11,7 +11,7 @@
 #if canImport(Foundation)
 import Foundation
 #endif
-@testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalParameterizedTesting) @_spi(ExperimentalSnapshotting) @_spi(ExperimentalTestRunning) import Testing
+@testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalSnapshotting) @_spi(ExperimentalTestRunning) import Testing
 private import TestingInternals
 
 struct EventTests {

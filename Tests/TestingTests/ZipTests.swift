@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ExperimentalParameterizedTesting) @_spi(ExperimentalTestRunning) import Testing
+@testable @_spi(ExperimentalTestRunning) import Testing
 
 struct ZipTests {
   @Test("Zipped collections are not combinatoric")

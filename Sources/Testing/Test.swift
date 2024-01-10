@@ -89,7 +89,6 @@ public struct Test: Sendable {
   }
 
   /// Whether or not this test is parameterized.
-  @_spi(ExperimentalParameterizedTesting)
   public var isParameterized: Bool {
     guard let parameterCount = parameters?.count else {
       return false
@@ -103,7 +102,6 @@ public struct Test: Sendable {
   /// an array of values describing its parameters, which may be empty if the
   /// test function is non-parameterized. If this instance represents a test
   /// suite, the value of this property is `nil`.
-  @_spi(ExperimentalParameterizedTesting)
   public var parameters: [Parameter]?
 
   /// Whether or not this instance is a test suite containing other tests.
@@ -203,7 +201,6 @@ extension Test {
     /// ## See Also
     ///
     /// - ``Test/parameters``
-    @_spi(ExperimentalParameterizedTesting)
     public var parameters: [Parameter]?
 
     /// Initialize an instance of this type by snapshotting the specified test.
@@ -224,7 +221,6 @@ extension Test {
     /// ## See Also
     ///
     /// - ``Test/isParameterized``
-    @_spi(ExperimentalParameterizedTesting)
     public var isParameterized: Bool {
       guard let parameterCount = parameters?.count else {
         return false
