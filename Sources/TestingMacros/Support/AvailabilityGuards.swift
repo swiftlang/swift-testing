@@ -65,7 +65,7 @@ private func _createAvailabilityTraitExpr(
   when whenKeyword: Keyword,
   in context: some MacroExpansionContext
 ) -> ExprSyntax {
-  let version: ExprSyntax = availability.version.map(\.components).map { components in
+  let version: ExprSyntax = availability.version.map(\.componentValues).map { components in
     "(\(literal: components.major), \(literal: components.minor), \(literal: components.patch))"
   } ?? "nil"
   let message = availability.message.map(\.trimmed).map(ExprSyntax.init) ?? "nil"
@@ -227,11 +227,11 @@ func createSyntaxNode(
   do {
     let introducedVersion = decl.availability(when: .introduced).lazy
       .filter(\.isSwift)
-      .compactMap(\.version?.components)
+      .compactMap(\.version?.componentValues)
       .max()
     let obsoletedVersion = decl.availability(when: .obsoleted).lazy
       .filter(\.isSwift)
-      .compactMap(\.version?.components)
+      .compactMap(\.version?.componentValues)
       .min()
 
     let swiftVersionGuardExpr: ExprSyntax? = switch (introducedVersion, obsoletedVersion) {
