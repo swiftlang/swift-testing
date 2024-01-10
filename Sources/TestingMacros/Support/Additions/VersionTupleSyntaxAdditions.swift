@@ -13,7 +13,7 @@ public import SwiftSyntax
 extension VersionTupleSyntax {
   /// A type describing the major, minor, and patch components of a version
   /// tuple.
-  struct Components: Comparable, CustomStringConvertible {
+  struct ComponentValues: Comparable, CustomStringConvertible {
     /// The major component.
     var major: UInt64
 
@@ -47,27 +47,23 @@ extension VersionTupleSyntax {
     }
   }
 
-  /// The major, minor, and patch components of this version tuple.
-  var components: Components {
-#if swift(<6.0)
-    let stringComponents = trimmedDescription.split(separator: "." as Character)
-    guard let major = stringComponents.first.flatMap({ UInt64($0) }) else {
-      return Components(major: 0)
-    }
-    var minor: UInt64?
-    var patch: UInt64?
-    if stringComponents.count > 1 {
-      minor = UInt64(stringComponents[1])
-      if stringComponents.count > 2 {
-        patch = UInt64(stringComponents[2])
-      }
-    }
-#else
-    let major = UInt64(major.text) ?? 0
-    let minor = minor.map(\.text).flatMap(UInt64.init)
-    let patch = patch.map(\.text).flatMap(UInt64.init)
-#endif
+  /// The numeric values of the major, minor, and patch components.
+  var componentValues: ComponentValues {
+    let components = components
+    let startIndex = components.startIndex
 
-    return Components(major: major, minor: minor, patch: patch)
+    let major = UInt64(major.text) ?? 0
+    let minor: UInt64? = if components.count > 0 {
+      UInt64(components[startIndex].number.text)
+    } else {
+      nil
+    }
+    let patch: UInt64? = if components.count > 1 {
+      UInt64(components[components.index(after: startIndex)].number.text)
+    } else {
+      nil
+    }
+
+    return ComponentValues(major: major, minor: minor, patch: patch)
   }
 }
