@@ -50,6 +50,7 @@ let package = Package(
       name: "TestingTests",
       dependencies: [
         "Testing",
+        "_Testing_Foundation",
       ],
       swiftSettings: .packageSettings
     ),
@@ -92,6 +93,15 @@ let package = Package(
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
       ]
+    ),
+
+    // Cross-module overlays (unsupported)
+    .target(
+      name: "_Testing_Foundation",
+      dependencies: [
+        "Testing",
+      ],
+      swiftSettings: .packageSettings
     ),
   ],
 
