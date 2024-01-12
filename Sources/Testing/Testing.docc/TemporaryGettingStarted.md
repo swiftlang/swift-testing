@@ -97,13 +97,17 @@ be presented with a name such as "Swift Development Toolchain 2023-01-01 (a)".
 Navigate to the directory containing your package and run the following command:
 
 ```sh
-swift test --enable-experimental-swift-testing
+swift test
 ```
 
 Swift Package Manager will build and run a test target that uses the testing
 library as well as a separate target that uses XCTest. To only run tests written
 using the testing library, pass `--disable-xctest` as an additional argument to
 the `swift test` command.
+
+- Note: If your package does not explicitly list the testing library as a
+  dependency, pass `--enable-experimental-swift-testing` to the `swift test`
+  command to ensure your tests are run.
 
 #### Swift 5.10
 
