@@ -21,7 +21,7 @@ private import TestingInternals
 /// - Warning: This function is used by Swift Package Manager. Do not call it
 ///   directly.
 @_disfavoredOverload public func __swiftPMEntryPoint() async -> CInt {
-  @Locked var exitCode = EXIT_SUCCESS
+  let exitCode = Locked(rawValue: EXIT_SUCCESS)
 
   do {
     let args = CommandLine.arguments()
@@ -34,7 +34,7 @@ private import TestingInternals
       let oldEventHandler = configuration.eventHandler
       configuration.eventHandler = { event, context in
         if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
-          $exitCode.withLock { exitCode in
+          exitCode.withLock { exitCode in
             exitCode = EXIT_FAILURE
           }
         }
@@ -48,12 +48,12 @@ private import TestingInternals
     fputs(String(describing: error), stderr)
     fflush(stderr)
 
-    $exitCode.withLock { exitCode in
+    exitCode.withLock { exitCode in
       exitCode = EXIT_FAILURE
     }
   }
 
-  return exitCode
+  return exitCode.rawValue
 }
 
 /// The entry point to the testing library used by Swift Package Manager.

@@ -143,12 +143,10 @@ extension Backtrace {
   /// same location.)
   ///
   /// Access to this dictionary is guarded by a lock.
-  @Locked
-  private static var _errorMappingCache = [ObjectIdentifier: _ErrorMappingCacheEntry]()
+  private static let _errorMappingCache = Locked<[ObjectIdentifier: _ErrorMappingCacheEntry]>()
 
   /// The previous `swift_willThrow` handler, if any.
-  @Locked
-  private static var _oldWillThrowHandler: SWTWillThrowHandler?
+  private static let _oldWillThrowHandler = Locked<SWTWillThrowHandler?>()
 
   /// Handle a thrown error.
   ///
@@ -157,14 +155,14 @@ extension Backtrace {
   ///     refers to an instance of `SwiftError` or (on platforms with
   ///     Objective-C interop) an instance of `NSError`.
   @Sendable private static func _willThrow(_ errorAddress: UnsafeMutableRawPointer) {
-    _oldWillThrowHandler?(errorAddress)
+    _oldWillThrowHandler.rawValue?(errorAddress)
 
     let errorObject = unsafeBitCast(errorAddress, to: (any AnyObject & Sendable).self)
     let errorID = ObjectIdentifier(errorObject)
     let backtrace = Backtrace.current()
     let newEntry = _ErrorMappingCacheEntry(errorObject: errorObject, backtrace: backtrace)
 
-    Self.$_errorMappingCache.withLock { cache in
+    _errorMappingCache.withLock { cache in
       let oldEntry = cache[errorID]
       if oldEntry?.errorObject == nil {
         // Either no entry yet, or its weak reference was zeroed.
@@ -176,7 +174,7 @@ extension Backtrace {
   /// The implementation of ``Backtrace/startCachingForThrownErrors()``, run
   /// only once.
   private static let _startCachingForThrownErrors: Void = {
-    $_oldWillThrowHandler.withLock { oldWillThrowHandler in
+    _oldWillThrowHandler.withLock { oldWillThrowHandler in
       oldWillThrowHandler = swt_setWillThrowHandler { _willThrow($0) }
     }
   }()
@@ -196,7 +194,7 @@ extension Backtrace {
   /// Call this function periodically to ensure that errors do not continue to
   /// take up space in the cache after they have been deinitialized.
   static func flushThrownErrorCache() {
-    Self.$_errorMappingCache.withLock { cache in
+    _errorMappingCache.withLock { cache in
       cache = cache.filter { $0.value.errorObject != nil }
     }
   }
@@ -218,7 +216,7 @@ extension Backtrace {
   @inline(never)
   init?(forFirstThrowOf error: any Error) {
     let errorID = ObjectIdentifier(unsafeBitCast(error, to: AnyObject.self))
-    let entry = Self.$_errorMappingCache.withLock { cache in
+    let entry = Self._errorMappingCache.withLock { cache in
       cache[errorID]
     }
     if let entry, entry.errorObject != nil {

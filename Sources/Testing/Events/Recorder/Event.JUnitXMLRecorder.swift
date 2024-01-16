@@ -51,7 +51,7 @@ extension Event {
 
     /// This event recorder's mutable context about events it has received,
     /// which may be used to inform how subsequent events are written.
-    @Locked private var _context = _Context()
+    private var _context = Locked(rawValue: _Context())
 
     /// Initialize a new event recorder.
     ///
@@ -82,7 +82,7 @@ extension Event.JUnitXMLRecorder {
 
     switch event.kind {
     case .runStarted:
-      $_context.withLock { context in
+      _context.withLock { context in
         context.runStartInstant = instant
       }
       return #"""
@@ -93,14 +93,14 @@ extension Event.JUnitXMLRecorder {
     case .testStarted where false == test?.isSuite:
       let id = test!.id
       let keyPath = id.keyPathRepresentation
-      $_context.withLock { context in
+      _context.withLock { context in
         context.testData[keyPath] = _Context.TestData(id: id, startInstant: instant)
       }
       return nil
     case .testEnded where false == test?.isSuite:
       let id = test!.id
       let keyPath = id.keyPathRepresentation
-      $_context.withLock { context in
+      _context.withLock { context in
         context.testData[keyPath]?.endInstant = instant
       }
       return nil
@@ -114,12 +114,12 @@ extension Event.JUnitXMLRecorder {
         return nil // FIXME: handle issues without known tests
       }
       let keyPath = id.keyPathRepresentation
-      $_context.withLock { context in
+      _context.withLock { context in
         context.testData[keyPath]?.issues.append(issue)
       }
       return nil
     case .runEnded:
-      return $_context.withLock { context in
+      return _context.withLock { context in
         let issueCount = context.testData
           .compactMap(\.value?.issues.count)
           .reduce(into: 0, +=)
