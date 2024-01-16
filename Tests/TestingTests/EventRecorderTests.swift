@@ -92,14 +92,14 @@ struct EventRecorderTests {
 #if !os(Windows)
   @available(_regexAPI, *)
   @Test(
-    "Issue counts are summed correctly on test end",
+    "Titles of messages ('Test' vs. 'Suite') are determined correctly",
     arguments: [
-      "f()": (5, 3),
-      "g()": (2, 1),
-      "PredictablyFailingTests": (7, 4)
+      ("f()", false),
+      ("g()", false),
+      ("PredictablyFailingTests", true),
     ]
   )
-  func issueCountSummingAtTestEnd(testName: String, issueCount: (total: Int, expected: Int)) async throws {
+  func messageTitles(testName: String, isSuite: Bool) async throws {
     let stream = Stream()
 
     var configuration = Configuration()
@@ -117,7 +117,44 @@ struct EventRecorderTests {
 
     let testFailureRegex = Regex {
       One(.anyGraphemeCluster)
-      " Test \(testName) failed"
+      " \(isSuite ? "Suite" : "Test") \(testName) started."
+    }
+    #expect(
+      try buffer
+        .split(whereSeparator: \.isNewline)
+        .compactMap(testFailureRegex.wholeMatch(in:))
+        .first != nil
+    )
+  }
+
+  @available(_regexAPI, *)
+  @Test(
+    "Issue counts are summed correctly on test end",
+    arguments: [
+      ("f()", false, (total: 5, expected: 3)),
+      ("g()", false, (total: 2, expected: 1)),
+      ("PredictablyFailingTests", true, (total: 7, expected: 4)),
+    ]
+  )
+  func issueCountSummingAtTestEnd(testName: String, isSuite: Bool, issueCount: (total: Int, expected: Int)) async throws {
+    let stream = Stream()
+
+    var configuration = Configuration()
+    let eventRecorder = Event.ConsoleOutputRecorder(writingUsing: stream.write)
+    configuration.eventHandler = { event, context in
+      eventRecorder.record(event, in: context)
+    }
+
+    await runTest(for: PredictablyFailingTests.self, configuration: configuration)
+
+    let buffer = stream.buffer.wrappedValue
+    if testsWithSignificantIOAreEnabled {
+      print(buffer, terminator: "")
+    }
+
+    let testFailureRegex = Regex {
+      One(.anyGraphemeCluster)
+      " \(isSuite ? "Suite" : "Test") \(testName) failed "
       ZeroOrMore(.any)
       " with "
       Capture { OneOrMore(.digit) } transform: { Int($0) }
