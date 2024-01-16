@@ -25,7 +25,7 @@ private import TestingInternals
 /// - Bug: The state protected by this type should instead be protected using
 ///     actor isolation, but actor-isolated functions cannot be called from
 ///     synchronous functions. ([83888717](rdar://83888717))
-struct Locked<T>: @unchecked Sendable where T: Sendable {
+struct Locked<T>: RawRepresentable, @unchecked Sendable where T: Sendable {
   /// The platform-specific type to use for locking.
   ///
   /// It would be preferable to implement this lock in Swift, however there is
