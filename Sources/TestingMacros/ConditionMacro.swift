@@ -43,11 +43,11 @@ private protocol _ConditionMacro: ExpressionMacro, Sendable {
 
 /// The token used as the label of the source location argument passed to
 /// `#expect()` and `#require()`.
-private let _sourceLocationLabel = TokenSyntax.identifier("sourceLocation")
+private var _sourceLocationLabel: TokenSyntax { .identifier("sourceLocation") }
 
 /// The token used as a mandatory label on any (first) trailing closure used
 /// with `#expect()` or `#require()`.
-private let _trailingClosureLabel = TokenSyntax.identifier("performing")
+private var _trailingClosureLabel: TokenSyntax { .identifier("performing") }
 
 extension _ConditionMacro {
   public static func expansion(
