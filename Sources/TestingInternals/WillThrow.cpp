@@ -10,6 +10,7 @@
 
 #include "WillThrow.h"
 
+#include <cstdint> // must come before <atomic>
 #include <atomic>
 
 /// The Swift runtime error-handling hook.

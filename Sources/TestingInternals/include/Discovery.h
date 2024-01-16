@@ -14,7 +14,6 @@
 #include "Defines.h"
 
 #include <stdbool.h>
-#include <stdint.h>
 
 SWT_ASSUME_NONNULL_BEGIN
 

@@ -13,8 +13,6 @@
 
 #include "Defines.h"
 
-#include <stdint.h>
-
 SWT_ASSUME_NONNULL_BEGIN
 
 /// The type of handler that is called by `swift_willThrow()`.
