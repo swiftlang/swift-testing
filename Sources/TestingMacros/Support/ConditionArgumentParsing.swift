@@ -276,9 +276,9 @@ private func _exprFromOptionalChainedExpr(_ expr: some ExprSyntaxProtocol) -> (E
     questionMarkCount += 1
   }
 
-  // If the rightmost expression Check if any of the member accesses in the expression use optional
-  // chaining and, if one does, ensure we preserve optional chaining in the
-  // macro expansion.
+  // If the rightmost expression is not itself optional-chained, check if any of
+  // the member accesses in the expression use optional chaining and, if one
+  // does, ensure we preserve optional chaining in the macro expansion.
   if questionMarkCount == 0 {
     func isOptionalChained(_ expr: some ExprSyntaxProtocol) -> Bool {
       if expr.is(OptionalChainingExprSyntax.self) {
