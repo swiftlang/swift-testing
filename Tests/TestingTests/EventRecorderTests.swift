@@ -23,7 +23,7 @@ import FoundationXML
 #endif
 struct EventRecorderTests {
   final class Stream: TextOutputStream, Sendable {
-    let buffer = Locked<String>(wrappedValue: "")
+    let buffer = Locked<String>(rawValue: "")
 
     @Sendable func write(_ string: String) {
       buffer.withLock {
@@ -63,7 +63,7 @@ struct EventRecorderTests {
 
     await runTest(for: WrittenTests.self, configuration: configuration)
 
-    let buffer = stream.buffer.wrappedValue
+    let buffer = stream.buffer.rawValue
     #expect(buffer.contains("failWhale"))
     #expect(buffer.contains("Whales fail."))
 #if !SWT_NO_UNSTRUCTURED_TASKS
@@ -110,7 +110,7 @@ struct EventRecorderTests {
 
     await runTest(for: PredictablyFailingTests.self, configuration: configuration)
 
-    let buffer = stream.buffer.wrappedValue
+    let buffer = stream.buffer.rawValue
     if testsWithSignificantIOAreEnabled {
       print(buffer, terminator: "")
     }
@@ -154,7 +154,7 @@ struct EventRecorderTests {
     await Test(name: "Innocuous Test Name") {
     }.run(configuration: configuration)
 
-    let buffer = stream.buffer.wrappedValue
+    let buffer = stream.buffer.rawValue
     if testsWithSignificantIOAreEnabled {
       print(buffer, terminator: "")
     }
@@ -176,7 +176,7 @@ struct EventRecorderTests {
 
     await runTest(for: PredictablyFailingTests.self, configuration: configuration)
 
-    let buffer = stream.buffer.wrappedValue
+    let buffer = stream.buffer.rawValue
     if testsWithSignificantIOAreEnabled {
       print(buffer, terminator: "")
     }
@@ -227,7 +227,7 @@ struct EventRecorderTests {
     // There is no formal schema for us to test against, so we're just testing
     // that the XML can be parsed by Foundation.
 
-    let xmlString = stream.buffer.wrappedValue
+    let xmlString = stream.buffer.rawValue
     #expect(xmlString.hasPrefix("<?xml"))
     let xmlData = try #require(xmlString.data(using: .utf8))
     #expect(xmlData.count > 1024)

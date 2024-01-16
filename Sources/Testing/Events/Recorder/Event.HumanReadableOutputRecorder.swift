@@ -61,7 +61,7 @@ extension Event {
 
     /// This event recorder's mutable context about events it has received,
     /// which may be used to inform how subsequent events are written.
-    @Locked private var _context = _Context()
+    private var _context = Locked(rawValue: _Context())
 
     /// Initialize a new human-readable event recorder.
     ///
@@ -186,7 +186,7 @@ extension Event.HumanReadableOutputRecorder {
 
     switch event.kind {
     case .runStarted:
-      $_context.withLock { context in
+      _context.withLock { context in
         context.runStartInstant = instant
       }
       var comments: [Comment] = [
@@ -213,7 +213,7 @@ extension Event.HumanReadableOutputRecorder {
 
     case .testStarted:
       let test = test!
-      $_context.withLock { context in
+      _context.withLock { context in
         context.testData[test.id.keyPathRepresentation] = .init(startInstant: instant)
         if test.isSuite {
           context.suiteCount += 1
@@ -231,7 +231,7 @@ extension Event.HumanReadableOutputRecorder {
     case .testEnded:
       let test = test!
       let id = test.id
-      let testDataGraph = _context.testData.subgraph(at: id.keyPathRepresentation)
+      let testDataGraph = _context.rawValue.testData.subgraph(at: id.keyPathRepresentation)
       let testData = testDataGraph?.value ?? .init(startInstant: instant)
       let issues = _issueCounts(in: testDataGraph)
       let duration = testData.startInstant.descriptionOfDuration(to: instant)
@@ -253,7 +253,7 @@ extension Event.HumanReadableOutputRecorder {
 
     case let .testSkipped(skipInfo):
       let test = test!
-      $_context.withLock { context in
+      _context.withLock { context in
         if test.isSuite {
           context.suiteCount += 1
         } else {
@@ -278,7 +278,7 @@ extension Event.HumanReadableOutputRecorder {
     case let .issueRecorded(issue):
       if let test {
         let id = test.id.keyPathRepresentation
-        $_context.withLock { context in
+        _context.withLock { context in
           var testData = context.testData[id] ?? .init(startInstant: instant)
           if issue.isKnown {
             testData.knownIssueCount += 1
@@ -344,7 +344,7 @@ extension Event.HumanReadableOutputRecorder {
       break
 
     case .runEnded:
-      let context = $_context.wrappedValue
+      let context = _context.rawValue
 
       let testCount = context.testCount
       let issues = _issueCounts(in: context.testData)

@@ -64,7 +64,7 @@ private func _matchError(_ error: any Error, using issueMatcher: KnownIssueMatch
 ///   - sourceLocation: The source location to which the issue should be
 ///     attributed.
 private func _handleMiscount(by matchCounter: Locked<Int>, comment: Comment?, sourceLocation: SourceLocation) {
-  if matchCounter.wrappedValue == 0 {
+  if matchCounter.rawValue == 0 {
     Issue.record(
       .knownIssueNotRecorded,
       comments: Array(comment),
@@ -182,12 +182,12 @@ public func withKnownIssue(
   guard precondition() else {
     return try body()
   }
-  @Locked var matchCounter = 0
+  let matchCounter = Locked(rawValue: 0)
   let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-  let issueMatcher = _combineIssueMatcher(issueMatcher, matchesCountedBy: $matchCounter)
+  let issueMatcher = _combineIssueMatcher(issueMatcher, matchesCountedBy: matchCounter)
   defer {
     if !isIntermittent {
-      _handleMiscount(by: $matchCounter, comment: comment, sourceLocation: sourceLocation)
+      _handleMiscount(by: matchCounter, comment: comment, sourceLocation: sourceLocation)
     }
   }
   try Issue.$currentKnownIssueMatcher.withValue(issueMatcher) {
@@ -297,12 +297,12 @@ public func withKnownIssue(
   guard await precondition() else {
     return try await body()
   }
-  @Locked var matchCounter = 0
+  let matchCounter = Locked(rawValue: 0)
   let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-  let issueMatcher = _combineIssueMatcher(issueMatcher, matchesCountedBy: $matchCounter)
+  let issueMatcher = _combineIssueMatcher(issueMatcher, matchesCountedBy: matchCounter)
   defer {
     if !isIntermittent {
-      _handleMiscount(by: $matchCounter, comment: comment, sourceLocation: sourceLocation)
+      _handleMiscount(by: matchCounter, comment: comment, sourceLocation: sourceLocation)
     }
   }
   try await Issue.$currentKnownIssueMatcher.withValue(issueMatcher) {

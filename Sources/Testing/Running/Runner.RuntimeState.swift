@@ -27,7 +27,7 @@ extension Runner {
 
     /// The runtime state related to the runner running on the current task.
     @TaskLocal
-    static var current: Self = .init()
+    static var current = Self()
   }
 }
 
@@ -91,8 +91,7 @@ extension Configuration {
   }
 
   /// Mutable storage for ``Configuration/all``.
-  @Locked
-  private static var _all = _All()
+  private static let _all = Locked(rawValue: _All())
 
   /// A collection containing all instances of this type that are currently set
   /// as the current configuration for a task.
@@ -100,7 +99,7 @@ extension Configuration {
   /// This property is used when an event is posted in a context where the value
   /// of ``Configuration/current`` is `nil`, such as from a detached task.
   static var all: some Collection<Self> {
-    _all.instances.values
+    _all.rawValue.instances.values
   }
 
   /// Add this instance to ``Configuration/all``.
@@ -108,7 +107,7 @@ extension Configuration {
   /// - Returns: A unique number identifying `self` that can be
   ///   passed to `_removeFromAll(identifiedBy:)`` to unregister it.
   private func _addToAll() -> UInt64 {
-    Self.$_all.withLock { all in
+    Self._all.withLock { all in
       let id = all.nextID
       all.nextID += 1
       all.instances[id] = self
@@ -123,7 +122,7 @@ extension Configuration {
   ///     `_addToAll()`. If `nil`, this function has no effect.
   private func _removeFromAll(identifiedBy id: UInt64?) {
     if let id {
-      Self.$_all.withLock { all in
+      Self._all.withLock { all in
         _ = all.instances.removeValue(forKey: id)
       }
     }

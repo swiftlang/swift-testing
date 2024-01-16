@@ -10,17 +10,16 @@
 
 @testable import Testing
 
-@Suite("@Locked Tests")
+@Suite("Locked Tests")
 struct LockTests {
   @Test("Mutating a value within withLock(_:)")
   func locking() {
-    @Locked
-    var value = 0
+    let value = Locked(rawValue: 0)
 
-    #expect(value == 0)
-    $value.withLock { value in
+    #expect(value.rawValue == 0)
+    value.withLock { value in
       value = 1
     }
-    #expect(value == 1)
+    #expect(value.rawValue == 1)
   }
 }

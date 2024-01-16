@@ -10,11 +10,11 @@
 
 private import TestingInternals
 
-/// A property wrapper that wraps a value requiring access from a synchronous
-/// caller during concurrent execution.
+/// A type that wraps a value requiring access from a synchronous caller during
+/// concurrent execution.
 ///
-/// Instances of this type use a lock to synchronize access to their wrapped
-/// values. The lock is not recursive.
+/// Instances of this type use a lock to synchronize access to their raw values.
+/// The lock is not recursive.
 ///
 /// Instances of this type can be used to synchronize access to shared data from
 /// a synchronous caller. Wherever possible, use actor isolation or other Swift
@@ -25,8 +25,7 @@ private import TestingInternals
 /// - Bug: The state protected by this type should instead be protected using
 ///     actor isolation, but actor-isolated functions cannot be called from
 ///     synchronous functions. ([83888717](rdar://83888717))
-@propertyWrapper
-struct Locked<T>: @unchecked Sendable where T: Sendable {
+struct Locked<T>: RawRepresentable, @unchecked Sendable where T: Sendable {
   /// The platform-specific type to use for locking.
   ///
   /// It would be preferable to implement this lock in Swift, however there is
@@ -64,8 +63,8 @@ struct Locked<T>: @unchecked Sendable where T: Sendable {
   /// Storage for the underlying lock and wrapped value.
   private var _storage: ManagedBuffer<T, _Lock>
 
-  init(wrappedValue: T) {
-    _storage = _Storage.create(minimumCapacity: 1, makingHeaderWith: { _ in wrappedValue })
+  init(rawValue: T) {
+    _storage = _Storage.create(minimumCapacity: 1, makingHeaderWith: { _ in rawValue })
     _storage.withUnsafeMutablePointerToElements { lock in
 #if SWT_TARGET_OS_APPLE || os(Linux)
       _ = pthread_mutex_init(lock, nil)
@@ -77,12 +76,8 @@ struct Locked<T>: @unchecked Sendable where T: Sendable {
     }
   }
 
-  var wrappedValue: T {
+  var rawValue: T {
     withLock { $0 }
-  }
-
-  var projectedValue: Locked {
-    self
   }
 
   /// Acquire the lock and invoke a function while it is held.
@@ -98,7 +93,7 @@ struct Locked<T>: @unchecked Sendable where T: Sendable {
   /// synchronous caller. Wherever possible, use actor isolation or other Swift
   /// concurrency tools.
   nonmutating func withLock<R>(_ body: (inout T) throws -> R) rethrows -> R {
-    try _storage.withUnsafeMutablePointers { wrappedValue, lock in
+    try _storage.withUnsafeMutablePointers { rawValue, lock in
 #if SWT_TARGET_OS_APPLE || os(Linux)
       _ = pthread_mutex_lock(lock)
       defer {
@@ -113,7 +108,7 @@ struct Locked<T>: @unchecked Sendable where T: Sendable {
 #warning("Platform-specific implementation missing: locking unavailable")
 #endif
 
-      return try body(&wrappedValue.pointee)
+      return try body(&rawValue.pointee)
     }
   }
 }
@@ -124,11 +119,11 @@ extension Locked where T: AdditiveArithmetic {
   /// - Parameters:
   ///   - addend: The value to add.
   ///
-  /// - Returns: The sum of ``wrappedValue`` and `addend`.
+  /// - Returns: The sum of ``rawValue`` and `addend`.
   @discardableResult func add(_ addend: T) -> T {
-    withLock { wrappedValue in
-      let result = wrappedValue + addend
-      wrappedValue = result
+    withLock { rawValue in
+      let result = rawValue + addend
+      rawValue = result
       return result
     }
   }
@@ -137,10 +132,27 @@ extension Locked where T: AdditiveArithmetic {
 extension Locked where T: Numeric {
   /// Increment the current wrapped value of this instance.
   ///
-  /// - Returns: The sum of ``wrappedValue`` and `1`.
+  /// - Returns: The sum of ``rawValue`` and `1`.
   ///
   /// This function is exactly equivalent to `add(1)`.
   @discardableResult func increment() -> T {
     add(1)
+  }
+}
+
+extension Locked {
+  /// Initialize an instance of this type with a raw value of `0`.
+  init() where T: AdditiveArithmetic {
+    self.init(rawValue: .zero)
+  }
+
+  /// Initialize an instance of this type with a raw value of `nil`.
+  init<V>() where T == V? {
+    self.init(rawValue: nil)
+  }
+
+  /// Initialize an instance of this type with a raw value of `[:]`.
+  init<K, V>() where T == Dictionary<K, V> {
+    self.init(rawValue: [:])
   }
 }

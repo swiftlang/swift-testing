@@ -14,8 +14,7 @@ public struct Confirmation: Sendable {
   ///
   /// This property is fileprivate because it may be mutated asynchronously and
   /// callers may be tempted to use it in ways that result in data races.
-  @Locked
-  fileprivate var count = 0
+  fileprivate var count = Locked(rawValue: 0)
 
   /// Confirm this confirmation.
   ///
@@ -26,7 +25,7 @@ public struct Confirmation: Sendable {
   /// directly.
   public func confirm(count: Int = 1) {
     precondition(count > 0)
-    $count.add(count)
+    self.count.add(count)
   }
 }
 
@@ -101,7 +100,7 @@ public func confirmation<R>(
 ) async rethrows -> R {
   let confirmation = Confirmation()
   defer {
-    let actualCount = confirmation.count
+    let actualCount = confirmation.count.rawValue
     if actualCount != expectedCount {
       Issue.record(
         .confirmationMiscounted(actual: actualCount, expected: expectedCount),
