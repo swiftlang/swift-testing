@@ -142,6 +142,14 @@ extension Event.HumanReadableOutputRecorder {
   }
 }
 
+extension Test {
+  /// A title for this test (either "Test" or "Suite"), capitalized and suitable
+  /// for use as the leading word of a human-readable message string.
+  fileprivate var capitalizedTitle: String {
+    isSuite ? "Suite" : "Test"
+  }
+}
+
 extension Test.Case {
   /// The arguments of this test case, formatted for presentation, prefixed by
   /// their corresponding parameter label when available.
@@ -224,7 +232,7 @@ extension Event.HumanReadableOutputRecorder {
       return [
         Message(
           symbol: .default,
-          stringValue: "Test \(testName) started."
+          stringValue: "\(test.capitalizedTitle) \(testName) started."
         )
       ]
 
@@ -239,14 +247,14 @@ extension Event.HumanReadableOutputRecorder {
         CollectionOfOne(
           Message(
             symbol: .fail,
-            stringValue: "Test \(testName) failed after \(duration)\(issues.description)."
+            stringValue: "\(test.capitalizedTitle) \(testName) failed after \(duration)\(issues.description)."
           )
         ) + _formattedComments(for: test)
       } else {
          [
           Message(
             symbol: .pass(knownIssueCount: issues.knownIssueCount),
-            stringValue: "Test \(testName) passed after \(duration)\(issues.description)."
+            stringValue: "\(test.capitalizedTitle) \(testName) passed after \(duration)\(issues.description)."
           )
         ]
       }
@@ -262,11 +270,11 @@ extension Event.HumanReadableOutputRecorder {
       }
       return if let comment = skipInfo.comment {
         [
-          Message(symbol: .skip, stringValue: "Test \(testName) skipped: \"\(comment.rawValue)\"")
+          Message(symbol: .skip, stringValue: "\(test.capitalizedTitle) \(testName) skipped: \"\(comment.rawValue)\"")
         ]
       } else {
         [
-          Message(symbol: .skip, stringValue: "Test \(testName) skipped.")
+          Message(symbol: .skip, stringValue: "\(test.capitalizedTitle) \(testName) skipped.")
         ]
       }
 
@@ -276,6 +284,7 @@ extension Event.HumanReadableOutputRecorder {
       break
 
     case let .issueRecorded(issue):
+      let title: String
       if let test {
         let id = test.id.keyPathRepresentation
         $_context.withLock { context in
@@ -287,6 +296,11 @@ extension Event.HumanReadableOutputRecorder {
           }
           context.testData[id] = testData
         }
+        title = test.capitalizedTitle
+      } else {
+        // Assume a test here, although we cannot know reliably for issues
+        // recorded from detached tasks.
+        title = "Test"
       }
       let parameterCount = if let parameters = test?.parameters {
         parameters.count
@@ -318,12 +332,12 @@ extension Event.HumanReadableOutputRecorder {
       let primaryMessage: Message = if parameterCount == 0 {
         Message(
           symbol: symbol,
-          stringValue: "Test \(testName) recorded a\(known) issue\(atSourceLocation): \(issue.kind)"
+          stringValue: "\(title) \(testName) recorded a\(known) issue\(atSourceLocation): \(issue.kind)"
         )
       } else {
         Message(
           symbol: symbol,
-          stringValue: "Test \(testName) recorded a\(known) issue with \(parameterCount.counting("argument")) \(labeledArguments)\(atSourceLocation): \(issue.kind)"
+          stringValue: "\(title) \(testName) recorded a\(known) issue with \(parameterCount.counting("argument")) \(labeledArguments)\(atSourceLocation): \(issue.kind)"
         )
       }
       return CollectionOfOne(primaryMessage) + additionalMessages
