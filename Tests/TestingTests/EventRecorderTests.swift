@@ -147,7 +147,7 @@ struct EventRecorderTests {
 
     await runTest(for: PredictablyFailingTests.self, configuration: configuration)
 
-    let buffer = stream.buffer.wrappedValue
+    let buffer = stream.buffer.rawValue
     if testsWithSignificantIOAreEnabled {
       print(buffer, terminator: "")
     }
