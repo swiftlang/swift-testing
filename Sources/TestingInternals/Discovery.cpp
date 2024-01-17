@@ -10,7 +10,6 @@
 
 #include "Discovery.h"
 
-#include <cstdint> // must come before <atomic>
 #include <atomic>
 #include <iterator>
 #include <type_traits>
