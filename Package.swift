@@ -78,7 +78,12 @@ let package = Package(
     // "Support" targets: These contain C family code and are used exclusively
     // by other targets above, not directly included in product libraries.
     .target(
-      name: "TestingInternals"
+      name: "TestingInternals",
+      cxxSettings: [
+        // Workaround for https://github.com/apple/swift-package-manager/pull/7267.
+        // This may be removed once that fix lands in SwiftPM.
+        .unsafeFlags(["-fno-modules"]),
+      ]
     ),
 
     .plugin(
