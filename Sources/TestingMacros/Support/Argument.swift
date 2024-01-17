@@ -8,7 +8,11 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if swift(>=5.11)
+import SwiftSyntax
+#else
 public import SwiftSyntax
+#endif
 
 /// A type describing an argument to a function, closure, etc.
 ///

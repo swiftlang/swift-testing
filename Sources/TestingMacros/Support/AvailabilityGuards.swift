@@ -8,8 +8,13 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if swift(>=5.11)
+import SwiftSyntax
+import SwiftSyntaxMacros
+#else
 public import SwiftSyntax
 public import SwiftSyntaxMacros
+#endif
 
 /// A structure describing a single platform/version pair from an `@available()`
 /// attribute.

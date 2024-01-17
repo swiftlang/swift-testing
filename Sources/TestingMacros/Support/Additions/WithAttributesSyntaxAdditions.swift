@@ -8,8 +8,13 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if swift(>=5.11)
+import SwiftSyntax
+import SwiftSyntaxMacros
+#else
 public import SwiftSyntax
 public import SwiftSyntaxMacros
+#endif
 
 extension WithAttributesSyntax {
   /// The set of availability attributes on this instance.
