@@ -131,17 +131,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .enableExperimentalFeature("StrictConcurrency"),
       .enableUpcomingFeature("ExistentialAny"),
 
-      // FIXME: In a certain range of Swift toolchains, this feature causes
-      // warnings to be emitted such as:
-      //
-      // ```
-      // warning: public import of 'SwiftSyntax' was not used in public declarations or inlinable code
-      // ```
-      //
-      // Once this package only builds using new-enough toolchains where that
-      // problem is resolved, we should remove the `public` access level from
-      // the `import` declarations in the `TestingMacros` target which do not
-      // require it, to resolve these warnings.
       .enableExperimentalFeature("AccessLevelOnImport"),
       .enableUpcomingFeature("InternalImportsByDefault"),
 
