@@ -152,15 +152,24 @@ struct TimeLimitTraitTests {
   @available(_clockAPI, *)
   @Test("Test does not block until end of time limit")
   func doesNotWaitUntilEndOfTimeLimit() async throws {
-    let timeAwaited = await Test.Clock().measure {
-      var configuration = Configuration()
-      configuration.testTimeLimitGranularity = .milliseconds(1)
-      configuration.maximumTestTimeLimit = .seconds(60)
+    var configuration = Configuration()
+    configuration.testTimeLimitGranularity = .milliseconds(1)
+    configuration.maximumTestTimeLimit = .seconds(60)
 
-      await Test {
-        try await Test.Clock.sleep(for: .nanoseconds(1))
-      }.run(configuration: configuration)
-    }
+    // Do not use Clock.measure {} here because it will include the time spent
+    // waiting for the test's task to be scheduled by the Swift runtime. We
+    // only want to measure the time from the start of the test until the call
+    // to run(configuration:) returns.
+    let timeStarted = Locked<Test.Clock.Instant?>()
+    await Test {
+      timeStarted.withLock { timeStarted in
+        timeStarted = .now
+      }
+      try await Test.Clock.sleep(for: .nanoseconds(1))
+    }.run(configuration: configuration)
+    let timeEnded = Test.Clock.Instant.now
+
+    let timeAwaited = try #require(timeStarted.rawValue).duration(to: timeEnded)
     #expect(timeAwaited < .seconds(1))
   }
 
