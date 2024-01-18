@@ -120,18 +120,8 @@ let simulatorVersion: String = {
 /// ``XCTestScaffold`` or an event writer.
 ///
 /// This value is not part of the public interface of the testing library.
-///
-/// - Bug: Build plugins do not currently run on Windows.
-///   ([swift-package-manager-#6851](https://github.com/apple/swift-package-manager/issues/6851))
 var testingLibraryVersion: String {
-#if os(Windows)
-  "unknown"
-#else
-  // The variable `_testingLibraryVersion` is generated at compile-time by the
-  // GitStatus plugin. If the plugin was unable to gather tag or commit
-  // information from Git, it produces a nil value.
-  _testingLibraryVersion ?? "unknown"
-#endif
+  SWT_TESTING_LIBRARY_VERSION
 }
 
 /// A human-readable string describing the Swift Standard Library's version.
