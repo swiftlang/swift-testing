@@ -289,6 +289,11 @@ struct EventRecorderTests {
   @Test(.hidden) func expectantKangaroo() {
     #expect("abc" == "xyz")
   }
+  @Test(.hidden) func nonbindingBear() {
+    let lhs = "987"
+    let rhs = "123"
+    #expect(lhs == rhs)
+  }
   @Test(.hidden) func successBadger() {}
   @Test(.hidden, .tags(.red, .orange, .green), arguments: 0 ..< 10) func severalLarks(i: Int) {}
   @Test(.hidden, .tags(.purple), arguments: 0 ..< 100) func multitudeOcelot(i: Int) {

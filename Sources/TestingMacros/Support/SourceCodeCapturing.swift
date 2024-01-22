@@ -14,21 +14,21 @@ import SwiftSyntax
 public import SwiftSyntax
 #endif
 
-/// Get an expression initializing an instance of ``SourceCode`` from an
-/// arbitrary syntax node.
+/// Get a swift-syntax expression initializing an instance of ``Expression``
+/// from an arbitrary syntax node.
 ///
 /// - Parameters:
 ///   - node: A syntax node from which to construct an instance of
-///     ``SourceCode``.
+///     ``Expression``.
 ///
 /// - Returns: An expression value that initializes an instance of
-///   ``SourceCode`` for the specified syntax node.
-func createSourceCodeExpr(from node: any SyntaxProtocol) -> ExprSyntax {
+///   ``Expression`` for the specified syntax node.
+func createExpressionExpr(from node: any SyntaxProtocol) -> ExprSyntax {
   ".__fromSyntaxNode(\(literal: node.trimmedDescription))"
 }
 
-/// Get an expression initializing an instance of ``SourceCode`` from an
-/// arbitrary sequence of syntax nodes representing a binary operation.
+/// Get a swift-syntax expression initializing an instance of ``Expression``
+/// from an arbitrary sequence of syntax nodes representing a binary operation.
 ///
 /// - Parameters:
 ///   - lhs: The left-hand operand.
@@ -36,8 +36,8 @@ func createSourceCodeExpr(from node: any SyntaxProtocol) -> ExprSyntax {
 ///   - rhs: The right-hand operand.
 ///
 /// - Returns: An expression value that initializes an instance of
-///   ``SourceCode`` for the specified syntax nodes.
-func createSourceCodeExprForBinaryOperation(_ lhs: some SyntaxProtocol, _ `operator`: some SyntaxProtocol, _ rhs: some SyntaxProtocol) -> ExprSyntax {
+///   ``Expression`` for the specified syntax nodes.
+func createExpressionExprForBinaryOperation(_ lhs: some SyntaxProtocol, _ `operator`: some SyntaxProtocol, _ rhs: some SyntaxProtocol) -> ExprSyntax {
   let arguments = LabeledExprListSyntax {
     LabeledExprSyntax(expression: StringLiteralExprSyntax(content: lhs.trimmedDescription))
     LabeledExprSyntax(expression: StringLiteralExprSyntax(content: `operator`.trimmedDescription))
@@ -47,8 +47,8 @@ func createSourceCodeExprForBinaryOperation(_ lhs: some SyntaxProtocol, _ `opera
   return ".__fromBinaryOperation(\(arguments))"
 }
 
-/// Get an expression initializing an instance of ``SourceCode`` from an
-/// arbitrary sequence of syntax nodes representing a function call.
+/// Get a swift-syntax expression initializing an instance of ``Expression``
+/// from an arbitrary sequence of syntax nodes representing a function call.
 ///
 /// - Parameters:
 ///   - value: The value on which the member function is being called, if any.
@@ -56,8 +56,8 @@ func createSourceCodeExprForBinaryOperation(_ lhs: some SyntaxProtocol, _ `opera
 ///   - arguments: The arguments to the member function.
 ///
 /// - Returns: An expression value that initializes an instance of
-///   ``SourceCode`` for the specified syntax nodes.
-func createSourceCodeExprForFunctionCall(_ value: (some SyntaxProtocol)?, _ functionName: some SyntaxProtocol, _ arguments: some Sequence<Argument>) -> ExprSyntax {
+///   ``Expression`` for the specified syntax nodes.
+func createExpressionExprForFunctionCall(_ value: (any SyntaxProtocol)?, _ functionName: some SyntaxProtocol, _ arguments: some Sequence<Argument>) -> ExprSyntax {
   let arguments = LabeledExprListSyntax {
     if let value {
       LabeledExprSyntax(expression: StringLiteralExprSyntax(content: value.trimmedDescription))
@@ -80,7 +80,7 @@ func createSourceCodeExprForFunctionCall(_ value: (some SyntaxProtocol)?, _ func
   return ".__functionCall(\(arguments))"
 }
 
-func createSourceCodeExprForPropertyAccess(_ value: ExprSyntax, _ keyPath: DeclReferenceExprSyntax) -> ExprSyntax {
+func createExpressionExprForPropertyAccess(_ value: ExprSyntax, _ keyPath: DeclReferenceExprSyntax) -> ExprSyntax {
   let arguments = LabeledExprListSyntax {
     LabeledExprSyntax(expression: StringLiteralExprSyntax(content: value.trimmedDescription))
     LabeledExprSyntax(expression: StringLiteralExprSyntax(content: keyPath.baseName.trimmedDescription))

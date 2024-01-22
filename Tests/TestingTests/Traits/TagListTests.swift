@@ -45,9 +45,9 @@ struct TagListTests {
   @Test("Tag.List.description property")
   func tagListDescription() throws {
     var trait = Tag.List.tags("hello", "world", .red, .orange, .yellow, .green, .blue, .purple)
-    var tagWithCustomSourceCode = Tag(rawValue: "Tag Value")
-    tagWithCustomSourceCode.sourceCode = SourceCode("Source.code.value")
-    trait.tags.append(tagWithCustomSourceCode)
+    var tagWithCustomExpression = Tag(rawValue: "Tag Value")
+    tagWithCustomExpression.expression = Expression("Source.code.value")
+    trait.tags.append(tagWithCustomExpression)
     #expect((trait as Any) is Tag.List)
     for tag in trait.tags {
       #expect(String(describing: tag) == tag.rawValue)
@@ -79,13 +79,13 @@ struct TagListTests {
     #expect(functionTest.tags == ["FromFunction", "FromType"])
   }
 
-  @Test("Tag source code is captured")
-  func sourceCodeCaptured() async throws {
+  @Test("Tag expression is captured")
+  func expressionCaptured() async throws {
     let plan = await Runner.Plan(selecting: TagTests.self)
-    let tagSourceCode = plan.steps.flatMap(\.test.tags).compactMap(\.sourceCode)
-    #expect(tagSourceCode.contains { String(describing: $0) == ".namedConstant" })
-    #expect(tagSourceCode.contains { String(describing: $0) == "Tag.functionCall(\"abc\")" })
-    #expect(!tagSourceCode.contains { String(describing: $0) == "\"extra-tag\"" })
+    let tagExpression = plan.steps.flatMap(\.test.tags).compactMap(\.expression)
+    #expect(tagExpression.contains { String(describing: $0) == ".namedConstant" })
+    #expect(tagExpression.contains { String(describing: $0) == "Tag.functionCall(\"abc\")" })
+    #expect(!tagExpression.contains { String(describing: $0) == "\"extra-tag\"" })
   }
 
 #if !SWT_NO_FILE_IO

@@ -23,69 +23,69 @@ struct ConditionMacroTests {
   @Test("#expect() macro",
     arguments: [
       ##"#expect(true)"##:
-        ##"Testing.__checkValue(true, sourceCode: .__fromSyntaxNode("true"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkValue(true, expression: .__fromSyntaxNode("true"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(false)"##:
-        ##"Testing.__checkValue(false, sourceCode: .__fromSyntaxNode("false"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkValue(false, expression: .__fromSyntaxNode("false"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(false, "Custom message")"##:
-        ##"Testing.__checkValue(false, sourceCode: .__fromSyntaxNode("false"), comments: ["Custom message"], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkValue(false, expression: .__fromSyntaxNode("false"), comments: ["Custom message"], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(2 > 1)"##:
-        ##"Testing.__checkBinaryOperation(2, { $0 > $1() }, 1, sourceCode: .__fromBinaryOperation("2", ">", "1"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkBinaryOperation(2, { $0 > $1() }, 1, expression: .__fromBinaryOperation("2", ">", "1"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(((true || false) && true) || Bool.random())"##:
-        ##"Testing.__checkBinaryOperation(((true || false) && true), { $0 || $1() }, Bool.random(), sourceCode: .__fromBinaryOperation("((true || false) && true)", "||", "Bool.random()"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkBinaryOperation(((true || false) && true), { $0 || $1() }, Bool.random(), expression: .__fromBinaryOperation("((true || false) && true)", "||", "Bool.random()"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(9 > 8 && 7 > 6, "Some comment")"##:
-        ##"Testing.__checkBinaryOperation(9 > 8, { $0 && $1() }, 7 > 6, sourceCode: .__fromBinaryOperation("9 > 8", "&&", "7 > 6"), comments: ["Some comment"], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkBinaryOperation(9 > 8, { $0 && $1() }, 7 > 6, expression: .__fromBinaryOperation("9 > 8", "&&", "7 > 6"), comments: ["Some comment"], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(!Bool.random())"##:
-        ##"Testing.__checkValue(!Bool.random(), sourceCode: .__fromSyntaxNode("!Bool.random()"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkValue(!Bool.random(), expression: .__fromSyntaxNode("!Bool.random()"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect((true && false))"##:
-        ##"Testing.__checkBinaryOperation(true, { $0 && $1() }, false, sourceCode: .__fromBinaryOperation("true", "&&", "false"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkBinaryOperation(true, { $0 && $1() }, false, expression: .__fromBinaryOperation("true", "&&", "false"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(try x())"##:
-        ##"Testing.__checkValue(try x(), sourceCode: .__fromSyntaxNode("try x()"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkValue(try x(), expression: .__fromSyntaxNode("try x()"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(1 is Int)"##:
-        ##"Testing.__checkCast(1, is: Int.self, sourceCode: .__fromBinaryOperation("1", "is", "Int"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkCast(1, is: Int.self, expression: .__fromBinaryOperation("1", "is", "Int"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect("123") { 1 == 2 } then: { foo() }"##:
-        ##"Testing.__checkClosureCall(performing: { 1 == 2 }, then: { foo() }, sourceCode: .__fromBinaryOperation("1", "==", "2"), comments: ["123"], isRequired: false, sourceLocation:Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkClosureCall(performing: { 1 == 2 }, then: { foo() }, expression: .__fromBinaryOperation("1", "==", "2"), comments: ["123"], isRequired: false, sourceLocation:Testing.SourceLocation()).__expected()"##,
       ##"#expect("123") { let x = 0 }"##:
-        ##"Testing.__checkClosureCall(performing: { let x = 0 }, sourceCode: .__fromSyntaxNode("let x = 0"), comments: ["123"], isRequired: false, sourceLocation:Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkClosureCall(performing: { let x = 0 }, expression: .__fromSyntaxNode("let x = 0"), comments: ["123"], isRequired: false, sourceLocation:Testing.SourceLocation()).__expected()"##,
       ##"#expect("123") { let x = 0; return x == 0 }"##:
-        ##"Testing.__checkClosureCall(performing: { let x = 0; return x == 0 }, sourceCode: .__fromSyntaxNode("{ let x = 0; return x == 0 }"), comments: ["123"], isRequired: false, sourceLocation:Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkClosureCall(performing: { let x = 0; return x == 0 }, expression: .__fromSyntaxNode("{ let x = 0; return x == 0 }"), comments: ["123"], isRequired: false, sourceLocation:Testing.SourceLocation()).__expected()"##,
       ##"#expect(a, "b", c: c)"##:
-        ##"Testing.__checkValue(a, c: c, sourceCode: .__fromSyntaxNode("a"), comments: ["b"], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkValue(a, c: c, expression: .__fromSyntaxNode("a"), comments: ["b"], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(a())"##:
-        ##"Testing.__checkFunctionCall((), calling: { _ in a() }, sourceCode: .__functionCall(nil, "a"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkFunctionCall((), calling: { _ in a() }, expression: .__functionCall(nil, "a"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(b(c))"##:
-        ##"Testing.__checkFunctionCall((), calling: { b($1) }, c, sourceCode: .__functionCall(nil, "b", (nil, "c")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkFunctionCall((), calling: { b($1) }, c, expression: .__functionCall(nil, "b", (nil, "c")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(a.b(c))"##:
-        ##"Testing.__checkFunctionCall(a.self, calling: { $0.b($1) }, c, sourceCode: .__functionCall("a", "b", (nil, "c")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkFunctionCall(a.self, calling: { $0.b($1) }, c, expression: .__functionCall("a", "b", (nil, "c")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(a.b(c, d: e))"##:
-        ##"Testing.__checkFunctionCall(a.self, calling: { $0.b($1, d: $2) }, c, e, sourceCode: .__functionCall("a", "b", (nil, "c"), ("d", "e")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkFunctionCall(a.self, calling: { $0.b($1, d: $2) }, c, e, expression: .__functionCall("a", "b", (nil, "c"), ("d", "e")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(a.b(&c))"##:
-        ##"Testing.__checkInoutFunctionCall(a.self, calling: { $0.b(&$1) }, &c, sourceCode: .__functionCall("a", "b", (nil, "&c")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkInoutFunctionCall(a.self, calling: { $0.b(&$1) }, &c, expression: .__functionCall("a", "b", (nil, "&c")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(a.b(&c, &d))"##:
-        ##"Testing.__checkValue(a.b(&c, &d), sourceCode: .__fromSyntaxNode("a.b(&c, &d)"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkValue(a.b(&c, &d), expression: .__fromSyntaxNode("a.b(&c, &d)"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(a.b(&c, d))"##:
-        ##"Testing.__checkValue(a.b(&c, d), sourceCode: .__fromSyntaxNode("a.b(&c, d)"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkValue(a.b(&c, d), expression: .__fromSyntaxNode("a.b(&c, d)"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(a.b(try c()))"##:
-        ##"Testing.__checkValue(a.b(try c()), sourceCode: .__fromSyntaxNode("a.b(try c())"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkValue(a.b(try c()), expression: .__fromSyntaxNode("a.b(try c())"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(a?.b(c))"##:
-        ##"Testing.__checkFunctionCall(a.self, calling: { $0?.b($1) }, c, sourceCode: .__functionCall("a", "b", (nil, "c")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkFunctionCall(a.self, calling: { $0?.b($1) }, c, expression: .__functionCall("a", "b", (nil, "c")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(a???.b(c))"##:
-        ##"Testing.__checkFunctionCall(a.self, calling: { $0???.b($1) }, c, sourceCode: .__functionCall("a", "b", (nil, "c")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkFunctionCall(a.self, calling: { $0???.b($1) }, c, expression: .__functionCall("a", "b", (nil, "c")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(a?.b.c(d))"##:
-        ##"Testing.__checkFunctionCall(a?.b.self, calling: { $0?.c($1) }, d, sourceCode: .__functionCall("a?.b", "c", (nil, "d")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkFunctionCall(a?.b.self, calling: { $0?.c($1) }, d, expression: .__functionCall("a?.b", "c", (nil, "d")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect({}())"##:
-        ##"Testing.__checkValue({}(), sourceCode: .__fromSyntaxNode("{}()"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkValue({}(), expression: .__fromSyntaxNode("{}()"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(a.b(c: d))"##:
-        ##"Testing.__checkFunctionCall(a.self, calling: { $0.b(c: $1) }, d, sourceCode: .__functionCall("a", "b", ("c", "d")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkFunctionCall(a.self, calling: { $0.b(c: $1) }, d, expression: .__functionCall("a", "b", ("c", "d")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(a.b { c })"##:
-        ##"Testing.__checkValue(a.b { c }, sourceCode: .__fromSyntaxNode("a.b { c }"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkValue(a.b { c }, expression: .__fromSyntaxNode("a.b { c }"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(a, sourceLocation: someValue)"##:
-        ##"Testing.__checkValue(a, sourceCode: .__fromSyntaxNode("a"), comments: [], isRequired: false, sourceLocation: someValue).__expected()"##,
+        ##"Testing.__checkValue(a, expression: .__fromSyntaxNode("a"), comments: [], isRequired: false, sourceLocation: someValue).__expected()"##,
       ##"#expect(a.isB)"##:
-        ##"Testing.__checkPropertyAccess(a.self, getting: { $0.isB }, sourceCode: .__fromPropertyAccess("a", "isB"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkPropertyAccess(a.self, getting: { $0.isB }, expression: .__fromPropertyAccess("a", "isB"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(a???.isB)"##:
-        ##"Testing.__checkPropertyAccess(a.self, getting: { $0???.isB }, sourceCode: .__fromPropertyAccess("a", "isB"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkPropertyAccess(a.self, getting: { $0???.isB }, expression: .__fromPropertyAccess("a", "isB"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(a?.b.isB)"##:
-        ##"Testing.__checkPropertyAccess(a?.b.self, getting: { $0?.isB }, sourceCode: .__fromPropertyAccess("a?.b", "isB"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkPropertyAccess(a?.b.self, getting: { $0?.isB }, expression: .__fromPropertyAccess("a?.b", "isB"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
     ]
   )
   func expectMacro(input: String, expectedOutput: String) throws {
@@ -97,69 +97,69 @@ struct ConditionMacroTests {
   @Test("#require() macro",
     arguments: [
       ##"#require(true)"##:
-        ##"Testing.__checkValue(true, sourceCode: .__fromSyntaxNode("true"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkValue(true, expression: .__fromSyntaxNode("true"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(false)"##:
-        ##"Testing.__checkValue(false, sourceCode: .__fromSyntaxNode("false"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkValue(false, expression: .__fromSyntaxNode("false"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(false, "Custom message")"##:
-        ##"Testing.__checkValue(false, sourceCode: .__fromSyntaxNode("false"), comments: ["Custom message"], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkValue(false, expression: .__fromSyntaxNode("false"), comments: ["Custom message"], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(2 > 1)"##:
-        ##"Testing.__checkBinaryOperation(2, { $0 > $1() }, 1, sourceCode: .__fromBinaryOperation("2", ">", "1"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkBinaryOperation(2, { $0 > $1() }, 1, expression: .__fromBinaryOperation("2", ">", "1"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(((true || false) && true) || Bool.random())"##:
-        ##"Testing.__checkBinaryOperation(((true || false) && true), { $0 || $1() }, Bool.random(), sourceCode: .__fromBinaryOperation("((true || false) && true)", "||", "Bool.random()"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkBinaryOperation(((true || false) && true), { $0 || $1() }, Bool.random(), expression: .__fromBinaryOperation("((true || false) && true)", "||", "Bool.random()"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(9 > 8 && 7 > 6, "Some comment")"##:
-        ##"Testing.__checkBinaryOperation(9 > 8, { $0 && $1() }, 7 > 6, sourceCode: .__fromBinaryOperation("9 > 8", "&&", "7 > 6"), comments: ["Some comment"], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkBinaryOperation(9 > 8, { $0 && $1() }, 7 > 6, expression: .__fromBinaryOperation("9 > 8", "&&", "7 > 6"), comments: ["Some comment"], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(!Bool.random())"##:
-        ##"Testing.__checkValue(!Bool.random(), sourceCode: .__fromSyntaxNode("!Bool.random()"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkValue(!Bool.random(), expression: .__fromSyntaxNode("!Bool.random()"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require((true && false))"##:
-        ##"Testing.__checkBinaryOperation(true, { $0 && $1() }, false, sourceCode: .__fromBinaryOperation("true", "&&", "false"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkBinaryOperation(true, { $0 && $1() }, false, expression: .__fromBinaryOperation("true", "&&", "false"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(try x())"##:
-        ##"Testing.__checkValue(try x(), sourceCode: .__fromSyntaxNode("try x()"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkValue(try x(), expression: .__fromSyntaxNode("try x()"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(1 is Int)"##:
-        ##"Testing.__checkCast(1, is: Int.self, sourceCode: .__fromBinaryOperation("1", "is", "Int"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkCast(1, is: Int.self, expression: .__fromBinaryOperation("1", "is", "Int"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require("123") { 1 == 2 } then: { foo() }"##:
-        ##"Testing.__checkClosureCall(performing: { 1 == 2 }, then: { foo() }, sourceCode: .__fromBinaryOperation("1", "==", "2"), comments: ["123"], isRequired: true, sourceLocation:Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkClosureCall(performing: { 1 == 2 }, then: { foo() }, expression: .__fromBinaryOperation("1", "==", "2"), comments: ["123"], isRequired: true, sourceLocation:Testing.SourceLocation()).__required()"##,
       ##"#require("123") { let x = 0 }"##:
-        ##"Testing.__checkClosureCall(performing: { let x = 0 }, sourceCode: .__fromSyntaxNode("let x = 0"), comments: ["123"], isRequired: true, sourceLocation:Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkClosureCall(performing: { let x = 0 }, expression: .__fromSyntaxNode("let x = 0"), comments: ["123"], isRequired: true, sourceLocation:Testing.SourceLocation()).__required()"##,
       ##"#require("123") { let x = 0; return x == 0 }"##:
-        ##"Testing.__checkClosureCall(performing: { let x = 0; return x == 0 }, sourceCode: .__fromSyntaxNode("{ let x = 0; return x == 0 }"), comments: ["123"], isRequired: true, sourceLocation:Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkClosureCall(performing: { let x = 0; return x == 0 }, expression: .__fromSyntaxNode("{ let x = 0; return x == 0 }"), comments: ["123"], isRequired: true, sourceLocation:Testing.SourceLocation()).__required()"##,
       ##"#require(a, "b", c: c)"##:
-        ##"Testing.__checkValue(a, c: c, sourceCode: .__fromSyntaxNode("a"), comments: ["b"], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkValue(a, c: c, expression: .__fromSyntaxNode("a"), comments: ["b"], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(a())"##:
-        ##"Testing.__checkFunctionCall((), calling: { _ in a() }, sourceCode: .__functionCall(nil, "a"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkFunctionCall((), calling: { _ in a() }, expression: .__functionCall(nil, "a"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(b(c))"##:
-        ##"Testing.__checkFunctionCall((), calling: { b($1) }, c, sourceCode: .__functionCall(nil, "b", (nil, "c")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkFunctionCall((), calling: { b($1) }, c, expression: .__functionCall(nil, "b", (nil, "c")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(a.b(c))"##:
-        ##"Testing.__checkFunctionCall(a.self, calling: { $0.b($1) }, c, sourceCode: .__functionCall("a", "b", (nil, "c")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkFunctionCall(a.self, calling: { $0.b($1) }, c, expression: .__functionCall("a", "b", (nil, "c")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(a.b(c, d: e))"##:
-        ##"Testing.__checkFunctionCall(a.self, calling: { $0.b($1, d: $2) }, c, e, sourceCode: .__functionCall("a", "b", (nil, "c"), ("d", "e")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkFunctionCall(a.self, calling: { $0.b($1, d: $2) }, c, e, expression: .__functionCall("a", "b", (nil, "c"), ("d", "e")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(a.b(&c))"##:
-        ##"Testing.__checkInoutFunctionCall(a.self, calling: { $0.b(&$1) }, &c, sourceCode: .__functionCall("a", "b", (nil, "&c")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkInoutFunctionCall(a.self, calling: { $0.b(&$1) }, &c, expression: .__functionCall("a", "b", (nil, "&c")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(a.b(&c, &d))"##:
-        ##"Testing.__checkValue(a.b(&c, &d), sourceCode: .__fromSyntaxNode("a.b(&c, &d)"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkValue(a.b(&c, &d), expression: .__fromSyntaxNode("a.b(&c, &d)"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(a.b(&c, d))"##:
-        ##"Testing.__checkValue(a.b(&c, d), sourceCode: .__fromSyntaxNode("a.b(&c, d)"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkValue(a.b(&c, d), expression: .__fromSyntaxNode("a.b(&c, d)"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(a.b(try c()))"##:
-        ##"Testing.__checkValue(a.b(try c()), sourceCode: .__fromSyntaxNode("a.b(try c())"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkValue(a.b(try c()), expression: .__fromSyntaxNode("a.b(try c())"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(a?.b(c))"##:
-        ##"Testing.__checkFunctionCall(a.self, calling: { $0?.b($1) }, c, sourceCode: .__functionCall("a", "b", (nil, "c")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkFunctionCall(a.self, calling: { $0?.b($1) }, c, expression: .__functionCall("a", "b", (nil, "c")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(a???.b(c))"##:
-        ##"Testing.__checkFunctionCall(a.self, calling: { $0???.b($1) }, c, sourceCode: .__functionCall("a", "b", (nil, "c")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkFunctionCall(a.self, calling: { $0???.b($1) }, c, expression: .__functionCall("a", "b", (nil, "c")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(a?.b.c(d))"##:
-        ##"Testing.__checkFunctionCall(a?.b.self, calling: { $0?.c($1) }, d, sourceCode: .__functionCall("a?.b", "c", (nil, "d")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkFunctionCall(a?.b.self, calling: { $0?.c($1) }, d, expression: .__functionCall("a?.b", "c", (nil, "d")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require({}())"##:
-        ##"Testing.__checkValue({}(), sourceCode: .__fromSyntaxNode("{}()"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkValue({}(), expression: .__fromSyntaxNode("{}()"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(a.b(c: d))"##:
-        ##"Testing.__checkFunctionCall(a.self, calling: { $0.b(c: $1) }, d, sourceCode: .__functionCall("a", "b", ("c", "d")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkFunctionCall(a.self, calling: { $0.b(c: $1) }, d, expression: .__functionCall("a", "b", ("c", "d")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(a.b { c })"##:
-        ##"Testing.__checkValue(a.b { c }, sourceCode: .__fromSyntaxNode("a.b { c }"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkValue(a.b { c }, expression: .__fromSyntaxNode("a.b { c }"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(a, sourceLocation: someValue)"##:
-        ##"Testing.__checkValue(a, sourceCode: .__fromSyntaxNode("a"), comments: [], isRequired: true, sourceLocation: someValue).__required()"##,
+        ##"Testing.__checkValue(a, expression: .__fromSyntaxNode("a"), comments: [], isRequired: true, sourceLocation: someValue).__required()"##,
       ##"#require(a.isB)"##:
-        ##"Testing.__checkPropertyAccess(a.self, getting: { $0.isB }, sourceCode: .__fromPropertyAccess("a", "isB"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkPropertyAccess(a.self, getting: { $0.isB }, expression: .__fromPropertyAccess("a", "isB"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(a???.isB)"##:
-        ##"Testing.__checkPropertyAccess(a.self, getting: { $0???.isB }, sourceCode: .__fromPropertyAccess("a", "isB"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkPropertyAccess(a.self, getting: { $0???.isB }, expression: .__fromPropertyAccess("a", "isB"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(a?.b.isB)"##:
-        ##"Testing.__checkPropertyAccess(a?.b.self, getting: { $0?.isB }, sourceCode: .__fromPropertyAccess("a?.b", "isB"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkPropertyAccess(a?.b.self, getting: { $0?.isB }, expression: .__fromPropertyAccess("a?.b", "isB"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
     ]
   )
   func requireMacro(input: String, expectedOutput: String) throws {
@@ -171,17 +171,17 @@ struct ConditionMacroTests {
   @Test("Unwrapping #require() macro",
     arguments: [
       ##"#require(Optional<Int>.none)"##:
-        ##"Testing.__checkPropertyAccess(Optional<Int>.self, getting: { $0.none }, sourceCode: .__fromPropertyAccess("Optional<Int>", "none"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkPropertyAccess(Optional<Int>.self, getting: { $0.none }, expression: .__fromPropertyAccess("Optional<Int>", "none"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(nil ?? 123)"##:
-        ##"Testing.__checkBinaryOperation(nil, { $0 ?? $1() }, 123, sourceCode: .__fromBinaryOperation("nil", "??", "123"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkBinaryOperation(nil, { $0 ?? $1() }, 123, expression: .__fromBinaryOperation("nil", "??", "123"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(123 ?? nil)"##:
-        ##"Testing.__checkBinaryOperation(123, { $0 ?? $1() }, nil, sourceCode: .__fromBinaryOperation("123", "??", "nil"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkBinaryOperation(123, { $0 ?? $1() }, nil, expression: .__fromBinaryOperation("123", "??", "nil"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(123 as? Double)"##:
-        ##"Testing.__checkCast(123,as: Double.self, sourceCode: .__fromBinaryOperation("123", "as?", "Double"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkCast(123,as: Double.self, expression: .__fromBinaryOperation("123", "as?", "Double"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(123 as Double)"##:
-        ##"Testing.__checkValue(123 as Double, sourceCode: .__fromSyntaxNode("123 as Double"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkValue(123 as Double, expression: .__fromSyntaxNode("123 as Double"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(123 as! Double)"##:
-        ##"Testing.__checkValue(123 as! Double, sourceCode: .__fromSyntaxNode("123 as! Double"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkValue(123 as! Double, expression: .__fromSyntaxNode("123 as! Double"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
     ]
   )
   func unwrappingRequireMacro(input: String, expectedOutput: String) throws {
@@ -200,7 +200,7 @@ struct ConditionMacroTests {
       """
       // Source comment
       /** Doc comment */
-      Testing.__checkValue(try x(), sourceCode: .__fromSyntaxNode("try x()"), comments: [.__line("// Source comment"),.__documentationBlock("/** Doc comment */"),"Argument comment"], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()
+      Testing.__checkValue(try x(), expression: .__fromSyntaxNode("try x()"), comments: [.__line("// Source comment"),.__documentationBlock("/** Doc comment */"),"Argument comment"], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()
       """,
 
       """
@@ -213,7 +213,7 @@ struct ConditionMacroTests {
       // Ignore me
 
       // Capture me
-      Testing.__checkValue(try x(), sourceCode: .__fromSyntaxNode("try x()"), comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()
+      Testing.__checkValue(try x(), expression: .__fromSyntaxNode("try x()"), comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()
       """,
 
       """
@@ -226,7 +226,7 @@ struct ConditionMacroTests {
       // Ignore me
       \t
       // Capture me
-      Testing.__checkValue(try x(), sourceCode: .__fromSyntaxNode("try x()"), comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()
+      Testing.__checkValue(try x(), expression: .__fromSyntaxNode("try x()"), comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()
       """,
     ]
   )
@@ -300,7 +300,7 @@ struct ConditionMacroTests {
     let rawExpectedOutput = ##"""
       @Test("Random number generation") func rng() {
         let number = Int.random(in: 1 ..< .max)
-        Testing.__checkBinaryOperation((number > 0 && foo() != bar(at: 9)), { $0 != $1() }, !true, sourceCode: .__fromBinaryOperation("(number > 0 && foo() != bar(at: 9))", "!=", "!true"), comments: ["\(number) must be greater than 0"], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()
+        Testing.__checkBinaryOperation((number > 0 && foo() != bar(at: 9)), { $0 != $1() }, !true, expression: .__fromBinaryOperation("(number > 0 && foo() != bar(at: 9))", "!=", "!true"), comments: ["\(number) must be greater than 0"], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()
       }
     """##
 

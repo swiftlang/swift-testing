@@ -39,7 +39,7 @@ built-in expectation APIs.
 - ``Expectation``
 - ``ExpectationFailedError``
 - ``CustomTestStringConvertible``
-- ``SourceCode``
+- ``Expression``
 
 ### Representing source locations
 

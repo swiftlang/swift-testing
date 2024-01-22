@@ -155,32 +155,25 @@ struct AttributeInfo {
     sourceLocation = createSourceLocationExpr(of: attribute.attributeName, context: context)
   }
 
-  /// Provide source code representations to all traits in this instance's
-  /// ``traits`` property.
+  /// Provide source code representations as instances of ``Expression`` to all
+  /// traits in this instance's ``traits`` property.
   ///
   /// - Parameters:
   ///   - context: The macro context in which the expression is being parsed.
   ///
   /// - Returns: A copy of ``traits`` expanded to include their source code
-  ///   representations. Whether or not that source code is consumed at runtime
-  ///   is an implementation detail of each trait type.
-  private func _traitExprsWithSourceCodeAdded(in context: some MacroExpansionContext) -> [ExprSyntax] {
+  ///   representations as instances of ``Expression``. Whether or not that
+  ///   source code is consumed at runtime is an implementation detail of each
+  ///   trait type.
+  private func _traitExprsWithExpressionsAdded(in context: some MacroExpansionContext) -> [ExprSyntax] {
     traits.lazy.map { trait in
-      var argumentSourceCodeExprs = ArrayExprSyntax {}
-      if let functionCall = trait.as(FunctionCallExprSyntax.self) {
-        argumentSourceCodeExprs = ArrayExprSyntax {
-          for argument in functionCall.arguments {
-            if let label = argument.label {
-              ArrayElementSyntax(expression: "(\(literal: label.textWithoutBackticks), \(createSourceCodeExpr(from: argument.expression)))" as ExprSyntax)
-            } else {
-              ArrayElementSyntax(expression: "(nil, \(createSourceCodeExpr(from: argument.expression)))" as ExprSyntax)
-            }
-          }
-        }
+      // TODO: genericize createExpressionExpr(from:) and its call sites to map to supported patterns
+      let expressionExpr = if let functionCallExpr = trait.as(FunctionCallExprSyntax.self) {
+        createExpressionExprForFunctionCall(nil, functionCallExpr.calledExpression, functionCallExpr.arguments.map(Argument.init))
+      } else {
+        createExpressionExpr(from: trait)
       }
-
-      let sourceCodeExpr = createSourceCodeExpr(from: trait)
-      return "\(trait.trimmed)._addingSourceCode(\(sourceCodeExpr), arguments: \(argumentSourceCodeExprs))"
+      return "\(trait.trimmed)._capturingExpression(\(expressionExpr))"
     }
   }
 
@@ -199,7 +192,7 @@ struct AttributeInfo {
       arguments.append(Argument(label: .identifier("displayName"), expression: displayName))
     }
     arguments.append(Argument(label: .identifier("traits"), expression: ArrayExprSyntax {
-      for traitExpr in _traitExprsWithSourceCodeAdded(in: context) {
+      for traitExpr in _traitExprsWithExpressionsAdded(in: context) {
         ArrayElementSyntax(expression: traitExpr)
       }
     }))

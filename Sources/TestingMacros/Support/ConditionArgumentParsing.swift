@@ -28,13 +28,13 @@ struct Condition {
   var arguments: [Argument]
 
   /// The condition's source code as an expression that produces an instance of
-  /// the testing library's `SourceCode` type.
-  var sourceCode: ExprSyntax
+  /// the testing library's ``Expression`` type.
+  var expression: ExprSyntax
 
-  init(_ expandedFunctionName: String, arguments: [Argument], sourceCode: ExprSyntax) {
+  init(_ expandedFunctionName: String, arguments: [Argument], expression: ExprSyntax) {
     self.expandedFunctionName = .identifier(expandedFunctionName)
     self.arguments = arguments
-    self.sourceCode = sourceCode
+    self.expression = expression
   }
 
   /// Initialize an instance of this type representing a single expression (i.e.
@@ -42,14 +42,14 @@ struct Condition {
   ///
   /// - Parameters:
   ///   - expr: The expression.
-  ///   - sourceCodeNode: The node from which to derive the `sourceCode`
+  ///   - expressionNode: The node from which to derive the `expression`
   ///     property. If `nil`, `expr` is used.
-  init(expression expr: some ExprSyntaxProtocol, sourceCodeNode: Syntax? = nil) {
-    let sourceCodeNode: Syntax = sourceCodeNode ?? Syntax(expr)
+  init(expression expr: some ExprSyntaxProtocol, expressionNode: Syntax? = nil) {
+    let expressionNode: Syntax = expressionNode ?? Syntax(expr)
     self.init(
       "__checkValue",
       arguments: [Argument(expression: expr)],
-      sourceCode: createSourceCodeExpr(from: sourceCodeNode)
+      expression: createExpressionExpr(from: expressionNode)
     )
   }
 }
@@ -133,7 +133,7 @@ private func _removeParentheses(from expr: ExprSyntax) -> ExprSyntax? {
 /// Parse a condition argument from a binary operation expression.
 ///
 /// - Parameters:
-///   - expr: The expression to which `subexpressions` belong.
+///   - expr: The expression to which `lhs` _et al._ belong.
 ///   - lhs: The left-hand operand expression.
 ///   - op: The operator expression.
 ///   - rhs: The right-hand operand expression.
@@ -152,7 +152,7 @@ private func _parseCondition(from expr: ExprSyntax, leftOperand lhs: ExprSyntax,
       Argument(expression: "{ $0 \(op.trimmed) $1() }"),
       Argument(expression: rhs)
     ],
-    sourceCode: createSourceCodeExprForBinaryOperation(lhs, op, rhs)
+    expression: createExpressionExprForBinaryOperation(lhs, op, rhs)
   )
 }
 
@@ -174,7 +174,7 @@ private func _parseCondition(from expr: IsExprSyntax, for macro: some Freestandi
       Argument(expression: expression),
       Argument(label: .identifier("is"), expression: "\(type.trimmed).self")
     ],
-    sourceCode: createSourceCodeExprForBinaryOperation(expression, expr.isKeyword, type)
+    expression: createExpressionExprForBinaryOperation(expression, expr.isKeyword, type)
   )
 }
 
@@ -198,7 +198,7 @@ private func _parseCondition(from expr: AsExprSyntax, for macro: some Freestandi
         Argument(expression: expression),
         Argument(label: .identifier("as"), expression: "\(type.trimmed).self")
       ],
-      sourceCode: createSourceCodeExprForBinaryOperation(expression, TokenSyntax.unknown("as?"), type)
+      expression: createExpressionExprForBinaryOperation(expression, TokenSyntax.unknown("as?"), type)
     )
 
   case .exclamationMark where !type.isNamed("Bool", inModuleNamed: "Swift") && !type.isOptional:
@@ -235,14 +235,14 @@ private func _parseCondition(from expr: ClosureExprSyntax, for macro: some Frees
       return Condition(
         "__checkValue",
         arguments: [Argument(expression: expr)],
-        sourceCode: _parseCondition(from: bodyExpr, for: macro, in: context).sourceCode
+        expression: _parseCondition(from: bodyExpr, for: macro, in: context).expression
       )
     }
 
     // If a closure contains a single statement or declaration, we can't
     // meaningfully break it down as an expression, but we can still capture its
     // source representation.
-    return Condition(expression: expr, sourceCodeNode: Syntax(item))
+    return Condition(expression: expr, expressionNode: Syntax(item))
   }
 
   return Condition(expression: expr)
@@ -369,12 +369,12 @@ private func _parseCondition(from expr: FunctionCallExprSyntax, for macro: some 
     .map(\.expression)
     .map { Argument(expression: $0) }
 
-  var baseExprForSourceCode: ExprSyntax?
+  var baseExprForExpression: ExprSyntax?
   var conditionArguments = [Argument]()
   if let memberAccessExpr, var baseExpr = memberAccessExpr.base {
     let questionMarks: String
     (baseExpr, questionMarks) = _exprFromOptionalChainedExpr(baseExpr)
-    baseExprForSourceCode = baseExpr
+    baseExprForExpression = baseExpr
 
     conditionArguments.append(Argument(expression: "\(baseExpr.trimmed).self")) // BUG: rdar://113152370
     conditionArguments.append(
@@ -409,7 +409,7 @@ private func _parseCondition(from expr: FunctionCallExprSyntax, for macro: some 
   return Condition(
     expandedFunctionName,
     arguments: conditionArguments,
-    sourceCode: createSourceCodeExprForFunctionCall(baseExprForSourceCode, functionName, argumentList)
+    expression: createExpressionExprForFunctionCall(baseExprForExpression, functionName, argumentList)
   )
 }
 
@@ -439,7 +439,7 @@ private func _parseCondition(from expr: MemberAccessExprSyntax, for macro: some 
       Argument(expression: "\(baseExpr.trimmed).self"),
       Argument(label: "getting", expression: "{ $0\(raw: questionMarks).\(expr.declName.baseName) }")
     ],
-    sourceCode: createSourceCodeExprForPropertyAccess(baseExpr, expr.declName)
+    expression: createExpressionExprForPropertyAccess(baseExpr, expr.declName)
   )
 }
 
