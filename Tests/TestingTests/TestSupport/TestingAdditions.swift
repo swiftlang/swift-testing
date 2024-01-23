@@ -154,7 +154,7 @@ extension Test {
   init<C>(
     _ traits: any TestTrait...,
     arguments collection: C,
-    parameters: [ParameterInfo] = [],
+    parameters: [Parameter] = [],
     fileID: String = #fileID,
     filePath: String = #filePath,
     line: Int = #line,
@@ -186,7 +186,7 @@ extension Test {
   init<C1, C2>(
     _ traits: any TestTrait...,
     arguments collection1: C1, _ collection2: C2,
-    parameters: [ParameterInfo] = [],
+    parameters: [Parameter] = [],
     fileID: String = #fileID,
     filePath: String = #filePath,
     line: Int = #line,
@@ -213,7 +213,7 @@ extension Test {
   init<C1, C2>(
     _ traits: any TestTrait...,
     arguments zippedCollections: Zip2Sequence<C1, C2>,
-    parameters: [ParameterInfo] = [],
+    parameters: [Parameter] = [],
     fileID: String = #fileID,
     filePath: String = #filePath,
     line: Int = #line,

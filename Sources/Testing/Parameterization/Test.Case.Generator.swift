@@ -84,7 +84,7 @@ extension Test.Case {
     @_disfavoredOverload
     init(
       arguments collection: S,
-      parameters: [Test.ParameterInfo],
+      parameters: [Test.Parameter],
       testFunction: @escaping @Sendable (S.Element) async throws -> Void
     ) where S: Collection {
       if parameters.count > 1 {
@@ -123,7 +123,7 @@ extension Test.Case {
     ///     passes an argument value from `collection`.
     init<C1, C2>(
       arguments collection1: C1, _ collection2: C2,
-      parameters: [Test.ParameterInfo],
+      parameters: [Test.Parameter],
       testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
     ) where S == CartesianProduct<C1, C2> {
       self.init(sequence: cartesianProduct(collection1, collection2)) { element in
@@ -153,7 +153,7 @@ extension Test.Case {
     /// }
     private init<E1, E2>(
       sequence: S,
-      parameters: [Test.ParameterInfo],
+      parameters: [Test.Parameter],
       testFunction: @escaping @Sendable ((E1, E2)) async throws -> Void
     ) where S.Element == (E1, E2), E1: Sendable, E2: Sendable {
       if parameters.count > 1 {
@@ -191,7 +191,7 @@ extension Test.Case {
     /// }
     init<E1, E2>(
       arguments collection: S,
-      parameters: [Test.ParameterInfo],
+      parameters: [Test.Parameter],
       testFunction: @escaping @Sendable ((E1, E2)) async throws -> Void
     ) where S: Collection, S.Element == (E1, E2) {
       self.init(sequence: collection, parameters: parameters, testFunction: testFunction)
@@ -209,7 +209,7 @@ extension Test.Case {
     ///     passes an argument value from `zippedCollections`.
     init<C1, C2>(
       arguments zippedCollections: Zip2Sequence<C1, C2>,
-      parameters: [Test.ParameterInfo],
+      parameters: [Test.Parameter],
       testFunction: @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
     ) where S == Zip2Sequence<C1, C2>, C1: Collection, C2: Collection {
       self.init(sequence: zippedCollections, parameters: parameters, testFunction: testFunction)
@@ -233,7 +233,7 @@ extension Test.Case {
     /// `Dictionary` includes labels (`(key: Key, value: Value)`).
     init<Key, Value>(
       arguments dictionary: Dictionary<Key, Value>,
-      parameters: [Test.ParameterInfo],
+      parameters: [Test.Parameter],
       testFunction: @escaping @Sendable ((Key, Value)) async throws -> Void
     ) where S == Dictionary<Key, Value> {
       if parameters.count > 1 {

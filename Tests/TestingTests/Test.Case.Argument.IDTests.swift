@@ -19,7 +19,7 @@ struct Test_Case_Argument_IDTests {
   func oneCodableParameter() async throws {
     let test = Test(
       arguments: [123],
-      parameters: [Test.ParameterInfo(index: 0, firstName: "value")]
+      parameters: [Test.Parameter(index: 0, firstName: "value")]
     ) { _ in }
     let testCases = try #require(test.testCases)
     let testCase = try #require(testCases.first { _ in true })
@@ -33,7 +33,7 @@ struct Test_Case_Argument_IDTests {
   func oneCustomParameter() async throws {
     let test = Test(
       arguments: [MyCustomTestArgument(x: 123, y: "abc")],
-      parameters: [Test.ParameterInfo(index: 0, firstName: "value")]
+      parameters: [Test.Parameter(index: 0, firstName: "value")]
     ) { _ in }
     let testCases = try #require(test.testCases)
     let testCase = try #require(testCases.first { _ in true })
@@ -50,7 +50,7 @@ struct Test_Case_Argument_IDTests {
   func oneIdentifiableParameter() async throws {
     let test = Test(
       arguments: [MyIdentifiableArgument(id: "abc")],
-      parameters: [Test.ParameterInfo(index: 0, firstName: "value")]
+      parameters: [Test.Parameter(index: 0, firstName: "value")]
     ) { _ in }
     let testCases = try #require(test.testCases)
     let testCase = try #require(testCases.first { _ in true })

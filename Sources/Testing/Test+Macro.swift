@@ -149,7 +149,7 @@ extension Test {
   ///
   /// - Warning: This type alias is used to implement the `@Test` macro. Do not
   ///   use it directly.
-  public typealias __ParameterInfo = (firstName: String, secondName: String?)
+  public typealias __Parameter = (firstName: String, secondName: String?)
 
   /// Create an instance of ``Test`` for a function.
   ///
@@ -162,7 +162,7 @@ extension Test {
     displayName: String? = nil,
     traits: [any TestTrait],
     sourceLocation: SourceLocation,
-    parameters: [__ParameterInfo] = [],
+    parameters: [__Parameter] = [],
     testFunction: @escaping @Sendable () async throws -> Void
   ) -> Self {
     let caseGenerator = Case.Generator(testFunction: testFunction)
@@ -170,15 +170,15 @@ extension Test {
   }
 }
 
-extension [Test.__ParameterInfo] {
-  /// An array of ``Test/ParameterInfo`` values based on this array of parameter
+extension [Test.__Parameter] {
+  /// An array of ``Test/Parameter`` values based on this array of parameter
   /// tuples.
   ///
   /// This conversion derives the value of the `index` property of the resulting
   /// parameter instances from the position of the tuple in the original array.
-  fileprivate var parameters: [Test.ParameterInfo] {
+  fileprivate var parameters: [Test.Parameter] {
     enumerated().map { index, parameter in
-      Test.ParameterInfo(index: index, firstName: parameter.firstName, secondName: parameter.secondName)
+      Test.Parameter(index: index, firstName: parameter.firstName, secondName: parameter.secondName)
     }
   }
 }
@@ -237,7 +237,7 @@ extension Test {
     traits: [any TestTrait],
     arguments collection: C,
     sourceLocation: SourceLocation,
-    parameters paramTuples: [__ParameterInfo],
+    parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
   ) -> Self where C: Collection & Sendable, C.Element: Sendable {
     let parameters = paramTuples.parameters
@@ -365,7 +365,7 @@ extension Test {
     traits: [any TestTrait],
     arguments collection1: C1, _ collection2: C2,
     sourceLocation: SourceLocation,
-    parameters paramTuples: [__ParameterInfo],
+    parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let parameters = paramTuples.parameters
@@ -388,7 +388,7 @@ extension Test {
     traits: [any TestTrait],
     arguments collection: C,
     sourceLocation: SourceLocation,
-    parameters paramTuples: [__ParameterInfo],
+    parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable ((E1, E2)) async throws -> Void
   ) -> Self where C: Collection & Sendable, C.Element == (E1, E2), E1: Sendable, E2: Sendable {
     let parameters = paramTuples.parameters
@@ -414,7 +414,7 @@ extension Test {
     traits: [any TestTrait],
     arguments dictionary: Dictionary<Key, Value>,
     sourceLocation: SourceLocation,
-    parameters paramTuples: [__ParameterInfo],
+    parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable ((Key, Value)) async throws -> Void
   ) -> Self where Key: Sendable, Value: Sendable {
     let parameters = paramTuples.parameters
@@ -434,7 +434,7 @@ extension Test {
     traits: [any TestTrait],
     arguments zippedCollections: Zip2Sequence<C1, C2>,
     sourceLocation: SourceLocation,
-    parameters paramTuples: [__ParameterInfo],
+    parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let parameters = paramTuples.parameters

@@ -104,7 +104,7 @@ public struct Test: Sendable {
   /// test function is non-parameterized. If this instance represents a test
   /// suite, the value of this property is `nil`.
   @_spi(ExperimentalParameterizedTesting)
-  public var parameters: [ParameterInfo]?
+  public var parameters: [Parameter]?
 
   /// Whether or not this instance is a test suite containing other tests.
   ///
@@ -141,7 +141,7 @@ public struct Test: Sendable {
     containingType: Any.Type? = nil,
     xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
     testCases: Test.Case.Generator<S>,
-    parameters: [ParameterInfo]
+    parameters: [Parameter]
   ) {
     self.name = name
     self.displayName = displayName
@@ -204,7 +204,7 @@ extension Test {
     ///
     /// - ``Test/parameters``
     @_spi(ExperimentalParameterizedTesting)
-    public var parameters: [ParameterInfo]?
+    public var parameters: [Parameter]?
 
     /// Initialize an instance of this type by snapshotting the specified test.
     ///

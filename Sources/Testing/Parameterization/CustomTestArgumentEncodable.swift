@@ -64,7 +64,7 @@ extension Test.Case.Argument.ID {
   /// ## See Also
   ///
   /// - ``CustomTestArgumentEncodable``
-  init?(identifying value: some Sendable, parameter: Test.ParameterInfo) throws {
+  init?(identifying value: some Sendable, parameter: Test.Parameter) throws {
 #if canImport(Foundation)
     func customArgumentWrapper(for value: some CustomTestArgumentEncodable) -> some Encodable {
       _CustomArgumentWrapper(rawValue: value)
@@ -103,7 +103,7 @@ extension Test.Case.Argument.ID {
   /// - Returns: An array of bytes containing the encoded representation.
   ///
   /// - Throws: Any error encountered during encoding.
-  private static func _encode(_ value: some Encodable, parameter: Test.ParameterInfo) throws -> [UInt8] {
+  private static func _encode(_ value: some Encodable, parameter: Test.Parameter) throws -> [UInt8] {
     let encoder = JSONEncoder()
 
     // Keys must be sorted to ensure deterministic matching of encoded data.
@@ -135,7 +135,7 @@ private struct _CustomArgumentWrapper<T>: RawRepresentable, Encodable where T: C
 // MARK: - Additional coding user info
 
 extension CodingUserInfoKey {
-  /// A coding user info key whose value is a ``Test/ParameterInfo``.
+  /// A coding user info key whose value is a ``Test/Parameter``.
   fileprivate static var _testParameterUserInfoKey: Self {
     Self(rawValue: "org.swift.testing.coding-user-info-key.parameter")!
   }
@@ -148,7 +148,7 @@ extension Encoder {
   /// The value of this property is non-`nil` when this encoder is being used to
   /// encode an argument passed to a parameterized test function.
   @_spi(ExperimentalParameterizedTesting)
-  public var testParameter: Test.ParameterInfo? {
-    userInfo[._testParameterUserInfoKey] as? Test.ParameterInfo
+  public var testParameter: Test.Parameter? {
+    userInfo[._testParameterUserInfoKey] as? Test.Parameter
   }
 }
