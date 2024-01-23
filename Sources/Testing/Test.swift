@@ -90,10 +90,7 @@ public struct Test: Sendable {
 
   /// Whether or not this test is parameterized.
   public var isParameterized: Bool {
-    guard let parameterCount = parameters?.count else {
-      return false
-    }
-    return parameterCount != 0
+    parameters?.isEmpty == false
   }
 
   /// The test function parameters, if any.
@@ -222,10 +219,7 @@ extension Test {
     ///
     /// - ``Test/isParameterized``
     public var isParameterized: Bool {
-      guard let parameterCount = parameters?.count else {
-        return false
-      }
-      return parameterCount != 0
+      parameters?.isEmpty == false
     }
 
     /// Whether or not this instance is a test suite containing other tests.
