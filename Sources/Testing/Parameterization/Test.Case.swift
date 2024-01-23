@@ -56,7 +56,7 @@ extension Test {
       public var value: any Sendable
 
       /// The parameter of the test function to which this argument was passed.
-      public var parameter: ParameterInfo
+      public var parameter: Parameter
     }
 
     /// The arguments passed to this test case.
@@ -64,7 +64,7 @@ extension Test {
     /// If the argument was a tuple but its elements were passed to distinct
     /// parameters of the test function, each element of the tuple will be
     /// represented as a separate ``Argument`` instance paired with the
-    /// ``Test/ParameterInfo`` to which it was passed. However, if the test
+    /// ``Test/Parameter`` to which it was passed. However, if the test
     /// function has a single tuple parameter, the tuple will be preserved and
     /// represented as one ``Argument`` instance.
     ///
@@ -90,7 +90,7 @@ extension Test {
     ///   - body: The body closure of this test case.
     init(
       values: [any Sendable],
-      parameters: [ParameterInfo],
+      parameters: [Parameter],
       body: @escaping @Sendable () async throws -> Void
     ) {
       let arguments = zip(values, parameters).map { value, parameter in
@@ -117,7 +117,7 @@ extension Test {
   /// value that might be passed via this parameter to a test function. To
   /// obtain the arguments of a particular ``Test/Case`` paired with their
   /// corresponding parameters, use ``Test/Case/arguments``.
-  public struct ParameterInfo: Sendable {
+  public struct Parameter: Sendable {
     /// The zero-based index of this parameter within its associated test's
     /// parameter list.
     public var index: Int
@@ -132,12 +132,12 @@ extension Test {
 
 // MARK: - Codable
 
-extension Test.ParameterInfo: Codable {}
+extension Test.Parameter: Codable {}
 extension Test.Case.Argument.ID: Codable {}
 
 // MARK: - Equatable, Hashable
 
-extension Test.ParameterInfo: Equatable {}
+extension Test.Parameter: Equatable {}
 extension Test.Case.Argument.ID: Hashable {}
 
 // MARK: - Snapshotting
@@ -182,7 +182,7 @@ extension Test.Case.Argument {
     public var valueDebugDescription: String?
 
     /// The parameter of the test function to which this argument was passed.
-    public var parameter: Test.ParameterInfo
+    public var parameter: Test.Parameter
 
     /// Initialize an instance of this type by snapshotting the specified test
     /// case argument.
