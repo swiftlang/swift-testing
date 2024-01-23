@@ -9,8 +9,13 @@
 //
 
 import SwiftDiagnostics
+#if swift(>=5.11)
+import SwiftSyntax
+import SwiftSyntaxMacros
+#else
 public import SwiftSyntax
 public import SwiftSyntaxMacros
+#endif
 
 /// A type describing diagnostic messages emitted by this module's macro during
 /// evaluation.
