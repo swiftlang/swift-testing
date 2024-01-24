@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ExperimentalTestRunning) @_spi(ExperimentalEventHandling) @_spi(ExperimentalParameterizedTesting) import Testing
+@testable @_spi(ExperimentalTestRunning) @_spi(ExperimentalEventHandling) import Testing
 
 @Suite("TimeLimitTrait Tests", .tags("trait"))
 struct TimeLimitTraitTests {

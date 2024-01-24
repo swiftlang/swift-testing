@@ -42,14 +42,12 @@ public struct Event: Sendable {
     ///
     /// The test case that started is contained in the ``Event/Context``
     /// instance that was passed to the event handler along with this event.
-    @_spi(ExperimentalParameterizedTesting)
     case testCaseStarted
 
     /// A test case ended.
     ///
     /// The test case that ended is contained in the ``Event/Context`` instance
     /// that was passed to the event handler along with this event.
-    @_spi(ExperimentalParameterizedTesting)
     case testCaseEnded
 
     /// An expectation was checked with `#expect()` or `#require()`.
@@ -123,7 +121,6 @@ public struct Event: Sendable {
   ///
   /// If an event occurred independently of any test case, or if the running
   /// test case cannot be determined, the value of this property is `nil`.
-  @_spi(ExperimentalParameterizedTesting)
   public var testCaseID: Test.Case.ID?
 
   /// The instant at which the event occurred.
@@ -206,7 +203,6 @@ extension Event {
     /// associated with this event. For non-parameterized tests, a single test
     /// case is synthesized. For test suite types (as opposed to test
     /// functions), the value of this property is `nil`.
-    @_spi(ExperimentalParameterizedTesting)
     public var testCase: Test.Case?
 
     /// Initialize a new instance of this type.
@@ -312,11 +308,9 @@ extension Event.Kind {
     case testStarted
 
     /// A test case started.
-    @_spi(ExperimentalParameterizedTesting)
     case testCaseStarted
 
     /// A test case ended.
-    @_spi(ExperimentalParameterizedTesting)
     case testCaseEnded
 
     /// An expectation was checked with `#expect()` or `#require()`.
