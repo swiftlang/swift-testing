@@ -247,7 +247,7 @@ public enum XCTestScaffold: Sendable {
 #endif
     }
 
-    await runTests(configuration: configuration)
+    await runTests(options: .forStandardError, configuration: configuration)
 #endif
   }
 }

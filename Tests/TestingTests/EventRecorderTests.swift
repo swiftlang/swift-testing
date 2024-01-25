@@ -89,6 +89,28 @@ struct EventRecorderTests {
     }
   }
 
+  @Test("Verbose output")
+  func verboseOutput() async throws {
+    let stream = Stream()
+
+    var configuration = Configuration()
+    configuration.deliverExpectationCheckedEvents = true
+    let eventRecorder = Event.ConsoleOutputRecorder(options: [.recordVerboseOutput], writingUsing: stream.write)
+    configuration.eventHandler = { event, context in
+      eventRecorder.record(event, in: context)
+    }
+
+    await runTest(for: WrittenTests.self, configuration: configuration)
+
+    let buffer = stream.buffer.rawValue
+    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter) "abc": Swift.String"#))
+    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter) lhs: Swift.String → "987""#))
+
+    if testsWithSignificantIOAreEnabled {
+      print(buffer, terminator: "")
+    }
+  }
+
 #if !os(Windows)
   @available(_regexAPI, *)
   @Test(

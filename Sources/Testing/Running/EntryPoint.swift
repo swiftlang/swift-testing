@@ -41,7 +41,12 @@ private import TestingInternals
         oldEventHandler(event, context)
       }
 
-      await runTests(configuration: configuration)
+      var options: [Event.ConsoleOutputRecorder.Option] = .forStandardError
+      if args.contains("--verbose") {
+        options.append(.recordVerboseOutput)
+      }
+
+      await runTests(options: options, configuration: configuration)
     }
   } catch {
     let stderr = swt_stderr()
@@ -231,9 +236,10 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 /// ``XCTestScaffold/runAllTests(hostedBy:)``.
 ///
 /// - Parameters:
+///   - options: Options to pass when configuring the console output recorder.
 ///   - configuration: The configuration to use for running.
-func runTests(configuration: Configuration) async {
-  let eventRecorder = Event.ConsoleOutputRecorder(options: .forStandardError) { string in
+func runTests(options: [Event.ConsoleOutputRecorder.Option], configuration: Configuration) async {
+  let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
     let stderr = swt_stderr()
     fputs(string, stderr)
     fflush(stderr)

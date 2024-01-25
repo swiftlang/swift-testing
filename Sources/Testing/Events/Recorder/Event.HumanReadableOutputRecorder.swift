@@ -182,10 +182,15 @@ extension Event.HumanReadableOutputRecorder {
   /// - Parameters:
   ///   - event: The event to record.
   ///   - eventContext: The context associated with the event.
+  ///   - verbose: Whether or not to record verbose output.
   ///
   /// - Returns: An array of zero or more messages that can be displayed to the
   ///   user.
-  @discardableResult public func record(_ event: borrowing Event, in eventContext: borrowing Event.Context) -> [Message] {
+  @discardableResult public func record(
+    _ event: borrowing Event,
+    in eventContext: borrowing Event.Context,
+    verbosely verbose: Bool = false
+  ) -> [Message] {
     let test = eventContext.test
     var testName: String
     if let displayName = test?.displayName {
@@ -202,16 +207,19 @@ extension Event.HumanReadableOutputRecorder {
       _context.withLock { context in
         context.runStartInstant = instant
       }
-      var comments: [Comment] = [
-        "Swift Version: \(swiftStandardLibraryVersion)",
-        "Testing Library Version: \(testingLibraryVersion)",
-      ]
+      var comments = [Comment]()
+      if verbose {
+        comments.append("Swift Version: \(swiftStandardLibraryVersion)")
+      }
+      comments.append("Testing Library Version: \(testingLibraryVersion)")
+      if verbose {
 #if targetEnvironment(simulator)
-      comments.append("OS Version (Simulator): \(simulatorVersion)")
-      comments.append("OS Version (Host): \(operatingSystemVersion)")
+        comments.append("OS Version (Simulator): \(simulatorVersion)")
+        comments.append("OS Version (Host): \(operatingSystemVersion)")
 #else
-      comments.append("OS Version: \(operatingSystemVersion)")
+        comments.append("OS Version: \(operatingSystemVersion)")
 #endif
+      }
       return CollectionOfOne(
         Message(
           symbol: .default,
@@ -326,6 +334,22 @@ extension Event.HumanReadableOutputRecorder {
         additionalMessages.append(Message(symbol: .difference, stringValue: differenceDescription))
       }
       additionalMessages += _formattedComments(issue.comments)
+
+      if verbose, case let .expectationFailed(expectation) = issue.kind {
+        let expression = expectation.evaluatedExpression
+        func addMessage(about expression: Expression) {
+          let description = expression.expandedDescription(includingTypeNames: true, includingParenthesesIfNeeded: false)
+          additionalMessages.append(Message(symbol: .details, stringValue: description))
+        }
+        let subexpressions = expression.subexpressions
+        if subexpressions.isEmpty {
+          addMessage(about: expression)
+        } else {
+          for subexpression in subexpressions {
+            addMessage(about: subexpression)
+          }
+        }
+      }
 
       let atSourceLocation = issue.sourceLocation.map { " at \($0)" } ?? ""
       let primaryMessage: Message = if parameterCount == 0 {
