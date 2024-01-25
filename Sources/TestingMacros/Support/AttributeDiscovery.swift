@@ -180,7 +180,7 @@ struct AttributeInfo {
       }
 
       let sourceCodeExpr = createSourceCodeExpr(from: trait)
-      return "\(trait.trimmed).addingSourceCode(\(sourceCodeExpr), arguments: \(argumentSourceCodeExprs))"
+      return "\(trait.trimmed)._addingSourceCode(\(sourceCodeExpr), arguments: \(argumentSourceCodeExprs))"
     }
   }
 

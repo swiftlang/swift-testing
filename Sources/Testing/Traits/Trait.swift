@@ -53,7 +53,11 @@ public protocol Trait: Sendable {
   ///
   /// The default implementation of this method does nothing and returns `self`
   /// unmodified.
-  func addingSourceCode(
+  ///
+  /// - Warning: This protocol requirement is experimental. It is public due to
+  ///   technical limitations in Swift. It may be modified or removed in a
+  ///   future update to the testing library.
+  func _addingSourceCode(
     _ sourceCode: @autoclosure () -> SourceCode,
     arguments: @autoclosure () -> [(label: String?, sourceCode: SourceCode)]
   ) -> Self
@@ -87,7 +91,7 @@ extension Trait {
     []
   }
 
-  public func addingSourceCode(
+  public func _addingSourceCode(
     _ sourceCode: @autoclosure () -> SourceCode,
     arguments: @autoclosure () -> [(label: String?, sourceCode: SourceCode)]
   ) -> Self {

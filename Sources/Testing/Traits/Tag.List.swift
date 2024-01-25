@@ -57,7 +57,7 @@ extension Tag.List: TestTrait, SuiteTrait {
     true
   }
 
-  public func addingSourceCode(
+  public func _addingSourceCode(
     _ sourceCode: @autoclosure () -> SourceCode,
     arguments: @autoclosure () -> [(label: String?, sourceCode: SourceCode)]
   ) -> Self {

@@ -263,13 +263,13 @@ struct TestDeclarationMacroTests {
   @Test("Adds source code to traits",
     arguments: [
       "@Test(.tags(\"1\", .x), .unrelated) func f() {}":
-        ##".tags("1", .x).addingSourceCode(.__fromSyntaxNode(#".tags("1", .x)"#), arguments: [(nil, .__fromSyntaxNode(#""1""#)), (nil, .__fromSyntaxNode(".x"))])"##,
+        ##".tags("1", .x)._addingSourceCode(.__fromSyntaxNode(#".tags("1", .x)"#), arguments: [(nil, .__fromSyntaxNode(#""1""#)), (nil, .__fromSyntaxNode(".x"))])"##,
       "@Test(.notATag) func f() {}":
-        ##".notATag.addingSourceCode(.__fromSyntaxNode(".notATag"), arguments: [])"##,
+        ##".notATag._addingSourceCode(.__fromSyntaxNode(".notATag"), arguments: [])"##,
       "@Test(.someFunction()) func f() {}":
-        ##".someFunction().addingSourceCode(.__fromSyntaxNode(".someFunction()"), arguments: [])"##,
+        ##".someFunction()._addingSourceCode(.__fromSyntaxNode(".someFunction()"), arguments: [])"##,
       "@Test(.someFunction(foo: bar)) func f() {}":
-        ##".someFunction(foo: bar).addingSourceCode(.__fromSyntaxNode(".someFunction(foo: bar)"), arguments: [("foo", .__fromSyntaxNode("bar"))])"##,
+        ##".someFunction(foo: bar)._addingSourceCode(.__fromSyntaxNode(".someFunction(foo: bar)"), arguments: [("foo", .__fromSyntaxNode("bar"))])"##,
     ]
   )
   func addsSourceCodeToTraits(input: String, expectedOutput: String) throws {
