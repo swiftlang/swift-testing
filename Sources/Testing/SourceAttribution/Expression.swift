@@ -110,12 +110,13 @@ public struct Expression: Sendable {
   @_spi(ExperimentalSourceCodeCapturing)
   public var runtimeValueDescription: String?
 
-  /// The name of the type of this subexpression's runtime value.
+  /// The fully-qualified name of the type of this subexpression's runtime
+  /// value.
   ///
   /// If the runtime value of this subexpression has not been evaluated, the
   /// value of this property is `nil`.
   @_spi(ExperimentalSourceCodeCapturing)
-  public var typeNameOfRuntimeValue: String?
+  public var fullyQualifiedTypeNameOfRuntimeValue: String?
 
   /// Copy this instance and capture the runtime values corresponding to its
   /// subexpressions.
@@ -138,10 +139,10 @@ public struct Expression: Sendable {
     case .generic:
       if let firstValue {
         result.runtimeValueDescription = String(describingForTest: firstValue)
-        result.typeNameOfRuntimeValue = _typeName(type(of: firstValue as Any), qualified: true)
+        result.fullyQualifiedTypeNameOfRuntimeValue = _typeName(type(of: firstValue as Any), qualified: true)
       } else {
         result.runtimeValueDescription = nil
-        result.typeNameOfRuntimeValue = nil
+        result.fullyQualifiedTypeNameOfRuntimeValue = nil
       }
     case let .binaryOperation(lhsExpr, op, rhsExpr):
       result.kind = .binaryOperation(

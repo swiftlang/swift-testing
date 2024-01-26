@@ -351,6 +351,30 @@ final class IssueTests: XCTestCase {
     }
   }
 
+  struct ExpressionValueAndTypeCapture_Value {}
+
+  func testExpressionValueAndTypeCapture() {
+    var expression = Expression.__fromSyntaxNode("abc123")
+    XCTAssertEqual(expression.sourceCode, "abc123")
+    XCTAssertNil(expression.runtimeValueDescription)
+    XCTAssertNil(expression.fullyQualifiedTypeNameOfRuntimeValue)
+
+    expression = expression.capturingRuntimeValues(987 as Int)
+    XCTAssertEqual(expression.sourceCode, "abc123")
+    XCTAssertEqual(expression.runtimeValueDescription, "987")
+    XCTAssertEqual(expression.fullyQualifiedTypeNameOfRuntimeValue, "Swift.Int")
+
+    expression = expression.capturingRuntimeValues(ExpressionValueAndTypeCapture_Value())
+    XCTAssertEqual(expression.sourceCode, "abc123")
+    XCTAssertEqual(expression.runtimeValueDescription, "ExpressionValueAndTypeCapture_Value()")
+    XCTAssertEqual(expression.fullyQualifiedTypeNameOfRuntimeValue, "TestingTests.IssueTests.ExpressionValueAndTypeCapture_Value")
+
+    expression = expression.capturingRuntimeValues((123, "abc") as (Int, String), ())
+    XCTAssertEqual(expression.sourceCode, "abc123")
+    XCTAssertEqual(expression.runtimeValueDescription, #"(123, "abc")"#)
+    XCTAssertEqual(expression.fullyQualifiedTypeNameOfRuntimeValue, "(Swift.Int, Swift.String)")
+  }
+
   func testIsAndAsComparisons() async {
     let expectRecorded = expectation(description: "#expect recorded")
     let requireRecorded = expectation(description: "#require recorded")
