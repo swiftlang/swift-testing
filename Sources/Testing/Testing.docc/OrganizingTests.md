@@ -27,9 +27,9 @@ A test function can be added to a test suite in one of several ways:
 The `@Suite` attribute is not required for the testing library to recognize that
 a type contains test functions, but adding it allows customization of a test
 suite's appearance in the IDE and at the command line. If a trait such as
-``Trait/tags(_:)-yg0i`` or ``Trait/disabled(_:fileID:filePath:line:column:)``
-is applied to a test suite, it is automatically inherited by the tests contained
-in the suite.
+``Trait/tags(_:)`` or ``Trait/disabled(_:fileID:filePath:line:column:)`` is
+applied to a test suite, it is automatically inherited by the tests contained in
+the suite.
 
 In addition to containing test functions and any other members that a Swift type
 might contain, test suite types can also contain additional test suites nested
@@ -48,7 +48,7 @@ To customize a test suite's name, supply a string literal as an argument to the
 ```
 
 To further customize the appearance and behavior of a test function, use
- [traits](doc:Traits) such as ``Trait/tags(_:)-yg0i``.
+ [traits](doc:Traits) such as ``Trait/tags(_:)``.
 
 ## Test functions in test suite types
 

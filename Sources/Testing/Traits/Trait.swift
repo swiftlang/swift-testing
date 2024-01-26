@@ -41,6 +41,26 @@ public protocol Trait: Sendable {
   ///
   /// By default, the value of this property is an empty array.
   var comments: [Comment] { get }
+
+  /// Make a copy of this trait that stores its source code representation.
+  ///
+  /// - Parameters:
+  ///   - sourceCode: The source code representation of the entire trait.
+  ///   - arguments: Source code representations of each argument to the trait,
+  ///     if any.
+  ///
+  /// - Returns: A modified copy of `self`.
+  ///
+  /// The default implementation of this method does nothing and returns `self`
+  /// unmodified.
+  ///
+  /// - Warning: This protocol requirement is experimental. It is public due to
+  ///   technical limitations in Swift. It may be modified or removed in a
+  ///   future update to the testing library.
+  func _addingSourceCode(
+    _ sourceCode: @autoclosure () -> SourceCode,
+    arguments: @autoclosure () -> [(label: String?, sourceCode: SourceCode)]
+  ) -> Self
 }
 
 /// A protocol describing traits that can be added to a test function.
@@ -69,6 +89,13 @@ extension Trait {
 
   public var comments: [Comment] {
     []
+  }
+
+  public func _addingSourceCode(
+    _ sourceCode: @autoclosure () -> SourceCode,
+    arguments: @autoclosure () -> [(label: String?, sourceCode: SourceCode)]
+  ) -> Self {
+    self
   }
 }
 

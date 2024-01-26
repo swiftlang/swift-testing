@@ -10,10 +10,7 @@
 
 /// A type representing a tag that can be applied to a test.
 ///
-/// To apply tags to a test, use one of the following:
-///
-/// - ``Trait/tags(_:)-yg0i``
-/// - ``Trait/tags(_:)-272p``
+/// To apply tags to a test, use ``Trait/tags(_:)``.
 public struct Tag: RawRepresentable, Sendable {
   public var rawValue: String
 
@@ -63,10 +60,7 @@ extension Tag: Codable, CodingKeyRepresentable {}
 extension Test {
   /// The complete, unique set of tags associated with this test.
   ///
-  /// Tags are associated with tests using one of these traits:
-  ///
-  /// - ``Trait/tags(_:)-yg0i``
-  /// - ``Trait/tags(_:)-272p``
+  /// Tags are associated with tests using ``Trait/tags(_:)``.
   public var tags: Set<Tag> {
     traits.lazy
       .compactMap { $0 as? Tag.List }

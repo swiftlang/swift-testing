@@ -260,14 +260,21 @@ struct TestDeclarationMacroTests {
     #expect(!output.contains("displayName:"))
   }
 
-  @Test("Discovers and rewrites tag traits")
-  func rewritesTagTraits() throws {
-    let (output, _) = try parse("@Test(.tags(\"1\", .x), .tags([\"ABC\"]), .unrelated) func f() {}")
-    #expect(output.contains("\"1\""))
-    #expect(!output.contains("Testing.Tag.__tag(\"1\", sourceCode: "))
-    #expect(output.contains("Testing.Tag.__tag(.x, sourceCode: .__fromSyntaxNode(\".x\"))"))
-    #expect(output.contains("\"ABC\""))
-    #expect(!output.contains("Testing.Tag.__tag(\"ABC\", sourceCode: "))
-    #expect(output.contains(".unrelated"))
+  @Test("Adds source code to traits",
+    arguments: [
+      "@Test(.tags(\"1\", .x), .unrelated) func f() {}":
+        ##".tags("1", .x)._addingSourceCode(.__fromSyntaxNode(#".tags("1", .x)"#), arguments: [(nil, .__fromSyntaxNode(#""1""#)), (nil, .__fromSyntaxNode(".x"))])"##,
+      "@Test(.notATag) func f() {}":
+        ##".notATag._addingSourceCode(.__fromSyntaxNode(".notATag"), arguments: [])"##,
+      "@Test(.someFunction()) func f() {}":
+        ##".someFunction()._addingSourceCode(.__fromSyntaxNode(".someFunction()"), arguments: [])"##,
+      "@Test(.someFunction(foo: bar)) func f() {}":
+        ##".someFunction(foo: bar)._addingSourceCode(.__fromSyntaxNode(".someFunction(foo: bar)"), arguments: [("foo", .__fromSyntaxNode("bar"))])"##,
+    ]
+  )
+  func addsSourceCodeToTraits(input: String, expectedOutput: String) throws {
+    let (expectedOutput, _) = try parse(expectedOutput, removeWhitespace: true)
+    let (actualOutput, _) = try parse(input, removeWhitespace: true)
+    #expect(actualOutput.contains(expectedOutput))
   }
 }
