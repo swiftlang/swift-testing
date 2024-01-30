@@ -158,9 +158,9 @@ final class IssueTests: XCTestCase {
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      if case let .expectationFailed(expectation) = issue.kind,
-         let desc = expectation.evaluatedExpression?.expandedDescription() {
+      if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
+        let desc = expectation.evaluatedExpression.expandedDescription()
         XCTAssertTrue(desc.contains("rhs → 1"))
         XCTAssertFalse(desc.contains("(("))
       }
@@ -182,9 +182,9 @@ final class IssueTests: XCTestCase {
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      if case let .expectationFailed(expectation) = issue.kind,
-         let desc = expectation.evaluatedExpression?.expandedDescription() {
+      if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
+        let desc = expectation.evaluatedExpression.expandedDescription()
         XCTAssertTrue(desc.contains("label: rhs → 1"))
         XCTAssertFalse(desc.contains("(("))
       }
@@ -206,9 +206,9 @@ final class IssueTests: XCTestCase {
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      if case let .expectationFailed(expectation) = issue.kind,
-         let desc = expectation.evaluatedExpression?.expandedDescription() {
+      if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
+        let desc = expectation.evaluatedExpression.expandedDescription()
         XCTAssertFalse(desc.contains("(Function)"))
         XCTAssertFalse(desc.contains("(("))
       }
@@ -277,7 +277,7 @@ final class IssueTests: XCTestCase {
         expectationFailed.fulfill()
         // The presence of `try` means we don't do complex expansion (yet.)
         XCTAssertNotNil(expectation.evaluatedExpression)
-        XCTAssertNil(expectation.evaluatedExpression?.runtimeValueDescription)
+        XCTAssertNil(expectation.evaluatedExpression.runtimeValueDescription)
       }
     }
 
@@ -306,7 +306,7 @@ final class IssueTests: XCTestCase {
         return
       }
       XCTAssertNotNil(expectation.evaluatedExpression)
-      XCTAssertNil(expectation.evaluatedExpression?.subexpressions[0].runtimeValueDescription)
+      XCTAssertNil(expectation.evaluatedExpression.subexpressions[0].runtimeValueDescription)
       expectationChecked.fulfill()
     }
 
@@ -323,12 +323,11 @@ final class IssueTests: XCTestCase {
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
         guard case let .issueRecorded(issue) = event.kind,
-              case let .expectationFailed(expectation) = issue.kind,
-              let expandedExpressionDescription = expectation.evaluatedExpression?.expandedDescription()
-        else {
+              case let .expectationFailed(expectation) = issue.kind else {
           return
         }
         XCTAssertTrue(issue.comments.isEmpty)
+        let expandedExpressionDescription = expectation.evaluatedExpression.expandedDescription()
         XCTAssert(expandedExpressionDescription.contains(content))
         issueRecorded.fulfill()
       }
@@ -389,9 +388,7 @@ final class IssueTests: XCTestCase {
         XCTFail("Unexpected issue kind \(issue.kind)")
         return
       }
-      guard let expandedExpressionDescription = expectation.evaluatedExpression?.expandedDescription() else {
-        return XCTFail("Unexpected nil expandedExpressionDescription")
-      }
+      let expandedExpressionDescription = expectation.evaluatedExpression.expandedDescription()
       XCTAssertTrue(expandedExpressionDescription.contains("someString() → \"abc123\""))
       XCTAssertTrue(expandedExpressionDescription.contains("Int → String"))
 
@@ -1062,10 +1059,7 @@ final class IssueTests: XCTestCase {
         XCTFail("Unexpected issue kind \(issue.kind)")
         return
       }
-      guard let expression = expectation.evaluatedExpression else {
-        XCTFail("Source code unavailable for expectation \(expectation)")
-        return
-      }
+      let expression = expectation.evaluatedExpression
       XCTAssertTrue(expression.expandedDescription().contains("<not evaluated>"))
     }
 
@@ -1101,9 +1095,9 @@ final class IssueTests: XCTestCase {
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      if case let .expectationFailed(expectation) = issue.kind,
-         let desc = expectation.evaluatedExpression?.expandedDescription() {
+      if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
+        let desc = expectation.evaluatedExpression.expandedDescription()
         XCTAssertTrue(desc.contains("7"))
         XCTAssertFalse(desc.contains("Optional(7)"))
       }
@@ -1125,9 +1119,9 @@ final class IssueTests: XCTestCase {
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      if case let .expectationFailed(expectation) = issue.kind,
-         let desc = expectation.evaluatedExpression?.expandedDescription() {
+      if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
+        let desc = expectation.evaluatedExpression.expandedDescription()
         XCTAssertTrue(desc.contains("nil"))
       }
     }
@@ -1155,9 +1149,9 @@ final class IssueTests: XCTestCase {
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      if case let .expectationFailed(expectation) = issue.kind,
-         let desc = expectation.evaluatedExpression?.expandedDescription() {
+      if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
+        let desc = expectation.evaluatedExpression.expandedDescription()
         XCTAssertTrue(desc.contains("Delicious Food, Yay!"))
       }
     }
@@ -1186,9 +1180,9 @@ final class IssueTests: XCTestCase {
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      if case let .expectationFailed(expectation) = issue.kind,
-         let desc = expectation.evaluatedExpression?.expandedDescription() {
+      if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
+        let desc = expectation.evaluatedExpression.expandedDescription()
         XCTAssertTrue(desc.contains(".b"))
         XCTAssertFalse(desc.contains("→ .b"))
       }
@@ -1217,9 +1211,9 @@ final class IssueTests: XCTestCase {
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      if case let .expectationFailed(expectation) = issue.kind,
-         let desc = expectation.evaluatedExpression?.expandedDescription() {
+      if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
+        let desc = expectation.evaluatedExpression.expandedDescription()
         XCTAssertTrue(desc.contains(".b → customDesc"))
         XCTAssertFalse(desc.contains(".customDesc"))
       }
@@ -1244,9 +1238,9 @@ final class IssueTests: XCTestCase {
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      if case let .expectationFailed(expectation) = issue.kind,
-         let desc = expectation.evaluatedExpression?.expandedDescription() {
+      if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
+        let desc = expectation.evaluatedExpression.expandedDescription()
         XCTAssertTrue(desc.contains(".A → SWTTestEnumeration(rawValue: \(SWTTestEnumeration.A.rawValue))"))
         XCTAssertFalse(desc.contains(".SWTTestEnumeration"))
       }
@@ -1268,7 +1262,7 @@ struct IssueCodingTests {
           Issue.Kind.apiMisused,
           Issue.Kind.confirmationMiscounted(actual: 13, expected: 42),
           Issue.Kind.errorCaught(NSError(domain: "Domain", code: 13, userInfo: ["UserInfoKey": "UserInfoValue"])),
-          Issue.Kind.expectationFailed(Expectation(isPassing: true, isRequired: true, sourceLocation: SourceLocation())),
+          Issue.Kind.expectationFailed(Expectation(evaluatedExpression: .__fromSyntaxNode("abc"), isPassing: true, isRequired: true, sourceLocation: SourceLocation())),
           Issue.Kind.knownIssueNotRecorded,
           Issue.Kind.system,
           Issue.Kind.timeLimitExceeded(timeLimitComponents: (13, 42)),

@@ -10,9 +10,8 @@
 
 /// A type describing an expectation that has been evaluated.
 public struct Expectation: Sendable {
-  /// The expression evaluated by this expectation, if available at compile
-  /// time.
-  public var evaluatedExpression: Expression?
+  /// The expression evaluated by this expectation.
+  public var evaluatedExpression: Expression
 
   /// A description of the error mismatch that occurred, if any.
   ///
@@ -59,9 +58,8 @@ extension Expectation {
   /// A serializable type describing an expectation that has been evaluated.
   @_spi(ExperimentalSnapshotting)
   public struct Snapshot: Sendable, Codable {
-    /// The expression evaluated by this expectation, if available at compile
-    /// time.
-    public var evaluatedExpression: Expression?
+    /// The expression evaluated by this expectation.
+    public var evaluatedExpression: Expression
 
     /// A description of the error mismatch that occurred, if any.
     ///
