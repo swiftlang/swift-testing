@@ -61,7 +61,7 @@ public struct Expression: Sendable {
     ///   - arguments: The arguments passed to the function.
     indirect case functionCall(value: Expression?, functionName: String, arguments: [FunctionCallArgument])
 
-    /// The expression represets a property access.
+    /// The expression represents a property access.
     ///
     /// - Parameters:
     ///   - value: The value whose property was accessed.
