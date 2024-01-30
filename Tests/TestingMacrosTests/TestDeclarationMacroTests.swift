@@ -263,13 +263,13 @@ struct TestDeclarationMacroTests {
   @Test("Adds expression to traits",
     arguments: [
       "@Test(.tags(\"1\", .x), .unrelated) func f() {}":
-        ##".tags("1", .x)._capturingExpression(.__functionCall(nil, ".tags", (nil, #""1""#), (nil, ".x")))"##,
+        ##".tags("1", .x)._capturing(.__functionCall(nil, ".tags", (nil, #""1""#), (nil, ".x")))"##,
       "@Test(.notATag) func f() {}":
-        ##".notATag._capturingExpression(.__fromSyntaxNode(".notATag"))"##,
+        ##".notATag._capturing(.__fromSyntaxNode(".notATag"))"##,
       "@Test(.someFunction()) func f() {}":
-        ##".someFunction()._capturingExpression(.__functionCall(nil, ".someFunction"))"##,
+        ##".someFunction()._capturing(.__functionCall(nil, ".someFunction"))"##,
       "@Test(.someFunction(foo: bar)) func f() {}":
-        ##".someFunction(foo: bar)._capturingExpression(.__functionCall(nil, ".someFunction", ("foo", "bar")))"##,
+        ##".someFunction(foo: bar)._capturing(.__functionCall(nil, ".someFunction", ("foo", "bar")))"##,
     ]
   )
   func addsExpressionToTraits(input: String, expectedOutput: String) throws {

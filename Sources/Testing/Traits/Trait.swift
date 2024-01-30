@@ -57,7 +57,7 @@ public protocol Trait: Sendable {
   /// - Warning: This protocol requirement is experimental. It is public due to
   ///   technical limitations in Swift. It may be modified or removed in a
   ///   future update to the testing library.
-  func _capturingExpression(_ expression: @autoclosure () -> Expression) -> Self
+  func _capturing(_ expression: @autoclosure () -> Expression) -> Self
 }
 
 /// A protocol describing traits that can be added to a test function.
@@ -88,7 +88,7 @@ extension Trait {
     []
   }
 
-  public func _capturingExpression(_ expression: @autoclosure () -> Expression) -> Self {
+  public func _capturing(_ expression: @autoclosure () -> Expression) -> Self {
     self
   }
 }

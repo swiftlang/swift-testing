@@ -173,7 +173,7 @@ struct AttributeInfo {
       } else {
         createExpressionExpr(from: trait)
       }
-      return "\(trait.trimmed)._capturingExpression(\(expressionExpr))"
+      return "\(trait.trimmed)._capturing(\(expressionExpr))"
     }
   }
 

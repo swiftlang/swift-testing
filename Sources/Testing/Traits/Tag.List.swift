@@ -57,7 +57,7 @@ extension Tag.List: TestTrait, SuiteTrait {
     true
   }
 
-  public func _capturingExpression(_ expression: @autoclosure () -> Expression) -> Self {
+  public func _capturing(_ expression: @autoclosure () -> Expression) -> Self {
     guard case let .functionCall(_, _, arguments: arguments) = expression().kind else {
       return self
     }
