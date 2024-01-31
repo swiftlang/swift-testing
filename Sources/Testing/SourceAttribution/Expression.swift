@@ -33,6 +33,16 @@ public struct Expression: Sendable {
     ///   - sourceCode: The source code of the represented expression.
     case generic(_ sourceCode: String)
 
+    /// The expression represents a string literal expression.
+    ///
+    /// - Parameters:
+    ///   - sourceCode: The source code of the represented expression. Note that
+    ///     this string is not the _value_ of the string literal, but the string
+    ///     literal itself (including leading and trailing quote marks and
+    ///     extended punctuation.)
+    ///   - stringValue: The value of the string literal.
+    case stringLiteral(sourceCode: String, stringValue: String)
+
     /// The expression represents a binary operation.
     ///
     /// - Parameters:
@@ -81,7 +91,7 @@ public struct Expression: Sendable {
   @_spi(ExperimentalSourceCodeCapturing)
   public var sourceCode: String {
     switch kind {
-    case let .generic(sourceCode):
+    case let .generic(sourceCode), let .stringLiteral(sourceCode, _):
       return sourceCode
     case let .binaryOperation(lhs, op, rhs):
       return "\(lhs) \(op) \(rhs)"
@@ -136,7 +146,7 @@ public struct Expression: Sendable {
     repeat additionalValuesArray.append(each additionalValues)
 
     switch kind {
-    case .generic:
+    case .generic, .stringLiteral:
       if let firstValue {
         result.runtimeValueDescription = String(describingForTest: firstValue)
         result.fullyQualifiedTypeNameOfRuntimeValue = _typeName(type(of: firstValue as Any), qualified: true)
@@ -179,7 +189,7 @@ public struct Expression: Sendable {
   /// - Returns: A string describing this instance.
   func expandedDescription(includingParenthesesIfNeeded: Bool = true) -> String {
     switch kind {
-    case let .generic(sourceCode):
+    case let .generic(sourceCode), let .stringLiteral(sourceCode, _):
       let runtimeValueDescription = runtimeValueDescription ?? "<not evaluated>"
       return if runtimeValueDescription == "(Function)" {
         // Hack: don't print string representations of function calls.
@@ -217,7 +227,7 @@ public struct Expression: Sendable {
   @_spi(ExperimentalSourceCodeCapturing)
   public var subexpressions: [Expression] {
     switch kind {
-    case .generic:
+    case .generic, .stringLiteral:
       []
     case let .binaryOperation(lhs, _, rhs):
       [lhs, rhs]
@@ -230,6 +240,19 @@ public struct Expression: Sendable {
     case let .propertyAccess(value: value, keyPath: keyPath):
       [value, keyPath]
     }
+  }
+
+  /// The string value associated with this instance if it represents a string
+  /// literal.
+  ///
+  /// If this instance represents an expression other than a string literal, the
+  /// value of this property is `nil`.
+  @_spi(ExperimentalSourceCodeCapturing)
+  public var stringLiteralValue: String? {
+    if case let .stringLiteral(_, stringValue) = kind {
+      return stringValue
+    }
+    return nil
   }
 }
 
