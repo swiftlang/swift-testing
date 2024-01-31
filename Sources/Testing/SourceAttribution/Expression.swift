@@ -247,6 +247,7 @@ extension Expression: CustomStringConvertible, CustomDebugStringConvertible {
   /// `String.init(describing:)`.
   ///
   /// This initializer does not attempt to parse `sourceCode`.
+  @_spi(ExperimentalSourceCodeCapturing)
   public init(_ sourceCode: String) {
     self.init(kind: .generic(sourceCode))
   }
