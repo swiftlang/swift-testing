@@ -14,9 +14,8 @@
 public struct Tag: RawRepresentable, Sendable {
   public var rawValue: String
 
-  /// The source code of the expression that produced this tag, if available at
-  /// compile time.
-  var sourceCode: SourceCode?
+  /// The expression that produced this tag, if available at compile time.
+  var expression: Expression?
 
   public init(rawValue: String) {
     self.rawValue = rawValue

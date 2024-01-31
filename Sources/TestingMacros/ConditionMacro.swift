@@ -33,7 +33,7 @@ public import SwiftSyntaxMacros
 ///
 /// The `__check()` function that implements expansions of these macros must
 /// take any developer-supplied arguments _before_ the ones inserted during
-/// macro expansion (starting with the `"sourceCode"` argument.)
+/// macro expansion (starting with the `"expression"` argument.)
 public protocol ConditionMacro: ExpressionMacro, Sendable {
   /// Whether or not the macro's expansion may throw an error.
   static var isThrowing: Bool { get }
@@ -88,8 +88,8 @@ extension ConditionMacro {
           .map { macroArguments[$0] }
 
         // The trailing closure should be the focus of the source code capture.
-        let sourceCode = parseCondition(from: macroArguments[trailingClosureIndex].expression, for: macro, in: context).sourceCode
-        checkArguments.append(Argument(label: "sourceCode", expression: sourceCode))
+        let sourceCode = parseCondition(from: macroArguments[trailingClosureIndex].expression, for: macro, in: context).expression
+        checkArguments.append(Argument(label: "expression", expression: sourceCode))
 
         expandedFunctionName = .identifier("__checkClosureCall")
 
@@ -107,7 +107,7 @@ extension ConditionMacro {
           .filter { $0 != sourceLocationArgumentIndex }
           .map { macroArguments[$0] }
 
-        checkArguments.append(Argument(label: "sourceCode", expression: conditionArgument.sourceCode))
+        checkArguments.append(Argument(label: "expression", expression: conditionArgument.expression))
 
         expandedFunctionName = conditionArgument.expandedFunctionName
       }

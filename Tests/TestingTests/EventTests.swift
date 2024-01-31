@@ -11,7 +11,7 @@
 #if canImport(Foundation)
 import Foundation
 #endif
-@testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalSnapshotting) @_spi(ExperimentalTestRunning) import Testing
+@testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalSnapshotting) @_spi(ExperimentalTestRunning) @_spi(ExperimentalSourceCodeCapturing) import Testing
 private import TestingInternals
 
 struct EventTests {
@@ -20,9 +20,8 @@ struct EventTests {
         arguments: [
           Event.Kind.expectationChecked(
             Expectation(
-              sourceCode: SourceCode(kind: .syntaxNode("SyntaxNode")),
+              evaluatedExpression: Expression("SyntaxNode"),
               mismatchedErrorDescription: "Mismatched Error Description",
-              expandedExpressionDescription: "Expanded Expression Description",
               differenceDescription: "Difference Description",
               isPassing: false,
               isRequired: true,

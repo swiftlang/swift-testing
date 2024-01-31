@@ -230,7 +230,7 @@ extension Event.ConsoleOutputRecorder {
       .compactMap { tag in
         if let tagColor = tagColors[tag] {
           return tagColor
-        } else if let sourceCode = tag.sourceCode.map(String.init(describing:)) {
+        } else if let sourceCode = tag.expression.map(String.init(describing:)) {
           // If the color is defined under a key such as ".foo" and the tag was
           // created from the expression `.foo`, we can find that too.
           return tagColors[Tag(rawValue: sourceCode)]

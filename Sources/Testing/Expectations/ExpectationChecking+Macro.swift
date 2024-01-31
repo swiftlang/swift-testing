@@ -13,11 +13,11 @@
 ///
 /// - Parameters:
 ///   - condition: The condition to be evaluated.
-///   - sourceCode: The source code of `condition`, if available at compile
-///     time.
-///   - expandedExpressionDescription: A description of the expression evaluated
-///     by this expectation, expanded to include the values of any evaluated
-///     sub-expressions, if the source code was available at compile time.
+///   - expression: The expression, corresponding to `condition`, that is being
+///     evaluated (if available at compile time.)
+///   - expressionWithCapturedRuntimeValues: The expression, corresponding to
+///     `condition` and with runtime values captured, that is being evaluated
+///     (if available at compile time.)
 ///   - difference: The difference between the operands in `condition`, if
 ///     available. Most callers should pass `nil`.
 ///   - comments: An array of comments describing the expectation. This array
@@ -60,18 +60,25 @@
 ///   `#require()` macros. Do not call it directly.
 public func __checkValue(
   _ condition: Bool,
-  sourceCode: SourceCode,
-  expandedExpressionDescription: @autoclosure () -> String? = nil,
+  expression: Expression,
+  expressionWithCapturedRuntimeValues: @autoclosure () -> Expression? = nil,
   mismatchedErrorDescription: @autoclosure () -> String? = nil,
   difference: @autoclosure () -> String? = nil,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) -> Result<Void, any Error> {
+  // Capture the correct expression in the expectation.
+  let expression = if !condition, let expressionWithCapturedRuntimeValues = expressionWithCapturedRuntimeValues() {
+    expressionWithCapturedRuntimeValues
+  } else {
+    expression
+  }
+
   // Post an event for the expectation regardless of whether or not it passed.
   // If the current event handler is not configured to handle events of this
   // kind, this event is discarded.
-  var expectation = Expectation(sourceCode: sourceCode, isPassing: condition, isRequired: isRequired, sourceLocation: sourceLocation)
+  var expectation = Expectation(evaluatedExpression: expression, isPassing: condition, isRequired: isRequired, sourceLocation: sourceLocation)
   Event.post(.expectationChecked(expectation))
 
   // Early exit if the expectation passed.
@@ -81,7 +88,6 @@ public func __checkValue(
 
   // Since this expectation failed, populate its optional fields which are
   // only evaluated and included lazily upon failure.
-  expectation.expandedExpressionDescription = expandedExpressionDescription()
   expectation.mismatchedErrorDescription = mismatchedErrorDescription()
   expectation.differenceDescription = difference()
 
@@ -141,7 +147,7 @@ private func _callBinaryOperator<T, U, R>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkBinaryOperation<T, U>(
   _ lhs: T, _ op: (T, () -> U) -> Bool, _ rhs: @autoclosure () -> U,
-  sourceCode: SourceCode,
+  expression: Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -149,8 +155,8 @@ public func __checkBinaryOperation<T, U>(
   let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
   return __checkValue(
     condition,
-    sourceCode: sourceCode,
-    expandedExpressionDescription: sourceCode.expandWithOperands(lhs, rhs),
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, rhs),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -172,7 +178,7 @@ public func __checkBinaryOperation<T, U>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkFunctionCall<T, each U>(
   _ lhs: T, calling functionCall: (T, repeat each U) throws -> Bool, _ arguments: repeat each U,
-  sourceCode: SourceCode,
+  expression: Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -180,8 +186,8 @@ public func __checkFunctionCall<T, each U>(
   let condition = try functionCall(lhs, repeat each arguments)
   return __checkValue(
     condition,
-    sourceCode: sourceCode,
-    expandedExpressionDescription: sourceCode.expandWithOperands(lhs, repeat each arguments),
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, repeat each arguments),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -201,7 +207,7 @@ public func __checkFunctionCall<T, each U>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkInoutFunctionCall<T, /*each*/ U>(
   _ lhs: T, calling functionCall: (T, inout /*repeat each*/ U) throws -> Bool, _ arguments: inout /*repeat each*/ U,
-  sourceCode: SourceCode,
+  expression: Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -209,8 +215,8 @@ public func __checkInoutFunctionCall<T, /*each*/ U>(
   let condition = try functionCall(lhs, /*repeat each*/ &arguments)
   return __checkValue(
     condition,
-    sourceCode: sourceCode,
-    expandedExpressionDescription: sourceCode.expandWithOperands(lhs, /*repeat each*/ arguments),
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, /*repeat each*/ arguments),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -231,7 +237,7 @@ public func __checkInoutFunctionCall<T, /*each*/ U>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkFunctionCall<T, each U, R>(
   _ lhs: T, calling functionCall: (T, repeat each U) throws -> R?, _ arguments: repeat each U,
-  sourceCode: SourceCode,
+  expression: Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -239,8 +245,8 @@ public func __checkFunctionCall<T, each U, R>(
   let optionalValue = try functionCall(lhs, repeat each arguments)
   return __checkValue(
     optionalValue,
-    sourceCode: sourceCode,
-    expandedExpressionDescription: sourceCode.expandWithOperands(lhs, repeat each arguments),
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, repeat each arguments),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -261,7 +267,7 @@ public func __checkFunctionCall<T, each U, R>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkInoutFunctionCall<T, /*each*/ U, R>(
   _ lhs: T, calling functionCall: (T, inout /*repeat each*/ U) throws -> R?, _ arguments: inout /*repeat each*/ U,
-  sourceCode: SourceCode,
+  expression: Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -269,8 +275,8 @@ public func __checkInoutFunctionCall<T, /*each*/ U, R>(
   let optionalValue = try functionCall(lhs, /*repeat each*/ &arguments)
   return __checkValue(
     optionalValue,
-    sourceCode: sourceCode,
-    expandedExpressionDescription: sourceCode.expandWithOperands(lhs, /*repeat each*/ arguments),
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, /*repeat each*/ arguments),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -292,7 +298,7 @@ public func __checkInoutFunctionCall<T, /*each*/ U, R>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkPropertyAccess<T>(
   _ lhs: T, getting memberAccess: (T) -> Bool,
-  sourceCode: SourceCode,
+  expression: Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -300,8 +306,8 @@ public func __checkPropertyAccess<T>(
   let condition = memberAccess(lhs)
   return __checkValue(
     condition,
-    sourceCode: sourceCode,
-    expandedExpressionDescription: sourceCode.expandWithOperands(lhs, condition),
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, condition),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -322,7 +328,7 @@ public func __checkPropertyAccess<T>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkPropertyAccess<T, U>(
   _ lhs: T, getting memberAccess: (T) -> U?,
-  sourceCode: SourceCode,
+  expression: Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -330,8 +336,8 @@ public func __checkPropertyAccess<T, U>(
   let optionalValue = memberAccess(lhs)
   return __checkValue(
     optionalValue,
-    sourceCode: sourceCode,
-    expandedExpressionDescription: sourceCode.expandWithOperands(lhs, optionalValue),
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, optionalValue),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -350,7 +356,7 @@ public func __checkPropertyAccess<T, U>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkBinaryOperation<T>(
   _ lhs: T, _ op: (T, () -> T) -> Bool, _ rhs: @autoclosure () -> T,
-  sourceCode: SourceCode,
+  expression: Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -377,8 +383,8 @@ public func __checkBinaryOperation<T>(
 
   return __checkValue(
     condition,
-    sourceCode: sourceCode,
-    expandedExpressionDescription: sourceCode.expandWithOperands(lhs, rhs),
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, rhs),
     difference: difference(),
     comments: comments(),
     isRequired: isRequired,
@@ -397,7 +403,7 @@ public func __checkBinaryOperation<T>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkBinaryOperation(
   _ lhs: String, _ op: (String, () -> String) -> Bool, _ rhs: @autoclosure () -> String,
-  sourceCode: SourceCode,
+  expression: Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -405,8 +411,8 @@ public func __checkBinaryOperation(
   let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
   return __checkValue(
     condition,
-    sourceCode: sourceCode,
-    expandedExpressionDescription: sourceCode.expandWithOperands(lhs, rhs),
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, rhs),
     difference: nil,
     comments: comments(),
     isRequired: isRequired,
@@ -424,15 +430,15 @@ public func __checkBinaryOperation(
 public func __checkCast<V, T>(
   _ value: V,
   is _: T.Type,
-  sourceCode: SourceCode,
+  expression: Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) -> Result<Void, any Error> {
   return __checkValue(
     value is T,
-    sourceCode: sourceCode,
-    expandedExpressionDescription: sourceCode.expandWithOperands(value, type(of: value as Any)),
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(value, type(of: value as Any)),
     difference: nil,
     comments: comments(),
     isRequired: isRequired,
@@ -456,16 +462,16 @@ public func __checkCast<V, T>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkValue<T>(
   _ optionalValue: T?,
-  sourceCode: SourceCode,
-  expandedExpressionDescription: @autoclosure () -> String? = nil,
+  expression: Expression,
+  expressionWithCapturedRuntimeValues: @autoclosure () -> Expression? = nil,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) -> Result<T, any Error> {
   __checkValue(
     optionalValue != nil,
-    sourceCode: sourceCode,
-    expandedExpressionDescription: expandedExpressionDescription(),
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expressionWithCapturedRuntimeValues(),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -490,7 +496,7 @@ public func __checkValue<T>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkBinaryOperation<T>(
   _ lhs: T?, _ op: (T?, () -> T?) -> T?, _ rhs: @autoclosure () -> T?,
-  sourceCode: SourceCode,
+  expression: Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -498,8 +504,8 @@ public func __checkBinaryOperation<T>(
   let (optionalValue, rhs) = _callBinaryOperator(lhs, op, rhs)
   return __checkValue(
     optionalValue != nil,
-    sourceCode: sourceCode,
-    expandedExpressionDescription: sourceCode.expandWithOperands(lhs, rhs),
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, rhs),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -518,7 +524,7 @@ public func __checkBinaryOperation<T>(
 public func __checkCast<V, T>(
   _ value: V,
   as _: T.Type,
-  sourceCode: SourceCode,
+  expression: Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -526,8 +532,8 @@ public func __checkCast<V, T>(
   let optionalValue = value as? T
   return __checkValue(
     optionalValue,
-    sourceCode: sourceCode,
-    expandedExpressionDescription: sourceCode.expandWithOperands(value, type(of: value as Any)),
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(value, type(of: value as Any)),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -545,8 +551,8 @@ public func __checkCast<V, T>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkClosureCall<E>(
   throws errorType: E.Type,
-  performing expression: () throws -> some Any,
-  sourceCode: SourceCode,
+  performing body: () throws -> some Any,
+  expression: Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -554,18 +560,18 @@ public func __checkClosureCall<E>(
   if errorType == Never.self {
     __checkClosureCall(
       throws: Never.self,
-      performing: expression,
-      sourceCode: sourceCode,
+      performing: body,
+      expression: expression,
       comments: comments(),
       isRequired: isRequired,
       sourceLocation: sourceLocation
     )
   } else {
     __checkClosureCall(
-      performing: expression,
+      performing: body,
       throws: { $0 is E },
       mismatchExplanation: { "expected error of type \(errorType), but \(_description(of: $0)) was thrown instead" },
-      sourceCode: sourceCode,
+      expression: expression,
       comments: comments(),
       isRequired: isRequired,
       sourceLocation: sourceLocation
@@ -582,8 +588,8 @@ public func __checkClosureCall<E>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkClosureCall<E>(
   throws errorType: E.Type,
-  performing expression: () async throws -> some Any,
-  sourceCode: SourceCode,
+  performing body: () async throws -> some Any,
+  expression: Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -591,18 +597,18 @@ public func __checkClosureCall<E>(
   if errorType == Never.self {
     await __checkClosureCall(
       throws: Never.self,
-      performing: expression,
-      sourceCode: sourceCode,
+      performing: body,
+      expression: expression,
       comments: comments(),
       isRequired: isRequired,
       sourceLocation: sourceLocation
     )
   } else {
     await __checkClosureCall(
-      performing: expression,
+      performing: body,
       throws: { $0 is E },
       mismatchExplanation: { "expected error of type \(errorType), but \(_description(of: $0)) was thrown instead" },
-      sourceCode: sourceCode,
+      expression: expression,
       comments: comments(),
       isRequired: isRequired,
       sourceLocation: sourceLocation
@@ -622,8 +628,8 @@ public func __checkClosureCall<E>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkClosureCall(
   throws _: Never.Type,
-  performing expression: () throws -> some Any,
-  sourceCode: SourceCode,
+  performing body: () throws -> some Any,
+  expression: Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -631,7 +637,7 @@ public func __checkClosureCall(
   var success = true
   var mismatchExplanationValue: String? = nil
   do {
-    _ = try expression()
+    _ = try body()
   } catch {
     success = false
     mismatchExplanationValue = "an error was thrown when none was expected: \(_description(of: error))"
@@ -639,7 +645,7 @@ public func __checkClosureCall(
 
   return __checkValue(
     success,
-    sourceCode: sourceCode,
+    expression: expression,
     mismatchedErrorDescription: mismatchExplanationValue,
     comments: comments(),
     isRequired: isRequired,
@@ -658,8 +664,8 @@ public func __checkClosureCall(
 ///   `#require()` macros. Do not call it directly.
 public func __checkClosureCall(
   throws _: Never.Type,
-  performing expression: () async throws -> some Any,
-  sourceCode: SourceCode,
+  performing body: () async throws -> some Any,
+  expression: Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -667,7 +673,7 @@ public func __checkClosureCall(
   var success = true
   var mismatchExplanationValue: String? = nil
   do {
-    _ = try await expression()
+    _ = try await body()
   } catch {
     success = false
     mismatchExplanationValue = "an error was thrown when none was expected: \(_description(of: error))"
@@ -675,7 +681,7 @@ public func __checkClosureCall(
 
   return __checkValue(
     success,
-    sourceCode: sourceCode,
+    expression: expression,
     mismatchedErrorDescription: mismatchExplanationValue,
     comments: comments(),
     isRequired: isRequired,
@@ -694,17 +700,17 @@ public func __checkClosureCall(
 ///   `#require()` macros. Do not call it directly.
 public func __checkClosureCall<E>(
   throws error: E,
-  performing expression: () throws -> some Any,
-  sourceCode: SourceCode,
+  performing body: () throws -> some Any,
+  expression: Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) -> Result<Void, any Error> where E: Error & Equatable {
   __checkClosureCall(
-    performing: expression,
+    performing: body,
     throws: { true == (($0 as? E) == error) },
     mismatchExplanation: { "expected error \(_description(of: error)), but \(_description(of: $0)) was thrown instead" },
-    sourceCode: sourceCode,
+    expression: expression,
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -720,17 +726,17 @@ public func __checkClosureCall<E>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkClosureCall<E>(
   throws error: E,
-  performing expression: () async throws -> some Any,
-  sourceCode: SourceCode,
+  performing body: () async throws -> some Any,
+  expression: Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) async -> Result<Void, any Error> where E: Error & Equatable {
   await __checkClosureCall(
-    performing: expression,
+    performing: body,
     throws: { true == (($0 as? E) == error) },
     mismatchExplanation: { "expected error \(_description(of: error)), but \(_description(of: $0)) was thrown instead" },
-    sourceCode: sourceCode,
+    expression: expression,
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -746,10 +752,10 @@ public func __checkClosureCall<E>(
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
 public func __checkClosureCall<R>(
-  performing expression: () throws -> R,
+  performing body: () throws -> R,
   throws errorMatcher: (any Error) throws -> Bool,
   mismatchExplanation: ((any Error) -> String)? = nil,
-  sourceCode: SourceCode,
+  expression: Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -757,7 +763,7 @@ public func __checkClosureCall<R>(
   var errorMatches = false
   var mismatchExplanationValue: String? = nil
   do {
-    let result = try expression()
+    let result = try body()
 
     var explanation = "an error was expected but none was thrown"
     if R.self != Void.self {
@@ -778,7 +784,7 @@ public func __checkClosureCall<R>(
 
   return __checkValue(
     errorMatches,
-    sourceCode: sourceCode,
+    expression: expression,
     mismatchedErrorDescription: mismatchExplanationValue,
     comments: comments(),
     isRequired: isRequired,
@@ -793,10 +799,10 @@ public func __checkClosureCall<R>(
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
 public func __checkClosureCall<R>(
-  performing expression: () async throws -> R,
+  performing body: () async throws -> R,
   throws errorMatcher: (any Error) async throws -> Bool,
   mismatchExplanation: ((any Error) -> String)? = nil,
-  sourceCode: SourceCode,
+  expression: Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -804,7 +810,7 @@ public func __checkClosureCall<R>(
   var errorMatches = false
   var mismatchExplanationValue: String? = nil
   do {
-    let result = try await expression()
+    let result = try await body()
 
     var explanation = "an error was expected but none was thrown"
     if R.self != Void.self {
@@ -825,7 +831,7 @@ public func __checkClosureCall<R>(
 
   return __checkValue(
     errorMatches,
-    sourceCode: sourceCode,
+    expression: expression,
     mismatchedErrorDescription: mismatchExplanationValue,
     comments: comments(),
     isRequired: isRequired,

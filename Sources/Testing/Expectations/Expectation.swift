@@ -10,9 +10,8 @@
 
 /// A type describing an expectation that has been evaluated.
 public struct Expectation: Sendable {
-  /// The source code of the expression evaluated by this expectation, if
-  /// available at compile time.
-  public var sourceCode: SourceCode?
+  /// The expression evaluated by this expectation.
+  public var evaluatedExpression: Expression
 
   /// A description of the error mismatch that occurred, if any.
   ///
@@ -20,16 +19,6 @@ public struct Expectation: Sendable {
   /// error mismatch occurred.
   @_spi(ExperimentalEventHandling)
   public var mismatchedErrorDescription: String?
-
-  /// A description of the expression evaluated by this expectation, expanded
-  /// to include the values of any evaluated sub-expressions, if the source code
-  /// was available at compile time.
-  ///
-  /// If this expectation passed, the value of this property is `nil` because
-  /// source code expansion is only performed when necessary to assist with
-  /// diagnosing test failures.
-  @_spi(ExperimentalEventHandling)
-  public var expandedExpressionDescription: String?
 
   /// A description of the difference between the operands in the expression
   /// evaluated by this expectation, if the difference could be determined.
@@ -69,9 +58,8 @@ extension Expectation {
   /// A serializable type describing an expectation that has been evaluated.
   @_spi(ExperimentalSnapshotting)
   public struct Snapshot: Sendable, Codable {
-    /// The source code description (as a String) of the expression evaluated by
-    /// this expectation, if available at compile time.
-    public var sourceCodeDescription: String?
+    /// The expression evaluated by this expectation.
+    public var evaluatedExpression: Expression
 
     /// A description of the error mismatch that occurred, if any.
     ///
@@ -79,16 +67,6 @@ extension Expectation {
     /// error mismatch occurred.
     @_spi(ExperimentalEventHandling)
     public var mismatchedErrorDescription: String?
-
-    /// A description of the expression evaluated by this expectation, expanded
-    /// to include the values of any evaluated sub-expressions, if the source code
-    /// was available at compile time.
-    ///
-    /// If this expectation passed, the value of this property is `nil` because
-    /// source code expansion is only performed when necessary to assist with
-    /// diagnosing test failures.
-    @_spi(ExperimentalEventHandling)
-    public var expandedExpressionDescription: String?
 
     /// A description of the difference between the operands in the expression
     /// evaluated by this expectation, if the difference could be determined.
@@ -114,9 +92,8 @@ extension Expectation {
     /// Creates a snapshot expectation from a real ``Expectation``.
     /// - Parameter expectation: The real expectation.
     public init(snapshotting expectation: Expectation) {
-      self.sourceCodeDescription = String(describing: expectation.sourceCode)
+      self.evaluatedExpression = expectation.evaluatedExpression
       self.mismatchedErrorDescription = expectation.mismatchedErrorDescription
-      self.expandedExpressionDescription = expectation.expandedExpressionDescription
       self.differenceDescription = expectation.differenceDescription
       self.isPassing = expectation.isPassing
       self.isRequired = expectation.isRequired

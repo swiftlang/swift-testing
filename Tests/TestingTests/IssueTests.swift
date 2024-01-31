@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalTestRunning) @_spi(ExperimentalSnapshotting) import Testing
+@testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalTestRunning) @_spi(ExperimentalSnapshotting) @_spi(ExperimentalSourceCodeCapturing) import Testing
 private import TestingInternals
 
 #if canImport(XCTest)
@@ -158,9 +158,9 @@ final class IssueTests: XCTestCase {
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      if case let .expectationFailed(expectation) = issue.kind,
-         let desc = expectation.expandedExpressionDescription {
+      if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
+        let desc = expectation.evaluatedExpression.expandedDescription()
         XCTAssertTrue(desc.contains("rhs → 1"))
         XCTAssertFalse(desc.contains("(("))
       }
@@ -182,9 +182,9 @@ final class IssueTests: XCTestCase {
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      if case let .expectationFailed(expectation) = issue.kind,
-         let desc = expectation.expandedExpressionDescription {
+      if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
+        let desc = expectation.evaluatedExpression.expandedDescription()
         XCTAssertTrue(desc.contains("label: rhs → 1"))
         XCTAssertFalse(desc.contains("(("))
       }
@@ -206,9 +206,9 @@ final class IssueTests: XCTestCase {
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      if case let .expectationFailed(expectation) = issue.kind,
-         let desc = expectation.expandedExpressionDescription {
+      if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
+        let desc = expectation.evaluatedExpression.expandedDescription()
         XCTAssertFalse(desc.contains("(Function)"))
         XCTAssertFalse(desc.contains("(("))
       }
@@ -276,7 +276,8 @@ final class IssueTests: XCTestCase {
       if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
         // The presence of `try` means we don't do complex expansion (yet.)
-        XCTAssertNil(expectation.expandedExpressionDescription)
+        XCTAssertNotNil(expectation.evaluatedExpression)
+        XCTAssertNil(expectation.evaluatedExpression.runtimeValueDescription)
       }
     }
 
@@ -304,8 +305,8 @@ final class IssueTests: XCTestCase {
       guard case let .expectationChecked(expectation) = event.kind else {
         return
       }
-      XCTAssertNotNil(expectation.sourceCode)
-      XCTAssertNil(expectation.expandedExpressionDescription)
+      XCTAssertNotNil(expectation.evaluatedExpression)
+      XCTAssertNil(expectation.evaluatedExpression.subexpressions[0].runtimeValueDescription)
       expectationChecked.fulfill()
     }
 
@@ -315,19 +316,18 @@ final class IssueTests: XCTestCase {
     await fulfillment(of: [expectationChecked], timeout: 0.0)
   }
 
-  func testSourceCodeLiterals() async {
+  func testExpressionLiterals() async {
     func expectIssue(containing content: String, in testFunction: @escaping @Sendable () async throws -> Void) async {
       let issueRecorded = expectation(description: "Issue recorded")
 
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
         guard case let .issueRecorded(issue) = event.kind,
-              case let .expectationFailed(expectation) = issue.kind,
-              let expandedExpressionDescription = expectation.expandedExpressionDescription
-        else {
+              case let .expectationFailed(expectation) = issue.kind else {
           return
         }
         XCTAssertTrue(issue.comments.isEmpty)
+        let expandedExpressionDescription = expectation.evaluatedExpression.expandedDescription()
         XCTAssert(expandedExpressionDescription.contains(content))
         issueRecorded.fulfill()
       }
@@ -350,6 +350,30 @@ final class IssueTests: XCTestCase {
     }
   }
 
+  struct ExpressionValueAndTypeCapture_Value {}
+
+  func testExpressionValueAndTypeCapture() {
+    var expression = Expression.__fromSyntaxNode("abc123")
+    XCTAssertEqual(expression.sourceCode, "abc123")
+    XCTAssertNil(expression.runtimeValueDescription)
+    XCTAssertNil(expression.fullyQualifiedTypeNameOfRuntimeValue)
+
+    expression = expression.capturingRuntimeValues(987 as Int)
+    XCTAssertEqual(expression.sourceCode, "abc123")
+    XCTAssertEqual(expression.runtimeValueDescription, "987")
+    XCTAssertEqual(expression.fullyQualifiedTypeNameOfRuntimeValue, "Swift.Int")
+
+    expression = expression.capturingRuntimeValues(ExpressionValueAndTypeCapture_Value())
+    XCTAssertEqual(expression.sourceCode, "abc123")
+    XCTAssertEqual(expression.runtimeValueDescription, "ExpressionValueAndTypeCapture_Value()")
+    XCTAssertEqual(expression.fullyQualifiedTypeNameOfRuntimeValue, "TestingTests.IssueTests.ExpressionValueAndTypeCapture_Value")
+
+    expression = expression.capturingRuntimeValues((123, "abc") as (Int, String), ())
+    XCTAssertEqual(expression.sourceCode, "abc123")
+    XCTAssertEqual(expression.runtimeValueDescription, #"(123, "abc")"#)
+    XCTAssertEqual(expression.fullyQualifiedTypeNameOfRuntimeValue, "(Swift.Int, Swift.String)")
+  }
+
   func testIsAndAsComparisons() async {
     let expectRecorded = expectation(description: "#expect recorded")
     let requireRecorded = expectation(description: "#require recorded")
@@ -364,9 +388,7 @@ final class IssueTests: XCTestCase {
         XCTFail("Unexpected issue kind \(issue.kind)")
         return
       }
-      guard let expandedExpressionDescription = expectation.expandedExpressionDescription else {
-        return XCTFail("Unexpected nil expandedExpressionDescription")
-      }
+      let expandedExpressionDescription = expectation.evaluatedExpression.expandedDescription()
       XCTAssertTrue(expandedExpressionDescription.contains("someString() → \"abc123\""))
       XCTAssertTrue(expandedExpressionDescription.contains("Int → String"))
 
@@ -1012,7 +1034,7 @@ final class IssueTests: XCTestCase {
     }.run(configuration: configuration)
   }
 
-  func testNegatedExpressionsHaveCorrectSourceCode() async {
+  func testNegatedExpressionsHaveCorrectCapturedExpressions() async {
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
@@ -1037,7 +1059,8 @@ final class IssueTests: XCTestCase {
         XCTFail("Unexpected issue kind \(issue.kind)")
         return
       }
-      XCTAssertTrue(String(describing: expectation.expandedExpressionDescription).contains("<not evaluated>"))
+      let expression = expectation.evaluatedExpression
+      XCTAssertTrue(expression.expandedDescription().contains("<not evaluated>"))
     }
 
     @Sendable func rhs() -> Bool {
@@ -1072,9 +1095,9 @@ final class IssueTests: XCTestCase {
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      if case let .expectationFailed(expectation) = issue.kind,
-         let desc = expectation.expandedExpressionDescription {
+      if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
+        let desc = expectation.evaluatedExpression.expandedDescription()
         XCTAssertTrue(desc.contains("7"))
         XCTAssertFalse(desc.contains("Optional(7)"))
       }
@@ -1096,9 +1119,9 @@ final class IssueTests: XCTestCase {
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      if case let .expectationFailed(expectation) = issue.kind,
-         let desc = expectation.expandedExpressionDescription {
+      if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
+        let desc = expectation.evaluatedExpression.expandedDescription()
         XCTAssertTrue(desc.contains("nil"))
       }
     }
@@ -1126,9 +1149,9 @@ final class IssueTests: XCTestCase {
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      if case let .expectationFailed(expectation) = issue.kind,
-         let desc = expectation.expandedExpressionDescription {
+      if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
+        let desc = expectation.evaluatedExpression.expandedDescription()
         XCTAssertTrue(desc.contains("Delicious Food, Yay!"))
       }
     }
@@ -1157,9 +1180,9 @@ final class IssueTests: XCTestCase {
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      if case let .expectationFailed(expectation) = issue.kind,
-         let desc = expectation.expandedExpressionDescription {
+      if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
+        let desc = expectation.evaluatedExpression.expandedDescription()
         XCTAssertTrue(desc.contains(".b"))
         XCTAssertFalse(desc.contains("→ .b"))
       }
@@ -1188,9 +1211,9 @@ final class IssueTests: XCTestCase {
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      if case let .expectationFailed(expectation) = issue.kind,
-         let desc = expectation.expandedExpressionDescription {
+      if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
+        let desc = expectation.evaluatedExpression.expandedDescription()
         XCTAssertTrue(desc.contains(".b → customDesc"))
         XCTAssertFalse(desc.contains(".customDesc"))
       }
@@ -1215,9 +1238,9 @@ final class IssueTests: XCTestCase {
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      if case let .expectationFailed(expectation) = issue.kind,
-         let desc = expectation.expandedExpressionDescription {
+      if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
+        let desc = expectation.evaluatedExpression.expandedDescription()
         XCTAssertTrue(desc.contains(".A → SWTTestEnumeration(rawValue: \(SWTTestEnumeration.A.rawValue))"))
         XCTAssertFalse(desc.contains(".SWTTestEnumeration"))
       }
@@ -1239,7 +1262,7 @@ struct IssueCodingTests {
           Issue.Kind.apiMisused,
           Issue.Kind.confirmationMiscounted(actual: 13, expected: 42),
           Issue.Kind.errorCaught(NSError(domain: "Domain", code: 13, userInfo: ["UserInfoKey": "UserInfoValue"])),
-          Issue.Kind.expectationFailed(Expectation(isPassing: true, isRequired: true, sourceLocation: SourceLocation())),
+          Issue.Kind.expectationFailed(Expectation(evaluatedExpression: .__fromSyntaxNode("abc"), isPassing: true, isRequired: true, sourceLocation: SourceLocation())),
           Issue.Kind.knownIssueNotRecorded,
           Issue.Kind.system,
           Issue.Kind.timeLimitExceeded(timeLimitComponents: (13, 42)),

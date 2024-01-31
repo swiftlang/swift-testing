@@ -40,8 +40,8 @@ extension Tag.List: Equatable, Hashable {}
 extension Tag.List: CustomStringConvertible {
   public var description: String {
     tags.lazy.map { tag in
-      if let sourceCode = tag.sourceCode {
-        return String(describing: sourceCode)
+      if let expression = tag.expression {
+        return String(describing: expression)
       } else if tag.isPredefinedColor {
         return ".\(tag.rawValue)"
       }
@@ -57,11 +57,10 @@ extension Tag.List: TestTrait, SuiteTrait {
     true
   }
 
-  public func _addingSourceCode(
-    _ sourceCode: @autoclosure () -> SourceCode,
-    arguments: @autoclosure () -> [(label: String?, sourceCode: SourceCode)]
-  ) -> Self {
-    let arguments = arguments()
+  public func _capturing(_ expression: @autoclosure () -> Expression) -> Self {
+    guard case let .functionCall(_, _, arguments: arguments) = expression().kind else {
+      return self
+    }
     guard tags.count == arguments.count else {
       // There is a mismatch between the number of arguments and the number of
       // tags actually present, so bail.
@@ -69,9 +68,9 @@ extension Tag.List: TestTrait, SuiteTrait {
     }
 
     let tags = zip(tags, arguments).lazy
-      .map { tag, labelAndSourceCode in
+      .map { tag, labelAndExpression in
         var tag = tag
-        tag.sourceCode = labelAndSourceCode.sourceCode
+        tag.expression = labelAndExpression.value
         return tag
       }
     return Self(tags: tags)
