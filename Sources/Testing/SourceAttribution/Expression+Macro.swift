@@ -23,7 +23,7 @@ extension Expression {
     Self(kind: .generic(syntaxNode))
   }
 
-  /// Create an instance of ``Expression`` representing a complete syntax node.
+  /// Create an instance of ``Expression`` representing a string literal.
   ///
   /// - Parameters:
   ///   - sourceCode: The source code representation of the string literal,
