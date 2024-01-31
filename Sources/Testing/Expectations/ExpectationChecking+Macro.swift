@@ -194,6 +194,116 @@ public func __checkFunctionCall<T, each U>(
   )
 }
 
+#if !SWT_FIXED_122011759
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed.
+///
+/// This overload works around a bug in variadic generics that may cause a
+/// miscompile when an argument to a function is a C string converted from a
+/// Swift string (e.g. the arguments to `fopen("/file/path", "wb")`.)
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+public func __checkFunctionCall<T, Arg0>(
+  _ lhs: T, calling functionCall: (T, Arg0) throws -> Bool, _ argument0: Arg0,
+  expression: Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) rethrows -> Result<Void, any Error> {
+  let condition = try functionCall(lhs, argument0)
+  return __checkValue(
+    condition,
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, argument0),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed.
+///
+/// This overload works around a bug in variadic generics that may cause a
+/// miscompile when an argument to a function is a C string converted from a
+/// Swift string (e.g. the arguments to `fopen("/file/path", "wb")`.)
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+public func __checkFunctionCall<T, Arg0, Arg1>(
+  _ lhs: T, calling functionCall: (T, Arg0, Arg1) throws -> Bool, _ argument0: Arg0, _ argument1: Arg1,
+  expression: Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) rethrows -> Result<Void, any Error> {
+  let condition = try functionCall(lhs, argument0, argument1)
+  return __checkValue(
+    condition,
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, argument0, argument1),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed.
+///
+/// This overload works around a bug in variadic generics that may cause a
+/// miscompile when an argument to a function is a C string converted from a
+/// Swift string (e.g. the arguments to `fopen("/file/path", "wb")`.)
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+public func __checkFunctionCall<T, Arg0, Arg1, Arg2>(
+  _ lhs: T, calling functionCall: (T, Arg0, Arg1, Arg2) throws -> Bool, _ argument0: Arg0, _ argument1: Arg1, _ argument2: Arg2,
+  expression: Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) rethrows -> Result<Void, any Error> {
+  let condition = try functionCall(lhs, argument0, argument1, argument2)
+  return __checkValue(
+    condition,
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, argument0, argument1, argument2),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed.
+///
+/// This overload works around a bug in variadic generics that may cause a
+/// miscompile when an argument to a function is a C string converted from a
+/// Swift string (e.g. the arguments to `fopen("/file/path", "wb")`.)
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+public func __checkFunctionCall<T, Arg0, Arg1, Arg2, Arg3>(
+  _ lhs: T, calling functionCall: (T, Arg0, Arg1, Arg2, Arg3) throws -> Bool, _ argument0: Arg0, _ argument1: Arg1, _ argument2: Arg2, _ argument3: Arg3,
+  expression: Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) rethrows -> Result<Void, any Error> {
+  let condition = try functionCall(lhs, argument0, argument1, argument2, argument3)
+  return __checkValue(
+    condition,
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, argument0, argument1, argument2, argument3),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+#endif
+
 /// Check that an expectation has passed after a condition has been evaluated
 /// and throw an error if it failed.
 ///
@@ -252,6 +362,116 @@ public func __checkFunctionCall<T, each U, R>(
     sourceLocation: sourceLocation
   )
 }
+
+#if !SWT_FIXED_122011759
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed.
+///
+/// This overload works around a bug in variadic generics that may cause a
+/// miscompile when an argument to a function is a C string converted from a
+/// Swift string (e.g. the arguments to `fopen("/file/path", "wb")`.)
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+public func __checkFunctionCall<T, Arg0, R>(
+  _ lhs: T, calling functionCall: (T, Arg0) throws -> R?, _ argument0: Arg0,
+  expression: Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) rethrows -> Result<R, any Error> {
+  let optionalValue = try functionCall(lhs, argument0)
+  return __checkValue(
+    optionalValue,
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, argument0),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed.
+///
+/// This overload works around a bug in variadic generics that may cause a
+/// miscompile when an argument to a function is a C string converted from a
+/// Swift string (e.g. the arguments to `fopen("/file/path", "wb")`.)
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+public func __checkFunctionCall<T, Arg0, Arg1, R>(
+  _ lhs: T, calling functionCall: (T, Arg0, Arg1) throws -> R?, _ argument0: Arg0, _ argument1: Arg1,
+  expression: Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) rethrows -> Result<R, any Error> {
+  let optionalValue = try functionCall(lhs, argument0, argument1)
+  return __checkValue(
+    optionalValue,
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, argument0, argument1),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed.
+///
+/// This overload works around a bug in variadic generics that may cause a
+/// miscompile when an argument to a function is a C string converted from a
+/// Swift string (e.g. the arguments to `fopen("/file/path", "wb")`.)
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+public func __checkFunctionCall<T, Arg0, Arg1, Arg2, R>(
+  _ lhs: T, calling functionCall: (T, Arg0, Arg1, Arg2) throws -> R?, _ argument0: Arg0, _ argument1: Arg1, _ argument2: Arg2,
+  expression: Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) rethrows -> Result<R, any Error> {
+  let optionalValue = try functionCall(lhs, argument0, argument1, argument2)
+  return __checkValue(
+    optionalValue,
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, argument0, argument1, argument2),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed.
+///
+/// This overload works around a bug in variadic generics that may cause a
+/// miscompile when an argument to a function is a C string converted from a
+/// Swift string (e.g. the arguments to `fopen("/file/path", "wb")`.)
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+public func __checkFunctionCall<T, Arg0, Arg1, Arg2, Arg3, R>(
+  _ lhs: T, calling functionCall: (T, Arg0, Arg1, Arg2, Arg3) throws -> R?, _ argument0: Arg0, _ argument1: Arg1, _ argument2: Arg2, _ argument3: Arg3,
+  expression: Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) rethrows -> Result<R, any Error> {
+  let optionalValue = try functionCall(lhs, argument0, argument1, argument2, argument3)
+  return __checkValue(
+    optionalValue,
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, argument0, argument1, argument2, argument3),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+#endif
 
 /// Check that an expectation has passed after a condition has been evaluated
 /// and throw an error if it failed.
