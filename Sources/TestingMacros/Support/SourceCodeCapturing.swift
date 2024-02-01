@@ -24,7 +24,11 @@ public import SwiftSyntax
 /// - Returns: An expression value that initializes an instance of
 ///   ``Expression`` for the specified syntax node.
 func createExpressionExpr(from node: any SyntaxProtocol) -> ExprSyntax {
-  ".__fromSyntaxNode(\(literal: node.trimmedDescription))"
+  if let stringLiteralExpr = node.as(StringLiteralExprSyntax.self),
+     let stringValue = stringLiteralExpr.representedLiteralValue {
+    return ".__fromStringLiteral(\(literal: node.trimmedDescription), \(literal: stringValue))"
+  }
+  return ".__fromSyntaxNode(\(literal: node.trimmedDescription))"
 }
 
 /// Get a swift-syntax expression initializing an instance of ``Expression``
@@ -39,9 +43,9 @@ func createExpressionExpr(from node: any SyntaxProtocol) -> ExprSyntax {
 ///   ``Expression`` for the specified syntax nodes.
 func createExpressionExprForBinaryOperation(_ lhs: some SyntaxProtocol, _ `operator`: some SyntaxProtocol, _ rhs: some SyntaxProtocol) -> ExprSyntax {
   let arguments = LabeledExprListSyntax {
-    LabeledExprSyntax(expression: StringLiteralExprSyntax(content: lhs.trimmedDescription))
+    LabeledExprSyntax(expression: createExpressionExpr(from: lhs))
     LabeledExprSyntax(expression: StringLiteralExprSyntax(content: `operator`.trimmedDescription))
-    LabeledExprSyntax(expression: StringLiteralExprSyntax(content: rhs.trimmedDescription))
+    LabeledExprSyntax(expression: createExpressionExpr(from: rhs))
   }
 
   return ".__fromBinaryOperation(\(arguments))"
@@ -60,7 +64,7 @@ func createExpressionExprForBinaryOperation(_ lhs: some SyntaxProtocol, _ `opera
 func createExpressionExprForFunctionCall(_ value: (any SyntaxProtocol)?, _ functionName: some SyntaxProtocol, _ arguments: some Sequence<Argument>) -> ExprSyntax {
   let arguments = LabeledExprListSyntax {
     if let value {
-      LabeledExprSyntax(expression: StringLiteralExprSyntax(content: value.trimmedDescription))
+      LabeledExprSyntax(expression: createExpressionExpr(from: value))
     } else {
       LabeledExprSyntax(expression: NilLiteralExprSyntax())
     }
@@ -72,7 +76,7 @@ func createExpressionExprForFunctionCall(_ value: (any SyntaxProtocol)?, _ funct
         } else {
           LabeledExprSyntax(expression: NilLiteralExprSyntax())
         }
-        LabeledExprSyntax(expression: StringLiteralExprSyntax(content: argument.expression.trimmedDescription))
+        LabeledExprSyntax(expression: createExpressionExpr(from: argument.expression))
       })
     }
   }
@@ -82,8 +86,8 @@ func createExpressionExprForFunctionCall(_ value: (any SyntaxProtocol)?, _ funct
 
 func createExpressionExprForPropertyAccess(_ value: ExprSyntax, _ keyPath: DeclReferenceExprSyntax) -> ExprSyntax {
   let arguments = LabeledExprListSyntax {
-    LabeledExprSyntax(expression: StringLiteralExprSyntax(content: value.trimmedDescription))
-    LabeledExprSyntax(expression: StringLiteralExprSyntax(content: keyPath.baseName.trimmedDescription))
+    LabeledExprSyntax(expression: createExpressionExpr(from: value))
+    LabeledExprSyntax(expression: createExpressionExpr(from: keyPath.baseName))
   }
 
   return ".__fromPropertyAccess(\(arguments))"

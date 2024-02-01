@@ -23,6 +23,21 @@ extension Expression {
     Self(kind: .generic(syntaxNode))
   }
 
+  /// Create an instance of ``Expression`` representing a string literal.
+  ///
+  /// - Parameters:
+  ///   - sourceCode: The source code representation of the string literal,
+  ///     including leading and trailing punctuation.
+  ///   - stringValue: The actual string value of the string literal
+  ///
+  /// - Returns: A new instance of ``Expression``.
+  ///
+  /// - Warning: This function is used to implement the `@Test`, `@Suite`,
+  ///   `#expect()` and `#require()` macros. Do not call it directly.
+  public static func __fromStringLiteral(_ sourceCode: String, _ stringValue: String) -> Self {
+    Self(kind: .stringLiteral(sourceCode: sourceCode, stringValue: stringValue))
+  }
+
   /// Create an instance of ``Expression`` representing a binary operation.
   ///
   /// - Parameters:
@@ -34,9 +49,7 @@ extension Expression {
   ///
   /// - Warning: This function is used to implement the `@Test`, `@Suite`,
   ///   `#expect()` and `#require()` macros. Do not call it directly.
-  public static func __fromBinaryOperation(_ lhs: String, _ op: String, _ rhs: String) -> Self {
-    let lhs = Expression(lhs)
-    let rhs = Expression(rhs)
+  public static func __fromBinaryOperation(_ lhs: Expression, _ op: String, _ rhs: Expression) -> Self {
     return Self(kind: .binaryOperation(lhs: lhs, operator: op, rhs: rhs))
   }
 
@@ -53,9 +66,8 @@ extension Expression {
   ///
   /// - Warning: This function is used to implement the `@Test`, `@Suite`,
   ///   `#expect()` and `#require()` macros. Do not call it directly.
-  public static func __functionCall(_ value: String?, _ functionName: String, _ arguments: (label: String?, value: String)...) -> Self {
-    let value = value.map { Expression($0) }
-    let arguments = arguments.map { Expression.Kind.FunctionCallArgument(label: $0, value: Expression($1)) }
+  public static func __functionCall(_ value: Expression?, _ functionName: String, _ arguments: (label: String?, value: Expression)...) -> Self {
+    let arguments = arguments.map(Expression.Kind.FunctionCallArgument.init)
     return Self(kind: .functionCall(value: value, functionName: functionName, arguments: arguments))
   }
 
@@ -70,9 +82,7 @@ extension Expression {
   ///
   /// - Warning: This function is used to implement the `@Test`, `@Suite`,
   ///   `#expect()` and `#require()` macros. Do not call it directly.
-  public static func __fromPropertyAccess(_ value: String, _ keyPath: String) -> Self {
-    let value = Expression(value)
-    let keyPath = Expression(keyPath)
+  public static func __fromPropertyAccess(_ value: Expression, _ keyPath: Expression) -> Self {
     return Self(kind: .propertyAccess(value: value, keyPath: keyPath))
   }
 }

@@ -88,6 +88,19 @@ struct TagListTests {
     #expect(!tagExpression.contains { String(describing: $0) == "\"extra-tag\"" })
   }
 
+  @Test("String literal tags are distinguishable")
+  func stringLiteralTags() async throws {
+    let plan = await Runner.Plan(selecting: TagTests.self)
+    let tagExpression = plan.steps.flatMap(\.test.tags).compactMap(\.expression)
+    let fromTypeTag = try #require(tagExpression.first { $0.stringLiteralValue == "FromType" })
+    #expect(fromTypeTag.sourceCode == #""FromType""#)
+    #expect(fromTypeTag.stringLiteralValue == "FromType")
+
+    let namedConstantTag = try #require(tagExpression.first { $0.sourceCode == ".namedConstant" })
+    #expect(namedConstantTag.sourceCode == ".namedConstant")
+    #expect(namedConstantTag.stringLiteralValue == nil)
+  }
+
 #if !SWT_NO_FILE_IO
   @Test(
     "Colors are read from disk",
