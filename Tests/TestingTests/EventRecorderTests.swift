@@ -90,7 +90,7 @@ struct EventRecorderTests {
   }
 
 #if !os(Windows)
-  @available(_regexAPI, *)
+  @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
   @Test(
     "Titles of messages ('Test' vs. 'Suite') are determined correctly",
     arguments: [
@@ -127,7 +127,7 @@ struct EventRecorderTests {
     )
   }
 
-  @available(_regexAPI, *)
+  @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
   @Test(
     "Issue counts are summed correctly on test end",
     arguments: [
@@ -177,7 +177,7 @@ struct EventRecorderTests {
   }
 #endif
 
-  @available(_regexAPI, *)
+  @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
   @Test("Issue counts are omitted on a successful test")
   func issueCountOmittedForPassingTest() async throws {
     let stream = Stream()
@@ -200,7 +200,7 @@ struct EventRecorderTests {
   }
 
 #if !os(Windows)
-  @available(_regexAPI, *)
+  @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
   @Test("Issue counts are summed correctly on run end")
   func issueCountSummingAtRunEnd() async throws {
     let stream = Stream()
