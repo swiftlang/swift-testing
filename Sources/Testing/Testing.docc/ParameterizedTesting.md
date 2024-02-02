@@ -142,3 +142,9 @@ words, this test function will be passed the inputs `(.burger, 1)`,
 - ``Test(_:_:arguments:)-8kn7a``
 - ``Test(_:_:arguments:_:)``
 - ``Test(_:_:arguments:)-3rzok``
+- ``CustomTestArgumentEncodable``
+
+## See Also
+
+- ``Test/Parameter``
+- ``Test/Case``

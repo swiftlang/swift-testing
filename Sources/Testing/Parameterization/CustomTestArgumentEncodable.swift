@@ -14,6 +14,25 @@ private import Foundation
 
 /// A protocol for customizing how arguments passed to parameterized tests are
 /// encoded, which is used to match against when running specific arguments.
+///
+/// By default, the testing library checks whether a test argument conforms to
+/// `Encodable` and encodes it using `encode(to:)` if it does. `Encodable` is
+/// sufficient for many types, but for some types the output of that function
+/// may contain large data payloads that cause poor performance, may not be
+/// stable and unique, or may otherwise be deemed unsuitable for testing.
+///
+/// If the type of the argument does not conform to `Encodable` but it does
+/// conform to `Identifiable` and its associated `ID` type conforms to
+/// `Encodable`, the value of its `id` property is encoded with `encode(to:)`
+/// and is used as the encoded representation.
+///
+/// If neither of the approaches for encoded representation described above is
+/// sufficient, a type can be made to conform to
+/// ``CustomTestArgumentEncodable``. The testing library will then call
+/// ``encodeTestArgument(to:)`` on values of that type instead of `encode(to:)`.
+///
+/// A type that conforms to this protocol is not required to conform to either
+/// `Encodable` or `Decodable`.
 public protocol CustomTestArgumentEncodable: Sendable {
   /// Encode this test argument.
   ///
@@ -25,23 +44,11 @@ public protocol CustomTestArgumentEncodable: Sendable {
   /// The encoded form of a test argument should be stable and unique to allow
   /// re-running specific test cases of a parameterized test function. For
   /// optimal performance, large values which are not necessary to uniquely
-  /// identify the test argument later should be omitted. Values encoded do not
+  /// identify the test argument later should be omitted. Encoded values do not
   /// need to be human-readable.
   ///
-  /// By default, the testing library checks whether a test argument conforms to
-  /// `Encodable` and encodes it using `encodeTestArgument(to:)` if it does.
-  /// This is sufficient for many types, but for some types the `Encodable`-
-  /// provided representation may contain large data payloads that cause poor
-  /// performance, are not stable and unique, or are otherwise deemed unsuitable
-  /// for testing. If the type of the argument does not conform to `Encodable`
-  /// but it does conform to `Identifiable` and its associated `ID` type
-  /// conforms to `Encodable`, the value of calling its `id` property is used as
-  /// the encoded representation.
-  ///
-  /// It is possible that neither of the approaches for encoded representation
-  /// described above are sufficient. If the type of the argument is made to
-  /// conform to ``CustomTestArgumentEncodable``, then the encoded
-  /// representation formed by calling this method is used.
+  /// For more information on how to implement this function, see the
+  /// documentation for [`Encodable`](https://developer.apple.com/documentation/swift/encodable).
   func encodeTestArgument(to encoder: some Encoder) throws
 }
 
