@@ -17,8 +17,6 @@ struct CErrorTests {
   func errorDescription(errorCode: CInt) {
     let description = String(describing: CError(rawValue: errorCode))
     #expect(!description.isEmpty)
-    description.withCString { description in
-      #expect(0 == strcmp(strerror(errorCode), description))
-    }
+    #expect(strerror(errorCode) == description)
   }
 }
