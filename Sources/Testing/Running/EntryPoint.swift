@@ -142,13 +142,14 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 
 #if os(Windows)
     // Windows deprecates fopen() as insecure, so create a wrapper function
-    // that calls fopen_s() instead. If we end up using fopen() in other
-    // places, be sure to hoist this function so it can be reused.
+    // that calls _wfopen_s() instead. If we end up using fopen() in other
+    // places, be sure to hoist this function so it can be reused (and consider
+    // combining it with FileCloser into a single "file" interface.)
     func fopen(_ path: String, _ mode: String) -> SWT_FILEHandle? {
-      path.withCString { path in
-        mode.withCString { mode in
+      path.withCString(encodedAs: UTF16.self) { path in
+        mode.withCString(encodedAs: UTF16.self) { mode in
           var file: SWT_FILEHandle?
-          let result = fopen_s(&file, path, mode)
+          let result = _wfopen_s(&file, path, mode)
           if result != 0 {
             _set_errno(result)
             return nil
