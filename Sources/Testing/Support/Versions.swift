@@ -19,8 +19,8 @@ private import TestingInternals
 /// This value is not part of the public interface of the testing library.
 let operatingSystemVersion: String = {
 #if !SWT_NO_SYSCTL && SWT_TARGET_OS_APPLE
-  let productVersion = sysctlbyname("kern.osproductversion").flatMap(String.init(validatingUTF8:)) ?? ""
-  let buildNumber = sysctlbyname("kern.osversion").flatMap(String.init(validatingUTF8:)) ?? ""
+  let productVersion = sysctlbyname("kern.osproductversion", as: String.self) ?? ""
+  let buildNumber = sysctlbyname("kern.osversion", as: String.self) ?? ""
   switch (productVersion, buildNumber) {
   case ("", ""):
     break
@@ -141,30 +141,25 @@ let swiftStandardLibraryVersion: String = {
 // MARK: - sysctlbyname() Wrapper
 
 #if !SWT_NO_SYSCTL && SWT_TARGET_OS_APPLE
-/// Get a value by calling `sysctlbyname()`.
+/// Get a string value by calling `sysctlbyname()`.
 ///
 /// - Parameters:
 ///   - name: The name of the value to get, such as `"kern.osversion"`.
 ///
-/// - Returns: An array containing the bytes of the requested value, or `nil`
-///   if the value could not be read.
-///
-/// This function does not convert the result to a `String` since not all
-/// `sysctl()` values are strings. To convert the result to a string, use
-/// `String(validatingUTF8:)`.
+/// - Returns: A string containing the requested value interpreted as a UTF-8
+///   string, or `nil` if the value could not be read or could not be
+///   interpreted as UTF-8.
 ///
 /// This function is not part of the public interface of the testing library.
-func sysctlbyname(_ name: String) -> [CChar]? {
+func sysctlbyname(_ name: String, as _: String.Type) -> String? {
   name.withCString { name in
     var szValue = 0
     if 0 == sysctlbyname(name, nil, &szValue, nil, 0) {
-      let result = [CChar](unsafeUninitializedCapacity: szValue) { buffer, initializedCount in
+      return withUnsafeTemporaryAllocation(of: CChar.self, capacity: szValue) { buffer in
         if 0 == sysctlbyname(name, buffer.baseAddress!, &szValue, nil, 0) {
-          initializedCount = szValue
+          return String(validatingUTF8: buffer.baseAddress!)
         }
-      }
-      if result.count == szValue {
-        return result
+        return nil
       }
     }
     return nil
