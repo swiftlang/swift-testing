@@ -27,7 +27,8 @@ struct CError: Error, RawRepresentable {
 /// - Parameters:
 ///   - errorCode: The error code to describe.
 ///
-/// - Returns: A Swift string equal to the result of `strerror()`.
+/// - Returns: A Swift string equal to the result of `strerror()` from the C
+///   standard library.
 func strerror(_ errorCode: CInt) -> String {
   String(unsafeUninitializedCapacity: 1024) { buffer in
 #if SWT_TARGET_OS_APPLE || os(Linux)
