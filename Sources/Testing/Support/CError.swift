@@ -30,19 +30,14 @@ struct CError: Error, RawRepresentable {
 /// - Returns: A Swift string equal to the result of `strerror()` from the C
 ///   standard library.
 func strerror(_ errorCode: CInt) -> String {
+#if os(Windows)
   String(unsafeUninitializedCapacity: 1024) { buffer in
-#if SWT_TARGET_OS_APPLE || os(Linux)
-    _ = strerror_r(errorCode, buffer.baseAddress!, buffer.count)
-#elseif os(Windows)
     _ = strerror_s(buffer.baseAddress!, buffer.count, errorCode)
-#else
-    guard let stringValue = strerror(errorCode) else {
-      return 0
-    }
-    strncpy(buffer.baseAddress!, stringValue, buffer.count)
-#endif
     return strnlen(buffer.baseAddress!, buffer.count)
   }
+#else
+  String(cString: TestingInternals.strerror(errorCode))
+#endif
 }
 
 extension CError: CustomStringConvertible {
