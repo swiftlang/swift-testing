@@ -43,13 +43,13 @@ git checkout -b release/x.y.z
 The package manifest files (Package.swift _and_ Package@swift-5.11.swift) must
 be updated so that the release can be used as a package dependency:
 
-0. Take note of any availability definitions (passed to the Swift compiler with
+1. Take note of any availability definitions (passed to the Swift compiler with
    the `-define-availability` option.) Search for these definitions in the
    package source and replace them with their values. For example, replace all
    `_distantFuture` uses with `macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0`.
-0. Delete any unsafe flags from `var packageSettings` as well as elsewhere in
+1. Delete any unsafe flags from `var packageSettings` as well as elsewhere in
    the package manifest files.
-0. Open the "Documentation/Testing.docc/TemporaryGettingStarted.md" file and
+1. Open the "Documentation/Testing.docc/TemporaryGettingStarted.md" file and
    update the line:
 
     ```diff
@@ -57,14 +57,43 @@ be updated so that the release can be used as a package dependency:
     +  .package(url: "https://github.com/apple/swift-testing.git", from: "x.y.z"),
     ```
 
-The repository's local state is now updated.
+The repository's local state is now updated. To commit it to your branch, run
+the typical commit command:
+
+```sh
+git commit -a -m "Deploy x.y.z"
+```
+
+## Smoke-testing the branch
+
+Before deploying the tag publicly, test it by creating a simple package locally.
+For example, you can initialize a new package in an empty directory with:
+
+```sh
+swift package init --enable-experimental-swift-testing
+```
+
+And then modify the package's `Package.swift` file to point at your local clone
+of the swift-testing repository. Ensure that the package's test target builds
+and runs successfully with:
+
+```sh
+swift test
+```
+
+> [!NOTE]
+> Be sure to test changes on both macOS and Linux using the most recent
+> main-branch Swift toolchain.   
+
+If changes to swift-testing are necessary for the build to succeed, open
+appropriate pull requests on GitHub, then rebase your tag branch after they are
+merged.
 
 ## Committing changes and pushing the release
 
 Run the following commands to push the release and make it publicly visible:
 
 ```sh
-git commit -a -m "Deploy x.y.z"
 git tag x.y.z
 git push -u origin x.y.z
 ```
