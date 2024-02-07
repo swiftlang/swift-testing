@@ -105,6 +105,14 @@ struct TestDeclarationMacroTests {
         "The @Test attribute must specify 2 arguments when used with f(i:j:).",
       "@Test(arguments: []) func f() {}":
         "The @Test attribute cannot specify arguments when used with f() because it does not take any.",
+
+      // XCUIAutomation integration.
+      "@Test func f() { _ = XCUIApplication() }":
+        "UI testing is not available when using swift-testing. Use XCTest for UI tests instead.",
+      "@Test func f() { func g() { _ = XCUIApplication() } }":
+        "UI testing is not available when using swift-testing. Use XCTest for UI tests instead.",
+      "@Suite struct S { @Test func f() { func g() { _ = XCUIApplication() } } }":
+        "UI testing is not available when using swift-testing. Use XCTest for UI tests instead.",
     ]
   )
   func apiMisuseErrors(input: String, expectedMessage: String) throws {

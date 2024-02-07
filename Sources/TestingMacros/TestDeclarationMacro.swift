@@ -144,6 +144,14 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
         }
       }
     }
+
+    // Disallow the use of XCUIAutomation symbols in a test function. UI tests
+    // are not supported at this time.
+    let xcuiTokens = function.tokens(viewMode: .sourceAccurate).lazy
+      .filter { $0.textWithoutBackticks.hasPrefix("XCUI") || $0.textWithoutBackticks.hasPrefix("_XCUI") }
+    for xcuiToken in xcuiTokens {
+      diagnostics.append(.xcuiAutomationNotSupported(xcuiToken))
+    }
   }
 
   /// Create a function call parameter list used to call a function from its

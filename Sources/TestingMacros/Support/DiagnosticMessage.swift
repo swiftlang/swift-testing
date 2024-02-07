@@ -282,10 +282,25 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///
   /// - Returns: A diagnostic message.
   static func returnTypeNotSupported(_ returnType: TypeSyntax, on decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
-    return Self(
+    Self(
       syntax: Syntax(returnType),
       message: "The result of this \(_kindString(for: decl)) will be discarded during testing.",
       severity: .warning
+    )
+  }
+
+  /// Create a diagnostic message stating that Apple's XCUIAutomation framework
+  /// is not supported by the testing library.
+  ///
+  /// - Parameters:
+  ///   - node: The unsupported node.
+  ///
+  /// - Returns: A diagnostic message.
+  static func xcuiAutomationNotSupported(_ node: some SyntaxProtocol) -> Self {
+    Self(
+      syntax: Syntax(node),
+      message: "UI testing is not available when using swift-testing. Use XCTest for UI tests instead.",
+      severity: .error
     )
   }
 
