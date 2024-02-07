@@ -51,14 +51,14 @@ concurrency, and parameterize test functions across wide ranges of inputs.
 The table below describes the current level of support that `swift-testing` has
 for various platforms:
 
-| **Platform** | **CI Status** | **Support Status** |
-|-|:-:|-|
-| **macOS** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-5.10-macos)](https://ci.swift.org/job/swift-testing-main-swift-5.10-macos/) | Supported |
-| **iOS** | | Supported |
-| **watchOS** | | Supported |
-| **tvOS** | | Supported |
-| **Ubuntu 22.04** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-5.10-linux)](https://ci.swift.org/job/swift-testing-main-swift-5.10-linux/) | Supported |
-| **Windows** | | Pending support for macros |
+| **Platform** | **CI Status (5.10)** | **CI Status (main)** | **Support Status** |
+|-|:-:|:-:|-|
+| **macOS** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-5.10-macos)](https://ci.swift.org/job/swift-testing-main-swift-5.10-macos/) | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-macos)](https://ci.swift.org/view/Swift%20Packages/job/swift-testing-main-swift-main-macos/) | Supported |
+| **iOS** | | | Supported |
+| **watchOS** | | | Supported |
+| **tvOS** | | | Supported |
+| **Ubuntu 22.04** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-5.10-linux)](https://ci.swift.org/job/swift-testing-main-swift-5.10-linux/) | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-linux)](https://ci.swift.org/view/Swift%20Packages/job/swift-testing-main-swift-main-linux/) | Supported |
+| **Windows** | | | Supported |
 
 ## Documentation
 
