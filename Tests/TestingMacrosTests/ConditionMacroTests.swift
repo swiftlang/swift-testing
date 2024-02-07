@@ -43,7 +43,7 @@ struct ConditionMacroTests {
       ##"#expect(try x())"##:
         ##"Testing.__checkValue(try x(), expression: .__fromSyntaxNode("try x()"), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect(1 is Int)"##:
-        ##"Testing.__checkCast(1, is: Int.self, expression: .__fromBinaryOperation(.__fromSyntaxNode("1"), "is", .__fromSyntaxNode("Int")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
+        ##"Testing.__checkCast(1, is: (Int).self, expression: .__fromBinaryOperation(.__fromSyntaxNode("1"), "is", .__fromSyntaxNode("Int")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation()).__expected()"##,
       ##"#expect("123") { 1 == 2 } then: { foo() }"##:
         ##"Testing.__checkClosureCall(performing: { 1 == 2 }, then: { foo() }, expression: .__fromBinaryOperation(.__fromSyntaxNode("1"), "==", .__fromSyntaxNode("2")), comments: ["123"], isRequired: false, sourceLocation:Testing.SourceLocation()).__expected()"##,
       ##"#expect("123") { let x = 0 }"##:
@@ -119,7 +119,7 @@ struct ConditionMacroTests {
       ##"#require(try x())"##:
         ##"Testing.__checkValue(try x(), expression: .__fromSyntaxNode("try x()"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(1 is Int)"##:
-        ##"Testing.__checkCast(1, is: Int.self, expression: .__fromBinaryOperation(.__fromSyntaxNode("1"), "is", .__fromSyntaxNode("Int")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkCast(1, is: (Int).self, expression: .__fromBinaryOperation(.__fromSyntaxNode("1"), "is", .__fromSyntaxNode("Int")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require("123") { 1 == 2 } then: { foo() }"##:
         ##"Testing.__checkClosureCall(performing: { 1 == 2 }, then: { foo() }, expression: .__fromBinaryOperation(.__fromSyntaxNode("1"), "==", .__fromSyntaxNode("2")), comments: ["123"], isRequired: true, sourceLocation:Testing.SourceLocation()).__required()"##,
       ##"#require("123") { let x = 0 }"##:
@@ -181,7 +181,7 @@ struct ConditionMacroTests {
       ##"#require(123 ?? nil)"##:
         ##"Testing.__checkBinaryOperation(123, { $0 ?? $1() }, nil, expression: .__fromBinaryOperation(.__fromSyntaxNode("123"), "??", .__fromSyntaxNode("nil")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(123 as? Double)"##:
-        ##"Testing.__checkCast(123,as: Double.self, expression: .__fromBinaryOperation(.__fromSyntaxNode("123"), "as?", .__fromSyntaxNode("Double")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
+        ##"Testing.__checkCast(123,as: (Double).self, expression: .__fromBinaryOperation(.__fromSyntaxNode("123"), "as?", .__fromSyntaxNode("Double")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(123 as Double)"##:
         ##"Testing.__checkValue(123 as Double, expression: .__fromSyntaxNode("123 as Double"), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation()).__required()"##,
       ##"#require(123 as! Double)"##:

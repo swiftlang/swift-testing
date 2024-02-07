@@ -172,7 +172,7 @@ private func _parseCondition(from expr: IsExprSyntax, for macro: some Freestandi
     "__checkCast",
     arguments: [
       Argument(expression: expression),
-      Argument(label: .identifier("is"), expression: "\(type.trimmed).self")
+      Argument(label: .identifier("is"), expression: "(\(type.trimmed)).self")
     ],
     expression: createExpressionExprForBinaryOperation(expression, expr.isKeyword, type)
   )
@@ -196,7 +196,7 @@ private func _parseCondition(from expr: AsExprSyntax, for macro: some Freestandi
       "__checkCast",
       arguments: [
         Argument(expression: expression),
-        Argument(label: .identifier("as"), expression: "\(type.trimmed).self")
+        Argument(label: .identifier("as"), expression: "(\(type.trimmed)).self")
       ],
       expression: createExpressionExprForBinaryOperation(expression, TokenSyntax.unknown("as?"), type)
     )

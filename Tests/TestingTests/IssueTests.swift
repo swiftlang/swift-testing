@@ -416,6 +416,14 @@ final class IssueTests: XCTestCase {
     await fulfillment(of: [expectRecorded, requireRecorded], timeout: 0.0)
   }
 
+  func testCastAsAnyProtocol() async {
+    // Sanity check that we parse types cleanly.
+    await Test {
+      #expect((1 as Any) is any Numeric)
+      _ = try #require((1 as Any) as? any Numeric)
+    }.run(configuration: .init())
+  }
+
   func testErrorCheckingWithExpect() async throws {
     let expectationFailed = expectation(description: "Expectation failed")
     expectationFailed.isInverted = true
