@@ -335,6 +335,15 @@ extension Event.HumanReadableOutputRecorder {
       }
       additionalMessages += _formattedComments(issue.comments)
 
+      // If an error was thrown and caught and has an associated backtrace, and
+      // we are producing verbose output, try to symbolicate the backtrace and
+      // present it here.
+      if verbose, case let .errorCaught(error) = issue.kind, let backtrace = Backtrace(forFirstThrowOf: error) {
+        for symbol in backtrace.symbolicate() {
+          additionalMessages.append(Message(symbol: .details, stringValue: symbol))
+        }
+      }
+
       if verbose, case let .expectationFailed(expectation) = issue.kind {
         let expression = expectation.evaluatedExpression
         func addMessage(about expression: Expression) {

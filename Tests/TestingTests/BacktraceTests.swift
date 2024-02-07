@@ -9,6 +9,7 @@
 //
 
 @testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalTestRunning) import Testing
+private import TestingInternals
 #if canImport(Foundation)
 import Foundation
 #endif
@@ -54,6 +55,25 @@ struct BacktraceTests {
     let data = try JSONEncoder().encode(original)
     let copy = try JSONDecoder().decode(Backtrace.self, from: data)
     #expect(original == copy)
+  }
+#endif
+
+#if !SWT_NO_DYNAMIC_LINKING && _runtime(_ObjC) && canImport(Foundation)
+  @Test("NSError with backtrace in userInfo",
+    .enabled(if: dlsym(swt_RTLD_DEFAULT(), "_CFErrorSetCallStackCaptureEnabled") != nil, "Core Foundation call stack capture unimplemented")
+  )
+  func backtraceInNSErrorUserInfo() throws {
+    let error = NSError(domain: "", code: 0, userInfo: nil)
+    #expect(Backtrace(forFirstThrowOf: error) != nil)
+
+    do {
+      throw error
+    } catch {
+      let backtrace = try #require(Backtrace(forFirstThrowOf: error)).addresses
+      #expect(!backtrace.isEmpty)
+      let backtraceFromError = try #require((error as NSError).userInfo[Backtrace.errorUserInfoKey] as? [UInt64])
+      #expect(backtrace == backtraceFromError)
+    }
   }
 #endif
 }

@@ -51,6 +51,16 @@ static bool swt_S_ISFIFO(mode_t mode) {
 }
 #endif
 
+#if __has_include(<dlfcn.h>) && defined(RTLD_DEFAULT)
+/// Get the constant `RTLD_DEFAULT`.
+///
+/// This function is provided because `RTLD_DEFAULT` is a complex macro on some
+/// platforms and cannot be imported directly into Swift.
+static void *swt_RTLD_DEFAULT(void) {
+  return RTLD_DEFAULT;
+}
+#endif
+
 SWT_ASSUME_NONNULL_END
 
 #endif

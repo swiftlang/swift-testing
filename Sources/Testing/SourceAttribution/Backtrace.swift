@@ -9,6 +9,9 @@
 //
 
 private import TestingInternals
+#if !SWT_NO_DYNAMIC_LINKING && _runtime(_ObjC)
+private import ObjectiveC
+#endif
 
 /// A type representing a backtrace or stack trace.
 public struct Backtrace: Sendable {
@@ -79,6 +82,49 @@ public struct Backtrace: Sendable {
     }
     return Self(addresses: addresses)
   }
+
+  /// Attempt to symbolicate this backtrace.
+  ///
+  /// - Returns: The symbolicated backtrace. If the current platform does not
+  ///   support symbolication, hexadecimal descriptions of the values in
+  ///   ``addresses`` are returned.
+  ///
+  /// If this function is called for a backtrace captured in another process or
+  /// on another device (for instance, one that has been encoded and decoded),
+  /// the result of this function is undefined.
+  func symbolicate() -> [String] {
+    // TODO: symbolication (e.g. via standard library Backtrace API) instead of doing it ourselves
+#if SWT_TARGET_OS_APPLE || os(Linux)
+    let addresses: [UnsafeMutableRawPointer?] = addresses.lazy
+      .map(UInt.init)
+      .map(Int.init(bitPattern:))
+      .map(UnsafeMutableRawPointer.init(bitPattern:))
+    return addresses.withUnsafeBufferPointer { addresses in
+      guard let symbols = backtrace_symbols(addresses.baseAddress!, .init(addresses.count)) else {
+        return []
+      }
+      defer {
+        free(symbols)
+      }
+      return UnsafeBufferPointer(start: symbols, count: addresses.count).lazy
+        .compactMap { $0 }
+        .compactMap { String(validatingUTF8: $0) }
+    }
+#else
+    return addresses.map { address in
+      return withUnsafeTemporaryAllocation(of: CChar.self, capacity: 32) { buffer in
+        withVaList([CUnsignedLongLong(address)]) { args in
+#if _pointerBitWidth(_64)
+          _ = vsnprintf(buffer.baseAddress!, buffer.count, "0x%016llx", args)
+#else
+          _ = vsnprintf(buffer.baseAddress!, buffer.count, "0x%08llx", args)
+#endif
+        }
+        return String(cString: buffer.baseAddress!)
+      }
+    }
+#endif
+  }
 }
 
 // MARK: - Equatable, Hashable
@@ -104,6 +150,13 @@ extension Backtrace: Codable {
 // MARK: - Backtraces for thrown errors
 
 extension Backtrace {
+#if !SWT_NO_DYNAMIC_LINKING && _runtime(_ObjC)
+  /// The error user info key that the testing looks at to find a backtrace.
+  ///
+  /// This value is used by `init(forFirstThrowOf:)`.
+  static let errorUserInfoKey: String = "NSCallStackReturnAddresses"
+#endif
+
   /// An entry in the error-mapping cache.
   private struct _ErrorMappingCacheEntry: Sendable {
     /// The error object (`SwiftError` or `NSError`) that was thrown.
@@ -177,6 +230,15 @@ extension Backtrace {
     _oldWillThrowHandler.withLock { oldWillThrowHandler in
       oldWillThrowHandler = swt_setWillThrowHandler { _willThrow($0) }
     }
+
+#if !SWT_NO_DYNAMIC_LINKING && _runtime(_ObjC)
+    let _CFErrorSetCallStackCaptureEnabled = dlsym(swt_RTLD_DEFAULT(), "_CFErrorSetCallStackCaptureEnabled").map {
+      unsafeBitCast($0, to: (@convention(c) (CUnsignedChar) -> CUnsignedChar).self)
+    }
+    if let _CFErrorSetCallStackCaptureEnabled {
+      _ = _CFErrorSetCallStackCaptureEnabled(1)
+    }
+#endif
   }()
 
   /// Configure the Swift runtime to allow capturing backtraces when errors are
@@ -199,6 +261,12 @@ extension Backtrace {
     }
   }
 
+  /// The Core Foundation `CFNSError` class (bridged), if available.
+  private static let _NSCFErrorClass: AnyClass? = objc_getClass("__NSCFError") as? AnyClass
+
+  /// The Foundation `NSError` class, if available.
+  private static let _NSErrorClass: AnyClass? = objc_getClass("NSError") as? AnyClass
+
   /// Initialize an instance of this type with the previously-cached backtrace
   /// for a given error.
   ///
@@ -215,6 +283,16 @@ extension Backtrace {
   ///   existential containers with different addresses.
   @inline(never)
   init?(forFirstThrowOf error: any Error) {
+#if !SWT_NO_DYNAMIC_LINKING && _runtime(_ObjC)
+    let errorType = type(of: error as Any)
+    if errorType == Self._NSCFErrorClass || errorType == Self._NSErrorClass,
+       let userInfo = error._userInfo as? [String: Any],
+       let addresses = userInfo[Self.errorUserInfoKey] as? [UInt64] {
+      self = Backtrace(addresses: addresses)
+      return
+    }
+#endif
+
     let errorID = ObjectIdentifier(unsafeBitCast(error, to: AnyObject.self))
     let entry = Self._errorMappingCache.withLock { cache in
       cache[errorID]
