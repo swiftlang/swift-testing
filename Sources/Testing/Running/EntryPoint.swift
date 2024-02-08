@@ -43,7 +43,7 @@ private import TestingInternals
 
       var options: [Event.ConsoleOutputRecorder.Option] = .forStandardError
       if args.contains("--verbose") {
-        options.append(.recordVerboseOutput)
+        options.append(.useVerboseOutput)
       }
 
       await runTests(options: options, configuration: configuration)

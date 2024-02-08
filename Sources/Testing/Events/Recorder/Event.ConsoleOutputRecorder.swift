@@ -81,7 +81,7 @@ extension Event {
       ///
       /// When specified, additional output is provided. The exact nature of the
       /// additional output is implementation-defined and subject to change.
-      case recordVerboseOutput
+      case useVerboseOutput
     }
 
     /// The options for this event recorder.
@@ -269,7 +269,7 @@ extension Event.ConsoleOutputRecorder {
   /// - Returns: Whether any output was produced and written to this instance's
   ///   destination.
   @discardableResult public func record(_ event: borrowing Event, in context: borrowing Event.Context) -> Bool {
-    let verbose = options.contains(.recordVerboseOutput)
+    let verbose = options.contains(.useVerboseOutput)
     let messages = _humanReadableOutputRecorder.record(event, in: context, verbosely: verbose)
     for message in messages {
       let symbol = message.symbol?.stringValue(options: options) ?? " "

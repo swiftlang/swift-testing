@@ -95,7 +95,7 @@ struct EventRecorderTests {
 
     var configuration = Configuration()
     configuration.deliverExpectationCheckedEvents = true
-    let eventRecorder = Event.ConsoleOutputRecorder(options: [.recordVerboseOutput], writingUsing: stream.write)
+    let eventRecorder = Event.ConsoleOutputRecorder(options: [.useVerboseOutput], writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
     }
