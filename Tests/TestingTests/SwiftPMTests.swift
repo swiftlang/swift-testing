@@ -126,6 +126,46 @@ struct SwiftPMTests {
   }
 #endif
 
+  @Test("--repetitions argument (alone)")
+  @available(_regexAPI, *)
+  func repetitions() throws {
+    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--repetitions", "2468"])
+    #expect(configuration.iterationPolicy.count == 2468)
+    #expect(configuration.iterationPolicy.continuationCondition == nil)
+  }
+
+  @Test("--repeat-until pass argument (alone)")
+  @available(_regexAPI, *)
+  func repeatUntilPass() throws {
+    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--repeat-until", "pass"])
+    #expect(configuration.iterationPolicy.count == .max)
+    #expect(configuration.iterationPolicy.continuationCondition == .whileIssueRecorded)
+  }
+
+  @Test("--repeat-until fail argument (alone)")
+  @available(_regexAPI, *)
+  func repeatUntilFail() throws {
+    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--repeat-until", "fail"])
+    #expect(configuration.iterationPolicy.count == .max)
+    #expect(configuration.iterationPolicy.continuationCondition == .untilIssueRecorded)
+  }
+
+  @Test("--repeat-until argument with garbage value (alone)")
+  @available(_regexAPI, *)
+  func repeatUntilGarbage() {
+    #expect(throws: (any Error).self) {
+      _ = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--repeat-until", "qwertyuiop"])
+    }
+  }
+
+  @Test("--repetitions and --repeat-until arguments")
+  @available(_regexAPI, *)
+  func repetitionsAndRepeatUntil() throws {
+    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--repetitions", "2468", "--repeat-until", "pass"])
+    #expect(configuration.iterationPolicy.count == 2468)
+    #expect(configuration.iterationPolicy.continuationCondition == .whileIssueRecorded)
+  }
+
   @Test("list subcommand")
   func list() async throws {
     let testIDs = await listTestsForSwiftPM(Test.all)

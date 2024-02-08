@@ -20,6 +20,80 @@ public struct Configuration: Sendable {
   /// Whether or not to parallelize the execution of tests and test cases.
   public var isParallelizationEnabled = true
 
+  /// A type describing whether or not, and how, to iterate a test plan
+  /// repeatedly.
+  ///
+  /// When a ``Runner`` is run, it will run all tests in its corresponding
+  /// ``Runner/Plan`` according to the policy described by its
+  /// ``Configuration/iterationPolicy-swift.property`` property. For instance,
+  /// if that property is set to:
+  ///
+  /// ```swift
+  /// .repeating(.untilIssueRecorded, count: 10)
+  /// ```
+  ///
+  /// The entire test plan will be run repeatedly, up to 10 times. If an issue
+  /// is recorded, the current iteration will complete, but no further
+  /// iterations will be attempted.
+  ///
+  /// If the value of an instance's ``count`` property is `1`, the value of its
+  /// ``continuationCondition-swift.property`` property has no effect.
+  public struct IterationPolicy: Sendable {
+    /// An enumeration describing the conditions under which test iterations
+    /// should continue.
+    public enum ContinuationCondition: Sendable {
+      /// The test plan should continue iterating until an unknown issue is
+      /// recorded.
+      ///
+      /// When this continuation condition is used and an issue is recorded, the
+      /// current iteration will complete, but no further iterations will be
+      /// attempted.
+      case untilIssueRecorded
+
+      /// The test plan should continue iterating until an iteration completes
+      /// with no unknown issues recorded.
+      case whileIssueRecorded
+    }
+
+    /// The conditions under which test iterations should continue.
+    ///
+    /// If the value of this property is `nil`, a test plan will be run
+    /// ``count`` times regardless of whether or not issues are encountered
+    /// while running.
+    public var continuationCondition: ContinuationCondition?
+
+    /// The maximum number of times the test run should iterate.
+    ///
+    /// - Precondition: The value of this property must be greater than or equal
+    ///   to `1`.
+    public var count: Int {
+      willSet {
+        precondition(newValue >= 1, "Test runs must iterate at least once.")
+      }
+    }
+
+    /// Create an instance of this type.
+    ///
+    /// - Parameters:
+    ///   - continuationCondition: The conditions under which test iterations
+    ///     should continue. If `nil`, the iterations should continue
+    ///     unconditionally `count` times.
+    ///   - count: The maximum number of times the test run should iterate.
+    public static func repeating(_ continuationCondition: ContinuationCondition? = nil, count: Int) -> Self {
+      Self(continuationCondition: continuationCondition, count: count)
+    }
+
+    /// An instance of this type representing a single iteration.
+    public static var once: Self {
+      repeating(count: 1)
+    }
+  }
+
+  /// Whether or not, and how, to iterate the test plan repeatedly.
+  ///
+  /// By default, the value of this property allows for a single iteration.
+  public var iterationPolicy: IterationPolicy = .once
+
   // MARK: - Main actor isolation
 
 #if !SWT_NO_GLOBAL_ACTORS
