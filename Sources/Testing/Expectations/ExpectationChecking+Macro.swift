@@ -982,6 +982,7 @@ public func __checkClosureCall<R>(
 ) -> Result<Void, any Error> {
   var errorMatches = false
   var mismatchExplanationValue: String? = nil
+  var expression = expression
   do {
     let result = try body()
 
@@ -991,6 +992,7 @@ public func __checkClosureCall<R>(
     }
     mismatchExplanationValue = explanation
   } catch {
+    expression = expression.capturingRuntimeValues(error)
     do {
       errorMatches = try errorMatcher(error)
       if !errorMatches {
@@ -1029,6 +1031,7 @@ public func __checkClosureCall<R>(
 ) async -> Result<Void, any Error> {
   var errorMatches = false
   var mismatchExplanationValue: String? = nil
+  var expression = expression
   do {
     let result = try await body()
 
@@ -1038,6 +1041,7 @@ public func __checkClosureCall<R>(
     }
     mismatchExplanationValue = explanation
   } catch {
+    expression = expression.capturingRuntimeValues(error)
     do {
       errorMatches = try await errorMatcher(error)
       if !errorMatches {

@@ -76,6 +76,12 @@ extension Event {
       /// This option is ignored unless ``useANSIEscapeCodes`` is also
       /// specified.
       case useTagColors(_ tagColors: [Tag: Tag.Color])
+
+      /// Record verbose output.
+      ///
+      /// When specified, additional output is provided. The exact nature of the
+      /// additional output is implementation-defined and subject to change.
+      case useVerboseOutput
     }
 
     /// The options for this event recorder.
@@ -263,7 +269,8 @@ extension Event.ConsoleOutputRecorder {
   /// - Returns: Whether any output was produced and written to this instance's
   ///   destination.
   @discardableResult public func record(_ event: borrowing Event, in context: borrowing Event.Context) -> Bool {
-    let messages = _humanReadableOutputRecorder.record(event, in: context)
+    let verbose = options.contains(.useVerboseOutput)
+    let messages = _humanReadableOutputRecorder.record(event, in: context, verbosely: verbose)
     for message in messages {
       let symbol = message.symbol?.stringValue(options: options) ?? " "
 

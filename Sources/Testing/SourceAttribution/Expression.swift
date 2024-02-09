@@ -182,14 +182,18 @@ public struct Expression: Sendable {
   /// code and runtime value (or values) it represents.
   ///
   /// - Parameters:
+  ///   - includingTypeNames: Whether or not to include type names in output.
   ///   - includingParenthesesIfNeeded: Whether or not to enclose the
   ///     resulting string in parentheses (as needed depending on what
   ///     information this instance contains.)
   ///
   /// - Returns: A string describing this instance.
-  func expandedDescription(includingParenthesesIfNeeded: Bool = true) -> String {
+  func expandedDescription(includingTypeNames: Bool = false, includingParenthesesIfNeeded: Bool = true) -> String {
     switch kind {
-    case let .generic(sourceCode), let .stringLiteral(sourceCode, _):
+    case var .generic(sourceCode), var .stringLiteral(sourceCode, _):
+      if includingTypeNames, let fullyQualifiedTypeNameOfRuntimeValue {
+        sourceCode = "\(sourceCode): \(fullyQualifiedTypeNameOfRuntimeValue)"
+      }
       let runtimeValueDescription = runtimeValueDescription ?? "<not evaluated>"
       return if runtimeValueDescription == "(Function)" {
         // Hack: don't print string representations of function calls.
