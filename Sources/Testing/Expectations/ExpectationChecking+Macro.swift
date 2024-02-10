@@ -688,10 +688,16 @@ public func __checkValue<T>(
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) -> Result<T, any Error> {
+  // The double-optional below is because capturingRuntimeValue() takes optional
+  // values and interprets nil as "no value available". Rather, if optionalValue
+  // is `nil`, we want to actually store `nil` as the expression's evaluated
+  // value. The outer optional satisfies the generic constraint of
+  // capturingRuntimeValue(), and the inner optional represents the actual value
+  // (`nil`) that will be captured.
   __checkValue(
     optionalValue != nil,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expressionWithCapturedRuntimeValues(),
+    expressionWithCapturedRuntimeValues: (expressionWithCapturedRuntimeValues() ?? expression).capturingRuntimeValue(optionalValue as T??),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -723,15 +729,13 @@ public func __checkBinaryOperation<T>(
 ) -> Result<T, any Error> {
   let (optionalValue, rhs) = _callBinaryOperator(lhs, op, rhs)
   return __checkValue(
-    optionalValue != nil,
+    optionalValue,
     expression: expression,
     expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, rhs),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
-  ).map {
-    optionalValue.unsafelyUnwrapped
-  }
+  )
 }
 
 /// Check that an expectation has passed after a condition has been evaluated
@@ -749,15 +753,20 @@ public func __checkCast<V, T>(
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) -> Result<T, any Error> {
+  // NOTE: this call to __checkValue() does not go through the optional
+  // bottleneck because we do not want to capture the nil value on failure (it
+  // looks odd in test output.)
   let optionalValue = value as? T
   return __checkValue(
-    optionalValue,
+    optionalValue != nil,
     expression: expression,
     expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(value, type(of: value as Any)),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
-  )
+  ).map {
+    optionalValue.unsafelyUnwrapped
+  }
 }
 
 // MARK: - Matching errors by type

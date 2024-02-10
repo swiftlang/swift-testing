@@ -128,6 +128,27 @@ public struct Expression: Sendable {
   @_spi(ExperimentalSourceCodeCapturing)
   public var fullyQualifiedTypeNameOfRuntimeValue: String?
 
+  /// Copy this instance and capture the runtime value corresponding to it.
+  ///
+  /// - Parameters:
+  ///   - value: The captured runtime value.
+  ///
+  /// - Returns: A copy of `self` with information about the specified runtime
+  ///   value captured for future use.
+  func capturingRuntimeValue(_ value: (some Any)?) -> Self {
+    var result = self
+
+    if let value {
+      result.runtimeValueDescription = String(describingForTest: value)
+      result.fullyQualifiedTypeNameOfRuntimeValue = _typeName(type(of: value as Any), qualified: true)
+    } else {
+      result.runtimeValueDescription = nil
+      result.fullyQualifiedTypeNameOfRuntimeValue = nil
+    }
+
+    return result
+  }
+
   /// Copy this instance and capture the runtime values corresponding to its
   /// subexpressions.
   ///
@@ -138,6 +159,9 @@ public struct Expression: Sendable {
   ///
   /// - Returns: A copy of `self` with information about the specified runtime
   ///   values captured for future use.
+  ///
+  /// If the ``kind`` of `self` is ``Kind/generic`` or ``Kind/stringLiteral``,
+  /// this function is equivalent to ``capturingRuntimeValue(_:)``.
   func capturingRuntimeValues<each T>(_ firstValue: (some Any)?, _ additionalValues: repeat (each T)?) -> Self {
     var result = self
 
@@ -147,13 +171,7 @@ public struct Expression: Sendable {
 
     switch kind {
     case .generic, .stringLiteral:
-      if let firstValue {
-        result.runtimeValueDescription = String(describingForTest: firstValue)
-        result.fullyQualifiedTypeNameOfRuntimeValue = _typeName(type(of: firstValue as Any), qualified: true)
-      } else {
-        result.runtimeValueDescription = nil
-        result.fullyQualifiedTypeNameOfRuntimeValue = nil
-      }
+      result = capturingRuntimeValue(firstValue)
     case let .binaryOperation(lhsExpr, op, rhsExpr):
       result.kind = .binaryOperation(
         lhs: lhsExpr.capturingRuntimeValues(firstValue),
@@ -182,49 +200,63 @@ public struct Expression: Sendable {
   /// code and runtime value (or values) it represents.
   ///
   /// - Parameters:
+  ///   - depth: The depth of recursion at which this function is being called.
   ///   - includingTypeNames: Whether or not to include type names in output.
   ///   - includingParenthesesIfNeeded: Whether or not to enclose the
   ///     resulting string in parentheses (as needed depending on what
   ///     information this instance contains.)
   ///
   /// - Returns: A string describing this instance.
-  func expandedDescription(includingTypeNames: Bool = false, includingParenthesesIfNeeded: Bool = true) -> String {
+  func expandedDescription(depth: Int = 0, includingTypeNames: Bool = false, includingParenthesesIfNeeded: Bool = true) -> String {
+    var result = ""
     switch kind {
     case var .generic(sourceCode), var .stringLiteral(sourceCode, _):
-      if includingTypeNames, let fullyQualifiedTypeNameOfRuntimeValue {
-        sourceCode = "\(sourceCode): \(fullyQualifiedTypeNameOfRuntimeValue)"
-      }
-      let runtimeValueDescription = runtimeValueDescription ?? "<not evaluated>"
-      return if runtimeValueDescription == "(Function)" {
-        // Hack: don't print string representations of function calls.
-        sourceCode
-      } else if runtimeValueDescription == sourceCode {
-        sourceCode
-      } else if includingParenthesesIfNeeded {
-        "(\(sourceCode) → \(runtimeValueDescription))"
+      result = if includingTypeNames, let fullyQualifiedTypeNameOfRuntimeValue {
+        "\(sourceCode): \(fullyQualifiedTypeNameOfRuntimeValue)"
       } else {
-        "\(sourceCode) → \(runtimeValueDescription)"
+        sourceCode
       }
     case let .binaryOperation(lhsExpr, op, rhsExpr):
-      return "\(lhsExpr.expandedDescription()) \(op) \(rhsExpr.expandedDescription())"
+      result = "\(lhsExpr.expandedDescription(depth: depth + 1)) \(op) \(rhsExpr.expandedDescription(depth: depth + 1))"
     case let .functionCall(value, functionName, arguments):
       let includeParentheses = arguments.count > 1
       let argumentList = arguments.lazy
         .map { argument in
-          (argument.label, argument.value.expandedDescription(includingParenthesesIfNeeded: includeParentheses))
+          (argument.label, argument.value.expandedDescription(depth: depth + 1, includingParenthesesIfNeeded: includeParentheses))
         }.map { label, value in
           if let label {
             return "\(label): \(value)"
           }
           return value
         }.joined(separator: ", ")
-      if let value {
-        return "\(value.expandedDescription()).\(functionName)(\(argumentList))"
+      result = if let value {
+        "\(value.expandedDescription(depth: depth + 1)).\(functionName)(\(argumentList))"
+      } else {
+        "\(functionName)(\(argumentList))"
       }
-      return "\(functionName)(\(argumentList))"
     case let .propertyAccess(value, keyPath):
-      return "\(value.expandedDescription()).\(keyPath.expandedDescription(includingParenthesesIfNeeded: false))"
+      result = "\(value.expandedDescription(depth: depth + 1)).\(keyPath.expandedDescription(depth: depth + 1, includingParenthesesIfNeeded: false))"
     }
+
+    // If this expression is at the root of the expression graph and has no
+    // value, don't bother reporting the placeholder string for it.
+    if depth == 0 && runtimeValueDescription == nil {
+      return result
+    }
+
+    let runtimeValueDescription = runtimeValueDescription ?? "<not evaluated>"
+    result = if runtimeValueDescription == "(Function)" {
+      // Hack: don't print string representations of function calls.
+      result
+    } else if runtimeValueDescription == result {
+      result
+    } else if includingParenthesesIfNeeded && depth > 0 {
+      "(\(result) → \(runtimeValueDescription))"
+    } else {
+      "\(result) → \(runtimeValueDescription)"
+    }
+
+    return result
   }
 
   /// The set of parsed and captured subexpressions contained in this instance.

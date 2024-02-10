@@ -1135,8 +1135,33 @@ final class IssueTests: XCTestCase {
     }
 
     await Test {
-      let nilOptional: Int? = nil
-      #expect(nilOptional == 8)
+      let optionalValue: Int? = nil
+      #expect(optionalValue == 8)
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [expectationFailed], timeout: 0.0)
+  }
+
+  func testNilOptionalCallResult() async {
+    let expectationFailed = expectation(description: "Expectation failed")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      if case let .expectationFailed(expectation) = issue.kind {
+        expectationFailed.fulfill()
+        let desc = expectation.evaluatedExpression.expandedDescription()
+        print(desc)
+        XCTAssertTrue(desc.contains("nil"))
+      }
+    }
+
+    @Sendable func f() -> Int? { nil }
+
+    await Test {
+      _ = try #require(f())
     }.run(configuration: configuration)
 
     await fulfillment(of: [expectationFailed], timeout: 0.0)
