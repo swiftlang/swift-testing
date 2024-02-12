@@ -1153,7 +1153,6 @@ final class IssueTests: XCTestCase {
       if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
         let desc = expectation.evaluatedExpression.expandedDescription()
-        print(desc)
         XCTAssertTrue(desc.contains("nil"))
       }
     }
