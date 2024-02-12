@@ -133,6 +133,16 @@ extension Configuration {
 
 extension Test {
   /// The test that is running on the current task, if any.
+  ///
+  /// If the current task is running a test, or is a subtask of another task
+  /// that is running a test, the value of this property describes that test. If
+  /// no test is currently running, the value of this property is `nil`.
+  ///
+  /// If the current task is detached from a task that started running a test,
+  /// or if the current thread was created without using Swift concurrency (e.g.
+  /// by using [`Thread.detachNewThread(_:)`](https://developer.apple.com/documentation/foundation/thread/2088563-detachnewthread)
+  /// or [`DispatchQueue.async(execute:)`](https://developer.apple.com/documentation/dispatch/dispatchqueue/2016103-async)),
+  /// the value of this property may be `nil`.
   public static var current: Self? {
     Runner.RuntimeState.current.test
   }
@@ -155,6 +165,17 @@ extension Test {
 
 extension Test.Case {
   /// The test case that is running on the current task, if any.
+  ///
+  /// If the current task is running a test, or is a subtask of another task
+  /// that is running a test, the value of this property describes the test's
+  /// currently-running case. If no test is currently running, the value of this
+  /// property is `nil`.
+  ///
+  /// If the current task is detached from a task that started running a test,
+  /// or if the current thread was created without using Swift concurrency (e.g.
+  /// by using [`Thread.detachNewThread(_:)`](https://developer.apple.com/documentation/foundation/thread/2088563-detachnewthread)
+  /// or [`DispatchQueue.async(execute:)`](https://developer.apple.com/documentation/dispatch/dispatchqueue/2016103-async)),
+  /// the value of this property may be `nil`.
   public static var current: Self? {
     Runner.RuntimeState.current.testCase
   }
