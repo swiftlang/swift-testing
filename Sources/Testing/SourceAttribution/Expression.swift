@@ -210,7 +210,7 @@ public struct Expression: Sendable {
   func expandedDescription(depth: Int = 0, includingTypeNames: Bool = false, includingParenthesesIfNeeded: Bool = true) -> String {
     var result = ""
     switch kind {
-    case var .generic(sourceCode), var .stringLiteral(sourceCode, _):
+    case let .generic(sourceCode), let .stringLiteral(sourceCode, _):
       result = if includingTypeNames, let fullyQualifiedTypeNameOfRuntimeValue {
         "\(sourceCode): \(fullyQualifiedTypeNameOfRuntimeValue)"
       } else {
