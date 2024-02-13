@@ -15,6 +15,16 @@ private import Foundation
 /// A protocol for customizing how arguments passed to parameterized tests are
 /// encoded, which is used to match against when running specific arguments.
 ///
+/// The testing library checks whether a test argument conforms to this
+/// protocol, or any of several other known protocols, when running selected
+/// test cases. When a test argument conforms to this protocol, that conformance
+/// takes highest priority, and the testing library will then call
+/// ``encodeTestArgument(to:)`` on the argument. A type that conforms to this
+/// protocol is not required to conform to either `Encodable` or `Decodable`.
+///
+/// See <doc:ParameterizedTesting> for a list of the other supported ways to
+/// allow running selected test cases.
+///
 /// ## See Also
 ///
 /// - <doc:ParameterizedTesting>
