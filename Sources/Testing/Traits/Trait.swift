@@ -98,3 +98,38 @@ extension SuiteTrait {
     false
   }
 }
+
+/// A protocol extending ``Trait`` that offers an additional customization point
+/// for trait authors to execute code before and after each test function (if
+/// added to the traits of a test function), or before and after each test suite
+/// (if added to the traits of a test suite).
+@_spi(ExperimentalTraits)
+public protocol CustomExecutionTrait: Trait {
+
+  /// Execute a function with the effects of this trait applied.
+  ///
+  /// - Parameters:
+  ///   - function: The function to perform. If `test` represents a test suite,
+  ///     this function encapsulates running all the tests in that suite. If
+  ///     `test` represents a test function, this function is the body of that
+  ///     test function (including all cases if it is parameterized.)
+  ///   - test: The test under which `function` is being performed.
+  ///   - testCase: The test case, if any, under which `function` is being
+  ///     performed. This is `nil` when invoked on a suite.
+  ///
+  /// - Throws: Whatever is thrown by `function`, or an error preventing the
+  ///   trait from running correctly.
+  ///
+  /// This function is called for each ``CustomExecutionTrait`` on a test suite
+  /// or test function and allows additional work to be performed before and
+  /// after the test runs.
+  ///
+  /// This function is invoked once for the test it is applied to, and then once
+  /// for each test case in that test, if applicable.
+  ///
+  /// Issues recorded by this function are recorded against `test`.
+  ///
+  /// - Note: If a test function or test suite is skipped, this function does
+  ///   not get invoked by the runner.
+  @Sendable func execute(_ function: @escaping @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws
+}

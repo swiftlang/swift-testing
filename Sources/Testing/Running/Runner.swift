@@ -114,6 +114,51 @@ extension Runner {
     }
   }
 
+  /// Execute the ``CustomExecutionTrait/execute(_:for:testCase:)`` functions
+  /// associated with the test in a plan step.
+  ///
+  /// - Parameters:
+  ///   - step: The step being performed.
+  ///   - testCase: The test case, if applicable, for which to execute the
+  ///     custom trait.
+  ///   - body: A function to execute from within the
+  ///     ``CustomExecutionTrait/execute(_:for:testCase:)`` functions of each
+  ///     trait applied to `step.test`.
+  ///
+  /// - Throws: Whatever is thrown by `body` or by any of the
+  ///   ``CustomExecutionTrait/execute(_:for:testCase:)`` functions.
+  private func _executeTraits(
+    for step: Plan.Step,
+    testCase: Test.Case?,
+    _ body: @escaping @Sendable () async throws -> Void
+  ) async throws {
+    // If the test does not have any traits, exit early to avoid unnecessary
+    // heap allocations below.
+    if step.test.traits.isEmpty {
+      return try await body()
+    }
+
+    if case .skip = step.action {
+      return try await body()
+    }
+
+    // Construct a recursive function that invokes each trait's ``execute(_:for:testCase:)``
+    // function. The order of the sequence is reversed so that the last trait is
+    // the one that invokes body, then the second-to-last invokes the last, etc.
+    // and ultimately the first trait is the first one to be invoked.
+    let executeAllTraits = step.test.traits.lazy
+      .reversed()
+      .compactMap { $0 as? any CustomExecutionTrait }
+      .compactMap { $0.execute(_:for:testCase:) }
+      .reduce(body) { executeAllTraits, traitExecutor in
+        {
+          try await traitExecutor(executeAllTraits, step.test, testCase)
+        }
+      }
+
+    try await executeAllTraits()
+  }
+
   /// Run this test.
   ///
   /// - Parameters:
@@ -171,10 +216,14 @@ extension Runner {
       }
     }
 
-    if let step = stepGraph.value, case .run = step.action, let testCases = step.test.testCases {
+    if let step = stepGraph.value, case .run = step.action {
       try await Test.withCurrent(step.test) {
         try await _withErrorHandling(for: step, sourceLocation: step.test.sourceLocation) {
-          try await _runTestCases(testCases, within: step)
+          try await _executeTraits(for: step, testCase: nil) {
+            if let testCases = step.test.testCases {
+              try await _runTestCases(testCases, within: step)
+            }
+          }
         }
       }
     }
@@ -257,7 +306,9 @@ extension Runner {
       let sourceLocation = step.test.sourceLocation
       try await _withErrorHandling(for: step, sourceLocation: sourceLocation) {
         try await withTimeLimit(for: step.test, configuration: configuration) {
-          try await testCase.body()
+          try await _executeTraits(for: step, testCase: testCase) {
+            try await testCase.body()
+          }
         } timeoutHandler: { timeLimit in
           Issue.record(
             .timeLimitExceeded(timeLimitComponents: timeLimit),
