@@ -59,6 +59,20 @@ struct Test_Case_Argument_IDTests {
     let argumentID = try #require(argument.id)
     #expect(String(bytes: argumentID.bytes, encoding: .utf8) == #""abc""#)
   }
+
+  @Test("One RawRepresentable parameter")
+  func oneRawRepresentableParameter() async throws {
+    let test = Test(
+      arguments: [MyRawRepresentableArgument(rawValue: "abc")],
+      parameters: [Test.Parameter(index: 0, firstName: "value")]
+    ) { _ in }
+    let testCases = try #require(test.testCases)
+    let testCase = try #require(testCases.first { _ in true })
+    #expect(testCase.arguments.count == 1)
+    let argument = try #require(testCase.arguments.first)
+    let argumentID = try #require(argument.id)
+    #expect(String(bytes: argumentID.bytes, encoding: .utf8) == #""abc""#)
+  }
 }
 
 // MARK: - Fixture parameter types
@@ -85,4 +99,8 @@ extension MyCustomTestArgument: Encodable {}
 
 private struct MyIdentifiableArgument: Identifiable {
   var id: String
+}
+
+private struct MyRawRepresentableArgument: RawRepresentable {
+  var rawValue: String
 }

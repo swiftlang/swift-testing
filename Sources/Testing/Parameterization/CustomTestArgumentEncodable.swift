@@ -15,24 +15,9 @@ private import Foundation
 /// A protocol for customizing how arguments passed to parameterized tests are
 /// encoded, which is used to match against when running specific arguments.
 ///
-/// By default, the testing library checks whether a test argument conforms to
-/// `Encodable` and encodes it using `encode(to:)` if it does. `Encodable` is
-/// sufficient for many types, but for some types the output of that function
-/// may contain large data payloads that cause poor performance, may not be
-/// stable and unique, or may otherwise be deemed unsuitable for testing.
+/// ## See Also
 ///
-/// If the type of the argument does not conform to `Encodable` but it does
-/// conform to `Identifiable` and its associated `ID` type conforms to
-/// `Encodable`, the value of its `id` property is encoded with `encode(to:)`
-/// and is used as the encoded representation.
-///
-/// If neither of the approaches for encoded representation described above is
-/// sufficient, a type can be made to conform to
-/// ``CustomTestArgumentEncodable``. The testing library will then call
-/// ``encodeTestArgument(to:)`` on values of that type instead of `encode(to:)`.
-///
-/// A type that conforms to this protocol is not required to conform to either
-/// `Encodable` or `Decodable`.
+/// - <doc:ParameterizedTesting>
 public protocol CustomTestArgumentEncodable: Sendable {
   /// Encode this test argument.
   ///
@@ -78,6 +63,8 @@ extension Test.Case.Argument.ID {
 
     let encodableValue: (any Encodable)? = if let customEncodable = value as? any CustomTestArgumentEncodable {
       customArgumentWrapper(for: customEncodable)
+    } else if let rawRepresentable = value as? any RawRepresentable, let encodableRawValue = rawRepresentable.rawValue as? any Encodable {
+      encodableRawValue
     } else if let encodable = value as? any Encodable {
       encodable
     } else if let identifiable = value as? any Identifiable, let encodableID = identifiable.id as? any Encodable {

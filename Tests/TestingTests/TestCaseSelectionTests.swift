@@ -171,6 +171,36 @@ struct TestCaseSelectionTests {
       await fixtureTest.run(configuration: configuration)
     }
   }
+
+  @Test("Multiple arguments conforming to RawRepresentable, passed to one parameter, selecting one case")
+  func oneParameterAcceptingRawRepresentableArgumentSelectingOneCase() async throws {
+    let fixtureTest = Test(arguments: [
+      MyCustomRawRepresentableArgument(rawValue: "a"),
+      MyCustomRawRepresentableArgument(rawValue: "b"),
+    ], parameters: [Test.Parameter(index: 0, firstName: "value")]) { arg in
+      #expect(arg.rawValue == "a")
+    }
+
+    let selectedTestCase = try #require(fixtureTest.testCases?.first { _ in true })
+
+    var configuration = Configuration()
+    configuration.testCaseFilter = { testCase, _ in
+      testCase.id == selectedTestCase.id
+    }
+
+    await confirmation { testStarted in
+      configuration.eventHandler = { event, context in
+        if case .testCaseStarted = event.kind {
+          testStarted()
+        }
+        if case let .issueRecorded(issue) = event.kind {
+          Issue.record("Unexpected issue: \(issue)")
+        }
+      }
+
+      await fixtureTest.run(configuration: configuration)
+    }
+  }
 }
 
 // MARK: - Fixture parameter types
@@ -196,4 +226,8 @@ private struct MyCustomIdentifiableArgument: Identifiable, CustomStringConvertib
   var description: String {
     fatalError("Should not be called")
   }
+}
+
+private struct MyCustomRawRepresentableArgument: RawRepresentable {
+  var rawValue: String
 }
