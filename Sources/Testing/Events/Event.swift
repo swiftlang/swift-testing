@@ -329,13 +329,13 @@ extension Event.Kind {
     /// To enable events of this kind, set
     /// ``Configuration/deliverExpectationCheckedEvents`` to `true` before
     /// running tests.
-    case expectationChecked(_ expectation: Expectation.Snapshot)
+    indirect case expectationChecked(_ expectation: Expectation.Snapshot)
 
     /// An issue was recorded.
     ///
     /// - Parameters:
     ///   - issue: The issue which was recorded.
-    case issueRecorded(_ issue: Issue.Snapshot)
+    indirect case issueRecorded(_ issue: Issue.Snapshot)
 
     /// A test ended.
     case testEnded
@@ -344,7 +344,7 @@ extension Event.Kind {
     ///
     /// - Parameters:
     ///   - skipInfo: A ``SkipInfo`` containing details about this skipped test.
-    case testSkipped(_ skipInfo: SkipInfo)
+    indirect case testSkipped(_ skipInfo: SkipInfo)
 
     /// A step in the runner plan ended.
     ///
