@@ -21,7 +21,7 @@ public struct Issue: Sendable {
     ///
     /// - Parameters:
     ///   - expectation: The expectation that failed.
-    case expectationFailed(_ expectation: Expectation)
+    indirect case expectationFailed(_ expectation: Expectation)
 
     /// An issue due to a confirmation being confirmed the wrong number of
     /// times.
@@ -36,14 +36,14 @@ public struct Issue: Sendable {
     /// ``confirmation(_:expectedCount:fileID:filePath:line:column:_:)`` when
     /// the confirmation passed to these functions' `body` closures is confirmed
     /// too few or too many times.
-    case confirmationMiscounted(actual: Int, expected: Int)
+    indirect case confirmationMiscounted(actual: Int, expected: Int)
 
     /// An issue due to an `Error` being thrown by a test function and caught by
     /// the testing library.
     ///
     /// - Parameters:
     ///   - error: The error which was associated with this issue.
-    case errorCaught(_ error: any Error)
+    indirect case errorCaught(_ error: any Error)
 
     /// An issue due to a test reaching its time limit and timing out.
     ///
@@ -55,7 +55,7 @@ public struct Issue: Sendable {
     ///     instance of `Duration`, but the testing library's deployment target
     ///     predates the introduction of that type.
     /// }
-    case timeLimitExceeded(timeLimitComponents: (seconds: Int64, attoseconds: Int64))
+    indirect case timeLimitExceeded(timeLimitComponents: (seconds: Int64, attoseconds: Int64))
 
     /// A known issue was expected, but was not recorded.
     case knownIssueNotRecorded

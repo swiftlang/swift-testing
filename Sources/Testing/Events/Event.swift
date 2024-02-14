@@ -29,7 +29,7 @@ public struct Event: Sendable {
     /// ``Test`` being run, skipped, or another action, so this event will only
     /// be followed by a ``testStarted`` event if the step's test is run.
     @_spi(ExperimentalTestRunning)
-    case planStepStarted(_ step: Runner.Plan.Step)
+    indirect case planStepStarted(_ step: Runner.Plan.Step)
 
     /// A test started.
     ///
@@ -66,13 +66,13 @@ public struct Event: Sendable {
     /// To enable events of this kind, set
     /// ``Configuration/deliverExpectationCheckedEvents`` to `true` before
     /// running tests.
-    case expectationChecked(_ expectation: Expectation)
+    indirect case expectationChecked(_ expectation: Expectation)
 
     /// An issue was recorded.
     ///
     /// - Parameters:
     ///   - issue: The issue which was recorded.
-    case issueRecorded(_ issue: Issue)
+    indirect case issueRecorded(_ issue: Issue)
 
     /// A test ended.
     ///
@@ -89,7 +89,7 @@ public struct Event: Sendable {
     /// The test that was skipped is contained in the ``Event/Context`` instance
     /// that was passed to the event handler along with this event. Its ID is
     /// available from this event's ``Event/testID`` property.
-    case testSkipped(_ skipInfo: SkipInfo)
+    indirect case testSkipped(_ skipInfo: SkipInfo)
 
     /// A step in the runner plan ended.
     ///
@@ -99,7 +99,7 @@ public struct Event: Sendable {
     /// This is posted when a ``Runner`` finishes processing a
     /// ``Runner/Plan/Step``.
     @_spi(ExperimentalTestRunning)
-    case planStepEnded(Runner.Plan.Step)
+    indirect case planStepEnded(Runner.Plan.Step)
 
     /// A test run ended.
     ///
