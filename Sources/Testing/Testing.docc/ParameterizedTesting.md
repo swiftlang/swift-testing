@@ -137,6 +137,29 @@ words, this test function will be passed the inputs `(.burger, 1)`,
 `(.iceCream, 2)`, ..., `(.kebab, 5)` instead of `(.burger, 1)`, `(.burger, 2)`,
 `(.burger, 3)`, ... `(.kebab, 99)`, `(.kebab, 100)`.
 
+## Running selected test cases
+
+If a parameterized test meets certain requirements, the testing library allows
+users to run specific test cases it contains. This can be useful when a test
+has many cases but only some are failing since it enables re-running and
+debugging the failing cases in isolation.
+
+To support running selected test cases, it must be possible to deterministically
+match the test case's arguments. When a user attempts to run selected test cases
+of a parameterized test function, the testing library evaluates each argument of
+the tests' cases for conformance to one of several known protocols, and if all
+arguments of a test case conform to one of those protocols, that test case can
+be run selectively. The following lists the known protocols, in precedence order
+(highest to lowest):
+
+1. ``CustomTestArgumentEncodable``.
+1. `RawRepresentable`, where `RawValue` conforms to `Encodable`.
+1. `Encodable`.
+1. `Identifiable`, where `ID` conforms to `Encodable`.
+
+If any argument of a test case does not meet one of the above requirements, then
+the overall test case cannot be run selectively.
+
 ## Topics
 
 - ``Test(_:_:arguments:)-8kn7a``
