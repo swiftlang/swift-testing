@@ -35,6 +35,11 @@ Parallelization can be disabled on a per-function or per-suite basis using the
     // This function will be invoked serially, once per condiment, because the
     // containing suite has the .serial trait.
   }
+
+  @Test func startEngine() async throws {
+    // This function will not run while refill(condiment:) is running. One test
+    // must end before the other will start.
+  }
 }
 ```
 
