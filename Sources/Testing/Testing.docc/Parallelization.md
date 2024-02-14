@@ -30,7 +30,7 @@ Parallelization can be disabled on a per-function or per-suite basis using the
   // .serial trait.
 }
 
-@Suite(.serial) {
+@Suite(.serial) struct FoodTruckTests {
   @Test(arguments: Condiment.allCases) func refill(condiment: Condiment) {
     // This function will be invoked serially, once per condiment, because the
     // containing suite has the .serial trait.

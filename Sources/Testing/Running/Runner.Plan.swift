@@ -413,6 +413,9 @@ extension Runner.Plan.Action {
   @_spi(ExperimentalSnapshotting)
   public enum Snapshot: Sendable, Codable {
     /// The test should be run.
+    ///
+    /// - Parameters:
+    ///   - options: Options to apply to this action when it is run.
     case run(options: RunOptions)
 
     /// The test should be skipped.
