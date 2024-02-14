@@ -49,7 +49,7 @@ private import TestingInternals
       await runTests(options: options, configuration: configuration)
     }
   } catch {
-    let stderr = swt_stderr()
+    let stderr = originalStandardError
     fputs(String(describing: error), stderr)
     fflush(stderr)
 
@@ -240,7 +240,7 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 ///   - configuration: The configuration to use for running.
 func runTests(options: [Event.ConsoleOutputRecorder.Option], configuration: Configuration) async {
   let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
-    let stderr = swt_stderr()
+    let stderr = originalStandardError
     fputs(string, stderr)
     fflush(stderr)
   }

@@ -296,6 +296,7 @@ extension Runner {
         Event.post(.runEnded, for: nil, testCase: nil, configuration: runner.configuration)
       }
 
+      startListeningForStandardIO()
       await withTaskGroup(of: Void.self) { [runner] taskGroup in
         _ = taskGroup.addTaskUnlessCancelled {
           try? await runner._runStep(atRootOf: runner.plan.stepGraph, depth: 0)

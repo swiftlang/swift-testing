@@ -365,6 +365,9 @@ extension Event.HumanReadableOutputRecorder {
       }
       return CollectionOfOne(primaryMessage) + additionalMessages
 
+    case .messagePrinted:
+      break
+
     case .testCaseStarted:
       guard let testCase = eventContext.testCase, testCase.isParameterized else {
         break

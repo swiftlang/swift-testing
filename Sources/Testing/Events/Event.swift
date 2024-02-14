@@ -74,6 +74,8 @@ public struct Event: Sendable {
     ///   - issue: The issue which was recorded.
     case issueRecorded(_ issue: Issue)
 
+    case messagePrinted(_ message: String, stream: StandardIOStream)
+
     /// A test ended.
     ///
     /// The test that ended is contained in the ``Event/Context`` instance that
@@ -337,6 +339,8 @@ extension Event.Kind {
     ///   - issue: The issue which was recorded.
     case issueRecorded(_ issue: Issue.Snapshot)
 
+    case messagePrinted(_ message: String, stream: StandardIOStream)
+
     /// A test ended.
     case testEnded
 
@@ -381,6 +385,8 @@ extension Event.Kind {
         self = Snapshot.expectationChecked(expectationSnapshot)
       case let .issueRecorded(issue):
         self = .issueRecorded(Issue.Snapshot(snapshotting: issue))
+      case let .messagePrinted(message, stream):
+        self = .messagePrinted(message, stream: stream)
       case .testEnded:
         self = .testEnded
       case let .testSkipped(skipInfo):

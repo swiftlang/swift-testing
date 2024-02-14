@@ -175,7 +175,7 @@ public enum XCTestScaffold: Sendable {
       options: .forStandardError
     )
 #if SWT_TARGET_OS_APPLE
-    let stderr = swt_stderr()
+    let stderr = originalStandardError
     fputs(message, stderr)
     fflush(stderr)
 #else
