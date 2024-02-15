@@ -41,7 +41,7 @@ private import TestingInternals
         oldEventHandler(event, context)
       }
 
-      var options: [Event.ConsoleOutputRecorder.Option] = .forStandardError
+      var options: [Event.ConsoleOutputRecorder.Option] = .for(.stderr)
       if args.contains("--verbose") {
         options.append(.useVerboseOutput)
       }
@@ -49,9 +49,10 @@ private import TestingInternals
       await runTests(options: options, configuration: configuration)
     }
   } catch {
-    let stderr = swt_stderr()
-    fputs(String(describing: error), stderr)
-    fflush(stderr)
+    FileHandle.stderr.withUnsafeCFILEHandle { stderr in
+      fputs(String(describing: error), stderr)
+      fflush(stderr)
+    }
 
     exitCode.withLock { exitCode in
       exitCode = EXIT_FAILURE
@@ -145,44 +146,15 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
   if let xunitOutputIndex = args.firstIndex(of: "--xunit-output"), xunitOutputIndex < args.endIndex {
     let xunitOutputPath = args[args.index(after: xunitOutputIndex)]
 
-#if os(Windows)
-    // Windows deprecates fopen() as insecure, so create a wrapper function
-    // that calls _wfopen_s() instead. If we end up using fopen() in other
-    // places, be sure to hoist this function so it can be reused (and consider
-    // combining it with FileCloser into a single "file" interface.)
-    func fopen(_ path: String, _ mode: String) -> SWT_FILEHandle? {
-      path.withCString(encodedAs: UTF16.self) { path in
-        mode.withCString(encodedAs: UTF16.self) { mode in
-          var file: SWT_FILEHandle?
-          let result = _wfopen_s(&file, path, mode)
-          if result != 0 {
-            _set_errno(result)
-            return nil
-          }
-          return file
-        }
-      }
-    }
-#endif
-
     // Open the XML file for writing.
-    guard let file = fopen(xunitOutputPath, "wb") else {
-      throw CError(rawValue: swt_errno())
-    }
-
-    // Create a simple type that contains the C file handle we created and
-    // ensures it is closed when it goes out of scope.
-    struct FileCloser: @unchecked Sendable, ~Copyable {
-      var file: SWT_FILEHandle
-      deinit {
-        fclose(file)
-      }
-    }
+    let file = try FileHandle(forWritingAtPath: xunitOutputPath)
 
     // Set up the XML recorder.
-    let xmlRecorder = Event.JUnitXMLRecorder { [file = FileCloser(file: file)] string in
-      fputs(string, file.file)
-      fflush(file.file)
+    let xmlRecorder = Event.JUnitXMLRecorder { string in
+      file.withUnsafeCFILEHandle { file in
+        fputs(string, file)
+        fflush(file)
+      }
     }
 
     let oldEventHandler = configuration.eventHandler
@@ -240,9 +212,10 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 ///   - configuration: The configuration to use for running.
 func runTests(options: [Event.ConsoleOutputRecorder.Option], configuration: Configuration) async {
   let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
-    let stderr = swt_stderr()
-    fputs(string, stderr)
-    fflush(stderr)
+    FileHandle.stderr.withUnsafeCFILEHandle { stderr in
+      fputs(string, stderr)
+      fflush(stderr)
+    }
   }
 
   var configuration = configuration
@@ -260,14 +233,14 @@ func runTests(options: [Event.ConsoleOutputRecorder.Option], configuration: Conf
 
 extension [Event.ConsoleOutputRecorder.Option] {
   /// The set of options to use when writing to the standard error stream.
-  static var forStandardError: Self {
+  static func `for`(_ fileHandle: borrowing FileHandle) -> Self {
     var result = Self()
 
 #if !SWT_NO_FILE_IO
-    let useANSIEscapeCodes = _standardErrorSupportsANSIEscapeCodes
+    let useANSIEscapeCodes = _fileHandleSupportsANSIEscapeCodes(fileHandle)
     if useANSIEscapeCodes {
       result.append(.useANSIEscapeCodes)
-      if _standardErrorSupports256ColorANSIEscapeCodes {
+      if _terminalSupports256ColorANSIEscapeCodes {
         result.append(.use256ColorANSIEscapeCodes)
       }
     }
@@ -303,51 +276,31 @@ extension [Event.ConsoleOutputRecorder.Option] {
 #if !SWT_NO_FILE_IO
   /// Whether or not the current process's standard error stream is capable of
   /// accepting and rendering ANSI escape codes.
-  private static var _standardErrorSupportsANSIEscapeCodes: Bool {
+  private static func _fileHandleSupportsANSIEscapeCodes(_ fileHandle: borrowing FileHandle) -> Bool {
     // Respect the NO_COLOR environment variable. SEE: https://www.no-color.org
     if let noColor = Environment.variable(named: "NO_COLOR"), !noColor.isEmpty {
       return false
     }
 
-    // Determine if stderr appears to write to a Terminal window capable of
-    // accepting ANSI escape codes.
-#if SWT_TARGET_OS_APPLE || os(Linux)
-    // If stderr is a TTY and TERM is set, that's good enough for us.
-    if 0 != isatty(STDERR_FILENO),
-       let term = Environment.variable(named: "TERM"),
-       !term.isEmpty && term != "dumb" {
+    // Determine if this file handle appears to write to a Terminal window
+    // capable of accepting ANSI escape codes.
+    if fileHandle.isTTY {
       return true
     }
-#elseif os(Windows)
-    // If there is a console buffer associated with stderr, then it's a console.
-    if let stderrHandle = GetStdHandle(STD_ERROR_HANDLE) {
-      var screenBufferInfo = CONSOLE_SCREEN_BUFFER_INFO()
-      if GetConsoleScreenBufferInfo(stderrHandle, &screenBufferInfo) {
-        return true
-      }
-    }
-#endif
 
-    // If stderr is a pipe, assume the other end is using it to forward output
-    // from this process to its own stderr file. This is how `swift test`
+    // If the file handle is a pipe, assume the other end is using it to forward
+    // output from this process to its own stderr file. This is how `swift test`
     // invokes the testing library, for example.
-#if SWT_TARGET_OS_APPLE || os(Linux)
-    var statStruct = stat()
-    if 0 == fstat(STDERR_FILENO, &statStruct) && swt_S_ISFIFO(statStruct.st_mode) {
+    if fileHandle.isPipe {
       return true
     }
-#elseif os(Windows)
-    if let stderrHandle = GetStdHandle(STD_ERROR_HANDLE), FILE_TYPE_PIPE == GetFileType(stderrHandle) {
-      return true
-    }
-#endif
 
     return false
   }
 
   /// Whether or not the system terminal claims to support 256-color ANSI escape
   /// codes.
-  private static var _standardErrorSupports256ColorANSIEscapeCodes: Bool {
+  private static var _terminalSupports256ColorANSIEscapeCodes: Bool {
 #if SWT_TARGET_OS_APPLE || os(Linux)
     if let termVariable = Environment.variable(named: "TERM") {
       return strstr(termVariable, "256") != nil

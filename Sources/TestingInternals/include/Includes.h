@@ -56,6 +56,10 @@
 #include <pthread.h>
 #endif
 
+#if __has_include(<pty.h>)
+#include <pty.h>
+#endif
+
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX

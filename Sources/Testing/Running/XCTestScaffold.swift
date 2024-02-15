@@ -172,12 +172,13 @@ public enum XCTestScaffold: Sendable {
 #if SWIFT_PM_SUPPORTS_SWIFT_TESTING
     let message = Event.ConsoleOutputRecorder.warning(
       "This version of Swift Package Manager supports running swift-testing tests directly. Ignoring call to \(#function).",
-      options: .forStandardError
+      options: .for(.stderr)
     )
 #if SWT_TARGET_OS_APPLE
-    let stderr = swt_stderr()
-    fputs(message, stderr)
-    fflush(stderr)
+    FileHandle.stderr.withUnsafeCFILEHandle { stderr in
+      fputs(message, stderr)
+      fflush(stderr)
+    }
 #else
     print(message)
 #endif
@@ -247,7 +248,7 @@ public enum XCTestScaffold: Sendable {
 #endif
     }
 
-    await runTests(options: .forStandardError, configuration: configuration)
+    await runTests(options: .for(.stderr), configuration: configuration)
 #endif
   }
 }
