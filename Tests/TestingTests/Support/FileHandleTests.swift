@@ -54,15 +54,12 @@ struct FileHandleTests {
     // NOTE: we are not trying to test mkstemp() here. We are trying to test the
     // capacity of FileHandle to open a file for writing, and need a temporary
     // file to write to.
-    let fileName = "can_write_to_file_\(UInt64.random(in: 0 ..< .max))"
 #if os(Windows)
-    let cPath = try #require(_tempnam("c:\\tmp", fileName))
-    defer {
-      free(cPath)
+    let path = try String(unsafeUninitializedCapacity: 1024) { buffer in
+      try #require(0 == tmpnam_s(buffer.baseAddress!, buffer.count))
     }
-    let path = String(cString: cPath)
 #else
-    let path = "/tmp/\(fileName)"
+    let path = "/tmp/can_write_to_file_\(UInt64.random(in: 0 ..< .max))"
 #endif
     defer {
       remove(path)
@@ -85,7 +82,17 @@ struct FileHandleTests {
       return file!
     }()
 #else
-    let file = try #require(fopen("/dev/tty", "wb"))
+    let oldTERM = Environment.variable(named: "TERM")
+    Environment.setVariable("xterm", named: "TERM")
+    defer {
+      Environment.setVariable(oldTERM, named: "TERM")
+    }
+
+    var primary: CInt = 0
+    var secondary: CInt = 0
+    try #require(0 == openpty(&primary, &secondary, nil, nil, nil))
+    close(secondary)
+    let file = try #require(fdopen(primary, "wb"))
 #endif
     let fileHandle = FileHandle(unsafeCFILEHandle: file, closeWhenDone: true)
     #expect(Bool(fileHandle.isTTY))
