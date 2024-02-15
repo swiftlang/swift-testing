@@ -21,7 +21,7 @@ extension Runner {
       ///
       /// - Parameters:
       ///   - skipInfo: A ``SkipInfo`` representing the details of this skip.
-      case skip(_ skipInfo: SkipInfo = .init())
+      indirect case skip(_ skipInfo: SkipInfo = .init())
 
       /// The test should record an issue due to a failure during
       /// planning.
@@ -29,7 +29,7 @@ extension Runner {
       /// - Parameters:
       ///   - issue: An issue representing the failure encountered during
       ///     planning.
-      case recordIssue(_ issue: Issue)
+      indirect case recordIssue(_ issue: Issue)
 
       /// Whether this action should be applied recursively to child tests or
       /// should only be applied to the test it is already associated with.
