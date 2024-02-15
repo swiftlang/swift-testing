@@ -220,5 +220,4 @@ extension FileHandle {
 #endif
   }
 }
-
 #endif
