@@ -207,7 +207,8 @@ public struct Expression: Sendable {
   ///     information this instance contains.)
   ///
   /// - Returns: A string describing this instance.
-  func expandedDescription(depth: Int = 0, includingTypeNames: Bool = false, includingParenthesesIfNeeded: Bool = true) -> String {
+  @_spi(ExperimentalSourceCodeCapturing)
+  public func expandedDescription(depth: Int = 0, includingTypeNames: Bool = false, includingParenthesesIfNeeded: Bool = true) -> String {
     var result = ""
     switch kind {
     case let .generic(sourceCode), let .stringLiteral(sourceCode, _):
