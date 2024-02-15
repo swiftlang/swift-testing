@@ -77,11 +77,7 @@ struct FileHandleTests {
   @Test("Can recognize opened TTY")
   func isTTY() throws {
 #if os(Windows)
-    let file: SWT_FILEHandle = try {
-      var file: SWT_FILEHandle?
-      try #require(0 == fopen_s(&file, "CON", "wb"))
-      return file!
-    }()
+    let fileHandle = try FileHandle(forWritingAtPath: "CON")
 #else
     let oldTERM = Environment.variable(named: "TERM")
     Environment.setVariable("xterm", named: "TERM")
@@ -125,15 +121,10 @@ struct FileHandleTests {
   @Test("/dev/null is not a TTY or pipe")
   func devNull() throws {
 #if os(Windows)
-    let file: SWT_FILEHandle = try {
-      var file: SWT_FILEHandle?
-      try #require(0 == fopen_s(&file, "NUL", "wb"))
-      return file!
-    }()
+    let fileHandle = try FileHandle(forWritingAtPath: "NUL")
 #else
-    let file = try #require(fopen("/dev/null", "wb"))
+    let fileHandle = try FileHandle(forWritingAtPath: "/dev/null")
 #endif
-    let fileHandle = FileHandle(unsafeCFILEHandle: file, closeWhenDone: true)
     #expect(!Bool(fileHandle.isTTY))
     #expect(!Bool(fileHandle.isPipe))
   }
