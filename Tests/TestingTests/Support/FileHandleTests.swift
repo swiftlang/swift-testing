@@ -57,6 +57,7 @@ struct FileHandleTests {
 #if os(Windows)
     let path = try String(unsafeUninitializedCapacity: 1024) { buffer in
       try #require(0 == tmpnam_s(buffer.baseAddress!, buffer.count))
+      return strnlen(buffer.baseAddress!, buffer.count)
     }
 #else
     let path = "/tmp/can_write_to_file_\(UInt64.random(in: 0 ..< .max))"
