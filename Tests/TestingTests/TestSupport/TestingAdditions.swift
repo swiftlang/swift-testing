@@ -13,6 +13,19 @@
 import XCTest
 #endif
 
+extension Tag {
+  /// A tag indicating that a test is related to a trait.
+  @Tag static var traitRelated: Self
+
+  /// Convenience initializer/shorthand for tags.
+  ///
+  /// This initializer is equivalent to ``Tag/init(userProvidedStringValue:)``
+  /// but is shorter to help keep tests readable.
+  init(_ stringValue: _const String) {
+    self.init(userProvidedStringValue: stringValue)
+  }
+}
+
 /// Get the ``Test`` instance representing a type, if one is found in the
 /// current process.
 ///

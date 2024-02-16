@@ -11,7 +11,10 @@
 extension Tag {
   /// A type representing one or more tags applied to a test.
   ///
-  /// To add this trait to a test, use ``Trait/tags(_:)``.
+  /// To add this trait to a test, use one of the following functions:
+  ///
+  /// - ``Trait/tags(_:)-505n9``
+  /// - ``Trait/tags(_:)-yg0i``
   public struct List {
     /// The list of tags contained in this instance.
     ///
@@ -39,14 +42,9 @@ extension Tag.List: Equatable, Hashable {}
 
 extension Tag.List: CustomStringConvertible {
   public var description: String {
-    tags.lazy.map { tag in
-      if let expression = tag.expression {
-        return String(describing: expression)
-      } else if tag.isPredefinedColor {
-        return ".\(tag.rawValue)"
-      }
-      return "\"\(tag.rawValue)\""
-    }.joined(separator: ", ")
+    tags.lazy
+      .map(String.init(describing:))
+      .joined(separator: ", ")
   }
 }
 
@@ -55,25 +53,6 @@ extension Tag.List: CustomStringConvertible {
 extension Tag.List: TestTrait, SuiteTrait {
   public var isRecursive: Bool {
     true
-  }
-
-  public func _capturing(_ expression: @autoclosure () -> Expression) -> Self {
-    guard case let .functionCall(_, _, arguments: arguments) = expression().kind else {
-      return self
-    }
-    guard tags.count == arguments.count else {
-      // There is a mismatch between the number of arguments and the number of
-      // tags actually present, so bail.
-      return self
-    }
-
-    let tags = zip(tags, arguments).lazy
-      .map { tag, labelAndExpression in
-        var tag = tag
-        tag.expression = labelAndExpression.value
-        return tag
-      }
-    return Self(tags: tags)
   }
 }
 
@@ -86,5 +65,28 @@ extension Trait where Self == Tag.List {
   /// - Returns: An instance of ``Tag/List`` containing the specified tags.
   public static func tags(_ tags: Tag...) -> Self {
     Self(tags: tags)
+  }
+
+  /// Construct a list of tags to apply to a test from a list of string values.
+  ///
+  /// - Parameters:
+  ///   - stringValues: The list of string values to convert to tags and apply
+  ///     to the test.
+  ///
+  /// - Returns: An instance of ``Tag/List`` containing the specified string
+  ///   literals as tags.
+  ///
+  /// This function is provided as a convenience to allow specifying tags as
+  /// string values. To specify a mix of tags identified by symbol (such as
+  /// ``Tag/red``) and tags identified by string value (such as `"important"`),
+  /// use two separate calls to this function and pass symbols separately from
+  /// string values:
+  ///
+  /// ```swift
+  /// @Test("Wheels spin", .tags("mechanical"), .tags(.critical))
+  /// func wheelsSpin() {}
+  /// ```
+  public static func tags(_ stringValues: _const String...) -> Self {
+    Self(tags: stringValues.map { Tag(kind: .stringLiteral($0)) })
   }
 }

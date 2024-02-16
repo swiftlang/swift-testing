@@ -41,23 +41,6 @@ public protocol Trait: Sendable {
   ///
   /// By default, the value of this property is an empty array.
   var comments: [Comment] { get }
-
-  /// Make a copy of this trait that stores the expression corresponding to it.
-  ///
-  /// - Parameters:
-  ///   - expression: The expression, captured from source code, corresponding
-  ///     to this instance.
-  ///
-  /// - Returns: A copy of `self` updated to include its corresponding
-  ///   expression.
-  ///
-  /// The default implementation of this method does nothing and returns `self`
-  /// unmodified.
-  ///
-  /// - Warning: This protocol requirement is experimental. It is public due to
-  ///   technical limitations in Swift. It may be modified or removed in a
-  ///   future update to the testing library.
-  func _capturing(_ expression: @autoclosure () -> Expression) -> Self
 }
 
 /// A protocol describing traits that can be added to a test function.
@@ -86,10 +69,6 @@ extension Trait {
 
   public var comments: [Comment] {
     []
-  }
-
-  public func _capturing(_ expression: @autoclosure () -> Expression) -> Self {
-    self
   }
 }
 

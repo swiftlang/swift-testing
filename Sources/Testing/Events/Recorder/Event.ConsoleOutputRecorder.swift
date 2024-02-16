@@ -232,17 +232,7 @@ extension Event.ConsoleOutputRecorder {
   ///   with ANSI escape codes used to colorize them. If ANSI escape codes are
   ///   not enabled or if no tag colors are set, returns the empty string.
   fileprivate func colorDots(for tags: Set<Tag>) -> String {
-    let unsortedColors = tags.lazy
-      .compactMap { tag in
-        if let tagColor = tagColors[tag] {
-          return tagColor
-        } else if let sourceCode = tag.expression.map(String.init(describing:)) {
-          // If the color is defined under a key such as ".foo" and the tag was
-          // created from the expression `.foo`, we can find that too.
-          return tagColors[Tag(rawValue: sourceCode)]
-        }
-        return nil
-      }
+    let unsortedColors = tags.lazy.compactMap { tagColors[$0] }
 
     var result: String = Set(unsortedColors)
       .sorted(by: <).lazy

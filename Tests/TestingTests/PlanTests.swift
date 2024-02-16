@@ -116,7 +116,7 @@ struct PlanTests {
     ]
 
     var configuration = Configuration()
-    var filter = Configuration.TestFilter(includingAnyOf: ["tag-1" as Tag, "tag-2" as Tag])
+    var filter = Configuration.TestFilter(includingAnyOf: [Tag("tag-1"), Tag("tag-2")])
     filter.includeHiddenTests = true
     configuration.testFilter = filter
 
@@ -146,7 +146,7 @@ struct PlanTests {
     ]
 
     var configuration = Configuration()
-    var filter = Configuration.TestFilter(includingAllOf: ["tag-1" as Tag, "tag-2" as Tag])
+    var filter = Configuration.TestFilter(includingAllOf: [Tag("tag-1"), Tag("tag-2")])
     filter.includeHiddenTests = true
     configuration.testFilter = filter
 
@@ -176,7 +176,7 @@ struct PlanTests {
     ]
 
     var configuration = Configuration()
-    var filter = Configuration.TestFilter(excludingAnyOf: ["tag-1" as Tag, "tag-2" as Tag])
+    var filter = Configuration.TestFilter(excludingAnyOf: [Tag("tag-1"), Tag("tag-2")])
     filter.includeHiddenTests = true
     configuration.testFilter = filter
 
@@ -206,7 +206,7 @@ struct PlanTests {
     ]
 
     var configuration = Configuration()
-    var filter = Configuration.TestFilter(excludingAllOf: ["tag-1" as Tag, "tag-2" as Tag])
+    var filter = Configuration.TestFilter(excludingAllOf: [Tag("tag-1"), Tag("tag-2")])
     filter.includeHiddenTests = true
     configuration.testFilter = filter
 
@@ -326,7 +326,7 @@ struct PlanTests {
     var configuration = Configuration()
     let selection = [innerTestType.id, outerTestType.id]
     var testFilter = Configuration.TestFilter(including: selection)
-    testFilter.combine(with: .init(excludingAnyOf: ["A" as Tag]))
+    testFilter.combine(with: .init(excludingAnyOf: [Tag("A")]))
     testFilter.includeHiddenTests = true
     configuration.testFilter = testFilter
 

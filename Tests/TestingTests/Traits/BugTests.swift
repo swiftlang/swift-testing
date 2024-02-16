@@ -10,7 +10,7 @@
 
 @testable import Testing
 
-@Suite("Bug Tests", .tags("trait"))
+@Suite("Bug Tests", .tags(.traitRelated))
 struct BugTests {
   @Test(".bug() with String")
   func bugFactoryMethodWithString() throws {
