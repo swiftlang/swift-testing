@@ -19,6 +19,9 @@ accomplished by the testing library using task groups, and tests generally all
 run in the same process. The number of tests that run concurrently is controlled
 by the Swift runtime.
 
+<!--
+HIDDEN: .serial is experimental SPI pending feature review.
+
 ## Disabling parallelization
 
 Parallelization can be disabled on a per-function or per-suite basis using the
@@ -61,6 +64,7 @@ disabled (by, for example, passing `--no-parallel` to the `swift test` command.)
 
 - ``Trait/serial``
 - ``SerialTrait``
+-->
 
 ## See Also
 

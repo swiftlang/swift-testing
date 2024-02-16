@@ -26,6 +26,7 @@
 /// `swift test` command.)
 ///
 /// To add this trait to a test, use ``Trait/serial``.
+@_spi(Experimental)
 public struct SerialTrait: TestTrait, SuiteTrait {
   public var isRecursive: Bool {
     true
@@ -46,6 +47,7 @@ extension SerialTrait: SPIAwareTrait {
 
 // MARK: -
 
+@_spi(Experimental)
 extension Trait where Self == SerialTrait {
   /// A trait that serializes the test to which it is applied.
   ///

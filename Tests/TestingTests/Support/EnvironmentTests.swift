@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable import Testing
+@testable @_spi(Experimental) import Testing
 private import TestingInternals
 
 @Suite("Environment Tests", .serial)
