@@ -248,7 +248,15 @@ public enum XCTestScaffold: Sendable {
 #endif
     }
 
-    await runTests(options: .for(.stderr), configuration: configuration)
+    var options = [Event.ConsoleOutputRecorder.Option]()
+#if !SWT_NO_FILE_IO
+    options += .for(.stderr)
+#endif
+    if Environment.flag(named: "SWT_VERBOSE_OUTPUT") == true {
+      options.append(.useVerboseOutput)
+    }
+    
+    await runTests(options: options, configuration: configuration)
 #endif
   }
 }
