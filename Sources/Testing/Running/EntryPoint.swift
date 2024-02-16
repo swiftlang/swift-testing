@@ -41,7 +41,10 @@ private import TestingInternals
         oldEventHandler(event, context)
       }
 
-      var options: [Event.ConsoleOutputRecorder.Option] = .for(.stderr)
+      var options = [Event.ConsoleOutputRecorder.Option]()
+#if !SWT_NO_FILE_IO
+      options += .for(.stderr)
+#endif
       if args.contains("--verbose") {
         options.append(.useVerboseOutput)
       }
@@ -49,10 +52,12 @@ private import TestingInternals
       await runTests(options: options, configuration: configuration)
     }
   } catch {
+#if !SWT_NO_FILE_IO
     FileHandle.stderr.withUnsafeCFILEHandle { stderr in
       fputs(String(describing: error), stderr)
       fflush(stderr)
     }
+#endif
 
     exitCode.withLock { exitCode in
       exitCode = EXIT_FAILURE
@@ -212,10 +217,12 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 ///   - configuration: The configuration to use for running.
 func runTests(options: [Event.ConsoleOutputRecorder.Option], configuration: Configuration) async {
   let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
+#if !SWT_NO_FILE_IO
     FileHandle.stderr.withUnsafeCFILEHandle { stderr in
       fputs(string, stderr)
       fflush(stderr)
     }
+#endif
   }
 
   var configuration = configuration
@@ -232,11 +239,11 @@ func runTests(options: [Event.ConsoleOutputRecorder.Option], configuration: Conf
 // MARK: - Command-line interface options
 
 extension [Event.ConsoleOutputRecorder.Option] {
+#if !SWT_NO_FILE_IO
   /// The set of options to use when writing to the standard error stream.
   static func `for`(_ fileHandle: borrowing FileHandle) -> Self {
     var result = Self()
 
-#if !SWT_NO_FILE_IO
     let useANSIEscapeCodes = _fileHandleSupportsANSIEscapeCodes(fileHandle)
     if useANSIEscapeCodes {
       result.append(.useANSIEscapeCodes)
@@ -268,12 +275,10 @@ extension [Event.ConsoleOutputRecorder.Option] {
     if let tagColors = try? loadTagColors() {
       result.append(.useTagColors(tagColors))
     }
-#endif
 
     return result
   }
 
-#if !SWT_NO_FILE_IO
   /// Whether or not the current process's standard error stream is capable of
   /// accepting and rendering ANSI escape codes.
   private static func _fileHandleSupportsANSIEscapeCodes(_ fileHandle: borrowing FileHandle) -> Bool {
