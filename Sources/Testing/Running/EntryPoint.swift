@@ -49,12 +49,10 @@ private import TestingInternals
       await runTests(options: options, configuration: configuration)
     }
   } catch {
-#if !SWT_NO_FILE_IO
     FileHandle.stderr.withUnsafeCFILEHandle { stderr in
       fputs(String(describing: error), stderr)
       fflush(stderr)
     }
-#endif
 
     exitCode.withLock { exitCode in
       exitCode = EXIT_FAILURE
