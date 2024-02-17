@@ -17,7 +17,13 @@ Run the same test multiple times with different inputs.
 Some tests need to be run over many different inputs. For instance, a test might
 need to validate all cases of an enumeration. The testing library lets
 developers specify one or more collections to iterate over during testing, with
-the elements of those collections being forwarded to a test function.
+the elements of those collections being forwarded to a test function. An
+invocation of a test function with a particular set of argument values is called
+a test _case_.
+
+By default, the test cases of a test function will run in parallel with each
+other. For more information about test parallelization, see
+<doc:Parallelization>.
 
 ## Parameterizing over an array of values
 

@@ -36,6 +36,9 @@ might contain, test suite types can also contain additional test suites nested
 within them. To add a nested test suite type, simply declare an additional type
 within the scope of the outer test suite type.
 
+By default, tests contained within a suite will run in parallel with each other.
+For more information about test parallelization, see <doc:Parallelization>.
+
 ## Customizing a suite's name
 
 To customize a test suite's name, supply a string literal as an argument to the

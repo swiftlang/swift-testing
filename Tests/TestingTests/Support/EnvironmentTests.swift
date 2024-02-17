@@ -8,12 +8,12 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable import Testing
+@testable @_spi(Experimental) import Testing
 private import TestingInternals
 
-@Suite("Environment Tests")
+@Suite("Environment Tests", .serial)
 struct EnvironmentTests {
-  var name = "SWT_ENVIRONMENT_VARIABLE_\(UInt64.random(in: 0 ... .max))"
+  var name = "SWT_ENVIRONMENT_VARIABLE_FOR_TESTING"
 
   @Test("Read environment variable")
   func readEnvironmentVariable() throws {

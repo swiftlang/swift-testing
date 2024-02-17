@@ -28,6 +28,7 @@ types that customize the behavior of test functions and test suites.
 - <doc:AddingComments>
 - <doc:AssociatingBugs>
 - <doc:LimitingExecutionTime>
+- <doc:Parallelization>
 
 ### Creating a custom trait
 

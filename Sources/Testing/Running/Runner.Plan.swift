@@ -14,8 +14,29 @@ extension Runner {
   public struct Plan: Sendable {
     /// The action to perform for a test in this plan.
     public enum Action: Sendable {
+      /// A type describing options to apply to actions of case
+      /// ``Runner/Plan/Action/run(options:)`` when they are run.
+      public struct RunOptions: Sendable, Codable {
+        /// Whether or not this step should be run in parallel with other tests.
+        ///
+        /// By default, all steps in a runner plan are run in parallel if the
+        /// ``Configuration/isParallelizationEnabled`` property of the
+        /// configuration passed during initialization has a value of `true`.
+        ///
+        /// Traits such as ``Trait/serial`` applied to individual tests may
+        /// affect whether or not that test is parallelized.
+        ///
+        /// ## See Also
+        ///
+        /// - ``SerialTrait``
+        public var isParallelizationEnabled: Bool
+      }
+
       /// The test should be run.
-      case run
+      ///
+      /// - Parameters:
+      ///   - options: Options to apply to this action when it is run.
+      case run(options: RunOptions)
 
       /// The test should be skipped.
       ///
@@ -44,6 +65,19 @@ extension Runner {
           // case.
           return true
         }
+      }
+
+      /// Whether or not this action enables parallelization.
+      ///
+      /// If this action is of case ``run(options:)``, the value of this
+      /// property equals the value of its associated
+      /// ``RunOptions/isParallelizationEnabled`` property. Otherwise, the value
+      /// of this property is `nil`.
+      var isParallelizationEnabled: Bool? {
+        if case let .run(options) = self {
+          return options.isParallelizationEnabled
+        }
+        return nil
       }
     }
 
@@ -140,12 +174,13 @@ extension Runner.Plan {
     // Convert the list of test into a graph of steps. The actions for these
     // steps will all be .run() *unless* an error was thrown while examining
     // them, in which case it will be .recordIssue().
+    let runAction = Action.run(options: .init(isParallelizationEnabled: configuration.isParallelizationEnabled))
     var testGraph = Graph<String, Test?>()
-    var actionGraph = Graph<String, Action>(value: .run)
+    var actionGraph = Graph<String, Action>(value: runAction)
     for test in tests {
       let idComponents = test.id.keyPathRepresentation
       testGraph.insertValue(test, at: idComponents)
-      actionGraph.insertValue(.run, at: idComponents, intermediateValue: .run)
+      actionGraph.insertValue(runAction, at: idComponents, intermediateValue: runAction)
     }
 
     // Ensure the trait lists are complete for all nested tests. (Make sure to
@@ -171,7 +206,7 @@ extension Runner.Plan {
         return
       }
 
-      var action = Action.run
+      var action = runAction
       var firstCaughtError: (any Error)?
 
       // Walk all the traits and tell each to prepare to run the test.
@@ -181,7 +216,11 @@ extension Runner.Plan {
       // `SkipInfo`, the error should not be recorded.
       for trait in test.traits {
         do {
-          try await trait.prepare(for: test)
+          if let trait = trait as? any SPIAwareTrait {
+            try await trait.prepare(for: test, action: &action)
+          } else {
+            try await trait.prepare(for: test)
+          }
         } catch let error as SkipInfo {
           action = .skip(error)
           break
@@ -374,7 +413,10 @@ extension Runner.Plan.Action {
   @_spi(ExperimentalSnapshotting)
   public enum Snapshot: Sendable, Codable {
     /// The test should be run.
-    case run
+    ///
+    /// - Parameters:
+    ///   - options: Options to apply to this action when it is run.
+    case run(options: RunOptions)
 
     /// The test should be skipped.
     ///
@@ -397,8 +439,8 @@ extension Runner.Plan.Action {
     ///   - action: The original action to snapshot.
     init(snapshotting action: Runner.Plan.Action) {
       self = switch action {
-      case .run:
-        .run
+      case let .run(options):
+        .run(options: options)
       case let .skip(skipInfo):
         .skip(skipInfo)
       case let .recordIssue(issue):
