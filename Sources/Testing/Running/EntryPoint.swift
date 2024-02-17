@@ -207,30 +207,30 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
   }
 
   // Set up the iteration policy for the test run.
-  var iterationPolicy: Configuration.IterationPolicy = .once
+  var repetitionPolicy: Configuration.RepetitionPolicy = .once
   var hadExplicitRepetitionCount = false
   if let repetitionsIndex = args.firstIndex(of: "--repetitions"), repetitionsIndex < args.endIndex,
      let repetitionCount = Int(args[args.index(after: repetitionsIndex)]), repetitionCount > 0 {
-    iterationPolicy.count = repetitionCount
+    repetitionPolicy.maximumIterationCount = repetitionCount
     hadExplicitRepetitionCount = true
   }
   if let repeatUntilIndex = args.firstIndex(of: "--repeat-until"), repeatUntilIndex < args.endIndex {
     let repeatUntil = args[args.index(after: repeatUntilIndex)].lowercased()
     switch repeatUntil {
     case "pass":
-      iterationPolicy.continuationCondition = .whileIssueRecorded
+      repetitionPolicy.continuationCondition = .whileIssueRecorded
     case "fail":
-      iterationPolicy.continuationCondition = .untilIssueRecorded
+      repetitionPolicy.continuationCondition = .untilIssueRecorded
     default:
       throw _EntryPointError.invalidArgument("--repeat-until", value: repeatUntil)
     }
     if !hadExplicitRepetitionCount {
       // The caller wants to repeat until a condition is met, but didn't say how
       // many times to repeat, so assume they meant "forever".
-      iterationPolicy.count = .max
+      repetitionPolicy.maximumIterationCount = .max
     }
   }
-  configuration.iterationPolicy = iterationPolicy
+  configuration.repetitionPolicy = repetitionPolicy
 
   return configuration
 }

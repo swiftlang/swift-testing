@@ -28,10 +28,10 @@ public struct Event: Sendable {
     /// This event is posted at the start of each test plan iteration.
     ///
     /// By default, a test plan runs for one iteration, but the
-    /// ``Configuration/iterationPolicy-swift.property`` property can be set to
+    /// ``Configuration/repetitionPolicy-swift.property`` property can be set to
     /// allow for more iterations.
     @_spi(ExperimentalTestRunning)
-    case iterationStarted(_ index: Int)
+    indirect case iterationStarted(_ index: Int)
 
     /// A step in the runner plan started.
     ///
@@ -124,7 +124,7 @@ public struct Event: Sendable {
     /// This event is posted at the end of each test plan iteration.
     ///
     /// By default, a test plan runs for one iteration, but the
-    /// ``Configuration/iterationPolicy-swift.property`` property can be set to
+    /// ``Configuration/repetitionPolicy-swift.property`` property can be set to
     /// allow for more iterations.
     @_spi(ExperimentalTestRunning)
     case iterationEnded(_ index: Int)
@@ -329,7 +329,7 @@ extension Event.Kind {
     /// This event is posted at the start of each test plan iteration.
     ///
     /// By default, a test plan runs for one iteration, but the
-    /// ``Configuration/iterationPolicy-swift.property`` property can be set to
+    /// ``Configuration/repetitionPolicy-swift.property`` property can be set to
     /// allow for more iterations.
     @_spi(ExperimentalTestRunning)
     case iterationStarted(_ index: Int)
@@ -407,10 +407,10 @@ extension Event.Kind {
     /// This event is posted at the end of each test plan iteration.
     ///
     /// By default, a test plan runs for one iteration, but the
-    /// ``Configuration/iterationPolicy-swift.property`` property can be set to
+    /// ``Configuration/repetitionPolicy-swift.property`` property can be set to
     /// allow for more iterations.
     @_spi(ExperimentalTestRunning)
-    case iterationEnded(_ index: Int)
+    indirect case iterationEnded(_ index: Int)
 
     /// A test run ended.
     ///

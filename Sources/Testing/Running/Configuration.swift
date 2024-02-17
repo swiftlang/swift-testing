@@ -25,7 +25,7 @@ public struct Configuration: Sendable {
   ///
   /// When a ``Runner`` is run, it will run all tests in its corresponding
   /// ``Runner/Plan`` according to the policy described by its
-  /// ``Configuration/iterationPolicy-swift.property`` property. For instance,
+  /// ``Configuration/repetitionPolicy-swift.property`` property. For instance,
   /// if that property is set to:
   ///
   /// ```swift
@@ -36,9 +36,10 @@ public struct Configuration: Sendable {
   /// is recorded, the current iteration will complete, but no further
   /// iterations will be attempted.
   ///
-  /// If the value of an instance's ``count`` property is `1`, the value of its
-  /// ``continuationCondition-swift.property`` property has no effect.
-  public struct IterationPolicy: Sendable {
+  /// If the value of an instance's ``maximumIterationCount`` property is `1`,
+  /// the value of its ``continuationCondition-swift.property`` property has no
+  /// effect.
+  public struct RepetitionPolicy: Sendable {
     /// An enumeration describing the conditions under which test iterations
     /// should continue.
     public enum ContinuationCondition: Sendable {
@@ -66,7 +67,7 @@ public struct Configuration: Sendable {
     ///
     /// - Precondition: The value of this property must be greater than or equal
     ///   to `1`.
-    public var count: Int {
+    public var maximumIterationCount: Int {
       willSet {
         precondition(newValue >= 1, "Test runs must iterate at least once.")
       }
@@ -79,20 +80,20 @@ public struct Configuration: Sendable {
     ///     should continue. If `nil`, the iterations should continue
     ///     unconditionally `count` times.
     ///   - count: The maximum number of times the test run should iterate.
-    public static func repeating(_ continuationCondition: ContinuationCondition? = nil, count: Int) -> Self {
-      Self(continuationCondition: continuationCondition, count: count)
+    public static func repeating(_ continuationCondition: ContinuationCondition? = nil, maximumIterationCount: Int) -> Self {
+      Self(continuationCondition: continuationCondition, maximumIterationCount: maximumIterationCount)
     }
 
     /// An instance of this type representing a single iteration.
     public static var once: Self {
-      repeating(count: 1)
+      repeating(maximumIterationCount: 1)
     }
   }
 
   /// Whether or not, and how, to iterate the test plan repeatedly.
   ///
   /// By default, the value of this property allows for a single iteration.
-  public var iterationPolicy: IterationPolicy = .once
+  public var repetitionPolicy: RepetitionPolicy = .once
 
   // MARK: - Main actor isolation
 

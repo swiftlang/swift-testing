@@ -10,7 +10,7 @@
 
 @testable @_spi(ExperimentalTestRunning) @_spi(ExperimentalEventHandling) import Testing
 
-@Suite("Configuration.IterationPolicy Tests")
+@Suite("Configuration.RepetitionPolicy Tests")
 struct PlanIterationTests {
   @Test("One iteration (default behavior)")
   func oneIteration() async {
@@ -24,7 +24,7 @@ struct PlanIterationTests {
             ended()
           }
         }
-        configuration.iterationPolicy = .once
+        configuration.repetitionPolicy = .once
 
         await Test {
         }.run(configuration: configuration)
@@ -45,7 +45,7 @@ struct PlanIterationTests {
             ended()
           }
         }
-        configuration.iterationPolicy = .repeating(count: iterationCount)
+        configuration.repetitionPolicy = .repeating(maximumIterationCount: iterationCount)
 
         await Test {
           if Bool.random() {
@@ -74,7 +74,7 @@ struct PlanIterationTests {
             ended()
           }
         }
-        configuration.iterationPolicy = .repeating(.untilIssueRecorded, count: iterationCount)
+        configuration.repetitionPolicy = .repeating(.untilIssueRecorded, maximumIterationCount: iterationCount)
 
         await Test {
           if iterationIndex.rawValue == iterationWithIssue {
@@ -103,7 +103,7 @@ struct PlanIterationTests {
             ended()
           }
         }
-        configuration.iterationPolicy = .repeating(.whileIssueRecorded, count: iterationCount)
+        configuration.repetitionPolicy = .repeating(.whileIssueRecorded, maximumIterationCount: iterationCount)
 
         await Test {
           if iterationIndex.rawValue < iterationWithoutIssue {

@@ -384,8 +384,8 @@ extension Runner {
         Event.post(.runEnded, for: nil, testCase: nil, configuration: runner.configuration)
       }
 
-      let iterationPolicy = runner.configuration.iterationPolicy
-      for iterationIndex in 0 ..< iterationPolicy.count {
+      let repetitionPolicy = runner.configuration.repetitionPolicy
+      for iterationIndex in 0 ..< repetitionPolicy.maximumIterationCount {
         Event.post(.iterationStarted(iterationIndex), for: nil, testCase: nil, configuration: runner.configuration)
         defer {
           Event.post(.iterationEnded(iterationIndex), for: nil, testCase: nil, configuration: runner.configuration)
@@ -400,7 +400,7 @@ extension Runner {
 
         // Determine if the test plan should iterate again. (The iteration count
         // is handled by the outer for-loop.)
-        let shouldContinue = switch iterationPolicy.continuationCondition {
+        let shouldContinue = switch repetitionPolicy.continuationCondition {
         case nil:
           true
         case .untilIssueRecorded:

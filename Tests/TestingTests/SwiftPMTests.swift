@@ -130,24 +130,24 @@ struct SwiftPMTests {
   @available(_regexAPI, *)
   func repetitions() throws {
     let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--repetitions", "2468"])
-    #expect(configuration.iterationPolicy.count == 2468)
-    #expect(configuration.iterationPolicy.continuationCondition == nil)
+    #expect(configuration.repetitionPolicy.maximumIterationCount == 2468)
+    #expect(configuration.repetitionPolicy.continuationCondition == nil)
   }
 
   @Test("--repeat-until pass argument (alone)")
   @available(_regexAPI, *)
   func repeatUntilPass() throws {
     let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--repeat-until", "pass"])
-    #expect(configuration.iterationPolicy.count == .max)
-    #expect(configuration.iterationPolicy.continuationCondition == .whileIssueRecorded)
+    #expect(configuration.repetitionPolicy.maximumIterationCount == .max)
+    #expect(configuration.repetitionPolicy.continuationCondition == .whileIssueRecorded)
   }
 
   @Test("--repeat-until fail argument (alone)")
   @available(_regexAPI, *)
   func repeatUntilFail() throws {
     let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--repeat-until", "fail"])
-    #expect(configuration.iterationPolicy.count == .max)
-    #expect(configuration.iterationPolicy.continuationCondition == .untilIssueRecorded)
+    #expect(configuration.repetitionPolicy.maximumIterationCount == .max)
+    #expect(configuration.repetitionPolicy.continuationCondition == .untilIssueRecorded)
   }
 
   @Test("--repeat-until argument with garbage value (alone)")
@@ -162,8 +162,8 @@ struct SwiftPMTests {
   @available(_regexAPI, *)
   func repetitionsAndRepeatUntil() throws {
     let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--repetitions", "2468", "--repeat-until", "pass"])
-    #expect(configuration.iterationPolicy.count == 2468)
-    #expect(configuration.iterationPolicy.continuationCondition == .whileIssueRecorded)
+    #expect(configuration.repetitionPolicy.maximumIterationCount == 2468)
+    #expect(configuration.repetitionPolicy.continuationCondition == .whileIssueRecorded)
   }
 
   @Test("list subcommand")

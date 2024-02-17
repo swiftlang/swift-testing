@@ -231,7 +231,7 @@ extension Event.HumanReadableOutputRecorder {
       ) + _formattedComments(comments)
 
     case let .iterationStarted(index):
-      if let iterationCount = Configuration.current?.iterationPolicy.count, iterationCount > 1 {
+      if let iterationCount = Configuration.current?.repetitionPolicy.maximumIterationCount, iterationCount > 1 {
         _context.withLock { context in
           context.iterationStartInstant = instant
         }
