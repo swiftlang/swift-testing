@@ -75,7 +75,7 @@ extension Environment {
   @discardableResult
   static func setVariable(_ value: String?, named name: String) -> Bool {
 #if SWT_NO_ENVIRONMENT_VARIABLES
-    $_environment.withLock { environment in
+    simulatedEnvironment.withLock { environment in
       environment[name] = value
     }
     return true

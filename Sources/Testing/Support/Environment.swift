@@ -20,8 +20,10 @@ enum Environment {
   /// Storage for the simulated environment.
   ///
   /// The mechanism by which this dictionary is initially populated depends on
-  /// platform-specific implementation details.
-  private static let _environment = Locked<[String: String]>()
+  /// platform-specific implementation details. Callers should not read from
+  /// this dictionary directly; use ``variable(named:)`` or ``flag(named:)``
+  /// instead.
+  static let simulatedEnvironment = Locked<[String: String]>()
 #endif
 
   /// Get the environment variable with the specified name.
@@ -33,7 +35,7 @@ enum Environment {
   ///   is not set for the current process.
   static func variable(named name: String) -> String? {
 #if SWT_NO_ENVIRONMENT_VARIABLES
-    _environment.rawValue[name]
+    simulatedEnvironment.rawValue[name]
 #elseif SWT_TARGET_OS_APPLE || os(Linux)
     getenv(name).flatMap { String(validatingUTF8: $0) }
 #elseif os(Windows)
