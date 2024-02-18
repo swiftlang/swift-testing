@@ -25,7 +25,7 @@ private import TestingInternals
 /// - Bug: The state protected by this type should instead be protected using
 ///     actor isolation, but actor-isolated functions cannot be called from
 ///     synchronous functions. ([83888717](rdar://83888717))
-struct Locked<T>: RawRepresentable, @unchecked Sendable where T: Sendable {
+struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   /// The platform-specific type to use for locking.
   ///
   /// It would be preferable to implement this lock in Swift, however there is
@@ -61,11 +61,11 @@ struct Locked<T>: RawRepresentable, @unchecked Sendable where T: Sendable {
   }
 
   /// Storage for the underlying lock and wrapped value.
-  private var _storage: ManagedBuffer<T, _Lock>
+  private var _storage: UncheckedSendable<ManagedBuffer<T, _Lock>>
 
   init(rawValue: T) {
-    _storage = _Storage.create(minimumCapacity: 1, makingHeaderWith: { _ in rawValue })
-    _storage.withUnsafeMutablePointerToElements { lock in
+    let storage = _Storage.create(minimumCapacity: 1, makingHeaderWith: { _ in rawValue })
+    storage.withUnsafeMutablePointerToElements { lock in
 #if SWT_TARGET_OS_APPLE || os(Linux)
       _ = pthread_mutex_init(lock, nil)
 #elseif os(Windows)
@@ -74,6 +74,7 @@ struct Locked<T>: RawRepresentable, @unchecked Sendable where T: Sendable {
 #warning("Platform-specific implementation missing: locking unavailable")
 #endif
     }
+    _storage = UncheckedSendable(rawValue: storage)
   }
 
   var rawValue: T {
@@ -93,7 +94,7 @@ struct Locked<T>: RawRepresentable, @unchecked Sendable where T: Sendable {
   /// synchronous caller. Wherever possible, use actor isolation or other Swift
   /// concurrency tools.
   nonmutating func withLock<R>(_ body: (inout T) throws -> R) rethrows -> R {
-    try _storage.withUnsafeMutablePointers { rawValue, lock in
+    try _storage.rawValue.withUnsafeMutablePointers { rawValue, lock in
 #if SWT_TARGET_OS_APPLE || os(Linux)
       _ = pthread_mutex_lock(lock)
       defer {

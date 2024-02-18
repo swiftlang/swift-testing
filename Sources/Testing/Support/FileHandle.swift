@@ -21,9 +21,9 @@ internal import TestingInternals
 /// platforms.
 ///
 /// This type is not part of the public interface of the testing library.
-struct FileHandle: ~Copyable, @unchecked Sendable {
+struct FileHandle: ~Copyable, Sendable {
   /// The underlying C file handle.
-  private var _fileHandle: SWT_FILEHandle
+  private var _fileHandle: UncheckedSendable<SWT_FILEHandle>
 
   /// Whether or not to close `_fileHandle` when this instance is deinitialized.
   private var _closeWhenDone: Bool
@@ -47,7 +47,7 @@ struct FileHandle: ~Copyable, @unchecked Sendable {
   init(atPath path: String, mode: String) throws {
 #if os(Windows)
     // Windows deprecates fopen() as insecure, so call _wfopen_s() instead.
-    _fileHandle = try path.withCString(encodedAs: UTF16.self) { path in
+    let fileHandle = try path.withCString(encodedAs: UTF16.self) { path in
       try mode.withCString(encodedAs: UTF16.self) { mode in
         var file: SWT_FILEHandle?
         let result = _wfopen_s(&file, path, mode)
@@ -61,9 +61,8 @@ struct FileHandle: ~Copyable, @unchecked Sendable {
     guard let fileHandle = fopen(path, mode) else {
       throw CError(rawValue: swt_errno())
     }
-    _fileHandle = fileHandle
 #endif
-    _closeWhenDone = true
+    self.init(unsafeCFILEHandle: fileHandle, closeWhenDone: true)
   }
 
   /// Initialize an instance of this type to write to the given path.
@@ -86,13 +85,13 @@ struct FileHandle: ~Copyable, @unchecked Sendable {
   ///     instance is deinitialized. The caller is responsible for ensuring that
   ///     there are no other references to `fileHandle` when passing `true`.
   init(unsafeCFILEHandle fileHandle: SWT_FILEHandle, closeWhenDone: Bool) {
-    _fileHandle = fileHandle
+    _fileHandle = UncheckedSendable(rawValue: fileHandle)
     _closeWhenDone = closeWhenDone
   }
 
   deinit {
     if _closeWhenDone {
-      fclose(_fileHandle)
+      fclose(_fileHandle.rawValue)
     }
   }
 
@@ -108,7 +107,7 @@ struct FileHandle: ~Copyable, @unchecked Sendable {
   /// Use this function when calling C I/O interfaces such as `fputs()` on the
   /// underlying C file handle.
   borrowing func withUnsafeCFILEHandle<R>(_ body: (SWT_FILEHandle) throws -> R) rethrows -> R {
-    try body(_fileHandle)
+    try body(_fileHandle.rawValue)
   }
 
   /// Call a function and pass the underlying POSIX file descriptor to it.
