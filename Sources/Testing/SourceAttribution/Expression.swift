@@ -113,20 +113,19 @@ public struct Expression: Sendable {
   }
 
   /// A description, captured using ``String/init(describingForTest:)``, of
-  /// the runtime value of this subexpression.
+  /// the runtime value of this expression.
   ///
-  /// If the runtime value of this subexpression has not been evaluated, the
-  /// value of this property is `nil`.
+  /// If the runtime value of this expression has not been evaluated, the value
+  /// of this property is `nil`.
   @_spi(ExperimentalSourceCodeCapturing)
   public var runtimeValueDescription: String?
 
-  /// The fully-qualified name of the type of this subexpression's runtime
-  /// value.
+  /// Information about the type of the runtime value of this expression.
   ///
-  /// If the runtime value of this subexpression has not been evaluated, the
+  /// If the runtime value of this expression has not been evaluated, the value
   /// value of this property is `nil`.
-  @_spi(ExperimentalSourceCodeCapturing)
-  public var fullyQualifiedTypeNameOfRuntimeValue: String?
+  @_spi(ForToolsIntegrationOnly)
+  public var runtimeValueTypeInfo: TypeInfo?
 
   /// Copy this instance and capture the runtime value corresponding to it.
   ///
@@ -140,10 +139,10 @@ public struct Expression: Sendable {
 
     if let value {
       result.runtimeValueDescription = String(describingForTest: value)
-      result.fullyQualifiedTypeNameOfRuntimeValue = _typeName(type(of: value as Any), qualified: true)
+      result.runtimeValueTypeInfo = TypeInfo(describingTypeOf: value)
     } else {
       result.runtimeValueDescription = nil
-      result.fullyQualifiedTypeNameOfRuntimeValue = nil
+      result.runtimeValueTypeInfo = nil
     }
 
     return result
@@ -212,8 +211,8 @@ public struct Expression: Sendable {
     var result = ""
     switch kind {
     case let .generic(sourceCode), let .stringLiteral(sourceCode, _):
-      result = if includingTypeNames, let fullyQualifiedTypeNameOfRuntimeValue {
-        "\(sourceCode): \(fullyQualifiedTypeNameOfRuntimeValue)"
+      result = if includingTypeNames, let runtimeValueTypeInfo {
+        "\(sourceCode): \(runtimeValueTypeInfo.qualifiedTypeName)"
       } else {
         sourceCode
       }

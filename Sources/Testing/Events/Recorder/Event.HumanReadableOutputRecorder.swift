@@ -158,16 +158,28 @@ private func _capitalizedTitle(for test: Test?) -> String {
 extension Test.Case {
   /// The arguments of this test case, formatted for presentation, prefixed by
   /// their corresponding parameter label when available.
-  fileprivate var labeledArguments: String {
+  ///
+  /// - Parameters:
+  ///   - includeTypeNames: Whether the qualified type name of each argument's
+  ///     runtime type should be included. Defaults to `false`.
+  fileprivate func labeledArguments(includingQualifiedTypeNames includeTypeNames: Bool = false) -> String {
     arguments.lazy
       .map { argument in
         let valueDescription = String(describingForTest: argument.value)
 
         let label = argument.parameter.secondName ?? argument.parameter.firstName
-        guard label != "_" else {
-          return valueDescription
+        let labeledArgument = if label == "_" {
+          valueDescription
+        } else {
+          "\(label) → \(valueDescription)"
         }
-        return "\(label) → \(valueDescription)"
+
+        if includeTypeNames {
+          let typeInfo = TypeInfo(describingTypeOf: argument.value)
+          return "\(labeledArgument) (\(typeInfo.qualifiedTypeName))"
+        } else {
+          return labeledArgument
+        }
       }
       .joined(separator: ", ")
   }
@@ -315,7 +327,7 @@ extension Event.HumanReadableOutputRecorder {
         0
       }
       let labeledArguments = if let testCase = eventContext.testCase {
-        testCase.labeledArguments
+        testCase.labeledArguments()
       } else {
         ""
       }
@@ -373,7 +385,7 @@ extension Event.HumanReadableOutputRecorder {
       return [
         Message(
           symbol: .default,
-          stringValue: "Passing \(testCase.arguments.count.counting("argument")) \(testCase.labeledArguments) to \(testName)"
+          stringValue: "Passing \(testCase.arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbose)) to \(testName)"
         )
       ]
 

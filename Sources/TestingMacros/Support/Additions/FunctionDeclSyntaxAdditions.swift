@@ -127,7 +127,33 @@ extension FunctionParameterSyntax {
       } else {
         LabeledExprSyntax(label: "secondName", expression: NilLiteralExprSyntax())
       }
+
+      LabeledExprSyntax(label: "type", expression: typeMetatypeExpression)
     }
+  }
+
+  /// An expression which refers to the metatype of this parameter's type.
+  ///
+  /// For example, for the parameter `y` of `func x(y: Int)`, the value of this
+  /// property is an expression equivalent to `Int.self`.
+  private var typeMetatypeExpression: some ExprSyntaxProtocol {
+    // Discard any specifiers such as `inout` or `borrowing`, since we're only
+    // trying to obtain the base type to reference it in an expression.
+    let baseType = type.as(AttributedTypeSyntax.self)?.baseType ?? type
+
+    // Construct a member access expression, referencing the base type above.
+    let baseTypeDeclReferenceExpr = DeclReferenceExprSyntax(baseName: .identifier(baseType.trimmedDescription))
+
+    // Enclose the base type declaration reference in a 1-element tuple, e.g.
+    // `(<baseType>)`. It will be used in a member access expression below, and
+    // some types (such as function types) require this.
+    let metatypeMemberAccessBase = TupleExprSyntax {
+      LabeledExprListSyntax {
+        LabeledExprSyntax(expression: baseTypeDeclReferenceExpr)
+      }
+    }
+
+    return MemberAccessExprSyntax(base: metatypeMemberAccessBase, name: .identifier("self"))
   }
 }
 

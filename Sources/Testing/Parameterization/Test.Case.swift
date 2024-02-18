@@ -127,6 +127,26 @@ extension Test {
 
     /// The second name of this parameter, if specified.
     public var secondName: String?
+
+    /// Information about the type of this parameter.
+    ///
+    /// The value of this property represents the type of the parameter, but
+    /// arguments passed to this parameter may be of different types. For
+    /// example, an argument may be a subclass or conforming type of the
+    /// declared parameter type.
+    ///
+    /// For information about runtime type of an argument to a parameterized
+    /// test, use ``TypeInfo/init(describingTypeOf:)``, passing the argument
+    /// value obtained by calling ``Test/Case/Argument/value``.
+    @_spi(ForToolsIntegrationOnly)
+    public var typeInfo: TypeInfo
+
+    init(index: Int, firstName: String, secondName: String? = nil, type: Any.Type) {
+      self.index = index
+      self.firstName = firstName
+      self.secondName = secondName
+      self.typeInfo = TypeInfo(type)
+    }
   }
 }
 
@@ -137,7 +157,7 @@ extension Test.Case.Argument.ID: Codable {}
 
 // MARK: - Equatable, Hashable
 
-extension Test.Parameter: Equatable {}
+extension Test.Parameter: Hashable {}
 extension Test.Case.Argument.ID: Hashable {}
 
 // MARK: - Snapshotting
@@ -181,6 +201,11 @@ extension Test.Case.Argument {
     /// `String(reflecting:)`.
     public var valueDebugDescription: String?
 
+    /// Information about the type of this parameterized test argument's
+    /// ``Test/Case/Argument/value`` property.
+    @_spi(ForToolsIntegrationOnly)
+    public var valueTypeInfo: TypeInfo
+
     /// The parameter of the test function to which this argument was passed.
     public var parameter: Test.Parameter
 
@@ -193,6 +218,7 @@ extension Test.Case.Argument {
       id = argument.id
       valueDescription = String(describingForTest: argument.value)
       valueDebugDescription = String(reflecting: argument.value)
+      valueTypeInfo = TypeInfo(describingTypeOf: argument.value)
       parameter = argument.parameter
     }
   }
