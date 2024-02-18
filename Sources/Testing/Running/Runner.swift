@@ -367,17 +367,55 @@ extension Runner {
     var runner = runner
     runner.configureEventHandlerRuntimeState()
 
+    // Track whether or not any issues were recorded across the entire run.
+    let issueRecorded = Locked(rawValue: false)
+    runner.configuration.eventHandler = { [eventHandler = runner.configuration.eventHandler] event, context in
+      if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
+        issueRecorded.withLock { issueRecorded in
+          issueRecorded = true
+        }
+      }
+      eventHandler(event, context)
+    }
+
     await Configuration.withCurrent(runner.configuration) {
       Event.post(.runStarted, for: nil, testCase: nil, configuration: runner.configuration)
       defer {
         Event.post(.runEnded, for: nil, testCase: nil, configuration: runner.configuration)
       }
 
-      await withTaskGroup(of: Void.self) { [runner] taskGroup in
-        _ = taskGroup.addTaskUnlessCancelled {
-          try? await runner._runStep(atRootOf: runner.plan.stepGraph, depth: 0, lastAncestorStep: nil)
+      let repetitionPolicy = runner.configuration.repetitionPolicy
+      for iterationIndex in 0 ..< repetitionPolicy.maximumIterationCount {
+        Event.post(.iterationStarted(iterationIndex), for: nil, testCase: nil, configuration: runner.configuration)
+        defer {
+          Event.post(.iterationEnded(iterationIndex), for: nil, testCase: nil, configuration: runner.configuration)
         }
-        await taskGroup.waitForAll()
+
+        await withTaskGroup(of: Void.self) { [runner] taskGroup in
+          _ = taskGroup.addTaskUnlessCancelled {
+            try? await runner._runStep(atRootOf: runner.plan.stepGraph, depth: 0, lastAncestorStep: nil)
+          }
+          await taskGroup.waitForAll()
+        }
+
+        // Determine if the test plan should iterate again. (The iteration count
+        // is handled by the outer for-loop.)
+        let shouldContinue = switch repetitionPolicy.continuationCondition {
+        case nil:
+          true
+        case .untilIssueRecorded:
+          !issueRecorded.rawValue
+        case .whileIssueRecorded:
+          issueRecorded.rawValue
+        }
+        guard shouldContinue else {
+          break
+        }
+
+        // Reset the run-wide "issue was recorded" flag for this iteration.
+        issueRecorded.withLock { issueRecorded in
+          issueRecorded = false
+        }
       }
     }
   }

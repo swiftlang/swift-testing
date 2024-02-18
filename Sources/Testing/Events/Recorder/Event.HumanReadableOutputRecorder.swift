@@ -35,6 +35,9 @@ extension Event {
       /// The instant at which the run started.
       var runStartInstant: Test.Clock.Instant?
 
+      /// The instant at which the current iteration started.
+      var iterationStartInstant: Test.Clock.Instant?
+
       /// The number of tests started or skipped during the run.
       ///
       /// This value does not include test suites.
@@ -227,6 +230,19 @@ extension Event.HumanReadableOutputRecorder {
         )
       ) + _formattedComments(comments)
 
+    case let .iterationStarted(index):
+      if let iterationCount = Configuration.current?.repetitionPolicy.maximumIterationCount, iterationCount > 1 {
+        _context.withLock { context in
+          context.iterationStartInstant = instant
+        }
+        return [
+          Message(
+            symbol: .default,
+            stringValue: "Iteration \(index + 1) started."
+          )
+        ]
+      }
+
     case .planStepStarted, .planStepEnded:
       // Suppress events of these kinds from output as they are not generally
       // interesting in human-readable output.
@@ -379,6 +395,19 @@ extension Event.HumanReadableOutputRecorder {
 
     case .testCaseEnded:
       break
+
+    case let .iterationEnded(index):
+      guard let iterationStartInstant = _context.rawValue.iterationStartInstant else {
+        break
+      }
+      let duration = iterationStartInstant.descriptionOfDuration(to: instant)
+
+      return [
+        Message(
+          symbol: .default,
+          stringValue: "Iteration \(index + 1) ended after \(duration)."
+        )
+      ]
 
     case .runEnded:
       let context = _context.rawValue

@@ -206,6 +206,32 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
     }
   }
 
+  // Set up the iteration policy for the test run.
+  var repetitionPolicy: Configuration.RepetitionPolicy = .once
+  var hadExplicitRepetitionCount = false
+  if let repetitionsIndex = args.firstIndex(of: "--repetitions"), repetitionsIndex < args.endIndex,
+     let repetitionCount = Int(args[args.index(after: repetitionsIndex)]), repetitionCount > 0 {
+    repetitionPolicy.maximumIterationCount = repetitionCount
+    hadExplicitRepetitionCount = true
+  }
+  if let repeatUntilIndex = args.firstIndex(of: "--repeat-until"), repeatUntilIndex < args.endIndex {
+    let repeatUntil = args[args.index(after: repeatUntilIndex)].lowercased()
+    switch repeatUntil {
+    case "pass":
+      repetitionPolicy.continuationCondition = .whileIssueRecorded
+    case "fail":
+      repetitionPolicy.continuationCondition = .untilIssueRecorded
+    default:
+      throw _EntryPointError.invalidArgument("--repeat-until", value: repeatUntil)
+    }
+    if !hadExplicitRepetitionCount {
+      // The caller wants to repeat until a condition is met, but didn't say how
+      // many times to repeat, so assume they meant "forever".
+      repetitionPolicy.maximumIterationCount = .max
+    }
+  }
+  configuration.repetitionPolicy = repetitionPolicy
+
   return configuration
 }
 
@@ -329,6 +355,13 @@ private enum _EntryPointError: Error {
   /// - Parameters:
   ///   - explanation: An explanation of the problem.
   case featureUnavailable(_ explanation: String)
+
+  /// An argument was invalid.
+  ///
+  /// - Parameters:
+  ///   - name: The name of the argument.
+  ///   - value: The invalid value.
+  case invalidArgument(_ name: String, value: String)
 }
 
 extension _EntryPointError: CustomStringConvertible {
@@ -336,6 +369,8 @@ extension _EntryPointError: CustomStringConvertible {
     switch self {
     case let .featureUnavailable(explanation):
       explanation
+    case let .invalidArgument(name, value):
+      #"Invalid value "\#(value)" for argument \#(name)"#
     }
   }
 }

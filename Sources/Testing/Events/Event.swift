@@ -15,16 +15,30 @@ public struct Event: Sendable {
   public enum Kind: Sendable {
     /// A test run started.
     ///
-    /// This is the first event posted after ``Runner/run()`` is called.
+    /// This event is the first event posted after ``Runner/run()`` is called.
     @_spi(ExperimentalTestRunning)
     case runStarted
+
+    /// An iteration of the test run started.
+    ///
+    /// - Parameters:
+    ///   - index: The index of the iteration. The first iteration has an index
+    ///     of `0`.
+    ///
+    /// This event is posted at the start of each test plan iteration.
+    ///
+    /// By default, a test plan runs for one iteration, but the
+    /// ``Configuration/repetitionPolicy-swift.property`` property can be set to
+    /// allow for more iterations.
+    @_spi(ExperimentalTestRunning)
+    indirect case iterationStarted(_ index: Int)
 
     /// A step in the runner plan started.
     ///
     /// - Parameters:
     ///   - step: The step in the runner plan which started.
     ///
-    /// This is posted when a ``Runner`` begins processing a
+    /// This event is posted when a ``Runner`` begins processing a
     /// ``Runner/Plan/Step``. Processing this step may result in its associated
     /// ``Test`` being run, skipped, or another action, so this event will only
     /// be followed by a ``testStarted`` event if the step's test is run.
@@ -96,14 +110,28 @@ public struct Event: Sendable {
     /// - Parameters:
     ///   - step: The step in the runner plan which ended.
     ///
-    /// This is posted when a ``Runner`` finishes processing a
+    /// This event is posted when a ``Runner`` finishes processing a
     /// ``Runner/Plan/Step``.
     @_spi(ExperimentalTestRunning)
     indirect case planStepEnded(Runner.Plan.Step)
 
+    /// An iteration of the test run ended.
+    ///
+    /// - Parameters:
+    ///   - index: The index of the iteration. The first iteration has an index
+    ///     of `0`.
+    ///
+    /// This event is posted at the end of each test plan iteration.
+    ///
+    /// By default, a test plan runs for one iteration, but the
+    /// ``Configuration/repetitionPolicy-swift.property`` property can be set to
+    /// allow for more iterations.
+    @_spi(ExperimentalTestRunning)
+    case iterationEnded(_ index: Int)
+
     /// A test run ended.
     ///
-    /// This is the last event posted before ``Runner/run()`` returns.
+    /// This event is the last event posted before ``Runner/run()`` returns.
     @_spi(ExperimentalTestRunning)
     case runEnded
   }
@@ -292,6 +320,20 @@ extension Event.Kind {
     @_spi(ExperimentalTestRunning)
     case runStarted
 
+    /// An iteration of the test run started.
+    ///
+    /// - Parameters:
+    ///   - index: The index of the iteration. The first iteration has an index
+    ///     of `0`.
+    ///
+    /// This event is posted at the start of each test plan iteration.
+    ///
+    /// By default, a test plan runs for one iteration, but the
+    /// ``Configuration/repetitionPolicy-swift.property`` property can be set to
+    /// allow for more iterations.
+    @_spi(ExperimentalTestRunning)
+    case iterationStarted(_ index: Int)
+
     /// A step in the runner plan started.
     ///
     /// - Parameters:
@@ -356,6 +398,20 @@ extension Event.Kind {
     @_spi(ExperimentalTestRunning)
     case planStepEnded
 
+    /// An iteration of the test run ended.
+    ///
+    /// - Parameters:
+    ///   - index: The index of the iteration. The first iteration has an index
+    ///     of `0`.
+    ///
+    /// This event is posted at the end of each test plan iteration.
+    ///
+    /// By default, a test plan runs for one iteration, but the
+    /// ``Configuration/repetitionPolicy-swift.property`` property can be set to
+    /// allow for more iterations.
+    @_spi(ExperimentalTestRunning)
+    indirect case iterationEnded(_ index: Int)
+
     /// A test run ended.
     ///
     /// This is the last event posted before ``Runner/run()`` returns.
@@ -368,6 +424,8 @@ extension Event.Kind {
       switch kind {
       case .runStarted:
         self = .runStarted
+      case let .iterationStarted(index):
+        self = .iterationStarted(index)
       case .planStepStarted:
         self = .planStepStarted
       case .testStarted:
@@ -387,6 +445,8 @@ extension Event.Kind {
         self = .testSkipped(skipInfo)
       case .planStepEnded:
         self = .planStepEnded
+      case let .iterationEnded(index):
+        self = .iterationEnded(index)
       case .runEnded:
         self = .runEnded
       }
