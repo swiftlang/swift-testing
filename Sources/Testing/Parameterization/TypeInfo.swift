@@ -32,7 +32,7 @@ public struct TypeInfo: Sendable {
   ///
   /// - Parameters:
   ///   - type: The type which this instance should describe.
-  init(_ type: Any.Type) {
+  init(describing type: Any.Type) {
     qualifiedTypeName = _typeName(type, qualified: true)
     unqualifiedTypeName = _typeName(type, qualified: false)
   }
@@ -43,7 +43,7 @@ public struct TypeInfo: Sendable {
   /// - Parameters:
   ///   - value: The value whose type this instance should describe.
   init(describingTypeOf value: some Any) {
-    self.init(type(of: value as Any))
+    self.init(describing: type(of: value as Any))
   }
 }
 

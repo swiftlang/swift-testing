@@ -145,7 +145,7 @@ extension Test {
       self.index = index
       self.firstName = firstName
       self.secondName = secondName
-      self.typeInfo = TypeInfo(type)
+      self.typeInfo = TypeInfo(describing: type)
     }
   }
 }

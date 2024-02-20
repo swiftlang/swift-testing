@@ -35,7 +35,7 @@ struct TypeInfoTests {
     ),
   ] as [(Any.Type, TypeInfo)])
   func initWithType(type: Any.Type, expectedTypeInfo: TypeInfo) {
-    let typeInfo = TypeInfo(type)
+    let typeInfo = TypeInfo(describing: type)
     #expect(typeInfo == expectedTypeInfo)
   }
 }
