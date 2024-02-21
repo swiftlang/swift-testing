@@ -15,23 +15,23 @@ struct TypeInfoTests {
   @Test(arguments: [
     (
       String.self,
-      TypeInfo(qualifiedTypeName: "Swift.String", unqualifiedTypeName: "String")
+      TypeInfo(qualifiedName: "Swift.String", unqualifiedName: "String")
     ),
     (
       [String].self,
-      TypeInfo(qualifiedTypeName: "Swift.Array<Swift.String>", unqualifiedTypeName: "Array<String>")
+      TypeInfo(qualifiedName: "Swift.Array<Swift.String>", unqualifiedName: "Array<String>")
     ),
     (
       [Test].self,
-      TypeInfo(qualifiedTypeName: "Swift.Array<Testing.Test>", unqualifiedTypeName: "Array<Test>")
+      TypeInfo(qualifiedName: "Swift.Array<Testing.Test>", unqualifiedName: "Array<Test>")
     ),
     (
       (key: String, value: Int).self,
-      TypeInfo(qualifiedTypeName: "(key: Swift.String, value: Swift.Int)", unqualifiedTypeName: "(key: String, value: Int)")
+      TypeInfo(qualifiedName: "(key: Swift.String, value: Swift.Int)", unqualifiedName: "(key: String, value: Int)")
     ),
     (
       (() -> String).self,
-      TypeInfo(qualifiedTypeName: "() -> Swift.String", unqualifiedTypeName: "() -> String")
+      TypeInfo(qualifiedName: "() -> Swift.String", unqualifiedName: "() -> String")
     ),
   ] as [(Any.Type, TypeInfo)])
   func initWithType(type: Any.Type, expectedTypeInfo: TypeInfo) {

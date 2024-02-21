@@ -361,17 +361,17 @@ final class IssueTests: XCTestCase {
     expression = expression.capturingRuntimeValues(987 as Int)
     XCTAssertEqual(expression.sourceCode, "abc123")
     XCTAssertEqual(expression.runtimeValueDescription, "987")
-    XCTAssertEqual(expression.runtimeValueTypeInfo?.qualifiedTypeName, "Swift.Int")
+    XCTAssertEqual(expression.runtimeValueTypeInfo?.qualifiedName, "Swift.Int")
 
     expression = expression.capturingRuntimeValues(ExpressionValueAndTypeCapture_Value())
     XCTAssertEqual(expression.sourceCode, "abc123")
     XCTAssertEqual(expression.runtimeValueDescription, "ExpressionValueAndTypeCapture_Value()")
-    XCTAssertEqual(expression.runtimeValueTypeInfo?.qualifiedTypeName, "TestingTests.IssueTests.ExpressionValueAndTypeCapture_Value")
+    XCTAssertEqual(expression.runtimeValueTypeInfo?.qualifiedName, "TestingTests.IssueTests.ExpressionValueAndTypeCapture_Value")
 
     expression = expression.capturingRuntimeValues((123, "abc") as (Int, String), ())
     XCTAssertEqual(expression.sourceCode, "abc123")
     XCTAssertEqual(expression.runtimeValueDescription, #"(123, "abc")"#)
-    XCTAssertEqual(expression.runtimeValueTypeInfo?.qualifiedTypeName, "(Swift.Int, Swift.String)")
+    XCTAssertEqual(expression.runtimeValueTypeInfo?.qualifiedName, "(Swift.Int, Swift.String)")
   }
 
   func testIsAndAsComparisons() async {

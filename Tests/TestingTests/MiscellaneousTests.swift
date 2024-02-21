@@ -335,8 +335,8 @@ struct MiscellaneousTests {
       #expect(firstParameter.firstName == "i")
       #expect(firstParameter.secondName == nil)
       let firstParameterTypeInfo = try #require(firstParameter.typeInfo)
-      #expect(firstParameterTypeInfo.qualifiedTypeName == "Swift.Int")
-      #expect(firstParameterTypeInfo.unqualifiedTypeName == "Int")
+      #expect(firstParameterTypeInfo.qualifiedName == "Swift.Int")
+      #expect(firstParameterTypeInfo.unqualifiedName == "Int")
     } catch {}
 
     do {
@@ -352,8 +352,8 @@ struct MiscellaneousTests {
       #expect(secondParameter.firstName == "j")
       #expect(secondParameter.secondName == "k")
       let secondParameterTypeInfo = try #require(secondParameter.typeInfo)
-      #expect(secondParameterTypeInfo.qualifiedTypeName == "Swift.String")
-      #expect(secondParameterTypeInfo.unqualifiedTypeName == "String")
+      #expect(secondParameterTypeInfo.qualifiedName == "Swift.String")
+      #expect(secondParameterTypeInfo.unqualifiedName == "String")
     } catch {}
   }
 

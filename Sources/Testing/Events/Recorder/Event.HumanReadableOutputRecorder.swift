@@ -176,7 +176,7 @@ extension Test.Case {
 
         if includeTypeNames {
           let typeInfo = TypeInfo(describingTypeOf: argument.value)
-          return "\(labeledArgument) (\(typeInfo.qualifiedTypeName))"
+          return "\(labeledArgument) (\(typeInfo.qualifiedName))"
         } else {
           return labeledArgument
         }

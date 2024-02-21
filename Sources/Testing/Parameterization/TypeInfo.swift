@@ -14,18 +14,18 @@
 public struct TypeInfo: Sendable {
   /// The complete name of this type, with the names of all referenced types
   /// fully-qualified by their module names when possible.
-  public var qualifiedTypeName: String
+  public var qualifiedName: String
 
   /// A simplified name of this type, by leaving the names of all referenced
   /// types unqualified, i.e. without module name prefixes.
-  public var unqualifiedTypeName: String
+  public var unqualifiedName: String
 
   init(
-    qualifiedTypeName: String,
-    unqualifiedTypeName: String
+    qualifiedName: String,
+    unqualifiedName: String
   ) {
-    self.qualifiedTypeName = qualifiedTypeName
-    self.unqualifiedTypeName = unqualifiedTypeName
+    self.qualifiedName = qualifiedName
+    self.unqualifiedName = unqualifiedName
   }
 
   /// Initialize an instance of this type describing the specified type.
@@ -33,8 +33,8 @@ public struct TypeInfo: Sendable {
   /// - Parameters:
   ///   - type: The type which this instance should describe.
   init(describing type: Any.Type) {
-    qualifiedTypeName = _typeName(type, qualified: true)
-    unqualifiedTypeName = _typeName(type, qualified: false)
+    qualifiedName = _typeName(type, qualified: true)
+    unqualifiedName = _typeName(type, qualified: false)
   }
 
   /// Initialize an instance of this type describing the type of the specified
@@ -51,11 +51,11 @@ public struct TypeInfo: Sendable {
 
 extension TypeInfo: CustomStringConvertible, CustomDebugStringConvertible {
   public var description: String {
-    unqualifiedTypeName
+    unqualifiedName
   }
 
   public var debugDescription: String {
-    qualifiedTypeName
+    qualifiedName
   }
 }
 
