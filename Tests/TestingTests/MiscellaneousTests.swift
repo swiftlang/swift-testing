@@ -82,6 +82,9 @@ struct SendableTests: Sendable {
   struct NestedSendableTests: Sendable {
     @Test(.hidden)
     func succeeds() throws {}
+
+    @Test(.hidden)
+    func otherSucceeds() throws {}
   }
 
   @Test(.hidden, arguments: FixtureData.zeroUpTo100)

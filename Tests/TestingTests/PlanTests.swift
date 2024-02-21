@@ -63,6 +63,61 @@ struct PlanTests {
     #expect(planTests.contains(testB))
   }
 
+  @Test("Excluded tests")
+  func excludedTests() async throws {
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
+
+    let tests = [
+      outerTestType,
+      testA,
+      innerTestType,
+      testB,
+    ]
+
+    var configuration = Configuration()
+    configuration.uncheckedTestFilter = makeTestFilter(excluding: [innerTestType.id])
+
+    let plan = await Runner.Plan(tests: tests, configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(outerTestType))
+    #expect(planTests.contains(testA))
+    #expect(!planTests.contains(innerTestType))
+    #expect(!planTests.contains(testB))
+  }
+
+  @Test("Mixed included and excluded tests")
+  func mixedIncludedAndExcludedTests() async throws {
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
+    let testC = try #require(await testFunction(named: "otherSucceeds()", in: SendableTests.NestedSendableTests.self))
+
+    let tests = [
+      outerTestType,
+      testA,
+      innerTestType,
+      testB,
+      testC,
+    ]
+
+    var configuration = Configuration()
+    let filter1 = makeTestFilter(matching: [testA.id, innerTestType.id])
+    let filter2 = makeTestFilter(excluding: [testC.id])
+    configuration.uncheckedTestFilter = { filter1($0) && filter2($0) }
+
+    let plan = await Runner.Plan(tests: tests, configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(outerTestType))
+    #expect(planTests.contains(testA))
+    #expect(planTests.contains(innerTestType))
+    #expect(planTests.contains(testB))
+    #expect(!planTests.contains(testC))
+  }
+
   @Test("Recursive trait application")
   func recursiveTraitApplication() async throws {
     let outerTestType = try #require(await test(for: OuterTest.self))

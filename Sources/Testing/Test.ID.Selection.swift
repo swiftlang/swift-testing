@@ -47,6 +47,9 @@ extension Test.ID.Selection {
   ///
   /// - Parameters:
   ///   - test: The test whose ID should be queried.
+  ///   - inferAncestors: Whether or not to infer inclusion for the ancestors
+  ///     of explicitly included tests. If `false`, only explicitly included
+  ///     tests and their descendants are included.
   ///
   /// - Returns: Whether or not the selection contains the ID for the
   ///   specified test.
@@ -54,22 +57,25 @@ extension Test.ID.Selection {
   /// A test ID is considered contained in the selection if it has been
   /// explicitly added or if it has a descendant or ancestor which has been
   /// explicitly added.
-  @Sendable func contains(_ test: Test) -> Bool {
-    contains(test.id)
+  func contains(_ test: Test, inferAncestors: Bool = true) -> Bool {
+    contains(test.id, inferAncestors: inferAncestors)
   }
 
   /// Determine if the selection contains a specified test ID.
   ///
   /// - Parameters:
   ///   - testID: The test ID to query.
+  ///   - inferAncestors: Whether or not to infer inclusion for the ancestors
+  ///     of explicitly included tests. If `false`, only explicitly included
+  ///     tests and their descendants are included.
   ///
   /// - Returns: Whether or not the selection contains the specified test ID.
   ///
   /// A test ID is considered contained in the selection if it has been
   /// explicitly added or if it has a descendant or ancestor which has been
   /// explicitly added.
-  @Sendable func contains(_ testID: Test.ID) -> Bool {
-    contains(testID.keyPathRepresentation)
+  func contains(_ testID: Test.ID, inferAncestors: Bool = true) -> Bool {
+    contains(testID.keyPathRepresentation, inferAncestors: inferAncestors)
   }
 
   /// Determine if the selection contains a test ID with the specified fully-
@@ -78,6 +84,9 @@ extension Test.ID.Selection {
   /// - Parameters:
   ///   - fullyQualifiedNameComponents: The fully-qualified name components of
   ///     the test ID to query.
+  ///   - inferAncestors: Whether or not to infer inclusion for the ancestors
+  ///     of explicitly included tests. If `false`, only explicitly included
+  ///     tests and their descendants are included.
   ///
   /// - Returns: Whether or not the selection contains a test ID with the
   ///   specified fully-qualified name components.
@@ -85,20 +94,27 @@ extension Test.ID.Selection {
   /// A test ID is considered contained in the selection if it has been
   /// explicitly added or if it has a descendant or ancestor which has been
   /// explicitly added.
-  func contains(_ fullyQualifiedNameComponents: some Collection<String>) -> Bool {
-    var isContained = false
-
-    for value in _testIDsGraph.takeValues(at: fullyQualifiedNameComponents) {
-      switch value {
-      case .some(false):
-        isContained = true
-      case .some(true):
-        return true
-      case nil:
-        return false
+  func contains(_ fullyQualifiedNameComponents: some Collection<String>, inferAncestors: Bool = true) -> Bool {
+    let values = _testIDsGraph.takeValues(at: fullyQualifiedNameComponents)
+    if inferAncestors {
+      var isContained = false
+      for value in values {
+        switch value {
+        case .some(false):
+          isContained = true
+        case .some(true):
+          return true
+        case nil:
+          return false
+        }
       }
+      return isContained
+    } else {
+      // If ancestors aren't inferred to be contained in this selection, then
+      // we are only looking for any element that is explicitly included; if
+      // an ancestral test ID was passed, it won't have enough elements to reach
+      // the explicitly-included test ID when calling takeValues(at:).
+      return values.contains(true)
     }
-
-    return isContained
   }
 }

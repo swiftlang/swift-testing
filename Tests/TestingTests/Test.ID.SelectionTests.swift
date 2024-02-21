@@ -95,4 +95,19 @@ struct Test_ID_SelectionTests {
     #expect(selection.contains(["A", "X", "Y"]))
     #expect(!selection.contains(["X"]))
   }
+
+  @Test("Inverted lookup")
+  func invertedLookup() {
+    let selection = Test.ID.Selection(testIDs: [["A", "B", "C", "D", "E"], ["A", "B", "C"]])
+    #expect(!selection.contains(["A"], inferAncestors: false))
+    #expect(!selection.contains(["A", "B"], inferAncestors: false))
+    #expect(!selection.contains(["A", "B", "J"], inferAncestors: false))
+    #expect(selection.contains(["A", "B", "C"], inferAncestors: false))
+    #expect(selection.contains(["A", "B", "C", "D"], inferAncestors: false))
+    #expect(selection.contains(["A", "B", "C", "D", "E"], inferAncestors: false))
+    #expect(selection.contains(["A", "B", "C", "D", "E", "F"], inferAncestors: false))
+    #expect(!selection.contains(["A", "X"], inferAncestors: false))
+    #expect(!selection.contains(["A", "X", "Y"], inferAncestors: false))
+    #expect(!selection.contains(["X"], inferAncestors: false))
+  }
 }
