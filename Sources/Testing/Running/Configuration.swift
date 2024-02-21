@@ -255,5 +255,17 @@ public struct Configuration: Sendable {
 @_spi(ExperimentalTestRunning)
 public func makeTestFilter(matching selection: some Collection<Test.ID>) -> Configuration.TestFilter {
   let selection = Test.ID.Selection(testIDs: selection)
-  return selection.contains
+  return { selection.contains($0) }
+}
+
+/// Make a test filter that excludes certain tests based on their IDs.
+///
+/// - Parameters:
+///   - selection: A set of test IDs to be excluded.
+///
+/// - Returns: A test filter that excludes tests based on `selection`.
+@_spi(ExperimentalTestRunning)
+public func makeTestFilter(excluding selection: some Collection<Test.ID>) -> Configuration.TestFilter {
+  let selection = Test.ID.Selection(testIDs: selection)
+  return { !selection.contains($0, inferAncestors: false) }
 }
