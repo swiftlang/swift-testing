@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ExperimentalTestRunning) @_spi(ExperimentalEventHandling) import Testing
+@testable @_spi(ForToolsIntegrationOnly) @_spi(ExperimentalTestRunning) @_spi(ExperimentalEventHandling) import Testing
 
 @Suite("Test.Case.Argument Tests")
 struct Test_Case_ArgumentTests {
@@ -141,6 +141,8 @@ struct Test_Case_ArgumentTests {
       #expect(value.1 == 123)
       #expect(argument.parameter.index == 0)
       #expect(argument.parameter.firstName == "x")
+      #expect(argument.parameter.typeInfo.qualifiedName == "(key: Swift.String, value: Swift.Int)")
+      #expect(argument.parameter.typeInfo.unqualifiedName == "(key: String, value: Int)")
     }
 
     await runTestFunction(named: "oneDictionaryElementTupleParameter(x:)", in: ParameterizedTests.self, configuration: configuration)

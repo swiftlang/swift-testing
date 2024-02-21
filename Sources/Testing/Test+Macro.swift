@@ -149,7 +149,7 @@ extension Test {
   ///
   /// - Warning: This type alias is used to implement the `@Test` macro. Do not
   ///   use it directly.
-  public typealias __Parameter = (firstName: String, secondName: String?)
+  public typealias __Parameter = (firstName: String, secondName: String?, type: Any.Type)
 
   /// Create an instance of ``Test`` for a function.
   ///
@@ -178,7 +178,7 @@ extension [Test.__Parameter] {
   /// parameter instances from the position of the tuple in the original array.
   fileprivate var parameters: [Test.Parameter] {
     enumerated().map { index, parameter in
-      Test.Parameter(index: index, firstName: parameter.firstName, secondName: parameter.secondName)
+      Test.Parameter(index: index, firstName: parameter.firstName, secondName: parameter.secondName, type: parameter.type)
     }
   }
 }

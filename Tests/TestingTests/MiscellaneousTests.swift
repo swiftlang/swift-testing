@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ExperimentalParameterizedTesting) @_spi(ExperimentalTestRunning) import Testing
+@testable @_spi(ForToolsIntegrationOnly) @_spi(ExperimentalParameterizedTesting) @_spi(ExperimentalTestRunning) import Testing
 
 @Test(/* name unspecified */ .hidden)
 @Sendable func freeSyncFunction() {}
@@ -43,6 +43,7 @@ struct TestWithPrecedingAttribute {
 private enum FixtureData {
   static let zeroUpTo100 = 0 ..< 100
   static let smallStringArray = ["a", "b", "c", "d"]
+  static let stringReturningClosureArray = [{ @Sendable in "" }]
 }
 
 @Suite(.hidden)
@@ -100,6 +101,9 @@ struct SendableTests: Sendable {
 
   @Test(.hidden, arguments: FixtureData.zeroUpTo100)
   func parameterizedConsumingAsync(i: consuming Int) async { }
+
+  @Test(.hidden, arguments: FixtureData.stringReturningClosureArray)
+  func parameterizedAcceptingFunction(f: @Sendable () -> String) {}
 }
 
 @Suite("Named Sendable test type", .hidden)
@@ -330,6 +334,9 @@ struct MiscellaneousTests {
       #expect(firstParameter.index == 0)
       #expect(firstParameter.firstName == "i")
       #expect(firstParameter.secondName == nil)
+      let firstParameterTypeInfo = try #require(firstParameter.typeInfo)
+      #expect(firstParameterTypeInfo.qualifiedName == "Swift.Int")
+      #expect(firstParameterTypeInfo.unqualifiedName == "Int")
     } catch {}
 
     do {
@@ -344,6 +351,9 @@ struct MiscellaneousTests {
       #expect(secondParameter.index == 1)
       #expect(secondParameter.firstName == "j")
       #expect(secondParameter.secondName == "k")
+      let secondParameterTypeInfo = try #require(secondParameter.typeInfo)
+      #expect(secondParameterTypeInfo.qualifiedName == "Swift.String")
+      #expect(secondParameterTypeInfo.unqualifiedName == "String")
     } catch {}
   }
 
@@ -404,7 +414,7 @@ struct MiscellaneousTests {
     let monomorphicTestFunctionParameters = try #require(monomorphicTestFunction.parameters)
     #expect(monomorphicTestFunctionParameters.isEmpty)
 
-    let parameterizedTestFunction = Test(arguments: 0 ..< 100, parameters: [Test.Parameter(index: 0, firstName: "i")]) { _ in }
+    let parameterizedTestFunction = Test(arguments: 0 ..< 100, parameters: [Test.Parameter(index: 0, firstName: "i", type: Int.self)]) { _ in }
     #expect(parameterizedTestFunction.isParameterized)
     let parameterizedTestFunctionTestCases = try #require(parameterizedTestFunction.testCases)
     #expect(parameterizedTestFunctionTestCases.underestimatedCount == 100)
@@ -414,8 +424,8 @@ struct MiscellaneousTests {
     #expect(parameterizedTestFunctionFirstParameter.firstName == "i")
 
     let parameterizedTestFunction2 = Test(arguments: 0 ..< 100, 0 ..< 100, parameters: [
-      Test.Parameter(index: 0, firstName: "i"),
-      Test.Parameter(index: 1, firstName: "j", secondName: "value"),
+      Test.Parameter(index: 0, firstName: "i", type: Int.self),
+      Test.Parameter(index: 1, firstName: "j", secondName: "value", type: Int.self),
     ]) { _, _ in }
     #expect(parameterizedTestFunction2.isParameterized)
     let parameterizedTestFunction2TestCases = try #require(parameterizedTestFunction2.testCases)

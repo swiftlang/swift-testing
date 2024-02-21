@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalTestRunning) @_spi(ExperimentalSnapshotting) @_spi(ExperimentalSourceCodeCapturing) import Testing
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) @_spi(ExperimentalEventHandling) @_spi(ExperimentalTestRunning) @_spi(ExperimentalSnapshotting) @_spi(ExperimentalSourceCodeCapturing) import Testing
 private import TestingInternals
 
 #if canImport(XCTest)
@@ -356,22 +356,22 @@ final class IssueTests: XCTestCase {
     var expression = Expression.__fromSyntaxNode("abc123")
     XCTAssertEqual(expression.sourceCode, "abc123")
     XCTAssertNil(expression.runtimeValueDescription)
-    XCTAssertNil(expression.fullyQualifiedTypeNameOfRuntimeValue)
+    XCTAssertNil(expression.runtimeValueTypeInfo)
 
     expression = expression.capturingRuntimeValues(987 as Int)
     XCTAssertEqual(expression.sourceCode, "abc123")
     XCTAssertEqual(expression.runtimeValueDescription, "987")
-    XCTAssertEqual(expression.fullyQualifiedTypeNameOfRuntimeValue, "Swift.Int")
+    XCTAssertEqual(expression.runtimeValueTypeInfo?.qualifiedName, "Swift.Int")
 
     expression = expression.capturingRuntimeValues(ExpressionValueAndTypeCapture_Value())
     XCTAssertEqual(expression.sourceCode, "abc123")
     XCTAssertEqual(expression.runtimeValueDescription, "ExpressionValueAndTypeCapture_Value()")
-    XCTAssertEqual(expression.fullyQualifiedTypeNameOfRuntimeValue, "TestingTests.IssueTests.ExpressionValueAndTypeCapture_Value")
+    XCTAssertEqual(expression.runtimeValueTypeInfo?.qualifiedName, "TestingTests.IssueTests.ExpressionValueAndTypeCapture_Value")
 
     expression = expression.capturingRuntimeValues((123, "abc") as (Int, String), ())
     XCTAssertEqual(expression.sourceCode, "abc123")
     XCTAssertEqual(expression.runtimeValueDescription, #"(123, "abc")"#)
-    XCTAssertEqual(expression.fullyQualifiedTypeNameOfRuntimeValue, "(Swift.Int, Swift.String)")
+    XCTAssertEqual(expression.runtimeValueTypeInfo?.qualifiedName, "(Swift.Int, Swift.String)")
   }
 
   func testIsAndAsComparisons() async {

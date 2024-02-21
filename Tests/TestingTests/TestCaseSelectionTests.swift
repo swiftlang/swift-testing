@@ -14,7 +14,7 @@
 struct TestCaseSelectionTests {
   @Test("Multiple arguments passed to one parameter, selecting one case")
   func oneParameterSelectingOneCase() async throws {
-    let fixtureTest = Test(arguments: ["a", "b"], parameters: [Test.Parameter(index: 0, firstName: "value")]) { value in
+    let fixtureTest = Test(arguments: ["a", "b"], parameters: [Test.Parameter(index: 0, firstName: "value", type: String.self)]) { value in
       #expect(value == "a")
     }
 
@@ -41,7 +41,7 @@ struct TestCaseSelectionTests {
 
   @Test("Multiple arguments passed to one parameter, selecting a subset of cases")
   func oneParameterSelectingMultipleCases() async throws {
-    let fixtureTest = Test(arguments: ["a", "b", "c"], parameters: [Test.Parameter(index: 0, firstName: "value")]) { value in
+    let fixtureTest = Test(arguments: ["a", "b", "c"], parameters: [Test.Parameter(index: 0, firstName: "value", type: String.self)]) { value in
       #expect(value != "b")
     }
 
@@ -77,8 +77,8 @@ struct TestCaseSelectionTests {
     let fixtureTest = Test(
       arguments: ["a", "b"], [1, 2],
       parameters: [
-        Test.Parameter(index: 0, firstName: "stringValue"),
-        Test.Parameter(index: 1, firstName: "intValue"),
+        Test.Parameter(index: 0, firstName: "stringValue", type: String.self),
+        Test.Parameter(index: 1, firstName: "intValue", type: Int.self),
       ]
     ) { stringValue, intValue in
       #expect(stringValue == "b" && intValue == 2)
@@ -117,7 +117,7 @@ struct TestCaseSelectionTests {
     let fixtureTest = Test(arguments: [
       MyCustomTestArgument(x: 1, y: "a"),
       MyCustomTestArgument(x: 2, y: "b"),
-    ], parameters: [Test.Parameter(index: 0, firstName: "value")]) { arg in
+    ], parameters: [Test.Parameter(index: 0, firstName: "value", type: MyCustomTestArgument.self)]) { arg in
       #expect(arg.x == 1 && arg.y == "a")
     }
 
@@ -147,7 +147,7 @@ struct TestCaseSelectionTests {
     let fixtureTest = Test(arguments: [
       MyCustomIdentifiableArgument(id: "a"),
       MyCustomIdentifiableArgument(id: "b"),
-    ], parameters: [Test.Parameter(index: 0, firstName: "value")]) { arg in
+    ], parameters: [Test.Parameter(index: 0, firstName: "value", type: MyCustomIdentifiableArgument.self)]) { arg in
       #expect(arg.id == "a")
     }
 
@@ -177,7 +177,7 @@ struct TestCaseSelectionTests {
     let fixtureTest = Test(arguments: [
       MyCustomRawRepresentableArgument(rawValue: "a"),
       MyCustomRawRepresentableArgument(rawValue: "b"),
-    ], parameters: [Test.Parameter(index: 0, firstName: "value")]) { arg in
+    ], parameters: [Test.Parameter(index: 0, firstName: "value", type: MyCustomRawRepresentableArgument.self)]) { arg in
       #expect(arg.rawValue == "a")
     }
 
