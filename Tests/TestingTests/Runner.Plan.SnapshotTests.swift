@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ExperimentalSnapshotting) @_spi(ExperimentalTestRunning) import Testing
+@testable @_spi(ExperimentalSnapshotting) @_spi(ExperimentalTestRunning) @_spi(ForToolsIntegrationOnly) import Testing
 
 #if canImport(Foundation)
 import Foundation
@@ -22,7 +22,7 @@ struct Runner_Plan_SnapshotTests {
     let suite = try #require(await test(for: Runner_Plan_SnapshotFixtures.self))
 
     var configuration = Configuration()
-    configuration.uncheckedTestFilter = makeTestFilter(matching: [suite.id])
+    configuration.setTestFilter(toInclude: [suite.id], includeHiddenTests: true)
 
     let plan = await Runner.Plan(configuration: configuration)
     let snapshot = Runner.Plan.Snapshot(snapshotting: plan)

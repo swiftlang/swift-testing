@@ -192,11 +192,7 @@ extension Runner.Plan {
     // configuration. The action graph is not modified here: actions that lose
     // their corresponding tests are effectively filtered out by the call to
     // zip() near the end of the function.
-    testGraph = testGraph.mapValues { test in
-      test.flatMap { test in
-        configuration.testFilter(test) ? test : nil
-      }
-    }
+    testGraph = configuration.testFilter.apply(to: testGraph)
 
     // For each test value, determine the appropriate action for it.
     await testGraph.forEach { keyPath, test in

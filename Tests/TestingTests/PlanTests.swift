@@ -8,11 +8,20 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
     
-@testable @_spi(ExperimentalTestRunning) import Testing
+@testable @_spi(ExperimentalTestRunning) @_spi(ForToolsIntegrationOnly) import Testing
 
 @Suite("Runner.Plan Tests")
 struct PlanTests {
-  @Test("Selected tests")
+  @Test("Unfiltered tests")
+  func unfilteredTests() async throws {
+    var configuration = Configuration()
+    configuration.testFilter = .unfiltered
+
+    let plan = await Runner.Plan(tests: Test.all, configuration: configuration)
+    #expect(plan.steps.count > 0)
+  }
+
+  @Test("Selected tests by ID")
   func selectedTests() async throws {
     let outerTestType = try #require(await test(for: SendableTests.self))
     let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
@@ -28,7 +37,7 @@ struct PlanTests {
 
     let selection = [innerTestType.id]
     var configuration = Configuration()
-    configuration.uncheckedTestFilter = makeTestFilter(matching: selection)
+    configuration.setTestFilter(toInclude: selection, includeHiddenTests: true)
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
     #expect(plan.steps.contains(where: { $0.test == outerTestType }))
@@ -37,7 +46,7 @@ struct PlanTests {
     #expect(plan.steps.contains(where: { $0.test == testB }))
   }
 
-  @Test("Multiple selected tests")
+  @Test("Multiple selected tests by ID")
   func multipleSelectedTests() async throws {
     let outerTestType = try #require(await test(for: SendableTests.self))
     let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
@@ -53,7 +62,7 @@ struct PlanTests {
 
     var configuration = Configuration()
     let selection = [innerTestType.id, outerTestType.id]
-    configuration.uncheckedTestFilter = makeTestFilter(matching: selection)
+    configuration.setTestFilter(toInclude: selection, includeHiddenTests: true)
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
     let planTests = plan.steps.map(\.test)
@@ -63,7 +72,7 @@ struct PlanTests {
     #expect(planTests.contains(testB))
   }
 
-  @Test("Excluded tests")
+  @Test("Excluded tests by ID")
   func excludedTests() async throws {
     let outerTestType = try #require(await test(for: SendableTests.self))
     let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
@@ -77,8 +86,10 @@ struct PlanTests {
       testB,
     ]
 
+    var testFilter = Configuration.TestFilter(excluding: [innerTestType.id])
+    testFilter.includeHiddenTests = true
     var configuration = Configuration()
-    configuration.uncheckedTestFilter = makeTestFilter(excluding: [innerTestType.id])
+    configuration.testFilter = testFilter
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
     let planTests = plan.steps.map(\.test)
@@ -88,7 +99,127 @@ struct PlanTests {
     #expect(!planTests.contains(testB))
   }
 
-  @Test("Mixed included and excluded tests")
+  @Test("Selected tests by any tag")
+  func selectedTestsByAnyTag() async throws {
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
+    let testC = try #require(await testFunction(named: "otherSucceeds()", in: SendableTests.NestedSendableTests.self))
+
+    let tests = [
+      outerTestType,
+      testA,
+      innerTestType,
+      testB,
+      testC,
+    ]
+
+    var configuration = Configuration()
+    var filter = Configuration.TestFilter(includingAnyOf: ["tag-1" as Tag, "tag-2" as Tag])
+    filter.includeHiddenTests = true
+    configuration.testFilter = filter
+
+    let plan = await Runner.Plan(tests: tests, configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(outerTestType))
+    #expect(!planTests.contains(testA))
+    #expect(planTests.contains(innerTestType))
+    #expect(planTests.contains(testB))
+    #expect(planTests.contains(testC))
+  }
+
+  @Test("Selected tests by all tags")
+  func selectedTestsByAllTags() async throws {
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
+    let testC = try #require(await testFunction(named: "otherSucceeds()", in: SendableTests.NestedSendableTests.self))
+
+    let tests = [
+      outerTestType,
+      testA,
+      innerTestType,
+      testB,
+      testC,
+    ]
+
+    var configuration = Configuration()
+    var filter = Configuration.TestFilter(includingAllOf: ["tag-1" as Tag, "tag-2" as Tag])
+    filter.includeHiddenTests = true
+    configuration.testFilter = filter
+
+    let plan = await Runner.Plan(tests: tests, configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(outerTestType))
+    #expect(!planTests.contains(testA))
+    #expect(planTests.contains(innerTestType))
+    #expect(planTests.contains(testB))
+    #expect(!planTests.contains(testC))
+  }
+
+  @Test("Excluded tests by any tag")
+  func excludedTestsByAnyTag() async throws {
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
+    let testC = try #require(await testFunction(named: "otherSucceeds()", in: SendableTests.NestedSendableTests.self))
+
+    let tests = [
+      outerTestType,
+      testA,
+      innerTestType,
+      testB,
+      testC,
+    ]
+
+    var configuration = Configuration()
+    var filter = Configuration.TestFilter(excludingAnyOf: ["tag-1" as Tag, "tag-2" as Tag])
+    filter.includeHiddenTests = true
+    configuration.testFilter = filter
+
+    let plan = await Runner.Plan(tests: tests, configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(outerTestType))
+    #expect(planTests.contains(testA))
+    #expect(!planTests.contains(innerTestType))
+    #expect(!planTests.contains(testB))
+    #expect(!planTests.contains(testC))
+  }
+
+  @Test("Excluded tests by all tags")
+  func excludedTestsByAllTags() async throws {
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
+    let testC = try #require(await testFunction(named: "otherSucceeds()", in: SendableTests.NestedSendableTests.self))
+
+    let tests = [
+      outerTestType,
+      testA,
+      innerTestType,
+      testB,
+      testC,
+    ]
+
+    var configuration = Configuration()
+    var filter = Configuration.TestFilter(excludingAllOf: ["tag-1" as Tag, "tag-2" as Tag])
+    filter.includeHiddenTests = true
+    configuration.testFilter = filter
+
+    let plan = await Runner.Plan(tests: tests, configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(outerTestType))
+    #expect(planTests.contains(testA))
+    #expect(planTests.contains(innerTestType))
+    #expect(!planTests.contains(testB))
+    #expect(planTests.contains(testC))
+  }
+
+  @Test("Mixed included and excluded tests by ID")
   func mixedIncludedAndExcludedTests() async throws {
     let outerTestType = try #require(await test(for: SendableTests.self))
     let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
@@ -105,9 +236,11 @@ struct PlanTests {
     ]
 
     var configuration = Configuration()
-    let filter1 = makeTestFilter(matching: [testA.id, innerTestType.id])
-    let filter2 = makeTestFilter(excluding: [testC.id])
-    configuration.uncheckedTestFilter = { filter1($0) && filter2($0) }
+    var filter = Configuration.TestFilter(including: [testA.id, innerTestType.id])
+    filter.includeHiddenTests = true
+    filter.combine(with: Configuration.TestFilter(excluding: [testC.id]))
+    configuration.testFilter = filter
+    print(configuration.testFilter.includeHiddenTests)
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
     let planTests = plan.steps.map(\.test)
@@ -116,6 +249,93 @@ struct PlanTests {
     #expect(planTests.contains(innerTestType))
     #expect(planTests.contains(testB))
     #expect(!planTests.contains(testC))
+  }
+
+  @Test("Combining test filter by ID with .unfiltered (rhs)")
+  func combiningTestFilterWithUnfilteredRHS() async throws {
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
+
+    let tests = [
+      outerTestType,
+      testA,
+      innerTestType,
+      testB,
+    ]
+
+    var configuration = Configuration()
+    let selection = [innerTestType.id, outerTestType.id]
+    var testFilter = Configuration.TestFilter(including: selection)
+    testFilter.combine(with: .unfiltered)
+    testFilter.includeHiddenTests = true
+    configuration.testFilter = testFilter
+
+    let plan = await Runner.Plan(tests: tests, configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(outerTestType))
+    #expect(planTests.contains(testA))
+    #expect(planTests.contains(innerTestType))
+    #expect(planTests.contains(testB))
+  }
+
+  @Test("Combining test filter by ID with .unfiltered (lhs)")
+  func combiningTestFilterWithUnfilteredLHS() async throws {
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
+
+    let tests = [
+      outerTestType,
+      testA,
+      innerTestType,
+      testB,
+    ]
+
+    var configuration = Configuration()
+    let selection = [innerTestType.id, outerTestType.id]
+    var testFilter = Configuration.TestFilter.unfiltered
+    testFilter.combine(with: Configuration.TestFilter(including: selection))
+    testFilter.includeHiddenTests = true
+    configuration.testFilter = testFilter
+
+    let plan = await Runner.Plan(tests: tests, configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(outerTestType))
+    #expect(planTests.contains(testA))
+    #expect(planTests.contains(innerTestType))
+    #expect(planTests.contains(testB))
+  }
+
+  @Test("Combining test filter by ID with by tag")
+  func combiningTestFilterByIDAndByTag() async throws {
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
+
+    let tests = [
+      outerTestType,
+      testA,
+      innerTestType,
+      testB,
+    ]
+
+    var configuration = Configuration()
+    let selection = [innerTestType.id, outerTestType.id]
+    var testFilter = Configuration.TestFilter(including: selection)
+    testFilter.combine(with: .init(excludingAnyOf: ["A" as Tag]))
+    testFilter.includeHiddenTests = true
+    configuration.testFilter = testFilter
+
+    let plan = await Runner.Plan(tests: tests, configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(outerTestType))
+    #expect(planTests.contains(testA))
+    #expect(planTests.contains(innerTestType))
+    #expect(planTests.contains(testB))
   }
 
   @Test("Recursive trait application")
@@ -128,7 +348,7 @@ struct PlanTests {
 
     var configuration = Configuration()
     let selection = [outerTestType.id, deeplyNestedTest.id]
-    configuration.uncheckedTestFilter = makeTestFilter(matching: selection)
+    configuration.setTestFilter(toInclude: selection, includeHiddenTests: true)
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
 
@@ -147,7 +367,7 @@ struct PlanTests {
 
     var configuration = Configuration()
     let selection = [testSuiteA.id]
-    configuration.uncheckedTestFilter = makeTestFilter(matching: selection)
+    configuration.setTestFilter(toInclude: selection, includeHiddenTests: true)
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
     let testFuncXWithTraits = try #require(plan.steps.map(\.test).first { $0.name == "x()" })
