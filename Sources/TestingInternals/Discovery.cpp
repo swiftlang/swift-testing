@@ -23,7 +23,31 @@
 #include <mach-o/getsect.h>
 #include <objc/runtime.h>
 #include <os/lock.h>
+#elif defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <Windows.h>
+#include <psapi.h>
 #endif
+
+/// A type that acts as a C++
+/// [Allocator](https://en.cppreference.com/w/cpp/named_req/Allocator) without
+/// using global `operator new` or `operator delete`.
+///
+/// This type is necessary because global `operator new` and `operator delete`
+/// can be overridden in developer-supplied code and cause deadlocks or crashes
+/// when subsequently used while holding a dyld- or libobjc-owned lock. Using
+/// `std::malloc()` and `std::free()` allows the use of C++ container types
+/// without this risk.
+template <typename T> struct SWTHeapAllocator {
+  using value_type = T;
+
+  T *allocate(size_t count) {
+    return reinterpret_cast<T *>(std::calloc(count, sizeof(T)));
+  }
+
+  void deallocate(T *ptr, size_t count) { std::free(ptr); }
+}; 
 
 /// Enumerate over all Swift type metadata sections in the current process.
 ///
@@ -177,27 +201,6 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
 #elif defined(__APPLE__)
 #pragma mark - Apple implementation
 
-/// A type that acts as a C++ [Allocator](https://en.cppreference.com/w/cpp/named_req/Allocator)
-/// without using global `operator new` or `operator delete`.
-///
-/// This type is necessary because global `operator new` and `operator delete`
-/// can be overridden in developer-supplied code and cause deadlocks or crashes
-/// when subsequently used while holding a dyld- or libobjc-owned lock. Using
-/// `std::malloc()` and `std::free()` allows the use of C++ container types
-/// without this risk.
-template<typename T>
-struct SWTHeapAllocator {
-  using value_type = T;
-
-  T *allocate(size_t count) {
-    return reinterpret_cast<T *>(std::calloc(count, sizeof(T)));
-  }
-
-  void deallocate(T *ptr, size_t count) {
-    std::free(ptr);
-  }
-};
-
 /// A type that acts as a C++ [Container](https://en.cppreference.com/w/cpp/named_req/Container)
 /// and which contains a sequence of Mach headers.
 #if __LP64__
@@ -259,7 +262,70 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
     }
   }
 }
+#elif defined(_WIN32)
+/// Enumerate the sections in a given module.
+///
+/// - Parameters:
+///   - module: The module to enumerate.
+///   - body: A function to invoke once per section in `module`. Each
+///     section's name, base address, and length (in bytes) are passed.
+template <typename SectionEnumerator>
+static void enumerateSections(HMODULE module, const SectionEnumerator& body) {
+  auto dosHeader = reinterpret_cast<const IMAGE_DOS_HEADER *>(module);
+  if (!dosHeader || dosHeader->e_lfanew <= 0) {
+    return;
+  }
 
+  auto ntHeader = reinterpret_cast<const IMAGE_NT_HEADERS *>(reinterpret_cast<const char *>(dosHeader) + dosHeader->e_lfanew);
+  if (!ntHeader || ntHeader->Signature != IMAGE_NT_SIGNATURE) {
+    return;
+  }
+
+  auto sectionCount = ntHeader->FileHeader.NumberOfSections;
+  auto section = IMAGE_FIRST_SECTION(ntHeader);
+  for (size_t i = 0; i < sectionCount; i++, section += 1) {
+    if (section->VirtualAddress == 0) {
+      continue;
+    }
+
+    auto address = reinterpret_cast<const char *>(module) + section->VirtualAddress;
+    size_t length = std::min(section->Misc.VirtualSize, section->SizeOfRawData);
+    if (address && length > 0) {
+      char name[IMAGE_SIZEOF_SHORT_NAME + 1] = {};
+      strncpy_s(name, reinterpret_cast<const char *>(section->Name), IMAGE_SIZEOF_SHORT_NAME);
+
+      bool stop = false;
+      body(name, address, length, &stop);
+      if (stop) {
+        break;
+      }
+    }
+  }
+}
+
+template <typename SectionEnumerator>
+static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
+  std::vector<HMODULE, SWTHeapAllocator<HMODULE>> modules;
+
+  modules.resize(1);
+  DWORD modulesByteCount = sizeof(HMODULE);
+  while (!EnumProcessModules(GetCurrentProcess(), &modules[0], modulesByteCount, &modulesByteCount)) {
+    modules.resize(modulesByteCount / sizeof(HMODULE));
+  }
+
+  for (HMODULE module : modules) {
+    enumerateSections(module, [&](const char *name, const void *address, size_t length, bool *stop) {
+      if (0 == strcmp(name, ".sw5tymd")) {
+        // Shrink the section boundaries to account for begin/end symbols
+        // inserted by SwiftRT+COFF.cpp.
+        address = reinterpret_cast<const char *>(address) + sizeof(uintptr_t);
+        length -= 2 * sizeof(uintptr_t);
+        body(address, length);
+        *stop = true;
+      }
+    });
+  }
+}
 #else
 #pragma mark - Linux/Windows implementation
 
