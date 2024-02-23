@@ -1,0 +1,49 @@
+# SPI groups in swift-testing
+
+_Archived from <https://forums.swift.org/t/spi-groups-in-swift-testing/70236>_
+
+This post describes the set of SPI groups used in swift-testing. In general, two
+groups of SPI exist in the testing library:
+
+1. Interfaces that are not needed by test authors, but which may be needed by
+   tools that use the testing library such as Swift Package Manager; and
+1. Interfaces that are available for test authors to use, but which are
+   experimental or under active development and which may be modified or removed
+   in the future.
+
+For interfaces used to integrate with external tools, the SPI group
+`@_spi(ForToolsIntegrationOnly)` is used. The name is a hint to adopters that
+they should not be using such SPI if they aren't building tooling around the
+testing library.
+
+For interfaces that are experimental or under active development, the SPI group
+`@_spi(Experimental)` is used. Such interfaces are intended to eventually become
+public, stable API, so test authors are encouraged to hold off adopting them
+until that happens.
+
+## Other SPI groups
+
+The testing library currently makes use of various other SPI groups such as
+`@_spi(ExperimentalTestRunning)`. Interfaces in these groups will be migrated to
+one (or both!) of the two above as time permits.
+
+## SPI stability
+
+The testing library does **not** guarantee SPI stability for either group of
+SPI.
+
+For SPI marked `@_spi(ForToolsIntegrationOnly)`, breaking changes will be
+preceded by deprecation (where possible) to allow tool authors time to migrate
+to newer interfaces.
+
+SPI marked `@_spi(Experimental)` should be assumed to be unstable. It may be
+modified or removed at any time.
+
+## API and ABI stability
+
+Once swift-testing reaches its 1.0 release, API changes will follow the same
+general rules as those in the Swift standard library: removal will be a last
+resort and will always be preceded by deprecation to allow tool and test authors
+time to migrate to newer interfaces.
+
+As a general rule, ABI stability is not guaranteed by the testing library.
