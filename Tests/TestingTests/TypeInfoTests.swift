@@ -38,4 +38,20 @@ struct TypeInfoTests {
     let typeInfo = TypeInfo(describing: type)
     #expect(typeInfo == expectedTypeInfo)
   }
+
+  @Test func typeNameInExtensionIsMungedCorrectly() {
+    #expect(_typeName(String.NestedType.self, qualified: true) == "(extension in TestingTests):Swift.String.NestedType")
+    #expect(fullyQualifiedName(of: String.NestedType.self) == "Swift.String.NestedType")
+  }
+
+  @Test func typeNameOfFunctionIsMungedCorrectly() {
+    typealias T = (Int, String) -> Bool
+    #expect(fullyQualifiedName(of: T.self) == "(Swift.Int, Swift.String) -> Swift.Bool")
+  }
+}
+
+// MARK: - Fixtures
+
+extension String {
+  enum NestedType {}
 }

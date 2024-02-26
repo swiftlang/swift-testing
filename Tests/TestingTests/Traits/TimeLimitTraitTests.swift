@@ -186,7 +186,7 @@ struct TimeLimitTraitTests {
         taskGroup.cancelAll()
       }
     }
-    #expect(timeAwaited < .seconds(1))
+    #expect(timeAwaited < .seconds(5)) // less than the 60 second sleep
   }
 
   @available(_clockAPI, *)

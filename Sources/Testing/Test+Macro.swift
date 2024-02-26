@@ -110,7 +110,7 @@ extension Test {
     traits: [any SuiteTrait],
     sourceLocation: SourceLocation
   ) -> Self {
-    let typeName = _typeName(containingType, qualified: false)
+    let typeName = String(describing: containingType)
     return Self(name: typeName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType)
   }
 }
