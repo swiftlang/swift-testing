@@ -77,7 +77,7 @@ be set to:
 
 ```json
 {
-  "critical": "red",
+  "critical": "orange",
   ".legallyRequired": "#66FFCC"
 }
 ```
