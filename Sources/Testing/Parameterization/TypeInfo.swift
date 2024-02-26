@@ -33,8 +33,8 @@ public struct TypeInfo: Sendable {
   /// - Parameters:
   ///   - type: The type which this instance should describe.
   init(describing type: Any.Type) {
-    qualifiedName = _typeName(type, qualified: true)
-    unqualifiedName = _typeName(type, qualified: false)
+    qualifiedName = fullyQualifiedName(of: type)
+    unqualifiedName = String(describing: type)
   }
 
   /// Initialize an instance of this type describing the type of the specified
