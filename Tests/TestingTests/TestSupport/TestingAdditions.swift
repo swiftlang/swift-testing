@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ExperimentalTestRunning) @_spi(ExperimentalEventHandling) import Testing
+@testable @_spi(ExperimentalTestRunning) @_spi(ExperimentalEventHandling) @_spi(ForToolsIntegrationOnly) import Testing
 #if canImport(XCTest)
 import XCTest
 #endif
@@ -68,7 +68,7 @@ func runTest(for containingType: Any.Type, configuration: Configuration = .init(
 func runTestFunction(named name: String, in containingType: Any.Type, configuration: Configuration = .init()) async {
   var configuration = configuration
   let selection = [Test.ID(type: containingType).child(named: name)]
-  configuration.uncheckedTestFilter = makeTestFilter(matching: selection)
+  configuration.setTestFilter(toInclude: selection, includeHiddenTests: true)
 
   let runner = await Runner(configuration: configuration)
   await runner.run()
@@ -92,7 +92,7 @@ extension Runner {
 
     var configuration = configuration
     let selection = [Test.ID(moduleName: moduleName, nameComponents: [testName], sourceLocation: nil)]
-    configuration.uncheckedTestFilter = makeTestFilter(matching: selection)
+    configuration.setTestFilter(toInclude: selection, includeHiddenTests: true)
 
     await self.init(configuration: configuration)
   }
@@ -107,7 +107,7 @@ extension Runner.Plan {
   init(selecting containingType: Any.Type, configuration: Configuration = .init()) async {
     var configuration = configuration
     let selection = [Test.ID(type: containingType)]
-    configuration.uncheckedTestFilter = makeTestFilter(matching: selection)
+    configuration.setTestFilter(toInclude: selection, includeHiddenTests: true)
 
     await self.init(configuration: configuration)
   }
@@ -310,6 +310,19 @@ extension Configuration {
         Issue.record(error)
       }
     }
+  }
+
+  /// Set the test filter of this instance to include the given test ID
+  /// selection.
+  ///
+  /// - Parameters:
+  ///   - selection: The test IDs to include.
+  ///   - includeHiddenTests: Whether or not to include tests with the `.hidden`
+  ///     trait.
+  mutating func setTestFilter(toInclude selection: some Collection<Test.ID>, includeHiddenTests: Bool) {
+    var testFilter = TestFilter(including: selection)
+    testFilter.includeHiddenTests = includeHiddenTests
+    self.testFilter = testFilter
   }
 }
 

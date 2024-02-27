@@ -112,41 +112,6 @@ public enum XCTestScaffold: Sendable {
   /// `swift test`. Instead, use one of several environment variables to control
   /// which tests run.
   ///
-  /// #### Filtering by ID
-  ///
-  /// To run a specific test, set the `SWT_SELECTED_TEST_IDS` environment
-  /// variable to the ``Test/ID`` of that test (or, if multiple tests should be
-  /// run, their IDs separated by `";"`.)
-  ///
-  /// A test ID is composed of its module name, containing type name, and (if
-  /// the test is a function rather than a suite), the name of the function
-  /// including parentheses and any parameter labels. For example, given the
-  /// following test functions in a module named `"FoodTruckTests"`:
-  ///
-  /// ```swift
-  /// struct CashRegisterTests {
-  ///   @Test func hasCash() { ... }
-  ///   @Test(arguments: Card.allCases) func acceptsCard(card: Card) { ... }
-  /// }
-  /// ```
-  ///
-  /// Their IDs are the strings `"FoodTruckTests/CashRegisterTests/hasCash()"`
-  /// and `"FoodTruckTests/CashRegisterTests/acceptsCard(card:)"` respectively,
-  /// and they can be passed as the environment variable value
-  /// `"FoodTruckTests/CashRegisterTests/hasCash();FoodTruckTests/CashRegisterTests/acceptsCard(card:)"`.
-  ///
-  /// - Note: The module name of a test target in a Swift package is typically
-  ///   the name of the test target.
-  ///
-  /// #### Filtering by tag
-  ///
-  /// To run only those tests with a given ``Tag``, set the `SWT_SELECTED_TAGS`
-  /// environment variable to the string value of that tag. Separate multiple
-  /// tags with `";"`; tests with _any_ of the specified tags will be run. For
-  /// example, to run all tests tagged `"critical"` _or_ ``Tag/red`` (or both),
-  /// set the value of the `SWT_SELECTED_TAGS` environment variable to
-  /// `"critical;red"`.
-  ///
   /// ### Configuring output
   ///
   /// By default, this function uses
@@ -188,40 +153,8 @@ public enum XCTestScaffold: Sendable {
     let isProcessLaunchedByXcode = Environment.variable(named: "XCTestSessionIdentifier") != nil
 #endif
 
-    // If the SWT_SELECTED_TEST_IDS environment variable is set, split it into
-    // test IDs (separated by ";", test ID components separated by "/") and set
-    // the configuration's test filter to match it.
-    //
-    // This environment variable stands in for `swift test --filter`.
-    let testIDs: [Test.ID]? = Environment.variable(named: "SWT_SELECTED_TEST_IDS").map { testIDs in
-      testIDs.split(separator: ";", omittingEmptySubsequences: true).map { testID in
-        Test.ID(testID.split(separator: "/", omittingEmptySubsequences: true).map(String.init))
-      }
-    }
-    // If the SWT_SELECTED_TAGS environment variable is set, split it by ";"
-    // (similar to test IDs above) and check if tests' tags overlap.
-    let tags: Set<Tag>? = Environment.variable(named: "SWT_SELECTED_TAGS")
-      .map { tags in
-        tags
-          .split(separator: ";", omittingEmptySubsequences: true)
-          .map(String.init)
-          .map(Tag.init(rawValue:))
-      }.map(Set.init)
-
     var configuration = Configuration()
     configuration.isParallelizationEnabled = false
-    if let testIDs {
-      configuration.testFilter = makeTestFilter(matching: testIDs)
-    }
-    if let tags {
-      // Check if the test's tags intersect the set of selected tags. If there
-      // was a previous filter function, it must also pass.
-      let oldTestFilter = configuration.testFilter
-      configuration.testFilter = { test in
-        !tags.isDisjoint(with: test.tags) && oldTestFilter(test)
-      }
-    }
-
     configuration.eventHandler = { event, context in
       guard case let .issueRecorded(issue) = event.kind else {
         return

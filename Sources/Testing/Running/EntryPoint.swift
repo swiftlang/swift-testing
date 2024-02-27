@@ -182,10 +182,11 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 
     let filterArg = args[args.index(after: filterArgIndex)]
     let regex = try UncheckedSendable(rawValue: Regex(filterArg))
-    filters.append { test in
+    let filter = Configuration.TestFilter(membership: .including) { test in
       let id = String(describing: test.id)
       return id.contains(regex.rawValue)
     }
+    filters.append(filter)
   }
   if let skipArgIndex = args.firstIndex(of: "--skip"), skipArgIndex < args.endIndex {
     guard #available(_regexAPI, *) else {
@@ -194,17 +195,14 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 
     let skipArg = args[args.index(after: skipArgIndex)]
     let regex = try UncheckedSendable(rawValue: Regex(skipArg))
-    filters.append { test in
+    let filter = Configuration.TestFilter(membership: .excluding) { test in
       let id = String(describing: test.id)
-      return !id.contains(regex.rawValue)
+      return id.contains(regex.rawValue)
     }
+    filters.append(filter)
   }
 
-  configuration.testFilter = { [filters] test in
-    filters.allSatisfy { filter in
-      filter(test)
-    }
-  }
+  configuration.testFilter = filters.reduce(.unfiltered) { $0.combining(with: $1) }
 
   // Set up the iteration policy for the test run.
   var repetitionPolicy: Configuration.RepetitionPolicy = .once

@@ -10,7 +10,7 @@
 
 #if canImport(XCTest)
 import XCTest
-@testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalTestRunning) import Testing
+@testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalTestRunning) @_spi(ForToolsIntegrationOnly) import Testing
 
 struct MyError: Error, Equatable {
 }
@@ -251,7 +251,7 @@ final class RunnerTests: XCTestCase {
 
     var configuration = Configuration()
     let selection = [testSuite.id]
-    configuration.uncheckedTestFilter = makeTestFilter(matching: selection)
+    configuration.setTestFilter(toInclude: selection, includeHiddenTests: true)
 
     let runner = await Runner(testing: [
       testSuite,
@@ -301,7 +301,7 @@ final class RunnerTests: XCTestCase {
     XCTAssertFalse(selectedTestIDs.isEmpty)
 
     var configuration = Configuration()
-    configuration.uncheckedTestFilter = makeTestFilter(matching: selectedTestIDs)
+    configuration.setTestFilter(toInclude: selectedTestIDs, includeHiddenTests: true)
 
     let runner = await Runner(configuration: configuration)
     let plan = runner.plan
@@ -325,10 +325,10 @@ final class RunnerTests: XCTestCase {
     ]
 
     var configuration1 = Configuration()
-    configuration1.testFilter = makeTestFilter(matching: selectedTestIDs)
+    configuration1.testFilter = Configuration.TestFilter(including: selectedTestIDs)
 
     var configuration2 = Configuration()
-    configuration2.testFilter = makeTestFilter(matching: selectedTestIDs)
+    configuration2.testFilter = Configuration.TestFilter(including: selectedTestIDs)
 
     for configuration in [configuration1, configuration2] {
       let runner = await Runner(configuration: configuration)

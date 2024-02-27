@@ -78,9 +78,9 @@ struct SendableTests: Sendable {
   @Test(.hidden, arguments: FixtureData.zeroUpTo100)
   static func `reserved1`(`reserved2`: Int) async throws {}
 
-  @Suite(.hidden)
+  @Suite(.hidden, .tags("tag-1"))
   struct NestedSendableTests: Sendable {
-    @Test(.hidden)
+    @Test(.hidden, .tags("tag-2"))
     func succeeds() throws {}
 
     @Test(.hidden)

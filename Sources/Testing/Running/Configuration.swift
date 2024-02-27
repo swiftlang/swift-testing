@@ -185,46 +185,8 @@ public struct Configuration: Sendable {
 
   // MARK: - Test selection
 
-  /// A function that handles filtering tests.
-  ///
-  /// - Parameters:
-  ///   - test: An test that needs to be filtered.
-  ///
-  /// - Returns: A Boolean value representing if the test satisfied the filter.
-  public typealias TestFilter = @Sendable (_ test: Test) -> Bool
-
-  /// Storage for ``testFilter-swift.property``.
-  private var _testFilter: TestFilter = { !$0.isHidden }
-
   /// The test filter to which tests should be filtered when run.
-  public var testFilter: TestFilter {
-    get {
-      _testFilter
-    }
-    set {
-      // By default, the test filter should always filter out hidden tests. This
-      // is the appropriate behavior for external clients of this SPI. If the
-      // testing library needs to enable hidden tests in its own test targets,
-      // it can instead use `uncheckedTestFilter`.
-      _testFilter = { test in
-        !test.isHidden && newValue(test)
-      }
-    }
-  }
-
-  /// The test filter to which tests should be filtered when run.
-  ///
-  /// Unlike ``testFilter-swift.property``, this property does not impose any
-  /// checks for hidden tests. It is used by the testing library to run hidden
-  /// tests; other callers should always use ``testFilter-swift.property``.
-  var uncheckedTestFilter: TestFilter {
-    get {
-      _testFilter
-    }
-    set {
-      _testFilter = newValue
-    }
-  }
+  public var testFilter: TestFilter = .unfiltered
 
   // MARK: - Test case selection
 
@@ -240,32 +202,4 @@ public struct Configuration: Sendable {
 
   /// The test case filter to which test cases should be filtered when run.
   public var testCaseFilter: TestCaseFilter = { _, _ in true }
-}
-
-// MARK: - Test filter factory functions
-
-/// Make a test filter that filters tests to those specified by a set of test
-/// IDs.
-///
-/// - Parameters:
-///   - selection: A set of test IDs to be filtered.
-///
-/// - Returns: A test filter that filters tests to those specified by
-///   `selection`.
-@_spi(ExperimentalTestRunning)
-public func makeTestFilter(matching selection: some Collection<Test.ID>) -> Configuration.TestFilter {
-  let selection = Test.ID.Selection(testIDs: selection)
-  return { selection.contains($0) }
-}
-
-/// Make a test filter that excludes certain tests based on their IDs.
-///
-/// - Parameters:
-///   - selection: A set of test IDs to be excluded.
-///
-/// - Returns: A test filter that excludes tests based on `selection`.
-@_spi(ExperimentalTestRunning)
-public func makeTestFilter(excluding selection: some Collection<Test.ID>) -> Configuration.TestFilter {
-  let selection = Test.ID.Selection(testIDs: selection)
-  return { !selection.contains($0, inferAncestors: false) }
 }

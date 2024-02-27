@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ExperimentalTestRunning) @_spi(ExperimentalEventHandling) import Testing
+@testable @_spi(ExperimentalTestRunning) @_spi(ExperimentalEventHandling) @_spi(ForToolsIntegrationOnly) import Testing
 #if canImport(Foundation)
 import Foundation
 #endif
@@ -35,24 +35,26 @@ struct SwiftPMTests {
   }
 
   @Test("No --filter or --skip argument")
-  func defaultFiltering() throws {
+  func defaultFiltering() async throws {
     let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH"])
-    let testFilter = try #require(configuration.testFilter)
     let test1 = Test(name: "hello") {}
-    #expect(testFilter(test1))
     let test2 = Test(name: "goodbye") {}
-    #expect(testFilter(test2))
+    let plan = await Runner.Plan(tests: [test1, test2], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(test1))
+    #expect(planTests.contains(test2))
   }
 
   @Test("--filter argument")
   @available(_regexAPI, *)
-  func filter() throws {
+  func filter() async throws {
     let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--filter", "hello"])
-    let testFilter = try #require(configuration.testFilter)
     let test1 = Test(name: "hello") {}
-    #expect(testFilter(test1))
     let test2 = Test(name: "goodbye") {}
-    #expect(!testFilter(test2))
+    let plan = await Runner.Plan(tests: [test1, test2], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(test1))
+    #expect(!planTests.contains(test2))
   }
 
   @Test("--filter or --skip argument with bad regex")
@@ -67,36 +69,42 @@ struct SwiftPMTests {
 
   @Test("--skip argument")
   @available(_regexAPI, *)
-  func skip() throws {
+  func skip() async throws {
     let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--skip", "hello"])
-    let testFilter = try #require(configuration.testFilter)
     let test1 = Test(name: "hello") {}
-    #expect(!testFilter(test1))
     let test2 = Test(name: "goodbye") {}
-    #expect(testFilter(test2))
+    let plan = await Runner.Plan(tests: [test1, test2], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(!planTests.contains(test1))
+    #expect(planTests.contains(test2))
   }
 
   @Test(".hidden trait")
-  func hidden() throws {
+  func hidden() async throws {
     let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH"])
-    let testFilter = try #require(configuration.testFilter)
     let test1 = Test(name: "hello") {}
-    #expect(testFilter(test1))
     let test2 = Test(.hidden, name: "goodbye") {}
-    #expect(!testFilter(test2))
+    let plan = await Runner.Plan(tests: [test1, test2], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(test1))
+    #expect(!planTests.contains(test2))
   }
 
   @Test("--filter/--skip arguments and .hidden trait")
   @available(_regexAPI, *)
-  func filterAndSkipAndHidden() throws {
+  func filterAndSkipAndHidden() async throws {
     let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--filter", "hello", "--skip", "hello2"])
     let testFilter = try #require(configuration.testFilter)
     let test1 = Test(name: "hello") {}
-    #expect(testFilter(test1))
-    let test2 = Test(.hidden, name: "hello") {}
-    #expect(!testFilter(test2))
-    let test3 = Test(.hidden, name: "hello2") {}
-    #expect(!testFilter(test3))
+    let test2 = Test(name: "hello2") {}
+    let test3 = Test(.hidden, name: "hello") {}
+    let test4 = Test(.hidden, name: "hello2") {}
+    let plan = await Runner.Plan(tests: [test1, test2, test3, test4], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(test1))
+    #expect(!planTests.contains(test2))
+    #expect(!planTests.contains(test3))
+    #expect(!planTests.contains(test4))
   }
 
 #if !SWT_NO_FILE_IO
