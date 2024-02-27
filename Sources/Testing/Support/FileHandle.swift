@@ -177,7 +177,7 @@ extension FileHandle {
   ///
   /// - Parameters:
   ///   - string: The string to write.
-  ///   - flushAfterward: Whether or not to flush the file (with `fflush()`
+  ///   - flushAfterward: Whether or not to flush the file (with `fflush()`)
   ///     after writing. If `true`, `fflush()` is called even if an error
   ///     occurred while writing.
   ///
