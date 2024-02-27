@@ -26,25 +26,84 @@ source files, and even test targets.
 
 ## Adding tags
 
-To add a tag to a test, use the ``Trait/tags(_:)`` trait. These traits take
-sequences of tags as arguments, and those tags are then applied to the
+To add a tag to a test, use the ``Trait/tags(_:)-505n9`` trait. These traits
+take sequences of tags as arguments, and those tags are then applied to the
 corresponding test at runtime. If they are applied to a test suite, then all
 tests in that suite inherit those tags.
 
-Tags themselves are instances of ``Tag`` and can be expressed as string literals
-or as named constants declared elsewhere:
+The testing library does not assign any semantic meaning to any tags, nor does
+the presence or absence of tags affect how the testing library runs tests.
+
+Tags themselves are instances of ``Tag`` and can be expressed as string
+literals directly in a test suite or test function's declaration. Tags can also
+be expressed as named constants declared as static members of ``Tag``. To
+declare a named constant tag, use the ``Tag()`` macro:
 
 ```swift
 extension Tag {
-  static let legallyRequired = Tag(...)
+  @Tag static var legallyRequired: Self
 }
 
-@Test("Vendor's license is valid", .tags("critical", .legallyRequired))
+@Test("Vendor's license is valid", .tags("critical"), .tags(.legallyRequired))
 func licenseValid() { ... }
 ```
 
-The testing library does not assign any semantic meaning to any tags, nor does
-the presence or absence of tags affect how the testing library runs tests.
+If two tags with the same name (`legallyRequired` in the above example) are
+declared in different files, modules, or other contexts, the testing library
+treats them as equivalent.
+
+If it is important for a tag to be distinguished from similar tags declared
+elsewhere in a package or project (or its dependencies), use
+ [reverse-DNS naming](https://en.wikipedia.org/wiki/Reverse_domain_name_notation)
+to create a unique Swift symbol name for your tag:
+
+```swift
+extension Tag {
+  enum com_example_foodtruck {}
+}
+
+extension Tag.com_example_foodtruck {
+  @Tag static var extraSpecial: Self
+}
+
+@Test
+  "Extra Special Sauce recipe is secret",
+  .tags(.com_example_foodtruck.extraSpecial)
+)
+func secretSauce() { ... }
+```
+
+### Where tags can be declared
+
+Tags must always be declared as members of ``Tag`` in an extension to that type
+or in a type nested within ``Tag``. Redeclaring a tag under a second name has no
+effect and the additional name will not be recognized by the testing library.
+The following example is unsupported:
+
+```swift
+extension Tag {
+  @Tag static var legallyRequired: Self // ✅ OK: declaring a new tag
+
+  static var requiredByLaw: Self { // ❌ ERROR: this tag name will not be
+                                   // recognized at runtime
+    legallyRequired
+  }
+}
+```
+
+If a tag is declared as a name constant outside of an extension to the ``Tag``
+type (for example, at the root of a file or in another unrelated type
+declaration), it cannot be applied to test functions or test suites. The
+following declarations are unsupported:
+
+```swift
+@Tag let needsKetchup: Self // ❌ ERROR: tags must be declared in an extension
+                            // to Tag
+struct Food {
+  @Tag var needsMustard: Self // ❌ ERROR: tags must be declared in an extension
+                              // to Tag
+}
+```
 
 ## Customizing a tag's appearance
 
@@ -82,13 +141,10 @@ be set to:
 }
 ```
 
-- Note: Where possible, use the raw values of tags (from their ``Tag/rawValue``
-  properties) as the keys in this object rather than using Swift source
-  expressions like `".legallyRequired"` to ensure that tag colors are applied
-  everywhere a tag is used.
-
 ## Topics
 
-- ``Trait/tags(_:)``
+- ``Trait/tags(_:)-505n9``
+- ``Trait/tags(_:)-yg0i``
 - ``Tag``
 - ``Tag/List``
+- ``Tag()``

@@ -10,7 +10,7 @@
 
 @testable @_spi(ExperimentalTestRunning) import Testing
 
-@Suite("Comment Tests", .tags("trait"))
+@Suite("Comment Tests", .tags(.traitRelated))
 struct CommentTests {
   @Test(".comment() factory method")
   func commentFactoryMethod() {

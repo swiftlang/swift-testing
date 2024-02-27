@@ -282,10 +282,27 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///
   /// - Returns: A diagnostic message.
   static func returnTypeNotSupported(_ returnType: TypeSyntax, on decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
-    return Self(
+    Self(
       syntax: Syntax(returnType),
       message: "The result of this \(_kindString(for: decl)) will be discarded during testing.",
       severity: .warning
+    )
+  }
+
+  /// Create a diagnostic message stating that the expression used to declare a
+  /// tag on a test or suite is not supported.
+  ///
+  /// - Parameters:
+  ///   - returnType: The unsupported return type.
+  ///   - decl: The declaration with an unsupported return type.
+  ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///
+  /// - Returns: A diagnostic message.
+  static func tagExprNotSupported(_ tagExpr: some SyntaxProtocol, in attribute: AttributeSyntax) -> Self {
+    Self(
+      syntax: Syntax(tagExpr),
+      message: "The tag \(tagExpr.trimmed) cannot be used with the @\(attribute.attributeNameText) attribute. Pass a member of Tag or a string literal instead.",
+      severity: .error
     )
   }
 

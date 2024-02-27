@@ -10,7 +10,7 @@
 
 @testable @_spi(ExperimentalTestRunning) @_spi(ExperimentalEventHandling) import Testing
 
-@Suite("TimeLimitTrait Tests", .tags("trait"))
+@Suite("TimeLimitTrait Tests", .tags(.traitRelated))
 struct TimeLimitTraitTests {
   @available(_clockAPI, *)
   @Test(".timeLimit() factory method")

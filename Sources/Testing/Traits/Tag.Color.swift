@@ -134,22 +134,22 @@ extension Tag.Color: Decodable {
 
 extension Tag {
   /// A tag representing the color red.
-  public static var red: Self { "red" }
+  @Tag public static var red: Self
 
   /// A tag representing the color orange.
-  public static var orange: Self { "orange" }
+  @Tag public static var orange: Self
 
   /// A tag representing the color yellow.
-  public static var yellow: Self { "yellow" }
+  @Tag public static var yellow: Self
 
   /// A tag representing the color green.
-  public static var green: Self { "green" }
+  @Tag public static var green: Self
 
   /// A tag representing the color blue.
-  public static var blue: Self { "blue" }
+  @Tag public static var blue: Self
 
   /// A tag representing the color purple.
-  public static var purple: Self { "purple" }
+  @Tag public static var purple: Self
 
   /// Whether or not this tag represents a color predefined by the testing
   /// library.

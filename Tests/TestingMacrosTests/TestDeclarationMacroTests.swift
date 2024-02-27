@@ -261,21 +261,42 @@ struct TestDeclarationMacroTests {
     #expect(!output.contains("displayName:"))
   }
 
-  @Test("Adds expression to traits",
+  @Test("Invalid tag expressions are allowed",
     arguments: [
-      "@Test(.tags(\"1\", .x), .unrelated) func f() {}":
-        ##".tags("1", .x)._capturing(.__functionCall(nil, ".tags", (nil, .__fromStringLiteral(#""1""#, "1")), (nil, .__fromSyntaxNode(".x"))))"##,
-      "@Test(.notATag) func f() {}":
-        ##".notATag._capturing(.__fromSyntaxNode(".notATag"))"##,
-      "@Test(.someFunction()) func f() {}":
-        ##".someFunction()._capturing(.__functionCall(nil, ".someFunction"))"##,
-      "@Test(.someFunction(foo: bar)) func f() {}":
-        ##".someFunction(foo: bar)._capturing(.__functionCall(nil, ".someFunction", ("foo", .__fromSyntaxNode("bar"))))"##,
+      #"@Test(.tags(.f)) func f() {}"#,
+      #"@Test(Tag.List.tags(.f)) func f() {}"#,
+      #"@Test(Testing.Tag.List.tags(.f)) func f() {}"#,
+      #"@Test(.tags("abc")) func f() {}"#,
+      #"@Test(Tag.List.tags("abc")) func f() {}"#,
+      #"@Test(Testing.Tag.List.tags("abc")) func f() {}"#,
+      #"@Test(.tags(Tag.f)) func f() {}"#,
+      #"@Test(.tags(Testing.Tag.f)) func f() {}"#,
+      #"@Test(.tags(Tag.f)) func f() {}"#,
+      #"@Test(.tags(.Foo.Bar.f)) func f() {}"#,
+      #"@Test(.tags(Testing.Tag.Foo.Bar.f)) func f() {}"#,
     ]
   )
-  func addsExpressionToTraits(input: String, expectedOutput: String) throws {
-    let (expectedOutput, _) = try parse(expectedOutput, removeWhitespace: true)
-    let (actualOutput, _) = try parse(input, removeWhitespace: true)
-    #expect(actualOutput.contains(expectedOutput))
+  func invalidTagExpressions(input: String) throws {
+    let (_, diagnostics) = try parse(input)
+
+    #expect(diagnostics.isEmpty)
+  }
+
+  @Test("Invalid tag expressions are detected",
+    arguments: [
+      "f()", ".f()", "loose",
+      "WrongType.tag", "WrongType.f()",
+      ".f.g(_:).h", ".f.g(123).h",
+    ]
+  )
+  func invalidTagExpressions(tagExpr: String) throws {
+    let input = "@Test(.tags(\(tagExpr))) func f() {}"
+    let (_, diagnostics) = try parse(input)
+
+    #expect(diagnostics.count > 0)
+    for diagnostic in diagnostics {
+      #expect(diagnostic.diagMessage.severity == .error)
+      #expect(diagnostic.message == "The tag \(tagExpr) cannot be used with the @Test attribute. Pass a member of Tag or a string literal instead.")
+    }
   }
 }

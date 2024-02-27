@@ -121,12 +121,17 @@ struct AttributeInfo {
     }
 
     // Remove leading "Self." expressions from the arguments of the attribute.
-    // See _SelfRemover for more information.
-    let selfRemover = _SelfRemover(in: context)
-    otherArguments = zip(otherArguments, otherArguments.lazy.map(\.expression)).lazy
-      .map { ($0, selfRemover.rewrite(Syntax($1))) }
-      .map { ($0, $1.cast(ExprSyntax.self)) }
-      .map { Argument(label: $0.label, expression: $1) }
+    // See _SelfRemover for more information. Rewriting a syntax tree discards
+    // location information from the copy, so only invoke the rewriter if the
+    // `Self` keyword is present somewhere.
+    otherArguments = otherArguments.map { argument in
+      var expr = argument.expression
+      if argument.expression.tokens(viewMode: .sourceAccurate).map(\.tokenKind).contains(.keyword(.Self)) {
+        let selfRemover = _SelfRemover(in: context)
+        expr = selfRemover.rewrite(Syntax(argument.expression)).cast(ExprSyntax.self)
+      }
+      return Argument(label: argument.label, expression: expr)
+    }
 
     // Look for any traits in the remaining arguments and slice them off. Traits
     // are the remaining unlabelled arguments. The first labelled argument (if
@@ -149,32 +154,11 @@ struct AttributeInfo {
     if let declaration = declaration.asProtocol((any WithAttributesSyntax).self) {
       traits += createAvailabilityTraitExprs(for: declaration, in: context)
     }
+    diagnoseIssuesWithTags(in: traits, addedTo: attribute, in: context)
 
     // Use the start of the test attribute's name as the canonical source
     // location of the test.
     sourceLocation = createSourceLocationExpr(of: attribute.attributeName, context: context)
-  }
-
-  /// Provide source code representations as instances of ``Expression`` to all
-  /// traits in this instance's ``traits`` property.
-  ///
-  /// - Parameters:
-  ///   - context: The macro context in which the expression is being parsed.
-  ///
-  /// - Returns: A copy of ``traits`` expanded to include their source code
-  ///   representations as instances of ``Expression``. Whether or not that
-  ///   source code is consumed at runtime is an implementation detail of each
-  ///   trait type.
-  private func _traitExprsWithExpressionsAdded(in context: some MacroExpansionContext) -> [ExprSyntax] {
-    traits.lazy.map { trait in
-      // TODO: genericize createExpressionExpr(from:) and its call sites to map to supported patterns
-      let expressionExpr = if let functionCallExpr = trait.as(FunctionCallExprSyntax.self) {
-        createExpressionExprForFunctionCall(nil, functionCallExpr.calledExpression, functionCallExpr.arguments.map(Argument.init))
-      } else {
-        createExpressionExpr(from: trait)
-      }
-      return "\(trait.trimmed)._capturing(\(expressionExpr))"
-    }
   }
 
   /// Convert this instance to a series of arguments suitable for passing to a
@@ -192,7 +176,7 @@ struct AttributeInfo {
       arguments.append(Argument(label: .identifier("displayName"), expression: displayName))
     }
     arguments.append(Argument(label: .identifier("traits"), expression: ArrayExprSyntax {
-      for traitExpr in _traitExprsWithExpressionsAdded(in: context) {
+      for traitExpr in traits {
         ArrayElementSyntax(expression: traitExpr)
       }
     }))

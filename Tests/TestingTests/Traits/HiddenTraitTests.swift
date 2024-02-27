@@ -10,7 +10,7 @@
 
 @testable import Testing
 
-@Suite("Hidden Trait Tests", .tags("trait"))
+@Suite("Hidden Trait Tests", .tags(.traitRelated))
 struct HiddenTraitTests {
   @Test(".hidden trait")
   func hiddenTrait() throws {

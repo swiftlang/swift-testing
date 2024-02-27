@@ -8,51 +8,62 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ExperimentalTestRunning) @_spi(ExperimentalEventHandling) @_spi(ExperimentalSourceCodeCapturing) import Testing
+@testable @_spi(ExperimentalTestRunning) @_spi(ExperimentalEventHandling) @_spi(ExperimentalSourceCodeCapturing) @_spi(ForToolsIntegrationOnly) import Testing
 
 #if canImport(Foundation)
 import Foundation
 #endif
 
-@Suite("Tag/Tag List Tests", .tags("trait"))
+@Suite("Tag/Tag List Tests", .tags(.traitRelated))
 struct TagListTests {
   @Test(".tags() factory method with one string")
   func tagListFactoryMethodWithOneString() throws {
     let trait = Tag.List.tags("hello")
     #expect((trait as Any) is Tag.List)
-    #expect(trait.tags == ["hello"])
-    #expect(trait.tags == [Tag(rawValue: "hello")])
+    #expect(trait.tags == [Tag("hello")])
   }
 
   @Test(".tags() factory method with two strings")
   func tagListFactoryMethodWithTwoStrings() throws {
     let trait = Tag.List.tags("hello", "world")
     #expect((trait as Any) is Tag.List)
-    #expect(trait.tags == ["hello", "world"])
-    #expect(trait.tags == [Tag(rawValue: "hello"), Tag(rawValue: "world")])
+    #expect(trait.tags == [Tag("hello"), Tag("world")])
   }
 
-  @Test(".tags() factory method with strings and colors")
-  func tagListFactoryMethodWithStringsAndColors() throws {
-    let trait = Tag.List.tags("hello", "world", .red, .orange, .yellow, .green, .blue, .purple)
+  @Test(".tags() factory method with colors")
+  func tagListFactoryMethodWithColors() throws {
+    let trait = Tag.List.tags(.red, .orange, .yellow, .green, .blue, .purple)
     #expect((trait as Any) is Tag.List)
-    #expect(trait.tags == ["hello", "world", "red", "orange", "yellow", "green", "blue", "purple"])
-    #expect(trait.tags == ["hello", "world", .red, .orange, .yellow, .green, .blue, .purple])
-    #expect(trait.tags == [Tag(rawValue: "hello"), Tag(rawValue: "world"), Tag(rawValue: "red"), Tag(rawValue: "orange"), Tag(rawValue: "yellow"), Tag(rawValue: "green"), Tag(rawValue: "blue"), Tag(rawValue: "purple")])
-    #expect(trait.tags == [Tag(rawValue: "hello"), Tag(rawValue: "world"), .red, .orange, .yellow, .green, .blue, .purple])
+    #expect(trait.tags == [.red, .orange, .yellow, .green, .blue, .purple])
+    #expect(trait.tags == [
+      Tag(kind: .staticMember("red")),
+      Tag(kind: .staticMember("orange")),
+      Tag(kind: .staticMember("yellow")),
+      Tag(kind: .staticMember("green")),
+      Tag(kind: .staticMember("blue")),
+      Tag(kind: .staticMember("purple"))
+    ])
+  }
+
+  @Test("Tag.description property", arguments: [
+    Tag("hello"): #""hello""#,
+    Tag("world"): #""world""#,
+    .red: ".red",
+    .orange: ".orange",
+    .yellow: ".yellow",
+    .green: ".green",
+    .blue: ".blue",
+    .purple: ".purple",
+  ])
+  func tagDescription(tag: Tag, expectedDescription: String) throws {
+    #expect(String(describing: tag) == expectedDescription)
   }
 
   @Test("Tag.List.description property")
   func tagListDescription() throws {
-    var trait = Tag.List.tags("hello", "world", .red, .orange, .yellow, .green, .blue, .purple)
-    var tagWithCustomExpression = Tag(rawValue: "Tag Value")
-    tagWithCustomExpression.expression = Expression("Source.code.value")
-    trait.tags.append(tagWithCustomExpression)
+    let trait = Tag.List.tags(Tag("hello"), Tag("world"), .red, .orange, .yellow, .green, .blue, .purple)
     #expect((trait as Any) is Tag.List)
-    for tag in trait.tags {
-      #expect(String(describing: tag) == tag.rawValue)
-    }
-    #expect(String(describing: trait) == "\"hello\", \"world\", .red, .orange, .yellow, .green, .blue, .purple, Source.code.value")
+    #expect(String(describing: trait) == "\"hello\", \"world\", .red, .orange, .yellow, .green, .blue, .purple")
   }
 
   @Test("Tag.List comparisons")
@@ -61,12 +72,18 @@ struct TagListTests {
     #expect(Tag("A") < Tag("B"))
     #expect(Tag("B") > Tag("A"))
     #expect(!(Tag("B") < Tag("A")))
+    // Symbolic tags are compared alphabetically too, but sort before string
+    // literal tags.
+    #expect(Tag.orange < Tag.red)
+    #expect(!(Tag.red < Tag.orange))
+    #expect(Tag.red < Tag("A"))
+    #expect(!(Tag("A") < Tag.red))
   }
 
   @Test("Test.tags property")
   func testTagsProperty() {
     let test = Test(.tags("A", "B")) {}
-    #expect(test.tags == ["A", "B"])
+    #expect(test.tags == [Tag("A"), Tag("B")])
   }
 
   @Test("Tags are recursively applied")
@@ -74,37 +91,51 @@ struct TagListTests {
     let plan = await Runner.Plan(selecting: TagTests.self)
 
     let typeTest = try #require(plan.steps.map(\.test).first { $0.name == "TagTests" })
-    #expect(typeTest.tags == ["FromType"])
+    #expect(typeTest.tags == [Tag("FromType")])
     let functionTest = try #require(plan.steps.map(\.test).first { $0.name == "test()" })
-    #expect(functionTest.tags == ["FromFunction", "FromType"])
+    #expect(functionTest.tags == [Tag("FromFunction"), Tag("FromType")])
+
+    let functionTest2 = try #require(plan.steps.map(\.test).first { $0.name == "variations()" })
+    #expect(functionTest2.tags.contains(.NestedType.deeperTag))
+    #expect(!functionTest2.tags.contains(.OtherNestedType.deeperTag))
   }
 
-  @Test("Tag expression is captured")
-  func expressionCaptured() async throws {
-    let plan = await Runner.Plan(selecting: TagTests.self)
-    let tagExpression = plan.steps.flatMap(\.test.tags).compactMap(\.expression)
-    #expect(tagExpression.contains { String(describing: $0) == ".namedConstant" })
-    #expect(tagExpression.contains { String(describing: $0) == "Tag.functionCall(\"abc\")" })
-    #expect(!tagExpression.contains { String(describing: $0) == "\"extra-tag\"" })
+  @Test("Tags can be parsed from user-provided strings")
+  func userProvidedStringValues() {
+    #expect(Tag(userProvidedStringValue: "abc123") == Tag(kind: .stringLiteral("abc123")))
+    #expect(Tag(userProvidedStringValue: ".red") == .red)
+    #expect(Tag(userProvidedStringValue: #"\.abc123"#) == Tag(kind: .stringLiteral(#".abc123"#)))
+    #expect(Tag(userProvidedStringValue: #"\\.abc123"#) == Tag(kind: .stringLiteral(#"\.abc123"#)))
   }
 
-  @Test("String literal tags are distinguishable")
-  func stringLiteralTags() async throws {
-    let plan = await Runner.Plan(selecting: TagTests.self)
-    let tagExpression = plan.steps.flatMap(\.test.tags).compactMap(\.expression)
-    let fromTypeTag = try #require(tagExpression.first { $0.stringLiteralValue == "FromType" })
-    #expect(fromTypeTag.sourceCode == #""FromType""#)
-    #expect(fromTypeTag.stringLiteralValue == "FromType")
+#if canImport(Foundation)
+  @Test("Encoding/decoding tags")
+  func encodeAndDecodeTags() throws {
+    let array: [Tag] = [.red, .orange, Tag("abc123"), Tag(".abc123"), Tag(#"\.abc123"#), Tag(#"\\.abc123"#)]
+    let data = try JSONEncoder().encode(array)
+    let array2 = try JSONDecoder().decode([Tag].self, from: data)
+    #expect(array == array2)
+  }
 
-    let namedConstantTag = try #require(tagExpression.first { $0.sourceCode == ".namedConstant" })
-    #expect(namedConstantTag.sourceCode == ".namedConstant")
-    #expect(namedConstantTag.stringLiteralValue == nil)
+  @Test("Tags as codable dictionary keys")
+  func encodeAndDecodeTagsAsDictionaryKeys() throws {
+    let dict: [Tag: Int] = [
+      .red: 0,
+      .orange: 1,
+      Tag("abc123"): 2,
+      Tag(".abc123"): 3,
+      Tag(#"\.abc123"#): 4,
+      Tag(#"\\.abc123"#): 4,
+    ]
+    let data = try JSONEncoder().encode(dict)
+    let dict2 = try JSONDecoder().decode([Tag: Int].self, from: data)
+    #expect(dict == dict2)
   }
 
 #if !SWT_NO_FILE_IO
   @Test(
     "Colors are read from disk",
-    .tags("alpha", "beta", "gamma", "delta", .namedConstant)
+    .tags("alpha", "beta", "gamma", "delta"), .tags(.namedConstant)
   )
   func tagColorsReadFromDisk() throws {
     let tempDirURL = FileManager.default.temporaryDirectory
@@ -130,17 +161,17 @@ struct TagListTests {
     }
 
     let tagColors = try Testing.loadTagColors(fromFileInDirectoryAtPath: tempDirURL.path)
-    #expect(tagColors["alpha"] == .red)
-    #expect(tagColors["beta"] == .rgb(0, 0xCC, 0xFF))
-    #expect(tagColors["gamma"] == .rgb(0xAA, 0xBB, 0xCC))
-    #expect(tagColors["delta"] == nil)
+    #expect(tagColors[Tag("alpha")] == .red)
+    #expect(tagColors[Tag("beta")] == .rgb(0, 0xCC, 0xFF))
+    #expect(tagColors[Tag("gamma")] == .rgb(0xAA, 0xBB, 0xCC))
+    #expect(tagColors[Tag("delta")] == nil)
 
-    #expect(tagColors["encode red"] == .red)
-    #expect(tagColors["encode orange"] == .orange)
-    #expect(tagColors["encode yellow"] == .yellow)
-    #expect(tagColors["encode green"] == .green)
-    #expect(tagColors["encode blue"] == .blue)
-    #expect(tagColors["encode purple"] == .purple)
+    #expect(tagColors[Tag("encode red")] == .red)
+    #expect(tagColors[Tag("encode orange")] == .orange)
+    #expect(tagColors[Tag("encode yellow")] == .yellow)
+    #expect(tagColors[Tag("encode green")] == .green)
+    #expect(tagColors[Tag("encode blue")] == .blue)
+    #expect(tagColors[Tag("encode purple")] == .purple)
   }
 
   @Test("No colors are read from a bad path")
@@ -150,19 +181,26 @@ struct TagListTests {
     }
   }
 #endif
+#endif
 }
 
 // MARK: - Fixtures
 
 extension Tag {
-  static var namedConstant: Tag { "Some Named Constant" }
-  static func functionCall(_ string: String) -> Tag {
-    Tag(rawValue: "String \(string)")
+  @Tag static var namedConstant: Tag
+  @Tag static var anotherConstant: Tag
+
+  enum NestedType {
+    @Tag static var deeperTag: Tag
+  }
+
+  enum OtherNestedType {
+    @Tag static var deeperTag: Tag
   }
 }
 
-func someExtraTags(_ tag: Tag) -> Tag.List {
-  .tags("FromFunctionCall1", "FromFunctionCall2", tag)
+enum UnrelatedType {
+  @Tag static var tagThatCannotBeUsed: Tag
 }
 
 @Suite(.hidden, .tags("FromType"))
@@ -175,9 +213,7 @@ struct TagTests {
     Tag.List.tags("FromFunctionPartiallyQualified"),
     Testing.Tag.List.tags("FromFunctionFullyQualified"),
     .tags("Tag1", "Tag2"),
-    .tags(.namedConstant, Tag.functionCall("abc")),
-    someExtraTags("extra-tag")
+    .tags(.namedConstant, .NestedType.deeperTag, Testing.Tag.anotherConstant)
   )
   func variations() async throws {}
 }
-
