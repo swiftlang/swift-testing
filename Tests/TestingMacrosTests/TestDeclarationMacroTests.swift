@@ -261,7 +261,7 @@ struct TestDeclarationMacroTests {
     #expect(!output.contains("displayName:"))
   }
 
-  @Test("Invalid tag expressions are allowed",
+  @Test("Valid tag expressions are allowed",
     arguments: [
       #"@Test(.tags(.f)) func f() {}"#,
       #"@Test(Tag.List.tags(.f)) func f() {}"#,
@@ -271,12 +271,11 @@ struct TestDeclarationMacroTests {
       #"@Test(Testing.Tag.List.tags("abc")) func f() {}"#,
       #"@Test(.tags(Tag.f)) func f() {}"#,
       #"@Test(.tags(Testing.Tag.f)) func f() {}"#,
-      #"@Test(.tags(Tag.f)) func f() {}"#,
       #"@Test(.tags(.Foo.Bar.f)) func f() {}"#,
       #"@Test(.tags(Testing.Tag.Foo.Bar.f)) func f() {}"#,
     ]
   )
-  func invalidTagExpressions(input: String) throws {
+  func validTagExpressions(input: String) throws {
     let (_, diagnostics) = try parse(input)
 
     #expect(diagnostics.isEmpty)
