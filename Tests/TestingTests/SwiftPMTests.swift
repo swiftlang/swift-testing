@@ -94,7 +94,6 @@ struct SwiftPMTests {
   @available(_regexAPI, *)
   func filterAndSkipAndHidden() async throws {
     let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--filter", "hello", "--skip", "hello2"])
-    let testFilter = try #require(configuration.testFilter)
     let test1 = Test(name: "hello") {}
     let test2 = Test(name: "hello2") {}
     let test3 = Test(.hidden, name: "hello") {}
