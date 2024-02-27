@@ -240,7 +240,6 @@ struct PlanTests {
     filter.includeHiddenTests = true
     filter.combine(with: Configuration.TestFilter(excluding: [testC.id]))
     configuration.testFilter = filter
-    print(configuration.testFilter.includeHiddenTests)
 
     let plan = await Runner.Plan(tests: tests, configuration: configuration)
     let planTests = plan.steps.map(\.test)
