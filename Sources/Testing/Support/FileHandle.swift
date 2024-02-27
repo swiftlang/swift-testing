@@ -170,6 +170,39 @@ struct FileHandle: ~Copyable, Sendable {
 #endif
 }
 
+// MARK: - Writing
+
+extension FileHandle {
+  /// Write a string to this file handle.
+  ///
+  /// - Parameters:
+  ///   - string: The string to write.
+  ///   - flushAfterward: Whether or not to flush the file (with `fflush()`)
+  ///     after writing. If `true`, `fflush()` is called even if an error
+  ///     occurred while writing.
+  ///
+  /// - Throws: Any error that occurred while writing `string`. If an error
+  ///   occurs while flushing the file, it is not thrown.
+  ///
+  /// `string` is converted to a UTF-8 C string (UTF-16 on Windows) and written
+  /// to this file handle.
+  func write(_ string: String, flushAfterward: Bool = true) throws {
+    try withUnsafeCFILEHandle { file in
+      defer {
+        if flushAfterward {
+          _ = fflush(file)
+        }
+      }
+
+      try string.withCString { string in
+        if EOF == fputs(string, file) {
+          throw CError(rawValue: swt_errno())
+        }
+      }
+    }
+  }
+}
+
 // MARK: - Attributes
 
 extension FileHandle {

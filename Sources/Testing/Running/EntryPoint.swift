@@ -53,10 +53,7 @@ private import TestingInternals
     }
   } catch {
 #if !SWT_NO_FILE_IO
-    FileHandle.stderr.withUnsafeCFILEHandle { stderr in
-      fputs(String(describing: error), stderr)
-      fflush(stderr)
-    }
+    try? FileHandle.stderr.write(String(describing: error))
 #endif
 
     exitCode.withLock { exitCode in
@@ -156,10 +153,7 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 
     // Set up the XML recorder.
     let xmlRecorder = Event.JUnitXMLRecorder { string in
-      file.withUnsafeCFILEHandle { file in
-        fputs(string, file)
-        fflush(file)
-      }
+      try? file.write(string)
     }
 
     let oldEventHandler = configuration.eventHandler
@@ -242,10 +236,7 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 func runTests(options: [Event.ConsoleOutputRecorder.Option], configuration: Configuration) async {
   let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
 #if !SWT_NO_FILE_IO
-    FileHandle.stderr.withUnsafeCFILEHandle { stderr in
-      fputs(string, stderr)
-      fflush(stderr)
-    }
+    try? FileHandle.stderr.write(string)
 #endif
   }
 
