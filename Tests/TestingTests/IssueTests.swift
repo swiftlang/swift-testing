@@ -1196,7 +1196,7 @@ final class IssueTests: XCTestCase {
   }
 
   func testEnumDescription() async throws {
-    guard #available(_mangledTypeNameAPI, *) else {
+    guard #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) else {
       throw XCTSkip("Unavailable")
     }
 
@@ -1259,7 +1259,7 @@ final class IssueTests: XCTestCase {
   }
 
   func testCEnumDescription() async throws {
-    guard #available(_mangledTypeNameAPI, *) else {
+    guard #available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *) else {
       throw XCTSkip("Unavailable")
     }
 

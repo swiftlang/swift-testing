@@ -55,7 +55,7 @@ func fullyQualifiedName(of type: Any.Type) -> String {
 /// - Bug: We use the internal Swift standard library function
 ///   `_mangledTypeName()` to derive this information. We should use supported
 ///   API instead. ([swift-#69147](https://github.com/apple/swift/issues/69147))
-@available(_mangledTypeNameAPI, *)
+@available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
 func isSwiftEnumeration(_ type: Any.Type) -> Bool {
   guard let mangledTypeName = _mangledTypeName(type), let lastCharacter = mangledTypeName.last else {
     return false
@@ -79,7 +79,7 @@ func isSwiftEnumeration(_ type: Any.Type) -> Bool {
 /// - Bug: We use the internal Swift standard library function
 ///   `_mangledTypeName()` to derive this information. We should use supported
 ///   API instead. ([swift-#69146](https://github.com/apple/swift/issues/69146))
-@available(_mangledTypeNameAPI, *)
+@available(macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
 func isImportedFromC(_ type: Any.Type) -> Bool {
   guard let mangledTypeName = _mangledTypeName(type), mangledTypeName.count > 2 else {
     return false

@@ -46,7 +46,7 @@ be updated so that the release can be used as a package dependency:
 1. Take note of any availability definitions (passed to the Swift compiler with
    the `-define-availability` option.) Search for these definitions in the
    package source and replace them with their values. For example, replace all
-   `_distantFuture` uses with `macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0`.
+   `macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0` uses with `macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0`.
 1. Delete any unsafe flags from `var packageSettings` as well as elsewhere in
    the package manifest files.
 1. Open the "Documentation/Testing.docc/TemporaryGettingStarted.md" file and

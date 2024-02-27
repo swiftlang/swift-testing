@@ -46,7 +46,7 @@ struct SwiftPMTests {
   }
 
   @Test("--filter argument")
-  @available(_regexAPI, *)
+  @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
   func filter() async throws {
     let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--filter", "hello"])
     let test1 = Test(name: "hello") {}
@@ -68,7 +68,7 @@ struct SwiftPMTests {
   }
 
   @Test("--skip argument")
-  @available(_regexAPI, *)
+  @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
   func skip() async throws {
     let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--skip", "hello"])
     let test1 = Test(name: "hello") {}
@@ -91,7 +91,7 @@ struct SwiftPMTests {
   }
 
   @Test("--filter/--skip arguments and .hidden trait")
-  @available(_regexAPI, *)
+  @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
   func filterAndSkipAndHidden() async throws {
     let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--filter", "hello", "--skip", "hello2"])
     let test1 = Test(name: "hello") {}
@@ -134,7 +134,7 @@ struct SwiftPMTests {
 #endif
 
   @Test("--repetitions argument (alone)")
-  @available(_regexAPI, *)
+  @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
   func repetitions() throws {
     let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--repetitions", "2468"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == 2468)
@@ -142,7 +142,7 @@ struct SwiftPMTests {
   }
 
   @Test("--repeat-until pass argument (alone)")
-  @available(_regexAPI, *)
+  @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
   func repeatUntilPass() throws {
     let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--repeat-until", "pass"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == .max)
@@ -150,7 +150,7 @@ struct SwiftPMTests {
   }
 
   @Test("--repeat-until fail argument (alone)")
-  @available(_regexAPI, *)
+  @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
   func repeatUntilFail() throws {
     let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--repeat-until", "fail"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == .max)
@@ -158,7 +158,7 @@ struct SwiftPMTests {
   }
 
   @Test("--repeat-until argument with garbage value (alone)")
-  @available(_regexAPI, *)
+  @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
   func repeatUntilGarbage() {
     #expect(throws: (any Error).self) {
       _ = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--repeat-until", "qwertyuiop"])
@@ -166,7 +166,7 @@ struct SwiftPMTests {
   }
 
   @Test("--repetitions and --repeat-until arguments")
-  @available(_regexAPI, *)
+  @available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *)
   func repetitionsAndRepeatUntil() throws {
     let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--repetitions", "2468", "--repeat-until", "pass"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == 2468)
