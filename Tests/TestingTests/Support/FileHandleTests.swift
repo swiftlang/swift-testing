@@ -19,16 +19,7 @@ private import TestingInternals
 struct FileHandleTests {
   @Test("Can get file descriptor")
   func fileDescriptor() throws {
-    #if os(Windows)
-    let tmpFile: SWT_FILEHandle = try {
-      var file: SWT_FILEHandle?
-      try #require(0 == tmpfile_s(&file))
-      return file!
-    }()
-    #else
-    let tmpFile = try #require(tmpfile())
-    #endif
-    let fileHandle = FileHandle(unsafeCFILEHandle: tmpFile, closeWhenDone: true)
+    let fileHandle = try FileHandle.temporary()
     try fileHandle.withUnsafePOSIXFileDescriptor { fd in
       try #require(fd != nil)
     }
@@ -37,12 +28,7 @@ struct FileHandleTests {
 #if os(Windows)
   @Test("Can get Windows file HANDLE")
   func fileHANDLE() throws {
-    let tmpFile: SWT_FILEHandle = try {
-      var file: SWT_FILEHandle?
-      try #require(0 == tmpfile_s(&file))
-      return file!
-    }()
-    let fileHandle = FileHandle(unsafeCFILEHandle: tmpFile, closeWhenDone: true)
+    let fileHandle = try FileHandle.temporary()
     try fileHandle.withUnsafeWindowsHANDLE { handle in
       try #require(handle != nil)
     }
@@ -66,13 +52,19 @@ struct FileHandleTests {
       remove(path)
     }
     let fileHandle = try FileHandle(forWritingAtPath: path)
-    fileHandle.withUnsafeCFILEHandle { file in
-      #expect(EOF != fputs("Hello world!", file))
+    try fileHandle.write("Hello world!")
+  }
+
+  @Test("Cannot write to a read-only file")
+  func cannotWriteToReadOnlyFile() throws {
+    let fileHandle = try FileHandle.null(mode: "rb")
+    #expect(throws: CError.self) {
+      try fileHandle.write("Impossible!")
     }
   }
 
 #if !os(Windows)
-  // Disabled on Windows because the equivalent of /dev/null, CON, redirects
+  // Disabled on Windows because the equivalent of /dev/tty, CON, redirects
   // to stdout, but stdout may be any type of file, not just a TTY.
   @Test("Can recognize opened TTY")
   func isTTY() throws {
@@ -120,11 +112,7 @@ struct FileHandleTests {
 
   @Test("/dev/null is not a TTY or pipe")
   func devNull() throws {
-#if os(Windows)
-    let fileHandle = try FileHandle(forWritingAtPath: "NUL")
-#else
-    let fileHandle = try FileHandle(forWritingAtPath: "/dev/null")
-#endif
+    let fileHandle = try FileHandle.null(mode: "wb")
     #expect(!Bool(fileHandle.isTTY))
     #expect(!Bool(fileHandle.isPipe))
   }
@@ -140,6 +128,31 @@ struct FileHandleTests {
     #expect(!Bool(fileHandle.isPipe))
   }
 #endif
+}
+
+// MARK: - Fixtures
+
+extension FileHandle {
+  static func temporary() throws -> FileHandle {
+#if os(Windows)
+    let tmpFile: SWT_FILEHandle = try {
+      var file: SWT_FILEHandle?
+      try #require(0 == tmpfile_s(&file))
+      return file!
+    }()
+#else
+    let tmpFile = try #require(tmpfile())
+#endif
+    return FileHandle(unsafeCFILEHandle: tmpFile, closeWhenDone: true)
+  }
+
+  static func null(mode: String) throws -> FileHandle {
+#if os(Windows)
+    try FileHandle(atPath: "NUL", mode: mode)
+#else
+    try FileHandle(atPath: "/dev/null", mode: mode)
+#endif
+  }
 }
 #endif
 #endif

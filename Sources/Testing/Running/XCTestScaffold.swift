@@ -140,10 +140,7 @@ public enum XCTestScaffold: Sendable {
       options: .for(.stderr)
     )
 #if SWT_TARGET_OS_APPLE
-    FileHandle.stderr.withUnsafeCFILEHandle { stderr in
-      fputs(message, stderr)
-      fflush(stderr)
-    }
+    try? FileHandle.stderr.write(message)
 #else
     print(message)
 #endif
