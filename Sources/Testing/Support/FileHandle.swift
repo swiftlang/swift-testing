@@ -28,11 +28,17 @@ struct FileHandle: ~Copyable, Sendable {
   /// Whether or not to close `_fileHandle` when this instance is deinitialized.
   private var _closeWhenDone: Bool
 
+  // The value of stdout or stderr might change over time on some platforms, so
+  // these properties need to be computed each time. Fortunately, creating a new
+  // instance of this type from an existing C file handle is cheap.
+
+  /// The C standard output stream.
+  static var stdout: Self {
+    Self(unsafeCFILEHandle: swt_stdout(), closeWhenDone: false)
+  }
+
   /// The C standard error stream.
   static var stderr: Self {
-    // The value of stderr might change over time on some platforms, so this
-    // property needs to be computed each time. Fortunately, creating a new
-    // instance of this type from an existing C file handle is cheap.
     Self(unsafeCFILEHandle: swt_stderr(), closeWhenDone: false)
   }
 

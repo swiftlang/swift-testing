@@ -27,7 +27,11 @@ private import TestingInternals
     let args = CommandLine.arguments()
     if args.count == 2 && args[1] == "--list-tests" {
       for testID in await listTestsForSwiftPM(Test.all) {
+#if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
+        try? FileHandle.stdout.write("\(testID)\n")
+#else
         print(testID)
+#endif
       }
     } else {
       var configuration = try configurationForSwiftPMEntryPoint(withArguments: args)

@@ -17,6 +17,25 @@ private import TestingInternals
 #if os(macOS) || os(Linux) || os(Windows)
 @Suite("FileHandle Tests")
 struct FileHandleTests {
+  // FileHandle is non-copyable, so it cannot yet be used as a test parameter.
+  func canGet(_ fileHandle: borrowing FileHandle) {
+    // This test function doesn't really do much other than check that the
+    // standard I/O files can be accessed.
+    fileHandle.withUnsafeCFILEHandle { fileHandle in
+      #expect(EOF != feof(fileHandle))
+    }
+  }
+
+  @Test("Can get stdout")
+  func canGetStdout() {
+    canGet(.stdout)
+  }
+
+  @Test("Can get stderr")
+  func canGetStderr() {
+    canGet(.stderr)
+  }
+
   @Test("Can get file descriptor")
   func fileDescriptor() throws {
     let fileHandle = try FileHandle.temporary()
