@@ -40,7 +40,7 @@ git checkout -b release/x.y.z
 
 ## Preparing the repository's contents
 
-The package manifest files (Package.swift _and_ Package@swift-5.11.swift) must
+The package manifest files (Package.swift _and_ Package@swift-6.0.swift) must
 be updated so that the release can be used as a package dependency:
 
 1. Take note of any availability definitions (passed to the Swift compiler with
