@@ -24,6 +24,15 @@ SWT_ASSUME_NONNULL_BEGIN
 /// current platform.
 typedef FILE *SWT_FILEHandle;
 
+/// Get the standard output stream.
+///
+/// This function is provided because directly accessing `stdout` from Swift
+/// triggers concurrency warnings on some platforms about accessing shared
+/// mutable state.
+static SWT_FILEHandle swt_stdout(void) {
+  return stdout;
+}
+
 /// Get the standard error stream.
 ///
 /// This function is provided because directly accessing `stderr` from Swift

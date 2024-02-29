@@ -139,7 +139,7 @@ public enum XCTestScaffold: Sendable {
       "This version of Swift Package Manager supports running swift-testing tests directly. Ignoring call to \(#function).",
       options: .for(.stderr)
     )
-#if SWT_TARGET_OS_APPLE
+#if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
     try? FileHandle.stderr.write(message)
 #else
     print(message)
