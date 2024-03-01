@@ -58,7 +58,7 @@ extension Configuration {
       ///     filters.
       ///
       /// The result of a test filter with this kind is the combination of the
-      /// results of its subfilters using `operator`.
+      /// results of its subfilters using `op`.
       indirect case combined(_ lhs: Kind, _ rhs: Kind, _ op: CombinationOperator)
     }
 
