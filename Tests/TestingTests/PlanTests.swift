@@ -337,6 +337,38 @@ struct PlanTests {
     #expect(planTests.contains(testB))
   }
 
+  @Test("Combining test filters with ||")
+  func combiningTestFilterWithOr() async throws {
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
+    let testC = try #require(await testFunction(named: "otherSucceeds()", in: SendableTests.NestedSendableTests.self))
+
+    let tests = [
+      outerTestType,
+      testA,
+      innerTestType,
+      testB,
+      testC
+    ]
+
+    var configuration = Configuration()
+    let selection = [testA.id]
+    var testFilter = Configuration.TestFilter(including: selection)
+    testFilter.combine(with: .init(includingAnyOf: [Tag("tag-2")]), using: .or)
+    testFilter.includeHiddenTests = true
+    configuration.testFilter = testFilter
+
+    let plan = await Runner.Plan(tests: tests, configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(outerTestType))
+    #expect(planTests.contains(testA))
+    #expect(planTests.contains(innerTestType))
+    #expect(planTests.contains(testB))
+    #expect(!planTests.contains(testC))
+  }
+
   @Test("Recursive trait application")
   func recursiveTraitApplication() async throws {
     let outerTestType = try #require(await test(for: OuterTest.self))

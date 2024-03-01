@@ -54,10 +54,12 @@ extension Configuration {
       /// - Parameters:
       ///   - lhs: The first test filter's kind.
       ///   - rhs: The second test filter's kind.
+      ///   - op: The operator to apply when combining the results of the two
+      ///     filters.
       ///
       /// The result of a test filter with this kind is the combination of the
-      /// results of its subfilters (as if with `&&`.)
-      indirect case combined(_ lhs: Kind, _ rhs: Kind)
+      /// results of its subfilters using `operator`.
+      indirect case combined(_ lhs: Kind, _ rhs: Kind, _ op: CombinationOperator)
     }
 
     /// The kind of test filter.
@@ -225,11 +227,11 @@ extension Configuration.TestFilter.Kind {
         .map(\.id)
       let selection = Test.ID.Selection(testIDs: testIDs)
       return Self.precomputed(selection, membership: membership).apply(to: testGraph)
-    case let .combined(lhs, rhs):
-      var result = testGraph
-      result = lhs.apply(to: result)
-      result = rhs.apply(to: result)
-      return result
+    case let .combined(lhs, rhs, op):
+      return zip(
+        lhs.apply(to: testGraph),
+        rhs.apply(to: testGraph)
+      ).mapValues(op.functionValue)
     }
   }
 }
@@ -257,24 +259,63 @@ extension Configuration.TestFilter {
 
     return result
   }
+}
 
+// MARK: - Combining
+
+extension Configuration.TestFilter {
+  /// An enumeration describing operators that can be used to combine test
+  /// filters when using ``combining(with:using:)`` or ``combine(with:using:)``.
+  public enum CombinationOperator: Sendable {
+    /// Both subfilters must allow a test for it to be allowed in the combined
+    /// test filter.
+    ///
+    /// This operator is equivalent to `&&`.
+    case and
+
+    /// Either subfilter must allow a test for it to be allowed in the combined
+    /// test filter.
+    ///
+    /// This operator is equivalent to `||`.
+    case or
+
+    /// The equivalent of this instance as a callable function.
+    fileprivate var functionValue: @Sendable (Test?, Test?) -> Test? {
+      switch self {
+      case .and:
+        return { lhs, rhs in
+          if lhs != nil && rhs != nil {
+            lhs
+          } else {
+            nil
+          }
+        }
+      case .or:
+        return { lhs, rhs in
+          lhs ?? rhs
+        }
+      }
+    }
+  }
   /// Combine this test filter with another one.
   ///
   /// - Parameters:
   ///   - other: Another test filter.
+  ///   - op: The operator to apply when combining the results of the two
+  ///     filters. By default, `.and` is used.
   ///
   /// - Returns: A copy of `self` combined with `other`.
   ///
   /// The resulting test filter predicates tests against both `self` and `other`
   /// and includes them in results if they pass both.
-  public func combining(with other: Self) -> Self {
+  public func combining(with other: Self, using op: CombinationOperator = .and) -> Self {
     var result = switch (_kind, other._kind) {
     case (.unfiltered, _):
       other
     case (_, .unfiltered):
       self
     default:
-      Self(_kind: .combined(_kind, other._kind))
+      Self(_kind: .combined(_kind, other._kind, op))
     }
     result.includeHiddenTests = includeHiddenTests
 
@@ -285,11 +326,13 @@ extension Configuration.TestFilter {
   ///
   /// - Parameters:
   ///   - other: Another test filter.
+  ///   - op: The operator to apply when combining the results of the two
+  ///     filters. By default, `.and` is used.
   ///
   /// This instance is modified in place. Afterward, it predicates tests against
   /// both its previous test function and the one from `other` and includes them
   /// in results if they pass both.
-  public mutating func combine(with other: Self) {
-    self = combining(with: other)
+  public mutating func combine(with other: Self, using op: CombinationOperator = .and) {
+    self = combining(with: other, using: op)
   }
 }
