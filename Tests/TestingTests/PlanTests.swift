@@ -337,7 +337,7 @@ struct PlanTests {
     #expect(planTests.contains(testB))
   }
 
-  @Test("Combining test filters with ||")
+  @Test("Combining test filters with .or")
   func combiningTestFilterWithOr() async throws {
     let outerTestType = try #require(await test(for: SendableTests.self))
     let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
