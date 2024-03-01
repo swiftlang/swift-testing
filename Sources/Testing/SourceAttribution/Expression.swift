@@ -112,20 +112,74 @@ public struct Expression: Sendable {
     }
   }
 
-  /// A description, captured using ``String/init(describingForTest:)``, of
-  /// the runtime value of this expression.
+  /// A type which represents an evaluated value, which may include textual
+  /// descriptions, type information, substructure, and other information.
+  @_spi(ForToolsIntegrationOnly)
+  public struct Value: Sendable {
+    /// A description of this value, formatted using
+    /// ``Swift/String/init(describingForTest:)``.
+    public var description: String
+
+    /// A debug description of this value, formatted using
+    /// `String(reflecting:)`.
+    public var debugDescription: String
+
+    /// Information about the type of this value.
+    public var typeInfo: TypeInfo
+
+    /// The label associated with this value, if any.
+    ///
+    /// For non-child instances, or for child instances of members who do not
+    /// have a label (such as elements of a collection), the value of this
+    /// property is `nil`.
+    public var label: String?
+
+    /// Whether or not this value represents a collection of values.
+    public var isCollection: Bool
+
+    /// The children of this value, representing its substructure, if any.
+    ///
+    /// If the value this instance represents does not contain any substructural
+    /// values but ``isCollection`` is `true`, the value of this property is an
+    /// empty array. Otherwise, the value of this property is non-`nil` only if
+    /// the value it represents contains substructural values.
+    public var children: [Self]?
+
+    /// Initialize an instance of this type describing the specified subject
+    ///
+    /// - Parameters:
+    ///   - subject: The subject this instance should describe.
+    ///   - label: An optional label for this value. This should be a non-`nil`
+    ///     value when creating instances of this type which describe
+    ///     substructural values.
+    init(reflecting subject: some Any, label: String? = nil) {
+      description = String(describingForTest: subject)
+      debugDescription = String(reflecting: subject)
+      typeInfo = TypeInfo(describingTypeOf: subject)
+
+      let mirror = Mirror(reflecting: subject)
+
+      isCollection = switch mirror.displayStyle {
+      case .some(.collection),
+           .some(.dictionary),
+           .some(.set):
+        true
+      default:
+        false
+      }
+
+      if !mirror.children.isEmpty || isCollection {
+        self.children = mirror.children.map { Value(reflecting: $0.value, label: $0.label) }
+      }
+    }
+  }
+
+  /// A representation of the runtime value of this expression.
   ///
   /// If the runtime value of this expression has not been evaluated, the value
   /// of this property is `nil`.
-  @_spi(ExperimentalSourceCodeCapturing)
-  public var runtimeValueDescription: String?
-
-  /// Information about the type of the runtime value of this expression.
-  ///
-  /// If the runtime value of this expression has not been evaluated, the value
-  /// value of this property is `nil`.
   @_spi(ForToolsIntegrationOnly)
-  public var runtimeValueTypeInfo: TypeInfo?
+  public var runtimeValue: Value?
 
   /// Copy this instance and capture the runtime value corresponding to it.
   ///
@@ -136,15 +190,7 @@ public struct Expression: Sendable {
   ///   value captured for future use.
   func capturingRuntimeValue(_ value: (some Any)?) -> Self {
     var result = self
-
-    if let value {
-      result.runtimeValueDescription = String(describingForTest: value)
-      result.runtimeValueTypeInfo = TypeInfo(describingTypeOf: value)
-    } else {
-      result.runtimeValueDescription = nil
-      result.runtimeValueTypeInfo = nil
-    }
-
+    result.runtimeValue = value.map { Value(reflecting: $0) }
     return result
   }
 
@@ -211,8 +257,8 @@ public struct Expression: Sendable {
     var result = ""
     switch kind {
     case let .generic(sourceCode), let .stringLiteral(sourceCode, _):
-      result = if includingTypeNames, let runtimeValueTypeInfo {
-        "\(sourceCode): \(runtimeValueTypeInfo.qualifiedName)"
+      result = if includingTypeNames, let qualifiedName = runtimeValue?.typeInfo.qualifiedName {
+        "\(sourceCode): \(qualifiedName)"
       } else {
         sourceCode
       }
@@ -240,11 +286,11 @@ public struct Expression: Sendable {
 
     // If this expression is at the root of the expression graph and has no
     // value, don't bother reporting the placeholder string for it.
-    if depth == 0 && runtimeValueDescription == nil {
+    if depth == 0 && runtimeValue == nil {
       return result
     }
 
-    let runtimeValueDescription = runtimeValueDescription ?? "<not evaluated>"
+    let runtimeValueDescription = runtimeValue.map(String.init(describing:)) ?? "<not evaluated>"
     result = if runtimeValueDescription == "(Function)" {
       // Hack: don't print string representations of function calls.
       result
@@ -292,9 +338,14 @@ public struct Expression: Sendable {
   }
 }
 
+// MARK: - Codable
+
 extension Expression: Codable {}
 extension Expression.Kind: Codable {}
 extension Expression.Kind.FunctionCallArgument: Codable {}
+extension Expression.Value: Codable {}
+
+// MARK: - CustomStringConvertible, CustomDebugStringConvertible
 
 extension Expression: CustomStringConvertible, CustomDebugStringConvertible {
   /// Initialize an instance of this type containing the specified source code.
@@ -319,3 +370,5 @@ extension Expression: CustomStringConvertible, CustomDebugStringConvertible {
     String(reflecting: kind)
   }
 }
+
+extension Expression.Value: CustomStringConvertible, CustomDebugStringConvertible {}
