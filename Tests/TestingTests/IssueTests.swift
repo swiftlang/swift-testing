@@ -277,7 +277,7 @@ final class IssueTests: XCTestCase {
         expectationFailed.fulfill()
         // The presence of `try` means we don't do complex expansion (yet.)
         XCTAssertNotNil(expectation.evaluatedExpression)
-        XCTAssertNil(expectation.evaluatedExpression.runtimeValueDescription)
+        XCTAssertNil(expectation.evaluatedExpression.runtimeValue)
       }
     }
 
@@ -306,7 +306,7 @@ final class IssueTests: XCTestCase {
         return
       }
       XCTAssertNotNil(expectation.evaluatedExpression)
-      XCTAssertNil(expectation.evaluatedExpression.subexpressions[0].runtimeValueDescription)
+      XCTAssertNil(expectation.evaluatedExpression.subexpressions[0].runtimeValue)
       expectationChecked.fulfill()
     }
 
@@ -350,28 +350,89 @@ final class IssueTests: XCTestCase {
     }
   }
 
-  struct ExpressionValueAndTypeCapture_Value {}
+  struct ExpressionRuntimeValueCapture_Value {}
 
-  func testExpressionValueAndTypeCapture() {
+  func testExpressionRuntimeValueCapture() throws {
     var expression = Expression.__fromSyntaxNode("abc123")
     XCTAssertEqual(expression.sourceCode, "abc123")
-    XCTAssertNil(expression.runtimeValueDescription)
-    XCTAssertNil(expression.runtimeValueTypeInfo)
+    XCTAssertNil(expression.runtimeValue)
 
-    expression = expression.capturingRuntimeValues(987 as Int)
-    XCTAssertEqual(expression.sourceCode, "abc123")
-    XCTAssertEqual(expression.runtimeValueDescription, "987")
-    XCTAssertEqual(expression.runtimeValueTypeInfo?.qualifiedName, "Swift.Int")
+    do {
+      expression = expression.capturingRuntimeValues(987 as Int)
+      XCTAssertEqual(expression.sourceCode, "abc123")
+      let runtimeValue = try XCTUnwrap(expression.runtimeValue)
+      XCTAssertEqual(String(describing: runtimeValue), "987")
+      XCTAssertEqual(runtimeValue.typeInfo.qualifiedName, "Swift.Int")
+      XCTAssertFalse(runtimeValue.isCollection)
+    }
 
-    expression = expression.capturingRuntimeValues(ExpressionValueAndTypeCapture_Value())
-    XCTAssertEqual(expression.sourceCode, "abc123")
-    XCTAssertEqual(expression.runtimeValueDescription, "ExpressionValueAndTypeCapture_Value()")
-    XCTAssertEqual(expression.runtimeValueTypeInfo?.qualifiedName, "TestingTests.IssueTests.ExpressionValueAndTypeCapture_Value")
+    do {
+      expression = expression.capturingRuntimeValues(ExpressionRuntimeValueCapture_Value())
+      XCTAssertEqual(expression.sourceCode, "abc123")
+      let runtimeValue = try XCTUnwrap(expression.runtimeValue)
+      XCTAssertEqual(String(describing: runtimeValue), "ExpressionRuntimeValueCapture_Value()")
+      XCTAssertEqual(runtimeValue.typeInfo.qualifiedName, "TestingTests.IssueTests.ExpressionRuntimeValueCapture_Value")
+      XCTAssertFalse(runtimeValue.isCollection)
+    }
 
-    expression = expression.capturingRuntimeValues((123, "abc") as (Int, String), ())
+    do {
+      expression = expression.capturingRuntimeValues((123, "abc") as (Int, String), ())
+      XCTAssertEqual(expression.sourceCode, "abc123")
+      let runtimeValue = try XCTUnwrap(expression.runtimeValue)
+      XCTAssertEqual(String(describing: runtimeValue), #"(123, "abc")"#)
+      XCTAssertEqual(runtimeValue.typeInfo.qualifiedName, "(Swift.Int, Swift.String)")
+      XCTAssertFalse(runtimeValue.isCollection)
+    }
+  }
+
+  struct ExpressionRuntimeValueCapture_ValueWithChildren {
+    var contents: [Any] = []
+  }
+
+  func testExpressionRuntimeValueChildren() throws {
+    var expression = Expression.__fromSyntaxNode("abc123")
     XCTAssertEqual(expression.sourceCode, "abc123")
-    XCTAssertEqual(expression.runtimeValueDescription, #"(123, "abc")"#)
-    XCTAssertEqual(expression.runtimeValueTypeInfo?.qualifiedName, "(Swift.Int, Swift.String)")
+    XCTAssertNil(expression.runtimeValue)
+
+    do {
+      expression = expression.capturingRuntimeValues(ExpressionRuntimeValueCapture_Value())
+      let runtimeValue = try XCTUnwrap(expression.runtimeValue)
+      XCTAssertEqual(String(describing: runtimeValue), "ExpressionRuntimeValueCapture_Value()")
+      XCTAssertEqual(runtimeValue.typeInfo.qualifiedName, "TestingTests.IssueTests.ExpressionRuntimeValueCapture_Value")
+      XCTAssertFalse(runtimeValue.isCollection)
+      XCTAssertNil(runtimeValue.children)
+    }
+
+    do {
+      expression = expression.capturingRuntimeValues(ExpressionRuntimeValueCapture_ValueWithChildren(contents: [123, "abc"]))
+      let runtimeValue = try XCTUnwrap(expression.runtimeValue)
+      XCTAssertEqual(String(describing: runtimeValue), #"ExpressionRuntimeValueCapture_ValueWithChildren(contents: [123, "abc"])"#)
+      XCTAssertEqual(runtimeValue.typeInfo.qualifiedName, "TestingTests.IssueTests.ExpressionRuntimeValueCapture_ValueWithChildren")
+      XCTAssertFalse(runtimeValue.isCollection)
+
+      let children = try XCTUnwrap(runtimeValue.children)
+      XCTAssertEqual(children.count, 1)
+      let contentsArrayChild = try XCTUnwrap(children.first)
+      XCTAssertEqual(String(describing: contentsArrayChild), #"[123, "abc"]"#)
+      XCTAssertTrue(contentsArrayChild.isCollection)
+
+      let contentsChildren = try XCTUnwrap(contentsArrayChild.children)
+      XCTAssertEqual(contentsChildren.count, 2)
+      let firstContentsElementChild = try XCTUnwrap(contentsChildren.first)
+      XCTAssertEqual(String(describing: firstContentsElementChild), "123")
+      XCTAssertFalse(firstContentsElementChild.isCollection)
+    }
+
+    do {
+      expression = expression.capturingRuntimeValues([])
+      let runtimeValue = try XCTUnwrap(expression.runtimeValue)
+      XCTAssertEqual(String(describing: runtimeValue), "[]")
+      XCTAssertEqual(runtimeValue.typeInfo.qualifiedName, "Swift.Array<Any>")
+      XCTAssertTrue(runtimeValue.isCollection)
+
+      let children = try XCTUnwrap(runtimeValue.children)
+      XCTAssertTrue(children.isEmpty)
+    }
   }
 
   func testIsAndAsComparisons() async {

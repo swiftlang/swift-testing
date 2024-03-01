@@ -191,20 +191,10 @@ extension Test.Case.Argument {
     /// The ID of this parameterized test argument, if any.
     public var id: Test.Case.Argument.ID?
 
-    /// A description of this parameterized test argument's
-    /// ``Test/Case/Argument/value`` property, formatted using
-    /// `String(describingForTest:)`.
-    public var valueDescription: String
-
-    /// A debug description of this parameterized test argument's
-    /// ``Test/Case/Argument/value`` property, formatted using
-    /// `String(reflecting:)`.
-    public var valueDebugDescription: String?
-
-    /// Information about the type of this parameterized test argument's
+    /// A representation of this parameterized test argument's
     /// ``Test/Case/Argument/value`` property.
     @_spi(ForToolsIntegrationOnly)
-    public var valueTypeInfo: TypeInfo
+    public var value: Expression.Value
 
     /// The parameter of the test function to which this argument was passed.
     public var parameter: Test.Parameter
@@ -216,9 +206,7 @@ extension Test.Case.Argument {
     ///   - argument: The original test case argument to snapshot.
     init(snapshotting argument: Test.Case.Argument) {
       id = argument.id
-      valueDescription = String(describingForTest: argument.value)
-      valueDebugDescription = String(reflecting: argument.value)
-      valueTypeInfo = TypeInfo(describingTypeOf: argument.value)
+      value = Expression.Value(reflecting: argument.value)
       parameter = argument.parameter
     }
   }
