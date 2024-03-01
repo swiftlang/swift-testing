@@ -91,7 +91,7 @@ extension Tag {
 }
 ```
 
-If a tag is declared as a name constant outside of an extension to the ``Tag``
+If a tag is declared as a named constant outside of an extension to the ``Tag``
 type (for example, at the root of a file or in another unrelated type
 declaration), it cannot be applied to test functions or test suites. The
 following declarations are unsupported:
