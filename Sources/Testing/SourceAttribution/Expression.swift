@@ -156,6 +156,7 @@ public struct Expression: Sendable {
       description = String(describingForTest: subject)
       debugDescription = String(reflecting: subject)
       typeInfo = TypeInfo(describingTypeOf: subject)
+      self.label = label
 
       let mirror = Mirror(reflecting: subject)
 
