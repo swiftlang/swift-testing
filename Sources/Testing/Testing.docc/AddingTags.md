@@ -26,9 +26,9 @@ source files, and even test targets.
 
 ## Adding tags
 
-To add a tag to a test, use the ``Trait/tags(_:)-505n9`` trait. These traits
-take sequences of tags as arguments, and those tags are then applied to the
-corresponding test at runtime. If they are applied to a test suite, then all
+To add a tag to a test, use the ``Trait/tags(_:)-505n9`` trait. This trait takes
+a sequence of tags as its argument, and those tags are then applied to the
+corresponding test at runtime. If any tags are applied to a test suite, then all
 tests in that suite inherit those tags.
 
 The testing library does not assign any semantic meaning to any tags, nor does
@@ -104,6 +104,21 @@ struct Food {
                               // to Tag
 }
 ```
+
+## Built-in tags
+
+The testing library predefines the following symbolic tags that can be used in
+any test target and applied to any test:
+
+- ``Tag/red``
+- ``Tag/orange``
+- ``Tag/yellow``
+- ``Tag/green``
+- ``Tag/blue``
+- ``Tag/purple``
+
+The testing library does not assign any semantic meaning to these tags, nor does
+the presence or absence of these tags affect how the testing library runs tests.
 
 ## Customizing a tag's appearance
 
