@@ -106,12 +106,6 @@ public enum XCTestScaffold: Sendable {
   /// The format of the output is not meant to be machine-readable and is
   /// subject to change.
   ///
-  /// ### Filtering tests
-  ///
-  /// This function does not support the `--filter` argument passed to
-  /// `swift test`. Instead, use one of several environment variables to control
-  /// which tests run.
-  ///
   /// ### Configuring output
   ///
   /// By default, this function uses
