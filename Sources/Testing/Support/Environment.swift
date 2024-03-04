@@ -66,7 +66,7 @@ enum Environment {
     }
 #else
 #warning("Platform-specific implementation missing: environment variables unavailable")
-    nil
+    return nil
 #endif
   }
 

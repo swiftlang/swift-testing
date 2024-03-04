@@ -95,7 +95,7 @@ extension Environment {
     }
 #else
 #warning("Platform-specific implementation missing: environment variables unavailable")
-    false
+    return false
 #endif
   }
 }

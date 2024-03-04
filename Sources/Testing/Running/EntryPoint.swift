@@ -334,6 +334,9 @@ extension [Event.ConsoleOutputRecorder.Option] {
     // Windows does not set the "TERM" variable, so assume it supports 256-color
     // ANSI escape codes.
     true
+#else
+#warning("Platform-specific implementation missing: terminal colors unavailable")
+    return false
 #endif
   }
 #endif

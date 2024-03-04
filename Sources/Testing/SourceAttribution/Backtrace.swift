@@ -73,6 +73,7 @@ public struct Backtrace: Sendable {
 #elseif os(Windows)
         initializedCount = Int(RtlCaptureStackBackTrace(0, ULONG(addresses.count), addresses.baseAddress!, nil))
 #else
+#warning("Platform-specific implementation missing: backtraces unavailable")
         initializedCount = 0
 #endif
       }
