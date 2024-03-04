@@ -30,7 +30,7 @@ struct TagListTests {
     #expect(trait.tags == [Tag("hello"), Tag("world")])
   }
 
-  @Test(".tags() factory method with colors")
+  @Test(".tags() factory method with colors", .tags(.red, .orange, .yellow, .green, .blue, .purple))
   func tagListFactoryMethodWithColors() throws {
     let trait = Tag.List.tags(.red, .orange, .yellow, .green, .blue, .purple)
     #expect((trait as Any) is Tag.List)
@@ -43,6 +43,17 @@ struct TagListTests {
       Tag(kind: .staticMember("blue")),
       Tag(kind: .staticMember("purple"))
     ])
+  }
+
+  @Test(".tags() factory method with System 7 colors", .tags(.essential, .hot, .inProgress, .cool, .personal, .project1, .project2))
+  func system7Colors() throws {
+    let trait = Tag.List.tags(.essential, .hot, .inProgress, .cool, .personal, .project1, .project2)
+    #expect((trait as Any) is Tag.List)
+    #expect(trait.tags == [.essential, .hot, .inProgress, .cool, .personal, .project1, .project2])
+    let predefinedColors = Tag.Color.predefined
+    for tag in trait.tags {
+      #expect(predefinedColors[tag] != nil)
+    }
   }
 
   @Test("Tag.description property", arguments: [
