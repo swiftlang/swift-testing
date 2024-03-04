@@ -260,7 +260,7 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
   }
 }
 
-#else
+#elif defined(__linux__) || defined(_WIN32)
 #pragma mark - Linux/Windows implementation
 
 /// Specifies the address range corresponding to a section.
@@ -311,6 +311,10 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
     return true;
   }, const_cast<SectionEnumerator *>(&body));
 }
+#else
+#warning Platform-specific implementation missing: Runtime test discovery unavailable
+template <typename SectionEnumerator>
+static void enumerateTypeMetadataSections(const SectionEnumerator& body) {}
 #endif
 
 #pragma mark -

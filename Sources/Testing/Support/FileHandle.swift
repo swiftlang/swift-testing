@@ -255,6 +255,9 @@ extension FileHandle {
       }
       return FILE_TYPE_PIPE == GetFileType(handle)
     }
+#else
+#warning("Platform-specific implementation missing: cannot tell if a file is a pipe")
+    return false
 #endif
   }
 }
