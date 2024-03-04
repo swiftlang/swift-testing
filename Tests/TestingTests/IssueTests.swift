@@ -401,6 +401,7 @@ final class IssueTests: XCTestCase {
       XCTAssertEqual(runtimeValue.typeInfo.qualifiedName, "TestingTests.IssueTests.ExpressionRuntimeValueCapture_Value")
       XCTAssertFalse(runtimeValue.isCollection)
       XCTAssertNil(runtimeValue.children)
+      XCTAssertNil(runtimeValue.label)
     }
 
     do {
@@ -409,18 +410,21 @@ final class IssueTests: XCTestCase {
       XCTAssertEqual(String(describing: runtimeValue), #"ExpressionRuntimeValueCapture_ValueWithChildren(contents: [123, "abc"])"#)
       XCTAssertEqual(runtimeValue.typeInfo.qualifiedName, "TestingTests.IssueTests.ExpressionRuntimeValueCapture_ValueWithChildren")
       XCTAssertFalse(runtimeValue.isCollection)
+      XCTAssertNil(runtimeValue.label)
 
       let children = try XCTUnwrap(runtimeValue.children)
       XCTAssertEqual(children.count, 1)
       let contentsArrayChild = try XCTUnwrap(children.first)
       XCTAssertEqual(String(describing: contentsArrayChild), #"[123, "abc"]"#)
       XCTAssertTrue(contentsArrayChild.isCollection)
+      XCTAssertEqual(contentsArrayChild.label, "contents")
 
       let contentsChildren = try XCTUnwrap(contentsArrayChild.children)
       XCTAssertEqual(contentsChildren.count, 2)
       let firstContentsElementChild = try XCTUnwrap(contentsChildren.first)
       XCTAssertEqual(String(describing: firstContentsElementChild), "123")
       XCTAssertFalse(firstContentsElementChild.isCollection)
+      XCTAssertNil(firstContentsElementChild.label)
     }
 
     do {
@@ -429,6 +433,7 @@ final class IssueTests: XCTestCase {
       XCTAssertEqual(String(describing: runtimeValue), "[]")
       XCTAssertEqual(runtimeValue.typeInfo.qualifiedName, "Swift.Array<Any>")
       XCTAssertTrue(runtimeValue.isCollection)
+      XCTAssertNil(runtimeValue.label)
 
       let children = try XCTUnwrap(runtimeValue.children)
       XCTAssertTrue(children.isEmpty)
