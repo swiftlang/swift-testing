@@ -34,7 +34,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   static func condition(_ condition: ExprSyntax, isAlways value: Bool, in macro: some FreestandingMacroExpansionSyntax) -> Self {
     Self(
       syntax: Syntax(condition),
-      message: "#\(macro.macro.textWithoutBackticks)(_:_:) will always \(value ? "pass" : "fail") here; use Bool(\(condition)) to silence this warning",
+      message: "#\(macro.macroName.textWithoutBackticks)(_:_:) will always \(value ? "pass" : "fail") here; use Bool(\(condition)) to silence this warning",
       severity: value ? .note : .warning
     )
   }
@@ -50,7 +50,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   static func asExclamationMarkIsEvaluatedEarly(_ expr: AsExprSyntax, in macro: some FreestandingMacroExpansionSyntax) -> Self {
     return Self(
       syntax: Syntax(expr.asKeyword),
-      message: "The expression \(expr.trimmed) will be evaluated before #\(macro.macro.textWithoutBackticks)(_:_:) is invoked; use as? instead of as! to silence this warning",
+      message: "The expression \(expr.trimmed) will be evaluated before #\(macro.macroName.textWithoutBackticks)(_:_:) is invoked; use as? instead of as! to silence this warning",
       severity: .warning
     )
   }

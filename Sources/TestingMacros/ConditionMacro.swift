@@ -168,7 +168,7 @@ extension ConditionMacro {
     // are allowed.
 
     // Include the original arguments first.
-    result += macro.argumentList.lazy.map(Argument.init)
+    result += macro.arguments.lazy.map(Argument.init)
 
     if let trailingClosure = macro.trailingClosure {
       // Since a trailing closure does not (syntactically) include a label, we
