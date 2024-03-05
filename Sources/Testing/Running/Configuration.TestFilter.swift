@@ -180,6 +180,25 @@ extension Configuration.TestFilter {
   public init(excludingAllOf tags: some Collection<Tag>) {
     self.init(tags: tags, anyOf: false, membership: .excluding)
   }
+
+  /// Initialize this instance to represent a regular expression matched against
+  /// a test's ID.
+  ///
+  /// - Parameters:
+  ///   - membership: How to interpret the result when predicating tests.
+  ///   - regex: The regular expression to predicate test IDs against.
+  ///
+  /// The caller is responsible for ensuring that `regex` is safe to send across
+  /// isolation boundaries. Regular expressions parsed from strings are
+  /// generally sendable.
+  @available(_regexAPI, *)
+  init(membership: Membership, matching regex: Regex<AnyRegexOutput>) {
+    let regex = UncheckedSendable(rawValue: regex)
+    self.init(membership: membership) { test in
+      let id = String(describing: test.id)
+      return id.contains(regex.rawValue)
+    }
+  }
 }
 
 // MARK: - Operations
