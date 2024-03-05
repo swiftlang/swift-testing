@@ -12,7 +12,7 @@
 #if !os(Windows)
 import RegexBuilder
 #endif
-#if SWT_TARGET_OS_APPLE && canImport(Foundation)
+#if canImport(Foundation)
 import Foundation
 #endif
 #if canImport(FoundationXML)
