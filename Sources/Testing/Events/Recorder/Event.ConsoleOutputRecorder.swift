@@ -156,10 +156,7 @@ extension Event.Symbol {
     var symbolCharacter = String(unicodeCharacter)
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
     if options.contains(.useSFSymbols) {
-      symbolCharacter = String(sfSymbolCharacter)
-      if useColorANSIEscapeCodes {
-        symbolCharacter += " "
-      }
+      symbolCharacter = "\(sfSymbolCharacter) "
     }
 #endif
 
