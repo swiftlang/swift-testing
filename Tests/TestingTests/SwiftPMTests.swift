@@ -12,6 +12,7 @@
 #if canImport(Foundation)
 import Foundation
 #endif
+private import TestingInternals
 
 @Suite("Swift Package Manager Integration Tests")
 struct SwiftPMTests {
@@ -129,6 +130,7 @@ struct SwiftPMTests {
     }
   }
 
+#if canImport(Foundation)
   @Test("--xunit-output argument (writes to file)")
   func xunitOutputIsWrittenToFile() throws {
     // Test that a file is opened when requested. Testing of the actual output
@@ -145,6 +147,66 @@ struct SwiftPMTests {
     }
     #expect(try temporaryFileURL.checkResourceIsReachable() as Bool)
   }
+
+  func decodeEventStream(fromFileAtPath path: String) throws -> [EventAndContextSnapshot] {
+    var result = [EventAndContextSnapshot]()
+
+    let file = try FileHandle(atPath: path, mode: "rb")
+    try file.withUnsafeCFILEHandle { file in
+      while true {
+        var jsonCount: UInt64 = 0
+        guard 1 == fread(&jsonCount, MemoryLayout<UInt64>.stride, 1, file) else {
+          return
+        }
+        jsonCount = UInt64(littleEndian: jsonCount)
+        if jsonCount <= 0 {
+          // Empty JSON blob.
+          continue
+        }
+
+        try withUnsafeTemporaryAllocation(byteCount: Int(jsonCount), alignment: 1) { buffer in
+          let readCount = fread(buffer.baseAddress, 1, buffer.count, file)
+          if readCount < jsonCount {
+            // A short count indicates we reached the end of the stream early or
+            // an error occurred while reading.
+            throw CError(rawValue: swt_errno())
+          }
+          let jsonData = Data(bytesNoCopy: buffer.baseAddress!, count: min(buffer.count, readCount), deallocator: .none)
+          let snapshot = try JSONDecoder().decode(EventAndContextSnapshot.self, from: jsonData)
+          result.append(snapshot)
+        }
+      }
+    }
+
+    return result
+  }
+
+  @Test("--experimental-event-stream-output argument (writes to a stream and can be read back)")
+  func eventStreamOutput() async throws {
+    // Test that events are successfully streamed to a file and can be read
+    // back as snapshots.
+    let temporaryFileURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: false)
+    defer {
+      try? FileManager.default.removeItem(at: temporaryFileURL)
+    }
+    do {
+      let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--experimental-event-stream-output", temporaryFileURL.path])
+      let eventContext = Event.Context()
+      configuration.eventHandler(Event(.runStarted, testID: nil, testCaseID: nil), eventContext)
+      do {
+        let test = Test {}
+        let eventContext = Event.Context(test: test)
+        configuration.eventHandler(Event(.testStarted, testID: test.id, testCaseID: nil), eventContext)
+        configuration.eventHandler(Event(.testEnded, testID: test.id, testCaseID: nil), eventContext)
+      }
+      configuration.eventHandler(Event(.runEnded, testID: nil, testCaseID: nil), eventContext)
+    }
+    #expect(try temporaryFileURL.checkResourceIsReachable())
+
+    let decodedEvents = try decodeEventStream(fromFileAtPath: temporaryFileURL.path)
+    #expect(decodedEvents.count == 4)
+  }
+#endif
 #endif
 
   @Test("--repetitions argument (alone)")

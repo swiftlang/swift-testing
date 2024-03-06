@@ -9,6 +9,9 @@
 //
 
 private import TestingInternals
+#if canImport(Foundation)
+private import Foundation
+#endif
 
 /// The entry point to the testing library used by Swift Package Manager.
 ///
@@ -165,6 +168,19 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
       oldEventHandler(event, context)
     }
   }
+
+#if canImport(Foundation)
+  // Event stream output (experimental)
+  if let eventOutputIndex = args.firstIndex(of: "--experimental-event-stream-output"), eventOutputIndex < args.endIndex {
+    let eventStreamOutputPath = args[args.index(after: eventOutputIndex)]
+    let eventHandler = try _eventHandlerForStreamingEvents(toFileAtPath: eventStreamOutputPath)
+    let oldEventHandler = configuration.eventHandler
+    configuration.eventHandler = { event, context in
+      eventHandler(event, context)
+      oldEventHandler(event, context)
+    }
+  }
+#endif
 #endif
 
   // Filtering
@@ -242,6 +258,75 @@ func runTests(options: [Event.ConsoleOutputRecorder.Option], configuration: Conf
   let runner = await Runner(configuration: configuration)
   await runner.run()
 }
+
+// MARK: - Experimental event streaming
+
+#if !SWT_NO_FILE_IO && canImport(Foundation)
+/// A type containing an event snapshot and snapshots of the contents of an
+/// event context suitable for streaming over JSON.
+///
+/// This function is not part of the public interface of the testing library.
+/// External adopters are not necessarily written in Swift and are expected to
+/// decode the JSON produced for this type in implementation-specific ways.
+struct EventAndContextSnapshot {
+  /// A snapshot of the event.
+  var event: Event.Snapshot
+
+  /// A snapshot of the test associated with the event, if any.
+  var test: Test.Snapshot?
+
+  /// A snapshot of the test case associated with the event, if any.
+  var testCase: Test.Case.Snapshot?
+}
+
+extension EventAndContextSnapshot: Codable {}
+
+/// Create an event handler that streams events to the file at a given path.
+///
+/// - Parameters:
+///   - path: The path to which events should be streamed. This file will be
+///     opened for writing.
+///
+/// - Throws: Any error that occurs opening `path`. Once `path` is opened,
+///   errors that may occur writing to it are handled by the resulting event
+///   handler.
+///
+/// - Returns: An event handler.
+///
+/// For each event handled by the resulting event handler, a JSON blob
+/// representing it and its associated context is created. The length of the
+/// blob, as a 64-bit little-endian integer, is written to `path`, followed by
+/// the blob itself.
+///
+/// The file at `path` can be a regular file, however to allow for streaming a
+/// named pipe is recommended. `mkfifo()` can be used on Darwin and Linux to
+/// create a named pipe; `CreateNamedPipeA()` can be used on Windows.
+///
+/// The file at `path` is closed when this process terminates or the
+/// corresponding call to ``Runner/run()`` returns, whichever occurs first.
+private func _eventHandlerForStreamingEvents(toFileAtPath path: String) throws -> Event.Handler {
+  // Open the event stream file for writing.
+  let file = try FileHandle(forWritingAtPath: path)
+
+  return { event, context in
+    let snapshot = EventAndContextSnapshot(
+      event: Event.Snapshot(snapshotting: event),
+      test: context.test.map { Test.Snapshot(snapshotting: $0) },
+      testCase: context.testCase.map { Test.Case.Snapshot(snapshotting: $0) }
+    )
+    if let snapshotJSON = try? JSONEncoder().encode(snapshot) {
+      try? file.withLock {
+        try withUnsafeBytes(of: UInt64(snapshotJSON.count).littleEndian) { count in
+          try file.write(count, flushAfterward: false)
+        }
+        try snapshotJSON.withUnsafeBytes { snapshotJSON in
+          try file.write(snapshotJSON)
+        }
+      }
+    }
+  }
+}
+#endif
 
 // MARK: - Command-line interface options
 

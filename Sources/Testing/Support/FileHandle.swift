@@ -174,11 +174,75 @@ struct FileHandle: ~Copyable, Sendable {
     }
   }
 #endif
+
+  /// Call a function while holding the file handle's lock.
+  ///
+  /// - Parameters:
+  ///   - body: A function to call.
+  ///
+  /// - Returns: Whatever is returned by `body`.
+  ///
+  /// - Throws: Whatever is thrown by `body`.
+  ///
+  /// This function uses `flockfile()` and `funlockfile()` to synchronize access
+  /// to the underlying file. It can be used when, for example, write operations
+  /// are split across multiple calls but must not be interleaved with writes on
+  /// other threads.
+  borrowing func withLock<R>(_ body: () throws -> R) rethrows -> R {
+    try withUnsafeCFILEHandle { handle in
+#if SWT_TARGET_OS_APPLE || os(Linux)
+      flockfile(handle)
+      defer {
+        funlockfile(handle)
+      }
+#elseif os(Windows)
+      _lock_file(handle)
+      defer {
+        _unlock_file(handle)
+      }
+#else
+#warning("Platform-specific implementation missing: cannot lock a file handle")
+#endif
+      return try body()
+    }
+  }
 }
 
 // MARK: - Writing
 
 extension FileHandle {
+  /// Write a sequence of bytes to this file handle.
+  ///
+  /// - Parameters:
+  ///   - bytes: The bytes to write.
+  ///   - flushAfterward: Whether or not to flush the file (with `fflush()`)
+  ///     after writing. If `true`, `fflush()` is called even if an error
+  ///     occurred while writing.
+  ///
+  /// - Throws: Any error that occurred while writing `bytes`. If an error
+  ///   occurs while flushing the file, it is not thrown.
+  ///
+  /// - Precondition: `bytes` must provide contiguous storage.
+  func write(_ bytes: some Sequence<UInt8>, flushAfterward: Bool = true) throws {
+    try withUnsafeCFILEHandle { file in
+      defer {
+        if flushAfterward {
+          _ = fflush(file)
+        }
+      }
+
+      let hasContiguousStorage: Void? = try bytes.withContiguousStorageIfAvailable { bytes in
+        let countWritten = fwrite(bytes.baseAddress, MemoryLayout<UInt8>.stride, bytes.count, file)
+        if countWritten < bytes.count {
+          throw CError(rawValue: swt_errno())
+        }
+      }
+      if hasContiguousStorage == nil {
+        preconditionFailure("byte sequence must provide contiguous storage: \(bytes)")
+      }
+    }
+  }
+
   /// Write a string to this file handle.
   ///
   /// - Parameters:
