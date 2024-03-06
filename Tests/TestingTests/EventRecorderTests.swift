@@ -300,14 +300,14 @@ struct EventRecorderTests {
     // in mind that the delegate pattern necessarily means that some of the
     // testing occurs out of source order.
     final class JUnitDelegate: NSObject, XMLParserDelegate {
-      var testCount = 0
       var caughtError: (any Error)?
 
       func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String] = [:]) {
         if elementName == "testsuite" {
           do {
             let testCountString = try #require(attributeDict["tests"])
-            testCount = try #require(Int(testCountString))
+            let testCount = try #require(Int(testCountString))
+            #expect(testCount > 0)
           } catch {
             caughtError = error
           }
@@ -325,8 +325,6 @@ struct EventRecorderTests {
     if let caughtError = delegate.caughtError {
       throw caughtError
     }
-
-    #expect(delegate.testCount > 0)
   }
 #endif
 }
