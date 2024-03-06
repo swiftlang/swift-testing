@@ -30,7 +30,8 @@ private struct CustomThrowingErrorTrait: CustomExecutionTrait, TestTrait {
     }
 }
 
-struct CustomTraitTest {
+@Suite("CustomExecutionTrait Tests")
+struct CustomExecutionTraitTests {
     @Test("Execute code before and after a non-parameterized test.")
     func executeCodeBeforeAndAfterNonParameterizedTest() async {
         // `expectedCount` is 2 because we run it both for the test and the test case

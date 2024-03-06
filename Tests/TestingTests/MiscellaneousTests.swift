@@ -25,7 +25,7 @@
 // This type ensures the parser can correctly infer that f() is a member
 // function even though @Test is preceded by another attribute or is embedded in
 // a #if statement.
-struct TestWithPrecedingAttribute {
+@Suite(.hidden) struct TestWithPrecedingAttribute {
   @inlinable @Test(.hidden) func f() {}
 
 #if true

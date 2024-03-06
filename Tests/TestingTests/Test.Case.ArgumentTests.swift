@@ -151,22 +151,23 @@ struct Test_Case_ArgumentTests {
 
 // MARK: - Fixture tests
 
+@Suite(.hidden)
 private struct ParameterizedTests {
-  @Test(arguments: ["value"])
+  @Test(.hidden, arguments: ["value"])
   func oneParameter(x: String) {}
 
-  @Test(arguments: ["value"], [123])
+  @Test(.hidden, arguments: ["value"], [123])
   func twoParameters(x: String, y: Int) {}
 
-  @Test(arguments: [("value")])
+  @Test(.hidden, arguments: [("value")])
   func one1TupleParameter(x: (String)) {}
 
-  @Test(arguments: [("value", 123)])
+  @Test(.hidden, arguments: [("value", 123)])
   func one2TupleParameter(x: (String, Int)) {}
 
-  @Test(arguments: ["value": 123])
+  @Test(.hidden, arguments: ["value": 123])
   func twoDictionaryElementParameters(x: String, y: Int) {}
 
-  @Test(arguments: ["value": 123])
+  @Test(.hidden, arguments: ["value": 123])
   func oneDictionaryElementTupleParameter(x: (key: String, value: Int)) {}
 }

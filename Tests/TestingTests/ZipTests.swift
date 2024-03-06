@@ -10,6 +10,7 @@
 
 @testable @_spi(ExperimentalTestRunning) import Testing
 
+@Suite("zip Tests")
 struct ZipTests {
   @Test("Zipped collections are not combinatoric")
   func zippedCollections() async throws {
