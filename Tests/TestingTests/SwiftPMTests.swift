@@ -26,7 +26,7 @@ struct SwiftPMTests {
   func parallel() throws {
     var configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH"])
     #expect(configuration.isParallelizationEnabled)
-    
+
     configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--parallel"])
     #expect(configuration.isParallelizationEnabled)
 
@@ -55,6 +55,20 @@ struct SwiftPMTests {
     let planTests = plan.steps.map(\.test)
     #expect(planTests.contains(test1))
     #expect(!planTests.contains(test2))
+  }
+
+  @Test("Multiple --filter arguments")
+  @available(_regexAPI, *)
+  func multipleFilter() async throws {
+    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--filter", "hello", "--filter", "sorry"])
+    let test1 = Test(name: "hello") {}
+    let test2 = Test(name: "goodbye") {}
+    let test3 = Test(name: "sorry") {}
+    let plan = await Runner.Plan(tests: [test1, test2, test3], configuration: configuration)
+    let planTests = plan.steps.map(\.test)
+    #expect(planTests.contains(test1))
+    #expect(!planTests.contains(test2))
+    #expect(planTests.contains(test3))
   }
 
   @Test("--filter or --skip argument with bad regex")

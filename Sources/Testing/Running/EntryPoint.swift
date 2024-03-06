@@ -169,36 +169,25 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 #endif
 
   // Filtering
-  // NOTE: Regex is not marked Sendable, but because the regexes we use are
-  // constructed solely from a string, they are safe to send across isolation
-  // boundaries.
   var filters = [Configuration.TestFilter]()
-  if let filterArgIndex = args.firstIndex(of: "--filter"), filterArgIndex < args.endIndex {
-    guard #available(_regexAPI, *) else {
-      throw _EntryPointError.featureUnavailable("The '--filter' option is not supported on this OS version.")
+  func testFilter(forArgumentsWithLabel label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
+    let matchingArgs: [String] = args.indices.lazy
+      .filter { args[$0] == label && $0 < args.endIndex }
+      .map { args[args.index(after: $0)] }
+    if matchingArgs.isEmpty {
+      return .unfiltered
     }
 
-    let filterArg = args[args.index(after: filterArgIndex)]
-    let regex = try UncheckedSendable(rawValue: Regex(filterArg))
-    let filter = Configuration.TestFilter(membership: .including) { test in
-      let id = String(describing: test.id)
-      return id.contains(regex.rawValue)
-    }
-    filters.append(filter)
-  }
-  if let skipArgIndex = args.firstIndex(of: "--skip"), skipArgIndex < args.endIndex {
     guard #available(_regexAPI, *) else {
-      throw _EntryPointError.featureUnavailable("The '--skip' option is not supported on this OS version.")
+      throw _EntryPointError.featureUnavailable("The `\(label)' option is not supported on this OS version.")
     }
-
-    let skipArg = args[args.index(after: skipArgIndex)]
-    let regex = try UncheckedSendable(rawValue: Regex(skipArg))
-    let filter = Configuration.TestFilter(membership: .excluding) { test in
-      let id = String(describing: test.id)
-      return id.contains(regex.rawValue)
-    }
-    filters.append(filter)
+    return try matchingArgs.lazy
+      .map { try Regex($0) }
+      .map { Configuration.TestFilter(membership: membership, matching: $0) }
+      .reduce(into: .unfiltered) { $0.combine(with: $1, using: .or) }
   }
+  filters.append(try testFilter(forArgumentsWithLabel: "--filter", membership: .including))
+  filters.append(try testFilter(forArgumentsWithLabel: "--skip", membership: .excluding))
 
   configuration.testFilter = filters.reduce(.unfiltered) { $0.combining(with: $1) }
 
