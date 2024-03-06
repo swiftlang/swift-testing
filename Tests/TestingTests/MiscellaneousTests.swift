@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2024 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -180,7 +180,7 @@ struct TestsWithStaticMemberAccessBySelfKeyword {
 @Test(.hidden, arguments: [0]) func A(🙂: Int) {}
 
 func asyncTrait() async -> some SuiteTrait & TestTrait {
-  .comment("")
+  .bug("")
 }
 
 @Suite(.hidden, await asyncTrait())

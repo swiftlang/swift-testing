@@ -3,7 +3,7 @@
 <!--
 This source file is part of the Swift.org open source project
 
-Copyright (c) 2023 Apple Inc. and the Swift project authors
+Copyright (c) 2024 Apple Inc. and the Swift project authors
 Licensed under Apache License v2.0 with Runtime Library Exception
 
 See https://swift.org/LICENSE.txt for license information
@@ -28,10 +28,10 @@ Seeing comments related to tests in these contexts can help diagnose issues more
 quickly. Comments can be added to test declarations and the testing library will
 automatically capture and show them when issues are recorded.
 
-## Adding a code comment to a test automatically
+## Adding a code comment to a test
 
-The easiest way to include a comment on a test is by adding it as a regular
-Swift code comment placed immediately before the `@Test` attribute:
+To include a comment on a test or suite, write an ordinary Swift code comment
+immediately before its `@Test` or `@Suite` attribute:
 
 ```swift
 // Assumes the standard lunch menu includes a taco
@@ -64,6 +64,9 @@ is because the whitespace and formatting of comments can be meaningful in some
 circumstances or aid in understanding the comment—for example, when a comment
 includes an example code snippet or diagram.
 
+<!-- FIXME: Uncomment this section if/when the `.comment(...)` trait is promoted
+  to non-experimental SPI
+
 ## Adding a comment to a test programmatically
 
 For more precise control over a comment's content, comments can be added to a
@@ -81,7 +84,7 @@ function and specify a comment string:
 func lunchMenu() {
   ...
 }
-```
+``` -->
 
 ## Using test comments effectively
 
@@ -96,5 +99,7 @@ of comments. For more information, review <doc:AssociatingBugs>.
 
 ## Topics
 
-- ``Trait/comment(_:)``
 - ``Comment``
+<!-- FIXME: Uncomment this section if/when the `.comment(...)` trait is promoted
+  to non-experimental SPI.
+- ``Trait/comment(_:)`` -->

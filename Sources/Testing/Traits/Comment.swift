@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2024 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -13,6 +13,9 @@
 /// This type may be used to provide context or background information about a
 /// test's purpose, explain how a complex test operates, or include details
 /// which may be helpful when diagnosing issues recorded by a test.
+///
+/// To add a comment to a test or suite, add a code comment before its `@Test`
+/// or `@Suite` attribute. See <doc:AddingComments> for more details.
 ///
 /// - Note: This type is not intended to reference bugs related to a test.
 ///   Instead, use ``Trait/bug(_:relationship:)-duvt`` or
@@ -105,6 +108,7 @@ extension Comment: TestTrait, SuiteTrait {
   }
 }
 
+@_spi(Experimental)
 extension Trait where Self == Comment {
   /// Construct a comment related to a test.
   ///
