@@ -1353,6 +1353,7 @@ final class IssueTests: XCTestCase {
 }
 #endif
 
+@Suite("Issue Codable Conformance Tests")
 struct IssueCodingTests {
 
   @Test("Codable",

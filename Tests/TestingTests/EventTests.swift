@@ -14,6 +14,7 @@ import Foundation
 @testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalSnapshotting) @_spi(ExperimentalTestRunning) @_spi(ExperimentalSourceCodeCapturing) import Testing
 private import TestingInternals
 
+@Suite("Event Tests")
 struct EventTests {
 #if canImport(Foundation)
   @Test("Event's and Event.Kinds's Codable Conformances",
