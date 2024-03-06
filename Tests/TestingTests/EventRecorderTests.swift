@@ -12,9 +12,10 @@
 #if !os(Windows)
 import RegexBuilder
 #endif
-#if SWT_TARGET_OS_APPLE && canImport(Foundation)
+#if canImport(Foundation)
 import Foundation
-#elseif canImport(FoundationXML)
+#endif
+#if canImport(FoundationXML)
 import FoundationXML
 #endif
 
@@ -270,7 +271,11 @@ struct EventRecorderTests {
 #endif
 
 #if canImport(Foundation) || canImport(FoundationXML)
-  @Test("JUnitXMLRecorder outputs valid XML")
+
+  @Test(
+    "JUnitXMLRecorder outputs valid XML",
+    .bug("https://github.com/apple/swift-testing/issues/254", relationship: .verifiesFix)
+  )
   func junitXMLIsValid() async throws {
     let stream = Stream()
 
@@ -280,20 +285,45 @@ struct EventRecorderTests {
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
     }
-
     await runTest(for: WrittenTests.self, configuration: configuration)
 
-    // There is no formal schema for us to test against, so we're just testing
-    // that the XML can be parsed by Foundation.
+    // There is no formal schema for us to test against, so we're mostly just
+    // testing that the XML can be parsed by Foundation.
 
     let xmlString = stream.buffer.rawValue
     #expect(xmlString.hasPrefix("<?xml"))
     let xmlData = try #require(xmlString.data(using: .utf8))
     #expect(xmlData.count > 1024)
     let parser = XMLParser(data: xmlData)
+
+    // Set up a delegate that can look for particular XML tags of interest. Keep
+    // in mind that the delegate pattern necessarily means that some of the
+    // testing occurs out of source order.
+    final class JUnitDelegate: NSObject, XMLParserDelegate {
+      var caughtError: (any Error)?
+
+      func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String] = [:]) {
+        if elementName == "testsuite" {
+          do {
+            let testCountString = try #require(attributeDict["tests"])
+            let testCount = try #require(Int(testCountString))
+            #expect(testCount > 0)
+          } catch {
+            caughtError = error
+          }
+        }
+      }
+    }
+    let delegate = JUnitDelegate()
+    parser.delegate = delegate
+
+    // Perform the parsing and propagate any errors that occurred.
     #expect(parser.parse())
     if let error = parser.parserError {
       throw error
+    }
+    if let caughtError = delegate.caughtError {
+      throw caughtError
     }
   }
 #endif
