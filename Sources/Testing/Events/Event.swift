@@ -127,7 +127,7 @@ public struct Event: Sendable {
     /// ``Configuration/repetitionPolicy-swift.property`` property can be set to
     /// allow for more iterations.
     @_spi(ExperimentalTestRunning)
-    case iterationEnded(_ index: Int)
+    indirect case iterationEnded(_ index: Int)
 
     /// A test run ended.
     ///
@@ -332,7 +332,7 @@ extension Event.Kind {
     /// ``Configuration/repetitionPolicy-swift.property`` property can be set to
     /// allow for more iterations.
     @_spi(ExperimentalTestRunning)
-    case iterationStarted(_ index: Int)
+    indirect case iterationStarted(_ index: Int)
 
     /// A step in the runner plan started.
     ///
