@@ -22,6 +22,11 @@ extension Event {
       /// Use [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code)
       /// to add color and other effects to the output.
       ///
+      /// - Parameters:
+      ///   - colorBitDepth: The supported color bit depth. Allowed values are
+      ///     `1` (escape code support, but no color support), `4` (16-color),
+      ///     `8` (256-color), and `24` (true color.)
+      ///
       /// This option is useful when writing command-line output (for example,
       /// in Terminal.app on macOS.)
       ///
@@ -33,15 +38,10 @@ extension Event {
       /// On Windows, `GetFileType()` returns `FILE_TYPE_CHAR` for console file
       /// handles, and the [Console API](https://learn.microsoft.com/en-us/windows/console/)
       /// can be used to perform more complex console operations.
-      case useANSIEscapeCodes
-
-      /// Whether or not to use 256-color extended
-      /// [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code) to
-      /// add color to the output.
       ///
-      /// This option is ignored unless ``useANSIEscapeCodes`` is also
-      /// specified.
-      case use256ColorANSIEscapeCodes
+      /// If this option is used more than once, the instance with the highest
+      /// supported value for `colorBitDepth` is used.
+      case useANSIEscapeCodes(colorBitDepth: Int8)
 
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
       /// Use [SF&nbsp;Symbols](https://developer.apple.com/sf-symbols/) in the
@@ -73,8 +73,8 @@ extension Event {
       /// this option is not specified, and those colors cannot be overridden by
       /// this option.
       ///
-      /// This option is ignored unless ``useANSIEscapeCodes`` is also
-      /// specified.
+      /// This option is ignored unless ``useANSIEscapeCodes(colorBitDepth:)``
+      /// is also specified.
       case useTagColors(_ tagColors: [Tag: Tag.Color])
 
       /// Record verbose output.
@@ -148,17 +148,19 @@ extension Event.Symbol {
   /// - Returns: A string representation of `self` appropriate for writing to
   ///   a stream.
   fileprivate func stringValue(options: Set<Event.ConsoleOutputRecorder.Option>) -> String {
+    var useColorANSIEscapeCodes = false
+    if let colorBitDepth = options.colorBitDepth {
+      useColorANSIEscapeCodes = colorBitDepth >= 4
+    }
+
     var symbolCharacter = String(unicodeCharacter)
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
     if options.contains(.useSFSymbols) {
-      symbolCharacter = String(sfSymbolCharacter)
-      if options.contains(.useANSIEscapeCodes) {
-        symbolCharacter += " "
-      }
+      symbolCharacter = "\(sfSymbolCharacter) "
     }
 #endif
 
-    if options.contains(.useANSIEscapeCodes) {
+    if useColorANSIEscapeCodes {
       switch self {
       case .default, .skip, .difference:
         return "\(_ansiEscapeCodePrefix)90m\(symbolCharacter)\(_resetANSIEscapeCode)"
@@ -186,13 +188,16 @@ extension Tag.Color {
   ///   - options: Options to use when writing this tag.
   ///
   /// - Returns: The corresponding ANSI escape code. If the
-  ///   ``Event/Recorder/Option/useANSIEscapeCodes`` option is not specified,
-  ///   returns `nil`.
+  ///   ``Event/Recorder/Option/useANSIEscapeCodes(colorBitDepth:)`` option is
+  ///   not specified, returns `nil`.
   fileprivate func ansiEscapeCode(options: Set<Event.ConsoleOutputRecorder.Option>) -> String? {
-    guard options.contains(.useANSIEscapeCodes) else {
+    guard let colorBitDepth = options.colorBitDepth, colorBitDepth >= 4 else {
       return nil
     }
-    if options.contains(.use256ColorANSIEscapeCodes) {
+    if colorBitDepth >= 24 {
+      return "\(_ansiEscapeCodePrefix)38;2;\(redComponent);\(greenComponent);\(blueComponent)m"
+    }
+    if colorBitDepth >= 8 {
       // The formula for converting an RGB value to a 256-color ANSI color
       // code can be found at https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit
       let r = (Int(redComponent) * 5) / Int(UInt8.max)
@@ -246,6 +251,24 @@ extension Event.ConsoleOutputRecorder {
   }
 }
 
+extension Collection where Element == Event.ConsoleOutputRecorder.Option {
+  /// The color bit depth associated with the options in this collection, if
+  /// any.
+  ///
+  /// If this collection contains any instances of case
+  /// ``useANSIEscapeCodes(colorBitDepth:)``, the value of this property is
+  /// their highest associated value. Otherwise, the value of this property is
+  /// `nil`.
+  var colorBitDepth: Int8? {
+    lazy.compactMap { option in
+      if case let .useANSIEscapeCodes(colorBitDepth) = option {
+        return colorBitDepth
+      }
+      return nil
+    }.max()
+  }
+}
+
 // MARK: -
 
 extension Event.ConsoleOutputRecorder {
@@ -264,7 +287,7 @@ extension Event.ConsoleOutputRecorder {
     for message in messages {
       let symbol = message.symbol?.stringValue(options: options) ?? " "
 
-      if case .details = message.symbol, options.contains(.useANSIEscapeCodes) {
+      if case .details = message.symbol, options.colorBitDepth != nil {
         // Special-case the detail symbol to apply grey to the entire line of
         // text instead of just the symbol.
         write("\(_ansiEscapeCodePrefix)90m\(symbol) \(message.stringValue)\(_resetANSIEscapeCode)\n")
