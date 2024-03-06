@@ -254,10 +254,17 @@ extension [Event.ConsoleOutputRecorder.Option] {
 
     let useANSIEscapeCodes = _fileHandleSupportsANSIEscapeCodes(fileHandle)
     if useANSIEscapeCodes {
-      result.append(.useANSIEscapeCodes)
-      if _terminalSupports256ColorANSIEscapeCodes {
-        result.append(.use256ColorANSIEscapeCodes)
+      let colorBitDepth: Int8 = if let noColor = Environment.variable(named: "NO_COLOR"), !noColor.isEmpty {
+        // Respect the NO_COLOR environment variable. SEE: https://www.no-color.org
+        1
+      } else if _terminalSupportsTrueColorANSIEscapeCodes {
+        24
+      } else if _terminalSupports256ColorANSIEscapeCodes {
+        8
+      } else {
+        4 // 16-color by default
       }
+      result.append(.useANSIEscapeCodes(colorBitDepth: colorBitDepth))
     }
 
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
@@ -290,11 +297,6 @@ extension [Event.ConsoleOutputRecorder.Option] {
   /// Whether or not the current process's standard error stream is capable of
   /// accepting and rendering ANSI escape codes.
   private static func _fileHandleSupportsANSIEscapeCodes(_ fileHandle: borrowing FileHandle) -> Bool {
-    // Respect the NO_COLOR environment variable. SEE: https://www.no-color.org
-    if let noColor = Environment.variable(named: "NO_COLOR"), !noColor.isEmpty {
-      return false
-    }
-
     // Determine if this file handle appears to write to a Terminal window
     // capable of accepting ANSI escape codes.
     if fileHandle.isTTY {
@@ -322,6 +324,24 @@ extension [Event.ConsoleOutputRecorder.Option] {
 #elseif os(Windows)
     // Windows does not set the "TERM" variable, so assume it supports 256-color
     // ANSI escape codes.
+    true
+#else
+#warning("Platform-specific implementation missing: terminal colors unavailable")
+    return false
+#endif
+  }
+
+  /// Whether or not the system terminal claims to support true-color ANSI
+  /// escape codes.
+  private static var _terminalSupportsTrueColorANSIEscapeCodes: Bool {
+#if SWT_TARGET_OS_APPLE || os(Linux)
+    if let colortermVariable = Environment.variable(named: "COLORTERM") {
+      return strstr(colortermVariable, "truecolor") != nil
+    }
+    return false
+#elseif os(Windows)
+    // Windows does not set the "COLORTERM" variable, so assume it supports
+    // true-color ANSI escape codes. SEE: https://github.com/microsoft/terminal/issues/11057
     true
 #else
 #warning("Platform-specific implementation missing: terminal colors unavailable")

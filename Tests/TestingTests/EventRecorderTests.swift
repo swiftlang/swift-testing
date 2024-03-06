@@ -36,16 +36,18 @@ struct EventRecorderTests {
   private static var optionCombinations: [[Event.ConsoleOutputRecorder.Option]] {
     var result: [[Event.ConsoleOutputRecorder.Option]] = [
       [],
-      [.useANSIEscapeCodes],
-      [.use256ColorANSIEscapeCodes],
-      [.useANSIEscapeCodes, .use256ColorANSIEscapeCodes],
+      [.useANSIEscapeCodes(colorBitDepth: 1)],
+      [.useANSIEscapeCodes(colorBitDepth: 4)],
+      [.useANSIEscapeCodes(colorBitDepth: 8)],
+      [.useANSIEscapeCodes(colorBitDepth: 24)],
     ]
 #if os(macOS)
     result += [
       [.useSFSymbols],
-      [.useSFSymbols, .useANSIEscapeCodes],
-      [.useSFSymbols, .use256ColorANSIEscapeCodes],
-      [.useSFSymbols, .useANSIEscapeCodes, .use256ColorANSIEscapeCodes],
+      [.useSFSymbols, .useANSIEscapeCodes(colorBitDepth: 1)],
+      [.useSFSymbols, .useANSIEscapeCodes(colorBitDepth: 4)],
+      [.useSFSymbols, .useANSIEscapeCodes(colorBitDepth: 8)],
+      [.useSFSymbols, .useANSIEscapeCodes(colorBitDepth: 24)],
     ]
 #endif
     return result
@@ -75,9 +77,13 @@ struct EventRecorderTests {
     #expect(buffer.contains("i → 5"))
     #expect(buffer.contains("Ocelots don't like the number 3."))
 
-    if options.contains(.useANSIEscapeCodes) {
+    if let colorBitDepth = options.colorBitDepth, colorBitDepth >= 1 {
       #expect(buffer.contains("\u{001B}["))
-      #expect(buffer.contains("●"))
+      if colorBitDepth >= 4 {
+        #expect(buffer.contains("●"))
+      } else {
+        #expect(!buffer.contains("●"))
+      }
     } else {
       #expect(!buffer.contains("\u{001B}["))
       #expect(!buffer.contains("●"))
