@@ -171,7 +171,7 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
   // Filtering
   var filters = [Configuration.TestFilter]()
   func testFilter(forArgumentsWithLabel label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
-    let matchingArgs = args.indices.lazy
+    let matchingArgs: [String] = args.indices.lazy
       .filter { args[$0] == label && $0 < args.endIndex }
       .map { args[args.index(after: $0)] }
     if matchingArgs.isEmpty {
