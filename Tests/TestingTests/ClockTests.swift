@@ -135,6 +135,19 @@ struct ClockTests {
     #expect(instant == decoded)
     #expect(instant != now)
   }
+
+  @available(_clockAPI, *)
+  @Test("TimeValue encoding is compatible with Duration")
+  func timeValueEncoding() async throws {
+    let now = Test.Clock.Instant().suspending
+    let encoded = try JSONEncoder().encode(now)
+
+    let decoded = try JSONDecoder().decode(TimeValue.self, from: encoded)
+    #expect(now == decoded)
+
+    let duration = try JSONDecoder().decode(Duration.self, from: encoded)
+    #expect(Duration(now) == duration)
+}
 #endif
 
   @available(_clockAPI, *)

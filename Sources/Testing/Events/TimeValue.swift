@@ -69,7 +69,31 @@ extension TimeValue: Equatable, Hashable, Comparable {
 
 // MARK: - Codable
 
-extension TimeValue: Codable {}
+extension SWTInt128: @retroactive Codable {
+  init(from decoder: any Decoder) throws {
+    var container = try decoder.unkeyedContainer()
+    let hi = try container.decode(Int64.self)
+    let lo = try container.decode(UInt64.self)
+    self.init(hi: hi, lo: lo)
+  }
+
+  func encode(to encoder: any Encoder) throws {
+    var container = encoder.unkeyedContainer()
+    try container.encode(hi)
+    try container.encode(lo)
+  }
+}
+
+extension TimeValue: Codable {
+  init(from decoder: any Decoder) throws {
+    self.init((0, 0)) // Allow taking addresses on the next line.
+    try swt_int128ToTimeValue(SWTInt128(from: decoder), &seconds, &attoseconds)
+  }
+
+  func encode(to encoder: any Encoder) throws {
+    try swt_timeValueToInt128(seconds, attoseconds).encode(to: encoder)
+  }
+}
 
 // MARK: - CustomStringConvertible
 
