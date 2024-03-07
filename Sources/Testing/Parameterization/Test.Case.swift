@@ -164,7 +164,7 @@ extension Test.Case.Argument.ID: Hashable {}
 
 extension Test.Case {
   /// A serializable snapshot of a ``Test/Case`` instance.
-  @_spi(ExperimentalSnapshotting)
+  @_spi(ForToolsIntegrationOnly)
   public struct Snapshot: Sendable, Codable {
     /// The ID of this test case.
     public var id: ID
@@ -186,7 +186,7 @@ extension Test.Case {
 
 extension Test.Case.Argument {
   /// A serializable snapshot of a ``Test/Case/Argument`` instance.
-  @_spi(ExperimentalSnapshotting)
+  @_spi(ForToolsIntegrationOnly)
   public struct Snapshot: Sendable, Codable {
     /// The ID of this parameterized test argument, if any.
     public var id: Test.Case.Argument.ID?

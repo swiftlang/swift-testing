@@ -322,7 +322,7 @@ extension Runner.Plan {
 
 extension Runner.Plan {
   /// A serializable snapshot of a ``Runner/Plan-swift.struct`` instance.
-  @_spi(ExperimentalSnapshotting)
+  @_spi(ForToolsIntegrationOnly)
   public struct Snapshot: Sendable {
     /// The graph of the steps in this runner plan.
     private var _stepGraph: Graph<String, Step.Snapshot?> = .init(value: nil)
@@ -384,7 +384,7 @@ extension Runner.Plan.Snapshot: Codable {
 
 extension Runner.Plan.Step {
   /// A serializable snapshot of a ``Runner/Plan-swift.struct/Step`` instance.
-  @_spi(ExperimentalSnapshotting)
+  @_spi(ForToolsIntegrationOnly)
   public struct Snapshot: Sendable, Codable {
     /// The test referenced by this instance.
     public var test: Test.Snapshot
@@ -406,7 +406,7 @@ extension Runner.Plan.Step {
 extension Runner.Plan.Action {
   /// A serializable snapshot of a ``Runner/Plan-swift.struct/Step/Action``
   /// instance.
-  @_spi(ExperimentalSnapshotting)
+  @_spi(ForToolsIntegrationOnly)
   public enum Snapshot: Sendable, Codable {
     /// The test should be run.
     ///

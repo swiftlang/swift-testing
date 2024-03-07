@@ -180,7 +180,7 @@ extension Issue.Kind: CustomStringConvertible {
 
 extension Issue {
   /// A serializable type describing a failure or warning which occurred during a test.
-  @_spi(ExperimentalSnapshotting)
+  @_spi(ForToolsIntegrationOnly)
   public struct Snapshot: Sendable, Codable {
     /// The kind of issue this value represents.
     public var kind: Kind.Snapshot
@@ -222,7 +222,7 @@ extension Issue {
 
 extension Issue.Kind {
   /// Serializable kinds of issues which may be recorded.
-  @_spi(ExperimentalSnapshotting)
+  @_spi(ForToolsIntegrationOnly)
   public enum Snapshot: Sendable, Codable {
     /// An issue which occurred unconditionally, for example by using
     /// ``Issue/record(_:fileID:filePath:line:column:)``.

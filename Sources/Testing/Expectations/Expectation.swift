@@ -56,7 +56,7 @@ public struct ExpectationFailedError: Error {
 
 extension Expectation {
   /// A serializable type describing an expectation that has been evaluated.
-  @_spi(ExperimentalSnapshotting)
+  @_spi(ForToolsIntegrationOnly)
   public struct Snapshot: Sendable, Codable {
     /// The expression evaluated by this expectation.
     public var evaluatedExpression: Expression

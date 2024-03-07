@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@_spi(ExperimentalSnapshotting) import Testing
+@_spi(ForToolsIntegrationOnly) import Testing
 
 #if canImport(Foundation)
 import Foundation
