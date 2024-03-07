@@ -88,7 +88,7 @@ public struct Expression: Sendable {
   var kind: Kind
 
   /// The source code of the original captured expression.
-  @_spi(ExperimentalSourceCodeCapturing)
+  @_spi(ForToolsIntegrationOnly)
   public var sourceCode: String {
     switch kind {
     case let .generic(sourceCode), let .stringLiteral(sourceCode, _):
@@ -253,7 +253,7 @@ public struct Expression: Sendable {
   ///     information this instance contains.)
   ///
   /// - Returns: A string describing this instance.
-  @_spi(ExperimentalSourceCodeCapturing)
+  @_spi(ForToolsIntegrationOnly)
   public func expandedDescription(depth: Int = 0, includingTypeNames: Bool = false, includingParenthesesIfNeeded: Bool = true) -> String {
     var result = ""
     switch kind {
@@ -307,7 +307,7 @@ public struct Expression: Sendable {
   }
 
   /// The set of parsed and captured subexpressions contained in this instance.
-  @_spi(ExperimentalSourceCodeCapturing)
+  @_spi(ForToolsIntegrationOnly)
   public var subexpressions: [Expression] {
     switch kind {
     case .generic, .stringLiteral:
@@ -330,7 +330,7 @@ public struct Expression: Sendable {
   ///
   /// If this instance represents an expression other than a string literal, the
   /// value of this property is `nil`.
-  @_spi(ExperimentalSourceCodeCapturing)
+  @_spi(ForToolsIntegrationOnly)
   public var stringLiteralValue: String? {
     if case let .stringLiteral(_, stringValue) = kind {
       return stringValue
@@ -358,7 +358,7 @@ extension Expression: CustomStringConvertible, CustomDebugStringConvertible {
   /// `String.init(describing:)`.
   ///
   /// This initializer does not attempt to parse `sourceCode`.
-  @_spi(ExperimentalSourceCodeCapturing)
+  @_spi(ForToolsIntegrationOnly)
   public init(_ sourceCode: String) {
     self.init(kind: .generic(sourceCode))
   }
