@@ -291,20 +291,29 @@ extension Event {
     /// The kind of event.
     public var kind: Kind.Snapshot
 
-    /// The ID of the test for which this event occurred.
+    /// The ID of the test for which this event occurred, if any.
     ///
     /// If an event occurred independently of any test, or if the running test
     /// cannot be determined, the value of this property is `nil`.
     public var testID: Test.ID?
 
+    /// The ID of the test case for which this event occurred, if any.
+    ///
+    /// If an event occurred independently of any test case, or if the running
+    /// test case cannot be determined, the value of this property is `nil`.
+    public var testCaseID: Test.Case.ID?
+
     /// The instant at which the event occurred.
     public var instant: Test.Clock.Instant
 
     /// Snapshots an ``Event``.
-    /// - Parameter event: The original ``Event`` to snapshot.
+    ///
+    /// - Parameters:
+    ///   - event: The original ``Event`` to snapshot.
     public init(snapshotting event: borrowing Event) {
       kind = Event.Kind.Snapshot(snapshotting: event.kind)
       testID = event.testID
+      testCaseID = event.testCaseID
       instant = event.instant
     }
   }
