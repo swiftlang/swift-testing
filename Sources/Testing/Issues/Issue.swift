@@ -206,6 +206,17 @@ extension Issue {
       self.sourceContext = issue.sourceContext
       self.isKnown = issue.isKnown
     }
+
+    /// The error which was associated with this issue, if any.
+    ///
+    /// The value of this property is non-`nil` when ``kind-swift.property`` is
+    /// ``Kind-swift.enum/errorCaught(_:)``.
+    public var error: (any Error)? {
+      if case let .errorCaught(error) = kind {
+        return error
+      }
+      return nil
+    }
   }
 }
 
@@ -243,9 +254,9 @@ extension Issue.Kind {
     /// the testing library.
     ///
     /// - Parameters:
-    ///   - errorDescription: The String representation of the error which was
-    ///                       associated with this issue.
-    indirect case errorCaught(_ errorDescription: String)
+    ///   - error: A snapshot of the underlying error which was associated with
+    ///     this issue.
+    indirect case errorCaught(_ error: ErrorSnapshot)
 
     /// An issue due to a test reaching its time limit and timing out.
     ///
@@ -280,7 +291,7 @@ extension Issue.Kind {
       case let .confirmationMiscounted(actual: actual, expected: expected):
           .confirmationMiscounted(actual: actual, expected: expected)
       case let .errorCaught(error):
-          .errorCaught(String(describing: error))
+          .errorCaught(ErrorSnapshot(snapshotting: error))
       case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
           .timeLimitExceeded(timeLimitComponents: timeLimitComponents)
       case .knownIssueNotRecorded:
@@ -335,7 +346,7 @@ extension Issue.Kind {
                                                                                             forKey: .expected))
       } else if let errorCaught = try? container.nestedContainer(keyedBy: _CodingKeys._ErrorCaughtKeys.self,
                                                                  forKey: .errorCaught) {
-        self = .errorCaught(try errorCaught.decode(String.self, forKey: .error))
+        self = .errorCaught(try errorCaught.decode(ErrorSnapshot.self, forKey: .error))
       } else if let timeLimit = try container.decodeIfPresent(TimeValue.self, forKey: .timeLimitExceeded) {
         self = .timeLimitExceeded(timeLimitComponents: timeLimit.components)
       } else if try container.decodeIfPresent(Bool.self, forKey: .knownIssueNotRecorded) != nil {

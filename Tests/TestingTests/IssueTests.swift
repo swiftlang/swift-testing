@@ -1378,4 +1378,13 @@ struct IssueCodingTests {
 
     #expect(String(describing: decoded) == String(describing: issueSnapshot))
   }
+
+  @Test func errorSnapshot() throws {
+    let issue = Issue(kind: .errorCaught(NSError(domain: "Domain", code: 13)), comments: [])
+    let underlyingError = try #require(issue.error)
+
+    let issueSnapshot = Issue.Snapshot(snapshotting: issue)
+    let errorSnapshot = try #require(issueSnapshot.error)
+    #expect(String(describing: errorSnapshot) == String(describing: underlyingError))
+  }
 }
