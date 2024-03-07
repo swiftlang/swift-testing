@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) @_spi(ExperimentalEventHandling) @_spi(ExperimentalTestRunning) @_spi(ExperimentalSnapshotting) @_spi(ExperimentalSourceCodeCapturing) import Testing
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) @_spi(ExperimentalEventHandling) @_spi(ExperimentalTestRunning) @_spi(ExperimentalSourceCodeCapturing) import Testing
 private import TestingInternals
 
 #if canImport(XCTest)

@@ -165,7 +165,7 @@ extension Test: Equatable, Hashable {
 
 extension Test {
   /// A serializable snapshot of a ``Test`` instance.
-  @_spi(ExperimentalSnapshotting)
+  @_spi(ForToolsIntegrationOnly)
   public struct Snapshot: Sendable, Codable, Identifiable {
     /// The ID of this test.
     public var id: Test.ID

@@ -285,7 +285,7 @@ extension Event {
 
 extension Event {
   /// A serializable event that occurred during testing.
-  @_spi(ExperimentalSnapshotting)
+  @_spi(ForToolsIntegrationOnly)
   public struct Snapshot: Sendable, Codable {
 
     /// The kind of event.
@@ -321,7 +321,7 @@ extension Event {
 
 extension Event.Kind {
   /// A serializable enumeration describing the various kinds of event that can be observed.
-  @_spi(ExperimentalSnapshotting)
+  @_spi(ForToolsIntegrationOnly)
   public enum Snapshot: Sendable, Codable {
     /// A test run started.
     ///
