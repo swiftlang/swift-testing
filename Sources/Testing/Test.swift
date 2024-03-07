@@ -83,7 +83,7 @@ public struct Test: Sendable {
   /// combination of parameterized inputs. For non-parameterized tests, a single
   /// test case is synthesized. For test suite types (as opposed to test
   /// functions), the value of this property is `nil`.
-  @_spi(ExperimentalParameterizedTesting)
+  @_spi(ForToolsIntegrationOnly)
   public var testCases: (some Sequence<Test.Case> & Sendable)? {
     _testCases?.rawValue
   }
@@ -190,7 +190,7 @@ extension Test {
     /// ## See Also
     ///
     /// - ``Test/testCases``
-    @_spi(ExperimentalParameterizedTesting)
+    @_spi(ForToolsIntegrationOnly)
     public var testCases: [Test.Case.Snapshot]?
 
     /// The test function parameters, if any.
