@@ -297,13 +297,12 @@ struct ConditionMacroTests {
     let input = "#requireAmbiguous(expression)"
     let (_, diagnostics) = try parse(input)
 
-    try #require(diagnostics.count == 3)
-    #expect(diagnostics[0].diagMessage.severity == .warning)
-    #expect(diagnostics[0].message.contains("is ambiguous"))
-    #expect(diagnostics[1].diagMessage.severity == .note)
-    #expect(diagnostics[1].message.contains("?? false"))
-    #expect(diagnostics[2].diagMessage.severity == .note)
-    #expect(diagnostics[2].message.contains("as Bool?"))
+    let diagnostic = try #require(diagnostics.first)
+    #expect(diagnostic.diagMessage.severity == .warning)
+    #expect(diagnostic.message.contains("is ambiguous"))
+    #expect(diagnostic.fixIts.count == 2)
+    #expect(diagnostic.fixIts[0].message.message.contains("as Bool?"))
+    #expect(diagnostic.fixIts[1].message.message.contains("?? false"))
   }
 
   @Test("#require(as Bool?) suppresses its diagnostic")
