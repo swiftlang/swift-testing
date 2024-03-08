@@ -176,11 +176,11 @@ public struct Configuration: Sendable {
   /// By default, events of this kind are not delivered to event handlers
   /// because they occur frequently in a typical test run and can generate
   /// significant backpressure on the event handler.
-  @_spi(ExperimentalEventHandling)
+  @_spi(ForToolsIntegrationOnly)
   public var deliverExpectationCheckedEvents = false
 
   /// The event handler to which events should be passed when they occur.
-  @_spi(ExperimentalEventHandling)
+  @_spi(ForToolsIntegrationOnly)
   public var eventHandler: Event.Handler = { _, _ in }
 
   // MARK: - Test selection
