@@ -32,7 +32,7 @@ public struct Comment: RawRepresentable, Sendable {
   }
 
   /// An enumeration describing the possible kind of a comment.
-  @_spi(ExperimentalCommentFormatting)
+  @_spi(ForToolsIntegrationOnly)
   public enum Kind: Sendable {
     /// This comment came from a single-line comment in the test's source code
     /// starting with `//`.
@@ -63,7 +63,7 @@ public struct Comment: RawRepresentable, Sendable {
   /// If this instance was created with a call to ``init(rawValue:)``, the value
   /// of this property is `nil`. Otherwise, it can be used to determine which
   /// kind of comment is represented.
-  @_spi(ExperimentalCommentFormatting)
+  @_spi(ForToolsIntegrationOnly)
   public var kind: Kind?
 
   /// Initialize an instance of this type.
@@ -71,8 +71,7 @@ public struct Comment: RawRepresentable, Sendable {
   /// - Parameters:
   ///   - rawValue: The string value of the comment.
   ///   - kind: The kind of comment.
-  @_spi(ExperimentalCommentFormatting)
-  public init(rawValue: String, kind: Kind) {
+  init(rawValue: String, kind: Kind?) {
     self.init(rawValue: rawValue)
     self.kind = kind
   }
