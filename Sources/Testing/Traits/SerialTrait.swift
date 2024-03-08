@@ -35,7 +35,7 @@ public struct SerialTrait: TestTrait, SuiteTrait {
 
 // MARK: - SPIAwareTrait
 
-@_spi(ExperimentalTestRunning)
+@_spi(ForToolsIntegrationOnly)
 extension SerialTrait: SPIAwareTrait {
   public func prepare(for test: Test, action: inout Runner.Plan.Action) async throws {
     if case var .run(options) = action {

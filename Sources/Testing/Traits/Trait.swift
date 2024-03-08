@@ -82,7 +82,7 @@ extension SuiteTrait {
 /// for trait authors to execute code before and after each test function (if
 /// added to the traits of a test function), or before and after each test suite
 /// (if added to the traits of a test suite).
-@_spi(ExperimentalTraits)
+@_spi(Experimental)
 public protocol CustomExecutionTrait: Trait {
 
   /// Execute a function with the effects of this trait applied.

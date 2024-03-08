@@ -14,7 +14,7 @@ extension Tag {
   /// ## See Also
   ///
   /// - <doc:AddingTags>
-  @_spi(ExperimentalEventHandling)
+  @_spi(Experimental)
   public struct Color: Sendable {
     /// The red component of the color.
     ///
