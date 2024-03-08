@@ -12,9 +12,11 @@ import SwiftDiagnostics
 #if swift(>=5.11)
 import SwiftSyntax
 import SwiftSyntaxMacros
+import SwiftSyntaxMacroExpansion
 #else
 public import SwiftSyntax
 public import SwiftSyntaxMacros
+public import SwiftSyntaxMacroExpansion
 #endif
 
 /// A type describing diagnostic messages emitted by this module's macro during
@@ -293,8 +295,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   /// tag on a test or suite is not supported.
   ///
   /// - Parameters:
-  ///   - returnType: The unsupported return type.
-  ///   - decl: The declaration with an unsupported return type.
+  ///   - tagExpr: The unsupported tag expression.
   ///   - attribute: The `@Test` or `@Suite` attribute.
   ///
   /// - Returns: A diagnostic message.
@@ -306,6 +307,31 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
+  /// Create a diagnostic messages stating that the expression passed to
+  /// `#require()` is ambiguous.
+  ///
+  /// - Parameters:
+  ///   - boolExpr: The ambiguous optional boolean expression.
+  ///
+  /// - Returns: A diagnostic message.
+  static func optionalBoolExprIsAmbiguous(_ boolExpr: ExprSyntax) -> Self {
+    Self(
+      syntax: Syntax(boolExpr),
+      message: "The requirement '\(boolExpr.trimmed)' is ambiguous.",
+      severity: .warning,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("To unwrap an optional value, add 'as Bool?'."),
+          changes: [.replace(oldNode: Syntax(boolExpr), newNode: Syntax("\(boolExpr) as Bool?" as ExprSyntax))]
+        ),
+        FixIt(
+          message: MacroExpansionFixItMessage("To check if a value is true, add '?? false'."),
+          changes: [.replace(oldNode: Syntax(boolExpr), newNode: Syntax("\(boolExpr) ?? false" as ExprSyntax))]
+        ),
+      ]
+    )
+  }
+
   var syntax: Syntax
 
   // MARK: - DiagnosticMessage
@@ -313,6 +339,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   var message: String
   var diagnosticID = MessageID(domain: "org.swift.testing", id: "macros")
   var severity: DiagnosticSeverity
+  var fixIts: [FixIt] = []
 }
 
 // MARK: -
@@ -324,12 +351,14 @@ extension MacroExpansionContext {
   ///   - message: The diagnostic message to emit. The `node` and `position`
   ///     arguments to `Diagnostic.init()` are derived from the message's
   ///     `syntax` property.
+  ///   - fixIts: Any Fix-Its to apply.
   func diagnose(_ message: DiagnosticMessage) {
     diagnose(
       Diagnostic(
         node: message.syntax,
         position: message.syntax.positionAfterSkippingLeadingTrivia,
-        message: message
+        message: message,
+        fixIts: message.fixIts
       )
     )
   }

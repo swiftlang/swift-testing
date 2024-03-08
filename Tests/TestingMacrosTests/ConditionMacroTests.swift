@@ -292,6 +292,30 @@ struct ConditionMacroTests {
     #expect(diagnostics.count == 0)
   }
 
+  @Test("#require(Bool?) produces a diagnostic")
+  func requireOptionalBoolProducesDiagnostic() throws {
+    let input = "#requireAmbiguous(expression)"
+    let (_, diagnostics) = try parse(input)
+
+    try #require(diagnostics.count == 3)
+    #expect(diagnostics[0].diagMessage.severity == .warning)
+    #expect(diagnostics[0].message.contains("is ambiguous"))
+    #expect(diagnostics[1].diagMessage.severity == .note)
+    #expect(diagnostics[1].message.contains("?? false"))
+    #expect(diagnostics[2].diagMessage.severity == .note)
+    #expect(diagnostics[2].message.contains("as Bool?"))
+  }
+
+  @Test("#require(as Bool?) suppresses its diagnostic")
+  func requireOptionalBoolSuppressedWithExplicitType() throws {
+    // Note we do not need to test "as Bool" (non-optional) because an
+    // expression of type Bool rather than Bool? won't trigger the additional
+    // diagnostics in the first place.
+    let input = "#requireAmbiguous(expression as Bool?)"
+    let (_, diagnostics) = try parse(input)
+    #expect(diagnostics.isEmpty)
+  }
+
   @Test("Macro expansion is performed within a test function")
   func macroExpansionInTestFunction() throws {
     let input = ##"""

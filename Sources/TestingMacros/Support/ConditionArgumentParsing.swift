@@ -98,10 +98,10 @@ private func _diagnoseTrivialBooleanValue(from expr: ExprSyntax, for macro: some
 ///
 /// This function handles expressions such as `!foo` or `!(bar)`.
 private func _negatedExpression(_ expr: ExprSyntax, in context: some MacroExpansionContext) -> ExprSyntax? {
-  let expr = _removeParentheses(from: expr) ?? expr
+  let expr = removeParentheses(from: expr) ?? expr
   if let op = expr.as(PrefixOperatorExprSyntax.self),
      op.operator.tokenKind == .prefixOperator("!") {
-    return _removeParentheses(from: op.expression) ?? op.expression
+    return removeParentheses(from: op.expression) ?? op.expression
   }
 
   return nil
@@ -117,12 +117,12 @@ private func _negatedExpression(_ expr: ExprSyntax, in context: some MacroExpans
 ///
 /// This function handles expressions such as `(foo)` or `((foo, bar))`. It does
 /// not remove interior parentheses (e.g. `(foo, (bar))`.)
-private func _removeParentheses(from expr: ExprSyntax) -> ExprSyntax? {
+func removeParentheses(from expr: ExprSyntax) -> ExprSyntax? {
   if let tuple = expr.as(TupleExprSyntax.self),
       tuple.elements.count == 1,
      let elementExpr = tuple.elements.first,
      elementExpr.label == nil {
-    return _removeParentheses(from: elementExpr.expression) ?? elementExpr.expression
+    return removeParentheses(from: elementExpr.expression) ?? elementExpr.expression
   }
 
   return nil
@@ -478,7 +478,7 @@ private func _parseCondition(from expr: ExprSyntax, for macro: some Freestanding
 
   // Parentheses are parsed as if they were tuples, so (true && false) appears
   // to the parser as a tuple containing one expression, `true && false`.
-  if let expr = _removeParentheses(from: expr) {
+  if let expr = removeParentheses(from: expr) {
     return _parseCondition(from: expr, for: macro, in: context)
   }
 

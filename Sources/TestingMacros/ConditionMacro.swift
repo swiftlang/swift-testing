@@ -202,3 +202,42 @@ public struct RequireMacro: ConditionMacro {
     true
   }
 }
+
+/// A type describing the expansion of the `#require()` macro when it is
+/// ambiguous whether it refers to a boolean check or optional unwrapping.
+///
+/// This type is otherwise exactly equivalent to ``RequireMacro``.
+public struct AmbiguousRequireMacro: ConditionMacro {
+  public static func expansion(
+    of macro: some FreestandingMacroExpansionSyntax,
+    in context: some MacroExpansionContext
+  ) throws -> ExprSyntax {
+    if let argument = macro.argumentList.first {
+      _checkAmbiguousArgument(argument.expression, in: context)
+    }
+
+    // Perform the normal macro expansion for #require().
+    return try RequireMacro.expansion(of: macro, in: context)
+  }
+
+  private static func _checkAmbiguousArgument(_ argument: ExprSyntax, in context: some MacroExpansionContext) {
+    // If the argument is wrapped in parentheses, strip them before continuing.
+    if let argumentWithoutParentheses = removeParentheses(from: argument) {
+      return _checkAmbiguousArgument(argumentWithoutParentheses, in: context)
+    }
+
+    // If the argument is explicitly an as? cast already, do not diagnose.
+    if argument.is(AsExprSyntax.self) {
+      return
+    }
+
+    // If we reach this point, then the argument appears to be an ambiguous
+    // expression and we aren't sure if the developer intended to unwrap a Bool?
+    // or check the value of the wrapped Bool.
+    context.diagnose(.optionalBoolExprIsAmbiguous(argument))
+  }
+
+  public static var isThrowing: Bool {
+    true
+  }
+}
