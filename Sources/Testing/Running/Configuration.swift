@@ -9,7 +9,7 @@
 //
 
 /// A type containing settings for preparing and running tests.
-@_spi(ExperimentalTestRunning)
+@_spi(ForToolsIntegrationOnly)
 public struct Configuration: Sendable {
   /// Initialize an instance of this type representing the default
   /// configuration.
