@@ -81,7 +81,7 @@ extension Test {
   ///
   /// - Returns: The maximum amount of time the cases of this test may run for,
   ///   or `nil` if the test may run indefinitely.
-  @_spi(ExperimentalTestRunning)
+  @_spi(ForToolsIntegrationOnly)
   public func adjustedTimeLimit(configuration: Configuration) -> Duration? {
     // If this instance doesn't have a time limit configured, use the default
     // specified by the configuration.
