@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(InternalDiagnostics) @_spi(ExperimentalTestRunning) import Testing
+@testable @_spi(ForToolsIntegrationOnly) import Testing
 private import TestingInternals
 
 // NOTE: The tests in this file are here to exercise Plan.dump(), but they are

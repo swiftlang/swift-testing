@@ -9,7 +9,7 @@
 //
 
 /// A type that runs tests according to a given configuration.
-@_spi(ExperimentalTestRunning)
+@_spi(ForToolsIntegrationOnly)
 public struct Runner: Sendable {
   /// The plan to follow when running the associated tests.
   public var plan: Plan
@@ -55,7 +55,6 @@ public struct Runner: Sendable {
 
 // MARK: - Running tests
 
-@_spi(ExperimentalTestRunning)
 extension Runner {
   /// Catch errors thrown from a closure and process them as issues instead of
   /// allowing them to propagate to the caller.

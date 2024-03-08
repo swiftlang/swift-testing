@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ExperimentalTestRunning) import Testing
+@testable import Testing
 
 @Suite("zip Tests")
 struct ZipTests {

@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ExperimentalTestRunning) import Testing
+@testable import Testing
 
 @Suite("Test.ID.Selection Tests")
 struct Test_ID_SelectionTests {

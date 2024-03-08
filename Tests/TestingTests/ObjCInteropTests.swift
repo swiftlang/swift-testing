@@ -9,7 +9,7 @@
  */
 
 import XCTest
-@testable @_spi(ExperimentalTestRunning) @_spi(ForToolsIntegrationOnly) import Testing
+@testable @_spi(ForToolsIntegrationOnly) import Testing
 
 final class NonXCTestCaseClassTests: NSObject {
   @Test("Methods on non-XCTestCase subclasses are supported")
