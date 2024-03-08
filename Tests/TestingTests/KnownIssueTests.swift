@@ -10,7 +10,7 @@
 
 #if canImport(XCTest)
 import XCTest
-@testable @_spi(ForToolsIntegrationOnly) @_spi(ExperimentalTestRunning) import Testing
+@testable @_spi(ForToolsIntegrationOnly) import Testing
 
 final class KnownIssueTests: XCTestCase {
   func testIssueIsKnownPropertyIsSetCorrectly() async {
