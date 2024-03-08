@@ -65,7 +65,7 @@ public struct Test: Sendable {
   ///
   /// On platforms that do not support Objective-C interop, the value of this
   /// property is always `nil`.
-  @_spi(ExperimentalTestRunning)
+  @_spi(ForToolsIntegrationOnly)
   public var xcTestCompatibleSelector: __XCTestCompatibleSelector?
 
   /// Storage for the ``testCases`` property.
