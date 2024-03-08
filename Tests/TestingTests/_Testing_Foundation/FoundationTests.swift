@@ -9,8 +9,8 @@
 //
 
 #if canImport(Foundation)
-@testable @_spi(ExperimentalEventHandling) import _Testing_Foundation
-@_spi(ExperimentalEventHandling) import Testing
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import _Testing_Foundation
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 import Foundation
 
 struct FoundationTests {

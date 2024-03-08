@@ -9,7 +9,7 @@
 //
 
 #if canImport(Foundation) && !SWT_NO_UTC_CLOCK
-@_spi(ExperimentalEventHandling) public import Testing
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) public import Testing
 public import Foundation
 
 extension Date {
@@ -22,7 +22,7 @@ extension Date {
   /// The resulting instance is equivalent to the wall-clock time represented by
   /// `testClockInstant`. For precise date/time calculations, convert instances
   /// of ``Test/Clock/Instant`` to `SuspendingClock.Instant` instead of `Date`.
-  @_spi(ExperimentalEventHandling)
+  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
   public init(_ testClockInstant: Test.Clock.Instant) {
     let components = testClockInstant.timeComponentsSince1970
     let secondsSince1970 = TimeInterval(components.seconds) + (TimeInterval(components.attoseconds) / TimeInterval(1_000_000_000_000_000_000))

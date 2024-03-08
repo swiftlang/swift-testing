@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(Experimental) @_spi(ExperimentalEventHandling) @_spi(ForToolsIntegrationOnly) @_spi(ExperimentalTestRunning) import Testing
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) @_spi(ExperimentalTestRunning) import Testing
 #if !os(Windows)
 import RegexBuilder
 #endif

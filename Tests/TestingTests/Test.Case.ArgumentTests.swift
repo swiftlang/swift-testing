@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ForToolsIntegrationOnly) @_spi(ExperimentalTestRunning) @_spi(ExperimentalEventHandling) import Testing
+@testable @_spi(ForToolsIntegrationOnly) @_spi(ExperimentalTestRunning) @_spi(Experimental) import Testing
 
 @Suite("Test.Case.Argument Tests")
 struct Test_Case_ArgumentTests {
