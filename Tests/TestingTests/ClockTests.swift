@@ -11,7 +11,7 @@
 #if canImport(Foundation)
 import Foundation
 #endif
-@testable @_spi(ExperimentalEventHandling) import Testing
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import TestingInternals
 
 @Suite("Clock API Tests")

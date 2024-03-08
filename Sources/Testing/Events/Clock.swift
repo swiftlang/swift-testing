@@ -10,7 +10,7 @@
 
 private import TestingInternals
 
-@_spi(ExperimentalEventHandling)
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 extension Test {
   /// A clock used to track time when events occur during testing.
   ///
@@ -58,7 +58,7 @@ extension Test {
 
 // MARK: -
 
-@_spi(ExperimentalEventHandling)
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 @available(_clockAPI, *)
 extension SuspendingClock.Instant {
   /// Initialize this instant to the equivalent of the same instant on the
@@ -71,7 +71,6 @@ extension SuspendingClock.Instant {
   }
 }
 
-@_spi(ExperimentalEventHandling)
 extension Test.Clock.Instant {
 #if !SWT_NO_UTC_CLOCK
   /// The duration since 1970 represented by this instance as a tuple of seconds
@@ -144,7 +143,6 @@ extension Test.Clock {
 
 // MARK: - Clock
 
-@_spi(ExperimentalEventHandling)
 @available(_clockAPI, *)
 extension Test.Clock: _Concurrency.Clock {
   public typealias Duration = SuspendingClock.Duration
@@ -175,7 +173,6 @@ extension Test.Clock: _Concurrency.Clock {
 
 // MARK: - Equatable, Hashable, Comparable
 
-@_spi(ExperimentalEventHandling)
 extension Test.Clock.Instant: Equatable, Hashable, Comparable {
   public static func ==(lhs: Self, rhs: Self) -> Bool {
     lhs.suspending == rhs.suspending
@@ -192,7 +189,6 @@ extension Test.Clock.Instant: Equatable, Hashable, Comparable {
 
 // MARK: - InstantProtocol
 
-@_spi(ExperimentalEventHandling)
 @available(_clockAPI, *)
 extension Test.Clock.Instant: InstantProtocol {
   public typealias Duration = Swift.Duration

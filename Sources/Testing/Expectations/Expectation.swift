@@ -17,7 +17,7 @@ public struct Expectation: Sendable {
   ///
   /// If this expectation passed, the value of this property is `nil` because no
   /// error mismatch occurred.
-  @_spi(ExperimentalEventHandling)
+  @_spi(ForToolsIntegrationOnly)
   public var mismatchedErrorDescription: String?
 
   /// A description of the difference between the operands in the expression
@@ -26,7 +26,7 @@ public struct Expectation: Sendable {
   /// If this expectation passed, the value of this property is `nil` because
   /// the difference is only computed when necessary to assist with diagnosing
   /// test failures.
-  @_spi(ExperimentalEventHandling)
+  @_spi(ForToolsIntegrationOnly)
   public var differenceDescription: String?
 
   /// Whether the expectation passed or failed.
@@ -65,7 +65,7 @@ extension Expectation {
     ///
     /// If this expectation passed, the value of this property is `nil` because no
     /// error mismatch occurred.
-    @_spi(ExperimentalEventHandling)
+    @_spi(ForToolsIntegrationOnly)
     public var mismatchedErrorDescription: String?
 
     /// A description of the difference between the operands in the expression
@@ -74,7 +74,7 @@ extension Expectation {
     /// If this expectation passed, the value of this property is `nil` because
     /// the difference is only computed when necessary to assist with diagnosing
     /// test failures.
-    @_spi(ExperimentalEventHandling)
+    @_spi(ForToolsIntegrationOnly)
     public var differenceDescription: String?
 
     /// Whether the expectation passed or failed.
