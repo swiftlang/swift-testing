@@ -150,7 +150,7 @@ extension Encoder {
   ///
   /// The value of this property is non-`nil` when this encoder is being used to
   /// encode an argument passed to a parameterized test function.
-  @_spi(ExperimentalParameterizedTesting)
+  @_spi(Experimental)
   public var testParameter: Test.Parameter? {
     userInfo[._testParameterUserInfoKey] as? Test.Parameter
   }

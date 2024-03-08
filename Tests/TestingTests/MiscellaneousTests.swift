@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ForToolsIntegrationOnly) @_spi(ExperimentalParameterizedTesting) @_spi(ExperimentalTestRunning) import Testing
+@testable @_spi(ForToolsIntegrationOnly) @_spi(ExperimentalTestRunning) import Testing
 
 @Test(/* name unspecified */ .hidden)
 @Sendable func freeSyncFunction() {}
