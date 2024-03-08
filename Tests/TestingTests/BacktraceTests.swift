@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ExperimentalEventHandling) @_spi(ExperimentalTestRunning) import Testing
+@testable @_spi(ForToolsIntegrationOnly) @_spi(ExperimentalTestRunning) import Testing
 #if canImport(Foundation)
 import Foundation
 #endif

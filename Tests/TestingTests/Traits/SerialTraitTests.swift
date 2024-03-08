@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(Experimental) @_spi(ExperimentalTestRunning) @_spi(ExperimentalEventHandling) import Testing
+@testable @_spi(Experimental) @_spi(ExperimentalTestRunning) @_spi(ForToolsIntegrationOnly) import Testing
 
 @Suite("Serial Trait Tests", .tags("trait"))
 struct SerialTraitTests {

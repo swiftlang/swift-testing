@@ -9,7 +9,7 @@
 //
 
 /// An event that occurred during testing.
-@_spi(ExperimentalEventHandling)
+@_spi(ForToolsIntegrationOnly)
 public struct Event: Sendable {
   /// An enumeration describing the various kinds of event that can be observed.
   public enum Kind: Sendable {
@@ -203,7 +203,6 @@ public struct Event: Sendable {
 
 // MARK: - Event handling
 
-@_spi(ExperimentalEventHandling)
 extension Event {
   /// A function that handles events that occur while tests are running.
   ///
@@ -285,7 +284,6 @@ extension Event {
 
 extension Event {
   /// A serializable event that occurred during testing.
-  @_spi(ForToolsIntegrationOnly)
   public struct Snapshot: Sendable, Codable {
 
     /// The kind of event.
@@ -321,7 +319,6 @@ extension Event {
 
 extension Event.Kind {
   /// A serializable enumeration describing the various kinds of event that can be observed.
-  @_spi(ForToolsIntegrationOnly)
   public enum Snapshot: Sendable, Codable {
     /// A test run started.
     ///
