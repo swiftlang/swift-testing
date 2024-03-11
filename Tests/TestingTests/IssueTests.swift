@@ -1161,6 +1161,28 @@ final class IssueTests: XCTestCase {
     await fulfillment(of: [rhsCalled], timeout: 0.0)
   }
 
+  func testRequireOptionalMemberAccessEvaluatesToNil() async {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      XCTAssertFalse(issue.isKnown)
+      guard case let .expectationFailed(expectation) = issue.kind else {
+        XCTFail("Unexpected issue kind \(issue.kind)")
+        return
+      }
+      let expression = expectation.evaluatedExpression
+      XCTAssertTrue(expression.expandedDescription().contains("nil"))
+      XCTAssertFalse(expression.expandedDescription().contains("<not evaluated>"))
+    }
+
+    await Test {
+      let array = [String]()
+      _ = try #require(array.first)
+    }.run(configuration: configuration)
+  }
+
   func testOptionalOperand() async {
     let expectationFailed = expectation(description: "Expectation failed")
 

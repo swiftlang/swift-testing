@@ -557,7 +557,7 @@ public func __checkPropertyAccess<T, U>(
   return __checkValue(
     optionalValue,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, optionalValue),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, optionalValue as U??),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -731,7 +731,7 @@ public func __checkBinaryOperation<T>(
   return __checkValue(
     optionalValue,
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, rhs),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs as T??, rhs as T??),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
