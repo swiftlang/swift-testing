@@ -87,13 +87,6 @@ extension Event {
     /// The options for this event recorder.
     var options: Set<Option>
 
-    /// The set of predefined tag colors that are always set even when
-    /// ``Option/useTagColors(_:)`` is not specified.
-    private static let _predefinedTagColors: [Tag: Tag.Color] = [
-      .red: .red, .orange: .orange, .yellow: .yellow,
-      .green: .green, .blue: .blue, .purple: .purple,
-    ]
-
     /// The tag colors this event recorder should use.
     ///
     /// The initial value of this property is derived from `options`.
@@ -117,9 +110,12 @@ extension Event {
     /// the output is not meant to be machine-readable and is subject to change.
     public init(options: [Option] = [], writingUsing write: @escaping @Sendable (String) -> Void) {
       self.options = Set(options)
-      self.tagColors = options.reduce(into: Self._predefinedTagColors) { tagColors, option in
+      self.tagColors = options.reduce(into: Tag.Color.predefined) { tagColors, option in
         if case let .useTagColors(someTagColors) = option {
-          tagColors.merge(someTagColors, uniquingKeysWith: { lhs, _ in lhs })
+          tagColors.merge(
+            someTagColors.filter { !$0.key.isPredefinedColor },
+            uniquingKeysWith: { _, rhs in rhs }
+          )
         }
       }
       self.write = write
