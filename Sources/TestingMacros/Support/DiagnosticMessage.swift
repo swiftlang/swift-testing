@@ -317,7 +317,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   static func optionalBoolExprIsAmbiguous(_ boolExpr: ExprSyntax) -> Self {
     Self(
       syntax: Syntax(boolExpr),
-      message: "The requirement '\(boolExpr.trimmed)' is ambiguous.",
+      message: "Requirement '\(boolExpr.trimmed)' is ambiguous.",
       severity: .warning,
       fixIts: [
         FixIt(

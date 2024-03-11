@@ -292,9 +292,16 @@ struct ConditionMacroTests {
     #expect(diagnostics.count == 0)
   }
 
-  @Test("#require(Bool?) produces a diagnostic")
-  func requireOptionalBoolProducesDiagnostic() throws {
-    let input = "#requireAmbiguous(expression)"
+  @Test("#require(Bool?) produces a diagnostic",
+    arguments: [
+      "#requireAmbiguous(expression)",
+      "#requireAmbiguous((expression))",
+      "#requireAmbiguous(a + b)",
+      "#requireAmbiguous((a + b))",
+      "#requireAmbiguous((a) + (b))",
+    ]
+  )
+  func requireOptionalBoolProducesDiagnostic(input: String) throws {
     let (_, diagnostics) = try parse(input)
 
     let diagnostic = try #require(diagnostics.first)
@@ -305,12 +312,21 @@ struct ConditionMacroTests {
     #expect(diagnostic.fixIts[1].message.message.contains("?? false"))
   }
 
-  @Test("#require(as Bool?) suppresses its diagnostic")
-  func requireOptionalBoolSuppressedWithExplicitType() throws {
+  @Test("#require(as Bool?) suppresses its diagnostic",
+    arguments: [
+      "#requireAmbiguous(expression as Bool?)",
+      "#requireAmbiguous((expression as Bool?))",
+      "#requireAmbiguous((expression) as Bool?)",
+      "#requireAmbiguous(a + b as Bool?)",
+      "#requireAmbiguous((a + b) as Bool?)",
+      "#requireAmbiguous((a) + (b) as Bool?)",
+      "#requireAmbiguous(((a) + (b)) as Bool?)",
+    ]
+  )
+  func requireOptionalBoolSuppressedWithExplicitType(input: String) throws {
     // Note we do not need to test "as Bool" (non-optional) because an
     // expression of type Bool rather than Bool? won't trigger the additional
     // diagnostics in the first place.
-    let input = "#requireAmbiguous(expression as Bool?)"
     let (_, diagnostics) = try parse(input)
     #expect(diagnostics.isEmpty)
   }
