@@ -57,17 +57,48 @@
 ///   - sourceLocation: The source location to which recorded expectations and
 ///     issues should be attributed.
 ///
-/// - Returns: The unwrapped value of `value`.
+/// - Returns: The unwrapped value of `optionalValue`.
 ///
-/// - Throws: An instance of ``ExpectationFailedError`` if `value` is `nil`.
+/// - Throws: An instance of ``ExpectationFailedError`` if `optionalValue` is
+///   `nil`.
 ///
-/// If `value` is `nil`, an ``Issue`` is recorded for the test that is running
-/// in the current task and an instance of ``ExpectationFailedError`` is thrown.
+/// If `optionalValue` is `nil`, an ``Issue`` is recorded for the test that is
+/// running in the current task and an instance of ``ExpectationFailedError`` is
+/// thrown.
 @freestanding(expression) public macro require<T>(
   _ optionalValue: T?,
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = SourceLocation()
 ) -> T = #externalMacro(module: "TestingMacros", type: "RequireMacro")
+
+/// Unwrap an optional boolean value or, if it is `nil`, fail and throw an
+/// error.
+///
+/// - Parameters:
+///   - optionalValue: The optional value to be unwrapped.
+///   - comment: A comment describing the expectation.
+///   - sourceLocation: The source location to which recorded expectations and
+///     issues should be attributed.
+///
+/// - Returns: The unwrapped value of `optionalValue`.
+///
+/// - Throws: An instance of ``ExpectationFailedError`` if `optionalValue` is
+///   `nil`.
+///
+/// If `optionalValue` is `nil`, an ``Issue`` is recorded for the test that is
+/// running in the current task and an instance of ``ExpectationFailedError`` is
+/// thrown.
+///
+/// This overload of ``require(_:_:sourceLocation:)-6w9oo`` checks if
+/// `optionalValue` may be ambiguous (i.e. it is unclear if the developer
+/// intended to check for a boolean value or unwrap an optional boolean value)
+/// and provides additional compile-time diagnostics when it is.
+@_documentation(visibility: private)
+@freestanding(expression) public macro require(
+  _ optionalValue: Bool?,
+  _ comment: @autoclosure () -> Comment? = nil,
+  sourceLocation: SourceLocation = SourceLocation()
+) -> Bool = #externalMacro(module: "TestingMacros", type: "AmbiguousRequireMacro")
 
 // MARK: - Matching errors by type
 
