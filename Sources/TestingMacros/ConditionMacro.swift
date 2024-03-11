@@ -220,6 +220,12 @@ public struct AmbiguousRequireMacro: ConditionMacro {
     return try RequireMacro.expansion(of: macro, in: context)
   }
 
+  /// Check for an ambiguous argument to the `#require()` macro and emit the
+  /// appropriate diagnostics.
+  ///
+  /// - Parameters:
+  ///   - argument: The ambiguous argument.
+  ///   - context: The macro context in which the expression is being parsed.
   private static func _checkAmbiguousArgument(_ argument: ExprSyntax, in context: some MacroExpansionContext) {
     // If the argument is wrapped in parentheses, strip them before continuing.
     if let argumentWithoutParentheses = removeParentheses(from: argument) {
