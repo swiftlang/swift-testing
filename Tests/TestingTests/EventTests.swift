@@ -11,7 +11,7 @@
 #if canImport(Foundation)
 import Foundation
 #endif
-@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) @_spi(ExperimentalTestRunning) import Testing
 private import TestingInternals
 
 @Suite("Event Tests")
