@@ -8,7 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@_spi(ExperimentalTestRunning)
 extension Runner.Plan {
   /// Write a dump of the specified step graph to a stream.
   ///
@@ -105,7 +104,6 @@ extension Runner.Plan {
   ///
   /// - Note: The output of this function is not intended to be machine-readable
   ///   and its format may change over time.
-  @_spi(InternalDiagnostics)
   public func dump(to stream: inout some TextOutputStream, verbose: Bool = false, indent: Int = 2) {
     if verbose {
       Swift.dump(self, to: &stream, indent: indent)

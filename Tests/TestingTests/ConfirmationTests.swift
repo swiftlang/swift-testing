@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ForToolsIntegrationOnly) @_spi(ExperimentalTestRunning) import Testing
+@testable @_spi(ForToolsIntegrationOnly) import Testing
 
 @Suite("Confirmation Tests")
 struct ConfirmationTests {

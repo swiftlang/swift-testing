@@ -8,7 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@_spi(ExperimentalTestRunning)
 extension Runner {
   /// A type describing a runner plan.
   public struct Plan: Sendable {
@@ -130,7 +129,6 @@ extension Runner {
 
 // MARK: - Constructing a new runner plan
 
-@_spi(ExperimentalTestRunning)
 extension Runner.Plan {
   /// Recursively apply eligible traits from a test suite to its children in a
   /// graph.
