@@ -212,7 +212,7 @@ public struct AmbiguousRequireMacro: ConditionMacro {
     of macro: some FreestandingMacroExpansionSyntax,
     in context: some MacroExpansionContext
   ) throws -> ExprSyntax {
-    if let argument = macro.argumentList.first {
+    if let argument = macro.arguments.first {
       _checkAmbiguousArgument(argument.expression, in: context)
     }
 
