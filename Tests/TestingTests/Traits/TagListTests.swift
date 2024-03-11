@@ -45,17 +45,6 @@ struct TagListTests {
     ])
   }
 
-  @Test(".tags() factory method with System 7 colors", .tags(.essential, .hot, .inProgress, .cool, .personal, .project1, .project2))
-  func system7Colors() throws {
-    let trait = Tag.List.tags(.essential, .hot, .inProgress, .cool, .personal, .project1, .project2)
-    #expect((trait as Any) is Tag.List)
-    #expect(trait.tags == [.essential, .hot, .inProgress, .cool, .personal, .project1, .project2])
-    let predefinedColors = Tag.Color.predefined
-    for tag in trait.tags {
-      #expect(predefinedColors[tag] != nil)
-    }
-  }
-
   @Test("Tag.description property", arguments: [
     Tag("hello"): #""hello""#,
     Tag("world"): #""world""#,

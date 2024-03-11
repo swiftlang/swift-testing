@@ -62,77 +62,25 @@ extension Tag {
   }
 }
 
-// MARK: - System 7 labels
-
-@_spi(Experimental)
-extension Tag {
-  /// A predefined tag.
-  ///
-  /// The name of this tag is taken from the default set of labels in Macintosh
-  /// System&nbsp;7.
-  public static var essential: Self {
-    Tag(kind: .staticMember("essential"))
-  }
-
-  /// A predefined tag.
-  ///
-  /// The name of this tag is taken from the default set of labels in Macintosh
-  /// System&nbsp;7.
-  public static var hot: Self {
-    Tag(kind: .staticMember("hot"))
-  }
-
-  /// A predefined tag.
-  ///
-  /// The name of this tag is taken from the default set of labels in Macintosh
-  /// System&nbsp;7.
-  public static var inProgress: Self {
-    Tag(kind: .staticMember("inProgress"))
-  }
-
-  /// A predefined tag.
-  ///
-  /// The name of this tag is taken from the default set of labels in Macintosh
-  /// System&nbsp;7.
-  public static var cool: Self {
-    Tag(kind: .staticMember("cool"))
-  }
-
-  /// A predefined tag.
-  ///
-  /// The name of this tag is taken from the default set of labels in Macintosh
-  /// System&nbsp;7.
-  public static var personal: Self {
-    Tag(kind: .staticMember("personal"))
-  }
-
-  /// A predefined tag.
-  ///
-  /// The name of this tag is taken from the default set of labels in Macintosh
-  /// System&nbsp;7.
-  public static var project1: Self {
-    Tag(kind: .staticMember("project1"))
-  }
-
-  /// A predefined tag.
-  ///
-  /// The name of this tag is taken from the default set of labels in Macintosh
-  /// System&nbsp;7.
-  public static var project2: Self {
-    Tag(kind: .staticMember("project2"))
-  }
-}
-
 // MARK: - Predefined tag hard-coded colors
 
 extension Tag.Color {
   /// The set of predefined tag colors used by ``ConsoleOutputRecorder``.
+  ///
+  /// Tags in this set will have colors automatically applied to them in console
+  /// output even if a user has not specified a color in e.g. a tag-colors.json
+  /// file. New predefined tag colors should be rare as they are inherently
+  /// subjective for most tags.
   static var predefined: [Tag: Self] {
     [
       .red: .red, .orange: .orange, .yellow: .yellow,
       .green: .green, .blue: .blue, .purple: .purple,
 
-      // The original System 7 label colors are:
+      // As a fun little reminder of Apple history, we provide predefined tag
+      // colors for the original System 7 labels. If a test author explicitly
+      // creates one of these tags and adds it to a test, we will use the
+      // original label's color for it. These colors are (as determined by
+      // manually inspecting Finder's 'pltt' resource #128):
       //
       // Essential = Orange = 65535, 25738, 652
       // Hot = Red = 56680, 2242, 1698
@@ -144,13 +92,13 @@ extension Tag.Color {
       //
       // To convert them to 8-bit RGB values, we divide them by 65535, multiply
       // them by 255, then round to the nearest integer.
-      .essential: .rgb(255, 100, 3),
-      .hot: .rgb(221, 9, 7),
-      .inProgress: .rgb(242, 8, 132),
-      .cool: .rgb(2, 171, 234),
-      .personal: .rgb(0, 0, 211),
-      .project1: .rgb(0, 100, 18),
-      .project2: .rgb(86, 44, 5),
+      Tag(kind: .staticMember("essential")): .rgb(255, 100, 3),
+      Tag(kind: .staticMember("hot")): .rgb(221, 9, 7),
+      Tag(kind: .staticMember("inProgress")): .rgb(242, 8, 132),
+      Tag(kind: .staticMember("cool")): .rgb(2, 171, 234),
+      Tag(kind: .staticMember("personal")): .rgb(0, 0, 211),
+      Tag(kind: .staticMember("project1")): .rgb(0, 100, 18),
+      Tag(kind: .staticMember("project2")): .rgb(86, 44, 5),
     ]
   }
 }
