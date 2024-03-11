@@ -52,7 +52,7 @@ extension Tag {
   /// - ``Tag/green``
   /// - ``Tag/blue``
   /// - ``Tag/purple``
-  public var isPredefinedColor: Bool {
+  var isPredefinedColor: Bool {
     switch self {
     case .red, .orange, .yellow, .green, .blue, .purple:
       return true
