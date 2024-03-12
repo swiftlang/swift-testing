@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@_spi(ExperimentalTestRunning)
+@_spi(ForToolsIntegrationOnly)
 extension Test.Case: Identifiable {
   /// The ID of a test case.
   ///

@@ -55,7 +55,7 @@ extension Test: Identifiable {
     ///     module name) of the corresponding test.
     ///   - sourceLocation: The source location of the corresponding test. For
     ///     test suite types, pass `nil`.
-    @_spi(ExperimentalTestRunning)
+    @_spi(ForToolsIntegrationOnly)
     public init(moduleName: String, nameComponents: [String], sourceLocation: SourceLocation?) {
       self.moduleName = moduleName
       self.nameComponents = nameComponents
@@ -69,7 +69,7 @@ extension Test: Identifiable {
     ///   - type: The test suite type.
     ///
     /// This initializer produces a test ID corresponding to the given type.
-    @_spi(ExperimentalTestRunning)
+    @_spi(ForToolsIntegrationOnly)
     public init(type: Any.Type) {
       self.init(Testing.nameComponents(of: type))
     }

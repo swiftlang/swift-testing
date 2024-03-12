@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ForToolsIntegrationOnly) @_spi(Experimental) import Testing
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
 private struct CustomTrait: CustomExecutionTrait, TestTrait {
   var before: Confirmation

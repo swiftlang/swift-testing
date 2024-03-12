@@ -9,7 +9,7 @@
 //
 
 /// A type representing the details of a skipped test.
-@_spi(ExperimentalTestRunning)
+@_spi(ForToolsIntegrationOnly)
 public struct SkipInfo: Sendable {
   /// A user-specified comment describing this skip, if any.
   public var comment: Comment?
