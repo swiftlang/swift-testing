@@ -19,7 +19,7 @@ struct Test_Case_ArgumentTests {
       guard case .testCaseStarted = event.kind else {
         return
       }
-      let testCase = try #require(context.testCase)
+      let testCase = try #require(context.testCase as Test.Case?)
       try #require(testCase.arguments.count == 1)
 
       let argument = testCase.arguments[0]
@@ -38,7 +38,7 @@ struct Test_Case_ArgumentTests {
       guard case .testCaseStarted = event.kind else {
         return
       }
-      let testCase = try #require(context.testCase)
+      let testCase = try #require(context.testCase as Test.Case?)
       try #require(testCase.arguments.count == 2)
 
       do {
@@ -65,7 +65,7 @@ struct Test_Case_ArgumentTests {
       guard case .testCaseStarted = event.kind else {
         return
       }
-      let testCase = try #require(context.testCase)
+      let testCase = try #require(context.testCase as Test.Case?)
       try #require(testCase.arguments.count == 1)
 
       let argument = testCase.arguments[0]
@@ -84,7 +84,7 @@ struct Test_Case_ArgumentTests {
       guard case .testCaseStarted = event.kind else {
         return
       }
-      let testCase = try #require(context.testCase)
+      let testCase = try #require(context.testCase as Test.Case?)
       try #require(testCase.arguments.count == 1)
 
       let argument = testCase.arguments[0]
@@ -105,7 +105,7 @@ struct Test_Case_ArgumentTests {
       guard case .testCaseStarted = event.kind else {
         return
       }
-      let testCase = try #require(context.testCase)
+      let testCase = try #require(context.testCase as Test.Case?)
       try #require(testCase.arguments.count == 2)
 
       do {
@@ -132,7 +132,7 @@ struct Test_Case_ArgumentTests {
       guard case .testCaseStarted = event.kind else {
         return
       }
-      let testCase = try #require(context.testCase)
+      let testCase = try #require(context.testCase as Test.Case?)
       try #require(testCase.arguments.count == 1)
 
       let argument = testCase.arguments[0]

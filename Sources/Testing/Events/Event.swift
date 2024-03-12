@@ -209,7 +209,7 @@ extension Event {
   ///
   /// An instance of this type is provided along with each ``Event`` that is
   /// passed to an ``Event/Handler``.
-  public struct Context: Sendable {
+  public struct Context: Sendable, ~Copyable {
     /// The test for which this instance's associated ``Event`` occurred, if
     /// any.
     ///
