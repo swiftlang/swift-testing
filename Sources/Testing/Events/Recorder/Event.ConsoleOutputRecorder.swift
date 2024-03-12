@@ -202,22 +202,64 @@ extension Tag.Color {
       let index = 16 + 36 * r + 6 * g + b
       return "\(_ansiEscapeCodePrefix)38;5;\(index)m"
     }
-    switch self {
-    case .red:
-      return "\(_ansiEscapeCodePrefix)91m"
-    case .orange:
+    return closest16ColorEscapeCode()
+  }
+
+  /// Get the ANSI escape code that sets the foreground text color to whichever
+  /// 16-color value is closest to this instance.
+  ///
+  /// - Returns: The corresponding ANSI escape code.
+  ///
+  /// An idealized color space is assumed.
+  func closest16ColorEscapeCode() -> String {
+    if self == .orange {
+      // Special-case orange to dark yellow as it doesn't have a good mapping in
+      // most low-color terminals. NOTE: Historically, the IBM PC's CGA adapter
+      // and monitor had dedicated circuitry to display dark yellow as a shade
+      // of orange-brown, but modern terminal applications rarely emulate it.
       return "\(_ansiEscapeCodePrefix)33m"
-    case .yellow:
-      return "\(_ansiEscapeCodePrefix)93m"
-    case .green:
-      return "\(_ansiEscapeCodePrefix)92m"
-    case .blue:
-      return "\(_ansiEscapeCodePrefix)94m"
-    case .purple:
+    } else if self == .purple {
+      // Special-case purple as well since it is declared as true purple rather
+      // than magenta.
       return "\(_ansiEscapeCodePrefix)95m"
-    default:
-      // TODO: HSL or HSV conversion followed by conversion to 16 colors.
-      return nil
+    }
+
+    let (hue, saturation, value) = hsvComponents
+    if saturation <= 0.25 {
+      // Some shade of gray (or a very pale color.)
+      let colorValue = switch Int(value * 3.0) {
+      case 0: // black
+        30
+      case 1: // dark gray
+        90
+      case 2: // light gray
+        37
+      default: // 3, white
+        97
+      }
+      return "\(_ansiEscapeCodePrefix)\(colorValue)m"
+    } else {
+      // There is some saturation, so figure out the closest available color.
+      let brightAddend = if value > 0.5 {
+        60
+      } else {
+        0
+      }
+      let hueAddend = switch Int(hue * 6.0) {
+      case 0, 6: // red
+        31
+      case 1: // yellow
+        33
+      case 2: // green
+        32
+      case 3: // cyan
+        36
+      case 4: // blue
+        34
+      default: // 5, magenta
+        35
+      }
+      return "\(_ansiEscapeCodePrefix)\(hueAddend + brightAddend)m"
     }
   }
 }

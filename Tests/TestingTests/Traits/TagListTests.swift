@@ -182,6 +182,26 @@ struct TagListTests {
   }
 #endif
 #endif
+
+  @Test("Tag colors are converted to 16-color correctly",
+    arguments: [
+      // Predefined colors (orange and purple are special-cased)
+      (Tag.Color.red, 91), (.orange, 33), (.yellow, 93), (.green, 92), (.blue, 94), (.purple, 95),
+
+      // Grays
+      (.rgb(0, 0, 0), 30), (.rgb(255, 255, 255), 97), (.rgb(100, 100, 100), 90), (.rgb(200, 200, 200), 37),
+
+      // Dark colors
+      (.rgb(100, 0, 0), 31), (.rgb(100, 100, 0), 33), (.rgb(0, 100, 0), 32), (.rgb(0, 100, 100), 36), (.rgb(0, 0, 100), 34), (.rgb(100, 0, 100), 35),
+
+      // Bright colors
+      (.rgb(200, 0, 0), 91), (.rgb(200, 200, 0), 93), (.rgb(0, 200, 0), 92), (.rgb(0, 200, 200), 96), (.rgb(0, 0, 200), 94), (.rgb(200, 0, 200), 95),
+    ]
+  )
+  func tagColorsTo16Color(tagColor: Tag.Color, ansiEscapeCodeValue: Int) {
+    let ansiEscapeCode = tagColor.closest16ColorEscapeCode().dropFirst() // drop the \e
+    #expect(ansiEscapeCode.contains("\(ansiEscapeCodeValue)m"))
+  }
 }
 
 // MARK: - Fixtures
