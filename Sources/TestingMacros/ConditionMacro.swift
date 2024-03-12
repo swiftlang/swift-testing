@@ -168,7 +168,7 @@ extension ConditionMacro {
     // are allowed.
 
     // Include the original arguments first.
-    result += macro.argumentList.lazy.map(Argument.init)
+    result += macro.arguments.lazy.map(Argument.init)
 
     if let trailingClosure = macro.trailingClosure {
       // Since a trailing closure does not (syntactically) include a label, we
@@ -212,7 +212,7 @@ public struct AmbiguousRequireMacro: ConditionMacro {
     of macro: some FreestandingMacroExpansionSyntax,
     in context: some MacroExpansionContext
   ) throws -> ExprSyntax {
-    if let argument = macro.argumentList.first {
+    if let argument = macro.arguments.first {
       _checkAmbiguousArgument(argument.expression, in: context)
     }
 
