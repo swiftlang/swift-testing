@@ -20,7 +20,7 @@ extension Test {
     public struct Argument: Sendable {
       /// A type representing the stable, unique identifier of a parameterized
       /// test argument.
-      @_spi(ExperimentalTestRunning)
+      @_spi(ForToolsIntegrationOnly)
       public struct ID: Sendable {
         /// The raw bytes of this instance's identifier.
         public var bytes: [UInt8]
@@ -44,7 +44,7 @@ extension Test {
       /// ## See Also
       ///
       /// - ``CustomTestArgumentEncodable``
-      @_spi(ExperimentalTestRunning)
+      @_spi(ForToolsIntegrationOnly)
       public var id: ID? {
         // FIXME: Capture the error and propagate to the user, not as a test
         // failure but as an advisory warning. A missing argument ID will
