@@ -15,7 +15,7 @@ extension Event {
   /// The format of the output is not meant to be machine-readable and is
   /// subject to change. For machine-readable output, use ``JUnitXMLRecorder``.
   @_spi(ForToolsIntegrationOnly)
-  public struct ConsoleOutputRecorder: Sendable {
+  public struct ConsoleOutputRecorder: Sendable, ~Copyable {
     /// An enumeration describing options to use when writing events to a
     /// stream.
     public enum Option: Sendable {
@@ -233,8 +233,10 @@ extension Event.ConsoleOutputRecorder {
   ///   with ANSI escape codes used to colorize them. If ANSI escape codes are
   ///   not enabled or if no tag colors are set, returns the empty string.
   fileprivate func colorDots(for tags: Set<Tag>) -> String {
+    let tagColors = tagColors
     let unsortedColors = tags.lazy.compactMap { tagColors[$0] }
 
+    let options = options
     var result: String = Set(unsortedColors)
       .sorted(by: <).lazy
       .compactMap { $0.ansiEscapeCode(options: options) }
@@ -288,7 +290,7 @@ extension Event.ConsoleOutputRecorder {
         // text instead of just the symbol.
         write("\(_ansiEscapeCodePrefix)90m\(symbol) \(message.stringValue)\(_resetANSIEscapeCode)\n")
       } else {
-        let colorDots = context.test.map(\.tags).map(colorDots(for:)) ?? ""
+        let colorDots = context.test.map(\.tags).map { self.colorDots(for: $0) } ?? ""
         write("\(symbol) \(colorDots)\(message.stringValue)\n")
       }
     }
