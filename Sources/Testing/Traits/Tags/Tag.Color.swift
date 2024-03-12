@@ -34,6 +34,40 @@ extension Tag {
     /// library as we may wish to support non-RGB color spaces in the future.
     var blueComponent: UInt8
 
+    /// The hue, saturation, and value (or brightness) components of the color.
+    ///
+    /// This property is not part of the public interface of the testing
+    /// library as we may wish to support non-RGB color spaces in the future.
+    var hsvComponents: (hue: Float32, saturation: Float32, value: Float32) {
+      // Adapted from the algorithms at https://en.wikipedia.org/wiki/HSL_and_HSV
+      // including variable names.
+      let r = Float32(redComponent) / 255.0
+      let g = Float32(greenComponent) / 255.0
+      let b = Float32(blueComponent) / 255.0
+      let M = max(max(r, g), b)
+      let m = min(min(r, g), b)
+      let C = M - m
+
+      var H: Float32 = 0.0
+      if C > 0.0 {
+        if M == r {
+          H = (g - b) / C
+        } else if M == g {
+          H = ((b - r) / C) + 2.0
+        } else if M == b {
+          H = ((r - g) / C) + 4.0
+        }
+        H = H / 6.0
+      }
+      let V: Float32 = M
+      var Sv: Float32 = 0.0
+      if V > 0.0 {
+        Sv = C / V
+      }
+
+      return (H, Sv, V)
+    }
+
     /// The color red.
     public static var red: Self { .rgb(255, 0, 0) }
 
@@ -77,18 +111,18 @@ extension Tag.Color: Equatable, Hashable {}
 // MARK: - Comparable
 
 extension Tag.Color: Comparable {
-  /// The index of this color, relative to other colors.
-  ///
-  /// The value of this property can be used for sorting color tags distinctly
-  /// from other (string-based) tags.
-  private var _colorIndex: UInt32 {
-    // Sort RGB colors such that bluer values are ordered after redder ones.
-    // (We might want to change this logic to sort by computed hue.)
-    (UInt32(blueComponent) << 16) | (UInt32(greenComponent) << 8) | UInt32(redComponent)
-  }
-
   public static func <(lhs: Self, rhs: Self) -> Bool {
-    lhs._colorIndex < rhs._colorIndex
+    // Compare by hue first as it will generally match human expectations for
+    // color ordering. Comparing by saturation before value is arbitrary.
+    let lhsHSV = lhs.hsvComponents
+    let rhsHSV = rhs.hsvComponents
+    if lhsHSV.hue != rhsHSV.hue {
+      return lhsHSV.hue < rhsHSV.hue
+    }
+    if lhsHSV.saturation != rhsHSV.saturation {
+      return lhsHSV.saturation < rhsHSV.saturation
+    }
+    return lhsHSV.value < rhsHSV.value
   }
 }
 

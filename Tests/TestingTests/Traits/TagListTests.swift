@@ -43,6 +43,7 @@ struct TagListTests {
       Tag(kind: .staticMember("blue")),
       Tag(kind: .staticMember("purple"))
     ])
+    #expect(trait.tags.allSatisfy { $0.isPredefinedColor })
   }
 
   @Test("Tag.description property", arguments: [
@@ -180,8 +181,46 @@ struct TagListTests {
       try Testing.loadTagColors(fromFileInDirectoryAtPath: "Directory/That/Does/Not/Exist")
     }
   }
+
+  @Test("Invalid tag color decoding", arguments: [##""#NOTHEX""##, #""garbageColorName""#])
+  func noTagColorsReadFromBadPath(tagColorJSON: String) throws {
+    let tagColorJSONData = try #require(tagColorJSON.data(using: .utf8))
+    #expect(throws: (any Error).self) {
+      _ = try JSONDecoder().decode(Tag.Color.self, from: tagColorJSONData)
+    }
+  }
 #endif
 #endif
+
+  @Test("Tag colors are converted to 16-color correctly",
+    arguments: [
+      // Predefined colors (orange and purple are special-cased)
+      (Tag.Color.red, 91), (.orange, 33), (.yellow, 93), (.green, 92), (.blue, 94), (.purple, 95),
+
+      // Grays
+      (.rgb(0, 0, 0), 30), (.rgb(255, 255, 255), 97), (.rgb(100, 100, 100), 90), (.rgb(200, 200, 200), 37),
+
+      // Dark colors
+      (.rgb(100, 0, 0), 31), (.rgb(100, 100, 0), 33), (.rgb(0, 100, 0), 32), (.rgb(0, 100, 100), 36), (.rgb(0, 0, 100), 34), (.rgb(100, 0, 100), 35),
+
+      // Bright colors
+      (.rgb(200, 0, 0), 91), (.rgb(200, 200, 0), 93), (.rgb(0, 200, 0), 92), (.rgb(0, 200, 200), 96), (.rgb(0, 0, 200), 94), (.rgb(200, 0, 200), 95),
+    ]
+  )
+  func tagColorsTo16Color(tagColor: Tag.Color, ansiEscapeCodeValue: Int) {
+    let ansiEscapeCode = tagColor.closest16ColorEscapeCode().dropFirst() // drop the \e
+    #expect(ansiEscapeCode.contains("\(ansiEscapeCodeValue)m"))
+  }
+
+  @Test("Tag color sorting")
+  func tagColorSorting() {
+    // By hue
+    #expect(Tag.Color.rgb(200, 0, 0) < .rgb(0, 0, 200))
+    // By saturation
+    #expect(Tag.Color.rgb(100, 50, 50) < .rgb(100, 0, 0))
+    // By value
+    #expect(Tag.Color.rgb(0, 0, 0) < .rgb(100, 100, 100))
+  }
 }
 
 // MARK: - Fixtures
