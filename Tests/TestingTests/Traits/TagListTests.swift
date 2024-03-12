@@ -43,6 +43,7 @@ struct TagListTests {
       Tag(kind: .staticMember("blue")),
       Tag(kind: .staticMember("purple"))
     ])
+    #expect(trait.tags.allSatisfy { $0.isPredefinedColor })
   }
 
   @Test("Tag.description property", arguments: [
@@ -180,6 +181,14 @@ struct TagListTests {
       try Testing.loadTagColors(fromFileInDirectoryAtPath: "Directory/That/Does/Not/Exist")
     }
   }
+
+  @Test("Invalid tag color decoding", arguments: [##""#NOTHEX""##, #""garbageColorName""#])
+  func noTagColorsReadFromBadPath(tagColorJSON: String) throws {
+    let tagColorJSONData = try #require(tagColorJSON.data(using: .utf8))
+    #expect(throws: (any Error).self) {
+      _ = try JSONDecoder().decode(Tag.Color.self, from: tagColorJSONData)
+    }
+  }
 #endif
 #endif
 
@@ -201,6 +210,16 @@ struct TagListTests {
   func tagColorsTo16Color(tagColor: Tag.Color, ansiEscapeCodeValue: Int) {
     let ansiEscapeCode = tagColor.closest16ColorEscapeCode().dropFirst() // drop the \e
     #expect(ansiEscapeCode.contains("\(ansiEscapeCodeValue)m"))
+  }
+
+  @Test("Tag color sorting")
+  func tagColorSorting() {
+    // By hue
+    #expect(Tag.Color.rgb(200, 0, 0) < .rgb(0, 0, 200))
+    // By saturation
+    #expect(Tag.Color.rgb(100, 50, 50) < .rgb(100, 0, 0))
+    // By value
+    #expect(Tag.Color.rgb(0, 0, 0) < .rgb(100, 100, 100))
   }
 }
 
