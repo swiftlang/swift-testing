@@ -39,7 +39,7 @@ principles and goals.
 - [Style Guide](https://github.com/apple/swift-testing/blob/main/Documentation/StyleGuide.md)
   describes this project's guidelines for code and documentation style.
 - [SPI groups in swift-testing](https://github.com/apple/swift-testing/blob/main/Documentation/SPI.md)
-  describes wheh and how the testing library uses Swift SPI.
+  describes when and how the testing library uses Swift SPI.
 
 ## Project maintenance
 
