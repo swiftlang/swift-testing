@@ -128,8 +128,8 @@ to the needs of each tool.
 
 Describe any interesting proposals that could build on this proposal in the
 future. This is especially important when these future directions inform the
-design of the proposal, for example by making sure an attribute encodes enough
-information to be used for other purposes.
+design of the proposal, for example by making sure an interface meant for tools
+integration can be extended to include additional information.
 
 The rest of the proposal should generally not talk about future directions
 except by referring to this section. It is important not to confuse reviewers
