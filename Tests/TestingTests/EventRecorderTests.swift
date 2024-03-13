@@ -77,13 +77,9 @@ struct EventRecorderTests {
     #expect(buffer.contains("i → 5"))
     #expect(buffer.contains("Ocelots don't like the number 3."))
 
-    if let colorBitDepth = options.colorBitDepth, colorBitDepth >= 1 {
+    if let colorBitDepth = options.colorBitDepth, colorBitDepth > 1 {
       #expect(buffer.contains("\u{001B}["))
-      if colorBitDepth >= 4 {
-        #expect(buffer.contains("●"))
-      } else {
-        #expect(!buffer.contains("●"))
-      }
+      #expect(buffer.contains("●"))
     } else {
       #expect(!buffer.contains("\u{001B}["))
       #expect(!buffer.contains("●"))

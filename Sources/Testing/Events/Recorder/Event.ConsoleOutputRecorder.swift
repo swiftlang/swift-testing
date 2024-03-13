@@ -327,7 +327,7 @@ extension Event.ConsoleOutputRecorder {
     for message in messages {
       let symbol = message.symbol?.stringValue(options: options) ?? " "
 
-      if case .details = message.symbol, options.colorBitDepth != nil {
+      if case .details = message.symbol, let colorBitDepth = options.colorBitDepth, colorBitDepth > 1 {
         // Special-case the detail symbol to apply grey to the entire line of
         // text instead of just the symbol.
         write("\(_ansiEscapeCodePrefix)90m\(symbol) \(message.stringValue)\(_resetANSIEscapeCode)\n")
