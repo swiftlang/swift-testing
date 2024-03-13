@@ -27,8 +27,8 @@ To learn how to contribute to the testing library itself, see
 
 ### Downloading a development toolchain
 
-A recent **development snapshot** toolchain is required to use the testing
-library. Visit [swift.org](https://www.swift.org/download/#trunk-development-main)
+A recent **development snapshot** toolchain is required to use all of the
+features of the testing library. Visit [swift.org](https://www.swift.org/download/#trunk-development-main)
 to download and install a toolchain from the section titled
 **Snapshots — Trunk Development (main)**.
 
