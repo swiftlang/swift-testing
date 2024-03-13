@@ -154,11 +154,11 @@ extension Event.Symbol {
       // Unicode: PLUS-MINUS SIGN
       return "\u{00B1}"
     case .warning:
-      // Unicode: EXCLAMATION MARK
-      return "\u{0021}"
+      // Unicode: BLACK UP-POINTING TRIANGLE
+      return "\u{25B2}"
     case .details:
-      // Unicode: GREATER-THAN SIGN
-      return "\u{003E}"
+      // Unicode: RIGHTWARDS ARROW
+      return "\u{2192}"
     }
 #else
 #warning("Platform-specific implementation missing: Unicode characters unavailable")
