@@ -87,7 +87,7 @@ a test is unable to run due to limited availability:
 
 ```swift
 @available(macOS 11.0, *)
-@available(swift, introduced: 5.9, message: "Requires Swift 5.9 features to run")
+@available(swift, introduced: 8.0, message: "Requires Swift 8.0 features to run")
 @Test func foodTruckExists() { ... }
 ```
 
