@@ -9,14 +9,19 @@
 //
 
 @testable import Testing
+#if canImport(Foundation)
+import Foundation
+#endif
 
 @Suite("Bug Tests", .tags(.traitRelated))
 struct BugTests {
   @Test(".bug() with String")
   func bugFactoryMethodWithString() throws {
-    let trait = Bug.bug("12345")
+    let trait = Bug.bug("12345", "Lorem ipsum")
     #expect((trait as Any) is Bug)
     #expect(trait.identifier == "12345")
+    #expect(trait.comment == "Lorem ipsum")
+    #expect(trait.comments == ["Lorem ipsum"])
   }
 
   @Test(".bug() with SignedInteger")
@@ -24,13 +29,17 @@ struct BugTests {
     let trait = Bug.bug(12345)
     #expect((trait as Any) is Bug)
     #expect(trait.identifier == "12345")
+    #expect(trait.comment == nil)
+    #expect(trait.comments.isEmpty)
   }
 
   @Test(".bug() with UnsignedInteger")
   func bugFactoryMethodWithUnsignedInteger() throws {
-    let trait = Bug.bug(UInt32(12345))
+    let trait = Bug.bug(UInt32(12345), "Lorem ipsum")
     #expect((trait as Any) is Bug)
     #expect(trait.identifier == "12345")
+    #expect(trait.comment == "Lorem ipsum")
+    #expect(trait.comments == ["Lorem ipsum"])
   }
 
   @Test("Comparing Bug instances")
@@ -81,4 +90,14 @@ struct BugTests {
     let traits: Set<Bug> = [.bug(12345), .bug(12345), .bug(12345, relationship: .uncoveredBug), .bug("67890")]
     #expect(traits.count == 2)
   }
+
+#if canImport(Foundation)
+  @Test("Encoding/decoding")
+  func encodingAndDecoding() throws {
+    let original = Bug.bug(12345, relationship: .failingBecauseOfBug, "Lorem ipsum")
+    let data = try JSONEncoder().encode(original)
+    let copy = try JSONDecoder().decode(Bug.self, from: data)
+    #expect(original == copy)
+  }
+#endif
 }

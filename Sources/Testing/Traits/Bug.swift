@@ -12,8 +12,8 @@
 ///
 /// To add this trait to a test, use one of the following functions:
 ///
-/// - ``Trait/bug(_:relationship:)-duvt``
-/// - ``Trait/bug(_:relationship:)-40riy``
+/// - ``Trait/bug(_:relationship:_:)-86mmm``
+/// - ``Trait/bug(_:relationship:_:)-3hsi5``
 public struct Bug {
   /// The identifier of this bug in the associated bug-tracking system.
   ///
@@ -25,7 +25,7 @@ public struct Bug {
   ///
   /// For more information on how the testing library uses bug relationships,
   /// see <doc:AssociatingBugs>.
-  public enum Relationship: Sendable, Equatable, Hashable {
+  public enum Relationship: Sendable {
     /// The relationship between the test and this bug is unspecified.
     ///
     /// Use this relationship to describe a bug that is related to a test, but
@@ -62,6 +62,9 @@ public struct Bug {
   /// For more information on how the testing library uses bug relationships,
   /// see <doc:AssociatingBugs>.
   public var relationship: Relationship
+
+  /// An optional, user-specified comment describing this trait.
+  public var comment: Comment?
 }
 
 // MARK: - Equatable, Hashable, Comparable
@@ -80,9 +83,20 @@ extension Bug: Equatable, Hashable, Comparable {
   }
 }
 
+extension Bug.Relationship: Equatable, Hashable {}
+
+// MARK: - Codable
+
+extension Bug: Codable {}
+extension Bug.Relationship: Codable {}
+
 // MARK: - Trait, TestTrait, SuiteTrait
 
-extension Bug: TestTrait, SuiteTrait {}
+extension Bug: TestTrait, SuiteTrait {
+  public var comments: [Comment] {
+    Array(comment)
+  }
+}
 
 extension Trait where Self == Bug {
   /// Construct a bug to track with a test.
@@ -94,10 +108,11 @@ extension Trait where Self == Bug {
   ///   - relationship: The relationship between the bug and the associated
   ///     test. The default value is
   ///     ``Bug/Relationship-swift.enum/unspecified``.
+  ///   - comment: An optional, user-specified comment describing this trait.
   ///
   /// - Returns: An instance of ``Bug`` representing the specified bug.
-  public static func bug(_ identifier: String, relationship: Bug.Relationship = .unspecified) -> Self {
-    Self(identifier: identifier, relationship: relationship)
+  public static func bug(_ identifier: String, relationship: Bug.Relationship = .unspecified, _ comment: Comment? = nil) -> Self {
+    Self(identifier: identifier, relationship: relationship, comment: comment)
   }
 
   /// Construct a bug to track with a test.
@@ -109,10 +124,11 @@ extension Trait where Self == Bug {
   ///   - relationship: The relationship between the bug and the associated
   ///     test. The default value is
   ///     ``Bug/Relationship-swift.enum/unspecified``.
+  ///   - comment: An optional, user-specified comment describing this trait.
   ///
   /// - Returns: An instance of ``Bug`` representing the specified bug.
-  public static func bug(_ identifier: some Numeric, relationship: Bug.Relationship = .unspecified) -> Self {
-    Self(identifier: String(describing: identifier), relationship: relationship)
+  public static func bug(_ identifier: some Numeric, relationship: Bug.Relationship = .unspecified, _ comment: Comment? = nil) -> Self {
+    Self(identifier: String(describing: identifier), relationship: relationship, comment: comment)
   }
 }
 

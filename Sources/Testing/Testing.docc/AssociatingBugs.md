@@ -25,8 +25,8 @@ specific bugs with tests that reproduce them or verify they are fixed.
 
 ## Associating a bug with a test
 
-To associate a bug with a test, use the ``Trait/bug(_:relationship:)-duvt``
-or ``Trait/bug(_:relationship:)-40riy`` function. The first argument to this
+To associate a bug with a test, use the ``Trait/bug(_:relationship:_:)-86mmm``
+or ``Trait/bug(_:relationship:_:)-3hsi5`` function. The first argument to this
 function is the bug's _identifier_ in its bug-tracking system:
 
 ```swift
@@ -55,9 +55,10 @@ expected to fail, or that a failure indicates a regression that requires
 attention from a developer.
 
 To specify how a bug is related to a test, use the `relationship` parameter of
-the ``Trait/bug(_:relationship:)-duvt`` or ``Trait/bug(_:relationship:)-40riy``
-function. For example, to indicate that a test was written to verify a
-previously-fixed bug, one would specify `.verifiesFix`:
+the ``Trait/bug(_:relationship:_:)-86mmm`` or
+``Trait/bug(_:relationship:_:)-3hsi5`` function. For example, to indicate that a
+test was written to verify a previously-fixed bug, one would specify
+`.verifiesFix`:
 
 ```swift
 @Test("Food truck engine works", .bug("12345", relationship: .verifiesFix))
@@ -83,9 +84,27 @@ The testing library defines several kinds of common bug/test relationship:
 <!-- Keep `.unspecified` as the last row above in order to imply it is a
 fallback. -->
 
+## Adding comments to associated bugs
+
+A bug identifier may be insufficient to uniquely and clearly identify a bug
+associated with a test. Bug trackers universally provide a "title" field for
+bugs that is not visible to the testing library. To add a bug's title to a test,
+include it after the bug's identifier and (optionally) its relationship to the
+test:
+
+```swift
+@Test(
+  "Food truck has napkins",
+  .bug("12345", "Forgot to buy more napkins")
+)
+func hasNapkins() async {
+  ...
+}
+```
+
 ## Topics
 
 - <doc:BugIdentifiers>
-- ``Trait/bug(_:relationship:)-duvt``
-- ``Trait/bug(_:relationship:)-40riy``
+- ``Trait/bug(_:relationship:_:)-86mmm``
+- ``Trait/bug(_:relationship:_:)-3hsi5``
 - ``Bug``
