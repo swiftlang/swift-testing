@@ -20,7 +20,8 @@ and expressive capabilities. It gives developers more confidence with less code:
 ```
 
 > [!IMPORTANT]
-> This package is under active, ongoing development. Its contents, including all
+> This package is under active, ongoing development and requires a recent
+> **trunk development snapshot** toolchain. Its contents, including all
 > interfaces and implementation details, are experimental and are subject to
 > change or removal without notice.
 >
