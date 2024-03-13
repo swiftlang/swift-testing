@@ -83,8 +83,8 @@ func isCold() async throws { ... }
 ```
 
 If a test is disabled because of a problem for which there is a corresponding
-bug report, you can use the ``Trait/bug(_:relationship:)-duvt`` or
-``Trait/bug(_:relationship:)-40riy`` function with the relationship
+bug report, you can use the ``Trait/bug(_:relationship:_:)-86mmm`` or
+``Trait/bug(_:relationship:_:)-3hsi5`` function with the relationship
 ``Bug/Relationship-swift.enum/failingBecauseOfBug``:
 
 ```swift
