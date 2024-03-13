@@ -59,8 +59,8 @@ and install a toolchain.
 
 #### Installing a toolchain
 
-1. Download a toolchain. A recent **development snapshot** toolchain is required
-   to build the testing library. Visit
+1. Download a toolchain. A recent **trunk development snapshot** toolchain is
+   required to build the testing library. Visit
    [swift.org](https://www.swift.org/download/#trunk-development-main) and
    download the most recent toolchain from the section titled
    **Snapshots — Trunk Development (main)**.
