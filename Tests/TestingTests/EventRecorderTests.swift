@@ -9,9 +9,7 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
-#if !os(Windows)
 import RegexBuilder
-#endif
 #if canImport(Foundation)
 import Foundation
 #endif
@@ -114,7 +112,6 @@ struct EventRecorderTests {
     }
   }
 
-#if !os(Windows)
   @available(_regexAPI, *)
   @Test(
     "Titles of messages ('Test' vs. 'Suite') are determined correctly",
@@ -200,7 +197,6 @@ struct EventRecorderTests {
     #expect(issueCount.total == match.output.1)
     #expect(issueCount.expected == match.output.2)
   }
-#endif
 
   @available(_regexAPI, *)
   @Test("Issue counts are omitted on a successful test")
@@ -224,7 +220,6 @@ struct EventRecorderTests {
     #expect(!buffer.contains("issue"))
   }
 
-#if !os(Windows)
   @available(_regexAPI, *)
   @Test("Issue counts are summed correctly on run end")
   func issueCountSummingAtRunEnd() async throws {
@@ -270,7 +265,6 @@ struct EventRecorderTests {
     #expect(match.output.1 == 7)
     #expect(match.output.2 == 4)
   }
-#endif
 
 #if canImport(Foundation) || canImport(FoundationXML)
 
