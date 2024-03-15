@@ -207,13 +207,18 @@ extension Event.HumanReadableOutputRecorder {
     verbosely verbose: Bool = false
   ) -> [Message] {
     let test = eventContext.test
-    var testName: String
-    if let displayName = test?.displayName {
-      testName = "\"\(displayName)\""
-    } else if let test {
-      testName = test.name
+    let testName = if let test {
+      if let displayName = test.displayName {
+        if verbose {
+          "\"\(displayName)\" → \(test.name)"
+        } else {
+          "\"\(displayName)\""
+        }
+      } else {
+        test.name
+      }
     } else {
-      testName = "«unknown»"
+      "«unknown»"
     }
     let instant = event.instant
 

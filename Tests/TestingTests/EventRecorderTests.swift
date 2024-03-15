@@ -108,6 +108,7 @@ struct EventRecorderTests {
     let buffer = stream.buffer.rawValue
     #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter) "abc": Swift.String"#))
     #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter) lhs: Swift.String → "987""#))
+    #expect(buffer.contains(#""Not A Lobster" → actuallyCrab()"#))
 
     if testsWithSignificantIOAreEnabled {
       print(buffer, terminator: "")
