@@ -286,9 +286,12 @@ extension [Event.ConsoleOutputRecorder.Option] {
     }
 #endif
 
-    // Load tag colors from user/package preferences on disk.
-    if let tagColors = try? loadTagColors() {
-      result.append(.useTagColors(tagColors))
+    // If color output is enabled, load tag colors from user/package preferences
+    // on disk.
+    if let colorBitDepth = result.colorBitDepth, colorBitDepth > 1 {
+      if let tagColors = try? loadTagColors() {
+        result.append(.useTagColors(tagColors))
+      }
     }
 
     return result
