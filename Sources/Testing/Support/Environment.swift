@@ -36,7 +36,7 @@ enum Environment {
   static func variable(named name: String) -> String? {
 #if SWT_NO_ENVIRONMENT_VARIABLES
     simulatedEnvironment.rawValue[name]
-#elseif SWT_TARGET_OS_APPLE || os(Linux)
+#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(WASI)
     getenv(name).flatMap { String(validatingUTF8: $0) }
 #elseif os(Windows)
     name.withCString(encodedAs: UTF16.self) { name in

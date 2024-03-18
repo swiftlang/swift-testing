@@ -79,7 +79,7 @@ extension Environment {
       environment[name] = value
     }
     return true
-#elseif SWT_TARGET_OS_APPLE || os(Linux)
+#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(WASI)
     if let value {
       return 0 == setenv(name, value, 1)
     }

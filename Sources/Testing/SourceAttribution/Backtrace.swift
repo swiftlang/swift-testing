@@ -72,6 +72,10 @@ public struct Backtrace: Sendable {
         initializedCount = .init(backtrace(addresses.baseAddress!, .init(addresses.count)))
 #elseif os(Windows)
         initializedCount = Int(RtlCaptureStackBackTrace(0, ULONG(addresses.count), addresses.baseAddress!, nil))
+#elseif os(WASI)
+        // SEE: https://github.com/WebAssembly/WASI/issues/159
+        // SEE: https://github.com/apple/swift/pull/31693
+        initializedCount = 0
 #else
 #warning("Platform-specific implementation missing: backtraces unavailable")
         initializedCount = 0

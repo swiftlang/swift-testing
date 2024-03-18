@@ -140,7 +140,7 @@ struct FileHandle: ~Copyable, Sendable {
       let fd: CInt = -1
 #endif
 
-      if fd >= 0 {
+      if Bool(fd >= 0) {
         return try body(fd)
       }
       return try body(nil)
