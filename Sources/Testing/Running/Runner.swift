@@ -65,7 +65,7 @@ extension Runner {
   ///
   /// This function encapsulates the standard error handling performed by
   /// ``Runner`` when running a test or test case.
-  private func _withErrorHandling(sourceLocation: SourceLocation, _ body: () async throws -> Void) async throws -> Void {
+  private func _withErrorHandling(sourceLocation: SourceLocation, _ body: () async throws -> Void) async {
     // Ensure that we are capturing backtraces for errors before we start
     // expecting to see them.
     Backtrace.startCachingForThrownErrors()
@@ -73,22 +73,8 @@ extension Runner {
       Backtrace.flushThrownErrorCache()
     }
 
-    // A local error type that represents an error that was already handled in
-    // a previous scope.
-    //
-    // Instances of this type are thrown from this function after any other
-    // error is caught. Subsequent outer calls to this function will then
-    // avoid producing events for the same error. We bother doing this at all
-    // because we may need to cancel the parent task after a child task is
-    // cancelled, and the simplest way to do so is to just keep rethrowing.
-    struct AlreadyHandled: Error {}
-
     do {
       try await body()
-
-    } catch is AlreadyHandled {
-      // This error stands in for an earlier error that should not be reported
-      // again. It is not converted to an event.
 
     } catch is ExpectationFailedError {
       // This error is thrown by `__check()` to indicate that its condition
@@ -252,8 +238,8 @@ extension Runner {
     }
 
     if let step = stepGraph.value, case .run = step.action {
-      try await Test.withCurrent(step.test) {
-        try await _withErrorHandling(sourceLocation: step.test.sourceLocation) {
+      await Test.withCurrent(step.test) {
+        await _withErrorHandling(sourceLocation: step.test.sourceLocation) {
           try await _executeTraits(for: step, testCase: nil) {
             // Run the test function at this step (if one is present.)
             if let testCases = step.test.testCases {
@@ -320,9 +306,9 @@ extension Runner {
       Event.post(.testCaseEnded, for: step.test, testCase: testCase, configuration: configuration)
     }
 
-    try await Test.Case.withCurrent(testCase) {
+    await Test.Case.withCurrent(testCase) {
       let sourceLocation = step.test.sourceLocation
-      try await _withErrorHandling(sourceLocation: sourceLocation) {
+      await _withErrorHandling(sourceLocation: sourceLocation) {
         try await withTimeLimit(for: step.test, configuration: configuration) {
           try await _executeTraits(for: step, testCase: testCase) {
             try await testCase.body()
