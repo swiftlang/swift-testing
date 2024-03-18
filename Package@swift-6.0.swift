@@ -13,6 +13,15 @@
 import PackageDescription
 import CompilerPluginSupport
 
+let compilerPluginEnabled: Bool = {
+  if let boolValue = Bool(Context.environment["SWT_COMPILER_PLUGIN_ENABLED", default: "true"]) {
+    return boolValue
+  } else if let intValue = UInt64(Context.environment["SWT_COMPILER_PLUGIN_ENABLED", default: "1"]) {
+    return intValue != 0
+  }
+  return true // enabled by default
+}()
+
 let package = Package(
   name: "swift-testing",
 
@@ -57,14 +66,20 @@ let package = Package(
 
     .macro(
       name: "TestingMacros",
-      dependencies: [
-        .product(name: "SwiftDiagnostics", package: "swift-syntax"),
-        .product(name: "SwiftSyntax", package: "swift-syntax"),
-        .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
-        .product(name: "SwiftParser", package: "swift-syntax"),
-        .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
-        .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
-      ],
+      dependencies: {
+        var result: [Target.Dependency] = [
+          .product(name: "SwiftDiagnostics", package: "swift-syntax"),
+          .product(name: "SwiftSyntax", package: "swift-syntax"),
+          .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
+          .product(name: "SwiftParser", package: "swift-syntax"),
+          .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+          .product(name: "SwiftSyntaxMacroExpansion", package: "swift-syntax"),
+        ]
+        if compilerPluginEnabled {
+          result.append(.product(name: "SwiftCompilerPlugin", package: "swift-syntax"))
+        }
+        return result
+      }(),
       swiftSettings: .packageSettings + [
         // The only target which needs the ability to import this macro
         // implementation target's module is its unit test target. Users of the
@@ -125,7 +140,13 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .define("SWT_TARGET_OS_APPLE", .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])),
 
       .define("SWT_NO_FILE_IO", .when(platforms: [.wasi])),
-    ]
+    ] + {
+      if compilerPluginEnabled {
+        []
+      } else {
+        [.define("SWT_NO_COMPILER_PLUGIN"),]
+      }
+    }()
   }
 
   /// Settings which define commonly-used OS availability macros.

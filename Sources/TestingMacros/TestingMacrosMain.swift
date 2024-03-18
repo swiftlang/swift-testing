@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(SwiftCompilerPlugin)
+#if !SWT_NO_COMPILER_PLUGIN && canImport(SwiftCompilerPlugin)
 import SwiftCompilerPlugin
 #if swift(>=5.11)
 import SwiftSyntaxMacros
@@ -30,5 +30,11 @@ struct TestingMacrosMain: CompilerPlugin {
       TagMacro.self,
     ]
   }
+}
+#else
+#warning("swift-testing macros unavailable (compiler plugins unavailable)")
+@main
+struct TestingMacrosMain {
+  static func main() {}
 }
 #endif
