@@ -136,7 +136,6 @@ func listTestsForSwiftPM(_ tests: some Sequence<Test>) -> [String] {
 /// validated the passed arguments.
 func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> Configuration {
   var configuration = Configuration()
-  configuration.isParallelizationEnabled = false
 
   // Do not consider the executable path AKA argv[0].
   let args = args.dropFirst()
