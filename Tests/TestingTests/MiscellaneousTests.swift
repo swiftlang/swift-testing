@@ -194,24 +194,26 @@ struct TestsWithAsyncArguments {
 struct MiscellaneousTests {
   @Test("Free function's name")
   func unnamedFreeFunctionTest() async throws {
-    let testFunction = try #require(await Test.all.first(where: { $0.name.contains("freeSyncFunction") }))
+    let tests = await Test.all
+    let testFunction = try #require(tests.first(where: { $0.name.contains("freeSyncFunction") }))
     #expect(testFunction.name == "freeSyncFunction()")
   }
 
   @Test("Test suite type's name")
   func unnamedMemberFunctionTest() async throws {
-    let testType = try #require(await test(for: SendableTests.self))
+    let testType = try #require(await test(for: SendableTests.self) as Test?)
     #expect(testType.name == "SendableTests")
   }
 
   @Test("Free function has custom display name")
   func namedFreeFunctionTest() async throws {
-    #expect(await Test.all.first { $0.displayName == "Named Free Sync Function" && !$0.isSuite && $0.containingType == nil } != nil)
+    let tests = await Test.all
+    #expect(tests.first { $0.displayName == "Named Free Sync Function" && !$0.isSuite && $0.containingType == nil } != nil)
   }
 
   @Test("Member function has custom display name")
   func namedMemberFunctionTest() async throws {
-    let testType = try #require(await test(for: NamedSendableTests.self))
+    let testType = try #require(await test(for: NamedSendableTests.self) as Test?)
     #expect(testType.displayName == "Named Sendable test type")
   }
 
@@ -319,18 +321,18 @@ struct MiscellaneousTests {
   @Test("Test.parameters property")
   func parametersProperty() async throws {
     do {
-      let theTest = try #require(await test(for: SendableTests.self))
+      let theTest = try #require(await test(for: SendableTests.self) as Test?)
       #expect(theTest.parameters == nil)
     }
 
     do {
-      let test = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+      let test = try #require(await testFunction(named: "succeeds()", in: SendableTests.self) as Test?)
       let parameters = try #require(test.parameters)
       #expect(parameters.isEmpty)
     } catch {}
 
     do {
-      let test = try #require(await testFunction(named: "parameterized(i:)", in: NonSendableTests.self))
+      let test = try #require(await testFunction(named: "parameterized(i:)", in: NonSendableTests.self) as Test?)
       let parameters = try #require(test.parameters)
       #expect(parameters.count == 1)
       let firstParameter = try #require(parameters.first)
@@ -343,7 +345,7 @@ struct MiscellaneousTests {
     } catch {}
 
     do {
-      let test = try #require(await testFunction(named: "parameterized2(i:j:)", in: NonSendableTests.self))
+      let test = try #require(await testFunction(named: "parameterized2(i:j:)", in: NonSendableTests.self) as Test?)
       let parameters = try #require(test.parameters)
       #expect(parameters.count == 2)
       let firstParameter = try #require(parameters.first)

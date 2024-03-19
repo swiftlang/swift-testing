@@ -32,9 +32,10 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///
   /// - Returns: A diagnostic message.
   static func condition(_ condition: ExprSyntax, isAlways value: Bool, in macro: some FreestandingMacroExpansionSyntax) -> Self {
-    Self(
+    let action = value ? "pass" : "fail"
+    return Self(
       syntax: Syntax(condition),
-      message: "#\(macro.macroName.textWithoutBackticks)(_:_:) will always \(value ? "pass" : "fail") here; use Bool(\(condition)) to silence this warning",
+      message: "\(_macroName(macro)) will always \(action) here; use 'Bool(\(condition))' to silence this warning",
       severity: value ? .note : .warning
     )
   }
@@ -50,9 +51,57 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   static func asExclamationMarkIsEvaluatedEarly(_ expr: AsExprSyntax, in macro: some FreestandingMacroExpansionSyntax) -> Self {
     return Self(
       syntax: Syntax(expr.asKeyword),
-      message: "The expression \(expr.trimmed) will be evaluated before #\(macro.macroName.textWithoutBackticks)(_:_:) is invoked; use as? instead of as! to silence this warning",
+      message: "Expression '\(expr.trimmed)' will be evaluated before \(_macroName(macro)) is invoked; use 'as?' instead of 'as!' to silence this warning",
       severity: .warning
     )
+  }
+
+  /// Create a diagnostic message stating that an effectful (`try` or `await`)
+  /// expression cannot be parsed and should be broken apart.
+  ///
+  /// - Parameters:
+  ///   - expr: The expression being diagnosed.
+  ///   - macro: The macro expression.
+  ///
+  /// - Returns: A diagnostic message.
+  static func effectfulExpressionNotParsed(_ expr: ExprSyntax, in macro: some FreestandingMacroExpansionSyntax) -> Self {
+    let effectful = if let tryExpr = expr.as(TryExprSyntax.self) {
+      if tryExpr.expression.is(AwaitExprSyntax.self) {
+        "throwing/asynchronous"
+      } else {
+        "throwing"
+      }
+    } else {
+      "asynchronous"
+    }
+    return Self(
+      syntax: Syntax(expr),
+      message: "Expression '\(expr.trimmed)' will not be expanded on failure; move the \(effectful) part out of the call to \(_macroName(macro))",
+      severity: .warning
+    )
+  }
+
+  /// Get the human-readable name of the given freestanding macro.
+  ///
+  /// - Parameters:
+  ///   - macro: The freestanding macro node to name.
+  ///
+  /// - Returns: The name of the macro as understood by a developer, such as
+  ///   `"'#expect(_:_:)'"`. Include single quotes.
+  private static func _macroName(_ macro: some FreestandingMacroExpansionSyntax) -> String {
+    "'#\(macro.macroName.textWithoutBackticks)(_:_:)'"
+  }
+
+  /// Get the human-readable name of the given attached macro.
+  ///
+  /// - Parameters:
+  ///   - attribute: The attached macro node to name.
+  ///
+  /// - Returns: The name of the macro as understood by a developer, such as
+  ///   `"'@Test'"`. Include single quotes.
+  private static func _macroName(_ attribute: AttributeSyntax) -> String {
+    // SEE: https://github.com/apple/swift/blob/main/docs/Diagnostics.md?plain=1#L44
+    "'\(attribute.attributeNameText)'"
   }
 
   /// Get a string corresponding to the specified syntax node (for instance,
@@ -117,7 +166,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     precondition(!attributes.isEmpty)
     return Self(
       syntax: Syntax(attributes.last!),
-      message: "The @\(attributes.last!.attributeNameText) attribute cannot be applied to \(_kindString(for: decl, includeA: true)) more than once.",
+      message: "Attribute \(_macroName(attributes.last!)) cannot be applied to \(_kindString(for: decl, includeA: true)) more than once",
       severity: .error
     )
   }
@@ -134,7 +183,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   static func genericDeclarationNotSupported(_ decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax, becauseOf genericClause: some SyntaxProtocol) -> Self {
     Self(
       syntax: Syntax(genericClause),
-      message: "The @\(attribute.attributeNameText) attribute cannot be applied to a generic \(_kindString(for: decl)).",
+      message: "Attribute \(_macroName(attribute)) cannot be applied to a generic \(_kindString(for: decl))",
       severity: .error
     )
   }
@@ -155,7 +204,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   static func availabilityAttributeNotSupported(_ availabilityAttribute: AttributeSyntax, on decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
     Self(
       syntax: Syntax(availabilityAttribute),
-      message: "The @\(attribute.attributeNameText) attribute cannot be applied to this \(_kindString(for: decl)) because it has been marked \(availabilityAttribute.trimmed).",
+      message: "Attribute \(_macroName(attribute)) cannot be applied to this \(_kindString(for: decl)) because it has been marked '\(availabilityAttribute.trimmed)'",
       severity: .error
     )
   }
@@ -171,7 +220,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   static func attributeNotSupported(_ attribute: AttributeSyntax, on decl: some SyntaxProtocol) -> Self {
     Self(
       syntax: Syntax(decl),
-      message: "The @\(attribute.attributeNameText) attribute cannot be applied to \(_kindString(for: decl, includeA: true)).",
+      message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true))",
       severity: .error
     )
   }
@@ -187,8 +236,14 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   static func attributeHasNoEffect(_ attribute: AttributeSyntax, on decl: ExtensionDeclSyntax) -> Self {
     Self(
       syntax: Syntax(decl),
-      message: "The @\(attribute.attributeNameText) attribute has no effect when applied to an extension and should be removed.",
-      severity: .error
+      message: "Attribute \(_macroName(attribute)) has no effect when applied to an extension",
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Remove attribute \(_macroName(attribute))"),
+          changes: [.replace(oldNode: Syntax(attribute), newNode: Syntax("" as ExprSyntax))]
+        ),
+      ]
     )
   }
 
@@ -206,19 +261,19 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     case 0:
       return Self(
         syntax: Syntax(functionDecl),
-        message: "The @\(attribute.attributeNameText) attribute cannot specify arguments when used with \(functionDecl.completeName) because it does not take any.",
+        message: "Attribute \(_macroName(attribute)) cannot specify arguments when used with '\(functionDecl.completeName)' because it does not take any",
         severity: .error
       )
     case 1:
       return Self(
         syntax: Syntax(functionDecl),
-        message: "The @\(attribute.attributeNameText) attribute must specify an argument when used with \(functionDecl.completeName).",
+        message: "Attribute \(_macroName(attribute)) must specify an argument when used with '\(functionDecl.completeName)'",
         severity: .error
       )
     default:
       return Self(
         syntax: Syntax(functionDecl),
-        message: "The @\(attribute.attributeNameText) attribute must specify \(expectedArgumentCount) arguments when used with \(functionDecl.completeName).",
+        message: "Attribute \(_macroName(attribute)) must specify \(expectedArgumentCount) arguments when used with '\(functionDecl.completeName)'",
         severity: .error
       )
     }
@@ -236,7 +291,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   static func xcTestCaseNotSupported(_ decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
     Self(
       syntax: Syntax(decl),
-      message: "The @\(attribute.attributeNameText) attribute cannot be applied to a subclass of XCTestCase.",
+      message: "Attribute \(_macroName(attribute)) cannot be applied to a subclass of 'XCTestCase'",
       severity: .error
     )
   }
@@ -252,7 +307,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   static func nonFinalClassNotSupported(_ decl: ClassDeclSyntax, whenUsing attribute: AttributeSyntax) -> Self {
     Self(
       syntax: Syntax(decl),
-      message: "The @\(attribute.attributeNameText) attribute cannot be applied to non-final class \(decl.name.textWithoutBackticks).",
+      message: "Attribute \(_macroName(attribute)) cannot be applied to non-final class '\(decl.name.textWithoutBackticks)'",
       severity: .error
     )
   }
@@ -269,7 +324,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   static func specifierNotSupported(_ specifier: TokenSyntax, on parameter: FunctionParameterSyntax, whenUsing attribute: AttributeSyntax) -> Self {
     Self(
       syntax: Syntax(parameter),
-      message: "The @\(attribute.attributeNameText) attribute cannot be applied to a function with a parameter marked '\(specifier.textWithoutBackticks)'.",
+      message: "Attribute \(_macroName(attribute)) cannot be applied to a function with a parameter marked '\(specifier.textWithoutBackticks)'",
       severity: .error
     )
   }
@@ -286,7 +341,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   static func returnTypeNotSupported(_ returnType: TypeSyntax, on decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
     Self(
       syntax: Syntax(returnType),
-      message: "The result of this \(_kindString(for: decl)) will be discarded during testing.",
+      message: "The result of this \(_kindString(for: decl)) will be discarded during testing",
       severity: .warning
     )
   }
@@ -302,7 +357,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   static func tagExprNotSupported(_ tagExpr: some SyntaxProtocol, in attribute: AttributeSyntax) -> Self {
     Self(
       syntax: Syntax(tagExpr),
-      message: "The tag \(tagExpr.trimmed) cannot be used with the @\(attribute.attributeNameText) attribute. Pass a member of Tag or a string literal instead.",
+      message: "Tag '\(tagExpr.trimmed)' cannot be used with attribute \(_macroName(attribute)); pass a member of 'Tag' or a string literal instead",
       severity: .error
     )
   }
@@ -317,15 +372,15 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   static func optionalBoolExprIsAmbiguous(_ boolExpr: ExprSyntax) -> Self {
     Self(
       syntax: Syntax(boolExpr),
-      message: "Requirement '\(boolExpr.trimmed)' is ambiguous.",
+      message: "Requirement '\(boolExpr.trimmed)' is ambiguous",
       severity: .warning,
       fixIts: [
         FixIt(
-          message: MacroExpansionFixItMessage("To unwrap an optional value, add 'as Bool?'."),
+          message: MacroExpansionFixItMessage("To unwrap an optional value, add 'as Bool?'"),
           changes: [.replace(oldNode: Syntax(boolExpr), newNode: Syntax("\(boolExpr) as Bool?" as ExprSyntax))]
         ),
         FixIt(
-          message: MacroExpansionFixItMessage("To check if a value is true, add '?? false'."),
+          message: MacroExpansionFixItMessage("To check if a value is true, add '?? false'"),
           changes: [.replace(oldNode: Syntax(boolExpr), newNode: Syntax("\(boolExpr) ?? false" as ExprSyntax))]
         ),
       ]

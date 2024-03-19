@@ -23,88 +23,88 @@ struct TestDeclarationMacroTests {
     arguments: [
       // Generic declarations
       "@Suite struct S<T> {}":
-        "The @Suite attribute cannot be applied to a generic structure.",
+        "Attribute 'Suite' cannot be applied to a generic structure",
       "@Suite struct S where X == Y {}":
-        "The @Suite attribute cannot be applied to a generic structure.",
+        "Attribute 'Suite' cannot be applied to a generic structure",
       "@Test func f<T>() {}":
-        "The @Test attribute cannot be applied to a generic function.",
+        "Attribute 'Test' cannot be applied to a generic function",
       "@Test func f() where X == Y {}":
-        "The @Test attribute cannot be applied to a generic function.",
+        "Attribute 'Test' cannot be applied to a generic function",
       "@Test(arguments: []) func f(x: some T) {}":
-        "The @Test attribute cannot be applied to a generic function.",
+        "Attribute 'Test' cannot be applied to a generic function",
       "@Test(arguments: []) func f(x: (some T)?) {}":
-        "The @Test attribute cannot be applied to a generic function.",
+        "Attribute 'Test' cannot be applied to a generic function",
 
       // Multiple attributes on a declaration
       "@Suite @Suite struct S {}":
-        "The @Suite attribute cannot be applied to a structure more than once.",
+        "Attribute 'Suite' cannot be applied to a structure more than once",
       "@Suite @Suite final class C {}":
-        "The @Suite attribute cannot be applied to a class more than once.",
+        "Attribute 'Suite' cannot be applied to a class more than once",
       "@Test @Test func f() {}":
-        "The @Test attribute cannot be applied to a function more than once.",
+        "Attribute 'Test' cannot be applied to a function more than once",
 
       // Attributes on unsupported declarations
       "@Test var x = 0":
-        "The @Test attribute cannot be applied to a property.",
+        "Attribute 'Test' cannot be applied to a property",
       "@Test init() {}":
-        "The @Test attribute cannot be applied to an initializer.",
+        "Attribute 'Test' cannot be applied to an initializer",
       "@Test deinit {}":
-        "The @Test attribute cannot be applied to a deinitializer.",
+        "Attribute 'Test' cannot be applied to a deinitializer",
       "@Test subscript() -> Int {}":
-        "The @Test attribute cannot be applied to a subscript.",
+        "Attribute 'Test' cannot be applied to a subscript",
       "@Test typealias X = Y":
-        "The @Test attribute cannot be applied to a typealias.",
+        "Attribute 'Test' cannot be applied to a typealias",
       "enum E { @Test case c }":
-        "The @Test attribute cannot be applied to an enumeration case.",
+        "Attribute 'Test' cannot be applied to an enumeration case",
       "@Suite func f() {}":
-        "The @Suite attribute cannot be applied to a function.",
+        "Attribute 'Suite' cannot be applied to a function",
       "@Suite extension X {}":
-        "The @Suite attribute has no effect when applied to an extension and should be removed.",
+        "Attribute 'Suite' has no effect when applied to an extension",
       "@Test macro m()":
-        "The @Test attribute cannot be applied to a macro.",
+        "Attribute 'Test' cannot be applied to a macro",
       "@Test struct S {}":
-        "The @Test attribute cannot be applied to a structure.",
+        "Attribute 'Test' cannot be applied to a structure",
       "@Test enum E {}":
-        "The @Test attribute cannot be applied to an enumeration.",
+        "Attribute 'Test' cannot be applied to an enumeration",
 
 
       // Availability
       "@available(*, unavailable) @Suite struct S {}":
-        "The @Suite attribute cannot be applied to this structure because it has been marked @available(*, unavailable).",
+        "Attribute 'Suite' cannot be applied to this structure because it has been marked '@available(*, unavailable)'",
       "@available(*, noasync) @Suite enum E {}":
-        "The @Suite attribute cannot be applied to this enumeration because it has been marked @available(*, noasync).",
+        "Attribute 'Suite' cannot be applied to this enumeration because it has been marked '@available(*, noasync)'",
       "@available(macOS 999.0, *) @Suite final class C {}":
-        "The @Suite attribute cannot be applied to this class because it has been marked @available(macOS 999.0, *).",
+        "Attribute 'Suite' cannot be applied to this class because it has been marked '@available(macOS 999.0, *)'",
       "@_unavailableFromAsync @Suite actor A {}":
-        "The @Suite attribute cannot be applied to this actor because it has been marked @_unavailableFromAsync.",
+        "Attribute 'Suite' cannot be applied to this actor because it has been marked '@_unavailableFromAsync'",
 
       // XCTestCase
       "@Suite final class C: XCTestCase {}":
-        "The @Suite attribute cannot be applied to a subclass of XCTestCase.",
+        "Attribute 'Suite' cannot be applied to a subclass of 'XCTestCase'",
       "@Suite final class C: XCTest.XCTestCase {}":
-        "The @Suite attribute cannot be applied to a subclass of XCTestCase.",
+        "Attribute 'Suite' cannot be applied to a subclass of 'XCTestCase'",
 
       // Unsupported inheritance
       "@Suite class C {}":
-        "The @Suite attribute cannot be applied to non-final class C.",
+        "Attribute 'Suite' cannot be applied to non-final class 'C'",
       "@Suite protocol P {}":
-        "The @Suite attribute cannot be applied to a protocol.",
+        "Attribute 'Suite' cannot be applied to a protocol",
 
       // Invalid specifiers on arguments
       "@Test(arguments: [0]) func f(i: inout Int) {}":
-        "The @Test attribute cannot be applied to a function with a parameter marked 'inout'.",
+        "Attribute 'Test' cannot be applied to a function with a parameter marked 'inout'",
       "@Test(arguments: [MyActor()]) func f(i: isolated MyActor) {}":
-        "The @Test attribute cannot be applied to a function with a parameter marked 'isolated'.",
+        "Attribute 'Test' cannot be applied to a function with a parameter marked 'isolated'",
       "@Test(arguments: [0.0]) func f(i: _const Double) {}":
-        "The @Test attribute cannot be applied to a function with a parameter marked '_const'.",
+        "Attribute 'Test' cannot be applied to a function with a parameter marked '_const'",
 
       // Argument count mismatches.
       "@Test func f(i: Int) {}":
-        "The @Test attribute must specify an argument when used with f(i:).",
+        "Attribute 'Test' must specify an argument when used with 'f(i:)'",
       "@Test func f(i: Int, j: Int) {}":
-        "The @Test attribute must specify 2 arguments when used with f(i:j:).",
+        "Attribute 'Test' must specify 2 arguments when used with 'f(i:j:)'",
       "@Test(arguments: []) func f() {}":
-        "The @Test attribute cannot specify arguments when used with f() because it does not take any.",
+        "Attribute 'Test' cannot specify arguments when used with 'f()' because it does not take any",
     ]
   )
   func apiMisuseErrors(input: String, expectedMessage: String) throws {
@@ -121,13 +121,13 @@ struct TestDeclarationMacroTests {
     arguments: [
       // return types
       "@Test func f() -> Int {}":
-        "The result of this function will be discarded during testing.",
+        "The result of this function will be discarded during testing",
       "@Test func f() -> Swift.String {}":
-        "The result of this function will be discarded during testing.",
+        "The result of this function will be discarded during testing",
       "@Test func f() -> Int? {}":
-        "The result of this function will be discarded during testing.",
+        "The result of this function will be discarded during testing",
       "@Test func f() -> (Int, Int) {}":
-        "The result of this function will be discarded during testing.",
+        "The result of this function will be discarded during testing",
     ]
   )
   func apiMisuseWarnings(input: String, expectedMessage: String) throws {
@@ -295,7 +295,7 @@ struct TestDeclarationMacroTests {
     #expect(diagnostics.count > 0)
     for diagnostic in diagnostics {
       #expect(diagnostic.diagMessage.severity == .error)
-      #expect(diagnostic.message == "The tag \(tagExpr) cannot be used with the @Test attribute. Pass a member of Tag or a string literal instead.")
+      #expect(diagnostic.message == "Tag '\(tagExpr)' cannot be used with attribute 'Test'; pass a member of 'Tag' or a string literal instead")
     }
   }
 }

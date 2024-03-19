@@ -143,7 +143,7 @@ struct SwiftPMTests {
       configuration.eventHandler(Event(.runStarted, testID: nil, testCaseID: nil), eventContext)
       configuration.eventHandler(Event(.runEnded, testID: nil, testCaseID: nil), eventContext)
     }
-    #expect(try temporaryFileURL.checkResourceIsReachable())
+    #expect(try temporaryFileURL.checkResourceIsReachable() as Bool)
   }
 #endif
 

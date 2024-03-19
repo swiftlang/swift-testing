@@ -40,12 +40,12 @@ struct Test_SnapshotTests {
       #expect(!snapshot.isParameterized)
     }
     do {
-      let test = try #require(await testFunction(named: "parameterized(i:)", in: MainActorIsolatedTests.self))
+      let test = try #require(await testFunction(named: "parameterized(i:)", in: MainActorIsolatedTests.self) as Test?)
       let snapshot = Test.Snapshot(snapshotting: test)
       #expect(snapshot.isParameterized)
     }
     do {
-      let suite = try #require(await test(for: Self.self))
+      let suite = try #require(await test(for: Self.self) as Test?)
       let snapshot = Test.Snapshot(snapshotting: suite)
       #expect(!snapshot.isParameterized)
     }
@@ -59,12 +59,12 @@ struct Test_SnapshotTests {
       #expect(!snapshot.isSuite)
     }
     do {
-      let test = try #require(await testFunction(named: "parameterized(i:)", in: MainActorIsolatedTests.self))
+      let test = try #require(await testFunction(named: "parameterized(i:)", in: MainActorIsolatedTests.self) as Test?)
       let snapshot = Test.Snapshot(snapshotting: test)
       #expect(!snapshot.isSuite)
     }
     do {
-      let suite = try #require(await test(for: Self.self))
+      let suite = try #require(await test(for: Self.self) as Test?)
       let snapshot = Test.Snapshot(snapshotting: suite)
       #expect(snapshot.isSuite)
     }

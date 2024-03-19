@@ -246,8 +246,8 @@ final class RunnerTests: XCTestCase {
   }
 
   func testConditionTraitsAreEvaluatedOutermostToInnermost() async throws {
-    let testSuite = try #require(await test(for: NeverRunTests.self))
-    let testFunc = try #require(await testFunction(named: "duelingConditions()", in: NeverRunTests.self))
+    let testSuite = try #require(await test(for: NeverRunTests.self) as Test?)
+    let testFunc = try #require(await testFunction(named: "duelingConditions()", in: NeverRunTests.self) as Test?)
 
     var configuration = Configuration()
     let selection = [testSuite.id]
