@@ -333,18 +333,18 @@ struct ConditionMacroTests {
 
   @Test("#expect(try/await) produces a diagnostic",
     arguments: [
-      "#expect(try foo())": ["Expression 'try foo()' will not be broken down on failure; move the throwing part out of the call to '#expect(_:_:)'"],
-      "#expect(await foo())": ["Expression 'await foo()' will not be broken down on failure; move the asynchronous part out of the call to '#expect(_:_:)'"],
-      "#expect(try await foo())": ["Expression 'try await foo()' will not be broken down on failure; move the throwing/asynchronous part out of the call to '#expect(_:_:)'"],
+      "#expect(try foo())": ["Expression 'try foo()' will not be expanded on failure; move the throwing part out of the call to '#expect(_:_:)'"],
+      "#expect(await foo())": ["Expression 'await foo()' will not be expanded on failure; move the asynchronous part out of the call to '#expect(_:_:)'"],
+      "#expect(try await foo())": ["Expression 'try await foo()' will not be expanded on failure; move the throwing/asynchronous part out of the call to '#expect(_:_:)'"],
       "#expect(try await foo(try bar(await quux())))": [
-        "Expression 'try await foo(try bar(await quux()))' will not be broken down on failure; move the throwing/asynchronous part out of the call to '#expect(_:_:)'",
-        "Expression 'try bar(await quux())' will not be broken down on failure; move the throwing part out of the call to '#expect(_:_:)'",
-        "Expression 'await quux()' will not be broken down on failure; move the asynchronous part out of the call to '#expect(_:_:)'",
+        "Expression 'try await foo(try bar(await quux()))' will not be expanded on failure; move the throwing/asynchronous part out of the call to '#expect(_:_:)'",
+        "Expression 'try bar(await quux())' will not be expanded on failure; move the throwing part out of the call to '#expect(_:_:)'",
+        "Expression 'await quux()' will not be expanded on failure; move the asynchronous part out of the call to '#expect(_:_:)'",
       ],
 
       // Diagnoses because the diagnostic for `await` is suppressed due to the
       // `as T` cast, but the parentheses limit the effect of the suppression.
-      "#expect(try (await foo() as T))": ["Expression 'try (await foo() as T)' will not be broken down on failure; move the throwing part out of the call to '#expect(_:_:)'"],
+      "#expect(try (await foo() as T))": ["Expression 'try (await foo() as T)' will not be expanded on failure; move the throwing part out of the call to '#expect(_:_:)'"],
     ]
   )
   func effectfulExpectationDiagnoses(input: String, diagnosticMessages: [String]) throws {

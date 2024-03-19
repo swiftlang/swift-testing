@@ -76,7 +76,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     }
     return Self(
       syntax: Syntax(expr),
-      message: "Expression '\(expr.trimmed)' will not be broken down on failure; move the \(effectful) part out of the call to \(_macroName(macro))",
+      message: "Expression '\(expr.trimmed)' will not be expanded on failure; move the \(effectful) part out of the call to \(_macroName(macro))",
       severity: .warning
     )
   }
