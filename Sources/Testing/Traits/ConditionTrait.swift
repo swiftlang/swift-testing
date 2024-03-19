@@ -13,11 +13,11 @@
 ///
 /// To add this trait to a test, use one of the following functions:
 ///
-/// - ``Trait/enabled(if:_:fileID:filePath:line:column:)``
-/// - ``Trait/enabled(_:fileID:filePath:line:column:_:)``
-/// - ``Trait/disabled(_:fileID:filePath:line:column:)``
-/// - ``Trait/disabled(if:_:fileID:filePath:line:column:)``
-/// - ``Trait/disabled(_:fileID:filePath:line:column:_:)``
+/// - ``Trait/enabled(if:_:sourceLocation:)``
+/// - ``Trait/enabled(_:sourceLocation:_:)``
+/// - ``Trait/disabled(_:sourceLocation:)``
+/// - ``Trait/disabled(if:_:sourceLocation:)``
+/// - ``Trait/disabled(_:sourceLocation:_:)``
 public struct ConditionTrait: TestTrait, SuiteTrait {
   /// An optional, user-specified comment describing this trait.
   public var comment: Comment?
@@ -62,12 +62,12 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
   /// Whether or not this trait has a condition that is evaluated at runtime.
   ///
   /// If this trait was created using a function such as
-  /// ``disabled(_:fileID:filePath:line:column:)`` that unconditionally enables
-  /// or disables a test, the value of this property is `true`.
+  /// ``disabled(_:sourceLocation:)`` that unconditionally enables or disables a
+  /// test, the value of this property is `true`.
   ///
   /// If this trait was created using a function such as
-  /// ``enabled(if:_:fileID:filePath:line:column:)`` that is evaluated at
-  /// runtime, the value of this property is `false`.
+  /// ``enabled(if:_:sourceLocation:)`` that is evaluated at runtime, the value
+  /// of this property is `false`.
   public var isConstant: Bool {
     switch kind {
     case .conditional:
@@ -117,6 +117,7 @@ extension Trait where Self == ConditionTrait {
   ///     this closure returns `true`, the test is allowed to run. Otherwise,
   ///     the test is skipped.
   ///   - comment: An optional, user-specified comment describing this trait.
+  ///   - sourceLocation: The source location of the trait.
   ///
   /// - Returns: An instance of ``ConditionTrait`` that will evaluate the
   ///   specified closure.
@@ -129,13 +130,9 @@ extension Trait where Self == ConditionTrait {
   public static func enabled(
     if condition: @autoclosure @escaping @Sendable () throws -> Bool,
     _ comment: Comment? = nil,
-    fileID: String = #fileID,
-    filePath: String = #filePath,
-    line: Int = #line,
-    column: Int = #column
+    sourceLocation: SourceLocation = #currentSourceLocation
   ) -> Self {
-    let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-    return Self(comment: comment, kind: .conditional(condition), sourceLocation: sourceLocation)
+    Self(comment: comment, kind: .conditional(condition), sourceLocation: sourceLocation)
   }
 
   /// Construct a condition trait that causes a test to be disabled if it
@@ -143,6 +140,7 @@ extension Trait where Self == ConditionTrait {
   ///
   /// - Parameters:
   ///   - comment: An optional, user-specified comment describing this trait.
+  ///   - sourceLocation: The source location of the trait.
   ///   - condition: A closure containing the trait's custom condition logic. If
   ///     this closure returns `true`, the test is allowed to run. Otherwise,
   ///     the test is skipped.
@@ -151,32 +149,25 @@ extension Trait where Self == ConditionTrait {
   ///   specified closure.
   public static func enabled(
     _ comment: Comment? = nil,
-    fileID: String = #fileID,
-    filePath: String = #filePath,
-    line: Int = #line,
-    column: Int = #column,
+    sourceLocation: SourceLocation = #currentSourceLocation,
     _ condition: @escaping @Sendable () async throws -> Bool
   ) -> Self {
-    let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-    return Self(comment: comment, kind: .conditional(condition), sourceLocation: sourceLocation)
+    Self(comment: comment, kind: .conditional(condition), sourceLocation: sourceLocation)
   }
 
   /// Construct a condition trait that disables a test unconditionally.
   ///
   /// - Parameters:
   ///   - comment: An optional, user-specified comment describing this trait.
+  ///   - sourceLocation: The source location of the trait.
   ///
   /// - Returns: An instance of ``ConditionTrait`` that will always disable the
   ///   test to which it is added.
   public static func disabled(
     _ comment: Comment? = nil,
-    fileID: String = #fileID,
-    filePath: String = #filePath,
-    line: Int = #line,
-    column: Int = #column
+    sourceLocation: SourceLocation = #currentSourceLocation
   ) -> Self {
-    let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-    return Self(comment: comment, kind: .unconditional(false), sourceLocation: sourceLocation)
+    Self(comment: comment, kind: .unconditional(false), sourceLocation: sourceLocation)
   }
 
   /// Construct a condition trait that causes a test to be disabled if it
@@ -187,6 +178,7 @@ extension Trait where Self == ConditionTrait {
   ///     this closure returns `false`, the test is allowed to run. Otherwise,
   ///     the test is skipped.
   ///   - comment: An optional, user-specified comment describing this trait.
+  ///   - sourceLocation: The source location of the trait.
   ///
   /// - Returns: An instance of ``ConditionTrait`` that will evaluate the
   ///   specified closure.
@@ -199,13 +191,9 @@ extension Trait where Self == ConditionTrait {
   public static func disabled(
     if condition: @autoclosure @escaping @Sendable () throws -> Bool,
     _ comment: Comment? = nil,
-    fileID: String = #fileID,
-    filePath: String = #filePath,
-    line: Int = #line,
-    column: Int = #column
+    sourceLocation: SourceLocation = #currentSourceLocation
   ) -> Self {
-    let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-    return Self(comment: comment, kind: .conditional { !(try condition()) }, sourceLocation: sourceLocation)
+    Self(comment: comment, kind: .conditional { !(try condition()) }, sourceLocation: sourceLocation)
   }
 
   /// Construct a condition trait that causes a test to be disabled if it
@@ -213,6 +201,7 @@ extension Trait where Self == ConditionTrait {
   ///
   /// - Parameters:
   ///   - comment: An optional, user-specified comment describing this trait.
+  ///   - sourceLocation: The source location of the trait.
   ///   - condition: A closure containing the trait's custom condition logic. If
   ///     this closure returns `false`, the test is allowed to run. Otherwise,
   ///     the test is skipped.
@@ -221,13 +210,9 @@ extension Trait where Self == ConditionTrait {
   ///   specified closure.
   public static func disabled(
     _ comment: Comment? = nil,
-    fileID: String = #fileID,
-    filePath: String = #filePath,
-    line: Int = #line,
-    column: Int = #column,
+    sourceLocation: SourceLocation = #currentSourceLocation,
     _ condition: @escaping @Sendable () async throws -> Bool
   ) -> Self {
-    let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-    return Self(comment: comment, kind: .conditional { !(try await condition()) }, sourceLocation: sourceLocation)
+    Self(comment: comment, kind: .conditional { !(try await condition()) }, sourceLocation: sourceLocation)
   }
 }

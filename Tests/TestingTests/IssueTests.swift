@@ -1040,7 +1040,7 @@ final class IssueTests: XCTestCase {
   }
 
   func testSetSourceLocationProperty() async throws {
-    let sourceLocation = SourceLocation(line: 12345)
+    let sourceLocation = SourceLocation(fileID: "A/B", filePath: "", line: 12345, column: 1)
     var issue = Issue(kind: .unconditional, comments: [], sourceContext: .init(sourceLocation: sourceLocation))
 
     var issueSourceLocation = try XCTUnwrap(issue.sourceLocation)
@@ -1054,7 +1054,7 @@ final class IssueTests: XCTestCase {
 
   func testDescriptionProperties() {
     do {
-      let sourceLocation = SourceLocation.init(fileID: "FakeModule/FakeFile.swift", line: 9999, column: 1)
+      let sourceLocation = SourceLocation.init(fileID: "FakeModule/FakeFile.swift", filePath: "", line: 9999, column: 1)
       let issue = Issue(kind: .system, comments: ["Some issue"], sourceContext: SourceContext(sourceLocation: sourceLocation))
       XCTAssertEqual(issue.description, "A system failure occurred: Some issue")
       XCTAssertEqual(issue.debugDescription, "A system failure occurred at FakeFile.swift:9999:1: Some issue")
@@ -1425,7 +1425,7 @@ struct IssueCodingTests {
     Issue.Kind.apiMisused,
     Issue.Kind.confirmationMiscounted(actual: 13, expected: 42),
     Issue.Kind.errorCaught(NSError(domain: "Domain", code: 13, userInfo: ["UserInfoKey": "UserInfoValue"])),
-    Issue.Kind.expectationFailed(Expectation(evaluatedExpression: .__fromSyntaxNode("abc"), isPassing: true, isRequired: true, sourceLocation: SourceLocation())),
+    Issue.Kind.expectationFailed(Expectation(evaluatedExpression: .__fromSyntaxNode("abc"), isPassing: true, isRequired: true, sourceLocation: #currentSourceLocation)),
     Issue.Kind.knownIssueNotRecorded,
     Issue.Kind.system,
     Issue.Kind.timeLimitExceeded(timeLimitComponents: (13, 42)),
@@ -1439,7 +1439,7 @@ struct IssueCodingTests {
     let issue = Issue(
       kind: issueKind,
       comments: ["Comment"],
-      sourceContext: SourceContext(backtrace: Backtrace.current(), sourceLocation: SourceLocation())
+      sourceContext: SourceContext(backtrace: Backtrace.current(), sourceLocation: #currentSourceLocation)
     )
     let issueSnapshot = Issue.Snapshot(snapshotting: issue)
     let decoded = try JSON.encodeAndDecode(issueSnapshot)
@@ -1522,7 +1522,7 @@ struct IssueCodingTests {
     let issue = Issue(
       kind: issueKind,
       comments: ["Comment"],
-      sourceContext: SourceContext(backtrace: Backtrace.current(), sourceLocation: SourceLocation())
+      sourceContext: SourceContext(backtrace: Backtrace.current(), sourceLocation: #currentSourceLocation)
     )
     let issueSnapshot = Issue.Snapshot(snapshotting: issue)
 

@@ -14,11 +14,11 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 ### Enabling and disabling tests
 
-- ``Trait/enabled(if:_:fileID:filePath:line:column:)``
-- ``Trait/enabled(_:fileID:filePath:line:column:_:)``
-- ``Trait/disabled(_:fileID:filePath:line:column:)``
-- ``Trait/disabled(if:_:fileID:filePath:line:column:)``
-- ``Trait/disabled(_:fileID:filePath:line:column:_:)``
+- ``Trait/enabled(if:_:sourceLocation:)``
+- ``Trait/enabled(_:sourceLocation:_:)``
+- ``Trait/disabled(_:sourceLocation:)``
+- ``Trait/disabled(if:_:sourceLocation:)``
+- ``Trait/disabled(_:sourceLocation:_:)``
 
 ### Limiting the running time of tests
 

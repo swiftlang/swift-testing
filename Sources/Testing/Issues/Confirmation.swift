@@ -55,6 +55,8 @@ extension Confirmation {
 ///     `body` is invoked. The default value of this argument is `1`, indicating
 ///     that the event should occur exactly once. Pass `0` if the event should
 ///     _never_ occur when `body` is invoked.
+///   - sourceLocation: The source location to which any recorded issues should
+///     be attributed.
 ///   - body: The function to invoke.
 ///
 /// - Returns: Whatever is returned by `body`.
@@ -92,10 +94,7 @@ extension Confirmation {
 public func confirmation<R>(
   _ comment: Comment? = nil,
   expectedCount: Int = 1,
-  fileID: String = #fileID,
-  filePath: String = #filePath,
-  line: Int = #line,
-  column: Int = #column,
+  sourceLocation: SourceLocation = #currentSourceLocation,
   _ body: (Confirmation) async throws -> R
 ) async rethrows -> R {
   let confirmation = Confirmation()
@@ -106,7 +105,7 @@ public func confirmation<R>(
         .confirmationMiscounted(actual: actualCount, expected: expectedCount),
         comments: Array(comment),
         backtrace: .current(),
-        sourceLocation: SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
+        sourceLocation: sourceLocation
       )
     }
   }

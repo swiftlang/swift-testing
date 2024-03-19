@@ -31,12 +31,12 @@ expected event happens.
 
 ### Confirm that an event happens
 
-Call ``confirmation(_:expectedCount:fileID:filePath:line:column:_:)``
-in your asynchronous test function to create a `Confirmation` for the
-expected event. In the trailing closure parameter, call the code under
-test. Swift Testing passes a `Confirmation` as the parameter to the
-block, which you call as a function in the event handler for the code under
-test when the event you're testing for occurs:
+Call ``confirmation(_:expectedCount:sourceLocation:_:)`` in your asynchronous
+test function to create a `Confirmation` for the expected event. In the trailing
+closure parameter, call the code under test. Swift Testing passes a
+`Confirmation` as the parameter to the closure, which you call as a function in
+the event handler for the code under test when the event you're testing for
+occurs:
 
 ```swift
 @Test("OrderCalculator successfully calculates subtotal for no pizzas")
