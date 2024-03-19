@@ -52,3 +52,5 @@ extension Tag {
 /// mark them as usable with tests. For more information on declaring tags, see
 /// <doc:AddingTags>.
 @attached(accessor) public macro Tag() = #externalMacro(module: "TestingMacros", type: "TagMacro")
+
+@freestanding(expression) public macro __fnord() -> String = #externalMacro(module: "TestingMacros", type: "FnordMacro")

@@ -28,6 +28,7 @@ struct TestingMacrosMain: CompilerPlugin {
       RequireMacro.self,
       AmbiguousRequireMacro.self,
       TagMacro.self,
+      FnordMacro.self,
     ]
   }
 }

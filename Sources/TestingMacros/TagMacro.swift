@@ -47,3 +47,13 @@ public struct TagMacro: AccessorMacro, Sendable {
     ]
   }
 }
+
+public struct FnordMacro: ExpressionMacro, Sendable {
+  public static func expansion(
+    of macro: some FreestandingMacroExpansionSyntax,
+    in context: some MacroExpansionContext
+  ) throws -> ExprSyntax {
+    context.debug(context.lexicalContext, node: macro)
+    return "\(literal: "fnord")"
+  }
+}

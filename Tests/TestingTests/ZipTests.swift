@@ -26,3 +26,9 @@ struct ZipTests {
     #expect(i == j)
   }
 }
+
+func f(_ fnord: String = #__fnord) {}
+
+@Test func crap() {
+  print(f()) 
+}
