@@ -144,12 +144,11 @@ struct EventRecorderTests {
       One(.anyGraphemeCluster)
       " \(isSuite ? "Suite" : "Test") \(testName) started."
     }
-    #expect(
-      try buffer
-        .split(whereSeparator: \.isNewline)
-        .compactMap(testFailureRegex.wholeMatch(in:))
-        .first != nil
-    )
+    let match = try buffer
+      .split(whereSeparator: \.isNewline)
+      .compactMap(testFailureRegex.wholeMatch(in:))
+      .first
+    #expect(match != nil)
   }
 
   @available(_regexAPI, *)
