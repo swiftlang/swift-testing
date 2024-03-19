@@ -123,6 +123,8 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .enableUpcomingFeature("InternalImportsByDefault"),
 
       .define("SWT_TARGET_OS_APPLE", .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])),
+
+      .define("SWT_NO_FILE_IO", .when(platforms: [.wasi])),
     ]
   }
 

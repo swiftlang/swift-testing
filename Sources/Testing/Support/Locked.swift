@@ -40,6 +40,8 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   private typealias _Lock = pthread_mutex_t
 #elseif os(Windows)
   private typealias _Lock = SRWLOCK
+#elseif os(WASI)
+  // No locks on WASI.
 #else
 #warning("Platform-specific implementation missing: locking unavailable")
   private typealias _Lock = Void
@@ -53,6 +55,8 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
         _ = pthread_mutex_destroy(lock)
 #elseif os(Windows)
         // No deinitialization needed.
+#elseif os(WASI)
+        // No locks on WASI.
 #else
 #warning("Platform-specific implementation missing: locking unavailable")
 #endif
@@ -70,6 +74,8 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
       _ = pthread_mutex_init(lock, nil)
 #elseif os(Windows)
       InitializeSRWLock(lock)
+#elseif os(WASI)
+      // No locks on WASI.
 #else
 #warning("Platform-specific implementation missing: locking unavailable")
 #endif
@@ -105,6 +111,8 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
       defer {
         ReleaseSRWLockExclusive(lock)
       }
+#elseif os(WASI)
+      // No locks on WASI.
 #else
 #warning("Platform-specific implementation missing: locking unavailable")
 #endif
