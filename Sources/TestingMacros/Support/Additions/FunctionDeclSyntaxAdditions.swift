@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if swift(>=5.11)
+#if compiler(>=5.11)
 import SwiftSyntax
 import SwiftSyntaxMacros
 #else

@@ -10,7 +10,7 @@
 
 #if canImport(SwiftCompilerPlugin)
 import SwiftCompilerPlugin
-#if swift(>=5.11)
+#if compiler(>=5.11)
 import SwiftSyntaxMacros
 #else
 public import SwiftSyntaxMacros
