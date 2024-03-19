@@ -31,15 +31,10 @@ struct Condition {
   /// the testing library's ``Expression`` type.
   var expression: ExprSyntax
 
-  /// Whether or not the resulting expression is "trivial" (has no parsed
-  /// subexpressions.)
-  var isTrivial: Bool
-
-  init(_ expandedFunctionName: String, arguments: [Argument], expression: ExprSyntax, isTrivial: Bool = false) {
+  init(_ expandedFunctionName: String, arguments: [Argument], expression: ExprSyntax) {
     self.expandedFunctionName = .identifier(expandedFunctionName)
     self.arguments = arguments
     self.expression = expression
-    self.isTrivial = isTrivial
   }
 
   /// Initialize an instance of this type representing a single expression (i.e.
@@ -54,8 +49,7 @@ struct Condition {
     self.init(
       "__checkValue",
       arguments: [Argument(expression: expr)],
-      expression: createExpressionExpr(from: expressionNode),
-      isTrivial: true
+      expression: createExpressionExpr(from: expressionNode)
     )
   }
 }
