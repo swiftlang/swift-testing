@@ -9,7 +9,7 @@
 //
 
 import SwiftDiagnostics
-#if swift(>=5.11)
+#if compiler(>=5.11)
 import SwiftSyntax
 import SwiftSyntaxMacros
 #else
