@@ -322,8 +322,8 @@ private func _eventHandlerForStreamingEvents(toFileAtPath path: String) throws -
       }
 
 #if DEBUG
-      // We don't actually JSONEncoder() to produce output containing newline
-      // characters, so in debug builds we'll log a diagnostic message.
+      // We don't actually expect JSONEncoder() to produce output containing
+      // newline characters, so in debug builds we'll log a diagnostic message.
       if snapshotJSON.contains(where: isASCIINewline) {
         let message = Event.ConsoleOutputRecorder.warning(
           "JSONEncoder() produced one or more newline characters while encoding an event snapshot with kind '\(event.kind)'. Please file a bug report at https://github.com/apple/swift-testing/issues/new",
