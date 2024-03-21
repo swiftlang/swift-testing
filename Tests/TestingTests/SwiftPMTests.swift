@@ -148,14 +148,10 @@ struct SwiftPMTests {
     #expect(try temporaryFileURL.checkResourceIsReachable() as Bool)
   }
 
-  func decodeEventStream(fromFileAt url: URL) async throws -> [EventAndContextSnapshot] {
-    try await url.lines
-      .map { line in
-        guard let jsonData = line.data(using: .utf8) else {
-          throw CocoaError(.fileReadUnknownStringEncoding)
-        }
-        return try JSONDecoder().decode(EventAndContextSnapshot.self, from: jsonData)
-      }.reduce(into: []) { $0.append($1) }
+  func decodeEventStream(fromFileAt url: URL) throws -> [EventAndContextSnapshot] {
+    try Data(contentsOf: url, options: [.mappedIfSafe])
+      .split(separator: 10) // "\n"
+      .map { try JSONDecoder().decode(EventAndContextSnapshot.self, from: $0) }
   }
 
   @Test("--experimental-event-stream-output argument (writes to a stream and can be read back)")
@@ -180,7 +176,7 @@ struct SwiftPMTests {
     }
     #expect(try temporaryFileURL.checkResourceIsReachable() as Bool)
 
-    let decodedEvents = try await decodeEventStream(fromFileAt: temporaryFileURL)
+    let decodedEvents = try decodeEventStream(fromFileAt: temporaryFileURL)
     #expect(decodedEvents.count == 4)
   }
 #endif
