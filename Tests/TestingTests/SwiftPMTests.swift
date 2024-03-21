@@ -148,37 +148,14 @@ struct SwiftPMTests {
     #expect(try temporaryFileURL.checkResourceIsReachable() as Bool)
   }
 
-  func decodeEventStream(fromFileAtPath path: String) throws -> [EventAndContextSnapshot] {
-    var result = [EventAndContextSnapshot]()
-
-    let file = try FileHandle(atPath: path, mode: "rb")
-    try file.withUnsafeCFILEHandle { file in
-      while true {
-        var jsonCount: UInt64 = 0
-        guard 1 == fread(&jsonCount, MemoryLayout<UInt64>.stride, 1, file) else {
-          return
+  func decodeEventStream(fromFileAt url: URL) async throws -> [EventAndContextSnapshot] {
+    try await url.lines
+      .map { line in
+        guard let jsonData = line.data(using: .utf8) else {
+          throw CocoaError(.fileReadUnknownStringEncoding)
         }
-        jsonCount = UInt64(littleEndian: jsonCount)
-        if jsonCount <= 0 {
-          // Empty JSON blob.
-          continue
-        }
-
-        try withUnsafeTemporaryAllocation(byteCount: Int(jsonCount), alignment: 1) { buffer in
-          let readCount = fread(buffer.baseAddress, 1, buffer.count, file)
-          if readCount < jsonCount {
-            // A short count indicates we reached the end of the stream early or
-            // an error occurred while reading.
-            throw CError(rawValue: swt_errno())
-          }
-          let jsonData = Data(bytesNoCopy: buffer.baseAddress!, count: min(buffer.count, readCount), deallocator: .none)
-          let snapshot = try JSONDecoder().decode(EventAndContextSnapshot.self, from: jsonData)
-          result.append(snapshot)
-        }
-      }
-    }
-
-    return result
+        return try JSONDecoder().decode(EventAndContextSnapshot.self, from: jsonData)
+      }.reduce(into: []) { $0.append($1) }
   }
 
   @Test("--experimental-event-stream-output argument (writes to a stream and can be read back)")
@@ -192,18 +169,18 @@ struct SwiftPMTests {
     do {
       let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--experimental-event-stream-output", temporaryFileURL.path])
       let eventContext = Event.Context()
-      configuration.eventHandler(Event(.runStarted, testID: nil, testCaseID: nil), eventContext)
+      configuration.handleEvent(Event(.runStarted, testID: nil, testCaseID: nil), in: eventContext)
       do {
         let test = Test {}
         let eventContext = Event.Context(test: test)
-        configuration.eventHandler(Event(.testStarted, testID: test.id, testCaseID: nil), eventContext)
-        configuration.eventHandler(Event(.testEnded, testID: test.id, testCaseID: nil), eventContext)
+        configuration.handleEvent(Event(.testStarted, testID: test.id, testCaseID: nil), in: eventContext)
+        configuration.handleEvent(Event(.testEnded, testID: test.id, testCaseID: nil), in: eventContext)
       }
-      configuration.eventHandler(Event(.runEnded, testID: nil, testCaseID: nil), eventContext)
+      configuration.handleEvent(Event(.runEnded, testID: nil, testCaseID: nil), in: eventContext)
     }
-    #expect(try temporaryFileURL.checkResourceIsReachable())
+    #expect(try temporaryFileURL.checkResourceIsReachable() as Bool)
 
-    let decodedEvents = try decodeEventStream(fromFileAtPath: temporaryFileURL.path)
+    let decodedEvents = try await decodeEventStream(fromFileAt: temporaryFileURL)
     #expect(decodedEvents.count == 4)
   }
 #endif

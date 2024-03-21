@@ -293,10 +293,12 @@ extension EventAndContextSnapshot: Codable {}
 ///
 /// - Returns: An event handler.
 ///
-/// For each event handled by the resulting event handler, a JSON blob
-/// representing it and its associated context is created. The length of the
-/// blob, as a 64-bit little-endian integer, is written to `path`, followed by
-/// the blob itself.
+/// The resulting event handler outputs data in the [JSON Lines](https://jsonlines.org)
+/// text format. For each event handled by the resulting event handler, a JSON
+/// object representing it and its associated context is created and is written
+/// to `path`, followed by a single line feed (`"\n"`) character. These JSON
+/// objects are guaranteed not to contain any ASCII newline characters (`"\r"`
+/// or `"\n"`) themselves.
 ///
 /// The file at `path` can be a regular file, however to allow for streaming a
 /// named pipe is recommended. `mkfifo()` can be used on Darwin and Linux to
@@ -314,13 +316,35 @@ private func _eventHandlerForStreamingEvents(toFileAtPath path: String) throws -
       test: context.test.map { Test.Snapshot(snapshotting: $0) },
       testCase: context.testCase.map { Test.Case.Snapshot(snapshotting: $0) }
     )
-    if let snapshotJSON = try? JSONEncoder().encode(snapshot) {
-      try? file.withLock {
-        try withUnsafeBytes(of: UInt64(snapshotJSON.count).littleEndian) { count in
-          try file.write(count, flushAfterward: false)
-        }
-        try snapshotJSON.withUnsafeBytes { snapshotJSON in
-          try file.write(snapshotJSON)
+    if var snapshotJSON = try? JSONEncoder().encode(snapshot) {
+      func isASCIINewline(_ byte: UInt8) -> Bool {
+        byte == 10 || byte == 13
+      }
+
+#if DEBUG
+      // We don't actually JSONEncoder() to produce output containing newline
+      // characters, so in debug builds we'll log a diagnostic message.
+      if snapshotJSON.contains(where: isASCIINewline) {
+        let message = Event.ConsoleOutputRecorder.warning(
+          "JSONEncoder() produced one or more newline characters while encoding an event snapshot with kind '\(event.kind)'. Please file a bug report at https://github.com/apple/swift-testing/issues/new",
+          options: .for(.stderr)
+        )
+#if SWT_TARGET_OS_APPLE
+        try? FileHandle.stderr.write(message)
+#else
+        print(message)
+#endif
+      }
+#endif
+
+      // Remove newline characters to conform to JSON lines specification.
+      snapshotJSON.removeAll(where: isASCIINewline)
+      if !snapshotJSON.isEmpty {
+        try? file.withLock {
+          try snapshotJSON.withUnsafeBytes { snapshotJSON in
+            try file.write(snapshotJSON)
+          }
+          try file.write("\n")
         }
       }
     }
