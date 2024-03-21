@@ -247,3 +247,79 @@ public struct AmbiguousRequireMacro: ConditionMacro {
     true
   }
 }
+
+// MARK: -
+
+/// A syntax visitor that looks for uses of `#expect()` and `#require()` nested
+/// within another macro invocation and diagnoses them as unsupported.
+private final class _NestedConditionFinder<M, C>: SyntaxVisitor where M: FreestandingMacroExpansionSyntax, C: MacroExpansionContext {
+  /// The enclosing macro invocation.
+  private var _macro: M
+
+  /// The macro context in which the expression is being parsed.
+  private var _context: C
+
+  init(viewMode: SyntaxTreeViewMode, macro: M, context: C) {
+    _macro = macro
+    _context = context
+    super.init(viewMode: viewMode)
+  }
+
+  override func visit(_ node: MacroExpansionExprSyntax) -> SyntaxVisitorContinueKind {
+    switch node.macroName.tokenKind {
+    case .identifier("expect"), .identifier("require"):
+      _context.diagnose(.checkUnsupported(node, inExitTest: _macro))
+    default:
+      break
+    }
+    return .visitChildren
+  }
+}
+
+/// A type describing the expansion of the `#expect(exitsWith:)` macro.
+///
+/// This type checks for nested invocations of `#expect()` and `#require()` and
+/// diagnoses them as unsupported. It is otherwise exactly equivalent to
+/// ``ExpectMacro``.
+public struct ExitTestExpectMacro: ConditionMacro {
+  public static func expansion(
+    of macro: some FreestandingMacroExpansionSyntax,
+    in context: some MacroExpansionContext
+  ) throws -> ExprSyntax {
+    if let trailingClosure = macro.trailingClosure {
+      let conditionFinder = _NestedConditionFinder(viewMode: .sourceAccurate, macro: macro, context: context)
+      conditionFinder.walk(trailingClosure)
+    }
+
+    // Perform the normal macro expansion for #require().
+    return try ExpectMacro.expansion(of: macro, in: context)
+  }
+
+  public static var isThrowing: Bool {
+    false
+  }
+}
+
+/// A type describing the expansion of the `#require(exitsWith:)` macro.
+///
+/// This type checks for nested invocations of `#expect()` and `#require()` and
+/// diagnoses them as unsupported. It is otherwise exactly equivalent to
+/// ``RequireMacro``.
+public struct ExitTestRequireMacro: ConditionMacro {
+  public static func expansion(
+    of macro: some FreestandingMacroExpansionSyntax,
+    in context: some MacroExpansionContext
+  ) throws -> ExprSyntax {
+    if let trailingClosure = macro.trailingClosure {
+      let conditionFinder = _NestedConditionFinder(viewMode: .sourceAccurate, macro: macro, context: context)
+      conditionFinder.walk(trailingClosure)
+    }
+
+    // Perform the normal macro expansion for #require().
+    return try RequireMacro.expansion(of: macro, in: context)
+  }
+
+  public static var isThrowing: Bool {
+    true
+  }
+}

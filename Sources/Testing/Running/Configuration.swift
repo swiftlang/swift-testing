@@ -176,12 +176,24 @@ public struct Configuration: Sendable {
   /// By default, events of this kind are not delivered to event handlers
   /// because they occur frequently in a typical test run and can generate
   /// significant backpressure on the event handler.
-  @_spi(ForToolsIntegrationOnly)
   public var deliverExpectationCheckedEvents = false
 
   /// The event handler to which events should be passed when they occur.
-  @_spi(ForToolsIntegrationOnly)
   public var eventHandler: Event.Handler = { _, _ in }
+
+#if !SWT_NO_EXIT_TESTS
+  /// A handler that is invoked when an exit test starts.
+  ///
+  /// For an explanation of how this property is used, see ``ExitTestHandler``.
+  ///
+  /// When using the `swift test` command from Swift Package Manager, this
+  /// property is pre-configured. Otherwise, the default value of this property
+  /// records an issue indicating that it has not been configured.
+  @_spi(Experimental)
+  public var exitTestHandler: ExitTestHandler = { _, _, _ in
+    throw SystemError(description: "Exit test support has not been implemented by the current testing infrastructure.")
+  }
+#endif
 
   // MARK: - Test selection
 

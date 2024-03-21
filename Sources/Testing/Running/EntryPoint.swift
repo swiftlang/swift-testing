@@ -54,7 +54,15 @@ private import Foundation
 #endif
       options.isVerbose = args.contains("--verbose")
 
-      await runTests(options: options, configuration: configuration)
+      // TODO: lower this flag directly to event handler once we remove XCTestScaffold
+      let outputToConsole: Bool
+#if !SWT_NO_EXIT_TESTS && SWIFT_PM_SUPPORTS_SWIFT_TESTING
+      outputToConsole = currentExitTestSourceLocation(withArguments: args) == nil
+#else
+      outputToConsole = true
+#endif
+
+      await runTests(options: options, configuration: configuration, outputToConsole: outputToConsole)
     }
   } catch {
 #if !SWT_NO_FILE_IO
@@ -230,6 +238,11 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
   }
   configuration.repetitionPolicy = repetitionPolicy
 
+#if !SWT_NO_EXIT_TESTS && SWIFT_PM_SUPPORTS_SWIFT_TESTING
+  // Enable exit test handling via __swiftPMEntryPoint().
+  configuration.exitTestHandler = exitTestHandlerForSwiftPM
+#endif
+
   return configuration
 }
 
@@ -239,18 +252,22 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 /// - Parameters:
 ///   - options: Options to pass when configuring the console output recorder.
 ///   - configuration: The configuration to use for running.
-func runTests(options: Event.ConsoleOutputRecorder.Options, configuration: Configuration) async {
-  let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
-#if !SWT_NO_FILE_IO
-    try? FileHandle.stderr.write(string)
-#endif
-  }
-
+///   - outputToConsole: Whether or not to use an instance of
+///     ``Event/ConsoleOutputRecorder`` to write to the standard error stream.
+func runTests(options: Event.ConsoleOutputRecorder.Options, configuration: Configuration, outputToConsole: Bool = true) async {
   var configuration = configuration
-  let oldEventHandler = configuration.eventHandler
-  configuration.eventHandler = { event, context in
-    eventRecorder.record(event, in: context)
-    oldEventHandler(event, context)
+  if outputToConsole {
+    let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
+#if !SWT_NO_FILE_IO
+      try? FileHandle.stderr.write(string)
+#endif
+    }
+
+    let oldEventHandler = configuration.eventHandler
+    configuration.eventHandler = { event, context in
+      eventRecorder.record(event, in: context)
+      oldEventHandler(event, context)
+    }
   }
 
   let runner = await Runner(configuration: configuration)

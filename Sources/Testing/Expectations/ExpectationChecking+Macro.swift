@@ -1072,6 +1072,72 @@ public func __checkClosureCall<R>(
   )
 }
 
+// MARK: - Exit tests
+
+#if !SWT_NO_EXIT_TESTS
+/// Check that an expression always exits (terminates the current process) with
+/// a given status.
+///
+/// This overload is used for `await #expect(exitsWith:) { }` invocations when
+/// the body of the exit test is a synchronous function. Because no arguments
+/// are passed into the exit test and no errors can be thrown, a C function
+/// (`@convention(c)`) can be used to prevent accidentally closing over state
+/// from the parent process.
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+@_spi(Experimental)
+public func __checkClosureCall(
+  exitsWith exitCondition: ExitCondition,
+  performing body: @convention(c) () -> Void,
+  expression: Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) async -> Result<Void, any Error> {
+  await callExitTest(
+    exitsWith: exitCondition,
+    performing: { body() },
+    expression: expression,
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+/// Check that an expression always exits (terminates the current process) with
+/// a given status.
+///
+/// This overload is used for `await #expect(exitsWith:) { }` invocations when
+/// the body of the exit test is an `async` function. The body must be
+/// implemented using `@convention(thin)` to prevent accidentally closing over
+/// state from the parent process, but the diagnostics emitted for thin
+/// functions that close over state are less clear than those emitted for C
+/// functions.
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+@_spi(Experimental)
+@_disfavoredOverload
+public func __checkClosureCall(
+  exitsWith exitCondition: ExitCondition,
+  performing body: @convention(thin) () async -> Void,
+  expression: Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) async -> Result<Void, any Error> {
+  await callExitTest(
+    exitsWith: exitCondition,
+    performing: { await body() },
+    expression: expression,
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+#endif
+
 // MARK: -
 
 /// Generate a description of an error that includes its type name if not
