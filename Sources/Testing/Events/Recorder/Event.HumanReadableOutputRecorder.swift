@@ -210,7 +210,7 @@ extension Event.HumanReadableOutputRecorder {
     let testName = if let test {
       if let displayName = test.displayName {
         if verbose {
-          "\"\(displayName)\" → \(test.name)"
+          "\"\(displayName)\" (aka '\(test.name)')"
         } else {
           "\"\(displayName)\""
         }
