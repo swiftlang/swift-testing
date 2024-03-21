@@ -54,6 +54,13 @@ private import Foundation
 #endif
       options.isVerbose = args.contains("--verbose")
 
+#if !SWT_NO_EXIT_TESTS && SWIFT_PM_SUPPORTS_SWIFT_TESTING
+      if let exitTest = ExitTest.find(withArguments: args) {
+        await exitTest()
+        return exitCode.rawValue
+      }
+#endif
+
       await runTests(options: options, configuration: configuration)
     }
   } catch {
@@ -230,6 +237,11 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
   }
   configuration.repetitionPolicy = repetitionPolicy
 
+#if !SWT_NO_EXIT_TESTS && SWIFT_PM_SUPPORTS_SWIFT_TESTING
+  // Enable exit test handling via __swiftPMEntryPoint().
+  configuration.exitTestHandler = ExitTest.handlerForSwiftPM
+#endif
+
   return configuration
 }
 
@@ -240,13 +252,13 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 ///   - options: Options to pass when configuring the console output recorder.
 ///   - configuration: The configuration to use for running.
 func runTests(options: Event.ConsoleOutputRecorder.Options, configuration: Configuration) async {
+  var configuration = configuration
   let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
 #if !SWT_NO_FILE_IO
     try? FileHandle.stderr.write(string)
 #endif
   }
 
-  var configuration = configuration
   let oldEventHandler = configuration.eventHandler
   configuration.eventHandler = { event, context in
     eventRecorder.record(event, in: context)

@@ -1,0 +1,245 @@
+//
+// This source file is part of the Swift.org open source project
+//
+// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Licensed under Apache License v2.0 with Runtime Library Exception
+//
+// See https://swift.org/LICENSE.txt for license information
+// See https://swift.org/CONTRIBUTORS.txt for Swift project authors
+//
+
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+private import TestingInternals
+
+#if !SWT_NO_EXIT_TESTS
+@Suite("Exit test tests") struct ExitTestTests {
+#if SWIFT_PM_SUPPORTS_SWIFT_TESTING
+  @Test("Exit tests (passing)") func passing() async {
+    await #expect(exitsWith: .failure) {
+      exit(EXIT_FAILURE)
+    }
+    if EXIT_SUCCESS != EXIT_FAILURE + 1 {
+      await #expect(exitsWith: .failure) {
+        exit(EXIT_FAILURE + 1)
+      }
+    }
+    await #expect(exitsWith: .success) {
+      exit(EXIT_SUCCESS)
+    }
+    await #expect(exitsWith: .exitCode(123)) {
+      exit(123)
+    }
+    await #expect(exitsWith: .exitCode(123)) {
+      await Task.yield()
+      exit(123)
+    }
+#if !os(Windows)
+    await #expect(exitsWith: .signal(SIGKILL)) {
+      _ = kill(getpid(), SIGKILL)
+      // Allow up to 1s for the signal to be delivered.
+      try! await Task.sleep(nanoseconds: 1_000_000_000_000)
+    }
+    await #expect(exitsWith: .signal(SIGABRT)) {
+      abort()
+    }
+#endif
+  }
+
+  @TaskLocal
+  static var isTestingFailingExitTests = false
+
+  @Test("Exit tests (failing)") func failing() async {
+    let expectedCount: Int
+#if os(Windows)
+    expectedCount = 4
+#else
+    expectedCount = 6
+#endif
+    await confirmation("Exit tests failed", expectedCount: expectedCount) { failed in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        if case .issueRecorded = event.kind {
+          failed()
+        }
+      }
+      configuration.exitTestHandler = ExitTest.handlerForSwiftPM
+
+      await Self.$isTestingFailingExitTests.withValue(true) {
+        await Runner(selecting: "failingExitTests()", configuration: configuration).run()
+      }
+    }
+  }
+#endif
+
+  @Test("Mock exit test handlers (passing)") func passingMockHandler() async {
+    await confirmation("System issue recorded", expectedCount: 0) { issueRecorded in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        if case .issueRecorded = event.kind {
+          issueRecorded()
+        }
+      }
+
+      // Mock an exit test that is not a match (and so is not run.)
+      configuration.exitTestHandler = { _ in nil }
+      await Test {
+        await #expect(exitsWith: .success) {
+          Issue.record("Unreachable")
+        }
+      }.run(configuration: configuration)
+
+      // Mock an exit test where the process exits successfully.
+      configuration.exitTestHandler = { _ in
+        return .exitCode(EXIT_SUCCESS)
+      }
+      await Test {
+        await #expect(exitsWith: .success) {}
+      }.run(configuration: configuration)
+
+      // Mock an exit test where the process exits with a generic failure.
+      configuration.exitTestHandler = { _ in
+        return .failure
+      }
+      await Test {
+        await #expect(exitsWith: .failure) {}
+      }.run(configuration: configuration)
+      await Test {
+        await #expect(exitsWith: .exitCode(EXIT_FAILURE)) {}
+      }.run(configuration: configuration)
+#if !os(Windows)
+      await Test {
+        await #expect(exitsWith: .signal(SIGABRT)) {}
+      }.run(configuration: configuration)
+#endif
+
+      // Mock an exit test where the process exits with a particular error code.
+      configuration.exitTestHandler = { _ in
+        return .exitCode(123)
+      }
+      await Test {
+        await #expect(exitsWith: .failure) {}
+      }.run(configuration: configuration)
+
+#if !os(Windows)
+      // Mock an exit test where the process exits with a signal.
+      configuration.exitTestHandler = { _ in
+        return .signal(SIGABRT)
+      }
+      await Test {
+        await #expect(exitsWith: .signal(SIGABRT)) {}
+      }.run(configuration: configuration)
+      await Test {
+        await #expect(exitsWith: .failure) {}
+      }.run(configuration: configuration)
+#endif
+    }
+  }
+
+  @Test("Mock exit test handlers (failing)") func failingMockHandlers() async {
+    let expectedCount: Int
+#if os(Windows)
+    expectedCount = 2
+#else
+    expectedCount = 6
+#endif
+    await confirmation("Issue recorded", expectedCount: expectedCount) { issueRecorded in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        if case .issueRecorded = event.kind {
+          issueRecorded()
+        }
+      }
+
+      // Mock exit tests that were expected to fail but passed.
+      configuration.exitTestHandler = { _ in
+        return .exitCode(EXIT_SUCCESS)
+      }
+      await Test {
+        await #expect(exitsWith: .failure) {}
+      }.run(configuration: configuration)
+      await Test {
+        await #expect(exitsWith: .exitCode(EXIT_FAILURE)) {}
+      }.run(configuration: configuration)
+#if !os(Windows)
+      await Test {
+        await #expect(exitsWith: .signal(SIGABRT)) {}
+      }.run(configuration: configuration)
+#endif
+
+#if !os(Windows)
+      // Mock exit tests that unexpectedly signalled.
+      configuration.exitTestHandler = { _ in
+        return .signal(SIGABRT)
+      }
+      await Test {
+        await #expect(exitsWith: .exitCode(EXIT_SUCCESS)) {}
+      }.run(configuration: configuration)
+      await Test {
+        await #expect(exitsWith: .exitCode(EXIT_FAILURE)) {}
+      }.run(configuration: configuration)
+      await Test {
+        await #expect(exitsWith: .success) {}
+      }.run(configuration: configuration)
+#endif
+    }
+  }
+
+  @Test("Exit test without configured exit test handler") func noHandler() async {
+    await confirmation("System issue recorded") { issueRecorded in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        if case let .issueRecorded(issue) = event.kind, case .system = issue.kind {
+          issueRecorded()
+        }
+      }
+
+      await Test {
+        await #expect(exitsWith: .success) {}
+      }.run(configuration: configuration)
+    }
+  }
+}
+
+// MARK: - Fixtures
+
+#if SWIFT_PM_SUPPORTS_SWIFT_TESTING
+var inFailingExitTestChild: Bool {
+  ExitTestTests.isTestingFailingExitTests || ExitTest.find(withArguments: CommandLine.arguments()) != nil
+}
+
+// This fixture can't be .hidden because it needs to be discovered correctly
+// when the exit tests' child processes start.
+@Test(.enabled(if: inFailingExitTestChild))
+func failingExitTests() async {
+  await #expect(exitsWith: .failure) {
+    exit(EXIT_SUCCESS)
+  }
+  await #expect(exitsWith: .success) {
+    exit(EXIT_FAILURE)
+  }
+  await #expect(exitsWith: .exitCode(123)) {
+    exit(0)
+  }
+  await #expect(exitsWith: .exitCode(SIGABRT)) {
+    abort()
+  }
+#if !os(Windows)
+  await #expect(exitsWith: .signal(123)) {
+    exit(123)
+  }
+  await #expect(exitsWith: .signal(SIGSEGV)) {
+    abort() // sends SIGABRT, not SIGSEGV
+  }
+#endif
+}
+
+#if false // intentionally fails to compile
+@Test(arguments: 100 ..< 200)
+func sellIceCreamCones(count: Int) async throws {
+  try await #require(exitsWith: .failure) {
+    precondition(count < 10, "Too many ice cream cones")
+  }
+}
+#endif
+#endif
+#endif
