@@ -205,6 +205,15 @@ extension Event.JUnitXMLRecorder {
     string.lazy.map(_escapeForXML).joined()
   }
 
+  /// Record the specified event by generating a representation of it in this
+  /// instance's output format and writing it to this instance's destination.
+  ///
+  /// - Parameters:
+  ///   - event: The event to record.
+  ///   - context: The context associated with the event.
+  ///
+  /// - Returns: Whether any output was produced and written to this instance's
+  ///   destination.
   @discardableResult public func record(_ event: borrowing Event, in context: borrowing Event.Context) -> Bool {
     if let output = _record(event, in: context) {
       write(output)

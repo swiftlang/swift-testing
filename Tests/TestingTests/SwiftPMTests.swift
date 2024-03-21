@@ -12,6 +12,7 @@
 #if canImport(Foundation)
 import Foundation
 #endif
+private import TestingInternals
 
 @Suite("Swift Package Manager Integration Tests")
 struct SwiftPMTests {
@@ -129,6 +130,7 @@ struct SwiftPMTests {
     }
   }
 
+#if canImport(Foundation)
   @Test("--xunit-output argument (writes to file)")
   func xunitOutputIsWrittenToFile() throws {
     // Test that a file is opened when requested. Testing of the actual output
@@ -145,6 +147,39 @@ struct SwiftPMTests {
     }
     #expect(try temporaryFileURL.checkResourceIsReachable() as Bool)
   }
+
+  func decodeEventStream(fromFileAt url: URL) throws -> [EventAndContextSnapshot] {
+    try Data(contentsOf: url, options: [.mappedIfSafe])
+      .split(separator: 10) // "\n"
+      .map { try JSONDecoder().decode(EventAndContextSnapshot.self, from: $0) }
+  }
+
+  @Test("--experimental-event-stream-output argument (writes to a stream and can be read back)")
+  func eventStreamOutput() async throws {
+    // Test that events are successfully streamed to a file and can be read
+    // back as snapshots.
+    let temporaryFileURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: false)
+    defer {
+      try? FileManager.default.removeItem(at: temporaryFileURL)
+    }
+    do {
+      let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--experimental-event-stream-output", temporaryFileURL.path])
+      let eventContext = Event.Context()
+      configuration.handleEvent(Event(.runStarted, testID: nil, testCaseID: nil), in: eventContext)
+      do {
+        let test = Test {}
+        let eventContext = Event.Context(test: test)
+        configuration.handleEvent(Event(.testStarted, testID: test.id, testCaseID: nil), in: eventContext)
+        configuration.handleEvent(Event(.testEnded, testID: test.id, testCaseID: nil), in: eventContext)
+      }
+      configuration.handleEvent(Event(.runEnded, testID: nil, testCaseID: nil), in: eventContext)
+    }
+    #expect(try temporaryFileURL.checkResourceIsReachable() as Bool)
+
+    let decodedEvents = try decodeEventStream(fromFileAt: temporaryFileURL)
+    #expect(decodedEvents.count == 4)
+  }
+#endif
 #endif
 
   @Test("--repetitions argument (alone)")
