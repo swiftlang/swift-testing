@@ -75,6 +75,35 @@ documentation. Symbols that fulfill protocol requirements do not need to be
 given additional documentation (the documentation in the protocol declaration is
 generally sufficient.)
 
+
+When writing an abstract for a symbol, start the abstract with either a noun or
+a verb ending in s depending on what kind of symbol it is:
+|   Noun               |   Verb ending in *s*      |
+|----------------------|---------------------------|
+| Associated type      | Enumerations |
+| Class                | Function and function macro |
+| Constant             | Initializer |
+| Enumerated types     | Macro |
+| Property             | Method |
+| Protocol             | Subscript |
+| Structure            |  |
+| Type alias           |  |
+| Variable             |  |
+
+For instance, when writing the abstract for a class `Order`, you could write:
+<blockquote>
+A object that stores the details for a specific order from a vendor.
+</blockquote>
+
+Or when writing the abstract for an enumeration `Flavor`, you could write:
+<blockquote>
+Describes the flavors of an an ingredient.
+</blockquote>
+
+
+To organize symbols under types, place them in topic groups organized by usage.
+Begin topic group headings insides types with a nound or noun phrase.
+
 ### Documentation
 
 Documentation for the testing library should follow the
@@ -90,8 +119,10 @@ mobile restaurant that sells various foods. When referencing foods in example
 code, prefer foods that are recognizable to an international audience, or use a
 set of different foods from multiple cultures.
 
-Example code must be syntactically correct, but does not need to actually
-compile, run, and perform meaningful work.
+Example code must be syntactically correct and the author should confirm it can
+compile and run within an appropriate context. It can rely on external
+dependencies that you exclude as long as those dependencies are easy for
+the reader to understand, and create or replace.
 
 #### Language
 
@@ -110,8 +141,38 @@ reader are not expected to know each other personally, so avoid overly familiar
 terms or colloquialisms such as "let's."
 
 When writing specific instructions that a reader must follow exactly in order to
-accomplish a task, use the second person ("you", "your", etc.) Otherwise, avoid
-using the second person.
+accomplish a task, use the second person ("you", "your", etc.).
+
+#### Articles
+
+When writing articles or curating content, keep the structure simple and
+relatively flat. Place articles in topic groups alongside the symbols.
+
+Some basic rules to follow when creating an article are:
+- Begin an article title with a *gerund* (a verb ending in "ing").
+- After the title, include a single sentence that begins with a verb and quickly
+describes what the article covers.
+- Include an overview to serve as an introduction to the article. If required,
+include any setup or configuration tasks as a part of your overview.
+- Start section headings with an imperative verb.
+- Always follow a section heading with some text to setup the code or problem
+you want to solve.
+- Match the names of articles and the files that contain them using kebab-case.
+
+#### API collections
+
+To organize related subsets of symbols, articles, and other content, use an API
+collection.
+
+Some basic rules to follow when creating an API collections are:
+- Begin the collection title with a noun that describes what the items in the
+collection have in common.
+- After the title, include a single sentence that describes the items in the
+collection.
+- Optionally, include an overview to the collection.
+- Organize the symbols under topic group headings. Begin a topic group heading
+with a gerund.
+- Match the names of a collections and the files that contain them using kebab-case.
 
 #### Technical details
 
