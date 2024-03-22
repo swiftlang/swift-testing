@@ -208,7 +208,7 @@ struct MiscellaneousTests {
   @Test("Free function has custom display name")
   func namedFreeFunctionTest() async throws {
     let tests = await Test.all
-    #expect(tests.first { $0.displayName == "Named Free Sync Function" && !$0.isSuite && $0.containingType == nil } != nil)
+    #expect(tests.first { $0.displayName == "Named Free Sync Function" && !$0.isSuite && $0.containingTypeInfo == nil } != nil)
   }
 
   @Test("Member function has custom display name")
@@ -340,7 +340,7 @@ struct MiscellaneousTests {
       #expect(firstParameter.firstName == "i")
       #expect(firstParameter.secondName == nil)
       let firstParameterTypeInfo = try #require(firstParameter.typeInfo)
-      #expect(firstParameterTypeInfo.qualifiedName == "Swift.Int")
+      #expect(firstParameterTypeInfo.fullyQualifiedName == "Swift.Int")
       #expect(firstParameterTypeInfo.unqualifiedName == "Int")
     } catch {}
 
@@ -357,7 +357,7 @@ struct MiscellaneousTests {
       #expect(secondParameter.firstName == "j")
       #expect(secondParameter.secondName == "k")
       let secondParameterTypeInfo = try #require(secondParameter.typeInfo)
-      #expect(secondParameterTypeInfo.qualifiedName == "Swift.String")
+      #expect(secondParameterTypeInfo.fullyQualifiedName == "Swift.String")
       #expect(secondParameterTypeInfo.unqualifiedName == "String")
     } catch {}
   }

@@ -53,12 +53,12 @@ public struct Test: Sendable {
   /// The source location of this test.
   public var sourceLocation: SourceLocation
 
-  /// The type containing this test, if any.
+  /// Information about the type containing this test, if any.
   ///
   /// If a test is associated with a free function or static function, the value
   /// of this property is `nil`. To determine if a specific instance of ``Test``
   /// refers to this type itself, check the ``isSuite`` property.
-  var containingType: Any.Type?
+  var containingTypeInfo: TypeInfo?
 
   /// The XCTest-compatible Objective-C selector corresponding to this
   /// instance's underlying test function.
@@ -109,22 +109,21 @@ public struct Test: Sendable {
   ///
   /// A test suite can be declared using the ``Suite(_:_:)`` macro.
   public var isSuite: Bool {
-    containingType != nil && testCases == nil
+    containingTypeInfo != nil && testCases == nil
   }
 
   /// Initialize an instance of this type representing a test suite type.
   init(
-    name: String,
     displayName: String? = nil,
     traits: [any Trait],
     sourceLocation: SourceLocation,
-    containingType: Any.Type
+    containingTypeInfo: TypeInfo
   ) {
-    self.name = name
+    self.name = containingTypeInfo.unqualifiedName
     self.displayName = displayName
     self.traits = traits
     self.sourceLocation = sourceLocation
-    self.containingType = containingType
+    self.containingTypeInfo = containingTypeInfo
   }
 
   /// Initialize an instance of this type representing a test function.
@@ -133,7 +132,7 @@ public struct Test: Sendable {
     displayName: String? = nil,
     traits: [any Trait],
     sourceLocation: SourceLocation,
-    containingType: Any.Type? = nil,
+    containingTypeInfo: TypeInfo? = nil,
     xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
     testCases: Test.Case.Generator<S>,
     parameters: [Parameter]
@@ -142,7 +141,7 @@ public struct Test: Sendable {
     self.displayName = displayName
     self.traits = traits
     self.sourceLocation = sourceLocation
-    self.containingType = containingType
+    self.containingTypeInfo = containingTypeInfo
     self.xcTestCompatibleSelector = xcTestCompatibleSelector
     self._testCases = .init(rawValue: .init(testCases))
     self.parameters = parameters

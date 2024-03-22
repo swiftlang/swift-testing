@@ -362,7 +362,7 @@ final class IssueTests: XCTestCase {
       XCTAssertEqual(expression.sourceCode, "abc123")
       let runtimeValue = try XCTUnwrap(expression.runtimeValue)
       XCTAssertEqual(String(describing: runtimeValue), "987")
-      XCTAssertEqual(runtimeValue.typeInfo.qualifiedName, "Swift.Int")
+      XCTAssertEqual(runtimeValue.typeInfo.fullyQualifiedName, "Swift.Int")
       XCTAssertFalse(runtimeValue.isCollection)
     }
 
@@ -371,7 +371,7 @@ final class IssueTests: XCTestCase {
       XCTAssertEqual(expression.sourceCode, "abc123")
       let runtimeValue = try XCTUnwrap(expression.runtimeValue)
       XCTAssertEqual(String(describing: runtimeValue), "ExpressionRuntimeValueCapture_Value()")
-      XCTAssertEqual(runtimeValue.typeInfo.qualifiedName, "TestingTests.IssueTests.ExpressionRuntimeValueCapture_Value")
+      XCTAssertEqual(runtimeValue.typeInfo.fullyQualifiedName, "TestingTests.IssueTests.ExpressionRuntimeValueCapture_Value")
       XCTAssertFalse(runtimeValue.isCollection)
     }
 
@@ -380,7 +380,7 @@ final class IssueTests: XCTestCase {
       XCTAssertEqual(expression.sourceCode, "abc123")
       let runtimeValue = try XCTUnwrap(expression.runtimeValue)
       XCTAssertEqual(String(describing: runtimeValue), #"(123, "abc")"#)
-      XCTAssertEqual(runtimeValue.typeInfo.qualifiedName, "(Swift.Int, Swift.String)")
+      XCTAssertEqual(runtimeValue.typeInfo.fullyQualifiedName, "(Swift.Int, Swift.String)")
       XCTAssertFalse(runtimeValue.isCollection)
     }
   }
@@ -398,7 +398,7 @@ final class IssueTests: XCTestCase {
       expression = expression.capturingRuntimeValues(ExpressionRuntimeValueCapture_Value())
       let runtimeValue = try XCTUnwrap(expression.runtimeValue)
       XCTAssertEqual(String(describing: runtimeValue), "ExpressionRuntimeValueCapture_Value()")
-      XCTAssertEqual(runtimeValue.typeInfo.qualifiedName, "TestingTests.IssueTests.ExpressionRuntimeValueCapture_Value")
+      XCTAssertEqual(runtimeValue.typeInfo.fullyQualifiedName, "TestingTests.IssueTests.ExpressionRuntimeValueCapture_Value")
       XCTAssertFalse(runtimeValue.isCollection)
       XCTAssertNil(runtimeValue.children)
       XCTAssertNil(runtimeValue.label)
@@ -408,7 +408,7 @@ final class IssueTests: XCTestCase {
       expression = expression.capturingRuntimeValues(ExpressionRuntimeValueCapture_ValueWithChildren(contents: [123, "abc"]))
       let runtimeValue = try XCTUnwrap(expression.runtimeValue)
       XCTAssertEqual(String(describing: runtimeValue), #"ExpressionRuntimeValueCapture_ValueWithChildren(contents: [123, "abc"])"#)
-      XCTAssertEqual(runtimeValue.typeInfo.qualifiedName, "TestingTests.IssueTests.ExpressionRuntimeValueCapture_ValueWithChildren")
+      XCTAssertEqual(runtimeValue.typeInfo.fullyQualifiedName, "TestingTests.IssueTests.ExpressionRuntimeValueCapture_ValueWithChildren")
       XCTAssertFalse(runtimeValue.isCollection)
       XCTAssertNil(runtimeValue.label)
 
@@ -431,7 +431,7 @@ final class IssueTests: XCTestCase {
       expression = expression.capturingRuntimeValues([])
       let runtimeValue = try XCTUnwrap(expression.runtimeValue)
       XCTAssertEqual(String(describing: runtimeValue), "[]")
-      XCTAssertEqual(runtimeValue.typeInfo.qualifiedName, "Swift.Array<Any>")
+      XCTAssertEqual(runtimeValue.typeInfo.fullyQualifiedName, "Swift.Array<Any>")
       XCTAssertTrue(runtimeValue.isCollection)
       XCTAssertNil(runtimeValue.label)
 

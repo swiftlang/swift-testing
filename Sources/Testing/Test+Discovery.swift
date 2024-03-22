@@ -28,7 +28,7 @@ extension Test {
   /// All available ``Test`` instances in the process, according to the runtime.
   ///
   /// The order of values in this sequence is unspecified.
-  static var all: some Sequence<Test> {
+  static var all: some Collection<Test> {
     get async {
       // Convert the raw sequence of tests to a dictionary keyed by ID.
       var result = await testsByID(_all)
@@ -45,7 +45,7 @@ extension Test {
   ///
   /// The order of values in this sequence is unspecified. This sequence may
   /// contain duplicates; callers should use ``all`` instead.
-  private static var _all: some Sequence<Self> {
+  private static var _all: some Collection<Self> {
     get async {
       await withTaskGroup(of: [Self].self) { taskGroup in
         swt_enumerateTypes(&taskGroup) { type, context in
@@ -98,16 +98,16 @@ extension Test {
     // Find any instances of Test in the input that are *not* suites. We'll be
     // checking the containing types of each one.
     for test in tests.values where !test.isSuite {
-      guard let suiteType = test.containingType else {
+      guard let suiteTypeInfo = test.containingTypeInfo else {
         continue
       }
-      let suiteID = ID(type: suiteType)
+      let suiteID = ID(typeInfo: suiteTypeInfo)
       if tests[suiteID] == nil {
         // If the real test is hidden, so shall the synthesized test be hidden.
         // Copy the exact traits from the real test in case they someday carry
         // any interesting metadata.
         let traits = test.traits.compactMap { $0 as? HiddenTrait }
-        tests[suiteID] = .__type(suiteType, displayName: nil, traits: traits, sourceLocation: test.sourceLocation)
+        tests[suiteID] = Test(traits: traits, sourceLocation: test.sourceLocation, containingTypeInfo: suiteTypeInfo)
       }
     }
 

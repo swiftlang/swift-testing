@@ -35,8 +35,9 @@ extension Tag {
 /// - Returns: The test instance representing the specified type, or `nil` if
 ///   none is found.
 func test(for containingType: Any.Type) async -> Test? {
-  await Test.all.first {
-    $0.isSuite && $0.containingType == containingType
+  let containingTypeInfo = TypeInfo(describing: containingType)
+  return await Test.all.first {
+    $0.isSuite && $0.containingTypeInfo == containingTypeInfo
   }
 }
 
@@ -49,8 +50,9 @@ func test(for containingType: Any.Type) async -> Test? {
 /// - Returns: The test instance representing the specified test function, or
 ///   `nil` if none is found.
 func testFunction(named name: String, in containingType: Any.Type) async -> Test? {
-  await Test.all.first {
-    $0.name == name && !$0.isSuite && $0.containingType == containingType
+  let containingTypeInfo = TypeInfo(describing: containingType)
+  return await Test.all.first {
+    $0.name == name && !$0.isSuite && $0.containingTypeInfo == containingTypeInfo
   }
 }
 
@@ -146,7 +148,7 @@ extension Test {
   ) {
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
     let caseGenerator = Case.Generator(testFunction: testFunction)
-    self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingType: nil, testCases: caseGenerator, parameters: [])
+    self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: nil, testCases: caseGenerator, parameters: [])
   }
 
   /// Initialize an instance of this type with a function or closure to call,
@@ -177,7 +179,7 @@ extension Test {
   ) where C: Collection & Sendable, C.Element: Sendable {
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
     let caseGenerator = Case.Generator(arguments: collection, parameters: parameters, testFunction: testFunction)
-    self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingType: nil, testCases: caseGenerator, parameters: parameters)
+    self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 
   /// Initialize an instance of this type with a function or closure to call,
@@ -209,7 +211,7 @@ extension Test {
   ) where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
     let caseGenerator = Case.Generator(arguments: collection1, collection2, parameters: parameters, testFunction: testFunction)
-    self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingType: nil, testCases: caseGenerator, parameters: parameters)
+    self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 
   /// Initialize an instance of this type with a function or closure to call,
@@ -236,7 +238,7 @@ extension Test {
   ) where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
     let caseGenerator = Case.Generator(arguments: zippedCollections, parameters: parameters, testFunction: testFunction)
-    self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingType: nil, testCases: caseGenerator, parameters: parameters)
+    self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 }
 
