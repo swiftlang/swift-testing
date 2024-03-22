@@ -134,6 +134,42 @@ public struct TypeInfo: Sendable {
   }
 }
 
+// MARK: - Containing types
+
+extension TypeInfo {
+  /// An instance of this type representing the type immediately containing the
+  /// described type.
+  ///
+  /// For instance, given the following declaration in the `Example` module:
+  ///
+  /// ```swift
+  /// struct A {
+  ///   struct B {}
+  /// }
+  /// ```
+  ///
+  /// The value of this property for the type `A.B` would describe `A`, while
+  /// the value for `A` would be `nil` because it has no enclosing type.
+  var containingTypeInfo: Self? {
+    let fqnComponents = fullyQualifiedNameComponents
+    if fqnComponents.count > 2 { // the module is not a type
+      let fqn = fqnComponents.dropLast().joined(separator: ".")
+      if let type = _typeByName(fqn) {
+        return Self(describing: type)
+      }
+      let name = fqnComponents[fqnComponents.count - 2]
+      return Self(fullyQualifiedName: fqn, unqualifiedName: name)
+    }
+    return nil
+  }
+
+  /// A sequence of instances of this type representing the types that
+  /// recursively contain it, starting with the immediate parent (if any.)
+  var allContainingTypeInfo: some Sequence<Self> {
+    sequence(first: self, next: \.containingTypeInfo).dropFirst()
+  }
+}
+
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible
 
 extension TypeInfo: CustomStringConvertible, CustomDebugStringConvertible {
