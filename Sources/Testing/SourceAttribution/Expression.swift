@@ -258,7 +258,7 @@ public struct Expression: Sendable {
     var result = ""
     switch kind {
     case let .generic(sourceCode), let .stringLiteral(sourceCode, _):
-      result = if includingTypeNames, let qualifiedName = runtimeValue?.typeInfo.qualifiedName {
+      result = if includingTypeNames, let qualifiedName = runtimeValue?.typeInfo.fullyQualifiedName {
         "\(sourceCode): \(qualifiedName)"
       } else {
         sourceCode

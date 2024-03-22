@@ -141,7 +141,7 @@ struct Test_Case_ArgumentTests {
       #expect(value.1 == 123)
       #expect(argument.parameter.index == 0)
       #expect(argument.parameter.firstName == "x")
-      #expect(argument.parameter.typeInfo.qualifiedName == "(key: Swift.String, value: Swift.Int)")
+      #expect(argument.parameter.typeInfo.fullyQualifiedName == "(key: Swift.String, value: Swift.Int)")
       #expect(argument.parameter.typeInfo.unqualifiedName == "(key: String, value: Int)")
     }
 

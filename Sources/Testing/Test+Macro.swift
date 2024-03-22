@@ -110,8 +110,8 @@ extension Test {
     traits: [any SuiteTrait],
     sourceLocation: SourceLocation
   ) -> Self {
-    let typeName = String(describing: containingType)
-    return Self(name: typeName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType)
+    let containingTypeInfo = TypeInfo(describing: containingType)
+    return Self(displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo)
   }
 }
 
@@ -165,8 +165,9 @@ extension Test {
     parameters: [__Parameter] = [],
     testFunction: @escaping @Sendable () async throws -> Void
   ) -> Self {
+    let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
     let caseGenerator = Case.Generator(testFunction: testFunction)
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: [])
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: [])
   }
 }
 
@@ -240,9 +241,10 @@ extension Test {
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
   ) -> Self where C: Collection & Sendable, C.Element: Sendable {
+    let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
     let parameters = paramTuples.parameters
     let caseGenerator = Case.Generator(arguments: collection, parameters: parameters, testFunction: testFunction)
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 }
 
@@ -368,9 +370,10 @@ extension Test {
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
+    let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
     let parameters = paramTuples.parameters
     let caseGenerator = Case.Generator(arguments: collection1, collection2, parameters: parameters, testFunction: testFunction)
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
@@ -391,9 +394,10 @@ extension Test {
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable ((E1, E2)) async throws -> Void
   ) -> Self where C: Collection & Sendable, C.Element == (E1, E2), E1: Sendable, E2: Sendable {
+    let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
     let parameters = paramTuples.parameters
     let caseGenerator = Case.Generator(arguments: collection, parameters: parameters, testFunction: testFunction)
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
@@ -417,9 +421,10 @@ extension Test {
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable ((Key, Value)) async throws -> Void
   ) -> Self where Key: Sendable, Value: Sendable {
+    let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
     let parameters = paramTuples.parameters
     let caseGenerator = Case.Generator(arguments: dictionary, parameters: parameters, testFunction: testFunction)
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
@@ -437,11 +442,12 @@ extension Test {
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
+    let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
     let parameters = paramTuples.parameters
     let caseGenerator = Case.Generator(arguments: zippedCollections, parameters: parameters) {
       try await testFunction($0, $1)
     }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingType: containingType, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 }
 

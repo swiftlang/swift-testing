@@ -71,7 +71,19 @@ extension Test: Identifiable {
     /// This initializer produces a test ID corresponding to the given type.
     @_spi(ForToolsIntegrationOnly)
     public init(type: Any.Type) {
-      self.init(Testing.nameComponents(of: type))
+      self.init(typeInfo: TypeInfo(describing: type))
+    }
+
+    /// Initialize an instance of this type representing the specified test
+    /// suite type.
+    ///
+    /// - Parameters:
+    ///   - type: The test suite type.
+    ///
+    /// This initializer produces a test ID corresponding to the given type.
+    @_spi(ForToolsIntegrationOnly)
+    public init(typeInfo: TypeInfo) {
+      self.init(typeInfo.fullyQualifiedNameComponents)
     }
 
     /// A representation of this instance suitable for use as a key path in a
@@ -104,7 +116,7 @@ extension Test: Identifiable {
   }
 
   public var id: ID {
-    var result = containingType.map(ID.init)
+    var result = containingTypeInfo.map(ID.init)
       ?? ID(moduleName: sourceLocation.moduleName, nameComponents: [], sourceLocation: nil)
 
     if !isSuite {

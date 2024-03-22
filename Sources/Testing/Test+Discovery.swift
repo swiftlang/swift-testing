@@ -98,16 +98,16 @@ extension Test {
     // Find any instances of Test in the input that are *not* suites. We'll be
     // checking the containing types of each one.
     for test in tests.values where !test.isSuite {
-      guard let suiteType = test.containingType else {
+      guard let suiteTypeInfo = test.containingTypeInfo else {
         continue
       }
-      let suiteID = ID(type: suiteType)
+      let suiteID = ID(typeInfo: suiteTypeInfo)
       if tests[suiteID] == nil {
         // If the real test is hidden, so shall the synthesized test be hidden.
         // Copy the exact traits from the real test in case they someday carry
         // any interesting metadata.
         let traits = test.traits.compactMap { $0 as? HiddenTrait }
-        tests[suiteID] = .__type(suiteType, displayName: nil, traits: traits, sourceLocation: test.sourceLocation)
+        tests[suiteID] = Test(traits: traits, sourceLocation: test.sourceLocation, containingTypeInfo: suiteTypeInfo)
       }
     }
 
