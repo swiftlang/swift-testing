@@ -243,6 +243,23 @@ extension FileHandle {
     }
   }
 
+  /// Write a sequence of bytes to this file handle.
+  ///
+  /// - Parameters:
+  ///   - bytes: The bytes to write. This untyped buffer is interpreted as a
+  ///     sequence of `UInt8` values.
+  ///   - flushAfterward: Whether or not to flush the file (with `fflush()`)
+  ///     after writing. If `true`, `fflush()` is called even if an error
+  ///     occurred while writing.
+  ///
+  /// - Throws: Any error that occurred while writing `bytes`. If an error
+  ///   occurs while flushing the file, it is not thrown.
+  func write(_ bytes: UnsafeRawBufferPointer, flushAfterward: Bool = true) throws {
+    try bytes.withMemoryRebound(to: UInt8.self) { bytes in
+      try write(bytes)
+    }
+  }
+
   /// Write a string to this file handle.
   ///
   /// - Parameters:
