@@ -28,7 +28,7 @@ extension Test {
   /// All available ``Test`` instances in the process, according to the runtime.
   ///
   /// The order of values in this sequence is unspecified.
-  static var all: some Collection<Test> {
+  static var all: some Sequence<Test> {
     get async {
       // Convert the raw sequence of tests to a dictionary keyed by ID.
       var result = await testsByID(_all)
@@ -45,7 +45,7 @@ extension Test {
   ///
   /// The order of values in this sequence is unspecified. This sequence may
   /// contain duplicates; callers should use ``all`` instead.
-  private static var _all: some Collection<Self> {
+  private static var _all: some Sequence<Self> {
     get async {
       await withTaskGroup(of: [Self].self) { taskGroup in
         swt_enumerateTypes(&taskGroup) { type, context in
