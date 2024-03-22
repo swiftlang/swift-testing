@@ -71,11 +71,20 @@ struct FileHandleTests {
       remove(path)
     }
     let fileHandle = try FileHandle(forWritingAtPath: path)
+    try fileHandle.write([0, 1, 2, 3, 4, 5])
     try fileHandle.write("Hello world!")
   }
 
-  @Test("Cannot write to a read-only file")
-  func cannotWriteToReadOnlyFile() throws {
+  @Test("Cannot write bytes to a read-only file")
+  func cannotWriteBytesToReadOnlyFile() throws {
+    let fileHandle = try FileHandle.null(mode: "rb")
+    #expect(throws: CError.self) {
+      try fileHandle.write([0, 1, 2, 3, 4, 5])
+    }
+  }
+
+  @Test("Cannot write string to a read-only file")
+  func cannotWriteStringToReadOnlyFile() throws {
     let fileHandle = try FileHandle.null(mode: "rb")
     #expect(throws: CError.self) {
       try fileHandle.write("Impossible!")
