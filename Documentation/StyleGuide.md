@@ -92,7 +92,7 @@ a verb ending in "s" depending on what kind of symbol it is:
 
 For instance, when writing the abstract for a class `Order`, you could write:
 <blockquote>
-A object that stores the details for a specific order from a vendor.
+An object that stores the details for a specific order from a vendor.
 </blockquote>
 
 Or when writing the abstract for an enumeration `Flavor`, you could write:
