@@ -77,7 +77,7 @@ generally sufficient.)
 
 
 When writing an abstract for a symbol, start the abstract with either a noun or
-a verb ending in s depending on what kind of symbol it is:
+a verb ending in "s" depending on what kind of symbol it is:
 |   Noun               |   Verb ending in *s*      |
 |----------------------|---------------------------|
 | Associated type      | Enumerations |
