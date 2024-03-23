@@ -51,8 +51,8 @@ public struct TypeInfo: Sendable {
     switch _kind {
     case let .type(type):
       nameComponents(of: type)
-    case let .nameOnly(fqn, _):
-      fqn.split(separator: ".").map(String.init)
+    case let .nameOnly(fullyQualifiedName, _):
+      fullyQualifiedName.split(separator: ".").map(String.init)
     }
   }
 
@@ -74,8 +74,8 @@ public struct TypeInfo: Sendable {
     switch _kind {
     case let .type(type):
       Testing.fullyQualifiedName(of: type)
-    case let .nameOnly(fqn, _):
-      fqn
+    case let .nameOnly(fullyQualifiedName, _):
+      fullyQualifiedName
     }
   }
 
@@ -154,17 +154,12 @@ extension TypeInfo: Hashable {
     case let (.type(lhs), .type(rhs)):
       return lhs == rhs
     default:
-      return lhs.fullyQualifiedNameComponents == rhs.fullyQualifiedNameComponents
+      return lhs.fullyQualifiedName == rhs.fullyQualifiedName
     }
   }
 
   public func hash(into hasher: inout Hasher) {
-    switch _kind {
-    case let .type(type):
-      hasher.combine(ObjectIdentifier(type))
-    case let .nameOnly(fqnComponents, _):
-      hasher.combine(fqnComponents)
-    }
+    hasher.combine(fullyQualifiedName)
   }
 }
 
