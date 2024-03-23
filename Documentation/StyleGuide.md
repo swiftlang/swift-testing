@@ -158,7 +158,7 @@ you want to solve.
 To organize related subsets of symbols, articles, and other content, use an API
 collection.
 
-Some basic rules to follow when creating an API collections are:
+Some basic rules to follow when creating an API collection are:
 - Begin the collection title with a noun that describes what the items in the
 collection have in common.
 - After the title, include a single sentence that describes the items in the
