@@ -154,9 +154,11 @@ extension TypeInfo {
     let fqnComponents = fullyQualifiedNameComponents
     if fqnComponents.count > 2 { // the module is not a type
       let fqn = fqnComponents.dropLast().joined(separator: ".")
+#if false // currently non-functional
       if let type = _typeByName(fqn) {
         return Self(describing: type)
       }
+#endif
       let name = fqnComponents[fqnComponents.count - 2]
       return Self(fullyQualifiedName: fqn, unqualifiedName: name)
     }
