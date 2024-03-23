@@ -148,7 +148,7 @@ When writing articles or curating content, keep the structure simple and
 relatively flat. Place articles in topic groups alongside the symbols.
 
 Some basic rules to follow when creating an article are:
-- Begin an article title with a *gerund* (a verb ending in "ing").
+- Begin an article title with a _gerund_ (a verb ending in "ing").
 - After the title, include a single sentence that begins with a verb and quickly
 describes what the article covers.
 - Include an overview to serve as an introduction to the article. If required,
