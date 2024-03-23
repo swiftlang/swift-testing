@@ -100,7 +100,6 @@ Or when writing the abstract for an enumeration `Flavor`, you could write:
 Describes the flavors of an an ingredient.
 </blockquote>
 
-
 To organize symbols under types, place them in topic groups organized by usage.
 Begin topic group headings insides types with a nound or noun phrase.
 
