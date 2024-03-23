@@ -75,7 +75,6 @@ documentation. Symbols that fulfill protocol requirements do not need to be
 given additional documentation (the documentation in the protocol declaration is
 generally sufficient.)
 
-
 When writing an abstract for a symbol, start the abstract with either a noun or
 a verb ending in "s" depending on what kind of symbol it is:
 |   Noun               |   Verb ending in *s*      |
