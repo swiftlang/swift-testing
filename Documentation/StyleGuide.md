@@ -93,9 +93,7 @@ For instance, when writing the abstract for a class `Order`, you could write:
 > An object that stores the details for a specific order from a vendor.
 
 Or when writing the abstract for an enumeration `Flavor`, you could write:
-<blockquote>
-Describes the flavors of an an ingredient.
-</blockquote>
+> Describes the flavors of an ingredient.
 
 To organize symbols under types, place them in topic groups organized by usage.
 Begin topic group headings insides types with a nound or noun phrase.
