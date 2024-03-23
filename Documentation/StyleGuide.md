@@ -166,7 +166,7 @@ collection.
 - Optionally, include an overview to the collection.
 - Organize the symbols under topic group headings. Begin a topic group heading
 with a gerund.
-- Match the names of a collections and the files that contain them using kebab-case.
+- Match the names of collections and the files that contain them using kebab-case.
 
 #### Technical details
 
