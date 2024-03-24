@@ -20,6 +20,7 @@
 ///
 /// If `condition` evaluates to `false`, an ``Issue`` is recorded for the test
 /// that is running in the current task.
+///
 /// When comparing two numeric values within a specified accuracy, please use
 /// ``isApproximatelyEqual()`` function in the swift-numerics package.
 @freestanding(expression) public macro expect(
