@@ -92,7 +92,7 @@ a verb ending in "s" depending on what kind of symbol it is:
 For instance, when writing the abstract for a class `Order`, you could write:
 > An object that stores the details for a specific order from a vendor.
 
-Or when writing the abstract for an enumeration `Flavor`, you could write:
+Or, when writing the abstract for an enumeration `Flavor`, you could write:
 > Describes the flavors of an ingredient.
 
 To organize symbols under types, place them in topic groups organized by usage.
@@ -132,10 +132,10 @@ the documentation.
 
 Documentation should be written in a professional voice. The author and the
 reader are not expected to know each other personally, so avoid overly familiar
-terms or colloquialisms such as "let's."
+terms or colloquialisms such as _we_, _our_, or _let's_.
 
 When writing specific instructions that a reader must follow exactly in order to
-accomplish a task, use the second person ("you", "your", etc.).
+accomplish a task, use the second person (_you_, _your_, and so on).
 
 #### Articles
 
@@ -143,7 +143,7 @@ When writing articles or curating content, keep the structure simple and
 relatively flat. Place articles in topic groups alongside the symbols.
 
 Some basic rules to follow when creating an article are:
-- Begin an article title with a _gerund_ (a verb ending in "ing").
+- Begin an article title with a _gerund_ (a verb ending in _-ing_).
 - After the title, include a single sentence that begins with a verb and quickly
 describes what the article covers.
 - Include an overview to serve as an introduction to the article. If required,
@@ -151,7 +151,7 @@ include any setup or configuration tasks as a part of your overview.
 - Start section headings with an imperative verb.
 - Always follow a section heading with some text to setup the code or problem
 you want to solve.
-- Match the names of articles and the files that contain them using kebab-case.
+- The filename for your article should match the title of the article except in lowercase characters, ignoring punctuation, and replacing spaces with hyphens (kebab-case). For example, if the title of your article is _Adding tags to tests_, the filename would be `adding-tags-to-tests.md`.
 
 #### API collections
 
@@ -166,7 +166,7 @@ collection.
 - Optionally, include an overview to the collection.
 - Organize the symbols under topic group headings. Begin a topic group heading
 with a gerund.
-- Match the names of collections and the files that contain them using kebab-case.
+- The filename for your API collection should match the title of the collection page, except in lowercase characters, ignoring punctuation, and replacing spaces with hyphens (kebab-case). For example, if the title of the collection page is _Event tags_, the filename would be `event-tags.md`.
 
 #### Technical details
 
