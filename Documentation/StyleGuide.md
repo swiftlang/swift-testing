@@ -151,7 +151,7 @@ include any setup or configuration tasks as a part of your overview.
 - Start section headings with an imperative verb.
 - Always follow a section heading with some text to setup the code or problem
 you want to solve.
-- The filename for your article should match the title of the article except in lowercase characters, ignoring punctuation, and replacing spaces with hyphens (kebab-case). For example, if the title of your article is _Adding tags to tests_, the filename would be `adding-tags-to-tests.md`.
+- Ensure that your filename adheres to the guidance in the [Filenames](#filenames) section, below.
 
 #### API collections
 
@@ -166,7 +166,17 @@ collection.
 - Optionally, include an overview to the collection.
 - Organize the symbols under topic group headings. Begin a topic group heading
 with a gerund.
-- The filename for your API collection should match the title of the collection page, except in lowercase characters, ignoring punctuation, and replacing spaces with hyphens (kebab-case). For example, if the title of the collection page is _Event tags_, the filename would be `event-tags.md`.
+- Ensure that your filename adheres to the guidance in the [Filenames](#filenames) section, below.
+
+#### Filenames
+
+Filenames for articles and API collections should conform to the following:
+- Make filenames unique.
+- Construct the filename using the title of the page, except in lowercase characters.
+- Ignore punctuation like commas and apostrophies.
+- Replace spaces with hyphens (kebab-case).
+
+For example, if the title of your article is _Adding tags to tests_, the filename would be `adding-tags-to-tests.md`, or if the title of the collection page is _Event tags_, the filename would be `event-tags.md`.
 
 #### Technical details
 
