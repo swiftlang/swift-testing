@@ -420,11 +420,11 @@ struct PlanTests {
     #expect(plan.stepGraph.subgraph(at: nameComponents(of: SendableTests.self) + CollectionOfOne("reserved1(reserved2:)")) != nil)
   }
 
-  @Test("Runner.Plan.independentlyRunnableSteps property")
+  @Test("Runner.Plan.independentlyRunnableSteps property (all tests top-level)")
   func independentlyRunnableTests() async throws {
-    let plan = await Runner.Plan(selecting: IndependentlyRunnableTests.self)
-    withKnownIssue("This algorithm is no longer correct with all suites synthesized") {
-      #expect(plan.independentlyRunnableSteps.count == 2)
+    let plan = await Runner.Plan(configuration: .init())
+    for step in plan.independentlyRunnableSteps {
+      #expect(step.test.id.nameComponents.count == 1, "Test is not top-level: \(step.test)")
     }
   }
 }
