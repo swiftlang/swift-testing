@@ -108,6 +108,18 @@ extension Test {
 
 // MARK: -
 
+/// An error that is reported by ``XCTestScaffold`` when a test times out.
+///
+/// This type is not part of the public interface of the testing library.
+struct TimeoutError: Error, CustomStringConvertible {
+  /// The time limit exceeded by the test that timed out.
+  var timeLimit: TimeValue
+
+  var description: String {
+    "Timed out after \(timeLimit) seconds."
+  }
+}
+
 #if !SWT_NO_UNSTRUCTURED_TASKS
 /// Invoke a function with a timeout.
 ///

@@ -10,6 +10,7 @@
 
 #if canImport(XCTest)
 import XCTest
+#endif
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
 struct MyError: Error, Equatable {
@@ -35,6 +36,7 @@ private let randomNumber = Int.random(in: 0 ..< .max)
   throw MyParameterizedError(index: i)
 }
 
+#if canImport(XCTest)
 @Suite(.hidden, .disabled())
 struct NeverRunTests {
   private static var someCondition: Bool {
