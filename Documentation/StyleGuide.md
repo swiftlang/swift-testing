@@ -75,6 +75,32 @@ documentation. Symbols that fulfill protocol requirements do not need to be
 given additional documentation (the documentation in the protocol declaration is
 generally sufficient.)
 
+When writing an abstract for a symbol, start the abstract with either a noun or
+a verb ending in "s" depending on what kind of symbol it is:
+
+|   Noun               |   Verb ending in _s_      |
+|----------------------|---------------------------|
+| Associated type      | Enumerations |
+| Class                | Function and function macro |
+| Constant             | Initializer |
+| Enumerated types     | Macro |
+| Property             | Method |
+| Protocol             | Subscript |
+| Structure            |  |
+| Type alias           |  |
+| Variable             |  |
+
+For instance, when writing the abstract for a class `Order`, you could write:
+
+> An object that stores the details for a specific order from a vendor.
+
+Or, when writing the abstract for an enumeration `Flavor`, you could write:
+
+> Describes the flavors of an ingredient.
+
+To organize symbols under types, place them in topic groups organized by usage.
+Begin topic group headings inside types with a noun or noun phrase.
+
 ### Documentation
 
 Documentation for the testing library should follow the
@@ -90,8 +116,10 @@ mobile restaurant that sells various foods. When referencing foods in example
 code, prefer foods that are recognizable to an international audience, or use a
 set of different foods from multiple cultures.
 
-Example code must be syntactically correct, but does not need to actually
-compile, run, and perform meaningful work.
+Example code must be syntactically correct and the author should confirm it can
+compile and run within an appropriate context. It can rely on external
+dependencies that you exclude as long as those dependencies are easy for
+the reader to understand, and create or replace.
 
 #### Language
 
@@ -107,11 +135,61 @@ the documentation.
 
 Documentation should be written in a professional voice. The author and the
 reader are not expected to know each other personally, so avoid overly familiar
-terms or colloquialisms such as "let's."
+terms or colloquialisms such as _we_, _our_, or _let's_.
 
 When writing specific instructions that a reader must follow exactly in order to
-accomplish a task, use the second person ("you", "your", etc.) Otherwise, avoid
-using the second person.
+accomplish a task, use the second person (_you_, _your_, and so on).
+
+#### Articles
+
+When writing articles or curating content, keep the structure simple and
+relatively flat. Place articles in topic groups alongside the symbols. Follow
+these guidelines when creating an article:
+
+- Begin an article title with a _gerund_ (a verb ending in _-ing_).
+- After the title, include a single sentence that begins with a verb and quickly
+  describes what the article covers.
+- Include an overview to serve as an introduction to the article. If required,
+  include any setup or configuration tasks as a part of your overview.
+- Start section headings with an imperative verb.
+- Always follow a section heading with some text to setup the code or problem
+  you want to solve.
+- Ensure that your filename adheres to the guidance in the [Filenames](#filenames)
+  section, below.
+
+#### API collections
+
+To organize related subsets of symbols, articles, and other content, use an API
+collection. Follow these guidelines when creating an API collection:
+
+- Begin the collection title with a noun that describes what the items in the
+  collection have in common.
+- After the title, include a single sentence that describes the items in the
+  collection.
+- Optionally, include an overview to the collection.
+- Organize the symbols under topic group headings. Begin a topic group heading
+  with a gerund.
+- Ensure that your filename adheres to the guidance in the [Filenames](#filenames)
+  section, below.
+
+#### Filenames
+
+The filenames used for articles and API collections should match the titles of
+those documents. For consistency with other Swift documentation, articles and
+API collections in DocC bundles should use [kebab-case](https://en.wikipedia.org/wiki/Letter_case#Kebab_case).
+The DocC compiler will preserve your kebab-case filenames in the resulting
+documentation archive.
+
+For example, if the title of your article is _Adding tags to tests_, the
+filename would be `adding-tags-to-tests.md`, or if the title of the collection
+page is _Event tags_, the filename would be `event-tags.md`.
+
+The DocC compiler lowercases URL paths, so filenames converted from
+[UpperCamelCase](https://en.wikipedia.org/wiki/Camel_case) may be difficult to
+read. UpperCamelCase should still be used for Markdown files in the repository
+such as this one that are not part of a DocC bundle.
+
+For more information, see [Adding Supplemental Content to a Documentation Catalog](https://www.swift.org/documentation/docc/adding-supplemental-content-to-a-documentation-catalog).
 
 #### Technical details
 
