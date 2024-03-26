@@ -8,6 +8,7 @@
  See https://swift.org/CONTRIBUTORS.txt for Swift project authors
  */
 
+#if canImport(XCTest)
 import XCTest
 @testable @_spi(ForToolsIntegrationOnly) import Testing
 
@@ -106,3 +107,4 @@ struct ObjCAndXCTestInteropTests {
     }
   }
 }
+#endif

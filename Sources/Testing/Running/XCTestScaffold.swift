@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if !SWT_NO_XCTEST_SCAFFOLDING
+#if !SWT_NO_XCTEST_SCAFFOLDING && canImport(XCTest)
 private import TestingInternals
 public import XCTest
 
@@ -25,19 +25,6 @@ extension XCTSourceCodeContext {
     self.init(callStackAddresses: addresses, location: sourceLocation)
   }
 }
-
-/// An error that is reported by ``XCTestScaffold`` when a test times out.
-///
-/// This type is not part of the public interface of the testing library.
-struct TimeoutError: Error, CustomStringConvertible {
-  /// The time limit exceeded by the test that timed out.
-  var timeLimit: TimeValue
-
-  var description: String {
-    "Timed out after \(timeLimit) seconds."
-  }
-}
-
 extension XCTIssue {
   init(_ issue: Issue, processLaunchedByXcode: Bool) {
     var error = issue.error

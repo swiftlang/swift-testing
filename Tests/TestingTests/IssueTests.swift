@@ -10,6 +10,7 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import TestingInternals
+import Foundation
 
 #if canImport(XCTest)
 import XCTest
