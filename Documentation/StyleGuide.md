@@ -170,13 +170,17 @@ with a gerund.
 
 #### Filenames
 
-Filenames for articles and API collections should conform to the following:
+DocC uses filenames to generate the URL paths for articles and API collections:
 - Make filenames unique.
 - Construct the filename using the title of the page, except in lowercase characters.
 - Ignore punctuation like commas and apostrophies.
 - Replace spaces with hyphens (kebab-case).
 
-For example, if the title of your article is _Adding tags to tests_, the filename would be `adding-tags-to-tests.md`, or if the title of the collection page is _Event tags_, the filename would be `event-tags.md`.
+For example, if the title of your article is _Adding tags to tests_, the filename
+would be `adding-tags-to-tests.md`, or if the title of the collection page is
+_Event tags_, the filename would be `event-tags.md`.
+
+For more information, see [Adding Supplemental Content to a Documentation Catalog](https://www.swift.org/documentation/docc/adding-supplemental-content-to-a-documentation-catalog).
 
 #### Technical details
 
