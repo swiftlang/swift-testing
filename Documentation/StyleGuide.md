@@ -77,7 +77,8 @@ generally sufficient.)
 
 When writing an abstract for a symbol, start the abstract with either a noun or
 a verb ending in "s" depending on what kind of symbol it is:
-|   Noun               |   Verb ending in *s*      |
+
+|   Noun               |   Verb ending in _s_      |
 |----------------------|---------------------------|
 | Associated type      | Enumerations |
 | Class                | Function and function macro |
@@ -90,9 +91,11 @@ a verb ending in "s" depending on what kind of symbol it is:
 | Variable             |  |
 
 For instance, when writing the abstract for a class `Order`, you could write:
+
 > An object that stores the details for a specific order from a vendor.
 
 Or, when writing the abstract for an enumeration `Flavor`, you could write:
+
 > Describes the flavors of an ingredient.
 
 To organize symbols under types, place them in topic groups organized by usage.
@@ -140,45 +143,50 @@ accomplish a task, use the second person (_you_, _your_, and so on).
 #### Articles
 
 When writing articles or curating content, keep the structure simple and
-relatively flat. Place articles in topic groups alongside the symbols.
+relatively flat. Place articles in topic groups alongside the symbols. Follow
+these guidelines when creating an article:
 
-Some basic rules to follow when creating an article are:
 - Begin an article title with a _gerund_ (a verb ending in _-ing_).
 - After the title, include a single sentence that begins with a verb and quickly
-describes what the article covers.
+  describes what the article covers.
 - Include an overview to serve as an introduction to the article. If required,
-include any setup or configuration tasks as a part of your overview.
+  include any setup or configuration tasks as a part of your overview.
 - Start section headings with an imperative verb.
 - Always follow a section heading with some text to setup the code or problem
-you want to solve.
-- Ensure that your filename adheres to the guidance in the [Filenames](#filenames) section, below.
+  you want to solve.
+- Ensure that your filename adheres to the guidance in the [Filenames](#filenames)
+  section, below.
 
 #### API collections
 
 To organize related subsets of symbols, articles, and other content, use an API
-collection.
+collection. Follow these guidelines when creating an API collection:
 
-Some basic rules to follow when creating an API collection are:
 - Begin the collection title with a noun that describes what the items in the
-collection have in common.
+  collection have in common.
 - After the title, include a single sentence that describes the items in the
-collection.
+  collection.
 - Optionally, include an overview to the collection.
 - Organize the symbols under topic group headings. Begin a topic group heading
-with a gerund.
-- Ensure that your filename adheres to the guidance in the [Filenames](#filenames) section, below.
+  with a gerund.
+- Ensure that your filename adheres to the guidance in the [Filenames](#filenames)
+  section, below.
 
 #### Filenames
 
-DocC uses filenames to generate the URL paths for articles and API collections:
-- Make filenames unique.
-- Construct the filename using the title of the page, except in lowercase characters.
-- Ignore punctuation like commas and apostrophies.
-- Replace spaces with hyphens (kebab-case).
+For consistency with other Swift documentation, articles and API collections in
+DocC bundles should use [kebab-case](https://en.wikipedia.org/wiki/Letter_case#Kebab_case).
+The DocC compiler will preserve your kebab-case filenames in the resulting
+documentation archive.
 
-For example, if the title of your article is _Adding tags to tests_, the filename
-would be `adding-tags-to-tests.md`, or if the title of the collection page is
-_Event tags_, the filename would be `event-tags.md`.
+For example, if the title of your article is _Adding tags to tests_, the
+filename would be `adding-tags-to-tests.md`, or if the title of the collection
+page is _Event tags_, the filename would be `event-tags.md`.
+
+The DocC compiler will not transform article or API collection filenames
+correctly when they are written in [UpperCamelCase](https://en.wikipedia.org/wiki/Camel_case).
+UpperCamelCase should still be used for Markdown files in the repository such as
+this one that are not part of a DocC bundle.
 
 For more information, see [Adding Supplemental Content to a Documentation Catalog](https://www.swift.org/documentation/docc/adding-supplemental-content-to-a-documentation-catalog).
 
