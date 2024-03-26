@@ -184,10 +184,10 @@ For example, if the title of your article is _Adding tags to tests_, the
 filename would be `adding-tags-to-tests.md`, or if the title of the collection
 page is _Event tags_, the filename would be `event-tags.md`.
 
-The DocC compiler will not transform article or API collection filenames
-correctly when they are written in [UpperCamelCase](https://en.wikipedia.org/wiki/Camel_case).
-UpperCamelCase should still be used for Markdown files in the repository such as
-this one that are not part of a DocC bundle.
+The DocC compiler lowercases URL paths, so filenames converted from
+[UpperCamelCase](https://en.wikipedia.org/wiki/Camel_case) may be difficult to
+read. UpperCamelCase should still be used for Markdown files in the repository
+such as this one that are not part of a DocC bundle.
 
 For more information, see [Adding Supplemental Content to a Documentation Catalog](https://www.swift.org/documentation/docc/adding-supplemental-content-to-a-documentation-catalog).
 
