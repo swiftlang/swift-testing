@@ -174,8 +174,9 @@ collection. Follow these guidelines when creating an API collection:
 
 #### Filenames
 
-For consistency with other Swift documentation, articles and API collections in
-DocC bundles should use [kebab-case](https://en.wikipedia.org/wiki/Letter_case#Kebab_case).
+The filenames used for articles and API collections should match the titles of
+those documents. For consistency with other Swift documentation, articles and
+API collections in DocC bundles should use [kebab-case](https://en.wikipedia.org/wiki/Letter_case#Kebab_case).
 The DocC compiler will preserve your kebab-case filenames in the resulting
 documentation archive.
 
