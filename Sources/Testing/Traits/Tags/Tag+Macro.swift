@@ -25,9 +25,7 @@ extension Tag {
     // Split up the supplied type name into its fully-qualified components. We
     // will use this string array to reconstruct the fully-qualified name of the
     // described static member.
-    var fullyQualifiedMemberNameComponents = fullyQualifiedName(of: type)
-      .split(separator: ".")
-      .map(String.init)
+    var fullyQualifiedMemberNameComponents = TypeInfo(describing: type).fullyQualifiedNameComponents
 
     // Ensure that the tag is nested somewhere inside Testing.Tag, then strip
     // off those elements of the fully-qualified type name. These preconditions

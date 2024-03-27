@@ -107,6 +107,8 @@ extension String {
       self.init(describing: value)
     } else if let value = value as? any CustomDebugStringConvertible {
       self.init(reflecting: value)
+    } else if let value = value as? any Any.Type {
+      self = _testDescription(of: value)
     } else if #available(_mangledTypeNameAPI, *), let value = value as? any RawRepresentable, isImportedFromC(valueType) {
       // Present raw-representable C types, which we assume to be imported
       // enumerations, in a consistent fashion. The case names of C enumerations
@@ -125,6 +127,18 @@ extension String {
 }
 
 // MARK: - Built-in implementations
+
+/// The _de facto_ implementation of ``CustomTestStringConvertible`` for a
+/// metatype value.
+///
+/// - Parameters:
+///   - type: The type to describe.
+///
+/// - Returns: The description of `type`, as produced by
+///   ``Swift/String/init(describingForTest:)``.
+private func _testDescription(of type: any Any.Type) -> String {
+  TypeInfo(describing: type).unqualifiedName
+}
 
 extension Optional: CustomTestStringConvertible {
   public var testDescription: String {

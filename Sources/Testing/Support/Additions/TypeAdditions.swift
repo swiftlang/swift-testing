@@ -8,40 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-/// Get the fully-qualified components of a type's name.
-///
-/// - Parameters:
-///   - type: The type whose name components should be returned.
-///
-/// - Returns: The components of `type`'s fully-qualified name. For example, if
-///   `type` is named `Example.MyClass`, the result is `["Example", "MyClass"]`.
-func nameComponents(of type: Any.Type) -> [String] {
-  var result = _typeName(type, qualified: true)
-    .split(separator: ".")
-    .map(String.init)
-
-  // If a type is extended in another module and then referenced by name, its
-  // name according to the _typeName(_:qualified:) SPI will be prefixed with
-  // "(extension in MODULE_NAME):". For our purposes, we never want to preserve
-  // that prefix.
-  if let firstComponent = result.first, firstComponent.starts(with: "(extension in ") {
-    result[0] = String(firstComponent.split(separator: ":", maxSplits: 1).last!)
-  }
-
-  return result
-}
-
-/// Get the fully-qualified name of a type.
-///
-/// - Parameters:
-///   - type: The type whose fully-qualified name should be returned.
-///
-/// - Returns: The fully-qualified name of `type`. For example, if `type` is
-///   named `Example.MyClass`, the result is `"Example.MyClass"`.
-func fullyQualifiedName(of type: Any.Type) -> String {
-  nameComponents(of: type).joined(separator: ".")
-}
-
 /// Check if a type is a Swift `enum` type.
 ///
 /// - Parameters:

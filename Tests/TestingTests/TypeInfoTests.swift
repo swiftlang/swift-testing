@@ -41,12 +41,12 @@ struct TypeInfoTests {
 
   @Test func typeNameInExtensionIsMungedCorrectly() {
     #expect(_typeName(String.NestedType.self, qualified: true) == "(extension in TestingTests):Swift.String.NestedType")
-    #expect(fullyQualifiedName(of: String.NestedType.self) == "Swift.String.NestedType")
+    #expect(TypeInfo(describing: String.NestedType.self).fullyQualifiedName == "Swift.String.NestedType")
   }
 
   @Test func typeNameOfFunctionIsMungedCorrectly() {
     typealias T = (Int, String) -> Bool
-    #expect(fullyQualifiedName(of: T.self) == "(Swift.Int, Swift.String) -> Swift.Bool")
+    #expect(TypeInfo(describing: T.self).fullyQualifiedName == "(Swift.Int, Swift.String) -> Swift.Bool")
   }
 }
 

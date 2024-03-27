@@ -24,9 +24,10 @@ public struct TypeInfo: Sendable {
     /// not available at runtime.
     ///
     /// - Parameters:
-    ///   - fullyQualified: The fully-qualified name of the type.
+    ///   - fullyQualifiedComponents: The fully-qualified name components of the
+    ///     type.
     ///   - unqualified: The unqualified name of the type.
-    case nameOnly(fullyQualified: String, unqualified: String)
+    case nameOnly(fullyQualifiedComponents: [String], unqualified: String)
   }
 
   /// The kind of type info.
@@ -50,9 +51,21 @@ public struct TypeInfo: Sendable {
   public var fullyQualifiedNameComponents: [String] {
     switch _kind {
     case let .type(type):
-      nameComponents(of: type)
-    case let .nameOnly(fullyQualifiedName, _):
-      fullyQualifiedName.split(separator: ".").map(String.init)
+      var result = _typeName(type, qualified: true)
+        .split(separator: ".")
+        .map(String.init)
+
+      // If a type is extended in another module and then referenced by name,
+      // its name according to the _typeName(_:qualified:) SPI will be prefixed
+      // with "(extension in MODULE_NAME):". For our purposes, we never want to
+      // preserve that prefix.
+      if let firstComponent = result.first, firstComponent.starts(with: "(extension in ") {
+        result[0] = String(firstComponent.split(separator: ":", maxSplits: 1).last!)
+      }
+
+      return result
+    case let .nameOnly(fullyQualifiedNameComponents, _):
+      return fullyQualifiedNameComponents
     }
   }
 
@@ -71,12 +84,7 @@ public struct TypeInfo: Sendable {
   ///
   /// The value of this property for the type `A.B` would be `"Example.A.B"`.
   public var fullyQualifiedName: String {
-    switch _kind {
-    case let .type(type):
-      Testing.fullyQualifiedName(of: type)
-    case let .nameOnly(fullyQualifiedName, _):
-      fullyQualifiedName
-    }
+    fullyQualifiedNameComponents.joined(separator: ".")
   }
 
   /// A simplified name of this type, by leaving the names of all referenced
@@ -113,7 +121,10 @@ public struct TypeInfo: Sendable {
   }
 
   init(fullyQualifiedName: String, unqualifiedName: String) {
-    _kind = .nameOnly(fullyQualified: fullyQualifiedName, unqualified: unqualifiedName)
+    _kind = .nameOnly(
+      fullyQualifiedComponents: fullyQualifiedName.split(separator: ".").map(String.init),
+      unqualified: unqualifiedName
+    )
   }
 
   /// Initialize an instance of this type describing the specified type.
@@ -192,7 +203,7 @@ extension TypeInfo: Hashable {
     case let (.type(lhs), .type(rhs)):
       return lhs == rhs
     default:
-      return lhs.fullyQualifiedName == rhs.fullyQualifiedName
+      return lhs.fullyQualifiedNameComponents == rhs.fullyQualifiedNameComponents
     }
   }
 
