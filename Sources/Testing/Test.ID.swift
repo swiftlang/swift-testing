@@ -68,19 +68,23 @@ extension Test: Identifiable {
     /// - Parameters:
     ///   - type: The test suite type.
     ///
-    /// This initializer produces a test ID corresponding to the given type.
+    /// This initializer produces a test ID corresponding to the given type as
+    /// if it were a suite (regardless of whether it has the ``Suite(_:_:)``
+    /// attribute applied to it.)
     @_spi(ForToolsIntegrationOnly)
     public init(type: Any.Type) {
       self.init(typeInfo: TypeInfo(describing: type))
     }
 
     /// Initialize an instance of this type representing the specified test
-    /// suite type.
+    /// suite type info.
     ///
     /// - Parameters:
-    ///   - type: The test suite type.
+    ///   - typeInfo: The test suite type info.
     ///
-    /// This initializer produces a test ID corresponding to the given type.
+    /// This initializer produces a test ID corresponding to the given type info
+    /// as if it described a suite  (regardless of whether the ttype has the
+    /// ``Suite(_:_:)`` attribute applied to it.)
     @_spi(ForToolsIntegrationOnly)
     public init(typeInfo: TypeInfo) {
       self.init(typeInfo.fullyQualifiedNameComponents)
