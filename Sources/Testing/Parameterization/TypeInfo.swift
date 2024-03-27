@@ -24,14 +24,56 @@ public struct TypeInfo: Sendable {
     /// not available at runtime.
     ///
     /// - Parameters:
-    ///   - fullyQualified: The fully-qualified name of the type.
+    ///   - fullyQualifiedComponents: The fully-qualified name components of the
+    ///     type.
     ///   - unqualified: The unqualified name of the type.
-    case nameOnly(fullyQualified: String, unqualified: String)
+    ///   - mangled: The mangled name of the type, if available.
+    case nameOnly(fullyQualifiedComponents: [String], unqualified: String, mangled: String?)
   }
 
   /// The kind of type info.
   private var _kind: _Kind
 
+  /// The described type, if available.
+  ///
+  /// If this instance was created from a type name, or if it was previously
+  /// encoded and decoded, the value of this property is `nil`.
+  public var type: Any.Type? {
+    if case let .type(type) = _kind {
+      return type
+    }
+    return nil
+  }
+
+  init(fullyQualifiedName: String, unqualifiedName: String, mangledName: String?) {
+    _kind = .nameOnly(
+      fullyQualifiedComponents: fullyQualifiedName.split(separator: ".").map(String.init),
+      unqualified: unqualifiedName,
+      mangled: mangledName
+    )
+  }
+
+  /// Initialize an instance of this type describing the specified type.
+  ///
+  /// - Parameters:
+  ///   - type: The type which this instance should describe.
+  init(describing type: Any.Type) {
+    _kind = .type(type)
+  }
+
+  /// Initialize an instance of this type describing the type of the specified
+  /// value.
+  ///
+  /// - Parameters:
+  ///   - value: The value whose type this instance should describe.
+  init(describingTypeOf value: Any) {
+    self.init(describing: Swift.type(of: value))
+  }
+}
+
+// MARK: - Name
+
+extension TypeInfo {
   /// The complete name of this type, with the names of all referenced types
   /// fully-qualified by their module names when possible.
   ///
@@ -50,9 +92,21 @@ public struct TypeInfo: Sendable {
   public var fullyQualifiedNameComponents: [String] {
     switch _kind {
     case let .type(type):
-      nameComponents(of: type)
-    case let .nameOnly(fullyQualifiedName, _):
-      fullyQualifiedName.split(separator: ".").map(String.init)
+      var result = _typeName(type, qualified: true)
+        .split(separator: ".")
+        .map(String.init)
+
+      // If a type is extended in another module and then referenced by name,
+      // its name according to the _typeName(_:qualified:) SPI will be prefixed
+      // with "(extension in MODULE_NAME):". For our purposes, we never want to
+      // preserve that prefix.
+      if let firstComponent = result.first, firstComponent.starts(with: "(extension in ") {
+        result[0] = String(firstComponent.split(separator: ":", maxSplits: 1).last!)
+      }
+
+      return result
+    case let .nameOnly(fullyQualifiedNameComponents, _, _):
+      return fullyQualifiedNameComponents
     }
   }
 
@@ -71,12 +125,7 @@ public struct TypeInfo: Sendable {
   ///
   /// The value of this property for the type `A.B` would be `"Example.A.B"`.
   public var fullyQualifiedName: String {
-    switch _kind {
-    case let .type(type):
-      Testing.fullyQualifiedName(of: type)
-    case let .nameOnly(fullyQualifiedName, _):
-      fullyQualifiedName
-    }
+    fullyQualifiedNameComponents.joined(separator: ".")
   }
 
   /// A simplified name of this type, by leaving the names of all referenced
@@ -96,41 +145,86 @@ public struct TypeInfo: Sendable {
     switch _kind {
     case let .type(type):
       String(describing: type)
-    case let .nameOnly(_, unqualifiedName):
+    case let .nameOnly(_, unqualifiedName, _):
       unqualifiedName
     }
   }
 
-  /// The described type, if available.
+  /// The mangled name of this type as determined by the Swift compiler, if
+  /// available.
   ///
-  /// If this instance was created from a type name, or if it was previously
-  /// encoded and decoded, the value of this property is `nil`.
-  public var type: Any.Type? {
-    if case let .type(type) = _kind {
-      return type
+  /// This property is used by other members of ``TypeInfo``. It should not be
+  /// exposed as API or SPI because the mangled name of a type may include
+  /// components derived at runtime that vary between processes. A type's
+  /// mangled name should not be used if its unmangled name is sufficient.
+  ///
+  /// If the underlying Swift interface is unavailable or if the Swift runtime
+  /// could not determine the mangled name of the represented type, the value of
+  /// this property is `nil`.
+  var mangledName: String? {
+    guard #available(_mangledTypeNameAPI, *) else {
+      return nil
     }
-    return nil
+    switch _kind {
+    case let .type(type):
+      return _mangledTypeName(type)
+    case let .nameOnly(_, _, mangledName):
+      return mangledName
+    }
   }
+}
 
-  init(fullyQualifiedName: String, unqualifiedName: String) {
-    _kind = .nameOnly(fullyQualified: fullyQualifiedName, unqualified: unqualifiedName)
-  }
+// MARK: - Properties
 
-  /// Initialize an instance of this type describing the specified type.
+extension TypeInfo {
+  /// Whether or not the described type is a Swift `enum` type.
   ///
-  /// - Parameters:
-  ///   - type: The type which this instance should describe.
-  init(describing type: Any.Type) {
-    _kind = .type(type)
+  /// Per the [Swift mangling ABI](https://github.com/apple/swift/blob/main/docs/ABI/Mangling.rst),
+  /// enumeration types are mangled as `"O"`.
+  ///
+  /// - Bug: We use the internal Swift standard library function
+  ///   `_mangledTypeName()` to derive this information. We should use supported
+  ///   API instead. ([swift-#69147](https://github.com/apple/swift/issues/69147))
+  var isSwiftEnumeration: Bool {
+    mangledName?.last == "O"
   }
 
-  /// Initialize an instance of this type describing the type of the specified
-  /// value.
+  /// Whether or not the described type is imported from C, C++, or Objective-C.
   ///
-  /// - Parameters:
-  ///   - value: The value whose type this instance should describe.
-  init(describingTypeOf value: Any) {
-    self.init(describing: Swift.type(of: value))
+  /// Per the [Swift mangling ABI](https://github.com/apple/swift/blob/main/docs/ABI/Mangling.rst),
+  /// types imported from C-family languages are placed in a single flat `__C`
+  /// module. That module has a standardized mangling of `"So"`. The presence of
+  /// those characters at the start of a type's mangled name indicates that it
+  /// is an imported type.
+  ///
+  /// - Bug: We use the internal Swift standard library function
+  ///   `_mangledTypeName()` to derive this information. We should use supported
+  ///   API instead. ([swift-#69146](https://github.com/apple/swift/issues/69146))
+  var isImportedFromC: Bool {
+    guard let mangledName, mangledName.count > 2 else {
+      return false
+    }
+
+    let prefixEndIndex = mangledName.index(mangledName.startIndex, offsetBy: 2)
+    return mangledName[..<prefixEndIndex] == "So"
+  }
+}
+
+/// Check if a class is a subclass (or equal to) another class.
+///
+/// - Parameters:
+///   - subclass: The (possible) subclass to check.
+///   - superclass The (possible) superclass to check.
+///
+/// - Returns: Whether `subclass` is a subclass of, or is equal to,
+///   `superclass`.
+func isClass(_ subclass: AnyClass, subclassOf superclass: AnyClass) -> Bool {
+  if subclass == superclass {
+    true
+  } else if let subclassImmediateSuperclass = _getSuperclass(subclass) {
+    isClass(subclassImmediateSuperclass, subclassOf: superclass)
+  } else {
+    false
   }
 }
 
@@ -160,7 +254,7 @@ extension TypeInfo {
       }
 #endif
       let name = fqnComponents[fqnComponents.count - 2]
-      return Self(fullyQualifiedName: fqn, unqualifiedName: name)
+      return Self(fullyQualifiedName: fqn, unqualifiedName: name, mangledName: nil)
     }
     return nil
   }
@@ -172,7 +266,7 @@ extension TypeInfo {
   }
 }
 
-// MARK: - CustomStringConvertible, CustomDebugStringConvertible
+// MARK: - CustomStringConvertible, CustomDebugStringConvertible, CustomTestStringConvertible
 
 extension TypeInfo: CustomStringConvertible, CustomDebugStringConvertible {
   public var description: String {
@@ -192,7 +286,7 @@ extension TypeInfo: Hashable {
     case let (.type(lhs), .type(rhs)):
       return lhs == rhs
     default:
-      return lhs.fullyQualifiedName == rhs.fullyQualifiedName
+      return lhs.fullyQualifiedNameComponents == rhs.fullyQualifiedNameComponents
     }
   }
 
@@ -213,16 +307,20 @@ extension TypeInfo: Codable {
     /// A simplified name of this type, by leaving the names of all referenced
     /// types unqualified, i.e. without module name prefixes.
     public var unqualifiedName: String
+
+    /// The mangled name of this type as determined by the Swift compiler, if
+    /// available.
+    public var mangledName: String?
   }
 
   public func encode(to encoder: any Encoder) throws {
-    let encodedForm = EncodedForm(fullyQualifiedName: fullyQualifiedName, unqualifiedName: unqualifiedName)
+    let encodedForm = EncodedForm(fullyQualifiedName: fullyQualifiedName, unqualifiedName: unqualifiedName, mangledName: mangledName)
     try encodedForm.encode(to: encoder)
   }
 
   public init(from decoder: any Decoder) throws {
     let encodedForm = try EncodedForm(from: decoder)
-    self.init(fullyQualifiedName: encodedForm.fullyQualifiedName, unqualifiedName: encodedForm.unqualifiedName)
+    self.init(fullyQualifiedName: encodedForm.fullyQualifiedName, unqualifiedName: encodedForm.unqualifiedName, mangledName: encodedForm.mangledName)
   }
 }
 

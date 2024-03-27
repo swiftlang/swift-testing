@@ -9,29 +9,30 @@
 //
 
 @testable @_spi(ForToolsIntegrationOnly) import Testing
+private import TestingInternals
 
 @Suite("TypeInfo Tests")
 struct TypeInfoTests {
   @Test(arguments: [
     (
       String.self,
-      TypeInfo(fullyQualifiedName: "Swift.String", unqualifiedName: "String")
+      TypeInfo(fullyQualifiedName: "Swift.String", unqualifiedName: "String", mangledName: "")
     ),
     (
       [String].self,
-      TypeInfo(fullyQualifiedName: "Swift.Array<Swift.String>", unqualifiedName: "Array<String>")
+      TypeInfo(fullyQualifiedName: "Swift.Array<Swift.String>", unqualifiedName: "Array<String>", mangledName: "")
     ),
     (
       [Test].self,
-      TypeInfo(fullyQualifiedName: "Swift.Array<Testing.Test>", unqualifiedName: "Array<Test>")
+      TypeInfo(fullyQualifiedName: "Swift.Array<Testing.Test>", unqualifiedName: "Array<Test>", mangledName: "")
     ),
     (
       (key: String, value: Int).self,
-      TypeInfo(fullyQualifiedName: "(key: Swift.String, value: Swift.Int)", unqualifiedName: "(key: String, value: Int)")
+      TypeInfo(fullyQualifiedName: "(key: Swift.String, value: Swift.Int)", unqualifiedName: "(key: String, value: Int)", mangledName: "")
     ),
     (
       (() -> String).self,
-      TypeInfo(fullyQualifiedName: "() -> Swift.String", unqualifiedName: "() -> String")
+      TypeInfo(fullyQualifiedName: "() -> Swift.String", unqualifiedName: "() -> String", mangledName: "")
     ),
   ] as [(Any.Type, TypeInfo)])
   func initWithType(type: Any.Type, expectedTypeInfo: TypeInfo) {
@@ -41,12 +42,31 @@ struct TypeInfoTests {
 
   @Test func typeNameInExtensionIsMungedCorrectly() {
     #expect(_typeName(String.NestedType.self, qualified: true) == "(extension in TestingTests):Swift.String.NestedType")
-    #expect(fullyQualifiedName(of: String.NestedType.self) == "Swift.String.NestedType")
+    #expect(TypeInfo(describing: String.NestedType.self).fullyQualifiedName == "Swift.String.NestedType")
   }
 
   @Test func typeNameOfFunctionIsMungedCorrectly() {
     typealias T = (Int, String) -> Bool
-    #expect(fullyQualifiedName(of: T.self) == "(Swift.Int, Swift.String) -> Swift.Bool")
+    #expect(TypeInfo(describing: T.self).fullyQualifiedName == "(Swift.Int, Swift.String) -> Swift.Bool")
+  }
+
+  @available(_mangledTypeNameAPI, *)
+  @Test func mangledTypeName() {
+    #expect(_mangledTypeName(String.self) == TypeInfo(describing: String.self).mangledName)
+    #expect(_mangledTypeName(String.NestedType.self) == TypeInfo(describing: String.NestedType.self).mangledName)
+    #expect(_mangledTypeName(SomeEnum.self) == TypeInfo(describing: SomeEnum.self).mangledName)
+  }
+
+  @available(_mangledTypeNameAPI, *)
+  @Test func isImportedFromC() {
+    #expect(!TypeInfo(describing: String.self).isImportedFromC)
+    #expect(TypeInfo(describing: SWTTestEnumeration.self).isImportedFromC)
+  }
+
+  @available(_mangledTypeNameAPI, *)
+  @Test func isSwiftEnumeration() {
+    #expect(!TypeInfo(describing: String.self).isSwiftEnumeration)
+    #expect(TypeInfo(describing: SomeEnum.self).isSwiftEnumeration)
   }
 }
 
@@ -55,3 +75,5 @@ struct TypeInfoTests {
 extension String {
   enum NestedType {}
 }
+
+enum SomeEnum {}
