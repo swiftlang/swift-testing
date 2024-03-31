@@ -36,12 +36,12 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   /// To keep the implementation of this type as simple as possible,
   /// `pthread_mutex_t` is used on Apple platforms instead of `os_unfair_lock`
   /// or `OSAllocatedUnfairLock`.
-#if SWT_TARGET_OS_APPLE || os(Linux)
+#if SWT_TARGET_OS_APPLE || os(Linux) || (os(WASI) && compiler(>=6.0) && _runtime(_multithreaded))
   private typealias _Lock = pthread_mutex_t
 #elseif os(Windows)
   private typealias _Lock = SRWLOCK
 #elseif os(WASI)
-  // No locks on WASI.
+	// No locks on WASI without multithreaded runtime.
 #else
 #warning("Platform-specific implementation missing: locking unavailable")
   private typealias _Lock = Void
@@ -51,12 +51,12 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   private final class _Storage: ManagedBuffer<T, _Lock> {
     deinit {
       withUnsafeMutablePointerToElements { lock in
-#if SWT_TARGET_OS_APPLE || os(Linux)
+#if SWT_TARGET_OS_APPLE || os(Linux) || (os(WASI) && compiler(>=6.0) && _runtime(_multithreaded))
         _ = pthread_mutex_destroy(lock)
 #elseif os(Windows)
         // No deinitialization needed.
 #elseif os(WASI)
-        // No locks on WASI.
+        // No locks on WASI without multithreaded runtime.
 #else
 #warning("Platform-specific implementation missing: locking unavailable")
 #endif
@@ -70,12 +70,12 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   init(rawValue: T) {
     let storage = _Storage.create(minimumCapacity: 1, makingHeaderWith: { _ in rawValue })
     storage.withUnsafeMutablePointerToElements { lock in
-#if SWT_TARGET_OS_APPLE || os(Linux)
+#if SWT_TARGET_OS_APPLE || os(Linux) || (os(WASI) && compiler(>=6.0) && _runtime(_multithreaded))
       _ = pthread_mutex_init(lock, nil)
 #elseif os(Windows)
       InitializeSRWLock(lock)
 #elseif os(WASI)
-      // No locks on WASI.
+      // No locks on WASI without multithreaded runtime.
 #else
 #warning("Platform-specific implementation missing: locking unavailable")
 #endif
@@ -101,7 +101,7 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   /// concurrency tools.
   nonmutating func withLock<R>(_ body: (inout T) throws -> R) rethrows -> R {
     try _storage.rawValue.withUnsafeMutablePointers { rawValue, lock in
-#if SWT_TARGET_OS_APPLE || os(Linux)
+#if SWT_TARGET_OS_APPLE || os(Linux) || (os(WASI) && compiler(>=6.0) && _runtime(_multithreaded))
       _ = pthread_mutex_lock(lock)
       defer {
         _ = pthread_mutex_unlock(lock)
@@ -112,7 +112,7 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
         ReleaseSRWLockExclusive(lock)
       }
 #elseif os(WASI)
-      // No locks on WASI.
+      // No locks on WASI without multithreaded runtime.
 #else
 #warning("Platform-specific implementation missing: locking unavailable")
 #endif
@@ -150,11 +150,6 @@ extension Locked where T: Numeric {
 }
 
 extension Locked {
-  /// Initialize an instance of this type with a raw value of `0`.
-  init() where T: AdditiveArithmetic {
-    self.init(rawValue: .zero)
-  }
-
   /// Initialize an instance of this type with a raw value of `nil`.
   init<V>() where T == V? {
     self.init(rawValue: nil)
