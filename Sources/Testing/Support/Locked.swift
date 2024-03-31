@@ -41,7 +41,7 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
 #elseif os(Windows)
   private typealias _Lock = SRWLOCK
 #elseif os(WASI)
-	// No locks on WASI without multithreaded runtime.
+  // No locks on WASI without multithreaded runtime.
 #else
 #warning("Platform-specific implementation missing: locking unavailable")
   private typealias _Lock = Void
