@@ -278,6 +278,7 @@ extension Event {
 
 extension Event {
   /// A serializable event that occurred during testing.
+  @_spi(ForToolsIntegrationOnly)
   public struct Snapshot: Sendable, Codable {
 
     /// The kind of event.
@@ -444,6 +445,39 @@ extension Event.Kind {
       case .runEnded:
         self = .runEnded
       }
+    }
+  }
+}
+
+extension Event.Context {
+
+  /// A serializable type which provides context about a posted ``Event``.
+  ///
+  @_spi(ForToolsIntegrationOnly)
+  public struct Snapshot: Sendable, Codable {
+    /// A snapshot of the test for which this instance's associated ``Event``
+    /// occurred, if any.
+    ///
+    /// If an event occurred independently of any test, or if the running test
+    /// cannot be determined, the value of this property is `nil`.
+    public var test: Test.Snapshot?
+
+    /// A snapshot of the test case for which this instance's associated
+    /// ``Event`` occurred, if any.
+    ///
+    /// The test case indicates which element in the iterated sequence is
+    /// associated with this event. For non-parameterized tests, a single test
+    /// case is synthesized. For test suite types (as opposed to test
+    /// functions), the value of this property is `nil`.
+    public var testCase: Test.Case.Snapshot?
+
+    /// Initialize a new instance of this type.
+    ///
+    /// - Parameters:
+    ///   - context: The context to snapshot.
+    public init(snapshotting context: borrowing Event.Context) {
+      test = context.test.map { Test.Snapshot(snapshotting: $0) }
+      testCase = context.testCase.map { Test.Case.Snapshot(snapshotting: $0) }
     }
   }
 }

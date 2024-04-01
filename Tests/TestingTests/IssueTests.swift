@@ -1422,4 +1422,63 @@ struct IssueCodingTests {
     let errorSnapshot = try #require(issueSnapshot.error)
     #expect(String(describing: errorSnapshot) == String(describing: underlyingError))
   }
+
+  @Test func sourceLocationPropertyGetter() throws {
+    let sourceLocation = SourceLocation(
+      fileID: "fileID",
+      filePath: "filePath",
+      line: 13,
+      column: 42
+    )
+
+    let sourceContext = SourceContext(
+      backtrace: Backtrace(addresses: [13, 42]),
+      sourceLocation: sourceLocation
+    )
+
+    let issue = Issue(
+      kind: .apiMisused,
+      comments: [],
+      sourceContext: sourceContext
+    )
+
+    let issueSnapshot = Issue.Snapshot(snapshotting: issue)
+    #expect(issueSnapshot.sourceContext == sourceContext)
+    #expect(issueSnapshot.sourceLocation == sourceLocation)
+  }
+
+  @Test func sourceLocationPropertySetter() throws {
+    let initialSourceLocation = SourceLocation(
+      fileID: "fileID",
+      filePath: "filePath",
+      line: 13,
+      column: 42
+    )
+
+    let sourceContext = SourceContext(
+      backtrace: Backtrace(addresses: [13, 42]),
+      sourceLocation: initialSourceLocation
+    )
+
+    let issue = Issue(
+      kind: .apiMisused,
+      comments: [],
+      sourceContext: sourceContext
+    )
+
+    let updatedSourceLocation = SourceLocation(
+      fileID: "fileID2",
+      filePath: "filePath2",
+      line: 14,
+      column: 43
+    )
+
+    var issueSnapshot = Issue.Snapshot(snapshotting: issue)
+    issueSnapshot.sourceLocation = updatedSourceLocation
+
+    #expect(issueSnapshot.sourceContext != sourceContext)
+    #expect(issueSnapshot.sourceLocation != initialSourceLocation)
+    #expect(issueSnapshot.sourceLocation == updatedSourceLocation)
+    #expect(issueSnapshot.sourceContext.sourceLocation == updatedSourceLocation)
+  }
 }
