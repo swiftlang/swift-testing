@@ -138,8 +138,13 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
       result = ("subscript", "a")
     case .enumCaseDecl:
       result = ("enumeration case", "an")
+#if canImport(SwiftSyntax600)
+    case .typeAliasDecl:
+      result = ("typealias", "a")
+#else
     case .typealiasDecl:
       result = ("typealias", "a")
+#endif
     case .macroDecl:
       result = ("macro", "a")
     case .protocolDecl:

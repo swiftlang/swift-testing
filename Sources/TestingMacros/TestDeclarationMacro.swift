@@ -135,13 +135,22 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
 
     // We don't support inout, isolated, or _const parameters on test functions.
     for parameter in parameterList {
-      if let specifier = parameter.type.as(AttributedTypeSyntax.self)?.specifier {
-        switch specifier.tokenKind {
-        case .keyword(.inout), .keyword(.isolated), .keyword(._const):
-          diagnostics.append(.specifierNotSupported(specifier, on: parameter, whenUsing: testAttribute))
-        default:
-          break
+      let invalidSpecifierKeywords: [TokenKind] = [.keyword(.inout), .keyword(.isolated), .keyword(._const),]
+      if let parameterType = parameter.type.as(AttributedTypeSyntax.self) {
+#if canImport(SwiftSyntax600)
+        for specifier in parameterType.specifiers {
+          guard case let .simpleTypeSpecifier(specifier) = specifier else {
+            continue
+          }
+          if invalidSpecifierKeywords.contains(specifier.specifier.tokenKind) {
+            diagnostics.append(.specifierNotSupported(specifier.specifier, on: parameter, whenUsing: testAttribute))
+          }
         }
+#else
+        if let specifier = parameterType.specifier, invalidSpecifierKeywords.contains(specifier.tokenKind) {
+          diagnostics.append(.specifierNotSupported(specifier, on: parameter, whenUsing: testAttribute))
+        }
+#endif
       }
     }
 
@@ -244,21 +253,41 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
   private static func _createCaptureListExpr(
     from parametersWithLabels: some Sequence<(DeclReferenceExprSyntax, FunctionParameterSyntax)>
   ) -> ClosureCaptureClauseSyntax {
-    ClosureCaptureClauseSyntax {
-      for (label, parameter) in parametersWithLabels {
-        if case let .keyword(specifierKeyword) = parameter.type.as(AttributedTypeSyntax.self)?.specifier?.tokenKind,
-           specifierKeyword == .borrowing || specifierKeyword == .consuming {
-          ClosureCaptureSyntax(
-            name: label.baseName,
-            equal: .equalToken(),
-            expression: CopyExprSyntax(
-              copyKeyword: .keyword(.copy).with(\.trailingTrivia, .space),
-              expression: label
-            )
-          )
-        } else {
-          ClosureCaptureSyntax(expression: label)
+    let specifierKeywordsNeedingCopy: [TokenKind] = [.keyword(.borrowing), .keyword(.consuming),]
+    let closureCaptures = parametersWithLabels.lazy.map { label, parameter in
+      var needsCopy = false
+      if let parameterType = parameter.type.as(AttributedTypeSyntax.self) {
+#if canImport(SwiftSyntax600)
+        needsCopy = parameterType.specifiers.contains { specifier in
+          guard case let .simpleTypeSpecifier(specifier) = specifier else {
+            return false
+          }
+          return specifierKeywordsNeedingCopy.contains(specifier.specifier.tokenKind)
         }
+#else
+        if let specifier = parameterType.specifier {
+          needsCopy = specifierKeywordsNeedingCopy.contains(specifier.tokenKind)
+        }
+#endif
+      }
+
+      if needsCopy {
+        return ClosureCaptureSyntax(
+          name: label.baseName,
+          equal: .equalToken(),
+          expression: CopyExprSyntax(
+            copyKeyword: .keyword(.copy).with(\.trailingTrivia, .space),
+            expression: label
+          )
+        )
+      } else {
+        return ClosureCaptureSyntax(expression: label)
+      }
+    }
+
+    return ClosureCaptureClauseSyntax {
+      for closureCapture in closureCaptures {
+        closureCapture
       }
     }
   }
