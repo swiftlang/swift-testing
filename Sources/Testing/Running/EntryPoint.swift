@@ -48,13 +48,11 @@ private import Foundation
         oldEventHandler(event, context)
       }
 
-      var options = [Event.ConsoleOutputRecorder.Option]()
+      var options = Event.ConsoleOutputRecorder.Options()
 #if !SWT_NO_FILE_IO
-      options += .for(.stderr)
+      options = .for(.stderr)
 #endif
-      if args.contains("--verbose") {
-        options.append(.useVerboseOutput)
-      }
+      options.isVerbose = args.contains("--verbose")
 
       await runTests(options: options, configuration: configuration)
     }
@@ -241,7 +239,7 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 /// - Parameters:
 ///   - options: Options to pass when configuring the console output recorder.
 ///   - configuration: The configuration to use for running.
-func runTests(options: [Event.ConsoleOutputRecorder.Option], configuration: Configuration) async {
+func runTests(options: Event.ConsoleOutputRecorder.Options, configuration: Configuration) async {
   let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
 #if !SWT_NO_FILE_IO
     try? FileHandle.stderr.write(string)
@@ -354,25 +352,22 @@ private func _eventHandlerForStreamingEvents(toFileAtPath path: String) throws -
 
 // MARK: - Command-line interface options
 
-extension [Event.ConsoleOutputRecorder.Option] {
+extension Event.ConsoleOutputRecorder.Options {
 #if !SWT_NO_FILE_IO
   /// The set of options to use when writing to the standard error stream.
   static func `for`(_ fileHandle: borrowing FileHandle) -> Self {
     var result = Self()
 
-    let useANSIEscapeCodes = _fileHandleSupportsANSIEscapeCodes(fileHandle)
-    if useANSIEscapeCodes {
-      let colorBitDepth: Int8 = if let noColor = Environment.variable(named: "NO_COLOR"), !noColor.isEmpty {
+    result.useANSIEscapeCodes = _fileHandleSupportsANSIEscapeCodes(fileHandle)
+    if result.useANSIEscapeCodes {
+      if let noColor = Environment.variable(named: "NO_COLOR"), !noColor.isEmpty {
         // Respect the NO_COLOR environment variable. SEE: https://www.no-color.org
-        1
+        result.ansiColorBitDepth = 1
       } else if _terminalSupportsTrueColorANSIEscapeCodes {
-        24
+        result.ansiColorBitDepth = 24
       } else if _terminalSupports256ColorANSIEscapeCodes {
-        8
-      } else {
-        4 // 16-color by default
+        result.ansiColorBitDepth = 8
       }
-      result.append(.useANSIEscapeCodes(colorBitDepth: colorBitDepth))
     }
 
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
@@ -382,23 +377,19 @@ extension [Event.ConsoleOutputRecorder.Option] {
     // In case rendering with SF Symbols is causing problems (e.g. a third-party
     // terminal app is being used that doesn't support them), allow explicitly
     // toggling them with an environment variable.
-    var useSFSymbols = false
     if let environmentVariable = Environment.flag(named: "SWT_SF_SYMBOLS_ENABLED") {
-      useSFSymbols = environmentVariable
-    } else if useANSIEscapeCodes {
+      result.useSFSymbols = environmentVariable
+    } else {
       var statStruct = stat()
-      useSFSymbols = (0 == stat("/Library/Fonts/SF-Pro.ttf", &statStruct))
-    }
-    if useSFSymbols {
-      result.append(.useSFSymbols)
+      result.useSFSymbols = (0 == stat("/Library/Fonts/SF-Pro.ttf", &statStruct))
     }
 #endif
 
     // If color output is enabled, load tag colors from user/package preferences
     // on disk.
-    if let colorBitDepth = result.colorBitDepth, colorBitDepth > 1 {
+    if result.useANSIEscapeCodes && result.ansiColorBitDepth > 1 {
       if let tagColors = try? loadTagColors() {
-        result.append(.useTagColors(tagColors))
+        result.tagColors = tagColors
       }
     }
 
