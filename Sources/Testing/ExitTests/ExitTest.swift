@@ -25,10 +25,13 @@ private import _TestingInternals
 /// A type describing an exit test.
 ///
 /// Instances of this type describe exit tests you create using the
-/// ``expect(exitsWith:observing:_:sourceLocation:performing:)``
+/// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or
 /// ``require(exitsWith:observing:_:sourceLocation:performing:)`` macro. You
 /// don't usually need to interact directly with an instance of this type.
-@_spi(Experimental)
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+/// }
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
@@ -97,7 +100,6 @@ public struct ExitTest: Sendable, ~Copyable {
 #if !SWT_NO_EXIT_TESTS
 // MARK: - Current
 
-@_spi(Experimental)
 extension ExitTest {
   /// A container type to hold the current exit test.
   ///
@@ -127,6 +129,10 @@ extension ExitTest {
   ///
   /// The value of this property is constant across all tasks in the current
   /// process.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   public static var current: ExitTest? {
     _read {
       if let current = _current.rawValue {
@@ -140,7 +146,7 @@ extension ExitTest {
 
 // MARK: - Invocation
 
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+@_spi(ForToolsIntegrationOnly)
 extension ExitTest {
   /// Disable crash reporting, crash logging, or core dumps for the current
   /// process.
@@ -245,7 +251,7 @@ extension ExitTest: TestContent {
   typealias TestContentAccessorHint = ID
 }
 
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+@_spi(ForToolsIntegrationOnly)
 extension ExitTest {
   /// Find the exit test function at the given source location.
   ///
@@ -381,7 +387,7 @@ extension ABI {
   fileprivate typealias BackChannelVersion = v1
 }
 
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+@_spi(ForToolsIntegrationOnly)
 extension ExitTest {
   /// A handler that is invoked when an exit test starts.
   ///
@@ -417,7 +423,7 @@ extension ExitTest {
   /// events should be written, or `nil` if the file handle could not be
   /// resolved.
   private static let _backChannelForEntryPoint: FileHandle? = {
-    guard let backChannelEnvironmentVariable = Environment.variable(named: "SWT_EXPERIMENTAL_BACKCHANNEL") else {
+    guard let backChannelEnvironmentVariable = Environment.variable(named: "SWT_BACKCHANNEL") else {
       return nil
     }
 
@@ -450,7 +456,7 @@ extension ExitTest {
   static func findInEnvironmentForEntryPoint() -> Self? {
     // Find the ID of the exit test to run, if any, in the environment block.
     var id: ExitTest.ID?
-    if var idString = Environment.variable(named: "SWT_EXPERIMENTAL_EXIT_TEST_ID") {
+    if var idString = Environment.variable(named: "SWT_EXIT_TEST_ID") {
       id = try? idString.withUTF8 { idBuffer in
         try JSON.decode(ExitTest.ID.self, from: UnsafeRawBufferPointer(idBuffer))
       }
@@ -583,7 +589,7 @@ extension ExitTest {
       // Insert a specific variable that tells the child process which exit test
       // to run.
       try JSON.withEncoding(of: exitTest.id) { json in
-        childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_ID"] = String(decoding: json, as: UTF8.self)
+        childEnvironment["SWT_EXIT_TEST_ID"] = String(decoding: json, as: UTF8.self)
       }
 
       typealias ResultUpdater = @Sendable (inout ExitTest.Result) -> Void
@@ -629,7 +635,7 @@ extension ExitTest {
 #warning("Platform-specific implementation missing: back-channel pipe unavailable")
 #endif
         if let backChannelEnvironmentVariable {
-          childEnvironment["SWT_EXPERIMENTAL_BACKCHANNEL"] = backChannelEnvironmentVariable
+          childEnvironment["SWT_BACKCHANNEL"] = backChannelEnvironmentVariable
         }
 
         // Spawn the child process.
