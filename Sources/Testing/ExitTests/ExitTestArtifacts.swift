@@ -16,7 +16,10 @@
 /// instances of this type.
 ///
 /// - Warning: The name of this type is still unstable and subject to change.
-@_spi(Experimental)
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+/// }
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
@@ -29,6 +32,10 @@ public struct ExitTestArtifacts: Sendable {
   /// ``require(exitsWith:observing:_:sourceLocation:performing:)``. You can
   /// compare two instances of ``ExitCondition`` with
   /// ``/Swift/Optional/==(_:_:)``.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   public var exitCondition: ExitCondition
 
   /// All bytes written to the standard output stream of the exit test before
@@ -55,6 +62,10 @@ public struct ExitTestArtifacts: Sendable {
   ///
   /// If you did not request standard output content when running an exit test,
   /// the value of this property is the empty array.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   public var standardOutputContent: [UInt8] = []
 
   /// All bytes written to the standard error stream of the exit test before
@@ -81,6 +92,10 @@ public struct ExitTestArtifacts: Sendable {
   ///
   /// If you did not request standard error content when running an exit test,
   /// the value of this property is the empty array.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   public var standardErrorContent: [UInt8] = []
 
   @_spi(ForToolsIntegrationOnly)

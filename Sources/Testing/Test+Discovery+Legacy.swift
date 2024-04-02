@@ -30,7 +30,6 @@ let testContainerTypeNameMagic = "__🟠$test_container__"
 /// - Warning: This protocol is used to implement the `#expect(exitsWith:)`
 ///   macro. Do not use it directly.
 @_alwaysEmitConformanceMetadata
-@_spi(Experimental)
 public protocol __ExitTestContainer {
   /// The unique identifier of the exit test.
   static var __id: __ExitTest.ID { get }

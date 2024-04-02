@@ -17,12 +17,42 @@ private import _TestingInternals
 /// test is expected to pass or fail by passing them to
 /// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or
 /// ``require(exitsWith:observing:_:sourceLocation:performing:)``.
-@_spi(Experimental)
+///
+/// ## Topics
+///
+/// ### Successful exit conditions
+///
+/// - ``success``
+///
+/// ### Failing exit conditions
+///
+/// - ``failure``
+/// - ``exitCode(_:)``
+/// - ``signal(_:)``
+///
+/// ### Comparing exit conditions
+///
+/// - ``/Swift/Optional/==(_:_:)``
+/// - ``/Swift/Optional/!=(_:_:)``
+/// - ``/Swift/Optional/===(_:_:)``
+/// - ``/Swift/Optional/!==(_:_:)``
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+/// }
 #if SWT_NO_PROCESS_SPAWNING
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 public enum ExitCondition: Sendable {
   /// The process terminated successfully with status `EXIT_SUCCESS`.
+  ///
+  /// The C programming language defines two [standard exit codes](https://en.cppreference.com/w/c/program/EXIT_status),
+  /// `EXIT_SUCCESS` and `EXIT_FAILURE` as well as `0` (as a synonym for
+  /// `EXIT_SUCCESS`.)
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   public static var success: Self {
     // Strictly speaking, the C standard treats 0 as a successful exit code and
     // potentially distinct from EXIT_SUCCESS. To my knowledge, no modern
@@ -33,6 +63,10 @@ public enum ExitCondition: Sendable {
 
   /// The process terminated abnormally with any status other than
   /// `EXIT_SUCCESS` or with any signal.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   case failure
 
   /// The process terminated with the given exit code.
@@ -56,6 +90,10 @@ public enum ExitCondition: Sendable {
   /// the process is yielded to the parent process. Linux and other POSIX-like
   /// systems may only reliably report the low unsigned 8 bits (0&ndash;255) of
   /// the exit code.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   case exitCode(_ exitCode: CInt)
 
   /// The process terminated with the given signal.
@@ -73,12 +111,18 @@ public enum ExitCondition: Sendable {
   /// | FreeBSD | [`<signal.h>`](https://man.freebsd.org/cgi/man.cgi?signal(3)) |
   /// | OpenBSD | [`<signal.h>`](https://man.openbsd.org/signal.3) |
   /// | Windows | [`<signal.h>`](https://learn.microsoft.com/en-us/cpp/c-runtime-library/signal-constants) |
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   case signal(_ signal: CInt)
 }
 
 // MARK: - Equatable
 
-@_spi(Experimental)
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+/// }
 #if SWT_NO_PROCESS_SPAWNING
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
@@ -109,7 +153,11 @@ extension Optional<ExitCondition> {
   /// or [`Hashable`](https://developer.apple.com/documentation/swift/hashable).
   ///
   /// For any values `a` and `b`, `a == b` implies that `a != b` is `false`.
-  public static func ==(lhs: Self, rhs: Self) -> Bool {
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
+  public static func ==(lhs: ExitCondition?, rhs: ExitCondition?) -> Bool {
 #if !SWT_NO_PROCESS_SPAWNING
     return switch (lhs, rhs) {
     case let (.failure, .exitCode(exitCode)), let (.exitCode(exitCode), .failure):
@@ -151,7 +199,11 @@ extension Optional<ExitCondition> {
   /// or [`Hashable`](https://developer.apple.com/documentation/swift/hashable).
   ///
   /// For any values `a` and `b`, `a == b` implies that `a != b` is `false`.
-  public static func !=(lhs: Self, rhs: Self) -> Bool {
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
+  public static func !=(lhs: ExitCondition?, rhs: ExitCondition?) -> Bool {
 #if !SWT_NO_PROCESS_SPAWNING
     !(lhs == rhs)
 #else
@@ -185,7 +237,11 @@ extension Optional<ExitCondition> {
   /// or [`Hashable`](https://developer.apple.com/documentation/swift/hashable).
   ///
   /// For any values `a` and `b`, `a === b` implies that `a !== b` is `false`.
-  public static func ===(lhs: Self, rhs: Self) -> Bool {
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
+  public static func ===(lhs: ExitCondition?, rhs: ExitCondition?) -> Bool {
     return switch (lhs, rhs) {
     case (.none, .none):
       true
@@ -226,7 +282,11 @@ extension Optional<ExitCondition> {
   /// or [`Hashable`](https://developer.apple.com/documentation/swift/hashable).
   ///
   /// For any values `a` and `b`, `a === b` implies that `a !== b` is `false`.
-  public static func !==(lhs: Self, rhs: Self) -> Bool {
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
+  public static func !==(lhs: ExitCondition?, rhs: ExitCondition?) -> Bool {
 #if !SWT_NO_PROCESS_SPAWNING
     !(lhs === rhs)
 #else
