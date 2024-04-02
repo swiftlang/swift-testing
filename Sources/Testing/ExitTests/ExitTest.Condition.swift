@@ -10,7 +10,6 @@
 
 private import _TestingInternals
 
-@_spi(Experimental)
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
@@ -21,6 +20,22 @@ extension ExitTest {
   /// exit test is expected to pass or fail by passing them to
   /// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or
   /// ``require(exitsWith:observing:_:sourceLocation:performing:)``.
+  ///
+  /// ## Topics
+  ///
+  /// ### Successful exit conditions
+  ///
+  /// - ``success``
+  ///
+  /// ### Failing exit conditions
+  ///
+  /// - ``failure``
+  /// - ``exitCode(_:)``
+  /// - ``signal(_:)``
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   public struct Condition: Sendable {
     /// An enumeration describing the possible conditions for an exit test.
     private enum _Kind: Sendable, Equatable {
@@ -38,13 +53,20 @@ extension ExitTest {
 
 // MARK: -
 
-@_spi(Experimental)
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 extension ExitTest.Condition {
   /// A condition that matches when a process terminates successfully with exit
   /// code `EXIT_SUCCESS`.
+  ///
+  /// The C programming language defines two [standard exit codes](https://en.cppreference.com/w/c/program/EXIT_status),
+  /// `EXIT_SUCCESS` and `EXIT_FAILURE` as well as `0` (as a synonym for
+  /// `EXIT_SUCCESS`.)
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   public static var success: Self {
     // Strictly speaking, the C standard treats 0 as a successful exit code and
     // potentially distinct from EXIT_SUCCESS. To my knowledge, no modern
@@ -59,10 +81,17 @@ extension ExitTest.Condition {
 
   /// A condition that matches when a process terminates abnormally with any
   /// exit code other than `EXIT_SUCCESS` or with any signal.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   public static var failure: Self {
     Self(_kind: .failure)
   }
 
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   public init(_ statusAtExit: StatusAtExit) {
     self.init(_kind: .statusAtExit(statusAtExit))
   }
@@ -89,6 +118,10 @@ extension ExitTest.Condition {
   /// the process is yielded to the parent process. Linux and other POSIX-like
   /// systems may only reliably report the low unsigned 8 bits (0&ndash;255) of
   /// the exit code.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   public static func exitCode(_ exitCode: CInt) -> Self {
 #if !SWT_NO_EXIT_TESTS
     Self(.exitCode(exitCode))
@@ -113,6 +146,10 @@ extension ExitTest.Condition {
   /// | FreeBSD | [`<signal.h>`](https://man.freebsd.org/cgi/man.cgi?signal(3)) |
   /// | OpenBSD | [`<signal.h>`](https://man.openbsd.org/signal.3) |
   /// | Windows | [`<signal.h>`](https://learn.microsoft.com/en-us/cpp/c-runtime-library/signal-constants) |
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   public static func signal(_ signal: CInt) -> Self {
 #if !SWT_NO_EXIT_TESTS
     Self(.signal(signal))

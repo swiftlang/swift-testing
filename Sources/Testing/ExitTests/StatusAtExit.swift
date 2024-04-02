@@ -18,7 +18,10 @@ private import _TestingInternals
 /// expected to pass or fail by passing it to
 /// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or
 /// ``require(exitsWith:observing:_:sourceLocation:performing:)``.
-@_spi(Experimental)
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+/// }
 #if SWT_NO_PROCESS_SPAWNING
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
@@ -44,6 +47,10 @@ public enum StatusAtExit: Sendable {
   /// the process is yielded to the parent process. Linux and other POSIX-like
   /// systems may only reliably report the low unsigned 8 bits (0&ndash;255) of
   /// the exit code.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   case exitCode(_ exitCode: CInt)
 
   /// The process terminated with the given signal.
@@ -61,12 +68,15 @@ public enum StatusAtExit: Sendable {
   /// | FreeBSD | [`<signal.h>`](https://man.freebsd.org/cgi/man.cgi?signal(3)) |
   /// | OpenBSD | [`<signal.h>`](https://man.openbsd.org/signal.3) |
   /// | Windows | [`<signal.h>`](https://learn.microsoft.com/en-us/cpp/c-runtime-library/signal-constants) |
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   case signal(_ signal: CInt)
 }
 
 // MARK: - Equatable
 
-@_spi(Experimental)
 #if SWT_NO_PROCESS_SPAWNING
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
