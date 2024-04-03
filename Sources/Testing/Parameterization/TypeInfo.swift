@@ -92,13 +92,13 @@ extension TypeInfo {
   public var fullyQualifiedNameComponents: [String] {
     switch _kind {
     case let .type(type):
-      var result = _typeName(type, qualified: true)
+      var result = String(reflecting: type)
         .split(separator: ".")
         .map(String.init)
 
       // If a type is extended in another module and then referenced by name,
-      // its name according to the _typeName(_:qualified:) SPI will be prefixed
-      // with "(extension in MODULE_NAME):". For our purposes, we never want to
+      // its name according to the String(reflecting:) API will be prefixed with
+      // "(extension in MODULE_NAME):". For our purposes, we never want to
       // preserve that prefix.
       if let firstComponent = result.first, firstComponent.starts(with: "(extension in ") {
         result[0] = String(firstComponent.split(separator: ":", maxSplits: 1).last!)

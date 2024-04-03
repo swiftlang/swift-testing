@@ -41,7 +41,7 @@ struct TypeInfoTests {
   }
 
   @Test func typeNameInExtensionIsMungedCorrectly() {
-    #expect(_typeName(String.NestedType.self, qualified: true) == "(extension in TestingTests):Swift.String.NestedType")
+    #expect(String(reflecting: String.NestedType.self) == "(extension in TestingTests):Swift.String.NestedType")
     #expect(TypeInfo(describing: String.NestedType.self).fullyQualifiedName == "Swift.String.NestedType")
   }
 
