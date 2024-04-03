@@ -64,6 +64,16 @@ static bool swt_S_ISFIFO(mode_t mode) {
 #endif
 #endif
 
+#if defined(_WIN32)
+/// Make a Win32 language ID.
+///
+/// This function is provided because `MAKELANGID()` is a complex macro and
+/// cannot be imported directly into Swift.
+static LANGID swt_MAKELANGID(int p, int s) {
+  return MAKELANGID(p, s);
+}
+#endif
+
 SWT_ASSUME_NONNULL_END
 
 #endif

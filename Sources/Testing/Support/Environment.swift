@@ -45,15 +45,16 @@ enum Environment {
           SetLastError(DWORD(ERROR_SUCCESS))
           let count = GetEnvironmentVariableW(name, buffer.baseAddress!, DWORD(buffer.count))
           if count == 0 {
-            return switch GetLastError() {
+            switch GetLastError() {
             case DWORD(ERROR_SUCCESS):
               // Empty String
-              ""
+              return ""
             case DWORD(ERROR_ENVVAR_NOT_FOUND):
               // The environment variable wasn't set.
-              nil
+              return nil
             case let errorCode:
-              fatalError("unexpected error code: \(errorCode) when getting environment variable '\(name)'")
+              let error = Win32Error(rawValue: errorCode)
+              fatalError("unexpected error when getting environment variable '\(name)': \(error) (\(errorCode))")
             }
           } else if count > buffer.count {
             // Try again with the larger count.
