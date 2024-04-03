@@ -271,7 +271,7 @@ extension FileHandle {
   ///   occurs while flushing the file, it is not thrown.
   func write(_ bytes: UnsafeRawBufferPointer, flushAfterward: Bool = true) throws {
     try bytes.withMemoryRebound(to: UInt8.self) { bytes in
-      try write(bytes)
+      try write(bytes, flushAfterward: flushAfterward)
     }
   }
 
