@@ -101,6 +101,12 @@ Or, when writing the abstract for an enumeration `Flavor`, you could write:
 To organize symbols under types, place them in topic groups organized by usage.
 Begin topic group headings inside types with a noun or noun phrase.
 
+#### Writing compile-time diagnostics
+
+The macro target of this package produces a number of different compile-time
+diagnostics. These diagnostics should be written according to the Swift style
+guide for compiler diagnostics [here](https://github.com/apple/swift/blob/main/docs/Diagnostics.md).
+
 ### Documentation
 
 Documentation for the testing library should follow the
