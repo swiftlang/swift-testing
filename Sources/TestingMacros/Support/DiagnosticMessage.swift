@@ -245,7 +245,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     // not have reliable location information.
     Self(
       syntax: Syntax(attribute),
-      message: "The @\(attribute.attributeNameText) attribute cannot be applied within \(_kindString(for: node, includeA: true)).",
+      message: "Attribute \(_macroName(attribute)) cannot be applied within \(_kindString(for: node, includeA: true)).",
       severity: .error
     )
   }
