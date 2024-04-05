@@ -1,4 +1,4 @@
-# Adding traits to tests
+# Traits
 
 <!--
 This source file is part of the Swift.org open source project
@@ -14,24 +14,52 @@ Add traits to tests to annotate them or customize their behavior.
 
 ## Overview
 
-This article describes the ``Trait``, ``TestTrait``, and ``SuiteTrait``
-protocols, lists the traits provided by the testing library, and lists functions
-that can be used to create them.
-
-The ``Trait``, ``TestTrait``, and ``SuiteTrait`` protocols are used to define
-types that customize the behavior of test functions and test suites.
+Pass built-in traits to test functions or suite types to comment, categorize, 
+classify, and modify runtime behaviors. You can also use the ``Trait``, ``TestTrait``, 
+and ``SuiteTrait`` protocols to create your own types that that customize the 
+behavior of test functions.
 
 ## Topics
 
+### Customizing runtime behaviors
+
 - <doc:EnablingAndDisabling>
+- <doc:LimitingExecutionTime>
+- <doc:Parallelization>
+- ``Trait/enabled(if:_:fileID:filePath:line:column:)``
+- ``Trait/enabled(_:fileID:filePath:line:column:_:)``
+- ``Trait/disabled(_:fileID:filePath:line:column:)``
+- ``Trait/disabled(if:_:fileID:filePath:line:column:)``
+- ``Trait/disabled(_:fileID:filePath:line:column:_:)``
+- ``Trait/timeLimit(_:)``
+
+<!--
+HIDDEN: .serial is experimental SPI pending feature review.
+### Running tests serially or in parallel
+- ``SerialTrait``
+ -->
+
+### Annotating tests
+
 - <doc:AddingTags>
 - <doc:AddingComments>
 - <doc:AssociatingBugs>
-- <doc:LimitingExecutionTime>
-- <doc:Parallelization>
+- <doc:BugIdentifiers>
+- ``Tag()``
+- ``Trait/bug(_:relationship:_:)-86mmm``
+- ``Trait/bug(_:relationship:_:)-3hsi5``
 
 ### Creating a custom trait
 
 - ``Trait``
 - ``TestTrait``
 - ``SuiteTrait``
+
+### Trait types
+
+- ``Bug``
+- ``Comment``
+- ``ConditionTrait``
+- ``Tag``
+- ``Tag/List``
+- ``TimeLimitTrait``

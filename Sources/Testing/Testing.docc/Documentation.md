@@ -60,6 +60,7 @@ concurrency, and parameterize test functions across wide ranges of inputs.
 ### Behavior validation
 
 - <doc:Expectations>
+- <doc:known-issues>
 
 ### Test customization
 
