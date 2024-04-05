@@ -1,4 +1,4 @@
-# Validating behavior using expectations
+# Expectations and confirmations
 
 <!--
 This source file is part of the Swift.org open source project
@@ -14,25 +14,40 @@ Check for expected values and outcomes in tests.
 
 ## Overview
 
-Tests may validate behaviors using expectations. This page describes the various
-built-in expectation APIs.
+The testing library provides `#expect()` and `#require()` macros you use to 
+validate expected outcomes and a `Confirmation` type you can use to confirm the 
+occurrence of asynchronous events. To validate that an error is thrown, or _not_ thrown, 
+the testing library provides several overloads of the macros that you can use.
 
 ## Topics
 
-### Validating behavior using expectations
+### Evaluating conditions
 
 - ``expect(_:_:sourceLocation:)``
+
+### Requiring conditions
+
 - ``require(_:_:sourceLocation:)-5l63q``
 - ``require(_:_:sourceLocation:)-6w9oo``
 
-### Validating asynchronous behavior using confirmations
+### Confirming asynchronous events
 
-- ``Confirmation``
 - ``confirmation(_:expectedCount:fileID:filePath:line:column:_:)``
+- ``Confirmation``
 
-### Validating errors and issues in tests
+### Evaluating errors
 
-- <doc:ExpectThrows>
+- ``expect(throws:_:sourceLocation:performing:)-79piu``
+- ``expect(throws:_:sourceLocation:performing:)-1xr34``
+- ``expect(_:sourceLocation:performing:throws:)``
+- ``expect(throws:_:sourceLocation:performing:)-5lzjz``
+
+### Requiring errors
+
+- ``require(throws:_:sourceLocation:performing:)-76bjn``
+- ``require(throws:_:sourceLocation:performing:)-7v83e``
+- ``require(_:sourceLocation:performing:throws:)``
+- ``require(throws:_:sourceLocation:performing:)-36uzc``
 
 ### Retrieving information about checked expectations
 
