@@ -103,8 +103,20 @@ func diagnoseIssuesWithLexicalContext(
   attribute: AttributeSyntax,
   in context: some MacroExpansionContext
 ) -> [DiagnosticMessage] {
-  context.lexicalContext
-    .filter { !$0.isProtocol((any DeclGroupSyntax).self) }
-    .map { .containingNodeUnsupported($0, whenUsing: attribute) }
+  var diagnostics = [DiagnosticMessage]()
+
+  for lexicalContext in context.lexicalContext {
+    if !lexicalContext.isProtocol((any DeclGroupSyntax).self) {
+      diagnostics.append(.containingNodeUnsupported(lexicalContext, whenUsing: attribute, on: decl))
+    }
+
+    if let classDecl = lexicalContext.as(ClassDeclSyntax.self) {
+      if !classDecl.modifiers.lazy.map(\.name.tokenKind).contains(.keyword(.final)) {
+        diagnostics.append(.containingNodeUnsupported(classDecl, whenUsing: attribute, on: decl))
+      }
+    }
+  }
+
+  return diagnostics
 }
 #endif

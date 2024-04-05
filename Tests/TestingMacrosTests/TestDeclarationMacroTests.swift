@@ -120,9 +120,13 @@ struct TestDeclarationMacroTests {
   @Test("Error diagnostics emitted for invalid lexical contexts",
     arguments: [
       "struct S { func f() { @Test func f() {} } }":
-        "The @Test attribute cannot be applied within a function.",
+        "Attribute 'Test' cannot be applied to a function within a function",
       "struct S { func f() { @Suite struct S { } } }":
-        "The @Suite attribute cannot be applied within a function.",
+        "Attribute 'Suite' cannot be applied to a structure within a function",
+      "class C { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within a non-final class",
+      "class C { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within a non-final class",
     ]
   )
   func invalidLexicalContext(input: String, expectedMessage: String) throws {

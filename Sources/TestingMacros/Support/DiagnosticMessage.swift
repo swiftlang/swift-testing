@@ -237,17 +237,29 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   /// - Parameters:
   ///   - node: The lexical context preventing the use of `attribute`.
   ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///   - decl: The declaration in question (contained in `node`.)
   ///
   /// - Returns: A diagnostic message.
-  static func containingNodeUnsupported(_ node: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
+  static func containingNodeUnsupported(_ node: some SyntaxProtocol, whenUsing attribute: AttributeSyntax, on decl: some SyntaxProtocol) -> Self {
     // It would be great if the diagnostic pointed to the containing lexical
     // context that was unsupported, but that node may be synthesized and does
     // not have reliable location information.
-    Self(
-      syntax: Syntax(attribute),
-      message: "Attribute \(_macroName(attribute)) cannot be applied within \(_kindString(for: node, includeA: true)).",
-      severity: .error
-    )
+    switch node.kind {
+    case .classDecl:
+      // Special-case class declarations as implicitly non-final (since we would
+      // only diagnose a class here if it were non-final.)
+      return Self(
+        syntax: Syntax(attribute),
+        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within a non-final class",
+        severity: .error
+      )
+    default:
+      return Self(
+        syntax: Syntax(attribute),
+        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within \(_kindString(for: node, includeA: true))",
+        severity: .error
+      )
+    }
   }
 #endif
 

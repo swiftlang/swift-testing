@@ -163,10 +163,6 @@ actor CashRegisterTests: NSObject { ... } // ✅ OK: actors are implicitly final
 class MenuItemTests { ... } // ❌ ERROR: this class is not final
 ```
 
-- Bug: Violations of this requirement are not consistently diagnosed at compile
-  time, and the diagnostic produced when an issue is detected may be confusing
-  to developers. ([105470382](rdar://105470382))
-
 ## Topics
 
 - ``Suite(_:_:)``
