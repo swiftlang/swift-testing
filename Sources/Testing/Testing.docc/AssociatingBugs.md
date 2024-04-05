@@ -23,7 +23,7 @@ specific bugs with tests that reproduce them or verify they are fixed.
   "issues." To avoid confusion with the ``Issue`` type in the testing library,
   this document consistently refers to them as "bugs."
 
-## Associating a bug with a test
+## Associate a bug with a test
 
 To associate a bug with a test, use the ``Trait/bug(_:relationship:_:)-86mmm``
 or ``Trait/bug(_:relationship:_:)-3hsi5`` function. The first argument to this
@@ -43,7 +43,7 @@ specified as a string and matches certain formats, the testing library is able
 to infer additional information about it. For more information on the formats
 recognized by the testing library, see <doc:BugIdentifiers>.
 
-## Specifying the relationship between a bug and a test
+## Specify the relationship between a bug and a test
 
 By default, the nature of the relationship between a bug and a test is
 unspecified. All the testing library knows about such relationships is that they
@@ -83,28 +83,3 @@ The testing library defines several kinds of common bug/test relationship:
 
 <!-- Keep `.unspecified` as the last row above in order to imply it is a
 fallback. -->
-
-## Adding comments to associated bugs
-
-A bug identifier may be insufficient to uniquely and clearly identify a bug
-associated with a test. Bug trackers universally provide a "title" field for
-bugs that is not visible to the testing library. To add a bug's title to a test,
-include it after the bug's identifier and (optionally) its relationship to the
-test:
-
-```swift
-@Test(
-  "Food truck has napkins",
-  .bug("12345", "Forgot to buy more napkins")
-)
-func hasNapkins() async {
-  ...
-}
-```
-
-## Topics
-
-- <doc:BugIdentifiers>
-- ``Trait/bug(_:relationship:_:)-86mmm``
-- ``Trait/bug(_:relationship:_:)-3hsi5``
-- ``Bug``
