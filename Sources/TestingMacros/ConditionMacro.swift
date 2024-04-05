@@ -55,7 +55,7 @@ extension ConditionMacro {
     in context: some MacroExpansionContext
   ) throws -> ExprSyntax {
     // Reconstruct an argument list that includes any trailing closures.
-    let macroArguments = _argumentList(of: macro, in: context)
+    let macroArguments = argumentList(of: macro, in: context)
 
     // Figure out important argument indices.
     let trailingClosureIndex = macroArguments.firstIndex { $0.label?.tokenKind == _trailingClosureLabel.tokenKind }
@@ -151,7 +151,7 @@ extension ConditionMacro {
   ///
   /// - Returns: A copy of the argument list of `macro` with trailing closures
   ///   included.
-  private static func _argumentList(
+  static func argumentList(
     of macro: some FreestandingMacroExpansionSyntax,
     in context: some MacroExpansionContext
   ) -> [Argument] {
@@ -203,11 +203,27 @@ public struct RequireMacro: ConditionMacro {
   }
 }
 
+/// A protocol that can be used to create a condition macro that refines the
+/// behavior of another previously-defined condition macro.
+public protocol RefinedConditionMacro: ConditionMacro {
+  associatedtype Base: ConditionMacro
+}
+
+extension RefinedConditionMacro {
+  public static var isThrowing: Bool {
+    Base.isThrowing
+  }
+}
+
+// MARK: - Diagnostics-emitting condition macros
+
 /// A type describing the expansion of the `#require()` macro when it is
 /// ambiguous whether it refers to a boolean check or optional unwrapping.
 ///
 /// This type is otherwise exactly equivalent to ``RequireMacro``.
-public struct AmbiguousRequireMacro: ConditionMacro {
+public struct AmbiguousRequireMacro: RefinedConditionMacro {
+  public typealias Base = RequireMacro
+
   public static func expansion(
     of macro: some FreestandingMacroExpansionSyntax,
     in context: some MacroExpansionContext
@@ -242,10 +258,6 @@ public struct AmbiguousRequireMacro: ConditionMacro {
     // or check the value of the wrapped Bool.
     context.diagnose(.optionalBoolExprIsAmbiguous(argument))
   }
-
-  public static var isThrowing: Bool {
-    true
-  }
 }
 
 // MARK: -
@@ -276,28 +288,68 @@ private final class _NestedConditionFinder<M, C>: SyntaxVisitor where M: Freesta
   }
 }
 
+// MARK: - Exit test condition macros
+
+public protocol ExitTestConditionMacro: RefinedConditionMacro {}
+
+extension ExitTestConditionMacro {
+  public static func expansion(
+    of macro: some FreestandingMacroExpansionSyntax,
+    in context: some MacroExpansionContext
+  ) throws -> ExprSyntax {
+    // Perform the normal macro expansion for the macro with the standard set
+    // of arguments. This gives us any relevant diagnostics for the body of the
+    // exit test. We then discard the result (because we haven't performed any
+    // additional transformations) and then re-run the macro with the
+    // substituted trailing closure argument.
+    _ = try Base.expansion(of: macro, in: context)
+
+    var arguments = argumentList(of: macro, in: context)
+    let trailingClosureIndex = arguments.firstIndex { $0.label?.tokenKind == _trailingClosureLabel.tokenKind }
+    guard let trailingClosureIndex else {
+      fatalError("Could not find the body argument to this exit test. Please file a bug report at https://github.com/apple/swift-testing/issues/new")
+    }
+
+    let bodyArgumentExpr = arguments[trailingClosureIndex].expression
+
+    // Diagnose any nested conditions in the exit test body.
+    let conditionFinder = _NestedConditionFinder(viewMode: .sourceAccurate, macro: macro, context: context)
+    conditionFinder.walk(bodyArgumentExpr)
+
+    // Create a local type that can be discovered at runtime and which contains
+    // the exit test body.
+    let enumName = context.makeUniqueName("__🟠$exit_test_body__")
+    let enumDecl: DeclSyntax = """
+    @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
+    @frozen enum \(enumName): Testing.__ExitTestContainer {
+      static var __sourceLocation: Testing.SourceLocation {
+        .init()
+      }
+      static var __body: @Sendable () async -> Void {
+        \(bodyArgumentExpr)
+      }
+    }
+    """
+    arguments[trailingClosureIndex].expression = "{ \(enumDecl) }"
+
+    // Replace the exit test body (as an argument to the macro) with a stub
+    // closure that hosts the type we created above.
+    var macro = macro
+    macro.arguments = LabeledExprListSyntax(arguments)
+    macro.trailingClosure = nil
+    macro.additionalTrailingClosures = MultipleTrailingClosureElementListSyntax()
+
+    return try Base.expansion(of: macro, in: context)
+  }
+}
+
 /// A type describing the expansion of the `#expect(exitsWith:)` macro.
 ///
 /// This type checks for nested invocations of `#expect()` and `#require()` and
 /// diagnoses them as unsupported. It is otherwise exactly equivalent to
 /// ``ExpectMacro``.
-public struct ExitTestExpectMacro: ConditionMacro {
-  public static func expansion(
-    of macro: some FreestandingMacroExpansionSyntax,
-    in context: some MacroExpansionContext
-  ) throws -> ExprSyntax {
-    if let trailingClosure = macro.trailingClosure {
-      let conditionFinder = _NestedConditionFinder(viewMode: .sourceAccurate, macro: macro, context: context)
-      conditionFinder.walk(trailingClosure)
-    }
-
-    // Perform the normal macro expansion for #require().
-    return try ExpectMacro.expansion(of: macro, in: context)
-  }
-
-  public static var isThrowing: Bool {
-    false
-  }
+public struct ExitTestExpectMacro: ExitTestConditionMacro {
+  public typealias Base = ExpectMacro
 }
 
 /// A type describing the expansion of the `#require(exitsWith:)` macro.
@@ -305,21 +357,6 @@ public struct ExitTestExpectMacro: ConditionMacro {
 /// This type checks for nested invocations of `#expect()` and `#require()` and
 /// diagnoses them as unsupported. It is otherwise exactly equivalent to
 /// ``RequireMacro``.
-public struct ExitTestRequireMacro: ConditionMacro {
-  public static func expansion(
-    of macro: some FreestandingMacroExpansionSyntax,
-    in context: some MacroExpansionContext
-  ) throws -> ExprSyntax {
-    if let trailingClosure = macro.trailingClosure {
-      let conditionFinder = _NestedConditionFinder(viewMode: .sourceAccurate, macro: macro, context: context)
-      conditionFinder.walk(trailingClosure)
-    }
-
-    // Perform the normal macro expansion for #require().
-    return try RequireMacro.expansion(of: macro, in: context)
-  }
-
-  public static var isThrowing: Bool {
-    true
-  }
+public struct ExitTestRequireMacro: ExitTestConditionMacro {
+  public typealias Base = RequireMacro
 }

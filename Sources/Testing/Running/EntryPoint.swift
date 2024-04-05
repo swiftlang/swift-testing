@@ -54,15 +54,16 @@ private import Foundation
 #endif
       options.isVerbose = args.contains("--verbose")
 
-      // TODO: lower this flag directly to event handler once we remove XCTestScaffold
-      let outputToConsole: Bool
 #if !SWT_NO_EXIT_TESTS && SWIFT_PM_SUPPORTS_SWIFT_TESTING
-      outputToConsole = currentExitTestSourceLocation(withArguments: args) == nil
-#else
-      outputToConsole = true
+      if let exitTestSourceLocation = currentExitTestSourceLocation(withArguments: args),
+         let exitTestBody = findExitTest(at: exitTestSourceLocation) {
+        print("RUNNING EXIT TEST AT \(exitTestSourceLocation)")
+        await exitTestBody()
+        return exitCode.rawValue
+      }
 #endif
 
-      await runTests(options: options, configuration: configuration, outputToConsole: outputToConsole)
+      await runTests(options: options, configuration: configuration)
     }
   } catch {
 #if !SWT_NO_FILE_IO
@@ -252,22 +253,18 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 /// - Parameters:
 ///   - options: Options to pass when configuring the console output recorder.
 ///   - configuration: The configuration to use for running.
-///   - outputToConsole: Whether or not to use an instance of
-///     ``Event/ConsoleOutputRecorder`` to write to the standard error stream.
-func runTests(options: Event.ConsoleOutputRecorder.Options, configuration: Configuration, outputToConsole: Bool = true) async {
+func runTests(options: Event.ConsoleOutputRecorder.Options, configuration: Configuration) async {
   var configuration = configuration
-  if outputToConsole {
-    let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
+  let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
 #if !SWT_NO_FILE_IO
-      try? FileHandle.stderr.write(string)
+    try? FileHandle.stderr.write(string)
 #endif
-    }
+  }
 
-    let oldEventHandler = configuration.eventHandler
-    configuration.eventHandler = { event, context in
-      eventRecorder.record(event, in: context)
-      oldEventHandler(event, context)
-    }
+  let oldEventHandler = configuration.eventHandler
+  configuration.eventHandler = { event, context in
+    eventRecorder.record(event, in: context)
+    oldEventHandler(event, context)
   }
 
   let runner = await Runner(configuration: configuration)

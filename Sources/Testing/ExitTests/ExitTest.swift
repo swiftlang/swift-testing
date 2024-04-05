@@ -50,6 +50,38 @@ public typealias ExitTestHandler = @Sendable (_ test: borrowing Test, _ exitTest
 
 // MARK: -
 
+public protocol __ExitTestContainer {
+  static var __sourceLocation: SourceLocation { get }
+  static var __body: @Sendable () async -> Void { get }
+}
+
+/// A string that appears within all auto-generated types conforming to the
+/// `__TestContainer` protocol.
+private let _exitTestContainerTypeNameMagic = "__🟠$exit_test_body__"
+
+func findExitTest(at sourceLocation: SourceLocation) -> (@Sendable () async -> Void)? {
+  struct Context {
+    var sourceLocation: SourceLocation
+    var body: (@Sendable () async -> Void)?
+  }
+  var context = Context(sourceLocation: sourceLocation)
+  withUnsafeMutablePointer(to: &context) { context in
+    swt_enumerateTypes(context)  { type, context in
+      let context = context!.assumingMemoryBound(to: (Context).self)
+      if let type = unsafeBitCast(type, to: Any.Type.self) as? any __ExitTestContainer.Type,
+         type.__sourceLocation == context.pointee.sourceLocation {
+        context.pointee.body = type.__body
+      }
+    } withNamesMatching: { typeName, _ in
+      // strstr() lets us avoid copying either string before comparing.
+      _exitTestContainerTypeNameMagic.withCString { testContainerTypeNameMagic in
+        nil != strstr(typeName, testContainerTypeNameMagic)
+      }
+    }
+  }
+  return context.body
+}
+
 /// A type that provides task-local context for exit tests.
 private enum _ExitTestContext {
   /// Whether or not the current process and task are running an exit test.
@@ -176,18 +208,6 @@ func currentExitTestSourceLocation(withArguments args: [String] = CommandLine.ar
   exitTestSourceLocation sourceLocation: SourceLocation,
   body: () async -> Void
 ) async throws -> ExitCondition? {
-  if let requestedSourceLocation = currentExitTestSourceLocation() {
-    if sourceLocation == requestedSourceLocation {
-      return await _ExitTestContext.$isRunning.withValue(true) {
-        await body()
-        return nil
-      }
-    } else {
-      // This is some other exit test. Ignore it.
-      return nil
-    }
-  }
-
   let actualExitCode: Int32
   let wasSignalled: Bool
   do {
@@ -203,8 +223,6 @@ func currentExitTestSourceLocation(withArguments args: [String] = CommandLine.ar
     let childArguments = [
       "--experimental-run-exit-test-body-at",
       try String(data: JSONEncoder().encode(sourceLocation), encoding: .utf8)!,
-      "--filter",
-      escapedTestID,
     ]
     // By default, inherit the environment from the parent process.
     var childEnvironment: [String: String]? = nil
