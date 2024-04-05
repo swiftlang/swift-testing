@@ -144,15 +144,15 @@ func createAvailabilityTraitExprs(
 ) -> [ExprSyntax] {
   var result = [ExprSyntax]()
 
-  result += decl.availability(when: .unavailable).lazy.map { unavailability in
+  result += decl.availability(when: .unavailable, in: context).lazy.map { unavailability in
     _createAvailabilityTraitExpr(from: unavailability, when: .unavailable, in: context)
   }
 
-  result += decl.availability(when: .introduced).lazy.map { availability in
+  result += decl.availability(when: .introduced, in: context).lazy.map { availability in
     _createAvailabilityTraitExpr(from: availability, when: .introduced, in: context)
   }
 
-  result += decl.availability(when: .obsoleted).lazy.map { availability in
+  result += decl.availability(when: .obsoleted, in: context).lazy.map { availability in
     _createAvailabilityTraitExpr(from: availability, when: .obsoleted, in: context)
   }
 
@@ -187,7 +187,7 @@ func createSyntaxNode(
   // `guard #available(...) else { ... }`). The expression is evaluated before
   // `node` to allow for early exit.
   do {
-    let availableExprs: [ExprSyntax] = decl.availability(when: .introduced).lazy
+    let availableExprs: [ExprSyntax] = decl.availability(when: .introduced, in: context).lazy
       .filter { !$0.isSwift }
       .compactMap(\.platformVersion)
       .map { "#available(\($0), *)" }
@@ -208,7 +208,7 @@ func createSyntaxNode(
 
   // As above, but for unavailability (`#unavailable(...)`.)
   do {
-    let unavailableExprs: [ExprSyntax] = decl.availability(when: .obsoleted).lazy
+    let unavailableExprs: [ExprSyntax] = decl.availability(when: .obsoleted, in: context).lazy
       .filter { !$0.isSwift }
       .compactMap(\.platformVersion)
       .map { "#unavailable(\($0))" }
@@ -230,11 +230,11 @@ func createSyntaxNode(
   // If this function has a minimum or maximum Swift version requirement, we
   // need to scope its body with #if/#endif.
   do {
-    let introducedVersion = decl.availability(when: .introduced).lazy
+    let introducedVersion = decl.availability(when: .introduced, in: context).lazy
       .filter(\.isSwift)
       .compactMap(\.version?.componentValues)
       .max()
-    let obsoletedVersion = decl.availability(when: .obsoleted).lazy
+    let obsoletedVersion = decl.availability(when: .obsoleted, in: context).lazy
       .filter(\.isSwift)
       .compactMap(\.version?.componentValues)
       .min()

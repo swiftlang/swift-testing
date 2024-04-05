@@ -359,7 +359,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       "try await (\($0), Testing.__requiringTry, Testing.__requiringAwait).0"
     }
     let forwardInit = forwardCall
-    if functionDecl.noasyncAttribute != nil {
+    if functionDecl.noasyncAttribute(in: context) != nil {
       if isMainActorIsolated {
         forwardCall = {
           "try await MainActor.run { try (\($0), Testing.__requiringTry).0 }"
@@ -373,7 +373,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
 
     // Generate a thunk function that invokes the actual function.
     var thunkBody: CodeBlockItemListSyntax
-    if functionDecl.availability(when: .unavailable).first != nil {
+    if functionDecl.availability(when: .unavailable, in: context).first != nil {
       thunkBody = ""
     } else if let typeName {
       if functionDecl.isStaticOrClass {

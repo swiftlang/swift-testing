@@ -193,6 +193,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
+#if !canImport(SwiftSyntax600)
   /// Create a diagnostic message stating that the `@Test` or `@Suite` attribute
   /// cannot be applied to a type that also has an availability attribute.
   ///
@@ -213,6 +214,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
       severity: .error
     )
   }
+#endif
 
   /// Create a diagnostic message stating that the given attribute cannot be
   /// applied to the given declaration.

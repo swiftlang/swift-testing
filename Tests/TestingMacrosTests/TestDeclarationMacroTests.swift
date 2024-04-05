@@ -19,8 +19,8 @@ import SwiftSyntaxMacros
 
 @Suite("TestDeclarationMacro Tests")
 struct TestDeclarationMacroTests {
-  @Test("Error diagnostics emitted on API misuse",
-    arguments: [
+  static var apiMisuses: [String: String] {
+    var result = [
       // Generic declarations
       "@Suite struct S<T> {}":
         "Attribute 'Suite' cannot be applied to a generic structure",
@@ -67,16 +67,6 @@ struct TestDeclarationMacroTests {
       "@Test enum E {}":
         "Attribute 'Test' cannot be applied to an enumeration",
 
-      // Availability
-      "@available(*, unavailable) @Suite struct S {}":
-        "Attribute 'Suite' cannot be applied to this structure because it has been marked '@available(*, unavailable)'",
-      "@available(*, noasync) @Suite enum E {}":
-        "Attribute 'Suite' cannot be applied to this enumeration because it has been marked '@available(*, noasync)'",
-      "@available(macOS 999.0, *) @Suite final class C {}":
-        "Attribute 'Suite' cannot be applied to this class because it has been marked '@available(macOS 999.0, *)'",
-      "@_unavailableFromAsync @Suite actor A {}":
-        "Attribute 'Suite' cannot be applied to this actor because it has been marked '@_unavailableFromAsync'",
-
       // XCTestCase
       "@Suite final class C: XCTestCase {}":
         "Attribute 'Suite' cannot be applied to a subclass of 'XCTestCase'",
@@ -105,7 +95,26 @@ struct TestDeclarationMacroTests {
       "@Test(arguments: []) func f() {}":
         "Attribute 'Test' cannot specify arguments when used with 'f()' because it does not take any",
     ]
-  )
+
+#if !canImport(SwiftSyntax600)
+    // Availability
+    let availability = [
+      "@available(*, unavailable) @Suite struct S {}":
+        "Attribute 'Suite' cannot be applied to this structure because it has been marked '@available(*, unavailable)'",
+      "@available(*, noasync) @Suite enum E {}":
+        "Attribute 'Suite' cannot be applied to this enumeration because it has been marked '@available(*, noasync)'",
+      "@available(macOS 999.0, *) @Suite final class C {}":
+        "Attribute 'Suite' cannot be applied to this class because it has been marked '@available(macOS 999.0, *)'",
+      "@_unavailableFromAsync @Suite actor A {}":
+        "Attribute 'Suite' cannot be applied to this actor because it has been marked '@_unavailableFromAsync'",
+    ]
+    result.merge(availability, uniquingKeysWith: { lhs, _ in lhs })
+#endif
+
+    return result
+  }
+
+  @Test("Error diagnostics emitted on API misuse", arguments: apiMisuses)
   func apiMisuseErrors(input: String, expectedMessage: String) throws {
     let (_, diagnostics) = try parse(input)
 
@@ -120,9 +129,9 @@ struct TestDeclarationMacroTests {
   @Test("Error diagnostics emitted for invalid lexical contexts",
     arguments: [
       "struct S { func f() { @Test func f() {} } }":
-        "The @Test attribute cannot be applied within a function.",
+        "Attribute 'Test' cannot be applied within a function.",
       "struct S { func f() { @Suite struct S { } } }":
-        "The @Suite attribute cannot be applied within a function.",
+        "Attribute 'Suite' cannot be applied within a function.",
     ]
   )
   func invalidLexicalContext(input: String, expectedMessage: String) throws {
@@ -207,6 +216,20 @@ struct TestDeclarationMacroTests {
       #expect(actualOutput.contains(expectedOutput))
     }
   }
+
+#if canImport(SwiftSyntax600)
+  @Test("Availability attributes on containing types are captured",
+    arguments: [
+      #"@available(moofOS 9, dogCow 30, *) struct S { @Test func f() {} }"#,
+      #"@available(moofOS 9, dogCow 30, *) struct S { struct S { @Test func f() {} } }"#,
+      #"struct S { @available(moofOS 9, dogCow 30, *) struct S { @Test func f() {} } }"#,
+    ]
+  )
+  func availabilityAttributeCapture_swiftSyntax600(input: String) throws {
+    let (actualOutput, _) = try parse(input)
+    #expect(actualOutput.contains(".__available"))
+  }
+#endif
 
   static var functionTypeInputs: [(String, String?, String?)] {
     var result: [(String, String?, String?)] = [

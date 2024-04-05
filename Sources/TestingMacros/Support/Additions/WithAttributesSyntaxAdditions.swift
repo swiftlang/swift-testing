@@ -40,13 +40,43 @@ extension WithAttributesSyntax {
   ///     `.introduced` or `.deprecated`. If `.introduced` is specified, then
   ///     shorthand `@available` attributes such as `@available(macOS 999.0, *)`
   ///     are included.
+  ///   - context: The macro context in which the expression is being parsed.
+  ///
+  /// - Returns: An array of structures describing the version-based
+  ///   availability constraints on this instance, such as `("macOS", 999.0)`.
+  ///
+  /// The values in the resulting array can be used to construct expressions
+  /// such as `if #available(macOS 999.0, *)`. The array includes availability
+  /// information from the lexical contexts containing `self` according to
+  /// `context`.
+  func availability(when whenKeyword: Keyword, in context: some MacroExpansionContext) -> [Availability] {
+    var result = _availability(when: whenKeyword)
+
+#if canImport(SwiftSyntax600)
+    for lexicalContext in context.lexicalContext {
+      if let lexicalContext = lexicalContext.asProtocol((any WithAttributesSyntax).self) {
+        result += lexicalContext._availability(when: whenKeyword)
+      }
+    }
+#endif
+
+    return result
+  }
+
+  /// Get the set of version-based availability constraints on this instance.
+  ///
+  /// - Parameters:
+  ///   - whenKeyword: The keyword to filter the result by, such as
+  ///     `.introduced` or `.deprecated`. If `.introduced` is specified, then
+  ///     shorthand `@available` attributes such as `@available(macOS 999.0, *)`
+  ///     are included.
   ///
   /// - Returns: An array of structures describing the version-based
   ///   availability constraints on this instance, such as `("macOS", 999.0)`.
   ///
   /// The values in the resulting array can be used to construct expressions
   /// such as `if #available(macOS 999.0, *)`.
-  func availability(when whenKeyword: Keyword) -> [Availability] {
+  private func _availability(when whenKeyword: Keyword) -> [Availability] {
     availabilityAttributes.flatMap { attribute -> [Availability] in
       guard case let .availability(specList) = attribute.arguments else {
         return []
@@ -57,13 +87,13 @@ extension WithAttributesSyntax {
       // First, find the message (if any) to apply to any values produced from
       // this spec list.
       let message = entries.lazy.compactMap { entry in
-          if case let .availabilityLabeledArgument(argument) = entry,
-             argument.label.tokenKind == .keyword(.message),
-             case let .string(message) = argument.value {
-            return message
-          }
-          return nil
-        }.first
+        if case let .availabilityLabeledArgument(argument) = entry,
+           argument.label.tokenKind == .keyword(.message),
+           case let .string(message) = argument.value {
+          return message
+        }
+        return nil
+      }.first
 
       var lastPlatformName: TokenSyntax? = nil
       var asteriskEncountered = false
@@ -103,10 +133,15 @@ extension WithAttributesSyntax {
     }
   }
 
-  /// The first `@available(*, noasync)` or `@_unavailableFromAsync` attribute
-  /// on this instance, if any.
-  var noasyncAttribute: AttributeSyntax? {
-    availability(when: .noasync).first?.attribute ?? attributes.lazy
+  /// Get the first `@available(*, noasync)` or `@_unavailableFromAsync`
+  /// attribute on this instance, if any.
+  ///
+  /// - Parameters:
+  ///   - context: The macro context in which the expression is being parsed.
+  ///
+  /// - Returns: The first no-async attribute on `self`, if any.
+  func noasyncAttribute(in context: some MacroExpansionContext) -> AttributeSyntax? {
+    availability(when: .noasync, in: context).first?.attribute ?? attributes.lazy
       .compactMap { attribute in
         if case let .attribute(attribute) = attribute {
           return attribute

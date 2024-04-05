@@ -111,6 +111,7 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
         diagnostics.append(.multipleAttributesNotSupported(suiteAttributes, on: declaration))
       }
 
+#if !canImport(SwiftSyntax600)
       // Availability is not supported on suites (we need semantic availability
       // to correctly understand the availability of a suite.)
       let availabilityAttributes = attributedDecl.availabilityAttributes
@@ -119,11 +120,12 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
         for availabilityAttribute in availabilityAttributes {
           diagnostics.append(.availabilityAttributeNotSupported(availabilityAttribute, on: declaration, whenUsing: suiteAttribute))
         }
-      } else if let noasyncAttribute = attributedDecl.noasyncAttribute {
+      } else if let noasyncAttribute = attributedDecl.noasyncAttribute(in: context) {
         // No @available attributes, but we do have an @_unavailableFromAsync
         // attribute and we still need to diagnose that.
         diagnostics.append(.availabilityAttributeNotSupported(noasyncAttribute, on: declaration, whenUsing: suiteAttribute))
       }
+#endif
     }
 
     return !diagnostics.lazy.map(\.severity).contains(.error)
