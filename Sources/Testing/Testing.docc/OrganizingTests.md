@@ -1,4 +1,4 @@
-# Organizing tests
+# Organizing test functions with suite types
 
 <!--
 This source file is part of the Swift.org open source project
@@ -39,7 +39,7 @@ within the scope of the outer test suite type.
 By default, tests contained within a suite will run in parallel with each other.
 For more information about test parallelization, see <doc:Parallelization>.
 
-## Customizing a suite's name
+## Customize a suite's name
 
 To customize a test suite's name, supply a string literal as an argument to the
 `@Suite` attribute:
@@ -162,7 +162,3 @@ class, but it must be declared `final`:
 actor CashRegisterTests: NSObject { ... } // ✅ OK: actors are implicitly final
 class MenuItemTests { ... } // ❌ ERROR: this class is not final
 ```
-
-## Topics
-
-- ``Suite(_:_:)``
