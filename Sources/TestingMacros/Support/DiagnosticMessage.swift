@@ -149,6 +149,8 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
       result = ("macro", "a")
     case .protocolDecl:
       result = ("protocol", "a")
+    case .closureExpr:
+      result = ("closure", "a")
     default:
       result = ("declaration", "this")
     }
@@ -244,16 +246,28 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     // It would be great if the diagnostic pointed to the containing lexical
     // context that was unsupported, but that node may be synthesized and does
     // not have reliable location information.
-    switch node.kind {
-    case .classDecl:
-      // Special-case class declarations as implicitly non-final (since we would
-      // only diagnose a class here if it were non-final.)
+    if let functionDecl = node.as(FunctionDeclSyntax.self) {
+      let functionName = functionDecl.completeName
       return Self(
         syntax: Syntax(attribute),
-        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within a non-final class",
+        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within function '\(functionName)'",
         severity: .error
       )
-    default:
+    } else if let namedDecl = node.asProtocol((any NamedDeclSyntax).self) {
+      // Special-case class declarations as implicitly non-final (since we would
+      // only diagnose a class here if it were non-final.)
+      let nonFinal = if node.is(ClassDeclSyntax.self) {
+        " non-final"
+      } else {
+        ""
+      }
+      let declName = namedDecl.name.textWithoutBackticks
+      return Self(
+        syntax: Syntax(attribute),
+        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within\(nonFinal) \(_kindString(for: node)) '\(declName)'",
+        severity: .error
+      )
+    } else {
       return Self(
         syntax: Syntax(attribute),
         message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within \(_kindString(for: node, includeA: true))",
