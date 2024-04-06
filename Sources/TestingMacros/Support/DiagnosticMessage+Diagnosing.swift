@@ -114,6 +114,8 @@ func diagnoseIssuesWithLexicalContext(
       if !classDecl.modifiers.lazy.map(\.name.tokenKind).contains(.keyword(.final)) {
         diagnostics.append(.containingNodeUnsupported(classDecl, whenUsing: attribute, on: decl))
       }
+    } else if let protocolDecl = lexicalContext.as(ProtocolDeclSyntax.self) {
+      diagnostics.append(.containingNodeUnsupported(protocolDecl, whenUsing: attribute, on: decl))
     }
   }
 

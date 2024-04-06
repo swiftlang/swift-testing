@@ -119,14 +119,22 @@ struct TestDeclarationMacroTests {
 #if canImport(SwiftSyntax600)
   @Test("Error diagnostics emitted for invalid lexical contexts",
     arguments: [
-      "struct S { func f() { @Test func f() {} } }":
-        "Attribute 'Test' cannot be applied to a function within a function",
-      "struct S { func f() { @Suite struct S { } } }":
-        "Attribute 'Suite' cannot be applied to a structure within a function",
+      "struct S { func f() { @Test func g() {} } }":
+        "Attribute 'Test' cannot be applied to a function within function 'f()'",
+      "struct S { func f(x: Int) { @Suite struct S { } } }":
+        "Attribute 'Suite' cannot be applied to a structure within function 'f(x:)'",
       "class C { @Test func f() {} }":
-        "Attribute 'Test' cannot be applied to a function within a non-final class",
+        "Attribute 'Test' cannot be applied to a function within non-final class 'C'",
       "class C { @Suite struct S {} }":
-        "Attribute 'Suite' cannot be applied to a structure within a non-final class",
+        "Attribute 'Suite' cannot be applied to a structure within non-final class 'C'",
+      "protocol P { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within protocol 'P'",
+      "protocol P { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within protocol 'P'",
+      "{ _ in @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within a closure",
+      "{ _ in @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within a closure",
     ]
   )
   func invalidLexicalContext(input: String, expectedMessage: String) throws {
