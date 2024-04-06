@@ -58,8 +58,6 @@ struct TagMacroTests {
         "Attribute 'Tag' cannot be applied to a global variable",
       "@Tag static var x: Tag":
         "Attribute 'Tag' cannot be applied to a global variable",
-      "extension Tag { @Tag static var x: String }":
-        "Attribute 'Tag' cannot be applied to a property of type 'String'",
     ]
 
 #if canImport(SwiftSyntax600)
@@ -70,6 +68,8 @@ struct TagMacroTests {
         "Attribute 'Tag' cannot be applied to an instance property",
       "struct S { @Tag static var x: Tag }":
         "Attribute 'Tag' cannot be applied to a property except in an extension to 'Tag'",
+      "extension Tag { @Tag static var x: String }":
+        "Attribute 'Tag' cannot be applied to a property of type 'String'",
       "extension Tag.A.B { @Tag static var x: Self }":
         "Attribute 'Tag' cannot be applied to a property of type 'Tag.A.B'",
     ]
