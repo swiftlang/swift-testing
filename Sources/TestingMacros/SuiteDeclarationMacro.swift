@@ -34,7 +34,7 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
   ) throws -> [DeclSyntax] {
     // The peer macro expansion of this macro is only used to diagnose misuses
     // on symbols that are not decl groups.
-    if declaration.asProtocol((any DeclGroupSyntax).self) == nil {
+    if !declaration.isProtocol((any DeclGroupSyntax).self) {
       _ = _diagnoseIssues(with: declaration, suiteAttribute: node, in: context)
     }
     return []

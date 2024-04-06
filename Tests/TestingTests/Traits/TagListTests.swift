@@ -238,10 +238,6 @@ extension Tag {
   }
 }
 
-enum UnrelatedType {
-  @Tag static var tagThatCannotBeUsed: Tag
-}
-
 @Suite(.hidden, .tags("FromType"))
 struct TagTests {
   @Test(.hidden, .tags("FromFunction"))

@@ -24,6 +24,7 @@ fileprivate let allMacros: [String: any Macro.Type] = [
   "requireAmbiguous": AmbiguousRequireMacro.self, // different name needed only for unit testing
   "Suite": SuiteDeclarationMacro.self,
   "Test": TestDeclarationMacro.self,
+  "Tag": TagMacro.self,
 ]
 
 func parse(_ sourceCode: String, activeMacros activeMacroNames: [String] = [], removeWhitespace: Bool = false) throws -> (sourceCode: String, diagnostics: [Diagnostic]) {
