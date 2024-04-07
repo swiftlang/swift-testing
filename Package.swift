@@ -33,7 +33,7 @@ let package = Package(
   ],
 
   dependencies: [
-    .package(url: "https://github.com/apple/swift-syntax.git", branch: "main"),
+    .package(url: "https://github.com/apple/swift-syntax.git", from: "510.0.1"),
   ],
 
   targets: [
