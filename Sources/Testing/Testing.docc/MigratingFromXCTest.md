@@ -355,11 +355,11 @@ their equivalents in the testing library:
 | `try XCTUnwrap(x)` | `try #require(x)` |
 | `XCTFail("…")` | `Issue.record("…")` |
 
-- Note: To check that two numeric values are equivalent within a specified
-accuracy, as in the analogue of 
-[`XCTAssertEqual(_:_:accuracy:_:file:line:)`](https://developer.apple.com/documentation/xctest/3551607-xctassertequal)
-, please import [swift-numerics](https://github.com/apple/swift-numerics)
-to use the ``isApproximatelyEqual()`` function.
+To check that two numeric values are equivalent within a specified
+accuracy, as in the analog of 
+[`XCTAssertEqual(_:_:accuracy:_:file:line:)`](https://developer.apple.com/documentation/xctest/3551607-xctassertequal),
+import [swift-numerics](https://github.com/apple/swift-numerics)
+and use the ``isApproximatelyEqual()`` function.
 
 #### Continuing or halting after test failures
 
