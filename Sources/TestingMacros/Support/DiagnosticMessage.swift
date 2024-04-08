@@ -189,7 +189,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   /// - Returns: A diagnostic message.
   static func genericDeclarationNotSupported(_ decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax, becauseOf genericClause: some SyntaxProtocol) -> Self {
     Self(
-      syntax: Syntax(genericClause),
+      syntax: (genericClause.root != decl.root) ? Syntax(decl) : Syntax(genericClause),
       message: "Attribute \(_macroName(attribute)) cannot be applied to a generic \(_kindString(for: decl))",
       severity: .error
     )

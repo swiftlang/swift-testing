@@ -88,37 +88,104 @@ func diagnoseIssuesWithTags(in traitExprs: [ExprSyntax], addedTo attribute: Attr
   }
 }
 
+/// Diagnose issues with a synthesized suite (one without an `@Suite` attribute)
+/// containing a declaration.
+///
+/// - Parameters:
+///   - lexicalContext: The single lexical context to inspect.
+///   - decl: The declaration to inspect.
+///   - attribute: The `@Test` or `@Suite` attribute applied to `decl`.
+///
+/// - Returns: An array of zero or more diagnostic messages related to the
+///   lexical context containing `decl`.
+///
+/// This function is also used by ``SuiteDeclarationMacro`` for a number of its
+/// own diagnostics. The implementation substitutes different diagnostic
+/// messages when `suiteDecl` and `decl` are the same syntax node on the
+/// assumption that a suite is self-diagnosing.
+func diagnoseIssuesWithLexicalContext(
+  _ lexicalContext: some SyntaxProtocol,
+  containing decl: some DeclSyntaxProtocol,
+  attribute: AttributeSyntax
+) -> [DiagnosticMessage] {
+  var diagnostics = [DiagnosticMessage]()
+
+  // Functions, closures, etc. are not supported as enclosing lexical contexts.
+  guard let lexicalContext = lexicalContext.asProtocol((any DeclGroupSyntax).self) else {
+    if Syntax(lexicalContext) == Syntax(decl) {
+      diagnostics.append(.attributeNotSupported(attribute, on: lexicalContext))
+    } else {
+      diagnostics.append(.containingNodeUnsupported(lexicalContext, whenUsing: attribute, on: decl))
+    }
+    return diagnostics
+  }
+
+  // Generic suites are not supported.
+  if let genericClause = lexicalContext.asProtocol((any WithGenericParametersSyntax).self)?.genericParameterClause {
+    diagnostics.append(.genericDeclarationNotSupported(decl, whenUsing: attribute, becauseOf: genericClause))
+  } else if let whereClause = lexicalContext.genericWhereClause {
+    diagnostics.append(.genericDeclarationNotSupported(decl, whenUsing: attribute, becauseOf: whereClause))
+  }
+
+  // Suites that are classes must be final.
+  if let classDecl = lexicalContext.as(ClassDeclSyntax.self) {
+    if !classDecl.modifiers.lazy.map(\.name.tokenKind).contains(.keyword(.final)) {
+      if Syntax(classDecl) == Syntax(decl) {
+        diagnostics.append(.nonFinalClassNotSupported(classDecl, whenUsing: attribute))
+      } else {
+        diagnostics.append(.containingNodeUnsupported(classDecl, whenUsing: attribute, on: decl))
+      }
+    }
+  }
+
+  // Suites cannot be protocols (there's nowhere to put most of the
+  // declarations we generate.)
+  if let protocolDecl = lexicalContext.as(ProtocolDeclSyntax.self) {
+    if Syntax(protocolDecl) == Syntax(decl) {
+      diagnostics.append(.attributeNotSupported(attribute, on: protocolDecl))
+    } else {
+      diagnostics.append(.containingNodeUnsupported(protocolDecl, whenUsing: attribute, on: decl))
+    }
+  }
+
+  // Check other attributes on the declaration. Note that it should be
+  // impossible to reach this point if the declaration can't have attributes.
+  if let attributedDecl = lexicalContext.asProtocol((any WithAttributesSyntax).self) {
+    // Availability is not supported on suites (we need semantic availability
+    // to correctly understand the availability of a suite.)
+    let availabilityAttributes = attributedDecl.availabilityAttributes
+    if !availabilityAttributes.isEmpty {
+      // Diagnose all @available attributes.
+      for availabilityAttribute in availabilityAttributes {
+        diagnostics.append(.availabilityAttributeNotSupported(availabilityAttribute, on: decl, whenUsing: attribute))
+      }
+    } else if let noasyncAttribute = attributedDecl.noasyncAttribute {
+      // No @available attributes, but we do have an @_unavailableFromAsync
+      // attribute and we still need to diagnose that.
+      diagnostics.append(.availabilityAttributeNotSupported(noasyncAttribute, on: decl, whenUsing: attribute))
+    }
+  }
+
+  return diagnostics
+}
+
 #if canImport(SwiftSyntax600)
 /// Diagnose issues with the lexical context containing a declaration.
 ///
 /// - Parameters:
 ///   - decl: The declaration to inspect.
-///   - testAttribute: The `@Test` attribute applied to `decl`.
+///   - attribute: The `@Test` or `@Suite` attribute applied to `decl`.
 ///   - context: The macro context in which the expression is being parsed.
 ///
 /// - Returns: An array of zero or more diagnostic messages related to the
 ///   lexical context containing `decl`.
 func diagnoseIssuesWithLexicalContext(
+  _ lexicalContext: [Syntax],
   containing decl: some DeclSyntaxProtocol,
-  attribute: AttributeSyntax,
-  in context: some MacroExpansionContext
+  attribute: AttributeSyntax
 ) -> [DiagnosticMessage] {
-  var diagnostics = [DiagnosticMessage]()
-
-  for lexicalContext in context.lexicalContext {
-    if !lexicalContext.isProtocol((any DeclGroupSyntax).self) {
-      diagnostics.append(.containingNodeUnsupported(lexicalContext, whenUsing: attribute, on: decl))
-    }
-
-    if let classDecl = lexicalContext.as(ClassDeclSyntax.self) {
-      if !classDecl.modifiers.lazy.map(\.name.tokenKind).contains(.keyword(.final)) {
-        diagnostics.append(.containingNodeUnsupported(classDecl, whenUsing: attribute, on: decl))
-      }
-    } else if let protocolDecl = lexicalContext.as(ProtocolDeclSyntax.self) {
-      diagnostics.append(.containingNodeUnsupported(protocolDecl, whenUsing: attribute, on: decl))
-    }
-  }
-
-  return diagnostics
+  lexicalContext.lazy
+    .map { diagnoseIssuesWithLexicalContext($0, containing: decl, attribute: attribute) }
+    .reduce(into: [], +=)
 }
 #endif
