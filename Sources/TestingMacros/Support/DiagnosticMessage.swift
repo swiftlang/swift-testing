@@ -232,6 +232,105 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
+  /// Create a diagnostic message stating that the given attribute can only be
+  /// applied to `static` properties.
+  ///
+  /// - Parameters:
+  ///   - attribute: The `@Tag` attribute.
+  ///   - decl: The declaration in question.
+  ///
+  /// - Returns: A diagnostic message.
+  static func nonStaticTagDeclarationNotSupported(_ attribute: AttributeSyntax, on decl: VariableDeclSyntax) -> Self {
+    var declCopy = decl
+    declCopy.modifiers = DeclModifierListSyntax {
+      for modifier in decl.modifiers {
+        modifier
+      }
+      DeclModifierSyntax(name: .keyword(.static))
+    }.with(\.trailingTrivia, .space)
+
+    return Self(
+      syntax: Syntax(decl),
+      message: "Attribute \(_macroName(attribute)) cannot be applied to an instance property",
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Add 'static'"),
+          changes: [.replace(oldNode: Syntax(decl), newNode: Syntax(declCopy)),]
+        ),
+      ]
+    )
+  }
+
+  /// Create a diagnostic message stating that the given attribute cannot be
+  /// applied to global variables.
+  ///
+  /// - Parameters:
+  ///   - decl: The declaration in question.
+  ///   - attribute: The `@Tag` attribute.
+  ///
+  /// - Returns: A diagnostic message.
+  static func nonMemberTagDeclarationNotSupported(_ decl: VariableDeclSyntax, whenUsing attribute: AttributeSyntax) -> Self {
+    var declCopy = decl
+    declCopy.modifiers = DeclModifierListSyntax {
+      for modifier in decl.modifiers {
+        modifier
+      }
+      DeclModifierSyntax(name: .keyword(.static))
+    }.with(\.trailingTrivia, .space)
+    let replacementDecl: DeclSyntax = """
+    extension Tag {
+      \(declCopy.trimmed)
+    }
+    """
+
+    return Self(
+      syntax: Syntax(decl),
+      message: "Attribute \(_macroName(attribute)) cannot be applied to a global variable",
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Declare in an extension to 'Tag'"),
+          changes: [.replace(oldNode: Syntax(decl), newNode: Syntax(replacementDecl)),]
+        ),
+        FixIt(
+          message: MacroExpansionFixItMessage("Remove attribute \(_macroName(attribute))"),
+          changes: [.replace(oldNode: Syntax(attribute), newNode: Syntax("" as ExprSyntax))]
+        ),
+      ]
+    )
+  }
+
+  /// Create a diagnostic message stating that the given attribute cannot be
+  /// applied to global variables.
+  ///
+  /// - Parameters:
+  ///   - attribute: The `@Tag` attribute.
+  ///   - decl: The declaration in question.
+  ///   - declaredType: The type of `decl` as specified by it.
+  ///   - resolvedType: The _actual_ type of `decl`, if known and differing from
+  ///     `declaredType` (i.e. if `type` is `Self`.)
+  ///
+  /// - Returns: A diagnostic message.
+  static func mistypedTagDeclarationNotSupported(_ attribute: AttributeSyntax, on decl: VariableDeclSyntax, declaredType: TypeSyntax, resolvedType: TypeSyntax? = nil) -> Self {
+    let resolvedType = resolvedType ?? declaredType
+    return Self(
+      syntax: Syntax(decl),
+      message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) of type '\(resolvedType.trimmed)'",
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Change type to 'Tag'"),
+          changes: [.replace(oldNode: Syntax(declaredType), newNode: Syntax("Tag" as TypeSyntax))]
+        ),
+        FixIt(
+          message: MacroExpansionFixItMessage("Remove attribute \(_macroName(attribute))"),
+          changes: [.replace(oldNode: Syntax(attribute), newNode: Syntax("" as ExprSyntax))]
+        ),
+      ]
+    )
+  }
+
 #if canImport(SwiftSyntax600)
   /// Create a diagnostic message stating that the given attribute cannot be
   /// used within a lexical context.
@@ -274,6 +373,23 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
         severity: .error
       )
     }
+  }
+
+  /// Create a diagnostic message stating that the given attribute cannot be
+  /// applied to the given declaration outside the scope of an extension to
+  /// `Tag`.
+  ///
+  /// - Parameters:
+  ///   - attribute: The `@Tag` attribute.
+  ///   - decl: The declaration in question.
+  ///
+  /// - Returns: A diagnostic message.
+  static func attributeNotSupportedOutsideTagExtension(_ attribute: AttributeSyntax, on decl: VariableDeclSyntax) -> Self {
+    Self(
+      syntax: Syntax(decl),
+      message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) except in an extension to 'Tag'",
+      severity: .error
+    )
   }
 #endif
 
@@ -447,44 +563,4 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   var diagnosticID = MessageID(domain: "org.swift.testing", id: "macros")
   var severity: DiagnosticSeverity
   var fixIts: [FixIt] = []
-}
-
-// MARK: -
-
-extension MacroExpansionContext {
-  /// Emit a diagnostic message.
-  ///
-  /// - Parameters:
-  ///   - message: The diagnostic message to emit. The `node` and `position`
-  ///     arguments to `Diagnostic.init()` are derived from the message's
-  ///     `syntax` property.
-  func diagnose(_ message: DiagnosticMessage) {
-    diagnose(
-      Diagnostic(
-        node: message.syntax,
-        position: message.syntax.positionAfterSkippingLeadingTrivia,
-        message: message,
-        fixIts: message.fixIts
-      )
-    )
-  }
-
-  /// Emit a sequence of diagnostic messages.
-  ///
-  /// - Parameters:
-  ///   - messages: The diagnostic messages to emit.
-  func diagnose(_ messages: some Sequence<DiagnosticMessage>) {
-    for message in messages {
-      diagnose(message)
-    }
-  }
-
-  /// Emit a diagnostic message for debugging purposes during development of the
-  /// testing library.
-  ///
-  /// - Parameters:
-  ///   - message: The message to emit into the build log.
-  func debug(_ message: some Any, node: some SyntaxProtocol) {
-    diagnose(DiagnosticMessage(syntax: Syntax(node), message: String(describing: message), severity: .warning))
-  }
 }

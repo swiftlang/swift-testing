@@ -25,74 +25,10 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       return []
     }
 
-    guard let function = declaration.as(FunctionDeclSyntax.self) else {
-      return []
-    }
+    let functionDecl = declaration.cast(FunctionDeclSyntax.self)
+    let typeName = context.typeOfLexicalContext(containing: functionDecl)
 
-    let typeName = _nameOfType(containing: function, testAttribute: node, in: context)
-    return _createTestContainerDecls(for: function, on: typeName, testAttribute: node, in: context)
-  }
-
-  /// Get the name of the type containing a function declaration, if any.
-  ///
-  /// - Parameters:
-  ///   - functionDecl: The function declaration to inspect.
-  ///   - testAttribute: The `@Test` attribute applied to `functionDecl`.
-  ///   - context: The macro context in which the expression is being parsed.
-  ///
-  /// - Returns: A syntax node representing the name of the type containing
-  ///   `functionDecl`, or `nil` if none was found.
-  private static func _nameOfType(
-    containing functionDecl: FunctionDeclSyntax,
-    testAttribute: AttributeSyntax,
-    in context: some MacroExpansionContext
-  ) -> TypeSyntax? {
-#if canImport(SwiftSyntax600)
-    let types = context.lexicalContext
-      .compactMap { $0.asProtocol((any DeclGroupSyntax).self) }
-      .map(\.type)
-      .reversed()
-    if types.isEmpty {
-      return nil
-    }
-    let typeName = types.map(\.trimmedDescription).joined(separator: ".")
-    return "\(raw: typeName)"
-#else
-    // Find the beginning of the first attribute on the declaration, including
-    // those embedded in #if statements, to account for patterns like
-    // `@MainActor @Test func` where there's a space ahead of @Test, but the
-    // whole function is still at the top level.
-    func firstAttribute(in attributes: AttributeListSyntax) -> AttributeSyntax? {
-      attributes.lazy
-        .compactMap { attribute in
-          switch (attribute as AttributeListSyntax.Element?) {
-          case let .ifConfigDecl(ifConfigDecl):
-            ifConfigDecl.clauses.lazy
-              .compactMap { clause in
-                if case let .attributes(attributes) = clause.elements {
-                  return firstAttribute(in: attributes)
-                }
-                return nil
-              }.first
-          case let .attribute(attribute):
-            attribute
-          default:
-            nil
-          }
-        }.first
-    }
-    let firstAttribute = firstAttribute(in: functionDecl.attributes) ?? testAttribute
-
-    // HACK: If the test function appears to be indented, assume it is nested in
-    // a type. Use `Self` as the presumptive name of the type.
-    //
-    // This hack works around rdar://105470382.
-    if let lastLeadingTrivia = firstAttribute.leadingTrivia.pieces.last,
-       lastLeadingTrivia.isWhitespace && !lastLeadingTrivia.isNewline {
-      return TypeSyntax(IdentifierTypeSyntax(name: .keyword(.Self)))
-    }
-    return nil
-#endif
+    return _createTestContainerDecls(for: functionDecl, on: typeName, testAttribute: node, in: context)
   }
 
   /// Diagnose issues with a `@Test` declaration.
