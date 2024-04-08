@@ -148,6 +148,22 @@ func diagnoseIssuesWithLexicalContext(
     }
   }
 
+  if let extensionDecl = lexicalContext.as(ExtensionDeclSyntax.self) {
+    if Syntax(extensionDecl) == Syntax(decl) {
+      // @Suite cannot be applied to a type extension because its relationship
+      // to the primary type declaration and other extensions (which all define
+      // parts of the same suite) would be ambiguous if any of them also had
+      // @Suite attributes applied.
+      diagnostics.append(.attributeHasNoEffect(attribute, on: extensionDecl))
+    } else {
+      // @Test/@Suite cannot be applied to symbols declared WITHIN an extension
+      // because the testing library cannot determine the nature of the type
+      // being extended (is it a non-final class? a protocol? noasync? etc.)
+      // BUG: rdar://126018850
+      diagnostics.append(.containingNodeUnsupported(extensionDecl, whenUsing: attribute, on: decl))
+    }
+  }
+
   // Check other attributes on the declaration. Note that it should be
   // impossible to reach this point if the declaration can't have attributes.
   if let attributedDecl = lexicalContext.asProtocol((any WithAttributesSyntax).self) {

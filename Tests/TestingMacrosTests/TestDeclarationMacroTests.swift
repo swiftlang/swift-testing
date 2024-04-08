@@ -116,6 +116,29 @@ struct TestDeclarationMacroTests {
     }
   }
 
+  @Test("Warning diagnostics emitted on API misuse",
+    arguments: [
+      // return types
+      "@Test func f() -> Int {}":
+        "The result of this function will be discarded during testing",
+      "@Test func f() -> Swift.String {}":
+        "The result of this function will be discarded during testing",
+      "@Test func f() -> Int? {}":
+        "The result of this function will be discarded during testing",
+      "@Test func f() -> (Int, Int) {}":
+        "The result of this function will be discarded during testing",
+    ]
+  )
+  func apiMisuseWarnings(input: String, expectedMessage: String) throws {
+    let (_, diagnostics) = try parse(input)
+
+    #expect(diagnostics.count > 0)
+    for diagnostic in diagnostics {
+      #expect(diagnostic.diagMessage.severity == .warning)
+      #expect(diagnostic.message == expectedMessage)
+    }
+  }
+
 #if canImport(SwiftSyntax600)
   @Test("Error diagnostics emitted for invalid lexical contexts",
     arguments: [
@@ -145,7 +168,7 @@ struct TestDeclarationMacroTests {
         "Attribute 'Suite' cannot be applied to this structure because it has been marked '@available(*, noasync)'",
     ]
   )
-  func invalidLexicalContext(input: String, expectedMessage: String) throws {
+  func invalidLexicalContextErrors(input: String, expectedMessage: String) throws {
     let (_, diagnostics) = try parse(input)
 
     #expect(diagnostics.count > 0)
@@ -154,22 +177,16 @@ struct TestDeclarationMacroTests {
       #expect(diagnostic.message == expectedMessage)
     }
   }
-#endif
 
-  @Test("Warning diagnostics emitted on API misuse",
+  @Test("Warning diagnostics emitted for invalid lexical contexts",
     arguments: [
-      // return types
-      "@Test func f() -> Int {}":
-        "The result of this function will be discarded during testing",
-      "@Test func f() -> Swift.String {}":
-        "The result of this function will be discarded during testing",
-      "@Test func f() -> Int? {}":
-        "The result of this function will be discarded during testing",
-      "@Test func f() -> (Int, Int) {}":
-        "The result of this function will be discarded during testing",
+      "extension E { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within an extension to type 'E'; this will be an error in the future",
+      "extension E { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within an extension to type 'E'; this will be an error in the future",
     ]
   )
-  func apiMisuseWarnings(input: String, expectedMessage: String) throws {
+  func invalidLexicalContextWarnings(input: String, expectedMessage: String) throws {
     let (_, diagnostics) = try parse(input)
 
     #expect(diagnostics.count > 0)
@@ -178,6 +195,7 @@ struct TestDeclarationMacroTests {
       #expect(diagnostic.message == expectedMessage)
     }
   }
+#endif
 
   @Test("Availability attributes are captured",
     arguments: [

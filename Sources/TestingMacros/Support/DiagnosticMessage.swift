@@ -371,6 +371,12 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
         message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within\(nonFinal) \(_kindString(for: node)) '\(declName)'",
         severity: .error
       )
+    } else if let extensionDecl = node.as(ExtensionDeclSyntax.self) {
+      return Self(
+        syntax: Syntax(attribute),
+        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within an extension to type '\(extensionDecl.type.trimmed)'; this will be an error in the future",
+        severity: .warning
+      )
     } else {
       return Self(
         syntax: Syntax(attribute),

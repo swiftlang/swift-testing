@@ -71,12 +71,6 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
       diagnostics.append(.xcTestCaseNotSupported(declaration, whenUsing: suiteAttribute))
     }
 
-    // @Suite cannot be applied to a type extension (although a type extension
-    // can still contain test functions and test suites.)
-    if let extensionDecl = declaration.as(ExtensionDeclSyntax.self) {
-      diagnostics.append(.attributeHasNoEffect(suiteAttribute, on: extensionDecl))
-    }
-
     // Check other attributes on the declaration. Note that it should be
     // impossible to reach this point if the declaration can't have attributes.
     if let attributedDecl = declaration.asProtocol((any WithAttributesSyntax).self) {
