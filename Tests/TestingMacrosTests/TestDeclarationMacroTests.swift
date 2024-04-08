@@ -123,6 +123,10 @@ struct TestDeclarationMacroTests {
         "Attribute 'Test' cannot be applied to a function within function 'f()'",
       "struct S { func f(x: Int) { @Suite struct S { } } }":
         "Attribute 'Suite' cannot be applied to a structure within function 'f(x:)'",
+      "struct S<T> { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a generic function",
+      "struct S<T> { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a generic structure",
       "class C { @Test func f() {} }":
         "Attribute 'Test' cannot be applied to a function within non-final class 'C'",
       "class C { @Suite struct S {} }":
