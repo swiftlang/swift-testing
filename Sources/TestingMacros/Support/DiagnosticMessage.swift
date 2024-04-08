@@ -331,7 +331,6 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
-#if canImport(SwiftSyntax600)
   /// Create a diagnostic message stating that the given attribute cannot be
   /// used within a lexical context.
   ///
@@ -375,6 +374,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     }
   }
 
+#if canImport(SwiftSyntax600)
   /// Create a diagnostic message stating that the given attribute cannot be
   /// applied to the given declaration outside the scope of an extension to
   /// `Tag`.
