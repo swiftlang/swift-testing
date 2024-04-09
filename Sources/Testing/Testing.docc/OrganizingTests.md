@@ -36,6 +36,9 @@ might contain, test suite types can also contain additional test suites nested
 within them. To add a nested test suite type, simply declare an additional type
 within the scope of the outer test suite type.
 
+- Note: If you use a class as a test suite, subclasses do not inherit any test
+  functions or child test suites contained in that class.
+
 By default, tests contained within a suite will run in parallel with each other.
 For more information about test parallelization, see <doc:Parallelization>.
 
@@ -150,18 +153,6 @@ meet this requirement.
 - Bug: Inherited availability is not always visible to the compiler during
   expansion of the ``Suite(_:_:)`` macro. A test function may crash when run on
   an unsupported system. ([110974351](rdar://110974351))
-
-### Classes must be final
-
-The testing library does not currently support inheritance between test suite
-types. If a class is used as a test suite type, it may inherit from another
-class, but it must be declared `final`:
-
-```swift
-@Suite final class FoodTruckTests { ... } // ✅ OK: class is final
-actor CashRegisterTests: NSObject { ... } // ✅ OK: actors are implicitly final
-class MenuItemTests { ... } // ❌ ERROR: this class is not final
-```
 
 ## Topics
 
