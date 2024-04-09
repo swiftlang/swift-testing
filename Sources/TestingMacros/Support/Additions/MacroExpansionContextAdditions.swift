@@ -33,7 +33,6 @@ extension MacroExpansionContext {
   /// will be removed once the testing library's swift-syntax dependency is
   /// updated to swift-syntax-600 or later.
   func typeOfLexicalContext(containing node: some WithAttributesSyntax) -> TypeSyntax? {
-#if canImport(SwiftSyntax600)
     var typeNames = [String]()
     for lexicalContext in lexicalContext.reversed() {
       guard let decl = lexicalContext.asProtocol((any DeclGroupSyntax).self) else {
@@ -46,42 +45,6 @@ extension MacroExpansionContext {
     }
 
     return "\(raw: typeNames.joined(separator: "."))"
-#else
-    // Find the beginning of the first attribute on the declaration, including
-    // those embedded in #if statements, to account for patterns like
-    // `@MainActor @Test func` where there's a space ahead of @Test, but the
-    // whole function is still at the top level.
-    func firstAttribute(in attributes: AttributeListSyntax) -> AttributeSyntax? {
-      attributes.lazy
-        .compactMap { attribute in
-          switch (attribute as AttributeListSyntax.Element?) {
-          case let .ifConfigDecl(ifConfigDecl):
-            ifConfigDecl.clauses.lazy
-              .compactMap { clause in
-                if case let .attributes(attributes) = clause.elements {
-                  return firstAttribute(in: attributes)
-                }
-                return nil
-              }.first
-          case let .attribute(attribute):
-            attribute
-          default:
-            nil
-          }
-        }.first
-    }
-    let firstAttribute = firstAttribute(in: node.attributes)!
-
-    // HACK: If the test function appears to be indented, assume it is nested in
-    // a type. Use `Self` as the presumptive name of the type.
-    //
-    // This hack works around rdar://105470382.
-    if let lastLeadingTrivia = firstAttribute.leadingTrivia.pieces.last,
-       lastLeadingTrivia.isWhitespace && !lastLeadingTrivia.isNewline {
-      return TypeSyntax(IdentifierTypeSyntax(name: .keyword(.Self)))
-    }
-    return nil
-#endif
   }
 }
 

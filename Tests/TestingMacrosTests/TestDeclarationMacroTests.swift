@@ -104,21 +104,8 @@ struct TestDeclarationMacroTests {
         "Attribute 'Test' must specify 2 arguments when used with 'f(i:j:)'",
       "@Test(arguments: []) func f() {}":
         "Attribute 'Test' cannot specify arguments when used with 'f()' because it does not take any",
-    ]
-  )
-  func apiMisuseErrors(input: String, expectedMessage: String) throws {
-    let (_, diagnostics) = try parse(input)
 
-    #expect(diagnostics.count > 0)
-    for diagnostic in diagnostics {
-      #expect(diagnostic.diagMessage.severity == .error)
-      #expect(diagnostic.message == expectedMessage)
-    }
-  }
-
-#if canImport(SwiftSyntax600)
-  @Test("Error diagnostics emitted for invalid lexical contexts",
-    arguments: [
+      // Invalid lexical contexts
       "struct S { func f() { @Test func g() {} } }":
         "Attribute 'Test' cannot be applied to a function within function 'f()'",
       "struct S { func f(x: Int) { @Suite struct S { } } }":
@@ -145,7 +132,7 @@ struct TestDeclarationMacroTests {
         "Attribute 'Suite' cannot be applied to this structure because it has been marked '@available(*, noasync)'",
     ]
   )
-  func invalidLexicalContext(input: String, expectedMessage: String) throws {
+  func apiMisuseErrors(input: String, expectedMessage: String) throws {
     let (_, diagnostics) = try parse(input)
 
     #expect(diagnostics.count > 0)
@@ -154,7 +141,6 @@ struct TestDeclarationMacroTests {
       #expect(diagnostic.message == expectedMessage)
     }
   }
-#endif
 
   @Test("Warning diagnostics emitted on API misuse",
     arguments: [
@@ -256,21 +242,12 @@ struct TestDeclarationMacroTests {
       ),
     ]
 
-#if canImport(SwiftSyntax600)
     result += [
       ("struct S_NAME {\n\t@Test func f() {} }", "S_NAME", "let"),
       ("struct S_NAME {\n\t@Test mutating func f() {} }", "S_NAME", "var"),
       ("struct S_NAME {\n\t@Test static func f() {} }", "S_NAME", nil),
       ("final class C_NAME {\n\t@Test class func f() {} }", "C_NAME", nil),
     ]
-#else
-    result += [
-      ("struct S {\n\t@Test func f() {} }", "Self", "let"),
-      ("struct S {\n\t@Test mutating func f() {} }", "Self", "var"),
-      ("struct S {\n\t@Test static func f() {} }", "Self", nil),
-      ("final class C {\n\t@Test class func f() {} }", "Self", nil),
-    ]
-#endif
 
     return result
   }
