@@ -58,11 +58,11 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
 
 #if canImport(SwiftSyntax600)
     // Check if the lexical context is appropriate for a suite or test.
-    diagnostics += diagnoseIssuesWithLexicalContext(containing: declaration, attribute: testAttribute, in: context)
+    diagnostics += diagnoseIssuesWithLexicalContext(context.lexicalContext, containing: declaration, attribute: testAttribute)
 #endif
 
     // Only one @Test attribute is supported.
-    let suiteAttributes = function.attributes(named: "Test", in: context)
+    let suiteAttributes = function.attributes(named: "Test")
     if suiteAttributes.count > 1 {
       diagnostics.append(.multipleAttributesNotSupported(suiteAttributes, on: declaration))
     }
@@ -290,7 +290,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // If the function is noasync *and* main-actor-isolated, we'll call through
     // MainActor.run to invoke it. We do not have a general mechanism for
     // detecting isolation to other global actors.
-    lazy var isMainActorIsolated = !functionDecl.attributes(named: "MainActor", inModuleNamed: "Swift", in: context).isEmpty
+    lazy var isMainActorIsolated = !functionDecl.attributes(named: "MainActor", inModuleNamed: "Swift").isEmpty
     var forwardCall: (ExprSyntax) -> ExprSyntax = {
       "try await (\($0), Testing.__requiringTry, Testing.__requiringAwait).0"
     }

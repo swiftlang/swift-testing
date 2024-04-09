@@ -188,8 +188,11 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///
   /// - Returns: A diagnostic message.
   static func genericDeclarationNotSupported(_ decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax, becauseOf genericClause: some SyntaxProtocol) -> Self {
-    Self(
-      syntax: Syntax(genericClause),
+    // Avoid using a syntax node from a lexical context (it won't have source
+    // location information.)
+    let syntax = (genericClause.root != decl.root) ? Syntax(decl) : Syntax(genericClause)
+    return Self(
+      syntax: syntax,
       message: "Attribute \(_macroName(attribute)) cannot be applied to a generic \(_kindString(for: decl))",
       severity: .error
     )
@@ -209,8 +212,11 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   semantic availability and fully-qualified names for types at macro
   ///   expansion time. ([104081994](rdar://104081994))
   static func availabilityAttributeNotSupported(_ availabilityAttribute: AttributeSyntax, on decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
-    Self(
-      syntax: Syntax(availabilityAttribute),
+    // Avoid using a syntax node from a lexical context (it won't have source
+    // location information.)
+    let syntax = (availabilityAttribute.root != decl.root) ? Syntax(decl) : Syntax(availabilityAttribute)
+    return Self(
+      syntax: syntax,
       message: "Attribute \(_macroName(attribute)) cannot be applied to this \(_kindString(for: decl)) because it has been marked '\(availabilityAttribute.trimmed)'",
       severity: .error
     )
@@ -331,7 +337,6 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
-#if canImport(SwiftSyntax600)
   /// Create a diagnostic message stating that the given attribute cannot be
   /// used within a lexical context.
   ///
@@ -375,6 +380,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     }
   }
 
+#if canImport(SwiftSyntax600)
   /// Create a diagnostic message stating that the given attribute cannot be
   /// applied to the given declaration outside the scope of an extension to
   /// `Tag`.

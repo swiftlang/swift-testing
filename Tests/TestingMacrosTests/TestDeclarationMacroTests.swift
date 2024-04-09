@@ -123,6 +123,10 @@ struct TestDeclarationMacroTests {
         "Attribute 'Test' cannot be applied to a function within function 'f()'",
       "struct S { func f(x: Int) { @Suite struct S { } } }":
         "Attribute 'Suite' cannot be applied to a structure within function 'f(x:)'",
+      "struct S<T> { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a generic function",
+      "struct S<T> { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a generic structure",
       "class C { @Test func f() {} }":
         "Attribute 'Test' cannot be applied to a function within non-final class 'C'",
       "class C { @Suite struct S {} }":
@@ -135,6 +139,10 @@ struct TestDeclarationMacroTests {
         "Attribute 'Test' cannot be applied to a function within a closure",
       "{ _ in @Suite struct S {} }":
         "Attribute 'Suite' cannot be applied to a structure within a closure",
+      "@available(*, noasync) struct S { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to this function because it has been marked '@available(*, noasync)'",
+      "@available(*, noasync) struct S { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to this structure because it has been marked '@available(*, noasync)'",
     ]
   )
   func invalidLexicalContext(input: String, expectedMessage: String) throws {

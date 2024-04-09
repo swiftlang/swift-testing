@@ -50,7 +50,7 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
   /// - Returns: Whether or not macro expansion should continue (i.e. stopping
   ///   if a fatal error was diagnosed.)
   private static func _diagnoseIssues(
-    with declaration: some SyntaxProtocol,
+    with declaration: some DeclSyntaxProtocol,
     suiteAttribute: AttributeSyntax,
     in context: some MacroExpansionContext
   ) -> Bool {
@@ -59,41 +59,16 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
       context.diagnose(diagnostics)
     }
 
-    // The @Suite attribute is only supported on type declarations, all of which
-    // are DeclGroupSyntax types.
-    guard let declaration = declaration.asProtocol((any DeclGroupSyntax).self) else {
-      diagnostics.append(.attributeNotSupported(suiteAttribute, on: declaration))
-      return false
-    }
-
 #if canImport(SwiftSyntax600)
     // Check if the lexical context is appropriate for a suite or test.
-    diagnostics += diagnoseIssuesWithLexicalContext(containing: declaration, attribute: suiteAttribute, in: context)
+    diagnostics += diagnoseIssuesWithLexicalContext(context.lexicalContext, containing: declaration, attribute: suiteAttribute)
 #endif
-
-    // Generic suites are not supported.
-    if let genericClause = declaration.asProtocol((any WithGenericParametersSyntax).self)?.genericParameterClause {
-      diagnostics.append(.genericDeclarationNotSupported(declaration, whenUsing: suiteAttribute, becauseOf: genericClause))
-    } else if let whereClause = declaration.genericWhereClause {
-      diagnostics.append(.genericDeclarationNotSupported(declaration, whenUsing: suiteAttribute, becauseOf: whereClause))
-    }
+    diagnostics += diagnoseIssuesWithLexicalContext(declaration, containing: declaration, attribute: suiteAttribute)
 
     // Suites inheriting from XCTestCase are not supported.
-    if declaration.inherits(fromTypeNamed: "XCTestCase", inModuleNamed: "XCTest") {
+    if let declaration = declaration.asProtocol((any DeclGroupSyntax).self),
+       declaration.inherits(fromTypeNamed: "XCTestCase", inModuleNamed: "XCTest") {
       diagnostics.append(.xcTestCaseNotSupported(declaration, whenUsing: suiteAttribute))
-    }
-
-    // Suites that are classes must be final.
-    if let classDecl = declaration.as(ClassDeclSyntax.self) {
-      if !classDecl.modifiers.lazy.map(\.name.tokenKind).contains(.keyword(.final)) {
-        diagnostics.append(.nonFinalClassNotSupported(classDecl, whenUsing: suiteAttribute))
-      }
-    }
-
-    // Suites cannot be protocols (there's nowhere to put most of the
-    // declarations we generate.)
-    if let protocolDecl = declaration.as(ProtocolDeclSyntax.self) {
-      diagnostics.append(.attributeNotSupported(suiteAttribute, on: protocolDecl))
     }
 
     // @Suite cannot be applied to a type extension (although a type extension
@@ -106,23 +81,9 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
     // impossible to reach this point if the declaration can't have attributes.
     if let attributedDecl = declaration.asProtocol((any WithAttributesSyntax).self) {
       // Only one @Suite attribute is supported.
-      let suiteAttributes = attributedDecl.attributes(named: "Suite", in: context)
+      let suiteAttributes = attributedDecl.attributes(named: "Suite")
       if suiteAttributes.count > 1 {
         diagnostics.append(.multipleAttributesNotSupported(suiteAttributes, on: declaration))
-      }
-
-      // Availability is not supported on suites (we need semantic availability
-      // to correctly understand the availability of a suite.)
-      let availabilityAttributes = attributedDecl.availabilityAttributes
-      if !availabilityAttributes.isEmpty {
-        // Diagnose all @available attributes.
-        for availabilityAttribute in availabilityAttributes {
-          diagnostics.append(.availabilityAttributeNotSupported(availabilityAttribute, on: declaration, whenUsing: suiteAttribute))
-        }
-      } else if let noasyncAttribute = attributedDecl.noasyncAttribute {
-        // No @available attributes, but we do have an @_unavailableFromAsync
-        // attribute and we still need to diagnose that.
-        diagnostics.append(.availabilityAttributeNotSupported(noasyncAttribute, on: declaration, whenUsing: suiteAttribute))
       }
     }
 
