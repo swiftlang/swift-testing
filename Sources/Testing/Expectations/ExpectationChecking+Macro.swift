@@ -1002,7 +1002,7 @@ public func __checkClosureCall<R>(
     mismatchExplanationValue = explanation
   } catch {
     expression = expression.capturingRuntimeValues(error)
-    let secondError = Issue.recordingErrors(at: sourceLocation) {
+    let secondError = Issue.withErrorRecording(at: sourceLocation) {
       errorMatches = try errorMatcher(error)
     }
     if let secondError {
@@ -1050,7 +1050,7 @@ public func __checkClosureCall<R>(
     mismatchExplanationValue = explanation
   } catch {
     expression = expression.capturingRuntimeValues(error)
-    let secondError = await Issue.recordingErrors(at: sourceLocation) {
+    let secondError = await Issue.withErrorRecording(at: sourceLocation) {
       errorMatches = try await errorMatcher(error)
     }
     if let secondError {

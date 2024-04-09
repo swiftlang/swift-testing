@@ -203,7 +203,7 @@ extension Runner {
 
     if let step = stepGraph.value, case .run = step.action {
       await Test.withCurrent(step.test) {
-        _ = await Issue.recordingErrors(at: step.test.sourceLocation, configuration: configuration) {
+        _ = await Issue.withErrorRecording(at: step.test.sourceLocation, configuration: configuration) {
           try await _executeTraits(for: step, testCase: nil) {
             // Run the test function at this step (if one is present.)
             if let testCases = step.test.testCases {
@@ -272,7 +272,7 @@ extension Runner {
 
     await Test.Case.withCurrent(testCase) {
       let sourceLocation = step.test.sourceLocation
-      await Issue.recordingErrors(at: sourceLocation, configuration: configuration) {
+      await Issue.withErrorRecording(at: sourceLocation, configuration: configuration) {
         try await withTimeLimit(for: step.test, configuration: configuration) {
           try await _executeTraits(for: step, testCase: testCase) {
             try await testCase.body()

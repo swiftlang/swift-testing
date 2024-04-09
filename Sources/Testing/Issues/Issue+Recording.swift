@@ -150,7 +150,7 @@ extension Issue {
   /// - Returns: The issue representing the caught error, if any error was
   ///   caught, otherwise `nil`.
   @discardableResult
-  static func recordingErrors(
+  static func withErrorRecording(
     at sourceLocation: SourceLocation,
     configuration: Configuration? = nil,
     _ body: () throws -> Void
@@ -194,7 +194,7 @@ extension Issue {
   /// - Returns: The issue representing the caught error, if any error was
   ///   caught, otherwise `nil`.
   @discardableResult
-  static func recordingErrors(
+  static func withErrorRecording(
     at sourceLocation: SourceLocation,
     configuration: Configuration? = nil,
     _ body: () async throws -> Void
