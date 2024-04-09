@@ -45,7 +45,6 @@ public struct TagMacro: PeerMacro, AccessorMacro, Sendable {
       return _fallbackAccessorDecls
     }
 
-#if canImport(SwiftSyntax600)
     // Check that the tag is declared within Tag's namespace.
     let typeNameTokens: [String] = type.tokens(viewMode: .fixedUp).lazy
       .filter { $0.tokenKind != .period }
@@ -75,7 +74,6 @@ public struct TagMacro: PeerMacro, AccessorMacro, Sendable {
         return _fallbackAccessorDecls
       }
     }
-#endif
 
     // We know the tag is nested in Tag. Now check that it is a static member.
     guard variableDecl.modifiers.map(\.name.tokenKind).contains(.keyword(.static)) else {

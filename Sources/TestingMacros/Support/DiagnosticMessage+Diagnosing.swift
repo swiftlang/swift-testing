@@ -237,7 +237,6 @@ func diagnoseIssuesWithLexicalContext(
   return diagnostics
 }
 
-#if canImport(SwiftSyntax600)
 /// Diagnose issues with the lexical context containing a declaration.
 ///
 /// - Parameters:
@@ -256,7 +255,6 @@ func diagnoseIssuesWithLexicalContext(
     .map { diagnoseIssuesWithLexicalContext($0, containing: decl, attribute: attribute) }
     .reduce(into: [], +=)
 }
-#endif
 
 /// Create a declaration that prevents compilation if it is generic.
 ///

@@ -96,11 +96,7 @@ extension FunctionDeclSyntax {
         colonToken = .colonToken()
       } else {
         let hasThrowsSpecifier: Bool
-#if canImport(SwiftSyntax600)
         hasThrowsSpecifier = signature.effectSpecifiers?.throwsClause != nil
-#else
-        hasThrowsSpecifier = signature.effectSpecifiers?.throwsSpecifier != nil
-#endif
         if hasThrowsSpecifier {
           selector += "AndReturnError"
           colonToken = .colonToken()

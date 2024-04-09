@@ -33,7 +33,7 @@ let package = Package(
   ],
 
   dependencies: [
-    .package(url: "https://github.com/apple/swift-syntax.git", from: Version(stringLiteral: Context.environment["SWT_SWIFT_SYNTAX_VERSION"] ?? "510.0.1")),
+    .package(url: "https://github.com/apple/swift-syntax.git", from: Version(stringLiteral: Context.environment["SWT_SWIFT_SYNTAX_VERSION"] ?? "600.0.0-latest")),
   ],
 
   targets: [
