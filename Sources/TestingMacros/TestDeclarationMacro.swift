@@ -426,6 +426,10 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     }
 #endif
 
+    if typeName != nil, let genericGuardDecl = makeGenericGuardDecl(guardingAgainst: functionDecl, in: context) {
+      result.append(genericGuardDecl)
+    }
+
     // Parse the @Test attribute.
     let attributeInfo = AttributeInfo(byParsing: testAttribute, on: functionDecl, in: context)
     if attributeInfo.hasFunctionArguments != !functionDecl.signature.parameterClause.parameters.isEmpty {
