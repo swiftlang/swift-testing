@@ -113,6 +113,10 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
       return []
     }
 
+    if let genericGuardDecl = makeGenericGuardDecl(guardingAgainst: declaration, in: context) {
+      result.append(genericGuardDecl)
+    }
+
     // Parse the @Suite attribute.
     let attributeInfo = AttributeInfo(byParsing: suiteAttribute, on: declaration, in: context)
 

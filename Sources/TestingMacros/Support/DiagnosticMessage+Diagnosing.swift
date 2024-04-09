@@ -173,9 +173,9 @@ func diagnoseIssuesWithLexicalContext(
 /// Diagnose issues with the lexical context containing a declaration.
 ///
 /// - Parameters:
+///   - lexicalContext: The lexical context to inspect.
 ///   - decl: The declaration to inspect.
 ///   - attribute: The `@Test` or `@Suite` attribute applied to `decl`.
-///   - context: The macro context in which the expression is being parsed.
 ///
 /// - Returns: An array of zero or more diagnostic messages related to the
 ///   lexical context containing `decl`.
@@ -189,3 +189,40 @@ func diagnoseIssuesWithLexicalContext(
     .reduce(into: [], +=)
 }
 #endif
+
+/// Create a declaration that prevents compilation if it is generic.
+///
+/// - Parameters:
+///   - decl: The declaration that should not be generic.
+///   - context: The macro context in which the expression is being parsed.
+///
+/// - Returns: A declaration that will fail to compile if `decl` is generic. The
+///   result declares a static member that should be added to the type
+///   containing `decl`. If `decl` is known not to be contained within a type
+///   extension, the result is `nil`.
+///
+/// This function disables the use of tests and suites inside extensions to
+/// generic types by adding a static property declaration (which generic types
+/// do not support.) This produces a compile-time error (not the perfect
+/// diagnostic to emit, but better than building successfully and failing
+/// silently at runtime.) ([126018850](rdar://126018850))
+func makeGenericGuardDecl(
+  guardingAgainst decl: some DeclSyntaxProtocol,
+  in context: some MacroExpansionContext
+) -> DeclSyntax? {
+#if canImport(SwiftSyntax600)
+  guard context.lexicalContext.lazy.map(\.kind).contains(.extensionDecl) else {
+    // Don't bother emitting a member if the declaration is not in an extension
+    // because we'll already be able to emit a better error.
+    return nil
+  }
+#endif
+  let genericGuardName = if let functionDecl = decl.as(FunctionDeclSyntax.self) {
+    context.makeUniqueName(thunking: functionDecl)
+  } else {
+    context.makeUniqueName("")
+  }
+  return """
+  private static let \(genericGuardName): Void = ()
+  """
+}
