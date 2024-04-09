@@ -147,10 +147,6 @@ _not_ be annotated with the `@available` attribute:
 The compiler will emit an error when presented with a test suite that does not
 meet this requirement.
 
-- Bug: Inherited availability is not always visible to the compiler during
-  expansion of the ``Suite(_:_:)`` macro. A test function may crash when run on
-  an unsupported system. ([110974351](rdar://110974351))
-
 ### Classes must be final
 
 The testing library does not currently support inheritance between test suite
