@@ -102,13 +102,6 @@ extension ExitTest {
 
 // MARK: -
 
-/// A type that provides task-local context for exit tests.
-private enum _ExitTestContext {
-  /// Whether or not the current process and task are running an exit test.
-  @TaskLocal
-  static var isRunning = false
-}
-
 /// Check that an expression always exits (terminates the current process) with
 /// a given status.
 ///
@@ -135,9 +128,6 @@ func callExitTest(
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) async -> Result<Void, any Error> {
-  // FIXME: use lexicalContext to capture this misuse at compile time.
-  precondition(!_ExitTestContext.isRunning, "Running an exit test within another exit test is unsupported.")
-
   // FIXME: use lexicalContext to capture these misuses at compile time.
   guard let configuration = Configuration.current, Test.current != nil else {
     preconditionFailure("A test must be running on the current task to use #expect(exitsWith:).")
