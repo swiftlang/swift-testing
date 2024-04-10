@@ -221,7 +221,7 @@ extension ExitTest {
   /// are available or the child environment is otherwise terminated. The parent
   /// environment is then responsible for interpreting those results and
   /// recording any issues that occur.
-  public typealias Handler = @Sendable (_ exitTest: ExitTest) async throws -> ExitCondition?
+  public typealias Handler = @Sendable (_ exitTest: borrowing ExitTest) async throws -> ExitCondition?
 
 #if SWIFT_PM_SUPPORTS_SWIFT_TESTING
   /// Find the exit test function specified by the given command-line arguments,
