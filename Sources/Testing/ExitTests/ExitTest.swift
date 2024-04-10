@@ -236,11 +236,7 @@ extension ExitTest {
   /// `__swiftPMEntryPoint()` function. The effect of using it under other
   /// configurations is undefined.
   public static func find(withArguments args: [String]) -> Self? {
-    let sourceLocationString = if let runArgIndex = args.firstIndex(of: "--experimental-run-exit-test-body-at"), runArgIndex < args.endIndex {
-      args[args.index(after: runArgIndex)]
-    } else {
-      Environment.variable(named: "SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION")
-    }
+    let sourceLocationString = Environment.variable(named: "SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION")
     if let sourceLocationData = sourceLocationString?.data(using: .utf8),
        let sourceLocation = try? JSONDecoder().decode(SourceLocation.self, from: sourceLocationData) {
       return find(at: sourceLocation)
@@ -253,7 +249,7 @@ extension ExitTest {
   ///
   /// - Parameters:
   ///   - xcTestCaseIdentifier: The identifier of the XCTest-based test hosting
-  ///     the testing library (when using `XCTestScaffold`.)
+  ///     the testing library (when using ``XCTestScaffold``.)
   ///
   /// For a description of the inputs and outputs of this function, see the
   /// documentation for ``ExitTest/Handler``.
@@ -264,10 +260,8 @@ extension ExitTest {
       do {
         let childProcessURL: URL = try URL(fileURLWithPath: CommandLine.executablePath, isDirectory: false)
 
-        // By default, inherit the environment from the parent process.
+        // We only need to pass arguments when hosted by XCTest.
         var childArguments = [String]()
-        var childEnvironment: [String: String] = ProcessInfo.processInfo.environment
-
         if let xcTestCaseIdentifier {
 #if os(macOS)
           childArguments += ["-XCTest", xcTestCaseIdentifier]
@@ -277,13 +271,12 @@ extension ExitTest {
           if let xctestTargetPath = CommandLine.arguments().last {
             childArguments.append(xctestTargetPath)
           }
-          childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION"] = try String(data: JSONEncoder().encode(exitTest.sourceLocation), encoding: .utf8)!
-        } else {
-          childArguments += [
-            "--experimental-run-exit-test-body-at",
-            try String(data: JSONEncoder().encode(exitTest.sourceLocation), encoding: .utf8)!,
-          ]
         }
+
+        // Inherit the environment from the parent process and add our own
+        // variable indicating which exit test will run.
+        var childEnvironment: [String: String] = ProcessInfo.processInfo.environment
+        childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION"] = try String(data: JSONEncoder().encode(exitTest.sourceLocation), encoding: .utf8)!
 #if os(Linux)
         if childEnvironment["SWIFT_BACKTRACE"] == nil {
           // Disable interactive backtraces unless explicitly enabled to reduce
