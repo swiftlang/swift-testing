@@ -256,6 +256,8 @@ extension ExitTest {
   /// For a description of the inputs and outputs of this function, see the
   /// documentation for ``ExitTest/Handler``.
   static func handlerForSwiftPM(forXCTestCaseIdentifiedBy xcTestCaseIdentifier: String? = nil) -> Handler {
+    let parentEnvironment = ProcessInfo.processInfo.environment
+
     return { exitTest in
       let actualExitCode: Int32
       let wasSignalled: Bool
@@ -270,16 +272,27 @@ extension ExitTest {
 #else
           childArguments.append(xcTestCaseIdentifier)
 #endif
-          if let xctestTargetPath = CommandLine.arguments().last {
+          if let xctestTargetPath = parentEnvironment["XCTestBundlePath"] {
+            childArguments.append(xctestTargetPath)
+          } else if let xctestTargetPath = CommandLine.arguments().last {
             childArguments.append(xctestTargetPath)
           }
         }
 
         // Inherit the environment from the parent process and add our own
-        // variable indicating which exit test will run.
-        var childEnvironment: [String: String] = ProcessInfo.processInfo.environment
+        // variable indicating which exit test will run, then make any necessary
+        // platform-specific changes.
+        var childEnvironment: [String: String] = parentEnvironment
         childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION"] = try String(data: JSONEncoder().encode(exitTest.sourceLocation), encoding: .utf8)!
-#if os(Linux)
+#if SWT_TARGET_OS_APPLE
+        if childEnvironment["XCTestSessionIdentifier"] != nil {
+          // We need to remove Xcode's environment variables from the child
+          // environment to avoid accidentally accidentally recursing.
+          for key in childEnvironment.keys where key.starts(with: "XCTest") {
+            childEnvironment.removeValue(forKey: key)
+          }
+        }
+#elseif os(Linux)
         if childEnvironment["SWIFT_BACKTRACE"] == nil {
           // Disable interactive backtraces unless explicitly enabled to reduce
           // the noise level during the exit test. Only needed on Linux.

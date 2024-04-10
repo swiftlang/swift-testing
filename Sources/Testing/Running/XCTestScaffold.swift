@@ -165,27 +165,14 @@ public enum XCTestScaffold: Sendable {
       await exitTest()
       exit(EXIT_SUCCESS)
     }
-    var exitTestHandler: ExitTest.Handler?
-#if SWT_TARGET_OS_APPLE
-    if isProcessLaunchedByXcode {
-      exitTestHandler = { _ in
-        throw SystemError(description: "Exit tests are not supported within Xcode. Run 'swift test' instead.")
-      }
+    let typeName = String(reflecting: type(of: testCase.rawValue as Any))
+    let functionName = if let parenIndex = functionName.lastIndex(of: "(") {
+      functionName[..<parenIndex]
+    } else {
+      functionName[...]
     }
-#endif
-    if exitTestHandler == nil {
-      let typeName = String(reflecting: type(of: testCase.rawValue as Any))
-      let functionName = if let parenIndex = functionName.lastIndex(of: "(") {
-        functionName[..<parenIndex]
-      } else {
-        functionName[...]
-      }
-      let testIdentifier = "\(typeName)/\(functionName)"
-      exitTestHandler = ExitTest.handlerForSwiftPM(forXCTestCaseIdentifiedBy: testIdentifier)
-    }
-    if let exitTestHandler {
-      configuration.exitTestHandler = exitTestHandler
-    }
+    let testIdentifier = "\(typeName)/\(functionName)"
+    configuration.exitTestHandler = ExitTest.handlerForSwiftPM(forXCTestCaseIdentifiedBy: testIdentifier)
 #endif
 
     var options = Event.ConsoleOutputRecorder.Options()

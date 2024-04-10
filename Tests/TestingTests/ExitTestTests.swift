@@ -12,16 +12,8 @@
 private import TestingInternals
 
 #if !SWT_NO_EXIT_TESTS
-let isLaunchedByXcode: Bool = {
-#if SWT_TARGET_OS_APPLE
-  Environment.variable(named: "XCTestSessionIdentifier") != nil
-#else
-  false
-#endif
-}()
-
 @Suite("Exit test tests") struct ExitTestTests {
-  @Test("Exit tests (passing)", .disabled(if: isLaunchedByXcode)) func passing() async {
+  @Test("Exit tests (passing)") func passing() async {
     await #expect(exitsWith: .failure) {
       exit(EXIT_FAILURE)
     }
@@ -53,7 +45,7 @@ let isLaunchedByXcode: Bool = {
   }
 
 #if SWIFT_PM_SUPPORTS_SWIFT_TESTING
-  @Test("Exit tests (failing)", .disabled(if: isLaunchedByXcode)) func failing() async {
+  @Test("Exit tests (failing)") func failing() async {
     let expectedCount: Int
 #if os(Windows)
     expectedCount = 7
