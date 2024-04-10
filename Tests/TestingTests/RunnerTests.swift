@@ -49,6 +49,13 @@ struct NeverRunTests {
 }
 
 final class RunnerTests: XCTestCase {
+  func testInitialTaskLocalState() {
+    // These are expected to be `nil` since this is an XCTest.
+    XCTAssertNil(Test.current)
+    XCTAssertNil(Test.Case.current)
+    XCTAssertNil(Configuration.current)
+  }
+
   func testDefaultInit() async throws {
     let runner = await Runner()
     XCTAssertFalse(runner.tests.contains(where: \.isHidden))
