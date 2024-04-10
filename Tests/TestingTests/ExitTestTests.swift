@@ -13,7 +13,11 @@ private import TestingInternals
 
 #if !SWT_NO_EXIT_TESTS
 var isLaunchedByXcode: Bool {
+#if SWT_TARGET_OS_APPLE
   Environment.variable(named: "XCTestSessionIdentifier") != nil
+#else
+  false
+#endif
 }
 
 @Suite("Exit test tests", .disabled(if: isLaunchedByXcode)) struct ExitTestTests {
