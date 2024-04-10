@@ -223,7 +223,6 @@ extension ExitTest {
   /// recording any issues that occur.
   public typealias Handler = @Sendable (_ exitTest: borrowing ExitTest) async throws -> ExitCondition?
 
-#if SWIFT_PM_SUPPORTS_SWIFT_TESTING
   /// Find the exit test function specified by the given command-line arguments,
   /// if any.
   ///
@@ -237,11 +236,14 @@ extension ExitTest {
   /// `__swiftPMEntryPoint()` function. The effect of using it under other
   /// configurations is undefined.
   public static func find(withArguments args: [String]) -> Self? {
-    if let runArgIndex = args.firstIndex(of: "--experimental-run-exit-test-body-at"), runArgIndex < args.endIndex {
-      if let sourceLocationData = args[args.index(after: runArgIndex)].data(using: .utf8),
-         let sourceLocation = try? JSONDecoder().decode(SourceLocation.self, from: sourceLocationData) {
-        return find(at: sourceLocation)
-      }
+    let sourceLocationString = if let runArgIndex = args.firstIndex(of: "--experimental-run-exit-test-body-at"), runArgIndex < args.endIndex {
+      args[args.index(after: runArgIndex)]
+    } else {
+      Environment.variable(named: "SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION")
+    }
+    if let sourceLocationData = sourceLocationString?.data(using: .utf8),
+       let sourceLocation = try? JSONDecoder().decode(SourceLocation.self, from: sourceLocationData) {
+      return find(at: sourceLocation)
     }
     return nil
   }
@@ -249,56 +251,77 @@ extension ExitTest {
   /// The exit test handler used when integrating with Swift Package Manager via
   /// the `__swiftPMEntryPoint()` function.
   ///
+  /// - Parameters:
+  ///   - xcTestCaseIdentifier: The identifier of the XCTest-based test hosting
+  ///     the testing library (when using `XCTestScaffold`.)
+  ///
   /// For a description of the inputs and outputs of this function, see the
   /// documentation for ``ExitTest/Handler``.
-  static let handlerForSwiftPM: Handler = { exitTest in
-    let actualExitCode: Int32
-    let wasSignalled: Bool
-    do {
-      let childProcessURL: URL = try URL(fileURLWithPath: CommandLine.executablePath, isDirectory: false)
-      let childArguments = [
-        "--experimental-run-exit-test-body-at",
-        try String(data: JSONEncoder().encode(exitTest.sourceLocation), encoding: .utf8)!,
-      ]
-      // By default, inherit the environment from the parent process.
-      var childEnvironment: [String: String]? = nil
-#if os(Linux)
-      if Environment.variable(named: "SWIFT_BACKTRACE") == nil {
-        // Disable interactive backtraces unless explicitly enabled to reduce
-        // the noise level during the exit test. Only needed on Linux.
-        childEnvironment = ProcessInfo.processInfo.environment
-        childEnvironment?["SWIFT_BACKTRACE"] = "enable=no"
-      }
-#endif
+  static func handlerForSwiftPM(forXCTestCaseIdentifiedBy xcTestCaseIdentifier: String? = nil) -> Handler {
+    return { exitTest in
+      let actualExitCode: Int32
+      let wasSignalled: Bool
+      do {
+        let childProcessURL: URL = try URL(fileURLWithPath: CommandLine.executablePath, isDirectory: false)
 
-      (actualExitCode, wasSignalled) = try await withCheckedThrowingContinuation { continuation in
-        do {
-          let process = Process()
-          process.executableURL = childProcessURL
-          process.arguments = childArguments
-          if let childEnvironment {
-            process.environment = childEnvironment
-          }
-          process.terminationHandler = { process in
-            continuation.resume(returning: (process.terminationStatus, process.terminationReason == .uncaughtSignal))
-          }
-          try process.run()
-        } catch {
-          continuation.resume(throwing: error)
-        }
-      }
+        // By default, inherit the environment from the parent process.
+        var childArguments = [String]()
+        var childEnvironment: [String: String]? = nil
 
-      if wasSignalled {
-#if os(Windows)
-        // Actually an uncaught SEH/VEH exception (which we don't model yet.)
-        return .failure
+        if let xcTestCaseIdentifier {
+#if os(macOS)
+          childArguments += ["-XCTest", xcTestCaseIdentifier]
 #else
-        return .signal(actualExitCode)
+          childArguments.append(xcTestCaseIdentifier)
 #endif
+          if let xctestTargetPath = CommandLine.arguments().last {
+            childArguments.append(xctestTargetPath)
+          }
+          childEnvironment = ProcessInfo.processInfo.environment
+          childEnvironment?["SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION"] = try String(data: JSONEncoder().encode(exitTest.sourceLocation), encoding: .utf8)!
+        } else {
+          childArguments += [
+            "--experimental-run-exit-test-body-at",
+            try String(data: JSONEncoder().encode(exitTest.sourceLocation), encoding: .utf8)!,
+          ]
+#if os(Linux)
+          if Environment.variable(named: "SWIFT_BACKTRACE") == nil {
+            // Disable interactive backtraces unless explicitly enabled to reduce
+            // the noise level during the exit test. Only needed on Linux.
+            childEnvironment = ProcessInfo.processInfo.environment
+            childEnvironment?["SWIFT_BACKTRACE"] = "enable=no"
+          }
+#endif
+        }
+
+        (actualExitCode, wasSignalled) = try await withCheckedThrowingContinuation { continuation in
+          do {
+            let process = Process()
+            process.executableURL = childProcessURL
+            process.arguments = childArguments
+            if let childEnvironment {
+              process.environment = childEnvironment
+            }
+            process.terminationHandler = { process in
+              continuation.resume(returning: (process.terminationStatus, process.terminationReason == .uncaughtSignal))
+            }
+            try process.run()
+          } catch {
+            continuation.resume(throwing: error)
+          }
+        }
+
+        if wasSignalled {
+#if os(Windows)
+          // Actually an uncaught SEH/VEH exception (which we don't model yet.)
+          return .failure
+#else
+          return .signal(actualExitCode)
+#endif
+        }
+        return .exitCode(actualExitCode)
       }
-      return .exitCode(actualExitCode)
     }
   }
-#endif
 }
 #endif

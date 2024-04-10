@@ -12,8 +12,11 @@
 private import TestingInternals
 
 #if !SWT_NO_EXIT_TESTS
-@Suite("Exit test tests") struct ExitTestTests {
-#if SWIFT_PM_SUPPORTS_SWIFT_TESTING
+var isLaunchedByXcode: Bool {
+  Environment.variable(named: "XCTestSessionIdentifier") != nil
+}
+
+@Suite("Exit test tests", .disabled(if: isLaunchedByXcode)) struct ExitTestTests {
   @Test("Exit tests (passing)") func passing() async {
     await #expect(exitsWith: .failure) {
       exit(EXIT_FAILURE)
@@ -48,6 +51,7 @@ private import TestingInternals
   @TaskLocal
   static var isTestingFailingExitTests = false
 
+#if SWIFT_PM_SUPPORTS_SWIFT_TESTING
   @Test("Exit tests (failing)") func failing() async {
     let expectedCount: Int
 #if os(Windows)
@@ -62,7 +66,7 @@ private import TestingInternals
           failed()
         }
       }
-      configuration.exitTestHandler = ExitTest.handlerForSwiftPM
+      configuration.exitTestHandler = ExitTest.handlerForSwiftPM()
 
       await Self.$isTestingFailingExitTests.withValue(true) {
         await Runner(selecting: "failingExitTests()", configuration: configuration).run()
@@ -202,7 +206,6 @@ private import TestingInternals
 
 // MARK: - Fixtures
 
-#if SWIFT_PM_SUPPORTS_SWIFT_TESTING
 var inFailingExitTestChild: Bool {
   ExitTestTests.isTestingFailingExitTests || ExitTest.find(withArguments: CommandLine.arguments()) != nil
 }
@@ -240,6 +243,5 @@ func sellIceCreamCones(count: Int) async throws {
     precondition(count < 10, "Too many ice cream cones")
   }
 }
-#endif
 #endif
 #endif

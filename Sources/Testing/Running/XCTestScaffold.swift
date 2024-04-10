@@ -114,7 +114,7 @@ public enum XCTestScaffold: Sendable {
 #else
   @available(swift, deprecated: 100000.0, message: "This function is provided temporarily to aid in integrating the testing library with existing tools such as Swift Package Manager. It will be removed in a future release.")
 #endif
-  public static func runAllTests(hostedBy testCase: XCTestCase) async {
+  public static func runAllTests(hostedBy testCase: XCTestCase, _ functionName: String = #function) async {
 #if SWIFT_PM_SUPPORTS_SWIFT_TESTING
     let message = Event.ConsoleOutputRecorder.warning(
       "This version of Swift Package Manager supports running swift-testing tests directly. Ignoring call to \(#function).",
@@ -158,6 +158,28 @@ public enum XCTestScaffold: Sendable {
       }
 #endif
     }
+
+#if !SWT_NO_EXIT_TESTS
+    // Exit test handling.
+    if let exitTest = ExitTest.find(withArguments: CommandLine.arguments()) {
+      await exitTest()
+      exit(EXIT_SUCCESS)
+    }
+    if isProcessLaunchedByXcode {
+      configuration.exitTestHandler = { _ in
+        throw SystemError(description: "Exit tests are not supported within Xcode. Run 'swift test' instead.")
+      }
+    } else {
+      let typeName = String(reflecting: type(of: testCase.rawValue as Any))
+      let functionName = if let parenIndex = functionName.lastIndex(of: "(") {
+        functionName[..<parenIndex]
+      } else {
+        functionName[...]
+      }
+      let testIdentifier = "\(typeName)/\(functionName)"
+      configuration.exitTestHandler = ExitTest.handlerForSwiftPM(forXCTestCaseIdentifiedBy: testIdentifier)
+    }
+#endif
 
     var options = Event.ConsoleOutputRecorder.Options()
 #if !SWT_NO_FILE_IO

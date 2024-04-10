@@ -54,7 +54,7 @@ private import Foundation
 #endif
       options.isVerbose = args.contains("--verbose")
 
-#if !SWT_NO_EXIT_TESTS && SWIFT_PM_SUPPORTS_SWIFT_TESTING
+#if !SWT_NO_EXIT_TESTS
       if let exitTest = ExitTest.find(withArguments: args) {
         await exitTest()
         return exitCode.rawValue
@@ -237,16 +237,16 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
   }
   configuration.repetitionPolicy = repetitionPolicy
 
-#if !SWT_NO_EXIT_TESTS && SWIFT_PM_SUPPORTS_SWIFT_TESTING
+#if !SWT_NO_EXIT_TESTS
   // Enable exit test handling via __swiftPMEntryPoint().
-  configuration.exitTestHandler = ExitTest.handlerForSwiftPM
+  configuration.exitTestHandler = ExitTest.handlerForSwiftPM()
 #endif
 
   return configuration
 }
 
 /// The common implementation of ``swiftPMEntryPoint()`` and
-/// ``XCTestScaffold/runAllTests(hostedBy:)``.
+/// ``XCTestScaffold/runAllTests(hostedBy:_:)``.
 ///
 /// - Parameters:
 ///   - options: Options to pass when configuring the console output recorder.
