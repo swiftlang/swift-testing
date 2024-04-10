@@ -25,9 +25,10 @@ extension Runner {
     /// The test case that is running on the current task, if any.
     var testCase: Test.Case?
 
-    /// The runtime state related to the runner running on the current task.
+    /// The runtime state related to the runner running on the current task,
+    /// if any.
     @TaskLocal
-    static var current = Self()
+    static var current: Self?
   }
 }
 
@@ -42,7 +43,10 @@ extension Runner {
   /// In practice, the primary scenario where this is important is when running
   /// the testing library's own tests.
   mutating func configureEventHandlerRuntimeState() {
-    let existingRuntimeState = RuntimeState.current
+    guard let existingRuntimeState = RuntimeState.current else {
+      return
+    }
+
     configuration.eventHandler = { [eventHandler = configuration.eventHandler] event, context in
       RuntimeState.$current.withValue(existingRuntimeState) {
         eventHandler(event, context)
@@ -56,7 +60,7 @@ extension Runner {
 extension Configuration {
   /// The configuration for the current task, if any.
   public static var current: Self? {
-    Runner.RuntimeState.current.configuration
+    Runner.RuntimeState.current?.configuration
   }
 
   /// Call a function while the value of ``Configuration/current`` is set.
@@ -74,7 +78,7 @@ extension Configuration {
       configuration._removeFromAll(identifiedBy: id)
     }
 
-    var runtimeState = Runner.RuntimeState.current
+    var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.configuration = configuration
     return try await Runner.RuntimeState.$current.withValue(runtimeState, operation: body)
   }
@@ -144,7 +148,7 @@ extension Test {
   /// or [`DispatchQueue.async(execute:)`](https://developer.apple.com/documentation/dispatch/dispatchqueue/2016103-async)),
   /// the value of this property may be `nil`.
   public static var current: Self? {
-    Runner.RuntimeState.current.test
+    Runner.RuntimeState.current?.test
   }
 
   /// Call a function while the value of ``Test/current`` is set.
@@ -157,7 +161,7 @@ extension Test {
   ///
   /// - Throws: Whatever is thrown by `body`.
   static func withCurrent<R>(_ test: Self, perform body: () async throws -> R) async rethrows -> R {
-    var runtimeState = Runner.RuntimeState.current
+    var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.test = test
     return try await Runner.RuntimeState.$current.withValue(runtimeState, operation: body)
   }
@@ -177,7 +181,7 @@ extension Test.Case {
   /// or [`DispatchQueue.async(execute:)`](https://developer.apple.com/documentation/dispatch/dispatchqueue/2016103-async)),
   /// the value of this property may be `nil`.
   public static var current: Self? {
-    Runner.RuntimeState.current.testCase
+    Runner.RuntimeState.current?.testCase
   }
 
   /// Call a function while the value of ``Test/Case/current`` is set.
@@ -190,7 +194,7 @@ extension Test.Case {
   ///
   /// - Throws: Whatever is thrown by `body`.
   static func withCurrent<R>(_ testCase: Self, perform body: () async throws -> R) async rethrows -> R {
-    var runtimeState = Runner.RuntimeState.current
+    var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.testCase = testCase
     return try await Runner.RuntimeState.$current.withValue(runtimeState, operation: body)
   }
