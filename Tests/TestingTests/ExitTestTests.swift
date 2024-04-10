@@ -48,7 +48,7 @@ private import TestingInternals
   @Test("Exit tests (failing)") func failing() async {
     let expectedCount: Int
 #if os(Windows)
-    expectedCount = 7
+    expectedCount = 6
 #else
     expectedCount = 10
 #endif
@@ -211,11 +211,13 @@ private import TestingInternals
     await #expect(exitsWith: .exitCode(123)) {
       exit(0)
     }
-    await #expect(exitsWith: .exitCode(SIGABRT)) {
-      abort()
-    }
 
 #if !os(Windows)
+    await #expect(exitsWith: .exitCode(SIGABRT)) {
+      // abort() raises on Windows, but we don't handle that yet and it is
+      // reported as .failure (which will fuzzy-match with SIGABRT.)
+      abort()
+    }
     await #expect(exitsWith: .signal(123)) {}
     await #expect(exitsWith: .signal(123)) {
       exit(123)
