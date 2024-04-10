@@ -25,4 +25,21 @@ struct Runner_RuntimeStateTests {
 
     await Test(name: "foo") {}.run(configuration: configuration)
   }
+
+  // This confirms that an event posted within the closure of `withTaskGroup`
+  // (and similar APIs) in regular tests (those which are not testing the
+  // testing library itself) are handled appropriately and do not crash.
+  @Test func eventPostingInTaskGroup() async {
+    // Enable delivery of "expectation checked" events, merely as a way to allow
+    // an event to be posted during the test below without causing any real
+    // issues to be recorded or otherwise confuse the testing harness.
+    var configuration = Configuration.current ?? .init()
+    configuration.deliverExpectationCheckedEvents = true
+
+    await Configuration.withCurrent(configuration) {
+      await withTaskGroup(of: Void.self) { group in
+        #expect(Bool(true))
+      }
+    }
+  }
 }
