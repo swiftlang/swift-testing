@@ -36,6 +36,8 @@ private import TestingInternals
 #if !os(Windows)
     await #expect(exitsWith: .signal(SIGKILL)) {
       _ = kill(getpid(), SIGKILL)
+      // Allow up to 1s for the signal to be delivered.
+      try! await Task.sleep(nanoseconds: 1_000_000_000_000)
     }
     await #expect(exitsWith: .signal(SIGABRT)) {
       abort()
@@ -60,7 +62,7 @@ private import TestingInternals
           failed()
         }
       }
-      configuration.exitTestHandler = exitTestHandlerForSwiftPM
+      configuration.exitTestHandler = ExitTest.handlerForSwiftPM
 
       await Self.$isTestingFailingExitTests.withValue(true) {
         await Runner(selecting: "failingExitTests()", configuration: configuration).run()
@@ -79,7 +81,7 @@ private import TestingInternals
       }
 
       // Mock an exit test that is not a match (and so is not run.)
-      configuration.exitTestHandler = { _, _, _ in nil }
+      configuration.exitTestHandler = { _ in nil }
       await Test {
         await #expect(exitsWith: .success) {
           Issue.record("Unreachable")
@@ -87,7 +89,7 @@ private import TestingInternals
       }.run(configuration: configuration)
 
       // Mock an exit test where the process exits successfully.
-      configuration.exitTestHandler = { _, _, body in
+      configuration.exitTestHandler = { _ in
         return .exitCode(EXIT_SUCCESS)
       }
       await Test {
@@ -95,7 +97,7 @@ private import TestingInternals
       }.run(configuration: configuration)
 
       // Mock an exit test where the process exits with a generic failure.
-      configuration.exitTestHandler = { _, _, body in
+      configuration.exitTestHandler = { _ in
         return .failure
       }
       await Test {
@@ -111,7 +113,7 @@ private import TestingInternals
 #endif
 
       // Mock an exit test where the process exits with a particular error code.
-      configuration.exitTestHandler = { _, _, body in
+      configuration.exitTestHandler = { _ in
         return .exitCode(123)
       }
       await Test {
@@ -120,7 +122,7 @@ private import TestingInternals
 
 #if !os(Windows)
       // Mock an exit test where the process exits with a signal.
-      configuration.exitTestHandler = { _, _, body in
+      configuration.exitTestHandler = { _ in
         return .signal(SIGABRT)
       }
       await Test {
@@ -149,7 +151,7 @@ private import TestingInternals
       }
 
       // Mock exit tests that were expected to fail but passed.
-      configuration.exitTestHandler = { _, _, body in
+      configuration.exitTestHandler = { _ in
         return .exitCode(EXIT_SUCCESS)
       }
       await Test {
@@ -166,7 +168,7 @@ private import TestingInternals
 
 #if !os(Windows)
       // Mock exit tests that unexpectedly signalled.
-      configuration.exitTestHandler = { _, _, body in
+      configuration.exitTestHandler = { _ in
         return .signal(SIGABRT)
       }
       await Test {
@@ -201,9 +203,13 @@ private import TestingInternals
 // MARK: - Fixtures
 
 #if SWIFT_PM_SUPPORTS_SWIFT_TESTING
+var inFailingExitTestChild: Bool {
+  ExitTestTests.isTestingFailingExitTests || ExitTest.find(withArguments: CommandLine.arguments()) != nil
+}
+
 // This fixture can't be .hidden because it needs to be discovered correctly
 // when the exit tests' child processes start.
-@Test(.enabled(if: ExitTestTests.isTestingFailingExitTests || currentExitTestSourceLocation() != nil))
+@Test(.enabled(if: inFailingExitTestChild))
 func failingExitTests() async {
   await #expect(exitsWith: .failure) {
     exit(EXIT_SUCCESS)

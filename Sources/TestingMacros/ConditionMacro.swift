@@ -54,6 +54,25 @@ extension ConditionMacro {
     of macro: some FreestandingMacroExpansionSyntax,
     in context: some MacroExpansionContext
   ) throws -> ExprSyntax {
+    return try expansion(of: macro, primaryExpression: nil, in: context)
+  }
+
+  /// Perform the expansion of this condition macro.
+  ///
+  /// - Parameters:
+  ///   - macro: The macro to expand.
+  ///   - primaryExpression: The expression to use for source code capture, or
+  ///     `nil` to infer it from `macro`.
+  ///   - context: The macro context in which the expression is being parsed.
+  ///
+  /// - Returns: The expanded form of `macro`.
+  ///
+  /// - Throws: Any error preventing expansion of `macro`.
+  static func expansion(
+    of macro: some FreestandingMacroExpansionSyntax,
+    primaryExpression: ExprSyntax?,
+    in context: some MacroExpansionContext
+  ) throws -> ExprSyntax {
     // Reconstruct an argument list that includes any trailing closures.
     let macroArguments = argumentList(of: macro, in: context)
 
@@ -88,7 +107,8 @@ extension ConditionMacro {
           .map { macroArguments[$0] }
 
         // The trailing closure should be the focus of the source code capture.
-        let sourceCode = parseCondition(from: macroArguments[trailingClosureIndex].expression, for: macro, in: context).expression
+        let primaryExpression = primaryExpression ?? macroArguments[trailingClosureIndex].expression
+        let sourceCode = parseCondition(from: primaryExpression, for: macro, in: context).expression
         checkArguments.append(Argument(label: "expression", expression: sourceCode))
 
         expandedFunctionName = .identifier("__checkClosureCall")
@@ -107,7 +127,12 @@ extension ConditionMacro {
           .filter { $0 != sourceLocationArgumentIndex }
           .map { macroArguments[$0] }
 
-        checkArguments.append(Argument(label: "expression", expression: conditionArgument.expression))
+        if let primaryExpression {
+          let sourceCode = parseCondition(from: primaryExpression, for: macro, in: context).expression
+          checkArguments.append(Argument(label: "expression", expression: sourceCode))
+        } else {
+          checkArguments.append(Argument(label: "expression", expression: conditionArgument.expression))
+        }
 
         expandedFunctionName = conditionArgument.expandedFunctionName
       }
@@ -305,6 +330,10 @@ extension ExitTestConditionMacro {
     _ = try Base.expansion(of: macro, in: context)
 
     var arguments = argumentList(of: macro, in: context)
+    let expectedExitConditionIndex = arguments.firstIndex { $0.label?.tokenKind == .identifier("exitsWith") }
+    guard let expectedExitConditionIndex else {
+      fatalError("Could not find the exit condition for this exit test. Please file a bug report at https://github.com/apple/swift-testing/issues/new")
+    }
     let trailingClosureIndex = arguments.firstIndex { $0.label?.tokenKind == _trailingClosureLabel.tokenKind }
     guard let trailingClosureIndex else {
       fatalError("Could not find the body argument to this exit test. Please file a bug report at https://github.com/apple/swift-testing/issues/new")
@@ -323,10 +352,13 @@ extension ExitTestConditionMacro {
     @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
     @frozen enum \(enumName): Testing.__ExitTestContainer {
       static var __sourceLocation: Testing.SourceLocation {
-        .init()
+        \(createSourceLocationExpr(of: macro, context: context))
       }
       static var __body: @Sendable () async -> Void {
-        \(bodyArgumentExpr)
+        \(bodyArgumentExpr.trimmed)
+      }
+      static var __expectedExitCondition: Testing.ExitCondition {
+        \(arguments[expectedExitConditionIndex].expression.trimmed)
       }
     }
     """
@@ -339,7 +371,7 @@ extension ExitTestConditionMacro {
     macro.trailingClosure = nil
     macro.additionalTrailingClosures = MultipleTrailingClosureElementListSyntax()
 
-    return try Base.expansion(of: macro, in: context)
+    return try Base.expansion(of: macro, primaryExpression: bodyArgumentExpr, in: context)
   }
 }
 

@@ -55,10 +55,8 @@ private import Foundation
       options.isVerbose = args.contains("--verbose")
 
 #if !SWT_NO_EXIT_TESTS && SWIFT_PM_SUPPORTS_SWIFT_TESTING
-      if let exitTestSourceLocation = currentExitTestSourceLocation(withArguments: args),
-         let exitTestBody = findExitTest(at: exitTestSourceLocation) {
-        print("RUNNING EXIT TEST AT \(exitTestSourceLocation)")
-        await exitTestBody()
+      if let exitTest = ExitTest.find(withArguments: args) {
+        await exitTest()
         return exitCode.rawValue
       }
 #endif
@@ -241,7 +239,7 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 
 #if !SWT_NO_EXIT_TESTS && SWIFT_PM_SUPPORTS_SWIFT_TESTING
   // Enable exit test handling via __swiftPMEntryPoint().
-  configuration.exitTestHandler = exitTestHandlerForSwiftPM
+  configuration.exitTestHandler = ExitTest.handlerForSwiftPM
 #endif
 
   return configuration

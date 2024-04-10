@@ -1088,7 +1088,7 @@ public func __checkClosureCall<R>(
 ///   `#require()` macros. Do not call it directly.
 @_spi(Experimental)
 public func __checkClosureCall(
-  exitsWith exitCondition: ExitCondition,
+  exitsWith expectedExitCondition: ExitCondition,
   performing body: @convention(c) () -> Void,
   expression: Expression,
   comments: @autoclosure () -> [Comment],
@@ -1096,7 +1096,7 @@ public func __checkClosureCall(
   sourceLocation: SourceLocation
 ) async -> Result<Void, any Error> {
   await callExitTest(
-    exitsWith: exitCondition,
+    exitsWith: expectedExitCondition,
     performing: { body() },
     expression: expression,
     comments: comments(),
@@ -1120,7 +1120,7 @@ public func __checkClosureCall(
 @_spi(Experimental)
 @_disfavoredOverload
 public func __checkClosureCall(
-  exitsWith exitCondition: ExitCondition,
+  exitsWith expectedExitCondition: ExitCondition,
   performing body: @convention(thin) () async -> Void,
   expression: Expression,
   comments: @autoclosure () -> [Comment],
@@ -1128,7 +1128,7 @@ public func __checkClosureCall(
   sourceLocation: SourceLocation
 ) async -> Result<Void, any Error> {
   await callExitTest(
-    exitsWith: exitCondition,
+    exitsWith: expectedExitCondition,
     performing: { await body() },
     expression: expression,
     comments: comments(),

@@ -409,7 +409,7 @@
 /// Check that an expression causes the process to terminate in a given fashion.
 ///
 /// - Parameters:
-///   - exitCondition: The expected exit condition.
+///   - expectedExitCondition: The expected exit condition.
 ///   - comment: A comment describing the expectation.
 ///   - sourceLocation: The source location to which recorded expectations and
 ///     issues should be attributed.
@@ -435,14 +435,11 @@
 /// then suspended (as with `await`) and waits for the child process to
 /// terminate. `expression` is not called in the parent process.
 ///
-/// Meanwhile, in the child process, the current test function is run again, but
-/// when the exit test is performed again, `expression` is finally called. If
-/// `expression` does not terminate the child process, the remainder of the test
-/// is allowed to execute. If the test function contains other exit tests, they
-/// are ignored.
-///
-/// The standard I/O streams in the child process are forwarded to those of the
-/// current process.
+/// Meanwhile, in the child process, `expression` is called directly. To ensure
+/// a clean environment for execution, it is not called within the context of
+/// the original test. If `expression` does not terminate the child process, the
+/// process is terminated automatically as if the main function of the child
+/// process were allowed to return naturally.
 ///
 /// Once the child process terminates, the parent process resumes and compares
 /// its exit status against `exitCondition`. If they match, the exit test has
@@ -479,7 +476,7 @@
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 @freestanding(expression) public macro expect(
-  exitsWith exitCondition: ExitCondition,
+  exitsWith expectedExitCondition: ExitCondition,
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = SourceLocation(),
   performing expression: @convention(thin) () async throws -> Void
@@ -489,7 +486,7 @@
 /// and throw an error if it did not.
 ///
 /// - Parameters:
-///   - exitCondition: The expected exit condition.
+///   - expectedExitCondition: The expected exit condition.
 ///   - comment: A comment describing the expectation.
 ///   - sourceLocation: The source location to which recorded expectations and
 ///     issues should be attributed.
@@ -518,14 +515,11 @@
 /// then suspended (as with `await`) and waits for the child process to
 /// terminate. `expression` is not called in the parent process.
 ///
-/// Meanwhile, in the child process, the current test function is run again, but
-/// when the exit test is performed again, `expression` is finally called. If
-/// `expression` does not terminate the child process, the remainder of the test
-/// is allowed to execute. If the test function contains other exit tests, they
-/// are ignored.
-///
-/// The standard I/O streams in the child process are forwarded to those of the
-/// current process.
+/// Meanwhile, in the child process, `expression` is called directly. To ensure
+/// a clean environment for execution, it is not called within the context of
+/// the original test. If `expression` does not terminate the child process, the
+/// process is terminated automatically as if the main function of the child
+/// process were allowed to return naturally.
 ///
 /// Once the child process terminates, the parent process resumes and compares
 /// its exit status against `exitCondition`. If they match, the exit test has
@@ -562,7 +556,7 @@
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 @freestanding(expression) public macro require(
-  exitsWith exitCondition: ExitCondition,
+  exitsWith expectedExitCondition: ExitCondition,
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = SourceLocation(),
   performing expression: @convention(thin) () async -> Void

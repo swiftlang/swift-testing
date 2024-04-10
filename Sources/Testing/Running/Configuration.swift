@@ -190,7 +190,7 @@ public struct Configuration: Sendable {
   /// property is pre-configured. Otherwise, the default value of this property
   /// records an issue indicating that it has not been configured.
   @_spi(Experimental)
-  public var exitTestHandler: ExitTestHandler = { _, _, _ in
+  public var exitTestHandler: ExitTest.Handler = { _ in
     throw SystemError(description: "Exit test support has not been implemented by the current testing infrastructure.")
   }
 #endif
