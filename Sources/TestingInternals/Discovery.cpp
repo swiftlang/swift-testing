@@ -324,7 +324,8 @@ void swt_enumerateTypes(void *context, SWTTypeEnumerator body, SWTTypeNameFilter
     auto records = reinterpret_cast<const SWTTypeMetadataRecord *>(section);
     size_t recordCount = size / sizeof(SWTTypeMetadataRecord);
 
-    for (size_t i = 0; i < recordCount; i++) {
+    bool keepGoing = true;
+    for (size_t i = 0; i < recordCount && keepGoing; i++) {
       const auto& record = records[i];
 
       auto contextDescriptor = record.getContextDescriptor();
@@ -350,7 +351,7 @@ void swt_enumerateTypes(void *context, SWTTypeEnumerator body, SWTTypeNameFilter
       }
 
       if (void *typeMetadata = contextDescriptor->getMetadata()) {
-        body(typeMetadata, context);
+        keepGoing = body(typeMetadata, context);
       }
     }
   });

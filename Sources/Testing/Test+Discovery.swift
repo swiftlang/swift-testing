@@ -55,6 +55,7 @@ extension Test {
               await type.__tests
             }
           }
+          return true
         } withNamesMatching: { typeName, _ in
           // strstr() lets us avoid copying either string before comparing.
           Self._testContainerTypeNameMagic.withCString { testContainerTypeNameMagic in

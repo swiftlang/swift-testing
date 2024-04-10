@@ -22,6 +22,8 @@ fileprivate let allMacros: [String: any Macro.Type] = [
   "expect": ExpectMacro.self,
   "require": RequireMacro.self,
   "requireAmbiguous": AmbiguousRequireMacro.self, // different name needed only for unit testing
+  "expectExitTest": ExitTestRequireMacro.self, // different name needed only for unit testing
+  "requireExitTest": ExitTestRequireMacro.self, // different name needed only for unit testing
   "Suite": SuiteDeclarationMacro.self,
   "Test": TestDeclarationMacro.self,
   "Tag": TagMacro.self,

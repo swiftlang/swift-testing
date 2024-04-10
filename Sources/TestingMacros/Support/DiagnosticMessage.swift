@@ -87,9 +87,14 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - macro: The freestanding macro node to name.
   ///
   /// - Returns: The name of the macro as understood by a developer, such as
-  ///   `"'#expect(_:_:)'"`. Include single quotes.
+  ///   `"'#expect(_:_:)'"`. Includes single quotes.
   private static func _macroName(_ macro: some FreestandingMacroExpansionSyntax) -> String {
-    "'#\(macro.macroName.textWithoutBackticks)(_:_:)'"
+    var labels = ["_", "_"]
+    if let firstArgumentLabel = macro.arguments.first?.label?.textWithoutBackticks {
+      labels[0] = firstArgumentLabel
+    }
+    let argumentLabels = labels.map { "\($0):" }.joined()
+    return "'#\(macro.macroName.textWithoutBackticks)(\(argumentLabels))'"
   }
 
   /// Get the human-readable name of the given attached macro.
@@ -558,6 +563,22 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
           changes: [.replace(oldNode: Syntax(boolExpr), newNode: Syntax("\(boolExpr) ?? false" as ExprSyntax))]
         ),
       ]
+    )
+  }
+
+  /// Create a diagnostic message stating that a condition macro nested inside
+  /// an exit test will not record any diagnostics.
+  ///
+  /// - Parameters:
+  ///   - checkMacro: The inner condition macro invocation.
+  ///   - exitTestMacro: The containing exit test macro invocation.
+  ///
+  /// - Returns: A diagnostic message.
+  static func checkUnsupported(_ checkMacro: some FreestandingMacroExpansionSyntax, inExitTest exitTestMacro: some FreestandingMacroExpansionSyntax) -> Self {
+    Self(
+      syntax: Syntax(checkMacro),
+      message: "Expression \(_macroName(checkMacro)) will not record an issue on failure inside exit test \(_macroName(exitTestMacro))",
+      severity: .error
     )
   }
 

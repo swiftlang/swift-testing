@@ -27,6 +27,8 @@ struct TestingMacrosMain: CompilerPlugin {
       ExpectMacro.self,
       RequireMacro.self,
       AmbiguousRequireMacro.self,
+      ExitTestExpectMacro.self,
+      ExitTestRequireMacro.self,
       TagMacro.self,
     ]
   }
