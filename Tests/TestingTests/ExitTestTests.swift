@@ -52,16 +52,13 @@ let isLaunchedByXcode: Bool = {
 #endif
   }
 
-  @TaskLocal
-  static var isTestingFailingExitTests = false
-
 #if SWIFT_PM_SUPPORTS_SWIFT_TESTING
   @Test("Exit tests (failing)", .disabled(if: isLaunchedByXcode)) func failing() async {
     let expectedCount: Int
 #if os(Windows)
-    expectedCount = 4
+    expectedCount = 7
 #else
-    expectedCount = 6
+    expectedCount = 10
 #endif
     await confirmation("Exit tests failed", expectedCount: expectedCount) { failed in
       var configuration = Configuration()
@@ -72,9 +69,7 @@ let isLaunchedByXcode: Bool = {
       }
       configuration.exitTestHandler = ExitTest.handlerForSwiftPM()
 
-      await Self.$isTestingFailingExitTests.withValue(true) {
-        await Runner(selecting: "failingExitTests()", configuration: configuration).run()
-      }
+      await runTest(for: FailingExitTests.self, configuration: configuration)
     }
   }
 #endif
@@ -210,34 +205,34 @@ let isLaunchedByXcode: Bool = {
 
 // MARK: - Fixtures
 
-var inFailingExitTestChild: Bool {
-  ExitTestTests.isTestingFailingExitTests || ExitTest.find(withArguments: CommandLine.arguments()) != nil
-}
+@Suite(.hidden) struct FailingExitTests {
+  @Test(.hidden) func failingExitTests() async {
+    await #expect(exitsWith: .success) {}
+    await #expect(exitsWith: .failure) {}
+    await #expect(exitsWith: .exitCode(123)) {}
+    await #expect(exitsWith: .failure) {
+      exit(EXIT_SUCCESS)
+    }
+    await #expect(exitsWith: .success) {
+      exit(EXIT_FAILURE)
+    }
+    await #expect(exitsWith: .exitCode(123)) {
+      exit(0)
+    }
+    await #expect(exitsWith: .exitCode(SIGABRT)) {
+      abort()
+    }
 
-// This fixture can't be .hidden because it needs to be discovered correctly
-// when the exit tests' child processes start.
-@Test(.enabled(if: inFailingExitTestChild))
-func failingExitTests() async {
-  await #expect(exitsWith: .failure) {
-    exit(EXIT_SUCCESS)
-  }
-  await #expect(exitsWith: .success) {
-    exit(EXIT_FAILURE)
-  }
-  await #expect(exitsWith: .exitCode(123)) {
-    exit(0)
-  }
-  await #expect(exitsWith: .exitCode(SIGABRT)) {
-    abort()
-  }
 #if !os(Windows)
-  await #expect(exitsWith: .signal(123)) {
-    exit(123)
-  }
-  await #expect(exitsWith: .signal(SIGSEGV)) {
-    abort() // sends SIGABRT, not SIGSEGV
-  }
+    await #expect(exitsWith: .signal(123)) {}
+    await #expect(exitsWith: .signal(123)) {
+      exit(123)
+    }
+    await #expect(exitsWith: .signal(SIGSEGV)) {
+      abort() // sends SIGABRT, not SIGSEGV
+    }
 #endif
+  }
 }
 
 #if false // intentionally fails to compile

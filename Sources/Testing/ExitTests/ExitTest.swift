@@ -96,7 +96,19 @@ extension ExitTest {
       }
     }
 
-    return context.result
+    if var result = context.result {
+      // Add some glue code that terminates the process with an exit condition
+      // that does not match the expected one. If the exit test's body doesn't
+      // terminate, we'll manually call exit() and cause the test to fail.
+      let expectingFailure = result.expectedExitCondition.matches(.failure)
+      result.body = { [body = result.body] in
+        await body()
+        exit(expectingFailure ? EXIT_SUCCESS : EXIT_FAILURE)
+      }
+      return result
+    }
+
+    return nil
   }
 }
 
