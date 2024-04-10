@@ -266,7 +266,7 @@ extension ExitTest {
 
         // By default, inherit the environment from the parent process.
         var childArguments = [String]()
-        var childEnvironment: [String: String]? = nil
+        var childEnvironment: [String: String] = ProcessInfo.processInfo.environment
 
         if let xcTestCaseIdentifier {
 #if os(macOS)
@@ -277,31 +277,27 @@ extension ExitTest {
           if let xctestTargetPath = CommandLine.arguments().last {
             childArguments.append(xctestTargetPath)
           }
-          childEnvironment = ProcessInfo.processInfo.environment
-          childEnvironment?["SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION"] = try String(data: JSONEncoder().encode(exitTest.sourceLocation), encoding: .utf8)!
+          childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION"] = try String(data: JSONEncoder().encode(exitTest.sourceLocation), encoding: .utf8)!
         } else {
           childArguments += [
             "--experimental-run-exit-test-body-at",
             try String(data: JSONEncoder().encode(exitTest.sourceLocation), encoding: .utf8)!,
           ]
-#if os(Linux)
-          if Environment.variable(named: "SWIFT_BACKTRACE") == nil {
-            // Disable interactive backtraces unless explicitly enabled to reduce
-            // the noise level during the exit test. Only needed on Linux.
-            childEnvironment = ProcessInfo.processInfo.environment
-            childEnvironment?["SWIFT_BACKTRACE"] = "enable=no"
-          }
-#endif
         }
+#if os(Linux)
+        if childEnvironment["SWIFT_BACKTRACE"] == nil {
+          // Disable interactive backtraces unless explicitly enabled to reduce
+          // the noise level during the exit test. Only needed on Linux.
+          childEnvironment["SWIFT_BACKTRACE"] = "enable=no"
+        }
+#endif
 
         (actualExitCode, wasSignalled) = try await withCheckedThrowingContinuation { continuation in
           do {
             let process = Process()
             process.executableURL = childProcessURL
             process.arguments = childArguments
-            if let childEnvironment {
-              process.environment = childEnvironment
-            }
+            process.environment = childEnvironment
             process.terminationHandler = { process in
               continuation.resume(returning: (process.terminationStatus, process.terminationReason == .uncaughtSignal))
             }
