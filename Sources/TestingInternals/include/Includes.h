@@ -67,6 +67,14 @@
 #include <limits.h>
 #endif
 
+#if __has_include(<crt_externs.h>)
+#include <crt_externs.h>
+#endif
+
+#if __has_include(<wasi/libc-environ.h>)
+#include <wasi/libc-environ.h>
+#endif
+
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
