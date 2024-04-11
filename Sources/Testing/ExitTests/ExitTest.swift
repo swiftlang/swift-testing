@@ -148,18 +148,7 @@ func callExitTest(
   let actualExitCondition: ExitCondition
   do {
     let exitTest = ExitTest(expectedExitCondition: expectedExitCondition, body: body, sourceLocation: sourceLocation)
-    guard let exitCondition = try await configuration.exitTestHandler(exitTest) else {
-      // This exit test was not run by the handler. Return successfully (and
-      // move on to the next one.)
-      return __checkValue(
-        true,
-        expression: expression,
-        comments: comments(),
-        isRequired: isRequired,
-        sourceLocation: sourceLocation
-      )
-    }
-    actualExitCondition = exitCondition
+    actualExitCondition = try await configuration.exitTestHandler(exitTest)
   } catch {
     // An error here would indicate a problem in the exit test handler such as a
     // failure to find the process' path, to construct arguments to the
@@ -206,8 +195,7 @@ extension ExitTest {
   /// - Parameters:
   ///   - exitTest: The exit test that is starting.
   ///
-  /// - Returns: The condition under which the exit test exited, or `nil` if the
-  ///   exit test was not invoked.
+  /// - Returns: The condition under which the exit test exited.
   ///
   /// - Throws: Any error that prevents the normal invocation or execution of
   ///   the exit test.
@@ -223,7 +211,7 @@ extension ExitTest {
   /// are available or the child environment is otherwise terminated. The parent
   /// environment is then responsible for interpreting those results and
   /// recording any issues that occur.
-  public typealias Handler = @Sendable (_ exitTest: borrowing ExitTest) async throws -> ExitCondition?
+  public typealias Handler = @Sendable (_ exitTest: borrowing ExitTest) async throws -> ExitCondition
 
   /// Find the exit test function specified by the given command-line arguments,
   /// if any.
@@ -256,59 +244,65 @@ extension ExitTest {
   /// For a description of the inputs and outputs of this function, see the
   /// documentation for ``ExitTest/Handler``.
   static func handlerForSwiftPM(forXCTestCaseIdentifiedBy xcTestCaseIdentifier: String? = nil) -> Handler {
-    let parentEnvironment = ProcessInfo.processInfo.environment
+    // The environment could change between invocations if a test calls setenv()
+    // or unsetenv(), so we need to recompute the child environment each time.
+    // The executable and XCTest bundle paths should not change over time, so we
+    // can precompute them.
+    let childProcessExecutablePath = Result { try CommandLine.executablePath }
+
+    // We only need to pass arguments when hosted by XCTest.
+    let childArguments: [String] = {
+      var result = [String]()
+      if let xcTestCaseIdentifier {
+#if SWT_TARGET_OS_APPLE
+        result += ["-XCTest", xcTestCaseIdentifier]
+#else
+        result.append(xcTestCaseIdentifier)
+#endif
+        if let xctestTargetPath = Environment.variable(named: "XCTestBundlePath") {
+          result.append(xctestTargetPath)
+        } else if let xctestTargetPath = CommandLine.arguments().last {
+          result.append(xctestTargetPath)
+        }
+      }
+      return result
+    }()
 
     return { exitTest in
+      let childProcessURL = try URL(fileURLWithPath: childProcessExecutablePath.get(), isDirectory: false)
+
+      // Inherit the environment from the parent process and make any necessary
+      // platform-specific changes.
+      var childEnvironment = ProcessInfo.processInfo.environment
+#if SWT_TARGET_OS_APPLE
+      // We need to remove Xcode's environment variables from the child
+      // environment to avoid accidentally accidentally recursing.
+      for key in childEnvironment.keys where key.starts(with: "XCTest") {
+        childEnvironment.removeValue(forKey: key)
+      }
+#elseif os(Linux)
+      if childEnvironment["SWIFT_BACKTRACE"] == nil {
+        // Disable interactive backtraces unless explicitly enabled to reduce
+        // the noise level during the exit test. Only needed on Linux.
+        childEnvironment["SWIFT_BACKTRACE"] = "enable=no"
+      }
+#endif
+      // Insert a specific variable that tells the child process which exit test
+      // to run.
+      childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION"] = try String(data: JSONEncoder().encode(exitTest.sourceLocation), encoding: .utf8)!
+
       let actualExitCode: Int32
       let wasSignalled: Bool
       do {
-        let childProcessURL: URL = try URL(fileURLWithPath: CommandLine.executablePath, isDirectory: false)
-
-        // We only need to pass arguments when hosted by XCTest.
-        var childArguments = [String]()
-        if let xcTestCaseIdentifier {
-#if os(macOS)
-          childArguments += ["-XCTest", xcTestCaseIdentifier]
-#else
-          childArguments.append(xcTestCaseIdentifier)
-#endif
-          if let xctestTargetPath = parentEnvironment["XCTestBundlePath"] {
-            childArguments.append(xctestTargetPath)
-          } else if let xctestTargetPath = CommandLine.arguments().last {
-            childArguments.append(xctestTargetPath)
-          }
-        }
-
-        // Inherit the environment from the parent process and add our own
-        // variable indicating which exit test will run, then make any necessary
-        // platform-specific changes.
-        var childEnvironment: [String: String] = parentEnvironment
-        childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION"] = try String(data: JSONEncoder().encode(exitTest.sourceLocation), encoding: .utf8)!
-#if SWT_TARGET_OS_APPLE
-        if childEnvironment["XCTestSessionIdentifier"] != nil {
-          // We need to remove Xcode's environment variables from the child
-          // environment to avoid accidentally accidentally recursing.
-          for key in childEnvironment.keys where key.starts(with: "XCTest") {
-            childEnvironment.removeValue(forKey: key)
-          }
-        }
-#elseif os(Linux)
-        if childEnvironment["SWIFT_BACKTRACE"] == nil {
-          // Disable interactive backtraces unless explicitly enabled to reduce
-          // the noise level during the exit test. Only needed on Linux.
-          childEnvironment["SWIFT_BACKTRACE"] = "enable=no"
-        }
-#endif
-
         (actualExitCode, wasSignalled) = try await withCheckedThrowingContinuation { continuation in
+          let process = Process()
+          process.executableURL = childProcessURL
+          process.arguments = childArguments
+          process.environment = childEnvironment
+          process.terminationHandler = { process in
+            continuation.resume(returning: (process.terminationStatus, process.terminationReason == .uncaughtSignal))
+          }
           do {
-            let process = Process()
-            process.executableURL = childProcessURL
-            process.arguments = childArguments
-            process.environment = childEnvironment
-            process.terminationHandler = { process in
-              continuation.resume(returning: (process.terminationStatus, process.terminationReason == .uncaughtSignal))
-            }
             try process.run()
           } catch {
             continuation.resume(throwing: error)

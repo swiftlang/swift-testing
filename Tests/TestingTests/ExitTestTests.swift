@@ -75,14 +75,6 @@ private import TestingInternals
         }
       }
 
-      // Mock an exit test that is not a match (and so is not run.)
-      configuration.exitTestHandler = { _ in nil }
-      await Test {
-        await #expect(exitsWith: .success) {
-          Issue.record("Unreachable")
-        }
-      }.run(configuration: configuration)
-
       // Mock an exit test where the process exits successfully.
       configuration.exitTestHandler = { _ in
         return .exitCode(EXIT_SUCCESS)
