@@ -248,9 +248,7 @@ extension ExitTest {
     // or unsetenv(), so we need to recompute the child environment each time.
     // The executable and XCTest bundle paths should not change over time, so we
     // can precompute them.
-    let childProcessURL = Result {
-      try URL(fileURLWithPath: CommandLine.executablePath, isDirectory: false)
-    }
+    let childProcessExecutablePath = Result { try CommandLine.executablePath }
 
     // We only need to pass arguments when hosted by XCTest.
     let childArguments: [String] = {
@@ -271,7 +269,7 @@ extension ExitTest {
     }()
 
     return { exitTest in
-      let childProcessURL = try childProcessURL.get()
+      let childProcessURL = try URL(fileURLWithPath: childProcessExecutablePath.get(), isDirectory: false)
 
       // Inherit the environment from the parent process and make any necessary
       // platform-specific changes.
