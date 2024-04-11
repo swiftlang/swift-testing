@@ -60,7 +60,7 @@ concurrency, and parameterize test functions across wide ranges of inputs.
 
 - <doc:Expectations>
 
-### Test customizations
+### Test customization
 
 - <doc:Traits>
 
