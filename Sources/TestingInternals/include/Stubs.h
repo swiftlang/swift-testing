@@ -74,6 +74,22 @@ static LANGID swt_MAKELANGID(int p, int s) {
 }
 #endif
 
+#if defined(__linux__)
+/// The environment block.
+///
+/// By POSIX convention, the environment block variable is declared in client
+/// code rather than in a header.
+SWT_EXTERN char *_Nullable *_Null_unspecified environ;
+
+/// Get the environment block.
+///
+/// This function is provided because directly accessing `environ` from Swift
+/// triggers concurrency warnings about accessing shared mutable state.
+static char *_Nullable *_Null_unspecified swt_environ(void) {
+  return environ;
+}
+#endif
+
 SWT_ASSUME_NONNULL_END
 
 #endif

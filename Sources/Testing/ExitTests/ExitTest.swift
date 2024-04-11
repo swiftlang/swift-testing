@@ -273,7 +273,7 @@ extension ExitTest {
 
       // Inherit the environment from the parent process and make any necessary
       // platform-specific changes.
-      var childEnvironment = ProcessInfo.processInfo.environment
+      var childEnvironment = Environment.get()
 #if SWT_TARGET_OS_APPLE
       // We need to remove Xcode's environment variables from the child
       // environment to avoid accidentally accidentally recursing.

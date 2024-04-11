@@ -26,6 +26,80 @@ enum Environment {
   static let simulatedEnvironment = Locked<[String: String]>()
 #endif
 
+  /// Split a string containing an environment variable's name and value into
+  /// two strings.
+  ///
+  /// - Parameters:
+  ///   - row: The environment variable, of the form `"KEY=VALUE"`.
+  ///
+  /// - Returns: The name and value of the environment variable, or `nil` if it
+  ///   could not be parsed.
+  private static func _splitEnvironmentVariable(_ row: String) -> (key: String, value: String)? {
+    row.firstIndex(of: "=").map { equalsIndex in
+      let key = String(row[..<equalsIndex])
+      let value = String(row[equalsIndex...].dropFirst())
+      return (key, value)
+    }
+  }
+
+  /// Get all environment variables from a POSIX environment block.
+  ///
+  /// - Parameters:
+  ///   - environ: The environment block, i.e. the global `environ` variable.
+  ///
+  /// - Returns: A dictionary of environment variables.
+  private static func _getFromEnviron(_ environ: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>) -> [String: String] {
+    var result = [String: String]()
+
+    for i in 0... {
+      guard let rowp = environ.advanced(by: i).pointee,
+            let row = String(validatingUTF8: rowp) else {
+        break
+      }
+
+      if let (key, value) = _splitEnvironmentVariable(row) {
+        result[key] = value
+      }
+    }
+
+    return result
+  }
+
+  /// Get all environment variables in the current process.
+  ///
+  /// - Returns: A copy of the current process' environment dictionary.
+  static func get() -> [String: String] {
+#if SWT_NO_ENVIRONMENT_VARIABLES
+    simulatedEnvironment.rawValue
+#elseif SWT_TARGET_OS_APPLE
+    _getFromEnviron(_NSGetEnviron()!.pointee!)
+#elseif os(Linux)
+    _getFromEnviron(swt_environ())
+#elseif os(WASI)
+    _getFromEnviron(__wasilibc_get_environ())
+#elseif os(Windows)
+    guard let environ = GetEnvironmentStringsW() else {
+      return [:]
+    }
+    defer {
+      FreeEnvironmentStringsW(environ)
+    }
+
+    var result = [String: String]()
+    var rowp = environ
+    while rowp.pointee != 0 {
+      defer {
+        rowp = rowp.advanced(by: wcslen(rowp) + 1)
+      }
+      if let row = String.decodeCString(rowp, as: UTF16.self)?.result,
+         let (key, value) = _splitEnvironmentVariable(row) {
+        result[key] = value
+      }
+    }
+    return result
+#endif
+  }
+
   /// Get the environment variable with the specified name.
   ///
   /// - Parameters:
