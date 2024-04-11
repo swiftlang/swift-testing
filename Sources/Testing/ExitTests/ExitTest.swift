@@ -283,10 +283,10 @@ extension ExitTest {
         childEnvironment.removeValue(forKey: key)
       }
 #elseif os(Linux)
-      if result["SWIFT_BACKTRACE"] == nil {
+      if childEnvironment["SWIFT_BACKTRACE"] == nil {
         // Disable interactive backtraces unless explicitly enabled to reduce
         // the noise level during the exit test. Only needed on Linux.
-        result["SWIFT_BACKTRACE"] = "enable=no"
+        childEnvironment["SWIFT_BACKTRACE"] = "enable=no"
       }
 #endif
       // Insert a specific variable that tells the child process which exit test
