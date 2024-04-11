@@ -53,7 +53,7 @@ enum Environment {
     var result = [String: String]()
 
     for i in 0... {
-      guard let rowp = environ.advanced(by: i).pointee else {
+      guard let rowp = environ[i] else {
         break
       }
 
@@ -91,7 +91,7 @@ enum Environment {
     var rowp = environ
     while rowp.pointee != 0 {
       defer {
-        rowp = rowp.advanced(by: wcslen(rowp) + 1)
+        rowp += wcslen(rowp) + 1
       }
       if let row = String.decodeCString(rowp, as: UTF16.self)?.result,
          let (key, value) = _splitEnvironmentVariable(row) {
