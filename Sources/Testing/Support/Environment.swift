@@ -42,13 +42,14 @@ enum Environment {
     }
   }
 
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(WASI)
   /// Get all environment variables from a POSIX environment block.
   ///
   /// - Parameters:
   ///   - environ: The environment block, i.e. the global `environ` variable.
   ///
   /// - Returns: A dictionary of environment variables.
-  private static func _getFromEnviron(_ environ: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>) -> [String: String] {
+  private static func _get(fromEnviron environ: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>) -> [String: String] {
     var result = [String: String]()
 
     for i in 0... {
@@ -64,6 +65,7 @@ enum Environment {
 
     return result
   }
+#endif
 
   /// Get all environment variables in the current process.
   ///
@@ -72,11 +74,11 @@ enum Environment {
 #if SWT_NO_ENVIRONMENT_VARIABLES
     simulatedEnvironment.rawValue
 #elseif SWT_TARGET_OS_APPLE
-    _getFromEnviron(_NSGetEnviron()!.pointee!)
+    _get(fromEnviron: _NSGetEnviron()!.pointee!)
 #elseif os(Linux)
-    _getFromEnviron(swt_environ())
+    _get(fromEnviron: swt_environ())
 #elseif os(WASI)
-    _getFromEnviron(__wasilibc_get_environ())
+    _get(fromEnviron: __wasilibc_get_environ())
 #elseif os(Windows)
     guard let environ = GetEnvironmentStringsW() else {
       return [:]
