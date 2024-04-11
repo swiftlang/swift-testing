@@ -53,12 +53,12 @@ enum Environment {
     var result = [String: String]()
 
     for i in 0... {
-      guard let rowp = environ.advanced(by: i).pointee,
-            let row = String(validatingUTF8: rowp) else {
+      guard let rowp = environ.advanced(by: i).pointee else {
         break
       }
 
-      if let (key, value) = _splitEnvironmentVariable(row) {
+      if let row = String(validatingUTF8: rowp),
+         let (key, value) = _splitEnvironmentVariable(row) {
         result[key] = value
       }
     }
