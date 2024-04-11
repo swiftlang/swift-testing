@@ -68,6 +68,6 @@ concurrency, and parameterize test functions across wide ranges of inputs.
 
 - <doc:MigratingFromXCTest>
 
-### Extended Modules
+### Extended modules
 
 - ``Swift``
