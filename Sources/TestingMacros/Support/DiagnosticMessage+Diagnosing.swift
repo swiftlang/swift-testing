@@ -16,12 +16,7 @@ import SwiftSyntaxMacros
 public import SwiftSyntax
 public import SwiftSyntaxMacros
 #endif
-
-#if canImport(Foundation) && SWT_USE_FOUNDATION_FOR_URL_VALIDATION
-private import Foundation
-#else
 private import TestingInternals
-#endif
 
 /// Diagnose issues with the traits in a parsed attribute.
 ///
@@ -132,21 +127,8 @@ private func _diagnoseIssuesWithBugTrait(_ traitExpr: FunctionCallExprSyntax, ad
   }
 
   func isURLStringValid(_ urlString: String) -> Bool {
-#if canImport(Foundation) && SWT_USE_FOUNDATION_FOR_URL_VALIDATION
-#if SWT_TARGET_OS_APPLE
-    let url = if #available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *) {
-      URL(string: urlString, encodingInvalidCharacters: false)
-    } else {
-      URL(string: urlString)
-    }
-#else
-    let url = URL(string: urlString)
-#endif
-    if let scheme = url?.scheme, !scheme.isEmpty {
-      return true
-    }
-    return false
-#elseif SWT_TARGET_OS_APPLE || os(Linux)
+#if !SWT_NO_URL_VALIDATION
+#if SWT_TARGET_OS_APPLE || os(Linux)
     guard let url = curl_url() else {
       return false
     }
@@ -185,6 +167,7 @@ private func _diagnoseIssuesWithBugTrait(_ traitExpr: FunctionCallExprSyntax, ad
 #else
 #warning("Platform-specific implementation missing: URL validation unavailable")
     return true
+#endif
 #endif
   }
 
