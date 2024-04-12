@@ -358,6 +358,9 @@ struct TestDeclarationMacroTests {
     arguments: [
       #"@Test(.bug(12345)) func f() {}"#,
       #"@Test(.bug("12345")) func f() {}"#,
+      #"@Test(.bug("mailto:a@example.com")) func f() {}"#,
+      #"@Test(.bug("rdar:12345")) func f() {}"#,
+      #"@Test(.bug("rdar://12345")) func f() {}"#,
       #"@Test(.bug("https://github.com/apple/swift-testing/issues/12345")) func f() {}"#,
       #"@Test(Bug.bug("https://github.com/apple/swift-testing/issues/12345")) func f() {}"#,
       #"@Test(Testing.Bug.bug("https://github.com/apple/swift-testing/issues/12345")) func f() {}"#,
@@ -372,7 +375,7 @@ struct TestDeclarationMacroTests {
 
   @Test("Invalid bug identifiers are detected",
     arguments: [
-      "12345 ", "here's what happened...",
+      "12345 ", "here's what happened...", "🌯", "mailto: a@example.com",
     ]
   )
   func invalidBugIdentifiers(id: String) throws {

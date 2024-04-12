@@ -95,7 +95,7 @@
 #include <wasi/libc-environ.h>
 #endif
 
-#if !SWT_NO_URL_VALIDATION
+#if !SWT_NO_CURL
 #if __has_include(<curl/urlapi.h>)
 #include <curl/urlapi.h>
 #endif
@@ -106,10 +106,8 @@
 #define NOMINMAX
 #include <Windows.h>
 
-#if !SWT_NO_URL_VALIDATION
 #include <wininet.h>
 #pragma comment(lib, "wininet.lib")
-#endif
 #endif
 
 #endif
