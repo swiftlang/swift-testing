@@ -146,7 +146,7 @@ private func _diagnoseIssuesWithBugTrait(_ traitExpr: FunctionCallExprSyntax, ad
     switch curl_url_set(url, CURLUPART_URL, urlString, flags) {
     case CURLUE_OK:
       break
-    case CURLUE_BAD_SLASHES:
+    case CURLUE_BAD_SLASHES, CURLUE_BAD_SCHEME:
       // curl does not try to parse URLs without slashes after the colon (see
       // https://github.com/curl/curl/issues/12205). Work around that constraint
       // by inserting slashes after the first colon character, on the assumption
