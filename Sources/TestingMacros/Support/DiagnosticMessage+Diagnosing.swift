@@ -142,9 +142,10 @@ private func _diagnoseIssuesWithBugTrait(_ traitExpr: FunctionCallExprSyntax, ad
 #else
     let url = URL(string: urlString)
 #endif
-    guard let scheme = url?.scheme, !scheme.isEmpty else {
-      return false
+    if let scheme = url?.scheme, !scheme.isEmpty {
+      return true
     }
+    return false
 #elseif SWT_TARGET_OS_APPLE
     guard let uri = xmlParseURI(urlString) else {
       return false
@@ -152,21 +153,24 @@ private func _diagnoseIssuesWithBugTrait(_ traitExpr: FunctionCallExprSyntax, ad
     defer {
       xmlFreeURI(uri)
     }
-    guard uri.pointee.scheme != nil && uri.pointee.scheme[0] != 0 else {
-      return false
-    }
+    return uri.pointee.scheme != nil && uri.pointee.scheme[0] != 0
 #elseif os(Linux) || os(WASI)
     // TODO: URL validation on these platforms (can we use libxml?)
+    return true
 #elseif os(Windows)
     return urlString.withCString(encodedAs: UTF16.self) { urlString in
       var components = URL_COMPONENTSW()
-      return InternetCrackUrlW(urlString.baseAddress!, 0, 0, &components)
-        && components.dwSchemeLength > 0
+      components.dwStructSize = DWORD(MemoryLayout.size(ofValue: components))
+      return withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: 1) { buffer in
+        components.lpszScheme = buffer.baseAddress!
+        return InternetCrackUrlW(urlString, 0, 0, &components)
+          && components.dwSchemeLength > 0
+      }
     }
 #else
 #warning("Platform-specific implementation missing: URL validation unavailable")
-#endif
     return true
+#endif
   }
 
   if !isURLStringValid(urlString) {
