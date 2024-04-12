@@ -161,7 +161,7 @@ public enum XCTestScaffold: Sendable {
 
 #if !SWT_NO_EXIT_TESTS
     // Exit test handling.
-    if let exitTest = ExitTest.find(withArguments: CommandLine.arguments()) {
+    if let exitTest = ExitTest.findInEnvironmentForSwiftPM() {
       await exitTest()
       exit(EXIT_SUCCESS)
     }

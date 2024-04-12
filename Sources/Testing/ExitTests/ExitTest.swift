@@ -213,11 +213,8 @@ extension ExitTest {
   /// recording any issues that occur.
   public typealias Handler = @Sendable (_ exitTest: borrowing ExitTest) async throws -> ExitCondition
 
-  /// Find the exit test function specified by the given command-line arguments,
-  /// if any.
-  ///
-  /// - Parameters:
-  ///   - args: The command-line arguments to this process.
+  /// Find the exit test function specified in the environment of the current
+  /// process, if any.
   ///
   /// - Returns: The exit test this process should run, or `nil` if it is not
   ///   expected to run any.
@@ -225,7 +222,7 @@ extension ExitTest {
   /// This function should only be used when the process was started via the
   /// `__swiftPMEntryPoint()` function. The effect of using it under other
   /// configurations is undefined.
-  public static func find(withArguments args: [String]) -> Self? {
+  static func findInEnvironmentForSwiftPM() -> Self? {
     let sourceLocationString = Environment.variable(named: "SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION")
     if let sourceLocationData = sourceLocationString?.data(using: .utf8),
        let sourceLocation = try? JSONDecoder().decode(SourceLocation.self, from: sourceLocationData) {
