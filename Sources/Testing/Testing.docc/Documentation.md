@@ -42,6 +42,7 @@ concurrency, and parameterize test functions across wide ranges of inputs.
 - <doc:TemporaryGettingStarted>
 - <doc:DefiningTests>
 - <doc:OrganizingTests>
+- <doc:MigratingFromXCTest>
 - ``Test(_:_:)``
 - ``Test``
 - ``Suite(_:_:)``
@@ -49,9 +50,9 @@ concurrency, and parameterize test functions across wide ranges of inputs.
 ### Test parameterization
 
 - <doc:ParameterizedTesting>
-- ``Test(_:_:arguments:)-8kn7a`` <!-- @attached(peer) macro Test<C>(_ displayName: String? = nil, _ traits: any TestTrait..., arguments collection: C) where C : Collection, C : Sendable, C.Element : Sendable -->
+- ``Test(_:_:arguments:)-8kn7a``
 - ``Test(_:_:arguments:_:)``
-- ``Test(_:_:arguments:)-3rzok`` <!-- @attached(peer) macro Test<C1, C2>(_ displayName: String? = nil, _ traits: any TestTrait..., arguments zippedCollections: Zip2Sequence<C1, C2>) where C1 : Collection, C1 : Sendable, C2 : Collection, C2 : Sendable, C1.Element : Sendable, C2.Element : Sendable -->
+- ``Test(_:_:arguments:)-3rzok``
 - ``CustomTestArgumentEncodable``
 - ``Test/Parameter``
 - ``Test/Case``
@@ -63,10 +64,6 @@ concurrency, and parameterize test functions across wide ranges of inputs.
 ### Test customization
 
 - <doc:Traits>
-
-### Migration
-
-- <doc:MigratingFromXCTest>
 
 ### Extended modules
 
