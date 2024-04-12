@@ -16,6 +16,9 @@ import SwiftSyntaxMacros
 public import SwiftSyntax
 public import SwiftSyntaxMacros
 #endif
+#if canImport(Foundation)
+private import Foundation
+#endif
 
 /// Diagnose issues with the traits in a parsed attribute.
 ///
@@ -23,7 +26,7 @@ public import SwiftSyntaxMacros
 ///   - traitExprs: An array of trait expressions to examine.
 ///   - attribute: The `@Test` or `@Suite` attribute.
 ///   - context: The macro context in which the expression is being parsed.
-func diagnoseIssuesWithTags(in traitExprs: [ExprSyntax], addedTo attribute: AttributeSyntax, in context: some MacroExpansionContext) {
+func diagnoseIssuesWithTraits(in traitExprs: [ExprSyntax], addedTo attribute: AttributeSyntax, in context: some MacroExpansionContext) {
   // Find tags that are in an unsupported format (only .member and "literal"
   // are allowed.)
   for traitExpr in traitExprs {
@@ -36,57 +39,113 @@ func diagnoseIssuesWithTags(in traitExprs: [ExprSyntax], addedTo attribute: Attr
     // Check for .tags() traits.
     switch calledExpr.tokens(viewMode: .fixedUp).map(\.textWithoutBackticks).joined() {
     case ".tags", "Tag.List.tags", "Testing.Tag.List.tags":
-      for tagExpr in functionCallExpr.arguments.lazy.map(\.expression) {
-        if tagExpr.is(StringLiteralExprSyntax.self) {
-          // String literals are supported tags.
-        } else if let tagExpr = tagExpr.as(MemberAccessExprSyntax.self) {
-          let joinedTokens = tagExpr.tokens(viewMode: .fixedUp).map(\.textWithoutBackticks).joined()
-          if joinedTokens.hasPrefix(".") || joinedTokens.hasPrefix("Tag.") || joinedTokens.hasPrefix("Testing.Tag.") {
-            // These prefixes are all allowed as they specify a member access
-            // into the Tag type.
-          } else {
-            context.diagnose(.tagExprNotSupported(tagExpr, in: attribute))
-            continue
-          }
-
-          // Walk all base expressions and make sure they are exclusively member
-          // access expressions.
-          func checkForValidDeclReferenceExpr(_ declReferenceExpr: DeclReferenceExprSyntax) {
-            // This is the name of a type or symbol. If there are argument names
-            // (unexpected in this context), it's a function reference and is
-            // unsupported.
-            if declReferenceExpr.argumentNames != nil {
-              context.diagnose(.tagExprNotSupported(tagExpr, in: attribute))
-            }
-          }
-          func checkForValidBaseExpr(_ baseExpr: ExprSyntax) {
-            if let baseExpr = baseExpr.as(MemberAccessExprSyntax.self) {
-              checkForValidDeclReferenceExpr(baseExpr.declName)
-              if let baseBaseExpr = baseExpr.base {
-                checkForValidBaseExpr(baseBaseExpr)
-              }
-            } else if let baseExpr = baseExpr.as(DeclReferenceExprSyntax.self) {
-              checkForValidDeclReferenceExpr(baseExpr)
-            } else {
-              // The base expression was some other kind of expression and is
-              // not supported.
-              context.diagnose(.tagExprNotSupported(tagExpr, in: attribute))
-            }
-          }
-          if let baseExpr = tagExpr.base {
-            checkForValidBaseExpr(baseExpr)
-          }
-        } else {
-          // This tag is not of a supported expression type.
-          context.diagnose(.tagExprNotSupported(tagExpr, in: attribute))
-        }
-      }
+      _diagnoseIssuesWithTagsTrait(functionCallExpr, addedTo: attribute, in: context)
+    case ".bug", "Bug.bug", "Testing.Bug.bug":
+      _diagnoseIssuesWithBugTrait(functionCallExpr, addedTo: attribute, in: context)
     default:
       // This is not a tag list (as far as we know.)
       break
     }
   }
 }
+
+/// Diagnose issues with a `.tags()` trait in a parsed attribute.
+///
+/// - Parameters:
+///   - traitExpr: The `.tags()` expression.
+///   - attribute: The `@Test` or `@Suite` attribute.
+///   - context: The macro context in which the expression is being parsed.
+private func _diagnoseIssuesWithTagsTrait(_ traitExpr: FunctionCallExprSyntax, addedTo attribute: AttributeSyntax, in context: some MacroExpansionContext) {
+  for tagExpr in traitExpr.arguments.lazy.map(\.expression) {
+    if tagExpr.is(StringLiteralExprSyntax.self) {
+      // String literals are supported tags.
+    } else if let tagExpr = tagExpr.as(MemberAccessExprSyntax.self) {
+      let joinedTokens = tagExpr.tokens(viewMode: .fixedUp).map(\.textWithoutBackticks).joined()
+      if joinedTokens.hasPrefix(".") || joinedTokens.hasPrefix("Tag.") || joinedTokens.hasPrefix("Testing.Tag.") {
+        // These prefixes are all allowed as they specify a member access
+        // into the Tag type.
+      } else {
+        context.diagnose(.tagExprNotSupported(tagExpr, in: attribute))
+        continue
+      }
+
+      // Walk all base expressions and make sure they are exclusively member
+      // access expressions.
+      func checkForValidDeclReferenceExpr(_ declReferenceExpr: DeclReferenceExprSyntax) {
+        // This is the name of a type or symbol. If there are argument names
+        // (unexpected in this context), it's a function reference and is
+        // unsupported.
+        if declReferenceExpr.argumentNames != nil {
+          context.diagnose(.tagExprNotSupported(tagExpr, in: attribute))
+        }
+      }
+      func checkForValidBaseExpr(_ baseExpr: ExprSyntax) {
+        if let baseExpr = baseExpr.as(MemberAccessExprSyntax.self) {
+          checkForValidDeclReferenceExpr(baseExpr.declName)
+          if let baseBaseExpr = baseExpr.base {
+            checkForValidBaseExpr(baseBaseExpr)
+          }
+        } else if let baseExpr = baseExpr.as(DeclReferenceExprSyntax.self) {
+          checkForValidDeclReferenceExpr(baseExpr)
+        } else {
+          // The base expression was some other kind of expression and is
+          // not supported.
+          context.diagnose(.tagExprNotSupported(tagExpr, in: attribute))
+        }
+      }
+      if let baseExpr = tagExpr.base {
+        checkForValidBaseExpr(baseExpr)
+      }
+    } else {
+      // This tag is not of a supported expression type.
+      context.diagnose(.tagExprNotSupported(tagExpr, in: attribute))
+    }
+  }
+}
+
+/// Diagnose issues with a `.bug()` trait in a parsed attribute.
+///
+/// - Parameters:
+///   - traitExpr: The `.bug()` expression.
+///   - attribute: The `@Test` or `@Suite` attribute.
+///   - context: The macro context in which the expression is being parsed.
+private func _diagnoseIssuesWithBugTrait(_ traitExpr: FunctionCallExprSyntax, addedTo attribute: AttributeSyntax, in context: some MacroExpansionContext) {
+#if canImport(Foundation)
+  // If the first argument to the .bug() trait is unlabelled and a string
+  // literal, check that it can be parsed as a URL or at least as an integer.
+  guard let arg = traitExpr.arguments.first.map(Argument.init),
+        arg.label == nil,
+        let stringLiteralExpr = arg.expression.as(StringLiteralExprSyntax.self),
+        let urlString = stringLiteralExpr.representedLiteralValue else {
+    return
+  }
+
+  if UInt64(urlString) != nil {
+    // The entire URL string can be parsed as an integer, so allow it. Although
+    // the testing library prefers valid URLs here, some bug-tracking systems
+    // might not provide URLs, or might provide excessively long URLs, so we
+    // allow numeric identifiers as a fallback.
+    return
+  }
+
+#if SWT_TARGET_OS_APPLE
+  let url = if #available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *) {
+    URL(string: urlString, encodingInvalidCharacters: false)
+  } else {
+    URL(string: urlString)
+  }
+#else
+  let url = URL(string: urlString)
+#endif
+  guard let url, url.scheme != nil else {
+    // This string does not appear to be a valid URL.
+    context.diagnose(.urlExprNotValid(stringLiteralExpr, in: traitExpr, in: attribute))
+    return
+  }
+#endif
+}
+
+// MARK: -
 
 /// Diagnose issues with a synthesized suite (one without an `@Suite` attribute)
 /// containing a declaration.

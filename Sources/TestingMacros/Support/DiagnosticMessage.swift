@@ -516,6 +516,38 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
+  /// Create a diagnostic message stating that the URL string passed to a trait
+  /// is not a valid URL.
+  ///
+  /// - Parameters:
+  ///   - urlExpr: The unsupported URL string.
+  ///   - traitExpr: The trait expression containing `urlExpr`.
+  ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///
+  /// - Returns: A diagnostic message.
+  static func urlExprNotValid(_ urlExpr: StringLiteralExprSyntax, in traitExpr: FunctionCallExprSyntax, in attribute: AttributeSyntax) -> Self {
+    // We do not currently expect anything other than "[...].bug()" here, so
+    // force-cast to MemberAccessExprSyntax to get the name of the trait.
+    let traitName = traitExpr.calledExpression.cast(MemberAccessExprSyntax.self).declName
+    let urlString = urlExpr.representedLiteralValue!
+
+    return Self(
+      syntax: Syntax(urlExpr),
+      message: #"URL "\#(urlString)" is invalid and cannot be used with trait '\#(traitName.trimmed)' in attribute \#(_macroName(attribute))"#,
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage(#"Replace "\#(urlString)" with URL"#),
+          changes: [.replace(oldNode: Syntax(urlExpr), newNode: Syntax(EditorPlaceholderExprSyntax("url")))]
+        ),
+        FixIt(
+          message: MacroExpansionFixItMessage("Remove trait '\(traitName.trimmed)'"),
+          changes: [.replace(oldNode: Syntax(traitExpr), newNode: Syntax("" as ExprSyntax))]
+        ),
+      ]
+    )
+  }
+
   /// Create a diagnostic messages stating that the expression passed to
   /// `#require()` is ambiguous.
   ///

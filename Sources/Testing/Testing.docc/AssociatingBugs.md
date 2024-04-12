@@ -39,9 +39,9 @@ func engineWorks() async {
 ```
 
 The bug identifier can be specified as an integer or as a string; if it is
-specified as a string and matches certain formats, the testing library is able
-to infer additional information about it. For more information on the formats
-recognized by the testing library, see <doc:BugIdentifiers>.
+specified as a string, it must be parseable as an unsigned integer or as a URL.
+For more information on the formats recognized by the testing library, see
+<doc:BugIdentifiers>.
 
 ## Specifying the relationship between a bug and a test
 

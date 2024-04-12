@@ -353,4 +353,37 @@ struct TestDeclarationMacroTests {
       #expect(diagnostic.message == "Tag '\(tagExpr)' cannot be used with attribute 'Test'; pass a member of 'Tag' or a string literal instead")
     }
   }
+
+  @Test("Valid bug identifiers are allowed",
+    arguments: [
+      #"@Test(.bug(12345)) func f() {}"#,
+      #"@Test(.bug("12345")) func f() {}"#,
+      #"@Test(.bug("https://github.com/apple/swift-testing/issues/12345")) func f() {}"#,
+      #"@Test(Bug.bug("https://github.com/apple/swift-testing/issues/12345")) func f() {}"#,
+      #"@Test(Testing.Bug.bug("https://github.com/apple/swift-testing/issues/12345")) func f() {}"#,
+      #"@Test(Bug.bug("https://github.com/apple/swift-testing/issues/12345", "here's what happened...")) func f() {}"#,
+    ]
+  )
+  func validBugIdentifiers(input: String) throws {
+    let (_, diagnostics) = try parse(input)
+
+    #expect(diagnostics.isEmpty)
+  }
+
+  @Test("Invalid bug identifiers are detected",
+    arguments: [
+      "12345 ", "here's what happened...",
+    ]
+  )
+  func invalidBugIdentifiers(id: String) throws {
+    let input = #"@Test(.bug("\#(id)")) func f() {}"#
+    let (_, diagnostics) = try parse(input)
+
+    #expect(diagnostics.count > 0)
+    for diagnostic in diagnostics {
+      #expect(diagnostic.diagMessage.severity == .error)
+      #expect(diagnostic.message == #"URL "\#(id)" is invalid and cannot be used with trait 'bug' in attribute 'Test'"#)
+    }
+  }
+
 }

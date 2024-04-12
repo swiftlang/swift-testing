@@ -154,7 +154,7 @@ struct AttributeInfo {
     if let declaration = declaration.asProtocol((any WithAttributesSyntax).self) {
       traits += createAvailabilityTraitExprs(for: declaration, in: context)
     }
-    diagnoseIssuesWithTags(in: traits, addedTo: attribute, in: context)
+    diagnoseIssuesWithTraits(in: traits, addedTo: attribute, in: context)
 
     // Use the start of the test attribute's name as the canonical source
     // location of the test.
