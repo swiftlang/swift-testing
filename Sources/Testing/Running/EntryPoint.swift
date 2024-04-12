@@ -55,7 +55,7 @@ private import Foundation
       options.isVerbose = args.contains("--verbose")
 
 #if !SWT_NO_EXIT_TESTS
-      if let exitTest = ExitTest.find(withArguments: args) {
+      if let exitTest = ExitTest.findInEnvironmentForSwiftPM() {
         await exitTest()
         return exitCode.rawValue
       }
