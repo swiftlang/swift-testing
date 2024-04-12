@@ -16,8 +16,11 @@ import SwiftSyntaxMacros
 public import SwiftSyntax
 public import SwiftSyntaxMacros
 #endif
-#if canImport(Foundation)
+
+#if canImport(Foundation) && SWT_USE_FOUNDATION_FOR_URL_VALIDATION
 private import Foundation
+#else
+private import TestingInternals
 #endif
 
 /// Diagnose issues with the traits in a parsed attribute.
@@ -111,7 +114,6 @@ private func _diagnoseIssuesWithTagsTrait(_ traitExpr: FunctionCallExprSyntax, a
 ///   - attribute: The `@Test` or `@Suite` attribute.
 ///   - context: The macro context in which the expression is being parsed.
 private func _diagnoseIssuesWithBugTrait(_ traitExpr: FunctionCallExprSyntax, addedTo attribute: AttributeSyntax, in context: some MacroExpansionContext) {
-#if canImport(Foundation)
   // If the first argument to the .bug() trait is unlabelled and a string
   // literal, check that it can be parsed as a URL or at least as an integer.
   guard let arg = traitExpr.arguments.first.map(Argument.init),
@@ -129,21 +131,47 @@ private func _diagnoseIssuesWithBugTrait(_ traitExpr: FunctionCallExprSyntax, ad
     return
   }
 
+  func isURLStringValid(_ urlString: String) -> Bool {
+#if canImport(Foundation) && SWT_USE_FOUNDATION_FOR_URL_VALIDATION
 #if SWT_TARGET_OS_APPLE
-  let url = if #available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *) {
-    URL(string: urlString, encodingInvalidCharacters: false)
-  } else {
-    URL(string: urlString)
-  }
+    let url = if #available(macOS 14.0, iOS 17.0, watchOS 10.0, tvOS 17.0, *) {
+      URL(string: urlString, encodingInvalidCharacters: false)
+    } else {
+      URL(string: urlString)
+    }
 #else
-  let url = URL(string: urlString)
+    let url = URL(string: urlString)
 #endif
-  guard let url, url.scheme != nil else {
-    // This string does not appear to be a valid URL.
-    context.diagnose(.urlExprNotValid(stringLiteralExpr, in: traitExpr, in: attribute))
-    return
+    guard let scheme = url?.scheme, !scheme.isEmpty else {
+      return false
+    }
+#elseif SWT_TARGET_OS_APPLE
+    guard let uri = xmlParseURI(urlString) else {
+      return false
+    }
+    defer {
+      xmlFreeURI(uri)
+    }
+    guard uri.pointee.scheme != nil && uri.pointee.scheme[0] != 0 else {
+      return false
+    }
+#elseif os(Linux) || os(WASI)
+    // TODO: URL validation on these platforms (can we use libxml?)
+#elseif os(Windows)
+    return urlString.withCString(encodedAs: UTF16.self) { urlString in
+      var components = URL_COMPONENTSW()
+      return InternetCrackUrlW(urlString.baseAddress!, 0, 0, &components)
+        && components.dwSchemeLength > 0
+    }
+#else
+#warning("Platform-specific implementation missing: URL validation unavailable")
+#endif
+    return true
   }
-#endif
+
+  if !isURLStringValid(urlString) {
+    context.diagnose(.urlExprNotValid(stringLiteralExpr, in: traitExpr, in: attribute))
+  }
 }
 
 // MARK: -

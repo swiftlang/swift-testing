@@ -99,6 +99,9 @@ enum Environment {
       }
     }
     return result
+#else
+#warning("Platform-specific implementation missing: environment variables unavailable")
+    return [:]
 #endif
   }
 
