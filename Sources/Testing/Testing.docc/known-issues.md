@@ -15,9 +15,7 @@ Highlight known issues when running tests.
 ## Overview
 
 The testing library provides a function, `withKnownIssue()`, that you
-use to mark issues as known. In other words, if you know a test records an
-issue, might record an issue intermittently (a "flaky" test), or tests code in 
-your project that is incomplete, use this function to inform the testing library 
+use to mark issues as known. Use this function to inform the testing library 
 at runtime not to mark the test as failing when issues occur.
 
 ## Topics
