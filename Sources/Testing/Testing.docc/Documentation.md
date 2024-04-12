@@ -37,21 +37,37 @@ concurrency, and parameterize test functions across wide ranges of inputs.
 
 ## Topics
 
-### Getting started
+### Essentials
 
 - <doc:TemporaryGettingStarted>
-- <doc:MigratingFromXCTest>
-
-### Defining tests
-
 - <doc:DefiningTests>
 - <doc:OrganizingTests>
-- <doc:ParameterizedTesting>
+- ``Test(_:_:)``
+- ``Test``
+- ``Suite(_:_:)``
 
-### Validating behavior and raising issues
+### Test parameterization
+
+- <doc:ParameterizedTesting>
+- ``Test(_:_:arguments:)-8kn7a`` <!-- @attached(peer) macro Test<C>(_ displayName: String? = nil, _ traits: any TestTrait..., arguments collection: C) where C : Collection, C : Sendable, C.Element : Sendable -->
+- ``Test(_:_:arguments:_:)``
+- ``Test(_:_:arguments:)-3rzok`` <!-- @attached(peer) macro Test<C1, C2>(_ displayName: String? = nil, _ traits: any TestTrait..., arguments zippedCollections: Zip2Sequence<C1, C2>) where C1 : Collection, C1 : Sendable, C2 : Collection, C2 : Sendable, C1.Element : Sendable, C2.Element : Sendable -->
+- ``CustomTestArgumentEncodable``
+- ``Test/Parameter``
+- ``Test/Case``
+
+### Behavior validation
 
 - <doc:Expectations>
 
-### Customizing tests
+### Test customization
 
 - <doc:Traits>
+
+### Migration
+
+- <doc:MigratingFromXCTest>
+
+### Extended modules
+
+- ``Swift``
