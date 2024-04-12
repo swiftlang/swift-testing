@@ -146,16 +146,31 @@ private func _diagnoseIssuesWithBugTrait(_ traitExpr: FunctionCallExprSyntax, ad
       return true
     }
     return false
-#elseif SWT_TARGET_OS_APPLE
-    guard let uri = xmlParseURI(urlString) else {
+#elseif SWT_TARGET_OS_APPLE || os(Linux)
+    guard let url = curl_url() else {
       return false
     }
     defer {
-      xmlFreeURI(uri)
+      curl_url_cleanup(url)
     }
-    return uri.pointee.scheme != nil && uri.pointee.scheme[0] != 0
-#elseif os(Linux) || os(WASI)
-    // TODO: URL validation on these platforms (can we use libxml?)
+
+    // Attempt to parse the URL.
+    guard CURLUE_OK == curl_url_set(url, CURLUPART_URL, urlString, 0) else {
+      return false
+    }
+
+    // Extract the scheme and check that it's not empty.
+    var scheme: UnsafeMutablePointer<CChar>!
+    guard CURLUE_OK == curl_url_get(url, CURLUPART_SCHEME, &scheme, 0) else {
+      return false
+    }
+    defer {
+      curl_free(scheme)
+    }
+    return scheme != nil && scheme[0] != 0
+
+#elseif os(WASI)
+    // TODO: URL validation on WASI (this code runs on the host though)
     return true
 #elseif os(Windows)
     return urlString.withCString(encodedAs: UTF16.self) { urlString in

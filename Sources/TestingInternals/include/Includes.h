@@ -95,8 +95,8 @@
 #include <wasi/libc-environ.h>
 #endif
 
-#if __has_include(<libxml/uri.h>)
-#include <libxml/uri.h>
+#if __has_include(<curl/urlapi.h>)
+#include <curl/urlapi.h>
 #endif
 
 
