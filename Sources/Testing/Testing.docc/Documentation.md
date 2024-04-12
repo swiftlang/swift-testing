@@ -46,7 +46,7 @@ concurrency, and parameterize test functions across wide ranges of inputs.
 - ``Test``
 - ``Suite(_:_:)``
 
-### Parameterized tests
+### Test parameterization
 
 - <doc:ParameterizedTesting>
 - ``Test(_:_:arguments:)-8kn7a`` <!-- @attached(peer) macro Test<C>(_ displayName: String? = nil, _ traits: any TestTrait..., arguments collection: C) where C : Collection, C : Sendable, C.Element : Sendable -->
