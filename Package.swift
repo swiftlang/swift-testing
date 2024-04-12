@@ -58,6 +58,7 @@ let package = Package(
     .macro(
       name: "TestingMacros",
       dependencies: [
+        "TestingInternals",
         .product(name: "SwiftDiagnostics", package: "swift-syntax"),
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
@@ -80,7 +81,10 @@ let package = Package(
     // by other targets above, not directly included in product libraries.
     .target(
       name: "TestingInternals",
-      cxxSettings: .packageSettings
+      cxxSettings: .packageSettings,
+      linkerSettings: [
+        .linkedLibrary("curl", .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS, .linux]))
+      ]
     ),
 
     // Cross-module overlays (unsupported)

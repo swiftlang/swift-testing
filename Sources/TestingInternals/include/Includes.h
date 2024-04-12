@@ -95,10 +95,19 @@
 #include <wasi/libc-environ.h>
 #endif
 
+#if !SWT_NO_CURL
+#if __has_include(<curl/urlapi.h>)
+#include <curl/urlapi.h>
+#endif
+#endif
+
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <Windows.h>
+
+#include <wininet.h>
+#pragma comment(lib, "wininet.lib")
 #endif
 
 #endif
