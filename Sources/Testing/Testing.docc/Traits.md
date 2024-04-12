@@ -16,7 +16,7 @@ Add traits to tests to annotate them or customize their behavior.
 
 Pass built-in traits to test functions or suite types to comment, categorize, 
 classify, and modify runtime behaviors. You can also use the ``Trait``, ``TestTrait``, 
-and ``SuiteTrait`` protocols to create your own types that that customize the 
+and ``SuiteTrait`` protocols to create your own types that customize the 
 behavior of test functions.
 
 ## Topics
