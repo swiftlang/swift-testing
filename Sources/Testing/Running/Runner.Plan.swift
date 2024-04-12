@@ -329,7 +329,7 @@ extension Runner.Plan {
     ///
     /// - Parameters:
     ///   - plan: The original plan to snapshot.
-    public init(snapshotting plan: Runner.Plan) {
+    public init(snapshotting plan: borrowing Runner.Plan) {
       plan.stepGraph.forEach { keyPath, step in
         let step = step.map(Step.Snapshot.init(snapshotting:))
         _stepGraph.insertValue(step, at: keyPath)
@@ -394,7 +394,7 @@ extension Runner.Plan.Step {
     ///
     /// - Parameters:
     ///   - step: The original step to snapshot.
-    init(snapshotting step: Runner.Plan.Step) {
+    public init(snapshotting step: borrowing Runner.Plan.Step) {
       test = Test.Snapshot(snapshotting: step.test)
       action = Runner.Plan.Action.Snapshot(snapshotting: step.action)
     }
@@ -431,7 +431,7 @@ extension Runner.Plan.Action {
     ///
     /// - Parameters:
     ///   - action: The original action to snapshot.
-    init(snapshotting action: Runner.Plan.Action) {
+    public init(snapshotting action: Runner.Plan.Action) {
       self = switch action {
       case let .run(options):
         .run(options: options)

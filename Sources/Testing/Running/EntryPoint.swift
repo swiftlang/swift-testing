@@ -282,11 +282,8 @@ struct EventAndContextSnapshot {
   /// A snapshot of the event.
   var event: Event.Snapshot
 
-  /// A snapshot of the test associated with the event, if any.
-  var test: Test.Snapshot?
-
-  /// A snapshot of the test case associated with the event, if any.
-  var testCase: Test.Case.Snapshot?
+  /// A snapshot of the event context.
+  var eventContext: Event.Context.Snapshot
 }
 
 extension EventAndContextSnapshot: Codable {}
@@ -323,8 +320,7 @@ private func _eventHandlerForStreamingEvents(toFileAtPath path: String) throws -
   return { event, context in
     let snapshot = EventAndContextSnapshot(
       event: Event.Snapshot(snapshotting: event),
-      test: context.test.map { Test.Snapshot(snapshotting: $0) },
-      testCase: context.testCase.map { Test.Case.Snapshot(snapshotting: $0) }
+      eventContext: Event.Context.Snapshot(snapshotting: context)
     )
     if var snapshotJSON = try? JSONEncoder().encode(snapshot) {
       func isASCIINewline(_ byte: UInt8) -> Bool {

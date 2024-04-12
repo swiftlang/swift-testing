@@ -200,7 +200,7 @@ extension Issue {
     /// Initialize an issue instance with the specified details.
     ///
     /// - Parameter issue: The original issue that gets snapshotted.
-    public init(snapshotting issue: Issue) {
+    public init(snapshotting issue: borrowing Issue) {
       self.kind = Issue.Kind.Snapshot(snapshotting: issue.kind)
       self.comments = issue.comments
       self.sourceContext = issue.sourceContext
@@ -216,6 +216,16 @@ extension Issue {
         return error
       }
       return nil
+    }
+
+    /// The location in source where this issue occurred, if available.
+    public var sourceLocation: SourceLocation? {
+      get {
+        sourceContext.sourceLocation
+      }
+      set {
+        sourceContext.sourceLocation = newValue
+      }
     }
   }
 }

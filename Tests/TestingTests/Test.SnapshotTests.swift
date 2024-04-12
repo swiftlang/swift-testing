@@ -69,4 +69,52 @@ struct Test_SnapshotTests {
       #expect(snapshot.isSuite)
     }
   }
+
+  /// This is a comment that should show up in the test's `comments` property.
+  @Test("comments property")
+  func comments() async throws {
+    let test = try #require(Test.current)
+    let snapshot = Test.Snapshot(snapshotting: test)
+
+    #expect(!snapshot.comments.isEmpty)
+    #expect(snapshot.comments == test.comments)
+  }
+
+  @Test("tags property", .tags(Tag.testTag))
+  func tags() async throws {
+    let test = try #require(Test.current)
+    let snapshot = Test.Snapshot(snapshotting: test)
+
+    #expect(snapshot.tags.count == 1)
+    #expect(snapshot.tags.first == Tag.testTag)
+  }
+
+  @Test("associatedBugs property", bug)
+  func associatedBugs() async throws {
+    let test = try #require(Test.current)
+    let snapshot = Test.Snapshot(snapshotting: test)
+
+    #expect(snapshot.associatedBugs.count == 1)
+    #expect(snapshot.associatedBugs.first == Self.bug)
+  }
+
+  private static let bug: Bug = Bug.bug(12345, relationship: .failingBecauseOfBug, "Lorem ipsum")
+
+  @available(_clockAPI, *)
+  @Test("timeLimit property", .timeLimit(duration))
+  func timeLimit() async throws {
+    let test = try #require(Test.current)
+    let snapshot = Test.Snapshot(snapshotting: test)
+
+    #expect(snapshot.timeLimit == Self.duration)
+  }
+
+  @available(_clockAPI, *)
+  private static var duration: Duration {
+    .seconds(999_999_999)
+  }
+}
+
+extension Tag {
+  @Tag fileprivate static let testTag: Self
 }

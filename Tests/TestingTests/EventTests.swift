@@ -67,5 +67,17 @@ struct EventTests {
 
     #expect(String(describing: decoded) == String(describing: eventSnapshot))
   }
+
+  @Test("Event.Contexts's Codable Conformances")
+  func codable() async throws {
+    let eventContext = Event.Context()
+    let snapshot = Event.Context.Snapshot(snapshotting: eventContext)
+
+    let encoded = try JSONEncoder().encode(snapshot)
+    let decoded = try JSONDecoder().decode(Event.Context.Snapshot.self, from: encoded)
+
+    #expect(String(describing: decoded.test) == String(describing: eventContext.test.map(Test.Snapshot.init(snapshotting:))))
+    #expect(String(describing: decoded.testCase) == String(describing: eventContext.testCase.map(Test.Case.Snapshot.init(snapshotting:))))
+  }
 #endif
 }
