@@ -27,10 +27,9 @@ private import Foundation
 ///   - attribute: The `@Test` or `@Suite` attribute.
 ///   - context: The macro context in which the expression is being parsed.
 func diagnoseIssuesWithTraits(in traitExprs: [ExprSyntax], addedTo attribute: AttributeSyntax, in context: some MacroExpansionContext) {
-  // Find tags that are in an unsupported format (only .member and "literal"
-  // are allowed.)
   for traitExpr in traitExprs {
-    // At this time, we are only looking for .tags() traits in this function.
+    // At this time, we are only looking for .tags() and .bug() traits in this
+    // function.
     guard let functionCallExpr = traitExpr.as(FunctionCallExprSyntax.self),
           let calledExpr = functionCallExpr.calledExpression.as(MemberAccessExprSyntax.self) else {
       continue
@@ -43,7 +42,7 @@ func diagnoseIssuesWithTraits(in traitExprs: [ExprSyntax], addedTo attribute: At
     case ".bug", "Bug.bug", "Testing.Bug.bug":
       _diagnoseIssuesWithBugTrait(functionCallExpr, addedTo: attribute, in: context)
     default:
-      // This is not a tag list (as far as we know.)
+      // This is not a trait we can parse.
       break
     }
   }
@@ -56,6 +55,8 @@ func diagnoseIssuesWithTraits(in traitExprs: [ExprSyntax], addedTo attribute: At
 ///   - attribute: The `@Test` or `@Suite` attribute.
 ///   - context: The macro context in which the expression is being parsed.
 private func _diagnoseIssuesWithTagsTrait(_ traitExpr: FunctionCallExprSyntax, addedTo attribute: AttributeSyntax, in context: some MacroExpansionContext) {
+  // Find tags that are in an unsupported format (only .member and "literal"
+  // are allowed.)
   for tagExpr in traitExpr.arguments.lazy.map(\.expression) {
     if tagExpr.is(StringLiteralExprSyntax.self) {
       // String literals are supported tags.
