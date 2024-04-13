@@ -28,6 +28,8 @@ formats are associated with some common bug-tracking systems.
 - If the bug identifier can be parsed as a URL according to
   [RFC 3986](https://www.ietf.org/rfc/rfc3986.txt), it is assumed to represent
   an issue tracked at that URL.
+- If the bug identifier begins with `"FB"`, it is assumed to represent a bug
+  filed with the [Apple Feedback Assistant](https://feedbackassistant.apple.com).
 - If the bug identifier can be parsed as an unsigned integer, it is assumed to
   represent an issue with that numeric identifier in an unspecified bug-tracking
   system.
@@ -38,8 +40,6 @@ formats are associated with some common bug-tracking systems.
 Possible additional formats we could recognize (which would require special
 handling to detect:
 
-- If the bug identifier begins with `"FB"`, it is assumed to represent a bug
-  filed with the [Apple Feedback Assistant](https://feedbackassistant.apple.com).
 - If the bug identifier begins with `"#"` and can be parsed as a positive
   integer, it is assumed to represent a [GitHub](https://github.com) issue in
   the same repository as the test.
@@ -55,7 +55,7 @@ handling to detect:
 | `.bug("rdar:12345")` | Yes | Apple Radar |
 | `.bug("https://github.com/apple/swift/pull/12345")` | Yes | [GitHub Issues for the Swift project](https://github.com/apple/swift/issues) |
 | `.bug("https://bugs.webkit.org/show_bug.cgi?id=12345")` | Yes | [WebKit Bugzilla](https://bugs.webkit.org/) |
+| `.bug("FB12345")` | Yes | Apple Feedback Assistant | <!-- SEE ALSO: rdar://104582015 -->
 <!--
-| `.bug("FB12345")` | Yes | Apple Feedback Assistant | // SEE ALSO: rdar://104582015
 | `.bug("#12345")` | Yes | GitHub Issues for the current repository (if hosted there) |
 -->

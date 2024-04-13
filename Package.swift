@@ -82,7 +82,9 @@ let package = Package(
     .target(
       name: "TestingInternals",
       cxxSettings: .packageSettings,
-      linkerSettings: .packageSettings
+      linkerSettings: [
+        .linkedLibrary("curl", .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS, .linux]))
+      ]
     ),
 
     // Cross-module overlays (unsupported)
@@ -155,16 +157,6 @@ extension Array where Element == PackageDescription.CXXSetting {
   static var packageSettings: Self {
     [
       .define("_SWT_TESTING_LIBRARY_VERSION", to: #""unknown (Swift 5.10 toolchain)""#),
-    ]
-  }
-}
-
-extension Array where Element == PackageDescription.LinkerSetting {
-  /// Settings intended to be applied to every linked target in this package.
-  /// Analogous to project-level build settings in an Xcode project.
-  static var packageSettings: Self {
-    [
-      .linkedLibrary("curl", .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS, .linux]))
     ]
   }
 }

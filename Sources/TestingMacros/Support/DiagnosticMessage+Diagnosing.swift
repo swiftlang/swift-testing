@@ -126,6 +126,15 @@ private func _diagnoseIssuesWithBugTrait(_ traitExpr: FunctionCallExprSyntax, ad
     return
   }
 
+  if urlString.count > 3 && urlString.starts(with: "FB") && UInt64(urlString.dropFirst(2)) != nil {
+    // The string appears to be of the form "FBnnn...". Such strings are used by
+    // Apple to indicate issues filed using Feedback Assistant. Although we
+    // don't want to special-case every possible bug-tracking system out there,
+    // Feedback Assistant is very important to Apple so we're making an
+    // exception for it.
+    return
+  }
+
   func isURLStringValid(_ urlString: String) -> Bool {
     guard urlString.allSatisfy(\.isASCII),
           let colonIndex = urlString.firstIndex(of: ":") else {
@@ -181,6 +190,11 @@ private func _diagnoseIssuesWithBugTrait(_ traitExpr: FunctionCallExprSyntax, ad
 #elseif os(Windows)
     return urlString.withCString(encodedAs: UTF16.self) { urlString in
       var components = URL_COMPONENTSW()
+      // We need to specify the size of the structure before passing it to
+      // InternetCrackUrlW(). We also need to reserve space for at least one
+      // wchar_t in order to tell the function that we're interested in the
+      // scheme: if we pass nil, the function won't bother trying to parse it
+      // out and won't give us back a length value to check.
       components.dwStructSize = DWORD(MemoryLayout.size(ofValue: components))
       return withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: 1) { buffer in
         components.lpszScheme = buffer.baseAddress!
