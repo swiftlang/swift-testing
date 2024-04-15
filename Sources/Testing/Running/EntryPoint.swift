@@ -57,7 +57,6 @@ private import Foundation
 #if !SWT_NO_EXIT_TESTS
       if let exitTest = ExitTest.findInEnvironmentForSwiftPM() {
         await exitTest()
-        return exitCode.rawValue
       }
 #endif
 
