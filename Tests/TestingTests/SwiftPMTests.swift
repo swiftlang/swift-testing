@@ -145,7 +145,7 @@ struct SwiftPMTests {
       configuration.eventHandler(Event(.runStarted, testID: nil, testCaseID: nil), eventContext)
       configuration.eventHandler(Event(.runEnded, testID: nil, testCaseID: nil), eventContext)
     }
-    #expect(try temporaryFileURL.checkResourceIsReachable() as Bool)
+    #expect(try temporaryFileURL.checkResourceIsReachable())
   }
 
   func decodeEventStream(fromFileAt url: URL) throws -> [EventAndContextSnapshot] {
@@ -174,7 +174,7 @@ struct SwiftPMTests {
       }
       configuration.handleEvent(Event(.runEnded, testID: nil, testCaseID: nil), in: eventContext)
     }
-    #expect(try temporaryFileURL.checkResourceIsReachable() as Bool)
+    #expect(try temporaryFileURL.checkResourceIsReachable())
 
     let decodedEvents = try decodeEventStream(fromFileAt: temporaryFileURL)
     #expect(decodedEvents.count == 4)

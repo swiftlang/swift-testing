@@ -331,49 +331,6 @@ struct ConditionMacroTests {
     #expect(diagnostics.isEmpty)
   }
 
-  @Test("#expect(try/await) produces a diagnostic",
-    arguments: [
-      "#expect(try foo())": ["Expression 'try foo()' will not be expanded on failure; move the throwing part out of the call to '#expect(_:_:)'"],
-      "#expect(await foo())": ["Expression 'await foo()' will not be expanded on failure; move the asynchronous part out of the call to '#expect(_:_:)'"],
-      "#expect(try await foo())": ["Expression 'try await foo()' will not be expanded on failure; move the throwing/asynchronous part out of the call to '#expect(_:_:)'"],
-      "#expect(try await foo(try bar(await quux())))": [
-        "Expression 'try await foo(try bar(await quux()))' will not be expanded on failure; move the throwing/asynchronous part out of the call to '#expect(_:_:)'",
-        "Expression 'try bar(await quux())' will not be expanded on failure; move the throwing part out of the call to '#expect(_:_:)'",
-        "Expression 'await quux()' will not be expanded on failure; move the asynchronous part out of the call to '#expect(_:_:)'",
-      ],
-
-      // Diagnoses because the diagnostic for `await` is suppressed due to the
-      // `as T` cast, but the parentheses limit the effect of the suppression.
-      "#expect(try (await foo() as T))": ["Expression 'try (await foo() as T)' will not be expanded on failure; move the throwing part out of the call to '#expect(_:_:)'"],
-    ]
-  )
-  func effectfulExpectationDiagnoses(input: String, diagnosticMessages: [String]) throws {
-    let (_, diagnostics) = try parse(input)
-    #expect(diagnostics.count == diagnosticMessages.count)
-    for message in diagnosticMessages {
-      #expect(diagnostics.contains { $0.diagMessage.message == message }, "Missing \(message): \(diagnostics.map(\.diagMessage.message))")
-    }
-  }
-
-  @Test("#expect(try/await as Bool) suppresses its diagnostic",
-    arguments: [
-      "#expect(try foo() as Bool)",
-      "#expect(await foo() as Bool)",
-      "#expect(try await foo(try await bar()) as Bool)",
-      "#expect(try foo() as T?)",
-      "#expect(await foo() as? T)",
-      "#expect(try await foo(try await bar()) as! T)",
-      "#expect((try foo()) as T)",
-      "#expect((await foo()) as T)",
-      "#expect((try await foo(try await bar())) as T)",
-      "#expect(try (await foo()) as T)",
-    ]
-  )
-  func effectfulExpectationDiagnosticSuppressWithExplicitBool(input: String) throws {
-    let (_, diagnostics) = try parse(input)
-    #expect(diagnostics.isEmpty)
-  }
-
   @Test("Expectation inside an exit test diagnoses",
     arguments: [
       "#expectExitTest(exitsWith: .failure) { #expect(1 > 2) }",

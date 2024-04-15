@@ -52,7 +52,7 @@ final class IssueTests: XCTestCase {
     }
 
     await Test { () throws in
-      #expect(try { throw MyError() }() as Bool)
+      #expect(try { throw MyError() }())
     }.run(configuration: configuration)
 
     await Test { () throws in
@@ -283,8 +283,8 @@ final class IssueTests: XCTestCase {
     }
 
     await Test { () throws in
-      #expect(try TypeWithMemberFunctions.n(0) as Bool)
-      #expect(TypeWithMemberFunctions.f(try { () throws in 0 }()) as Bool)
+      #expect(try TypeWithMemberFunctions.n(0))
+      #expect(TypeWithMemberFunctions.f(try { () throws in 0 }()))
     }.run(configuration: configuration)
 
     await fulfillment(of: [expectationFailed], timeout: 0.0)

@@ -19,7 +19,7 @@ struct Runner_Plan_SnapshotTests {
 #if canImport(Foundation)
   @Test("Codable")
   func codable() async throws {
-    let suite = try #require(await test(for: Runner_Plan_SnapshotFixtures.self) as Test?)
+    let suite = try #require(await test(for: Runner_Plan_SnapshotFixtures.self))
 
     var configuration = Configuration()
     configuration.setTestFilter(toInclude: [suite.id], includeHiddenTests: true)
