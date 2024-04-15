@@ -56,31 +56,6 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
-  /// Create a diagnostic message stating that an effectful (`try` or `await`)
-  /// expression cannot be parsed and should be broken apart.
-  ///
-  /// - Parameters:
-  ///   - expr: The expression being diagnosed.
-  ///   - macro: The macro expression.
-  ///
-  /// - Returns: A diagnostic message.
-  static func effectfulExpressionNotParsed(_ expr: ExprSyntax, in macro: some FreestandingMacroExpansionSyntax) -> Self {
-    let effectful = if let tryExpr = expr.as(TryExprSyntax.self) {
-      if tryExpr.expression.is(AwaitExprSyntax.self) {
-        "throwing/asynchronous"
-      } else {
-        "throwing"
-      }
-    } else {
-      "asynchronous"
-    }
-    return Self(
-      syntax: Syntax(expr),
-      message: "Expression '\(expr.trimmed)' will not be expanded on failure; move the \(effectful) part out of the call to \(_macroName(macro))",
-      severity: .warning
-    )
-  }
-
   /// Get the human-readable name of the given freestanding macro.
   ///
   /// - Parameters:
