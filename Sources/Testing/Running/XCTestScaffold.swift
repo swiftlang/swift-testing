@@ -163,7 +163,6 @@ public enum XCTestScaffold: Sendable {
     // Exit test handling.
     if let exitTest = ExitTest.findInEnvironmentForSwiftPM() {
       await exitTest()
-      exit(EXIT_SUCCESS)
     }
     let typeName = String(reflecting: type(of: testCase.rawValue as Any))
     let functionName = if let parenIndex = functionName.lastIndex(of: "(") {
