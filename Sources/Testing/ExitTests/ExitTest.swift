@@ -265,8 +265,8 @@ extension ExitTest {
       return result
     }()
 
-    return { exitTest in
-      let childProcessURL = try URL(fileURLWithPath: childProcessExecutablePath.get(), isDirectory: false)
+    return { (exitTest: borrowing ExitTest) async throws -> ExitCondition in
+      let childProcessExecutablePath = try childProcessExecutablePath.get()
 
       // Inherit the environment from the parent process and make any necessary
       // platform-specific changes.
@@ -288,31 +288,139 @@ extension ExitTest {
       // to run.
       childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION"] = try String(data: JSONEncoder().encode(exitTest.sourceLocation), encoding: .utf8)!
 
-      let (actualExitCode, wasSignalled) = try await withCheckedThrowingContinuation { continuation in
-        let process = Process()
-        process.executableURL = childProcessURL
-        process.arguments = childArguments
-        process.environment = childEnvironment
-        process.terminationHandler = { process in
-          continuation.resume(returning: (process.terminationStatus, process.terminationReason == .uncaughtSignal))
-        }
-        do {
-          try process.run()
-        } catch {
-          continuation.resume(throwing: error)
+      return try await _spawnAndWait(
+        forExecutableAtPath: childProcessExecutablePath, 
+        arguments: childArguments,
+        environment: childEnvironment
+      )
+    }
+  }
+
+  /// Spawn a process and wait for it to terminate.
+  ///
+  /// - Parameters:
+  ///   - executablePath: The path to the executable to spawn.
+  ///   - arguments: The arguments to pass to the executable, not including the
+  ///     executable path.
+  ///   - environment: The environment block to pass to the executable.
+  ///
+  /// - Returns: The exit condition of the spawned process.
+  ///
+  /// - Throws: Any error that prevented the process from spawning or its exit
+  ///   condition from being read.
+  private static func _spawnAndWait(
+    forExecutableAtPath executablePath: String,
+    arguments: [String],
+    environment: [String: String]
+  ) async throws -> ExitCondition {
+#if SWT_TARGET_OS_APPLE || os(Linux)
+    let pid = try withUnsafeTemporaryAllocation(of: posix_spawn_file_actions_t?.self, capacity: 1) { fileActions in
+      guard 0 == posix_spawn_file_actions_init(fileActions.baseAddress) else {
+        throw CError(rawValue: swt_errno())
+      }
+      defer {
+        _ = posix_spawn_file_actions_destroy(fileActions.baseAddress)
+      }
+
+      // Do not forward standard I/O.
+      _ = posix_spawn_file_actions_addopen(fileActions.baseAddress, STDIN_FILENO, "/dev/null", O_RDONLY, 0)
+      _ = posix_spawn_file_actions_addopen(fileActions.baseAddress, STDOUT_FILENO, "/dev/null", O_WRONLY, 0)
+      _ = posix_spawn_file_actions_addopen(fileActions.baseAddress, STDERR_FILENO, "/dev/null", O_WRONLY, 0)
+
+      var argv: [UnsafeMutablePointer<CChar>?] = [strdup(executablePath)]
+      argv += arguments.lazy.map { strdup($0) }
+      argv.append(nil)
+      defer {
+        for arg in argv {
+          free(arg)
         }
       }
 
-      if wasSignalled {
-#if os(Windows)
-        // Actually an uncaught SEH/VEH exception (which we don't model yet.)
-        return .failure
-#else
-        return .signal(actualExitCode)
-#endif
+      var environ: [UnsafeMutablePointer<CChar>?] = environment.map { strdup("\($0.key)=\($0.value)") }
+      environ.append(nil)
+      defer {
+        for environ in environ {
+          free(environ)
+        }
       }
-      return .exitCode(actualExitCode)
+
+      var pid = pid_t()
+      guard 0 == posix_spawn(&pid, executablePath, fileActions.baseAddress, nil, argv, environ) else {
+        throw CError(rawValue: swt_errno())
+      }
+      return pid
     }
+
+    return try await wait(for: pid)
+#elseif os(Windows)
+    // NOTE: Windows processes are responsible for handling their own
+    // command-line escaping. This code is adapted from the code in
+    // swift-corelibs-foundation (SEE: quoteWindowsCommandLine()) which was
+    // itself adapted from the code published by Microsoft at
+    // https://learn.microsoft.com/en-gb/archive/blogs/twistylittlepassagesallalike/everyone-quotes-command-line-arguments-the-wrong-way
+    let commandLine = (CollectionOfOne(executablePath) + arguments).lazy
+      .map { arg in
+        if !arg.contains(where: {" \t\n\"".contains($0)}) {
+          return arg
+        }
+
+        var quoted = "\""
+        var unquoted = arg.unicodeScalars
+        while !unquoted.isEmpty {
+          guard let firstNonBackslash = unquoted.firstIndex(where: { $0 != "\\" }) else {
+            let backslashCount = unquoted.count
+            quoted.append(String(repeating: "\\", count: backslashCount * 2))
+            break
+          }
+          let backslashCount = unquoted.distance(from: unquoted.startIndex, to: firstNonBackslash)
+          if (unquoted[firstNonBackslash] == "\"") {
+            quoted.append(String(repeating: "\\", count: backslashCount * 2 + 1))
+            quoted.append(String(unquoted[firstNonBackslash]))
+          } else {
+            quoted.append(String(repeating: "\\", count: backslashCount))
+            quoted.append(String(unquoted[firstNonBackslash]))
+          }
+          unquoted.removeFirst(backslashCount + 1)
+        }
+        quoted.append("\"")
+        return quoted
+      }.joined(separator: " ")
+    let environ = environment.map { "\($0.key)=\($0.value)"}.joined(separator: "\0") + "\0\0"
+
+    let processHandle: HANDLE! = try commandLine.withCString(encodedAs: UTF16.self) { commandLine in
+      try environ.withCString(encodedAs: UTF16.self) { environ in
+        var processInfo = PROCESS_INFORMATION()
+
+        var startupInfo = STARTUPINFOW()
+        startupInfo.cb = DWORD(MemoryLayout.size(ofValue: startupInfo))
+        guard CreateProcessW(
+          nil,
+          .init(mutating: commandLine),
+          nil,
+          nil,
+          false,
+          DWORD(CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT),
+          .init(mutating: environ),
+          nil,
+          &startupInfo,
+          &processInfo
+        ) else {
+          throw Win32Error(rawValue: GetLastError())
+        }
+        _ = CloseHandle(processInfo.hThread)
+
+        return processInfo.hProcess
+      }
+    }
+    defer {
+      CloseHandle(processHandle)
+    }
+
+    return try await wait(for: processHandle)
+#else
+#warning("Platform-specific implementation missing: process spawning unavailable")
+    throw SystemError(description: "Exit tests are unimplemented on this platform.")
+#endif
   }
 }
 #endif
