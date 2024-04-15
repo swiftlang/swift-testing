@@ -33,8 +33,20 @@ public struct ExitTest: Sendable {
   public var sourceLocation: SourceLocation
 
   /// Call the exit test in the current process.
-  public func callAsFunction() async -> Void {
+  ///
+  /// This function invokes the closure originally passed to
+  /// `#expect(exitsWith:)` _in the current process_. That closure is expected
+  /// to terminate the process; if it does not, the testing library will
+  /// terminate the process in a way that causes the corresponding expectation
+  /// to fail.
+  public func callAsFunction() async -> Never {
     await body()
+
+    // Run some glue code that terminates the process with an exit condition
+    // that does not match the expected one. If the exit test's body doesn't
+    // terminate, we'll manually call exit() and cause the test to fail.
+    let expectingFailure = expectedExitCondition.matches(.failure)
+    exit(expectingFailure ? EXIT_SUCCESS : EXIT_FAILURE)
   }
 }
 
@@ -96,19 +108,7 @@ extension ExitTest {
       }
     }
 
-    if var result = context.result {
-      // Add some glue code that terminates the process with an exit condition
-      // that does not match the expected one. If the exit test's body doesn't
-      // terminate, we'll manually call exit() and cause the test to fail.
-      let expectingFailure = result.expectedExitCondition.matches(.failure)
-      result.body = { [body = result.body] in
-        await body()
-        exit(expectingFailure ? EXIT_SUCCESS : EXIT_FAILURE)
-      }
-      return result
-    }
-
-    return nil
+    return context.result
   }
 }
 
@@ -288,34 +288,30 @@ extension ExitTest {
       // to run.
       childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION"] = try String(data: JSONEncoder().encode(exitTest.sourceLocation), encoding: .utf8)!
 
-      let actualExitCode: Int32
-      let wasSignalled: Bool
-      do {
-        (actualExitCode, wasSignalled) = try await withCheckedThrowingContinuation { continuation in
-          let process = Process()
-          process.executableURL = childProcessURL
-          process.arguments = childArguments
-          process.environment = childEnvironment
-          process.terminationHandler = { process in
-            continuation.resume(returning: (process.terminationStatus, process.terminationReason == .uncaughtSignal))
-          }
-          do {
-            try process.run()
-          } catch {
-            continuation.resume(throwing: error)
-          }
+      let (actualExitCode, wasSignalled) = try await withCheckedThrowingContinuation { continuation in
+        let process = Process()
+        process.executableURL = childProcessURL
+        process.arguments = childArguments
+        process.environment = childEnvironment
+        process.terminationHandler = { process in
+          continuation.resume(returning: (process.terminationStatus, process.terminationReason == .uncaughtSignal))
         }
-
-        if wasSignalled {
-#if os(Windows)
-          // Actually an uncaught SEH/VEH exception (which we don't model yet.)
-          return .failure
-#else
-          return .signal(actualExitCode)
-#endif
+        do {
+          try process.run()
+        } catch {
+          continuation.resume(throwing: error)
         }
-        return .exitCode(actualExitCode)
       }
+
+      if wasSignalled {
+#if os(Windows)
+        // Actually an uncaught SEH/VEH exception (which we don't model yet.)
+        return .failure
+#else
+        return .signal(actualExitCode)
+#endif
+      }
+      return .exitCode(actualExitCode)
     }
   }
 }
