@@ -233,9 +233,18 @@ static SWTMachHeaderList getMachHeaders(void) {
     machHeaders->reserve(_dyld_image_count());
 
     objc_addLoadImageFunc([] (const mach_header *mh) {
-      os_unfair_lock_lock(&lock); {
-        machHeaders->push_back(reinterpret_cast<SWTMachHeaderList::value_type>(mh));
-      } os_unfair_lock_unlock(&lock);
+      auto mhn = reinterpret_cast<SWTMachHeaderList::value_type>(mh);
+
+      // Only store the mach header address if the image contains Swift data.
+      // Swift does not support unloading images, but images that do not contain
+      // Swift or Objective-C code may be unloaded at runtime and later crash
+      // the testing library when it calls enumerateTypeMetadataSections().
+      unsigned long size = 0;
+      if (getsectiondata(mhn, SEG_TEXT, "__swift5_types", &size)) {
+        os_unfair_lock_lock(&lock); {
+          machHeaders->push_back(mhn);
+        } os_unfair_lock_unlock(&lock);
+      }
     });
   });
 
