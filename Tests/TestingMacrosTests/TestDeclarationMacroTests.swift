@@ -377,7 +377,7 @@ struct TestDeclarationMacroTests {
   @Test("Invalid bug identifiers are detected",
     arguments: [
       "12345 ", "here's what happened...", "🌯", "mailto: a@example.com",
-      "FB", "FB1",
+      "FB", "FBabc", "FB1",
     ]
   )
   func invalidBugIdentifiers(id: String) throws {

@@ -28,8 +28,9 @@ formats are associated with some common bug-tracking systems.
 - If the bug identifier can be parsed as a URL according to
   [RFC 3986](https://www.ietf.org/rfc/rfc3986.txt), it is assumed to represent
   an issue tracked at that URL.
-- If the bug identifier begins with `"FB"`, it is assumed to represent a bug
-  filed with the [Apple Feedback Assistant](https://feedbackassistant.apple.com).
+- If the bug identifier begins with `"FB"` and the rest of it can be parsed as
+  an unsigned integer, it is assumed to represent a bug filed with the
+  [Apple Feedback Assistant](https://feedbackassistant.apple.com).
 - If the bug identifier can be parsed as an unsigned integer, it is assumed to
   represent an issue with that numeric identifier in an unspecified bug-tracking
   system.
