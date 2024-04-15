@@ -237,7 +237,7 @@ static SWTMachHeaderList getMachHeaders(void) {
 
       // Only store the mach header address if the image contains Swift data.
       // Swift does not support unloading images, but images that do not contain
-      // Swift or Objective-C code may be unloaded at runtime and later crash
+      // Swift code may be unloaded at runtime and later crash
       // the testing library when it calls enumerateTypeMetadataSections().
       unsigned long size = 0;
       if (getsectiondata(mhn, SEG_TEXT, "__swift5_types", &size)) {
