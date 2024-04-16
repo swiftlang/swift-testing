@@ -127,29 +127,31 @@ func wait(for pid: pid_t) async throws -> ExitCondition {
 /// - Throws: Any error encountered calling `WaitForSingleObject()` or
 ///   `GetExitCodeProcess()`.
 func wait(for processHandle: HANDLE) async throws -> ExitCondition {
-  let waitHandle = try await withCheckedThrowingContinuation { continuation in
+  // Once the continuation resumes, it will need to unregister the wait, so
+  // yield the wait handle back to the calling scope.
+  var waitHandle: HANDLE?
+  defer {
+    if let waitHandle {
+      _ = UnregisterWait(waitHandle)
+    }
+  }
+
+  try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
     // Set up a callback that immediately resumes the continuation and does no
     // other work.
     let context = Unmanaged.passRetained(continuation as AnyObject).toOpaque()
     let callback: WAITORTIMERCALLBACK = { context, _ in
-      let continuation = Unmanaged<AnyObject>.fromOpaque(context!).takeRetainedValue() as! CheckedContinuation<Void, Never>
-      continuation?.resume()
+      let continuation = Unmanaged<AnyObject>.fromOpaque(context!).takeRetainedValue() as! CheckedContinuation<Void, any Error>
+      continuation.resume()
     }
 
     // We only want the callback to fire once (and not be rescheduled.) Waiting
     // may take an arbitrarily long time, so let the thread pool know that too.
     let flags = ULONG(WT_EXECUTEONLYONCE | WT_EXECUTELONGFUNCTION)
-    var waitHandle: HANDLE?
-    guard RegisterWaitForSingleObject(&waitHandle, processHandle, callback, context, flags) else {
-      throw Win32Error(rawValue: GetLastError())
+    guard RegisterWaitForSingleObject(&waitHandle, processHandle, callback, context, INFINITE, flags) else {
+      continuation.resume(throwing: Win32Error(rawValue: GetLastError()))
+      return
     }
-
-    // Once the continuation resumes, it will need to unregister the wait, so
-    // yield the wait handle back to the calling scope.
-    return waitHandle
-  }
-  if let waitHandle {
-    _ = UnregisterWait(waitHandle)
   }
 
   var status: DWORD = 0
