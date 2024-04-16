@@ -9,10 +9,7 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
-
-#if canImport(Foundation)
-import Foundation
-#endif
+private import TestingInternals
 
 @Suite("Tag/Tag List Tests", .tags(.traitRelated))
 struct TagListTests {
@@ -137,9 +134,9 @@ struct TagListTests {
     .tags("alpha", "beta", "gamma", "delta"), .tags(.namedConstant)
   )
   func tagColorsReadFromDisk() throws {
-    let tempDirURL = FileManager.default.temporaryDirectory
-    let jsonURL = tempDirURL.appendingPathComponent("tag-colors.json", isDirectory: false)
-    let jsonContent = """
+    let tempDirPath = try temporaryDirectory()
+    let jsonPath = appendPathComponent("tag-colors.json", to: tempDirPath)
+    var jsonContent = """
     {
     "alpha": "red",
     "beta": "#00CCFF",
@@ -154,12 +151,15 @@ struct TagListTests {
     "encode purple": "purple"
     }
     """
-    try jsonContent.write(to: jsonURL, atomically: true, encoding: .utf8)
+    try jsonContent.withUTF8 { jsonContent in
+      let fileHandle = try FileHandle(forWritingAtPath: jsonPath)
+      try fileHandle.write(jsonContent)
+    }
     defer {
-      try? FileManager.default.removeItem(at: jsonURL)
+      _ = remove(jsonPath)
     }
 
-    let tagColors = try Testing.loadTagColors(fromFileInDirectoryAtPath: tempDirURL.path)
+    let tagColors = try Testing.loadTagColors(fromFileInDirectoryAtPath: tempDirPath)
     #expect(tagColors[Tag("alpha")] == .red)
     #expect(tagColors[Tag("beta")] == .rgb(0, 0xCC, 0xFF))
     #expect(tagColors[Tag("gamma")] == .rgb(0xAA, 0xBB, 0xCC))
