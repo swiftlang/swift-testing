@@ -314,31 +314,37 @@ extension ExitTest {
     environment: [String: String]
   ) async throws -> ExitCondition {
 #if SWT_TARGET_OS_APPLE || os(Linux)
-    let pid = try withUnsafeTemporaryAllocation(of: posix_spawn_file_actions_t?.self, capacity: 1) { fileActions in
-      guard 0 == posix_spawn_file_actions_init(fileActions.baseAddress) else {
+    let pid = try withUnsafeTemporaryAllocation(of: posix_spawn_file_actions_t.self, capacity: 1) { fileActions in
+#if SWT_TARGET_OS_APPLE
+      let fileActions = UnsafeMutableRawBufferPointer(fileActions).bindMemory(to: posix_spawn_file_actions_t?.self)
+#endif
+      guard 0 == posix_spawn_file_actions_init(fileActions.baseAddress!) else {
         throw CError(rawValue: swt_errno())
       }
       defer {
-        _ = posix_spawn_file_actions_destroy(fileActions.baseAddress)
+        _ = posix_spawn_file_actions_destroy(fileActions.baseAddress!)
       }
 
       // Do not forward standard I/O.
-      _ = posix_spawn_file_actions_addopen(fileActions.baseAddress, STDIN_FILENO, "/dev/null", O_RDONLY, 0)
-      _ = posix_spawn_file_actions_addopen(fileActions.baseAddress, STDOUT_FILENO, "/dev/null", O_WRONLY, 0)
-      _ = posix_spawn_file_actions_addopen(fileActions.baseAddress, STDERR_FILENO, "/dev/null", O_WRONLY, 0)
+      _ = posix_spawn_file_actions_addopen(fileActions.baseAddress!, STDIN_FILENO, "/dev/null", O_RDONLY, 0)
+      _ = posix_spawn_file_actions_addopen(fileActions.baseAddress!, STDOUT_FILENO, "/dev/null", O_WRONLY, 0)
+      _ = posix_spawn_file_actions_addopen(fileActions.baseAddress!, STDERR_FILENO, "/dev/null", O_WRONLY, 0)
 
-      return try withUnsafeTemporaryAllocation(of: posix_spawnattr_t?.self, capacity: 1) { attrs in
-        guard 0 == posix_spawnattr_init(attrs.baseAddress) else {
+      return try withUnsafeTemporaryAllocation(of: posix_spawnattr_t.self, capacity: 1) { attrs in
+#if SWT_TARGET_OS_APPLE
+        let attrs = UnsafeMutableRawBufferPointer(attrs).bindMemory(to: posix_spawnattr_t?.self)
+#endif
+        guard 0 == posix_spawnattr_init(attrs.baseAddress!) else {
           throw CError(rawValue: swt_errno())
         }
         defer {
-          _ = posix_spawnattr_destroy(attrs.baseAddress)
+          _ = posix_spawnattr_destroy(attrs.baseAddress!)
         }
 #if SWT_TARGET_OS_APPLE
         // Close all other file descriptors open in the parent. Note that Linux
         // does not support this flag and, unlike Foundation.Process, we do not
         // attempt to emulate it.
-        _ = posix_spawnattr_setflags(attrs.baseAddress, CShort(POSIX_SPAWN_CLOEXEC_DEFAULT))
+        _ = posix_spawnattr_setflags(attrs.baseAddress!, CShort(POSIX_SPAWN_CLOEXEC_DEFAULT))
 #endif
 
         var argv: [UnsafeMutablePointer<CChar>?] = [strdup(executablePath)]
@@ -359,7 +365,7 @@ extension ExitTest {
         }
 
         var pid = pid_t()
-        guard 0 == posix_spawn(&pid, executablePath, fileActions.baseAddress, attrs.baseAddress, argv, environ) else {
+        guard 0 == posix_spawn(&pid, executablePath, fileActions.baseAddress!, attrs.baseAddress, argv, environ) else {
           throw CError(rawValue: swt_errno())
         }
         return pid
