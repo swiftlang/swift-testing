@@ -43,12 +43,13 @@ enum JSON {
   /// Decode a value from JSON data.
   ///
   /// - Parameters:
+  ///   - type: The type of value to decode.
   ///   - jsonRepresentation: The JSON encoding of the value to decode.
   ///
   /// - Returns: An instance of `T` decoded from `jsonRepresentation`.
   ///
   /// - Throws: Whatever is thrown by the decoding process.
-  static func decode<T>(_ _: T.Type, from jsonRepresentation: UnsafeRawBufferPointer) throws -> T where T: Decodable {
+  static func decode<T>(_ type: T.Type, from jsonRepresentation: UnsafeRawBufferPointer) throws -> T where T: Decodable {
 #if canImport(Foundation)
     try withExtendedLifetime(jsonRepresentation) {
       let data = Data(
@@ -56,7 +57,7 @@ enum JSON {
         count: jsonRepresentation.count,
         deallocator: .none
       )
-      return try JSONDecoder().decode(T.self, from: data)
+      return try JSONDecoder().decode(type, from: data)
     }
 #else
     throw SystemError(description: "JSON decoding requires Foundation which is not available in this environment.")
