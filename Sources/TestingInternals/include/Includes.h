@@ -75,6 +75,10 @@
 #include <limits.h>
 #endif
 
+#if __has_include(<spawn.h>)
+#include <spawn.h>
+#endif
+
 #if __has_include(<crt_externs.h>)
 #include <crt_externs.h>
 #endif
