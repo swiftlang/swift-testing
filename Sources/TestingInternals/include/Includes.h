@@ -43,6 +43,10 @@
 #include <unistd.h>
 #endif
 
+#if __has_include(<sys/fcntl.h>)
+#include <sys/fcntl.h>
+#endif
+
 #if __has_include(<sys/stat.h>)
 #include <sys/stat.h>
 #endif
