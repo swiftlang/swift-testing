@@ -43,6 +43,43 @@ private func _blockAndWait(for pid: pid_t) throws -> ExitCondition {
   }
 }
 
+#if os(Linux)
+/// A mapping of awaited child PIDs to their corresponding Swift continuations.
+private let _childProcessContinuations = Locked<[pid_t: CheckedContinuation<Void, Never>]>()
+
+/// The implementation of `_createWaitThread()`, run only once.
+private let _createWaitThread: Void = {
+  // Create the thread. We immediately detach it upon success to allow the
+  // system to reclaim its resources when done.
+
+  var thread = pthread_t()
+  _ = pthread_create(
+    &thread,
+    nil,
+    { _ in
+      // Run an infinite loop that waits for child processes to terminate and
+      // captures their exit statuses.
+      while true {
+        var siginfo = siginfo_t()
+        if 0 == waitid(P_ALL, 0, &siginfo, WEXITED | WNOWAIT) {
+          let continuation = _childProcessContinuations.withLock { childProcessContinuations in
+            childProcessContinuations.removeValue(forKey: siginfo.si_pid)
+          }
+          continuation?.resume()
+        }
+      }
+    },
+    nil
+  )
+}()
+
+/// Create a waiter thread that is responsible for waiting for child processes
+/// to exit.
+private func _createWaitThread() {
+  _createWaitThreadImpl
+}
+#endif
+
 /// Wait for a given PID to exit and report its status.
 ///
 /// - Parameters:
@@ -65,40 +102,18 @@ func wait(for pid: pid_t) async throws -> ExitCondition {
     source.resume()
   }
   withExtendedLifetime(source) {}
-  return try _blockAndWait(for: pid)
-#else
-  // On Linux, spin up a background thread and waitpid() there.
-  return try await withCheckedThrowingContinuation { continuation in
-    // Create a structure to hold the state needed by the thread, and box it
-    // as a refcounted pointer that we can pass to libpthread.
-    struct Context {
-      var pid: pid_t
-      var continuation: CheckedContinuation<ExitCondition, any Error>
-    }
-    let context = Unmanaged.passRetained(
-      Context(pid: pid, continuation: continuation) as AnyObject
-    ).toOpaque()
+#elseif os(Linux)
+  // Ensure the waiter thread is running.
+  _createWaitThread()
 
-    // The body of the thread: unwrap and take ownership of the context we
-    // created above, then call waitpid() and report the result/error.
-    let body: @convention(c) (UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer? = { contextp in
-      let context = Unmanaged<AnyObject>.fromOpaque(contextp!).takeRetainedValue() as! Context
-      let result = Result { try _blockAndWait(for: context.pid) }
-      context.continuation.resume(with: result)
-      return nil
+  await withCheckedContinuation { continuation in
+    let oldContinuation = _childProcessContinuations.withLock { childProcessContinuations in
+      childProcessContinuations.updateValue(continuation, forKey: pid)
     }
-
-    // Create the thread. We immediately detach it upon success to allow the
-    // system to reclaim its resources when done.
-    var thread = pthread_t()
-    switch pthread_create(&thread, nil, body, context) {
-    case 0:
-      _ = pthread_detach(thread)
-    case let errorCode:
-      continuation.resume(throwing: CError(rawValue: errorCode))
-    }
+    assert(oldContinuation == nil, "Unexpected continuation found for PID \(pid). Please file a bug report at https://github.com/apple/swift-testing/issues/new")
   }
 #endif
+  return try _blockAndWait(for: pid)
 }
 #elseif os(Windows)
 /// Wait for a given process handle to exit and report its status.
@@ -110,13 +125,32 @@ func wait(for pid: pid_t) async throws -> ExitCondition {
 ///
 /// - Throws: Any error encountered calling `WaitForSingleObject()` or
 ///   `GetExitCodeProcess()`.
-///
-/// This function blocks the calling thread on `WaitForSingleObject()`. External
-/// callers should use ``wait(for:)`` instead to avoid deadlocks.
-private func _blockAndWait(for processHandle: HANDLE) throws -> ExitCondition {
-  if WAIT_FAILED == WaitForSingleObject(processHandle, INFINITE) {
-    throw Win32Error(rawValue: GetLastError())
+func wait(for processHandle: HANDLE) async throws -> ExitCondition {
+  let waitHandle = try await withCheckedThrowingContinuation { continuation in
+    // Set up a callback that immediately resumes the continuation and does no
+    // other work.
+    let context = Unmanaged.passRetained(continuation as AnyObject).toOpaque()
+    let callback: WAITORTIMERCALLBACK = { context, _ in
+      let continuation = Unmanaged<AnyObject>.fromOpaque(context!).takeRetainedValue() as! CheckedContinuation<Void, Never>
+      continuation?.resume()
+    }
+
+    // We only want the callback to fire once (and not be rescheduled.) Waiting
+    // may take an arbitrarily long time, so let the thread pool know that too.
+    let flags = ULONG(WT_EXECUTEONLYONCE | WT_EXECUTELONGFUNCTION)
+    var waitHandle: HANDLE?
+    guard RegisterWaitForSingleObject(&waitHandle, processHandle, callback, context, flags) else {
+      throw Win32Error(rawValue: GetLastError())
+    }
+
+    // Once the continuation resumes, it will need to unregister the wait, so
+    // yield the wait handle back to the calling scope.
+    return waitHandle
   }
+  if let waitHandle {
+    _ = UnregisterWait(waitHandle)
+  }
+
   var status: DWORD = 0
   guard GetExitCodeProcess(processHandle, &status) else {
     // The child process terminated but we couldn't get its status back.
@@ -126,36 +160,6 @@ private func _blockAndWait(for processHandle: HANDLE) throws -> ExitCondition {
 
   // FIXME: handle SEH/VEH uncaught exceptions.
   return .exitCode(CInt(bitPattern: status))
-}
-
-/// Wait for a given process handle to exit and report its status.
-///
-/// - Parameters:
-///   - processHandle: The handle to wait for.
-///
-/// - Returns: The exit condition of `processHandle`.
-///
-/// - Throws: Any error encountered calling `WaitForSingleObject()` or
-///   `GetExitCodeProcess()`.
-func wait(for processHandle: HANDLE) async throws -> ExitCondition {
-  try await withCheckedThrowingContinuation { continuation in
-    // Create a structure to hold the state needed by the thread, and box it
-    // as a refcounted pointer that we can pass to libpthread.
-    struct Context {
-      var processHandle: HANDLE
-      var continuation: CheckedContinuation<ExitCondition, any Error>
-    }
-    let context = Unmanaged.passRetained(
-      Context(processHandle: processHandle, continuation: continuation) as AnyObject
-    ).toOpaque()
-
-    let body: _beginthread_proc_type = { contextp in
-      let context = Unmanaged<AnyObject>.fromOpaque(contextp!).takeRetainedValue() as! Context
-      let result = Result { try _blockAndWait(for: context.processHandle) }
-      context.continuation.resume(with: result)
-    }
-    _ = _beginthread(body, 0, context)
-  }
 }
 #endif
 #endif
