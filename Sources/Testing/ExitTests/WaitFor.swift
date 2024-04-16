@@ -48,7 +48,7 @@ private func _blockAndWait(for pid: pid_t) throws -> ExitCondition {
 private let _childProcessContinuations = Locked<[pid_t: CheckedContinuation<Void, Never>]>()
 
 /// The implementation of `_createWaitThread()`, run only once.
-private let _createWaitThread: Void = {
+private let _createWaitThreadImpl: Void = {
   // Create the thread. We immediately detach it upon success to allow the
   // system to reclaim its resources when done.
 
@@ -62,8 +62,9 @@ private let _createWaitThread: Void = {
       while true {
         var siginfo = siginfo_t()
         if 0 == waitid(P_ALL, 0, &siginfo, WEXITED | WNOWAIT) {
+          let pid = swt_siginfo_t_si_pid(&siginfo)
           let continuation = _childProcessContinuations.withLock { childProcessContinuations in
-            childProcessContinuations.removeValue(forKey: siginfo.si_pid)
+            childProcessContinuations.removeValue(forKey: pid)
           }
           continuation?.resume()
         }
