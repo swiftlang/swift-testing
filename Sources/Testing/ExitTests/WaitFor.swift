@@ -81,8 +81,8 @@ func wait(for pid: pid_t) async throws -> ExitCondition {
 
     // The body of the thread: unwrap and take ownership of the context we
     // created above, then call waitpid() and report the result/error.
-    let body: @convention(c) (UnsafeMutableRawPointer) -> UnsafeMutableRawPointer? = { contextp in
-      let context = Unmanaged<AnyObject>.fromOpaque(contextp).takeRetainedValue() as! Context
+    let body: @convention(c) (UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer? = { contextp in
+      let context = Unmanaged<AnyObject>.fromOpaque(contextp!).takeRetainedValue() as! Context
       let result = Result { try _blockAndWait(for: context.pid) }
       context.continuation.resume(with: result)
       return nil
@@ -90,7 +90,7 @@ func wait(for pid: pid_t) async throws -> ExitCondition {
 
     // Create the thread. We immediately detach it upon success to allow the
     // system to reclaim its resources when done.
-    var thread: pthread_t!
+    var thread = pthread_t()
     switch pthread_create(&thread, nil, body, context) {
     case 0:
       _ = pthread_detach(thread)
