@@ -438,7 +438,7 @@ func appendPathComponent(_ pathComponent: String, to path: String) -> String {
 #if os(Windows)
   path.withCString(encodedAs: UTF16.self) { path in
     pathComponent.withCString(encodedAs: UTF16.self) { pathComponent in
-      withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: wcslen(path) + wcslen(pathComponent) + 1) { buffer in
+      withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: (wcslen(path) + wcslen(pathComponent)) * 2 + 1) { buffer in
         _ = wcscpy_s(buffer.baseAddress, buffer.count, path)
         _ = PathCchAppendEx(buffer.baseAddress, buffer.count, pathComponent, ULONG(PATHCCH_ALLOW_LONG_PATHS.rawValue))
         return (String.decodeCString(buffer.baseAddress, as: UTF16.self)?.result)!
