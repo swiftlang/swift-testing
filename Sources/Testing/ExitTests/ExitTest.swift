@@ -335,7 +335,7 @@ extension ExitTest {
       _ = posix_spawn_file_actions_addopen(fileActions.baseAddress!, STDOUT_FILENO, "/dev/null", O_WRONLY, 0)
       _ = posix_spawn_file_actions_addopen(fileActions.baseAddress!, STDERR_FILENO, "/dev/null", O_WRONLY, 0)
 
-      return try withUnsafeTemporaryAllocation(of: P<posix_spawn_file_actions_t>.self, capacity: 1) { attrs in
+      return try withUnsafeTemporaryAllocation(of: P<posix_spawnattr_t>.self, capacity: 1) { attrs in
         guard 0 == posix_spawnattr_init(attrs.baseAddress!) else {
           throw CError(rawValue: swt_errno())
         }
