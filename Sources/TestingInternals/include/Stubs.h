@@ -90,6 +90,25 @@ static char *_Nullable *_Null_unspecified swt_environ(void) {
 }
 #endif
 
+#if __has_include(<sys/wait.h>)
+static bool swt_WIFSIGNALED(int exitCode) {
+  return WIFSIGNALED(exitCode);
+}
+
+static int swt_WTERMSIG(int exitCode) {
+  return WTERMSIG(exitCode);
+}
+
+static bool swt_WIFEXITED(int exitCode) {
+  return WIFEXITED(exitCode);
+}
+
+static int swt_WEXITSTATUS(int exitCode) {
+  return WEXITSTATUS(exitCode);
+}
+
+#endif
+
 SWT_ASSUME_NONNULL_END
 
 #endif

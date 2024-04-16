@@ -35,6 +35,10 @@
 #include <string.h>
 #include <time.h>
 
+#if defined(__APPLE__) && __has_include(<dispatch/dispatch.h>)
+#include <dispatch/dispatch.h>
+#endif
+
 #if __has_include(<unistd.h>)
 #include <unistd.h>
 #endif
@@ -45,6 +49,10 @@
 
 #if __has_include(<sys/sysctl.h>)
 #include <sys/sysctl.h>
+#endif
+
+#if __has_include(<sys/wait.h>)
+#include <sys/wait.h>
 #endif
 
 #if __has_include(<sys/utsname.h>)
