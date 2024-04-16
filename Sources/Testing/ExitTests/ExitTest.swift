@@ -313,11 +313,16 @@ extension ExitTest {
     arguments: [String],
     environment: [String: String]
   ) async throws -> ExitCondition {
-#if SWT_TARGET_OS_APPLE || os(Linux)
-    let pid = try withUnsafeTemporaryAllocation(of: posix_spawn_file_actions_t.self, capacity: 1) { fileActions in
+    // Darwin and Linux differ in their optionality for the posix_spawn types we
+    // use, so use this typealias to paper over the differences.
 #if SWT_TARGET_OS_APPLE
-      let fileActions = UnsafeMutableRawBufferPointer(fileActions).bindMemory(to: posix_spawn_file_actions_t?.self)
+    typealias P<T> = T?
+#elseif os(Linux)
+    typealias P<T> = T
 #endif
+
+#if SWT_TARGET_OS_APPLE || os(Linux)
+    let pid = try withUnsafeTemporaryAllocation(of: P<posix_spawn_file_actions_t>.self, capacity: 1) { fileActions in
       guard 0 == posix_spawn_file_actions_init(fileActions.baseAddress!) else {
         throw CError(rawValue: swt_errno())
       }
@@ -330,10 +335,7 @@ extension ExitTest {
       _ = posix_spawn_file_actions_addopen(fileActions.baseAddress!, STDOUT_FILENO, "/dev/null", O_WRONLY, 0)
       _ = posix_spawn_file_actions_addopen(fileActions.baseAddress!, STDERR_FILENO, "/dev/null", O_WRONLY, 0)
 
-      return try withUnsafeTemporaryAllocation(of: posix_spawnattr_t.self, capacity: 1) { attrs in
-#if SWT_TARGET_OS_APPLE
-        let attrs = UnsafeMutableRawBufferPointer(attrs).bindMemory(to: posix_spawnattr_t?.self)
-#endif
+      return try withUnsafeTemporaryAllocation(of: P<posix_spawn_file_actions_t>.self, capacity: 1) { attrs in
         guard 0 == posix_spawnattr_init(attrs.baseAddress!) else {
           throw CError(rawValue: swt_errno())
         }
