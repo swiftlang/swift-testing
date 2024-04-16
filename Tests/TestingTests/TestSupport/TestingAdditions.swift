@@ -348,3 +348,19 @@ extension Configuration {
 /// whose output could make it hard to read "real" output from the testing
 /// library.
 let testsWithSignificantIOAreEnabled = Environment.flag(named: "SWT_ENABLE_TESTS_WITH_SIGNIFICANT_IO") == true
+
+extension JSON {
+  /// Round-trip a value through JSON encoding/decoding.
+  ///
+  /// - Parameters:
+  ///   - value: The value to round-trip.
+  ///
+  /// - Returns: A copy of `value` after encoding and decoding.
+  ///
+  /// - Throws: Any error encountered encoding or decoding `value`.
+  static func encodeAndDecode<T>(_ value: T) throws -> T where T: Codable {
+    try JSON.withEncoding(of: value) { data in
+      try JSON.decode(T.self, from: data)
+    }
+  }
+}

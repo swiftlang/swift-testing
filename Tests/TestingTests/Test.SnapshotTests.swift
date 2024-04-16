@@ -8,11 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@_spi(ForToolsIntegrationOnly) import Testing
-
-#if canImport(Foundation)
-import Foundation
-#endif
+@_spi(ForToolsIntegrationOnly) @testable import Testing
 
 @Suite("Test.Snapshot tests")
 struct Test_SnapshotTests {
@@ -21,7 +17,7 @@ struct Test_SnapshotTests {
   func codable() throws {
     let test = try #require(Test.current)
     let snapshot = Test.Snapshot(snapshotting: test)
-    let decoded = try JSONDecoder().decode(Test.Snapshot.self, from: JSONEncoder().encode(snapshot))
+    let decoded = try JSON.encodeAndDecode(snapshot)
 
     #expect(decoded.id == snapshot.id)
     #expect(decoded.name == snapshot.name)

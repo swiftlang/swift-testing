@@ -9,9 +9,6 @@
 //
 
 private import TestingInternals
-#if canImport(Foundation)
-private import Foundation
-#endif
 
 /// The entry point to the testing library used by Swift Package Manager.
 ///
@@ -321,17 +318,17 @@ private func _eventHandlerForStreamingEvents(toFileAtPath path: String) throws -
       event: Event.Snapshot(snapshotting: event),
       eventContext: Event.Context.Snapshot(snapshotting: context)
     )
-    if var snapshotJSON = try? JSONEncoder().encode(snapshot) {
+    try? JSON.withEncoding(of: snapshot) { snapshotJSON in
       func isASCIINewline(_ byte: UInt8) -> Bool {
         byte == 10 || byte == 13
       }
 
 #if DEBUG
-      // We don't actually expect JSONEncoder() to produce output containing
+      // We don't actually expect the JSON encoder to produce output containing
       // newline characters, so in debug builds we'll log a diagnostic message.
       if snapshotJSON.contains(where: isASCIINewline) {
         let message = Event.ConsoleOutputRecorder.warning(
-          "JSONEncoder() produced one or more newline characters while encoding an event snapshot with kind '\(event.kind)'. Please file a bug report at https://github.com/apple/swift-testing/issues/new",
+          "JSON encoder produced one or more newline characters while encoding an event snapshot with kind '\(event.kind)'. Please file a bug report at https://github.com/apple/swift-testing/issues/new",
           options: .for(.stderr)
         )
 #if SWT_TARGET_OS_APPLE
@@ -343,6 +340,7 @@ private func _eventHandlerForStreamingEvents(toFileAtPath path: String) throws -
 #endif
 
       // Remove newline characters to conform to JSON lines specification.
+      var snapshotJSON = Array(snapshotJSON)
       snapshotJSON.removeAll(where: isASCIINewline)
       if !snapshotJSON.isEmpty {
         try? file.withLock {
