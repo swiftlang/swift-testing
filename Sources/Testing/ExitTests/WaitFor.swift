@@ -109,7 +109,17 @@ func wait(for pid: pid_t) async throws -> ExitCondition {
 
   await withCheckedContinuation { continuation in
     let oldContinuation = _childProcessContinuations.withLock { childProcessContinuations in
-      childProcessContinuations.updateValue(continuation, forKey: pid)
+      // To avoid a race with the call to waitid(P_ALL) above, call waitid()
+      // while holding this lock. If the process has already exited, then we
+      // don't need to suspend and can immediately resume the continuation. If
+      // the process has not exited, then the other call to waitid() cannot fire
+      // and acquire the lock until after we've added the continuation.
+      var siginfo = siginfo_t()
+      if 0 == waitid(P_PID, pid, &siginfo, WEXITED | WNOHANG | WNOWAIT) {
+        continuation.resume()
+      } else {
+        childProcessContinuations.updateValue(continuation, forKey: pid)
+      }
     }
     assert(oldContinuation == nil, "Unexpected continuation found for PID \(pid). Please file a bug report at https://github.com/apple/swift-testing/issues/new")
   }
