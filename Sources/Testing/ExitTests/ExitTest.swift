@@ -327,28 +327,43 @@ extension ExitTest {
       _ = posix_spawn_file_actions_addopen(fileActions.baseAddress, STDOUT_FILENO, "/dev/null", O_WRONLY, 0)
       _ = posix_spawn_file_actions_addopen(fileActions.baseAddress, STDERR_FILENO, "/dev/null", O_WRONLY, 0)
 
-      var argv: [UnsafeMutablePointer<CChar>?] = [strdup(executablePath)]
-      argv += arguments.lazy.map { strdup($0) }
-      argv.append(nil)
-      defer {
-        for arg in argv {
-          free(arg)
+      return try withUnsafeTemporaryAllocation(of: posix_spawnattr_t?.self, capacity: 1) { attrs in
+        guard 0 == posix_spawnattr_init(attrs.baseAddress) else {
+          throw CError(rawValue: swt_errno())
         }
-      }
-
-      var environ: [UnsafeMutablePointer<CChar>?] = environment.map { strdup("\($0.key)=\($0.value)") }
-      environ.append(nil)
-      defer {
-        for environ in environ {
-          free(environ)
+        defer {
+          _ = posix_spawnattr_destroy(attrs.baseAddress)
         }
-      }
+#if SWT_TARGET_OS_APPLE
+        // Close all other file descriptors open in the parent. Note that Linux
+        // does not support this flag and, unlike Foundation.Process, we do not
+        // attempt to emulate it.
+        _ = posix_spawnattr_setflags(attrs.baseAddress, CShort(POSIX_SPAWN_CLOEXEC_DEFAULT))
+#endif
 
-      var pid = pid_t()
-      guard 0 == posix_spawn(&pid, executablePath, fileActions.baseAddress, nil, argv, environ) else {
-        throw CError(rawValue: swt_errno())
+        var argv: [UnsafeMutablePointer<CChar>?] = [strdup(executablePath)]
+        argv += arguments.lazy.map { strdup($0) }
+        argv.append(nil)
+        defer {
+          for arg in argv {
+            free(arg)
+          }
+        }
+
+        var environ: [UnsafeMutablePointer<CChar>?] = environment.map { strdup("\($0.key)=\($0.value)") }
+        environ.append(nil)
+        defer {
+          for environ in environ {
+            free(environ)
+          }
+        }
+
+        var pid = pid_t()
+        guard 0 == posix_spawn(&pid, executablePath, fileActions.baseAddress, attrs.baseAddress, argv, environ) else {
+          throw CError(rawValue: swt_errno())
+        }
+        return pid
       }
-      return pid
     }
 
     return try await wait(for: pid)
