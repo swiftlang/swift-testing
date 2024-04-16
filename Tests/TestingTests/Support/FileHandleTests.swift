@@ -176,7 +176,8 @@ func temporaryDirectory() throws -> String {
   "/tmp"
 #elseif os(Windows)
   try withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: Int(MAX_PATH + 1)) { buffer in
-    if 0 == GetTempPath2W(DWORD(buffer.count), buffer.baseAddress) {
+    // NOTE: GetTempPath2W() was introduced in Windows 10 Build 20348.
+    if 0 == GetTempPathW(DWORD(buffer.count), buffer.baseAddress) {
       throw Win32Error(rawValue: GetLastError())
     }
     return try #require(String.decodeCString(buffer.baseAddress, as: UTF16.self)?.result)
