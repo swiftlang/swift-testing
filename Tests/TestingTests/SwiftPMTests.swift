@@ -151,7 +151,11 @@ struct SwiftPMTests {
   func decodeEventStream(fromFileAt url: URL) throws -> [EventAndContextSnapshot] {
     try Data(contentsOf: url, options: [.mappedIfSafe])
       .split(separator: 10) // "\n"
-      .map { try JSONDecoder().decode(EventAndContextSnapshot.self, from: $0) }
+      .map { line in
+        try line.withUnsafeBytes { line in
+          try JSON.decode(EventAndContextSnapshot.self, from: line)
+        }
+      }
   }
 
   @Test("--experimental-event-stream-output argument (writes to a stream and can be read back)")

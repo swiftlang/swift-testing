@@ -10,10 +10,6 @@
 
 @testable @_spi(ForToolsIntegrationOnly) import Testing
 
-#if canImport(Foundation)
-import Foundation
-#endif
-
 @Suite("Runner.Plan.Snapshot tests")
 struct Runner_Plan_SnapshotTests {
 #if canImport(Foundation)
@@ -26,7 +22,7 @@ struct Runner_Plan_SnapshotTests {
 
     let plan = await Runner.Plan(configuration: configuration)
     let snapshot = Runner.Plan.Snapshot(snapshotting: plan)
-    let decoded = try JSONDecoder().decode(Runner.Plan.Snapshot.self, from: JSONEncoder().encode(snapshot))
+    let decoded = try JSON.encodeAndDecode(snapshot)
 
     try #require(decoded.steps.count == snapshot.steps.count)
 

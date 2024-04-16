@@ -9,9 +9,6 @@
 //
 
 private import TestingInternals
-#if canImport(Foundation)
-private import Foundation
-#endif
 
 #if !SWT_NO_EXIT_TESTS
 /// A type describing an exit test.
@@ -223,10 +220,12 @@ extension ExitTest {
   /// `__swiftPMEntryPoint()` function. The effect of using it under other
   /// configurations is undefined.
   static func findInEnvironmentForSwiftPM() -> Self? {
-    let sourceLocationString = Environment.variable(named: "SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION")
-    if let sourceLocationData = sourceLocationString?.data(using: .utf8),
-       let sourceLocation = try? JSONDecoder().decode(SourceLocation.self, from: sourceLocationData) {
-      return find(at: sourceLocation)
+    if var sourceLocationString = Environment.variable(named: "SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION") {
+      return try? sourceLocationString.withUTF8 { sourceLocationBuffer in
+        let sourceLocationBuffer = UnsafeRawBufferPointer(sourceLocationBuffer)
+        let sourceLocation = try JSON.decode(SourceLocation.self, from: sourceLocationBuffer)
+        return find(at: sourceLocation)
+      }
     }
     return nil
   }
@@ -286,10 +285,12 @@ extension ExitTest {
 #endif
       // Insert a specific variable that tells the child process which exit test
       // to run.
-      childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION"] = try String(data: JSONEncoder().encode(exitTest.sourceLocation), encoding: .utf8)!
+      try JSON.withEncoding(of: exitTest.sourceLocation) { json in
+        childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION"] = String(decoding: json, as: UTF8.self)
+      }
 
       return try await _spawnAndWait(
-        forExecutableAtPath: childProcessExecutablePath, 
+        forExecutableAtPath: childProcessExecutablePath,
         arguments: childArguments,
         environment: childEnvironment
       )

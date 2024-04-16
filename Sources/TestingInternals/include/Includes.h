@@ -43,6 +43,10 @@
 #include <unistd.h>
 #endif
 
+#if __has_include(<sys/fcntl.h>)
+#include <sys/fcntl.h>
+#endif
+
 #if __has_include(<sys/stat.h>)
 #include <sys/stat.h>
 #endif
@@ -73,6 +77,10 @@
 
 #if __has_include(<limits.h>)
 #include <limits.h>
+#endif
+
+#if __has_include(<spawn.h>)
+#include <spawn.h>
 #endif
 
 #if __has_include(<crt_externs.h>)

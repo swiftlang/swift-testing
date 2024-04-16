@@ -9,9 +9,6 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
-#if canImport(Foundation)
-import Foundation
-#endif
 
 @Suite("Test.Case.Argument.ID Tests")
 struct Test_Case_Argument_IDTests {
@@ -41,7 +38,9 @@ struct Test_Case_Argument_IDTests {
     let argument = try #require(testCase.arguments.first)
     let argumentID = try #require(argument.id)
 #if canImport(Foundation)
-    let decodedArgument = try JSONDecoder().decode(MyCustomTestArgument.self, from: Data(argumentID.bytes))
+    let decodedArgument = try argumentID.bytes.withUnsafeBufferPointer { argumentID in
+      try JSON.decode(MyCustomTestArgument.self, from: .init(argumentID))
+    }
     #expect(decodedArgument == MyCustomTestArgument(x: 123, y: "abc"))
 #endif
   }

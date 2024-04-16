@@ -113,8 +113,7 @@ struct TagListTests {
   @Test("Encoding/decoding tags")
   func encodeAndDecodeTags() throws {
     let array: [Tag] = [.red, .orange, Tag("abc123"), Tag(".abc123"), Tag(#"\.abc123"#), Tag(#"\\.abc123"#)]
-    let data = try JSONEncoder().encode(array)
-    let array2 = try JSONDecoder().decode([Tag].self, from: data)
+    let array2 = try JSON.encodeAndDecode(array)
     #expect(array == array2)
   }
 
@@ -128,8 +127,7 @@ struct TagListTests {
       Tag(#"\.abc123"#): 4,
       Tag(#"\\.abc123"#): 4,
     ]
-    let data = try JSONEncoder().encode(dict)
-    let dict2 = try JSONDecoder().decode([Tag: Int].self, from: data)
+    let dict2 = try JSON.encodeAndDecode(dict)
     #expect(dict == dict2)
   }
 
@@ -184,9 +182,11 @@ struct TagListTests {
 
   @Test("Invalid tag color decoding", arguments: [##""#NOTHEX""##, #""garbageColorName""#])
   func noTagColorsReadFromBadPath(tagColorJSON: String) throws {
-    let tagColorJSONData = try #require(tagColorJSON.data(using: .utf8))
-    #expect(throws: (any Error).self) {
-      _ = try JSONDecoder().decode(Tag.Color.self, from: tagColorJSONData)
+    var tagColorJSON = tagColorJSON
+    tagColorJSON.withUTF8 { tagColorJSON in
+      #expect(throws: (any Error).self) {
+        _ = try JSON.decode(Tag.Color.self, from: .init(tagColorJSON))
+      }
     }
   }
 #endif

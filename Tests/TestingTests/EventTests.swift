@@ -8,9 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation)
-import Foundation
-#endif
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import TestingInternals
 
@@ -62,8 +59,7 @@ struct EventTests {
     let testCaseID = Test.Case.ID(argumentIDs: nil)
     let event = Event(kind, testID: testID, testCaseID: testCaseID, instant: .now)
     let eventSnapshot = Event.Snapshot(snapshotting: event)
-    let encoded = try JSONEncoder().encode(eventSnapshot)
-    let decoded = try JSONDecoder().decode(Event.Snapshot.self, from: encoded)
+    let decoded = try JSON.encodeAndDecode(eventSnapshot)
 
     #expect(String(describing: decoded) == String(describing: eventSnapshot))
   }
@@ -73,8 +69,7 @@ struct EventTests {
     let eventContext = Event.Context()
     let snapshot = Event.Context.Snapshot(snapshotting: eventContext)
 
-    let encoded = try JSONEncoder().encode(snapshot)
-    let decoded = try JSONDecoder().decode(Event.Context.Snapshot.self, from: encoded)
+    let decoded = try JSON.encodeAndDecode(snapshot)
 
     #expect(String(describing: decoded.test) == String(describing: eventContext.test.map(Test.Snapshot.init(snapshotting:))))
     #expect(String(describing: decoded.testCase) == String(describing: eventContext.testCase.map(Test.Case.Snapshot.init(snapshotting:))))

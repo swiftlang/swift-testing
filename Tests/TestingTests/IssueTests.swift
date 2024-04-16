@@ -10,7 +10,6 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import TestingInternals
-import Foundation
 
 #if canImport(XCTest)
 import XCTest
@@ -1408,8 +1407,7 @@ struct IssueCodingTests {
                       comments: ["Comment"],
                       sourceContext: SourceContext(backtrace: Backtrace.current(), sourceLocation: SourceLocation()))
     let issueSnapshot = Issue.Snapshot(snapshotting: issue)
-    let encoded = try JSONEncoder().encode(issueSnapshot)
-    let decoded = try JSONDecoder().decode(Issue.Snapshot.self, from: encoded)
+    let decoded = try JSON.encodeAndDecode(issueSnapshot)
 
     #expect(String(describing: decoded) == String(describing: issueSnapshot))
   }
