@@ -265,7 +265,7 @@ extension ExitTest {
       return result
     }()
 
-    return { (exitTest: borrowing ExitTest) async throws -> ExitCondition in
+    return { exitTest in
       let childProcessExecutablePath = try childProcessExecutablePath.get()
 
       // Inherit the environment from the parent process and make any necessary
