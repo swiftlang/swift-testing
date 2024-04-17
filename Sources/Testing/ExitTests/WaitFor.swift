@@ -49,11 +49,20 @@ private let _childProcessContinuations = Locked<[pid_t: CheckedContinuation<Void
 
 /// A condition variable used to suspend the waiter thread created by
 /// `_createWaitThread()` when there are no child processes to await.
-private let _waitThreadNoChildrenCondition = {
+nonisolated(unsafe) private let _waitThreadNoChildrenCondition = {
   let result = UnsafeMutablePointer<pthread_cond_t>.allocate(capacity: 1)
   _ = pthread_cond_init(result, nil)
   return result
 }()
+
+#if os(Linux)
+/// Set the name of the current thread.
+///
+/// This function declaration is provided because `pthread_setname_np()` is
+/// only declared if `_GNU_SOURCE` is set, but setting it causes build errors
+/// due to conflicts with Swift's Glibc module.
+@_extern(c) func pthread_setname_np(_: pthread_t, _: UnsafePointer<CChar>) -> CInt
+#endif
 
 /// The implementation of `_createWaitThread()`, run only once.
 private let _createWaitThreadImpl: Void = {
