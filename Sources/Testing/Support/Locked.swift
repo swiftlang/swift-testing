@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import TestingInternals
+internal import TestingInternals
 
 /// A type that wraps a value requiring access from a synchronous caller during
 /// concurrent execution.
@@ -120,6 +120,36 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
       return try body(&rawValue.pointee)
     }
   }
+
+#if SWT_TARGET_OS_APPLE || os(Linux) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
+  /// Acquire the lock and invoke a function while it is held, yielding both the
+  /// protected value and a reference to the lock itself.
+  ///
+  /// - Parameters:
+  ///   - body: A closure to invoke while the lock is held.
+  ///
+  /// - Returns: Whatever is returned by `body`.
+  ///
+  /// - Throws: Whatever is thrown by `body`.
+  ///
+  /// This function is equivalent to ``withLock(_:)`` except that the closure
+  /// passed to it also takes a reference to the underlying platform lock. This
+  /// function can be used when platform-specific functionality such as a
+  /// `pthread_cond_t` is needed. Because the caller has direct access to the
+  /// lock and is able to unlock and re-lock it, it is unsafe to modify the
+  /// protected value.
+  ///
+  /// - Warning: Callers that unlock the lock _must_ lock it again before the
+  ///   closure returns. If the lock is not acquired when `body` returns, the
+  ///   effect is undefined.
+  nonmutating func withUnsafeUnderlyingLock<R>(_ body: (UnsafeMutablePointer<pthread_mutex_t>, T) throws -> R) rethrows -> R {
+    try withLock { value in
+      try _storage.rawValue.withUnsafeMutablePointerToElements { lock in
+        try body(lock, value)
+      }
+    }
+  }
+#endif
 }
 
 extension Locked where T: AdditiveArithmetic {

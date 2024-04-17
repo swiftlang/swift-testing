@@ -88,7 +88,9 @@ SWT_EXTERN char *_Nullable *_Null_unspecified environ;
 static char *_Nullable *_Null_unspecified swt_environ(void) {
   return environ;
 }
+#endif
 
+#if __has_include(<signal.h>) && (defined(__linux__) || defined(__APPLE__))
 /// What process is associated with this instance of `siginfo_t`?
 ///
 /// This function is provided because `si_pid` is a complex macro on some

@@ -43,31 +43,73 @@ private func _blockAndWait(for pid: pid_t) throws -> ExitCondition {
   }
 }
 
-#if os(Linux)
+#if !(SWT_TARGET_OS_APPLE && !SWT_NO_LIBDISPATCH)
 /// A mapping of awaited child PIDs to their corresponding Swift continuations.
-private let _childProcessContinuations = Locked<[pid_t: CheckedContinuation<Void, any Error>]>()
+private let _childProcessContinuations = Locked<[pid_t: CheckedContinuation<Void, Never>]>()
+
+/// A condition variable used to suspend the waiter thread created by
+/// `_createWaitThread()` when there are no child processes to await.
+private let _waitThreadNoChildrenCondition = {
+  let result = UnsafeMutablePointer<pthread_cond_t>.allocate(capacity: 1)
+  _ = pthread_cond_init(result, nil)
+  return result
+}()
 
 /// The implementation of `_createWaitThread()`, run only once.
 private let _createWaitThreadImpl: Void = {
+  // The body of the thread's run loop.
+  func waitForAnyChild() {
+    // Listen for child process exit events. WNOWAIT means we don't perturb the
+    // state of a terminated (zombie) child process, allowing the corresponding
+    // suspended process to call waitpid() later at its leisure.
+    var siginfo = siginfo_t()
+    if 0 == waitid(P_ALL, 0, &siginfo, WEXITED | WNOWAIT) {
+      let pid = swt_siginfo_t_si_pid(&siginfo)
+      if pid != 0 {
+        let continuation = _childProcessContinuations.withLock { childProcessContinuations in
+          childProcessContinuations.removeValue(forKey: pid)
+        }
+        continuation?.resume()
+      }
+    } else {
+      // An error occurred while checking for child processes. Get the value of
+      // errno outside the lock in case acquiring the lock perturbs it.
+      let errorCode = swt_errno()
+      _childProcessContinuations.withUnsafeUnderlyingLock { lock, childProcessContinuations in
+        if errorCode == ECHILD && childProcessContinuations.isEmpty {
+          // We got ECHILD and there are no continuations added right now. Wait
+          // on our no-children condition variable until awoken by a
+          // newly-scheduled waiter process. (If this condition is spuriously
+          // woken, we'll just loop again, which is fine.)
+          _ = pthread_cond_wait(_waitThreadNoChildrenCondition, lock)
+        }
+      }
+    }
+  }
+
   // Create the thread. We immediately detach it upon success to allow the
   // system to reclaim its resources when done.
-
+#if SWT_TARGET_OS_APPLE
+  var thread: pthread_t?
+#else
   var thread = pthread_t()
+#endif
   _ = pthread_create(
     &thread,
     nil,
     { _ in
+      // Set the thread name to help with diagnostics.
+      let threadName = "swift-testing exit test monitor"
+#if SWT_TARGET_OS_APPLE
+      _ = pthread_setname_np(threadName)
+#else
+      _ = pthread_setname_np(pthread_self(), threadName)
+#endif
+
       // Run an infinite loop that waits for child processes to terminate and
       // captures their exit statuses.
       while true {
-        var siginfo = siginfo_t()
-        if 0 == waitid(P_ALL, 0, &siginfo, WEXITED | WNOWAIT) {
-          let pid = swt_siginfo_t_si_pid(&siginfo)
-          let continuation = _childProcessContinuations.withLock { childProcessContinuations in
-            childProcessContinuations.removeValue(forKey: pid)
-          }
-          continuation?.resume()
-        }
+        waitForAnyChild()
       }
     },
     nil
@@ -91,7 +133,7 @@ private func _createWaitThread() {
 /// - Throws: Any error encountered calling `waitpid()` except for `EINTR`,
 ///   which is ignored.
 func wait(for pid: pid_t) async throws -> ExitCondition {
-#if SWT_TARGET_OS_APPLE
+#if SWT_TARGET_OS_APPLE && !SWT_NO_LIBDISPATCH
   let source = DispatchSource.makeProcessSource(identifier: pid, eventMask: .exit)
   defer {
     source.cancel()
@@ -103,31 +145,22 @@ func wait(for pid: pid_t) async throws -> ExitCondition {
     source.resume()
   }
   withExtendedLifetime(source) {}
-#elseif os(Linux)
+#else
   // Ensure the waiter thread is running.
   _createWaitThread()
 
-  try await withCheckedThrowingContinuation { continuation in
+  await withCheckedContinuation { continuation in
     _childProcessContinuations.withLock { childProcessContinuations in
-      // To avoid a race with the call to waitid(P_ALL) above, call waitid()
-      // while holding this lock. If the process has already exited, then we
-      // don't need to suspend and can immediately resume the continuation. If
-      // the process has not exited, then the other call to waitid() cannot fire
-      // and acquire the lock until after we've added the continuation.
-      var siginfo = siginfo_t()
-      if 0 == waitid(P_PID, .init(bitPattern: pid), &siginfo, WEXITED | WNOHANG | WNOWAIT) {
-        if swt_siginfo_t_si_pid(&siginfo) == 0 {
-          // No PID matched the waitid() call, i.e. `pid` is still running.
-          let oldContinuation = childProcessContinuations.updateValue(continuation, forKey: pid)
-          assert(oldContinuation == nil, "Unexpected continuation found for PID \(pid). Please file a bug report at https://github.com/apple/swift-testing/issues/new")
-        } else {
-          // waitid() reports that the PID has exited, so no continuation needs to
-          // be stored and we can return immediately.
-          continuation.resume()
-        }
-      } else {
-        continuation.resume(throwing: CError(rawValue: swt_errno()))
-      }
+      // We don't need to worry about a race condition here because waitid()
+      // does not clear the wait/zombie state of the child process. If it sees
+      // the child process has terminated and manages to acquire the lock before
+      // we add this continuation to the dictionary, then it will simply loop
+      // and report the status again.
+      let oldContinuation = childProcessContinuations.updateValue(continuation, forKey: pid)
+      assert(oldContinuation == nil, "Unexpected continuation found for PID \(pid). Please file a bug report at https://github.com/apple/swift-testing/issues/new")
+
+      // Wake up the waiter thread if it is waiting for more child processes.
+      _ = pthread_cond_signal(_waitThreadNoChildrenCondition)
     }
   }
 #endif
