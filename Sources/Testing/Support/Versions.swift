@@ -60,7 +60,7 @@ let operatingSystemVersion: String = {
   // in Windows 10 and later that misreports the OS version. GetVersionExW()
   // basically always lies on Windows 10, so don't bother calling it on a
   // fallback path.
-  let RtlGetVersion = GetProcAddress(GetModuleHandleA("ntdll.dll"), "RtlGetVersion").map {
+  let RtlGetVersion = swt_getFunctionWithName(GetModuleHandleA("ntdll.dll"), "RtlGetVersion").map {
     unsafeBitCast($0, to: (@convention(c) (UnsafeMutablePointer<OSVERSIONINFOW>) -> NTSTATUS).self)
   }
   if let RtlGetVersion {
