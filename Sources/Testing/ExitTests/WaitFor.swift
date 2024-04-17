@@ -45,7 +45,7 @@ private func _blockAndWait(for pid: pid_t) throws -> ExitCondition {
 
 #if os(Linux)
 /// A mapping of awaited child PIDs to their corresponding Swift continuations.
-private let _childProcessContinuations = Locked<[pid_t: CheckedContinuation<Void, Never>]>()
+private let _childProcessContinuations = Locked<[pid_t: CheckedContinuation<Void, any Error>]>()
 
 /// The implementation of `_createWaitThread()`, run only once.
 private let _createWaitThreadImpl: Void = {
@@ -107,22 +107,28 @@ func wait(for pid: pid_t) async throws -> ExitCondition {
   // Ensure the waiter thread is running.
   _createWaitThread()
 
-  await withCheckedContinuation { continuation in
-    let oldContinuation = _childProcessContinuations.withLock { childProcessContinuations in
+  try await withCheckedThrowingContinuation { continuation in
+    _childProcessContinuations.withLock { childProcessContinuations in
       // To avoid a race with the call to waitid(P_ALL) above, call waitid()
       // while holding this lock. If the process has already exited, then we
       // don't need to suspend and can immediately resume the continuation. If
       // the process has not exited, then the other call to waitid() cannot fire
       // and acquire the lock until after we've added the continuation.
       var siginfo = siginfo_t()
-      if 0 != waitid(P_PID, .init(bitPattern: pid), &siginfo, WEXITED | WNOHANG | WNOWAIT) {
-        return childProcessContinuations.updateValue(continuation, forKey: pid)
+      if 0 == waitid(P_PID, .init(bitPattern: pid), &siginfo, WEXITED | WNOHANG | WNOWAIT) {
+        if swt_siginfo_t_si_pid(&siginfo) == 0 {
+          // No PID matched the waitid() call, i.e. `pid` is still running.
+          let oldContinuation = childProcessContinuations.updateValue(continuation, forKey: pid)
+          assert(oldContinuation == nil, "Unexpected continuation found for PID \(pid). Please file a bug report at https://github.com/apple/swift-testing/issues/new")
+        } else {
+          // waitid() reports that the PID has exited, so no continuation needs to
+          // be stored and we can return immediately.
+          continuation.resume()
+        }
       } else {
-        continuation.resume()
-        return nil
+        continuation.resume(throwing: CError(rawValue: swt_errno()))
       }
     }
-    assert(oldContinuation == nil, "Unexpected continuation found for PID \(pid). Please file a bug report at https://github.com/apple/swift-testing/issues/new")
   }
 #endif
   return try _blockAndWait(for: pid)
