@@ -36,6 +36,25 @@ private let randomNumber = Int.random(in: 0 ..< .max)
   throw MyParameterizedError(index: i)
 }
 
+private func getArguments() async throws -> [Int] {
+  throw MyDescriptiveError(description: "boom")
+}
+
+@Test(.hidden, arguments: try await getArguments())
+func parameterizedWithAsyncThrowingArgs(i: Int) {}
+
+private func fatalArguments() -> [Int] {
+  fatalError("Should never crash, since this should never be called by any test")
+}
+
+/// A test whose arguments always cause a `fatalError()` crash.
+///
+/// This test should always remain `.hidden` and never be selected to run. Its
+/// purpose is to validate that the arguments of tests which are not run are
+/// never evaluated.
+@Test(.hidden, arguments: fatalArguments())
+func parameterizedWithFatalArguments(i: Int) {}
+
 #if canImport(XCTest)
 @Suite(.hidden, .disabled())
 struct NeverRunTests {
@@ -322,6 +341,21 @@ final class RunnerTests: XCTestCase {
       return
     }
     XCTAssertEqual(skipInfo.comment, "Some comment")
+  }
+
+  func testErrorThrownWhileEvaluatingArguments() async throws {
+    let errorObserved = expectation(description: "Error was thrown and caught")
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      if case .testStarted = event.kind {
+        XCTFail("The test should not have started, since the evaluation of its arguments threw an Error")
+      }
+      if case let .issueRecorded(issue) = event.kind, let error = issue.error as? MyDescriptiveError, String(describing: error) == "boom" {
+        errorObserved.fulfill()
+      }
+    }
+    await Runner(selecting: "parameterizedWithAsyncThrowingArgs(i:)", configuration: configuration).run()
+    await fulfillment(of: [errorObserved], timeout: 0.0)
   }
 
   @Suite(.hidden) struct S {

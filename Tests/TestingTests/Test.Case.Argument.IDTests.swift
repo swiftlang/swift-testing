@@ -14,10 +14,11 @@
 struct Test_Case_Argument_IDTests {
   @Test("One Codable parameter")
   func oneCodableParameter() async throws {
-    let test = Test(
+    var test = Test(
       arguments: [123],
       parameters: [Test.Parameter(index: 0, firstName: "value", type: Int.self)]
     ) { _ in }
+    try await test.evaluateTestCases()
     let testCases = try #require(test.testCases)
     let testCase = try #require(testCases.first { _ in true })
     #expect(testCase.arguments.count == 1)
@@ -28,10 +29,11 @@ struct Test_Case_Argument_IDTests {
 
   @Test("One CustomTestArgumentEncodable parameter")
   func oneCustomParameter() async throws {
-    let test = Test(
+    var test = Test(
       arguments: [MyCustomTestArgument(x: 123, y: "abc")],
       parameters: [Test.Parameter(index: 0, firstName: "value", type: MyCustomTestArgument.self)]
     ) { _ in }
+    try await test.evaluateTestCases()
     let testCases = try #require(test.testCases)
     let testCase = try #require(testCases.first { _ in true })
     #expect(testCase.arguments.count == 1)
@@ -47,10 +49,11 @@ struct Test_Case_Argument_IDTests {
 
   @Test("One Identifiable parameter")
   func oneIdentifiableParameter() async throws {
-    let test = Test(
+    var test = Test(
       arguments: [MyIdentifiableArgument(id: "abc")],
       parameters: [Test.Parameter(index: 0, firstName: "value", type: MyIdentifiableArgument.self)]
     ) { _ in }
+    try await test.evaluateTestCases()
     let testCases = try #require(test.testCases)
     let testCase = try #require(testCases.first { _ in true })
     #expect(testCase.arguments.count == 1)
@@ -61,10 +64,11 @@ struct Test_Case_Argument_IDTests {
 
   @Test("One RawRepresentable parameter")
   func oneRawRepresentableParameter() async throws {
-    let test = Test(
+    var test = Test(
       arguments: [MyRawRepresentableArgument(rawValue: "abc")],
       parameters: [Test.Parameter(index: 0, firstName: "value", type: MyRawRepresentableArgument.self)]
     ) { _ in }
+    try await test.evaluateTestCases()
     let testCases = try #require(test.testCases)
     let testCase = try #require(testCases.first { _ in true })
     #expect(testCase.arguments.count == 1)

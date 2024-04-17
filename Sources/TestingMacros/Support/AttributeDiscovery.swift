@@ -133,6 +133,19 @@ struct AttributeInfo {
       return Argument(label: argument.label, expression: expr)
     }
 
+    // Any arguments of the test declaration macro which specify test arguments
+    // need to be wrapped a closure so they may be evaluated lazily by the
+    // testing library at runtime. If any such arguments are present, they will
+    // begin with a labeled argument named `arguments:` and include all
+    // subsequent unlabeled arguments.
+    if let argumentsIndex = otherArguments.firstIndex(where: { $0.label?.tokenKind == .identifier("arguments") }) {
+      for index in argumentsIndex ..< otherArguments.endIndex {
+        var argument = otherArguments[index]
+        argument.expression = .init(ClosureExprSyntax { argument.expression })
+        otherArguments[index] = argument
+      }
+    }
+
     // Look for any traits in the remaining arguments and slice them off. Traits
     // are the remaining unlabelled arguments. The first labelled argument (if
     // present) is the start of subsequent context-specific arguments.
