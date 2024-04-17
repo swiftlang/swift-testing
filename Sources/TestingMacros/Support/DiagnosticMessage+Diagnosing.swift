@@ -16,7 +16,6 @@ import SwiftSyntaxMacros
 public import SwiftSyntax
 public import SwiftSyntaxMacros
 #endif
-private import TestingInternals
 
 /// Diagnose issues with the traits in a parsed attribute.
 ///
