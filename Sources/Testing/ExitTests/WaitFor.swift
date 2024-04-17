@@ -59,19 +59,26 @@ private let _waitThreadNoChildrenCondition = {
 private let _createWaitThreadImpl: Void = {
   // The body of the thread's run loop.
   func waitForAnyChild() {
-    // Listen for child process exit events.
+    // Listen for child process exit events. WNOWAIT means we don't perturb the
+    // state of a terminated (zombie) child process, allowing us to fetch the
+    // continuation (if available) before reaping.
     var siginfo = siginfo_t()
-    if 0 == waitid(P_ALL, 0, &siginfo, WEXITED) {
+    if 0 == waitid(P_ALL, 0, &siginfo, WEXITED | WNOWAIT) {
       if case let pid = siginfo.si_pid, pid != 0 {
         let continuation = _childProcessContinuations.withLock { childProcessContinuations in
           childProcessContinuations.removeValue(forKey: pid)
         }
 
-        // Resume the caller and pass back the resulting exit condition.
-        let result = Result {
-          try ExitCondition(siginfo)
+        // If we had a continuation for this PID, allow the process to be reaped
+        // and resume the caller and pass back the resulting exit condition. If
+        // there is no continuation, then either it hasn't been stored yet or
+        // this child process is not tracked by the waiter thread.
+        if let continuation, 0 == waitid(P_PID, id_t(pid), &siginfo, WEXITED) {
+          let result = Result {
+            try ExitCondition(siginfo)
+          }
+          continuation.resume(with: result)
         }
-        continuation?.resume(with: result)
       }
     } else if case let errorCode = swt_errno(), errorCode == ECHILD {
       // We got ECHILD. If there are no continuations added right now, we should
