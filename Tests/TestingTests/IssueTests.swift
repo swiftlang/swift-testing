@@ -1390,22 +1390,26 @@ final class IssueTests: XCTestCase {
 @Suite("Issue Codable Conformance Tests")
 struct IssueCodingTests {
 
+  private static let issueKinds: [Issue.Kind] = [
+    Issue.Kind.apiMisused,
+    Issue.Kind.confirmationMiscounted(actual: 13, expected: 42),
+    Issue.Kind.errorCaught(NSError(domain: "Domain", code: 13, userInfo: ["UserInfoKey": "UserInfoValue"])),
+    Issue.Kind.expectationFailed(Expectation(evaluatedExpression: .__fromSyntaxNode("abc"), isPassing: true, isRequired: true, sourceLocation: SourceLocation())),
+    Issue.Kind.knownIssueNotRecorded,
+    Issue.Kind.system,
+    Issue.Kind.timeLimitExceeded(timeLimitComponents: (13, 42)),
+    Issue.Kind.unconditional,
+  ]
+
   @Test("Codable",
-        arguments: [
-          Issue.Kind.apiMisused,
-          Issue.Kind.confirmationMiscounted(actual: 13, expected: 42),
-          Issue.Kind.errorCaught(NSError(domain: "Domain", code: 13, userInfo: ["UserInfoKey": "UserInfoValue"])),
-          Issue.Kind.expectationFailed(Expectation(evaluatedExpression: .__fromSyntaxNode("abc"), isPassing: true, isRequired: true, sourceLocation: SourceLocation())),
-          Issue.Kind.knownIssueNotRecorded,
-          Issue.Kind.system,
-          Issue.Kind.timeLimitExceeded(timeLimitComponents: (13, 42)),
-          Issue.Kind.unconditional,
-        ]
+    arguments: issueKinds
   )
   func testCodable(issueKind: Issue.Kind) async throws {
-    let issue = Issue(kind: issueKind,
-                      comments: ["Comment"],
-                      sourceContext: SourceContext(backtrace: Backtrace.current(), sourceLocation: SourceLocation()))
+    let issue = Issue(
+      kind: issueKind,
+      comments: ["Comment"],
+      sourceContext: SourceContext(backtrace: Backtrace.current(), sourceLocation: SourceLocation())
+    )
     let issueSnapshot = Issue.Snapshot(snapshotting: issue)
     let decoded = try JSON.encodeAndDecode(issueSnapshot)
 
@@ -1478,5 +1482,20 @@ struct IssueCodingTests {
     #expect(issueSnapshot.sourceLocation != initialSourceLocation)
     #expect(issueSnapshot.sourceLocation == updatedSourceLocation)
     #expect(issueSnapshot.sourceContext.sourceLocation == updatedSourceLocation)
+  }
+
+  @Test("Custom descriptions are the same",
+    arguments: issueKinds
+  )
+  func customDescription(issueKind: Issue.Kind) async throws {
+    let issue = Issue(
+      kind: issueKind,
+      comments: ["Comment"],
+      sourceContext: SourceContext(backtrace: Backtrace.current(), sourceLocation: SourceLocation())
+    )
+    let issueSnapshot = Issue.Snapshot(snapshotting: issue)
+
+    #expect(String(describing: issueSnapshot) == String(describing: issue))
+    #expect(String(reflecting: issueSnapshot) == String(reflecting: issue))
   }
 }
