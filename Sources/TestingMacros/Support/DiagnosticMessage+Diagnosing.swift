@@ -135,80 +135,17 @@ private func _diagnoseIssuesWithBugTrait(_ traitExpr: FunctionCallExprSyntax, ad
     return
   }
 
-  func isURLStringValid(_ urlString: String) -> Bool {
-    guard urlString.allSatisfy(\.isASCII),
-          let colonIndex = urlString.firstIndex(of: ":") else {
-      // This can't be a valid URL as far as we're concerned. Exit early without
-      // properly parsing it.
-      return false
-    }
+  // We could use libcurl, libxml, or Windows' InternetCrackUrlW() to actually
+  // parse the string and ensure it is a valid URL, however we could get
+  // different results on different platforms. See the branch
+  // jgrynspan/type-check-bug-identifiers-with-libcurl for an implementation.
+  // Instead, we apply a very basic sniff test above. We intentionally don't
+  // use a regular expression here.
 
-#if SWT_TARGET_OS_APPLE || os(Linux)
-#if !SWT_NO_CURL
-    let url = curl_url()
-    defer {
-      curl_url_cleanup(url)
-    }
-
-    // Attempt to parse the URL.
-    let flags = CUnsignedInt(CURLU_NON_SUPPORT_SCHEME | CURLU_NO_AUTHORITY)
-    switch curl_url_set(url, CURLUPART_URL, urlString, flags) {
-    case CURLUE_OK:
-      break
-    case CURLUE_BAD_SLASHES, CURLUE_BAD_SCHEME:
-      // curl does not try to parse URLs without slashes after the colon (see
-      // https://github.com/curl/curl/issues/12205). Work around that constraint
-      // by inserting slashes after the first colon character, on the assumption
-      // we are dealing with a URL like mailto:a@example.com.
-      var urlString = urlString
-      urlString.insert(contentsOf: "//", at: urlString.index(after: colonIndex))
-      return isURLStringValid(urlString)
-    default:
-      // The URL could not be parsed for some other reason.
-      return false
-    }
-
-    // Extract the scheme and check that it's not empty.
-    var scheme: UnsafeMutablePointer<CChar>?
-    guard CURLUE_OK == curl_url_get(url, CURLUPART_SCHEME, &scheme, flags), let scheme else {
-      // libcurl won't parse a URL without a scheme given the flags we pass, so
-      // this branch is dead code, but it's not worth asserting over.
-      return false
-    }
-    defer {
-      curl_free(scheme)
-    }
-    return scheme[0] != 0
-#else
-    // libcurl has been disabled.
-    return true
-#endif
-
-#elseif os(WASI)
-    // TODO: URL validation on WASI (this code runs on the host though)
-    return true
-#elseif os(Windows)
-    return urlString.withCString(encodedAs: UTF16.self) { urlString in
-      var components = URL_COMPONENTSW()
-      // We need to specify the size of the structure before passing it to
-      // InternetCrackUrlW(). We also need to reserve space for at least one
-      // wchar_t in order to tell the function that we're interested in the
-      // scheme: if we pass nil, the function won't bother trying to parse it
-      // out and won't give us back a length value to check.
-      components.dwStructSize = DWORD(MemoryLayout.size(ofValue: components))
-      return withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: 1) { buffer in
-        components.lpszScheme = buffer.baseAddress!
-        return InternetCrackUrlW(urlString, 0, 0, &components)
-          && components.dwSchemeLength > 0
-      }
-    }
-#else
-#warning("Platform-specific implementation missing: URL validation unavailable")
-    return true
-#endif
-  }
-
-  if !isURLStringValid(urlString) {
+  let isURLStringValid = urlString.allSatisfy(\.isASCII)
+    && !urlString.contains(where: \.isWhitespace)
+    && urlString.contains(":")
+  if !isURLStringValid {
     context.diagnose(.urlExprNotValid(stringLiteralExpr, in: traitExpr, in: attribute))
   }
 }

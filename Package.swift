@@ -81,10 +81,7 @@ let package = Package(
     // by other targets above, not directly included in product libraries.
     .target(
       name: "TestingInternals",
-      cxxSettings: .packageSettings,
-      linkerSettings: [
-        .linkedLibrary("curl", .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS, .linux]))
-      ]
+      cxxSettings: .packageSettings
     ),
 
     // Cross-module overlays (unsupported)
