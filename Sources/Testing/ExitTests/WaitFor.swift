@@ -70,7 +70,7 @@ private let _createWaitThreadImpl: Void = {
         }
 
         // If we had a continuation for this PID, allow the process to be reaped
-        // and resume the caller and pass back the resulting exit condition. If
+        // and pass the resulting exit condition back to the calling task. If
         // there is no continuation, then either it hasn't been stored yet or
         // this child process is not tracked by the waiter thread.
         if let continuation, 0 == waitid(P_PID, id_t(pid), &siginfo, WEXITED) {
