@@ -12,40 +12,31 @@
 internal import TestingInternals
 
 #if SWT_TARGET_OS_APPLE || os(Linux)
-/// Wait for a given PID to exit and report its status.
-///
-/// - Parameters:
-///   - pid: The PID to wait for.
-///
-/// - Returns: The exit condition of `pid`.
-///
-/// - Throws: Any error encountered calling `waitpid()` except for `EINTR`,
-///   which is ignored.
-///
-/// This function blocks the calling thread on `waitpid()`. External callers
-/// should use ``wait(for:)`` instead to avoid deadlocks.
-private func _blockAndWait(for pid: pid_t) throws -> ExitCondition {
-  while true {
-    var status: CInt = 0
-    if waitpid(pid, &status, 0) >= 0 {
-      if swt_WIFSIGNALED(status) {
-        return .signal(swt_WTERMSIG(status))
-      } else if swt_WIFEXITED(status) {
-        return .exitCode(swt_WEXITSTATUS(status))
-      } else {
-        // Unreachable: neither signalled nor exited, but waitpid()
-        // and libdispatch indicate that the process has died.
-        throw SystemError(description: "Unexpected waitpid() result \(status). Please file a bug report at https://github.com/apple/swift-testing/issues/new")
-      }
-    } else if swt_errno() != EINTR {
-      throw CError(rawValue: swt_errno())
+extension ExitCondition {
+  /// Initialize an instance of this type from an instance of the POSIX
+  /// `siginfo_t` type.
+  ///
+  /// - Parameters:
+  ///   - siginfo: The instance of `siginfo_t` to initialize from.
+  ///
+  /// - Throws: If `siginfo.si_code` does not equal either `CLD_EXITED`,
+  ///   `CLD_KILLED`, or `CLD_DUMPED` (i.e. it does not represent an exit
+  ///   condition.)
+  fileprivate init(_ siginfo: siginfo_t) throws {
+    switch siginfo.si_code {
+    case .init(CLD_EXITED):
+      self = .exitCode(siginfo.si_status)
+    case .init(CLD_KILLED), .init(CLD_DUMPED):
+      self = .signal(siginfo.si_status)
+    default:
+      throw SystemError(description: "Unexpected siginfo_t value. Please file a bug report at https://github.com/apple/swift-testing/issues/new and include this information: \(String(reflecting: siginfo))")
     }
   }
 }
 
 #if !(SWT_TARGET_OS_APPLE && !SWT_NO_LIBDISPATCH)
 /// A mapping of awaited child PIDs to their corresponding Swift continuations.
-private let _childProcessContinuations = Locked<[pid_t: CheckedContinuation<Void, Never>]>()
+private let _childProcessContinuations = Locked<[pid_t: CheckedContinuation<ExitCondition, any Error>]>()
 
 /// A condition variable used to suspend the waiter thread created by
 /// `_createWaitThread()` when there are no child processes to await.
@@ -68,28 +59,28 @@ private let _waitThreadNoChildrenCondition = {
 private let _createWaitThreadImpl: Void = {
   // The body of the thread's run loop.
   func waitForAnyChild() {
-    // Listen for child process exit events. WNOWAIT means we don't perturb the
-    // state of a terminated (zombie) child process, allowing the corresponding
-    // suspended process to call waitpid() later at its leisure.
+    // Listen for child process exit events.
     var siginfo = siginfo_t()
-    if 0 == waitid(P_ALL, 0, &siginfo, WEXITED | WNOWAIT) {
-      let pid = swt_siginfo_t_si_pid(&siginfo)
-      if pid != 0 {
+    if 0 == waitid(P_ALL, 0, &siginfo, WEXITED) {
+      if case let pid = siginfo.si_pid, pid != 0 {
         let continuation = _childProcessContinuations.withLock { childProcessContinuations in
           childProcessContinuations.removeValue(forKey: pid)
         }
-        continuation?.resume()
+
+        // Resume the caller and pass back the resulting exit condition.
+        let result = Result {
+          try ExitCondition(siginfo)
+        }
+        continuation?.resume(with: result)
       }
-    } else {
-      // An error occurred while checking for child processes. Get the value of
-      // errno outside the lock in case acquiring the lock perturbs it.
-      let errorCode = swt_errno()
+    } else if case let errorCode = swt_errno(), errorCode == ECHILD {
+      // We got ECHILD. If there are no continuations added right now, we should
+      // suspend this thread on the no-children condition until it's awoken by a
+      // newly-scheduled waiter process. (If this condition is spuriously
+      // woken, we'll just loop again, which is fine.) Note that we read errno
+      // outside the lock in case acquiring the lock perturbs it.
       _childProcessContinuations.withUnsafeUnderlyingLock { lock, childProcessContinuations in
-        if errorCode == ECHILD && childProcessContinuations.isEmpty {
-          // We got ECHILD and there are no continuations added right now. Wait
-          // on our no-children condition variable until awoken by a
-          // newly-scheduled waiter process. (If this condition is spuriously
-          // woken, we'll just loop again, which is fine.)
+        if childProcessContinuations.isEmpty {
           _ = pthread_cond_wait(_waitThreadNoChildrenCondition.rawValue, lock)
         }
       }
@@ -154,11 +145,21 @@ func wait(for pid: pid_t) async throws -> ExitCondition {
     source.resume()
   }
   withExtendedLifetime(source) {}
+
+  // Get the exit status of the process or throw an error (other than EINTR.)
+  while true {
+    var siginfo = siginfo_t()
+    if 0 == waitid(P_PID, id_t(pid), &siginfo, WEXITED) {
+      return try ExitCondition(siginfo)
+    } else if case let errorCode = swt_errno(), errorCode != EINTR {
+      throw CError(rawValue: errorCode)
+    }
+  }
 #else
   // Ensure the waiter thread is running.
   _createWaitThread()
 
-  await withCheckedContinuation { continuation in
+  return try await withCheckedThrowingContinuation { continuation in
     _childProcessContinuations.withLock { childProcessContinuations in
       // We don't need to worry about a race condition here because waitid()
       // does not clear the wait/zombie state of the child process. If it sees
@@ -173,7 +174,6 @@ func wait(for pid: pid_t) async throws -> ExitCondition {
     }
   }
 #endif
-  return try _blockAndWait(for: pid)
 }
 #elseif os(Windows)
 /// Wait for a given process handle to exit and report its status.

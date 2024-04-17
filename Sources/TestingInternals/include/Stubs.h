@@ -90,47 +90,27 @@ static char *_Nullable *_Null_unspecified swt_environ(void) {
 }
 #endif
 
-#if __has_include(<signal.h>) && (defined(__linux__) || defined(__APPLE__))
-/// What process is associated with this instance of `siginfo_t`?
+#if __has_include(<signal.h>) && defined(si_pid)
+/// Get the value of the `si_pid` field of a `siginfo_t` structure.
 ///
 /// This function is provided because `si_pid` is a complex macro on some
-/// platforms and cannot be imported directly into Swift.
+/// platforms and cannot be imported directly into Swift. It is renamed back to
+/// `siginfo_t.si_pid` in Swift.
+SWT_SWIFT_NAME(getter:siginfo_t.si_pid(self:))
 static pid_t swt_siginfo_t_si_pid(const siginfo_t *siginfo) {
   return siginfo->si_pid;
 }
 #endif
 
-#if __has_include(<sys/wait.h>)
-/// Does the given exit code indicate the process was signalled?
+#if __has_include(<signal.h>) && defined(si_status)
+/// Get the value of the `si_status` field of a `siginfo_t` structure.
 ///
-/// This function is provided because `WIFSIGNALED()` is a complex macro and
-/// cannot be imported directly into Swift.
-static bool swt_WIFSIGNALED(int exitCode) {
-  return WIFSIGNALED(exitCode);
-}
-
-/// What signal was used to terminate the process?
-///
-/// This function is provided because `WTERMSIG()` is a complex macro and
-/// cannot be imported directly into Swift.
-static int swt_WTERMSIG(int exitCode) {
-  return WTERMSIG(exitCode);
-}
-
-/// Does the given exit code indicate the process exited normally?
-///
-/// This function is provided because `WIFEXITED()` is a complex macro and
-/// cannot be imported directly into Swift.
-static bool swt_WIFEXITED(int exitCode) {
-  return WIFEXITED(exitCode);
-}
-
-/// What exit code was used to terminate the process?
-///
-/// This function is provided because `WEXITSTATUS()` is a complex macro and
-/// cannot be imported directly into Swift.
-static int swt_WEXITSTATUS(int exitCode) {
-  return WEXITSTATUS(exitCode);
+/// This function is provided because `si_status` is a complex macro on some
+/// platforms and cannot be imported directly into Swift. It is renamed back to
+/// `siginfo_t.si_status` in Swift.
+SWT_SWIFT_NAME(getter:siginfo_t.si_status(self:))
+static pid_t swt_siginfo_t_si_status(const siginfo_t *siginfo) {
+  return siginfo->si_status;
 }
 #endif
 
