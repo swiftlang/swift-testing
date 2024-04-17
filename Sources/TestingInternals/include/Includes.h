@@ -75,6 +75,10 @@
 #include <pty.h>
 #endif
 
+#if __has_include(<pwd.h>)
+#include <pwd.h>
+#endif
+
 #if __has_include(<limits.h>)
 #include <limits.h>
 #endif

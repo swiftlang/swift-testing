@@ -10,25 +10,22 @@
 
 private import TestingInternals
 
-#if canImport(Foundation)
-private import Foundation
-#endif
-
 #if !SWT_NO_FILE_IO
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst)) || os(Linux)
 /// The path to the current user's home directory, if known.
 private var _homeDirectoryPath: String? {
-#if canImport(Foundation)
-  NSHomeDirectory()
-#else
-  if let homeVariable = Environment.variable(named: "HOME") {
+#if SWT_TARGET_OS_APPLE
+  if let fixedHomeVariable = Environment.variable(named: "CFFIXED_USER_HOME") {
+    return fixedHomeVariable
+  }
+#endif
+  return if let homeVariable = Environment.variable(named: "HOME") {
     homeVariable
   } else if let pwd = getpwuid(geteuid()) {
     String(validatingUTF8: pwd.pointee.pw_dir)
   } else {
     nil
   }
-#endif
 }
 #endif
 
@@ -58,11 +55,11 @@ var swiftTestingDirectoryPath: String {
 
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst)) || os(Linux)
   if let homeDirectoryPath = _homeDirectoryPath {
-    return "\(homeDirectoryPath)/\(swiftTestingDirectoryName)"
+    return appendPathComponent(swiftTestingDirectoryName, to: homeDirectoryPath)
   }
 #elseif os(Windows)
   if let appDataDirectoryPath = _appDataDirectoryPath {
-    return "\(appDataDirectoryPath)\\\(swiftTestingDirectoryName)"
+    return appendPathComponent(swiftTestingDirectoryName, to: appDataDirectoryPath)
   }
 #else
 #warning("Platform-specific implementation missing: swift-testing directory location unavailable")
@@ -88,9 +85,9 @@ var swiftTestingDirectoryPath: String {
 /// supported formats for tag colors in this dictionary, see <doc:AddingTags>.
 func loadTagColors(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String = swiftTestingDirectoryPath) throws -> [Tag: Tag.Color] {
   // Find the path to the tag-colors.json file and try to load its contents.
-  let tagColorsURL = URL(fileURLWithPath: swiftTestingDirectoryPath, isDirectory: true)
-    .appendingPathComponent("tag-colors.json", isDirectory: false)
-  let tagColorsData = try Data(contentsOf: tagColorsURL, options: [.mappedIfSafe])
+  let tagColorsPath = appendPathComponent("tag-colors.json", to: swiftTestingDirectoryPath)
+  let fileHandle = try FileHandle(forReadingAtPath: tagColorsPath)
+  let tagColorsData = try fileHandle.readToEnd()
 
   // By default, a dictionary with non-string keys is encoded to and decoded
   // from JSON as an array, so we decode the dictionary as if its keys are plain

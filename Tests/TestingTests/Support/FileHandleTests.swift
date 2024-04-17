@@ -56,23 +56,27 @@ struct FileHandleTests {
 
   @Test("Can write to a file")
   func canWrite() throws {
-    // NOTE: we are not trying to test mkstemp() here. We are trying to test the
-    // capacity of FileHandle to open a file for writing, and need a temporary
-    // file to write to.
-#if os(Windows)
-    let path = try String(unsafeUninitializedCapacity: 1024) { buffer in
-      try #require(0 == tmpnam_s(buffer.baseAddress!, buffer.count))
-      return strnlen(buffer.baseAddress!, buffer.count)
+    try withTemporaryPath { path in
+      let fileHandle = try FileHandle(forWritingAtPath: path)
+      try fileHandle.write([0, 1, 2, 3, 4, 5])
+      try fileHandle.write("Hello world!")
     }
-#else
-    let path = "/tmp/can_write_to_file_\(UInt64.random(in: 0 ..< .max))"
-#endif
-    defer {
-      remove(path)
+  }
+
+  @Test("Can read from a file")
+  func canRead() throws {
+    let bytes: [UInt8] = (0 ..< 8192).map { _ in
+      UInt8.random(in: .min ... .max)
     }
-    let fileHandle = try FileHandle(forWritingAtPath: path)
-    try fileHandle.write([0, 1, 2, 3, 4, 5])
-    try fileHandle.write("Hello world!")
+    try withTemporaryPath { path in
+      do {
+        let fileHandle = try FileHandle(forWritingAtPath: path)
+        try fileHandle.write(bytes)
+      }
+      let fileHandle = try FileHandle(forReadingAtPath: path)
+      let bytes2 = try fileHandle.readToEnd()
+      #expect(bytes == bytes2)
+    }
   }
 
   @Test("Cannot write bytes to a read-only file")
@@ -159,6 +163,45 @@ struct FileHandleTests {
 }
 
 // MARK: - Fixtures
+
+func temporaryDirectory() throws -> String {
+#if SWT_TARGET_OS_APPLE
+  try withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(PATH_MAX)) { buffer in
+    if 0 != confstr(_CS_DARWIN_USER_TEMP_DIR, buffer.baseAddress, buffer.count) {
+      return String(cString: buffer.baseAddress!)
+    }
+    return try #require(Environment.variable(named: "TMPDIR"))
+  }
+#elseif os(Linux)
+  "/tmp"
+#elseif os(Windows)
+  try withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: Int(MAX_PATH + 1)) { buffer in
+    // NOTE: GetTempPath2W() was introduced in Windows 10 Build 20348.
+    if 0 == GetTempPathW(DWORD(buffer.count), buffer.baseAddress) {
+      throw Win32Error(rawValue: GetLastError())
+    }
+    return try #require(String.decodeCString(buffer.baseAddress, as: UTF16.self)?.result)
+  }
+#endif
+}
+
+func withTemporaryPath<R>(_ body: (_ path: String) throws -> R) throws -> R {
+  // NOTE: we are not trying to test mkstemp() here. We are trying to test the
+  // capacity of FileHandle to open a file for reading or writing and we need a
+  // temporary file to write to.
+#if os(Windows)
+  let path = try String(unsafeUninitializedCapacity: 1024) { buffer in
+    try #require(0 == tmpnam_s(buffer.baseAddress!, buffer.count))
+    return strnlen(buffer.baseAddress!, buffer.count)
+  }
+#else
+  let path = appendPathComponent("file_named_\(UInt64.random(in: 0 ..< .max))", to: try temporaryDirectory())
+#endif
+  defer {
+    _ = remove(path)
+  }
+  return try body(path)
+}
 
 extension FileHandle {
   static func temporary() throws -> FileHandle {
