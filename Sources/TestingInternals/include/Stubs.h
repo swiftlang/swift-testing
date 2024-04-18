@@ -88,6 +88,13 @@ SWT_EXTERN char *_Nullable *_Null_unspecified environ;
 static char *_Nullable *_Null_unspecified swt_environ(void) {
   return environ;
 }
+
+/// Set the name of the current thread.
+///
+/// This function declaration is provided because `pthread_setname_np()` is
+/// only declared if `_GNU_SOURCE` is set, but setting it causes build errors
+/// due to conflicts with Swift's Glibc module.
+SWT_IMPORT_FROM_STDLIB int pthread_setname_np(pthread_t, const char *);
 #endif
 
 #if __has_include(<signal.h>) && defined(si_pid)

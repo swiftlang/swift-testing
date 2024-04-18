@@ -46,15 +46,6 @@ private let _waitThreadNoChildrenCondition = {
   return UncheckedSendable(rawValue: result)
 }()
 
-#if os(Linux)
-/// Set the name of the current thread.
-///
-/// This function declaration is provided because `pthread_setname_np()` is
-/// only declared if `_GNU_SOURCE` is set, but setting it causes build errors
-/// due to conflicts with Swift's Glibc module.
-@_extern(c) func pthread_setname_np(_: pthread_t, _: UnsafePointer<CChar>) -> CInt
-#endif
-
 /// The implementation of `_createWaitThread()`, run only once.
 private let _createWaitThreadImpl: Void = {
   // The body of the thread's run loop.
