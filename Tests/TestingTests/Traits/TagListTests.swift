@@ -222,7 +222,7 @@ struct TagListTests {
     #expect(Tag.Color.rgb(0, 0, 0) < .rgb(100, 100, 100))
   }
 
-#if !SWT_NO_EXIT_TESTS && SWIFT_PM_SUPPORTS_SWIFT_TESTING
+#if !SWT_NO_EXIT_TESTS && SWIFT_PM_SUPPORTS_SWIFT_TESTING && !canImport(SwiftSyntax600)
   @Test("Invalid symbolic tag declaration")
   func invalidSymbolicTag() async {
     await #expect(exitsWith: .failure) {

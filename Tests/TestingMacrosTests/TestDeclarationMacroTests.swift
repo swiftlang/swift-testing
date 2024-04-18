@@ -124,9 +124,9 @@ struct TestDeclarationMacroTests {
       "struct S { func f(x: Int) { @Suite struct S { } } }":
         "Attribute 'Suite' cannot be applied to a structure within function 'f(x:)'",
       "struct S<T> { @Test func f() {} }":
-        "Attribute 'Test' cannot be applied to a generic function",
+        "Attribute 'Test' cannot be applied to a function within generic structure 'S'",
       "struct S<T> { @Suite struct S {} }":
-        "Attribute 'Suite' cannot be applied to a generic structure",
+        "Attribute 'Suite' cannot be applied to a structure within generic structure 'S'",
       "class C { @Test func f() {} }":
         "Attribute 'Test' cannot be applied to a function within non-final class 'C'",
       "class C { @Suite struct S {} }":
@@ -143,6 +143,22 @@ struct TestDeclarationMacroTests {
         "Attribute 'Test' cannot be applied to this function because it has been marked '@available(*, noasync)'",
       "@available(*, noasync) struct S { @Suite struct S {} }":
         "Attribute 'Suite' cannot be applied to this structure because it has been marked '@available(*, noasync)'",
+      "extension [T] { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within a generic extension to type '[T]'",
+      "extension [T] { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within a generic extension to type '[T]'",
+      "extension [T:U] { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within a generic extension to type '[T:U]'",
+      "extension [T:U] { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within a generic extension to type '[T:U]'",
+      "extension T? { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within a generic extension to type 'T?'",
+      "extension T? { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within a generic extension to type 'T?'",
+      "extension T! { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within a generic extension to type 'T!'",
+      "extension T! { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within a generic extension to type 'T!'",
     ]
   )
   func invalidLexicalContext(input: String, expectedMessage: String) throws {
@@ -221,9 +237,10 @@ struct TestDeclarationMacroTests {
     ]
   )
   func availabilityAttributeCapture(input: String, expectedOutputs: [String]) throws {
-    let (actualOutput, _) = try parse(input)
+    let (actualOutput, _) = try parse(input, removeWhitespace: true)
 
     for expectedOutput in expectedOutputs {
+      let (expectedOutput, _) = try parse(expectedOutput, removeWhitespace: true)
       #expect(actualOutput.contains(expectedOutput))
     }
   }

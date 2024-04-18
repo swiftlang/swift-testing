@@ -101,13 +101,13 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // generic functions when they are parameterized and the types line up, we
     // have not identified a need for them.
     if let genericClause = function.genericParameterClause {
-      diagnostics.append(.genericDeclarationNotSupported(function, whenUsing: testAttribute, becauseOf: genericClause))
+      diagnostics.append(.genericDeclarationNotSupported(function, whenUsing: testAttribute, becauseOf: genericClause, on: function))
     } else if let whereClause = function.genericWhereClause {
-      diagnostics.append(.genericDeclarationNotSupported(function, whenUsing: testAttribute, becauseOf: whereClause))
+      diagnostics.append(.genericDeclarationNotSupported(function, whenUsing: testAttribute, becauseOf: whereClause, on: function))
     } else {
       for parameter in parameterList {
         if parameter.type.isSome {
-          diagnostics.append(.genericDeclarationNotSupported(function, whenUsing: testAttribute, becauseOf: parameter))
+          diagnostics.append(.genericDeclarationNotSupported(function, whenUsing: testAttribute, becauseOf: parameter, on: function))
         }
       }
     }

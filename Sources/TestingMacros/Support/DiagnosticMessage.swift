@@ -146,7 +146,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///
   /// - Parameters:
   ///   - attributes: The conflicting attributes. This array must not be empty.
-  ///   - decl: The generic declaration in question.
+  ///   - decl: The declaration in question.
   ///
   /// - Returns: A diagnostic message.
   static func multipleAttributesNotSupported(_ attributes: [AttributeSyntax], on decl: some SyntaxProtocol) -> Self {
@@ -164,18 +164,24 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   /// - Parameters:
   ///   - decl: The generic declaration in question.
   ///   - attribute: The `@Test` or `@Suite` attribute.
-  ///   - genericClause: The child node on `decl` that makes it generic.
+  ///   - genericClause: The child node on `genericDecl` that makes it generic.
+  ///   - genericDecl: The generic declaration to which `genericClause` is
+  ///     attached, possibly equal to `decl`.
   ///
   /// - Returns: A diagnostic message.
-  static func genericDeclarationNotSupported(_ decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax, becauseOf genericClause: some SyntaxProtocol) -> Self {
-    // Avoid using a syntax node from a lexical context (it won't have source
-    // location information.)
-    let syntax = (genericClause.root != decl.root) ? Syntax(decl) : Syntax(genericClause)
-    return Self(
-      syntax: syntax,
-      message: "Attribute \(_macroName(attribute)) cannot be applied to a generic \(_kindString(for: decl))",
-      severity: .error
-    )
+  static func genericDeclarationNotSupported(_ decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax, becauseOf genericClause: some SyntaxProtocol, on genericDecl: some SyntaxProtocol) -> Self {
+    if Syntax(decl) != Syntax(genericDecl), genericDecl.isProtocol((any DeclGroupSyntax).self) {
+      return .containingNodeUnsupported(genericDecl, genericBecauseOf: Syntax(genericClause), whenUsing: attribute, on: decl)
+    } else {
+      // Avoid using a syntax node from a lexical context (it won't have source
+      // location information.)
+      let syntax = (genericClause.root != decl.root) ? Syntax(decl) : Syntax(genericClause)
+      return Self(
+        syntax: syntax,
+        message: "Attribute \(_macroName(attribute)) cannot be applied to a generic \(_kindString(for: decl))",
+        severity: .error
+      )
+    }
   }
 
   /// Create a diagnostic message stating that the `@Test` or `@Suite` attribute
@@ -322,19 +328,35 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///
   /// - Parameters:
   ///   - node: The lexical context preventing the use of `attribute`.
+  ///   - genericClause: If not `nil`, a syntax node that causes `node` to be
+  ///     generic.
   ///   - attribute: The `@Test` or `@Suite` attribute.
   ///   - decl: The declaration in question (contained in `node`.)
   ///
   /// - Returns: A diagnostic message.
-  static func containingNodeUnsupported(_ node: some SyntaxProtocol, whenUsing attribute: AttributeSyntax, on decl: some SyntaxProtocol) -> Self {
-    // It would be great if the diagnostic pointed to the containing lexical
-    // context that was unsupported, but that node may be synthesized and does
-    // not have reliable location information.
+  static func containingNodeUnsupported(_ node: some SyntaxProtocol, genericBecauseOf genericClause: Syntax? = nil, whenUsing attribute: AttributeSyntax, on decl: some SyntaxProtocol) -> Self {
+    // Avoid using a syntax node from a lexical context (it won't have source
+    // location information.)
+    let syntax: Syntax = if let genericClause, attribute.root == genericClause.root {
+      // Prefer the generic clause if available as the root cause.
+      genericClause
+    } else if attribute.root == node.root {
+      // Second choice is the unsupported containing node.
+      Syntax(node)
+    } else {
+      // Finally, fall back to the attribute, which we assume is not detached.
+      Syntax(attribute)
+    }
+    let generic = if genericClause != nil {
+      " generic"
+    } else {
+      ""
+    }
     if let functionDecl = node.as(FunctionDeclSyntax.self) {
       let functionName = functionDecl.completeName
       return Self(
-        syntax: Syntax(attribute),
-        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within function '\(functionName)'",
+        syntax: syntax,
+        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within\(generic) function '\(functionName)'",
         severity: .error
       )
     } else if let namedDecl = node.asProtocol((any NamedDeclSyntax).self) {
@@ -347,14 +369,32 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
       }
       let declName = namedDecl.name.textWithoutBackticks
       return Self(
-        syntax: Syntax(attribute),
-        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within\(nonFinal) \(_kindString(for: node)) '\(declName)'",
+        syntax: syntax,
+        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within\(generic)\(nonFinal) \(_kindString(for: node)) '\(declName)'",
+        severity: .error
+      )
+    } else if let extensionDecl = node.as(ExtensionDeclSyntax.self) {
+      // Subtly different phrasing from the NamedDeclSyntax case above.
+      let nodeKind = if genericClause != nil {
+        "a generic extension to type"
+      } else {
+        "an extension to type"
+      }
+      let declGroupName = extensionDecl.extendedType.trimmedDescription
+      return Self(
+        syntax: syntax,
+        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within \(nodeKind) '\(declGroupName)'",
         severity: .error
       )
     } else {
+      let nodeKind = if genericClause != nil {
+        "a generic \(_kindString(for: node))"
+      } else {
+        _kindString(for: node, includeA: true)
+      }
       return Self(
-        syntax: Syntax(attribute),
-        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within \(_kindString(for: node, includeA: true))",
+        syntax: syntax,
+        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within \(nodeKind)",
         severity: .error
       )
     }
