@@ -68,7 +68,7 @@ need to be examined.
 
 ## Parameterize over the cases of an enumeration
 
-In the example above, we hard-coded the list of `Food` cases to test. If `Food`
+The previous example includes a hard-coded list of `Food` cases to test. If `Food`
 is an enumeration conforming to `CaseIterable`, we can instead write:
 
 ```swift
