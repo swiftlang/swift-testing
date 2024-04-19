@@ -11,329 +11,205 @@
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import TestingInternals
 
-#if canImport(XCTest)
-import XCTest
+@Suite("Issue tests")
+struct IssueTests {
+  struct BasicExpectationArguments: Sendable, CustomTestStringConvertible {
+    var name: String
+    var isPassing = false
+    var isKnown = false
+    var isRequired = false
+    var isThrownError = false
+    var testFunction: @Sendable () async throws -> Void
 
-final class IssueTests: XCTestCase {
-  func testExpect() async throws {
-    var configuration = Configuration()
-    configuration.eventHandler = { event, _ in
-      guard case let .issueRecorded(issue) = event.kind else {
-        return
-      }
-      XCTAssertFalse(issue.isKnown)
-      guard case let .expectationFailed(expectation) = issue.kind else {
-        XCTFail("Unexpected issue kind \(issue.kind)")
-        return
-      }
-      XCTAssertFalse(expectation.isRequired)
+    var testDescription: String {
+      name
     }
+  }
 
-    await Test {
+  static let basicExpectationArguments: [BasicExpectationArguments] = [
+    .init(name: "#expect()") {
       #expect(Bool(true))
       #expect(Bool(false))
       #expect(Bool(false), "Custom message")
-    }.run(configuration: configuration)
-  }
-
-  func testErrorThrownFromExpect() async throws {
-    var configuration = Configuration()
-    configuration.eventHandler = { event, _ in
-      guard case let .issueRecorded(issue) = event.kind else {
-        return
-      }
-      XCTAssertFalse(issue.isKnown)
-      guard case let .errorCaught(error) = issue.kind else {
-        XCTFail("Unexpected issue kind \(issue.kind)")
-        return
-      }
-      XCTAssertTrue(error is MyError)
-    }
-
-    await Test { () throws in
-      #expect(try { throw MyError() }())
-    }.run(configuration: configuration)
-
-    await Test { () throws in
-      try #expect({ throw MyError() }())
-    }.run(configuration: configuration)
-  }
-
-  func testRequire() async throws {
-    var configuration = Configuration()
-    configuration.eventHandler = { event, _ in
-      guard case let .issueRecorded(issue) = event.kind else {
-        return
-      }
-      XCTAssertFalse(issue.isKnown)
-      guard case let .expectationFailed(expectation) = issue.kind else {
-        XCTFail("Unexpected issue kind \(issue.kind)")
-        return
-      }
-      XCTAssertTrue(expectation.isRequired)
-    }
-
-    await Test {
+    },
+    .init(name: "#require()", isRequired: true) {
       try #require(Bool(true))
       try #require(Bool(false), "Custom message")
-      XCTFail("Unreachable")
-    }.run(configuration: configuration)
-  }
-
-  func testOptionalUnwrapping() async throws {
-    var configuration = Configuration()
-    configuration.eventHandler = { event, _ in
-      guard case let .issueRecorded(issue) = event.kind else {
-        return
-      }
-      XCTAssertFalse(issue.isKnown)
-      guard case let .expectationFailed(expectation) = issue.kind else {
-        XCTFail("Unexpected issue kind \(issue.kind)")
-        return
-      }
-      XCTAssertTrue(expectation.isRequired)
-    }
-
-    await Test {
+      Issue.record("Unreachable")
+    },
+    .init(name: "unwrapping optionals with #require()", isRequired: true) {
       let x: Int? = 1
-      XCTAssertEqual(1, try #require(x))
+      #expect(try 1 == #require(x))
       let y: String? = nil
       _ = try #require(y)
-      XCTFail("Unreachable")
-    }.run(configuration: configuration)
-  }
-
-  func testOptionalUnwrappingWithCoalescing() async throws {
-    var configuration = Configuration()
-    configuration.eventHandler = { event, _ in
-      if case let .issueRecorded(issue) = event.kind {
-        XCTFail("Unexpected issue kind \(issue.kind)")
-      }
-    }
-
-    await Test {
+      Issue.record("Unreachable")
+    },
+    .init(name: "unwrapping ?? with #require() (passing)", isPassing: true, isRequired: true) {
       let x: String? = nil
       _ = try #require(x ?? "hello")
-    }.run(configuration: configuration)
-  }
-
-  func testOptionalUnwrappingWithCoalescing_Failure() async throws {
-    let expectationFailed = expectation(description: "Expectation failed")
-
-    var configuration = Configuration()
-    configuration.eventHandler = { event, _ in
-      guard case let .issueRecorded(issue) = event.kind else {
-        return
-      }
-      if case .expectationFailed = issue.kind {
-        expectationFailed.fulfill()
-      }
-    }
-
-    await Test {
+    },
+    .init(name: "unwrapping ?? with #require() (failing)", isPassing: false, isRequired: true) {
       let x: String? = nil
       let y: String? = nil
       _ = try #require(x ?? y)
-      XCTFail("Unreachable")
-    }.run(configuration: configuration)
+      Issue.record("Unreachable")
+    },
+    .init(name: "#expect() throwing error", isThrownError: true) { () throws in
+      #expect(try { throw MyError() }())
+    },
+    .init(name: "#expect() throwing error (external try)", isThrownError: true) {
+      try #expect({ throw MyError() }())
+    }
+  ]
 
-    await fulfillment(of: [expectationFailed], timeout: 0.0)
-  }
-
-  struct TypeWithMemberFunctions {
-    static func f(_ x: Int) -> Bool { false }
-    static func g(label x: Int) -> Bool { false }
-    static func h(_ x: () -> Void) -> Bool { false }
-    static func j(_ x: Int) -> Never? { nil }
-    static func k(_ x: inout Int) -> Bool { false }
-    static func m(_ x: Bool) -> Bool { false }
-    static func n(_ x: Int) throws -> Bool { false }
-  }
-
-  func testMemberFunctionCall() async throws {
-    let expectationFailed = expectation(description: "Expectation failed")
-
+  @Test("Basic expectations", arguments: basicExpectationArguments)
+  func expect(arguments: BasicExpectationArguments) async throws {
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
-      if case let .expectationFailed(expectation) = issue.kind {
-        expectationFailed.fulfill()
-        let desc = expectation.evaluatedExpression.expandedDescription()
-        XCTAssertTrue(desc.contains("rhs → 1"))
-        XCTAssertFalse(desc.contains("(("))
+      if arguments.isPassing {
+        Issue.record("Unexpected issue \(issue)")
+      } else {
+        #expect(arguments.isKnown == issue.isKnown)
+        if arguments.isThrownError {
+          guard case let .errorCaught(error) = issue.kind else {
+            Issue.record("Unexpected issue kind \(issue.kind)")
+            return
+          }
+          #expect(error is MyError)
+        } else {
+          guard case let .expectationFailed(expectation) = issue.kind else {
+            Issue.record("Unexpected issue kind \(issue.kind)")
+            return
+          }
+          #expect(arguments.isRequired == expectation.isRequired)
+        }
       }
     }
 
     await Test {
+      try await arguments.testFunction()
+    }.run(configuration: configuration)
+  }
+
+  struct MemberFunctionCallTestArguments: Sendable, CustomTestStringConvertible {
+    var name: String
+    var contains = [String]()
+    var doesNotContain = [String]()
+    var hasEvaluatedExpression = false
+    var expectedConfirmationCount = 1
+    var testFunction: @Sendable () async throws -> Void
+
+    var testDescription: String {
+      String(describingForTest: name)
+    }
+  }
+
+  static let memberFunctionCallArguments: [MemberFunctionCallTestArguments] = [
+    .init(name: "unlabelled argument", contains: ["rhs → 1"], doesNotContain: ["(("]) {
       let rhs = 1
       #expect(TypeWithMemberFunctions.f(rhs))
-    }.run(configuration: configuration)
-
-    await fulfillment(of: [expectationFailed], timeout: 0.0)
-  }
-
-  func testMemberFunctionCallWithLabel() async throws {
-    let expectationFailed = expectation(description: "Expectation failed")
-
-    var configuration = Configuration()
-    configuration.eventHandler = { event, _ in
-      guard case let .issueRecorded(issue) = event.kind else {
-        return
-      }
-      if case let .expectationFailed(expectation) = issue.kind {
-        expectationFailed.fulfill()
-        let desc = expectation.evaluatedExpression.expandedDescription()
-        XCTAssertTrue(desc.contains("label: rhs → 1"))
-        XCTAssertFalse(desc.contains("(("))
-      }
-    }
-
-    await Test {
+    },
+    .init(name: "labelled argument", contains: ["label: rhs → 1"], doesNotContain: ["(("]) {
       let rhs = 1
       #expect(TypeWithMemberFunctions.g(label: rhs))
-    }.run(configuration: configuration)
-
-    await fulfillment(of: [expectationFailed], timeout: 0.0)
-  }
-
-  func testMemberFunctionCallWithFunctionArgument() async throws {
-    let expectationFailed = expectation(description: "Expectation failed")
-
-    var configuration = Configuration()
-    configuration.eventHandler = { event, _ in
-      guard case let .issueRecorded(issue) = event.kind else {
-        return
-      }
-      if case let .expectationFailed(expectation) = issue.kind {
-        expectationFailed.fulfill()
-        let desc = expectation.evaluatedExpression.expandedDescription()
-        XCTAssertFalse(desc.contains("(Function)"))
-        XCTAssertFalse(desc.contains("(("))
-      }
-    }
-
-    await Test {
+    },
+    .init(name: "function as argument", doesNotContain: ["(Function)", "(("]) {
       #expect(TypeWithMemberFunctions.h({ }))
-    }.run(configuration: configuration)
-
-    await fulfillment(of: [expectationFailed], timeout: 0.0)
-  }
-
-  func testOptionalUnwrappingMemberFunctionCall() async throws {
-    let expectationFailed = expectation(description: "Expectation failed")
-
-    var configuration = Configuration()
-    configuration.eventHandler = { event, _ in
-      guard case let .issueRecorded(issue) = event.kind else {
-        return
-      }
-      if case .expectationFailed = issue.kind {
-        expectationFailed.fulfill()
-      }
-    }
-
-    await Test {
+    },
+    .init(name: "unwrapping optional", hasEvaluatedExpression: true) {
+      // The evaluated expression here is `.some(.none)`
       _ = try #require(TypeWithMemberFunctions.j(1))
-    }.run(configuration: configuration)
-
-    await fulfillment(of: [expectationFailed], timeout: 0.0)
-  }
-
-  func testMemberFunctionCallWithInoutArgument() async throws {
-    let expectationFailed = expectation(description: "Expectation failed")
-    expectationFailed.expectedFulfillmentCount = 2
-
-    var configuration = Configuration()
-    configuration.eventHandler = { event, _ in
-      guard case let .issueRecorded(issue) = event.kind else {
-        return
-      }
-      if case .expectationFailed = issue.kind {
-        expectationFailed.fulfill()
-      }
-    }
-
-    await Test {
+    },
+    .init(name: "inout argument", expectedConfirmationCount: 2) {
       var i = 0
       #expect(TypeWithMemberFunctions.k(&i))
       #expect(TypeWithMemberFunctions.m(TypeWithMemberFunctions.k(&i)))
-    }.run(configuration: configuration)
-
-    await fulfillment(of: [expectationFailed], timeout: 0.0)
-  }
-
-  func testThrowingMemberFunctionCall() async throws {
-    let expectationFailed = expectation(description: "Expectation failed")
-    expectationFailed.expectedFulfillmentCount = 2
-
-    var configuration = Configuration()
-    configuration.eventHandler = { event, _ in
-      guard case let .issueRecorded(issue) = event.kind else {
-        return
-      }
-      if case let .expectationFailed(expectation) = issue.kind {
-        expectationFailed.fulfill()
-        // The presence of `try` means we don't do complex expansion (yet.)
-        XCTAssertNotNil(expectation.evaluatedExpression)
-        XCTAssertNil(expectation.evaluatedExpression.runtimeValue)
-      }
-    }
-
-    await Test { () throws in
+    },
+    .init(name: "throwing", expectedConfirmationCount: 2) { () throws in
+      // The presence of `try` means we don't do complex expansion (yet.)
       #expect(try TypeWithMemberFunctions.n(0))
       #expect(TypeWithMemberFunctions.f(try { () throws in 0 }()))
-    }.run(configuration: configuration)
+    },
+  ]
 
-    await fulfillment(of: [expectationFailed], timeout: 0.0)
+  @Test("#expect() with a member function call", arguments: memberFunctionCallArguments)
+  func memberFunctionCall(arguments: MemberFunctionCallTestArguments) async throws {
+    await confirmation("Expectation failed", expectedCount: arguments.expectedConfirmationCount) { expectationFailed in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        guard case let .issueRecorded(issue) = event.kind else {
+          return
+        }
+        if case let .expectationFailed(expectation) = issue.kind {
+          expectationFailed()
+          let desc = expectation.evaluatedExpression.expandedDescription()
+          for containee in arguments.contains {
+            #expect(desc.contains(containee))
+          }
+          for nonContainee in arguments.doesNotContain {
+            #expect(!desc.contains(nonContainee))
+          }
+          if arguments.hasEvaluatedExpression {
+            #expect(expectation.evaluatedExpression.runtimeValue != nil)
+          } else {
+            #expect(expectation.evaluatedExpression.runtimeValue == nil)
+          }
+        }
+      }
+
+      await Test {
+        try await arguments.testFunction()
+      }.run(configuration: configuration)
+    }
   }
 
-  func testExpectationValueLazyStringification() async {
+  @Test("Lazy stringification of captured expectation value")
+  func expectationValueLazyStringification() async {
     struct Delicate: Equatable, CustomStringConvertible {
       var description: String {
-        XCTFail("Should not be called")
+        Issue.record("Should not be called")
         return "danger"
       }
     }
 
-    let expectationChecked = expectation(description: "expectation checked")
-
-    var configuration = Configuration()
-    configuration.deliverExpectationCheckedEvents = true
-    configuration.eventHandler = { event, _ in
-      guard case let .expectationChecked(expectation) = event.kind else {
-        return
-      }
-      XCTAssertNotNil(expectation.evaluatedExpression)
-      XCTAssertNil(expectation.evaluatedExpression.subexpressions[0].runtimeValue)
-      expectationChecked.fulfill()
-    }
-
-    await Test {
-      #expect(Delicate() == Delicate())
-    }.run(configuration: configuration)
-    await fulfillment(of: [expectationChecked], timeout: 0.0)
-  }
-
-  func testExpressionLiterals() async {
-    func expectIssue(containing content: String, in testFunction: @escaping @Sendable () async throws -> Void) async {
-      let issueRecorded = expectation(description: "Issue recorded")
-
+    await confirmation("expectation checked") { expectationChecked in
       var configuration = Configuration()
+      configuration.deliverExpectationCheckedEvents = true
       configuration.eventHandler = { event, _ in
-        guard case let .issueRecorded(issue) = event.kind,
-              case let .expectationFailed(expectation) = issue.kind else {
+        guard case let .expectationChecked(expectation) = event.kind else {
           return
         }
-        XCTAssertTrue(issue.comments.isEmpty)
-        let expandedExpressionDescription = expectation.evaluatedExpression.expandedDescription()
-        XCTAssert(expandedExpressionDescription.contains(content))
-        issueRecorded.fulfill()
+        #expect(expectation.evaluatedExpression.subexpressions[0].runtimeValue == nil)
+        expectationChecked()
       }
 
-      await Test(testFunction: testFunction).run(configuration: configuration)
-      await fulfillment(of: [issueRecorded], timeout: 0.0)
+      await Test {
+        #expect(Delicate() == Delicate())
+      }.run(configuration: configuration)
+    }
+  }
+
+  @Test("Literal expressions captured in expectations")
+  func testExpressionLiterals() async {
+    func expectIssue(containing content: String, in testFunction: @escaping @Sendable () async throws -> Void) async {
+      await confirmation("Issue recorded") { issueRecorded in
+        var configuration = Configuration()
+        configuration.eventHandler = { event, _ in
+          guard case let .issueRecorded(issue) = event.kind,
+                case let .expectationFailed(expectation) = issue.kind else {
+            return
+          }
+          #expect(issue.comments.isEmpty)
+          let expandedExpressionDescription = expectation.evaluatedExpression.expandedDescription()
+          #expect(expandedExpressionDescription.contains(content))
+          issueRecorded()
+        }
+
+        await Test(testFunction: testFunction).run(configuration: configuration)
+      }
     }
 
     @Sendable func someInt() -> Int { 0 }
@@ -350,96 +226,65 @@ final class IssueTests: XCTestCase {
     }
   }
 
-  struct ExpressionRuntimeValueCapture_Value {}
+  struct RuntimeValueCaptureArguments: Sendable, CustomTestStringConvertible {
+    var value: any Sendable
+    var moreChecks: @Sendable (Expression.Value) throws -> Void = { _ in }
+    var testDescription: String {
+      String(describingForTest: value)
+    }
+  }
 
-  func testExpressionRuntimeValueCapture() throws {
+  static let runtimeValueCaptureArguments: [RuntimeValueCaptureArguments] = [
+    .init(value: 987 as Int) { runtimeValue in
+      #expect(runtimeValue.children == nil)
+      #expect(runtimeValue.label == nil)
+    },
+    .init(value: ExpressionRuntimeValueCapture_Value()),
+    .init(value: (123, "abc") as (Int, String)),
+    .init(value: ExpressionRuntimeValueCapture_ValueWithChildren(contents: [123, "abc"])) { runtimeValue in
+      #expect(runtimeValue.label == nil)
+
+      let children = try #require(runtimeValue.children)
+      #expect(children.count == 1)
+      let contentsArrayChild = try #require(children.first)
+      #expect(String(describing: contentsArrayChild) == #"[123, "abc"]"#)
+      #expect(contentsArrayChild.isCollection)
+      #expect(contentsArrayChild.label == "contents")
+
+      let contentsChildren = try #require(contentsArrayChild.children)
+      #expect(contentsChildren.count == 2)
+      let firstContentsElementChild = try #require(contentsChildren.first)
+      #expect(String(describing: firstContentsElementChild) == "123")
+      #expect(!firstContentsElementChild.isCollection)
+      #expect(firstContentsElementChild.label == nil)
+    },
+    .init(value: [any Sendable]()) { runtimeValue in
+      #expect(runtimeValue.label == nil)
+      let children = try #require(runtimeValue.children)
+      #expect(children.isEmpty)
+    }
+  ]
+
+  @Test("Expression.capturingRuntimeValues(_:) captures as intended", arguments: runtimeValueCaptureArguments)
+  func expressionRuntimeValueCapture(arguments :RuntimeValueCaptureArguments) throws {
     var expression = Expression.__fromSyntaxNode("abc123")
-    XCTAssertEqual(expression.sourceCode, "abc123")
-    XCTAssertNil(expression.runtimeValue)
+    #expect(expression.sourceCode == "abc123")
+    #expect(expression.runtimeValue == nil)
 
-    do {
-      expression = expression.capturingRuntimeValues(987 as Int)
-      XCTAssertEqual(expression.sourceCode, "abc123")
-      let runtimeValue = try XCTUnwrap(expression.runtimeValue)
-      XCTAssertEqual(String(describing: runtimeValue), "987")
-      XCTAssertEqual(runtimeValue.typeInfo.fullyQualifiedName, "Swift.Int")
-      XCTAssertFalse(runtimeValue.isCollection)
-    }
-
-    do {
-      expression = expression.capturingRuntimeValues(ExpressionRuntimeValueCapture_Value())
-      XCTAssertEqual(expression.sourceCode, "abc123")
-      let runtimeValue = try XCTUnwrap(expression.runtimeValue)
-      XCTAssertEqual(String(describing: runtimeValue), "ExpressionRuntimeValueCapture_Value()")
-      XCTAssertEqual(runtimeValue.typeInfo.fullyQualifiedName, "TestingTests.IssueTests.ExpressionRuntimeValueCapture_Value")
-      XCTAssertFalse(runtimeValue.isCollection)
-    }
-
-    do {
-      expression = expression.capturingRuntimeValues((123, "abc") as (Int, String), ())
-      XCTAssertEqual(expression.sourceCode, "abc123")
-      let runtimeValue = try XCTUnwrap(expression.runtimeValue)
-      XCTAssertEqual(String(describing: runtimeValue), #"(123, "abc")"#)
-      XCTAssertEqual(runtimeValue.typeInfo.fullyQualifiedName, "(Swift.Int, Swift.String)")
-      XCTAssertFalse(runtimeValue.isCollection)
-    }
+    expression = expression.capturingRuntimeValues(arguments.value)
+    #expect(expression.sourceCode == "abc123")
+    let runtimeValue = try #require(expression.runtimeValue)
+    #expect(String(describing: runtimeValue) == String(describing: arguments.value))
+    #expect(runtimeValue.typeInfo.fullyQualifiedName == TypeInfo(describingTypeOf: arguments.value).fullyQualifiedName)
+    #expect(runtimeValue.isCollection == (arguments.value is any Collection))
+    try arguments.moreChecks(runtimeValue)
   }
+}
 
-  struct ExpressionRuntimeValueCapture_ValueWithChildren {
-    var contents: [Any] = []
-  }
+#if canImport(XCTest)
+import XCTest
 
-  func testExpressionRuntimeValueChildren() throws {
-    var expression = Expression.__fromSyntaxNode("abc123")
-    XCTAssertEqual(expression.sourceCode, "abc123")
-    XCTAssertNil(expression.runtimeValue)
-
-    do {
-      expression = expression.capturingRuntimeValues(ExpressionRuntimeValueCapture_Value())
-      let runtimeValue = try XCTUnwrap(expression.runtimeValue)
-      XCTAssertEqual(String(describing: runtimeValue), "ExpressionRuntimeValueCapture_Value()")
-      XCTAssertEqual(runtimeValue.typeInfo.fullyQualifiedName, "TestingTests.IssueTests.ExpressionRuntimeValueCapture_Value")
-      XCTAssertFalse(runtimeValue.isCollection)
-      XCTAssertNil(runtimeValue.children)
-      XCTAssertNil(runtimeValue.label)
-    }
-
-    do {
-      expression = expression.capturingRuntimeValues(ExpressionRuntimeValueCapture_ValueWithChildren(contents: [123, "abc"]))
-      let runtimeValue = try XCTUnwrap(expression.runtimeValue)
-      XCTAssertEqual(String(describing: runtimeValue), #"ExpressionRuntimeValueCapture_ValueWithChildren(contents: [123, "abc"])"#)
-      XCTAssertEqual(runtimeValue.typeInfo.fullyQualifiedName, "TestingTests.IssueTests.ExpressionRuntimeValueCapture_ValueWithChildren")
-      XCTAssertFalse(runtimeValue.isCollection)
-      XCTAssertNil(runtimeValue.label)
-
-      let children = try XCTUnwrap(runtimeValue.children)
-      XCTAssertEqual(children.count, 1)
-      let contentsArrayChild = try XCTUnwrap(children.first)
-      XCTAssertEqual(String(describing: contentsArrayChild), #"[123, "abc"]"#)
-      XCTAssertTrue(contentsArrayChild.isCollection)
-      XCTAssertEqual(contentsArrayChild.label, "contents")
-
-      let contentsChildren = try XCTUnwrap(contentsArrayChild.children)
-      XCTAssertEqual(contentsChildren.count, 2)
-      let firstContentsElementChild = try XCTUnwrap(contentsChildren.first)
-      XCTAssertEqual(String(describing: firstContentsElementChild), "123")
-      XCTAssertFalse(firstContentsElementChild.isCollection)
-      XCTAssertNil(firstContentsElementChild.label)
-    }
-
-    do {
-      expression = expression.capturingRuntimeValues([])
-      let runtimeValue = try XCTUnwrap(expression.runtimeValue)
-      XCTAssertEqual(String(describing: runtimeValue), "[]")
-      XCTAssertEqual(runtimeValue.typeInfo.fullyQualifiedName, "Swift.Array<Any>")
-      XCTAssertTrue(runtimeValue.isCollection)
-      XCTAssertNil(runtimeValue.label)
-
-      let children = try XCTUnwrap(runtimeValue.children)
-      XCTAssertTrue(children.isEmpty)
-    }
-  }
-
+final class IssueTests_XCT: XCTestCase {
   func testIsAndAsComparisons() async {
     let expectRecorded = expectation(description: "#expect recorded")
     let requireRecorded = expectation(description: "#require recorded")
@@ -1498,4 +1343,22 @@ struct IssueCodingTests {
     #expect(String(describing: issueSnapshot) == String(describing: issue))
     #expect(String(reflecting: issueSnapshot) == String(reflecting: issue))
   }
+}
+
+// MARK: - Fixtures
+
+struct TypeWithMemberFunctions {
+  static func f(_ x: Int) -> Bool { false }
+  static func g(label x: Int) -> Bool { false }
+  static func h(_ x: () -> Void) -> Bool { false }
+  static func j(_ x: Int) -> Never? { nil }
+  static func k(_ x: inout Int) -> Bool { false }
+  static func m(_ x: Bool) -> Bool { false }
+  static func n(_ x: Int) throws -> Bool { false }
+}
+
+struct ExpressionRuntimeValueCapture_Value: Sendable {}
+
+struct ExpressionRuntimeValueCapture_ValueWithChildren: Sendable {
+  var contents: [any Sendable] = []
 }
