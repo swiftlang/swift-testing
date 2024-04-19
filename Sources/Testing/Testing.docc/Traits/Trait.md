@@ -25,8 +25,8 @@
 - ``Trait/bug(_:relationship:_:)-3hsi5``
 
 ### Adding comments
-- ``Trait/comment(_:)``
+- ``Trait/comments``
 
 ### Preparing internal state
 
-- ``prepare(for:)-3s3zo``
+- ``Trait/prepare(for:)-3s3zo``
