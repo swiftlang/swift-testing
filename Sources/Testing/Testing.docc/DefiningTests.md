@@ -23,7 +23,7 @@ library, see <doc:TemporaryGettingStarted>.
 ## Import the testing library
 
 To import the testing library, add the following to the Swift source file that
-will contain the test:
+contains the test:
 
 ```swift
 import Testing
