@@ -85,8 +85,8 @@ private let _createWaitThreadImpl: Void = {
     }
   }
 
-  // Create the thread. We immediately detach it upon success to allow the
-  // system to reclaim its resources when done.
+  // Create the thread. It will run immediately; because it runs in an infinite
+  // loop, we aren't worried about detaching or joining it.
 #if SWT_TARGET_OS_APPLE
   var thread: pthread_t?
 #else
@@ -96,12 +96,13 @@ private let _createWaitThreadImpl: Void = {
     &thread,
     nil,
     { _ in
-      // Set the thread name to help with diagnostics.
-      let threadName = "swift-testing exit test monitor"
+      // Set the thread name to help with diagnostics. Note that different
+      // platforms support different thread name lengths. See MAXTHREADNAMESIZE
+      // on Darwin and TASK_COMM_LEN on Linux.
 #if SWT_TARGET_OS_APPLE
-      _ = pthread_setname_np(threadName)
+      _ = pthread_setname_np("swift-testing exit test monitor")
 #else
-      _ = pthread_setname_np(pthread_self(), threadName)
+      _ = pthread_setname_np(pthread_self(), "SWT ExT monitor")
 #endif
 
       // Run an infinite loop that waits for child processes to terminate and
