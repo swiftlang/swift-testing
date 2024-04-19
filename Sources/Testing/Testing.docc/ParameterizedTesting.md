@@ -83,8 +83,8 @@ func foodAvailable(_ food: Food) async throws {
 }
 ```
 
-This way, if a new case is added to the `Food` enumeration, it will
-automatically be tested by this test function.
+This way, if a new case is added to the `Food` enumeration, it is
+automatically tested by this function.
 
 ## Parameterize over a range of integers
 
