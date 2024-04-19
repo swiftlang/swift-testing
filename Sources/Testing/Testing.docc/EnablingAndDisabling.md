@@ -24,7 +24,7 @@ automatically skip them if conditions like these are not met.
 
 ## Disable a test
 
-If a test should be disabled unconditionally, you can use the
+If you need to disable a test unconditionally, use the
 ``Trait/disabled(_:fileID:filePath:line:column:)`` function. Given the following
 test function:
 
