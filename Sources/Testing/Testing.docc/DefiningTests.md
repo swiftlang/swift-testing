@@ -33,7 +33,7 @@ import Testing
   testing library into an application, library, or binary target is not
   supported or recommended. Test functions are not stripped from binaries when
   building for release, so logic and fixtures of a test may be visible to anyone
-  who inspects a build product containing a test function.
+  who inspects a build product that contains a test function.
 
 ## Declare a test function
 
