@@ -98,7 +98,7 @@ func makeLargeOrder(count: Int) async throws {
 }
 ```
 
-- Note: Very large ranges such as `0 ..< .max` may take an excessive amount of
+- Note: Large ranges such as `0 ..< .max` may take an excessive amount of
   time to test, or may never complete due to resource constraints.
 
 ## Test with more than one collection
