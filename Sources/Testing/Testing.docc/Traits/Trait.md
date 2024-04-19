@@ -19,7 +19,7 @@
 - ``Trait/tags(_:)-505n9``
 - ``Trait/tags(_:)-yg0i``
 
-### Associating issues
+### Associating bugs
 
 - ``Trait/bug(_:relationship:_:)-86mmm``
 - ``Trait/bug(_:relationship:_:)-3hsi5``
