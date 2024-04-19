@@ -37,7 +37,7 @@ import Testing
 
 ## Declare a test function
 
-To declare a test function, write a Swift function declaration that does not
+To declare a test function, write a Swift function declaration that doesn't
 take any arguments, then prefix its name with the `@Test` attribute:
 
 ```swift
