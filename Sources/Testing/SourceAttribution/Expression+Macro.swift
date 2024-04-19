@@ -66,7 +66,7 @@ extension Expression {
   ///
   /// - Warning: This function is used to implement the `@Test`, `@Suite`,
   ///   `#expect()` and `#require()` macros. Do not call it directly.
-  public static func __functionCall(_ value: Expression?, _ functionName: String, _ arguments: (label: String?, value: Expression)...) -> Self {
+  public static func __fromFunctionCall(_ value: Expression?, _ functionName: String, _ arguments: (label: String?, value: Expression)...) -> Self {
     let arguments = arguments.map(Expression.Kind.FunctionCallArgument.init)
     return Self(kind: .functionCall(value: value, functionName: functionName, arguments: arguments))
   }
@@ -84,5 +84,22 @@ extension Expression {
   ///   `#expect()` and `#require()` macros. Do not call it directly.
   public static func __fromPropertyAccess(_ value: Expression, _ keyPath: Expression) -> Self {
     return Self(kind: .propertyAccess(value: value, keyPath: keyPath))
+  }
+
+  /// Create an instance of ``Expression`` representing a negated expression
+  /// using the `!` operator..
+  ///
+  /// - Parameters:
+  ///   - expression: The expression that was negated.
+  ///   - isParenthetical: Whether or not `expression` was enclosed in
+  ///     parentheses (and the `!` operator was outside it.) This argument
+  ///     affects how this expression is represented as a string.
+  ///
+  /// - Returns: A new instance of ``Expression``.
+  ///
+  /// - Warning: This function is used to implement the `@Test`, `@Suite`,
+  ///   `#expect()` and `#require()` macros. Do not call it directly.
+  public static func __fromNegation(_ expression: Expression, _ isParenthetical: Bool) -> Self {
+    return Self(kind: .negation(expression, isParenthetical: isParenthetical))
   }
 }

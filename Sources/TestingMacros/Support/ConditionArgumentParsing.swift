@@ -74,7 +74,7 @@ private func _diagnoseTrivialBooleanValue(from expr: ExprSyntax, for macro: some
     default:
       break
     }
-  } else if let literal = _negatedExpression(expr, in: context)?.as(BooleanLiteralExprSyntax.self) {
+  } else if let literal = _negatedExpression(expr)?.0.as(BooleanLiteralExprSyntax.self) {
     // This expression is of the form !true or !false.
     switch literal.literal.tokenKind {
     case .keyword(.true):
@@ -97,11 +97,15 @@ private func _diagnoseTrivialBooleanValue(from expr: ExprSyntax, for macro: some
 ///   negation expression.
 ///
 /// This function handles expressions such as `!foo` or `!(bar)`.
-private func _negatedExpression(_ expr: ExprSyntax, in context: some MacroExpansionContext) -> ExprSyntax? {
+private func _negatedExpression(_ expr: ExprSyntax) -> (ExprSyntax, isParenthetical: Bool)? {
   let expr = removeParentheses(from: expr) ?? expr
   if let op = expr.as(PrefixOperatorExprSyntax.self),
      op.operator.tokenKind == .prefixOperator("!") {
-    return removeParentheses(from: op.expression) ?? op.expression
+    if let negatedExpr = removeParentheses(from: op.expression) {
+      return (negatedExpr, true)
+    } else {
+      return (op.expression, false)
+    }
   }
 
   return nil
@@ -443,6 +447,23 @@ private func _parseCondition(from expr: MemberAccessExprSyntax, for macro: some 
   )
 }
 
+/// Parse a condition argument from a property access.
+///
+/// - Parameters:
+///   - expr: The expression that was negated.
+///   - isParenthetical: Whether or not `expression` was enclosed in
+///     parentheses (and the `!` operator was outside it.) This argument
+///     affects how this expression is represented as a string.
+///   - macro: The macro expression being expanded.
+///   - context: The macro context in which the expression is being parsed.
+///
+/// - Returns: An instance of ``Condition`` describing `expr`.
+private func _parseCondition(negating expr: ExprSyntax, isParenthetical: Bool, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
+  var result = _parseCondition(from: expr, for: macro, in: context)
+  result.expression = createExpressionExprForNegation(of: result.expression, isParenthetical: isParenthetical)
+  return result
+}
+
 /// Parse a condition argument from an arbitrary expression.
 ///
 /// - Parameters:
@@ -476,6 +497,11 @@ private func _parseCondition(from expr: ExprSyntax, for macro: some Freestanding
     return _parseCondition(from: memberAccessExpr, for: macro, in: context)
   }
 
+  // Handle negation.
+  if let negatedExpr = _negatedExpression(expr) {
+    return _parseCondition(negating: negatedExpr.0, isParenthetical: negatedExpr.isParenthetical, for: macro, in: context)
+  }
+
   // Parentheses are parsed as if they were tuples, so (true && false) appears
   // to the parser as a tuple containing one expression, `true && false`.
   if let expr = removeParentheses(from: expr) {
@@ -496,9 +522,7 @@ private func _parseCondition(from expr: ExprSyntax, for macro: some Freestanding
 ///
 /// - Returns: An instance of ``Condition`` describing `expr`.
 func parseCondition(from expr: ExprSyntax, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
+  _diagnoseTrivialBooleanValue(from: expr, for: macro, in: context)
   let result = _parseCondition(from: expr, for: macro, in: context)
-  if result.arguments.count == 1, let onlyArgument = result.arguments.first {
-    _diagnoseTrivialBooleanValue(from: onlyArgument.expression, for: macro, in: context)
-  }
   return result
 }

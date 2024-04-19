@@ -281,6 +281,16 @@ extension TypeInfo: CustomStringConvertible, CustomDebugStringConvertible {
 // MARK: - Equatable, Hashable
 
 extension TypeInfo: Hashable {
+  /// Check if this instance describes a given type.
+  ///
+  /// - Parameters:
+  ///   - type: The type to compare against.
+  ///
+  /// - Returns: Whether or not this instance represents `type`.
+  public func describes(_ type: Any.Type) -> Bool {
+    self == TypeInfo(describing: type)
+  }
+
   public static func ==(lhs: Self, rhs: Self) -> Bool {
     switch (lhs._kind, rhs._kind) {
     case let (.type(lhs), .type(rhs)):
