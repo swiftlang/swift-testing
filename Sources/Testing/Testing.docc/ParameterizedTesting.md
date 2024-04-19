@@ -69,7 +69,7 @@ need to be examined.
 ## Parameterize over the cases of an enumeration
 
 The previous example includes a hard-coded list of `Food` cases to test. If `Food`
-is an enumeration conforming to `CaseIterable`, we can instead write:
+is an enumeration that conforms to `CaseIterable`, you can instead write:
 
 ```swift
 enum Food: CaseIterable {
