@@ -163,5 +163,5 @@ be run selectively. The following lists the known protocols, in precedence order
 1. `Encodable`.
 1. `Identifiable`, where `ID` conforms to `Encodable`.
 
-If any argument of a test case does not meet one of the above requirements, then
+If any argument of a test case doesn't meet one of the above requirements, then
 the overall test case cannot be run selectively.
