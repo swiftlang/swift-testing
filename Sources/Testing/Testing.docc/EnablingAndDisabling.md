@@ -52,7 +52,7 @@ func sellsBurritos() async throws { ... }
 
 ## Conditionally enable or disable a test
 
-Sometimes, it makes sense to enable a test only if a condition is met. Consider
+Sometimes, it makes sense to enable a test only when a certain condition is met. Consider
 the following test function:
 
 ```swift
