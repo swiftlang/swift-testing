@@ -107,12 +107,14 @@ func listTestsForSwiftPM(_ tests: some Sequence<Test>) -> [String] {
   // Group tests by the name components of the tests' IDs. If the name
   // components of two tests' IDs are ambiguous, present their source locations
   // to disambiguate.
-  return Dictionary(
+  let initialGroups = Dictionary(
     grouping: tests.lazy.map(\.id),
     by: \.nameComponents
   ).values.lazy
     .map { ($0, isAmbiguous: $0.count > 1) }
-    .flatMap { testIDs, isAmbiguous in
+
+  // This operation is split to improve type-checking performance.
+  return initialGroups.flatMap { testIDs, isAmbiguous in
       testIDs.lazy
         .map { testID in
           if !isAmbiguous, testID.sourceLocation != nil {
