@@ -68,11 +68,27 @@ public func __checkValue(
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) -> Result<Void, any Error> {
+  // If the expression being evaluated is a negation (!x instead of x), flip
+  // the condition here so that we evaluate it in the correct sense. We loop
+  // in case of multiple prefix operators (!!(a == b), for example.)
+  var condition = condition
+  do {
+    var expression: Expression? = expression
+    while case let .negation(subexpression, _) = expression?.kind {
+      defer {
+        expression = subexpression
+      }
+      condition = !condition
+    }
+  }
+
   // Capture the correct expression in the expectation.
-  let expression = if !condition, let expressionWithCapturedRuntimeValues = expressionWithCapturedRuntimeValues() {
-    expressionWithCapturedRuntimeValues
-  } else {
-    expression
+  var expression = expression
+  if !condition, let expressionWithCapturedRuntimeValues = expressionWithCapturedRuntimeValues() {
+    expression = expressionWithCapturedRuntimeValues
+    if expression.runtimeValue == nil, case .negation = expression.kind {
+      expression = expression.capturingRuntimeValue(condition)
+    }
   }
 
   // Post an event for the expectation regardless of whether or not it passed.

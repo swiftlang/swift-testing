@@ -371,7 +371,7 @@ extension Event.HumanReadableOutputRecorder {
       if verbose, case let .expectationFailed(expectation) = issue.kind {
         let expression = expectation.evaluatedExpression
         func addMessage(about expression: Expression) {
-          let description = expression.expandedDescription(includingTypeNames: true, includingParenthesesIfNeeded: false)
+          let description = expression.expandedDebugDescription()
           additionalMessages.append(Message(symbol: .details, stringValue: description))
         }
         let subexpressions = expression.subexpressions

@@ -45,6 +45,21 @@ public struct TypeInfo: Sendable {
     return nil
   }
 
+  /// Check if this instance describes a given type.
+  ///
+  /// - Parameters:
+  ///   - type: The type to compare against.
+  ///
+  /// - Returns: Whether or not this instance represents `type`.
+  public func describes(_ type: Any.Type) -> Bool {
+    switch _kind {
+    case let .type(selfType):
+      type == selfType
+    case .nameOnly:
+      TypeInfo(describing: type).fullyQualifiedNameComponents == fullyQualifiedNameComponents
+    }
+  }
+
   init(fullyQualifiedName: String, unqualifiedName: String, mangledName: String?) {
     _kind = .nameOnly(
       fullyQualifiedComponents: fullyQualifiedName.split(separator: ".").map(String.init),

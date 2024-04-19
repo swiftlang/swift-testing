@@ -1134,6 +1134,33 @@ final class IssueTests: XCTestCase {
     }.run(configuration: configuration)
   }
 
+  func testNegatedExpressionsExpandToCaptureNegatedExpression() async {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      guard case let .expectationFailed(expectation) = issue.kind else {
+        XCTFail("Unexpected issue \(issue)")
+        return
+      }
+      XCTAssertNotNil(expectation.evaluatedExpression.runtimeValue)
+      XCTAssertTrue(expectation.evaluatedExpression.runtimeValue!.typeInfo.describes(Bool.self))
+      guard case let .negation(subexpression, isParenthetical) = expectation.evaluatedExpression.kind else {
+        XCTFail("Expected expression's kind was negation, but it was \(expectation.evaluatedExpression.kind)")
+        return
+      }
+      XCTAssertTrue(isParenthetical)
+      XCTAssertNotNil(subexpression.runtimeValue)
+      XCTAssertTrue(subexpression.runtimeValue!.typeInfo.describes(Bool.self))
+    }
+
+    @Sendable func g() -> Int { 1 }
+    await Test {
+      #expect(!(g() == 1))
+    }.run(configuration: configuration)
+  }
+
   func testLazyExpectDoesNotEvaluateRightHandValue() async {
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
