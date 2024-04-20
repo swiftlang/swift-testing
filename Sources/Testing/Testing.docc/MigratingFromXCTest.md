@@ -92,7 +92,7 @@ If you use a class as a test suite, it must be declared `final`.
 For more information about suites and how to declare and customize them, see
 <doc:OrganizingTests>.
 
-#### Convert setUp() and tearDown() functions
+### Convert setup and teardown functions
 
 In XCTest, code can be scheduled to run before and after a test using the
 [`setUp()`](https://developer.apple.com/documentation/xctest/xctest/3856481-setup)
@@ -212,7 +212,7 @@ and/or `throws` and to be isolated to a global actor (for example, by using the
 For more information about test functions and how to declare and customize them,
 see <doc:DefiningTests>.
 
-#### Convert XCTAssert() XCTUnwrap(), and XCTFail() calls
+### Check for expected values and outcomes 
 
 XCTest uses a family of approximately 40 functions to assert test requirements.
 These functions are collectively referred to as
@@ -255,6 +255,8 @@ error if its condition is not met:
   }
 }
 
+### Check for optional values
+
 XCTest also has a function, [`XCTUnwrap()`](https://developer.apple.com/documentation/xctest/3380195-xctunwrap),
 that tests if an optional value is `nil` and throws an error if it is. When
 using the testing library, you can use ``require(_:_:sourceLocation:)-6w9oo``
@@ -288,6 +290,8 @@ with optional expressions to unwrap them:
     ```
   }
 }
+
+### Record issues
 
 Finally, XCTest has a function, [`XCTFail()`](https://developer.apple.com/documentation/xctest/1500970-xctfail),
 that causes a test to fail immediately and unconditionally. This function is
@@ -355,7 +359,7 @@ their equivalents in the testing library:
 | `try XCTUnwrap(x)` | `try #require(x)` |
 | `XCTFail("…")` | `Issue.record("…")` |
 
-#### Continue or halt after test failures
+### Continue or halt after test failures
 
 An instance of an `XCTestCase` subclass can set its
 [`continueAfterFailure`](https://developer.apple.com/documentation/xctest/xctestcase/1496260-continueafterfailure)
@@ -407,7 +411,7 @@ When using either `continueAfterFailure` or
 ``require(_:_:sourceLocation:)-5l63q``, other tests will continue to run after
 the failed test method or test function.
 
-#### Convert XCTestExpectation and XCTWaiter
+### Validate asynchronous behaviors
 
 XCTest has a class, [`XCTestExpectation`](https://developer.apple.com/documentation/xctest/xctestexpectation),
 that represents some asynchronous condition. A developer creates an instance of
@@ -478,7 +482,7 @@ recorded otherwise:
   }
 }
 
-#### Convert XCTSkip(), XCTSkipIf(), and XCTSkipUnless() calls
+### Control whether a test runs
 
 When using XCTest, the [`XCTSkip`](https://developer.apple.com/documentation/xctest/xctskip)
 error type can be thrown to bypass the remainder of a test function. As well,
@@ -518,7 +522,7 @@ test function with an instance of this trait type to control whether it runs:
   }
 }
 
-#### Convert XCTExpectFailure() calls
+### Annotate known issues
 
 A test may have a known issue that sometimes or always prevents it from passing.
 When written using XCTest, such tests can call
