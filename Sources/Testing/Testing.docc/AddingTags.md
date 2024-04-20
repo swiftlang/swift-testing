@@ -10,7 +10,7 @@ See https://swift.org/LICENSE.txt for license information
 See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 -->
 
-Use tags to provide semantic information you can access from other tests and test targets.
+Use tags to provide semantic information for organization, filtering, and customizing appearances.
 
 ## Overview
 
