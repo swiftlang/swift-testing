@@ -28,7 +28,7 @@ you can't check directly using an expectation.
 - ``require(_:_:sourceLocation:)-5l63q``
 - ``require(_:_:sourceLocation:)-6w9oo``
 
-### Checking expected throws
+### Checking that errors are thrown
 
 - ``expect(throws:_:sourceLocation:performing:)-79piu``
 - ``expect(throws:_:sourceLocation:performing:)-1xr34``
