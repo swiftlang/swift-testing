@@ -42,8 +42,8 @@ func sellsBurritos() async throws { ... }
 
 The test will now always be skipped.
 
-It is also possible to add a comment to the trait that will be presented in the
-output from the runner when it skips the test:
+It is also possible to add a comment to the trait to present in the output from
+the runner when it skips the test:
 
 ```swift
 @Test("Food truck sells burritos", .disabled("We only sell Thai cuisine"))
@@ -98,8 +98,8 @@ func isCold() async throws { ... }
 ```
 
 If a test has multiple conditions applied to it, they must _all_ pass for it to
-run. Otherwise, the first condition to fail will be noted as the reason the test
-was skipped.
+run. Otherwise, the test notes the first condition to fail as the reason the test
+is skipped.
 
 ## Handle complex conditions
 
