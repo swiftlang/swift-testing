@@ -12,7 +12,7 @@
 private import TestingInternals
 
 private func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> Configuration {
-  let args = try parseCommandLineArguments(from̉: args)
+  let args = try parseCommandLineArguments(from: args)
   return try configurationForSwiftPMEntryPoint(from: args)
 }
 

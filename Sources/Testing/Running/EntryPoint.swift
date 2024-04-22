@@ -122,7 +122,7 @@ private func _commonEntryPoint(passing args: __CommandLineArguments_v0?, eventHa
   let exitCode = Locked(rawValue: EXIT_SUCCESS)
 
   do {
-    let args = try args ?? parseCommandLineArguments(from̉: CommandLine.arguments())
+    let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments())
     if args.listTests {
       for testID in await listTestsForSwiftPM(Test.all) {
 #if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
@@ -266,7 +266,7 @@ extension __CommandLineArguments_v0: Codable {}
 /// This function generally assumes that Swift Package Manager has already
 /// validated the passed arguments.
 @_spi(ForToolsIntegrationOnly)
-public func parseCommandLineArguments(from̉ args: [String]) throws -> __CommandLineArguments_v0 {
+public func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArguments_v0 {
   var result = __CommandLineArguments_v0()
 
   // Do not consider the executable path AKA argv[0].
