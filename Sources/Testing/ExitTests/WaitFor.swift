@@ -12,24 +12,29 @@
 internal import TestingInternals
 
 #if SWT_TARGET_OS_APPLE || os(Linux)
-extension ExitCondition {
-  /// Initialize an instance of this type from an instance of the POSIX
-  /// `siginfo_t` type.
-  ///
-  /// - Parameters:
-  ///   - siginfo: The instance of `siginfo_t` to initialize from.
-  ///
-  /// - Throws: If `siginfo.si_code` does not equal either `CLD_EXITED`,
-  ///   `CLD_KILLED`, or `CLD_DUMPED` (i.e. it does not represent an exit
-  ///   condition.)
-  fileprivate init(_ siginfo: siginfo_t) throws {
-    switch siginfo.si_code {
-    case .init(CLD_EXITED):
-      self = .exitCode(siginfo.si_status)
-    case .init(CLD_KILLED), .init(CLD_DUMPED):
-      self = .signal(siginfo.si_status)
-    default:
-      throw SystemError(description: "Unexpected siginfo_t value. Please file a bug report at https://github.com/apple/swift-testing/issues/new and include this information: \(String(reflecting: siginfo))")
+/// Block the calling thread, wait for the target process to exit, and return
+/// a value describing the conditions under which it exited.
+///
+/// - Parameters:
+///   - pid: The ID of the process to wait for.
+///
+/// - Throws: If the exit status of the process with ID `pid` cannot be
+///   determined (i.e. it does not represent an exit condition.)
+fileprivate func _blockAndWait(for pid: pid_t) throws -> ExitCondition {
+  // Get the exit status of the process or throw an error (other than EINTR.)
+  while true {
+    var siginfo = siginfo_t()
+    if 0 == waitid(P_PID, id_t(pid), &siginfo, WEXITED) {
+      switch siginfo.si_code {
+      case .init(CLD_EXITED):
+        return .exitCode(siginfo.si_status)
+      case .init(CLD_KILLED), .init(CLD_DUMPED):
+        return .signal(siginfo.si_status)
+      default:
+        throw SystemError(description: "Unexpected siginfo_t value. Please file a bug report at https://github.com/apple/swift-testing/issues/new and include this information: \(String(reflecting: siginfo))")
+      }
+    } else if case let errorCode = swt_errno(), errorCode != EINTR {
+      throw CError(rawValue: errorCode)
     }
   }
 }
@@ -64,9 +69,9 @@ private let _createWaitThreadImpl: Void = {
         // and pass the resulting exit condition back to the calling task. If
         // there is no continuation, then either it hasn't been stored yet or
         // this child process is not tracked by the waiter thread.
-        if let continuation, 0 == waitid(P_PID, id_t(pid), &siginfo, WEXITED) {
+        if let continuation {
           let result = Result {
-            try ExitCondition(siginfo)
+            try _blockAndWait(for: pid)
           }
           continuation.resume(with: result)
         }
@@ -145,15 +150,7 @@ func wait(for pid: pid_t) async throws -> ExitCondition {
   }
   withExtendedLifetime(source) {}
 
-  // Get the exit status of the process or throw an error (other than EINTR.)
-  while true {
-    var siginfo = siginfo_t()
-    if 0 == waitid(P_PID, id_t(pid), &siginfo, WEXITED) {
-      return try ExitCondition(siginfo)
-    } else if case let errorCode = swt_errno(), errorCode != EINTR {
-      throw CError(rawValue: errorCode)
-    }
-  }
+  return try _blockAndWait(for: pid)
 #else
   // Ensure the waiter thread is running.
   _createWaitThread()
