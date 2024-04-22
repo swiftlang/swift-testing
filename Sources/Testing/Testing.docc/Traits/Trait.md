@@ -24,7 +24,7 @@
 - ``Trait/bug(_:relationship:_:)-86mmm``
 - ``Trait/bug(_:relationship:_:)-3hsi5``
 
-### Adding comments
+### Adding information to tests
 - ``Trait/comments``
 
 ### Preparing internal state
