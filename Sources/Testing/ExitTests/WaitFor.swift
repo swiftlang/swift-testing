@@ -20,7 +20,7 @@ internal import TestingInternals
 ///
 /// - Throws: If the exit status of the process with ID `pid` cannot be
 ///   determined (i.e. it does not represent an exit condition.)
-fileprivate func _blockAndWait(for pid: pid_t) throws -> ExitCondition {
+private func _blockAndWait(for pid: pid_t) throws -> ExitCondition {
   // Get the exit status of the process or throw an error (other than EINTR.)
   while true {
     var siginfo = siginfo_t()
