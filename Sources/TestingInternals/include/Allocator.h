@@ -11,7 +11,9 @@
 #if !defined(SWT_ALLOCATOR_H)
 #define SWT_ALLOCATOR_H
 
+#if defined(__cplusplus)
 #include <cstdlib>
+#endif
 
 #include "Defines.h"
 
