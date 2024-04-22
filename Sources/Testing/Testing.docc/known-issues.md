@@ -26,11 +26,8 @@ at runtime not to mark the test as failing when issues occur.
 - ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:)-30kgk``
 - ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:when:matching:)-68e5g``
 - ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:when:matching:)-7azqg``
+- ``KnownIssueMatcher``
 
 ### Describing a failure or warning
 
 - ``Issue``
-
-### Matching issues
-
-- ``KnownIssueMatcher``
