@@ -20,10 +20,10 @@ This article assumes that the package or project being tested has already been
 configured with a test target. For help configuring a package to use the testing
 library, see <doc:TemporaryGettingStarted>.
 
-## Importing the testing library
+## Import the testing library
 
 To import the testing library, add the following to the Swift source file that
-will contain the test:
+contains the test:
 
 ```swift
 import Testing
@@ -33,11 +33,11 @@ import Testing
   testing library into an application, library, or binary target is not
   supported or recommended. Test functions are not stripped from binaries when
   building for release, so logic and fixtures of a test may be visible to anyone
-  who inspects a build product containing a test function.
+  who inspects a build product that contains a test function.
 
-## Declaring a test function
+## Declare a test function
 
-To declare a test function, write a Swift function declaration that does not
+To declare a test function, write a Swift function declaration that doesn't
 take any arguments, then prefix its name with the `@Test` attribute:
 
 ```swift
@@ -55,7 +55,7 @@ Note that, while this function is a valid test function, it does not actually
 perform any action or test any code. To check for expected values and outcomes
 in test functions, add [expectations](doc:Expectations) to the test function.
 
-## Customizing a test's name
+## Customize a test's name
 
 To customize a test function's name as presented in an IDE or at the command
 line, supply a string literal as an argument to the `@Test` attribute:
@@ -78,7 +78,7 @@ the process), it can be annotated `@MainActor`:
 @Test @MainActor func foodTruckExists() async throws { ... }
 ```
 
-## Limiting the availability of a test
+## Limit the availability of a test
 
 If a test function can only run on newer versions of an operating system or of
 the Swift language, use the `@available` attribute when declaring it. Use the
@@ -90,13 +90,3 @@ a test is unable to run due to limited availability:
 @available(swift, introduced: 8.0, message: "Requires Swift 8.0 features to run")
 @Test func foodTruckExists() { ... }
 ```
-
-## Topics
-
-- ``Test``
-- ``Test(_:_:)``
-
-## See Also
-
-- <doc:Expectations>
-- <doc:ParameterizedTesting>
