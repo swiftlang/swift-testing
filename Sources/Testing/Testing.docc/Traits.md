@@ -49,7 +49,7 @@ HIDDEN: .serial is experimental SPI pending feature review.
 - ``Trait/bug(_:relationship:_:)-86mmm``
 - ``Trait/bug(_:relationship:_:)-3hsi5``
 
-### Creating a custom trait
+### Creating custom traits
 
 - ``Trait``
 - ``TestTrait``
