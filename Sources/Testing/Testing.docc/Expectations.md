@@ -39,7 +39,7 @@ you can't check directly using an expectation.
 - ``require(_:sourceLocation:performing:throws:)``
 - ``require(throws:_:sourceLocation:performing:)-36uzc``
 
-### Confirming asynchronous events
+### Confirming that asynchronous events occur
 
 - ``confirmation(_:expectedCount:fileID:filePath:line:column:_:)``
 - ``Confirmation``
