@@ -221,7 +221,7 @@ public struct Test: Sendable {
     self.sourceLocation = sourceLocation
     self.containingTypeInfo = containingTypeInfo
     self.xcTestCompatibleSelector = xcTestCompatibleSelector
-    self.testCaseState = .unevaluated({ .init(try await testCases()) })
+    self.testCaseState = .unevaluated { .init(try await testCases()) }
     self.parameters = parameters
   }
 }
@@ -250,7 +250,7 @@ extension Test {
       case name
       case displayName
       case sourceLocation
-      case testCaseState
+      case testCases
       case parameters
       case comments
       case tags
@@ -302,11 +302,13 @@ extension Test {
       }
     }
 
-    /// The evaluation state of this test's cases, if any.
+    /// The set of test cases associated with this test, if any.
     ///
-    /// If this test represents a suite type, the value of this property is
-    /// `nil`.
-    public var testCaseState: TestCaseState?
+    /// If the ``Test`` this instance was snapshotted from represented a
+    /// parameterized test function but its test cases had not yet been
+    /// evaluated when the snapshot was taken, or the evaluation attempt failed,
+    /// the value of this property will be an empty array.
+    public var testCases: [Test.Case.Snapshot]?
 
     /// The test function parameters, if any.
     ///
@@ -345,13 +347,22 @@ extension Test {
       name = test.name
       displayName = test.displayName
       sourceLocation = test.sourceLocation
-      testCaseState = test.testCaseState.map(TestCaseState.init(snapshotting:))
       parameters = test.parameters
       comments = test.comments
       tags = test.tags
       associatedBugs = test.associatedBugs
       if #available(_clockAPI, *) {
         _timeLimit = test.timeLimit.map(TimeValue.init)
+      }
+
+      testCases = switch test.testCaseState {
+      case .unevaluated,
+           .evaluated(.failure):
+        []
+      case let .evaluated(.success(testCases)):
+        testCases.rawValue.map(Test.Case.Snapshot.init(snapshotting:))
+      case nil:
+        nil
       }
     }
 
@@ -370,69 +381,7 @@ extension Test {
     ///
     /// - ``Test/isSuite``
     public var isSuite: Bool {
-      testCaseState == nil
+      testCases == nil
     }
-  }
-}
-
-extension Test.Snapshot.TestCaseState: Codable {
-  /// A simplified version of ``TestCaseState`` suitable for encoding and
-  /// decoding.
-  private enum _EncodedForm: Sendable, Codable {
-    /// The test's cases have not yet been evaluated.
-    case unevaluated
-
-    /// A representation of `Swift.Result` suitable for encoding and decoding.
-    enum Result: Sendable, Codable {
-      /// A successful evaluation of a test's cases.
-      ///
-      /// - Parameters:
-      ///   - testCases: The returned set of test cases.
-      case success(_ testCases: [Test.Case.Snapshot])
-
-      /// A failed evaluation of a test's cases.
-      ///
-      /// - Parameters:
-      ///   - error: A snapshot of the error caught when evaluating the test's
-      ///     cases.
-      case failure(_ error: ErrorSnapshot)
-    }
-
-    /// The test's cases have been evaluated, and either returned a set of test
-    /// or failed by throwing an error.
-    ///
-    /// - Parameters:
-    ///   - result: The result of having evaluated the test's cases.
-    case evaluated(_ result: Result)
-  }
-
-  public init(from decoder: any Decoder) throws {
-    self = switch try _EncodedForm(from: decoder) {
-    case .unevaluated:
-      .unevaluated
-    case let .evaluated(result):
-      switch result {
-      case let .success(testCases):
-        .evaluated(.success(testCases))
-      case let .failure(error):
-        .evaluated(.failure(error))
-      }
-    }
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    let encodedForm: _EncodedForm = switch self {
-    case .unevaluated:
-      .unevaluated
-    case let .evaluated(result):
-      switch result {
-      case let .success(testCases):
-        .evaluated(.success(testCases))
-      case let .failure(error):
-        .evaluated(.failure(error))
-      }
-    }
-
-    try encodedForm.encode(to: encoder)
   }
 }
