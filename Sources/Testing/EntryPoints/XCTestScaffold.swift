@@ -131,9 +131,21 @@ public enum XCTestScaffold: Sendable {
     let isProcessLaunchedByXcode = Environment.variable(named: "XCTestSessionIdentifier") != nil
 #endif
 
-    var configuration = Configuration()
-    configuration.isParallelizationEnabled = false
-    configuration.eventHandler = { event, context in
+    var args = __CommandLineArguments_v0()
+    args.parallel = false
+    args.verbose = (Environment.flag(named: "SWT_VERBOSE_OUTPUT") == true)
+
+    // Specify the hosting XCTestCase instance. This value is currently only
+    // used for exit tests.
+    let typeName = String(reflecting: type(of: testCase.rawValue as Any))
+    let functionName = if let parenIndex = functionName.lastIndex(of: "(") {
+      functionName[..<parenIndex]
+    } else {
+      functionName[...]
+    }
+    args.xcTestCaseHostIdentifier = "\(typeName)/\(functionName)"
+
+    _ = await entryPoint(passing: args) { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
@@ -158,29 +170,6 @@ public enum XCTestScaffold: Sendable {
       }
 #endif
     }
-
-#if !SWT_NO_EXIT_TESTS
-    // Exit test handling.
-    if let exitTest = ExitTest.findInEnvironmentForSwiftPM() {
-      await exitTest()
-    }
-    let typeName = String(reflecting: type(of: testCase.rawValue as Any))
-    let functionName = if let parenIndex = functionName.lastIndex(of: "(") {
-      functionName[..<parenIndex]
-    } else {
-      functionName[...]
-    }
-    let testIdentifier = "\(typeName)/\(functionName)"
-    configuration.exitTestHandler = ExitTest.handlerForSwiftPM(forXCTestCaseIdentifiedBy: testIdentifier)
-#endif
-
-    var options = Event.ConsoleOutputRecorder.Options()
-#if !SWT_NO_FILE_IO
-    options = .for(.stderr)
-#endif
-    options.isVerbose = (Environment.flag(named: "SWT_VERBOSE_OUTPUT") == true)
-
-    await runTests(options: options, configuration: configuration)
 #endif
   }
 }

@@ -67,7 +67,7 @@ func abiEntryPoint_v0(_ outEntryPoint: UnsafeMutableRawPointer) {
     }
 
     let eventHandler = _eventHandlerForStreamingEvents_v0(to: eventHandler)
-    return await _commonEntryPoint(passing: args, eventHandler: eventHandler)
+    return await entryPoint(passing: args, eventHandler: eventHandler)
   }
 }
 #endif
@@ -88,7 +88,7 @@ func abiEntryPoint_v0(_ outEntryPoint: UnsafeMutableRawPointer) {
 /// - Warning: This function is used by Swift Package Manager. Do not call it
 ///   directly.
 @_disfavoredOverload public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) async -> CInt {
-  await _commonEntryPoint(passing: args, eventHandler: nil)
+  await entryPoint(passing: args, eventHandler: nil)
 }
 
 /// The entry point to the testing library used by Swift Package Manager.
@@ -118,7 +118,7 @@ public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) 
 ///     If `nil`, a new instance is created from the command-line arguments to
 ///     the current process.
 ///   - eventHandler: An event handler
-private func _commonEntryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Handler?) async -> CInt {
+func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Handler?) async -> CInt {
   let exitCode = Locked(rawValue: EXIT_SUCCESS)
 
   do {
@@ -132,7 +132,17 @@ private func _commonEntryPoint(passing args: __CommandLineArguments_v0?, eventHa
 #endif
       }
     } else {
+#if !SWT_NO_EXIT_TESTS
+      // If an exit test was specified, run it. `exitTest` returns `Never`.
+      if let exitTest = ExitTest.findInEnvironmentForSwiftPM() {
+        await exitTest()
+      }
+#endif
+
+      // Configure the test runner.
       var configuration = try configurationForSwiftPMEntryPoint(from: args)
+
+      // Set up the event handler.
       configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
         if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
           exitCode.withLock { exitCode in
@@ -141,6 +151,22 @@ private func _commonEntryPoint(passing args: __CommandLineArguments_v0?, eventHa
         }
         oldEventHandler(event, context)
       }
+
+      // Configure the event recorder to write events to stderr.
+#if !SWT_NO_FILE_IO
+      var options = Event.ConsoleOutputRecorder.Options()
+      options = .for(.stderr)
+      options.isVerbose = args.verbose
+      let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
+        try? FileHandle.stderr.write(string)
+      }
+      configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+        eventRecorder.record(event, in: context)
+        oldEventHandler(event, context)
+      }
+#endif
+
+      // If the caller specified an alternate event handler, hook it up too.
       if let eventHandler {
         configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
           eventHandler(event, context)
@@ -148,19 +174,9 @@ private func _commonEntryPoint(passing args: __CommandLineArguments_v0?, eventHa
         }
       }
 
-      var options = Event.ConsoleOutputRecorder.Options()
-#if !SWT_NO_FILE_IO
-      options = .for(.stderr)
-#endif
-      options.isVerbose = args.verbose
-
-#if !SWT_NO_EXIT_TESTS
-      if let exitTest = ExitTest.findInEnvironmentForSwiftPM() {
-        await exitTest()
-      }
-#endif
-
-      await runTests(options: options, configuration: configuration)
+      // Run the tests.
+      let runner = await Runner(configuration: configuration)
+      await runner.run()
     }
   } catch {
 #if !SWT_NO_FILE_IO
@@ -253,6 +269,12 @@ public struct __CommandLineArguments_v0: Sendable {
 
   /// The value of the `--repeat-until` argument.
   public var repeatUntil: String?
+
+  /// The identifier of the `XCTestCase` instance hosting the testing library,
+  /// if ``XCTestScaffold`` is being used.
+  ///
+  /// This property is not ABI and will be removed with ``XCTestScaffold``.
+  var xcTestCaseHostIdentifier: String?
 }
 
 extension __CommandLineArguments_v0: Codable {}
@@ -281,7 +303,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     result.parallel = false
   }
 
-  if args.contains("--verbose") {
+  if args.contains("--verbose") || args.contains("-v") || args.contains("--very-verbose") || args.contains("--vv") {
     result.verbose = true
   }
 
@@ -414,36 +436,10 @@ public func configurationForSwiftPMEntryPoint(from args: __CommandLineArguments_
 
 #if !SWT_NO_EXIT_TESTS
   // Enable exit test handling via __swiftPMEntryPoint().
-  configuration.exitTestHandler = ExitTest.handlerForSwiftPM()
+  configuration.exitTestHandler = ExitTest.handlerForSwiftPM(forXCTestCaseIdentifiedBy: args.xcTestCaseHostIdentifier)
 #endif
 
   return configuration
-}
-
-// MARK: -
-
-/// The common implementation of ``swiftPMEntryPoint()`` and
-/// ``XCTestScaffold/runAllTests(hostedBy:_:)``.
-///
-/// - Parameters:
-///   - options: Options to pass when configuring the console output recorder.
-///   - configuration: The configuration to use for running.
-func runTests(options: Event.ConsoleOutputRecorder.Options, configuration: Configuration) async {
-  var configuration = configuration
-  let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
-#if !SWT_NO_FILE_IO
-    try? FileHandle.stderr.write(string)
-#endif
-  }
-
-  let oldEventHandler = configuration.eventHandler
-  configuration.eventHandler = { event, context in
-    eventRecorder.record(event, in: context)
-    oldEventHandler(event, context)
-  }
-
-  let runner = await Runner(configuration: configuration)
-  await runner.run()
 }
 
 // MARK: - Experimental event streaming
