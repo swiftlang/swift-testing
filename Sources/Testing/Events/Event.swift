@@ -15,8 +15,11 @@ public struct Event: Sendable {
   public enum Kind: Sendable {
     /// A test run started.
     ///
+    /// - Parameters:
+    ///   - plan: The test plan of the run that started.
+    ///
     /// This event is the first event posted after ``Runner/run()`` is called.
-    case runStarted
+    indirect case runStarted(_ plan: Runner.Plan)
 
     /// An iteration of the test run started.
     ///

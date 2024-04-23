@@ -16,9 +16,8 @@
 ///   - argumentsJSON: A buffer to memory representing the JSON encoding of an
 ///     instance of `__CommandLineArguments_v0`. If `nil`, a new instance is
 ///     created from the command-line arguments to the current process.
-///   - eventHandler: An event handler to which is passed a buffer to memory
-///     representing each event and its context, as with ``Event/Handler``, but
-///     encoded as JSON.
+///   - recordHandler: A JSON record handler to which is passed a buffer to
+///     memory representing each record as described in `ABI/JSON.md`.
 ///
 /// - Returns: The result of invoking the testing library. The type of this
 ///   value is subject to change.
@@ -31,7 +30,7 @@
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 public typealias ABIEntryPoint_v0 = @Sendable (
   _ argumentsJSON: UnsafeRawBufferPointer?,
-  _ eventHandler: @escaping @Sendable (_ eventAndContextJSON: UnsafeRawBufferPointer) -> Void
+  _ recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
 ) async -> CInt
 
 /// Get the entry point to the testing library used by tools that want to remain
@@ -49,7 +48,8 @@ public typealias ABIEntryPoint_v0 = @Sendable (
 ///
 /// The returned function can be thought of as equivalent to
 /// `swift test --experimental-event-stream-output` except that, instead of
-/// streaming events to a named pipe or file, it streams them to a callback.
+/// streaming JSON records to a named pipe or file, it streams them to an
+/// in-process callback.
 ///
 /// - Warning: This function's signature and the structure of its JSON inputs
 ///   and outputs have not been finalized yet.
@@ -57,67 +57,14 @@ public typealias ABIEntryPoint_v0 = @Sendable (
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 public func copyABIEntryPoint_v0() -> UnsafeMutableRawPointer {
   let result = UnsafeMutablePointer<ABIEntryPoint_v0>.allocate(capacity: 1)
-  result.initialize { argumentsJSON, eventHandler in
+  result.initialize { argumentsJSON, recordHandler in
     let args = try! argumentsJSON.map { argumentsJSON in
       try JSON.decode(__CommandLineArguments_v0.self, from: argumentsJSON)
     }
 
-    let eventHandler = eventHandlerForStreamingEvents_v0(to: eventHandler)
+    let eventHandler = try! eventHandlerForStreamingEvents(version: args?.experimentalEventStreamVersion, forwardingTo: recordHandler)
     return await entryPoint(passing: args, eventHandler: eventHandler)
   }
   return .init(result)
-}
-#endif
-
-// MARK: - Experimental event streaming
-
-#if canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
-/// A type containing an event snapshot and snapshots of the contents of an
-/// event context suitable for streaming over JSON.
-///
-/// This function is not part of the public interface of the testing library.
-/// External adopters are not necessarily written in Swift and are expected to
-/// decode the JSON produced for this type in implementation-specific ways.
-struct EventAndContextSnapshot {
-  /// A snapshot of the event.
-  var event: Event.Snapshot
-
-  /// A snapshot of the event context.
-  var eventContext: Event.Context.Snapshot
-}
-
-extension EventAndContextSnapshot: Codable {}
-
-/// Create an event handler that encodes events as JSON and forwards them to an
-/// ABI-friendly event handler.
-///
-/// - Parameters:
-///   - eventHandler: The event handler to forward events to. See
-///     ``ABIEntryPoint_v0`` for more information.
-///
-/// - Returns: An event handler.
-///
-/// The resulting event handler outputs data as JSON. For each event handled by
-/// the resulting event handler, a JSON object representing it and its
-/// associated context is created and is passed to `eventHandler`. These JSON
-/// objects are guaranteed not to contain any ASCII newline characters (`"\r"`
-/// or `"\n"`).
-///
-/// Note that `_eventHandlerForStreamingEvents_v0(toFileAtPath:)` calls this
-/// function and performs additional postprocessing before writing JSON data.
-func eventHandlerForStreamingEvents_v0(
-  to eventHandler: @escaping @Sendable (_ eventAndContextJSON: UnsafeRawBufferPointer) -> Void
-) -> Event.Handler {
-  return { event, context in
-    let snapshot = EventAndContextSnapshot(
-      event: Event.Snapshot(snapshotting: event),
-      eventContext: Event.Context.Snapshot(snapshotting: context)
-    )
-    try? JSON.withEncoding(of: snapshot) { eventAndContextJSON in
-      eventAndContextJSON.withUnsafeBytes { eventAndContextJSON in
-        eventHandler(eventAndContextJSON)
-      }
-    }
-  }
 }
 #endif
