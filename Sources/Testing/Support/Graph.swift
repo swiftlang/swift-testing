@@ -406,7 +406,7 @@ extension Graph {
   ///
   /// - Parameters:
   ///   - keyPath: The key path to use for the root node when passing it to
-  ///    `body`.
+  ///     `body`.
   ///   - body: A closure that is invoked once per element in the graph. The
   ///     key path and leaf value of each node are passed to the closure.
   ///
@@ -485,10 +485,10 @@ extension Graph {
   ///
   /// - Parameters:
   ///   - transform: A closure that is invoked once per element in the graph.
-  ///     The leaf value of each node is passed to this closure and its result
-  ///     is used as the corresponding value in the new graph. If the result is
-  ///     `nil`, the node and all of its child nodes are omitted from the new
-  ///     graph.
+  ///     The key path and leaf value of each node are passed to this closure
+  ///     and its result is used as the corresponding value in the new graph. If
+  ///     the result is `nil`, the node and all of its child nodes are omitted
+  ///     from the new graph.
   ///
   /// - Returns: A graph containing the transformed nodes of this graph at the
   ///   same key paths, with `nil` values omitted.
@@ -496,7 +496,7 @@ extension Graph {
   /// - Throws: Whatever is thrown by `transform`.
   ///
   /// This function iterates depth-first.
-  func compactMapValues<U>(_ transform: (V) throws -> U?) rethrows -> Graph<K, U>? {
+  func compactMapValues<U>(_ transform: (Element) throws -> U?) rethrows -> Graph<K, U>? {
     try compactMapValues {
       try transform($0).map { ($0, false) }
     }
@@ -507,10 +507,10 @@ extension Graph {
   ///
   /// - Parameters:
   ///   - transform: A closure that is invoked once per element in the graph.
-  ///     The leaf value of each node is passed to this closure and its result
-  ///     is used as the corresponding value in the new graph. If the result is
-  ///     `nil`, the node and all of its child nodes are omitted from the new
-  ///     graph.
+  ///     The key path and leaf value of each node are passed to this closure
+  ///     and its result is used as the corresponding value in the new graph. If
+  ///     the result is `nil`, the node and all of its child nodes are omitted
+  ///     from the new graph.
   ///
   /// - Returns: A graph containing the transformed nodes of this graph at the
   ///   same key paths, with `nil` values omitted.
@@ -518,7 +518,7 @@ extension Graph {
   /// - Throws: Whatever is thrown by `transform`.
   ///
   /// This function iterates depth-first.
-  func compactMapValues<U>(_ transform: (V) async throws -> U?) async rethrows -> Graph<K, U>? {
+  func compactMapValues<U>(_ transform: (Element) async throws -> U?) async rethrows -> Graph<K, U>? {
     try await compactMapValues {
       try await transform($0).map { ($0, false) }
     }
@@ -530,12 +530,12 @@ extension Graph {
   ///
   /// - Parameters:
   ///   - transform: A closure that is invoked once per element in the graph.
-  ///     The leaf value of each node is passed to this closure. The result of
-  ///     the closure is a tuple containing the new value and specifying whether
-  ///     or not the new value should also be applied to each descendant node.
-  ///     If `true`, `transform` is not invoked for those descendant nodes. If
-  ///     the result is `nil`, the node and all of its child nodes are omitted
-  ///     from the new graph.
+  ///     The key path and leaf value of each node are passed to this closure.
+  ///     The result of the closure is a tuple containing the new value and
+  ///     specifying whether or not the new value should also be applied to each
+  ///     descendant node. If `true`, `transform` is not invoked for those
+  ///     descendant nodes. If the result is `nil`, the node and all of its
+  ///     child nodes are omitted from the new graph.
   ///
   /// - Returns: A graph containing the transformed nodes of this graph at the
   ///   same key paths, with `nil` values omitted.
@@ -543,18 +543,41 @@ extension Graph {
   /// - Throws: Whatever is thrown by `transform`.
   ///
   /// This function iterates depth-first.
-  func compactMapValues<U>(_ transform: (V) throws -> (U, recursivelyApply: Bool)?) rethrows -> Graph<K, U>? {
-    guard let (newValue, recursivelyApply) = try transform(value) else {
+  func compactMapValues<U>(_ transform: (Element) throws -> (U, recursivelyApply: Bool)?) rethrows -> Graph<K, U>? {
+    try _compactMapValues(keyPath: []) {
+      try transform(($0, $1))
+    }
+  }
+
+  /// The recursive implementation of `compactMapValues(_:)`.
+  ///
+  /// - Parameters:
+  ///   - keyPath: The key path to use for the root node when passing it to
+  ///     `transform`.
+  ///   - transform: A closure that is invoked once per element in the graph.
+  ///     The key path and leaf value of each node are passed to this closure.
+  ///     The result of the closure is a tuple containing the new value and
+  ///     specifying whether or not the new value should also be applied to each
+  ///     descendant node. If `true`, `transform` is not invoked for those
+  ///     descendant nodes. If the result is `nil`, the node and all of its
+  ///     child nodes are omitted from the new graph.
+  ///
+  /// - Throws: Whatever is thrown by `transform`.
+  private func _compactMapValues<U>(keyPath: [K], _ transform: (Element) throws -> (U, recursivelyApply: Bool)?) rethrows -> Graph<K, U>? {
+    guard let (newValue, recursivelyApply) = try transform((keyPath, value)) else {
       return nil
     }
 
     var newChildren = [K: Graph<K,U>]()
     newChildren.reserveCapacity(children.count)
     for (key, child) in children {
+      var childKeyPath = keyPath
+      childKeyPath.append(key)
+
       if recursivelyApply {
-        newChildren[key] = child.compactMapValues { _ in (newValue, true) }
+        newChildren[key] = child._compactMapValues(keyPath: childKeyPath) { _ in (newValue, true) }
       } else {
-        newChildren[key] = try child.compactMapValues(transform)
+        newChildren[key] = try child._compactMapValues(keyPath: childKeyPath, transform)
       }
     }
 
@@ -567,12 +590,12 @@ extension Graph {
   ///
   /// - Parameters:
   ///   - transform: A closure that is invoked once per element in the graph.
-  ///     The leaf value of each node is passed to this closure. The result of
-  ///     the closure is a tuple containing the new value and specifying whether
-  ///     or not the new value should also be applied to each descendant node.
-  ///     If `true`, `transform` is not invoked for those descendant nodes. If
-  ///     the result is `nil`, the node and all of its child nodes are omitted
-  ///     from the new graph.
+  ///     The key path and leaf value of each node are passed to this closure.
+  ///     The result of the closure is a tuple containing the new value and
+  ///     specifying whether or not the new value should also be applied to each
+  ///     descendant node. If `true`, `transform` is not invoked for those
+  ///     descendant nodes. If the result is `nil`, the node and all of its
+  ///     child nodes are omitted from the new graph.
   ///
   /// - Returns: A graph containing the transformed nodes of this graph at the
   ///   same key paths, with `nil` values omitted.
@@ -580,18 +603,41 @@ extension Graph {
   /// - Throws: Whatever is thrown by `transform`.
   ///
   /// This function iterates depth-first.
-  func compactMapValues<U>(_ transform: (V) async throws -> (U, recursivelyApply: Bool)?) async rethrows -> Graph<K, U>? {
-    guard let (newValue, recursivelyApply) = try await transform(value) else {
+  func compactMapValues<U>(_ transform: (Element) async throws -> (U, recursivelyApply: Bool)?) async rethrows -> Graph<K, U>? {
+    try await _compactMapValues(keyPath: []) {
+      try await transform(($0, $1))
+    }
+  }
+
+  /// The recursive implementation of `compactMapValues(_:)`.
+  ///
+  /// - Parameters:
+  ///   - keyPath: The key path to use for the root node when passing it to
+  ///     `transform`.
+  ///   - transform: A closure that is invoked once per element in the graph.
+  ///     The key path and leaf value of each node are passed to this closure.
+  ///     The result of the closure is a tuple containing the new value and
+  ///     specifying whether or not the new value should also be applied to each
+  ///     descendant node. If `true`, `transform` is not invoked for those
+  ///     descendant nodes. If the result is `nil`, the node and all of its
+  ///     child nodes are omitted from the new graph.
+  ///
+  /// - Throws: Whatever is thrown by `transform`.
+  private func _compactMapValues<U>(keyPath: [K], _ transform: (Element) async throws -> (U, recursivelyApply: Bool)?) async rethrows -> Graph<K, U>? {
+    guard let (newValue, recursivelyApply) = try await transform((keyPath, value)) else {
       return nil
     }
 
     var newChildren = [K: Graph<K,U>]()
     newChildren.reserveCapacity(children.count)
     for (key, child) in children {
+      var childKeyPath = keyPath
+      childKeyPath.append(key)
+
       if recursivelyApply {
-        newChildren[key] = child.compactMapValues { _ in (newValue, true) }
+        newChildren[key] = child._compactMapValues(keyPath: childKeyPath) { _ in (newValue, true) }
       } else {
-        newChildren[key] = try await child.compactMapValues(transform)
+        newChildren[key] = try await child._compactMapValues(keyPath: childKeyPath, transform)
       }
     }
 
@@ -603,8 +649,8 @@ extension Graph {
   ///
   /// - Parameters:
   ///   - transform: A closure that is invoked once per element in the graph.
-  ///     The leaf value of each node is passed to this closure and its result
-  ///     is used as the corresponding value in the new graph.
+  ///     The key path and leaf value of each node are passed to this closure
+  ///     and its result is used as the corresponding value in the new graph.
   ///
   /// - Returns: A graph containing the transformed nodes of this graph at the
   ///   same key paths.
@@ -612,7 +658,7 @@ extension Graph {
   /// - Throws: Whatever is thrown by `transform`.
   ///
   /// This function iterates depth-first.
-  func mapValues<U>(_ transform: (V) throws -> U) rethrows -> Graph<K, U> {
+  func mapValues<U>(_ transform: (Element) throws -> U) rethrows -> Graph<K, U> {
     try compactMapValues(transform)!
   }
 
@@ -621,8 +667,8 @@ extension Graph {
   ///
   /// - Parameters:
   ///   - transform: A closure that is invoked once per element in the graph.
-  ///     The leaf value of each node is passed to this closure and its result
-  ///     is used as the corresponding value in the new graph.
+  ///     The key path and leaf value of each node are passed to this closure
+  ///     and its result is used as the corresponding value in the new graph.
   ///
   /// - Returns: A graph containing the transformed nodes of this graph at the
   ///   same key paths.
@@ -630,7 +676,7 @@ extension Graph {
   /// - Throws: Whatever is thrown by `transform`.
   ///
   /// This function iterates depth-first.
-  func mapValues<U>(_ transform: (V) async throws -> U) async rethrows -> Graph<K, U> {
+  func mapValues<U>(_ transform: (Element) async throws -> U) async rethrows -> Graph<K, U> {
     try await compactMapValues(transform)!
   }
 
@@ -640,10 +686,11 @@ extension Graph {
   ///
   /// - Parameters:
   ///   - transform: A closure that is invoked once per element in the graph.
-  ///     The leaf value of each node is passed to this closure. The result of
-  ///     the closure is a tuple containing the new value and specifying whether
-  ///     or not the new value should also be applied to each descendant node.
-  ///     If `true`, `transform` is not invoked for those descendant nodes.
+  ///     The key path and leaf value of each node are passed to this closure.
+  ///     The result of the closure is a tuple containing the new value and
+  ///     specifying whether or not the new value should also be applied to each
+  ///     descendant node. If `true`, `transform` is not invoked for those
+  ///     descendant nodes.
   ///
   /// - Returns: A graph containing the transformed nodes of this graph at the
   ///   same key paths.
@@ -651,7 +698,7 @@ extension Graph {
   /// - Throws: Whatever is thrown by `transform`.
   ///
   /// This function iterates depth-first.
-  func mapValues<U>(_ transform: (V) throws -> (U, recursivelyApply: Bool)) rethrows -> Graph<K, U> {
+  func mapValues<U>(_ transform: (Element) throws -> (U, recursivelyApply: Bool)) rethrows -> Graph<K, U> {
     try compactMapValues(transform)!
   }
 
@@ -661,10 +708,11 @@ extension Graph {
   ///
   /// - Parameters:
   ///   - transform: A closure that is invoked once per element in the graph.
-  ///     The leaf value of each node is passed to this closure. The result of
-  ///     the closure is a tuple containing the new value and specifying whether
-  ///     or not the new value should also be applied to each descendant node.
-  ///     If `true`, `transform` is not invoked for those descendant nodes.
+  ///     The key path and leaf value of each node are passed to this closure.
+  ///     The result of the closure is a tuple containing the new value and
+  ///     specifying whether or not the new value should also be applied to each
+  ///     descendant node. If `true`, `transform` is not invoked for those
+  ///     descendant nodes.
   ///
   /// - Returns: A graph containing the transformed nodes of this graph at the
   ///   same key paths.
@@ -672,7 +720,7 @@ extension Graph {
   /// - Throws: Whatever is thrown by `transform`.
   ///
   /// This function iterates depth-first.
-  func mapValues<U>(_ transform: (V) async throws -> (U, recursivelyApply: Bool)) async rethrows -> Graph<K, U> {
+  func mapValues<U>(_ transform: (Element) async throws -> (U, recursivelyApply: Bool)) async rethrows -> Graph<K, U> {
     try await compactMapValues(transform)!
   }
 

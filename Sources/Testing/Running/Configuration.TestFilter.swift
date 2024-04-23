@@ -219,7 +219,7 @@ extension Configuration.TestFilter.Kind {
     case .unfiltered:
       return testGraph
     case let .precomputed(selection, membership):
-      return testGraph.mapValues { test in
+      return testGraph.mapValues { _, test in
         guard let test else {
           return nil
         }
@@ -250,7 +250,7 @@ extension Configuration.TestFilter.Kind {
       return zip(
         lhs.apply(to: testGraph),
         rhs.apply(to: testGraph)
-      ).mapValues(op.functionValue)
+      ).mapValues { op.functionValue($1.0, $1.1) }
     }
   }
 }
@@ -271,7 +271,7 @@ extension Configuration.TestFilter {
     // combined test filters. It is only consulted on the outermost call to
     // apply(to:), not in _apply(to:).
     if !includeHiddenTests {
-      result = result.mapValues { test in
+      result = result.mapValues { _, test in
         (test?.isHidden == true) ? nil : test
       }
     }

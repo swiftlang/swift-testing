@@ -237,13 +237,13 @@ extension Runner.Plan {
 
     // Now that we have allowed all the traits to update their corresponding
     // actions, recursively apply those actions to child tests in the graph.
-    actionGraph = actionGraph.mapValues { action in
+    actionGraph = actionGraph.mapValues { _, action in
       (action, recursivelyApply: action.isRecursive)
     }
 
     // Zip the tests and actions together and return them.
-    return zip(testGraph, actionGraph).mapValues { test, action in
-      test.map { Step(test: $0, action: action) }
+    return zip(testGraph, actionGraph).mapValues { _, pair in
+      pair.0.map { Step(test: $0, action: pair.1) }
     }
   }
 
