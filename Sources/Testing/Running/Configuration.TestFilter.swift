@@ -250,7 +250,9 @@ extension Configuration.TestFilter.Kind {
       return zip(
         lhs.apply(to: testGraph),
         rhs.apply(to: testGraph)
-      ).mapValues { op.functionValue($1.0, $1.1) }
+      ).mapValues { _, value in
+        op.functionValue(value.0, value.1)
+      }
     }
   }
 }
