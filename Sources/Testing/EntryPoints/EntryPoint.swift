@@ -10,68 +10,6 @@
 
 private import TestingInternals
 
-#if canImport(Foundation) && !SWT_NO_ABI_ENTRY_POINT
-/// The type of the entry point to the testing library used by tools that want
-/// to remain version-agnostic regarding the testing library.
-///
-/// - Parameters:
-///   - argumentsJSON: A buffer to memory representing the JSON encoding of an
-///     instance of `__CommandLineArguments_v0`. If `nil`, a new instance is
-///     created from the command-line arguments to the current process.
-///   - eventHandler: An event handler to which is passed a buffer to memory
-///     representing each event and its context, as with ``Event/Handler``, but
-///     encoded as JSON.
-///
-/// - Returns: The result of invoking the testing library. The type of this
-///   value is subject to change.
-///
-/// This function examines the command-line arguments to the current process
-/// and then invokes available tests in the current process.
-///
-/// - Warning: This function's signature and the structure of its JSON inputs
-///   and outputs have not been finalized yet.
-@_spi(ForToolsIntegrationOnly)
-public typealias ABIEntryPoint_v0 = @Sendable (
-  _ argumentsJSON: UnsafeRawBufferPointer?,
-  _ eventHandler: @escaping @Sendable (_ eventAndContextJSON: UnsafeRawBufferPointer) -> Void
-) async -> CInt
-
-/// Get the entry point to the testing library used by tools that want to remain
-/// version-agnostic regarding the testing library.
-///
-/// - Parameters:
-///   - outEntryPoint: Uninitialized memory large enough to hold an instance of
-///     ``ABIEntryPoint_v0``. On return, a pointer to an instance of that type
-///     representing the ABI-stable entry point to the testing library. The
-///     caller owns this memory and is responsible for deinitializing and
-///     deallocating it when done.
-///
-/// This function can be used by tools that do not link directly to the testing
-/// library and wish to invoke tests in a binary that has been loaded into the
-/// current process. The function is emitted into the binary under the name
-/// `"swt_copyABIEntryPoint_v0"` and can be dynamically looked up at runtime
-/// using `dlsym()` or a platform equivalent.
-///
-/// The function stored at `outEntryPoint` can be thought of as equivalent to
-/// `swift test --experimental-event-stream-output` except that, instead of
-/// streaming events to a named pipe or file, it streams them to a callback.
-///
-/// - Warning: This function's signature and the structure of its JSON inputs
-///   and outputs have not been finalized yet.
-@_cdecl("swt_copyABIEntryPoint_v0")
-@usableFromInline
-func abiEntryPoint_v0(_ outEntryPoint: UnsafeMutableRawPointer) {
-  outEntryPoint.initializeMemory(as: ABIEntryPoint_v0.self) { argumentsJSON, eventHandler in
-    let args = try! argumentsJSON.map { argumentsJSON in
-      try JSON.decode(__CommandLineArguments_v0.self, from: argumentsJSON)
-    }
-
-    let eventHandler = _eventHandlerForStreamingEvents_v0(to: eventHandler)
-    return await entryPoint(passing: args, eventHandler: eventHandler)
-  }
-}
-#endif
-
 /// The entry point to the testing library used by Swift Package Manager.
 ///
 /// - Parameters:
@@ -442,24 +380,7 @@ public func configurationForSwiftPMEntryPoint(from args: __CommandLineArguments_
 
 // MARK: - Experimental event streaming
 
-#if canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
-/// A type containing an event snapshot and snapshots of the contents of an
-/// event context suitable for streaming over JSON.
-///
-/// This function is not part of the public interface of the testing library.
-/// External adopters are not necessarily written in Swift and are expected to
-/// decode the JSON produced for this type in implementation-specific ways.
-struct EventAndContextSnapshot {
-  /// A snapshot of the event.
-  var event: Event.Snapshot
-
-  /// A snapshot of the event context.
-  var eventContext: Event.Context.Snapshot
-}
-
-extension EventAndContextSnapshot: Codable {}
-
-#if !SWT_NO_FILE_IO
+#if canImport(Foundation) && !SWT_NO_FILE_IO
 /// Create an event handler that streams events to the file at a given path.
 ///
 /// - Parameters:
@@ -489,7 +410,7 @@ private func _eventHandlerForStreamingEvents_v0(toFileAtPath path: String) throw
   // Open the event stream file for writing.
   let file = try FileHandle(forWritingAtPath: path)
 
-  return _eventHandlerForStreamingEvents_v0 { eventAndContextJSON in
+  return eventHandlerForStreamingEvents_v0 { eventAndContextJSON in
     func isASCIINewline(_ byte: UInt8) -> Bool {
       byte == 10 || byte == 13
     }
@@ -519,40 +440,6 @@ private func _eventHandlerForStreamingEvents_v0(toFileAtPath path: String) throw
         try file.write(eventAndContextJSON)
       }
       try file.write("\n")
-    }
-  }
-}
-#endif
-
-/// Create an event handler that encodes events as JSON and forwards them to an
-/// ABI-friendly event handler.
-///
-/// - Parameters:
-///   - eventHandler: The event handler to forward events to. See
-///     ``ABIEntryPoint_v0`` for more information.
-///
-/// - Returns: An event handler.
-///
-/// The resulting event handler outputs data as JSON. For each event handled by
-/// the resulting event handler, a JSON object representing it and its
-/// associated context is created and is passed to `eventHandler`. These JSON
-/// objects are guaranteed not to contain any ASCII newline characters (`"\r"`
-/// or `"\n"`).
-///
-/// Note that `_eventHandlerForStreamingEvents_v0(toFileAtPath:)` calls this
-/// function and performs additional postprocessing before writing JSON data.
-private func _eventHandlerForStreamingEvents_v0(
-  to eventHandler: @escaping @Sendable (_ eventAndContextJSON: UnsafeRawBufferPointer) -> Void
-) -> Event.Handler {
-  return { event, context in
-    let snapshot = EventAndContextSnapshot(
-      event: Event.Snapshot(snapshotting: event),
-      eventContext: Event.Context.Snapshot(snapshotting: context)
-    )
-    try? JSON.withEncoding(of: snapshot) { eventAndContextJSON in
-      eventAndContextJSON.withUnsafeBytes { eventAndContextJSON in
-        eventHandler(eventAndContextJSON)
-      }
     }
   }
 }
