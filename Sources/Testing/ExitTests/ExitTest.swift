@@ -137,8 +137,7 @@ func callExitTest(
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) async -> Result<Void, any Error> {
-  // FIXME: use lexicalContext to capture these misuses at compile time.
-  guard let configuration = Configuration.current, Test.current != nil else {
+  guard let configuration = Configuration.current ?? Configuration.all.first else {
     preconditionFailure("A test must be running on the current task to use #expect(exitsWith:).")
   }
 

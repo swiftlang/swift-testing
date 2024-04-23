@@ -42,6 +42,16 @@ private import TestingInternals
       abort()
     }
 #endif
+#if !SWT_NO_UNSTRUCTURED_TASKS
+    // Test the detached (no task-local configuration) path.
+    #expect(Test.current != nil)
+    await Task.detached {
+      #expect(Test.current == nil)
+      await #expect(exitsWith: .failure) {
+        fatalError()
+      }
+    }.value
+#endif
   }
 
 #if SWIFT_PM_SUPPORTS_SWIFT_TESTING
