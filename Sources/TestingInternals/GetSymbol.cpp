@@ -21,9 +21,7 @@
 #include <Windows.h>
 #include <Psapi.h>
 
-#include <vector>
-
-#include "Allocator.h"
+#include <array>
 #endif
 
 void *swt_getFunctionWithName(void *handle, const char *symbolName) {
@@ -39,16 +37,16 @@ void *swt_getFunctionWithName(void *handle, const char *symbolName) {
   }
 
   // Find all the modules loaded in the current process.
-  std::vector<HMODULE, SWTHeapAllocator<HMODULE>> hModules(1024, nullptr);
+  std::array<HMODULE, 1024> hModules;
   DWORD byteCountNeeded = 0;
   if (!EnumProcessModules(GetCurrentProcess(), &hModules[0], hModules.size() * sizeof(HMODULE), &byteCountNeeded)) {
-    return {};
+    return nullptr;
   }
-  hModules.resize(byteCountNeeded / sizeof(HMODULE));
+  DWORD hModuleCount = byteCountNeeded / sizeof(HMODULE);
 
   // Enumerate all modules looking for one containing the given symbol.
-  for (HMODULE hModule : hModules) {
-    if (auto result = GetProcAddress(hModule, symbolName)) {
+  for (DWORD i = 0; i < hModuleCount; i++) {
+    if (auto result = GetProcAddress(hModules[i], symbolName)) {
       return reinterpret_cast<void*>(result);
     }
   }
