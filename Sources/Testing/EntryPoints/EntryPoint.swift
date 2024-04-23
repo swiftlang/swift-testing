@@ -370,8 +370,7 @@ public func configurationForSwiftPMEntryPoint(from args: __CommandLineArguments_
       try? file.write(string)
     }
 
-    let oldEventHandler = configuration.eventHandler
-    configuration.eventHandler = { event, context in
+    configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
       _ = xmlRecorder.record(event, in: context)
       oldEventHandler(event, context)
     }
@@ -381,8 +380,7 @@ public func configurationForSwiftPMEntryPoint(from args: __CommandLineArguments_
   // Event stream output (experimental)
   if let eventStreamOutputPath = args.experimentalEventStreamOutput {
     let eventHandler = try _eventHandlerForStreamingEvents_v0(toFileAtPath: eventStreamOutputPath)
-    let oldEventHandler = configuration.eventHandler
-    configuration.eventHandler = { event, context in
+    configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
       eventHandler(event, context)
       oldEventHandler(event, context)
     }
