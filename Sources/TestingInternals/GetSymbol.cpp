@@ -21,6 +21,7 @@
 #include <Windows.h>
 #include <Psapi.h>
 
+#include <algorithm>
 #include <array>
 #endif
 
@@ -42,7 +43,7 @@ void *swt_getFunctionWithName(void *handle, const char *symbolName) {
   if (!EnumProcessModules(GetCurrentProcess(), &hModules[0], hModules.size() * sizeof(HMODULE), &byteCountNeeded)) {
     return nullptr;
   }
-  DWORD hModuleCount = byteCountNeeded / sizeof(HMODULE);
+  DWORD hModuleCount = std::min(hModules.size(), byteCountNeeded / sizeof(HMODULE));
 
   // Enumerate all modules looking for one containing the given symbol.
   for (DWORD i = 0; i < hModuleCount; i++) {
