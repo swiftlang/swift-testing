@@ -26,7 +26,7 @@ private import TestingInternals
 ///   value is subject to change.
 ///
 /// This function examines the command-line arguments to the current process
-/// and then invokes available tests in the current process. The
+/// and then invokes available tests in the current process.
 ///
 /// - Warning: This function's signature and the structure of its JSON inputs
 ///   and outputs have not been finalized yet.
@@ -66,7 +66,7 @@ func abiEntryPoint_v0(_ outEntryPoint: UnsafeMutableRawPointer) {
       try JSON.decode(__CommandLineArguments_v0.self, from: argumentsJSON)
     }
 
-    let eventHandler = _eventHandlerForStreamingEvents(to: eventHandler)
+    let eventHandler = _eventHandlerForStreamingEvents_v0(to: eventHandler)
     return await _commonEntryPoint(passing: args, eventHandler: eventHandler)
   }
 }
@@ -265,8 +265,7 @@ extension __CommandLineArguments_v0: Codable {}
 ///
 /// This function generally assumes that Swift Package Manager has already
 /// validated the passed arguments.
-@_spi(ForToolsIntegrationOnly)
-public func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArguments_v0 {
+func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArguments_v0 {
   var result = __CommandLineArguments_v0()
 
   // Do not consider the executable path AKA argv[0].
@@ -359,7 +358,7 @@ public func configurationForSwiftPMEntryPoint(from args: __CommandLineArguments_
 #if canImport(Foundation)
   // Event stream output (experimental)
   if let eventStreamOutputPath = args.experimentalEventStreamOutput {
-    let eventHandler = try _eventHandlerForStreamingEvents(toFileAtPath: eventStreamOutputPath)
+    let eventHandler = try _eventHandlerForStreamingEvents_v0(toFileAtPath: eventStreamOutputPath)
     let oldEventHandler = configuration.eventHandler
     configuration.eventHandler = { event, context in
       eventHandler(event, context)
@@ -492,11 +491,11 @@ extension EventAndContextSnapshot: Codable {}
 ///
 /// The file at `path` is closed when this process terminates or the
 /// corresponding call to ``Runner/run()`` returns, whichever occurs first.
-private func _eventHandlerForStreamingEvents(toFileAtPath path: String) throws -> Event.Handler {
+private func _eventHandlerForStreamingEvents_v0(toFileAtPath path: String) throws -> Event.Handler {
   // Open the event stream file for writing.
   let file = try FileHandle(forWritingAtPath: path)
 
-  return _eventHandlerForStreamingEvents { eventAndContextJSON in
+  return _eventHandlerForStreamingEvents_v0 { eventAndContextJSON in
     func isASCIINewline(_ byte: UInt8) -> Bool {
       byte == 10 || byte == 13
     }
@@ -546,9 +545,9 @@ private func _eventHandlerForStreamingEvents(toFileAtPath path: String) throws -
 /// objects are guaranteed not to contain any ASCII newline characters (`"\r"`
 /// or `"\n"`).
 ///
-/// Note that `_eventHandlerForStreamingEvents(toFileAtPath:)` calls this
+/// Note that `_eventHandlerForStreamingEvents_v0(toFileAtPath:)` calls this
 /// function and performs additional postprocessing before writing JSON data.
-private func _eventHandlerForStreamingEvents(
+private func _eventHandlerForStreamingEvents_v0(
   to eventHandler: @escaping @Sendable (_ eventAndContextJSON: UnsafeRawBufferPointer) -> Void
 ) -> Event.Handler {
   return { event, context in
