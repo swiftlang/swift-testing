@@ -132,24 +132,9 @@ struct FileHandleTests {
 
   @Test("Can recognize opened pipe")
   func isPipe() throws {
-#if os(Windows)
-    var rHandle: HANDLE?
-    var wHandle: HANDLE?
-    try #require(CreatePipe(&rHandle, &wHandle, nil, 0))
-    if let rHandle {
-      CloseHandle(rHandle)
-    }
-    let fdWrite = _open_osfhandle(intptr_t(bitPattern: wHandle), 0)
-    let file = try #require(_fdopen(fdWrite, "wb"))
-#else
-    var fds: [CInt] = [-1, -1]
-    try #require(0 == pipe(&fds))
-    try #require(fds[1] >= 0)
-    close(fds[0])
-    let file = try #require(fdopen(fds[1], "wb"))
-#endif
-    let fileHandle = FileHandle(unsafeCFILEHandle: file, closeWhenDone: true)
-    #expect(Bool(fileHandle.isPipe))
+    let pipe = try FileHandle.Pipe()
+    #expect(pipe.readEnd.isPipe as Bool)
+    #expect(pipe.writeEnd.isPipe as Bool)
   }
 
   @Test("/dev/null is not a TTY or pipe")

@@ -120,10 +120,49 @@ struct FileHandle: ~Copyable, Sendable {
     _closeWhenDone = closeWhenDone
   }
 
+  /// Initialize an instance of this type with an existing POSIX file descriptor
+  /// for reading.
+  ///
+  /// - Parameters:
+  ///   - fd: The POSIX file descriptor to wrap. The caller is responsible for
+  ///     ensuring that this file handle is open in the expected mode and that
+  ///     another part of the system won't close it.
+  ///   - mode: The mode `fd` was opened with, such as `"wb"`.
+  ///
+  /// - Throws: Any error preventing the stream from being opened.
+  ///
+  /// The resulting file handle takes ownership of `fd` and closes it when it is
+  /// deinitialized or if an error is thrown from this initializer.
+  init(unsafePOSIXFileDescriptor fd: CInt, mode: String) throws {
+#if os(Windows)
+    let fileHandle = _fdopen(fd, mode)
+#else
+    let fileHandle = fdopen(fd, mode)
+#endif
+    guard let fileHandle else {
+#if os(Windows)
+      _close(fd)
+#else
+      _TestingInternals.close(fd)
+#endif
+      throw CError(rawValue: swt_errno())
+    }
+    self.init(unsafeCFILEHandle: fileHandle, closeWhenDone: true)
+  }
+
   deinit {
     if _closeWhenDone {
       fclose(_fileHandle)
     }
+  }
+
+  /// Close this file handle.
+  ///
+  /// This function effectively deinitializes the file handle. If
+  /// `closeWhenDone` was `false` when this file handle was initialized, this
+  /// function has no effect.
+  consuming func close() {
+    _ = (consume self)
   }
 
   /// Call a function and pass the underlying C file handle to it.
@@ -379,6 +418,75 @@ extension FileHandle {
           throw CError(rawValue: swt_errno())
         }
       }
+    }
+  }
+}
+
+// MARK: - Pipes
+
+extension FileHandle {
+  /// A type representing a bidirectional pipe between two file handles.
+  struct Pipe: ~Copyable, Sendable {
+    /// The end of the pipe capable of reading.
+    var readEnd: FileHandle
+
+    /// The end of the pipe capable of writing.
+    var writeEnd: FileHandle
+
+    /// Initialize a new anonymous pipe.
+    ///
+    /// - Throws: Any error that prevented creation of the pipe.
+    init() throws {
+      let (fdReadEnd, fdWriteEnd) = try withUnsafeTemporaryAllocation(of: CInt.self, capacity: 2) { fds in
+#if os(Windows)
+        guard 0 == _pipe(fds.baseAddress, 0, _O_BINARY) else {
+          throw CError(rawValue: swt_errno())
+        }
+#else
+        guard 0 == pipe(fds.baseAddress) else {
+          throw CError(rawValue: swt_errno())
+        }
+#endif
+        return (fds[0], fds[1])
+      }
+
+      // NOTE: Partial initialization of a move-only type is disallowed, as is
+      // conditional initialization of a local move-only value, which is why
+      // this section looks a little awkward.
+      let readEnd: FileHandle
+      do {
+        readEnd = try FileHandle(unsafePOSIXFileDescriptor: fdReadEnd, mode: "rb")
+      } catch {
+#if os(Windows)
+        _close(fdWriteEnd)
+#else
+        _TestingInternals.close(fdWriteEnd)
+#endif
+        throw error
+      }
+      let writeEnd = try FileHandle(unsafePOSIXFileDescriptor: fdWriteEnd, mode: "wb")
+      self.readEnd = readEnd
+      self.writeEnd = writeEnd
+    }
+
+    /// Close the read end of this pipe.
+    ///
+    /// - Returns: The remaining open end of the pipe.
+    ///
+    /// After calling this function, the read end is closed and the write end
+    /// remains open.
+    consuming func closeReadEnd() -> FileHandle {
+      (consume self).writeEnd
+    }
+
+    /// Close the write end of this pipe.
+    ///
+    /// - Returns: The remaining open end of the pipe.
+    ///
+    /// After calling this function, the write end is closed and the read end
+    /// remains open.
+    consuming func closeWriteEnd() -> FileHandle {
+      (consume self).readEnd
     }
   }
 }
