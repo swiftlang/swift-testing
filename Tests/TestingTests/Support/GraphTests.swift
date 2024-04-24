@@ -291,7 +291,15 @@ struct GraphTests {
       ]),
     ])
 
-    let graph2 = try #require(graph.compactMapValues { $0.map(-) })
+    let graph2 = try #require(graph.compactMapValues { keyPath, value in
+      if value == 13579 {
+        #expect(keyPath == ["C1", "C2"])
+      } else if value == 789 {
+        #expect(keyPath == ["C3"])
+      }
+
+      return value.map(-)
+    })
     graph2.forEach { _, value in
       #expect(value < 0)
     }
@@ -310,12 +318,18 @@ struct GraphTests {
       ]),
     ])
 
-    let mappedGraph = await graph.compactMapValues {
+    let mappedGraph = await graph.compactMapValues { keyPath, value in
       // Ensure we can call async APIs from this transform closure
       func dummyAsyncFunc() async {}
       await dummyAsyncFunc()
 
-      return $0.map(-)
+      if value == 13579 {
+        #expect(keyPath == ["C1", "C2"])
+      } else if value == 789 {
+        #expect(keyPath == ["C3"])
+      }
+
+      return value.map(-)
     }
 
     let graph2 = try #require(mappedGraph)
@@ -337,7 +351,7 @@ struct GraphTests {
       ]),
     ])
 
-    let mappedGraph = await graph.compactMapValues { value in
+    let mappedGraph = await graph.compactMapValues { _, value in
       // Ensure we can call async APIs from this transform closure
       func dummyAsyncFunc() async {}
       await dummyAsyncFunc()
@@ -367,7 +381,7 @@ struct GraphTests {
       ]),
     ])
 
-    let graph2 = graph.mapValues(-)
+    let graph2 = graph.mapValues { -$1 }
     graph2.forEach { _, value in
       #expect(value < 0)
     }
@@ -390,7 +404,7 @@ struct GraphTests {
       func dummyAsyncFunc() async {}
       await dummyAsyncFunc()
 
-      return -$0
+      return -$1
     }
     graph2.forEach { _, value in
       #expect(value < 0)
@@ -413,10 +427,10 @@ struct GraphTests {
     ])
 
     let graph2 = graph.mapValues {
-      if $0 == 456 {
+      if $1 == 456 {
         return (999, true)
       }
-      return ($0, false)
+      return ($1, false)
     }
     #expect(graph2.value != 999)
     #expect(graph2.children["C1"]?.value == 999)
@@ -446,10 +460,10 @@ struct GraphTests {
       func dummyAsyncFunc() async {}
       await dummyAsyncFunc()
 
-      if $0 == 456 {
+      if $1 == 456 {
         return (999, true)
       }
-      return ($0, false)
+      return ($1, false)
     }
     #expect(graph2.value != 999)
     #expect(graph2.children["C1"]?.value == 999)
