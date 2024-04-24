@@ -51,7 +51,7 @@ final class IssueTests: XCTestCase {
     }
 
     await Test { () throws in
-      #expect(try { throw MyError() }() as Bool)
+      #expect(try { throw MyError() }())
     }.run(configuration: configuration)
 
     await Test { () throws in
@@ -282,8 +282,8 @@ final class IssueTests: XCTestCase {
     }
 
     await Test { () throws in
-      #expect(try TypeWithMemberFunctions.n(0) as Bool)
-      #expect(TypeWithMemberFunctions.f(try { () throws in 0 }()) as Bool)
+      #expect(try TypeWithMemberFunctions.n(0))
+      #expect(TypeWithMemberFunctions.f(try { () throws in 0 }()))
     }.run(configuration: configuration)
 
     await fulfillment(of: [expectationFailed], timeout: 0.0)
@@ -540,7 +540,7 @@ final class IssueTests: XCTestCase {
 
   func testErrorCheckingWithExpect_Mismatching() async throws {
     let expectationFailed = expectation(description: "Expectation failed")
-    expectationFailed.expectedFulfillmentCount = 11
+    expectationFailed.expectedFulfillmentCount = 13
 
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
@@ -598,6 +598,12 @@ final class IssueTests: XCTestCase {
       func nonVoidReturning() throws -> Int { 0 }
       #expect(throws: MyError.self) {
         try nonVoidReturning()
+      }
+      #expect {
+        throw MyError()
+      } throws: { error in
+        let parameterizedError = try #require(error as? MyParameterizedError)
+        return parameterizedError.index == 123
       }
     }.run(configuration: configuration)
 
@@ -701,7 +707,7 @@ final class IssueTests: XCTestCase {
 
   func testErrorCheckingWithExpectAsync_Mismatching() async throws {
     let expectationFailed = expectation(description: "Expectation failed")
-    expectationFailed.expectedFulfillmentCount = 11
+    expectationFailed.expectedFulfillmentCount = 13
 
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
@@ -751,6 +757,12 @@ final class IssueTests: XCTestCase {
       func nonVoidReturning() async throws -> Int { 0 }
       await #expect(throws: MyError.self) {
         try await nonVoidReturning()
+      }
+      await #expect { () async throws in
+        throw MyError()
+      } throws: { error in
+        let parameterizedError = try #require(error as? MyParameterizedError)
+        return parameterizedError.index == 123
       }
     }.run(configuration: configuration)
 
@@ -1122,6 +1134,33 @@ final class IssueTests: XCTestCase {
     }.run(configuration: configuration)
   }
 
+  func testNegatedExpressionsExpandToCaptureNegatedExpression() async {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      guard case let .expectationFailed(expectation) = issue.kind else {
+        XCTFail("Unexpected issue \(issue)")
+        return
+      }
+      XCTAssertNotNil(expectation.evaluatedExpression.runtimeValue)
+      XCTAssertTrue(expectation.evaluatedExpression.runtimeValue!.typeInfo.describes(Bool.self))
+      guard case let .negation(subexpression, isParenthetical) = expectation.evaluatedExpression.kind else {
+        XCTFail("Expected expression's kind was negation, but it was \(expectation.evaluatedExpression.kind)")
+        return
+      }
+      XCTAssertTrue(isParenthetical)
+      XCTAssertNotNil(subexpression.runtimeValue)
+      XCTAssertTrue(subexpression.runtimeValue!.typeInfo.describes(Bool.self))
+    }
+
+    @Sendable func g() -> Int { 1 }
+    await Test {
+      #expect(!(g() == 1))
+    }.run(configuration: configuration)
+  }
+
   func testLazyExpectDoesNotEvaluateRightHandValue() async {
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
@@ -1378,25 +1417,28 @@ final class IssueTests: XCTestCase {
 @Suite("Issue Codable Conformance Tests")
 struct IssueCodingTests {
 
+  private static let issueKinds: [Issue.Kind] = [
+    Issue.Kind.apiMisused,
+    Issue.Kind.confirmationMiscounted(actual: 13, expected: 42),
+    Issue.Kind.errorCaught(NSError(domain: "Domain", code: 13, userInfo: ["UserInfoKey": "UserInfoValue"])),
+    Issue.Kind.expectationFailed(Expectation(evaluatedExpression: .__fromSyntaxNode("abc"), isPassing: true, isRequired: true, sourceLocation: SourceLocation())),
+    Issue.Kind.knownIssueNotRecorded,
+    Issue.Kind.system,
+    Issue.Kind.timeLimitExceeded(timeLimitComponents: (13, 42)),
+    Issue.Kind.unconditional,
+  ]
+
   @Test("Codable",
-        arguments: [
-          Issue.Kind.apiMisused,
-          Issue.Kind.confirmationMiscounted(actual: 13, expected: 42),
-          Issue.Kind.errorCaught(NSError(domain: "Domain", code: 13, userInfo: ["UserInfoKey": "UserInfoValue"])),
-          Issue.Kind.expectationFailed(Expectation(evaluatedExpression: .__fromSyntaxNode("abc"), isPassing: true, isRequired: true, sourceLocation: SourceLocation())),
-          Issue.Kind.knownIssueNotRecorded,
-          Issue.Kind.system,
-          Issue.Kind.timeLimitExceeded(timeLimitComponents: (13, 42)),
-          Issue.Kind.unconditional,
-        ]
+    arguments: issueKinds
   )
   func testCodable(issueKind: Issue.Kind) async throws {
-    let issue = Issue(kind: issueKind,
-                      comments: ["Comment"],
-                      sourceContext: SourceContext(backtrace: Backtrace.current(), sourceLocation: SourceLocation()))
+    let issue = Issue(
+      kind: issueKind,
+      comments: ["Comment"],
+      sourceContext: SourceContext(backtrace: Backtrace.current(), sourceLocation: SourceLocation())
+    )
     let issueSnapshot = Issue.Snapshot(snapshotting: issue)
-    let encoded = try JSONEncoder().encode(issueSnapshot)
-    let decoded = try JSONDecoder().decode(Issue.Snapshot.self, from: encoded)
+    let decoded = try JSON.encodeAndDecode(issueSnapshot)
 
     #expect(String(describing: decoded) == String(describing: issueSnapshot))
   }
@@ -1408,5 +1450,79 @@ struct IssueCodingTests {
     let issueSnapshot = Issue.Snapshot(snapshotting: issue)
     let errorSnapshot = try #require(issueSnapshot.error)
     #expect(String(describing: errorSnapshot) == String(describing: underlyingError))
+  }
+
+  @Test func sourceLocationPropertyGetter() throws {
+    let sourceLocation = SourceLocation(
+      fileID: "fileID",
+      filePath: "filePath",
+      line: 13,
+      column: 42
+    )
+
+    let sourceContext = SourceContext(
+      backtrace: Backtrace(addresses: [13, 42]),
+      sourceLocation: sourceLocation
+    )
+
+    let issue = Issue(
+      kind: .apiMisused,
+      comments: [],
+      sourceContext: sourceContext
+    )
+
+    let issueSnapshot = Issue.Snapshot(snapshotting: issue)
+    #expect(issueSnapshot.sourceContext == sourceContext)
+    #expect(issueSnapshot.sourceLocation == sourceLocation)
+  }
+
+  @Test func sourceLocationPropertySetter() throws {
+    let initialSourceLocation = SourceLocation(
+      fileID: "fileID",
+      filePath: "filePath",
+      line: 13,
+      column: 42
+    )
+
+    let sourceContext = SourceContext(
+      backtrace: Backtrace(addresses: [13, 42]),
+      sourceLocation: initialSourceLocation
+    )
+
+    let issue = Issue(
+      kind: .apiMisused,
+      comments: [],
+      sourceContext: sourceContext
+    )
+
+    let updatedSourceLocation = SourceLocation(
+      fileID: "fileID2",
+      filePath: "filePath2",
+      line: 14,
+      column: 43
+    )
+
+    var issueSnapshot = Issue.Snapshot(snapshotting: issue)
+    issueSnapshot.sourceLocation = updatedSourceLocation
+
+    #expect(issueSnapshot.sourceContext != sourceContext)
+    #expect(issueSnapshot.sourceLocation != initialSourceLocation)
+    #expect(issueSnapshot.sourceLocation == updatedSourceLocation)
+    #expect(issueSnapshot.sourceContext.sourceLocation == updatedSourceLocation)
+  }
+
+  @Test("Custom descriptions are the same",
+    arguments: issueKinds
+  )
+  func customDescription(issueKind: Issue.Kind) async throws {
+    let issue = Issue(
+      kind: issueKind,
+      comments: ["Comment"],
+      sourceContext: SourceContext(backtrace: Backtrace.current(), sourceLocation: SourceLocation())
+    )
+    let issueSnapshot = Issue.Snapshot(snapshotting: issue)
+
+    #expect(String(describing: issueSnapshot) == String(describing: issue))
+    #expect(String(reflecting: issueSnapshot) == String(reflecting: issue))
   }
 }

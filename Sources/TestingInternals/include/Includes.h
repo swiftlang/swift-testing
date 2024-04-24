@@ -27,13 +27,24 @@
 /// - Note: Avoid including headers that aren't actually used.
 
 #include <errno.h>
+#if __has_include(<signal.h>)
+#include <signal.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
+#if defined(__APPLE__) && __has_include(<dispatch/dispatch.h>)
+#include <dispatch/dispatch.h>
+#endif
+
 #if __has_include(<unistd.h>)
 #include <unistd.h>
+#endif
+
+#if __has_include(<sys/fcntl.h>)
+#include <sys/fcntl.h>
 #endif
 
 #if __has_include(<sys/stat.h>)
@@ -42,6 +53,10 @@
 
 #if __has_include(<sys/sysctl.h>)
 #include <sys/sysctl.h>
+#endif
+
+#if __has_include(<sys/wait.h>)
+#include <sys/wait.h>
 #endif
 
 #if __has_include(<sys/utsname.h>)
@@ -58,6 +73,26 @@
 
 #if __has_include(<pty.h>)
 #include <pty.h>
+#endif
+
+#if __has_include(<pwd.h>)
+#include <pwd.h>
+#endif
+
+#if __has_include(<limits.h>)
+#include <limits.h>
+#endif
+
+#if __has_include(<spawn.h>)
+#include <spawn.h>
+#endif
+
+#if __has_include(<crt_externs.h>)
+#include <crt_externs.h>
+#endif
+
+#if __has_include(<wasi/libc-environ.h>)
+#include <wasi/libc-environ.h>
 #endif
 
 #if defined(_WIN32)

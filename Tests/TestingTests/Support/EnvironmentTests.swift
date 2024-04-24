@@ -15,6 +15,17 @@ private import TestingInternals
 struct EnvironmentTests {
   var name = "SWT_ENVIRONMENT_VARIABLE_FOR_TESTING"
 
+  @Test("Get whole environment block")
+  func getWholeEnvironment() throws {
+    let value = "\(UInt64.random(in: 0 ... .max))"
+    try #require(Environment.setVariable(value, named: name))
+    defer {
+      Environment.setVariable(nil, named: name)
+    }
+    let env = Environment.get()
+    #expect(env[name] == value)
+  }
+
   @Test("Read environment variable")
   func readEnvironmentVariable() throws {
     let value = "\(UInt64.random(in: 0 ... .max))"

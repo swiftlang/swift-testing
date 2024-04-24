@@ -78,6 +78,18 @@ public struct Expression: Sendable {
     ///   - keyPath: The key path, relative to `value`, that was accessed, not
     ///     including a leading backslash or period.
     indirect case propertyAccess(value: Expression, keyPath: Expression)
+
+    /// The expression negates another expression.
+    ///
+    /// - Parameters:
+    ///   - expression: The expression that was negated.
+    ///   - isParenthetical: Whether or not `expression` was enclosed in
+    ///     parentheses (and the `!` operator was outside it.) This argument
+    ///     affects how this expression is represented as a string.
+    ///
+    /// Unlike other cases in this enumeration, this case affects the runtime
+    /// behavior of the `__check()` family of functions.
+    indirect case negation(_ expression: Expression, isParenthetical: Bool)
   }
 
   /// The kind of syntax node represented by this instance.
@@ -109,6 +121,12 @@ public struct Expression: Sendable {
       return "\(functionName)(\(argumentList))"
     case let .propertyAccess(value, keyPath):
       return "\(value.sourceCode).\(keyPath.sourceCode)"
+    case let .negation(expression, isParenthetical):
+      var sourceCode = expression.sourceCode
+      if isParenthetical {
+        sourceCode = "(\(sourceCode))"
+      }
+      return "!\(sourceCode)"
     }
   }
 
@@ -192,6 +210,9 @@ public struct Expression: Sendable {
   func capturingRuntimeValue(_ value: (some Any)?) -> Self {
     var result = self
     result.runtimeValue = value.map { Value(reflecting: $0) }
+    if case let .negation(subexpression, isParenthetical) = kind, let value = value as? Bool {
+      result.kind = .negation(subexpression.capturingRuntimeValue(!value), isParenthetical: isParenthetical)
+    }
     return result
   }
 
@@ -237,6 +258,11 @@ public struct Expression: Sendable {
         value: value.capturingRuntimeValues(firstValue),
         keyPath: keyPath.capturingRuntimeValues(additionalValuesArray.first ?? nil)
       )
+    case let .negation(expression, isParenthetical):
+      result.kind = .negation(
+        expression.capturingRuntimeValues(firstValue, repeat each additionalValues),
+        isParenthetical: isParenthetical
+      )
     }
 
     return result
@@ -245,31 +271,80 @@ public struct Expression: Sendable {
   /// Get an expanded description of this instance that contains the source
   /// code and runtime value (or values) it represents.
   ///
-  /// - Parameters:
-  ///   - depth: The depth of recursion at which this function is being called.
-  ///   - includingTypeNames: Whether or not to include type names in output.
-  ///   - includingParenthesesIfNeeded: Whether or not to enclose the
-  ///     resulting string in parentheses (as needed depending on what
-  ///     information this instance contains.)
-  ///
   /// - Returns: A string describing this instance.
   @_spi(ForToolsIntegrationOnly)
-  public func expandedDescription(depth: Int = 0, includingTypeNames: Bool = false, includingParenthesesIfNeeded: Bool = true) -> String {
+  public func expandedDescription() -> String {
+    _expandedDescription(in: _ExpandedDescriptionContext())
+  }
+
+  /// Get an expanded description of this instance that contains the source
+  /// code and runtime value (or values) it represents.
+  ///
+  /// - Returns: A string describing this instance.
+  ///
+  /// This function produces a more detailed description than
+  /// ``expandedDescription()``, similar to how `String(reflecting:)` produces
+  /// a more detailed description than `String(describing:)`.
+  func expandedDebugDescription() -> String {
+    var context = _ExpandedDescriptionContext()
+    context.includeTypeNames = true
+    context.includeParenthesesIfNeeded = false
+    return _expandedDescription(in: context)
+  }
+
+  /// A structure describing the state tracked while calling
+  /// `_expandedDescription(in:)`.
+  private struct _ExpandedDescriptionContext {
+    /// The depth of recursion at which the function is being called.
+    var depth = 0
+
+    /// Whether or not to include type names in output.
+    var includeTypeNames = false
+
+    /// Whether or not to enclose the resulting string in parentheses (as needed
+    /// depending on what information the resulting string contains.)
+    var includeParenthesesIfNeeded = true
+  }
+
+  /// Get an expanded description of this instance that contains the source
+  /// code and runtime value (or values) it represents.
+  ///
+  /// - Parameters:
+  ///   - context: The context for this call.
+  ///
+  /// - Returns: A string describing this instance.
+  ///
+  /// This function provides the implementation of ``expandedDescription()`` and
+  /// ``expandedDebugDescription()``.
+  private func _expandedDescription(in context: _ExpandedDescriptionContext) -> String {
+    // Create a (default) context value to pass to recursive calls for
+    // subexpressions.
+    var childContext = context
+    do {
+      // Bump the depth so that recursive calls track the next depth level.
+      childContext.depth += 1
+
+      // Subexpressions do not automatically disable parentheses if the parent
+      // does; they must opt in.
+      childContext.includeParenthesesIfNeeded = true
+    }
+
     var result = ""
     switch kind {
     case let .generic(sourceCode), let .stringLiteral(sourceCode, _):
-      result = if includingTypeNames, let qualifiedName = runtimeValue?.typeInfo.fullyQualifiedName {
+      result = if context.includeTypeNames, let qualifiedName = runtimeValue?.typeInfo.fullyQualifiedName {
         "\(sourceCode): \(qualifiedName)"
       } else {
         sourceCode
       }
     case let .binaryOperation(lhsExpr, op, rhsExpr):
-      result = "\(lhsExpr.expandedDescription(depth: depth + 1)) \(op) \(rhsExpr.expandedDescription(depth: depth + 1))"
+      result = "\(lhsExpr._expandedDescription(in: childContext)) \(op) \(rhsExpr._expandedDescription(in: childContext))"
     case let .functionCall(value, functionName, arguments):
-      let includeParentheses = arguments.count > 1
+      var argumentContext = childContext
+      argumentContext.includeParenthesesIfNeeded = (arguments.count > 1)
       let argumentList = arguments.lazy
         .map { argument in
-          (argument.label, argument.value.expandedDescription(depth: depth + 1, includingParenthesesIfNeeded: includeParentheses))
+          (argument.label, argument.value._expandedDescription(in: argumentContext))
         }.map { label, value in
           if let label {
             return "\(label): \(value)"
@@ -277,18 +352,34 @@ public struct Expression: Sendable {
           return value
         }.joined(separator: ", ")
       result = if let value {
-        "\(value.expandedDescription(depth: depth + 1)).\(functionName)(\(argumentList))"
+        "\(value._expandedDescription(in: childContext)).\(functionName)(\(argumentList))"
       } else {
         "\(functionName)(\(argumentList))"
       }
     case let .propertyAccess(value, keyPath):
-      result = "\(value.expandedDescription(depth: depth + 1)).\(keyPath.expandedDescription(depth: depth + 1, includingParenthesesIfNeeded: false))"
+      var keyPathContext = childContext
+      keyPathContext.includeParenthesesIfNeeded = false
+      result = "\(value._expandedDescription(in: childContext)).\(keyPath._expandedDescription(in: keyPathContext))"
+    case let .negation(expression, isParenthetical):
+      childContext.includeParenthesesIfNeeded = !isParenthetical
+      var expandedDescription = expression._expandedDescription(in: childContext)
+      if isParenthetical {
+        expandedDescription = "(\(expandedDescription))"
+      }
+      result = "!\(expandedDescription)"
     }
 
-    // If this expression is at the root of the expression graph and has no
-    // value, don't bother reporting the placeholder string for it.
-    if depth == 0 && runtimeValue == nil {
-      return result
+    // If this expression is at the root of the expression graph...
+    if context.depth == 0 {
+      if runtimeValue == nil {
+        // ... and has no value, don't bother reporting the placeholder string
+        // for it...
+        return result
+      } else if let runtimeValue, runtimeValue.typeInfo.describes(Bool.self) {
+        // ... or if it is a boolean value, also don't bother (because it can be
+        // inferred from context.)
+        return result
+      }
     }
 
     let runtimeValueDescription = runtimeValue.map(String.init(describing:)) ?? "<not evaluated>"
@@ -297,7 +388,7 @@ public struct Expression: Sendable {
       result
     } else if runtimeValueDescription == result {
       result
-    } else if includingParenthesesIfNeeded && depth > 0 {
+    } else if context.includeParenthesesIfNeeded && context.depth > 0 {
       "(\(result) → \(runtimeValueDescription))"
     } else {
       "\(result) → \(runtimeValueDescription)"
@@ -322,6 +413,8 @@ public struct Expression: Sendable {
       }
     case let .propertyAccess(value: value, keyPath: keyPath):
       [value, keyPath]
+    case let .negation(expression, _):
+      [expression]
     }
   }
 

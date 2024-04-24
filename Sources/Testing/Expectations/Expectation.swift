@@ -91,7 +91,7 @@ extension Expectation {
 
     /// Creates a snapshot expectation from a real ``Expectation``.
     /// - Parameter expectation: The real expectation.
-    public init(snapshotting expectation: Expectation) {
+    public init(snapshotting expectation: borrowing Expectation) {
       self.evaluatedExpression = expectation.evaluatedExpression
       self.mismatchedErrorDescription = expectation.mismatchedErrorDescription
       self.differenceDescription = expectation.differenceDescription

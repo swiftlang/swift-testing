@@ -26,6 +26,85 @@ enum Environment {
   static let simulatedEnvironment = Locked<[String: String]>()
 #endif
 
+  /// Split a string containing an environment variable's name and value into
+  /// two strings.
+  ///
+  /// - Parameters:
+  ///   - row: The environment variable, of the form `"KEY=VALUE"`.
+  ///
+  /// - Returns: The name and value of the environment variable, or `nil` if it
+  ///   could not be parsed.
+  private static func _splitEnvironmentVariable(_ row: String) -> (key: String, value: String)? {
+    row.firstIndex(of: "=").map { equalsIndex in
+      let key = String(row[..<equalsIndex])
+      let value = String(row[equalsIndex...].dropFirst())
+      return (key, value)
+    }
+  }
+
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(WASI)
+  /// Get all environment variables from a POSIX environment block.
+  ///
+  /// - Parameters:
+  ///   - environ: The environment block, i.e. the global `environ` variable.
+  ///
+  /// - Returns: A dictionary of environment variables.
+  private static func _get(fromEnviron environ: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>) -> [String: String] {
+    var result = [String: String]()
+
+    for i in 0... {
+      guard let rowp = environ[i] else {
+        break
+      }
+
+      if let row = String(validatingUTF8: rowp),
+         let (key, value) = _splitEnvironmentVariable(row) {
+        result[key] = value
+      }
+    }
+
+    return result
+  }
+#endif
+
+  /// Get all environment variables in the current process.
+  ///
+  /// - Returns: A copy of the current process' environment dictionary.
+  static func get() -> [String: String] {
+#if SWT_NO_ENVIRONMENT_VARIABLES
+    simulatedEnvironment.rawValue
+#elseif SWT_TARGET_OS_APPLE
+    _get(fromEnviron: _NSGetEnviron()!.pointee!)
+#elseif os(Linux)
+    _get(fromEnviron: swt_environ())
+#elseif os(WASI)
+    _get(fromEnviron: __wasilibc_get_environ())
+#elseif os(Windows)
+    guard let environ = GetEnvironmentStringsW() else {
+      return [:]
+    }
+    defer {
+      FreeEnvironmentStringsW(environ)
+    }
+
+    var result = [String: String]()
+    var rowp = environ
+    while rowp.pointee != 0 {
+      defer {
+        rowp += wcslen(rowp) + 1
+      }
+      if let row = String.decodeCString(rowp, as: UTF16.self)?.result,
+         let (key, value) = _splitEnvironmentVariable(row) {
+        result[key] = value
+      }
+    }
+    return result
+#else
+#warning("Platform-specific implementation missing: environment variables unavailable")
+    return [:]
+#endif
+  }
+
   /// Get the environment variable with the specified name.
   ///
   /// - Parameters:
@@ -45,15 +124,16 @@ enum Environment {
           SetLastError(DWORD(ERROR_SUCCESS))
           let count = GetEnvironmentVariableW(name, buffer.baseAddress!, DWORD(buffer.count))
           if count == 0 {
-            return switch GetLastError() {
+            switch GetLastError() {
             case DWORD(ERROR_SUCCESS):
               // Empty String
-              ""
+              return ""
             case DWORD(ERROR_ENVVAR_NOT_FOUND):
               // The environment variable wasn't set.
-              nil
+              return nil
             case let errorCode:
-              fatalError("unexpected error code: \(errorCode) when getting environment variable '\(name)'")
+              let error = Win32Error(rawValue: errorCode)
+              fatalError("unexpected error when getting environment variable '\(name)': \(error) (\(errorCode))")
             }
           } else if count > buffer.count {
             // Try again with the larger count.

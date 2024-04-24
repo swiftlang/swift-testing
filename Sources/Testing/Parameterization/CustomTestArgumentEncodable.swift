@@ -8,10 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation)
-private import Foundation
-#endif
-
 /// A protocol for customizing how arguments passed to parameterized tests are
 /// encoded, which is used to match against when running specific arguments.
 ///
@@ -107,15 +103,7 @@ extension Test.Case.Argument.ID {
   ///
   /// - Throws: Any error encountered during encoding.
   private static func _encode(_ value: some Encodable, parameter: Test.Parameter) throws -> [UInt8] {
-    let encoder = JSONEncoder()
-
-    // Keys must be sorted to ensure deterministic matching of encoded data.
-    encoder.outputFormatting.insert(.sortedKeys)
-
-    // Set user info keys which clients may wish to use during encoding.
-    encoder.userInfo[._testParameterUserInfoKey] = parameter
-
-    return .init(try encoder.encode(value))
+    try JSON.withEncoding(of: value, userInfo: [._testParameterUserInfoKey: parameter], Array.init)
   }
 #endif
 }

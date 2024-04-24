@@ -21,64 +21,14 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     providingPeersOf declaration: some DeclSyntaxProtocol,
     in context: some MacroExpansionContext
   ) throws -> [DeclSyntax] {
-    _diagnoseIssues(with: declaration, testAttribute: node, in: context)
-
-    guard let function = declaration.as(FunctionDeclSyntax.self) else {
+    guard _diagnoseIssues(with: declaration, testAttribute: node, in: context) else {
       return []
     }
 
-    let typeName = _nameOfType(containing: function, testAttribute: node, in: context)
-    return _createTestContainerDecls(for: function, on: typeName, testAttribute: node, in: context)
-  }
+    let functionDecl = declaration.cast(FunctionDeclSyntax.self)
+    let typeName = context.typeOfLexicalContext(containing: functionDecl)
 
-  /// Get the name of the type containing a function declaration, if any.
-  ///
-  /// - Parameters:
-  ///   - functionDecl: The function declaration to inspect.
-  ///   - testAttribute: The `@Test` attribute applied to `functionDecl`.
-  ///   - context: The macro context in which the expression is being parsed.
-  ///
-  /// - Returns: A syntax node representing the name of the type containing
-  ///   `functionDecl`, or `nil` if none was found.
-  private static func _nameOfType(
-    containing functionDecl: FunctionDeclSyntax,
-    testAttribute: AttributeSyntax,
-    in context: some MacroExpansionContext
-  ) -> TypeSyntax? {
-    // Find the beginning of the first attribute on the declaration, including
-    // those embedded in #if statements, to account for patterns like
-    // `@MainActor @Test func` where there's a space ahead of @Test, but the
-    // whole function is still at the top level.
-    func firstAttribute(in attributes: AttributeListSyntax) -> AttributeSyntax? {
-      attributes.lazy
-        .compactMap { attribute in
-          switch (attribute as AttributeListSyntax.Element?) {
-          case let .ifConfigDecl(ifConfigDecl):
-            ifConfigDecl.clauses.lazy
-              .compactMap { clause in
-                if case let .attributes(attributes) = clause.elements {
-                  return firstAttribute(in: attributes)
-                }
-                return nil
-              }.first
-          case let .attribute(attribute):
-            attribute
-          default:
-            nil
-          }
-        }.first
-    }
-    let firstAttribute = firstAttribute(in: functionDecl.attributes) ?? testAttribute
-
-    // HACK: If the test function appears to be indented, assume it is nested in
-    // a type. Use `Self` as the presumptive name of the type.
-    //
-    // This hack works around rdar://105470382.
-    if let lastLeadingTrivia = firstAttribute.leadingTrivia.pieces.last,
-       lastLeadingTrivia.isWhitespace && !lastLeadingTrivia.isNewline {
-      return TypeSyntax(IdentifierTypeSyntax(name: .keyword(.Self)))
-    }
-    return nil
+    return _createTestContainerDecls(for: functionDecl, on: typeName, testAttribute: node, in: context)
   }
 
   /// Diagnose issues with a `@Test` declaration.
@@ -87,24 +37,32 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
   ///   - declaration: The function declaration to diagnose.
   ///   - testAttribute: The `@Test` attribute applied to `declaration`.
   ///   - context: The macro context in which the expression is being parsed.
+  ///
+  /// - Returns: Whether or not macro expansion should continue (i.e. stopping
+  ///   if a fatal error was diagnosed.)
   private static func _diagnoseIssues(
     with declaration: some DeclSyntaxProtocol,
     testAttribute: AttributeSyntax,
     in context: some MacroExpansionContext
-  ) {
+  ) -> Bool {
     var diagnostics = [DiagnosticMessage]()
     defer {
-      diagnostics.forEach(context.diagnose)
+      context.diagnose(diagnostics)
     }
 
     // The @Test attribute is only supported on function declarations.
     guard let function = declaration.as(FunctionDeclSyntax.self) else {
       diagnostics.append(.attributeNotSupported(testAttribute, on: declaration))
-      return
+      return false
     }
 
+#if canImport(SwiftSyntax600)
+    // Check if the lexical context is appropriate for a suite or test.
+    diagnostics += diagnoseIssuesWithLexicalContext(context.lexicalContext, containing: declaration, attribute: testAttribute)
+#endif
+
     // Only one @Test attribute is supported.
-    let suiteAttributes = function.attributes(named: "Test", in: context)
+    let suiteAttributes = function.attributes(named: "Test")
     if suiteAttributes.count > 1 {
       diagnostics.append(.multipleAttributesNotSupported(suiteAttributes, on: declaration))
     }
@@ -113,13 +71,22 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
 
     // We don't support inout, isolated, or _const parameters on test functions.
     for parameter in parameterList {
-      if let specifier = parameter.type.as(AttributedTypeSyntax.self)?.specifier {
-        switch specifier.tokenKind {
-        case .keyword(.inout), .keyword(.isolated), .keyword(._const):
-          diagnostics.append(.specifierNotSupported(specifier, on: parameter, whenUsing: testAttribute))
-        default:
-          break
+      let invalidSpecifierKeywords: [TokenKind] = [.keyword(.inout), .keyword(.isolated), .keyword(._const),]
+      if let parameterType = parameter.type.as(AttributedTypeSyntax.self) {
+#if canImport(SwiftSyntax600)
+        for specifier in parameterType.specifiers {
+          guard case let .simpleTypeSpecifier(specifier) = specifier else {
+            continue
+          }
+          if invalidSpecifierKeywords.contains(specifier.specifier.tokenKind) {
+            diagnostics.append(.specifierNotSupported(specifier.specifier, on: parameter, whenUsing: testAttribute))
+          }
         }
+#else
+        if let specifier = parameterType.specifier, invalidSpecifierKeywords.contains(specifier.tokenKind) {
+          diagnostics.append(.specifierNotSupported(specifier, on: parameter, whenUsing: testAttribute))
+        }
+#endif
       }
     }
 
@@ -134,16 +101,18 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // generic functions when they are parameterized and the types line up, we
     // have not identified a need for them.
     if let genericClause = function.genericParameterClause {
-      diagnostics.append(.genericDeclarationNotSupported(function, whenUsing: testAttribute, becauseOf: genericClause))
+      diagnostics.append(.genericDeclarationNotSupported(function, whenUsing: testAttribute, becauseOf: genericClause, on: function))
     } else if let whereClause = function.genericWhereClause {
-      diagnostics.append(.genericDeclarationNotSupported(function, whenUsing: testAttribute, becauseOf: whereClause))
+      diagnostics.append(.genericDeclarationNotSupported(function, whenUsing: testAttribute, becauseOf: whereClause, on: function))
     } else {
       for parameter in parameterList {
         if parameter.type.isSome {
-          diagnostics.append(.genericDeclarationNotSupported(function, whenUsing: testAttribute, becauseOf: parameter))
+          diagnostics.append(.genericDeclarationNotSupported(function, whenUsing: testAttribute, becauseOf: parameter, on: function))
         }
       }
     }
+
+    return !diagnostics.lazy.map(\.severity).contains(.error)
   }
 
   /// Create a function call parameter list used to call a function from its
@@ -220,21 +189,41 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
   private static func _createCaptureListExpr(
     from parametersWithLabels: some Sequence<(DeclReferenceExprSyntax, FunctionParameterSyntax)>
   ) -> ClosureCaptureClauseSyntax {
-    ClosureCaptureClauseSyntax {
-      for (label, parameter) in parametersWithLabels {
-        if case let .keyword(specifierKeyword) = parameter.type.as(AttributedTypeSyntax.self)?.specifier?.tokenKind,
-           specifierKeyword == .borrowing || specifierKeyword == .consuming {
-          ClosureCaptureSyntax(
-            name: label.baseName,
-            equal: .equalToken(),
-            expression: CopyExprSyntax(
-              copyKeyword: .keyword(.copy).with(\.trailingTrivia, .space),
-              expression: label
-            )
-          )
-        } else {
-          ClosureCaptureSyntax(expression: label)
+    let specifierKeywordsNeedingCopy: [TokenKind] = [.keyword(.borrowing), .keyword(.consuming),]
+    let closureCaptures = parametersWithLabels.lazy.map { label, parameter in
+      var needsCopy = false
+      if let parameterType = parameter.type.as(AttributedTypeSyntax.self) {
+#if canImport(SwiftSyntax600)
+        needsCopy = parameterType.specifiers.contains { specifier in
+          guard case let .simpleTypeSpecifier(specifier) = specifier else {
+            return false
+          }
+          return specifierKeywordsNeedingCopy.contains(specifier.specifier.tokenKind)
         }
+#else
+        if let specifier = parameterType.specifier {
+          needsCopy = specifierKeywordsNeedingCopy.contains(specifier.tokenKind)
+        }
+#endif
+      }
+
+      if needsCopy {
+        return ClosureCaptureSyntax(
+          name: label.baseName,
+          equal: .equalToken(),
+          expression: CopyExprSyntax(
+            copyKeyword: .keyword(.copy).with(\.trailingTrivia, .space),
+            expression: label
+          )
+        )
+      } else {
+        return ClosureCaptureSyntax(expression: label)
+      }
+    }
+
+    return ClosureCaptureClauseSyntax {
+      for closureCapture in closureCaptures {
+        closureCapture
       }
     }
   }
@@ -301,7 +290,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // If the function is noasync *and* main-actor-isolated, we'll call through
     // MainActor.run to invoke it. We do not have a general mechanism for
     // detecting isolation to other global actors.
-    lazy var isMainActorIsolated = !functionDecl.attributes(named: "MainActor", inModuleNamed: "Swift", in: context).isEmpty
+    lazy var isMainActorIsolated = !functionDecl.attributes(named: "MainActor", inModuleNamed: "Swift").isEmpty
     var forwardCall: (ExprSyntax) -> ExprSyntax = {
       "try await (\($0), Testing.__requiringTry, Testing.__requiringAwait).0"
     }
@@ -406,6 +395,11 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
   ) -> [DeclSyntax] {
     var result = [DeclSyntax]()
 
+#if canImport(SwiftSyntax600)
+    // Get the name of the type containing the function for passing to the test
+    // factory function later.
+    let typealiasExpr: ExprSyntax = typeName.map { "\($0).self" } ?? "nil"
+#else
     // We cannot directly refer to Self here because it will end up being
     // resolved as the __TestContainer type we generate. Create a uniquely-named
     // reference to Self outside the context of the generated type, and use it
@@ -415,7 +409,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // inside a static computed property instead of a typealias (where covariant
     // Self is disallowed.)
     //
-    // This "typealias" will not be necessary when rdar://105470382 is resolved.
+    // This "typealias" is not necessary when swift-syntax-6.0.0 is available.
     var typealiasExpr: ExprSyntax = "nil"
     if let typeName {
       let typealiasName = context.makeUniqueName(thunking: functionDecl)
@@ -429,6 +423,11 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       )
 
       typealiasExpr = "\(typealiasName)"
+    }
+#endif
+
+    if typeName != nil, let genericGuardDecl = makeGenericGuardDecl(guardingAgainst: functionDecl, in: context) {
+      result.append(genericGuardDecl)
     }
 
     // Parse the @Test attribute.

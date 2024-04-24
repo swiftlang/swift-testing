@@ -172,12 +172,17 @@ extension Test.Case {
     /// The arguments passed to this test case.
     public var arguments: [Argument.Snapshot]
 
+    /// Whether or not this test case is from a parameterized test.
+    public var isParameterized: Bool {
+      !arguments.isEmpty
+    }
+
     /// Initialize an instance of this type by snapshotting the specified test
     /// case.
     ///
     /// - Parameters:
     ///   - testCase: The original test case to snapshot.
-    init(snapshotting testCase: Test.Case) {
+    public init(snapshotting testCase: borrowing Test.Case) {
       id = testCase.id
       arguments = testCase.arguments.map(Test.Case.Argument.Snapshot.init)
     }
@@ -204,7 +209,7 @@ extension Test.Case.Argument {
     ///
     /// - Parameters:
     ///   - argument: The original test case argument to snapshot.
-    init(snapshotting argument: Test.Case.Argument) {
+    public init(snapshotting argument: Test.Case.Argument) {
       id = argument.id
       value = Expression.Value(reflecting: argument.value)
       parameter = argument.parameter

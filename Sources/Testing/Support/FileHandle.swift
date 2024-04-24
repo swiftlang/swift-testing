@@ -71,6 +71,16 @@ struct FileHandle: ~Copyable, Sendable {
     self.init(unsafeCFILEHandle: fileHandle, closeWhenDone: true)
   }
 
+  /// Initialize an instance of this type to read from the given path.
+  ///
+  /// - Parameters:
+  ///   - path: The path to read from.
+  ///
+  /// - Throws: Any error preventing the stream from being opened.
+  init(forReadingAtPath path: String) throws {
+    try self.init(atPath: path, mode: "rb")
+  }
+
   /// Initialize an instance of this type to write to the given path.
   ///
   /// - Parameters:
@@ -208,9 +218,91 @@ struct FileHandle: ~Copyable, Sendable {
   }
 }
 
+// MARK: - Reading
+
+extension FileHandle {
+  /// Read to the end of the file handle.
+  ///
+  /// - Returns: A copy of the contents of the file handle starting at the
+  ///   current offset and ending at the end of the file.
+  ///
+  /// - Throws: Any error that occurred while reading the file.
+  func readToEnd() throws -> [UInt8] {
+    var result = [UInt8]()
+
+    // If possible, reserve enough space in the resulting buffer to contain
+    // the contents of the file being read.
+    var size: Int?
+#if SWT_TARGET_OS_APPLE || os(Linux)
+    withUnsafePOSIXFileDescriptor { fd in
+      var s = stat()
+      if let fd, 0 == fstat(fd, &s) {
+        size = Int(exactly: s.st_size)
+      }
+    }
+#elseif os(Windows)
+    withUnsafeWindowsHANDLE { handle in
+      var liSize = LARGE_INTEGER(QuadPart: 0)
+      if let handle, GetFileSizeEx(handle, &liSize) {
+        size = Int(exactly: liSize.QuadPart)
+      }
+    }
+#endif
+    if let size, size > 0 {
+      result.reserveCapacity(size)
+    }
+
+    try withUnsafeCFILEHandle { file in
+      try withUnsafeTemporaryAllocation(byteCount: 1024, alignment: 1) { buffer in
+        while true {
+          let countRead = fread(buffer.baseAddress, 1, buffer.count, file)
+          if 0 != ferror(file) {
+            throw CError(rawValue: swt_errno())
+          }
+          if countRead > 0 {
+            let endIndex = buffer.index(buffer.startIndex, offsetBy: countRead)
+            result.append(contentsOf: buffer[..<endIndex])
+          }
+          if 0 != feof(file) {
+            break
+          }
+        }
+      }
+    }
+
+    return result
+  }
+}
+
 // MARK: - Writing
 
 extension FileHandle {
+  /// Write a sequence of bytes to this file handle.
+  ///
+  /// - Parameters:
+  ///   - bytes: The bytes to write. This untyped buffer is interpreted as a
+  ///     sequence of `UInt8` values.
+  ///   - flushAfterward: Whether or not to flush the file (with `fflush()`)
+  ///     after writing. If `true`, `fflush()` is called even if an error
+  ///     occurred while writing.
+  ///
+  /// - Throws: Any error that occurred while writing `bytes`. If an error
+  ///   occurs while flushing the file, it is not thrown.
+  func write(_ bytes: UnsafeBufferPointer<UInt8>, flushAfterward: Bool = true) throws {
+    try withUnsafeCFILEHandle { file in
+      defer {
+        if flushAfterward {
+          _ = fflush(file)
+        }
+      }
+
+      let countWritten = fwrite(bytes.baseAddress, MemoryLayout<UInt8>.stride, bytes.count, file)
+      if countWritten < bytes.count {
+        throw CError(rawValue: swt_errno())
+      }
+    }
+  }
+
   /// Write a sequence of bytes to this file handle.
   ///
   /// - Parameters:
@@ -224,22 +316,11 @@ extension FileHandle {
   ///
   /// - Precondition: `bytes` must provide contiguous storage.
   func write(_ bytes: some Sequence<UInt8>, flushAfterward: Bool = true) throws {
-    try withUnsafeCFILEHandle { file in
-      defer {
-        if flushAfterward {
-          _ = fflush(file)
-        }
-      }
-
-      let hasContiguousStorage: Void? = try bytes.withContiguousStorageIfAvailable { bytes in
-        let countWritten = fwrite(bytes.baseAddress, MemoryLayout<UInt8>.stride, bytes.count, file)
-        if countWritten < bytes.count {
-          throw CError(rawValue: swt_errno())
-        }
-      }
-      if hasContiguousStorage == nil {
-        preconditionFailure("byte sequence must provide contiguous storage: \(bytes)")
-      }
+    let hasContiguousStorage: Void? = try bytes.withContiguousStorageIfAvailable { bytes in
+      try write(bytes, flushAfterward: flushAfterward)
+    }
+    if hasContiguousStorage == nil {
+      preconditionFailure("byte sequence must provide contiguous storage: \(bytes)")
     }
   }
 
@@ -256,7 +337,7 @@ extension FileHandle {
   ///   occurs while flushing the file, it is not thrown.
   func write(_ bytes: UnsafeRawBufferPointer, flushAfterward: Bool = true) throws {
     try bytes.withMemoryRebound(to: UInt8.self) { bytes in
-      try write(bytes)
+      try write(bytes, flushAfterward: flushAfterward)
     }
   }
 
@@ -341,5 +422,31 @@ extension FileHandle {
     return false
 #endif
   }
+}
+
+// MARK: - General path utilities
+
+/// Append a path component to a path.
+///
+/// - Parameters:
+///   - pathComponent: The path component to append.
+///   - path: The path to which `pathComponent` should be appended.
+///
+/// - Returns: The full path to `pathComponent`, or `nil` if the resulting
+///   string could not be created.
+func appendPathComponent(_ pathComponent: String, to path: String) -> String {
+#if os(Windows)
+  path.withCString(encodedAs: UTF16.self) { path in
+    pathComponent.withCString(encodedAs: UTF16.self) { pathComponent in
+      withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: (wcslen(path) + wcslen(pathComponent)) * 2 + 1) { buffer in
+        _ = wcscpy_s(buffer.baseAddress, buffer.count, path)
+        _ = PathCchAppendEx(buffer.baseAddress, buffer.count, pathComponent, ULONG(PATHCCH_ALLOW_LONG_PATHS.rawValue))
+        return (String.decodeCString(buffer.baseAddress, as: UTF16.self)?.result)!
+      }
+    }
+  }
+#else
+  "\(path)/\(pathComponent)"
+#endif
 }
 #endif

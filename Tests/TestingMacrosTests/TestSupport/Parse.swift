@@ -22,8 +22,11 @@ fileprivate let allMacros: [String: any Macro.Type] = [
   "expect": ExpectMacro.self,
   "require": RequireMacro.self,
   "requireAmbiguous": AmbiguousRequireMacro.self, // different name needed only for unit testing
+  "expectExitTest": ExitTestRequireMacro.self, // different name needed only for unit testing
+  "requireExitTest": ExitTestRequireMacro.self, // different name needed only for unit testing
   "Suite": SuiteDeclarationMacro.self,
   "Test": TestDeclarationMacro.self,
+  "Tag": TagMacro.self,
 ]
 
 func parse(_ sourceCode: String, activeMacros activeMacroNames: [String] = [], removeWhitespace: Bool = false) throws -> (sourceCode: String, diagnostics: [Diagnostic]) {
@@ -35,8 +38,17 @@ func parse(_ sourceCode: String, activeMacros activeMacroNames: [String] = [], r
   }
   let operatorTable = OperatorTable.standardOperators
   let originalSyntax = try operatorTable.foldAll(Parser.parse(source: sourceCode))
+#if canImport(SwiftSyntax600)
+  let context = BasicMacroExpansionContext(lexicalContext: [], expansionDiscriminator: "", sourceFiles: [:])
+  let syntax = try operatorTable.foldAll(
+    originalSyntax.expand(macros: activeMacros) { syntax in
+      BasicMacroExpansionContext(sharingWith: context, lexicalContext: syntax.allMacroLexicalContexts())
+    }
+  )
+#else
   let context = BasicMacroExpansionContext(expansionDiscriminator: "", sourceFiles: [:])
   let syntax = try operatorTable.foldAll(originalSyntax.expand(macros: activeMacros, in: context))
+#endif
   var sourceCode = String(describing: syntax.formatted().trimmed)
   if removeWhitespace {
     sourceCode = sourceCode.filter { !$0.isWhitespace }

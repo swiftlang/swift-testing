@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if !SWT_NO_XCTEST_SCAFFOLDING
+#if !SWT_NO_XCTEST_SCAFFOLDING && canImport(XCTest)
 private import TestingInternals
 public import XCTest
 
@@ -25,19 +25,6 @@ extension XCTSourceCodeContext {
     self.init(callStackAddresses: addresses, location: sourceLocation)
   }
 }
-
-/// An error that is reported by ``XCTestScaffold`` when a test times out.
-///
-/// This type is not part of the public interface of the testing library.
-struct TimeoutError: Error, CustomStringConvertible {
-  /// The time limit exceeded by the test that timed out.
-  var timeLimit: TimeValue
-
-  var description: String {
-    "Timed out after \(timeLimit) seconds."
-  }
-}
-
 extension XCTIssue {
   init(_ issue: Issue, processLaunchedByXcode: Bool) {
     var error = issue.error
@@ -127,7 +114,7 @@ public enum XCTestScaffold: Sendable {
 #else
   @available(swift, deprecated: 100000.0, message: "This function is provided temporarily to aid in integrating the testing library with existing tools such as Swift Package Manager. It will be removed in a future release.")
 #endif
-  public static func runAllTests(hostedBy testCase: XCTestCase) async {
+  public static func runAllTests(hostedBy testCase: XCTestCase, _ functionName: String = #function) async {
 #if SWIFT_PM_SUPPORTS_SWIFT_TESTING
     let message = Event.ConsoleOutputRecorder.warning(
       "This version of Swift Package Manager supports running swift-testing tests directly. Ignoring call to \(#function).",
@@ -172,14 +159,27 @@ public enum XCTestScaffold: Sendable {
 #endif
     }
 
-    var options = [Event.ConsoleOutputRecorder.Option]()
-#if !SWT_NO_FILE_IO
-    options += .for(.stderr)
-#endif
-    if Environment.flag(named: "SWT_VERBOSE_OUTPUT") == true {
-      options.append(.useVerboseOutput)
+#if !SWT_NO_EXIT_TESTS
+    // Exit test handling.
+    if let exitTest = ExitTest.findInEnvironmentForSwiftPM() {
+      await exitTest()
     }
-    
+    let typeName = String(reflecting: type(of: testCase.rawValue as Any))
+    let functionName = if let parenIndex = functionName.lastIndex(of: "(") {
+      functionName[..<parenIndex]
+    } else {
+      functionName[...]
+    }
+    let testIdentifier = "\(typeName)/\(functionName)"
+    configuration.exitTestHandler = ExitTest.handlerForSwiftPM(forXCTestCaseIdentifiedBy: testIdentifier)
+#endif
+
+    var options = Event.ConsoleOutputRecorder.Options()
+#if !SWT_NO_FILE_IO
+    options = .for(.stderr)
+#endif
+    options.isVerbose = (Environment.flag(named: "SWT_VERBOSE_OUTPUT") == true)
+
     await runTests(options: options, configuration: configuration)
 #endif
   }

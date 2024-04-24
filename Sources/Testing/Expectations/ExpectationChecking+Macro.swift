@@ -68,11 +68,27 @@ public func __checkValue(
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) -> Result<Void, any Error> {
+  // If the expression being evaluated is a negation (!x instead of x), flip
+  // the condition here so that we evaluate it in the correct sense. We loop
+  // in case of multiple prefix operators (!!(a == b), for example.)
+  var condition = condition
+  do {
+    var expression: Expression? = expression
+    while case let .negation(subexpression, _) = expression?.kind {
+      defer {
+        expression = subexpression
+      }
+      condition = !condition
+    }
+  }
+
   // Capture the correct expression in the expectation.
-  let expression = if !condition, let expressionWithCapturedRuntimeValues = expressionWithCapturedRuntimeValues() {
-    expressionWithCapturedRuntimeValues
-  } else {
-    expression
+  var expression = expression
+  if !condition, let expressionWithCapturedRuntimeValues = expressionWithCapturedRuntimeValues() {
+    expression = expressionWithCapturedRuntimeValues
+    if expression.runtimeValue == nil, case .negation = expression.kind {
+      expression = expression.capturingRuntimeValue(condition)
+    }
   }
 
   // Post an event for the expectation regardless of whether or not it passed.
@@ -1002,14 +1018,13 @@ public func __checkClosureCall<R>(
     mismatchExplanationValue = explanation
   } catch {
     expression = expression.capturingRuntimeValues(error)
-    do {
+    let secondError = Issue.withErrorRecording(at: sourceLocation) {
       errorMatches = try errorMatcher(error)
-      if !errorMatches {
-        mismatchExplanationValue = mismatchExplanation?(error) ?? "unexpected error \(_description(of: error)) was thrown"
-      }
-    } catch let secondError {
-      Issue.record(.errorCaught(secondError), comments: comments(), backtrace: .current(), sourceLocation: sourceLocation)
+    }
+    if let secondError {
       mismatchExplanationValue = "a second error \(_description(of: secondError)) was thrown when checking error \(_description(of: error))"
+    } else if !errorMatches {
+      mismatchExplanationValue = mismatchExplanation?(error) ?? "unexpected error \(_description(of: error)) was thrown"
     }
   }
 
@@ -1051,14 +1066,13 @@ public func __checkClosureCall<R>(
     mismatchExplanationValue = explanation
   } catch {
     expression = expression.capturingRuntimeValues(error)
-    do {
+    let secondError = await Issue.withErrorRecording(at: sourceLocation) {
       errorMatches = try await errorMatcher(error)
-      if !errorMatches {
-        mismatchExplanationValue = mismatchExplanation?(error) ?? "unexpected error \(_description(of: error)) was thrown"
-      }
-    } catch let secondError {
-      Issue.record(.errorCaught(secondError), comments: comments(), backtrace: .current(), sourceLocation: sourceLocation)
+    }
+    if let secondError {
       mismatchExplanationValue = "a second error \(_description(of: secondError)) was thrown when checking error \(_description(of: error))"
+    } else if !errorMatches {
+      mismatchExplanationValue = mismatchExplanation?(error) ?? "unexpected error \(_description(of: error)) was thrown"
     }
   }
 
@@ -1071,6 +1085,38 @@ public func __checkClosureCall<R>(
     sourceLocation: sourceLocation
   )
 }
+
+// MARK: - Exit tests
+
+#if !SWT_NO_EXIT_TESTS
+/// Check that an expression always exits (terminates the current process) with
+/// a given status.
+///
+/// This overload is used for `await #expect(exitsWith:) { }` invocations. Note
+/// that the `body` argument is thin here because it cannot meaningfully capture
+/// state from the enclosing context.
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+@_spi(Experimental)
+public func __checkClosureCall(
+  exitsWith expectedExitCondition: ExitCondition,
+  performing body: @convention(thin) () async -> Void,
+  expression: Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) async -> Result<Void, any Error> {
+  await callExitTest(
+    exitsWith: expectedExitCondition,
+    performing: { await body() },
+    expression: expression,
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+#endif
 
 // MARK: -
 

@@ -94,9 +94,17 @@ extension FunctionDeclSyntax {
       if signature.effectSpecifiers?.asyncSpecifier != nil {
         selector += "WithCompletionHandler"
         colonToken = .colonToken()
-      } else if signature.effectSpecifiers?.throwsSpecifier != nil {
-        selector += "AndReturnError"
-        colonToken = .colonToken()
+      } else {
+        let hasThrowsSpecifier: Bool
+#if canImport(SwiftSyntax600)
+        hasThrowsSpecifier = signature.effectSpecifiers?.throwsClause != nil
+#else
+        hasThrowsSpecifier = signature.effectSpecifiers?.throwsSpecifier != nil
+#endif
+        if hasThrowsSpecifier {
+          selector += "AndReturnError"
+          colonToken = .colonToken()
+        }
       }
       return ObjCSelectorPieceListSyntax {
         ObjCSelectorPieceSyntax(name: .identifier(selector), colon: colonToken)
@@ -154,69 +162,5 @@ extension FunctionParameterSyntax {
     }
 
     return MemberAccessExprSyntax(base: metatypeMemberAccessBase, name: .identifier("self"))
-  }
-}
-
-// MARK: -
-
-extension MacroExpansionContext {
-  /// Create a unique name for a function that thunks another function.
-  ///
-  /// - Parameters:
-  ///   - functionDecl: The function to thunk.
-  ///   - prefix: A prefix to apply to the thunked name before returning.
-  ///
-  /// - Returns: A unique name to use for a thunk function that thunks
-  ///   `functionDecl`.
-  func makeUniqueName(thunking functionDecl: FunctionDeclSyntax, withPrefix prefix: String = "") -> TokenSyntax {
-    // Find all the tokens of the function declaration including argument
-    // types, specifiers, etc. (but not any attributes nor the body of the
-    // function.) Use them as the base name we pass to makeUniqueName(). This
-    // ensures that we will end up with a unique identifier even if two
-    // functions in the same scope have the exact same identifier.
-    let identifierCharacters = functionDecl
-      .with(\.attributes, [])
-      .with(\.body, nil)
-      .tokens(viewMode: .fixedUp)
-      .map(\.textWithoutBackticks)
-      .joined()
-
-    // Strip out any characters in the function's signature that won't play well
-    // in a generated symbol name.
-    let identifier = String(
-      identifierCharacters.map { character in
-        if character.isLetter || character.isWholeNumber {
-          return character
-        }
-        return "_"
-      }
-    )
-
-    // If there is a non-ASCII character in the identifier, we might be
-    // stripping it out above because we are only looking for letters and
-    // digits. If so, add in a hash of the identifier to improve entropy and
-    // reduce the risk of a collision.
-    //
-    // For example, the following function names will produce identical unique
-    // names without this mutation:
-    //
-    // @Test(arguments: [0]) func A(🙃: Int) {}
-    // @Test(arguments: [0]) func A(🙂: Int) {}
-    //
-    // Note the check here is not the same as the one above: punctuation like
-    // "(" should be replaced, but should not cause a hash to be emitted since
-    // it does not contribute any entropy to the makeUniqueName() algorithm.
-    //
-    // The intent here is not to produce a cryptographically strong hash, but to
-    // disambiguate between superficially similar function names. A collision
-    // may still occur, but we only need it to be _unlikely_. CRC-32 is good
-    // enough for our purposes.
-    if !identifierCharacters.allSatisfy(\.isASCII) {
-      let crcValue = crc32(identifierCharacters.utf8)
-      let suffix = String(crcValue, radix: 16, uppercase: false)
-      return makeUniqueName("\(prefix)\(identifier)_\(suffix)")
-    }
-
-    return makeUniqueName("\(prefix)\(identifier)")
   }
 }

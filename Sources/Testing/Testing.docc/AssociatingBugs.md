@@ -23,7 +23,7 @@ specific bugs with tests that reproduce them or verify they are fixed.
   "issues." To avoid confusion with the ``Issue`` type in the testing library,
   this document consistently refers to them as "bugs."
 
-## Associating a bug with a test
+## Associate a bug with a test
 
 To associate a bug with a test, use the ``Trait/bug(_:relationship:_:)-86mmm``
 or ``Trait/bug(_:relationship:_:)-3hsi5`` function. The first argument to this
@@ -39,11 +39,11 @@ func engineWorks() async {
 ```
 
 The bug identifier can be specified as an integer or as a string; if it is
-specified as a string and matches certain formats, the testing library is able
-to infer additional information about it. For more information on the formats
-recognized by the testing library, see <doc:BugIdentifiers>.
+specified as a string, it must be parseable as an unsigned integer or as a URL.
+For more information on the formats recognized by the testing library, see
+<doc:BugIdentifiers>.
 
-## Specifying the relationship between a bug and a test
+## Specify the relationship between a bug and a test
 
 By default, the nature of the relationship between a bug and a test is
 unspecified. All the testing library knows about such relationships is that they
@@ -101,10 +101,3 @@ func hasNapkins() async {
   ...
 }
 ```
-
-## Topics
-
-- <doc:BugIdentifiers>
-- ``Trait/bug(_:relationship:_:)-86mmm``
-- ``Trait/bug(_:relationship:_:)-3hsi5``
-- ``Bug``

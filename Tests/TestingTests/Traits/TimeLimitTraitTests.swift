@@ -214,13 +214,11 @@ struct TimeLimitTraitTests {
     }
   }
 
-#if !SWT_NO_XCTEST_SCAFFOLDING && SWT_TARGET_OS_APPLE
   @Test("TimeoutError.description property")
   func timeoutErrorDescription() async throws {
     let timeLimit = TimeValue((0, 0))
     #expect(String(describing: TimeoutError(timeLimit: timeLimit)).contains("0.000"))
   }
-#endif
 
   @Test("Issue.Kind.timeLimitExceeded.description property",
     arguments: [

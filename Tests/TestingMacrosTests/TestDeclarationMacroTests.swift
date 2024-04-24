@@ -67,7 +67,6 @@ struct TestDeclarationMacroTests {
       "@Test enum E {}":
         "Attribute 'Test' cannot be applied to an enumeration",
 
-
       // Availability
       "@available(*, unavailable) @Suite struct S {}":
         "Attribute 'Suite' cannot be applied to this structure because it has been marked '@available(*, unavailable)'",
@@ -116,6 +115,62 @@ struct TestDeclarationMacroTests {
       #expect(diagnostic.message == expectedMessage)
     }
   }
+
+#if canImport(SwiftSyntax600)
+  @Test("Error diagnostics emitted for invalid lexical contexts",
+    arguments: [
+      "struct S { func f() { @Test func g() {} } }":
+        "Attribute 'Test' cannot be applied to a function within function 'f()'",
+      "struct S { func f(x: Int) { @Suite struct S { } } }":
+        "Attribute 'Suite' cannot be applied to a structure within function 'f(x:)'",
+      "struct S<T> { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within generic structure 'S'",
+      "struct S<T> { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within generic structure 'S'",
+      "class C { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within non-final class 'C'",
+      "class C { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within non-final class 'C'",
+      "protocol P { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within protocol 'P'",
+      "protocol P { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within protocol 'P'",
+      "{ _ in @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within a closure",
+      "{ _ in @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within a closure",
+      "@available(*, noasync) struct S { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to this function because it has been marked '@available(*, noasync)'",
+      "@available(*, noasync) struct S { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to this structure because it has been marked '@available(*, noasync)'",
+      "extension [T] { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within a generic extension to type '[T]'",
+      "extension [T] { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within a generic extension to type '[T]'",
+      "extension [T:U] { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within a generic extension to type '[T:U]'",
+      "extension [T:U] { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within a generic extension to type '[T:U]'",
+      "extension T? { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within a generic extension to type 'T?'",
+      "extension T? { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within a generic extension to type 'T?'",
+      "extension T! { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within a generic extension to type 'T!'",
+      "extension T! { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within a generic extension to type 'T!'",
+    ]
+  )
+  func invalidLexicalContext(input: String, expectedMessage: String) throws {
+    let (_, diagnostics) = try parse(input)
+
+    #expect(diagnostics.count > 0)
+    for diagnostic in diagnostics {
+      #expect(diagnostic.diagMessage.severity == .error)
+      #expect(diagnostic.message == expectedMessage)
+    }
+  }
+#endif
 
   @Test("Warning diagnostics emitted on API misuse",
     arguments: [
@@ -182,20 +237,17 @@ struct TestDeclarationMacroTests {
     ]
   )
   func availabilityAttributeCapture(input: String, expectedOutputs: [String]) throws {
-    let (actualOutput, _) = try parse(input)
+    let (actualOutput, _) = try parse(input, removeWhitespace: true)
 
     for expectedOutput in expectedOutputs {
+      let (expectedOutput, _) = try parse(expectedOutput, removeWhitespace: true)
       #expect(actualOutput.contains(expectedOutput))
     }
   }
 
-  @Test("Different kinds of functions are handled correctly",
-    arguments: [
+  static var functionTypeInputs: [(String, String?, String?)] {
+    var result: [(String, String?, String?)] = [
       ("@Test func f() {}", nil, nil),
-      ("struct S {\n\t@Test func f() {} }", "Self", "let"),
-      ("struct S {\n\t@Test mutating func f() {} }", "Self", "var"),
-      ("struct S {\n\t@Test static func f() {} }", "Self", nil),
-      ("final class S {\n\t@Test class func f() {} }", "Self", nil),
       ("@Test @available(*, noasync) @MainActor func f() {}", nil, "MainActor.run"),
       ("@Test @_unavailableFromAsync @MainActor func f() {}", nil, "MainActor.run"),
       ("@Test @available(*, noasync) func f() {}", nil, "__requiringTry"),
@@ -220,7 +272,27 @@ struct TestDeclarationMacroTests {
         nil
       ),
     ]
-  )
+
+#if canImport(SwiftSyntax600)
+    result += [
+      ("struct S_NAME {\n\t@Test func f() {} }", "S_NAME", "let"),
+      ("struct S_NAME {\n\t@Test mutating func f() {} }", "S_NAME", "var"),
+      ("struct S_NAME {\n\t@Test static func f() {} }", "S_NAME", nil),
+      ("final class C_NAME {\n\t@Test class func f() {} }", "C_NAME", nil),
+    ]
+#else
+    result += [
+      ("struct S {\n\t@Test func f() {} }", "Self", "let"),
+      ("struct S {\n\t@Test mutating func f() {} }", "Self", "var"),
+      ("struct S {\n\t@Test static func f() {} }", "Self", nil),
+      ("final class C {\n\t@Test class func f() {} }", "Self", nil),
+    ]
+#endif
+
+    return result
+  }
+
+  @Test("Different kinds of functions are handled correctly", arguments: functionTypeInputs)
   func differentFunctionTypes(input: String, expectedTypeName: String?, otherCode: String?) throws {
     let (output, _) = try parse(input)
 
@@ -298,4 +370,42 @@ struct TestDeclarationMacroTests {
       #expect(diagnostic.message == "Tag '\(tagExpr)' cannot be used with attribute 'Test'; pass a member of 'Tag' or a string literal instead")
     }
   }
+
+  @Test("Valid bug identifiers are allowed",
+    arguments: [
+      #"@Test(.bug(12345)) func f() {}"#,
+      #"@Test(.bug("12345")) func f() {}"#,
+      #"@Test(.bug("mailto:a@example.com")) func f() {}"#,
+      #"@Test(.bug("rdar:12345")) func f() {}"#,
+      #"@Test(.bug("rdar://12345")) func f() {}"#,
+      #"@Test(.bug("FB12345")) func f() {}"#,
+      #"@Test(.bug("https://github.com/apple/swift-testing/issues/12345")) func f() {}"#,
+      #"@Test(Bug.bug("https://github.com/apple/swift-testing/issues/12345")) func f() {}"#,
+      #"@Test(Testing.Bug.bug("https://github.com/apple/swift-testing/issues/12345")) func f() {}"#,
+      #"@Test(Bug.bug("https://github.com/apple/swift-testing/issues/12345", "here's what happened...")) func f() {}"#,
+    ]
+  )
+  func validBugIdentifiers(input: String) throws {
+    let (_, diagnostics) = try parse(input)
+
+    #expect(diagnostics.isEmpty)
+  }
+
+  @Test("Invalid bug identifiers are detected",
+    arguments: [
+      "12345 ", "here's what happened...", "🌯", "mailto: a@example.com",
+      "FB", "FBabc", "FB1",
+    ]
+  )
+  func invalidBugIdentifiers(id: String) throws {
+    let input = #"@Test(.bug("\#(id)")) func f() {}"#
+    let (_, diagnostics) = try parse(input)
+
+    #expect(diagnostics.count > 0)
+    for diagnostic in diagnostics {
+      #expect(diagnostic.diagMessage.severity == .error)
+      #expect(diagnostic.message == #"URL "\#(id)" is invalid and cannot be used with trait 'bug' in attribute 'Test'"#)
+    }
+  }
+
 }

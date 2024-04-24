@@ -23,10 +23,10 @@ struct PlanTests {
 
   @Test("Selected tests by ID")
   func selectedTests() async throws {
-    let outerTestType = try #require(await test(for: SendableTests.self) as Test?)
-    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self) as Test?)
-    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self) as Test?)
-    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self) as Test?)
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
 
     let tests = [
       outerTestType,
@@ -48,10 +48,10 @@ struct PlanTests {
 
   @Test("Multiple selected tests by ID")
   func multipleSelectedTests() async throws {
-    let outerTestType = try #require(await test(for: SendableTests.self) as Test?)
-    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self) as Test?)
-    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self) as Test?)
-    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self) as Test?)
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
 
     let tests = [
       outerTestType,
@@ -74,10 +74,10 @@ struct PlanTests {
 
   @Test("Excluded tests by ID")
   func excludedTests() async throws {
-    let outerTestType = try #require(await test(for: SendableTests.self) as Test?)
-    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self) as Test?)
-    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self) as Test?)
-    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self) as Test?)
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
 
     let tests = [
       outerTestType,
@@ -101,11 +101,11 @@ struct PlanTests {
 
   @Test("Selected tests by any tag")
   func selectedTestsByAnyTag() async throws {
-    let outerTestType = try #require(await test(for: SendableTests.self) as Test?)
-    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self) as Test?)
-    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self) as Test?)
-    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self) as Test?)
-    let testC = try #require(await testFunction(named: "otherSucceeds()", in: SendableTests.NestedSendableTests.self) as Test?)
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
+    let testC = try #require(await testFunction(named: "otherSucceeds()", in: SendableTests.NestedSendableTests.self))
 
     let tests = [
       outerTestType,
@@ -131,11 +131,11 @@ struct PlanTests {
 
   @Test("Selected tests by all tags")
   func selectedTestsByAllTags() async throws {
-    let outerTestType = try #require(await test(for: SendableTests.self) as Test?)
-    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self) as Test?)
-    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self) as Test?)
-    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self) as Test?)
-    let testC = try #require(await testFunction(named: "otherSucceeds()", in: SendableTests.NestedSendableTests.self) as Test?)
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
+    let testC = try #require(await testFunction(named: "otherSucceeds()", in: SendableTests.NestedSendableTests.self))
 
     let tests = [
       outerTestType,
@@ -161,11 +161,11 @@ struct PlanTests {
 
   @Test("Excluded tests by any tag")
   func excludedTestsByAnyTag() async throws {
-    let outerTestType = try #require(await test(for: SendableTests.self) as Test?)
-    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self) as Test?)
-    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self) as Test?)
-    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self) as Test?)
-    let testC = try #require(await testFunction(named: "otherSucceeds()", in: SendableTests.NestedSendableTests.self) as Test?)
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
+    let testC = try #require(await testFunction(named: "otherSucceeds()", in: SendableTests.NestedSendableTests.self))
 
     let tests = [
       outerTestType,
@@ -191,11 +191,11 @@ struct PlanTests {
 
   @Test("Excluded tests by all tags")
   func excludedTestsByAllTags() async throws {
-    let outerTestType = try #require(await test(for: SendableTests.self) as Test?)
-    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self) as Test?)
-    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self) as Test?)
-    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self) as Test?)
-    let testC = try #require(await testFunction(named: "otherSucceeds()", in: SendableTests.NestedSendableTests.self) as Test?)
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
+    let testC = try #require(await testFunction(named: "otherSucceeds()", in: SendableTests.NestedSendableTests.self))
 
     let tests = [
       outerTestType,
@@ -221,11 +221,11 @@ struct PlanTests {
 
   @Test("Mixed included and excluded tests by ID")
   func mixedIncludedAndExcludedTests() async throws {
-    let outerTestType = try #require(await test(for: SendableTests.self) as Test?)
-    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self) as Test?)
-    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self) as Test?)
-    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self) as Test?)
-    let testC = try #require(await testFunction(named: "otherSucceeds()", in: SendableTests.NestedSendableTests.self) as Test?)
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
+    let testC = try #require(await testFunction(named: "otherSucceeds()", in: SendableTests.NestedSendableTests.self))
 
     let tests = [
       outerTestType,
@@ -252,10 +252,10 @@ struct PlanTests {
 
   @Test("Combining test filter by ID with .unfiltered (rhs)")
   func combiningTestFilterWithUnfilteredRHS() async throws {
-    let outerTestType = try #require(await test(for: SendableTests.self) as Test?)
-    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self) as Test?)
-    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self) as Test?)
-    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self) as Test?)
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
 
     let tests = [
       outerTestType,
@@ -281,10 +281,10 @@ struct PlanTests {
 
   @Test("Combining test filter by ID with .unfiltered (lhs)")
   func combiningTestFilterWithUnfilteredLHS() async throws {
-    let outerTestType = try #require(await test(for: SendableTests.self) as Test?)
-    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self) as Test?)
-    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self) as Test?)
-    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self) as Test?)
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
 
     let tests = [
       outerTestType,
@@ -310,10 +310,10 @@ struct PlanTests {
 
   @Test("Combining test filter by ID with by tag")
   func combiningTestFilterByIDAndByTag() async throws {
-    let outerTestType = try #require(await test(for: SendableTests.self) as Test?)
-    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self) as Test?)
-    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self) as Test?)
-    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self) as Test?)
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
 
     let tests = [
       outerTestType,
@@ -339,11 +339,11 @@ struct PlanTests {
 
   @Test("Combining test filters with .or")
   func combiningTestFilterWithOr() async throws {
-    let outerTestType = try #require(await test(for: SendableTests.self) as Test?)
-    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self) as Test?)
-    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self) as Test?)
-    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self) as Test?)
-    let testC = try #require(await testFunction(named: "otherSucceeds()", in: SendableTests.NestedSendableTests.self) as Test?)
+    let outerTestType = try #require(await test(for: SendableTests.self))
+    let testA = try #require(await testFunction(named: "succeeds()", in: SendableTests.self))
+    let innerTestType = try #require(await test(for: SendableTests.NestedSendableTests.self))
+    let testB = try #require(await testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self))
+    let testC = try #require(await testFunction(named: "otherSucceeds()", in: SendableTests.NestedSendableTests.self))
 
     let tests = [
       outerTestType,
@@ -371,9 +371,9 @@ struct PlanTests {
 
   @Test("Recursive trait application")
   func recursiveTraitApplication() async throws {
-    let outerTestType = try #require(await test(for: OuterTest.self) as Test?)
+    let outerTestType = try #require(await test(for: OuterTest.self))
     // Intentionally omitting intermediate tests here...
-    let deeplyNestedTest = try #require(await testFunction(named: "example()", in: OuterTest.IntermediateType.InnerTest.self) as Test?)
+    let deeplyNestedTest = try #require(await testFunction(named: "example()", in: OuterTest.IntermediateType.InnerTest.self))
 
     let tests = [outerTestType, deeplyNestedTest]
 
@@ -389,10 +389,10 @@ struct PlanTests {
 
   @Test("Relative order of recursively applied traits")
   func recursiveTraitOrder() async throws {
-    let testSuiteA = try #require(await test(for: RelativeTraitOrderingTests.A.self) as Test?)
-    let testSuiteB = try #require(await test(for: RelativeTraitOrderingTests.A.B.self) as Test?)
-    let testSuiteC = try #require(await test(for: RelativeTraitOrderingTests.A.B.C.self) as Test?)
-    let testFuncX = try #require(await testFunction(named: "x()", in: RelativeTraitOrderingTests.A.B.C.self) as Test?)
+    let testSuiteA = try #require(await test(for: RelativeTraitOrderingTests.A.self))
+    let testSuiteB = try #require(await test(for: RelativeTraitOrderingTests.A.B.self))
+    let testSuiteC = try #require(await test(for: RelativeTraitOrderingTests.A.B.C.self))
+    let testFuncX = try #require(await testFunction(named: "x()", in: RelativeTraitOrderingTests.A.B.C.self))
 
     let tests = [testSuiteA, testSuiteB, testSuiteC, testFuncX]
 
@@ -415,15 +415,18 @@ struct PlanTests {
     // The tests themselves are nested deeper, under the source location, so
     // we're just checking here that the key path has been constructed correctly
     // up to the function names.
-    #expect(plan.stepGraph.subgraph(at: nameComponents(of: SendableTests.self) + CollectionOfOne("succeeds()")) != nil)
-    #expect(plan.stepGraph.subgraph(at: nameComponents(of: SendableTests.self) + CollectionOfOne("static()")) != nil)
-    #expect(plan.stepGraph.subgraph(at: nameComponents(of: SendableTests.self) + CollectionOfOne("reserved1(reserved2:)")) != nil)
+    let typeInfo = TypeInfo(describing: SendableTests.self)
+    #expect(plan.stepGraph.subgraph(at: typeInfo.fullyQualifiedNameComponents + CollectionOfOne("succeeds()")) != nil)
+    #expect(plan.stepGraph.subgraph(at: typeInfo.fullyQualifiedNameComponents + CollectionOfOne("static()")) != nil)
+    #expect(plan.stepGraph.subgraph(at: typeInfo.fullyQualifiedNameComponents + CollectionOfOne("reserved1(reserved2:)")) != nil)
   }
 
-  @Test("Runner.Plan.independentlyRunnableSteps property")
+  @Test("Runner.Plan.independentlyRunnableSteps property (all tests top-level)")
   func independentlyRunnableTests() async throws {
-    let plan = await Runner.Plan(selecting: IndependentlyRunnableTests.self)
-    #expect(plan.independentlyRunnableSteps.count == 2)
+    let plan = await Runner.Plan(configuration: .init())
+    for step in plan.independentlyRunnableSteps {
+      #expect(step.test.id.nameComponents.count == 1, "Test is not top-level: \(step.test)")
+    }
   }
 }
 

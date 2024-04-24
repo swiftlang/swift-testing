@@ -64,6 +64,63 @@ static bool swt_S_ISFIFO(mode_t mode) {
 #endif
 #endif
 
+#if defined(_WIN32)
+/// Make a Win32 language ID.
+///
+/// This function is provided because `MAKELANGID()` is a complex macro and
+/// cannot be imported directly into Swift.
+static LANGID swt_MAKELANGID(int p, int s) {
+  return MAKELANGID(p, s);
+}
+#endif
+
+#if defined(__linux__)
+/// The environment block.
+///
+/// By POSIX convention, the environment block variable is declared in client
+/// code rather than in a header.
+SWT_EXTERN char *_Nullable *_Null_unspecified environ;
+
+/// Get the environment block.
+///
+/// This function is provided because directly accessing `environ` from Swift
+/// triggers concurrency warnings about accessing shared mutable state.
+static char *_Nullable *_Null_unspecified swt_environ(void) {
+  return environ;
+}
+
+/// Set the name of the current thread.
+///
+/// This function declaration is provided because `pthread_setname_np()` is
+/// only declared if `_GNU_SOURCE` is set, but setting it causes build errors
+/// due to conflicts with Swift's Glibc module.
+SWT_IMPORT_FROM_STDLIB int pthread_setname_np(pthread_t, const char *);
+#endif
+
+#if __has_include(<signal.h>) && defined(si_pid)
+/// Get the value of the `si_pid` field of a `siginfo_t` structure.
+///
+/// This function is provided because `si_pid` is a complex macro on some
+/// platforms and cannot be imported directly into Swift. It is renamed back to
+/// `siginfo_t.si_pid` in Swift.
+SWT_SWIFT_NAME(getter:siginfo_t.si_pid(self:))
+static pid_t swt_siginfo_t_si_pid(const siginfo_t *siginfo) {
+  return siginfo->si_pid;
+}
+#endif
+
+#if __has_include(<signal.h>) && defined(si_status)
+/// Get the value of the `si_status` field of a `siginfo_t` structure.
+///
+/// This function is provided because `si_status` is a complex macro on some
+/// platforms and cannot be imported directly into Swift. It is renamed back to
+/// `siginfo_t.si_status` in Swift.
+SWT_SWIFT_NAME(getter:siginfo_t.si_status(self:))
+static pid_t swt_siginfo_t_si_status(const siginfo_t *siginfo) {
+  return siginfo->si_status;
+}
+#endif
+
 SWT_ASSUME_NONNULL_END
 
 #endif

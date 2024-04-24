@@ -33,7 +33,7 @@ let package = Package(
   ],
 
   dependencies: [
-    .package(url: "https://github.com/apple/swift-syntax.git", from: "510.0.1"),
+    .package(url: "https://github.com/apple/swift-syntax.git", from: Version(stringLiteral: Context.environment["SWT_SWIFT_SYNTAX_VERSION"] ?? "510.0.1")),
   ],
 
   targets: [
@@ -125,6 +125,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .define("SWT_TARGET_OS_APPLE", .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])),
 
       .define("SWT_NO_FILE_IO", .when(platforms: [.wasi])),
+      .define("SWT_NO_EXIT_TESTS", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi])),
     ]
   }
 

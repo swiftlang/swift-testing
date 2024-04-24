@@ -13,3 +13,4 @@ DerivedData/
 Package.resolved
 *.profraw
 .*.sw?
+/.vscode

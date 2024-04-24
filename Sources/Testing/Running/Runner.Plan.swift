@@ -237,13 +237,13 @@ extension Runner.Plan {
 
     // Now that we have allowed all the traits to update their corresponding
     // actions, recursively apply those actions to child tests in the graph.
-    actionGraph = actionGraph.mapValues { action in
+    actionGraph = actionGraph.mapValues { _, action in
       (action, recursivelyApply: action.isRecursive)
     }
 
     // Zip the tests and actions together and return them.
-    return zip(testGraph, actionGraph).mapValues { test, action in
-      test.map { Step(test: $0, action: action) }
+    return zip(testGraph, actionGraph).mapValues { _, pair in
+      pair.0.map { Step(test: $0, action: pair.1) }
     }
   }
 
@@ -329,7 +329,7 @@ extension Runner.Plan {
     ///
     /// - Parameters:
     ///   - plan: The original plan to snapshot.
-    public init(snapshotting plan: Runner.Plan) {
+    public init(snapshotting plan: borrowing Runner.Plan) {
       plan.stepGraph.forEach { keyPath, step in
         let step = step.map(Step.Snapshot.init(snapshotting:))
         _stepGraph.insertValue(step, at: keyPath)
@@ -394,7 +394,7 @@ extension Runner.Plan.Step {
     ///
     /// - Parameters:
     ///   - step: The original step to snapshot.
-    init(snapshotting step: Runner.Plan.Step) {
+    public init(snapshotting step: borrowing Runner.Plan.Step) {
       test = Test.Snapshot(snapshotting: step.test)
       action = Runner.Plan.Action.Snapshot(snapshotting: step.action)
     }
@@ -431,7 +431,7 @@ extension Runner.Plan.Action {
     ///
     /// - Parameters:
     ///   - action: The original action to snapshot.
-    init(snapshotting action: Runner.Plan.Action) {
+    public init(snapshotting action: Runner.Plan.Action) {
       self = switch action {
       case let .run(options):
         .run(options: options)

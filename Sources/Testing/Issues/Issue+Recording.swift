@@ -32,7 +32,7 @@ extension Issue {
   ///
   /// - Returns: The issue that was recorded.
   @discardableResult
-  static func record(_ kind: Kind, comments: [Comment], backtrace: Backtrace?, sourceLocation: SourceLocation, configuration: Configuration? = nil) -> Issue {
+  static func record(_ kind: Kind, comments: [Comment], backtrace: Backtrace?, sourceLocation: SourceLocation, configuration: Configuration? = nil) -> Self {
     let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: sourceLocation)
     return record(kind, comments: comments, sourceContext: sourceContext, configuration: configuration)
   }
@@ -49,10 +49,9 @@ extension Issue {
   ///
   /// - Returns: The issue that was recorded.
   @discardableResult
-  static func record(_ kind: Kind, comments: [Comment], sourceContext: SourceContext, configuration: Configuration? = nil) -> Issue {
+  static func record(_ kind: Kind, comments: [Comment], sourceContext: SourceContext, configuration: Configuration? = nil) -> Self {
     let issue = Issue(kind: kind, comments: comments, sourceContext: sourceContext)
-    issue.record(configuration: configuration)
-    return issue
+    return issue.record(configuration: configuration)
   }
 
   /// Record this issue by wrapping it in an ``Event`` and passing it to the
@@ -61,7 +60,19 @@ extension Issue {
   /// - Parameters:
   ///   - configuration: The test configuration to use when recording the issue.
   ///     The default value is ``Configuration/current``.
-  func record(configuration: Configuration? = nil) {
+  ///
+  /// - Returns: The issue that was recorded (`self` or a modified copy of it.)
+  @discardableResult
+  func record(configuration: Configuration? = nil) -> Self {
+    // If this issue is a caught error of kind SystemError, reinterpret it as a
+    // testing system issue instead (per the documentation for SystemError.)
+    if case let .errorCaught(error) = kind, let error = error as? SystemError {
+      var selfCopy = self
+      selfCopy.kind = .system
+      selfCopy.comments.append(Comment(rawValue: String(describing: error)))
+      return selfCopy.record(configuration: configuration)
+    }
+
     // If this issue matches via the known issue matcher, set a copy of it to be
     // known and record the copy instead.
     if !isKnown, let issueMatcher = Self.currentKnownIssueMatcher, issueMatcher(self) {
@@ -80,6 +91,8 @@ extension Issue {
       // can help explain the failure.
       failureBreakpoint()
     }
+
+    return self
   }
 
   /// Record an issue when a running test fails unexpectedly.
@@ -102,10 +115,13 @@ extension Issue {
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
     let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
     let issue = Issue(kind: .unconditional, comments: Array(comment), sourceContext: sourceContext)
-    issue.record()
-    return issue
+    return issue.record()
   }
+}
 
+// MARK: - Recording issues for errors
+
+extension Issue {
   /// Record a new issue when a running test unexpectedly catches an error.
   ///
   /// - Parameters:
@@ -130,10 +146,99 @@ extension Issue {
     let backtrace = Backtrace(forFirstThrowOf: error) ?? Backtrace.current()
     let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: sourceLocation)
     let issue = Issue(kind: .errorCaught(error), comments: Array(comment), sourceContext: sourceContext)
-    issue.record()
-    return issue
+    return issue.record()
+  }
+
+  /// Catch any error thrown from a closure and record it as an issue instead of
+  /// allowing it to propagate to the caller.
+  ///
+  /// - Parameters:
+  ///   - sourceLocation: The source location to attribute any caught error to.
+  ///   - configuration: The test configuration to use when recording an issue.
+  ///     The default value is ``Configuration/current``.
+  ///   - body: A closure that might throw an error.
+  ///
+  /// - Returns: The issue representing the caught error, if any error was
+  ///   caught, otherwise `nil`.
+  @discardableResult
+  static func withErrorRecording(
+    at sourceLocation: SourceLocation,
+    configuration: Configuration? = nil,
+    _ body: () throws -> Void
+  ) -> (any Error)? {
+    // Ensure that we are capturing backtraces for errors before we start
+    // expecting to see them.
+    Backtrace.startCachingForThrownErrors()
+    defer {
+      Backtrace.flushThrownErrorCache()
+    }
+
+    do {
+      try body()
+    } catch is ExpectationFailedError {
+      // This error is thrown by expectation checking functions to indicate a
+      // condition evaluated to `false`. Those functions record their own issue,
+      // so we don't need to record another one redundantly.
+    } catch {
+      Issue.record(
+        .errorCaught(error),
+        comments: [],
+        backtrace: Backtrace(forFirstThrowOf: error),
+        sourceLocation: sourceLocation,
+        configuration: configuration
+      )
+      return error
+    }
+
+    return nil
+  }
+
+  /// Catch any error thrown from an asynchronous closure and record it as an
+  /// issue instead of allowing it to propagate to the caller.
+  ///
+  /// - Parameters:
+  ///   - sourceLocation: The source location to attribute any caught error to.
+  ///   - configuration: The test configuration to use when recording an issue.
+  ///     The default value is ``Configuration/current``.
+  ///   - body: An asynchronous closure that might throw an error.
+  ///
+  /// - Returns: The issue representing the caught error, if any error was
+  ///   caught, otherwise `nil`.
+  @discardableResult
+  static func withErrorRecording(
+    at sourceLocation: SourceLocation,
+    configuration: Configuration? = nil,
+    _ body: () async throws -> Void
+  ) async -> (any Error)? {
+    // Ensure that we are capturing backtraces for errors before we start
+    // expecting to see them.
+    Backtrace.startCachingForThrownErrors()
+    defer {
+      Backtrace.flushThrownErrorCache()
+    }
+
+    do {
+      try await body()
+    } catch is ExpectationFailedError {
+      // This error is thrown by expectation checking functions to indicate a
+      // condition evaluated to `false`. Those functions record their own issue,
+      // so we don't need to record another one redundantly.
+    } catch {
+      Issue.record(
+        .errorCaught(error),
+        comments: [],
+        backtrace: Backtrace(forFirstThrowOf: error),
+        sourceLocation: sourceLocation,
+        configuration: configuration
+      )
+      return error
+    }
+
+    return nil
   }
 }
+
+// MARK: - Debugging failures
 
 /// A function called by the testing library when a failure occurs.
 ///

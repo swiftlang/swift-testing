@@ -121,7 +121,7 @@ public func withKnownIssue(
   column: Int = #column,
   _ body: () throws -> Void
 ) {
-  try? withKnownIssue(comment, isIntermittent: isIntermittent, fileID: fileID, line: line, column: column, body, matching: { _ in true })
+  try? withKnownIssue(comment, isIntermittent: isIntermittent, fileID: fileID, filePath: filePath, line: line, column: column, body, matching: { _ in true })
 }
 
 /// Invoke a function that has a known issue that is expected to occur during
@@ -236,7 +236,7 @@ public func withKnownIssue(
   column: Int = #column,
   _ body: () async throws -> Void
 ) async {
-  try? await withKnownIssue(comment, isIntermittent: isIntermittent, fileID: fileID, line: line, column: column, body, matching: { _ in true })
+  try? await withKnownIssue(comment, isIntermittent: isIntermittent, fileID: fileID, filePath: filePath, line: line, column: column, body, matching: { _ in true })
 }
 
 /// Invoke a function that has a known issue that is expected to occur during

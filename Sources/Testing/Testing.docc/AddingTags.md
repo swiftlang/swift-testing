@@ -10,7 +10,7 @@ See https://swift.org/LICENSE.txt for license information
 See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 -->
 
-Add tags to tests and customize their appearance.
+Use tags to provide semantic information for organization, filtering, and customizing appearances.
 
 ## Overview
 
@@ -24,7 +24,7 @@ functions at the source level, while tags provide semantic information for a
 test that can be shared with any number of other tests across test suites,
 source files, and even test targets.
 
-## Adding tags
+## Add a tag
 
 To add a tag to a test, use the ``Trait/tags(_:)-505n9`` trait. This trait takes
 a sequence of tags as its argument, and those tags are then applied to the
@@ -120,7 +120,7 @@ any test target and applied to any test:
 The testing library does not assign any semantic meaning to these tags, nor does
 the presence or absence of these tags affect how the testing library runs tests.
 
-## Customizing a tag's appearance
+## Customize a tag's appearance
 
 By default, a tag does not appear in a test's output when the test is run. It is
 possible to assign colors to tags defined in a package so that when the test is
@@ -155,11 +155,3 @@ be set to:
   ".legallyRequired": "#66FFCC"
 }
 ```
-
-## Topics
-
-- ``Trait/tags(_:)-505n9``
-- ``Trait/tags(_:)-yg0i``
-- ``Tag``
-- ``Tag/List``
-- ``Tag()``

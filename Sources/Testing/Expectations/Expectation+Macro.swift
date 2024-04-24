@@ -403,3 +403,161 @@
   performing expression: () async throws -> R,
   throws errorMatcher: (any Error) async throws -> Bool
 ) = #externalMacro(module: "TestingMacros", type: "RequireMacro")
+
+// MARK: - Exit tests
+
+/// Check that an expression causes the process to terminate in a given fashion.
+///
+/// - Parameters:
+///   - expectedExitCondition: The expected exit condition.
+///   - comment: A comment describing the expectation.
+///   - sourceLocation: The source location to which recorded expectations and
+///     issues should be attributed.
+///   - expression: The expression to be evaluated.
+///
+/// Use this overload of `#expect()` when an expression will cause the current
+/// process to terminate and the nature of that termination will determine if
+/// the test passes or fails. For example, to test that calling `fatalError()`
+/// causes a process to terminate:
+///
+/// ```swift
+/// await #expect(exitsWith: .failure) {
+///   fatalError()
+/// }
+/// ```
+///
+/// - Note: A call to this expectation macro is called an "exit test."
+///
+/// ## How exit tests are run
+///
+/// When an exit test is performed at runtime, the testing library starts a new
+/// process with the same executable as the current process. The current task is
+/// then suspended (as with `await`) and waits for the child process to
+/// terminate. `expression` is not called in the parent process.
+///
+/// Meanwhile, in the child process, `expression` is called directly. To ensure
+/// a clean environment for execution, it is not called within the context of
+/// the original test. If `expression` does not terminate the child process, the
+/// process is terminated automatically as if the main function of the child
+/// process were allowed to return naturally.
+///
+/// Once the child process terminates, the parent process resumes and compares
+/// its exit status against `exitCondition`. If they match, the exit test has
+/// passed; otherwise, it has failed and an issue is recorded.
+///
+/// ## Runtime constraints
+///
+/// Exit tests cannot capture any state originating in the parent process or
+/// from the enclosing lexical context. For example, the following exit test
+/// will fail to compile because it captures an argument to the enclosing
+/// parameterized test:
+///
+/// ```swift
+/// @Test(arguments: 100 ..< 200)
+/// func sellIceCreamCones(count: Int) async {
+///   await #expect(exitsWith: .failure) {
+///     precondition(
+///       count < 10, // ERROR: A C function pointer cannot be formed from a
+///                   // closure that captures context
+///       "Too many ice cream cones"
+///     )
+///   }
+/// }
+/// ```
+///
+/// Additionally, an exit test:
+///
+/// - _must_ run within a test function (or a function called by one);
+/// - cannot run within another exit test; and
+/// - cannot be run on a detached child task, a dispatch queue, or a background
+///   thread.
+@_spi(Experimental)
+#if SWT_NO_EXIT_TESTS
+@available(*, unavailable, message: "Exit tests are not available on this platform.")
+#endif
+@freestanding(expression) public macro expect(
+  exitsWith expectedExitCondition: ExitCondition,
+  _ comment: @autoclosure () -> Comment? = nil,
+  sourceLocation: SourceLocation = SourceLocation(),
+  performing expression: @convention(thin) () async throws -> Void
+) = #externalMacro(module: "TestingMacros", type: "ExitTestExpectMacro")
+
+/// Check that an expression causes the process to terminate in a given fashion
+/// and throw an error if it did not.
+///
+/// - Parameters:
+///   - expectedExitCondition: The expected exit condition.
+///   - comment: A comment describing the expectation.
+///   - sourceLocation: The source location to which recorded expectations and
+///     issues should be attributed.
+///   - expression: The expression to be evaluated.
+///
+/// - Throws: An instance of ``ExpectationFailedError`` if `condition` evaluates
+///   to `false`.
+///
+/// Use this overload of `#require()` when an expression will cause the current
+/// process to terminate and the nature of that termination will determine if
+/// the test passes or fails. For example, to test that calling `fatalError()`
+/// causes a process to terminate:
+///
+/// ```swift
+/// try await #require(exitsWith: .failure) {
+///   fatalError()
+/// }
+/// ```
+///
+/// - Note: A call to this expectation macro is called an "exit test."
+///
+/// ## How exit tests are run
+///
+/// When an exit test is performed at runtime, the testing library starts a new
+/// process with the same executable as the current process. The current task is
+/// then suspended (as with `await`) and waits for the child process to
+/// terminate. `expression` is not called in the parent process.
+///
+/// Meanwhile, in the child process, `expression` is called directly. To ensure
+/// a clean environment for execution, it is not called within the context of
+/// the original test. If `expression` does not terminate the child process, the
+/// process is terminated automatically as if the main function of the child
+/// process were allowed to return naturally.
+///
+/// Once the child process terminates, the parent process resumes and compares
+/// its exit status against `exitCondition`. If they match, the exit test has
+/// passed; otherwise, it has failed and an issue is recorded.
+///
+/// ## Runtime constraints
+///
+/// Exit tests cannot capture any state originating in the parent process or
+/// from the enclosing lexical context. For example, the following exit test
+/// will fail to compile because it captures an argument to the enclosing
+/// parameterized test:
+///
+/// ```swift
+/// @Test(arguments: 100 ..< 200)
+/// func sellIceCreamCones(count: Int) async throws {
+///   try await #require(exitsWith: .failure) {
+///     precondition(
+///       count < 10, // ERROR: A C function pointer cannot be formed from a
+///                   // closure that captures context
+///       "Too many ice cream cones"
+///     )
+///   }
+/// }
+/// ```
+///
+/// Additionally, an exit test:
+///
+/// - _must_ run within a test function (or a function called by one);
+/// - cannot run within another exit test; and
+/// - cannot be run on a detached child task, a dispatch queue, or a background
+///   thread.
+@_spi(Experimental)
+#if SWT_NO_EXIT_TESTS
+@available(*, unavailable, message: "Exit tests are not available on this platform.")
+#endif
+@freestanding(expression) public macro require(
+  exitsWith expectedExitCondition: ExitCondition,
+  _ comment: @autoclosure () -> Comment? = nil,
+  sourceLocation: SourceLocation = SourceLocation(),
+  performing expression: @convention(thin) () async -> Void
+) = #externalMacro(module: "TestingMacros", type: "ExitTestRequireMacro")

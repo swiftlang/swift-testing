@@ -25,16 +25,20 @@ extension Tag {
     // Split up the supplied type name into its fully-qualified components. We
     // will use this string array to reconstruct the fully-qualified name of the
     // described static member.
-    var fullyQualifiedMemberNameComponents = fullyQualifiedName(of: type)
-      .split(separator: ".")
-      .map(String.init)
+    var fullyQualifiedMemberNameComponents = TypeInfo(describing: type).fullyQualifiedNameComponents
 
+#if canImport(SwiftSyntax600)
+    // Strip off the "Testing" and "Tag" components of the fully-qualified name
+    // since they're redundant. Macro expansion will have already checked that
+    // the type is nested inside `Tag`.
+#else
     // Ensure that the tag is nested somewhere inside Testing.Tag, then strip
     // off those elements of the fully-qualified type name. These preconditions
     // are necessary because we do not currently have access, during macro
     // expansion, to the lexical context in which a tag is declared.
     precondition(fullyQualifiedMemberNameComponents.count >= 2, "Tags must be specified as members of the Tag type or a nested type in Tag.")
     precondition(fullyQualifiedMemberNameComponents[0 ..< 2] == ["Testing", "Tag"], "Tags must be specified as members of the Tag type or a nested type in Tag.")
+#endif
     fullyQualifiedMemberNameComponents = Array(fullyQualifiedMemberNameComponents.dropFirst(2))
 
     // Add the specified tag name to the fully-qualified name and reconstruct
@@ -51,4 +55,4 @@ extension Tag {
 /// Use this tag with members of the ``Tag`` type declared in an extension to
 /// mark them as usable with tests. For more information on declaring tags, see
 /// <doc:AddingTags>.
-@attached(accessor) public macro Tag() = #externalMacro(module: "TestingMacros", type: "TagMacro")
+@attached(accessor) @attached(peer) public macro Tag() = #externalMacro(module: "TestingMacros", type: "TagMacro")

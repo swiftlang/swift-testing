@@ -74,7 +74,7 @@ private func _diagnoseTrivialBooleanValue(from expr: ExprSyntax, for macro: some
     default:
       break
     }
-  } else if let literal = _negatedExpression(expr, in: context)?.as(BooleanLiteralExprSyntax.self) {
+  } else if let literal = _negatedExpression(expr)?.0.as(BooleanLiteralExprSyntax.self) {
     // This expression is of the form !true or !false.
     switch literal.literal.tokenKind {
     case .keyword(.true):
@@ -97,11 +97,15 @@ private func _diagnoseTrivialBooleanValue(from expr: ExprSyntax, for macro: some
 ///   negation expression.
 ///
 /// This function handles expressions such as `!foo` or `!(bar)`.
-private func _negatedExpression(_ expr: ExprSyntax, in context: some MacroExpansionContext) -> ExprSyntax? {
+private func _negatedExpression(_ expr: ExprSyntax) -> (ExprSyntax, isParenthetical: Bool)? {
   let expr = removeParentheses(from: expr) ?? expr
   if let op = expr.as(PrefixOperatorExprSyntax.self),
      op.operator.tokenKind == .prefixOperator("!") {
-    return removeParentheses(from: op.expression) ?? op.expression
+    if let negatedExpr = removeParentheses(from: op.expression) {
+      return (negatedExpr, true)
+    } else {
+      return (op.expression, false)
+    }
   }
 
   return nil
@@ -126,64 +130,6 @@ func removeParentheses(from expr: ExprSyntax) -> ExprSyntax? {
   }
 
   return nil
-}
-
-/// A class that walks a syntax tree looking for `try` and `await` expressions.
-///
-/// - Bug: This class does not use `lexicalContext` to check for the presence of
-///   `try` or `await` _outside_ the current macro expansion.
-private final class _EffectFinder: SyntaxVisitor {
-  /// The effectful expressions discovered so far.
-  var effectfulExprs = [ExprSyntax]()
-
-  /// Common implementation for `visit(_: TryExprSyntax)` and
-  /// `visit(_: AwaitExprSyntax)`.
-  ///
-  /// - Parameters:
-  ///   - node: The `try` or `await` expression.
-  ///   - expression: The `.expression` property of `node`.
-  ///
-  /// - Returns: Whether or not to recurse into `node`.
-  private func _visitEffectful(_ node: some ExprSyntaxProtocol, expression: ExprSyntax) -> SyntaxVisitorContinueKind {
-    if let parentNode = node.parent, parentNode.is(TryExprSyntax.self) {
-      // Suppress this expression as its immediate parent is also an effectful
-      // expression (e.g. it's a `try await` expression overall.) The diagnostic
-      // reported for the parent expression should include both as needed.
-      return .visitChildren
-    } else if expression.is(AsExprSyntax.self) {
-      // Do not walk into explicit `as T` casts. This provides an escape hatch
-      // for expressions that should not diagnose.
-      return .skipChildren
-    } else if let awaitExpr = expression.as(AwaitExprSyntax.self), awaitExpr.expression.is(AsExprSyntax.self) {
-      // As above but for `try await _ as T`.
-      return .skipChildren
-    }
-    effectfulExprs.append(ExprSyntax(node))
-    return .visitChildren
-  }
-
-  override func visit(_ node: TryExprSyntax) -> SyntaxVisitorContinueKind {
-    _visitEffectful(node, expression: node.expression)
-  }
-
-  override func visit(_ node: AwaitExprSyntax) -> SyntaxVisitorContinueKind {
-    _visitEffectful(node, expression: node.expression)
-  }
-
-  override func visit(_ node: AsExprSyntax) -> SyntaxVisitorContinueKind {
-    // Do not walk into explicit `as T` casts. This provides an escape hatch for
-    // expressions that should not diagnose.
-    return .skipChildren
-  }
-
-  override func visit(_ node: ClosureExprSyntax) -> SyntaxVisitorContinueKind {
-    // Do not walk into closures. Although they are not meant to be an escape
-    // hatch like `as` casts, it is very difficult (often impossible) to reason
-    // about effectful expressions inside the scope of a closure. If the closure
-    // is invoked locally, its caller will also need to say `try`/`await` and we
-    // can still diagnose those outer expressions.
-    return .skipChildren
-  }
 }
 
 // MARK: -
@@ -501,6 +447,23 @@ private func _parseCondition(from expr: MemberAccessExprSyntax, for macro: some 
   )
 }
 
+/// Parse a condition argument from a property access.
+///
+/// - Parameters:
+///   - expr: The expression that was negated.
+///   - isParenthetical: Whether or not `expression` was enclosed in
+///     parentheses (and the `!` operator was outside it.) This argument
+///     affects how this expression is represented as a string.
+///   - macro: The macro expression being expanded.
+///   - context: The macro context in which the expression is being parsed.
+///
+/// - Returns: An instance of ``Condition`` describing `expr`.
+private func _parseCondition(negating expr: ExprSyntax, isParenthetical: Bool, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
+  var result = _parseCondition(from: expr, for: macro, in: context)
+  result.expression = createExpressionExprForNegation(of: result.expression, isParenthetical: isParenthetical)
+  return result
+}
+
 /// Parse a condition argument from an arbitrary expression.
 ///
 /// - Parameters:
@@ -534,6 +497,11 @@ private func _parseCondition(from expr: ExprSyntax, for macro: some Freestanding
     return _parseCondition(from: memberAccessExpr, for: macro, in: context)
   }
 
+  // Handle negation.
+  if let negatedExpr = _negatedExpression(expr) {
+    return _parseCondition(negating: negatedExpr.0, isParenthetical: negatedExpr.isParenthetical, for: macro, in: context)
+  }
+
   // Parentheses are parsed as if they were tuples, so (true && false) appears
   // to the parser as a tuple containing one expression, `true && false`.
   if let expr = removeParentheses(from: expr) {
@@ -554,20 +522,7 @@ private func _parseCondition(from expr: ExprSyntax, for macro: some Freestanding
 ///
 /// - Returns: An instance of ``Condition`` describing `expr`.
 func parseCondition(from expr: ExprSyntax, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
-  // Handle `await` first. If present in the expression or a subexpression,
-  // diagnose and don't expand further.
-  let effectFinder = _EffectFinder(viewMode: .sourceAccurate)
-  effectFinder.walk(expr)
-  guard effectFinder.effectfulExprs.isEmpty else {
-    for effectfulExpr in effectFinder.effectfulExprs {
-      context.diagnose(.effectfulExpressionNotParsed(effectfulExpr, in: macro))
-    }
-    return Condition(expression: expr)
-  }
-
+  _diagnoseTrivialBooleanValue(from: expr, for: macro, in: context)
   let result = _parseCondition(from: expr, for: macro, in: context)
-  if result.arguments.count == 1, let onlyArgument = result.arguments.first {
-    _diagnoseTrivialBooleanValue(from: onlyArgument.expression, for: macro, in: context)
-  }
   return result
 }

@@ -33,29 +33,30 @@ struct EventRecorderTests {
     }
   }
 
-  private static var optionCombinations: [[Event.ConsoleOutputRecorder.Option]] {
-    var result: [[Event.ConsoleOutputRecorder.Option]] = [
-      [],
-      [.useANSIEscapeCodes(colorBitDepth: 1)],
-      [.useANSIEscapeCodes(colorBitDepth: 4)],
-      [.useANSIEscapeCodes(colorBitDepth: 8)],
-      [.useANSIEscapeCodes(colorBitDepth: 24)],
+  private static var optionCombinations: [(useSFSymbols: Bool, ansiColorBitDepth: Int8?)] {
+    var result: [(useSFSymbols: Bool, ansiColorBitDepth: Int8?)] = [
+      (false, nil), (false, 1), (false, 4), (false, 8), (false, 24),
     ]
 #if os(macOS)
     result += [
-      [.useSFSymbols],
-      [.useSFSymbols, .useANSIEscapeCodes(colorBitDepth: 1)],
-      [.useSFSymbols, .useANSIEscapeCodes(colorBitDepth: 4)],
-      [.useSFSymbols, .useANSIEscapeCodes(colorBitDepth: 8)],
-      [.useSFSymbols, .useANSIEscapeCodes(colorBitDepth: 24)],
+      (true, nil), (true, 1), (true, 4), (true, 8), (true, 24),
     ]
 #endif
     return result
   }
 
   @Test("Writing events", arguments: optionCombinations)
-  func writingToStream(options: [Event.ConsoleOutputRecorder.Option]) async throws {
+  func writingToStream(useSFSymbols: Bool, ansiColorBitDepth: Int8?) async throws {
     let stream = Stream()
+
+    var options = Event.ConsoleOutputRecorder.Options()
+#if os(macOS)
+    options.useSFSymbols = useSFSymbols
+#endif
+    if let ansiColorBitDepth {
+      options.useANSIEscapeCodes = true
+      options.ansiColorBitDepth = ansiColorBitDepth
+    }
 
     var configuration = Configuration()
     configuration.deliverExpectationCheckedEvents = true
@@ -77,7 +78,7 @@ struct EventRecorderTests {
     #expect(buffer.contains("i → 5"))
     #expect(buffer.contains("Ocelots don't like the number 3."))
 
-    if let colorBitDepth = options.colorBitDepth, colorBitDepth > 1 {
+    if let ansiColorBitDepth, ansiColorBitDepth > 1 {
       #expect(buffer.contains("\u{001B}["))
       #expect(buffer.contains("●"))
     } else {
@@ -96,9 +97,12 @@ struct EventRecorderTests {
   func verboseOutput() async throws {
     let stream = Stream()
 
+    var options = Event.ConsoleOutputRecorder.Options()
+    options.isVerbose = true
+
     var configuration = Configuration()
     configuration.deliverExpectationCheckedEvents = true
-    let eventRecorder = Event.ConsoleOutputRecorder(options: [.useVerboseOutput], writingUsing: stream.write)
+    let eventRecorder = Event.ConsoleOutputRecorder(options: options, writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
     }
@@ -146,11 +150,12 @@ struct EventRecorderTests {
       One(.anyGraphemeCluster)
       " \(isSuite ? "Suite" : "Test") \(testName) started."
     }
-    let match = try buffer
-      .split(whereSeparator: \.isNewline)
-      .compactMap(testFailureRegex.wholeMatch(in:))
-      .first
-    #expect(match != nil)
+    #expect(
+      try buffer
+        .split(whereSeparator: \.isNewline)
+        .compactMap(testFailureRegex.wholeMatch(in:))
+        .first != nil
+    )
   }
 
   @available(_regexAPI, *)

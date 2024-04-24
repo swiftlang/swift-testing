@@ -16,16 +16,10 @@ extension Event {
   /// subject to change. For machine-readable output, use ``JUnitXMLRecorder``.
   @_spi(ForToolsIntegrationOnly)
   public struct ConsoleOutputRecorder: Sendable, ~Copyable {
-    /// An enumeration describing options to use when writing events to a
-    /// stream.
-    public enum Option: Sendable {
+    /// A type describing options to use when writing events to a stream.
+    public struct Options: Sendable {
       /// Use [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code)
       /// to add color and other effects to the output.
-      ///
-      /// - Parameters:
-      ///   - colorBitDepth: The supported color bit depth. Allowed values are
-      ///     `1` (escape code support, but no color support), `4` (16-color),
-      ///     `8` (256-color), and `24` (true color.)
       ///
       /// This option is useful when writing command-line output (for example,
       /// in Terminal.app on macOS.)
@@ -38,59 +32,75 @@ extension Event {
       /// On Windows, `GetFileType()` returns `FILE_TYPE_CHAR` for console file
       /// handles, and the [Console API](https://learn.microsoft.com/en-us/windows/console/)
       /// can be used to perform more complex console operations.
+      public var useANSIEscapeCodes = false
+
+      /// The supported color bit depth when adding color to the output using
+      /// [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code).
       ///
-      /// If this option is used more than once, the instance with the highest
-      /// supported value for `colorBitDepth` is used.
-      case useANSIEscapeCodes(colorBitDepth: Int8)
+      /// Allowed values are `1` (no color support), `4` (16-color), `8`
+      /// (256-color), and `24` (true color.) The default value of this property
+      /// is `4` (16-color.)
+      ///
+      /// The value of this property is ignored unless the value of
+      /// ``useANSIEscapeCodes`` is `true`.
+      public var ansiColorBitDepth: Int8 = 4
 
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
-      /// Use [SF&nbsp;Symbols](https://developer.apple.com/sf-symbols/) in the
-      /// output.
+      /// Whether or not to use [SF&nbsp;Symbols](https://developer.apple.com/sf-symbols/)
+      /// in the output.
       ///
-      /// When this option is used, SF&nbsp;Symbols are assumed to be present in
-      /// the font used for rendering within the Unicode Private Use Area. If
-      /// the SF&nbsp;Symbols app is not installed on the system where the
-      /// output is being rendered, the effect of this option is unspecified.
-      case useSFSymbols
+      /// When the value of this property is `true`, SF&nbsp;Symbols are assumed
+      /// to be present in the font used for rendering within the Unicode
+      /// Private Use Area.
+      ///
+      /// If the SF&nbsp;Symbols app is not installed on the system where the
+      /// output is being rendered, the effect of setting the value of this
+      /// property to `true` is unspecified.
+      public var useSFSymbols = false
 #endif
 
-      /// Use the specified mapping of tags to color.
+      /// Whether or not to record verbose output.
       ///
-      /// - Parameters:
-      ///   - tagColors: A dictionary whose keys are tags and whose values are
-      ///     the colors to use for those tags.
-      ///
-      /// When this option is used, tags on tests that have assigned colors in
-      /// the associated `tagColors` dictionary are presented as colored dots
-      /// prior to the tests' names.
-      ///
-      /// If this option is specified more than once, the associated `tagColors`
-      /// dictionaries of each option are merged. If the keys of those
-      /// dictionaries overlap, the result is unspecified.
-      ///
-      /// The tags ``Tag/red``, ``Tag/orange``, ``Tag/yellow``, ``Tag/green``,
-      /// ``Tag/blue``, and ``Tag/purple`` always have assigned colors even if
-      /// this option is not specified, and those colors cannot be overridden by
-      /// this option.
-      ///
-      /// This option is ignored unless ``useANSIEscapeCodes(colorBitDepth:)``
-      /// is also specified.
-      case useTagColors(_ tagColors: [Tag: Tag.Color])
+      /// When the value of this property is `true`, additional output is
+      /// provided. The exact nature of the additional output is
+      /// implementation-defined and subject to change.
+      public var isVerbose = false
 
-      /// Record verbose output.
+      /// Storage for ``tagColors``.
+      private var _tagColors = Tag.Color.predefined
+
+      /// The colors to use for tags in the output.
       ///
-      /// When specified, additional output is provided. The exact nature of the
-      /// additional output is implementation-defined and subject to change.
-      case useVerboseOutput
+      /// Tags on tests that have assigned colors in this dictionary are
+      /// presented as colored dots prior to the tests' names. The tags
+      /// ``Tag/red``, ``Tag/orange``, ``Tag/yellow``, ``Tag/green``,
+      /// ``Tag/blue``, and ``Tag/purple`` always have assigned colors and those
+      /// colors cannot be overridden when setting the value of this property.
+      ///
+      /// The value of this property is ignored unless the value of
+      /// ``useANSIEscapeCodes`` is `true` and the value of
+      /// ``ansiColorBitDepth`` is greater than `1`.
+      public var tagColors: [Tag: Tag.Color] {
+        get {
+          _tagColors
+        }
+        set {
+          // Assign the new value to this property, but do not allow the
+          // predefined tag colors (red, orange, etc.) to be overridden.
+          var tagColors = Tag.Color.predefined
+          tagColors.merge(
+            newValue.lazy.filter { !$0.key.isPredefinedColor },
+            uniquingKeysWith: { _, rhs in rhs }
+          )
+          _tagColors = tagColors
+        }
+      }
+
+      public init() {}
     }
 
     /// The options for this event recorder.
-    var options: Set<Option>
-
-    /// The tag colors this event recorder should use.
-    ///
-    /// The initial value of this property is derived from `options`.
-    var tagColors: [Tag: Tag.Color]
+    var options = Options()
 
     /// The write function for this event recorder.
     var write: @Sendable (String) -> Void
@@ -108,24 +118,12 @@ extension Event {
     ///
     /// Output from the testing library is written using `write`. The format of
     /// the output is not meant to be machine-readable and is subject to change.
-    public init(options: [Option] = [], writingUsing write: @escaping @Sendable (String) -> Void) {
-      self.options = Set(options)
-      self.tagColors = options.reduce(into: Tag.Color.predefined) { tagColors, option in
-        if case let .useTagColors(someTagColors) = option {
-          tagColors.merge(
-            someTagColors.filter { !$0.key.isPredefinedColor },
-            uniquingKeysWith: { _, rhs in rhs }
-          )
-        }
-      }
+    public init(options: Options = .init(), writingUsing write: @escaping @Sendable (String) -> Void) {
+      self.options = options
       self.write = write
     }
   }
 }
-
-// MARK: - Equatable, Hashable
-
-extension Event.ConsoleOutputRecorder.Option: Equatable, Hashable {}
 
 // MARK: - ANSI Escape Code support
 
@@ -143,16 +141,20 @@ extension Event.Symbol {
   ///
   /// - Returns: A string representation of `self` appropriate for writing to
   ///   a stream.
-  fileprivate func stringValue(options: Set<Event.ConsoleOutputRecorder.Option>) -> String {
-    var useColorANSIEscapeCodes = false
-    if let colorBitDepth = options.colorBitDepth {
-      useColorANSIEscapeCodes = colorBitDepth >= 4
-    }
+  fileprivate func stringValue(options: Event.ConsoleOutputRecorder.Options) -> String {
+    let useColorANSIEscapeCodes = options.useANSIEscapeCodes && options.ansiColorBitDepth >= 4
 
     var symbolCharacter = String(unicodeCharacter)
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
-    if options.contains(.useSFSymbols) {
-      symbolCharacter = "\(sfSymbolCharacter) "
+    if options.useSFSymbols {
+      symbolCharacter = String(sfSymbolCharacter)
+      if options.useANSIEscapeCodes {
+        // When using ANSI escape codes, assume we are interfaced with the macOS
+        // Terminal application which assumes a fixed-width font. Add an extra
+        // trailing space after the SF Symbols character to ensure it has enough
+        // room for rendering.
+        symbolCharacter = "\(symbolCharacter) "
+      }
     }
 #endif
 
@@ -186,14 +188,14 @@ extension Tag.Color {
   /// - Returns: The corresponding ANSI escape code. If the
   ///   ``Event/Recorder/Option/useANSIEscapeCodes(colorBitDepth:)`` option is
   ///   not specified, returns `nil`.
-  fileprivate func ansiEscapeCode(options: Set<Event.ConsoleOutputRecorder.Option>) -> String? {
-    guard let colorBitDepth = options.colorBitDepth, colorBitDepth >= 4 else {
+  fileprivate func ansiEscapeCode(options: Event.ConsoleOutputRecorder.Options) -> String? {
+    guard options.useANSIEscapeCodes && options.ansiColorBitDepth >= 4 else {
       return nil
     }
-    if colorBitDepth >= 24 {
+    if options.ansiColorBitDepth >= 24 {
       return "\(_ansiEscapeCodePrefix)38;2;\(redComponent);\(greenComponent);\(blueComponent)m"
     }
-    if colorBitDepth >= 8 {
+    if options.ansiColorBitDepth >= 8 {
       // The formula for converting an RGB value to a 256-color ANSI color
       // code can be found at https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit
       let r = (Int(redComponent) * 5) / Int(UInt8.max)
@@ -275,7 +277,7 @@ extension Event.ConsoleOutputRecorder {
   ///   with ANSI escape codes used to colorize them. If ANSI escape codes are
   ///   not enabled or if no tag colors are set, returns the empty string.
   fileprivate func colorDots(for tags: Set<Tag>) -> String {
-    let tagColors = tagColors
+    let tagColors = options.tagColors
     let unsortedColors = tags.lazy.compactMap { tagColors[$0] }
 
     let options = options
@@ -288,24 +290,6 @@ extension Event.ConsoleOutputRecorder {
       result += "\(_resetANSIEscapeCode) "
     }
     return result
-  }
-}
-
-extension Collection where Element == Event.ConsoleOutputRecorder.Option {
-  /// The color bit depth associated with the options in this collection, if
-  /// any.
-  ///
-  /// If this collection contains any instances of case
-  /// ``useANSIEscapeCodes(colorBitDepth:)``, the value of this property is
-  /// their highest associated value. Otherwise, the value of this property is
-  /// `nil`.
-  var colorBitDepth: Int8? {
-    lazy.compactMap { option in
-      if case let .useANSIEscapeCodes(colorBitDepth) = option {
-        return colorBitDepth
-      }
-      return nil
-    }.max()
   }
 }
 
@@ -322,12 +306,11 @@ extension Event.ConsoleOutputRecorder {
   /// - Returns: Whether any output was produced and written to this instance's
   ///   destination.
   @discardableResult public func record(_ event: borrowing Event, in context: borrowing Event.Context) -> Bool {
-    let verbose = options.contains(.useVerboseOutput)
-    let messages = _humanReadableOutputRecorder.record(event, in: context, verbosely: verbose)
+    let messages = _humanReadableOutputRecorder.record(event, in: context, verbosely: options.isVerbose)
     for message in messages {
       let symbol = message.symbol?.stringValue(options: options) ?? " "
 
-      if case .details = message.symbol, let colorBitDepth = options.colorBitDepth, colorBitDepth > 1 {
+      if case .details = message.symbol, options.useANSIEscapeCodes, options.ansiColorBitDepth > 1 {
         // Special-case the detail symbol to apply grey to the entire line of
         // text instead of just the symbol.
         write("\(_ansiEscapeCodePrefix)90m\(symbol) \(message.stringValue)\(_resetANSIEscapeCode)\n")
@@ -351,8 +334,8 @@ extension Event.ConsoleOutputRecorder {
   /// - Returns: The described message, formatted for display using `options`.
   ///
   /// The caller is responsible for presenting this message to the user.
-  static func warning(_ message: String, options: [Event.ConsoleOutputRecorder.Option]) -> String {
-    let symbol = Event.Symbol.warning.stringValue(options: Set(options))
+  static func warning(_ message: String, options: Event.ConsoleOutputRecorder.Options) -> String {
+    let symbol = Event.Symbol.warning.stringValue(options: options)
     return "\(symbol) \(message)\n"
   }
 }

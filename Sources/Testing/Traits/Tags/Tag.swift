@@ -21,9 +21,16 @@ public struct Tag: Sendable {
   public enum Kind: Sendable, Hashable {
     /// The tag is a static member of ``Tag`` such as ``Tag/red``, declared
     /// using the ``Tag()`` macro.
+    ///
+    /// - Parameters:
+    ///   - name: The (almost) fully-qualified name of the static member. The
+    ///     leading `"Testing.Tag."` is not included as it is redundant.
     case staticMember(_ name: String)
 
     /// The tag is a string literal declared directly in source.
+    ///
+    /// - Parameters:
+    ///   - stringLiteral: The string literal specified by the test author.
     case stringLiteral(_ stringLiteral: String)
   }
 

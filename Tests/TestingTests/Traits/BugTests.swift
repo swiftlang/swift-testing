@@ -9,9 +9,6 @@
 //
 
 @testable import Testing
-#if canImport(Foundation)
-import Foundation
-#endif
 
 @Suite("Bug Tests", .tags(.traitRelated))
 struct BugTests {
@@ -95,8 +92,7 @@ struct BugTests {
   @Test("Encoding/decoding")
   func encodingAndDecoding() throws {
     let original = Bug.bug(12345, relationship: .failingBecauseOfBug, "Lorem ipsum")
-    let data = try JSONEncoder().encode(original)
-    let copy = try JSONDecoder().decode(Bug.self, from: data)
+    let copy = try JSON.encodeAndDecode(original)
     #expect(original == copy)
   }
 #endif

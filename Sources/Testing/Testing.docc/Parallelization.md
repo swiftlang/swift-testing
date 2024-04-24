@@ -1,4 +1,4 @@
-# Parallelizing test execution
+# Running tests serially or in parallel
 
 <!--
 This source file is part of the Swift.org open source project
@@ -65,8 +65,3 @@ disabled (by, for example, passing `--no-parallel` to the `swift test` command.)
 - ``Trait/serial``
 - ``SerialTrait``
 -->
-
-## See Also
-
-- <doc:OrganizingTests>
-- <doc:ParameterizedTesting>

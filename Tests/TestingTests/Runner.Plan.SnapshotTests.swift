@@ -10,23 +10,19 @@
 
 @testable @_spi(ForToolsIntegrationOnly) import Testing
 
-#if canImport(Foundation)
-import Foundation
-#endif
-
 @Suite("Runner.Plan.Snapshot tests")
 struct Runner_Plan_SnapshotTests {
 #if canImport(Foundation)
   @Test("Codable")
   func codable() async throws {
-    let suite = try #require(await test(for: Runner_Plan_SnapshotFixtures.self) as Test?)
+    let suite = try #require(await test(for: Runner_Plan_SnapshotFixtures.self))
 
     var configuration = Configuration()
     configuration.setTestFilter(toInclude: [suite.id], includeHiddenTests: true)
 
     let plan = await Runner.Plan(configuration: configuration)
     let snapshot = Runner.Plan.Snapshot(snapshotting: plan)
-    let decoded = try JSONDecoder().decode(Runner.Plan.Snapshot.self, from: JSONEncoder().encode(snapshot))
+    let decoded = try JSON.encodeAndDecode(snapshot)
 
     try #require(decoded.steps.count == snapshot.steps.count)
 

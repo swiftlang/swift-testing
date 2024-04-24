@@ -23,7 +23,9 @@ SWT_ASSUME_NONNULL_BEGIN
 ///   - typeMetadata: A type metadata pointer that can be bitcast to `Any.Type`.
 ///   - context: An arbitrary pointer passed by the caller to
 ///     `swt_enumerateTypes()`.
-typedef void (* SWTTypeEnumerator)(void *typeMetadata, void *_Null_unspecified context);
+///
+/// - Returns: Whether or not to continue enumeration.
+typedef bool (* SWTTypeEnumerator)(void *typeMetadata, void *_Null_unspecified context);
 
 /// The type name filter that is called by `swt_enumerateTypes()`.
 ///

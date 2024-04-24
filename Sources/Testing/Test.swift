@@ -112,18 +112,29 @@ public struct Test: Sendable {
     containingTypeInfo != nil && testCases == nil
   }
 
+  /// Whether or not this instance was synthesized at runtime.
+  ///
+  /// During test planning, suites that are not explicitly marked with the
+  /// `@Suite` attribute are synthesized from available type information before
+  /// being added to the plan. For such suites, the value of this property is
+  /// `true`.
+  @_spi(ForToolsIntegrationOnly)
+  public var isSynthesized = false
+
   /// Initialize an instance of this type representing a test suite type.
   init(
     displayName: String? = nil,
     traits: [any Trait],
     sourceLocation: SourceLocation,
-    containingTypeInfo: TypeInfo
+    containingTypeInfo: TypeInfo,
+    isSynthesized: Bool = false
   ) {
     self.name = containingTypeInfo.unqualifiedName
     self.displayName = displayName
     self.traits = traits
     self.sourceLocation = sourceLocation
     self.containingTypeInfo = containingTypeInfo
+    self.isSynthesized = isSynthesized
   }
 
   /// Initialize an instance of this type representing a test function.
@@ -166,6 +177,20 @@ extension Test {
   /// A serializable snapshot of a ``Test`` instance.
   @_spi(ForToolsIntegrationOnly)
   public struct Snapshot: Sendable, Codable, Identifiable {
+
+    private enum CodingKeys: String, CodingKey {
+      case id
+      case name
+      case displayName
+      case sourceLocation
+      case testCases
+      case parameters
+      case comments
+      case tags
+      case associatedBugs
+      case _timeLimit = "timeLimit"
+    }
+
     /// The ID of this test.
     public var id: Test.ID
 
@@ -178,8 +203,6 @@ extension Test {
 
     /// The customized display name of this test, if any.
     public var displayName: String?
-
-    // FIXME: Include traits as well.
 
     /// The source location of this test.
     public var sourceLocation: SourceLocation
@@ -199,17 +222,44 @@ extension Test {
     /// - ``Test/parameters``
     public var parameters: [Parameter]?
 
+    /// The complete set of comments about this test from all of its traits.
+    public var comments: [Comment]
+
+    /// The complete, unique set of tags associated with this test.
+    public var tags: Set<Tag>
+
+    /// The set of bugs associated with this test.
+    ///
+    /// For information on how to associate a bug with a test, see the
+    /// documentation for ``Bug``.
+    public var associatedBugs: [Bug]
+
+    // Backing storage for ``Test/Snapshot/timeLimit``.
+    private var _timeLimit: TimeValue?
+
+    /// The maximum amount of time a test may run for before timing out.
+    @available(_clockAPI, *)
+    public var timeLimit: Duration? {
+      _timeLimit.map(Duration.init)
+    }
+
     /// Initialize an instance of this type by snapshotting the specified test.
     ///
     /// - Parameters:
     ///   - test: The original test to snapshot.
-    public init(snapshotting test: Test) {
+    public init(snapshotting test: borrowing Test) {
       id = test.id
       name = test.name
       displayName = test.displayName
       sourceLocation = test.sourceLocation
       testCases = test.testCases?.map(Test.Case.Snapshot.init)
       parameters = test.parameters
+      comments = test.comments
+      tags = test.tags
+      associatedBugs = test.associatedBugs
+      if #available(_clockAPI, *) {
+        _timeLimit = test.timeLimit.map(TimeValue.init)
+      }
     }
 
     /// Whether or not this test is parameterized.

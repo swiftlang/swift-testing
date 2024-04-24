@@ -8,11 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@_spi(ForToolsIntegrationOnly) import Testing
-
-#if canImport(Foundation)
-import Foundation
-#endif
+@_spi(ForToolsIntegrationOnly) @testable import Testing
 
 @Suite("Test.Snapshot tests")
 struct Test_SnapshotTests {
@@ -21,7 +17,7 @@ struct Test_SnapshotTests {
   func codable() throws {
     let test = try #require(Test.current)
     let snapshot = Test.Snapshot(snapshotting: test)
-    let decoded = try JSONDecoder().decode(Test.Snapshot.self, from: JSONEncoder().encode(snapshot))
+    let decoded = try JSON.encodeAndDecode(snapshot)
 
     #expect(decoded.id == snapshot.id)
     #expect(decoded.name == snapshot.name)
@@ -40,12 +36,12 @@ struct Test_SnapshotTests {
       #expect(!snapshot.isParameterized)
     }
     do {
-      let test = try #require(await testFunction(named: "parameterized(i:)", in: MainActorIsolatedTests.self) as Test?)
+      let test = try #require(await testFunction(named: "parameterized(i:)", in: MainActorIsolatedTests.self))
       let snapshot = Test.Snapshot(snapshotting: test)
       #expect(snapshot.isParameterized)
     }
     do {
-      let suite = try #require(await test(for: Self.self) as Test?)
+      let suite = try #require(await test(for: Self.self))
       let snapshot = Test.Snapshot(snapshotting: suite)
       #expect(!snapshot.isParameterized)
     }
@@ -59,14 +55,62 @@ struct Test_SnapshotTests {
       #expect(!snapshot.isSuite)
     }
     do {
-      let test = try #require(await testFunction(named: "parameterized(i:)", in: MainActorIsolatedTests.self) as Test?)
+      let test = try #require(await testFunction(named: "parameterized(i:)", in: MainActorIsolatedTests.self))
       let snapshot = Test.Snapshot(snapshotting: test)
       #expect(!snapshot.isSuite)
     }
     do {
-      let suite = try #require(await test(for: Self.self) as Test?)
+      let suite = try #require(await test(for: Self.self))
       let snapshot = Test.Snapshot(snapshotting: suite)
       #expect(snapshot.isSuite)
     }
   }
+
+  /// This is a comment that should show up in the test's `comments` property.
+  @Test("comments property")
+  func comments() async throws {
+    let test = try #require(Test.current)
+    let snapshot = Test.Snapshot(snapshotting: test)
+
+    #expect(!snapshot.comments.isEmpty)
+    #expect(snapshot.comments == test.comments)
+  }
+
+  @Test("tags property", .tags(Tag.testTag))
+  func tags() async throws {
+    let test = try #require(Test.current)
+    let snapshot = Test.Snapshot(snapshotting: test)
+
+    #expect(snapshot.tags.count == 1)
+    #expect(snapshot.tags.first == Tag.testTag)
+  }
+
+  @Test("associatedBugs property", bug)
+  func associatedBugs() async throws {
+    let test = try #require(Test.current)
+    let snapshot = Test.Snapshot(snapshotting: test)
+
+    #expect(snapshot.associatedBugs.count == 1)
+    #expect(snapshot.associatedBugs.first == Self.bug)
+  }
+
+  private static let bug: Bug = Bug.bug(12345, relationship: .failingBecauseOfBug, "Lorem ipsum")
+
+  @available(_clockAPI, *)
+  @Test("timeLimit property", .timeLimit(duration))
+  func timeLimit() async throws {
+    let test = try #require(Test.current)
+    let snapshot = Test.Snapshot(snapshotting: test)
+
+    #expect(snapshot.timeLimit == Self.duration)
+  }
+
+  @available(_clockAPI, *)
+  private static var duration: Duration {
+    .seconds(999_999_999)
+  }
+}
+
+extension Tag {
+  @Tag fileprivate static let testTag: Self
 }

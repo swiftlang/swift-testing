@@ -9,9 +9,6 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
-#if canImport(Foundation)
-import Foundation
-#endif
 private import TestingInternals
 
 @Suite("Swift Package Manager Integration Tests")
@@ -130,40 +127,51 @@ struct SwiftPMTests {
     }
   }
 
-#if canImport(Foundation)
   @Test("--xunit-output argument (writes to file)")
   func xunitOutputIsWrittenToFile() throws {
     // Test that a file is opened when requested. Testing of the actual output
     // occurs in ConsoleOutputRecorderTests.
-    let temporaryFileURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: false)
+    let tempDirPath = try temporaryDirectory()
+    let temporaryFilePath = appendPathComponent("\(UInt64.random(in: 0 ..< .max))", to: tempDirPath)
     defer {
-      try? FileManager.default.removeItem(at: temporaryFileURL)
+      _ = remove(temporaryFilePath)
     }
     do {
-      let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--xunit-output", temporaryFileURL.path])
+      let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--xunit-output", temporaryFilePath])
       let eventContext = Event.Context()
       configuration.eventHandler(Event(.runStarted, testID: nil, testCaseID: nil), eventContext)
       configuration.eventHandler(Event(.runEnded, testID: nil, testCaseID: nil), eventContext)
     }
-    #expect(try temporaryFileURL.checkResourceIsReachable() as Bool)
+
+    let fileHandle = try FileHandle(forReadingAtPath: temporaryFilePath)
+    let fileContents = try fileHandle.readToEnd()
+    #expect(!fileContents.isEmpty)
+    #expect(fileContents.contains(UInt8(ascii: "<")))
+    #expect(fileContents.contains(UInt8(ascii: ">")))
   }
 
-  func decodeEventStream(fromFileAt url: URL) throws -> [EventAndContextSnapshot] {
-    try Data(contentsOf: url, options: [.mappedIfSafe])
+#if canImport(Foundation)
+  func decodeEventStream(fromFileAtPath path: String) throws -> [EventAndContextSnapshot] {
+    try FileHandle(forReadingAtPath: path).readToEnd()
       .split(separator: 10) // "\n"
-      .map { try JSONDecoder().decode(EventAndContextSnapshot.self, from: $0) }
+      .map { line in
+        try line.withUnsafeBytes { line in
+          try JSON.decode(EventAndContextSnapshot.self, from: line)
+        }
+      }
   }
 
   @Test("--experimental-event-stream-output argument (writes to a stream and can be read back)")
   func eventStreamOutput() async throws {
     // Test that events are successfully streamed to a file and can be read
     // back as snapshots.
-    let temporaryFileURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: false)
+    let tempDirPath = try temporaryDirectory()
+    let temporaryFilePath = appendPathComponent("\(UInt64.random(in: 0 ..< .max))", to: tempDirPath)
     defer {
-      try? FileManager.default.removeItem(at: temporaryFileURL)
+      _ = remove(temporaryFilePath)
     }
     do {
-      let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--experimental-event-stream-output", temporaryFileURL.path])
+      let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--experimental-event-stream-output", temporaryFilePath])
       let eventContext = Event.Context()
       configuration.handleEvent(Event(.runStarted, testID: nil, testCaseID: nil), in: eventContext)
       do {
@@ -174,9 +182,8 @@ struct SwiftPMTests {
       }
       configuration.handleEvent(Event(.runEnded, testID: nil, testCaseID: nil), in: eventContext)
     }
-    #expect(try temporaryFileURL.checkResourceIsReachable() as Bool)
 
-    let decodedEvents = try decodeEventStream(fromFileAt: temporaryFileURL)
+    let decodedEvents = try decodeEventStream(fromFileAtPath: temporaryFilePath)
     #expect(decodedEvents.count == 4)
   }
 #endif

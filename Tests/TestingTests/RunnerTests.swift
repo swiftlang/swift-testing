@@ -10,6 +10,7 @@
 
 #if canImport(XCTest)
 import XCTest
+#endif
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
 struct MyError: Error, Equatable {
@@ -35,6 +36,7 @@ private let randomNumber = Int.random(in: 0 ..< .max)
   throw MyParameterizedError(index: i)
 }
 
+#if canImport(XCTest)
 @Suite(.hidden, .disabled())
 struct NeverRunTests {
   private static var someCondition: Bool {
@@ -47,6 +49,13 @@ struct NeverRunTests {
 }
 
 final class RunnerTests: XCTestCase {
+  func testInitialTaskLocalState() {
+    // These are expected to be `nil` since this is an XCTest.
+    XCTAssertNil(Test.current)
+    XCTAssertNil(Test.Case.current)
+    XCTAssertNil(Configuration.current)
+  }
+
   func testDefaultInit() async throws {
     let runner = await Runner()
     XCTAssertFalse(runner.tests.contains(where: \.isHidden))
@@ -246,8 +255,8 @@ final class RunnerTests: XCTestCase {
   }
 
   func testConditionTraitsAreEvaluatedOutermostToInnermost() async throws {
-    let testSuite = try #require(await test(for: NeverRunTests.self) as Test?)
-    let testFunc = try #require(await testFunction(named: "duelingConditions()", in: NeverRunTests.self) as Test?)
+    let testSuite = try #require(await test(for: NeverRunTests.self))
+    let testFunc = try #require(await testFunction(named: "duelingConditions()", in: NeverRunTests.self))
 
     var configuration = Configuration()
     let selection = [testSuite.id]
@@ -429,15 +438,15 @@ final class RunnerTests: XCTestCase {
     await fulfillment(of: [expectationCheckedAndPassed, expectationCheckedAndFailed], timeout: 0.0)
   }
 
-  func testPoundIfTrueTestFunctionRuns() async throws {
-    @Suite(.hidden) struct S {
+  @Suite(.hidden) struct PoundIfTrueTest {
 #if true
-      @Test(.hidden) func f() {}
-      @Test(.hidden) func g() {}
+    @Test(.hidden) func f() {}
+    @Test(.hidden) func g() {}
 #endif
-      @Test(.hidden) func h() {}
-    }
+    @Test(.hidden) func h() {}
+  }
 
+  func testPoundIfTrueTestFunctionRuns() async throws {
     let testStarted = expectation(description: "Test started")
     testStarted.expectedFulfillmentCount = 4
     var configuration = Configuration()
@@ -446,19 +455,19 @@ final class RunnerTests: XCTestCase {
         testStarted.fulfill()
       }
     }
-    await runTest(for: S.self, configuration: configuration)
+    await runTest(for: PoundIfTrueTest.self, configuration: configuration)
     await fulfillment(of: [testStarted], timeout: 0.0)
   }
 
-  func testPoundIfFalseTestFunctionDoesNotRun() async throws {
-    @Suite(.hidden) struct S {
+  @Suite(.hidden) struct PoundIfFalseTest {
 #if false
-      @Test(.hidden) func f() {}
-      @Test(.hidden) func g() {}
+    @Test(.hidden) func f() {}
+    @Test(.hidden) func g() {}
 #endif
-      @Test(.hidden) func h() {}
-    }
+    @Test(.hidden) func h() {}
+  }
 
+  func testPoundIfFalseTestFunctionDoesNotRun() async throws {
     let testStarted = expectation(description: "Test started")
     testStarted.expectedFulfillmentCount = 2
     var configuration = Configuration()
@@ -467,21 +476,21 @@ final class RunnerTests: XCTestCase {
         testStarted.fulfill()
       }
     }
-    await runTest(for: S.self, configuration: configuration)
+    await runTest(for: PoundIfFalseTest.self, configuration: configuration)
     await fulfillment(of: [testStarted], timeout: 0.0)
   }
 
-  func testPoundIfFalseElseTestFunctionRuns() async throws {
-    @Suite(.hidden) struct S {
+  @Suite(.hidden) struct PoundIfFalseElseTest {
 #if false
 #elseif false
 #else
-      @Test(.hidden) func f() {}
-      @Test(.hidden) func g() {}
+    @Test(.hidden) func f() {}
+    @Test(.hidden) func g() {}
 #endif
-      @Test(.hidden) func h() {}
-    }
+    @Test(.hidden) func h() {}
+  }
 
+  func testPoundIfFalseElseTestFunctionRuns() async throws {
     let testStarted = expectation(description: "Test started")
     testStarted.expectedFulfillmentCount = 4
     var configuration = Configuration()
@@ -490,21 +499,21 @@ final class RunnerTests: XCTestCase {
         testStarted.fulfill()
       }
     }
-    await runTest(for: S.self, configuration: configuration)
+    await runTest(for: PoundIfFalseElseTest.self, configuration: configuration)
     await fulfillment(of: [testStarted], timeout: 0.0)
   }
 
-  func testPoundIfFalseElseIfTestFunctionRuns() async throws {
-    @Suite(.hidden) struct S {
+  @Suite(.hidden) struct PoundIfFalseElseIfTest {
 #if false
 #elseif false
 #elseif true
-      @Test(.hidden) func f() {}
-      @Test(.hidden) func g() {}
+    @Test(.hidden) func f() {}
+    @Test(.hidden) func g() {}
 #endif
-      @Test(.hidden) func h() {}
-    }
+    @Test(.hidden) func h() {}
+  }
 
+  func testPoundIfFalseElseIfTestFunctionRuns() async throws {
     let testStarted = expectation(description: "Test started")
     testStarted.expectedFulfillmentCount = 4
     var configuration = Configuration()
@@ -513,35 +522,35 @@ final class RunnerTests: XCTestCase {
         testStarted.fulfill()
       }
     }
-    await runTest(for: S.self, configuration: configuration)
+    await runTest(for: PoundIfFalseElseIfTest.self, configuration: configuration)
     await fulfillment(of: [testStarted], timeout: 0.0)
   }
 
-  func testNoasyncTestsAreCallable() async throws {
-    @Suite(.hidden) struct S {
-      @Test(.hidden)
-      @available(*, noasync)
-      func noAsync() {}
+  @Suite(.hidden) struct NoasyncTestsAreCallableTests {
+    @Test(.hidden)
+    @available(*, noasync)
+    func noAsync() {}
 
-      @Test(.hidden)
-      @available(*, noasync)
-      func noAsyncThrows() throws {}
+    @Test(.hidden)
+    @available(*, noasync)
+    func noAsyncThrows() throws {}
 
-      @Test(.hidden)
-      @_unavailableFromAsync
-      func unavailableFromAsync() {}
+    @Test(.hidden)
+    @_unavailableFromAsync
+    func unavailableFromAsync() {}
 
-      @Test(.hidden)
-      @_unavailableFromAsync(message: "")
-      func unavailableFromAsyncWithMessage() {}
+    @Test(.hidden)
+    @_unavailableFromAsync(message: "")
+    func unavailableFromAsyncWithMessage() {}
 
 #if !SWT_NO_GLOBAL_ACTORS
-      @Test(.hidden)
-      @available(*, noasync) @MainActor
-      func noAsyncThrowsMainActor() throws {}
+    @Test(.hidden)
+    @available(*, noasync) @MainActor
+    func noAsyncThrowsMainActor() throws {}
 #endif
-    }
+  }
 
+  func testNoasyncTestsAreCallable() async throws {
     let testStarted = expectation(description: "Test started")
 #if !SWT_NO_GLOBAL_ACTORS
     testStarted.expectedFulfillmentCount = 6
@@ -554,7 +563,7 @@ final class RunnerTests: XCTestCase {
         testStarted.fulfill()
       }
     }
-    await runTest(for: S.self, configuration: configuration)
+    await runTest(for: NoasyncTestsAreCallableTests.self, configuration: configuration)
     await fulfillment(of: [testStarted], timeout: 0.0)
   }
 

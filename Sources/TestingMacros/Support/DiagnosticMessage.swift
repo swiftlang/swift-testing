@@ -56,40 +56,20 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
-  /// Create a diagnostic message stating that an effectful (`try` or `await`)
-  /// expression cannot be parsed and should be broken apart.
-  ///
-  /// - Parameters:
-  ///   - expr: The expression being diagnosed.
-  ///   - macro: The macro expression.
-  ///
-  /// - Returns: A diagnostic message.
-  static func effectfulExpressionNotParsed(_ expr: ExprSyntax, in macro: some FreestandingMacroExpansionSyntax) -> Self {
-    let effectful = if let tryExpr = expr.as(TryExprSyntax.self) {
-      if tryExpr.expression.is(AwaitExprSyntax.self) {
-        "throwing/asynchronous"
-      } else {
-        "throwing"
-      }
-    } else {
-      "asynchronous"
-    }
-    return Self(
-      syntax: Syntax(expr),
-      message: "Expression '\(expr.trimmed)' will not be expanded on failure; move the \(effectful) part out of the call to \(_macroName(macro))",
-      severity: .warning
-    )
-  }
-
   /// Get the human-readable name of the given freestanding macro.
   ///
   /// - Parameters:
   ///   - macro: The freestanding macro node to name.
   ///
   /// - Returns: The name of the macro as understood by a developer, such as
-  ///   `"'#expect(_:_:)'"`. Include single quotes.
+  ///   `"'#expect(_:_:)'"`. Includes single quotes.
   private static func _macroName(_ macro: some FreestandingMacroExpansionSyntax) -> String {
-    "'#\(macro.macroName.textWithoutBackticks)(_:_:)'"
+    var labels = ["_", "_"]
+    if let firstArgumentLabel = macro.arguments.first?.label?.textWithoutBackticks {
+      labels[0] = firstArgumentLabel
+    }
+    let argumentLabels = labels.map { "\($0):" }.joined()
+    return "'#\(macro.macroName.textWithoutBackticks)(\(argumentLabels))'"
   }
 
   /// Get the human-readable name of the given attached macro.
@@ -138,12 +118,19 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
       result = ("subscript", "a")
     case .enumCaseDecl:
       result = ("enumeration case", "an")
+#if canImport(SwiftSyntax600)
+    case .typeAliasDecl:
+      result = ("typealias", "a")
+#else
     case .typealiasDecl:
       result = ("typealias", "a")
+#endif
     case .macroDecl:
       result = ("macro", "a")
     case .protocolDecl:
       result = ("protocol", "a")
+    case .closureExpr:
+      result = ("closure", "a")
     default:
       result = ("declaration", "this")
     }
@@ -159,7 +146,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///
   /// - Parameters:
   ///   - attributes: The conflicting attributes. This array must not be empty.
-  ///   - decl: The generic declaration in question.
+  ///   - decl: The declaration in question.
   ///
   /// - Returns: A diagnostic message.
   static func multipleAttributesNotSupported(_ attributes: [AttributeSyntax], on decl: some SyntaxProtocol) -> Self {
@@ -177,15 +164,24 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   /// - Parameters:
   ///   - decl: The generic declaration in question.
   ///   - attribute: The `@Test` or `@Suite` attribute.
-  ///   - genericClause: The child node on `decl` that makes it generic.
+  ///   - genericClause: The child node on `genericDecl` that makes it generic.
+  ///   - genericDecl: The generic declaration to which `genericClause` is
+  ///     attached, possibly equal to `decl`.
   ///
   /// - Returns: A diagnostic message.
-  static func genericDeclarationNotSupported(_ decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax, becauseOf genericClause: some SyntaxProtocol) -> Self {
-    Self(
-      syntax: Syntax(genericClause),
-      message: "Attribute \(_macroName(attribute)) cannot be applied to a generic \(_kindString(for: decl))",
-      severity: .error
-    )
+  static func genericDeclarationNotSupported(_ decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax, becauseOf genericClause: some SyntaxProtocol, on genericDecl: some SyntaxProtocol) -> Self {
+    if Syntax(decl) != Syntax(genericDecl), genericDecl.isProtocol((any DeclGroupSyntax).self) {
+      return .containingNodeUnsupported(genericDecl, genericBecauseOf: Syntax(genericClause), whenUsing: attribute, on: decl)
+    } else {
+      // Avoid using a syntax node from a lexical context (it won't have source
+      // location information.)
+      let syntax = (genericClause.root != decl.root) ? Syntax(decl) : Syntax(genericClause)
+      return Self(
+        syntax: syntax,
+        message: "Attribute \(_macroName(attribute)) cannot be applied to a generic \(_kindString(for: decl))",
+        severity: .error
+      )
+    }
   }
 
   /// Create a diagnostic message stating that the `@Test` or `@Suite` attribute
@@ -202,8 +198,11 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   semantic availability and fully-qualified names for types at macro
   ///   expansion time. ([104081994](rdar://104081994))
   static func availabilityAttributeNotSupported(_ availabilityAttribute: AttributeSyntax, on decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
-    Self(
-      syntax: Syntax(availabilityAttribute),
+    // Avoid using a syntax node from a lexical context (it won't have source
+    // location information.)
+    let syntax = (availabilityAttribute.root != decl.root) ? Syntax(decl) : Syntax(availabilityAttribute)
+    return Self(
+      syntax: syntax,
       message: "Attribute \(_macroName(attribute)) cannot be applied to this \(_kindString(for: decl)) because it has been marked '\(availabilityAttribute.trimmed)'",
       severity: .error
     )
@@ -224,6 +223,201 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
       severity: .error
     )
   }
+
+  /// Create a diagnostic message stating that the given attribute can only be
+  /// applied to `static` properties.
+  ///
+  /// - Parameters:
+  ///   - attribute: The `@Tag` attribute.
+  ///   - decl: The declaration in question.
+  ///
+  /// - Returns: A diagnostic message.
+  static func nonStaticTagDeclarationNotSupported(_ attribute: AttributeSyntax, on decl: VariableDeclSyntax) -> Self {
+    var declCopy = decl
+    declCopy.modifiers = DeclModifierListSyntax {
+      for modifier in decl.modifiers {
+        modifier
+      }
+      DeclModifierSyntax(name: .keyword(.static))
+    }.with(\.trailingTrivia, .space)
+
+    return Self(
+      syntax: Syntax(decl),
+      message: "Attribute \(_macroName(attribute)) cannot be applied to an instance property",
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Add 'static'"),
+          changes: [.replace(oldNode: Syntax(decl), newNode: Syntax(declCopy)),]
+        ),
+      ]
+    )
+  }
+
+  /// Create a diagnostic message stating that the given attribute cannot be
+  /// applied to global variables.
+  ///
+  /// - Parameters:
+  ///   - decl: The declaration in question.
+  ///   - attribute: The `@Tag` attribute.
+  ///
+  /// - Returns: A diagnostic message.
+  static func nonMemberTagDeclarationNotSupported(_ decl: VariableDeclSyntax, whenUsing attribute: AttributeSyntax) -> Self {
+    var declCopy = decl
+    declCopy.modifiers = DeclModifierListSyntax {
+      for modifier in decl.modifiers {
+        modifier
+      }
+      DeclModifierSyntax(name: .keyword(.static))
+    }.with(\.trailingTrivia, .space)
+    let replacementDecl: DeclSyntax = """
+    extension Tag {
+      \(declCopy.trimmed)
+    }
+    """
+
+    return Self(
+      syntax: Syntax(decl),
+      message: "Attribute \(_macroName(attribute)) cannot be applied to a global variable",
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Declare in an extension to 'Tag'"),
+          changes: [.replace(oldNode: Syntax(decl), newNode: Syntax(replacementDecl)),]
+        ),
+        FixIt(
+          message: MacroExpansionFixItMessage("Remove attribute \(_macroName(attribute))"),
+          changes: [.replace(oldNode: Syntax(attribute), newNode: Syntax("" as ExprSyntax))]
+        ),
+      ]
+    )
+  }
+
+  /// Create a diagnostic message stating that the given attribute cannot be
+  /// applied to global variables.
+  ///
+  /// - Parameters:
+  ///   - attribute: The `@Tag` attribute.
+  ///   - decl: The declaration in question.
+  ///   - declaredType: The type of `decl` as specified by it.
+  ///   - resolvedType: The _actual_ type of `decl`, if known and differing from
+  ///     `declaredType` (i.e. if `type` is `Self`.)
+  ///
+  /// - Returns: A diagnostic message.
+  static func mistypedTagDeclarationNotSupported(_ attribute: AttributeSyntax, on decl: VariableDeclSyntax, declaredType: TypeSyntax, resolvedType: TypeSyntax? = nil) -> Self {
+    let resolvedType = resolvedType ?? declaredType
+    return Self(
+      syntax: Syntax(decl),
+      message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) of type '\(resolvedType.trimmed)'",
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Change type to 'Tag'"),
+          changes: [.replace(oldNode: Syntax(declaredType), newNode: Syntax("Tag" as TypeSyntax))]
+        ),
+        FixIt(
+          message: MacroExpansionFixItMessage("Remove attribute \(_macroName(attribute))"),
+          changes: [.replace(oldNode: Syntax(attribute), newNode: Syntax("" as ExprSyntax))]
+        ),
+      ]
+    )
+  }
+
+  /// Create a diagnostic message stating that the given attribute cannot be
+  /// used within a lexical context.
+  ///
+  /// - Parameters:
+  ///   - node: The lexical context preventing the use of `attribute`.
+  ///   - genericClause: If not `nil`, a syntax node that causes `node` to be
+  ///     generic.
+  ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///   - decl: The declaration in question (contained in `node`.)
+  ///
+  /// - Returns: A diagnostic message.
+  static func containingNodeUnsupported(_ node: some SyntaxProtocol, genericBecauseOf genericClause: Syntax? = nil, whenUsing attribute: AttributeSyntax, on decl: some SyntaxProtocol) -> Self {
+    // Avoid using a syntax node from a lexical context (it won't have source
+    // location information.)
+    let syntax: Syntax = if let genericClause, attribute.root == genericClause.root {
+      // Prefer the generic clause if available as the root cause.
+      genericClause
+    } else if attribute.root == node.root {
+      // Second choice is the unsupported containing node.
+      Syntax(node)
+    } else {
+      // Finally, fall back to the attribute, which we assume is not detached.
+      Syntax(attribute)
+    }
+    let generic = if genericClause != nil {
+      " generic"
+    } else {
+      ""
+    }
+    if let functionDecl = node.as(FunctionDeclSyntax.self) {
+      let functionName = functionDecl.completeName
+      return Self(
+        syntax: syntax,
+        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within\(generic) function '\(functionName)'",
+        severity: .error
+      )
+    } else if let namedDecl = node.asProtocol((any NamedDeclSyntax).self) {
+      // Special-case class declarations as implicitly non-final (since we would
+      // only diagnose a class here if it were non-final.)
+      let nonFinal = if node.is(ClassDeclSyntax.self) {
+        " non-final"
+      } else {
+        ""
+      }
+      let declName = namedDecl.name.textWithoutBackticks
+      return Self(
+        syntax: syntax,
+        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within\(generic)\(nonFinal) \(_kindString(for: node)) '\(declName)'",
+        severity: .error
+      )
+    } else if let extensionDecl = node.as(ExtensionDeclSyntax.self) {
+      // Subtly different phrasing from the NamedDeclSyntax case above.
+      let nodeKind = if genericClause != nil {
+        "a generic extension to type"
+      } else {
+        "an extension to type"
+      }
+      let declGroupName = extensionDecl.extendedType.trimmedDescription
+      return Self(
+        syntax: syntax,
+        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within \(nodeKind) '\(declGroupName)'",
+        severity: .error
+      )
+    } else {
+      let nodeKind = if genericClause != nil {
+        "a generic \(_kindString(for: node))"
+      } else {
+        _kindString(for: node, includeA: true)
+      }
+      return Self(
+        syntax: syntax,
+        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within \(nodeKind)",
+        severity: .error
+      )
+    }
+  }
+
+#if canImport(SwiftSyntax600)
+  /// Create a diagnostic message stating that the given attribute cannot be
+  /// applied to the given declaration outside the scope of an extension to
+  /// `Tag`.
+  ///
+  /// - Parameters:
+  ///   - attribute: The `@Tag` attribute.
+  ///   - decl: The declaration in question.
+  ///
+  /// - Returns: A diagnostic message.
+  static func attributeNotSupportedOutsideTagExtension(_ attribute: AttributeSyntax, on decl: VariableDeclSyntax) -> Self {
+    Self(
+      syntax: Syntax(decl),
+      message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) except in an extension to 'Tag'",
+      severity: .error
+    )
+  }
+#endif
 
   /// Create a diagnostic message stating that the given attribute has no effect
   /// when applied to the given extension declaration.
@@ -362,6 +556,38 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
+  /// Create a diagnostic message stating that the URL string passed to a trait
+  /// is not a valid URL.
+  ///
+  /// - Parameters:
+  ///   - urlExpr: The unsupported URL string.
+  ///   - traitExpr: The trait expression containing `urlExpr`.
+  ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///
+  /// - Returns: A diagnostic message.
+  static func urlExprNotValid(_ urlExpr: StringLiteralExprSyntax, in traitExpr: FunctionCallExprSyntax, in attribute: AttributeSyntax) -> Self {
+    // We do not currently expect anything other than "[...].bug()" here, so
+    // force-cast to MemberAccessExprSyntax to get the name of the trait.
+    let traitName = traitExpr.calledExpression.cast(MemberAccessExprSyntax.self).declName
+    let urlString = urlExpr.representedLiteralValue!
+
+    return Self(
+      syntax: Syntax(urlExpr),
+      message: #"URL "\#(urlString)" is invalid and cannot be used with trait '\#(traitName.trimmed)' in attribute \#(_macroName(attribute))"#,
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage(#"Replace "\#(urlString)" with URL"#),
+          changes: [.replace(oldNode: Syntax(urlExpr), newNode: Syntax(EditorPlaceholderExprSyntax("url")))]
+        ),
+        FixIt(
+          message: MacroExpansionFixItMessage("Remove trait '\(traitName.trimmed)'"),
+          changes: [.replace(oldNode: Syntax(traitExpr), newNode: Syntax("" as ExprSyntax))]
+        ),
+      ]
+    )
+  }
+
   /// Create a diagnostic messages stating that the expression passed to
   /// `#require()` is ambiguous.
   ///
@@ -387,6 +613,22 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
+  /// Create a diagnostic message stating that a condition macro nested inside
+  /// an exit test will not record any diagnostics.
+  ///
+  /// - Parameters:
+  ///   - checkMacro: The inner condition macro invocation.
+  ///   - exitTestMacro: The containing exit test macro invocation.
+  ///
+  /// - Returns: A diagnostic message.
+  static func checkUnsupported(_ checkMacro: some FreestandingMacroExpansionSyntax, inExitTest exitTestMacro: some FreestandingMacroExpansionSyntax) -> Self {
+    Self(
+      syntax: Syntax(checkMacro),
+      message: "Expression \(_macroName(checkMacro)) will not record an issue on failure inside exit test \(_macroName(exitTestMacro))",
+      severity: .error
+    )
+  }
+
   var syntax: Syntax
 
   // MARK: - DiagnosticMessage
@@ -395,35 +637,4 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   var diagnosticID = MessageID(domain: "org.swift.testing", id: "macros")
   var severity: DiagnosticSeverity
   var fixIts: [FixIt] = []
-}
-
-// MARK: -
-
-extension MacroExpansionContext {
-  /// Emit a diagnostic message.
-  ///
-  /// - Parameters:
-  ///   - message: The diagnostic message to emit. The `node` and `position`
-  ///     arguments to `Diagnostic.init()` are derived from the message's
-  ///     `syntax` property.
-  ///   - fixIts: Any Fix-Its to apply.
-  func diagnose(_ message: DiagnosticMessage) {
-    diagnose(
-      Diagnostic(
-        node: message.syntax,
-        position: message.syntax.positionAfterSkippingLeadingTrivia,
-        message: message,
-        fixIts: message.fixIts
-      )
-    )
-  }
-
-  /// Emit a diagnostic message for debugging purposes during development of the
-  /// testing library.
-  ///
-  /// - Parameters:
-  ///   - message: The message to emit into the build log.
-  func debug(_ message: some Any, node: some SyntaxProtocol) {
-    diagnose(DiagnosticMessage(syntax: Syntax(node), message: String(describing: message), severity: .warning))
-  }
 }

@@ -55,6 +55,7 @@ extension Test {
               await type.__tests
             }
           }
+          return true
         } withNamesMatching: { typeName, _ in
           // strstr() lets us avoid copying either string before comparing.
           Self._testContainerTypeNameMagic.withCString { testContainerTypeNameMagic in
@@ -103,11 +104,15 @@ extension Test {
       }
       let suiteID = ID(typeInfo: suiteTypeInfo)
       if tests[suiteID] == nil {
-        // If the real test is hidden, so shall the synthesized test be hidden.
-        // Copy the exact traits from the real test in case they someday carry
-        // any interesting metadata.
-        let traits = test.traits.compactMap { $0 as? HiddenTrait }
-        tests[suiteID] = Test(traits: traits, sourceLocation: test.sourceLocation, containingTypeInfo: suiteTypeInfo)
+        tests[suiteID] = Test(traits: [], sourceLocation: test.sourceLocation, containingTypeInfo: suiteTypeInfo, isSynthesized: true)
+
+        // Also synthesize any ancestral suites that don't have tests.
+        for ancestralSuiteTypeInfo in suiteTypeInfo.allContainingTypeInfo {
+          let ancestralSuiteID = ID(typeInfo: ancestralSuiteTypeInfo)
+          if tests[ancestralSuiteID] == nil {
+            tests[ancestralSuiteID] = Test(traits: [], sourceLocation: test.sourceLocation, containingTypeInfo: ancestralSuiteTypeInfo, isSynthesized: true)
+          }
+        }
       }
     }
 

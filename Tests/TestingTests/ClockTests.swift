@@ -8,9 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation)
-import Foundation
-#endif
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import TestingInternals
 
@@ -129,9 +126,7 @@ struct ClockTests {
   func codable() async throws {
     let now = Test.Clock.Instant()
     let instant = now.advanced(by: .nanoseconds(100))
-    let decoded = try JSONDecoder().decode(Test.Clock.Instant.self,
-                                           from: JSONEncoder().encode(instant))
-
+    let decoded = try JSON.encodeAndDecode(instant)
     #expect(instant == decoded)
     #expect(instant != now)
   }

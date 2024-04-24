@@ -5,7 +5,7 @@
 <!--
 This source file is part of the Swift.org open source project
 
-Copyright (c) 2023 Apple Inc. and the Swift project authors
+Copyright (c) 2023–2024 Apple Inc. and the Swift project authors
 Licensed under Apache License v2.0 with Runtime Library Exception
 
 See https://swift.org/LICENSE.txt for license information
@@ -37,21 +37,35 @@ concurrency, and parameterize test functions across wide ranges of inputs.
 
 ## Topics
 
-### Getting started
+### Essentials
 
 - <doc:TemporaryGettingStarted>
-- <doc:MigratingFromXCTest>
-
-### Defining tests
-
 - <doc:DefiningTests>
 - <doc:OrganizingTests>
-- <doc:ParameterizedTesting>
+- <doc:MigratingFromXCTest>
+- ``Test(_:_:)``
+- ``Test``
+- ``Suite(_:_:)``
 
-### Validating behavior and raising issues
+### Test parameterization
+
+- <doc:ParameterizedTesting>
+- ``Test(_:_:arguments:)-8kn7a``
+- ``Test(_:_:arguments:_:)``
+- ``Test(_:_:arguments:)-3rzok``
+- ``CustomTestArgumentEncodable``
+- ``Test/Parameter``
+- ``Test/Case``
+
+### Behavior validation
 
 - <doc:Expectations>
+- <doc:known-issues>
 
-### Customizing tests
+### Test customization
 
 - <doc:Traits>
+
+### Extended modules
+
+- ``Swift``

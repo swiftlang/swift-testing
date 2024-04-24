@@ -98,7 +98,7 @@ extension String {
   public init(describingForTest value: some Any) {
     // The mangled type name SPI doesn't handle generic types very well, so we
     // ask for the dynamic type of `value` (type(of:)) instead of just T.self.
-    lazy var valueType = type(of: value as Any)
+    lazy var valueTypeInfo = TypeInfo(describingTypeOf: value)
     if let value = value as? any CustomTestStringConvertible {
       self = value.testDescription
     } else if let value = value as? any CustomStringConvertible {
@@ -107,13 +107,16 @@ extension String {
       self.init(describing: value)
     } else if let value = value as? any CustomDebugStringConvertible {
       self.init(reflecting: value)
-    } else if #available(_mangledTypeNameAPI, *), let value = value as? any RawRepresentable, isImportedFromC(valueType) {
+    } else if let value = value as? any Any.Type {
+      self = _testDescription(of: value)
+    } else if let value = value as? any RawRepresentable, let type = valueTypeInfo.type, valueTypeInfo.isImportedFromC {
       // Present raw-representable C types, which we assume to be imported
       // enumerations, in a consistent fashion. The case names of C enumerations
       // are not statically visible, so instead present the enumeration type's
       // name along with the raw value of `value`.
-      self = "\(valueType)(rawValue: \(String(describingForTest: value.rawValue)))"
-    } else if #available(_mangledTypeNameAPI, *), isSwiftEnumeration(valueType) {
+      let typeName = String(describingForTest: type)
+      self = "\(typeName)(rawValue: \(String(describingForTest: value.rawValue)))"
+    } else if valueTypeInfo.isSwiftEnumeration {
       // Add a leading period to enumeration cases to more closely match their
       // source representation. SEE: _adHocPrint_unlocked() in the stdlib.
       self = ".\(value)"
@@ -125,6 +128,18 @@ extension String {
 }
 
 // MARK: - Built-in implementations
+
+/// The _de facto_ implementation of ``CustomTestStringConvertible`` for a
+/// metatype value.
+///
+/// - Parameters:
+///   - type: The type to describe.
+///
+/// - Returns: The description of `type`, as produced by
+///   ``Swift/String/init(describingForTest:)``.
+private func _testDescription(of type: any Any.Type) -> String {
+  TypeInfo(describing: type).unqualifiedName
+}
 
 extension Optional: CustomTestStringConvertible {
   public var testDescription: String {

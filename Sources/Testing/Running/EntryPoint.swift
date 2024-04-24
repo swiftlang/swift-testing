@@ -9,9 +9,6 @@
 //
 
 private import TestingInternals
-#if canImport(Foundation)
-private import Foundation
-#endif
 
 /// The entry point to the testing library used by Swift Package Manager.
 ///
@@ -48,13 +45,17 @@ private import Foundation
         oldEventHandler(event, context)
       }
 
-      var options = [Event.ConsoleOutputRecorder.Option]()
+      var options = Event.ConsoleOutputRecorder.Options()
 #if !SWT_NO_FILE_IO
-      options += .for(.stderr)
+      options = .for(.stderr)
 #endif
-      if args.contains("--verbose") {
-        options.append(.useVerboseOutput)
+      options.isVerbose = args.contains("--verbose")
+
+#if !SWT_NO_EXIT_TESTS
+      if let exitTest = ExitTest.findInEnvironmentForSwiftPM() {
+        await exitTest()
       }
+#endif
 
       await runTests(options: options, configuration: configuration)
     }
@@ -106,12 +107,14 @@ func listTestsForSwiftPM(_ tests: some Sequence<Test>) -> [String] {
   // Group tests by the name components of the tests' IDs. If the name
   // components of two tests' IDs are ambiguous, present their source locations
   // to disambiguate.
-  return Dictionary(
+  let initialGroups = Dictionary(
     grouping: tests.lazy.map(\.id),
     by: \.nameComponents
   ).values.lazy
     .map { ($0, isAmbiguous: $0.count > 1) }
-    .flatMap { testIDs, isAmbiguous in
+
+  // This operation is split to improve type-checking performance.
+  return initialGroups.flatMap { testIDs, isAmbiguous in
       testIDs.lazy
         .map { testID in
           if !isAmbiguous, testID.sourceLocation != nil {
@@ -232,23 +235,28 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
   }
   configuration.repetitionPolicy = repetitionPolicy
 
+#if !SWT_NO_EXIT_TESTS
+  // Enable exit test handling via __swiftPMEntryPoint().
+  configuration.exitTestHandler = ExitTest.handlerForSwiftPM()
+#endif
+
   return configuration
 }
 
 /// The common implementation of ``swiftPMEntryPoint()`` and
-/// ``XCTestScaffold/runAllTests(hostedBy:)``.
+/// ``XCTestScaffold/runAllTests(hostedBy:_:)``.
 ///
 /// - Parameters:
 ///   - options: Options to pass when configuring the console output recorder.
 ///   - configuration: The configuration to use for running.
-func runTests(options: [Event.ConsoleOutputRecorder.Option], configuration: Configuration) async {
+func runTests(options: Event.ConsoleOutputRecorder.Options, configuration: Configuration) async {
+  var configuration = configuration
   let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
 #if !SWT_NO_FILE_IO
     try? FileHandle.stderr.write(string)
 #endif
   }
 
-  var configuration = configuration
   let oldEventHandler = configuration.eventHandler
   configuration.eventHandler = { event, context in
     eventRecorder.record(event, in: context)
@@ -272,11 +280,8 @@ struct EventAndContextSnapshot {
   /// A snapshot of the event.
   var event: Event.Snapshot
 
-  /// A snapshot of the test associated with the event, if any.
-  var test: Test.Snapshot?
-
-  /// A snapshot of the test case associated with the event, if any.
-  var testCase: Test.Case.Snapshot?
+  /// A snapshot of the event context.
+  var eventContext: Event.Context.Snapshot
 }
 
 extension EventAndContextSnapshot: Codable {}
@@ -313,20 +318,19 @@ private func _eventHandlerForStreamingEvents(toFileAtPath path: String) throws -
   return { event, context in
     let snapshot = EventAndContextSnapshot(
       event: Event.Snapshot(snapshotting: event),
-      test: context.test.map { Test.Snapshot(snapshotting: $0) },
-      testCase: context.testCase.map { Test.Case.Snapshot(snapshotting: $0) }
+      eventContext: Event.Context.Snapshot(snapshotting: context)
     )
-    if var snapshotJSON = try? JSONEncoder().encode(snapshot) {
+    try? JSON.withEncoding(of: snapshot) { snapshotJSON in
       func isASCIINewline(_ byte: UInt8) -> Bool {
         byte == 10 || byte == 13
       }
 
 #if DEBUG
-      // We don't actually expect JSONEncoder() to produce output containing
+      // We don't actually expect the JSON encoder to produce output containing
       // newline characters, so in debug builds we'll log a diagnostic message.
       if snapshotJSON.contains(where: isASCIINewline) {
         let message = Event.ConsoleOutputRecorder.warning(
-          "JSONEncoder() produced one or more newline characters while encoding an event snapshot with kind '\(event.kind)'. Please file a bug report at https://github.com/apple/swift-testing/issues/new",
+          "JSON encoder produced one or more newline characters while encoding an event snapshot with kind '\(event.kind)'. Please file a bug report at https://github.com/apple/swift-testing/issues/new",
           options: .for(.stderr)
         )
 #if SWT_TARGET_OS_APPLE
@@ -338,6 +342,7 @@ private func _eventHandlerForStreamingEvents(toFileAtPath path: String) throws -
 #endif
 
       // Remove newline characters to conform to JSON lines specification.
+      var snapshotJSON = Array(snapshotJSON)
       snapshotJSON.removeAll(where: isASCIINewline)
       if !snapshotJSON.isEmpty {
         try? file.withLock {
@@ -354,25 +359,22 @@ private func _eventHandlerForStreamingEvents(toFileAtPath path: String) throws -
 
 // MARK: - Command-line interface options
 
-extension [Event.ConsoleOutputRecorder.Option] {
+extension Event.ConsoleOutputRecorder.Options {
 #if !SWT_NO_FILE_IO
   /// The set of options to use when writing to the standard error stream.
   static func `for`(_ fileHandle: borrowing FileHandle) -> Self {
     var result = Self()
 
-    let useANSIEscapeCodes = _fileHandleSupportsANSIEscapeCodes(fileHandle)
-    if useANSIEscapeCodes {
-      let colorBitDepth: Int8 = if let noColor = Environment.variable(named: "NO_COLOR"), !noColor.isEmpty {
+    result.useANSIEscapeCodes = _fileHandleSupportsANSIEscapeCodes(fileHandle)
+    if result.useANSIEscapeCodes {
+      if let noColor = Environment.variable(named: "NO_COLOR"), !noColor.isEmpty {
         // Respect the NO_COLOR environment variable. SEE: https://www.no-color.org
-        1
+        result.ansiColorBitDepth = 1
       } else if _terminalSupportsTrueColorANSIEscapeCodes {
-        24
+        result.ansiColorBitDepth = 24
       } else if _terminalSupports256ColorANSIEscapeCodes {
-        8
-      } else {
-        4 // 16-color by default
+        result.ansiColorBitDepth = 8
       }
-      result.append(.useANSIEscapeCodes(colorBitDepth: colorBitDepth))
     }
 
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
@@ -382,23 +384,19 @@ extension [Event.ConsoleOutputRecorder.Option] {
     // In case rendering with SF Symbols is causing problems (e.g. a third-party
     // terminal app is being used that doesn't support them), allow explicitly
     // toggling them with an environment variable.
-    var useSFSymbols = false
     if let environmentVariable = Environment.flag(named: "SWT_SF_SYMBOLS_ENABLED") {
-      useSFSymbols = environmentVariable
-    } else if useANSIEscapeCodes {
+      result.useSFSymbols = environmentVariable
+    } else {
       var statStruct = stat()
-      useSFSymbols = (0 == stat("/Library/Fonts/SF-Pro.ttf", &statStruct))
-    }
-    if useSFSymbols {
-      result.append(.useSFSymbols)
+      result.useSFSymbols = (0 == stat("/Library/Fonts/SF-Pro.ttf", &statStruct))
     }
 #endif
 
     // If color output is enabled, load tag colors from user/package preferences
     // on disk.
-    if let colorBitDepth = result.colorBitDepth, colorBitDepth > 1 {
+    if result.useANSIEscapeCodes && result.ansiColorBitDepth > 1 {
       if let tagColors = try? loadTagColors() {
-        result.append(.useTagColors(tagColors))
+        result.tagColors = tagColors
       }
     }
 

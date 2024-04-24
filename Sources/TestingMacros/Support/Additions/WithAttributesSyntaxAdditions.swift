@@ -121,11 +121,10 @@ extension WithAttributesSyntax {
   ///   - name: The name of the attribute to look for.
   ///   - moduleName: The name of the module that declares the attribute named
   ///     `name`.
-  ///   - context: The macro context in which the expression is being parsed.
   ///
   /// - Returns: An array of `AttributeSyntax` corresponding to the attached
   ///   `@Test` attributes, or the empty array if none is attached.
-  func attributes(named name: String, inModuleNamed moduleName: String = "Testing", in context: some MacroExpansionContext) -> [AttributeSyntax] {
+  func attributes(named name: String, inModuleNamed moduleName: String = "Testing") -> [AttributeSyntax] {
     attributes.lazy.compactMap { attribute in
       if case let .attribute(attribute) = attribute {
         return attribute

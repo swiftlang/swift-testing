@@ -200,7 +200,7 @@ extension Issue {
     /// Initialize an issue instance with the specified details.
     ///
     /// - Parameter issue: The original issue that gets snapshotted.
-    public init(snapshotting issue: Issue) {
+    public init(snapshotting issue: borrowing Issue) {
       self.kind = Issue.Kind.Snapshot(snapshotting: issue.kind)
       self.comments = issue.comments
       self.sourceContext = issue.sourceContext
@@ -216,6 +216,16 @@ extension Issue {
         return error
       }
       return nil
+    }
+
+    /// The location in source where this issue occurred, if available.
+    public var sourceLocation: SourceLocation? {
+      get {
+        sourceContext.sourceLocation
+      }
+      set {
+        sourceContext.sourceLocation = newValue
+      }
     }
   }
 }
@@ -392,6 +402,57 @@ extension Issue.Kind {
       case .system:
         try container.encode(true, forKey: .system)
       }
+    }
+  }
+}
+
+// MARK: - Snapshot CustomStringConvertible, CustomDebugStringConvertible
+
+extension Issue.Snapshot: CustomStringConvertible, CustomDebugStringConvertible {
+  public var description: String {
+    if comments.isEmpty {
+      return String(describing: kind)
+    }
+    let joinedComments = comments.lazy
+      .map(\.rawValue)
+      .joined(separator: "\n")
+    return "\(kind): \(joinedComments)"
+  }
+
+  public var debugDescription: String {
+    if comments.isEmpty {
+      return "\(kind)\(sourceLocation.map { " at \($0)" } ?? "")"
+    }
+    let joinedComments: String = comments.lazy
+      .map(\.rawValue)
+      .joined(separator: "\n")
+    return "\(kind)\(sourceLocation.map { " at \($0)" } ?? ""): \(joinedComments)"
+  }
+}
+
+extension Issue.Kind.Snapshot: CustomStringConvertible {
+  public var description: String {
+    switch self {
+    case .unconditional:
+      "Unconditionally failed"
+    case let .expectationFailed(expectation):
+      if let mismatchedErrorDescription = expectation.mismatchedErrorDescription {
+        "Expectation failed: \(mismatchedErrorDescription)"
+      } else {
+        "Expectation failed: \(expectation.evaluatedExpression.expandedDescription())"
+      }
+    case let .confirmationMiscounted(actual: actual, expected: expected):
+      "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(expected.counting("time"))"
+    case let .errorCaught(error):
+      "Caught error: \(error)"
+    case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
+      "Time limit was exceeded: \(TimeValue(timeLimitComponents))"
+    case .knownIssueNotRecorded:
+      "Known issue was not recorded"
+    case .apiMisused:
+      "An API was misused"
+    case .system:
+      "A system failure occurred"
     }
   }
 }
