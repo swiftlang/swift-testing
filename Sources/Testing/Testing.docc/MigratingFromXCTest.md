@@ -359,6 +359,11 @@ their equivalents in the testing library:
 | `try XCTUnwrap(x)` | `try #require(x)` |
 | `XCTFail("…")` | `Issue.record("…")` |
 
+The testing library doesn’t provide an equivalent of
+[`XCTAssertEqual(_:_:accuracy:_:file:line:)`](https://developer.apple.com/documentation/xctest/3551607-xctassertequal).
+To compare two numeric values within a specified accuracy, 
+use `isApproximatelyEqual()` from [swift-numerics](https://github.com/apple/swift-numerics).
+
 ### Continue or halt after test failures
 
 An instance of an `XCTestCase` subclass can set its
