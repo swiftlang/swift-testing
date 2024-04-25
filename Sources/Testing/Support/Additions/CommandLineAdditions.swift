@@ -28,12 +28,20 @@ extension CommandLine {
   static var executablePath: String {
     get throws {
 #if os(macOS)
-      return try withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(PATH_MAX) * 2) { buffer in
-        guard 0 != proc_pidpath(getpid(), buffer.baseAddress!, UInt32(buffer.count)) else {
-          throw CError(rawValue: swt_errno())
+      var result: String?
+      var bufferCount = UInt32(1024)
+      while result == nil {
+        result = withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(bufferCount)) { buffer in
+          // _NSGetExecutablePath returns 0 on success and -1 if bufferCount is
+          // too small. If that occurs, we'll return nil here and loop with the
+          // new value of bufferCount.
+          if 0 == _NSGetExecutablePath(buffer.baseAddress, &bufferCount) {
+            return String(cString: buffer.baseAddress!)
+          }
+          return nil
         }
-        return String(cString: buffer.baseAddress!)
       }
+      return result!
 #elseif os(Linux)
       return try withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(PATH_MAX) * 2) { buffer in
         let readCount = readlink("/proc/\(getpid())/exe", buffer.baseAddress!, buffer.count - 1)
@@ -49,7 +57,7 @@ extension CommandLine {
           throw Win32Error(rawValue: GetLastError())
         }
         guard let path = String.decodeCString(buffer.baseAddress!, as: UTF16.self)?.result else {
-          throw CError(rawValue: ERROR_ILLEGAL_CHARACTER)
+          throw Win32Error(rawValue: ERROR_ILLEGAL_CHARACTER)
         }
         return path
       }
