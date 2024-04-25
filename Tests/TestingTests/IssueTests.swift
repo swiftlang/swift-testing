@@ -353,7 +353,7 @@ final class IssueTests: XCTestCase {
   struct ExpressionRuntimeValueCapture_Value {}
 
   func testExpressionRuntimeValueCapture() throws {
-    var expression = Expression.__fromSyntaxNode("abc123")
+    var expression = __Expression.__fromSyntaxNode("abc123")
     XCTAssertEqual(expression.sourceCode, "abc123")
     XCTAssertNil(expression.runtimeValue)
 
@@ -390,7 +390,7 @@ final class IssueTests: XCTestCase {
   }
 
   func testExpressionRuntimeValueChildren() throws {
-    var expression = Expression.__fromSyntaxNode("abc123")
+    var expression = __Expression.__fromSyntaxNode("abc123")
     XCTAssertEqual(expression.sourceCode, "abc123")
     XCTAssertNil(expression.runtimeValue)
 

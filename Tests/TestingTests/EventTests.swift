@@ -18,7 +18,7 @@ struct EventTests {
         arguments: [
           Event.Kind.expectationChecked(
             Expectation(
-              evaluatedExpression: Expression("SyntaxNode"),
+              evaluatedExpression: __Expression("SyntaxNode"),
               mismatchedErrorDescription: "Mismatched Error Description",
               differenceDescription: "Difference Description",
               isPassing: false,

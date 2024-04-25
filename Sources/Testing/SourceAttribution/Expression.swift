@@ -21,7 +21,11 @@
 /// ```swift
 /// let swiftSyntaxExpr: ExprSyntax = "\(testExpr)"
 /// ```
-public struct Expression: Sendable {
+///
+/// - Warning: This type is used to implement the `#expect(exitsWith:)`
+///   macro. Do not use it directly. Tools can use the SPI ``Expression``
+///   typealias if needed.
+public struct __Expression: Sendable {
   /// An enumeration describing the various kinds of expression that can be
   /// captured.
   ///
@@ -49,10 +53,10 @@ public struct Expression: Sendable {
     ///   - lhs: The left-hand operand.
     ///   - operator: The operator.
     ///   - rhs: The right-hand operand.
-    indirect case binaryOperation(lhs: Expression, `operator`: String, rhs: Expression)
+    indirect case binaryOperation(lhs: __Expression, `operator`: String, rhs: __Expression)
 
     /// A type representing an argument to a function call, used by the
-    /// ``Expression/Kind/functionCall`` case.
+    /// `__Expression.Kind.functionCall` case.
     ///
     /// This type is not part of the public interface of the testing library.
     struct FunctionCallArgument: Sendable {
@@ -60,7 +64,7 @@ public struct Expression: Sendable {
       var label: String?
 
       /// The value, as an expression, of the argument.
-      var value: Expression
+      var value: __Expression
     }
 
     /// The expression represents a function call.
@@ -69,7 +73,7 @@ public struct Expression: Sendable {
     ///   - value: The value on which the function was called, if any.
     ///   - functionName: The name of the function that was called.
     ///   - arguments: The arguments passed to the function.
-    indirect case functionCall(value: Expression?, functionName: String, arguments: [FunctionCallArgument])
+    indirect case functionCall(value: __Expression?, functionName: String, arguments: [FunctionCallArgument])
 
     /// The expression represents a property access.
     ///
@@ -77,7 +81,7 @@ public struct Expression: Sendable {
     ///   - value: The value whose property was accessed.
     ///   - keyPath: The key path, relative to `value`, that was accessed, not
     ///     including a leading backslash or period.
-    indirect case propertyAccess(value: Expression, keyPath: Expression)
+    indirect case propertyAccess(value: __Expression, keyPath: __Expression)
 
     /// The expression negates another expression.
     ///
@@ -89,7 +93,7 @@ public struct Expression: Sendable {
     ///
     /// Unlike other cases in this enumeration, this case affects the runtime
     /// behavior of the `__check()` family of functions.
-    indirect case negation(_ expression: Expression, isParenthetical: Bool)
+    indirect case negation(_ expression: __Expression, isParenthetical: Bool)
   }
 
   /// The kind of syntax node represented by this instance.
@@ -399,7 +403,7 @@ public struct Expression: Sendable {
 
   /// The set of parsed and captured subexpressions contained in this instance.
   @_spi(ForToolsIntegrationOnly)
-  public var subexpressions: [Expression] {
+  public var subexpressions: [Self] {
     switch kind {
     case .generic, .stringLiteral:
       []
@@ -434,20 +438,20 @@ public struct Expression: Sendable {
 
 // MARK: - Codable
 
-extension Expression: Codable {}
-extension Expression.Kind: Codable {}
-extension Expression.Kind.FunctionCallArgument: Codable {}
-extension Expression.Value: Codable {}
+extension __Expression: Codable {}
+extension __Expression.Kind: Codable {}
+extension __Expression.Kind.FunctionCallArgument: Codable {}
+extension __Expression.Value: Codable {}
 
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible
 
-extension Expression: CustomStringConvertible, CustomDebugStringConvertible {
+extension __Expression: CustomStringConvertible, CustomDebugStringConvertible {
   /// Initialize an instance of this type containing the specified source code.
   ///
   /// - Parameters:
   ///   - sourceCode: The source code of the expression being described.
   ///
-  /// To get the string value of an instance of ``Expression``, pass it to
+  /// To get the string value of an expression, pass it to
   /// `String.init(describing:)`.
   ///
   /// This initializer does not attempt to parse `sourceCode`.
@@ -465,4 +469,20 @@ extension Expression: CustomStringConvertible, CustomDebugStringConvertible {
   }
 }
 
-extension Expression.Value: CustomStringConvertible, CustomDebugStringConvertible {}
+extension __Expression.Value: CustomStringConvertible, CustomDebugStringConvertible {}
+
+/// A type representing a Swift expression captured at compile-time from source
+/// code.
+///
+/// Instances of this type are generally opaque to callers. They can be
+/// converted to strings representing their source code (captured at compile
+/// time) using `String.init(describing:)`.
+///
+/// If parsing is needed, use the swift-syntax package to convert an instance of
+/// this type to an instance of `ExprSyntax` using a Swift expression such as:
+///
+/// ```swift
+/// let swiftSyntaxExpr: ExprSyntax = "\(testExpr)"
+/// ```
+@_spi(ForToolsIntegrationOnly)
+public typealias Expression = __Expression

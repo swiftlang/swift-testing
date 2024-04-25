@@ -60,8 +60,8 @@
 ///   `#require()` macros. Do not call it directly.
 public func __checkValue(
   _ condition: Bool,
-  expression: Expression,
-  expressionWithCapturedRuntimeValues: @autoclosure () -> Expression? = nil,
+  expression: __Expression,
+  expressionWithCapturedRuntimeValues: @autoclosure () -> __Expression? = nil,
   mismatchedErrorDescription: @autoclosure () -> String? = nil,
   difference: @autoclosure () -> String? = nil,
   comments: @autoclosure () -> [Comment],
@@ -73,7 +73,7 @@ public func __checkValue(
   // in case of multiple prefix operators (!!(a == b), for example.)
   var condition = condition
   do {
-    var expression: Expression? = expression
+    var expression: __Expression? = expression
     while case let .negation(subexpression, _) = expression?.kind {
       defer {
         expression = subexpression
@@ -163,7 +163,7 @@ private func _callBinaryOperator<T, U, R>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkBinaryOperation<T, U>(
   _ lhs: T, _ op: (T, () -> U) -> Bool, _ rhs: @autoclosure () -> U,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -194,7 +194,7 @@ public func __checkBinaryOperation<T, U>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkFunctionCall<T, each U>(
   _ lhs: T, calling functionCall: (T, repeat each U) throws -> Bool, _ arguments: repeat each U,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -222,7 +222,7 @@ public func __checkFunctionCall<T, each U>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkFunctionCall<T, Arg0>(
   _ lhs: T, calling functionCall: (T, Arg0) throws -> Bool, _ argument0: Arg0,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -249,7 +249,7 @@ public func __checkFunctionCall<T, Arg0>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkFunctionCall<T, Arg0, Arg1>(
   _ lhs: T, calling functionCall: (T, Arg0, Arg1) throws -> Bool, _ argument0: Arg0, _ argument1: Arg1,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -276,7 +276,7 @@ public func __checkFunctionCall<T, Arg0, Arg1>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkFunctionCall<T, Arg0, Arg1, Arg2>(
   _ lhs: T, calling functionCall: (T, Arg0, Arg1, Arg2) throws -> Bool, _ argument0: Arg0, _ argument1: Arg1, _ argument2: Arg2,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -303,7 +303,7 @@ public func __checkFunctionCall<T, Arg0, Arg1, Arg2>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkFunctionCall<T, Arg0, Arg1, Arg2, Arg3>(
   _ lhs: T, calling functionCall: (T, Arg0, Arg1, Arg2, Arg3) throws -> Bool, _ argument0: Arg0, _ argument1: Arg1, _ argument2: Arg2, _ argument3: Arg3,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -333,7 +333,7 @@ public func __checkFunctionCall<T, Arg0, Arg1, Arg2, Arg3>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkInoutFunctionCall<T, /*each*/ U>(
   _ lhs: T, calling functionCall: (T, inout /*repeat each*/ U) throws -> Bool, _ arguments: inout /*repeat each*/ U,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -363,7 +363,7 @@ public func __checkInoutFunctionCall<T, /*each*/ U>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkFunctionCall<T, each U, R>(
   _ lhs: T, calling functionCall: (T, repeat each U) throws -> R?, _ arguments: repeat each U,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -391,7 +391,7 @@ public func __checkFunctionCall<T, each U, R>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkFunctionCall<T, Arg0, R>(
   _ lhs: T, calling functionCall: (T, Arg0) throws -> R?, _ argument0: Arg0,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -418,7 +418,7 @@ public func __checkFunctionCall<T, Arg0, R>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkFunctionCall<T, Arg0, Arg1, R>(
   _ lhs: T, calling functionCall: (T, Arg0, Arg1) throws -> R?, _ argument0: Arg0, _ argument1: Arg1,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -445,7 +445,7 @@ public func __checkFunctionCall<T, Arg0, Arg1, R>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkFunctionCall<T, Arg0, Arg1, Arg2, R>(
   _ lhs: T, calling functionCall: (T, Arg0, Arg1, Arg2) throws -> R?, _ argument0: Arg0, _ argument1: Arg1, _ argument2: Arg2,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -472,7 +472,7 @@ public func __checkFunctionCall<T, Arg0, Arg1, Arg2, R>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkFunctionCall<T, Arg0, Arg1, Arg2, Arg3, R>(
   _ lhs: T, calling functionCall: (T, Arg0, Arg1, Arg2, Arg3) throws -> R?, _ argument0: Arg0, _ argument1: Arg1, _ argument2: Arg2, _ argument3: Arg3,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -503,7 +503,7 @@ public func __checkFunctionCall<T, Arg0, Arg1, Arg2, Arg3, R>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkInoutFunctionCall<T, /*each*/ U, R>(
   _ lhs: T, calling functionCall: (T, inout /*repeat each*/ U) throws -> R?, _ arguments: inout /*repeat each*/ U,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -534,7 +534,7 @@ public func __checkInoutFunctionCall<T, /*each*/ U, R>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkPropertyAccess<T>(
   _ lhs: T, getting memberAccess: (T) -> Bool,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -564,7 +564,7 @@ public func __checkPropertyAccess<T>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkPropertyAccess<T, U>(
   _ lhs: T, getting memberAccess: (T) -> U?,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -592,7 +592,7 @@ public func __checkPropertyAccess<T, U>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkBinaryOperation<T>(
   _ lhs: T, _ op: (T, () -> T) -> Bool, _ rhs: @autoclosure () -> T,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -639,7 +639,7 @@ public func __checkBinaryOperation<T>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkBinaryOperation(
   _ lhs: String, _ op: (String, () -> String) -> Bool, _ rhs: @autoclosure () -> String,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -666,7 +666,7 @@ public func __checkBinaryOperation(
 public func __checkCast<V, T>(
   _ value: V,
   is _: T.Type,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -698,8 +698,8 @@ public func __checkCast<V, T>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkValue<T>(
   _ optionalValue: T?,
-  expression: Expression,
-  expressionWithCapturedRuntimeValues: @autoclosure () -> Expression? = nil,
+  expression: __Expression,
+  expressionWithCapturedRuntimeValues: @autoclosure () -> __Expression? = nil,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -738,7 +738,7 @@ public func __checkValue<T>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkBinaryOperation<T>(
   _ lhs: T?, _ op: (T?, () -> T?) -> T?, _ rhs: @autoclosure () -> T?,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -764,7 +764,7 @@ public func __checkBinaryOperation<T>(
 public func __checkCast<V, T>(
   _ value: V,
   as _: T.Type,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -797,7 +797,7 @@ public func __checkCast<V, T>(
 public func __checkClosureCall<E>(
   throws errorType: E.Type,
   performing body: () throws -> some Any,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -834,7 +834,7 @@ public func __checkClosureCall<E>(
 public func __checkClosureCall<E>(
   throws errorType: E.Type,
   performing body: () async throws -> some Any,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -874,7 +874,7 @@ public func __checkClosureCall<E>(
 public func __checkClosureCall(
   throws _: Never.Type,
   performing body: () throws -> some Any,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -910,7 +910,7 @@ public func __checkClosureCall(
 public func __checkClosureCall(
   throws _: Never.Type,
   performing body: () async throws -> some Any,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -946,7 +946,7 @@ public func __checkClosureCall(
 public func __checkClosureCall<E>(
   throws error: E,
   performing body: () throws -> some Any,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -972,7 +972,7 @@ public func __checkClosureCall<E>(
 public func __checkClosureCall<E>(
   throws error: E,
   performing body: () async throws -> some Any,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -1000,7 +1000,7 @@ public func __checkClosureCall<R>(
   performing body: () throws -> R,
   throws errorMatcher: (any Error) throws -> Bool,
   mismatchExplanation: ((any Error) -> String)? = nil,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -1048,7 +1048,7 @@ public func __checkClosureCall<R>(
   performing body: () async throws -> R,
   throws errorMatcher: (any Error) async throws -> Bool,
   mismatchExplanation: ((any Error) -> String)? = nil,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -1102,7 +1102,7 @@ public func __checkClosureCall<R>(
 public func __checkClosureCall(
   exitsWith expectedExitCondition: ExitCondition,
   performing body: @convention(thin) () async -> Void,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation

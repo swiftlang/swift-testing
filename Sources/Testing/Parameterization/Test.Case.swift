@@ -198,7 +198,6 @@ extension Test.Case.Argument {
 
     /// A representation of this parameterized test argument's
     /// ``Test/Case/Argument/value`` property.
-    @_spi(ForToolsIntegrationOnly)
     public var value: Expression.Value
 
     /// The parameter of the test function to which this argument was passed.
