@@ -282,7 +282,7 @@ struct EventRecorderTests {
 
   @Test(
     "JUnitXMLRecorder outputs valid XML",
-    .bug("https://github.com/apple/swift-testing/issues/254", relationship: .verifiesFix)
+    .bug("https://github.com/apple/swift-testing/issues/254")
   )
   func junitXMLIsValid() async throws {
     let stream = Stream()

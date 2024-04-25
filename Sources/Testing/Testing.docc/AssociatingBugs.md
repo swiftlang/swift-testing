@@ -25,9 +25,9 @@ specific bugs with tests that reproduce them or verify they are fixed.
 
 ## Associate a bug with a test
 
-To associate a bug with a test, use the ``Trait/bug(_:relationship:_:)-86mmm``
-or ``Trait/bug(_:relationship:_:)-3hsi5`` function. The first argument to this
-function is the bug's _identifier_ in its bug-tracking system:
+To associate a bug with a test, use the ``Trait/bug(_:_:)-2u8j9`` or
+``Trait/bug(_:_:)-7mo2w`` function. The first argument to this function is the
+bug's _identifier_ in its bug-tracking system:
 
 ```swift
 @Test("Food truck engine works", .bug("12345"), .bug(67890))
@@ -43,54 +43,12 @@ specified as a string, it must be parseable as an unsigned integer or as a URL.
 For more information on the formats recognized by the testing library, see
 <doc:BugIdentifiers>.
 
-## Specify the relationship between a bug and a test
-
-By default, the nature of the relationship between a bug and a test is
-unspecified. All the testing library knows about such relationships is that they
-exist.
-
-It is possible to customize the relationship between a bug and a test. Doing so
-allows the testing library to make certain assumptions, such as that a test is
-expected to fail, or that a failure indicates a regression that requires
-attention from a developer.
-
-To specify how a bug is related to a test, use the `relationship` parameter of
-the ``Trait/bug(_:relationship:_:)-86mmm`` or
-``Trait/bug(_:relationship:_:)-3hsi5`` function. For example, to indicate that a
-test was written to verify a previously-fixed bug, one would specify
-`.verifiesFix`:
-
-```swift
-@Test("Food truck engine works", .bug("12345", relationship: .verifiesFix))
-func engineWorks() async {
-  var foodTruck = FoodTruck()
-  await foodTruck.engine.start()
-  #expect(foodTruck.engine.isRunning)
-}
-```
-
-### Kinds of relationship
-
-The testing library defines several kinds of common bug/test relationship:
-
-| Relationship | Use when… |
-|-|-|
-| `.uncoveredBug` | … a test run failed, uncovering the bug in question. |
-| `.reproducesBug` | … a bug was previously filed and the test was written to demonstrate it. |
-| `.verifiesFix` | … a bug has been fixed and the test shows that it no longer reproduces. |
-| `.failingBecauseOfBug` | … a test was previously passing, but now an unrelated bug is causing it to fail. |
-| `.unspecified` | … no other case accurately describes the relationship. |
-
-<!-- Keep `.unspecified` as the last row above in order to imply it is a
-fallback. -->
-
-## Adding comments to associated bugs
+## Add comments to associated bugs
 
 A bug identifier may be insufficient to uniquely and clearly identify a bug
 associated with a test. Bug trackers universally provide a "title" field for
 bugs that is not visible to the testing library. To add a bug's title to a test,
-include it after the bug's identifier and (optionally) its relationship to the
-test:
+include it after the bug's identifier:
 
 ```swift
 @Test(
