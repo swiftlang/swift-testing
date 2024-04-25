@@ -12,84 +12,49 @@
 ///
 /// To add this trait to a test, use one of the following functions:
 ///
-/// - ``Trait/bug(_:_:)-2u8j9``
-/// - ``Trait/bug(_:_:)-7mo2w``
+/// - ``Trait/bug(_:_:)``
+/// - ``Trait/bug(_:id:_:)-10yf5``
+/// - ``Trait/bug(_:id:_:)-3vtpl``
 public struct Bug {
-  /// The identifier of this bug in the associated bug-tracking system.
+  /// A URL linking to more information about the bug, if available.
+  ///
+  /// The value of this property represents a URL conforming to
+  /// [RFC 3986](https://www.ietf.org/rfc/rfc3986.txt).
+  public var url: String?
+
+  /// A unique identifier in this bug's associated bug-tracking system, if
+  /// available.
   ///
   /// For more information on how the testing library interprets bug
   /// identifiers, see <doc:BugIdentifiers>.
-  public var identifier: String
+  public var id: String?
 
-  /// An optional, user-specified comment describing this trait.
-  public var comment: Comment?
+  /// The human-readable title of the bug, if specified by the test author.
+  public var title: Comment?
 }
 
-// MARK: - Equatable, Hashable, Comparable
+// MARK: - Equatable, Hashable
 
-extension Bug: Equatable, Hashable, Comparable {
+extension Bug: Equatable, Hashable {
   public static func ==(lhs: Self, rhs: Self) -> Bool {
-    lhs.identifier == rhs.identifier
+    lhs.url == rhs.url && lhs.id == rhs.id
   }
 
   public func hash(into hasher: inout Hasher) {
-    hasher.combine(identifier)
-  }
-
-  public static func <(lhs: Self, rhs: Self) -> Bool {
-    lhs.identifier < rhs.identifier
+    hasher.combine(url)
+    hasher.combine(id)
   }
 }
 
 // MARK: - Codable
 
-extension Bug: Codable {
-  /// A temporary explicit implementation of this type's coding keys enumeration
-  /// to support the refactored form of `Bug` from [#412](https://github.com/apple/swift-testing/pull/412).
-  private enum _CodingKeys: String, CodingKey {
-    // Existing properties.
-    case identifier = "identifier"
-    case comment = "comment"
-
-    // Proposed new properties.
-    case id = "id"
-    case url = "url"
-    case title = "title"
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: _CodingKeys.self)
-
-    try container.encode(identifier, forKey: .identifier)
-    try container.encodeIfPresent(comment, forKey: .comment)
-
-    // Temporary compatibility shims to support the refactored form of Bug from
-    // https://github.com/apple/swift-testing/pull/412 .
-    if identifier.contains(":") {
-      try container.encode(identifier, forKey: .url)
-    } else {
-      try container.encode(identifier, forKey: .id)
-    }
-    try container.encodeIfPresent(comment, forKey: .title)
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try decoder.container(keyedBy: _CodingKeys.self)
-    identifier = try container.decodeIfPresent(String.self, forKey: .identifier)
-      // Temporary compatibility shims to support the refactored form of Bug
-      // from https://github.com/apple/swift-testing/pull/412 .
-      ?? container.decodeIfPresent(String.self, forKey: .id)
-      ?? container.decode(String.self, forKey: .url)
-    comment = try container.decodeIfPresent(Comment.self, forKey: .comment)
-      ?? container.decodeIfPresent(Comment.self, forKey: .title)
-  }
-}
+extension Bug: Codable {}
 
 // MARK: - Trait, TestTrait, SuiteTrait
 
 extension Bug: TestTrait, SuiteTrait {
   public var comments: [Comment] {
-    Array(comment)
+    Array(title)
   }
 }
 
@@ -97,27 +62,41 @@ extension Trait where Self == Bug {
   /// Construct a bug to track with a test.
   ///
   /// - Parameters:
-  ///   - identifier: The identifier of this bug in the associated bug-tracking
-  ///     system. For more information on how this value is interpreted, see the
-  ///     documentation for ``Bug``.
-  ///   - comment: An optional, user-specified comment describing this trait.
+  ///   - url: A URL referring to this bug in the associated bug-tracking
+  ///     system.
+  ///   - title: Optionally, the human-readable title of the bug.
   ///
   /// - Returns: An instance of ``Bug`` representing the specified bug.
-  public static func bug(_ identifier: String, _ comment: Comment? = nil) -> Self {
-    Self(identifier: identifier, comment: comment)
+  public static func bug(_ url: _const String, _ title: Comment? = nil) -> Self {
+    Self(url: url, title: title)
   }
 
   /// Construct a bug to track with a test.
   ///
   /// - Parameters:
-  ///   - identifier: The identifier of this bug in the associated bug-tracking
-  ///     system. For more information on how this value is interpreted, see the
-  ///     documentation for ``Bug``.
-  ///   - comment: An optional, user-specified comment describing this trait.
+  ///   - url: A URL referring to this bug in the associated bug-tracking
+  ///     system.
+  ///   - id: The unique identifier of this bug in its associated bug-tracking
+  ///     system.
+  ///   - title: Optionally, the human-readable title of the bug.
   ///
   /// - Returns: An instance of ``Bug`` representing the specified bug.
-  public static func bug(_ identifier: some Numeric, _ comment: Comment? = nil) -> Self {
-    Self(identifier: String(describing: identifier), comment: comment)
+  public static func bug(_ url: _const String? = nil, id: some Numeric, _ title: Comment? = nil) -> Self {
+    Self(url: url, id: String(describing: id), title: title)
+  }
+
+  /// Construct a bug to track with a test.
+  ///
+  /// - Parameters:
+  ///   - url: A URL referring to this bug in the associated bug-tracking
+  ///     system.
+  ///   - id: The unique identifier of this bug in its associated bug-tracking
+  ///     system.
+  ///   - title: Optionally, the human-readable title of the bug.
+  ///
+  /// - Returns: An instance of ``Bug`` representing the specified bug.
+  public static func bug(_ url: _const String? = nil, id: _const String, _ title: Comment? = nil) -> Self {
+    Self(url: url, id: id, title: title)
   }
 }
 

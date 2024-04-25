@@ -567,7 +567,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     return Self(
       syntax: Syntax(urlExpr),
       message: #"URL "\#(urlString)" is invalid and cannot be used with trait '\#(traitName.trimmed)' in attribute \#(_macroName(attribute))"#,
-      severity: .error,
+      severity: .warning,
       fixIts: [
         FixIt(
           message: MacroExpansionFixItMessage(#"Replace "\#(urlString)" with URL"#),

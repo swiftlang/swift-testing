@@ -14,46 +14,41 @@ Examine how the testing library interprets bug identifiers provided by developer
 
 ## Overview
 
-As a convenience, the testing library assumes that bug identifiers with specific
-formats are associated with some common bug-tracking systems.
+The testing library supports two distinct ways to identify a bug:
+
+1. A URL linking to more information about the bug; and
+2. A unique identifier in the bug's associated bug-tracking system.
 
 - Note: "Bugs" as described in this document may also be referred to as
-  "issues." To avoid confusion with the ``Issue`` type in the testing library,
-  this document consistently refers to them as "bugs."
+"issues." To avoid confusion with the ``Issue`` type in the testing library,
+this document consistently refers to them as "bugs."
 
-### Recognized formats
+A bug may have both an associated URL _and_ an associated unique identifier. It
+must have at least one or the other in order for the testing library to be able
+to interpret it correctly.
 
-- If the bug identifier can be parsed as a URL according to
-  [RFC 3986](https://www.ietf.org/rfc/rfc3986.txt), it is assumed to represent
-  an issue tracked at that URL.
-- If the bug identifier begins with `"FB"` and the rest of it can be parsed as
-  an unsigned integer, it's assumed to represent a bug filed with the
-  [Apple Feedback Assistant](https://feedbackassistant.apple.com).
-- If the bug identifier can be parsed as an unsigned integer, it's assumed to
-  represent an issue with that numeric identifier in an unspecified bug-tracking
-  system.
-- All other bug identifiers are considered invalid and will cause the compiler
-  to generate an error at compile time.
+To create an instance of ``Bug`` with a URL, use the ``Trait/bug(_:_:)`` trait.
+At compile time, the testing library will validate that the given string can be
+parsed as a URL according to [RFC 3986](https://www.ietf.org/rfc/rfc3986.txt).
 
-<!--
-Possible additional formats we could recognize (which would require special
-handling to detect:
-
-- If the bug identifier begins with `"#"` and can be parsed as a positive
-  integer, it is assumed to represent a [GitHub](https://github.com) issue in
-  the same repository as the test.
--->
+To create an instance of ``Bug`` with a bug's unique identifier, use the
+``Trait/bug(_:id:_:)-10yf5`` trait. The testing library does not require that a
+bug's unique identifier match any particular format, but will interpret unique
+identifiers starting with `"FB"` as referring to bugs tracked with the
+[Apple Feedback Assistant](https://feedbackassistant.apple.com). For
+convenience, you can also directly pass an integer as a bug's identifier using
+``Trait/bug(_:id:_:)-3vtpl``.
 
 ### Examples
 
-| Trait function | Valid | Inferred bug-tracking system |
-|-|:-:|-|
-| `.bug(12345)` | Yes | None |
-| `.bug("12345")` | Yes | None |
-| `.bug("Things don't work")` | **No** | None |
-| `.bug("https://github.com/apple/swift/pull/12345")` | Yes | [GitHub Issues for the Swift project](https://github.com/apple/swift/issues) |
-| `.bug("https://bugs.webkit.org/show_bug.cgi?id=12345")` | Yes | [WebKit Bugzilla](https://bugs.webkit.org/) |
-| `.bug("FB12345")` | Yes | Apple Feedback Assistant | <!-- SEE ALSO: rdar://104582015 -->
+| Trait Function | Inferred Bug-Tracking System |
+|-|-|
+| `.bug(id: 12345)` | None |
+| `.bug(id: "12345")` | None |
+| `.bug("https://www.example.com?id=12345", id: "12345")` | None |
+| `.bug("https://github.com/apple/swift/pull/12345")` | [GitHub Issues for the Swift project](https://github.com/apple/swift/issues) |
+| `.bug("https://bugs.webkit.org/show_bug.cgi?id=12345")` | [WebKit Bugzilla](https://bugs.webkit.org/) |
+| `.bug(id: "FB12345")` | Apple Feedback Assistant | <!-- SEE ALSO: rdar://104582015 -->
 <!--
-| `.bug("#12345")` | Yes | GitHub Issues for the current repository (if hosted there) |
+| `.bug(id: "#12345")` | GitHub Issues for the current repository (if hosted there) |
 -->
