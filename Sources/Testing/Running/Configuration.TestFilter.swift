@@ -28,13 +28,12 @@ extension Configuration {
       case excluding
     }
 
-    /// An enumeration describing a predicate that a test filter may specify.
-    fileprivate enum Predicate: Sendable, Codable {
+    /// An enumeration describing the various kinds of test filter.
+    fileprivate enum Kind: Sendable, Codable {
       /// The test filter has no effect.
       ///
-      /// All tests are allowed when passed to a test filter with this
-      /// predicate.
-      case all
+      /// All tests are allowed when passed to a test filter with this kind.
+      case unfiltered
 
       /// The test filter contains a precomputed selection of test IDs.
       ///
@@ -59,21 +58,21 @@ extension Configuration {
       ///   - membership: How to interpret the result when predicating tests.
       case pattern(_ pattern: String, membership: Membership)
 
-      /// The test filter is a combination of other test predicates.
+      /// The test filter is a combination of other test filter kinds.
       ///
       /// - Parameters:
-      ///   - lhs: The first test filter's predicate.
-      ///   - rhs: The second test filter's predicate.
+      ///   - lhs: The first test filter's kind.
+      ///   - rhs: The second test filter's kind.
       ///   - op: The operator to apply when combining the results of the two
       ///     filters.
       ///
-      /// The result of a test filter with this predicate is the combination of
-      /// the results of its subfilters using `op`.
-      indirect case compound(_ lhs: Self, _ rhs: Self, _ op: CombinationOperator)
+      /// The result of a test filter with this kind is the combination of the
+      /// results of its subfilters using `op`.
+      indirect case combination(_ lhs: Self, _ rhs: Self, _ op: CombinationOperator)
     }
 
-    /// The predicate of this test filter.
-    private var _predicate: Predicate
+    /// The kind of test filter.
+    private var _kind: Kind
 
     /// Whether or not to include tests with the `.hidden` trait when filtering
     /// tests.
@@ -101,7 +100,7 @@ extension Configuration.TestFilter {
   /// This test filter allows all tests to run; it is the default test filter if
   /// another is not specified.
   public static var unfiltered: Self {
-    Self(_predicate: .all)
+    Self(_kind: .unfiltered)
   }
 
   /// Initialize this instance to filter tests to those specified by a set of
@@ -110,7 +109,7 @@ extension Configuration.TestFilter {
   /// - Parameters:
   ///   - testIDs: A set of test IDs to be filtered.
   public init(including testIDs: some Collection<Test.ID>) {
-    self.init(_predicate: .testIDs(Set(testIDs), membership: .including))
+    self.init(_kind: .testIDs(Set(testIDs), membership: .including))
   }
 
   /// Initialize this instance to filter tests to those _not_ specified by a set
@@ -119,7 +118,7 @@ extension Configuration.TestFilter {
   /// - Parameters:
   ///   - selection: A set of test IDs to be excluded.
   public init(excluding testIDs: some Collection<Test.ID>) {
-    self.init(_predicate: .testIDs(Set(testIDs), membership: .excluding))
+    self.init(_kind: .testIDs(Set(testIDs), membership: .excluding))
   }
 
   /// Initialize this instance to represent a pattern expression matched against
@@ -136,12 +135,12 @@ extension Configuration.TestFilter {
     // the pattern in the abstract, and is not responsible for actually
     // applying it to a test graph — that happens later during planning.
     //
-    // FIXME: Performing this validation here currently makes such errors easier
-    // to surface when using the SwiftPM entry point. But longer-term, we should
+    // Performing this validation here currently makes such errors easier to
+    // surface when using the SwiftPM entry point. But longer-term, we should
     // make the planning phase throwing and propagate errors from there instead.
     _ = try Regex(pattern)
 
-    self.init(_predicate: .pattern(pattern, membership: membership))
+    self.init(_kind: .pattern(pattern, membership: membership))
   }
 
   /// Initialize this instance to include tests with a given set of tags.
@@ -151,7 +150,7 @@ extension Configuration.TestFilter {
   ///
   /// Matching tests have had _any_ of the tags in `tags` added to them.
   public init(includingAnyOf tags: some Collection<Tag>) {
-    self.init(_predicate: .tags(Set(tags), anyOf: true, membership: .including))
+    self.init(_kind: .tags(Set(tags), anyOf: true, membership: .including))
   }
 
   /// Initialize this instance to exclude tests with a given set of tags.
@@ -161,7 +160,7 @@ extension Configuration.TestFilter {
   ///
   /// Matching tests have had _any_ of the tags in `tags` added to them.
   public init(excludingAnyOf tags: some Collection<Tag>) {
-    self.init(_predicate: .tags(Set(tags), anyOf: true, membership: .excluding))
+    self.init(_kind: .tags(Set(tags), anyOf: true, membership: .excluding))
   }
 
   /// Initialize this instance to include tests with a given set of tags.
@@ -171,7 +170,7 @@ extension Configuration.TestFilter {
   ///
   /// Matching tests have had _all_ of the tags in `tags` added to them.
   public init(includingAllOf tags: some Collection<Tag>) {
-    self.init(_predicate: .tags(Set(tags), anyOf: false, membership: .including))
+    self.init(_kind: .tags(Set(tags), anyOf: false, membership: .including))
   }
 
   /// Initialize this instance to exclude tests with a given set of tags.
@@ -181,7 +180,7 @@ extension Configuration.TestFilter {
   ///
   /// Matching tests have had _all_ of the tags in `tags` added to them.
   public init(excludingAllOf tags: some Collection<Tag>) {
-    self.init(_predicate: .tags(Set(tags), anyOf: false, membership: .excluding))
+    self.init(_kind: .tags(Set(tags), anyOf: false, membership: .excluding))
   }
 }
 
@@ -190,7 +189,7 @@ extension Configuration.TestFilter {
 extension Configuration.TestFilter {
   /// An enumeration which represents filtering logic to be applied to a test
   /// graph.
-  fileprivate enum Operation {
+  fileprivate enum Operation: Sendable {
     /// A filter operation which has no effect.
     ///
     /// All tests are allowed when this operation is applied.
@@ -215,58 +214,58 @@ extension Configuration.TestFilter {
     /// A filter operation which is a combination of other operations.
     ///
     /// - Parameters:
-    ///   - lhs: The first test filter's kind.
-    ///   - rhs: The second test filter's kind.
+    ///   - lhs: The first test filter operation.
+    ///   - rhs: The second test filter operation.
     ///   - op: The operator to apply when combining the results of the two
-    ///     filters.
+    ///     filter operations.
     ///
     /// The result of applying this filter operation is the combination of
     /// applying the results of its sub-operations using `op`.
-    indirect case compound(_ lhs: Self, _ rhs: Self, _ op: CombinationOperator)
+    indirect case combination(_ lhs: Self, _ rhs: Self, _ op: CombinationOperator)
+  }
+}
+
+extension Configuration.TestFilter.Kind {
+  /// An operation which implements the filtering logic for this test filter
+  /// kind.
+  ///
+  /// - Throws: Any error encountered while generating an operation for this
+  ///   test filter kind. One example is the creation of a `Regex` from a
+  ///   `.pattern` kind: if the pattern is not a valid regular expression, an
+  ///   error will be thrown.
+  var operation: Configuration.TestFilter.Operation {
+    get throws {
+      switch self {
+      case .unfiltered:
+        return .unfiltered
+      case let .testIDs(testIDs, membership):
+        return .precomputed(Test.ID.Selection(testIDs: testIDs), membership: membership)
+      case let .tags(tags, anyOf, membership):
+        return .function({ test in
+          if anyOf {
+            !test.tags.isDisjoint(with: tags) // .intersects()
+          } else {
+            test.tags.isSuperset(of: tags)
+          }
+        }, membership: membership)
+      case let .pattern(pattern, membership):
+        guard #available(_regexAPI, *) else {
+          throw SystemError(description: "Filtering by regular expression matching is unavailable")
+        }
+
+        let regex = UncheckedSendable(rawValue: try Regex(pattern))
+        return .function({ test in
+          let id = String(describing: test.id)
+          return id.contains(regex.rawValue)
+        }, membership: membership)
+      case let .combination(lhs, rhs, op):
+        return try .combination(lhs.operation, rhs.operation, op)
+      }
+    }
   }
 }
 
 extension Configuration.TestFilter.Operation {
-  /// Initialize an instance of this type which implements filtering logic for
-  /// the specified test filter predicate.
-  ///
-  /// - Parameters:
-  ///   - predicate: The predicate for which this operation should implement
-  ///     filtering logic.
-  ///
-  /// - Throws: Any error encountered while converting the specified predicate
-  ///   into an operation. One example is the creation of a `Regex` from a
-  ///   `.pattern` predicate: if the pattern is not a valid regular expression,
-  ///   an error will be thrown.
-  init(_ predicate: Configuration.TestFilter.Predicate) throws {
-    switch predicate {
-    case .all:
-      self = .unfiltered
-    case let .testIDs(testIDs, membership):
-      self = .precomputed(Test.ID.Selection(testIDs: testIDs), membership: membership)
-    case let .tags(tags, anyOf, membership):
-      self = .function({ test in
-        if anyOf {
-          !test.tags.isDisjoint(with: tags) // .intersects()
-        } else {
-          test.tags.isSuperset(of: tags)
-        }
-      }, membership: membership)
-    case let .pattern(pattern, membership):
-      guard #available(_regexAPI, *) else {
-        throw Configuration.TestFilter.Error.featureUnavailable("Filtering by regular expression matching is unavailable")
-      }
-
-      let regex = UncheckedSendable(rawValue: try Regex(pattern))
-      self = .function({ test in
-        let id = String(describing: test.id)
-        return id.contains(regex.rawValue)
-      }, membership: membership)
-    case let .compound(lhs, rhs, op):
-      self = try .compound(Self(lhs), Self(rhs), op)
-    }
-  }
-
   /// Apply this test filter to a test graph and remove tests that should not be
   /// included.
   ///
@@ -309,7 +308,7 @@ extension Configuration.TestFilter.Operation {
         .map(\.id)
       let selection = Test.ID.Selection(testIDs: testIDs)
       return Self.precomputed(selection, membership: membership).apply(to: testGraph)
-    case let .compound(lhs, rhs, op):
+    case let .combination(lhs, rhs, op):
       return zip(
         lhs.apply(to: testGraph),
         rhs.apply(to: testGraph)
@@ -329,7 +328,7 @@ extension Configuration.TestFilter {
   ///
   /// - Returns: A copy of `testGraph` with filtered tests replaced with `nil`.
   func apply(to testGraph: Graph<String, Test?>) throws -> Graph<String, Test?> {
-    var result = try Operation(_predicate).apply(to: testGraph)
+    var result = try _kind.operation.apply(to: testGraph)
 
     // After performing the test function, run through one more time and remove
     // hidden tests. (Note that this property's value is not recursively set on
@@ -342,17 +341,6 @@ extension Configuration.TestFilter {
     }
 
     return result
-  }
-}
-
-extension Configuration.TestFilter {
-  /// A type describing an error encountered while performing test filtering.
-  fileprivate enum Error: Swift.Error {
-    /// A feature is unavailable.
-    ///
-    /// - Parameters:
-    ///   - explanation: An explanation of the problem.
-    case featureUnavailable(_ explanation: String)
   }
 }
 
@@ -405,13 +393,13 @@ extension Configuration.TestFilter {
   /// The resulting test filter predicates tests against both `self` and `other`
   /// and includes them in results if they pass both.
   public func combining(with other: Self, using op: CombinationOperator = .and) -> Self {
-    var result = switch (_predicate, other._predicate) {
-    case (.all, _):
+    var result = switch (_kind, other._kind) {
+    case (.unfiltered, _):
       other
-    case (_, .all):
+    case (_, .unfiltered):
       self
     default:
-      Self(_predicate: .compound(_predicate, other._predicate, op))
+      Self(_kind: .combination(_kind, other._kind, op))
     }
     result.includeHiddenTests = includeHiddenTests
 

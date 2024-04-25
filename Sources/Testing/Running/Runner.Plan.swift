@@ -194,8 +194,9 @@ extension Runner.Plan {
       testGraph = try configuration.testFilter.apply(to: testGraph)
     } catch {
       // FIXME: Handle this more gracefully, either by propagating the error
-      // (which will ultimately require `Runner.init(...)` to be throwing) or
-      // recording a single `Issue` representing the planning failure.
+      // (which will ultimately require `Runner.init(...)` to be throwing:
+      // rdar://126631222) or by recording a single `Issue` representing the
+      // planning failure.
       //
       // For now, ignore the error and include all tests. As of this writing,
       // the only scenario where this will throw is when using regex filtering,
