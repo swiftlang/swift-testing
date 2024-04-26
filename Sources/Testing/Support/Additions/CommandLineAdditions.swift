@@ -57,7 +57,7 @@ extension CommandLine {
           throw Win32Error(rawValue: GetLastError())
         }
         guard let path = String.decodeCString(buffer.baseAddress!, as: UTF16.self)?.result else {
-          throw Win32Error(rawValue: ERROR_ILLEGAL_CHARACTER)
+          throw Win32Error(rawValue: DWORD(ERROR_ILLEGAL_CHARACTER))
         }
         return path
       }
