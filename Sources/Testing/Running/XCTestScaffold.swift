@@ -76,7 +76,7 @@ extension XCTIssue {
 /// ## See Also
 ///
 /// - <doc:TemporaryGettingStarted>
-#if compiler(>=5.11)
+#if SWIFT_PM_SUPPORTS_SWIFT_TESTING
 @available(*, deprecated, message: "This version of Swift Package Manager supports running swift-testing tests directly. This type will be removed in a future release.")
 #else
 @available(swift, deprecated: 100000.0, message: "This type is provided temporarily to aid in integrating the testing library with existing tools such as Swift Package Manager. It will be removed in a future release.")
@@ -109,13 +109,13 @@ public enum XCTestScaffold: Sendable {
   /// ## See Also
   ///
   /// - <doc:TemporaryGettingStarted>
-#if compiler(>=5.11)
+#if SWIFT_PM_SUPPORTS_SWIFT_TESTING
   @available(*, deprecated, message: "This version of Swift Package Manager supports running swift-testing tests directly. This function has no effect and will be removed in a future release.")
 #else
   @available(swift, deprecated: 100000.0, message: "This function is provided temporarily to aid in integrating the testing library with existing tools such as Swift Package Manager. It will be removed in a future release.")
 #endif
   public static func runAllTests(hostedBy testCase: XCTestCase, _ functionName: String = #function) async {
-#if compiler(>=5.11)
+#if SWIFT_PM_SUPPORTS_SWIFT_TESTING
     let message = Event.ConsoleOutputRecorder.warning(
       "This version of Swift Package Manager supports running swift-testing tests directly. Ignoring call to \(#function).",
       options: .for(.stderr)

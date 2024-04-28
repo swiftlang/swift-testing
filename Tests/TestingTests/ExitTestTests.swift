@@ -44,7 +44,7 @@ private import TestingInternals
 #endif
   }
 
-#if compiler(>=5.11)
+#if SWIFT_PM_SUPPORTS_SWIFT_TESTING
   @Test("Exit tests (failing)") func failing() async {
     let expectedCount: Int
 #if os(Windows)
