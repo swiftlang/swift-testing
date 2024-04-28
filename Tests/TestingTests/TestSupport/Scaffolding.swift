@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if !SWT_NO_XCTEST_SCAFFOLDING && compiler(<5.11) && canImport(XCTest)
+#if !SWT_NO_XCTEST_SCAFFOLDING && !SWIFT_PM_SUPPORTS_SWIFT_TESTING && canImport(XCTest)
 import XCTest
 import Testing
 
