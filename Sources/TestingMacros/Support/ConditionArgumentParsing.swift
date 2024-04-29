@@ -28,7 +28,7 @@ struct Condition {
   var arguments: [Argument]
 
   /// The condition's source code as an expression that produces an instance of
-  /// the testing library's ``Expression`` type.
+  /// the testing library's `__Expression` type.
   var expression: ExprSyntax
 
   init(_ expandedFunctionName: String, arguments: [Argument], expression: ExprSyntax) {

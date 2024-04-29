@@ -49,7 +49,6 @@ you can't check directly using an expectation.
 - ``Expectation``
 - ``ExpectationFailedError``
 - ``CustomTestStringConvertible``
-- ``Expression``
 
 ### Representing source locations
 

@@ -132,7 +132,7 @@ extension ExitTest {
 func callExitTest(
   exitsWith expectedExitCondition: ExitCondition,
   performing body: @escaping @Sendable () async -> Void,
-  expression: Expression,
+  expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation

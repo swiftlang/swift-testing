@@ -11,6 +11,7 @@
 /// A type describing an expectation that has been evaluated.
 public struct Expectation: Sendable {
   /// The expression evaluated by this expectation.
+  @_spi(ForToolsIntegrationOnly)
   public var evaluatedExpression: Expression
 
   /// A description of the error mismatch that occurred, if any.
@@ -65,7 +66,6 @@ extension Expectation {
     ///
     /// If this expectation passed, the value of this property is `nil` because no
     /// error mismatch occurred.
-    @_spi(ForToolsIntegrationOnly)
     public var mismatchedErrorDescription: String?
 
     /// A description of the difference between the operands in the expression
@@ -74,7 +74,6 @@ extension Expectation {
     /// If this expectation passed, the value of this property is `nil` because
     /// the difference is only computed when necessary to assist with diagnosing
     /// test failures.
-    @_spi(ForToolsIntegrationOnly)
     public var differenceDescription: String?
 
     /// Whether the expectation passed or failed.
