@@ -28,9 +28,11 @@ struct ABIEntryPointTests {
       }
     )
 #endif
-    let abiEntryPoint = withUnsafeTemporaryAllocation(of: ABIEntryPoint_v0.self, capacity: 1) { buffer in
-      copyABIEntryPoint(buffer.baseAddress!)
-      return buffer.baseAddress!.move()
+    let abiEntryPoint = UnsafeMutablePointer<ABIEntryPoint_v0>.allocate(capacity: 1)
+    copyABIEntryPoint(abiEntryPoint)
+    defer {
+      abiEntryPoint.deinitialize(count: 1)
+      abiEntryPoint.deallocate()
     }
 
     // Construct arguments and convert them to JSON.
@@ -46,7 +48,7 @@ struct ABIEntryPointTests {
     }
 
     // Call the entry point function.
-    let result = await abiEntryPoint(.init(argumentsJSON)) { eventAndContextJSON in
+    let result = await abiEntryPoint.pointee(.init(argumentsJSON)) { eventAndContextJSON in
       let eventAndContext = try! JSON.decode(EventAndContextSnapshot.self, from: eventAndContextJSON)
       _ = (eventAndContext.event, eventAndContext.eventContext)
     }

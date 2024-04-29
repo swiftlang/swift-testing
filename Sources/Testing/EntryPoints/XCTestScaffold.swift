@@ -144,8 +144,9 @@ public enum XCTestScaffold: Sendable {
       functionName[...]
     }
     args.xcTestCaseHostIdentifier = "\(typeName)/\(functionName)"
+    var argsCopy: __CommandLineArguments_v0? = args
 
-    _ = await entryPoint(passing: args) { event, _ in
+    _ = await entryPoint(passing: &argsCopy) { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
