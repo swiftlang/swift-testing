@@ -12,20 +12,56 @@ private import TestingInternals
 
 /// The entry point to the testing library used by Swift Package Manager.
 ///
+/// - Parameters:
+///   - args: A previously-parsed command-line arguments structure to interpret.
+///     If `nil`, a new instance is created from the command-line arguments to
+///     the current process.
+///
 /// - Returns: The result of invoking the testing library. The type of this
 ///   value is subject to change.
 ///
-/// This function examines the command-line arguments to the current process
-/// and then invokes available tests in the current process.
+/// This function examines the command-line arguments represented by `args` and
+/// then invokes available tests in the current process.
 ///
 /// - Warning: This function is used by Swift Package Manager. Do not call it
 ///   directly.
-@_disfavoredOverload public func __swiftPMEntryPoint() async -> CInt {
+@_disfavoredOverload public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) async -> CInt {
+  await entryPoint(passing: args, eventHandler: nil)
+}
+
+/// The entry point to the testing library used by Swift Package Manager.
+///
+/// - Parameters:
+///   - args: A previously-parsed command-line arguments structure to interpret.
+///     If `nil`, a new instance is created from the command-line arguments to
+///     the current process.
+///
+/// This function examines the command-line arguments to the current process
+/// and then invokes available tests in the current process. When the tests
+/// complete, the process is terminated. If tests were successful, an exit code
+/// of `EXIT_SUCCESS` is used; otherwise, a (possibly platform-specific) value
+/// such as `EXIT_FAILURE` is used instead.
+///
+/// - Warning: This function is used by Swift Package Manager. Do not call it
+///   directly.
+public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) async -> Never {
+  let exitCode: CInt = await __swiftPMEntryPoint(passing: args)
+  exit(exitCode)
+}
+
+/// The common implementation of the entry point functions in this file.
+///
+/// - Parameters:
+///   - args: A previously-parsed command-line arguments structure to interpret.
+///     If `nil`, a new instance is created from the command-line arguments to
+///     the current process.
+///   - eventHandler: An event handler
+func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Handler?) async -> CInt {
   let exitCode = Locked(rawValue: EXIT_SUCCESS)
 
   do {
-    let args = CommandLine.arguments()
-    if args.count == 2 && args[1] == "--list-tests" {
+    let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments())
+    if args.listTests {
       for testID in await listTestsForSwiftPM(Test.all) {
 #if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
         try? FileHandle.stdout.write("\(testID)\n")
@@ -34,9 +70,18 @@ private import TestingInternals
 #endif
       }
     } else {
-      var configuration = try configurationForSwiftPMEntryPoint(withArguments: args)
-      let oldEventHandler = configuration.eventHandler
-      configuration.eventHandler = { event, context in
+#if !SWT_NO_EXIT_TESTS
+      // If an exit test was specified, run it. `exitTest` returns `Never`.
+      if let exitTest = ExitTest.findInEnvironmentForSwiftPM() {
+        await exitTest()
+      }
+#endif
+
+      // Configure the test runner.
+      var configuration = try configurationForSwiftPMEntryPoint(from: args)
+
+      // Set up the event handler.
+      configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
         if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
           exitCode.withLock { exitCode in
             exitCode = EXIT_FAILURE
@@ -45,19 +90,31 @@ private import TestingInternals
         oldEventHandler(event, context)
       }
 
-      var options = Event.ConsoleOutputRecorder.Options()
+      // Configure the event recorder to write events to stderr.
 #if !SWT_NO_FILE_IO
+      var options = Event.ConsoleOutputRecorder.Options()
       options = .for(.stderr)
-#endif
-      options.isVerbose = args.contains("--verbose")
-
-#if !SWT_NO_EXIT_TESTS
-      if let exitTest = ExitTest.findInEnvironmentForSwiftPM() {
-        await exitTest()
+      options.isVerbose = args.verbose
+      let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
+        try? FileHandle.stderr.write(string)
+      }
+      configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+        eventRecorder.record(event, in: context)
+        oldEventHandler(event, context)
       }
 #endif
 
-      await runTests(options: options, configuration: configuration)
+      // If the caller specified an alternate event handler, hook it up too.
+      if let eventHandler {
+        configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+          eventHandler(event, context)
+          oldEventHandler(event, context)
+        }
+      }
+
+      // Run the tests.
+      let runner = await Runner(configuration: configuration)
+      await runner.run()
     }
   } catch {
 #if !SWT_NO_FILE_IO
@@ -72,22 +129,7 @@ private import TestingInternals
   return exitCode.rawValue
 }
 
-/// The entry point to the testing library used by Swift Package Manager.
-///
-/// This function examines the command-line arguments to the current process
-/// and then invokes available tests in the current process. When the tests
-/// complete, the process is terminated. If tests were successful, an exit code
-/// of `EXIT_SUCCESS` is used; otherwise, a (possibly platform-specific) value
-/// such as `EXIT_FAILURE` is used instead.
-///
-/// - Warning: This function is used by Swift Package Manager. Do not call it
-///   directly.
-public func __swiftPMEntryPoint() async -> Never {
-  let exitCode: CInt = await __swiftPMEntryPoint()
-  exit(exitCode)
-}
-
-// MARK: -
+// MARK: - Listing tests
 
 /// List all of the given tests in the "specifier" format used by Swift Package
 /// Manager.
@@ -126,37 +168,138 @@ func listTestsForSwiftPM(_ tests: some Sequence<Test>) -> [String] {
     .sorted(by: <)
 }
 
+// MARK: - Command-line arguments and configuration
+
+/// A type describing the command-line arguments passed by Swift Package Manager
+/// to the testing library's entry point.
+///
+/// - Warning: This type's definition and JSON-encoded form have not been
+///   finalized yet.
+///
+/// - Warning: This type is used by Swift Package Manager. Do not use it
+///   directly.
+public struct __CommandLineArguments_v0: Sendable {
+  public init() {}
+
+  /// The value of the `--list-tests` argument.
+  public var listTests = false
+
+  /// The value of the `--parallel` or `--no-parallel` argument.
+  public var parallel = true
+
+  /// The value of the `--verbose` argument.
+  public var verbose = false
+
+  /// The value of the `--xunit-output` argument.
+  public var xunitOutput: String?
+
+  /// The value of the `--experimental-event-stream-output` argument.
+  public var experimentalEventStreamOutput: String?
+
+  /// The value(s) of the `--filter` argument.
+  public var filter: [String]?
+
+  /// The value(s) of the `--skip` argument.
+  public var skip: [String]?
+
+  /// The value of the `--repetitions` argument.
+  public var repetitions: Int?
+
+  /// The value of the `--repeat-until` argument.
+  public var repeatUntil: String?
+
+  /// The identifier of the `XCTestCase` instance hosting the testing library,
+  /// if ``XCTestScaffold`` is being used.
+  ///
+  /// This property is not ABI and will be removed with ``XCTestScaffold``.
+  var xcTestCaseHostIdentifier: String?
+}
+
+extension __CommandLineArguments_v0: Codable {}
+
+/// Initialize this instance given a sequence of command-line arguments passed
+/// from Swift Package Manager.
+///
+/// - Parameters:
+///   - args: The command-line arguments to interpret.
+///
+/// This function generally assumes that Swift Package Manager has already
+/// validated the passed arguments.
+func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArguments_v0 {
+  var result = __CommandLineArguments_v0()
+
+  // Do not consider the executable path AKA argv[0].
+  let args = args.dropFirst()
+
+  if args.contains("--list-tests") {
+    result.listTests = true
+    return result // do not bother parsing the other arguments
+  }
+
+  // Parallelization (on by default)
+  if args.contains("--no-parallel") {
+    result.parallel = false
+  }
+
+  if args.contains("--verbose") || args.contains("-v") || args.contains("--very-verbose") || args.contains("--vv") {
+    result.verbose = true
+  }
+
+#if !SWT_NO_FILE_IO
+  // XML output
+  if let xunitOutputIndex = args.firstIndex(of: "--xunit-output"), xunitOutputIndex < args.endIndex {
+    result.xunitOutput = args[args.index(after: xunitOutputIndex)]
+  }
+
+#if canImport(Foundation)
+  // Event stream output (experimental)
+  if let eventOutputIndex = args.firstIndex(of: "--experimental-event-stream-output"), eventOutputIndex < args.endIndex {
+    result.experimentalEventStreamOutput = args[args.index(after: eventOutputIndex)]
+  }
+#endif
+#endif
+
+  // Filtering
+  func filterValues(forArgumentsWithLabel label: String) -> [String] {
+    args.indices.lazy
+      .filter { args[$0] == label && $0 < args.endIndex }
+      .map { args[args.index(after: $0)] }
+  }
+  result.filter = filterValues(forArgumentsWithLabel: "--filter")
+  result.skip = filterValues(forArgumentsWithLabel: "--skip")
+
+  // Set up the iteration policy for the test run.
+  if let repetitionsIndex = args.firstIndex(of: "--repetitions"), repetitionsIndex < args.endIndex {
+    result.repetitions = Int(args[args.index(after: repetitionsIndex)])
+  }
+  if let repeatUntilIndex = args.firstIndex(of: "--repeat-until"), repeatUntilIndex < args.endIndex {
+    result.repeatUntil = args[args.index(after: repeatUntilIndex)]
+  }
+
+  return result
+}
+
 /// Get an instance of ``Configuration`` given a sequence of command-line
 /// arguments passed from Swift Package Manager.
 ///
 /// - Parameters:
-///   - args: The command-line arguments to interpret.
+///   - args: A previously-parsed command-line arguments structure to interpret.
 ///
 /// - Returns: An instance of ``Configuration``. Note that the caller is
 ///   responsible for setting this instance's ``Configuration/eventHandler``
 ///   property.
 ///
 /// - Throws: If an argument is invalid, such as a malformed regular expression.
-///
-/// This function generally assumes that Swift Package Manager has already
-/// validated the passed arguments.
-func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> Configuration {
+@_spi(ForToolsIntegrationOnly)
+public func configurationForSwiftPMEntryPoint(from args: __CommandLineArguments_v0) throws -> Configuration {
   var configuration = Configuration()
 
-  // Do not consider the executable path AKA argv[0].
-  let args = args.dropFirst()
-
   // Parallelization (on by default)
-  configuration.isParallelizationEnabled = true
-  if args.contains("--no-parallel") {
-    configuration.isParallelizationEnabled = false
-  }
+  configuration.isParallelizationEnabled = args.parallel
 
 #if !SWT_NO_FILE_IO
   // XML output
-  if let xunitOutputIndex = args.firstIndex(of: "--xunit-output"), xunitOutputIndex < args.endIndex {
-    let xunitOutputPath = args[args.index(after: xunitOutputIndex)]
-
+  if let xunitOutputPath = args.xunitOutput {
     // Open the XML file for writing.
     let file = try FileHandle(forWritingAtPath: xunitOutputPath)
 
@@ -165,8 +308,7 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
       try? file.write(string)
     }
 
-    let oldEventHandler = configuration.eventHandler
-    configuration.eventHandler = { event, context in
+    configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
       _ = xmlRecorder.record(event, in: context)
       oldEventHandler(event, context)
     }
@@ -174,11 +316,9 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 
 #if canImport(Foundation)
   // Event stream output (experimental)
-  if let eventOutputIndex = args.firstIndex(of: "--experimental-event-stream-output"), eventOutputIndex < args.endIndex {
-    let eventStreamOutputPath = args[args.index(after: eventOutputIndex)]
-    let eventHandler = try _eventHandlerForStreamingEvents(toFileAtPath: eventStreamOutputPath)
-    let oldEventHandler = configuration.eventHandler
-    configuration.eventHandler = { event, context in
+  if let eventStreamOutputPath = args.experimentalEventStreamOutput {
+    let eventHandler = try _eventHandlerForStreamingEvents_v0(toFileAtPath: eventStreamOutputPath)
+    configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
       eventHandler(event, context)
       oldEventHandler(event, context)
     }
@@ -188,38 +328,33 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 
   // Filtering
   var filters = [Configuration.TestFilter]()
-  func testFilter(forArgumentsWithLabel label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
-    let matchingArgs: [String] = args.indices.lazy
-      .filter { args[$0] == label && $0 < args.endIndex }
-      .map { args[args.index(after: $0)] }
-    if matchingArgs.isEmpty {
+  func testFilter(forRegularExpressions regexes: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
+    guard let regexes else {
       return .unfiltered
     }
 
     guard #available(_regexAPI, *) else {
       throw _EntryPointError.featureUnavailable("The `\(label)' option is not supported on this OS version.")
     }
-    return try matchingArgs.lazy
+    return try regexes.lazy
       .map { try Regex($0) }
       .map { Configuration.TestFilter(membership: membership, matching: $0) }
       .reduce(into: .unfiltered) { $0.combine(with: $1, using: .or) }
   }
-  filters.append(try testFilter(forArgumentsWithLabel: "--filter", membership: .including))
-  filters.append(try testFilter(forArgumentsWithLabel: "--skip", membership: .excluding))
+  filters.append(try testFilter(forRegularExpressions: args.filter, label: "--filter", membership: .including))
+  filters.append(try testFilter(forRegularExpressions: args.skip, label: "--skip", membership: .excluding))
 
   configuration.testFilter = filters.reduce(.unfiltered) { $0.combining(with: $1) }
 
   // Set up the iteration policy for the test run.
   var repetitionPolicy: Configuration.RepetitionPolicy = .once
   var hadExplicitRepetitionCount = false
-  if let repetitionsIndex = args.firstIndex(of: "--repetitions"), repetitionsIndex < args.endIndex,
-     let repetitionCount = Int(args[args.index(after: repetitionsIndex)]), repetitionCount > 0 {
+  if let repetitionCount = args.repetitions, repetitionCount > 0 {
     repetitionPolicy.maximumIterationCount = repetitionCount
     hadExplicitRepetitionCount = true
   }
-  if let repeatUntilIndex = args.firstIndex(of: "--repeat-until"), repeatUntilIndex < args.endIndex {
-    let repeatUntil = args[args.index(after: repeatUntilIndex)].lowercased()
-    switch repeatUntil {
+  if let repeatUntil = args.repeatUntil {
+    switch repeatUntil.lowercased() {
     case "pass":
       repetitionPolicy.continuationCondition = .whileIssueRecorded
     case "fail":
@@ -237,55 +372,15 @@ func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> C
 
 #if !SWT_NO_EXIT_TESTS
   // Enable exit test handling via __swiftPMEntryPoint().
-  configuration.exitTestHandler = ExitTest.handlerForSwiftPM()
+  configuration.exitTestHandler = ExitTest.handlerForSwiftPM(forXCTestCaseIdentifiedBy: args.xcTestCaseHostIdentifier)
 #endif
 
   return configuration
 }
 
-/// The common implementation of ``swiftPMEntryPoint()`` and
-/// ``XCTestScaffold/runAllTests(hostedBy:_:)``.
-///
-/// - Parameters:
-///   - options: Options to pass when configuring the console output recorder.
-///   - configuration: The configuration to use for running.
-func runTests(options: Event.ConsoleOutputRecorder.Options, configuration: Configuration) async {
-  var configuration = configuration
-  let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
-#if !SWT_NO_FILE_IO
-    try? FileHandle.stderr.write(string)
-#endif
-  }
-
-  let oldEventHandler = configuration.eventHandler
-  configuration.eventHandler = { event, context in
-    eventRecorder.record(event, in: context)
-    oldEventHandler(event, context)
-  }
-
-  let runner = await Runner(configuration: configuration)
-  await runner.run()
-}
-
 // MARK: - Experimental event streaming
 
-#if !SWT_NO_FILE_IO && canImport(Foundation)
-/// A type containing an event snapshot and snapshots of the contents of an
-/// event context suitable for streaming over JSON.
-///
-/// This function is not part of the public interface of the testing library.
-/// External adopters are not necessarily written in Swift and are expected to
-/// decode the JSON produced for this type in implementation-specific ways.
-struct EventAndContextSnapshot {
-  /// A snapshot of the event.
-  var event: Event.Snapshot
-
-  /// A snapshot of the event context.
-  var eventContext: Event.Context.Snapshot
-}
-
-extension EventAndContextSnapshot: Codable {}
-
+#if canImport(Foundation) && !SWT_NO_FILE_IO
 /// Create an event handler that streams events to the file at a given path.
 ///
 /// - Parameters:
@@ -311,47 +406,40 @@ extension EventAndContextSnapshot: Codable {}
 ///
 /// The file at `path` is closed when this process terminates or the
 /// corresponding call to ``Runner/run()`` returns, whichever occurs first.
-private func _eventHandlerForStreamingEvents(toFileAtPath path: String) throws -> Event.Handler {
+private func _eventHandlerForStreamingEvents_v0(toFileAtPath path: String) throws -> Event.Handler {
   // Open the event stream file for writing.
   let file = try FileHandle(forWritingAtPath: path)
 
-  return { event, context in
-    let snapshot = EventAndContextSnapshot(
-      event: Event.Snapshot(snapshotting: event),
-      eventContext: Event.Context.Snapshot(snapshotting: context)
-    )
-    try? JSON.withEncoding(of: snapshot) { snapshotJSON in
-      func isASCIINewline(_ byte: UInt8) -> Bool {
-        byte == 10 || byte == 13
-      }
+  return eventHandlerForStreamingEvents_v0 { eventAndContextJSON in
+    func isASCIINewline(_ byte: UInt8) -> Bool {
+      byte == 10 || byte == 13
+    }
 
 #if DEBUG
-      // We don't actually expect the JSON encoder to produce output containing
-      // newline characters, so in debug builds we'll log a diagnostic message.
-      if snapshotJSON.contains(where: isASCIINewline) {
-        let message = Event.ConsoleOutputRecorder.warning(
-          "JSON encoder produced one or more newline characters while encoding an event snapshot with kind '\(event.kind)'. Please file a bug report at https://github.com/apple/swift-testing/issues/new",
-          options: .for(.stderr)
-        )
+    // We don't actually expect the JSON encoder to produce output containing
+    // newline characters, so in debug builds we'll log a diagnostic message.
+    if eventAndContextJSON.contains(where: isASCIINewline) {
+      let message = Event.ConsoleOutputRecorder.warning(
+        "JSON encoder produced one or more newline characters while encoding an event snapshot. Please file a bug report at https://github.com/apple/swift-testing/issues/new",
+        options: .for(.stderr)
+      )
 #if SWT_TARGET_OS_APPLE
-        try? FileHandle.stderr.write(message)
+      try? FileHandle.stderr.write(message)
 #else
-        print(message)
+      print(message)
 #endif
-      }
+    }
 #endif
 
-      // Remove newline characters to conform to JSON lines specification.
-      var snapshotJSON = Array(snapshotJSON)
-      snapshotJSON.removeAll(where: isASCIINewline)
-      if !snapshotJSON.isEmpty {
-        try? file.withLock {
-          try snapshotJSON.withUnsafeBytes { snapshotJSON in
-            try file.write(snapshotJSON)
-          }
-          try file.write("\n")
-        }
+    // Remove newline characters to conform to JSON lines specification.
+    var eventAndContextJSON = Array(eventAndContextJSON)
+    eventAndContextJSON.removeAll(where: isASCIINewline)
+
+    try? file.withLock {
+      try eventAndContextJSON.withUnsafeBytes { eventAndContextJSON in
+        try file.write(eventAndContextJSON)
       }
+      try file.write("\n")
     }
   }
 }

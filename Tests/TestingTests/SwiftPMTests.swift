@@ -11,6 +11,11 @@
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import TestingInternals
 
+private func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> Configuration {
+  let args = try parseCommandLineArguments(from: args)
+  return try configurationForSwiftPMEntryPoint(from: args)
+}
+
 @Suite("Swift Package Manager Integration Tests")
 struct SwiftPMTests {
   @Test("Command line arguments are available")
