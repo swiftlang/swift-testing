@@ -416,8 +416,7 @@ struct MiscellaneousTests {
       #expect(test.parameters == nil)
     }
     do {
-      var test = Test {}
-      try await test.evaluateTestCases()
+      let test = Test {}
       #expect(!test.isParameterized)
       let testCases = try #require(test.testCases)
       #expect(testCases.underestimatedCount == 1)
@@ -425,8 +424,7 @@ struct MiscellaneousTests {
       #expect(parameters.isEmpty)
     }
     do {
-      var test = Test(arguments: 0 ..< 100, parameters: [Test.Parameter(index: 0, firstName: "i", type: Int.self)]) { _ in }
-      try await test.evaluateTestCases()
+      let test = Test(arguments: 0 ..< 100, parameters: [Test.Parameter(index: 0, firstName: "i", type: Int.self)]) { _ in }
       #expect(test.isParameterized)
       let testCases = try #require(test.testCases)
       #expect(testCases.underestimatedCount == 100)
@@ -436,11 +434,10 @@ struct MiscellaneousTests {
       #expect(firstParameter.firstName == "i")
     }
     do {
-      var test = Test(arguments: 0 ..< 100, 0 ..< 100, parameters: [
+      let test = Test(arguments: 0 ..< 100, 0 ..< 100, parameters: [
         Test.Parameter(index: 0, firstName: "i", type: Int.self),
         Test.Parameter(index: 1, firstName: "j", secondName: "value", type: Int.self),
       ]) { _, _ in }
-      try await test.evaluateTestCases()
       #expect(test.isParameterized)
       let testCases = try #require(test.testCases)
       #expect(testCases.underestimatedCount == 100 * 100)

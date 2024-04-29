@@ -14,11 +14,10 @@
 struct TestCaseSelectionTests {
   @Test("Multiple arguments passed to one parameter, selecting one case")
   func oneParameterSelectingOneCase() async throws {
-    var fixtureTest = Test(arguments: ["a", "b"], parameters: [Test.Parameter(index: 0, firstName: "value", type: String.self)]) { value in
+    let fixtureTest = Test(arguments: ["a", "b"], parameters: [Test.Parameter(index: 0, firstName: "value", type: String.self)]) { value in
       #expect(value == "a")
     }
 
-    try await fixtureTest.evaluateTestCases()
     let firstTestCase = try #require(fixtureTest.testCases?.first { _ in true })
 
     var configuration = Configuration()
@@ -42,11 +41,10 @@ struct TestCaseSelectionTests {
 
   @Test("Multiple arguments passed to one parameter, selecting a subset of cases")
   func oneParameterSelectingMultipleCases() async throws {
-    var fixtureTest = Test(arguments: ["a", "b", "c"], parameters: [Test.Parameter(index: 0, firstName: "value", type: String.self)]) { value in
+    let fixtureTest = Test(arguments: ["a", "b", "c"], parameters: [Test.Parameter(index: 0, firstName: "value", type: String.self)]) { value in
       #expect(value != "b")
     }
 
-    try await fixtureTest.evaluateTestCases()
     let testCases = Array(try #require(fixtureTest.testCases))
     let firstTestCaseID = try #require(testCases.first?.id)
     let lastTestCaseID = try #require(testCases.last?.id)
@@ -76,7 +74,7 @@ struct TestCaseSelectionTests {
 
   @Test("Two collections, each with multiple arguments, passed to two parameters, selecting one case")
   func twoParametersSelectingOneCase() async throws {
-    var fixtureTest = Test(
+    let fixtureTest = Test(
       arguments: ["a", "b"], [1, 2],
       parameters: [
         Test.Parameter(index: 0, firstName: "stringValue", type: String.self),
@@ -86,7 +84,6 @@ struct TestCaseSelectionTests {
       #expect(stringValue == "b" && intValue == 2)
     }
 
-    try await fixtureTest.evaluateTestCases()
     let selectedTestCase = try #require(fixtureTest.testCases?.first { testCase in
       guard let firstArg = testCase.arguments.first?.value as? String,
             let secondArg = testCase.arguments.last?.value as? Int
@@ -117,14 +114,13 @@ struct TestCaseSelectionTests {
 
   @Test("Multiple arguments conforming to CustomTestArgumentEncodable, passed to one parameter, selecting one case")
   func oneParameterAcceptingCustomTestArgumentSelectingOneCase() async throws {
-    var fixtureTest = Test(arguments: [
+    let fixtureTest = Test(arguments: [
       MyCustomTestArgument(x: 1, y: "a"),
       MyCustomTestArgument(x: 2, y: "b"),
     ], parameters: [Test.Parameter(index: 0, firstName: "value", type: MyCustomTestArgument.self)]) { arg in
       #expect(arg.x == 1 && arg.y == "a")
     }
 
-    try await fixtureTest.evaluateTestCases()
     let firstTestCase = try #require(fixtureTest.testCases?.first { _ in true })
 
     var configuration = Configuration()
@@ -148,14 +144,13 @@ struct TestCaseSelectionTests {
 
   @Test("Multiple arguments conforming to Identifiable, passed to one parameter, selecting one case")
   func oneParameterAcceptingIdentifiableArgumentSelectingOneCase() async throws {
-    var fixtureTest = Test(arguments: [
+    let fixtureTest = Test(arguments: [
       MyCustomIdentifiableArgument(id: "a"),
       MyCustomIdentifiableArgument(id: "b"),
     ], parameters: [Test.Parameter(index: 0, firstName: "value", type: MyCustomIdentifiableArgument.self)]) { arg in
       #expect(arg.id == "a")
     }
 
-    try await fixtureTest.evaluateTestCases()
     let selectedTestCase = try #require(fixtureTest.testCases?.first { _ in true })
 
     var configuration = Configuration()
@@ -179,14 +174,13 @@ struct TestCaseSelectionTests {
 
   @Test("Multiple arguments conforming to RawRepresentable, passed to one parameter, selecting one case")
   func oneParameterAcceptingRawRepresentableArgumentSelectingOneCase() async throws {
-    var fixtureTest = Test(arguments: [
+    let fixtureTest = Test(arguments: [
       MyCustomRawRepresentableArgument(rawValue: "a"),
       MyCustomRawRepresentableArgument(rawValue: "b"),
     ], parameters: [Test.Parameter(index: 0, firstName: "value", type: MyCustomRawRepresentableArgument.self)]) { arg in
       #expect(arg.rawValue == "a")
     }
 
-    try await fixtureTest.evaluateTestCases()
     let selectedTestCase = try #require(fixtureTest.testCases?.first { _ in true })
 
     var configuration = Configuration()

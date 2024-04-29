@@ -147,7 +147,7 @@ extension Test {
     testFunction: @escaping @Sendable () async throws -> Void
   ) {
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-    let caseGenerator = { @Sendable in Case.Generator(testFunction: testFunction) }
+    let caseGenerator = Case.Generator(testFunction: testFunction)
     self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: nil, testCases: caseGenerator, parameters: [])
   }
 
@@ -178,7 +178,7 @@ extension Test {
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
   ) where C: Collection & Sendable, C.Element: Sendable {
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-    let caseGenerator = { @Sendable in Case.Generator(arguments: collection, parameters: parameters, testFunction: testFunction) }
+    let caseGenerator = Case.Generator(arguments: collection, parameters: parameters, testFunction: testFunction)
     self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 
@@ -210,7 +210,7 @@ extension Test {
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-    let caseGenerator = { @Sendable in Case.Generator(arguments: collection1, collection2, parameters: parameters, testFunction: testFunction) }
+    let caseGenerator = Case.Generator(arguments: collection1, collection2, parameters: parameters, testFunction: testFunction)
     self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 
@@ -237,7 +237,7 @@ extension Test {
     testFunction: @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
   ) where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-    let caseGenerator = { @Sendable in Case.Generator(arguments: zippedCollections, parameters: parameters, testFunction: testFunction) }
+    let caseGenerator = Case.Generator(arguments: zippedCollections, parameters: parameters, testFunction: testFunction)
     self.init(name: name, displayName: name, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: nil, testCases: caseGenerator, parameters: parameters)
   }
 }

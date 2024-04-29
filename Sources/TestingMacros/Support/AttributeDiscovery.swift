@@ -181,13 +181,12 @@ struct AttributeInfo {
       }
     }))
 
-    var otherArguments = self.otherArguments
-
     // Any arguments of the test declaration macro which specify test arguments
     // need to be wrapped a closure so they may be evaluated lazily by the
     // testing library at runtime. If any such arguments are present, they will
     // begin with a labeled argument named `arguments:` and include all
     // subsequent unlabeled arguments.
+    var otherArguments = self.otherArguments
     if let argumentsIndex = otherArguments.firstIndex(where: { $0.label?.tokenKind == .identifier("arguments") }) {
       for index in argumentsIndex ..< otherArguments.endIndex {
         var argument = otherArguments[index]

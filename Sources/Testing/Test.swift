@@ -76,7 +76,7 @@ public struct Test: Sendable {
   /// ([96960993](rdar://96960993)). It is also not possible to have a value of
   /// an underlying generic sequence type without specifying its generic
   /// parameters.
-  fileprivate enum TestCaseState: Sendable {
+  fileprivate enum TestCasesState: Sendable {
     /// The test's cases have not yet been evaluated.
     ///
     /// - Parameters:
@@ -95,7 +95,7 @@ public struct Test: Sendable {
   /// The evaluation state of this test's cases, if any.
   ///
   /// If this test represents a suite type, the value of this property is `nil`.
-  fileprivate var testCaseState: TestCaseState?
+  fileprivate var testCasesState: TestCasesState?
 
   /// The set of test cases associated with this test, if any.
   ///
@@ -108,23 +108,23 @@ public struct Test: Sendable {
   /// test case is synthesized. For test suite types (as opposed to test
   /// functions), the value of this property is `nil`.
   var testCases: (some Sequence<Test.Case> & Sendable)? {
-    switch testCaseState {
-    case .unevaluated:
+    guard let testCasesState else {
+      return nil as AnySequence<Test.Case>?
+    }
+    guard case let .evaluated(result) = testCasesState else {
       // Callers are expected to first attempt to evaluate a test's cases by
       // calling `evaluateTestCases()`.
       preconditionFailure("Attempting to access test cases before they have been evaluated.")
-    case let .evaluated(.success(testCases)):
-      testCases.rawValue
-    case .evaluated(.failure):
+    }
+    guard case let .success(testCases) = result else {
       // Callers are never expected to access this property after evaluating a
       // test's cases, if that evaluation threw an error, because if the test
       // cannot be run. In this scenario, a `Runner.Plan` is expected to record
       // issue for the test, rather than attempt to run it, and thus never
       // access this property.
       preconditionFailure("Attempting to access test cases after evaluating them failed.")
-    case nil:
-      nil
-    } as AnySequence<Test.Case>?
+    }
+    return testCases.rawValue
   }
 
   /// Evaluate this test's cases if they have not been evaluated yet.
@@ -138,19 +138,19 @@ public struct Test: Sendable {
   ///
   /// - Throws: Any error caught while first evaluating the test arguments.
   mutating func evaluateTestCases() async throws {
-    guard let testCaseState else { return }
+    guard let testCasesState else { return }
 
     do {
-      switch testCaseState {
+      switch testCasesState {
       case let .unevaluated(function):
         let sequence = try await function()
-        self.testCaseState = .evaluated(.success(UncheckedSendable(rawValue: sequence)))
+        self.testCasesState = .evaluated(.success(UncheckedSendable(rawValue: sequence)))
       case .evaluated:
         // No-op: already evaluated
         break
       }
     } catch {
-      self.testCaseState = .evaluated(.failure(error))
+      self.testCasesState = .evaluated(.failure(error))
       throw error
     }
   }
@@ -176,7 +176,7 @@ public struct Test: Sendable {
   ///
   /// A test suite can be declared using the ``Suite(_:_:)`` macro.
   public var isSuite: Bool {
-    containingTypeInfo != nil && testCaseState == nil
+    containingTypeInfo != nil && testCasesState == nil
   }
 
   /// Whether or not this instance was synthesized at runtime.
@@ -221,7 +221,28 @@ public struct Test: Sendable {
     self.sourceLocation = sourceLocation
     self.containingTypeInfo = containingTypeInfo
     self.xcTestCompatibleSelector = xcTestCompatibleSelector
-    self.testCaseState = .unevaluated { .init(try await testCases()) }
+    self.testCasesState = .unevaluated { .init(try await testCases()) }
+    self.parameters = parameters
+  }
+
+  /// Initialize an instance of this type representing a test function.
+  init<S>(
+    name: String,
+    displayName: String? = nil,
+    traits: [any Trait],
+    sourceLocation: SourceLocation,
+    containingTypeInfo: TypeInfo? = nil,
+    xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
+    testCases: Test.Case.Generator<S>,
+    parameters: [Parameter]
+  ) {
+    self.name = name
+    self.displayName = displayName
+    self.traits = traits
+    self.sourceLocation = sourceLocation
+    self.containingTypeInfo = containingTypeInfo
+    self.xcTestCompatibleSelector = xcTestCompatibleSelector
+    self.testCasesState = .evaluated(.success(UncheckedSendable(rawValue: .init(testCases))))
     self.parameters = parameters
   }
 }
@@ -273,34 +294,6 @@ extension Test {
 
     /// The source location of this test.
     public var sourceLocation: SourceLocation
-
-    /// An enumeration describing the evaluation state of a test's cases.
-    public enum TestCaseState: Sendable {
-      /// The test's cases have not yet been evaluated.
-      case unevaluated
-
-      /// The test's cases have been evaluated, and either returned a sequence
-      /// of cases or failed by throwing an error.
-      ///
-      /// - Parameters:
-      ///   - result: The result of having evaluated the test's cases.
-      case evaluated(_ result: Result<[Test.Case.Snapshot], ErrorSnapshot>)
-
-      /// Initialize an instance of this type with the specified details.
-      ///
-      /// - Parameters:
-      ///   - testCaseState: The original test case state to snapshot.
-      fileprivate init(snapshotting testCaseState: Test.TestCaseState) {
-        self = switch testCaseState {
-        case .unevaluated:
-          .unevaluated
-        case let .evaluated(.success(testCases)):
-          .evaluated(.success(testCases.rawValue.map(Test.Case.Snapshot.init(snapshotting:))))
-        case let .evaluated(.failure(error)):
-          .evaluated(.failure(ErrorSnapshot(snapshotting: error)))
-        }
-      }
-    }
 
     /// The set of test cases associated with this test, if any.
     ///
@@ -355,7 +348,7 @@ extension Test {
         _timeLimit = test.timeLimit.map(TimeValue.init)
       }
 
-      testCases = switch test.testCaseState {
+      testCases = switch test.testCasesState {
       case .unevaluated,
            .evaluated(.failure):
         []
