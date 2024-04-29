@@ -60,12 +60,12 @@ public typealias ABIEntryPoint_v0 = @Sendable (
 @usableFromInline
 func abiEntryPoint_v0(_ outEntryPoint: UnsafeMutableRawPointer) {
   outEntryPoint.initializeMemory(as: ABIEntryPoint_v0.self) { argumentsJSON, eventHandler in
-    var args = try! argumentsJSON.map { argumentsJSON in
+    let args = try! argumentsJSON.map { argumentsJSON in
       try JSON.decode(__CommandLineArguments_v0.self, from: argumentsJSON)
     }
 
     let eventHandler = eventHandlerForStreamingEvents_v0(to: eventHandler)
-    return await entryPoint(passing: &args, eventHandler: eventHandler)
+    return await entryPoint(passing: args, eventHandler: eventHandler)
   }
 }
 #endif
