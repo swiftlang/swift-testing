@@ -185,9 +185,13 @@ func asyncTrait() async -> some SuiteTrait & TestTrait {
 
 @Suite(.hidden, await asyncTrait())
 struct TestsWithAsyncArguments {
-  static func asyncCollection() async -> [Int] { [] }
+  static func asyncCollection() async throws -> [Int] { [] }
 
-  @Test(.hidden, await asyncTrait(), arguments: await asyncCollection()) func f(i: Int) {}
+  @Test(.hidden, await asyncTrait(), arguments: try await asyncCollection())
+  func f(i: Int) {}
+
+  @Test(.hidden, arguments: try await asyncCollection(), try await asyncCollection())
+  func g(i: Int, j: Int) {}
 }
 
 @Suite("Miscellaneous tests")
@@ -405,41 +409,46 @@ struct MiscellaneousTests {
 
   @Test("Properties related to parameterization")
   func parameterizationRelatedProperties() async throws {
-    let typeTest = Test.__type(SendableTests.self, displayName: "", traits: [], sourceLocation: .init())
-    #expect(!typeTest.isParameterized)
-    #expect(typeTest.testCases == nil)
-    #expect(typeTest.parameters == nil)
-
-    let monomorphicTestFunction = Test {}
-    #expect(!monomorphicTestFunction.isParameterized)
-    let monomorphicTestFunctionTestCases = try #require(monomorphicTestFunction.testCases)
-    #expect(monomorphicTestFunctionTestCases.underestimatedCount == 1)
-    let monomorphicTestFunctionParameters = try #require(monomorphicTestFunction.parameters)
-    #expect(monomorphicTestFunctionParameters.isEmpty)
-
-    let parameterizedTestFunction = Test(arguments: 0 ..< 100, parameters: [Test.Parameter(index: 0, firstName: "i", type: Int.self)]) { _ in }
-    #expect(parameterizedTestFunction.isParameterized)
-    let parameterizedTestFunctionTestCases = try #require(parameterizedTestFunction.testCases)
-    #expect(parameterizedTestFunctionTestCases.underestimatedCount == 100)
-    let parameterizedTestFunctionParameters = try #require(parameterizedTestFunction.parameters)
-    #expect(parameterizedTestFunctionParameters.count == 1)
-    let parameterizedTestFunctionFirstParameter = try #require(parameterizedTestFunctionParameters.first)
-    #expect(parameterizedTestFunctionFirstParameter.firstName == "i")
-
-    let parameterizedTestFunction2 = Test(arguments: 0 ..< 100, 0 ..< 100, parameters: [
-      Test.Parameter(index: 0, firstName: "i", type: Int.self),
-      Test.Parameter(index: 1, firstName: "j", secondName: "value", type: Int.self),
-    ]) { _, _ in }
-    #expect(parameterizedTestFunction2.isParameterized)
-    let parameterizedTestFunction2TestCases = try #require(parameterizedTestFunction2.testCases)
-    #expect(parameterizedTestFunction2TestCases.underestimatedCount == 100 * 100)
-    let parameterizedTestFunction2Parameters = try #require(parameterizedTestFunction2.parameters)
-    #expect(parameterizedTestFunction2Parameters.count == 2)
-    let parameterizedTestFunction2FirstParameter = try #require(parameterizedTestFunction2Parameters.first)
-    #expect(parameterizedTestFunction2FirstParameter.firstName == "i")
-    let parameterizedTestFunction2SecondParameter = try #require(parameterizedTestFunction2Parameters.last)
-    #expect(parameterizedTestFunction2SecondParameter.firstName == "j")
-    #expect(parameterizedTestFunction2SecondParameter.secondName == "value")
+    do {
+      let test = Test.__type(SendableTests.self, displayName: "", traits: [], sourceLocation: .init())
+      #expect(!test.isParameterized)
+      #expect(test.testCases == nil)
+      #expect(test.parameters == nil)
+    }
+    do {
+      let test = Test {}
+      #expect(!test.isParameterized)
+      let testCases = try #require(test.testCases)
+      #expect(testCases.underestimatedCount == 1)
+      let parameters = try #require(test.parameters)
+      #expect(parameters.isEmpty)
+    }
+    do {
+      let test = Test(arguments: 0 ..< 100, parameters: [Test.Parameter(index: 0, firstName: "i", type: Int.self)]) { _ in }
+      #expect(test.isParameterized)
+      let testCases = try #require(test.testCases)
+      #expect(testCases.underestimatedCount == 100)
+      let parameters = try #require(test.parameters)
+      #expect(parameters.count == 1)
+      let firstParameter = try #require(parameters.first)
+      #expect(firstParameter.firstName == "i")
+    }
+    do {
+      let test = Test(arguments: 0 ..< 100, 0 ..< 100, parameters: [
+        Test.Parameter(index: 0, firstName: "i", type: Int.self),
+        Test.Parameter(index: 1, firstName: "j", secondName: "value", type: Int.self),
+      ]) { _, _ in }
+      #expect(test.isParameterized)
+      let testCases = try #require(test.testCases)
+      #expect(testCases.underestimatedCount == 100 * 100)
+      let parameters = try #require(test.parameters)
+      #expect(parameters.count == 2)
+      let firstParameter = try #require(parameters.first)
+      #expect(firstParameter.firstName == "i")
+      let lastParameter = try #require(parameters.last)
+      #expect(lastParameter.firstName == "j")
+      #expect(lastParameter.secondName == "value")
+    }
   }
 
   @Test("Test.id property")

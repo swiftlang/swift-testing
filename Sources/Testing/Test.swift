@@ -68,24 +68,91 @@ public struct Test: Sendable {
   @_spi(ForToolsIntegrationOnly)
   public var xcTestCompatibleSelector: __XCTestCompatibleSelector?
 
-  /// Storage for the ``testCases`` property.
+  /// An enumeration describing the evaluation state of a test's cases.
   ///
-  /// This use of `UncheckedSendable` and of `AnySequence` is necessary because
-  /// it is not currently possible to express `Sequence<Test.Case> & Sendable`
-  /// as an existential (`any`) ([96960993](rdar://96960993)). It is also not
-  /// possible to have a value of an underlying generic sequence type without
-  /// specifying its generic parameters.
-  private var _testCases: UncheckedSendable<AnySequence<Test.Case>>?
+  /// This use of `UncheckedSendable` and of `AnySequence` in this type's cases
+  /// is necessary because it is not currently possible to express
+  /// `Sequence<Test.Case> & Sendable` as an existential (`any`)
+  /// ([96960993](rdar://96960993)). It is also not possible to have a value of
+  /// an underlying generic sequence type without specifying its generic
+  /// parameters.
+  fileprivate enum TestCasesState: Sendable {
+    /// The test's cases have not yet been evaluated.
+    ///
+    /// - Parameters:
+    ///   - function: The function to call to evaluate the test's cases. The
+    ///     result is a sequence of test cases.
+    case unevaluated(_ function: @Sendable () async throws -> AnySequence<Test.Case>)
+
+    /// The test's cases have been evaluated, and either returned a sequence of
+    /// cases or failed by throwing an error.
+    ///
+    /// - Parameters:
+    ///   - result: The result of having evaluated the test's cases.
+    case evaluated(_ result: Result<UncheckedSendable<AnySequence<Test.Case>>, any Error>)
+  }
+
+  /// The evaluation state of this test's cases, if any.
+  ///
+  /// If this test represents a suite type, the value of this property is `nil`.
+  fileprivate var testCasesState: TestCasesState?
 
   /// The set of test cases associated with this test, if any.
+  ///
+  /// - Precondition: This property may only be accessed on test instances
+  ///   representing suites, or on test functions whose ``testCaseState``
+  ///   indicates a successfully-evaluated state.
   ///
   /// For parameterized tests, each test case is associated with a single
   /// combination of parameterized inputs. For non-parameterized tests, a single
   /// test case is synthesized. For test suite types (as opposed to test
   /// functions), the value of this property is `nil`.
-  @_spi(ForToolsIntegrationOnly)
-  public var testCases: (some Sequence<Test.Case> & Sendable)? {
-    _testCases?.rawValue
+  var testCases: (some Sequence<Test.Case> & Sendable)? {
+    guard let testCasesState else {
+      return nil as AnySequence<Test.Case>?
+    }
+    guard case let .evaluated(result) = testCasesState else {
+      // Callers are expected to first attempt to evaluate a test's cases by
+      // calling `evaluateTestCases()`.
+      preconditionFailure("Attempting to access test cases before they have been evaluated.")
+    }
+    guard case let .success(testCases) = result else {
+      // Callers are never expected to access this property after evaluating a
+      // test's cases, if that evaluation threw an error, because if the test
+      // cannot be run. In this scenario, a `Runner.Plan` is expected to record
+      // issue for the test, rather than attempt to run it, and thus never
+      // access this property.
+      preconditionFailure("Attempting to access test cases after evaluating them failed.")
+    }
+    return testCases.rawValue
+  }
+
+  /// Evaluate this test's cases if they have not been evaluated yet.
+  ///
+  /// The arguments of a test are captured into a closure so they can be lazily
+  /// evaluated only if the test will run to avoid unnecessary work. This
+  /// function may be called once that determination has been made, to perform
+  /// this evaluation once. The resulting arguments are stored on this instance
+  /// so that subsequent calls to ``testCases`` do not cause the arguments to be
+  /// re-evaluated.
+  ///
+  /// - Throws: Any error caught while first evaluating the test arguments.
+  mutating func evaluateTestCases() async throws {
+    guard let testCasesState else { return }
+
+    do {
+      switch testCasesState {
+      case let .unevaluated(function):
+        let sequence = try await function()
+        self.testCasesState = .evaluated(.success(UncheckedSendable(rawValue: sequence)))
+      case .evaluated:
+        // No-op: already evaluated
+        break
+      }
+    } catch {
+      self.testCasesState = .evaluated(.failure(error))
+      throw error
+    }
   }
 
   /// Whether or not this test is parameterized.
@@ -109,7 +176,7 @@ public struct Test: Sendable {
   ///
   /// A test suite can be declared using the ``Suite(_:_:)`` macro.
   public var isSuite: Bool {
-    containingTypeInfo != nil && testCases == nil
+    containingTypeInfo != nil && testCasesState == nil
   }
 
   /// Whether or not this instance was synthesized at runtime.
@@ -145,6 +212,27 @@ public struct Test: Sendable {
     sourceLocation: SourceLocation,
     containingTypeInfo: TypeInfo? = nil,
     xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
+    testCases: @escaping @Sendable () async throws -> Test.Case.Generator<S>,
+    parameters: [Parameter]
+  ) {
+    self.name = name
+    self.displayName = displayName
+    self.traits = traits
+    self.sourceLocation = sourceLocation
+    self.containingTypeInfo = containingTypeInfo
+    self.xcTestCompatibleSelector = xcTestCompatibleSelector
+    self.testCasesState = .unevaluated { .init(try await testCases()) }
+    self.parameters = parameters
+  }
+
+  /// Initialize an instance of this type representing a test function.
+  init<S>(
+    name: String,
+    displayName: String? = nil,
+    traits: [any Trait],
+    sourceLocation: SourceLocation,
+    containingTypeInfo: TypeInfo? = nil,
+    xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
     testCases: Test.Case.Generator<S>,
     parameters: [Parameter]
   ) {
@@ -154,7 +242,7 @@ public struct Test: Sendable {
     self.sourceLocation = sourceLocation
     self.containingTypeInfo = containingTypeInfo
     self.xcTestCompatibleSelector = xcTestCompatibleSelector
-    self._testCases = .init(rawValue: .init(testCases))
+    self.testCasesState = .evaluated(.success(UncheckedSendable(rawValue: .init(testCases))))
     self.parameters = parameters
   }
 }
@@ -209,10 +297,10 @@ extension Test {
 
     /// The set of test cases associated with this test, if any.
     ///
-    /// ## See Also
-    ///
-    /// - ``Test/testCases``
-    @_spi(ForToolsIntegrationOnly)
+    /// If the ``Test`` this instance was snapshotted from represented a
+    /// parameterized test function but its test cases had not yet been
+    /// evaluated when the snapshot was taken, or the evaluation attempt failed,
+    /// the value of this property will be an empty array.
     public var testCases: [Test.Case.Snapshot]?
 
     /// The test function parameters, if any.
@@ -252,13 +340,22 @@ extension Test {
       name = test.name
       displayName = test.displayName
       sourceLocation = test.sourceLocation
-      testCases = test.testCases?.map(Test.Case.Snapshot.init)
       parameters = test.parameters
       comments = test.comments
       tags = test.tags
       associatedBugs = test.associatedBugs
       if #available(_clockAPI, *) {
         _timeLimit = test.timeLimit.map(TimeValue.init)
+      }
+
+      testCases = switch test.testCasesState {
+      case .unevaluated,
+           .evaluated(.failure):
+        []
+      case let .evaluated(.success(testCases)):
+        testCases.rawValue.map(Test.Case.Snapshot.init(snapshotting:))
+      case nil:
+        nil
       }
     }
 

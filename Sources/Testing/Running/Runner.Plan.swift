@@ -193,11 +193,14 @@ extension Runner.Plan {
     testGraph = configuration.testFilter.apply(to: testGraph)
 
     // For each test value, determine the appropriate action for it.
-    await testGraph.forEach { keyPath, test in
+    //
+    // FIXME: Parallelize this work. Calling `prepare(...)` on all traits and
+    // evaluating all test arguments should be safely parallelizable.
+    testGraph = await testGraph.mapValues { keyPath, test in
       // Skip any nil test, which implies this node is just a placeholder and
       // not actual test content.
-      guard let test else {
-        return
+      guard var test else {
+        return nil
       }
 
       var action = runAction
@@ -232,7 +235,24 @@ extension Runner.Plan {
         action = .recordIssue(issue)
       }
 
+      // If the test is still planned to run (i.e. nothing thus far has caused
+      // it to be skipped), evaluate its test cases now.
+      //
+      // The argument expressions of each test are captured in closures so they
+      // can be evaluated lazily only once it is determined that the test will
+      // run, to avoid unnecessary work. But now is the appropriate time to
+      // evaluate them.
+      do {
+        try await test.evaluateTestCases()
+      } catch {
+        let sourceContext = SourceContext(backtrace: Backtrace(forFirstThrowOf: error))
+        let issue = Issue(kind: .errorCaught(error), comments: [], sourceContext: sourceContext)
+        action = .recordIssue(issue)
+      }
+
       actionGraph.updateValue(action, at: keyPath)
+
+      return test
     }
 
     // Now that we have allowed all the traits to update their corresponding
