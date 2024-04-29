@@ -237,7 +237,6 @@ func diagnoseIssuesWithLexicalContext(
   return diagnostics
 }
 
-#if canImport(SwiftSyntax600)
 /// Diagnose issues with the lexical context containing a declaration.
 ///
 /// - Parameters:
@@ -256,7 +255,6 @@ func diagnoseIssuesWithLexicalContext(
     .map { diagnoseIssuesWithLexicalContext($0, containing: decl, attribute: attribute) }
     .reduce(into: [], +=)
 }
-#endif
 
 /// Create a declaration that prevents compilation if it is generic.
 ///
@@ -278,13 +276,12 @@ func makeGenericGuardDecl(
   guardingAgainst decl: some DeclSyntaxProtocol,
   in context: some MacroExpansionContext
 ) -> DeclSyntax? {
-#if canImport(SwiftSyntax600)
   guard context.lexicalContext.lazy.map(\.kind).contains(.extensionDecl) else {
     // Don't bother emitting a member if the declaration is not in an extension
     // because we'll already be able to emit a better error.
     return nil
   }
-#endif
+
   let genericGuardName = if let functionDecl = decl.as(FunctionDeclSyntax.self) {
     context.makeUniqueName(thunking: functionDecl)
   } else {

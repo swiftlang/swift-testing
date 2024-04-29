@@ -26,7 +26,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     }
 
     let functionDecl = declaration.cast(FunctionDeclSyntax.self)
-    let typeName = context.typeOfLexicalContext(containing: functionDecl)
+    let typeName = context.typeOfLexicalContext
 
     return _createTestContainerDecls(for: functionDecl, on: typeName, testAttribute: node, in: context)
   }
@@ -56,10 +56,8 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       return false
     }
 
-#if canImport(SwiftSyntax600)
     // Check if the lexical context is appropriate for a suite or test.
     diagnostics += diagnoseIssuesWithLexicalContext(context.lexicalContext, containing: declaration, attribute: testAttribute)
-#endif
 
     // Only one @Test attribute is supported.
     let suiteAttributes = function.attributes(named: "Test")
@@ -73,7 +71,6 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     for parameter in parameterList {
       let invalidSpecifierKeywords: [TokenKind] = [.keyword(.inout), .keyword(.isolated), .keyword(._const),]
       if let parameterType = parameter.type.as(AttributedTypeSyntax.self) {
-#if canImport(SwiftSyntax600)
         for specifier in parameterType.specifiers {
           guard case let .simpleTypeSpecifier(specifier) = specifier else {
             continue
@@ -82,11 +79,6 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
             diagnostics.append(.specifierNotSupported(specifier.specifier, on: parameter, whenUsing: testAttribute))
           }
         }
-#else
-        if let specifier = parameterType.specifier, invalidSpecifierKeywords.contains(specifier.tokenKind) {
-          diagnostics.append(.specifierNotSupported(specifier, on: parameter, whenUsing: testAttribute))
-        }
-#endif
       }
     }
 
@@ -193,18 +185,12 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     let closureCaptures = parametersWithLabels.lazy.map { label, parameter in
       var needsCopy = false
       if let parameterType = parameter.type.as(AttributedTypeSyntax.self) {
-#if canImport(SwiftSyntax600)
         needsCopy = parameterType.specifiers.contains { specifier in
           guard case let .simpleTypeSpecifier(specifier) = specifier else {
             return false
           }
           return specifierKeywordsNeedingCopy.contains(specifier.specifier.tokenKind)
         }
-#else
-        if let specifier = parameterType.specifier {
-          needsCopy = specifierKeywordsNeedingCopy.contains(specifier.tokenKind)
-        }
-#endif
       }
 
       if needsCopy {
@@ -395,36 +381,9 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
   ) -> [DeclSyntax] {
     var result = [DeclSyntax]()
 
-#if canImport(SwiftSyntax600)
     // Get the name of the type containing the function for passing to the test
     // factory function later.
     let typealiasExpr: ExprSyntax = typeName.map { "\($0).self" } ?? "nil"
-#else
-    // We cannot directly refer to Self here because it will end up being
-    // resolved as the __TestContainer type we generate. Create a uniquely-named
-    // reference to Self outside the context of the generated type, and use it
-    // when the generated type needs to refer to the containing type.
-    //
-    // To support covariant Self on classes, we embed the reference to Self
-    // inside a static computed property instead of a typealias (where covariant
-    // Self is disallowed.)
-    //
-    // This "typealias" is not necessary when swift-syntax-6.0.0 is available.
-    var typealiasExpr: ExprSyntax = "nil"
-    if let typeName {
-      let typealiasName = context.makeUniqueName(thunking: functionDecl)
-      result.append(
-        """
-        @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-        private static nonisolated var \(typealiasName): Any.Type {
-          \(typeName).self
-        }
-        """
-      )
-
-      typealiasExpr = "\(typealiasName)"
-    }
-#endif
 
     if typeName != nil, let genericGuardDecl = makeGenericGuardDecl(guardingAgainst: functionDecl, in: context) {
       result.append(genericGuardDecl)

@@ -89,10 +89,6 @@ extension Test {
   ///   - tests: A dictionary of tests to amend.
   ///
   /// - Returns: The number of key-value pairs added to `tests`.
-  ///
-  /// - Bug: This function is necessary because containing type information is
-  ///   not available during expansion of the `@Test` macro.
-  ///   ([105470382](rdar://105470382))
   @discardableResult private static func _synthesizeSuiteTypes(into tests: inout [ID: Self]) -> Int {
     let originalCount = tests.count
 

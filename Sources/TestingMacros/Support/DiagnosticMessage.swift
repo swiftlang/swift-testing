@@ -118,13 +118,8 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
       result = ("subscript", "a")
     case .enumCaseDecl:
       result = ("enumeration case", "an")
-#if canImport(SwiftSyntax600)
     case .typeAliasDecl:
       result = ("typealias", "a")
-#else
-    case .typealiasDecl:
-      result = ("typealias", "a")
-#endif
     case .macroDecl:
       result = ("macro", "a")
     case .protocolDecl:
@@ -400,7 +395,6 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     }
   }
 
-#if canImport(SwiftSyntax600)
   /// Create a diagnostic message stating that the given attribute cannot be
   /// applied to the given declaration outside the scope of an extension to
   /// `Tag`.
@@ -417,7 +411,6 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
       severity: .error
     )
   }
-#endif
 
   /// Create a diagnostic message stating that the given attribute has no effect
   /// when applied to the given extension declaration.

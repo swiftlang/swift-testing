@@ -59,10 +59,8 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
       context.diagnose(diagnostics)
     }
 
-#if canImport(SwiftSyntax600)
     // Check if the lexical context is appropriate for a suite or test.
     diagnostics += diagnoseIssuesWithLexicalContext(context.lexicalContext, containing: declaration, attribute: suiteAttribute)
-#endif
     diagnostics += diagnoseIssuesWithLexicalContext(declaration, containing: declaration, attribute: suiteAttribute)
 
     // Suites inheriting from XCTestCase are not supported.
