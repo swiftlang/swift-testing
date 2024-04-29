@@ -466,12 +466,7 @@ public macro require(
 /// }
 /// ```
 ///
-/// Additionally, an exit test:
-///
-/// - _must_ run within a test function (or a function called by one);
-/// - cannot run within another exit test; and
-/// - cannot be run on a detached child task, a dispatch queue, or a background
-///   thread.
+/// An exit test cannot run within another exit test.
 @_spi(Experimental)
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
@@ -546,12 +541,7 @@ public macro require(
 /// }
 /// ```
 ///
-/// Additionally, an exit test:
-///
-/// - _must_ run within a test function (or a function called by one);
-/// - cannot run within another exit test; and
-/// - cannot be run on a detached child task, a dispatch queue, or a background
-///   thread.
+/// An exit test cannot run within another exit test.
 @_spi(Experimental)
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
