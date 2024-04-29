@@ -67,7 +67,6 @@ public typealias __XCTestCompatibleSelector = Never
 /// ## See Also
 ///
 /// - <doc:OrganizingTests>
-@_documentation(visibility: private)
 @attached(member) @attached(peer) public macro Suite(
   _ traits: any SuiteTrait...
 ) = #externalMacro(module: "TestingMacros", type: "SuiteDeclarationMacro")
@@ -123,7 +122,6 @@ extension Test {
 /// ## See Also
 ///
 /// - ``Test(_:_:)``
-@_documentation(visibility: private)
 @attached(peer) public macro Test(
   _ traits: any TestTrait...
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro")
@@ -192,7 +190,6 @@ extension [Test.__Parameter] {
 /// ## See Also
 ///
 /// - ``Test(_:arguments:)-35dat``
-@_documentation(visibility: private)
 @attached(peer) public macro Test<C>(
   _ traits: any TestTrait...,
   arguments collection: C
@@ -268,7 +265,6 @@ extension Test {
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
-@_documentation(visibility: private)
 @attached(peer) public macro Test<C1, C2>(
   _ traits: any TestTrait...,
   arguments collection1: C1, _ collection2: C2
@@ -321,7 +317,6 @@ extension Test {
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
-@_documentation(visibility: private)
 @attached(peer) public macro Test<C1, C2>(
   _ traits: any TestTrait...,
   arguments zippedCollections: Zip2Sequence<C1, C2>
