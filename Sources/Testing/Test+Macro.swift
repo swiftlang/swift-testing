@@ -67,8 +67,9 @@ public typealias __XCTestCompatibleSelector = Never
 /// ## See Also
 ///
 /// - <doc:OrganizingTests>
+@attached(member) @attached(peer)
 @_documentation(visibility: private)
-@attached(member) @attached(peer) public macro Suite(
+public macro Suite(
   _ traits: any SuiteTrait...
 ) = #externalMacro(module: "TestingMacros", type: "SuiteDeclarationMacro")
 
@@ -123,8 +124,9 @@ extension Test {
 /// ## See Also
 ///
 /// - ``Test(_:_:)``
+@attached(peer)
 @_documentation(visibility: private)
-@attached(peer) public macro Test(
+public macro Test(
   _ traits: any TestTrait...
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro")
 
@@ -192,8 +194,9 @@ extension [Test.__Parameter] {
 /// ## See Also
 ///
 /// - ``Test(_:arguments:)-35dat``
+@attached(peer)
 @_documentation(visibility: private)
-@attached(peer) public macro Test<C>(
+public macro Test<C>(
   _ traits: any TestTrait...,
   arguments collection: C
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where C: Collection & Sendable, C.Element: Sendable
@@ -268,8 +271,9 @@ extension Test {
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
+@attached(peer)
 @_documentation(visibility: private)
-@attached(peer) public macro Test<C1, C2>(
+public macro Test<C1, C2>(
   _ traits: any TestTrait...,
   arguments collection1: C1, _ collection2: C2
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable
@@ -321,8 +325,9 @@ extension Test {
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
+@attached(peer)
 @_documentation(visibility: private)
-@attached(peer) public macro Test<C1, C2>(
+public macro Test<C1, C2>(
   _ traits: any TestTrait...,
   arguments zippedCollections: Zip2Sequence<C1, C2>
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable

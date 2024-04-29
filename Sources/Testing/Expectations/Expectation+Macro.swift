@@ -93,8 +93,9 @@
 /// `optionalValue` may be ambiguous (i.e. it is unclear if the developer
 /// intended to check for a boolean value or unwrap an optional boolean value)
 /// and provides additional compile-time diagnostics when it is.
+@freestanding(expression)
 @_documentation(visibility: private)
-@freestanding(expression) public macro require(
+public macro require(
   _ optionalValue: Bool?,
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = SourceLocation()
