@@ -10,45 +10,6 @@
 
 private import TestingInternals
 
-/// The entry point to the testing library used by Swift Package Manager.
-///
-/// - Parameters:
-///   - args: A previously-parsed command-line arguments structure to interpret.
-///     If `nil`, a new instance is created from the command-line arguments to
-///     the current process.
-///
-/// - Returns: The result of invoking the testing library. The type of this
-///   value is subject to change.
-///
-/// This function examines the command-line arguments represented by `args` and
-/// then invokes available tests in the current process.
-///
-/// - Warning: This function is used by Swift Package Manager. Do not call it
-///   directly.
-@_disfavoredOverload public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) async -> CInt {
-  await entryPoint(passing: args, eventHandler: nil)
-}
-
-/// The entry point to the testing library used by Swift Package Manager.
-///
-/// - Parameters:
-///   - args: A previously-parsed command-line arguments structure to interpret.
-///     If `nil`, a new instance is created from the command-line arguments to
-///     the current process.
-///
-/// This function examines the command-line arguments to the current process
-/// and then invokes available tests in the current process. When the tests
-/// complete, the process is terminated. If tests were successful, an exit code
-/// of `EXIT_SUCCESS` is used; otherwise, a (possibly platform-specific) value
-/// such as `EXIT_FAILURE` is used instead.
-///
-/// - Warning: This function is used by Swift Package Manager. Do not call it
-///   directly.
-public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) async -> Never {
-  let exitCode: CInt = await __swiftPMEntryPoint(passing: args)
-  exit(exitCode)
-}
-
 /// The common implementation of the entry point functions in this file.
 ///
 /// - Parameters:
@@ -62,7 +23,7 @@ func entryPoint(passing args: consuming __CommandLineArguments_v0?, eventHandler
   do {
     let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments())
     if args.listTests {
-      for testID in await listTestsForSwiftPM(Test.all) {
+      for testID in await listTestsForEntryPoint(Test.all) {
 #if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
         try? FileHandle.stdout.write("\(testID)\n")
 #else
@@ -72,13 +33,13 @@ func entryPoint(passing args: consuming __CommandLineArguments_v0?, eventHandler
     } else {
 #if !SWT_NO_EXIT_TESTS
       // If an exit test was specified, run it. `exitTest` returns `Never`.
-      if let exitTest = ExitTest.findInEnvironmentForSwiftPM() {
+      if let exitTest = ExitTest.findInEnvironmentForEntryPoint() {
         await exitTest()
       }
 #endif
 
       // Configure the test runner.
-      var configuration = try configurationForSwiftPMEntryPoint(from: args)
+      var configuration = try configurationForEntryPoint(from: args)
 
       // Set up the event handler.
       configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
@@ -138,7 +99,7 @@ func entryPoint(passing args: consuming __CommandLineArguments_v0?, eventHandler
 ///   - tests: The tests to list.
 ///
 /// - Returns: An array of strings representing the IDs of `tests`.
-func listTestsForSwiftPM(_ tests: some Sequence<Test>) -> [String] {
+func listTestsForEntryPoint(_ tests: some Sequence<Test>) -> [String] {
   // Filter out hidden tests and test suites. Hidden tests should not generally
   // be presented to the user, and suites (XCTestCase classes) are not included
   // in the equivalent XCTest-based output.
@@ -291,7 +252,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 ///
 /// - Throws: If an argument is invalid, such as a malformed regular expression.
 @_spi(ForToolsIntegrationOnly)
-public func configurationForSwiftPMEntryPoint(from args: __CommandLineArguments_v0) throws -> Configuration {
+public func configurationForEntryPoint(from args: __CommandLineArguments_v0) throws -> Configuration {
   var configuration = Configuration()
 
   // Parallelization (on by default)
@@ -372,7 +333,7 @@ public func configurationForSwiftPMEntryPoint(from args: __CommandLineArguments_
 
 #if !SWT_NO_EXIT_TESTS
   // Enable exit test handling via __swiftPMEntryPoint().
-  configuration.exitTestHandler = ExitTest.handlerForSwiftPM(forXCTestCaseIdentifiedBy: args.xcTestCaseHostIdentifier)
+  configuration.exitTestHandler = ExitTest.handlerForEntryPoint(forXCTestCaseIdentifiedBy: args.xcTestCaseHostIdentifier)
 #endif
 
   return configuration
