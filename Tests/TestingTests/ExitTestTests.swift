@@ -43,7 +43,10 @@ private import TestingInternals
     }
 #endif
 #if !SWT_NO_UNSTRUCTURED_TASKS
-    // Test the detached (no task-local configuration) path.
+#if false
+    // Test the detached (no task-local configuration) path. Disabled because,
+    // like other tests using Task.detached, it can interfere with other tests
+    // running concurrently.
     #expect(Test.current != nil)
     await Task.detached {
       #expect(Test.current == nil)
@@ -51,6 +54,7 @@ private import TestingInternals
         fatalError()
       }
     }.value
+#endif
 #endif
   }
 
