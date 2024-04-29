@@ -25,9 +25,9 @@
 /// globally disabled (by, for example, passing `--no-parallel` to the
 /// `swift test` command.)
 ///
-/// To add this trait to a test, use ``Trait/serial``.
+/// To add this trait to a test, use ``Trait/serialized``.
 @_spi(Experimental)
-public struct SerialTrait: TestTrait, SuiteTrait {
+public struct ParallelizationTrait: TestTrait, SuiteTrait {
   public var isRecursive: Bool {
     true
   }
@@ -36,7 +36,7 @@ public struct SerialTrait: TestTrait, SuiteTrait {
 // MARK: - SPIAwareTrait
 
 @_spi(ForToolsIntegrationOnly)
-extension SerialTrait: SPIAwareTrait {
+extension ParallelizationTrait: SPIAwareTrait {
   public func prepare(for test: Test, action: inout Runner.Plan.Action) async throws {
     if case var .run(options) = action {
       options.isParallelizationEnabled = false
@@ -48,13 +48,13 @@ extension SerialTrait: SPIAwareTrait {
 // MARK: -
 
 @_spi(Experimental)
-extension Trait where Self == SerialTrait {
+extension Trait where Self == ParallelizationTrait {
   /// A trait that serializes the test to which it is applied.
   ///
   /// ## See Also
   ///
-  /// - ``SerialTrait``
-  public static var serial: Self {
+  /// - ``ParallelizationTrait``
+  public static var serialized: Self {
     Self()
   }
 }
