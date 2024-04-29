@@ -10,7 +10,7 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-@Suite("Serial Trait Tests", .tags("trait"))
+@Suite("Parallelization Trait Tests", .tags("trait"))
 struct ParallelizationTraitTests {
   @Test(".serialized trait is recursively applied")
   func serializedTrait() async {
