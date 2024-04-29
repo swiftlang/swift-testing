@@ -26,7 +26,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     }
 
     let functionDecl = declaration.cast(FunctionDeclSyntax.self)
-    let typeName = context.typeOfLexicalContext(containing: functionDecl)
+    let typeName = context.typeOfLexicalContext
 
     return _createTestContainerDecls(for: functionDecl, on: typeName, testAttribute: node, in: context)
   }

@@ -40,7 +40,7 @@ public struct TagMacro: PeerMacro, AccessorMacro, Sendable {
 
     // Figure out what type the tag is declared on. It must be declared on Tag
     // or a type nested in Tag.
-    guard let type = context.typeOfLexicalContext(containing: variableDecl) else {
+    guard let type = context.typeOfLexicalContext else {
       context.diagnose(.nonMemberTagDeclarationNotSupported(variableDecl, whenUsing: node))
       return _fallbackAccessorDecls
     }

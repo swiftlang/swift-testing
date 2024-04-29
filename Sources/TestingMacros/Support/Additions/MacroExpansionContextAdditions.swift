@@ -28,11 +28,7 @@ extension MacroExpansionContext {
   ///
   /// If the lexical context includes functions, closures, or some other
   /// non-type scope, the value of this property is `nil`.
-  ///
-  /// If swift-syntax-600 or newer is available, `node` is ignored. The argument
-  /// will be removed once the testing library's swift-syntax dependency is
-  /// updated to swift-syntax-600 or later.
-  func typeOfLexicalContext(containing node: some WithAttributesSyntax) -> TypeSyntax? {
+  var typeOfLexicalContext: TypeSyntax? {
     var typeNames = [String]()
     for lexicalContext in lexicalContext.reversed() {
       guard let decl = lexicalContext.asProtocol((any DeclGroupSyntax).self) else {
