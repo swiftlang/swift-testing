@@ -17,7 +17,13 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
-@Suite("TagMacro Tests")
+#if compiler(>=5.11)
+private let swift6Compiler = true
+#else
+private let swift6Compiler = false
+#endif
+
+@Suite("TagMacro Tests", .enabled(if: swift6Compiler, "@Tag tests require lexical context"))
 struct TagMacroTests {
   @Test("@Tag macro",
     arguments: [
