@@ -20,23 +20,23 @@ run in the same process. The number of tests that run concurrently is controlled
 by the Swift runtime.
 
 <!--
-HIDDEN: .serial is experimental SPI pending feature review.
+HIDDEN: .serialized is experimental SPI pending feature review.
 
 ## Disabling parallelization
 
 Parallelization can be disabled on a per-function or per-suite basis using the
-``Trait/serial`` trait:
+``Trait/serialized`` trait:
 
 ```swift
-@Test(.serial, arguments: Food.allCases) func prepare(food: Food) {
+@Test(.serialized, arguments: Food.allCases) func prepare(food: Food) {
   // This function will be invoked serially, once per food, because it has the
-  // .serial trait.
+  // .serialized trait.
 }
 
-@Suite(.serial) struct FoodTruckTests {
+@Suite(.serialized) struct FoodTruckTests {
   @Test(arguments: Condiment.allCases) func refill(condiment: Condiment) {
     // This function will be invoked serially, once per condiment, because the
-    // containing suite has the .serial trait.
+    // containing suite has the .serialized trait.
   }
 
   @Test func startEngine() async throws {
@@ -62,6 +62,6 @@ disabled (by, for example, passing `--no-parallel` to the `swift test` command.)
 
 ## Topics
 
-- ``Trait/serial``
-- ``SerialTrait``
+- ``Trait/serialized``
+- ``ParallelizationTrait``
 -->

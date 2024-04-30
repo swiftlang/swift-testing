@@ -34,9 +34,9 @@ behavior of test functions.
 - ``Trait/timeLimit(_:)``
 
 <!--
-HIDDEN: .serial is experimental SPI pending feature review.
+HIDDEN: .serialized is experimental SPI pending feature review.
 ### Running tests serially or in parallel
-- ``SerialTrait``
+- ``ParallelizationTrait``
  -->
 
 ### Annotating tests

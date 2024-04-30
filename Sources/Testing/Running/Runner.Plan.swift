@@ -22,12 +22,12 @@ extension Runner {
         /// ``Configuration/isParallelizationEnabled`` property of the
         /// configuration passed during initialization has a value of `true`.
         ///
-        /// Traits such as ``Trait/serial`` applied to individual tests may
+        /// Traits such as ``Trait/serialized`` applied to individual tests may
         /// affect whether or not that test is parallelized.
         ///
         /// ## See Also
         ///
-        /// - ``SerialTrait``
+        /// - ``ParallelizationTrait``
         public var isParallelizationEnabled: Bool
       }
 

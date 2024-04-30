@@ -10,10 +10,10 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-@Suite("Serial Trait Tests", .tags("trait"))
-struct SerialTraitTests {
-  @Test(".serial trait is recursively applied")
-  func serialTrait() async {
+@Suite("Parallelization Trait Tests", .tags("trait"))
+struct ParallelizationTraitTests {
+  @Test(".serialized trait is recursively applied")
+  func serializedTrait() async {
     var configuration = Configuration()
     configuration.isParallelizationEnabled = true
     let plan = await Runner.Plan(selecting: OuterSuite.self, configuration: configuration)
@@ -22,7 +22,7 @@ struct SerialTraitTests {
     }
   }
 
-  @Test(".serial trait serializes parameterized test")
+  @Test(".serialized trait serializes parameterized test")
   func serializesParameterizedTestFunction() async {
     var configuration = Configuration()
     configuration.isParallelizationEnabled = true
@@ -56,7 +56,7 @@ struct SerialTraitTests {
 
 // MARK: - Fixtures
 
-@Suite(.hidden, .serial)
+@Suite(.hidden, .serialized)
 private struct OuterSuite {
   /* This @Suite intentionally left blank */ struct IntermediateSuite {
     @Suite(.hidden)
