@@ -114,7 +114,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
   /// Settings intended to be applied to every Swift target in this package.
   /// Analogous to project-level build settings in an Xcode project.
   static var packageSettings: Self {
-    availabilityMacroSettings + definesFromEnvironment + [
+    availabilityMacroSettings + [
       .unsafeFlags(["-require-explicit-sendable"]),
       .enableExperimentalFeature("StrictConcurrency"),
       .enableUpcomingFeature("ExistentialAny"),
@@ -144,28 +144,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
       .enableExperimentalFeature("AvailabilityMacro=_distantFuture:macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0"),
     ]
-  }
-
-  /// Settings defined in environment variables.
-  ///
-  /// This property allows a developer to specify a compiler conditional (such
-  /// as `SWT_NO_FILE_IO`) via an environment variable, allowing for easier
-  /// testing of niche configurations.
-  private static var definesFromEnvironment: Self {
-    Context.environment.lazy
-      .filter { key, _ in
-        key.starts(with: "SWT_NO_")
-      }.filter { _, value in
-        if let intValue = UInt64(value), intValue != 0 {
-          true
-        } else if true == Bool(value) {
-          true
-        } else {
-          false
-        }
-      }.compactMap { key, _ in
-        .define(key)
-      }
   }
 }
 
