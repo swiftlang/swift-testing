@@ -331,6 +331,7 @@ struct ConditionMacroTests {
     #expect(diagnostics.isEmpty)
   }
 
+#if !SWT_NO_EXIT_TESTS
   @Test("Expectation inside an exit test diagnoses",
     arguments: [
       "#expectExitTest(exitsWith: .failure) { #expect(1 > 2) }",
@@ -344,6 +345,7 @@ struct ConditionMacroTests {
     #expect(diagnostic.message.contains("record an issue"))
     #expect(diagnostic.message.contains("(exitsWith:"))
   }
+#endif
 
   @Test("Macro expansion is performed within a test function")
   func macroExpansionInTestFunction() throws {

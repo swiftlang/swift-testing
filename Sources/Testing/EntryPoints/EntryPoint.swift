@@ -376,7 +376,7 @@ private func _eventHandlerForStreamingEvents_v0(toFileAtPath path: String) throw
       byte == 10 || byte == 13
     }
 
-#if DEBUG
+#if DEBUG && !SWT_NO_FILE_IO
     // We don't actually expect the JSON encoder to produce output containing
     // newline characters, so in debug builds we'll log a diagnostic message.
     if eventAndContextJSON.contains(where: isASCIINewline) {
