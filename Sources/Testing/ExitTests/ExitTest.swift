@@ -218,7 +218,7 @@ extension ExitTest {
   /// This function should only be used when the process was started via the
   /// `__swiftPMEntryPoint()` function. The effect of using it under other
   /// configurations is undefined.
-  static func findInEnvironmentForSwiftPM() -> Self? {
+  static func findInEnvironmentForEntryPoint() -> Self? {
     if var sourceLocationString = Environment.variable(named: "SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION") {
       return try? sourceLocationString.withUTF8 { sourceLocationBuffer in
         let sourceLocationBuffer = UnsafeRawBufferPointer(sourceLocationBuffer)
@@ -238,7 +238,7 @@ extension ExitTest {
   ///
   /// For a description of the inputs and outputs of this function, see the
   /// documentation for ``ExitTest/Handler``.
-  static func handlerForSwiftPM(forXCTestCaseIdentifiedBy xcTestCaseIdentifier: String? = nil) -> Handler {
+  static func handlerForEntryPoint(forXCTestCaseIdentifiedBy xcTestCaseIdentifier: String? = nil) -> Handler {
     // The environment could change between invocations if a test calls setenv()
     // or unsetenv(), so we need to recompute the child environment each time.
     // The executable and XCTest bundle paths should not change over time, so we

@@ -73,7 +73,7 @@ private import TestingInternals
           failed()
         }
       }
-      configuration.exitTestHandler = ExitTest.handlerForSwiftPM()
+      configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
 
       await runTest(for: FailingExitTests.self, configuration: configuration)
     }

@@ -11,9 +11,9 @@
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import TestingInternals
 
-private func configurationForSwiftPMEntryPoint(withArguments args: [String]) throws -> Configuration {
+private func configurationForEntryPoint(withArguments args: [String]) throws -> Configuration {
   let args = try parseCommandLineArguments(from: args)
-  return try configurationForSwiftPMEntryPoint(from: args)
+  return try configurationForEntryPoint(from: args)
 }
 
 @Suite("Swift Package Manager Integration Tests")
@@ -27,19 +27,19 @@ struct SwiftPMTests {
 
   @Test("--parallel/--no-parallel argument")
   func parallel() throws {
-    var configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH"])
+    var configuration = try configurationForEntryPoint(withArguments: ["PATH"])
     #expect(configuration.isParallelizationEnabled)
 
-    configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--parallel"])
+    configuration = try configurationForEntryPoint(withArguments: ["PATH", "--parallel"])
     #expect(configuration.isParallelizationEnabled)
 
-    configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--no-parallel"])
+    configuration = try configurationForEntryPoint(withArguments: ["PATH", "--no-parallel"])
     #expect(!configuration.isParallelizationEnabled)
   }
 
   @Test("No --filter or --skip argument")
   func defaultFiltering() async throws {
-    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH"])
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH"])
     let test1 = Test(name: "hello") {}
     let test2 = Test(name: "goodbye") {}
     let plan = await Runner.Plan(tests: [test1, test2], configuration: configuration)
@@ -51,7 +51,7 @@ struct SwiftPMTests {
   @Test("--filter argument")
   @available(_regexAPI, *)
   func filter() async throws {
-    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--filter", "hello"])
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "hello"])
     let test1 = Test(name: "hello") {}
     let test2 = Test(name: "goodbye") {}
     let plan = await Runner.Plan(tests: [test1, test2], configuration: configuration)
@@ -63,7 +63,7 @@ struct SwiftPMTests {
   @Test("Multiple --filter arguments")
   @available(_regexAPI, *)
   func multipleFilter() async throws {
-    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--filter", "hello", "--filter", "sorry"])
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "hello", "--filter", "sorry"])
     let test1 = Test(name: "hello") {}
     let test2 = Test(name: "goodbye") {}
     let test3 = Test(name: "sorry") {}
@@ -77,17 +77,17 @@ struct SwiftPMTests {
   @Test("--filter or --skip argument with bad regex")
   func badArguments() throws {
     #expect(throws: (any Error).self) {
-      _ = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--filter", "("])
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "("])
     }
     #expect(throws: (any Error).self) {
-      _ = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--skip", ")"])
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--skip", ")"])
     }
   }
 
   @Test("--skip argument")
   @available(_regexAPI, *)
   func skip() async throws {
-    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--skip", "hello"])
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--skip", "hello"])
     let test1 = Test(name: "hello") {}
     let test2 = Test(name: "goodbye") {}
     let plan = await Runner.Plan(tests: [test1, test2], configuration: configuration)
@@ -98,7 +98,7 @@ struct SwiftPMTests {
 
   @Test(".hidden trait")
   func hidden() async throws {
-    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH"])
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH"])
     let test1 = Test(name: "hello") {}
     let test2 = Test(.hidden, name: "goodbye") {}
     let plan = await Runner.Plan(tests: [test1, test2], configuration: configuration)
@@ -110,7 +110,7 @@ struct SwiftPMTests {
   @Test("--filter/--skip arguments and .hidden trait")
   @available(_regexAPI, *)
   func filterAndSkipAndHidden() async throws {
-    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--filter", "hello", "--skip", "hello2"])
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "hello", "--skip", "hello2"])
     let test1 = Test(name: "hello") {}
     let test2 = Test(name: "hello2") {}
     let test3 = Test(.hidden, name: "hello") {}
@@ -128,7 +128,7 @@ struct SwiftPMTests {
   func xunitOutputWithBadPath() {
     // Test that a bad path produces an error.
     #expect(throws: CError.self) {
-      _ = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--xunit-output", "/nonexistent/path/we/cannot/write/to"])
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--xunit-output", "/nonexistent/path/we/cannot/write/to"])
     }
   }
 
@@ -142,7 +142,7 @@ struct SwiftPMTests {
       _ = remove(temporaryFilePath)
     }
     do {
-      let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--xunit-output", temporaryFilePath])
+      let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--xunit-output", temporaryFilePath])
       let eventContext = Event.Context()
       configuration.eventHandler(Event(.runStarted, testID: nil, testCaseID: nil), eventContext)
       configuration.eventHandler(Event(.runEnded, testID: nil, testCaseID: nil), eventContext)
@@ -176,7 +176,7 @@ struct SwiftPMTests {
       _ = remove(temporaryFilePath)
     }
     do {
-      let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--experimental-event-stream-output", temporaryFilePath])
+      let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--experimental-event-stream-output", temporaryFilePath])
       let eventContext = Event.Context()
       configuration.handleEvent(Event(.runStarted, testID: nil, testCaseID: nil), in: eventContext)
       do {
@@ -197,7 +197,7 @@ struct SwiftPMTests {
   @Test("--repetitions argument (alone)")
   @available(_regexAPI, *)
   func repetitions() throws {
-    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--repetitions", "2468"])
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--repetitions", "2468"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == 2468)
     #expect(configuration.repetitionPolicy.continuationCondition == nil)
   }
@@ -205,7 +205,7 @@ struct SwiftPMTests {
   @Test("--repeat-until pass argument (alone)")
   @available(_regexAPI, *)
   func repeatUntilPass() throws {
-    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--repeat-until", "pass"])
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--repeat-until", "pass"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == .max)
     #expect(configuration.repetitionPolicy.continuationCondition == .whileIssueRecorded)
   }
@@ -213,7 +213,7 @@ struct SwiftPMTests {
   @Test("--repeat-until fail argument (alone)")
   @available(_regexAPI, *)
   func repeatUntilFail() throws {
-    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--repeat-until", "fail"])
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--repeat-until", "fail"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == .max)
     #expect(configuration.repetitionPolicy.continuationCondition == .untilIssueRecorded)
   }
@@ -222,21 +222,21 @@ struct SwiftPMTests {
   @available(_regexAPI, *)
   func repeatUntilGarbage() {
     #expect(throws: (any Error).self) {
-      _ = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--repeat-until", "qwertyuiop"])
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--repeat-until", "qwertyuiop"])
     }
   }
 
   @Test("--repetitions and --repeat-until arguments")
   @available(_regexAPI, *)
   func repetitionsAndRepeatUntil() throws {
-    let configuration = try configurationForSwiftPMEntryPoint(withArguments: ["PATH", "--repetitions", "2468", "--repeat-until", "pass"])
+    let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--repetitions", "2468", "--repeat-until", "pass"])
     #expect(configuration.repetitionPolicy.maximumIterationCount == 2468)
     #expect(configuration.repetitionPolicy.continuationCondition == .whileIssueRecorded)
   }
 
   @Test("list subcommand")
   func list() async throws {
-    let testIDs = await listTestsForSwiftPM(Test.all)
+    let testIDs = await listTestsForEntryPoint(Test.all)
     let currentTestID = try #require(
       Test.current
         .flatMap(\.id.parent)
