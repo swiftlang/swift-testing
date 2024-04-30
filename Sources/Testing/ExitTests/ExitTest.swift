@@ -79,33 +79,20 @@ extension ExitTest {
   /// - Returns: The specified exit test function, or `nil` if no such exit test
   ///   could be found.
   public static func find(at sourceLocation: SourceLocation) -> Self? {
-    struct Context {
-      var sourceLocation: SourceLocation
-      var result: ExitTest?
-    }
-    var context = Context(sourceLocation: sourceLocation)
-    withUnsafeMutablePointer(to: &context) { context in
-      swt_enumerateTypes(context) { type, context in
-        let context = context!.assumingMemoryBound(to: (Context).self)
-        if let type = unsafeBitCast(type, to: Any.Type.self) as? any __ExitTestContainer.Type,
-           type.__sourceLocation == context.pointee.sourceLocation {
-          context.pointee.result = ExitTest(
-            expectedExitCondition: type.__expectedExitCondition,
-            body: type.__body,
-            sourceLocation: type.__sourceLocation
-          )
-          return false
-        }
-        return true
-      } withNamesMatching: { typeName, _ in
-        // strstr() lets us avoid copying either string before comparing.
-        Self._exitTestContainerTypeNameMagic.withCString { testContainerTypeNameMagic in
-          nil != strstr(typeName, testContainerTypeNameMagic)
-        }
+    var result: Self?
+
+    enumerateTypes(withNamesContaining: _exitTestContainerTypeNameMagic) { type, stop in
+      if let type = type as? any __ExitTestContainer.Type, type.__sourceLocation == sourceLocation {
+        result = ExitTest(
+          expectedExitCondition: type.__expectedExitCondition,
+          body: type.__body,
+          sourceLocation: type.__sourceLocation
+        )
+        stop = true
       }
     }
 
-    return context.result
+    return result
   }
 }
 

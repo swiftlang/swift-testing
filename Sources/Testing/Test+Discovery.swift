@@ -48,18 +48,11 @@ extension Test {
   private static var _all: some Sequence<Self> {
     get async {
       await withTaskGroup(of: [Self].self) { taskGroup in
-        swt_enumerateTypes(&taskGroup) { type, context in
-          if let type = unsafeBitCast(type, to: Any.Type.self) as? any __TestContainer.Type {
-            let taskGroup = context!.assumingMemoryBound(to: TaskGroup<[Self]>.self)
-            taskGroup.pointee.addTask {
+        enumerateTypes(withNamesContaining: _testContainerTypeNameMagic) { type, _ in
+          if let type = type as? any __TestContainer.Type {
+            taskGroup.addTask {
               await type.__tests
             }
-          }
-          return true
-        } withNamesMatching: { typeName, _ in
-          // strstr() lets us avoid copying either string before comparing.
-          Self._testContainerTypeNameMagic.withCString { testContainerTypeNameMagic in
-            nil != strstr(typeName, testContainerTypeNameMagic)
           }
         }
 
@@ -113,5 +106,36 @@ extension Test {
     }
 
     return tests.count - originalCount
+  }
+}
+
+// MARK: -
+
+/// The type of callback called by ``enumerateTypes(withNamesContaining:_:)``.
+///
+/// - Parameters:
+///   - type: A Swift type.
+///   - stop: An `inout` boolean variable indicating whether type enumeration
+///     should stop after the function returns. Set `stop` to `true` to stop
+///     type enumeration.
+typealias TypeEnumerator = (_ type: Any.Type, _ stop: inout Bool) -> Void
+
+/// Enumerate all types known to Swift found in the current process whose names
+/// contain a given substring.
+///
+/// - Parameters:
+///   - nameSubstring: A string which the names of matching classes all contain.
+///   - body: A function to invoke, once per matching type.
+func enumerateTypes(withNamesContaining nameSubstring: String, _ typeEnumerator: TypeEnumerator) {
+  withoutActuallyEscaping(typeEnumerator) { typeEnumerator in
+    withUnsafePointer(to: typeEnumerator) { context in
+      swt_enumerateTypes(withNamesContaining: nameSubstring, .init(mutating: context)) { type, stop, context in
+        let typeEnumerator = context!.load(as: TypeEnumerator.self)
+        let type = unsafeBitCast(type, to: Any.Type.self)
+        var stop2 = false
+        typeEnumerator(type, &stop2)
+        stop.pointee = stop2
+      }
+    }
   }
 }
