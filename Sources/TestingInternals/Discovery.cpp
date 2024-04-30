@@ -11,6 +11,7 @@
 #include "Discovery.h"
 
 #include <atomic>
+#include <cstring>
 #include <iterator>
 #include <type_traits>
 #include <vector>
@@ -351,7 +352,7 @@ void swt_enumerateTypesWithNamesContaining(const char *nameSubstring, void *cont
       // Check that the type's name passes. This will be more expensive than the
       // checks above, but should be cheaper than realizing the metadata.
       const char *typeName = contextDescriptor->getName();
-      bool nameOK = typeName && nullptr != strstr(typeName, nameSubstring);
+      bool nameOK = typeName && nullptr != std::strstr(typeName, nameSubstring);
       if (!nameOK) {
         continue;
       }
