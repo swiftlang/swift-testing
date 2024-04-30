@@ -46,4 +46,8 @@ extension Tag {
 /// Use this tag with members of the ``Tag`` type declared in an extension to
 /// mark them as usable with tests. For more information on declaring tags, see
 /// <doc:AddingTags>.
-@attached(accessor) @attached(peer) public macro Tag() = #externalMacro(module: "TestingMacros", type: "TagMacro")
+@attached(accessor) @attached(peer) 
+#if compiler(<5.11)
+@available(*, deprecated, message: "Attribute 'Tag' requires Swift 6 or later")
+#endif
+public macro Tag() = #externalMacro(module: "TestingMacros", type: "TagMacro")

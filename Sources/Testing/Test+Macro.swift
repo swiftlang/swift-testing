@@ -69,6 +69,9 @@ public typealias __XCTestCompatibleSelector = Never
 /// - <doc:OrganizingTests>
 @attached(member) @attached(peer)
 @_documentation(visibility: private)
+#if compiler(<5.11)
+@available(*, deprecated, message: "Attribute'Suite' requires Swift 6 or later")
+#endif
 public macro Suite(
   _ traits: any SuiteTrait...
 ) = #externalMacro(module: "TestingMacros", type: "SuiteDeclarationMacro")
@@ -95,7 +98,11 @@ public macro Suite(
 /// ## See Also
 ///
 /// - <doc:OrganizingTests>
-@attached(member) @attached(peer) public macro Suite(
+@attached(member) @attached(peer)
+#if compiler(<5.11)
+@available(*, deprecated, message: "Attribute'Suite' requires Swift 6 or later")
+#endif
+public macro Suite(
   _ displayName: _const String? = nil,
   _ traits: any SuiteTrait...
 ) = #externalMacro(module: "TestingMacros", type: "SuiteDeclarationMacro")
@@ -126,6 +133,9 @@ extension Test {
 /// - ``Test(_:_:)``
 @attached(peer)
 @_documentation(visibility: private)
+#if compiler(<5.11)
+@available(*, deprecated, message: "Attribute'Test' requires Swift 6 or later")
+#endif
 public macro Test(
   _ traits: any TestTrait...
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro")
@@ -141,7 +151,11 @@ public macro Test(
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
-@attached(peer) public macro Test(
+@attached(peer)
+#if compiler(<5.11)
+@available(*, deprecated, message: "Attribute'Test' requires Swift 6 or later")
+#endif
+public macro Test(
   _ displayName: _const String? = nil,
   _ traits: any TestTrait...
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro")
@@ -196,6 +210,9 @@ extension [Test.__Parameter] {
 /// - ``Test(_:arguments:)-35dat``
 @attached(peer)
 @_documentation(visibility: private)
+#if compiler(<5.11)
+@available(*, deprecated, message: "Attribute'Test' requires Swift 6 or later")
+#endif
 public macro Test<C>(
   _ traits: any TestTrait...,
   arguments collection: C
@@ -222,7 +239,11 @@ public macro Test<C>(
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
-@attached(peer) public macro Test<C>(
+@attached(peer)
+#if compiler(<5.11)
+@available(*, deprecated, message: "Attribute'Test' requires Swift 6 or later")
+#endif
+public macro Test<C>(
   _ displayName: _const String? = nil,
   _ traits: any TestTrait...,
   arguments collection: C
@@ -273,6 +294,9 @@ extension Test {
 /// - <doc:DefiningTests>
 @attached(peer)
 @_documentation(visibility: private)
+#if compiler(<5.11)
+@available(*, deprecated, message: "Attribute'Test' requires Swift 6 or later")
+#endif
 public macro Test<C1, C2>(
   _ traits: any TestTrait...,
   arguments collection1: C1, _ collection2: C2
@@ -299,7 +323,11 @@ public macro Test<C1, C2>(
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
-@attached(peer) public macro Test<C1, C2>(
+@attached(peer) 
+#if compiler(<5.11)
+@available(*, deprecated, message: "Attribute'Test' requires Swift 6 or later")
+#endif
+public macro Test<C1, C2>(
   _ displayName: _const String? = nil,
   _ traits: any TestTrait...,
   arguments collection1: C1, _ collection2: C2
@@ -327,6 +355,9 @@ public macro Test<C1, C2>(
 /// - <doc:DefiningTests>
 @attached(peer)
 @_documentation(visibility: private)
+#if compiler(<5.11)
+@available(*, deprecated, message: "Attribute'Test' requires Swift 6 or later")
+#endif
 public macro Test<C1, C2>(
   _ traits: any TestTrait...,
   arguments zippedCollections: Zip2Sequence<C1, C2>
@@ -353,7 +384,11 @@ public macro Test<C1, C2>(
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
-@attached(peer) public macro Test<C1, C2>(
+@attached(peer) 
+#if compiler(<5.11)
+@available(*, deprecated, message: "Attribute'Test' requires Swift 6 or later")
+#endif
+public macro Test<C1, C2>(
   _ displayName: _const String? = nil,
   _ traits: any TestTrait...,
   arguments zippedCollections: Zip2Sequence<C1, C2>
