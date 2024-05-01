@@ -116,6 +116,7 @@ public enum XCTestScaffold: Sendable {
 #endif
   public static func runAllTests(hostedBy testCase: XCTestCase, _ functionName: String = #function) async {
 #if SWIFT_PM_SUPPORTS_SWIFT_TESTING
+#if !SWT_NO_FILE_IO
     let message = Event.ConsoleOutputRecorder.warning(
       "This version of Swift Package Manager supports running swift-testing tests directly. Ignoring call to \(#function).",
       options: .for(.stderr)
@@ -124,6 +125,7 @@ public enum XCTestScaffold: Sendable {
     try? FileHandle.stderr.write(message)
 #else
     print(message)
+#endif
 #endif
 #else
     let testCase = UncheckedSendable(rawValue: testCase)
