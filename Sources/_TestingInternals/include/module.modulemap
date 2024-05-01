@@ -1,0 +1,10 @@
+module TestingInternals {
+  header "Defines.h"
+  header "Discovery.h"
+  header "GetSymbol.h"
+  header "Includes.h"
+  header "Stubs.h"
+  header "TestSupport.h"
+  header "WillThrow.h"
+  export *
+}
