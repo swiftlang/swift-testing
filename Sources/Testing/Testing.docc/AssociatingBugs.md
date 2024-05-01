@@ -15,8 +15,8 @@ Associate bugs uncovered or verified by tests.
 ## Overview
 
 Tests allow developers to prove that the code they write is working as expected.
-If code is not working correctly, bug trackers are often used to track the work
-necessary to fix the underlying problem. It is often useful to associate
+If code isn't working correctly, bug trackers are often used to track the work
+necessary to fix the underlying problem. It's often useful to associate
 specific bugs with tests that reproduce them or verify they are fixed.
 
 - Note: "Bugs" as described in this document may also be referred to as
@@ -75,16 +75,16 @@ The testing library defines several kinds of common bug/test relationship:
 
 | Relationship | Use when… |
 |-|-|
-| `.uncoveredBug` | … a test run failed, uncovering the bug in question. |
-| `.reproducesBug` | … a bug was previously filed and the test was written to demonstrate it. |
-| `.verifiesFix` | … a bug has been fixed and the test shows that it no longer reproduces. |
-| `.failingBecauseOfBug` | … a test was previously passing, but now an unrelated bug is causing it to fail. |
-| `.unspecified` | … no other case accurately describes the relationship. |
+| `.uncoveredBug` | A test run failed, uncovering the bug in question. |
+| `.reproducesBug` | A bug was previously filed and the test was written to demonstrate it. |
+| `.verifiesFix` | A bug has been fixed and the test shows that it no longer reproduces. |
+| `.failingBecauseOfBug` | A test was previously passing, but now an unrelated bug is causing it to fail. |
+| `.unspecified` | No other case accurately describes the relationship. |
 
-<!-- Keep `.unspecified` as the last row above in order to imply it is a
+<!-- Keep `.unspecified` as the last row above to imply it is a
 fallback. -->
 
-## Adding comments to associated bugs
+## Add comments to associated bugs
 
 A bug identifier may be insufficient to uniquely and clearly identify a bug
 associated with a test. Bug trackers universally provide a "title" field for
