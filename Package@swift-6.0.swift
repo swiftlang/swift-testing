@@ -126,6 +126,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
       .define("SWT_NO_FILE_IO", .when(platforms: [.wasi])),
       .define("SWT_NO_EXIT_TESTS", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi])),
+      .define("SWT_NO_DYNAMIC_LINKING"),
     ]
   }
 

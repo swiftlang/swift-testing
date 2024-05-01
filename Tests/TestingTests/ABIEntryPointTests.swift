@@ -8,14 +8,14 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation) && !SWT_NO_DYNAMIC_LINKING && !SWT_NO_ABI_ENTRY_POINT
+#if canImport(Foundation) && !SWT_NO_ABI_ENTRY_POINT
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import TestingInternals
 
 @Suite("ABI entry point tests")
 struct ABIEntryPointTests {
   @Test func v0() async throws {
-#if !os(Linux)
+#if !os(Linux) && !SWT_NO_DYNAMIC_LINKING
     // Get the ABI entry point by dynamically looking it up at runtime.
     //
     // NOTE: The standard Linux linker does not allow exporting symbols from
@@ -26,6 +26,11 @@ struct ABIEntryPointTests {
         unsafeBitCast($0, to: (@convention(c) () -> UnsafeMutableRawPointer).self)
       }
     )
+#elseif compiler(>=5.11)
+    // Assume the entry point function is statically linked, so we can refer to
+    // it simply by its C name.
+    @_extern(c) func swt_copyABIEntryPoint_v0() -> UnsafeMutableRawPointer
+    let copyABIEntryPoint_v0 = swt_copyABIEntryPoint_v0
 #endif
     let abiEntryPoint = copyABIEntryPoint_v0().assumingMemoryBound(to: ABIEntryPoint_v0.self)
     defer {
