@@ -16,8 +16,8 @@ Use tags to provide semantic information for organization, filtering, and custom
 
 A complex package or project may contain hundreds or thousands of tests and
 suites. Some subset of those tests may share some common facet, such as being
-"critical" or "flaky". The testing library includes a type of trait called
-"tags" that can be added to tests to group and categorize them.
+*critical* or *flaky*. The testing library includes a type of trait called
+*tags* that you can add to group and categorize tests.
 
 Tags are different from test suites: test suites impose structure on test
 functions at the source level, while tags provide semantic information for a
@@ -31,7 +31,7 @@ a sequence of tags as its argument, and those tags are then applied to the
 corresponding test at runtime. If any tags are applied to a test suite, then all
 tests in that suite inherit those tags.
 
-The testing library does not assign any semantic meaning to any tags, nor does
+The testing library doesn't assign any semantic meaning to any tags, nor does
 the presence or absence of tags affect how the testing library runs tests.
 
 Tags themselves are instances of ``Tag`` and can be expressed as string
@@ -52,7 +52,7 @@ If two tags with the same name (`legallyRequired` in the above example) are
 declared in different files, modules, or other contexts, the testing library
 treats them as equivalent.
 
-If it is important for a tag to be distinguished from similar tags declared
+If it's important for a tag to be distinguished from similar tags declared
 elsewhere in a package or project (or its dependencies), use
  [reverse-DNS naming](https://en.wikipedia.org/wiki/Reverse_domain_name_notation)
 to create a unique Swift symbol name for your tag:
@@ -82,9 +82,9 @@ The following example is unsupported:
 
 ```swift
 extension Tag {
-  @Tag static var legallyRequired: Self // ✅ OK: declaring a new tag
+  @Tag static var legallyRequired: Self // ✅ OK: Declaring a new tag
 
-  static var requiredByLaw: Self { // ❌ ERROR: this tag name will not be
+  static var requiredByLaw: Self { // ❌ ERROR: This tag name will not be
                                    // recognized at runtime
     legallyRequired
   }
@@ -97,17 +97,17 @@ declaration), it cannot be applied to test functions or test suites. The
 following declarations are unsupported:
 
 ```swift
-@Tag let needsKetchup: Self // ❌ ERROR: tags must be declared in an extension
+@Tag let needsKetchup: Self // ❌ ERROR: Tags must be declared in an extension
                             // to Tag
 struct Food {
-  @Tag var needsMustard: Self // ❌ ERROR: tags must be declared in an extension
+  @Tag var needsMustard: Self // ❌ ERROR: Tags must be declared in an extension
                               // to Tag
 }
 ```
 
 ## Built-in tags
 
-The testing library predefines the following symbolic tags that can be used in
+The testing library predefines the following symbolic tags that you can use in
 any test target and applied to any test:
 
 - ``Tag/red``
@@ -117,36 +117,36 @@ any test target and applied to any test:
 - ``Tag/blue``
 - ``Tag/purple``
 
-The testing library does not assign any semantic meaning to these tags, nor does
+The testing library doesn't assign any semantic meaning to these tags, nor does
 the presence or absence of these tags affect how the testing library runs tests.
 
 ## Customize a tag's appearance
 
-By default, a tag does not appear in a test's output when the test is run. It is
+By default, a tag doesn't appear in a test's output when the test is run. It's
 possible to assign colors to tags defined in a package so that when the test is
 run, the tag is visible in its output.
 
 To add colors to tags, create a directory in your home directory named
-`".swift-testing"` and add a file named `"tag-colors.json"` to it. This file
-should contain a JSON object (a dictionary) whose keys are strings representing
+`.swift-testing` and add a file named `tag-colors.json` to it. This file
+should contain a JSON object (a dictionary) whose keys are strings that represent
 tags and whose values represent tag colors.
 
-- Note: On Windows, create the `".swift-testing"` directory in the
-  `"AppData\Local"` directory inside your home directory instead of directly
+- Note: On Windows, create the `.swift-testing` directory in the
+  `AppData\Local` directory inside your home directory instead of directly
   inside it.
 
 Tag colors can be represented using several formats:
 
-- The strings `"red"`, `"orange"`, `"yellow"`, `"green"`, `"blue"`, or
-  `"purple"`, representing corresponding predefined instances of ``Tag``, i.e.
+- The strings `red`, `orange`, `yellow`, `green`, `blue`, or
+  `purple`, represent corresponding predefined instances of ``Tag``, like
   ``Tag/red``, ``Tag/orange``, ``Tag/yellow``, ``Tag/green``, ``Tag/blue``, and
-  ``Tag/purple``;
-- A string of the form `"#RRGGBB"`, containing a hexadecimal representation of
-  the color in a device-independent RGB color space; or
-- The `null` literal value, representing "no color."
+  ``Tag/purple``.
+- A string of the form `#RRGGBB`, containing a hexadecimal representation of
+  the color in a device-independent RGB color space.
+- The `null` literal value, which represents no color.
 
-For example, to set the color of the tag `"critical"` to orange and the color of
-the tag `.legallyRequired` to teal, the contents of `"tag-colors.json"` can
+For example, to set the color of the `critical` tag to orange and the color of
+the `.legallyRequired` tag to teal, the contents of `tag-colors.json` can
 be set to:
 
 ```json
