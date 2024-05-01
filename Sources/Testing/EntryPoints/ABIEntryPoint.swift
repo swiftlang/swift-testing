@@ -37,9 +37,9 @@ public typealias ABIEntryPoint_v0 = @Sendable (
 /// Get the entry point to the testing library used by tools that want to remain
 /// version-agnostic regarding the testing library.
 ///
-/// - Returns: A pointer to an instance of that type representing the ABI-stable
-///   entry point to the testing library. The caller owns this memory and is
-///   responsible for deinitializing and deallocating it when done.
+/// - Returns: A pointer to an instance of `ABIEntryPoint_v0` representing the
+///   ABI-stable entry point to the testing library. The caller owns this memory
+///   and is responsible for deinitializing and deallocating it when done.
 ///
 /// This function can be used by tools that do not link directly to the testing
 /// library and wish to invoke tests in a binary that has been loaded into the
