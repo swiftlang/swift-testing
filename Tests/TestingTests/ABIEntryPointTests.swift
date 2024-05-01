@@ -15,21 +15,19 @@ private import TestingInternals
 @Suite("ABI entry point tests")
 struct ABIEntryPointTests {
   @Test func v0() async throws {
-    // Get the ABI entry point.
-#if os(Linux)
-    // The standard Linux linker does not allow exporting symbols from
+#if !os(Linux)
+    // Get the ABI entry point by dynamically looking it up at runtime.
+    //
+    // NOTE: The standard Linux linker does not allow exporting symbols from
     // executables, so dlsym() does not let us find this function on that
     // platform when built as an executable rather than a dynamic library.
-    let copyABIEntryPoint = abiEntryPoint_v0
-#else
-    let copyABIEntryPoint = try #require(
+    let copyABIEntryPoint_v0 = try #require(
       swt_getFunctionWithName(nil, "swt_copyABIEntryPoint_v0").map {
-        unsafeBitCast($0, to: (@convention(c) (UnsafeMutableRawPointer) -> Void).self)
+        unsafeBitCast($0, to: (@convention(c) () -> UnsafeMutableRawPointer).self)
       }
     )
 #endif
-    let abiEntryPoint = UnsafeMutablePointer<ABIEntryPoint_v0>.allocate(capacity: 1)
-    copyABIEntryPoint(abiEntryPoint)
+    let abiEntryPoint = copyABIEntryPoint_v0().assumingMemoryBound(to: ABIEntryPoint_v0.self)
     defer {
       abiEntryPoint.deinitialize(count: 1)
       abiEntryPoint.deallocate()
