@@ -3,7 +3,7 @@
 <!--
 This source file is part of the Swift.org open source project
 
-Copyright (c) 2023 Apple Inc. and the Swift project authors
+Copyright (c) 2023-2024 Apple Inc. and the Swift project authors
 Licensed under Apache License v2.0 with Runtime Library Exception
 
 See https://swift.org/LICENSE.txt for license information
@@ -21,11 +21,11 @@ the elements of those collections being forwarded to a test function. An
 invocation of a test function with a particular set of argument values is called
 a test _case_.
 
-By default, the test cases of a test function will run in parallel with each
+By default, the test cases of a test function run in parallel with each
 other. For more information about test parallelization, see
 <doc:Parallelization>.
 
-## Parameterize over an array of values
+### Parameterize over an array of values
 
 It is very common to want to run a test _n_ times over an array containing the
 values that should be tested. Consider the following test function:
@@ -60,13 +60,13 @@ func foodAvailable(_ food: Food) async throws {
 }
 ```
 
-When a collection is passed to the `@Test` attribute for parameterization, the
+When passing a collection to the `@Test` attribute for parameterization, the
 testing library passes each element in the collection, one at a time, to the
 test function as its first (and only) argument. Then, if the test fails for one
 or more inputs, the corresponding diagnostics can clearly indicate which inputs
-need to be examined.
+to examine.
 
-## Parameterize over the cases of an enumeration
+### Parameterize over the cases of an enumeration
 
 The previous example includes a hard-coded list of `Food` cases to test. If `Food`
 is an enumeration that conforms to `CaseIterable`, you can instead write:
@@ -83,10 +83,10 @@ func foodAvailable(_ food: Food) async throws {
 }
 ```
 
-This way, if a new case is added to the `Food` enumeration, it is
+This way, if a new case is added to the `Food` enumeration, it's
 automatically tested by this function.
 
-## Parameterize over a range of integers
+### Parameterize over a range of integers
 
 It is possible to parameterize a test function over a closed range of integers:
 
@@ -101,9 +101,9 @@ func makeLargeOrder(count: Int) async throws {
 - Note: Very large ranges such as `0 ..< .max` may take an excessive amount of
   time to test, or may never complete due to resource constraints.
 
-## Test with more than one collection
+### Test with more than one collection
 
-It is possible to test more than one collection. Consider the following test
+It's possible to test more than one collection. Consider the following test
 function:
 
 ```swift
@@ -119,7 +119,7 @@ function, elements from the second collection are passed as the second argument,
 and so forth.
 
 Assuming there are five cases in the `Food` enumeration, this test function
-will, when run, be invoked 5 × 100 = 500 times with every possible combination
+will, when run, be invoked 500 times (5 x 100) with every possible combination
 of food and order size. These combinations are referred to as the collections'
 [Cartesian product](https://en.wikipedia.org/wiki/Cartesian_product).
 
@@ -137,31 +137,31 @@ func makeLargeOrder(of food: Food, count: Int) async throws {
 The zipped sequence will be "destructured" into two arguments automatically,
 then passed to the test function for evaluation.
 
-This revised test function will be invoked once for each tuple in the zipped
+This revised test function is invoked once for each tuple in the zipped
 sequence, for a total of five invocations instead of 500 invocations. In other
-words, this test function will be passed the inputs `(.burger, 1)`,
+words, this test function is passed the inputs `(.burger, 1)`,
 `(.iceCream, 2)`, ..., `(.kebab, 5)` instead of `(.burger, 1)`, `(.burger, 2)`,
-`(.burger, 3)`, ... `(.kebab, 99)`, `(.kebab, 100)`.
+`(.burger, 3)`, ..., `(.kebab, 99)`, `(.kebab, 100)`.
 
-## Run selected test cases
+### Run selected test cases
 
 If a parameterized test meets certain requirements, the testing library allows
-users to run specific test cases it contains. This can be useful when a test
+people to run specific test cases it contains. This can be useful when a test
 has many cases but only some are failing since it enables re-running and
 debugging the failing cases in isolation.
 
 To support running selected test cases, it must be possible to deterministically
-match the test case's arguments. When a user attempts to run selected test cases
+match the test case's arguments. When someone attempts to run selected test cases
 of a parameterized test function, the testing library evaluates each argument of
 the tests' cases for conformance to one of several known protocols, and if all
 arguments of a test case conform to one of those protocols, that test case can
 be run selectively. The following lists the known protocols, in precedence order
 (highest to lowest):
 
-1. ``CustomTestArgumentEncodable``.
-1. `RawRepresentable`, where `RawValue` conforms to `Encodable`.
-1. `Encodable`.
-1. `Identifiable`, where `ID` conforms to `Encodable`.
+1. ``CustomTestArgumentEncodable``
+1. `RawRepresentable`, where `RawValue` conforms to `Encodable`
+1. `Encodable`
+1. `Identifiable`, where `ID` conforms to `Encodable`
 
 If any argument of a test case doesn't meet one of the above requirements, then
 the overall test case cannot be run selectively.
