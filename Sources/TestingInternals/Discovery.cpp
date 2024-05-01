@@ -21,22 +21,9 @@
 #elif defined(__APPLE__)
 #include <dispatch/dispatch.h>
 #include <mach-o/dyld.h>
-#if __has_include(<mach-o/dyld_priv.h>)
-#include <mach-o/dyld_priv.h>
-#endif
 #include <mach-o/getsect.h>
 #include <objc/runtime.h>
 #include <os/lock.h>
-
-#if !__has_include(<mach-o/dyld_priv.h>)
-/// Get the range of addresses in the shared cache.
-///
-/// The Swift runtime uses this function on Apple platforms to optimize protocol
-/// conformance lookups. The testing library uses it to optimize test discovery.
-///
-/// - Note: This function is not public API on Darwin.
-SWT_IMPORT_FROM_STDLIB const void *_dyld_get_shared_cache_range(size_t *length);
-#endif
 #endif
 
 /// Enumerate over all Swift type metadata sections in the current process.
@@ -240,29 +227,20 @@ static SWTMachHeaderList getMachHeaders(void) {
   static constinit SWTMachHeaderList *machHeaders = nullptr;
   static constinit os_unfair_lock lock = OS_UNFAIR_LOCK_INIT;
 
-  // The bounds of the dyld shared cache. On platforms that support it (Darwin),
-  // most system images are containined in this range. System images can be
-  // expected not to contain test declarations, so we don't need to walk them.
-  static constinit uintptr_t dyldSharedCacheBegin = 0;
-  static constinit uintptr_t dyldSharedCacheEnd = 0;
-
   static constinit dispatch_once_t once = 0;
   dispatch_once_f(&once, nullptr, [] (void *) {
     machHeaders = reinterpret_cast<SWTMachHeaderList *>(std::malloc(sizeof(SWTMachHeaderList)));
     ::new (machHeaders) SWTMachHeaderList();
     machHeaders->reserve(_dyld_image_count());
 
-    // Get the bounds of the shared cache.
-    size_t dyldSharedCacheLength = 0;
-    dyldSharedCacheBegin = reinterpret_cast<uintptr_t>(_dyld_get_shared_cache_range(&dyldSharedCacheLength));
-    dyldSharedCacheEnd = dyldSharedCacheBegin + dyldSharedCacheLength;
-
     objc_addLoadImageFunc([] (const mach_header *mh) {
       auto mhn = reinterpret_cast<SWTMachHeaderList::value_type>(mh);
 
-      // Ignore this Mach header if it is in the shared cache.
-      auto machHeaderAddress = reinterpret_cast<uintptr_t>(mhn);
-      if (machHeaderAddress >= dyldSharedCacheBegin && machHeaderAddress < dyldSharedCacheEnd) {
+      // Ignore this Mach header if it is in the shared cache. On platforms that
+      // support it (Darwin), most system images are containined in this range.
+      // System images can be expected not to contain test declarations, so we
+      // don't need to walk them.
+      if (mhn->flags & MH_DYLIB_IN_CACHE) {
         return;
       }
 
