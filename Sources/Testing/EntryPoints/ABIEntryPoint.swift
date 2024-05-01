@@ -28,7 +28,7 @@
 ///
 /// - Warning: This function's signature and the structure of its JSON inputs
 ///   and outputs have not been finalized yet.
-@_spi(ForToolsIntegrationOnly)
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 public typealias ABIEntryPoint_v0 = @Sendable (
   _ argumentsJSON: UnsafeRawBufferPointer?,
   _ eventHandler: @escaping @Sendable (_ eventAndContextJSON: UnsafeRawBufferPointer) -> Void
@@ -37,12 +37,9 @@ public typealias ABIEntryPoint_v0 = @Sendable (
 /// Get the entry point to the testing library used by tools that want to remain
 /// version-agnostic regarding the testing library.
 ///
-/// - Parameters:
-///   - outEntryPoint: Uninitialized memory large enough to hold an instance of
-///     ``ABIEntryPoint_v0``. On return, a pointer to an instance of that type
-///     representing the ABI-stable entry point to the testing library. The
-///     caller owns this memory and is responsible for deinitializing and
-///     deallocating it when done.
+/// - Returns: A pointer to an instance of ``ABIEntryPoint_v0`` representing the
+///   ABI-stable entry point to the testing library. The caller owns this memory
+///   and is responsible for deinitializing and deallocating it when done.
 ///
 /// This function can be used by tools that do not link directly to the testing
 /// library and wish to invoke tests in a binary that has been loaded into the
@@ -50,16 +47,17 @@ public typealias ABIEntryPoint_v0 = @Sendable (
 /// `"swt_copyABIEntryPoint_v0"` and can be dynamically looked up at runtime
 /// using `dlsym()` or a platform equivalent.
 ///
-/// The function stored at `outEntryPoint` can be thought of as equivalent to
+/// The returned function can be thought of as equivalent to
 /// `swift test --experimental-event-stream-output` except that, instead of
 /// streaming events to a named pipe or file, it streams them to a callback.
 ///
 /// - Warning: This function's signature and the structure of its JSON inputs
 ///   and outputs have not been finalized yet.
 @_cdecl("swt_copyABIEntryPoint_v0")
-@usableFromInline
-func abiEntryPoint_v0(_ outEntryPoint: UnsafeMutableRawPointer) {
-  outEntryPoint.initializeMemory(as: ABIEntryPoint_v0.self) { argumentsJSON, eventHandler in
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+public func copyABIEntryPoint_v0() -> UnsafeMutableRawPointer {
+  let result = UnsafeMutablePointer<ABIEntryPoint_v0>.allocate(capacity: 1)
+  result.initialize { argumentsJSON, eventHandler in
     let args = try! argumentsJSON.map { argumentsJSON in
       try JSON.decode(__CommandLineArguments_v0.self, from: argumentsJSON)
     }
@@ -67,6 +65,7 @@ func abiEntryPoint_v0(_ outEntryPoint: UnsafeMutableRawPointer) {
     let eventHandler = eventHandlerForStreamingEvents_v0(to: eventHandler)
     return await entryPoint(passing: args, eventHandler: eventHandler)
   }
+  return .init(result)
 }
 #endif
 
