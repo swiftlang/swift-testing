@@ -364,3 +364,20 @@ extension JSON {
     }
   }
 }
+
+@available(_clockAPI, *)
+extension Trait where Self == TimeLimitTrait {
+  /// Construct a time limit trait that causes a test to time out if it runs for
+  /// too long.
+  ///
+  /// - Parameters:
+  ///   - timeLimit: The maximum amount of time the test may run for.
+  ///
+  /// - Returns: An instance of ``TimeLimitTrait``.
+  ///
+  /// This function is meant for use only in testing ``TimeLimitTrait`` itself,
+  /// and accepts any arbitrary Swift `Duration` value.
+  static func timeLimit(_ timeLimit: Swift.Duration) -> Self {
+    return Self(timeLimit: timeLimit)
+  }
+}

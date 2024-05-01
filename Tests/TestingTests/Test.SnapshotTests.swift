@@ -97,17 +97,12 @@ struct Test_SnapshotTests {
   private static let bug: Bug = Bug.bug(12345, relationship: .failingBecauseOfBug, "Lorem ipsum")
 
   @available(_clockAPI, *)
-  @Test("timeLimit property", .timeLimit(duration))
+  @Test("timeLimit property", .timeLimit(.minutes(999_999_999)))
   func timeLimit() async throws {
     let test = try #require(Test.current)
     let snapshot = Test.Snapshot(snapshotting: test)
 
-    #expect(snapshot.timeLimit == Self.duration)
-  }
-
-  @available(_clockAPI, *)
-  private static var duration: Duration {
-    .seconds(999_999_999)
+    #expect(snapshot.timeLimit == .seconds(60) * 999_999_999)
   }
 }
 
