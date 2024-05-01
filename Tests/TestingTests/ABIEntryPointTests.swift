@@ -26,11 +26,6 @@ struct ABIEntryPointTests {
         unsafeBitCast($0, to: (@convention(c) () -> UnsafeMutableRawPointer).self)
       }
     )
-#elseif compiler(>=5.11)
-    // Assume the entry point function is statically linked, so we can refer to
-    // it simply by its C name.
-    @_extern(c) func swt_copyABIEntryPoint_v0() -> UnsafeMutableRawPointer
-    let copyABIEntryPoint_v0 = swt_copyABIEntryPoint_v0
 #endif
     let abiEntryPoint = copyABIEntryPoint_v0().assumingMemoryBound(to: ABIEntryPoint_v0.self)
     defer {
