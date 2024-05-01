@@ -29,7 +29,7 @@
 #include <os/lock.h>
 
 #if !__has_include(<mach-o/dyld_priv.h>)
-extern "C" const void *_dyld_get_shared_cache_range(size_t *length);
+SWT_IMPORT_FROM_STDLIB const void *_dyld_get_shared_cache_range(size_t *length);
 #endif
 #endif
 
