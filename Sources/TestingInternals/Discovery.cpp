@@ -11,6 +11,7 @@
 #include "Discovery.h"
 
 #include <atomic>
+#include <cstring>
 #include <iterator>
 #include <type_traits>
 #include <vector>
@@ -328,13 +329,13 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {}
 
 #pragma mark -
 
-void swt_enumerateTypes(void *context, SWTTypeEnumerator body, SWTTypeNameFilter nameFilter) {
+void swt_enumerateTypesWithNamesContaining(const char *nameSubstring, void *context, SWTTypeEnumerator body) {
   enumerateTypeMetadataSections([=] (const void *section, size_t size) {
     auto records = reinterpret_cast<const SWTTypeMetadataRecord *>(section);
     size_t recordCount = size / sizeof(SWTTypeMetadataRecord);
 
-    bool keepGoing = true;
-    for (size_t i = 0; i < recordCount && keepGoing; i++) {
+    bool stop = false;
+    for (size_t i = 0; i < recordCount && !stop; i++) {
       const auto& record = records[i];
 
       auto contextDescriptor = record.getContextDescriptor();
@@ -348,19 +349,16 @@ void swt_enumerateTypes(void *context, SWTTypeEnumerator body, SWTTypeNameFilter
         continue;
       }
 
-      // If the caller supplied a name filtering function, check that the type's
-      // name passes. This will be more expensive than the checks above, but
-      // should be cheaper than realizing the metadata.
-      if (nameFilter) {
-        const char *typeName = contextDescriptor->getName();
-        bool nameOK = typeName && (* nameFilter)(typeName, context);
-        if (!nameOK) {
-          continue;
-        }
+      // Check that the type's name passes. This will be more expensive than the
+      // checks above, but should be cheaper than realizing the metadata.
+      const char *typeName = contextDescriptor->getName();
+      bool nameOK = typeName && nullptr != std::strstr(typeName, nameSubstring);
+      if (!nameOK) {
+        continue;
       }
 
       if (void *typeMetadata = contextDescriptor->getMetadata()) {
-        keepGoing = body(typeMetadata, context);
+        body(typeMetadata, &stop, context);
       }
     }
   });
