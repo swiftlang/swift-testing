@@ -29,6 +29,12 @@
 #include <os/lock.h>
 
 #if !__has_include(<mach-o/dyld_priv.h>)
+/// Get the range of addresses in the shared cache.
+///
+/// The Swift runtime uses this function on Apple platforms to optimize protocol
+/// conformance lookups. The testing library uses it to optimize test discovery.
+///
+/// - Note: This function is not public API on Darwin.
 SWT_IMPORT_FROM_STDLIB const void *_dyld_get_shared_cache_range(size_t *length);
 #endif
 #endif
