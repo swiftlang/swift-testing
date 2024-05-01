@@ -18,7 +18,7 @@ extension Configuration {
   public struct TestFilter: Sendable {
     /// An enumeration describing how to interpret the result of the underlying
     /// predicate function when applied to a test.
-    enum Membership: Sendable, Codable {
+    enum Membership: Sendable {
       /// The underlying predicate function determines if a test is included in
       /// the result.
       case including
@@ -29,7 +29,7 @@ extension Configuration {
     }
 
     /// An enumeration describing the various kinds of test filter.
-    fileprivate enum Kind: Sendable, Codable {
+    fileprivate enum Kind: Sendable {
       /// The test filter has no effect.
       ///
       /// All tests are allowed when passed to a test filter with this kind.
@@ -349,7 +349,7 @@ extension Configuration.TestFilter {
 extension Configuration.TestFilter {
   /// An enumeration describing operators that can be used to combine test
   /// filters when using ``combining(with:using:)`` or ``combine(with:using:)``.
-  public enum CombinationOperator: Sendable, Codable {
+  public enum CombinationOperator: Sendable {
     /// Both subfilters must allow a test for it to be allowed in the combined
     /// test filter.
     ///
