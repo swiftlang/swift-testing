@@ -10,6 +10,8 @@
 
 #include "Discovery.h"
 
+#include <array>
+#include <algorithm>
 #include <atomic>
 #include <cstring>
 #include <iterator>
@@ -17,13 +19,24 @@
 #include <vector>
 
 #if defined(SWT_NO_DYNAMIC_LINKING)
-#include <algorithm>
+
 #elif defined(__APPLE__)
 #include <dispatch/dispatch.h>
 #include <mach-o/dyld.h>
 #include <mach-o/getsect.h>
 #include <objc/runtime.h>
 #include <os/lock.h>
+
+#elif defined(__linux__)
+#include <dlfcn.h>
+#include <elf.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <link.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
+#include <unistd.h>
 #endif
 
 /// Enumerate over all Swift type metadata sections in the current process.
@@ -278,7 +291,188 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
   }
 }
 
-#elif defined(__linux__) || defined(_WIN32) || defined(__wasi__)
+#elif defined(__linux__)
+namespace ELF {
+  /// Check whether all mapped memory to a given path in the process' address
+  /// space refers to the same file on disk.
+  ///
+  /// - Parameters:
+  ///   - path: The path to inspect.
+  ///   - st: A previously-initialized `stat` structure describing `path`.
+  ///
+  /// - Returns: Whether all mappings of `path` in the process' address space
+  ///   refer to the same file on disk.
+  ///
+  /// This function helps mitigate TOCTOU attacks by checking if the file at a
+  /// given path has been replaced. If any two inode or device numbers do not
+  /// match those in `st`, the function returns `false` and `path` should be
+  /// considered compromised.
+  ///
+  /// The order of operations is important: the calling code must have opened
+  /// the file _before_ calling this function, otherwise an attacker could
+  /// substitute the file while this function is running or immediately
+  /// afterward before the file is opened in this process.
+  bool isFileIDConsistent(const char *path, const struct stat& st) {
+    FILE *maps = fopen("/proc/self/maps", "rb");
+    if (!maps) {
+      // Couldn't open the file. Bail.
+      return false;
+    }
+
+    // Ensure the file is closed.
+    struct FileCloser {
+      FILE *file;
+      explicit FileCloser(FILE *file) : file(file) {}
+      ~FileCloser() {
+        if (file) {
+          fclose(file);
+        }
+      }
+    } closeMapsWhenDone(maps);
+
+    // Loop through the lines in the file looking for ones that refer to the
+    // same path and check if their inode or device numbers are the same.
+    while (!feof(maps) && !ferror(maps)) {
+      unsigned long long devMajor = 0;
+      unsigned long long devMinor = 0;
+      unsigned long long ino = 0;
+      std::array<char, 2048 + 1> mapPath;
+      int count = fscanf(maps, "%*llx-%*llx %*4c %*llx %llu:%llu %llu %2048[^\n]\n", &devMajor, &devMinor, &ino, &mapPath[0]);
+      if (count < 4) {
+        // Failed to read in the expected format. Stop reading.
+        return false;
+      }
+      mapPath.back() = '\0';
+      if (0 == strcmp(&mapPath[0], path)) {
+        if (makedev(devMajor, devMinor) != st.st_dev || ino != st.st_ino) {
+          return false;
+        }
+      }
+    }
+
+    if (ferror(maps)) {
+      // An error occurred doing I/O. Bail.
+      return false;
+    }
+
+    return true;
+  }
+
+  /// Map an ELF image from a file on disk.
+  ///
+  /// - Parameters:
+  ///   - path: The path to the ELF image on disk.
+  ///   - outSize: On return, the size of the mapped file.
+  ///
+  /// - Returns: The ELF header of the specified image, or `nullptr` if an
+  ///   error occurred. The caller is responsible for passing this pointer to
+  ///   `munmap()` when done.
+  ///
+  /// The resulting ELF header is mapped only, not loaded.
+  static const ElfW(Ehdr) *map(const char *path, size_t *outSize) {
+    // Get a file descriptor to the binary.
+    int fd = open(path, O_RDONLY);
+    if (fd < 0) {
+      return nullptr;
+    }
+
+    // Get the size of the binary.
+    struct stat st;
+    if (0 != fstat(fd, &st)) {
+      close(fd);
+      return nullptr;
+    }
+
+    // Check that the file we just opened is the same as the one already
+    // loaded into the process.
+    bool fileOK = isFileIDConsistent(path, st);
+    if (!fileOK) {
+      close(fd);
+      return nullptr;
+    }
+
+    // Map the binary.
+    void *result = mmap(nullptr, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    close(fd);
+    if (result == MAP_FAILED) {
+      return nullptr;
+    }
+
+    *outSize = st.st_size;
+    return reinterpret_cast<const ElfW(Ehdr) *>(result);
+  }
+
+  /// Enumerate all ELF sections in a given image loaded in the current
+  /// process.
+  ///
+  /// - Parameters:
+  ///   - info: An instance of `dl_phdr_info` describing the loaded image.
+  ///   - body: A function to call once for every section in the image
+  ///     described by `info`. Information about the sections in that image
+  ///     is yielded to this function.
+  template <typename SectionEnumerator>
+  static void enumerateSections(struct dl_phdr_info *info, const SectionEnumerator& body) {
+    // First, find the ehdr loaded into the current process corresponding to
+    // the phdr being enumerated. We can do so by looking up the image base
+    // for the phdr's address.
+    Dl_info dlinfo;
+    if (!dladdr(info->dlpi_phdr, &dlinfo)) {
+      // Couldn't find the ehdr. Skip. (Unexpected.)
+      return;
+    }
+    auto ehdrLoaded = reinterpret_cast<const ElfW(Ehdr) *>(dlinfo.dli_fbase);
+    auto baseLoaded = reinterpret_cast<uintptr_t>(ehdrLoaded);
+
+    // Next, map a complete copy of the image into memory. This copy will
+    // include the shdrs (which are not normally mapped for loaded images.)
+    // Mapping a file is a bit more complicated (but well-understood), so]
+    // it's factored out into a separate function.
+    size_t ehdrMappedSize = 0;
+    auto ehdrMapped = map(dlinfo.dli_fname, &ehdrMappedSize);
+    if (!ehdrMapped) {
+      // Couldn't map the image. It might have moved.
+      return;
+    }
+    auto baseMapped = reinterpret_cast<uintptr_t>(ehdrMapped);
+
+    // Find the mapped ehdr's string table.
+    auto strtab = reinterpret_cast<const ElfW(Shdr) *>(baseMapped + ehdrMapped->e_shoff + (ehdrMapped->e_shentsize * ehdrMapped->e_shstrndx));
+    if (strtab->sh_type != SHT_STRTAB) {
+      /// The string table has the wrong type; is the image corrupted?
+      return;
+    }
+
+    // Loop through the sections in the image and pass them to the callback.
+    auto shdr = reinterpret_cast<const ElfW(Shdr) *>(baseMapped + ehdrMapped->e_shoff);
+    for (ElfW(Half) i = 0; i < ehdrMapped->e_shnum; i++) {
+      // Figure out the name of this section, then call the callback.
+      auto sectionName = reinterpret_cast<const char *>(baseMapped + strtab->sh_offset + shdr->sh_name);
+      if (sectionName) {
+        auto start = reinterpret_cast<const void *>(baseLoaded + shdr->sh_offset);
+        body(ehdrLoaded, sectionName, shdr->sh_type, start, shdr->sh_size);
+      }
+
+      shdr = reinterpret_cast<const ElfW(Shdr) *>(reinterpret_cast<uintptr_t>(shdr) + ehdrMapped->e_shentsize);
+    }
+
+    // We no longer need the mapped copy of the ehdr, so unmap it.
+    munmap(const_cast<ElfW(Ehdr) *>(ehdrMapped), ehdrMappedSize);
+  }
+}
+
+template <typename SectionEnumerator>
+static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
+  dl_iterate_phdr([] (struct dl_phdr_info *info, size_t size, void *context) -> int {
+    auto body = *reinterpret_cast<SectionEnumerator *>(context);
+    ELF::enumerateSections(info, [&] (const void *ehdr, const char *name, ElfW(Word) type, const void *start, size_t size) {
+      if (type == SHT_PROGBITS && 0 == strcmp(name, "swift5_type_metadata")) {
+        body(start, size);
+      }
+    });
+    return 0;
+  }, const_cast<SectionEnumerator *>(&body));
+}
+#elif defined(_WIN32) || defined(__wasi__)
 #pragma mark - Linux/Windows implementation
 
 /// Specifies the address range corresponding to a section.
