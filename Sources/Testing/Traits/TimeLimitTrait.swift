@@ -21,6 +21,7 @@ public struct TimeLimitTrait: TestTrait, SuiteTrait {
   /// with ``TimeLimitTrait``. It is used instead of Swift's built-in `Duration`
   /// type because test timeouts do not support high-precision, arbitrarily
   /// short durations. The smallest allowed unit of time is minutes.
+  @_spi(Experimental)
   public struct Duration: Sendable {
     /// The underlying Swift `Duration` which this time limit duration
     /// represents.
@@ -83,8 +84,101 @@ extension Trait where Self == TimeLimitTrait {
   /// test cases individually. If a test has more than one time limit associated
   /// with it, the shortest one is used. A test run may also be configured with
   /// a maximum time limit per test case.
+  public static func timeLimit(_ timeLimit: Duration) -> Self {
+    return Self(timeLimit: timeLimit)
+  }
+
+  /// Construct a time limit trait that causes a test to time out if it runs for
+  /// too long.
+  ///
+  /// - Parameters:
+  ///   - timeLimit: The maximum amount of time the test may run for.
+  ///
+  /// - Returns: An instance of ``TimeLimitTrait``.
+  ///
+  /// Test timeouts do not support high-precision, arbitrarily short durations,
+  /// due to variability in testing environments. The time limit duration must
+  /// be at least one minute, and can only be expressed in minute-length
+  /// increments.
+  ///
+  /// When this trait is associated with a test, that test must complete within
+  /// a time limit of, at most, `timeLimit`. If the test runs longer, an issue
+  /// of kind ``Issue/Kind/timeLimitExceeded(timeLimitComponents:)`` is
+  /// recorded. This timeout is treated as a test failure.
+  ///
+  /// The time limit amount specified by `timeLimit` may be reduced if the
+  /// testing library is configured to enforce a maximum per-test limit, which
+  /// may be controlled on a global basis or when the runner process is
+  /// launched. If a maximum per-test limit has been set, the effective time
+  /// limit of the test this trait is applied to will be the lesser of
+  /// `timeLimit` and the maximum per-test limit.
+  ///
+  /// If a test is parameterized, this time limit is applied to each of its
+  /// test cases individually. If a test has more than one time limit associated
+  /// with it, the shortest one is used. A test run may also be configured with
+  /// a maximum time limit per test case.
+  @_spi(Experimental)
   public static func timeLimit(_ timeLimit: Self.Duration) -> Self {
     return Self(timeLimit: timeLimit.underlyingDuration)
+  }
+}
+
+@available(_clockAPI, *)
+extension TimeLimitTrait.Duration {
+  /// Construct a time limit duration given a number of seconds.
+  ///
+  /// This function is unavailable and is provided for diagnostic purposes only.
+  @available(*, unavailable, message: "Time limit duration must be at least one minute")
+  public static func seconds(_ seconds: some BinaryInteger) -> Self {
+    fatalError("Unsupported")
+  }
+
+  /// Construct a time limit duration given a number of seconds.
+  ///
+  /// This function is unavailable and is provided for diagnostic purposes only.
+  @available(*, unavailable, message: "Time limit duration must be at least one minute")
+  public static func seconds(_ seconds: Double) -> Self {
+    fatalError("Unsupported")
+  }
+
+  /// Construct a time limit duration given a number of milliseconds.
+  ///
+  /// This function is unavailable and is provided for diagnostic purposes only.
+  @available(*, unavailable, message: "Time limit duration must be at least one minute")
+  public static func milliseconds(_ milliseconds: some BinaryInteger) -> Self {
+    fatalError("Unsupported")
+  }
+
+  /// Construct a time limit duration given a number of milliseconds.
+  ///
+  /// This function is unavailable and is provided for diagnostic purposes only.
+  @available(*, unavailable, message: "Time limit duration must be at least one minute")
+  public static func milliseconds(_ milliseconds: Double) -> Self {
+    fatalError("Unsupported")
+  }
+
+  /// Construct a time limit duration given a number of microseconds.
+  ///
+  /// This function is unavailable and is provided for diagnostic purposes only.
+  @available(*, unavailable, message: "Time limit duration must be at least one minute")
+  public static func microseconds(_ microseconds: some BinaryInteger) -> Self {
+    fatalError("Unsupported")
+  }
+
+  /// Construct a time limit duration given a number of microseconds.
+  ///
+  /// This function is unavailable and is provided for diagnostic purposes only.
+  @available(*, unavailable, message: "Time limit duration must be at least one minute")
+  public static func microseconds(_ microseconds: Double) -> Self {
+    fatalError("Unsupported")
+  }
+
+  /// Construct a time limit duration given a number of nanoseconds.
+  ///
+  /// This function is unavailable and is provided for diagnostic purposes only.
+  @available(*, unavailable, message: "Time limit duration must be at least one minute")
+  public static func nanoseconds(_ nanoseconds: some BinaryInteger) -> Self {
+    fatalError("Unsupported")
   }
 }
 
