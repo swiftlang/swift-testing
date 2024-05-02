@@ -21,11 +21,10 @@ For interfaces that are experimental or under active development, the SPI group
 public, stable API, so test authors are encouraged to hold off adopting them
 until that happens.
 
-## Other SPI groups
-
-The testing library currently makes use of various other SPI groups such as
-`@_spi(ExperimentalTestRunning)`. Interfaces in these groups will be migrated to
-one (or both!) of the two above as time permits.
+For interfaces that are experimental _and_ that are used to integrate with
+external tools, _both_ groups are specified. Such SPI is not generally meant to
+be promoted to public API, but is still experimental until tools authors have a
+chance to evaluate it.
 
 ## SPI stability
 
