@@ -8,7 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation) && !SWT_NO_ABI_ENTRY_POINT
 /// The type of the entry point to the testing library used by tools that want
 /// to remain version-agnostic regarding the testing library.
 ///
@@ -34,6 +33,7 @@ public typealias ABIEntryPoint_v0 = @Sendable (
   _ eventHandler: @escaping @Sendable (_ eventAndContextJSON: UnsafeRawBufferPointer) -> Void
 ) async -> CInt
 
+#if canImport(Foundation) && !SWT_NO_ABI_ENTRY_POINT
 /// Get the entry point to the testing library used by tools that want to remain
 /// version-agnostic regarding the testing library.
 ///
