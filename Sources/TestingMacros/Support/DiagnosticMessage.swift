@@ -581,6 +581,32 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
+  /// Create a diagnostic message stating that a time limit is too short to be
+  /// honored by the testing library at runtime.
+  ///
+  /// - Parameters:
+  ///   - durationExpr: The expression representing the too-short `Duration`.
+  ///   - traitExpr: The trait expression containing `secondsExpr`.
+  ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///
+  /// - Returns: A diagnostic message.
+  static func timeLimitTooShort(_ durationExpr: some ExprSyntaxProtocol, in traitExpr: FunctionCallExprSyntax, in attribute: AttributeSyntax) -> Self {
+    // The minimum time limit duration respected by the testing library.
+    let minimumDurationExpr: ExprSyntax = ".seconds(60)"
+
+    return Self(
+      syntax: Syntax(durationExpr),
+      message: "Time limit '\(durationExpr.trimmed)' in attribute \(_macroName(attribute)) will be rounded up to '\(minimumDurationExpr)' at runtime",
+      severity: .warning,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Replace with '\(minimumDurationExpr)'"),
+          changes: [.replace(oldNode: Syntax(durationExpr), newNode: Syntax(minimumDurationExpr))]
+        ),
+      ]
+    )
+  }
+
   /// Create a diagnostic messages stating that the expression passed to
   /// `#require()` is ambiguous.
   ///

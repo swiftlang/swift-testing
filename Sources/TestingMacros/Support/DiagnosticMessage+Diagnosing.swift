@@ -38,6 +38,8 @@ func diagnoseIssuesWithTraits(in traitExprs: [ExprSyntax], addedTo attribute: At
       _diagnoseIssuesWithTagsTrait(functionCallExpr, addedTo: attribute, in: context)
     case ".bug", "Bug.bug", "Testing.Bug.bug":
       _diagnoseIssuesWithBugTrait(functionCallExpr, addedTo: attribute, in: context)
+    case ".timeLimit", "TimeLimitTrait.timeLimit", "Testing.TimeLimitTrait.timeLimit":
+      _diagnoseIssuesWithTimeLimitTrait(functionCallExpr, addedTo: attribute, in: context)
     default:
       // This is not a trait we can parse.
       break
@@ -110,7 +112,7 @@ private func _diagnoseIssuesWithTagsTrait(_ traitExpr: FunctionCallExprSyntax, a
 private func _diagnoseIssuesWithBugTrait(_ traitExpr: FunctionCallExprSyntax, addedTo attribute: AttributeSyntax, in context: some MacroExpansionContext) {
   // If the first argument to the .bug() trait is unlabelled and a string
   // literal, check that it can be parsed as a URL or at least as an integer.
-  guard let arg = traitExpr.arguments.first.map(Argument.init),
+  guard let arg = traitExpr.arguments.first,
         arg.label == nil,
         let stringLiteralExpr = arg.expression.as(StringLiteralExprSyntax.self),
         let urlString = stringLiteralExpr.representedLiteralValue else {
@@ -146,6 +148,72 @@ private func _diagnoseIssuesWithBugTrait(_ traitExpr: FunctionCallExprSyntax, ad
     && urlString.contains(":")
   if !isURLStringValid {
     context.diagnose(.urlExprNotValid(stringLiteralExpr, in: traitExpr, in: attribute))
+  }
+}
+
+private func _durationExprToSeconds(_ durationExpr: FunctionCallExprSyntax, in context: some MacroExpansionContext) -> Double? {
+  let calledExprJoined = durationExpr.calledExpression.tokens(viewMode: .fixedUp).map(\.textWithoutBackticks).joined()
+  context.debug("\(calledExprJoined) \(durationExpr.calledExpression.kind)", node: durationExpr)
+  let arguments = Array(durationExpr.arguments)
+  if durationExpr.calledExpression.is(MemberAccessExprSyntax.self),
+     arguments.count == 1, arguments[0].label == nil {
+
+    // Extract the (unscaled) numeric value of the duration.
+    guard let numericValue = Double(arguments[0].expression) else {
+      return nil
+    }
+
+    // Scale the numeric value to seconds.
+    switch calledExprJoined {
+    case ".seconds", "Duration.seconds", "Swift.Duration.seconds":
+      return numericValue
+    case ".milliseconds", "Duration.milliseconds", "Swift.Duration.milliseconds":
+      return numericValue / 1000.0
+    case ".microseconds", "Duration.microseconds", "Swift.Duration.microseconds":
+      return numericValue / 1_000_000.0
+    case ".nanoseconds", "Duration.nanoseconds", "Swift.Duration.nanoseconds":
+      return numericValue / 1_000_000.0
+    default:
+      return nil
+    }
+  }
+
+  if arguments.count == 2,
+     case let secondsArg = arguments[0], secondsArg.label?.textWithoutBackticks == "secondsComponent",
+     case let attosecondsArg = arguments[1], attosecondsArg.label?.textWithoutBackticks == "attosecondsComponent" {
+    switch calledExprJoined {
+    case "Duration", "Swift.Duration":
+      // Extract seconds and attoseconds, add them, and return the result.
+      if let secondsValue = Double(secondsArg.expression), let attosecondsValue = Double(attosecondsArg.expression) {
+        return secondsValue + (attosecondsValue / 1_000_000_000_000_000_000.0)
+      }
+    default:
+      return nil
+    }
+  }
+
+  return nil
+}
+
+/// Diagnose issues with a `.timeLimit()` trait in a parsed attribute.
+///
+/// - Parameters:
+///   - traitExpr: The `.bug()` expression.
+///   - attribute: The `@Test` or `@Suite` attribute.
+///   - context: The macro context in which the expression is being parsed.
+private func _diagnoseIssuesWithTimeLimitTrait(_ traitExpr: FunctionCallExprSyntax, addedTo attribute: AttributeSyntax, in context: some MacroExpansionContext) {
+  // If the first argument to the .timeLimit() trait is an unlabelled member
+  // function call to which an integer literal is passed, figure out if it
+  // represents a duration shorter than 1 minute.
+  guard let arg = traitExpr.arguments.first,
+        arg.label == nil,
+        let durationExpr = arg.expression.as(FunctionCallExprSyntax.self),
+        let secondsValue = _durationExprToSeconds(durationExpr, in: context) else {
+    return
+  }
+
+  if secondsValue < 60.0 {
+    context.diagnose(.timeLimitTooShort(durationExpr, in: traitExpr, in: attribute))
   }
 }
 

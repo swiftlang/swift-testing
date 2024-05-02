@@ -257,3 +257,12 @@ struct TestTypeThatTimesOut {
     try await Test.Clock.sleep(for: .milliseconds(100))
   }
 }
+
+
+@Test(.timeLimit(.seconds(1)))
+func f() {}
+
+
+
+@Test(.timeLimit(Swift.Duration(secondsComponent: 1, attosecondsComponent: 0)))
+func f2() {}
