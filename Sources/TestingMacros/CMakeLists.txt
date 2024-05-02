@@ -26,9 +26,10 @@ include(FetchContent)
 find_package(SwiftSyntax CONFIG GLOBAL)
 if(NOT SwiftSyntax_FOUND)
   set(FETCHCONTENT_BASE_DIR ${CMAKE_BINARY_DIR}/_d)
+  # TODO: Update GIT_TAG to the 6.0 release tag once it is available.
   FetchContent_Declare(SwiftSyntax
     GIT_REPOSITORY https://github.com/apple/swift-syntax
-    GIT_TAG main)
+    GIT_TAG 27b74edd5de625d0e399869a5af08f1501af8837)
   FetchContent_MakeAvailable(SwiftSyntax)
 endif()
 
