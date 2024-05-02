@@ -9,7 +9,12 @@
 //
 
 #if !SWT_NO_EXIT_TESTS
+
+#if SWT_BUILDING_WITH_CMAKE
+@_implementationOnly import _TestingInternals
+#else
 internal import _TestingInternals
+#endif
 
 #if SWT_TARGET_OS_APPLE || os(Linux)
 /// Block the calling thread, wait for the target process to exit, and return

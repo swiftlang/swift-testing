@@ -8,7 +8,11 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if SWT_BUILDING_WITH_CMAKE
+@_implementationOnly import _TestingInternals
+#else
 private import _TestingInternals
+#endif
 
 /// An enumeration describing possible conditions under which an exit test will
 /// succeed or fail.

@@ -9,7 +9,11 @@
 //
 
 import Testing
+#if SWT_BUILDING_WITH_CMAKE
+@_implementationOnly import _TestingInternals
+#else
 private import _TestingInternals
+#endif
 
 @Test func variadicCStringArguments() async throws {
   #expect(swt_pointersNotEqual2("abc", "123"))

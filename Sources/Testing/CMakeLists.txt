@@ -88,5 +88,7 @@ target_link_libraries(Testing PRIVATE
   TestingInternals)
 add_dependencies(Testing
   TestingMacros)
+target_compile_definitions(Testing PRIVATE
+  SWT_BUILDING_WITH_CMAKE)
 target_compile_options(Testing PUBLIC
   -load-plugin-executable "${TestingMacrosPath}")

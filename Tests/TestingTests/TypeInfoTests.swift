@@ -9,7 +9,11 @@
 //
 
 @testable @_spi(ForToolsIntegrationOnly) import Testing
+#if SWT_BUILDING_WITH_CMAKE
+@_implementationOnly import _TestingInternals
+#else
 private import _TestingInternals
+#endif
 
 @Suite("TypeInfo Tests")
 struct TypeInfoTests {
