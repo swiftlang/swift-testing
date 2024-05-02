@@ -82,10 +82,10 @@ The following example is unsupported:
 
 ```swift
 extension Tag {
-  @Tag static var legallyRequired: Self // ✅ OK: Declaring a new tag
+  @Tag static var legallyRequired: Self // ✅ OK: Declaring a new tag.
 
-  static var requiredByLaw: Self { // ❌ ERROR: This tag name will not be
-                                   // recognized at runtime
+  static var requiredByLaw: Self { // ❌ ERROR: This tag name isn't
+                                   // recognized at runtime.
     legallyRequired
   }
 }
@@ -98,10 +98,10 @@ following declarations are unsupported:
 
 ```swift
 @Tag let needsKetchup: Self // ❌ ERROR: Tags must be declared in an extension
-                            // to Tag
+                            // to Tag.
 struct Food {
   @Tag var needsMustard: Self // ❌ ERROR: Tags must be declared in an extension
-                              // to Tag
+                              // to Tag.
 }
 ```
 
