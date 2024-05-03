@@ -471,8 +471,8 @@ extension Event.ConsoleOutputRecorder.Options {
     return false
   }
 
-  /// Whether or not the system terminal claims to support 256-color ANSI escape
-  /// codes.
+  /// A Boolean value that indicates whether the system terminal claims to
+  /// support 256-color ANSI escape codes.
   private static var _terminalSupports256ColorANSIEscapeCodes: Bool {
 #if SWT_TARGET_OS_APPLE || os(Linux)
     if let termVariable = Environment.variable(named: "TERM") {
