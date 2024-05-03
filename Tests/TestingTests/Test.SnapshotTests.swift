@@ -94,7 +94,7 @@ struct Test_SnapshotTests {
     #expect(snapshot.associatedBugs.first == Self.bug)
   }
 
-  private static let bug: Bug = Bug.bug(12345, relationship: .failingBecauseOfBug, "Lorem ipsum")
+  private static let bug: Bug = Bug.bug(12345, "Lorem ipsum")
 
   @available(_clockAPI, *)
   @Test("timeLimit property", .timeLimit(duration))

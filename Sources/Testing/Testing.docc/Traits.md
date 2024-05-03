@@ -46,8 +46,8 @@ HIDDEN: .serialized is experimental SPI pending feature review.
 - <doc:AssociatingBugs>
 - <doc:BugIdentifiers>
 - ``Tag()``
-- ``Trait/bug(_:relationship:_:)-86mmm``
-- ``Trait/bug(_:relationship:_:)-3hsi5``
+- ``Trait/bug(_:_:)-2u8j9``
+- ``Trait/bug(_:_:)-7mo2w``
 
 ### Creating custom traits
 

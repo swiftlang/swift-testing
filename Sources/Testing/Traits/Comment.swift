@@ -18,8 +18,7 @@
 /// or `@Suite` attribute. See <doc:AddingComments> for more details.
 ///
 /// - Note: This type is not intended to reference bugs related to a test.
-///   Instead, use ``Trait/bug(_:relationship:_:)-86mmm`` or
-///   ``Trait/bug(_:relationship:_:)-3hsi5``.
+///   Instead, use ``Trait/bug(_:_:)-2u8j9`` or ``Trait/bug(_:_:)-7mo2w``.
 public struct Comment: RawRepresentable, Sendable {
   /// The single comment string contained in this instance.
   ///
@@ -122,8 +121,7 @@ extension Trait where Self == Comment {
   ///   comment.
   ///
   /// - Note: This function is not intended to reference bugs related to a test.
-  ///   Instead, use ``Trait/bug(_:relationship:_:)-86mmm`` or
-  ///   ``Trait/bug(_:relationship:_:)-3hsi5``.
+  ///   Instead, use ``Trait/bug(_:_:)-2u8j9`` or ``Trait/bug(_:_:)-7mo2w``.
   public static func comment(_ comment: String) -> Self {
     Self(rawValue: comment, kind: .trait)
   }

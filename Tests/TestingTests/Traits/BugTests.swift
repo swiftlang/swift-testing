@@ -57,7 +57,7 @@ struct BugTests {
 
   @Test("Test.associatedBugs property")
   func testAssociatedBugsProperty() {
-    let test = Test(.bug(12345), .disabled(), .bug(67890), .bug(24680, relationship: .uncoveredBug), .bug(54321, relationship: .verifiesFix)) {}
+    let test = Test(.bug(12345), .disabled(), .bug(67890), .bug(24680), .bug(54321)) {}
     let bugIdentifiers = test.associatedBugs
     #expect(bugIdentifiers.count == 4)
     #expect(bugIdentifiers[0].identifier == "12345")
@@ -66,32 +66,16 @@ struct BugTests {
     #expect(bugIdentifiers[3].identifier == "54321")
   }
 
-  @Test(".bug() with String and relationship")
-  func bugWithStringAndRelationship() {
-    let trait = Bug.bug("12345", relationship: .uncoveredBug)
-    #expect((trait as Any) is Bug)
-    #expect(trait.identifier == "12345")
-    #expect(trait.relationship == .uncoveredBug)
-  }
-
-  @Test(".bug() with number and relationship")
-  func bugWithNumericAndRelationship() {
-    let trait = Bug.bug(67890, relationship: .uncoveredBug)
-    #expect((trait as Any) is Bug)
-    #expect(trait.identifier == "67890")
-    #expect(trait.relationship == .uncoveredBug)
-  }
-
   @Test("Bug hashing")
   func hashing() {
-    let traits: Set<Bug> = [.bug(12345), .bug(12345), .bug(12345, relationship: .uncoveredBug), .bug("67890")]
+    let traits: Set<Bug> = [.bug(12345), .bug(12345), .bug(12345), .bug("67890")]
     #expect(traits.count == 2)
   }
 
 #if canImport(Foundation)
   @Test("Encoding/decoding")
   func encodingAndDecoding() throws {
-    let original = Bug.bug(12345, relationship: .failingBecauseOfBug, "Lorem ipsum")
+    let original = Bug.bug(12345, "Lorem ipsum")
     let copy = try JSON.encodeAndDecode(original)
     #expect(original == copy)
   }

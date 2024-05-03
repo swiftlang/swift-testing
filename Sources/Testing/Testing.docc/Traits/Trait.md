@@ -31,8 +31,8 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 ### Associating bugs
 
-- ``Trait/bug(_:relationship:_:)-86mmm``
-- ``Trait/bug(_:relationship:_:)-3hsi5``
+- ``Trait/bug(_:_:)-2u8j9``
+- ``Trait/bug(_:_:)-7mo2w``
 
 ### Adding information to tests
 - ``Trait/comments``
