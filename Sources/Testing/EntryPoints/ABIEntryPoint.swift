@@ -52,7 +52,7 @@ public typealias ABIEntryPoint_v0 = @Sendable (
 /// streaming events to a named pipe or file, it streams them to a callback.
 ///
 /// - Warning: This function's signature and the structure of its JSON inputs
-///   and outputs have not been finalized yet.
+///   and outputs have not been finalized yet.@Comment{ QUERY: Has this been finalized? If so, can we remove the Warning? If not, we should make this a double-slash comment for initial release. }
 @_cdecl("swt_copyABIEntryPoint_v0")
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 public func copyABIEntryPoint_v0() -> UnsafeMutableRawPointer {
