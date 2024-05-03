@@ -34,6 +34,16 @@ target_link_libraries(ExamplePackageTests PRIVATE
   ...)
 ```
 
+When building the test executable, the code you're testing will need to be built
+with `-enable-testing`. This should only be enabled for testing, for example:
+
+```cmake
+include(CTest)
+if(BUILD_TESTING)
+  add_compile_options($<$<COMPILE_LANGUAGE:Swift>:-enable-testing>)
+endif()
+```
+
 ## Add an Entry Point
 
 You must define a custom source file with a `@main` entry point. This should be
