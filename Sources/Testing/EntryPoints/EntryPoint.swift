@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2023-2024 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -98,7 +98,7 @@ func entryPoint(passing args: consuming __CommandLineArguments_v0?, eventHandler
 /// - Parameters:
 ///   - tests: The tests to list.
 ///
-/// - Returns: An array of strings representing the IDs of `tests`.
+/// - Returns: An array of strings that represents the IDs of `tests`.
 func listTestsForEntryPoint(_ tests: some Sequence<Test>) -> [String] {
   // Filter out hidden tests and test suites. Hidden tests should not generally
   // be presented to the user, and suites (XCTestCase classes) are not included
@@ -131,8 +131,8 @@ func listTestsForEntryPoint(_ tests: some Sequence<Test>) -> [String] {
 
 // MARK: - Command-line arguments and configuration
 
-/// A type describing the command-line arguments passed by Swift Package Manager
-/// to the testing library's entry point.
+/// A type that describes the command-line arguments passed by Swift Package
+/// Manager to the testing library's entry point.
 ///
 /// - Warning: This type's definition and JSON-encoded form have not been
 ///   finalized yet.
