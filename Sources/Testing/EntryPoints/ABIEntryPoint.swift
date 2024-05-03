@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2023-2024 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -13,10 +13,10 @@
 /// to remain version-agnostic regarding the testing library.
 ///
 /// - Parameters:
-///   - argumentsJSON: A buffer to memory representing the JSON encoding of an
-///     instance of `__CommandLineArguments_v0`. If `nil`, a new instance is
-///     created from the command-line arguments to the current process.
-///   - eventHandler: An event handler to which is passed a buffer to memory
+///   - argumentsJSON: A buffer to memory that represents the JSON encoding of an
+///     instance of `__CommandLineArguments_v0`. If `nil`, and creates a new instance
+///     from the command-line arguments to the current process.
+///   - eventHandler: An event handler that receives a memory buffer
 ///     representing each event and its context, as with ``Event/Handler``, but
 ///     encoded as JSON.
 ///
