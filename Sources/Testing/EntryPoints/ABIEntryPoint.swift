@@ -41,7 +41,7 @@ public typealias ABIEntryPoint_v0 = @Sendable (
 ///   ABI-stable entry point to the testing library. The caller owns this memory
 ///   and is responsible for deinitializing and deallocating it when done.
 ///
-/// This function can be used by tools that do not link directly to the testing
+/// This function can be used by tools that don't link directly to the testing
 /// library and wish to invoke tests in a binary that has been loaded into the
 /// current process. The function is emitted into the binary under the name
 /// `"swt_copyABIEntryPoint_v0"` and can be dynamically looked up at runtime
