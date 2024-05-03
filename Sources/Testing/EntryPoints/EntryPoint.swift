@@ -461,8 +461,8 @@ extension Event.ConsoleOutputRecorder.Options {
       return true
     }
 
-    // If the file handle is a pipe, assume the other end is using it to forward
-    // output from this process to its own stderr file. This is how `swift test`
+    // If the file handle is a pipe, assume the other end uses it to forward
+    // output from this process to its own `stderr` file. This is how `swift test`
     // invokes the testing library, for example.
     if fileHandle.isPipe {
       return true
