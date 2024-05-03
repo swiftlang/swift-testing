@@ -51,8 +51,9 @@ import Testing
     }
 }
 ```
-> Note: The entry point is expected to change
-to an entry point designed for other build systems prior to `swift-testing` v1.
+> [!WARNING]
+> The entry point is expected to change to an entry point designed for other
+> build systems prior to `swift-testing` v1.
 
 
 ## Integrate with CTest
