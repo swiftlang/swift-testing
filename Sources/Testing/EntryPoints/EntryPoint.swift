@@ -511,7 +511,7 @@ extension Event.ConsoleOutputRecorder.Options {
 
 // MARK: - Error reporting
 
-/// A type describing an error encountered in the entry point.
+/// A type used to describe an error encountered in the entry point.
 private enum _EntryPointError: Error {
   /// A feature is unavailable.
   ///
