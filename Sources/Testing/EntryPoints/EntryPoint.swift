@@ -137,7 +137,7 @@ func listTestsForEntryPoint(_ tests: some Sequence<Test>) -> [String] {
 /// - Warning: This type's definition and JSON-encoded form have not been
 ///   finalized yet.@Comment{ QUERY: Has this been finalized? If so, can we remove the Warning? If not, we should make this a double-slash comment for initial release. }
 ///
-/// - Warning: This type is used by Swift Package Manager. Do not use it
+/// - Warning: This type is used by Swift Package Manager. Don't use it
 ///   directly.
 public struct __CommandLineArguments_v0: Sendable {
   public init() {}
@@ -172,7 +172,7 @@ public struct __CommandLineArguments_v0: Sendable {
   /// The identifier of the `XCTestCase` instance hosting the testing library,
   /// if ``XCTestScaffold`` is being used.
   ///
-  /// This property is not ABI and will be removed with ``XCTestScaffold``.
+  /// This property is not ABI and will be removed with ``XCTestScaffold``.@Comment{ QUERY: Should we remove this line? }
   var xcTestCaseHostIdentifier: String?
 }
 
