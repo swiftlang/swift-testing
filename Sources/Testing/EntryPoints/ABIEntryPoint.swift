@@ -27,7 +27,7 @@
 /// and then invokes available tests in the current process.
 ///
 /// - Warning: This function's signature and the structure of its JSON inputs
-///   and outputs have not been finalized yet.
+///   and outputs have not been finalized yet.@Comment{ QUERY: Has this been finalized? If so, can we remove the Warning? If not, we should make this a double-slash comment for initial release. }
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 public typealias ABIEntryPoint_v0 = @Sendable (
   _ argumentsJSON: UnsafeRawBufferPointer?,
