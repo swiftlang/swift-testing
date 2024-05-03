@@ -489,8 +489,8 @@ extension Event.ConsoleOutputRecorder.Options {
 #endif
   }
 
-  /// Whether or not the system terminal claims to support true-color ANSI
-  /// escape codes.
+  /// A Boolean value that indicates whether the system terminal claims to 
+  /// support true-color ANSI escape codes.
   private static var _terminalSupportsTrueColorANSIEscapeCodes: Bool {
 #if SWT_TARGET_OS_APPLE || os(Linux)
     if let colortermVariable = Environment.variable(named: "COLORTERM") {
