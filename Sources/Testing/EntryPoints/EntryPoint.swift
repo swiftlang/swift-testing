@@ -240,7 +240,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   return result
 }
 
-/// Get an instance of ``Configuration`` given a sequence of command-line
+/// Get an instance of a configuration given a sequence of command-line
 /// arguments passed from Swift Package Manager.
 ///
 /// - Parameters:
