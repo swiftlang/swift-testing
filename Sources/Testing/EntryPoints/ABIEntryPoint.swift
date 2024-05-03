@@ -92,8 +92,8 @@ extension EventAndContextSnapshot: Codable {}
 /// ABI-friendly event handler.
 ///
 /// - Parameters:
-///   - eventHandler: The event handler to forward events to. See
-///     ``ABIEntryPoint_v0`` for more information.
+///   - eventHandler: The event handler to forward events to. For more 
+///     information, see ``ABIEntryPoint_v0``.
 ///
 /// - Returns: An event handler.
 ///
