@@ -295,7 +295,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
     }
 
     guard #available(_regexAPI, *) else {
-      throw _EntryPointError.featureUnavailable("The `\(label)' option is not supported on this OS version.")
+      throw TestingError.featureUnavailable("The `\(label)' option is not supported on this OS version.")
     }
     return try regexes.lazy
       .map { try Regex($0) }
@@ -321,7 +321,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
     case "fail":
       repetitionPolicy.continuationCondition = .untilIssueRecorded
     default:
-      throw _EntryPointError.invalidArgument("--repeat-until", value: repeatUntil)
+      throw TestingError.invalidArgument("--repeat-until", value: repeatUntil)
     }
     if !hadExplicitRepetitionCount {
       // The caller wants to repeat until a condition is met, but didn't say how
@@ -507,33 +507,4 @@ extension Event.ConsoleOutputRecorder.Options {
 #endif
   }
 #endif
-}
-
-// MARK: - Error reporting
-
-/// A type describing an error encountered in the entry point.
-private enum _EntryPointError: Error {
-  /// A feature is unavailable.
-  ///
-  /// - Parameters:
-  ///   - explanation: An explanation of the problem.
-  case featureUnavailable(_ explanation: String)
-
-  /// An argument was invalid.
-  ///
-  /// - Parameters:
-  ///   - name: The name of the argument.
-  ///   - value: The invalid value.
-  case invalidArgument(_ name: String, value: String)
-}
-
-extension _EntryPointError: CustomStringConvertible {
-  var description: String {
-    switch self {
-    case let .featureUnavailable(explanation):
-      explanation
-    case let .invalidArgument(name, value):
-      #"Invalid value "\#(value)" for argument \#(name)"#
-    }
-  }
 }

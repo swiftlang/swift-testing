@@ -132,7 +132,7 @@ enum Environment {
               // The environment variable wasn't set.
               return nil
             case let errorCode:
-              let error = Win32Error(rawValue: errorCode)
+              let error = TestingError.win32(errorCode)
               fatalError("unexpected error when getting environment variable '\(name)': \(error) (\(errorCode))")
             }
           } else if count > buffer.count {

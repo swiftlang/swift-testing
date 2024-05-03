@@ -58,14 +58,14 @@ struct FileHandle: ~Copyable, Sendable {
         var file: SWT_FILEHandle?
         let result = _wfopen_s(&file, path, mode)
         guard let file, result == 0 else {
-          throw CError(rawValue: result)
+          throw TestingError.errno(result)
         }
         return file
       }
     }
 #else
     guard let fileHandle = fopen(path, mode) else {
-      throw CError(rawValue: swt_errno())
+      throw TestingError.errno(swt_errno())
     }
 #endif
     self.init(unsafeCFILEHandle: fileHandle, closeWhenDone: true)
@@ -257,7 +257,7 @@ extension FileHandle {
         while true {
           let countRead = fread(buffer.baseAddress, 1, buffer.count, file)
           if 0 != ferror(file) {
-            throw CError(rawValue: swt_errno())
+            throw TestingError.errno(swt_errno())
           }
           if countRead > 0 {
             let endIndex = buffer.index(buffer.startIndex, offsetBy: countRead)
@@ -298,7 +298,7 @@ extension FileHandle {
 
       let countWritten = fwrite(bytes.baseAddress, MemoryLayout<UInt8>.stride, bytes.count, file)
       if countWritten < bytes.count {
-        throw CError(rawValue: swt_errno())
+        throw TestingError.errno(swt_errno())
       }
     }
   }
@@ -364,7 +364,7 @@ extension FileHandle {
 
       try string.withCString { string in
         if EOF == fputs(string, file) {
-          throw CError(rawValue: swt_errno())
+          throw TestingError.errno(swt_errno())
         }
       }
     }

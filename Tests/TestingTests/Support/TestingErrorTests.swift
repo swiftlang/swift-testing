@@ -11,20 +11,17 @@
 @testable import Testing
 private import TestingInternals
 
-@Suite("CError Tests")
-struct CErrorTests {
-  @Test("CError.description property", arguments: 1 ..< 100)
-  func errorDescription(errorCode: CInt) {
-    let description = String(describing: CError(rawValue: errorCode))
+@Suite("TestingError Tests")
+struct TestingErrorTests {
+  @Test("TestingError.description property (.errno)", arguments: 1 ..< 100)
+  func errnoDescription(errorCode: CInt) {
+    let description = String(describing: TestingError.errno(errorCode))
     #expect(!description.isEmpty)
     #expect(strerror(errorCode) == description)
   }
-}
 
 #if os(Windows)
-@Suite("Win32Error Tests")
-struct Win32ErrorTests {
-  @Test("Win32Error.description property",
+  @Test("TestingError.description property (.win32)",
     arguments: [
       (ERROR_OUTOFMEMORY, "Not enough memory resources are available to complete this operation."),
       (ERROR_INVALID_ACCESS, "The access code is invalid."),
@@ -32,10 +29,17 @@ struct Win32ErrorTests {
       (999_999_999, "An unknown error occurred (999999999)."),
     ]
   )
-  fileprivate func errorDescription(errorCode: CInt, expectedMessage: String) {
-    let description = String(describing: Win32Error(rawValue: DWORD(errorCode)))
+  fileprivate func win32Description(errorCode: CInt, expectedMessage: String) {
+    let description = String(describing: TestingError.win32(DWORD(errorCode)))
     #expect(!description.isEmpty)
     #expect(expectedMessage == description)
   }
-}
 #endif
+
+  @Test("TestingError.description property (.system)")
+  fileprivate func systemDescription() {
+    let description = String(describing: TestingError.system("Lorem ipsum"))
+    #expect(!description.isEmpty)
+    #expect("Lorem ipsum" == description)
+  }
+}

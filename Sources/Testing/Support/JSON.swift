@@ -36,7 +36,7 @@ enum JSON {
     let data = try encoder.encode(value)
     return try data.withUnsafeBytes(body)
 #else
-    throw SystemError(description: "JSON encoding requires Foundation which is not available in this environment.")
+    throw TestingError.system("JSON encoding requires Foundation which is not available in this environment.")
 #endif
   }
 
@@ -60,7 +60,7 @@ enum JSON {
       return try JSONDecoder().decode(type, from: data)
     }
 #else
-    throw SystemError(description: "JSON decoding requires Foundation which is not available in this environment.")
+    throw TestingError.system("JSON decoding requires Foundation which is not available in this environment.")
 #endif
   }
 }

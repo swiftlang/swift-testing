@@ -127,7 +127,7 @@ struct SwiftPMTests {
   @Test("--xunit-output argument (bad path)")
   func xunitOutputWithBadPath() {
     // Test that a bad path produces an error.
-    #expect(throws: CError.self) {
+    #expect(throws: TestingError.self) {
       _ = try configurationForEntryPoint(withArguments: ["PATH", "--xunit-output", "/nonexistent/path/we/cannot/write/to"])
     }
   }

@@ -64,12 +64,12 @@ extension Issue {
   /// - Returns: The issue that was recorded (`self` or a modified copy of it.)
   @discardableResult
   func record(configuration: Configuration? = nil) -> Self {
-    // If this issue is a caught error of kind SystemError, reinterpret it as a
-    // testing system issue instead (per the documentation for SystemError.)
-    if case let .errorCaught(error) = kind, let error = error as? SystemError {
+    // If this issue is a caught error of kind TestingError.system, reinterpret
+    // it as a testing system issue instead (per its documentation.)
+    if case let .errorCaught(error) = kind, case let TestingError.system(explanation) = error {
       var selfCopy = self
       selfCopy.kind = .system
-      selfCopy.comments.append(Comment(rawValue: String(describing: error)))
+      selfCopy.comments.append(Comment(rawValue: explanation))
       return selfCopy.record(configuration: configuration)
     }
 

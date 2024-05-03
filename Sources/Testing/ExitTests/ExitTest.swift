@@ -311,7 +311,7 @@ extension ExitTest {
 #if SWT_TARGET_OS_APPLE || os(Linux)
     let pid = try withUnsafeTemporaryAllocation(of: P<posix_spawn_file_actions_t>.self, capacity: 1) { fileActions in
       guard 0 == posix_spawn_file_actions_init(fileActions.baseAddress!) else {
-        throw CError(rawValue: swt_errno())
+        throw TestingError.errno(swt_errno())
       }
       defer {
         _ = posix_spawn_file_actions_destroy(fileActions.baseAddress!)
@@ -324,7 +324,7 @@ extension ExitTest {
 
       return try withUnsafeTemporaryAllocation(of: P<posix_spawnattr_t>.self, capacity: 1) { attrs in
         guard 0 == posix_spawnattr_init(attrs.baseAddress!) else {
-          throw CError(rawValue: swt_errno())
+          throw TestingError.errno(swt_errno())
         }
         defer {
           _ = posix_spawnattr_destroy(attrs.baseAddress!)
@@ -355,7 +355,7 @@ extension ExitTest {
 
         var pid = pid_t()
         guard 0 == posix_spawn(&pid, executablePath, fileActions.baseAddress!, attrs.baseAddress, argv, environ) else {
-          throw CError(rawValue: swt_errno())
+          throw TestingError.errno(swt_errno())
         }
         return pid
       }
@@ -415,7 +415,7 @@ extension ExitTest {
           &startupInfo,
           &processInfo
         ) else {
-          throw Win32Error(rawValue: GetLastError())
+          throw TestingError.win32(GetLastError())
         }
         _ = CloseHandle(processInfo.hThread)
 
@@ -429,7 +429,7 @@ extension ExitTest {
     return try await wait(for: processHandle)
 #else
 #warning("Platform-specific implementation missing: process spawning unavailable")
-    throw SystemError(description: "Exit tests are unimplemented on this platform.")
+    throw TestingError.featureUnavailable("Exit tests are unimplemented on this platform.")
 #endif
   }
 }

@@ -82,7 +82,7 @@ struct FileHandleTests {
   @Test("Cannot write bytes to a read-only file")
   func cannotWriteBytesToReadOnlyFile() throws {
     let fileHandle = try FileHandle.null(mode: "rb")
-    #expect(throws: CError.self) {
+    #expect(throws: TestingError.self) {
       try fileHandle.write([0, 1, 2, 3, 4, 5])
     }
   }
@@ -90,7 +90,7 @@ struct FileHandleTests {
   @Test("Cannot write string to a read-only file")
   func cannotWriteStringToReadOnlyFile() throws {
     let fileHandle = try FileHandle.null(mode: "rb")
-    #expect(throws: CError.self) {
+    #expect(throws: TestingError.self) {
       try fileHandle.write("Impossible!")
     }
   }
@@ -220,7 +220,7 @@ func temporaryDirectory() throws -> String {
   try withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: Int(MAX_PATH + 1)) { buffer in
     // NOTE: GetTempPath2W() was introduced in Windows 10 Build 20348.
     if 0 == GetTempPathW(DWORD(buffer.count), buffer.baseAddress) {
-      throw Win32Error(rawValue: GetLastError())
+      throw TestingError.win32(GetLastError())
     }
     return try #require(String.decodeCString(buffer.baseAddress, as: UTF16.self)?.result)
   }

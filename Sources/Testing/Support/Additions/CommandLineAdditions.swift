@@ -46,7 +46,7 @@ extension CommandLine {
       return try withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(PATH_MAX) * 2) { buffer in
         let readCount = readlink("/proc/\(getpid())/exe", buffer.baseAddress!, buffer.count - 1)
         guard readCount >= 0 else {
-          throw CError(rawValue: swt_errno())
+          throw TestingError.errno(swt_errno())
         }
         buffer[readCount] = 0 // NUL-terminate the string.
         return String(cString: buffer.baseAddress!)
@@ -54,10 +54,10 @@ extension CommandLine {
 #elseif os(Windows)
       return try withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: Int(MAX_PATH) * 2) { buffer in
         guard 0 != GetModuleFileNameW(nil, buffer.baseAddress!, DWORD(buffer.count)) else {
-          throw Win32Error(rawValue: GetLastError())
+          throw TestingError.win32(GetLastError())
         }
         guard let path = String.decodeCString(buffer.baseAddress!, as: UTF16.self)?.result else {
-          throw Win32Error(rawValue: DWORD(ERROR_ILLEGAL_CHARACTER))
+          throw TestingError.win32(DWORD(ERROR_ILLEGAL_CHARACTER))
         }
         return path
       }

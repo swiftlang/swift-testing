@@ -31,10 +31,10 @@ private func _blockAndWait(for pid: pid_t) throws -> ExitCondition {
       case .init(CLD_KILLED), .init(CLD_DUMPED):
         return .signal(siginfo.si_status)
       default:
-        throw SystemError(description: "Unexpected siginfo_t value. Please file a bug report at https://github.com/apple/swift-testing/issues/new and include this information: \(String(reflecting: siginfo))")
+        throw TestingError.system("Unexpected siginfo_t value. Please file a bug report at https://github.com/apple/swift-testing/issues/new and include this information: \(String(reflecting: siginfo))")
       }
     } else if case let errorCode = swt_errno(), errorCode != EINTR {
-      throw CError(rawValue: errorCode)
+      throw TestingError.errno(errorCode)
     }
   }
 }
@@ -204,7 +204,7 @@ func wait(for processHandle: HANDLE) async throws -> ExitCondition {
     // may take an arbitrarily long time, so let the thread pool know that too.
     let flags = ULONG(WT_EXECUTEONLYONCE | WT_EXECUTELONGFUNCTION)
     guard RegisterWaitForSingleObject(&waitHandle, processHandle, callback, context, INFINITE, flags) else {
-      continuation.resume(throwing: Win32Error(rawValue: GetLastError()))
+      continuation.resume(throwing: TestingError.win32(GetLastError()))
       return
     }
   }
