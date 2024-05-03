@@ -23,7 +23,7 @@ private import TestingInternals
 /// This function examines the command-line arguments represented by `args` and
 /// then invokes available tests in the current process.
 ///
-/// - Warning: This function is used by Swift Package Manager. Do not call it
+/// - Warning: This function is used by Swift Package Manager. Don't call it
 ///   directly.
 @_disfavoredOverload public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) async -> CInt {
   await entryPoint(passing: args, eventHandler: nil)
