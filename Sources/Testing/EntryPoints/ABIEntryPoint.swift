@@ -72,12 +72,12 @@ public func copyABIEntryPoint_v0() -> UnsafeMutableRawPointer {
 // MARK: - Experimental event streaming
 
 #if canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
-/// A type containing an event snapshot and snapshots of the contents of an
+/// A type that contains an event snapshot and snapshots of the contents of an
 /// event context suitable for streaming over JSON.
 ///
-/// This function is not part of the public interface of the testing library.
+/// This function isn't part of the public interface of the testing library.
 /// External adopters are not necessarily written in Swift and are expected to
-/// decode the JSON produced for this type in implementation-specific ways.
+/// decode the JSON produced for this type in implementation-specific ways.@Comment{ QUERY: Should we convert this text into a double-slashed comment? We don't typically talk about "external adopters" in the reference docs. }
 struct EventAndContextSnapshot {
   /// A snapshot of the event.
   var event: Event.Snapshot
