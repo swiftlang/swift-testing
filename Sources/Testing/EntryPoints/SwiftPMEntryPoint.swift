@@ -42,7 +42,7 @@ private import TestingInternals
 /// of `EXIT_SUCCESS` is used; otherwise, a (possibly platform-specific) value
 /// such as `EXIT_FAILURE` is used instead.
 ///
-/// - Warning: This function is used by Swift Package Manager. Do not call it
+/// - Warning: This function is used by Swift Package Manager. Don't call it
 ///   directly.
 public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) async -> Never {
   let exitCode: CInt = await __swiftPMEntryPoint(passing: args)
