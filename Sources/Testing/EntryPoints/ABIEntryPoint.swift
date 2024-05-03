@@ -99,7 +99,7 @@ extension EventAndContextSnapshot: Codable {}
 ///
 /// The resulting event handler outputs data as JSON. For each event handled by
 /// the resulting event handler, a JSON object representing it and its
-/// associated context is created and is passed to `eventHandler`. These JSON
+/// associated context is created and passed to `eventHandler`. These JSON
 /// objects are guaranteed not to contain any ASCII newline characters (`"\r"`
 /// or `"\n"`).
 ///
