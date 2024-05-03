@@ -89,8 +89,8 @@ public enum XCTestScaffold: Sendable {
   ///   - testCase: An `XCTestCase` instance that hosts tests implemented using
   ///     the testing library.
   ///
-  /// Output from the testing library is written to the standard error stream.
-  /// The format of the output is not meant to be machine-readable and is
+  /// Writes output from the testing library to the standard error stream.
+  /// The format of the output isn't meant to be machine-readable and is
   /// subject to change.
   ///
   /// ### Configuring output
