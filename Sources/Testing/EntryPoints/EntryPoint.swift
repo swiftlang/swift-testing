@@ -135,7 +135,7 @@ func listTestsForEntryPoint(_ tests: some Sequence<Test>) -> [String] {
 /// Manager to the testing library's entry point.
 ///
 /// - Warning: This type's definition and JSON-encoded form have not been
-///   finalized yet.
+///   finalized yet.@Comment{ QUERY: Has this been finalized? If so, can we remove the Warning? If not, we should make this a double-slash comment for initial release. }
 ///
 /// - Warning: This type is used by Swift Package Manager. Do not use it
 ///   directly.
