@@ -348,7 +348,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 ///   - path: The path to which events should be streamed. This file will be
 ///     opened for writing.
 ///
-/// - Throws: Any error that occurs opening `path`. Once `path` is opened,
+/// - Throws: Any error that occurs opening `path`. After opening the `path`,
 ///   errors that may occur writing to it are handled by the resulting event
 ///   handler.
 ///
@@ -361,7 +361,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 /// objects are guaranteed not to contain any ASCII newline characters (`"\r"`
 /// or `"\n"`) themselves.
 ///
-/// The file at `path` can be a regular file, however to allow for streaming a
+/// The file at `path` can be a regular file, however, to allow for streaming a
 /// named pipe is recommended. `mkfifo()` can be used on Darwin and Linux to
 /// create a named pipe; `CreateNamedPipeA()` can be used on Windows.
 ///
