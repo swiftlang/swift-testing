@@ -452,8 +452,8 @@ extension Event.ConsoleOutputRecorder.Options {
     return result
   }
 
-  /// Whether or not the current process's standard error stream is capable of
-  /// accepting and rendering ANSI escape codes.
+  /// A Boolean value that indicates whether the current process's standard 
+  /// error stream is capable of accepting and rendering ANSI escape codes.
   private static func _fileHandleSupportsANSIEscapeCodes(_ fileHandle: borrowing FileHandle) -> Bool {
     // Determine if this file handle appears to write to a Terminal window
     // capable of accepting ANSI escape codes.
