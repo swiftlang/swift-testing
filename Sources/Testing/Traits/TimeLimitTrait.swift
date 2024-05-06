@@ -63,10 +63,9 @@ extension Trait where Self == TimeLimitTrait {
   ///
   /// - Returns: An instance of ``TimeLimitTrait``.
   ///
-  /// Test timeouts do not support high-precision, arbitrarily short durations,
-  /// due to variability in testing environments. The time limit duration must
-  /// be at least one minute, and can only be expressed in minute-length
-  /// increments.
+  /// Test timeouts do not support high-precision, arbitrarily short durations
+  /// due to variability in testing environments. The time limit must be at
+  /// least one minute, and can only be expressed in increments of one minute.
   ///
   /// When this trait is associated with a test, that test must complete within
   /// a time limit of, at most, `timeLimit`. If the test runs longer, an issue
@@ -74,11 +73,12 @@ extension Trait where Self == TimeLimitTrait {
   /// recorded. This timeout is treated as a test failure.
   ///
   /// The time limit amount specified by `timeLimit` may be reduced if the
-  /// testing library is configured to enforce a maximum per-test limit, which
-  /// may be controlled on a global basis or when the runner process is
-  /// launched. If a maximum per-test limit has been set, the effective time
-  /// limit of the test this trait is applied to will be the lesser of
-  /// `timeLimit` and the maximum per-test limit.
+  /// testing library is configured to enforce a maximum per-test limit. When
+  /// such a maximum is set, the effective time limit of the test this trait is
+  /// applied to will be the lesser of `timeLimit` and that maximum. This is a
+  /// policy which may be configured on a global basis by the tool responsible
+  /// for launching the test process. Refer to that tool's documentation for
+  /// more details.
   ///
   /// If a test is parameterized, this time limit is applied to each of its
   /// test cases individually. If a test has more than one time limit associated
@@ -96,10 +96,9 @@ extension Trait where Self == TimeLimitTrait {
   ///
   /// - Returns: An instance of ``TimeLimitTrait``.
   ///
-  /// Test timeouts do not support high-precision, arbitrarily short durations,
-  /// due to variability in testing environments. The time limit duration must
-  /// be at least one minute, and can only be expressed in minute-length
-  /// increments.
+  /// Test timeouts do not support high-precision, arbitrarily short durations
+  /// due to variability in testing environments. The time limit must be at
+  /// least one minute, and can only be expressed in increments of one minute.
   ///
   /// When this trait is associated with a test, that test must complete within
   /// a time limit of, at most, `timeLimit`. If the test runs longer, an issue
@@ -107,11 +106,12 @@ extension Trait where Self == TimeLimitTrait {
   /// recorded. This timeout is treated as a test failure.
   ///
   /// The time limit amount specified by `timeLimit` may be reduced if the
-  /// testing library is configured to enforce a maximum per-test limit, which
-  /// may be controlled on a global basis or when the runner process is
-  /// launched. If a maximum per-test limit has been set, the effective time
-  /// limit of the test this trait is applied to will be the lesser of
-  /// `timeLimit` and the maximum per-test limit.
+  /// testing library is configured to enforce a maximum per-test limit. When
+  /// such a maximum is set, the effective time limit of the test this trait is
+  /// applied to will be the lesser of `timeLimit` and that maximum. This is a
+  /// policy which may be configured on a global basis by the tool responsible
+  /// for launching the test process. Refer to that tool's documentation for
+  /// more details.
   ///
   /// If a test is parameterized, this time limit is applied to each of its
   /// test cases individually. If a test has more than one time limit associated
@@ -128,7 +128,7 @@ extension TimeLimitTrait.Duration {
   /// Construct a time limit duration given a number of seconds.
   ///
   /// This function is unavailable and is provided for diagnostic purposes only.
-  @available(*, unavailable, message: "Time limit duration must be at least one minute")
+  @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func seconds(_ seconds: some BinaryInteger) -> Self {
     fatalError("Unsupported")
   }
@@ -136,7 +136,7 @@ extension TimeLimitTrait.Duration {
   /// Construct a time limit duration given a number of seconds.
   ///
   /// This function is unavailable and is provided for diagnostic purposes only.
-  @available(*, unavailable, message: "Time limit duration must be at least one minute")
+  @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func seconds(_ seconds: Double) -> Self {
     fatalError("Unsupported")
   }
@@ -144,7 +144,7 @@ extension TimeLimitTrait.Duration {
   /// Construct a time limit duration given a number of milliseconds.
   ///
   /// This function is unavailable and is provided for diagnostic purposes only.
-  @available(*, unavailable, message: "Time limit duration must be at least one minute")
+  @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func milliseconds(_ milliseconds: some BinaryInteger) -> Self {
     fatalError("Unsupported")
   }
@@ -152,7 +152,7 @@ extension TimeLimitTrait.Duration {
   /// Construct a time limit duration given a number of milliseconds.
   ///
   /// This function is unavailable and is provided for diagnostic purposes only.
-  @available(*, unavailable, message: "Time limit duration must be at least one minute")
+  @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func milliseconds(_ milliseconds: Double) -> Self {
     fatalError("Unsupported")
   }
@@ -160,7 +160,7 @@ extension TimeLimitTrait.Duration {
   /// Construct a time limit duration given a number of microseconds.
   ///
   /// This function is unavailable and is provided for diagnostic purposes only.
-  @available(*, unavailable, message: "Time limit duration must be at least one minute")
+  @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func microseconds(_ microseconds: some BinaryInteger) -> Self {
     fatalError("Unsupported")
   }
@@ -168,7 +168,7 @@ extension TimeLimitTrait.Duration {
   /// Construct a time limit duration given a number of microseconds.
   ///
   /// This function is unavailable and is provided for diagnostic purposes only.
-  @available(*, unavailable, message: "Time limit duration must be at least one minute")
+  @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func microseconds(_ microseconds: Double) -> Self {
     fatalError("Unsupported")
   }
@@ -176,7 +176,7 @@ extension TimeLimitTrait.Duration {
   /// Construct a time limit duration given a number of nanoseconds.
   ///
   /// This function is unavailable and is provided for diagnostic purposes only.
-  @available(*, unavailable, message: "Time limit duration must be at least one minute")
+  @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func nanoseconds(_ nanoseconds: some BinaryInteger) -> Self {
     fatalError("Unsupported")
   }
