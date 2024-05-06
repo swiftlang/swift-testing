@@ -17,7 +17,7 @@ Use tags to provide semantic information for organization, filtering, and custom
 A complex package or project may contain hundreds or thousands of tests and
 suites. Some subset of those tests may share some common facet, such as being
 _critical_ or _flaky_. The testing library includes a type of trait called
-*tags* that you can add to group and categorize tests.
+_tags_ that you can add to group and categorize tests.
 
 Tags are different from test suites: test suites impose structure on test
 functions at the source level, while tags provide semantic information for a
