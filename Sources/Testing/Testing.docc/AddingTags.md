@@ -132,7 +132,7 @@ should contain a JSON object (a dictionary) whose keys are strings that represen
 tags and whose values represent tag colors.
 
 - Note: On Windows, create the `".swift-testing"` directory in the
-  `AppData\Local` directory inside your home directory instead of directly
+  `"AppData\Local"` directory inside your home directory instead of directly
   inside it.
 
 Tag colors can be represented using several formats:
