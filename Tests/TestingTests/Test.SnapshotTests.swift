@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@_spi(ForToolsIntegrationOnly) @testable import Testing
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) @testable import Testing
 
 @Suite("Test.Snapshot tests")
 struct Test_SnapshotTests {
@@ -97,17 +97,12 @@ struct Test_SnapshotTests {
   private static let bug: Bug = Bug.bug(12345, "Lorem ipsum")
 
   @available(_clockAPI, *)
-  @Test("timeLimit property", .timeLimit(duration))
+  @Test("timeLimit property", .timeLimit(.minutes(999_999_999)))
   func timeLimit() async throws {
     let test = try #require(Test.current)
     let snapshot = Test.Snapshot(snapshotting: test)
 
-    #expect(snapshot.timeLimit == Self.duration)
-  }
-
-  @available(_clockAPI, *)
-  private static var duration: Duration {
-    .seconds(999_999_999)
+    #expect(snapshot.timeLimit == .seconds(60) * 999_999_999)
   }
 }
 
