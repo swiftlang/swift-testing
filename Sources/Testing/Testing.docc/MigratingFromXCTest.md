@@ -53,7 +53,7 @@ source file contains mixed test content.
 
 ### Convert test classes
 
-XCTest groups related sets of test methods in test classes that inherit
+XCTest groups related sets of test methods in test classes: classes that inherit
 from the [`XCTestCase`](https://developer.apple.com/documentation/xctest/xctestcase)
 class provided by the [XCTest](https://developer.apple.com/documentation/xctest) framework. The testing library doesn't require
 that test functions be instance members of types. Instead, they can be _free_ or
