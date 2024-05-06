@@ -438,7 +438,7 @@ functionality called _confirmations_ which can be used to implement these tests.
 Instances of ``Confirmation`` are created and used within the scope of the
 function ``confirmation(_:expectedCount:fileID:filePath:line:column:_:)``.
 
-Confirmations function similarly to the expectations of XCTest; however, they don't
+Confirmations function similarly to the expectations API of XCTest, however, they don't
 block or suspend the caller while waiting for a condition to be fulfilled.
 Instead, the requirement is expected to be _confirmed_ (the equivalent of
 _fulfilling_ an expectation) before `confirmation()` returns, and records an issue otherwise:
