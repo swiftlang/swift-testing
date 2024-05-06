@@ -44,7 +44,7 @@ immediately before its `@Test` or `@Suite` attribute:
 }
 ```
 
-The comment, `// Assumes the standard lunch menu includes a taco`, are added
+The comment, `// Assumes the standard lunch menu includes a taco`, is added
 to the test.
 
 The following language comment styles are supported:
