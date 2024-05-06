@@ -200,7 +200,7 @@ the presence of the `@Test` attribute:
 }
 
 As with XCTest, the testing library allows test functions to be marked `async`
-or `throws`, or `async`-`throws`, and to be isolated to a global actor (for example, by using the
+`throws`, or `async`-`throws`, and to be isolated to a global actor (for example, by using the
 `@MainActor` attribute.)
 
 - Note: XCTest runs synchronous test methods on the main actor by default, while
