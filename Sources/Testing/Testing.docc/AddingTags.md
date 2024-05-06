@@ -138,7 +138,7 @@ tags and whose values represent tag colors.
 Tag colors can be represented using several formats:
 
 - The strings `"red"`, `"orange"`, `"yellow"`, `"green"`, `"blue"`, or
-  `purple`, represent corresponding predefined instances of ``Tag``, like
+  `"purple"`, representing corresponding predefined instances of ``Tag``, like
   ``Tag/red``, ``Tag/orange``, ``Tag/yellow``, ``Tag/green``, ``Tag/blue``, and
   ``Tag/purple``.
 - A string of the form `#RRGGBB`, containing a hexadecimal representation of
