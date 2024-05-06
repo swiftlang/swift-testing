@@ -145,7 +145,7 @@ Tag colors can be represented using several formats:
   the color in a device-independent RGB color space.
 - The `null` literal value, which represents no color.
 
-For example, to set the color of the `critical` tag to orange and the color of
+For example, to set the color of the `"critical"` tag to orange and the color of
 the `.legallyRequired` tag to teal, the contents of `tag-colors.json` can
 be set to:
 
