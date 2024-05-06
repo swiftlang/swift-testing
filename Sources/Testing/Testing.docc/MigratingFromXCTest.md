@@ -199,7 +199,7 @@ the presence of the `@Test` attribute:
   }
 }
 
-As with XCTest, the testing library allows test functions to be marked `async`
+As with XCTest, the testing library allows test functions to be marked `async`,
 `throws`, or `async`-`throws`, and to be isolated to a global actor (for example, by using the
 `@MainActor` attribute.)
 
