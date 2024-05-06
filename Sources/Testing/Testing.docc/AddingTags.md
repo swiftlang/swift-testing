@@ -131,7 +131,7 @@ To add colors to tags, create a directory in your home directory named
 should contain a JSON object (a dictionary) whose keys are strings that represent
 tags and whose values represent tag colors.
 
-- Note: On Windows, create the `.swift-testing` directory in the
+- Note: On Windows, create the `".swift-testing"` directory in the
   `AppData\Local` directory inside your home directory instead of directly
   inside it.
 
