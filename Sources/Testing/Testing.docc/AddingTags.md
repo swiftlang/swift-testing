@@ -141,7 +141,7 @@ Tag colors can be represented using several formats:
   `"purple"`, representing corresponding predefined instances of ``Tag``, like
   ``Tag/red``, ``Tag/orange``, ``Tag/yellow``, ``Tag/green``, ``Tag/blue``, and
   ``Tag/purple``.
-- A string of the form `#RRGGBB`, containing a hexadecimal representation of
+- A string of the form `"#RRGGBB"`, containing a hexadecimal representation of
   the color in a device-independent RGB color space.
 - The `null` literal value, which represents no color.
 
