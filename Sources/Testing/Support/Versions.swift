@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import TestingInternals
+private import _TestingInternals
 
 /// A human-readable string describing the current operating system's version.
 ///

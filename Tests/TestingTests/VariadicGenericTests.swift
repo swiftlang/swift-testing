@@ -9,7 +9,7 @@
 //
 
 import Testing
-private import TestingInternals
+private import _TestingInternals
 
 @Test func variadicCStringArguments() async throws {
   #expect(swt_pointersNotEqual2("abc", "123"))

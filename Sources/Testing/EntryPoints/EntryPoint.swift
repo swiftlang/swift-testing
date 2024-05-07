@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import TestingInternals
+private import _TestingInternals
 
 /// The common implementation of the entry point functions in this file.
 ///

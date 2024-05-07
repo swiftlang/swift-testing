@@ -40,7 +40,7 @@ let package = Package(
     .target(
       name: "Testing",
       dependencies: [
-        "TestingInternals",
+        "_TestingInternals",
         "TestingMacros",
       ],
       cxxSettings: .packageSettings,
@@ -79,7 +79,7 @@ let package = Package(
     // "Support" targets: These contain C family code and are used exclusively
     // by other targets above, not directly included in product libraries.
     .target(
-      name: "TestingInternals",
+      name: "_TestingInternals",
       cxxSettings: .packageSettings
     ),
 

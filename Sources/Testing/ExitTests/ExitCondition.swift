@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import TestingInternals
+private import _TestingInternals
 
 /// An enumeration describing possible conditions under which an exit test will
 /// succeed or fail.

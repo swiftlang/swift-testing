@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import TestingInternals
+private import _TestingInternals
 
 /// The entry point to the testing library used by Swift Package Manager.
 ///

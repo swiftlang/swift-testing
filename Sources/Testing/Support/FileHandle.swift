@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-internal import TestingInternals
+internal import _TestingInternals
 
 #if !SWT_NO_FILE_IO
 /// A type representing a file handle.

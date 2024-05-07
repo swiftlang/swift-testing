@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-internal import TestingInternals
+internal import _TestingInternals
 
 /// A type representing an error from a C function such as `fopen()`.
 ///
@@ -48,7 +48,7 @@ func strerror(_ errorCode: CInt) -> String {
     return strnlen(buffer.baseAddress!, buffer.count)
   }
 #else
-  String(cString: TestingInternals.strerror(errorCode))
+  String(cString: _TestingInternals.strerror(errorCode))
 #endif
 }
 
