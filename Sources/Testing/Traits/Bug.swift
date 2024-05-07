@@ -12,8 +12,8 @@
 ///
 /// To add this trait to a test, use one of the following functions:
 ///
-/// - ``Trait/bug(_:_:)-86mmm``
-/// - ``Trait/bug(_:_:)-3hsi5``
+/// - ``Trait/bug(_:_:)-2u8j9``
+/// - ``Trait/bug(_:_:)-7mo2w``
 public struct Bug {
   /// The identifier of this bug in the associated bug-tracking system.
   ///
