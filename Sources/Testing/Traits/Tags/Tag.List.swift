@@ -78,7 +78,7 @@ extension Trait where Self == Tag.List {
   ///
   /// This function is provided as a convenience to allow specifying tags as
   /// string values. To specify a mix of tags identified by symbol (such as
-  /// ``Tag/red``) and tags identified by string value (such as `"important"`),
+  /// `.example`) and tags identified by string value (such as `"important"`),
   /// use two separate calls to this function and pass symbols separately from
   /// string values:
   ///
