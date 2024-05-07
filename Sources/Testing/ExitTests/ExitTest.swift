@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import TestingInternals
+private import _TestingInternals
 
 #if !SWT_NO_EXIT_TESTS
 /// A type describing an exit test.

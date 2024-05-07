@@ -9,7 +9,7 @@
 //
 
 @testable import Testing
-private import TestingInternals
+private import _TestingInternals
 
 #if !SWT_NO_FILE_IO
 // NOTE: we don't run these tests on iOS (etc.) because processes on those

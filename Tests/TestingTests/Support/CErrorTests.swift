@@ -9,7 +9,7 @@
 //
 
 @testable import Testing
-private import TestingInternals
+private import _TestingInternals
 
 @Suite("CError Tests")
 struct CErrorTests {

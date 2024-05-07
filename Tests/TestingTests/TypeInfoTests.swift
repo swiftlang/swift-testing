@@ -9,7 +9,7 @@
 //
 
 @testable @_spi(ForToolsIntegrationOnly) import Testing
-private import TestingInternals
+private import _TestingInternals
 
 @Suite("TypeInfo Tests")
 struct TypeInfoTests {

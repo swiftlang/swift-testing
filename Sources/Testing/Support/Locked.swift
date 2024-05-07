@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-internal import TestingInternals
+internal import _TestingInternals
 
 /// A type that wraps a value requiring access from a synchronous caller during
 /// concurrent execution.

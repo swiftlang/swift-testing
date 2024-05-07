@@ -10,7 +10,7 @@
 
 #if canImport(Foundation) && !SWT_NO_ABI_ENTRY_POINT
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
-private import TestingInternals
+private import _TestingInternals
 
 @Suite("ABI entry point tests")
 struct ABIEntryPointTests {
