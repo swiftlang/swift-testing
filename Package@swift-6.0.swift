@@ -16,14 +16,7 @@ import CompilerPluginSupport
 let package = Package(
   name: "swift-testing",
 
-  platforms: [
-    .macOS(.v10_15),
-    .iOS(.v13),
-    .watchOS(.v6),
-    .tvOS(.v13),
-    .macCatalyst(.v13),
-    .visionOS(.v1),
-  ],
+  platforms: [.macOS("13.3"), .iOS("16.4"), .tvOS("16.4"), .watchOS("9.4")],
 
   products: [
     .library(
@@ -34,6 +27,7 @@ let package = Package(
 
   dependencies: [
     .package(url: "https://github.com/apple/swift-syntax.git", from: Version(stringLiteral: Context.environment["SWT_SWIFT_SYNTAX_VERSION"] ?? "600.0.0-latest")),
+    .package(url: "https://github.com/apple/swift-foundation.git", branch: "jgrynspan/swift-syntax-600"),
   ],
 
   targets: [
@@ -42,6 +36,7 @@ let package = Package(
       dependencies: [
         "_TestingInternals",
         "TestingMacros",
+        .product(name: "FoundationEssentials", package: "swift-foundation"),
       ],
       cxxSettings: .packageSettings,
       swiftSettings: .packageSettings
@@ -50,7 +45,7 @@ let package = Package(
       name: "TestingTests",
       dependencies: [
         "Testing",
-        "_Testing_Foundation",
+//        "_Testing_Foundation",
       ],
       swiftSettings: .packageSettings
     ),
@@ -84,13 +79,13 @@ let package = Package(
     ),
 
     // Cross-module overlays (unsupported)
-    .target(
-      name: "_Testing_Foundation",
-      dependencies: [
-        "Testing",
-      ],
-      swiftSettings: .packageSettings
-    ),
+//    .target(
+//      name: "_Testing_Foundation",
+//      dependencies: [
+//        "Testing",
+//      ],
+//      swiftSettings: .packageSettings
+//    ),
   ],
 
   cxxLanguageStandard: .cxx20

@@ -8,9 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation)
-private import Foundation
-#endif
+private import FoundationEssentials
 
 enum JSON {
   /// Encode a value as JSON.
@@ -24,7 +22,7 @@ enum JSON {
   ///
   /// - Throws: Whatever is thrown by `body` or by the encoding process.
   static func withEncoding<R>(of value: some Encodable, userInfo: [CodingUserInfoKey: Any] = [:], _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-#if canImport(Foundation)
+#if canImport(FoundationEssentials)
     let encoder = JSONEncoder()
 
     // Keys must be sorted to ensure deterministic matching of encoded data.
@@ -50,7 +48,7 @@ enum JSON {
   ///
   /// - Throws: Whatever is thrown by the decoding process.
   static func decode<T>(_ type: T.Type, from jsonRepresentation: UnsafeRawBufferPointer) throws -> T where T: Decodable {
-#if canImport(Foundation)
+#if canImport(FoundationEssentials)
     try withExtendedLifetime(jsonRepresentation) {
       let data = Data(
         bytesNoCopy: .init(mutating: jsonRepresentation.baseAddress!),
