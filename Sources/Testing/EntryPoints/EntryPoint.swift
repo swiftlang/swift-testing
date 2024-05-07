@@ -192,9 +192,42 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   // Do not consider the executable path AKA argv[0].
   let args = args.dropFirst()
 
+#if !SWT_NO_FILE_IO
+#if canImport(Foundation)
+  // Configuration for the test run passed in as a JSON file (experimental)
+  //
+  // This argument should always be the first one we parse.
+  //
+  // NOTE: While the output event stream is opened later, it is necessary to
+  // open the configuration file early (here) in order to correctly construct
+  // the resulting __CommandLineArguments_v0 instance.
+  if let configurationIndex = args.firstIndex(of: "--experimental-configuration-path"), configurationIndex < args.endIndex {
+    let path = args[args.index(after: configurationIndex)]
+    let file = try FileHandle(forReadingAtPath: path)
+    let configurationJSON = try file.readToEnd()
+    result = try configurationJSON.withUnsafeBufferPointer { configurationJSON in
+      try JSON.decode(__CommandLineArguments_v0.self, from: .init(configurationJSON))
+    }
+
+    // NOTE: We don't return early or block other arguments here: a caller is
+    // allowed to pass a configuration AND --verbose and they'll both be
+    // respected (it should be the least "surprising" outcome of passing both.)
+  }
+
+  // Event stream output (experimental)
+  if let eventOutputIndex = args.firstIndex(of: "--experimental-event-stream-output"), eventOutputIndex < args.endIndex {
+    result.experimentalEventStreamOutput = args[args.index(after: eventOutputIndex)]
+  }
+#endif
+
+  // XML output
+  if let xunitOutputIndex = args.firstIndex(of: "--xunit-output"), xunitOutputIndex < args.endIndex {
+    result.xunitOutput = args[args.index(after: xunitOutputIndex)]
+  }
+#endif
+
   if args.contains("--list-tests") {
     result.listTests = true
-    return result // do not bother parsing the other arguments
   }
 
   // Parallelization (on by default)
@@ -205,20 +238,6 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   if args.contains("--verbose") || args.contains("-v") || args.contains("--very-verbose") || args.contains("--vv") {
     result.verbose = true
   }
-
-#if !SWT_NO_FILE_IO
-  // XML output
-  if let xunitOutputIndex = args.firstIndex(of: "--xunit-output"), xunitOutputIndex < args.endIndex {
-    result.xunitOutput = args[args.index(after: xunitOutputIndex)]
-  }
-
-#if canImport(Foundation)
-  // Event stream output (experimental)
-  if let eventOutputIndex = args.firstIndex(of: "--experimental-event-stream-output"), eventOutputIndex < args.endIndex {
-    result.experimentalEventStreamOutput = args[args.index(after: eventOutputIndex)]
-  }
-#endif
-#endif
 
   // Filtering
   func filterValues(forArgumentsWithLabel label: String) -> [String] {
