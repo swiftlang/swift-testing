@@ -192,9 +192,46 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   // Do not consider the executable path AKA argv[0].
   let args = args.dropFirst()
 
+  func isLastArgument(at index: [String].Index) -> Bool {
+    args.index(after: index) >= args.endIndex
+  }
+
+#if !SWT_NO_FILE_IO
+#if canImport(Foundation)
+  // Configuration for the test run passed in as a JSON file (experimental)
+  //
+  // This argument should always be the first one we parse.
+  //
+  // NOTE: While the output event stream is opened later, it is necessary to
+  // open the configuration file early (here) in order to correctly construct
+  // the resulting __CommandLineArguments_v0 instance.
+  if let configurationIndex = args.firstIndex(of: "--experimental-configuration-path"), !isLastArgument(at: configurationIndex) {
+    let path = args[args.index(after: configurationIndex)]
+    let file = try FileHandle(forReadingAtPath: path)
+    let configurationJSON = try file.readToEnd()
+    result = try configurationJSON.withUnsafeBufferPointer { configurationJSON in
+      try JSON.decode(__CommandLineArguments_v0.self, from: .init(configurationJSON))
+    }
+
+    // NOTE: We don't return early or block other arguments here: a caller is
+    // allowed to pass a configuration AND --verbose and they'll both be
+    // respected (it should be the least "surprising" outcome of passing both.)
+  }
+
+  // Event stream output (experimental)
+  if let eventOutputIndex = args.firstIndex(of: "--experimental-event-stream-output"), !isLastArgument(at: eventOutputIndex) {
+    result.experimentalEventStreamOutput = args[args.index(after: eventOutputIndex)]
+  }
+#endif
+
+  // XML output
+  if let xunitOutputIndex = args.firstIndex(of: "--xunit-output"), !isLastArgument(at: xunitOutputIndex) {
+    result.xunitOutput = args[args.index(after: xunitOutputIndex)]
+  }
+#endif
+
   if args.contains("--list-tests") {
     result.listTests = true
-    return result // do not bother parsing the other arguments
   }
 
   // Parallelization (on by default)
@@ -206,20 +243,6 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     result.verbose = true
   }
 
-#if !SWT_NO_FILE_IO
-  // XML output
-  if let xunitOutputIndex = args.firstIndex(of: "--xunit-output"), xunitOutputIndex < args.endIndex {
-    result.xunitOutput = args[args.index(after: xunitOutputIndex)]
-  }
-
-#if canImport(Foundation)
-  // Event stream output (experimental)
-  if let eventOutputIndex = args.firstIndex(of: "--experimental-event-stream-output"), eventOutputIndex < args.endIndex {
-    result.experimentalEventStreamOutput = args[args.index(after: eventOutputIndex)]
-  }
-#endif
-#endif
-
   // Filtering
   func filterValues(forArgumentsWithLabel label: String) -> [String] {
     args.indices.lazy
@@ -230,10 +253,10 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   result.skip = filterValues(forArgumentsWithLabel: "--skip")
 
   // Set up the iteration policy for the test run.
-  if let repetitionsIndex = args.firstIndex(of: "--repetitions"), repetitionsIndex < args.endIndex {
+  if let repetitionsIndex = args.firstIndex(of: "--repetitions"), !isLastArgument(at: repetitionsIndex) {
     result.repetitions = Int(args[args.index(after: repetitionsIndex)])
   }
-  if let repeatUntilIndex = args.firstIndex(of: "--repeat-until"), repeatUntilIndex < args.endIndex {
+  if let repeatUntilIndex = args.firstIndex(of: "--repeat-until"), !isLastArgument(at: repeatUntilIndex) {
     result.repeatUntil = args[args.index(after: repeatUntilIndex)]
   }
 
