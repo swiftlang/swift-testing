@@ -132,6 +132,13 @@ struct SwiftPMTests {
     }
   }
 
+  @Test("--xunit-output argument (missing path)")
+  func xunitOutputWithMissingPath() throws {
+    // Test that a missing path doesn't read off the end of the argument array.
+    let args = try parseCommandLineArguments(from: ["PATH", "--xunit-output"])
+    #expect(args.xunitOutput == nil)
+  }
+
   @Test("--xunit-output argument (writes to file)")
   func xunitOutputIsWrittenToFile() throws {
     // Test that a file is opened when requested. Testing of the actual output
