@@ -67,6 +67,28 @@ enum Environment {
   }
 #endif
 
+#if SWT_TARGET_OS_APPLE && !SWT_NO_ENVIRONMENT_VARIABLES && !SWT_NO_DYNAMIC_LINKING
+  /// A non-POSIX/non-portable function that locks for access to `environ`.
+  ///
+  /// If the `environ_lock_np()` function is not available on the current
+  /// system, the value of this property is `nil`.
+  private static let _environ_lock_np = {
+    swt_getFunctionWithName(nil, "environ_lock_np").map {
+      unsafeBitCast($0, to: (@convention(c) () -> Void).self)
+    }
+  }()
+
+  /// A non-POSIX/non-portable function that unlocks after access to `environ`.
+  ///
+  /// If the `environ_unlock_np()` function is not available on the current
+  /// system, the value of this property is `nil`.
+  private static let _environ_unlock_np = {
+    swt_getFunctionWithName(nil, "environ_unlock_np").map {
+      unsafeBitCast($0, to: (@convention(c) () -> Void).self)
+    }
+  }()
+#endif
+
   /// Get all environment variables in the current process.
   ///
   /// - Returns: A copy of the current process' environment dictionary.
@@ -74,7 +96,13 @@ enum Environment {
 #if SWT_NO_ENVIRONMENT_VARIABLES
     simulatedEnvironment.rawValue
 #elseif SWT_TARGET_OS_APPLE
-    _get(fromEnviron: _NSGetEnviron()!.pointee!)
+#if !SWT_NO_DYNAMIC_LINKING
+    _environ_lock_np?()
+    defer {
+      _environ_unlock_np?()
+    }
+#endif
+    return _get(fromEnviron: _NSGetEnviron()!.pointee!)
 #elseif os(Linux)
     _get(fromEnviron: swt_environ())
 #elseif os(WASI)
