@@ -67,6 +67,28 @@ enum Environment {
   }
 #endif
 
+#if SWT_TARGET_OS_APPLE && !SWT_NO_ENVIRONMENT_VARIABLES && !SWT_NO_DYNAMIC_LINKING
+  /// A non-POSIX/non-portable function that locks for access to `environ`.
+  ///
+  /// If the `environ_lock_np()` function is not available on the current
+  /// system, the value of this property is `nil`.
+  private static let _environ_lock_np = {
+    swt_getFunctionWithName(nil, "environ_lock_np").map {
+      unsafeBitCast($0, to: (@convention(c) () -> Void).self)
+    }
+  }()
+
+  /// A non-POSIX/non-portable function that unlocks after access to `environ`.
+  ///
+  /// If the `environ_unlock_np()` function is not available on the current
+  /// system, the value of this property is `nil`.
+  private static let _environ_unlock_np = {
+    swt_getFunctionWithName(nil, "environ_unlock_np").map {
+      unsafeBitCast($0, to: (@convention(c) () -> Void).self)
+    }
+  }()
+#endif
+
   /// Get all environment variables in the current process.
   ///
   /// - Returns: A copy of the current process' environment dictionary.
@@ -74,7 +96,13 @@ enum Environment {
 #if SWT_NO_ENVIRONMENT_VARIABLES
     simulatedEnvironment.rawValue
 #elseif SWT_TARGET_OS_APPLE
-    _get(fromEnviron: _NSGetEnviron()!.pointee!)
+#if !SWT_NO_DYNAMIC_LINKING
+    _environ_lock_np?()
+    defer {
+      _environ_unlock_np?()
+    }
+#endif
+    return _get(fromEnviron: _NSGetEnviron()!.pointee!)
 #elseif os(Linux)
     _get(fromEnviron: swt_environ())
 #elseif os(WASI)
@@ -115,6 +143,33 @@ enum Environment {
   static func variable(named name: String) -> String? {
 #if SWT_NO_ENVIRONMENT_VARIABLES
     simulatedEnvironment.rawValue[name]
+#elseif SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
+    // Acquire the `environ` lock if possible, then look for the right variable
+    // in the block. This ensures we still hold the lock when we convert the
+    // found C string to a Swift string, which we can't do with getenv(). If the
+    // lock is unavailable, then this implementation is equivalent to Darwin's
+    // getenv() implementation.
+    _environ_lock_np?()
+    defer {
+      _environ_unlock_np?()
+    }
+    let environ = _NSGetEnviron()!.pointee!
+
+    return name.withCString { name in
+      for i in 0... {
+        guard let rowp = environ[i] else {
+          break
+        }
+
+        if let equals = strchr(rowp, CInt(UInt8(ascii: "="))) {
+          let keyLength = UnsafeRawPointer(equals) - UnsafeRawPointer(rowp)
+          if 0 == strncmp(rowp, name, keyLength) {
+            return String(validatingUTF8: equals + 1)
+          }
+        }
+      }
+      return nil
+    }
 #elseif SWT_TARGET_OS_APPLE || os(Linux) || os(WASI)
     getenv(name).flatMap { String(validatingUTF8: $0) }
 #elseif os(Windows)
