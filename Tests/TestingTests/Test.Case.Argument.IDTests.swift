@@ -23,7 +23,7 @@ struct Test_Case_Argument_IDTests {
     #expect(testCase.arguments.count == 1)
     let argument = try #require(testCase.arguments.first)
     let argumentID = try #require(argument.id)
-    #expect(String(bytes: argumentID.bytes, encoding: .utf8) == "123")
+    #expect(String(decoding: argumentID.bytes, as: UTF8.self) == "123")
   }
 
   @Test("One CustomTestArgumentEncodable parameter")
@@ -56,7 +56,7 @@ struct Test_Case_Argument_IDTests {
     #expect(testCase.arguments.count == 1)
     let argument = try #require(testCase.arguments.first)
     let argumentID = try #require(argument.id)
-    #expect(String(bytes: argumentID.bytes, encoding: .utf8) == #""abc""#)
+    #expect(String(decoding: argumentID.bytes, as: UTF8.self) == #""abc""#)
   }
 
   @Test("One RawRepresentable parameter")
@@ -70,7 +70,7 @@ struct Test_Case_Argument_IDTests {
     #expect(testCase.arguments.count == 1)
     let argument = try #require(testCase.arguments.first)
     let argumentID = try #require(argument.id)
-    #expect(String(bytes: argumentID.bytes, encoding: .utf8) == #""abc""#)
+    #expect(String(decoding: argumentID.bytes, as: UTF8.self) == #""abc""#)
   }
 }
 
