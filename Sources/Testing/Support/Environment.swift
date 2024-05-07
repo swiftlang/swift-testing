@@ -143,6 +143,33 @@ enum Environment {
   static func variable(named name: String) -> String? {
 #if SWT_NO_ENVIRONMENT_VARIABLES
     simulatedEnvironment.rawValue[name]
+#elseif SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
+    // Acquire the `environ` lock if possible, then look for the right variable
+    // in the block. This ensures we still hold the lock when we convert the
+    // found C string to a Swift string, which we can't do with getenv(). If the
+    // lock is unavailable, then this implementation is equivalent to Darwin's
+    // getenv() implementation.
+    _environ_lock_np?()
+    defer {
+      _environ_unlock_np?()
+    }
+    let environ = _NSGetEnviron()!.pointee!
+
+    return name.withCString { name in
+      for i in 0... {
+        guard let rowp = environ[i] else {
+          break
+        }
+
+        if let equals = strchr(rowp, CInt(UInt8(ascii: "="))) {
+          let keyLength = UnsafeRawPointer(equals) - UnsafeRawPointer(rowp)
+          if 0 == strncmp(rowp, name, keyLength) {
+            return String(validatingUTF8: equals + 1)
+          }
+        }
+      }
+      return nil
+    }
 #elseif SWT_TARGET_OS_APPLE || os(Linux) || os(WASI)
     getenv(name).flatMap { String(validatingUTF8: $0) }
 #elseif os(Windows)
