@@ -85,10 +85,12 @@ add_library(Testing
   Traits/TimeLimitTrait.swift
   Traits/Trait.swift)
 target_link_libraries(Testing PRIVATE
-  TestingInternals)
+  _TestingInternals)
 add_dependencies(Testing
   TestingMacros)
 target_compile_definitions(Testing PRIVATE
   SWT_BUILDING_WITH_CMAKE)
 target_compile_options(Testing PUBLIC
   -load-plugin-executable "${TestingMacrosPath}")
+target_compile_options(Testing PRIVATE
+  -enable-library-evolution)

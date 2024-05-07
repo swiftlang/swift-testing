@@ -21,5 +21,5 @@ else()
 endif()
 
 include(Settings)
+add_subdirectory(_TestingInternals)
 add_subdirectory(Testing)
-add_subdirectory(TestingInternals)

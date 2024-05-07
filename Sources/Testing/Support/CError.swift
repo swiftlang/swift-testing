@@ -8,17 +8,11 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-<<<<<<< HEAD
-internal import _TestingInternals
-||||||| parent of 2a04790 (Use CMake define to toggle TestingInternals import mechanism.)
-internal import TestingInternals
-=======
 #if SWT_BUILDING_WITH_CMAKE
-@_implementationOnly import TestingInternals
+@_implementationOnly import _TestingInternals
 #else
-internal import TestingInternals
+internal import _TestingInternals
 #endif
->>>>>>> 2a04790 (Use CMake define to toggle TestingInternals import mechanism.)
 
 /// A type representing an error from a C function such as `fopen()`.
 ///
