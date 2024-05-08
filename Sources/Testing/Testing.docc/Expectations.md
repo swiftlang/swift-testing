@@ -74,6 +74,7 @@ struct Square {
 
 ### Checking that errors are thrown
 
+- <doc:testing-for-errors-in-swift-code>
 - ``expect(throws:_:sourceLocation:performing:)-79piu``
 - ``expect(throws:_:sourceLocation:performing:)-1xr34``
 - ``expect(_:sourceLocation:performing:throws:)``
