@@ -38,7 +38,7 @@ struct ABIEntryPointTests {
     arguments.filter = ["NonExistentTestThatMatchesNothingHopefully"]
     let argumentsJSON = try JSON.withEncoding(of: arguments) { argumentsJSON in
       let result = UnsafeMutableRawBufferPointer.allocate(byteCount: argumentsJSON.count, alignment: 1)
-      argumentsJSON.copyBytes(to: result)
+      _ = memcpy(result.baseAddress!, argumentsJSON.baseAddress!, argumentsJSON.count)
       return result
     }
     defer {
