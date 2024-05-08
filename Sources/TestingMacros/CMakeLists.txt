@@ -6,7 +6,7 @@
 # See http://swift.org/LICENSE.txt for license information
 # See http://swift.org/CONTRIBUTORS.txt for Swift project authors
 
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.19.6)
 
 if(POLICY CMP0157)
   cmake_policy(SET CMP0157 NEW)
