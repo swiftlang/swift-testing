@@ -52,7 +52,7 @@ handling to detect:
 |-|:-:|-|
 | `.bug(12345)` | Yes | None |
 | `.bug("12345")` | Yes | None |
-| `.bug("Things don't work")` | No | None |
+| `.bug("Things don't work")` | **No** | None |
 | `.bug("rdar:12345")` | Yes | Apple Radar |
 | `.bug("https://github.com/apple/swift/pull/12345")` | Yes | [GitHub Issues for the Swift project](https://github.com/apple/swift/issues) |
 | `.bug("https://bugs.webkit.org/show_bug.cgi?id=12345")` | Yes | [WebKit Bugzilla](https://bugs.webkit.org/) |
