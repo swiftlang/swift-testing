@@ -439,7 +439,9 @@ extension Event.ConsoleOutputRecorder.Options {
     var result = Self()
 
     result.useANSIEscapeCodes = _fileHandleSupportsANSIEscapeCodes(fileHandle)
-    if result.useANSIEscapeCodes {
+
+    // Respect the FORCE_COLOR environment variable. SEE: https://www.force-color.org
+    if result.useANSIEscapeCodes || Environment.variable(named: "FORCE_COLOR")?.isEmpty == false {
       if let noColor = Environment.variable(named: "NO_COLOR"), !noColor.isEmpty {
         // Respect the NO_COLOR environment variable. SEE: https://www.no-color.org
         result.ansiColorBitDepth = 1
