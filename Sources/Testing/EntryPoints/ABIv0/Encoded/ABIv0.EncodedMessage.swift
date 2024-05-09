@@ -34,9 +34,9 @@ extension ABIv0 {
       init(encoding symbol: Event.Symbol) {
         self = switch symbol {
         case .default:
-            .default
+          .default
         case .skip:
-            .skip
+          .skip
         case let .pass(knownIssueCount):
           if knownIssueCount > 0 {
             .passWithKnownIssue
@@ -44,13 +44,13 @@ extension ABIv0 {
             .pass
           }
         case .fail:
-            .fail
+          .fail
         case .difference:
-            .difference
+          .difference
         case .warning:
-            .warning
+          .warning
         case .details:
-            .details
+          .details
         }
       }
     }
@@ -60,10 +60,6 @@ extension ABIv0 {
 
     /// The human-readable, unformatted text associated with this message.
     var text: String
-
-    /// The human-readable, Markdown-formatted text associated with this
-    /// message, if any.
-    var markdown: String?
 
     init(encoding message: borrowing Event.HumanReadableOutputRecorder.Message) {
       symbol = Symbol(encoding: message.symbol ?? .default)

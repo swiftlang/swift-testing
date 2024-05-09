@@ -208,8 +208,6 @@ sufficient information to display the event in a human-readable format.
 <message> ::= {
   "symbol": <message-symbol>,
   "text": <string>, ; the human-readable text of this message
-  ["markdown": <string>] ; if available/desired/whatever, Markdown encoding
-                         ; the same string as "text"
 }
 
 <message-symbol> ::= "default" | "skip" | "pass" | "passWithKnownIssue" | "fail"
