@@ -97,12 +97,32 @@ struct Test_SnapshotTests {
   private static let bug: Bug = Bug.bug(12345, "Lorem ipsum")
 
   @available(_clockAPI, *)
-  @Test("timeLimit property", .timeLimit(.minutes(999_999_999)))
+  @Test("timeLimit property", _timeLimitIfAvailable(minutes: 999_999_999))
   func timeLimit() async throws {
     let test = try #require(Test.current)
     let snapshot = Test.Snapshot(snapshotting: test)
 
     #expect(snapshot.timeLimit == .seconds(60) * 999_999_999)
+  }
+
+  /// Create a time limit trait representing the specified number of minutes, if
+  /// running on an OS which supports time limits.
+  ///
+  /// - Parameters:
+  ///   - minutes: The number of minutes the returned time limit trait should
+  ///     represent.
+  ///
+  /// - Returns: A time limit trait if the API is available, otherwise a
+  ///   disabled trait.
+  ///
+  /// This is provided in order to work around a bug where traits with
+  /// conditional API availability are not guarded by `@available` attributes on
+  /// `@Test` functions (rdar://127811571).
+  private static func _timeLimitIfAvailable(minutes: some BinaryInteger) -> any TestTrait {
+    guard #available(_clockAPI, *) else {
+      return .disabled(".timeLimit() not available")
+    }
+    return .timeLimit(.minutes(minutes))
   }
 }
 
