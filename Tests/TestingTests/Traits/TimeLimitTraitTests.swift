@@ -243,9 +243,13 @@ struct TimeLimitTraitTests {
 
 // MARK: - Fixtures
 
-func timeLimitIfAvailable(minutes: UInt64) -> any SuiteTrait {
+private func _timeLimitIfAvailable(minutes: UInt64) -> any SuiteTrait {
   // @available can't be applied to a suite type, so we can't mark the suite as
-  // available only on newer OSes.
+  // available only on newer OSes. In addition, there is a related, known bug
+  // where traits with conditional API availability are not guarded by
+  // `@available` attributes on their associated `@Test` function
+  // (rdar://127811571). That is not directly relevant here but is worth noting
+  // if this trait is ever applied to `@Test` functions in this file.
   if #available(_clockAPI, *) {
     .timeLimit(.minutes(minutes))
   } else {
@@ -253,7 +257,7 @@ func timeLimitIfAvailable(minutes: UInt64) -> any SuiteTrait {
   }
 }
 
-@Suite(.hidden, timeLimitIfAvailable(minutes: 10))
+@Suite(.hidden, _timeLimitIfAvailable(minutes: 10))
 struct TestTypeThatTimesOut {
   @available(_clockAPI, *)
   @Test(.hidden, arguments: 0 ..< 10)
