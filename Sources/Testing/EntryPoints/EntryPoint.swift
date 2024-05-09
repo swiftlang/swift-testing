@@ -313,7 +313,9 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   // Filtering
   var filters = [Configuration.TestFilter]()
   func testFilter(forRegularExpressions regexes: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
-    guard let regexes else {
+    guard let regexes, !regexes.isEmpty else {
+      // Return early if empty, even though the `reduce` logic below can handle
+      // this case, in order to avoid the `#available` guard.
       return .unfiltered
     }
 
