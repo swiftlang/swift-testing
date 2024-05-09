@@ -61,7 +61,7 @@ The following language comment styles are supported:
 Test comments which are automatically added from source code comments preserve
 their original formatting, including any prefixes like `//` or `/**`. This
 is because the whitespace and formatting of comments can be meaningful in some
-circumstances or aid in understanding the comment; for example, when a comment
+circumstances or aid in understanding the comment — for example, when a comment
 includes an example code snippet or diagram.
 
 <!-- FIXME: Uncomment this section if/when the `.comment(...)` trait is promoted
