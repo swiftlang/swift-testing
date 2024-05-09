@@ -158,10 +158,10 @@ public struct __CommandLineArguments_v0: Sendable {
   public var experimentalEventStreamOutput: String?
 
   /// The value(s) of the `--filter` argument.
-  public var filter: [String] = []
+  public var filter: [String]?
 
   /// The value(s) of the `--skip` argument.
-  public var skip: [String] = []
+  public var skip: [String]?
 
   /// The value of the `--repetitions` argument.
   public var repetitions: Int?
@@ -289,8 +289,8 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 
   // Filtering
   var filters = [Configuration.TestFilter]()
-  func testFilter(forRegularExpressions regexes: [String], label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
-    guard !regexes.isEmpty else {
+  func testFilter(forRegularExpressions regexes: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
+    guard let regexes, !regexes.isEmpty else {
       // Return early if empty, even though the `reduce` logic below can handle
       // this case, in order to avoid the `#available` guard.
       return .unfiltered
