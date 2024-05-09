@@ -86,6 +86,7 @@ struct Square {
 
 ### Confirming that asynchronous events occur
 
+- ``<doc:testing-asynchronous-code>
 - ``confirmation(_:expectedCount:fileID:filePath:line:column:_:)``
 - ``Confirmation``
 
