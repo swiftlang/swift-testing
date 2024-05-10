@@ -145,24 +145,33 @@ additional `"testCases"` field describing the individual test cases.
 -->
 
 ```
-<test> ::= {
-  "kind": <test-kind>,
-  "name": <string>, ; the unformatted function or non-qualified type name
+<test> ::= <test-suite> | <test-function>
+
+<test-suite> ::= {
+  "kind": "suite",
+  "name": <string>, ; the unformatted, unqualified type name
   ["displayName": <string>,] ; the user-supplied custom display name
-  "sourceLocation": <source-location>, ; where the test is defined
+  "sourceLocation": <source-location>, ; where the test suite is defined
   "id": <test-id>,
 }
 
-<test-kind> ::= "suite" | "function" | "parameterizedFunction"
+<test-function> ::= {
+  "kind": "function",
+  "name": <string>, ; the unformatted function name
+  ["displayName": <string>,] ; the user-supplied custom display name
+  "sourceLocation": <source-location>, ; where the test is defined
+  "id": <test-id>,
+  "isParameterized": <bool> ; is this a parameterized test function or not?
+}
 
 <test-id> ::= <string> ; an opaque string representing the test case
 ```
 
 <!--
   TODO: define a round-trippable format for a test case ID
-  ["testCases": <array:test-case>] ; if kind is "parameterizedFunction" and
-                                     ; the inputs are enumerable, all test case
-                                     ; IDs, otherwise not present
+  ["testCases": <array:test-case>] ; if "isParameterized": true and the inputs
+                                   ; are enumerable, all test case IDs,
+                                   ; otherwise not present
 
 <test-case> ::= {
   "id": <string>, ; an opaque string representing the test case

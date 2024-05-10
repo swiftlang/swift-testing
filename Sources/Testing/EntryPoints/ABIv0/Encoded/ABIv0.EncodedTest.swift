@@ -25,9 +25,6 @@ extension ABIv0 {
 
       /// A test function.
       case function
-
-      /// A parameterized test function.
-      case parameterizedFunction
     }
 
     /// The kind of test.
@@ -70,21 +67,27 @@ extension ABIv0 {
     /// - Warning: Test cases are not yet part of the JSON schema.
     var _testCases: [EncodedTestCase]?
 
+    /// Whether or not the test is parameterized.
+    ///
+    /// If this instance represents a test _suite_, the value of this property
+    /// is `nil`.
+    var isParameterized: Bool?
+
     init(encoding test: borrowing Test) {
       if test.isSuite {
         kind = .suite
-      } else if test.isParameterized {
-        kind = .parameterizedFunction
       } else {
         kind = .function
+        let testIsParameterized = test.isParameterized
+        isParameterized = testIsParameterized
+        if testIsParameterized {
+          _testCases = test.testCases?.map(EncodedTestCase.init(encoding:))
+        }
       }
       name = test.name
       displayName = test.displayName
       sourceLocation = test.sourceLocation
       id = ID(encoding: test.id)
-      if test.isParameterized {
-        _testCases = test.testCases?.map(EncodedTestCase.init(encoding:))
-      }
     }
   }
 }
