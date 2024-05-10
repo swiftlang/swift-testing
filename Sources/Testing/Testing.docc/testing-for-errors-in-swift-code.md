@@ -27,44 +27,44 @@ macros that check for errors.
 ### Validate that your code throws an expected error
 
 The Swift structure in this example represents a list that accepts any
-number of "tags" for items in the list.  The API contains a method for
-applying a tag to a range of items, and a method for retrieving the
-tags associated with the item at a given index.  Both of these methods
+number of attributes for items in the list.  The API contains a method for
+applying an attribute to a range of items, and a method for retrieving the
+attributes associated with the item at a given index.  Both of these methods
 throw errors if their parameters are outside the list's range.
 
 ```swift
-struct TaggedArray<T> {
-    enum TaggedArrayError : Error {
+struct AttributedArray<T> {
+    enum AttributedArrayError : Error {
         case outOfRange
     }
 
     let elements: [T]
-    var tags: [Int: [String]]
+    var attributes: [Int: [String]]
 
     init(list: [T]) {
         elements = list
-        tags = [Int: [String]]()
+        attributes = [Int: [String]]()
     }
 
-    mutating func add(tag: String, toObjectsIn range: Range<Int>) throws {
+    mutating func add(attribute: String, toObjectsIn range: Range<Int>) throws {
         guard Int(range.startIndex) >= 0 && Int(range.endIndex) < elements.count else {
-            throw TaggedArrayError.outOfRange
+            throw AttributedArrayError.outOfRange
         }
         for index in range {
-            if var tagList = tags[index] {
-                tagList.append(tag)
-                tags[index] = tagList
+            if var attributeList = attributes[index] {
+                attributeList.append(attribute)
+                attributes[index] = attributeList
             } else {
-                tags[index] = [tag]
+                attributes[index] = [attribute]
             }
         }
     }
 
-    func tags(forItemAt index: Int) throws -> [String] {
+    func attributes(forItemAt index: Int) throws -> [String] {
         guard index >= 0 && index < elements.count else {
-            throw TaggedArrayError.outOfRange
+            throw AttributedArrayError.outOfRange
         }
-        return tags[index] ?? []
+        return attributes[index] ?? []
     }
 
     // Other methods.
@@ -80,10 +80,10 @@ first argument of ``expect(throws:_:sourcelocation:performing:)-1xr34``, and
 pass a closure that calls the code under test:
 
 ```swift
-@Test func cannotAddTagToObjectBeforeStartOfList() {
-    var array = TaggedArray(list: [1,2,3])
-    #expect(throws: TaggedArray<Int>.TaggedArrayError.outOfRange) {
-        try array.add(tag: "my tag", toObjectsIn: -1..<0)
+@Test func cannotAddAttributeToObjectBeforeStartOfList() {
+    var array = AttributedArray(list: [1,2,3])
+    #expect(throws: AttributedArray<Int>.AttributedArrayError.outOfRange) {
+        try array.add(attribute: "my attribute", toObjectsIn: -1..<0)
     }
 }
 ```
@@ -100,12 +100,12 @@ Validate that the code under test doesn't throw an error by comparing
 the error to `Never`:
 
 ```swift
-@Test func canAddTagToObjectInPositionZero() throws {
-    var array = TaggedArray(list: [1,2,3])
+@Test func canAddAttributeToObjectInPositionZero() throws {
+    var array = AttributedArray(list: [1,2,3])
     #expect(throws: Never.self) {
-        try array.add(tag: "my tag", toObjectsIn: 0..<1)
+        try array.add(attribute: "my attribute", toObjectsIn: 0..<1)
     }
-    #expect(try array.tags(forItemAt: 0) == ["my tag"])
+    #expect(try array.attributes(forItemAt: 0) == ["my attribute"])
 }
 ```
 
