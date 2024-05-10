@@ -14,7 +14,7 @@ Check for expected values, outcomes, and events in tests.
 
 ## Overview
 
-Use `#expect()` and `#require()` macros to validate expected outcomes.
+Use ``expect(_:_:sourceLocation:)`` and ``require(_:_:sourceLocation:)-5l63q`` macros to validate expected outcomes.
 To validate that an error is thrown, or _not_ thrown, 
 the testing library provides several overloads of the macros that you can use.
 Use a ``Confirmation`` to confirm the occurrence of an asynchronous event that
