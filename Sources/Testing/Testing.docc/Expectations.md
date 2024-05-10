@@ -14,16 +14,19 @@ Check for expected values, outcomes, and events in tests.
 
 ## Overview
 
-Use ``expect(_:_:sourceLocation:)`` and ``require(_:_:sourceLocation:)-5l63q`` macros to validate expected outcomes.
-To validate that an error is thrown, or _not_ thrown, 
-the testing library provides several overloads of the macros that you can use.
-Use a ``Confirmation`` to confirm the occurrence of an asynchronous event that
-you can't check directly using an expectation.
+Use ``expect(_:_:sourceLocation:)`` and
+``require(_:_:sourceLocation:)-5l63q`` macros to validate expected
+outcomes.  To validate that an error is thrown, or _not_ thrown, the
+testing library provides several overloads of the macros that you can
+use.  Use a ``Confirmation`` to confirm the occurrence of an
+asynchronous event that you can't check directly using an expectation.
 
 ### Validate your code's result
 
-To validate that your code produces an expected value, use `#expect()`.
-`#expect()` captures the expression you pass, and provides detailed information when the code doesn't satisfy the expectation:
+To validate that your code produces an expected value, use
+`#expect()`.  `#expect()` captures the expression you pass, and
+provides detailed information when the code doesn't satisfy the
+expectation:
 
 ```swift
 func add(_ x: Int, to y: Int) -> Int {
@@ -38,8 +41,8 @@ func add(_ x: Int, to y: Int) -> Int {
 }
 ```
 
-Your test keeps running after `#expect()` fails.
-To stop the test when the code doesn't satisfy a requirement, use `#require()` instead:
+Your test keeps running after `#expect()` fails.  To stop the test
+when the code doesn't satisfy a requirement, use `#require()` instead:
 
 ```swift
 struct Square {

@@ -14,8 +14,10 @@ Validate whether your code causes expected events to happen.
 
 ## Overview
 
-Swift Testing integrates with Swift concurrency, meaning that in many situations you can test asynchronous code using standard Swift features.
-Mark your test function as `async` and, in the function body, `await` any asynchronous interactions:
+Swift Testing integrates with Swift concurrency, meaning that in many
+situations you can test asynchronous code using standard Swift
+features.  Mark your test function as `async` and, in the function
+body, `await` any asynchronous interactions:
 
 ```swift
 @Test func asynchronousCalculationYieldsExpectedValue() async {
@@ -23,13 +25,19 @@ Mark your test function as `async` and, in the function body, `await` any asynch
 }
 ```
 
-In more complex situations, where the code you test doesn't use Swift concurrency, you use ``Confirmation`` to discover whether an expected event happens.
+In more complex situations, where the code you test doesn't use Swift
+concurrency, you use ``Confirmation`` to discover whether an expected
+event happens.
 
 ### Confirm that an event happens
 
-If your code under test doesn't use Swift concurrency, call ``confirmation(_:expectedCount:fileID:filePath:line:column:_:)`` in your asynchronous test function to create a `Confirmation` for the expected event.
-In the trailing block parameter, call the code under test.
-Swift Testing passes a `Confirmation` as the parameter to the block, which you call as a function in the completion or event handler for the code under test when the event you're testing for occurs:
+If your code under test doesn't use Swift concurrency, call
+``confirmation(_:expectedCount:fileID:filePath:line:column:_:)`` in
+your asynchronous test function to create a `Confirmation` for the
+expected event.  In the trailing block parameter, call the code under
+test.  Swift Testing passes a `Confirmation` as the parameter to the
+block, which you call as a function in the completion or event handler
+for the code under test when the event you're testing for occurs:
 
 ```swift
 @Test func asynchronousCalculatorCompletesSuccessfully() async {
@@ -41,12 +49,15 @@ Swift Testing passes a `Confirmation` as the parameter to the block, which you c
 }
 ```
 
-If you expect the event to happen more than once, set the `expectedCount` parameter to the number of expected occurrences.
-The test passes if the number of occurrences during the test matches the expected count, and fails otherwise.
+If you expect the event to happen more than once, set the
+`expectedCount` parameter to the number of expected occurrences.  The
+test passes if the number of occurrences during the test matches the
+expected count, and fails otherwise.
 
 ### Confirm that an event doesn't happen
 
-To validate that a particular event doesn't occur during a test, create a `Confirmation` with an expected count of `0`:
+To validate that a particular event doesn't occur during a test,
+create a `Confirmation` with an expected count of `0`:
 
 ```swift
 @Test func asynchronousCalculatorEncountersNoErrors() async {
