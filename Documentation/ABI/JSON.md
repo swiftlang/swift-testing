@@ -48,7 +48,7 @@ array (also defined as in JSON) whose elements all follow rule `<T>`.
   "column": <number>,
 }
 
-<timestamp> ::= {
+<instant> ::= {
   "absolute": <number>, ; floating-point seconds since system-defined epoch
   "since1970": <number>, ; floating-point seconds since 1970-01-01 00:00:00 UT
 }
@@ -118,13 +118,7 @@ encounters a record whose `"kind"` field is unrecognized, the decoder should
 ignore that line.
 
 ```
-<output-record> ::= <metadata-record> | <test-record> | <event-record>
-
-<metadata-record> ::= {
-  <version>,
-  "kind": "metadata",
-  "payload": <metadata>
-}
+<output-record> ::= <test-record> | <event-record>
 
 <test-record> ::= {
   <version>,
@@ -136,16 +130,6 @@ ignore that line.
   <version>,
   "kind": "event",
   "payload": <event>
-}
-```
-
-### Metadata
-
-Metadata records are reserved for future use.
-
-```
-<metadata> ::= {
-  ; unspecified JSON object content
 }
 ```
 
