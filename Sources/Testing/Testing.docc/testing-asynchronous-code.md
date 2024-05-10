@@ -14,7 +14,7 @@ Validate whether your code causes expected events to happen.
 
 ## Overview
 
-Swift Testing integrates with Swift concurrency, meaning that in many
+`swift-testing` integrates with Swift concurrency, meaning that in many
 situations you can test asynchronous code using standard Swift
 features.  Mark your test function as `async` and, in the function
 body, `await` any asynchronous interactions:
