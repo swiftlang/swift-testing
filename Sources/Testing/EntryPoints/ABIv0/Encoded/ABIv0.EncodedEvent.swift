@@ -27,7 +27,6 @@ extension ABIv0 {
       case testStarted
       case testCaseStarted
       case issueRecorded
-      case knownIssueRecorded
       case testCaseEnded
       case testEnded
       case testSkipped
@@ -37,15 +36,14 @@ extension ABIv0 {
     /// The kind of event.
     var kind: Kind
 
-    /// The source location of the event, if applicable.
-    var sourceLocation: SourceLocation?
+    /// The instant at which the event occurred.
+    var instant: EncodedInstant
 
-    /// The instant at which the event occurred on the current system's
-    /// suspending clock.
-    var timestamp: Double
-
-    /// The instant at which the event occurred on the wall clock.
-    var timestampSince1970: Double
+    /// The issue that occurred, if any.
+    ///
+    /// The value of this property is `nil` unless the value of the
+    /// ``kind-swift.property`` property is ``Kind-swift.enum/issueRecorded``.
+    var issue: EncodedIssue?
 
     /// Human-readable messages associated with this event that can be presented
     /// to the user.
@@ -60,9 +58,6 @@ extension ABIv0 {
     var _testCase: EncodedTestCase?
 
     init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message]) {
-      if let test = eventContext.test {
-        sourceLocation = test.sourceLocation
-      }
       switch event.kind {
       case .runStarted:
         kind = .runStarted
@@ -70,13 +65,9 @@ extension ABIv0 {
         kind = .testStarted
       case .testCaseStarted:
         kind = .testCaseStarted
-      case let .issueRecorded(issue):
-        if issue.isKnown {
-          kind = .knownIssueRecorded
-        } else {
-          kind = .issueRecorded
-        }
-        sourceLocation = issue.sourceLocation
+      case let .issueRecorded(recordedIssue):
+        kind = .issueRecorded
+        issue = EncodedIssue(encoding: recordedIssue)
       case .testCaseEnded:
         kind = .testCaseEnded
       case .testEnded:
@@ -88,8 +79,7 @@ extension ABIv0 {
       default:
         return nil
       }
-      timestamp = Double(event.instant.suspending)
-      timestampSince1970 = Double(event.instant.wall)
+      instant = EncodedInstant(encoding: event.instant)
       self.messages = messages.map(EncodedMessage.init)
       testID = event.testID.map(EncodedTest.ID.init)
       _testCase = eventContext.testCase.map(EncodedTestCase.init)

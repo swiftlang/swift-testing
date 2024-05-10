@@ -48,9 +48,12 @@ array (also defined as in JSON) whose elements all follow rule `<T>`.
   "column": <number>,
 }
 
-<version> ::= "version": 0 ; will be incremented as the format changes
+<timestamp> ::= {
+  "absolute": <number>, ; floating-point seconds since system-defined epoch
+  "since1970": <number>, ; floating-point seconds since 1970-01-01 00:00:00 UT
+}
 
-<boolean> ::= true | false ; boolean value as in JSON
+<version> ::= "version": 0 ; will be incremented as the format changes
 ```
 
 <!--
@@ -155,7 +158,7 @@ are passed through the record stream **before** most events.
 If a test record represents a parameterized test function whose inputs are
 enumerable and can be independently replayed, the test record will include an
 additional `"testCases"` field describing the individual test cases.
---> 
+-->
 
 ```
 <test> ::= {
@@ -194,16 +197,20 @@ sufficient information to display the event in a human-readable format.
 ```
 <event> ::= {
   "kind": <event-kind>,
-  ["sourceLocation": <source-location>,]
-  "timestamp": <number>, ; floating-point seconds since test epoch
-  "timestampSince1970": <number>, ; floating-point seconds since UNIX epoch
+  "instant": <instant>, ; when the event occurred
+  ["issue": <issue>,] ; the recorded issue (if "kind" is "issueRecorded")
   "messages": <array:message>,
   ["testID": <test-id>,]
 }
 
 <event-kind> ::= "runStarted" | "testStarted" | "testCaseStarted" |
-  "issueRecorded" | "knownIssueRecorded" | "testCaseEnded" | "testEnded" |
-  "testSkipped" | "runEnded" ; additional event kinds may be added in the future
+  "issueRecorded" | "testCaseEnded" | "testEnded" | "testSkipped" |
+  "runEnded" ; additional event kinds may be added in the future
+
+<issue> ::= {
+  "isKnown": <bool>, ; is this a known issue or not?
+  ["sourceLocation": <source-location>,] ; where the issue occurred, if known
+}
 
 <message> ::= {
   "symbol": <message-symbol>,
