@@ -65,7 +65,8 @@ struct Square {
 }
 ```
 
-`#require()` throws when your code fails to satisfy the requirement.
+`#require()` throws an instance of ``ExpectationFailedError`` when your code
+fails to satisfy the requirement.
 
 ## Topics
 
