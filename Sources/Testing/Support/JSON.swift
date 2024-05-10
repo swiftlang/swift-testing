@@ -29,6 +29,10 @@ enum JSON {
 
     // Keys must be sorted to ensure deterministic matching of encoded data.
     encoder.outputFormatting.insert(.sortedKeys)
+    if Environment.flag(named: "SWT_PRETTY_PRINT_JSON") == true {
+      encoder.outputFormatting.insert(.prettyPrinted)
+      encoder.outputFormatting.insert(.withoutEscapingSlashes)
+    }
 
     // Set user info keys that clients want to use during encoding.
     encoder.userInfo.merge(userInfo, uniquingKeysWith: { _, rhs in rhs})

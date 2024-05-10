@@ -117,3 +117,19 @@ extension timespec {
     self.init(tv_sec: .init(timeValue.seconds), tv_nsec: .init(timeValue.attoseconds / 1_000_000_000))
   }
 }
+
+extension FloatingPoint {
+  /// Initialize this floating-point value with the total number of seconds
+  /// (including the subsecond part) represented by an instance of
+  /// ``TimeValue``.
+  ///
+  /// - Parameters:
+  ///   - timeValue: The instance of ``TimeValue`` to convert.
+  ///
+  /// The resulting value may have less precision than `timeValue` as most
+  /// floating-point types are unable to represent a time value's
+  /// ``TimeValue/attoseconds`` property exactly.
+  init(_ timeValue: TimeValue) {
+    self = Self(timeValue.seconds) + (Self(timeValue.attoseconds) / (1_000_000_000_000_000_000 as Self))
+  }
+}

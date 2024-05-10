@@ -27,6 +27,11 @@ extension Event {
 
       /// The human-readable message.
       var stringValue: String
+
+      /// A concise version of ``stringValue``, if available.
+      ///
+      /// Not all messages include a concise string.
+      var conciseStringValue: String?
     }
 
     /// A type that contains mutable context for
@@ -388,12 +393,14 @@ extension Event.HumanReadableOutputRecorder {
       let primaryMessage: Message = if parameterCount == 0 {
         Message(
           symbol: symbol,
-          stringValue: "\(_capitalizedTitle(for: test)) \(testName) recorded a\(known) issue\(atSourceLocation): \(issue.kind)"
+          stringValue: "\(_capitalizedTitle(for: test)) \(testName) recorded a\(known) issue\(atSourceLocation): \(issue.kind)",
+          conciseStringValue: String(describing: issue.kind)
         )
       } else {
         Message(
           symbol: symbol,
-          stringValue: "\(_capitalizedTitle(for: test)) \(testName) recorded a\(known) issue with \(parameterCount.counting("argument")) \(labeledArguments)\(atSourceLocation): \(issue.kind)"
+          stringValue: "\(_capitalizedTitle(for: test)) \(testName) recorded a\(known) issue with \(parameterCount.counting("argument")) \(labeledArguments)\(atSourceLocation): \(issue.kind)",
+          conciseStringValue: String(describing: issue.kind)
         )
       }
       return CollectionOfOne(primaryMessage) + additionalMessages
