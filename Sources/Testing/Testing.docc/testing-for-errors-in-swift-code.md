@@ -74,7 +74,7 @@ struct TaggedArray<T> {
 In your tests, validate that the code throws the error you expect by
 passing that error as the first argument of
 ``expect(throws:_:sourcelocation:performing:)-1xr34``, and pass a
-block that calls the code under test:
+closure that calls the code under test:
 
 ```swift
 @Test func cannotAddTagToObjectBeforeStartOfList() {
@@ -85,7 +85,7 @@ block that calls the code under test:
 }
 ```
 
-If the block completes without throwing an error, the testing library
+If the closure completes without throwing an error, the testing library
 records an issue.  Other overloads of `#expect()` let you test that
 the code throws an error of a given type, or matching an arbitrary
 Boolean test.  Similar overloads of `#require()` stop running your
@@ -106,7 +106,7 @@ the error to `Never`:
 }
 ```
 
-If the block throws an error, the testing library records an issue.
+If the closure throws an error, the testing library records an issue.
 If you need the test to stop if the code throws an error, include the
 code inline in the test function instead of wrapping it in an
 `#expect(throws:)` block.
