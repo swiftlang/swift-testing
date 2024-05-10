@@ -71,10 +71,13 @@ struct TaggedArray<T> {
 }
 ```
 
-In your tests, validate that the code throws the error you expect by
-passing that error as the first argument of
-``expect(throws:_:sourcelocation:performing:)-1xr34``, and pass a
-closure that calls the code under test:
+Create a test function that `throws` and `try` the code under test.
+If the code throws an error, then your test fails.
+
+To check that the code under test throws a specific error, or to continue a
+longer test function after the code throws an error, pass that error as the
+first argument of ``expect(throws:_:sourcelocation:performing:)-1xr34``, and
+pass a closure that calls the code under test:
 
 ```swift
 @Test func cannotAddTagToObjectBeforeStartOfList() {
