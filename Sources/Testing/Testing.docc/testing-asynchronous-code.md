@@ -21,7 +21,8 @@ body, `await` any asynchronous interactions:
 
 ```swift
 @Test func asynchronousCalculationYieldsExpectedValue() async {
-    #expect(await asynchronousCalculation(with: 10) == 12)
+    let result = await asynchronousCalculation(with: 10)
+    #expect(result == 12)
 }
 ```
 
