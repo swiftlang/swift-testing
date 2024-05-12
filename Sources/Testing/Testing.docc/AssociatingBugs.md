@@ -69,8 +69,6 @@ func engineWorks() async {
 }
 ```
 
-### Kinds of relationship
-
 The testing library defines several kinds of common bug/test relationship:
 
 | Relationship | Use when… |
