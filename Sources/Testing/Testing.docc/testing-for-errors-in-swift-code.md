@@ -27,44 +27,59 @@ macros that check for errors.
 ### Validate that your code throws an expected error
 
 The Swift structure in this example represents a list that accepts any
-number of attributes for items in the list.  The API contains a method for
-applying an attribute to a range of items, and a method for retrieving the
-attributes associated with the item at a given index.  Both of these methods
+number of toppings for pizzas in the list.  The API contains a method for
+applying a topping to a range of pizzas, and a method for retrieving the
+toppings requested for the item at a given index.  Both of these methods
 throw errors if their parameters are outside the list's range.
 
 ```swift
-struct AttributedArray<T> {
-    enum AttributedArrayError : Error {
+enum PizzaBase {
+    case deepCrust
+    case shallowCrust
+    case calzone
+}
+
+enum Topping {
+    case tomato
+    case cheese
+    case caper
+    case anchovy
+    case prosciutto
+    case pineapple
+}
+
+struct PizzaToppings {
+    enum PizzaToppingsError : Error {
         case outOfRange
     }
 
-    let elements: [T]
-    var attributes: [Int: [String]]
+    let pizzas: [PizzaBase]
+    var toppings: [Int: [Topping]]
 
-    init(list: [T]) {
-        elements = list
-        attributes = [Int: [String]]()
+    init(bases: [PizzaBase]) {
+        pizzas = bases
+        toppings = [Int: [Topping]]()
     }
 
-    mutating func add(attribute: String, toObjectsIn range: Range<Int>) throws {
-        guard Int(range.startIndex) >= 0 && Int(range.endIndex) < elements.count else {
-            throw AttributedArrayError.outOfRange
+    mutating func add(topping: Topping, toPizzasIn range: Range<Int>) throws {
+        guard Int(range.startIndex) >= 0 && Int(range.endIndex) < pizzas.count else {
+            throw PizzaToppingsError.outOfRange
         }
         for index in range {
-            if var attributeList = attributes[index] {
-                attributeList.append(attribute)
-                attributes[index] = attributeList
+            if var toppingList = toppings[index] {
+                toppingList.append(topping)
+                toppings[index] = toppingList
             } else {
-                attributes[index] = [attribute]
+                toppings[index] = [topping]
             }
         }
     }
 
-    func attributes(forItemAt index: Int) throws -> [String] {
-        guard index >= 0 && index < elements.count else {
-            throw AttributedArrayError.outOfRange
+    func toppings(forPizzaAt index: Int) throws -> [Topping] {
+        guard index >= 0 && index < pizzas.count else {
+            throw PizzaToppingsError.outOfRange
         }
-        return attributes[index] ?? []
+        return toppings[index] ?? []
     }
 
     // Other methods.
@@ -80,10 +95,10 @@ first argument of ``expect(throws:_:sourcelocation:performing:)-1xr34``, and
 pass a closure that calls the code under test:
 
 ```swift
-@Test func cannotAddAttributeToObjectBeforeStartOfList() {
-    var array = AttributedArray(list: [1,2,3])
-    #expect(throws: AttributedArray<Int>.AttributedArrayError.outOfRange) {
-        try array.add(attribute: "my attribute", toObjectsIn: -1..<0)
+@Test func cannotAddToppingToPizzaBeforeStartOfList() {
+    var order = PizzaToppings(bases: [.calzone, .deepCrust])
+    #expect(throws: PizzaToppings.PizzaToppingsError.outOfRange) {
+        try order.add(topping: .mozarella, toPizzasIn: -1..<0)
     }
 }
 ```
@@ -100,12 +115,12 @@ Validate that the code under test doesn't throw an error by comparing
 the error to `Never`:
 
 ```swift
-@Test func canAddAttributeToObjectInPositionZero() throws {
-    var array = AttributedArray(list: [1,2,3])
+@Test func canAddToppingToPizzaInPositionZero() throws {
+    var order = PizzaToppings(bases: [.thinCrust, .thinCrust])
     #expect(throws: Never.self) {
-        try array.add(attribute: "my attribute", toObjectsIn: 0..<1)
+        try order.add(topping: .caper, toPizzasIn: 0..<1)
     }
-    #expect(try array.attributes(forItemAt: 0) == ["my attribute"])
+    #expect(try order.toppings(forPizzaAt: 0) == [.caper])
 }
 ```
 
