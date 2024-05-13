@@ -29,15 +29,18 @@ provides detailed information when the code doesn't satisfy the
 expectation:
 
 ```swift
-func add(_ x: Int, to y: Int) -> Int {
-    return x * y
+class OrderCalculator {
+    func total(of subtotals: [Int]) -> Int {
+        return subtotals.reduce(1) { partialResult, subtotal in
+            partialResult + subtotal
+        }
+    }
 }
 
-
-@Test func addingTwoNumbers() {
-    #expect(add(3, to: 3) == 6)
-    // Prints "Test addingTwoNumbers() recorded an issue at WritingTestsInSwiftTestingTests.swift:18:9:
-    //   Expectation failed: (add(3, to: 3) → 9) == 6"
+@Test func calculatingOrderTotal() {
+    let calculator = OrderCalculator()
+    #expect(calculator.total(of: [3, 3]) == 6)
+    // Prints "Expectation failed: (calculator.total(of: [3, 3]) → 7) == 6"
 }
 ```
 
@@ -45,23 +48,10 @@ Your test keeps running after `#expect()` fails.  To stop the test
 when the code doesn't satisfy a requirement, use `#require()` instead:
 
 ```swift
-struct Square {
-    let sideLength: Int
-
-    var perimeter: Int {
-        get { sideLength * 4 }
-    }
-
-    init?(length: Int) {
-        guard length > 0 else { return nil }
-        sideLength = length
-    }
-}
-
-@Test func zeroLengthSquare() throws {
-    let aSquare = Square(length: 0)
-    try #require(aSquare != nil)
-    #expect(aSquare?.perimeter == 0) // The test runner doesn't reach this line.
+@Test func returningCustomerRemembersUsualOrder() throws {
+    let customer = Customer(id: 123)
+    try #require(customer)
+    #expect(customer?.usualOrder?.countOfItems == 2) // The test runner doesn't reach this line if the customer is nil.
 }
 ```
 
