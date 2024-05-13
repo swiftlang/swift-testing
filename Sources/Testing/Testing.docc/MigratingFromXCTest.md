@@ -3,7 +3,7 @@
 <!--
 This source file is part of the Swift.org open source project
 
-Copyright (c) 2023 Apple Inc. and the Swift project authors
+Copyright (c) 2023-2024 Apple Inc. and the Swift project authors
 Licensed under Apache License v2.0 with Runtime Library Exception
 
 See https://swift.org/LICENSE.txt for license information
@@ -18,8 +18,8 @@ Migrate an existing test method or test class written using XCTest.
 ## Overview
 
 The testing library provides much of the same functionality of XCTest, but uses
-its own syntax to declare test functions and types. This document covers the
-process of converting XCTest-based content to use the testing library instead.
+its own syntax to declare test functions and types. Here, you'll learn how to
+convert XCTest-based content to use the testing library instead.
 
 ### Add the testing library as a dependency
 
@@ -55,16 +55,16 @@ source file contains mixed test content.
 
 XCTest groups related sets of test methods in test classes: classes that inherit
 from the [`XCTestCase`](https://developer.apple.com/documentation/xctest/xctestcase)
-class provided by the XCTest framework. The testing library does not require
+class provided by the [XCTest](https://developer.apple.com/documentation/xctest) framework. The testing library doesn't require
 that test functions be instance members of types. Instead, they can be _free_ or
 _global_ functions, or can be `static` or `class` members of a type.
 
 If you want to group your test functions together, you can do so by placing them
 in a Swift type. The testing library refers to such a type as a _suite_. These
-types do _not_ need to be classes, and they do not inherit from `XCTestCase`.
+types do _not_ need to be classes, and they don't inherit from `XCTestCase`.
 
 To convert a subclass of `XCTestCase` to a suite, remove the `XCTestCase`
-conformance. It is also generally recommended that a Swift structure or actor be
+conformance. It's also generally recommended that a Swift structure or actor be
 used instead of a class because it allows the Swift compiler to better-enforce
 concurrency safety:
 
@@ -174,7 +174,7 @@ implement `deinit`:
 The testing library represents individual tests as functions, similar to how
 they are represented in XCTest. However, the syntax for declaring a test
 function is different. In XCTest, a test method must be a member of a test class
-and its name must start with `test`. The testing library does not require a test
+and its name must start with `test`. The testing library doesn't require a test
 function to have any particular name. Instead, it identifies a test function by
 the presence of the `@Test` attribute:
 
@@ -199,8 +199,8 @@ the presence of the `@Test` attribute:
   }
 }
 
-As with XCTest, the testing library allows test functions to be marked `async`
-and/or `throws` and to be isolated to a global actor (for example, by using the
+As with XCTest, the testing library allows test functions to be marked `async`,
+`throws`, or `async`-`throws`, and to be isolated to a global actor (for example, by using the
 `@MainActor` attribute.)
 
 - Note: XCTest runs synchronous test methods on the main actor by default, while
@@ -219,8 +219,8 @@ These functions are collectively referred to as
 [`XCTAssert()`](https://developer.apple.com/documentation/xctest/1500669-xctassert).
 The testing library has two replacements, ``expect(_:_:sourceLocation:)`` and
 ``require(_:_:sourceLocation:)-5l63q``. They both behave similarly to
-`XCTAssert()` except that ``require(_:_:sourceLocation:)-5l63q`` will throw an
-error if its condition is not met:
+`XCTAssert()` except that ``require(_:_:sourceLocation:)-5l63q`` throws an
+error if its condition isn't met:
 
 @Row {
   @Column {
@@ -334,8 +334,6 @@ function. To record an unconditional issue using the testing library, use the
   }
 }
 
------
-
 The following table includes a list of the various `XCTAssert()` functions and
 their equivalents in the testing library:
 
@@ -372,7 +370,7 @@ property to `false` to cause a test to stop running after a failure occurs.
 XCTest stops an affected test by throwing an Objective-C exception at the
 time the failure occurs.
 
-- Note: `continueAfterFailure` is not fully supported when using the
+- Note: `continueAfterFailure` isn't fully supported when using the
   [swift-corelibs-xctest](https://github.com/apple/swift-corelibs-xctest)
   library on non-Apple platforms.
 
@@ -380,7 +378,7 @@ The behavior of an exception thrown through a Swift stack frame is undefined. If
 an exception is thrown through an `async` Swift function, it typically causes
 the process to terminate abnormally, preventing other tests from running.
 
-The testing library does not use exceptions to stop test functions. Instead, use
+The testing library doesn't use exceptions to stop test functions. Instead, use
 the ``require(_:_:sourceLocation:)-5l63q`` macro, which throws a Swift error on
 failure:
 
@@ -419,7 +417,7 @@ the failed test method or test function.
 ### Validate asynchronous behaviors
 
 XCTest has a class, [`XCTestExpectation`](https://developer.apple.com/documentation/xctest/xctestexpectation),
-that represents some asynchronous condition. A developer creates an instance of
+that represents some asynchronous condition. You create an instance of
 this class (or a subclass like [`XCTKeyPathExpectation`](https://developer.apple.com/documentation/xctest/xctkeypathexpectation))
 using an initializer or a convenience method on `XCTestCase`. When the condition
 represented by an expectation occurs, the developer _fulfills_ the expectation.
@@ -428,9 +426,9 @@ instance of [`XCTWaiter`](https://developer.apple.com/documentation/xctest/xctwa
 or using a convenience method on `XCTestCase`.
 
 Wherever possible, prefer to use Swift concurrency to validate asynchronous
-conditions. For example, if it is necessary to determine the result of an
+conditions. For example, if it's necessary to determine the result of an
 asynchronous Swift function, it can be awaited with `await`. For a function that
-takes a completion handler but which does not use `await`, a Swift
+takes a completion handler but which doesn't use `await`, a Swift
 [continuation](https://developer.apple.com/documentation/swift/withcheckedcontinuation(function:_:))
 can be used to convert the call into an `async`-compatible one.
 
@@ -440,11 +438,10 @@ functionality called _confirmations_ which can be used to implement these tests.
 Instances of ``Confirmation`` are created and used within the scope of the
 function ``confirmation(_:expectedCount:fileID:filePath:line:column:_:)``.
 
-Confirmations function similarly to XCTest's expectations, however they do not
+Confirmations function similarly to the expectations API of XCTest, however, they don't
 block or suspend the caller while waiting for a condition to be fulfilled.
 Instead, the requirement is expected to be _confirmed_ (the equivalent of
-_fulfilling_ an expectation) before `confirmation()` returns, and an issue is
-recorded otherwise:
+_fulfilling_ an expectation) before `confirmation()` returns, and records an issue otherwise:
 
 @Row {
   @Column {
@@ -532,7 +529,7 @@ test function with an instance of this trait type to control whether it runs:
 A test may have a known issue that sometimes or always prevents it from passing.
 When written using XCTest, such tests can call
 [`XCTExpectFailure(_:options:failingBlock:)`](https://developer.apple.com/documentation/xctest/3727246-xctexpectfailure)
-to tell XCTest and its infrastructure that the issue should not cause the test
+to tell XCTest and its infrastructure that the issue shouldn't cause the test
 to fail. The testing library has an equivalent function with synchronous and
 asynchronous variants:
 
@@ -574,8 +571,8 @@ issue:
 }
 
 - Note: The XCTest function [`XCTExpectFailure(_:options:)`](https://developer.apple.com/documentation/xctest/3727245-xctexpectfailure),
-  which does not take a closure and which affects the remainder of the test,
-  does not have a direct equivalent in the testing library. To mark an entire
+  which doesn't take a closure and which affects the remainder of the test,
+  doesn't have a direct equivalent in the testing library. To mark an entire
   test as having a known issue, wrap its body in a call to `withKnownIssue()`. 
 
 If a test may fail intermittently, the call to
@@ -624,10 +621,10 @@ Additional options can be specified when calling `XCTExpectFailure()`:
 
 - [`isEnabled`](https://developer.apple.com/documentation/xctest/xctexpectedfailure/options/3726085-isenabled)
   can be set to `false` to skip known-issue matching (for instance, if a
-  particular issue only occurs under certain conditions); and
+  particular issue only occurs under certain conditions)
 - [`issueMatcher`](https://developer.apple.com/documentation/xctest/xctexpectedfailure/options/3726086-issuematcher)
   can be set to a closure to allow marking only certain issues as known and to
-  allow other issues to be recorded as test failures.
+  allow other issues to be recorded as test failures
 
 The testing library includes overloads of `withKnownIssue()` that take
 additional arguments with similar behavior:
@@ -635,7 +632,7 @@ additional arguments with similar behavior:
 - ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:when:matching:)-68e5g``
 - ``withKnownIssue(_:isIntermittent:fileID:filePath:line:column:_:when:matching:)-7azqg``
 
-To conditionally enable known-issue matching and/or to match only certain kinds
+To conditionally enable known-issue matching or to match only certain kinds
 of issues:
 
 @Row {

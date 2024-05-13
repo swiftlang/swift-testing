@@ -14,11 +14,11 @@ Add comments to provide useful information about tests.
 
 ## Overview
 
-It is often useful to add comments to code in order:
+It's often useful to add comments to code to:
 
-- to provide context or background information about the code's purpose;
-- to explain how complex code implemented; or
-- to include details which may be helpful when diagnosing issues.
+- Provide context or background information about the code's purpose
+- Explain how complex code implemented
+- Include details which may be helpful when diagnosing issues
 
 Test code is no different and can benefit from explanatory code comments, but
 often test issues are shown in places where the source code of the test is
@@ -44,7 +44,7 @@ immediately before its `@Test` or `@Suite` attribute:
 }
 ```
 
-The comment `"// Assumes the standard lunch menu includes a taco"` will be added
+The comment, `// Assumes the standard lunch menu includes a taco`, is added
 to the test.
 
 The following language comment styles are supported:
@@ -61,7 +61,7 @@ The following language comment styles are supported:
 Test comments which are automatically added from source code comments preserve
 their original formatting, including any prefixes like `//` or `/**`. This
 is because the whitespace and formatting of comments can be meaningful in some
-circumstances or aid in understanding the comment—for example, when a comment
+circumstances or aid in understanding the comment — for example, when a comment
 includes an example code snippet or diagram.
 
 <!-- FIXME: Uncomment this section if/when the `.comment(...)` trait is promoted
@@ -88,10 +88,10 @@ func lunchMenu() {
 
 ## Use test comments effectively
 
-As in normal code, comments on tests are generally most useful when:
+As in normal code, comments on tests are generally most useful when they:
 
-- they add information that isn't obvious from reading the code; or
-- they provide useful information about the operation or motivation of a test.
+- Add information that isn't obvious from reading the code
+- Provide useful information about the operation or motivation of a test
 
 If a test is related to a bug or issue, consider using the ``Bug`` trait instead
-of comments. For more information, review <doc:AssociatingBugs>.
+of comments. For more information, see <doc:AssociatingBugs>.

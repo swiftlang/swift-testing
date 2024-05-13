@@ -3,7 +3,7 @@
 <!--
 This source file is part of the Swift.org open source project
 
-Copyright (c) 2023 Apple Inc. and the Swift project authors
+Copyright (c) 2023-2024 Apple Inc. and the Swift project authors
 Licensed under Apache License v2.0 with Runtime Library Exception
 
 See https://swift.org/LICENSE.txt for license information
@@ -19,8 +19,7 @@ resources to complete, may rely on downloaded data from a server, or may
 otherwise be dependent on external factors.
 
 If a test may hang indefinitely or may consume too many system resources to
-complete effectively, consider setting a time limit for it so that it will
-be marked as failing if it runs for an excessive amount of time. Use the
+complete effectively, consider setting a time limit for it so that it's marked as failing if it runs for an excessive amount of time. Use the
 ``Trait/timeLimit(_:)`` trait as an upper bound:
 
 ```swift
@@ -34,13 +33,13 @@ func serve100CustomersInOneHour() async {
 }
 ```
 
-If the above test function takes longer than 60 &times; 60 seconds (i.e. one
-hour) to execute, the task in which it is running will be
+If the above test function takes longer than an
+hour (60 x 60 seconds) to execute, the task in which it's running is
 [cancelled](https://developer.apple.com/documentation/swift/task/cancel())
-and the test will fail with an issue of kind
+and the test fails with an issue of kind
 ``Issue/Kind-swift.enum/timeLimitExceeded(timeLimitComponents:)``.
 
-- Note: if multiple time limit traits apply to a test, the shortest time limit
+- Note: If multiple time limit traits apply to a test, the shortest time limit
   is used.
 
 The testing library may adjust the specified time limit for performance reasons
@@ -51,11 +50,11 @@ limit traits.
 
 ### Time limits applied to test suites
 
-When a time limit is applied to a test suite, it is recursively applied to all
+When a time limit is applied to a test suite, it's recursively applied to all
 test functions and child test suites within that suite.
 
 ### Time limits applied to parameterized tests
 
-When a time limit is applied to a parameterized test function, it is applied to
+When a time limit is applied to a parameterized test function, it's applied to
 each invocation _separately_ so that if only some arguments cause failures, then
-successful arguments are not incorrectly marked as failing too.
+successful arguments aren't incorrectly marked as failing too.

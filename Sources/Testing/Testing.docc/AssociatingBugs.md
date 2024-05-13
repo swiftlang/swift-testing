@@ -15,8 +15,8 @@ Associate bugs uncovered or verified by tests.
 ## Overview
 
 Tests allow developers to prove that the code they write is working as expected.
-If code is not working correctly, bug trackers are often used to track the work
-necessary to fix the underlying problem. It is often useful to associate
+If code isn't working correctly, bug trackers are often used to track the work
+necessary to fix the underlying problem. It's often useful to associate
 specific bugs with tests that reproduce them or verify they are fixed.
 
 - Note: "Bugs" as described in this document may also be referred to as

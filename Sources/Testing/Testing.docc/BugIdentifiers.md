@@ -10,7 +10,7 @@ See https://swift.org/LICENSE.txt for license information
 See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 -->
 
-How the testing library interprets bug identifiers provided by developers.
+Examine how the testing library interprets bug identifiers provided by developers.
 
 ## Overview
 
@@ -21,7 +21,7 @@ formats are associated with some common bug-tracking systems.
   "issues." To avoid confusion with the ``Issue`` type in the testing library,
   this document consistently refers to them as "bugs."
 
-## Recognized formats
+### Recognized formats
 
 - If the bug identifier begins with `"rdar:"`, it is assumed to represent a bug
   filed with Apple's Radar system.
@@ -29,9 +29,9 @@ formats are associated with some common bug-tracking systems.
   [RFC 3986](https://www.ietf.org/rfc/rfc3986.txt), it is assumed to represent
   an issue tracked at that URL.
 - If the bug identifier begins with `"FB"` and the rest of it can be parsed as
-  an unsigned integer, it is assumed to represent a bug filed with the
+  an unsigned integer, it's assumed to represent a bug filed with the
   [Apple Feedback Assistant](https://feedbackassistant.apple.com).
-- If the bug identifier can be parsed as an unsigned integer, it is assumed to
+- If the bug identifier can be parsed as an unsigned integer, it's assumed to
   represent an issue with that numeric identifier in an unspecified bug-tracking
   system.
 - All other bug identifiers are considered invalid and will cause the compiler
@@ -46,9 +46,9 @@ handling to detect:
   the same repository as the test.
 -->
 
-## Examples
+### Examples
 
-| Trait Function | Valid | Inferred Bug-Tracking System |
+| Trait function | Valid | Inferred bug-tracking system |
 |-|:-:|-|
 | `.bug(12345)` | Yes | None |
 | `.bug("12345")` | Yes | None |
