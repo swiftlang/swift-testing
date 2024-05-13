@@ -321,7 +321,7 @@ extension Runner {
     }
 
     await Configuration.withCurrent(runner.configuration) {
-      Event.post(.runStarted, for: nil, testCase: nil, configuration: runner.configuration)
+      Event.post(.runStarted(runner.plan), for: nil, testCase: nil, configuration: runner.configuration)
       defer {
         Event.post(.runEnded, for: nil, testCase: nil, configuration: runner.configuration)
       }

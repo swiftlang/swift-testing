@@ -9,7 +9,7 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
-private import TestingInternals
+private import _TestingInternals
 
 private func configurationForEntryPoint(withArguments args: [String]) throws -> Configuration {
   let args = try parseCommandLineArguments(from: args)
@@ -132,6 +132,13 @@ struct SwiftPMTests {
     }
   }
 
+  @Test("--xunit-output argument (missing path)")
+  func xunitOutputWithMissingPath() throws {
+    // Test that a missing path doesn't read off the end of the argument array.
+    let args = try parseCommandLineArguments(from: ["PATH", "--xunit-output"])
+    #expect(args.xunitOutput == nil)
+  }
+
   @Test("--xunit-output argument (writes to file)")
   func xunitOutputIsWrittenToFile() throws {
     // Test that a file is opened when requested. Testing of the actual output
@@ -144,7 +151,7 @@ struct SwiftPMTests {
     do {
       let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--xunit-output", temporaryFilePath])
       let eventContext = Event.Context()
-      configuration.eventHandler(Event(.runStarted, testID: nil, testCaseID: nil), eventContext)
+      configuration.eventHandler(Event(.runStarted(Runner.Plan(steps: [])), testID: nil, testCaseID: nil), eventContext)
       configuration.eventHandler(Event(.runEnded, testID: nil, testCaseID: nil), eventContext)
     }
 
@@ -156,31 +163,37 @@ struct SwiftPMTests {
   }
 
 #if canImport(Foundation)
-  func decodeEventStream(fromFileAtPath path: String) throws -> [EventAndContextSnapshot] {
+  func decodeABIv0RecordStream(fromFileAtPath path: String) throws -> [ABIv0.Record] {
     try FileHandle(forReadingAtPath: path).readToEnd()
       .split(separator: 10) // "\n"
       .map { line in
         try line.withUnsafeBytes { line in
-          try JSON.decode(EventAndContextSnapshot.self, from: line)
+          try JSON.decode(ABIv0.Record.self, from: line)
         }
       }
   }
 
   @Test("--experimental-event-stream-output argument (writes to a stream and can be read back)")
   func eventStreamOutput() async throws {
-    // Test that events are successfully streamed to a file and can be read
-    // back as snapshots.
+    // Test that JSON records are successfully streamed to a file and can be
+    // read back as snapshots.
     let tempDirPath = try temporaryDirectory()
     let temporaryFilePath = appendPathComponent("\(UInt64.random(in: 0 ..< .max))", to: tempDirPath)
     defer {
       _ = remove(temporaryFilePath)
     }
     do {
-      let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--experimental-event-stream-output", temporaryFilePath])
+      let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--experimental-event-stream-output", temporaryFilePath, "--experimental-event-stream-version", "0"])
       let eventContext = Event.Context()
-      configuration.handleEvent(Event(.runStarted, testID: nil, testCaseID: nil), in: eventContext)
+
+      let test = Test {}
+      let plan = Runner.Plan(
+        steps: [
+          Runner.Plan.Step(test: test, action: .run(options: .init(isParallelizationEnabled: true)))
+        ]
+      )
+      configuration.handleEvent(Event(.runStarted(plan), testID: nil, testCaseID: nil), in: eventContext)
       do {
-        let test = Test {}
         let eventContext = Event.Context(test: test)
         configuration.handleEvent(Event(.testStarted, testID: test.id, testCaseID: nil), in: eventContext)
         configuration.handleEvent(Event(.testEnded, testID: test.id, testCaseID: nil), in: eventContext)
@@ -188,8 +201,21 @@ struct SwiftPMTests {
       configuration.handleEvent(Event(.runEnded, testID: nil, testCaseID: nil), in: eventContext)
     }
 
-    let decodedEvents = try decodeEventStream(fromFileAtPath: temporaryFilePath)
-    #expect(decodedEvents.count == 4)
+    let decodedRecords = try decodeABIv0RecordStream(fromFileAtPath: temporaryFilePath)
+    let testRecords = decodedRecords.compactMap { record in
+      if case let .test(test) = record.kind {
+        return test
+      }
+      return nil
+    }
+    #expect(testRecords.count == 1)
+    let eventRecords = decodedRecords.compactMap { record in
+      if case let .event(event) = record.kind {
+        return event
+      }
+      return nil
+    }
+    #expect(eventRecords.count == 4)
   }
 #endif
 #endif

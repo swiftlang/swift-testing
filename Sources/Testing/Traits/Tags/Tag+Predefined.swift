@@ -10,6 +10,7 @@
 
 // MARK: Primary colors
 
+@_spi(Experimental)
 extension Tag {
   /// A tag representing the color red.
   public static var red: Self {

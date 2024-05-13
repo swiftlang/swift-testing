@@ -65,7 +65,3 @@ concurrency, and parameterize test functions across wide ranges of inputs.
 ### Test customization
 
 - <doc:Traits>
-
-### Extended modules
-
-- ``Swift``

@@ -19,7 +19,7 @@
 /// into Swift without introducing a module dependency (and because the name of
 /// that module varies on a platform-by-platform basis), we instead include C
 /// standard library headers _à la carte_. Symbols from these headers are then
-/// imported into Swift when a Swift file imports the `TestingInternals` module.
+/// imported into Swift when a Swift file imports the `_TestingInternals` module.
 ///
 /// Also include any platform-specific headers here that are needed by the
 /// testing library.

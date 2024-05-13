@@ -9,7 +9,7 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
-private import TestingInternals
+private import _TestingInternals
 
 @Suite("Event Tests")
 struct EventTests {
@@ -44,7 +44,7 @@ struct EventTests {
                 sourceLocation: nil)
             )
           ),
-          Event.Kind.runStarted,
+          Event.Kind.runStarted(Runner.Plan(steps: [])),
           Event.Kind.runEnded,
           Event.Kind.testCaseStarted,
           Event.Kind.testCaseEnded,

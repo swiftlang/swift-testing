@@ -190,7 +190,18 @@ extension Runner.Plan {
     // configuration. The action graph is not modified here: actions that lose
     // their corresponding tests are effectively filtered out by the call to
     // zip() near the end of the function.
-    testGraph = configuration.testFilter.apply(to: testGraph)
+    do {
+      testGraph = try configuration.testFilter.apply(to: testGraph)
+    } catch {
+      // FIXME: Handle this more gracefully, either by propagating the error
+      // (which will ultimately require `Runner.init(...)` to be throwing:
+      // rdar://126631222) or by recording a single `Issue` representing the
+      // planning failure.
+      //
+      // For now, ignore the error and include all tests. As of this writing,
+      // the only scenario where this will throw is when using regex filtering,
+      // and that is already guarded earlier in the SwiftPM entry point.
+    }
 
     // For each test value, determine the appropriate action for it.
     //

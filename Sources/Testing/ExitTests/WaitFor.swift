@@ -9,7 +9,7 @@
 //
 
 #if !SWT_NO_EXIT_TESTS
-internal import TestingInternals
+internal import _TestingInternals
 
 #if SWT_TARGET_OS_APPLE || os(Linux)
 /// Block the calling thread, wait for the target process to exit, and return

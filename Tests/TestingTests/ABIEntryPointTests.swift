@@ -10,7 +10,7 @@
 
 #if canImport(Foundation) && !SWT_NO_ABI_ENTRY_POINT
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
-private import TestingInternals
+private import _TestingInternals
 
 @Suite("ABI entry point tests")
 struct ABIEntryPointTests {
@@ -36,9 +36,10 @@ struct ABIEntryPointTests {
     // Construct arguments and convert them to JSON.
     var arguments = __CommandLineArguments_v0()
     arguments.filter = ["NonExistentTestThatMatchesNothingHopefully"]
+    arguments.experimentalEventStreamVersion = 0
     let argumentsJSON = try JSON.withEncoding(of: arguments) { argumentsJSON in
       let result = UnsafeMutableRawBufferPointer.allocate(byteCount: argumentsJSON.count, alignment: 1)
-      argumentsJSON.copyBytes(to: result)
+      _ = memcpy(result.baseAddress!, argumentsJSON.baseAddress!, argumentsJSON.count)
       return result
     }
     defer {
@@ -46,9 +47,9 @@ struct ABIEntryPointTests {
     }
 
     // Call the entry point function.
-    let result = await abiEntryPoint.pointee(.init(argumentsJSON)) { eventAndContextJSON in
-      let eventAndContext = try! JSON.decode(EventAndContextSnapshot.self, from: eventAndContextJSON)
-      _ = (eventAndContext.event, eventAndContext.eventContext)
+    let result = await abiEntryPoint.pointee(.init(argumentsJSON)) { recordJSON in
+      let record = try! JSON.decode(ABIv0.Record.self, from: recordJSON)
+      _ = record.version
     }
 
     // Validate expectations.

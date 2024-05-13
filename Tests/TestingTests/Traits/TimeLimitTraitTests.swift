@@ -15,36 +15,40 @@ struct TimeLimitTraitTests {
   @available(_clockAPI, *)
   @Test(".timeLimit() factory method")
   func timeLimitTrait() throws {
-    let test = Test(.timeLimit(.seconds(20))) {}
-    #expect(test.timeLimit == .seconds(20))
+    let test = Test(.timeLimit(.minutes(2))) {}
+    #expect(test.timeLimit == .seconds(60) * 2)
   }
 
   @available(_clockAPI, *)
   @Test("adjustedTimeLimit(configuration:) function")
   func adjustedTimeLimitMethod() throws {
-    for seconds in 1 ... 59 {
-      for milliseconds in 0 ... 100 {
-        let test = Test(.timeLimit(.seconds(seconds) + .milliseconds(milliseconds * 10))) {}
-        let adjustedTimeLimit = test.adjustedTimeLimit(configuration: .init())
-        #expect(adjustedTimeLimit == .seconds(60))
-      }
+    let oneHour = Duration.seconds(60 * 60)
+
+    var configuration = Configuration()
+    configuration.testTimeLimitGranularity = oneHour
+
+    for minutes in 1 ... 60 {
+      let test = Test(.timeLimit(.minutes(minutes))) {}
+      let adjustedTimeLimit = test.adjustedTimeLimit(configuration: configuration)
+      #expect(adjustedTimeLimit == oneHour)
     }
 
-    for seconds in 60 ... 119 {
-      let test = Test(.timeLimit(.seconds(seconds) + .milliseconds(1))) {}
-      let adjustedTimeLimit = test.adjustedTimeLimit(configuration: .init())
-      #expect(adjustedTimeLimit == .seconds(120))
+    for minutes in 61 ... 120 {
+      let test = Test(.timeLimit(.minutes(minutes))) {}
+      let adjustedTimeLimit = test.adjustedTimeLimit(configuration: configuration)
+      #expect(adjustedTimeLimit == oneHour * 2)
     }
   }
 
   @available(_clockAPI, *)
   @Test("Configuration.maximumTestTimeLimit property")
   func maximumTimeLimit() throws {
+    let tenMinutes = Duration.seconds(60 * 10)
     var configuration = Configuration()
-    configuration.maximumTestTimeLimit = .seconds(99)
-    let test = Test(.timeLimit(.seconds(100) + .milliseconds(100))) {}
+    configuration.maximumTestTimeLimit = tenMinutes
+    let test = Test(.timeLimit(.minutes(20))) {}
     let adjustedTimeLimit = test.adjustedTimeLimit(configuration: configuration)
-    #expect(adjustedTimeLimit == .seconds(99))
+    #expect(adjustedTimeLimit == tenMinutes)
   }
 
   @available(_clockAPI, *)
@@ -239,17 +243,21 @@ struct TimeLimitTraitTests {
 
 // MARK: - Fixtures
 
-func timeLimitIfAvailable(milliseconds: UInt64) -> any SuiteTrait {
+private func _timeLimitIfAvailable(minutes: UInt64) -> any SuiteTrait {
   // @available can't be applied to a suite type, so we can't mark the suite as
-  // available only on newer OSes.
+  // available only on newer OSes. In addition, there is a related, known bug
+  // where traits with conditional API availability are not guarded by
+  // `@available` attributes on their associated `@Test` function
+  // (rdar://127811571). That is not directly relevant here but is worth noting
+  // if this trait is ever applied to `@Test` functions in this file.
   if #available(_clockAPI, *) {
-    .timeLimit(.milliseconds(milliseconds))
+    .timeLimit(.minutes(minutes))
   } else {
     .disabled(".timeLimit() not available")
   }
 }
 
-@Suite(.hidden, timeLimitIfAvailable(milliseconds: 10))
+@Suite(.hidden, _timeLimitIfAvailable(minutes: 10))
 struct TestTypeThatTimesOut {
   @available(_clockAPI, *)
   @Test(.hidden, arguments: 0 ..< 10)

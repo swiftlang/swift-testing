@@ -105,6 +105,9 @@ struct Food {
 }
 ```
 
+<!--
+HIDDEN: tag colors are experimental SPI.
+
 ## Built-in tags
 
 The testing library predefines the following symbolic tags that you can use in
@@ -155,3 +158,4 @@ be set to:
   ".legallyRequired": "#66FFCC"
 }
 ```
+-->

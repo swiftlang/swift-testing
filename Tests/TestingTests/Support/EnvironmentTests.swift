@@ -9,7 +9,7 @@
 //
 
 @testable @_spi(Experimental) import Testing
-private import TestingInternals
+private import _TestingInternals
 
 @Suite("Environment Tests", .serialized)
 struct EnvironmentTests {

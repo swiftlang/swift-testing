@@ -82,16 +82,15 @@ func isCold() async throws { ... }
 ```
 
 If a test is disabled because of a problem for which there is a corresponding
-bug report, you can use the ``Trait/bug(_:relationship:_:)-86mmm`` or
-``Trait/bug(_:relationship:_:)-3hsi5`` function with the relationship
-``Bug/Relationship-swift.enum/failingBecauseOfBug``:
+bug report, you can use the ``Trait/bug(_:_:)-2u8j9`` or
+``Trait/bug(_:_:)-7mo2w`` function to show the relationship:
 
 ```swift
 @Test(
   "Ice cream is cold",
   .enabled(if: Season.current == .summer),
   .disabled("We ran out of sprinkles"),
-  .bug("#12345", relationship: .failingBecauseOfBug)
+  .bug("12345")
 )
 func isCold() async throws { ... }
 ```

@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import TestingInternals
+private import _TestingInternals
 
 /// The common implementation of the entry point functions in this file.
 ///
@@ -155,7 +155,32 @@ public struct __CommandLineArguments_v0: Sendable {
   public var xunitOutput: String?
 
   /// The value of the `--experimental-event-stream-output` argument.
+  ///
+  /// Data is written to this file in the [JSON Lines](https://jsonlines.org)
+  /// text format. For each event handled by the resulting event handler, a JSON
+  /// object representing it and its associated context is created and is
+  /// written, followed by a single line feed (`"\n"`) character. These JSON
+  /// objects are guaranteed not to contain any ASCII newline characters (`"\r"`
+  /// or `"\n"`) themselves.
+  ///
+  /// The file can be a regular file, however to allow for streaming a named
+  /// pipe is recommended. `mkfifo()` can be used on Darwin and Linux to create
+  /// a named pipe; `CreateNamedPipeA()` can be used on Windows.
+  ///
+  /// The file is closed when this process terminates or the test run completes,
+  /// whichever occurs first.
   public var experimentalEventStreamOutput: String?
+
+  /// The version of the event stream schema to use when writing events to
+  /// ``experimentalEventStreamOutput``.
+  ///
+  /// If the value of this property is `nil`, events are encoded verbatim (using
+  /// ``Event/Snapshot``.) Otherwise, the corresponding stable schema is used
+  /// (e.g. ``ABIv0/Record`` for `0`.)
+  ///
+  /// - Warning: The behavior of this property will change when the ABI version
+  ///   0 JSON schema is finalized.
+  public var experimentalEventStreamVersion: Int? = nil
 
   /// The value(s) of the `--filter` argument.
   public var filter: [String]?
@@ -192,9 +217,50 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   // Do not consider the executable path AKA argv[0].
   let args = args.dropFirst()
 
+  func isLastArgument(at index: [String].Index) -> Bool {
+    args.index(after: index) >= args.endIndex
+  }
+
+#if !SWT_NO_FILE_IO
+#if canImport(Foundation)
+  // Configuration for the test run passed in as a JSON file (experimental)
+  //
+  // This argument should always be the first one we parse.
+  //
+  // NOTE: While the output event stream is opened later, it is necessary to
+  // open the configuration file early (here) in order to correctly construct
+  // the resulting __CommandLineArguments_v0 instance.
+  if let configurationIndex = args.firstIndex(of: "--experimental-configuration-path"), !isLastArgument(at: configurationIndex) {
+    let path = args[args.index(after: configurationIndex)]
+    let file = try FileHandle(forReadingAtPath: path)
+    let configurationJSON = try file.readToEnd()
+    result = try configurationJSON.withUnsafeBufferPointer { configurationJSON in
+      try JSON.decode(__CommandLineArguments_v0.self, from: .init(configurationJSON))
+    }
+
+    // NOTE: We don't return early or block other arguments here: a caller is
+    // allowed to pass a configuration AND --verbose and they'll both be
+    // respected (it should be the least "surprising" outcome of passing both.)
+  }
+
+  // Event stream output (experimental)
+  if let eventOutputIndex = args.firstIndex(of: "--experimental-event-stream-output"), !isLastArgument(at: eventOutputIndex) {
+    result.experimentalEventStreamOutput = args[args.index(after: eventOutputIndex)]
+  }
+  // Event stream output (experimental)
+  if let eventOutputVersionIndex = args.firstIndex(of: "--experimental-event-stream-version"), !isLastArgument(at: eventOutputVersionIndex) {
+    result.experimentalEventStreamVersion = Int(args[args.index(after: eventOutputVersionIndex)])
+  }
+#endif
+
+  // XML output
+  if let xunitOutputIndex = args.firstIndex(of: "--xunit-output"), !isLastArgument(at: xunitOutputIndex) {
+    result.xunitOutput = args[args.index(after: xunitOutputIndex)]
+  }
+#endif
+
   if args.contains("--list-tests") {
     result.listTests = true
-    return result // do not bother parsing the other arguments
   }
 
   // Parallelization (on by default)
@@ -206,20 +272,6 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     result.verbose = true
   }
 
-#if !SWT_NO_FILE_IO
-  // XML output
-  if let xunitOutputIndex = args.firstIndex(of: "--xunit-output"), xunitOutputIndex < args.endIndex {
-    result.xunitOutput = args[args.index(after: xunitOutputIndex)]
-  }
-
-#if canImport(Foundation)
-  // Event stream output (experimental)
-  if let eventOutputIndex = args.firstIndex(of: "--experimental-event-stream-output"), eventOutputIndex < args.endIndex {
-    result.experimentalEventStreamOutput = args[args.index(after: eventOutputIndex)]
-  }
-#endif
-#endif
-
   // Filtering
   func filterValues(forArgumentsWithLabel label: String) -> [String] {
     args.indices.lazy
@@ -230,10 +282,10 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   result.skip = filterValues(forArgumentsWithLabel: "--skip")
 
   // Set up the iteration policy for the test run.
-  if let repetitionsIndex = args.firstIndex(of: "--repetitions"), repetitionsIndex < args.endIndex {
+  if let repetitionsIndex = args.firstIndex(of: "--repetitions"), !isLastArgument(at: repetitionsIndex) {
     result.repetitions = Int(args[args.index(after: repetitionsIndex)])
   }
-  if let repeatUntilIndex = args.firstIndex(of: "--repeat-until"), repeatUntilIndex < args.endIndex {
+  if let repeatUntilIndex = args.firstIndex(of: "--repeat-until"), !isLastArgument(at: repeatUntilIndex) {
     result.repeatUntil = args[args.index(after: repeatUntilIndex)]
   }
 
@@ -278,7 +330,10 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 #if canImport(Foundation)
   // Event stream output (experimental)
   if let eventStreamOutputPath = args.experimentalEventStreamOutput {
-    let eventHandler = try _eventHandlerForStreamingEvents_v0(toFileAtPath: eventStreamOutputPath)
+    let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
+    let eventHandler = try eventHandlerForStreamingEvents(version: args.experimentalEventStreamVersion) { json in
+      try? _writeJSONLine(json, to: file)
+    }
     configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
       eventHandler(event, context)
       oldEventHandler(event, context)
@@ -290,7 +345,9 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   // Filtering
   var filters = [Configuration.TestFilter]()
   func testFilter(forRegularExpressions regexes: [String]?, label: String, membership: Configuration.TestFilter.Membership) throws -> Configuration.TestFilter {
-    guard let regexes else {
+    guard let regexes, !regexes.isEmpty else {
+      // Return early if empty, even though the `reduce` logic below can handle
+      // this case, in order to avoid the `#available` guard.
       return .unfiltered
     }
 
@@ -298,8 +355,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
       throw _EntryPointError.featureUnavailable("The `\(label)' option is not supported on this OS version.")
     }
     return try regexes.lazy
-      .map { try Regex($0) }
-      .map { Configuration.TestFilter(membership: membership, matching: $0) }
+      .map { try Configuration.TestFilter(membership: membership, matching: $0) }
       .reduce(into: .unfiltered) { $0.combine(with: $1, using: .or) }
   }
   filters.append(try testFilter(forRegularExpressions: args.filter, label: "--filter", membership: .including))
@@ -339,69 +395,66 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   return configuration
 }
 
-// MARK: - Experimental event streaming
-
 #if canImport(Foundation) && !SWT_NO_FILE_IO
-/// Create an event handler that streams events to the file at a given path.
+/// Create an event handler that streams events to the given file using the
+/// specified ABI version.
 ///
 /// - Parameters:
-///   - path: The path to which events should be streamed. This file will be
-///     opened for writing.
-///
-/// - Throws: Any error that occurs opening `path`. Once `path` is opened,
-///   errors that may occur writing to it are handled by the resulting event
-///   handler.
+///   - version: The ABI version to use.
+///   - eventHandler: The event handler to forward encoded events to. The
+///     encoding of events depends on `version`.
 ///
 /// - Returns: An event handler.
 ///
-/// The resulting event handler outputs data in the [JSON Lines](https://jsonlines.org)
-/// text format. For each event handled by the resulting event handler, a JSON
-/// object representing it and its associated context is created and is written
-/// to `path`, followed by a single line feed (`"\n"`) character. These JSON
-/// objects are guaranteed not to contain any ASCII newline characters (`"\r"`
-/// or `"\n"`) themselves.
-///
-/// The file at `path` can be a regular file, however to allow for streaming a
-/// named pipe is recommended. `mkfifo()` can be used on Darwin and Linux to
-/// create a named pipe; `CreateNamedPipeA()` can be used on Windows.
-///
-/// The file at `path` is closed when this process terminates or the
-/// corresponding call to ``Runner/run()`` returns, whichever occurs first.
-private func _eventHandlerForStreamingEvents_v0(toFileAtPath path: String) throws -> Event.Handler {
-  // Open the event stream file for writing.
-  let file = try FileHandle(forWritingAtPath: path)
+/// - Throws: If `version` is not a supported ABI version.
+func eventHandlerForStreamingEvents(version: Int?, forwardingTo eventHandler: @escaping @Sendable (UnsafeRawBufferPointer) -> Void) throws -> Event.Handler {
+  switch version {
+  case nil:
+    eventHandlerForStreamingEventSnapshots(to: eventHandler)
+  case 0:
+    ABIv0.Record.eventHandler(forwardingTo: eventHandler)
+  case let .some(unsupportedVersion):
+    throw _EntryPointError.invalidArgument("--experimental-event-stream-version", value: "\(unsupportedVersion)")
+  }
+}
 
-  return eventHandlerForStreamingEvents_v0 { eventAndContextJSON in
-    func isASCIINewline(_ byte: UInt8) -> Bool {
-      byte == 10 || byte == 13
-    }
+/// Post-process encoded JSON and write it to a file.
+///
+/// - Parameters:
+///   - json: The JSON to write.
+///   - file: The file to write to.
+///
+/// - Throws: Whatever is thrown when writing to `file`.
+private func _writeJSONLine(_ json: UnsafeRawBufferPointer, to file: borrowing FileHandle) throws {
+  func isASCIINewline(_ byte: UInt8) -> Bool {
+    byte == UInt8(ascii: "\r") || byte == UInt8(ascii: "\n")
+  }
 
 #if DEBUG && !SWT_NO_FILE_IO
-    // We don't actually expect the JSON encoder to produce output containing
-    // newline characters, so in debug builds we'll log a diagnostic message.
-    if eventAndContextJSON.contains(where: isASCIINewline) {
-      let message = Event.ConsoleOutputRecorder.warning(
-        "JSON encoder produced one or more newline characters while encoding an event snapshot. Please file a bug report at https://github.com/apple/swift-testing/issues/new",
-        options: .for(.stderr)
-      )
+  // We don't actually expect the JSON encoder to produce output containing
+  // newline characters, so in debug builds we'll log a diagnostic message.
+  if json.contains(where: isASCIINewline) {
+    let message = Event.ConsoleOutputRecorder.warning(
+      "JSON encoder produced one or more newline characters while encoding an event snapshot. Please file a bug report at https://github.com/apple/swift-testing/issues/new",
+      options: .for(.stderr)
+    )
 #if SWT_TARGET_OS_APPLE
-      try? FileHandle.stderr.write(message)
+    try? FileHandle.stderr.write(message)
 #else
-      print(message)
+    print(message)
 #endif
-    }
+  }
 #endif
 
-    // Remove newline characters to conform to JSON lines specification.
-    var eventAndContextJSON = Array(eventAndContextJSON)
-    eventAndContextJSON.removeAll(where: isASCIINewline)
+  // Remove newline characters to conform to JSON lines specification.
+  var json = Array(json)
+  json.removeAll(where: isASCIINewline)
 
-    try? file.withLock {
-      try eventAndContextJSON.withUnsafeBytes { eventAndContextJSON in
-        try file.write(eventAndContextJSON)
-      }
-      try file.write("\n")
+  try file.withLock {
+    try json.withUnsafeBytes { json in
+      try file.write(json)
     }
+    try file.write("\n")
   }
 }
 #endif
