@@ -20,9 +20,8 @@ features.  Mark your test function as `async` and, in the function
 body, `await` any asynchronous interactions:
 
 ```swift
-@Test func asynchronousCalculationYieldsExpectedValue() async {
-    let result = await asynchronousCalculation(with: 10)
-    #expect(result == 12)
+@Test func priceLookupYieldsExpectedValue() async {
+    #expect(await unitPrice(for: .mozarella) == 3)
 }
 ```
 
@@ -41,11 +40,11 @@ block, which you call as a function in the completion or event handler
 for the code under test when the event you're testing for occurs:
 
 ```swift
-@Test func asynchronousCalculatorCompletesSuccessfully() async {
-    let calculator = AsynchronousCalculator()
+@Test func orderCalculatorSuccessfullyCalculatesSubtotalForNoPizzas() async {
+    let calculator = OrderCalculator()
     await confirmation() { confirmation in
         calculator.successHandler = { _ in confirmation() }
-        calculator.doCalculation(with: 0)
+        calculator.subtotal(for: PizzaToppings(bases: []))
     }
 }
 ```
