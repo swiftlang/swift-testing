@@ -58,12 +58,12 @@ public typealias ABIEntryPoint_v0 = @Sendable (
 public func copyABIEntryPoint_v0() -> UnsafeMutableRawPointer {
   let result = UnsafeMutablePointer<ABIEntryPoint_v0>.allocate(capacity: 1)
   result.initialize { argumentsJSON, recordHandler in
-    let args = try! argumentsJSON.map { argumentsJSON in
+    var args = try! argumentsJSON.map { argumentsJSON in
       try JSON.decode(__CommandLineArguments_v0.self, from: argumentsJSON)
     }
 
     let eventHandler = try! eventHandlerForStreamingEvents(version: args?.experimentalEventStreamVersion, forwardingTo: recordHandler)
-    return await entryPoint(passing: args, eventHandler: eventHandler)
+    return await entryPoint(passing: &args, eventHandler: eventHandler)
   }
   return .init(result)
 }

@@ -16,12 +16,17 @@ private import _TestingInternals
 ///   - args: A previously-parsed command-line arguments structure to interpret.
 ///     If `nil`, a new instance is created from the command-line arguments to
 ///     the current process.
-///   - eventHandler: An event handler
-func entryPoint(passing args: consuming __CommandLineArguments_v0?, eventHandler: Event.Handler?) async -> CInt {
+///   - eventHandler: An event handler.
+///
+/// - Bug: This function takes `args` as a pointer in order to work around a
+///   code generation bug when using the Swift 5.10 toolchain on Windows. This
+///   function should be updated to take `args` directly when Swift 5.10
+///   support is removed.
+func entryPoint(passing args: UnsafePointer<__CommandLineArguments_v0?>, eventHandler: Event.Handler?) async -> CInt {
   let exitCode = Locked(rawValue: EXIT_SUCCESS)
 
   do {
-    let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments())
+    let args = try args.pointee ?? parseCommandLineArguments(from: CommandLine.arguments())
     if args.listTests {
       for testID in await listTestsForEntryPoint(Test.all) {
 #if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
