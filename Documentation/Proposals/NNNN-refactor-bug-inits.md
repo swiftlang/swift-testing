@@ -4,7 +4,7 @@
 * Authors: [Jonathan Grynspan](https://github.com/grynspan)
 * Status: **Awaiting review**
 * Implementation: [apple/swift-testing#401](https://github.com/apple/swift-testing/pull/401)
-<!-- * Review: ([review](https://forums.swift.org/...)) -->
+* Review: ([pitch](https://forums.swift.org/t/pitch-dedicated-bug-functions-for-urls-and-ids/71842))
 
 ## Introduction
 
