@@ -15,7 +15,7 @@ extension Event {
   /// The format of the output is not meant to be machine-readable and is
   /// subject to change. For machine-readable output, use ``JUnitXMLRecorder``.
   @_spi(ForToolsIntegrationOnly)
-  public struct ConsoleOutputRecorder: Sendable, ~Copyable {
+  public struct ConsoleOutputRecorder: Sendable/*, ~Copyable*/ {
     /// A type describing options to use when writing events to a stream.
     public struct Options: Sendable {
       /// Use [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code)
