@@ -118,6 +118,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .unsafeFlags(["-require-explicit-sendable"]),
       .enableExperimentalFeature("StrictConcurrency"),
       .enableUpcomingFeature("ExistentialAny"),
+      .enableUpcomingFeature("InferSendableFromCaptures"),
 
       .enableExperimentalFeature("AccessLevelOnImport"),
       .enableUpcomingFeature("InternalImportsByDefault"),
