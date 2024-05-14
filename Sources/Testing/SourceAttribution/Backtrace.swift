@@ -220,7 +220,7 @@ extension Backtrace {
   ///   existential containers with different addresses.
   @inline(never)
   init?(forFirstThrowOf error: any Error) {
-    let errorID = ObjectIdentifier(unsafeBitCast(error, to: AnyObject.self))
+    let errorID = ObjectIdentifier(unsafeBitCast(error as any Error, to: AnyObject.self))
     let entry = Self._errorMappingCache.withLock { cache in
       cache[errorID]
     }
