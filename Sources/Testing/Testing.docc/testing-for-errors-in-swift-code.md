@@ -120,7 +120,8 @@ the error to `Never`:
     #expect(throws: Never.self) {
         try order.add(topping: .caper, toPizzasIn: 0..<1)
     }
-    #expect(try order.toppings(forPizzaAt: 0) == [.caper])
+    let toppings = try order.toppings(forPizzaAt: 0)
+    #expect(toppings == [.caper])
 }
 ```
 
