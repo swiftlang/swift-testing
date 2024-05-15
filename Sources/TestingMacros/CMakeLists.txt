@@ -15,14 +15,14 @@ endif()
 project(TestingMacros
   LANGUAGES Swift)
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+list(APPEND CMAKE_MODULE_PATH
+  ${CMAKE_SOURCE_DIR}/../../cmake/modules/shared)
 
 if(WIN32)
   add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 endif()
 
 include(FetchContent)
-
 find_package(SwiftSyntax CONFIG GLOBAL)
 if(NOT SwiftSyntax_FOUND)
   set(FETCHCONTENT_BASE_DIR ${CMAKE_BINARY_DIR}/_d)
@@ -33,7 +33,8 @@ if(NOT SwiftSyntax_FOUND)
   FetchContent_MakeAvailable(SwiftSyntax)
 endif()
 
-include(Settings)
+include(AvailabilityDefinitions)
+include(CompilerSettings)
 add_executable(TestingMacros
   ConditionMacro.swift
   SuiteDeclarationMacro.swift
