@@ -165,8 +165,8 @@ struct TestsWithStaticMemberAccessBySelfKeyword {
   @Test(.hidden, arguments: Self.f(max: 100))
   func g(i: Int) {}
 
-  @Test(.hidden, arguments: [UncheckedSendable(rawValue: Self.f(max:))])
-  func h(i: UncheckedSendable<(Int) -> Range<Int>>) {}
+  @Test(.hidden, arguments: [Self.f(max:)])
+  func h(i: @Sendable (Int) -> Range<Int>) {}
 
   struct Nested {
     static let x = 0 ..< 100
