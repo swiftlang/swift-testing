@@ -36,12 +36,12 @@ let operatingSystemVersion: String = {
   if 0 == uname(&name) {
     let release = withUnsafeBytes(of: name.release) { release in
       release.withMemoryRebound(to: CChar.self) { release in
-        String(validatingUTF8: release.baseAddress!) ?? ""
+        String(validatingUTF8CString: release.baseAddress!) ?? ""
       }
     }
     let version = withUnsafeBytes(of: name.version) { version in
       version.withMemoryRebound(to: CChar.self) { version in
-        String(validatingUTF8: version.baseAddress!) ?? ""
+        String(validatingUTF8CString: version.baseAddress!) ?? ""
       }
     }
     switch (release, version) {
@@ -157,7 +157,7 @@ func sysctlbyname(_ name: String, as _: String.Type) -> String? {
     if 0 == sysctlbyname(name, nil, &szValue, nil, 0) {
       return withUnsafeTemporaryAllocation(of: CChar.self, capacity: szValue) { buffer in
         if 0 == sysctlbyname(name, buffer.baseAddress!, &szValue, nil, 0) {
-          return String(validatingUTF8: buffer.baseAddress!)
+          return String(validatingUTF8CString: buffer.baseAddress!)
         }
         return nil
       }

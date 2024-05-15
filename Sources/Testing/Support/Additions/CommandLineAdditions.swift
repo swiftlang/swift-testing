@@ -21,7 +21,7 @@ extension CommandLine {
   static func arguments() -> [String] {
     UnsafeBufferPointer(start: unsafeArgv, count: Int(argc)).lazy
       .compactMap { $0 }
-      .compactMap { String(validatingUTF8: $0) }
+      .compactMap { String(validatingUTF8CString: $0) }
   }
 
   /// The path to the current process' executable.
