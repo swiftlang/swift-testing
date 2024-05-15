@@ -60,11 +60,11 @@ To validate that a particular event doesn't occur during a test,
 create a `Confirmation` with an expected count of `0`:
 
 ```swift
-@Test func asynchronousCalculatorEncountersNoErrors() async {
-    let calculator = AsynchronousCalculator()
-    await confirmation(expectedCount:0) { confirmation in
+@Test func orderCalculatorEncountersNoErrors() async {
+    let calculator = OrderCalculator()
+    await confirmation(expectedCount: 0) { confirmation in
         calculator.errorHandler = { _ in confirmation() }
-        calculator.doCalculation(with: 0)
+        calculator.subtotal(for: PizzaToppings(bases: []))
     }
 }
 ```
