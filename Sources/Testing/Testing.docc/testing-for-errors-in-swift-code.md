@@ -128,6 +128,3 @@ If the closure throws an error, the testing library records an issue.
 If you need the test to stop if the code throws an error, include the
 code inline in the test function instead of wrapping it in an
 `#expect(throws:)` block.
-
-> Note: `#require(throws:Never.self)` is deprecated, because calling
-> the test code directly has the same effect as using the macro.
