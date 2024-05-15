@@ -24,9 +24,9 @@ asynchronous event that you can't check directly using an expectation.
 ### Validate your code's result
 
 To validate that your code produces an expected value, use
-`#expect()`.  `#expect()` captures the expression you pass, and
-provides detailed information when the code doesn't satisfy the
-expectation:
+``expect(_:_:sourceLocation:)``.  ``expect(_:_:sourceLocation:)`` captures the
+expression you pass, and provides detailed information when the code doesn't
+satisfy the expectation:
 
 ```swift
 class OrderCalculator {
@@ -44,8 +44,9 @@ class OrderCalculator {
 }
 ```
 
-Your test keeps running after `#expect()` fails.  To stop the test
-when the code doesn't satisfy a requirement, use `#require()` instead:
+Your test keeps running after ``expect(_:_:sourceLocation:)`` fails.  To stop
+the test when the code doesn't satisfy a requirement, use
+``require(_:_:sourceLocation:)-5l63q`` instead:
 
 ```swift
 @Test func returningCustomerRemembersUsualOrder() throws {
@@ -55,7 +56,7 @@ when the code doesn't satisfy a requirement, use `#require()` instead:
 }
 ```
 
-`#require()` throws an instance of ``ExpectationFailedError`` when your code
+``require(_:_:sourceLocation:)-5l63q`` throws an instance of ``ExpectationFailedError`` when your code
 fails to satisfy the requirement.
 
 ## Topics
