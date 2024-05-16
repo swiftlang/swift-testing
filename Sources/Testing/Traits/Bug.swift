@@ -43,7 +43,41 @@ extension Bug: Equatable, Hashable, Comparable {
 
 // MARK: - Codable
 
-extension Bug: Codable {}
+extension Bug: Codable {
+  /// A temporary explicit implementation of this type's coding keys enumeration
+  /// to support the refactored form of `Bug` from [#412](https://github.com/apple/swift-testing/pull/412).
+  private enum _CodingKeys: String, CodingKey {
+    case id = "id"
+    case url = "url"
+    case identifier = "identifier"
+    case comment = "comment"
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: _CodingKeys.self)
+
+    try container.encode(identifier, forKey: .identifier)
+    try container.encodeIfPresent(comment, forKey: .comment)
+
+    // Temporary compatibility shims to support the refactored form of Bug from
+    // https://github.com/apple/swift-testing/pull/412 .
+    if identifier.contains(":") {
+      try container.encode(identifier, forKey: .url)
+    } else {
+      try container.encode(identifier, forKey: .id)
+    }
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: _CodingKeys.self)
+    identifier = try container.decodeIfPresent(String.self, forKey: .identifier)
+      // Temporary compatibility shims to support the refactored form of Bug
+      // from https://github.com/apple/swift-testing/pull/412 .
+      ?? container.decodeIfPresent(String.self, forKey: .id)
+      ?? container.decode(String.self, forKey: .url)
+    comment = try container.decodeIfPresent(Comment.self, forKey: .comment)
+  }
+}
 
 // MARK: - Trait, TestTrait, SuiteTrait
 
