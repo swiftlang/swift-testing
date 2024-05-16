@@ -11,10 +11,7 @@
 extension Tag {
   /// A type representing one or more tags applied to a test.
   ///
-  /// To add this trait to a test, use one of the following functions:
-  ///
-  /// - ``Trait/tags(_:)-505n9``
-  /// - ``Trait/tags(_:)-yg0i``
+  /// To add this trait to a test, use the ``Trait/tags(_:)`` function.
   public struct List {
     /// The list of tags contained in this instance.
     ///
@@ -65,28 +62,5 @@ extension Trait where Self == Tag.List {
   /// - Returns: An instance of ``Tag/List`` containing the specified tags.
   public static func tags(_ tags: Tag...) -> Self {
     Self(tags: tags)
-  }
-
-  /// Construct a list of tags to apply to a test from a list of string values.
-  ///
-  /// - Parameters:
-  ///   - stringValues: The list of string values to convert to tags and apply
-  ///     to the test.
-  ///
-  /// - Returns: An instance of ``Tag/List`` containing the specified string
-  ///   literals as tags.
-  ///
-  /// This function is provided as a convenience to allow specifying tags as
-  /// string values. To specify a mix of tags identified by symbol (such as
-  /// `.example`) and tags identified by string value (such as `"important"`),
-  /// use two separate calls to this function and pass symbols separately from
-  /// string values:
-  ///
-  /// ```swift
-  /// @Test("Wheels spin", .tags("mechanical"), .tags(.critical))
-  /// func wheelsSpin() {}
-  /// ```
-  public static func tags(_ stringValues: _const String...) -> Self {
-    Self(tags: stringValues.map { Tag(kind: .stringLiteral($0)) })
   }
 }

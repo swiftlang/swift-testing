@@ -35,7 +35,7 @@
 }
 
 @`Suite`(.hidden) struct `SuiteWithBackticks` {
-  @`Test`(.hidden, .`tags`("tag")) func `testWithBackticks`() {
+  @`Test`(.hidden, .`tags`(.namedConstant)) func `testWithBackticks`() {
     #`expect`(Bool(true))
   }
 }
@@ -78,9 +78,9 @@ struct SendableTests: Sendable {
   @Test(.hidden, arguments: FixtureData.zeroUpTo100)
   static func `reserved1`(`reserved2`: Int) async throws {}
 
-  @Suite(.hidden, .tags("tag-1"))
+  @Suite(.hidden, .tags(.namedConstant))
   struct NestedSendableTests: Sendable {
-    @Test(.hidden, .tags("tag-2"))
+    @Test(.hidden, .tags(.anotherConstant))
     func succeeds() throws {}
 
     @Test(.hidden)

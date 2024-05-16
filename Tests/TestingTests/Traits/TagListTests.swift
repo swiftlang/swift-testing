@@ -13,18 +13,18 @@ private import _TestingInternals
 
 @Suite("Tag/Tag List Tests", .tags(.traitRelated))
 struct TagListTests {
-  @Test(".tags() factory method with one string")
+  @Test(".tags() factory method with one tag")
   func tagListFactoryMethodWithOneString() throws {
-    let trait = Tag.List.tags("hello")
+    let trait = Tag.List.tags(.namedConstant)
     #expect((trait as Any) is Tag.List)
-    #expect(trait.tags == [Tag("hello")])
+    #expect(trait.tags == [.namedConstant])
   }
 
-  @Test(".tags() factory method with two strings")
+  @Test(".tags() factory method with two tags")
   func tagListFactoryMethodWithTwoStrings() throws {
-    let trait = Tag.List.tags("hello", "world")
+    let trait = Tag.List.tags(.namedConstant, .anotherConstant)
     #expect((trait as Any) is Tag.List)
-    #expect(trait.tags == [Tag("hello"), Tag("world")])
+    #expect(trait.tags == [.namedConstant, .anotherConstant])
   }
 
   @Test(".tags() factory method with colors", .tags(.red, .orange, .yellow, .green, .blue, .purple))
@@ -44,8 +44,8 @@ struct TagListTests {
   }
 
   @Test("Tag.description property", arguments: [
-    Tag("hello"): #""hello""#,
-    Tag("world"): #""world""#,
+    Tag.namedConstant: ".namedConstant",
+    .anotherConstant: ".anotherConstant",
     .red: ".red",
     .orange: ".orange",
     .yellow: ".yellow",
@@ -59,9 +59,9 @@ struct TagListTests {
 
   @Test("Tag.List.description property")
   func tagListDescription() throws {
-    let trait = Tag.List.tags(Tag("hello"), Tag("world"), .red, .orange, .yellow, .green, .blue, .purple)
+    let trait = Tag.List.tags(.namedConstant, .anotherConstant, .red, .orange, .yellow, .green, .blue, .purple)
     #expect((trait as Any) is Tag.List)
-    #expect(String(describing: trait) == "\"hello\", \"world\", .red, .orange, .yellow, .green, .blue, .purple")
+    #expect(String(describing: trait) == ".namedConstant, .anotherConstant, .red, .orange, .yellow, .green, .blue, .purple")
   }
 
   @Test("Tag.List comparisons")
@@ -70,17 +70,11 @@ struct TagListTests {
     #expect(Tag("A") < Tag("B"))
     #expect(Tag("B") > Tag("A"))
     #expect(!(Tag("B") < Tag("A")))
-    // Symbolic tags are compared alphabetically too, but sort before string
-    // literal tags.
-    #expect(Tag.orange < Tag.red)
-    #expect(!(Tag.red < Tag.orange))
-    #expect(Tag.red < Tag("A"))
-    #expect(!(Tag("A") < Tag.red))
   }
 
   @Test("Test.tags property")
   func testTagsProperty() {
-    let test = Test(.tags("A", "B")) {}
+    let test = Test(.tags(Tag("A"), Tag("B"))) {}
     #expect(test.tags == [Tag("A"), Tag("B")])
   }
 
@@ -89,9 +83,9 @@ struct TagListTests {
     let plan = await Runner.Plan(selecting: TagTests.self)
 
     let typeTest = try #require(plan.steps.map(\.test).first { $0.name == "TagTests" })
-    #expect(typeTest.tags == [Tag("FromType")])
+    #expect(typeTest.tags == [.fromType])
     let functionTest = try #require(plan.steps.map(\.test).first { $0.name == "test()" })
-    #expect(functionTest.tags == [Tag("FromFunction"), Tag("FromType")])
+    #expect(functionTest.tags == [.fromFunction, .fromType])
 
     let functionTest2 = try #require(plan.steps.map(\.test).first { $0.name == "variations()" })
     #expect(functionTest2.tags.contains(.NestedType.deeperTag))
@@ -100,16 +94,14 @@ struct TagListTests {
 
   @Test("Tags can be parsed from user-provided strings")
   func userProvidedStringValues() {
-    #expect(Tag(userProvidedStringValue: "abc123") == Tag(kind: .stringLiteral("abc123")))
+    #expect(Tag(userProvidedStringValue: "abc123") == Tag(kind: .staticMember("abc123")))
     #expect(Tag(userProvidedStringValue: ".red") == .red)
-    #expect(Tag(userProvidedStringValue: #"\.abc123"#) == Tag(kind: .stringLiteral(#".abc123"#)))
-    #expect(Tag(userProvidedStringValue: #"\\.abc123"#) == Tag(kind: .stringLiteral(#"\.abc123"#)))
   }
 
 #if canImport(Foundation)
   @Test("Encoding/decoding tags")
   func encodeAndDecodeTags() throws {
-    let array: [Tag] = [.red, .orange, Tag("abc123"), Tag(".abc123"), Tag(#"\.abc123"#), Tag(#"\\.abc123"#)]
+    let array: [Tag] = [.red, .orange, Tag("abc123"), Tag(".abc123")]
     let array2 = try JSON.encodeAndDecode(array)
     #expect(array == array2)
   }
@@ -120,19 +112,14 @@ struct TagListTests {
       .red: 0,
       .orange: 1,
       Tag("abc123"): 2,
-      Tag(".abc123"): 3,
-      Tag(#"\.abc123"#): 4,
-      Tag(#"\\.abc123"#): 4,
+      Tag(".def456"): 3,
     ]
     let dict2 = try JSON.encodeAndDecode(dict)
     #expect(dict == dict2)
   }
 
 #if !SWT_NO_FILE_IO
-  @Test(
-    "Colors are read from disk",
-    .tags("alpha", "beta", "gamma", "delta"), .tags(.namedConstant)
-  )
+  @Test("Colors are read from disk")
   func tagColorsReadFromDisk() throws {
     let tempDirPath = try temporaryDirectory()
     let jsonPath = appendPathComponent("tag-colors.json", to: tempDirPath)
@@ -236,18 +223,22 @@ extension Tag {
   enum OtherNestedType {
     @Tag static var deeperTag: Tag
   }
+
+  @Tag static var fromType: Tag
+  @Tag static var fromFunction: Tag
+  @Tag static var fromFunctionPartiallyQualified: Tag
+  @Tag static var fromFunctionFullyQualified: Tag
 }
 
-@Suite(.hidden, .tags("FromType"))
+@Suite(.hidden, .tags(.fromType))
 struct TagTests {
-  @Test(.hidden, .tags("FromFunction"))
+  @Test(.hidden, .tags(.fromFunction))
   func test() async throws {}
 
   @Test(
     .hidden,
-    Tag.List.tags("FromFunctionPartiallyQualified"),
-    Testing.Tag.List.tags("FromFunctionFullyQualified"),
-    .tags("Tag1", "Tag2"),
+    Tag.List.tags(.fromFunctionPartiallyQualified),
+    Testing.Tag.List.tags(.fromFunctionFullyQualified),
     .tags(.namedConstant, .NestedType.deeperTag, Testing.Tag.anotherConstant)
   )
   func variations() async throws {}

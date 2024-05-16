@@ -26,8 +26,8 @@ source files, and even test targets.
 
 ## Add a tag
 
-To add a tag to a test, use the ``Trait/tags(_:)-505n9`` trait. This trait takes
-a sequence of tags as its argument, and those tags are then applied to the
+To add a tag to a test, use the ``Trait/tags(_:)`` trait. This trait takes a
+sequence of tags as its argument, and those tags are then applied to the
 corresponding test at runtime. If any tags are applied to a test suite, then all
 tests in that suite inherit those tags.
 
