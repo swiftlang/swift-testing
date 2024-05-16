@@ -47,10 +47,14 @@ extension Bug: Codable {
   /// A temporary explicit implementation of this type's coding keys enumeration
   /// to support the refactored form of `Bug` from [#412](https://github.com/apple/swift-testing/pull/412).
   private enum _CodingKeys: String, CodingKey {
-    case id = "id"
-    case url = "url"
+    // Existing properties.
     case identifier = "identifier"
     case comment = "comment"
+
+    // Proposed new properties.
+    case id = "id"
+    case url = "url"
+    case title = "title"
   }
 
   public func encode(to encoder: any Encoder) throws {
@@ -66,6 +70,7 @@ extension Bug: Codable {
     } else {
       try container.encode(identifier, forKey: .id)
     }
+    try container.encodeIfPresent(comment, forKey: .title)
   }
 
   public init(from decoder: any Decoder) throws {
@@ -76,6 +81,7 @@ extension Bug: Codable {
       ?? container.decodeIfPresent(String.self, forKey: .id)
       ?? container.decode(String.self, forKey: .url)
     comment = try container.decodeIfPresent(Comment.self, forKey: .comment)
+      ?? container.decodeIfPresent(Comment.self, forKey: .title)
   }
 }
 
