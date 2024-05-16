@@ -10,10 +10,7 @@
 
 /// A type representing a tag that can be applied to a test.
 ///
-/// To apply tags to a test, use one of the following functions:
-///
-/// - ``Trait/tags(_:)-505n9``
-/// - ``Trait/tags(_:)-yg0i``
+/// To apply tags to a test, use the ``Trait/tags(_:)`` function.
 public struct Tag: Sendable {
   /// An enumeration describing the various kinds of tag that can be applied to
   /// a test.
@@ -26,12 +23,6 @@ public struct Tag: Sendable {
     ///   - name: The (almost) fully-qualified name of the static member. The
     ///     leading `"Testing.Tag."` is not included as it is redundant.
     case staticMember(_ name: String)
-
-    /// The tag is a string literal declared directly in source.
-    ///
-    /// - Parameters:
-    ///   - stringLiteral: The string literal specified by the test author.
-    case stringLiteral(_ stringLiteral: String)
   }
 
   /// The kind of this tag.
@@ -51,8 +42,8 @@ public struct Tag: Sendable {
   ///
   /// Use this initializer when a user has provided an arbitrary string and it
   /// is necessary to convert it into a tag. A simple heuristic is applied such
-  /// that the resulting instance may represent a (possibly non-existent) static
-  /// member of ``Tag`` or may represent a string literal.
+  /// that the resulting instance will represent a (possibly non-existent)
+  /// static member of ``Tag``.
   @_spi(ForToolsIntegrationOnly)
   public init(userProvidedStringValue stringValue: String) {
     self.init(_codableStringValue: stringValue)
@@ -66,8 +57,6 @@ extension Tag: CustomStringConvertible {
     switch kind {
     case let .staticMember(name):
       ".\(name)"
-    case let .stringLiteral(stringLiteral):
-      #""\#(stringLiteral)""#
     }
   }
 }
@@ -79,14 +68,6 @@ extension Tag: Equatable, Hashable, Comparable {
     switch (lhs.kind, rhs.kind) {
     case let (.staticMember(lhs), .staticMember(rhs)):
       lhs < rhs
-    case let (.stringLiteral(lhs), .stringLiteral(rhs)):
-      lhs < rhs
-
-    // (Arbitrarily) sort static members before string literals.
-    case (.staticMember, .stringLiteral):
-      true
-    case (.stringLiteral, .staticMember):
-      false
     }
   }
 }
@@ -102,10 +83,8 @@ extension Tag: Codable, CodingKeyRepresentable {
   private init(_codableStringValue stringValue: String) {
     if stringValue.first == "." {
       self.init(kind: .staticMember(String(stringValue.dropFirst())))
-    } else if stringValue.first == #"\"# {
-      self.init(kind: .stringLiteral(String(stringValue.dropFirst())))
     } else {
-      self.init(kind: .stringLiteral(stringValue))
+      self.init(kind: .staticMember(stringValue))
     }
   }
 
@@ -119,12 +98,6 @@ extension Tag: Codable, CodingKeyRepresentable {
     switch kind {
     case let .staticMember(name):
       ".\(name)"
-    case let .stringLiteral(stringLiteral):
-      if stringLiteral.first == "." || stringLiteral.first == #"\"# {
-        #"\\#(stringLiteral)"#
-      } else {
-        stringLiteral
-      }
     }
   }
 
@@ -165,10 +138,7 @@ extension Tag: Codable, CodingKeyRepresentable {
 extension Test {
   /// The complete, unique set of tags associated with this test.
   ///
-  /// Tags are associated with tests using one of the following functions:
-  ///
-  /// - ``Trait/tags(_:)-505n9``
-  /// - ``Trait/tags(_:)-yg0i``
+  /// Tags are associated with tests using the ``Trait/tags(_:)`` function.
   public var tags: Set<Tag> {
     traits.lazy
       .compactMap { $0 as? Tag.List }

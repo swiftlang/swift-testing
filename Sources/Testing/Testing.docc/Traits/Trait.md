@@ -26,8 +26,7 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
  
 ### Categorizing tests
 
-- ``Trait/tags(_:)-505n9``
-- ``Trait/tags(_:)-yg0i``
+- ``Trait/tags(_:)``
 
 ### Associating bugs
 

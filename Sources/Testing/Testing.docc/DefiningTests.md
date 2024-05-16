@@ -65,7 +65,7 @@ line, supply a string literal as an argument to the `@Test` attribute:
 ```
 
 To further customize the appearance and behavior of a test function, use
- [traits](doc:Traits) such as ``Trait/tags(_:)-505n9``.
+[traits](doc:Traits) such as ``Trait/tags(_:)``.
 
 ### Write concurrent or throwing tests
 
