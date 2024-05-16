@@ -153,6 +153,7 @@ additional `"testCases"` field describing the individual test cases.
   ["displayName": <string>,] ; the user-supplied custom display name
   "sourceLocation": <source-location>, ; where the test suite is defined
   "id": <test-id>,
+  ["traits": <array:trait>",]
 }
 
 <test-function> ::= {
@@ -161,7 +162,8 @@ additional `"testCases"` field describing the individual test cases.
   ["displayName": <string>,] ; the user-supplied custom display name
   "sourceLocation": <source-location>, ; where the test is defined
   "id": <test-id>,
-  "isParameterized": <bool> ; is this a parameterized test function or not?
+  "isParameterized": <bool>, ; is this a parameterized test function or not?
+  ["traits": <array:trait>",]
 }
 
 <test-id> ::= <string> ; an opaque string representing the test case
@@ -179,6 +181,43 @@ additional `"testCases"` field describing the individual test cases.
 }
 ```
 -->
+
+#### Traits
+
+Traits represent instances of `Trait` associated with a test. Not all traits are
+represented in the JSON schema.
+
+> [!NOTE]
+> Support for encoding arbitrary traits including third-party traits is a future
+> direction. 
+
+```
+<trait> ::= <bug-trait> | <tag-trait>
+
+<bug-trait> ::= {
+  "kind": "bug",
+  "payload": <bug>
+}
+
+<bug> ::= {
+  ["url": <string>,] ; the URL to the bug if provided in source
+  ["id": <string>,] ; the ID of the bug if provided in source
+  ["title": <string>,] ; the title of the bug if provided in source
+}
+
+<tag-trait> ::= {
+  "kind": "tag",
+  "payload": <tag>
+}
+
+<tag> ::= <static-member-tag>
+
+<static-member-tag> ::= {
+  "kind": "staticMember",
+  "name": <string> ; the fully qualified name of the tag, not including
+                   ; the "Testing.Tag" prefix, e.g. ".cool" or ".green"
+}
+```
 
 ### Events
 

@@ -167,7 +167,8 @@ struct SwiftPMTests {
     try FileHandle(forReadingAtPath: path).readToEnd()
       .split(separator: 10) // "\n"
       .map { line in
-        try line.withUnsafeBytes { line in
+        print(String(decoding: line, as: UTF8.self))
+        return try line.withUnsafeBytes { line in
           try JSON.decode(ABIv0.Record.self, from: line)
         }
       }
@@ -186,7 +187,8 @@ struct SwiftPMTests {
       let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--experimental-event-stream-output", temporaryFilePath, "--experimental-event-stream-version", "0"])
       let eventContext = Event.Context()
 
-      let test = Test {}
+      var test = Test {}
+      test.traits = [.bug(12345, "Example"), .tags(.red, .green, .blue)]
       let plan = Runner.Plan(
         steps: [
           Runner.Plan.Step(test: test, action: .run(options: .init(isParallelizationEnabled: true)))
@@ -202,6 +204,7 @@ struct SwiftPMTests {
     }
 
     let decodedRecords = try decodeABIv0RecordStream(fromFileAtPath: temporaryFilePath)
+
     let testRecords = decodedRecords.compactMap { record in
       if case let .test(test) = record.kind {
         return test
@@ -209,6 +212,9 @@ struct SwiftPMTests {
       return nil
     }
     #expect(testRecords.count == 1)
+    let encodedTraits = try #require(testRecords.first?.traits)
+    #expect(encodedTraits.count == 4)
+
     let eventRecords = decodedRecords.compactMap { record in
       if case let .event(event) = record.kind {
         return event

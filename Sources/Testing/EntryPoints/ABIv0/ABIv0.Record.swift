@@ -71,13 +71,11 @@ extension ABIv0.Record: Codable {
   init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     version = try container.decode(Int.self, forKey: .version)
-    switch try container.decode(String.self, forKey: .kind) {
+    kind = switch try container.decode(String.self, forKey: .kind) {
     case "test":
-      let test = try container.decode(ABIv0.EncodedTest.self, forKey: .payload)
-      kind = .test(test)
+      try .test(container.decode(ABIv0.EncodedTest.self, forKey: .payload))
     case "event":
-      let event = try container.decode(ABIv0.EncodedEvent.self, forKey: .payload)
-      kind = .event(event)
+      try .event(container.decode(ABIv0.EncodedEvent.self, forKey: .payload))
     case let kind:
       throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unrecognized record kind '\(kind)'"))
     }

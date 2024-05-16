@@ -73,6 +73,12 @@ extension ABIv0 {
     /// is `nil`.
     var isParameterized: Bool?
 
+    /// The set of traits applied to the test.
+    ///
+    /// If there are no encodable traits applied to the test, the value of this
+    /// property is the empty array
+    var traits: [EncodedTrait]
+
     init(encoding test: borrowing Test) {
       if test.isSuite {
         kind = .suite
@@ -88,6 +94,17 @@ extension ABIv0 {
       displayName = test.displayName
       sourceLocation = test.sourceLocation
       id = ID(encoding: test.id)
+
+      traits = test.traits.lazy
+        .compactMap { trait in
+          return if let bug = trait as? Bug {
+            [EncodedTrait(encoding: bug)]
+          } else if let tagList = trait as? Tag.List {
+            tagList.tags.map(EncodedTrait.init(encoding:))
+          } else {
+            nil
+          }
+        }.reduce(into: [], +=)
     }
   }
 }
