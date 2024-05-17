@@ -237,7 +237,26 @@ public struct __CommandLineArguments_v0: Sendable {
   var xcTestCaseHostIdentifier: String?
 }
 
-extension __CommandLineArguments_v0: Codable {}
+extension __CommandLineArguments_v0: Codable {
+  // Explicitly list the coding keys so that storage properties like _verbosity
+  // do not end up with leading underscores when encoded.
+  enum CodingKeys: String, CodingKey {
+    case listTests
+    case parallel
+    case verbose
+    case veryVerbose
+    case quiet
+    case _verbosity = "verbosity"
+    case xunitOutput
+    case experimentalEventStreamOutput
+    case experimentalEventStreamVersion
+    case filter
+    case skip
+    case repetitions
+    case repeatUntil
+    case xcTestCaseHostIdentifier
+  }
+}
 
 /// Initialize this instance given a sequence of command-line arguments passed
 /// from Swift Package Manager.
