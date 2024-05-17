@@ -98,7 +98,7 @@ struct EventRecorderTests {
     let stream = Stream()
 
     var options = Event.ConsoleOutputRecorder.Options()
-    options.isVerbose = true
+    options.verbosity = 1
 
     var configuration = Configuration()
     configuration.deliverExpectationCheckedEvents = true
@@ -114,6 +114,31 @@ struct EventRecorderTests {
     #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter) lhs: Swift.String → "987""#))
     #expect(buffer.contains(#""Animal Crackers" (aka 'WrittenTests')"#))
     #expect(buffer.contains(#""Not A Lobster" (aka 'actuallyCrab()')"#))
+
+    if testsWithSignificantIOAreEnabled {
+      print(buffer, terminator: "")
+    }
+  }
+
+  @Test("Quiet output")
+  func quietOutput() async throws {
+    let stream = Stream()
+
+    var options = Event.ConsoleOutputRecorder.Options()
+    options.verbosity = -1
+
+    var configuration = Configuration()
+    configuration.deliverExpectationCheckedEvents = true
+    let eventRecorder = Event.ConsoleOutputRecorder(options: options, writingUsing: stream.write)
+    configuration.eventHandler = { event, context in
+      eventRecorder.record(event, in: context)
+    }
+
+    await runTest(for: WrittenTests.self, configuration: configuration)
+
+    let buffer = stream.buffer.rawValue
+    #expect(!buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter) Test run started."#))
+    #expect(!buffer.contains(#"\#(Event.Symbol.default.unicodeCharacter) Passing"#))
 
     if testsWithSignificantIOAreEnabled {
       print(buffer, terminator: "")

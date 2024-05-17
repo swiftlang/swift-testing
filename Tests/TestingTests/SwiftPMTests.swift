@@ -270,4 +270,25 @@ struct SwiftPMTests {
     )
     #expect(testIDs.contains(currentTestID))
   }
+
+  @Test(
+    "--verbose, --very-verbose, and --quiet arguments",
+    arguments: [
+      ("--verbose", 1),
+      ("-v", 1),
+      ("--very-verbose", 2),
+      ("--vv", 2),
+      ("--quiet", -1),
+      ("-q", -1),
+    ]
+  ) func verbosity(argument: String, expectedVerbosity: Int) throws {
+    let args = try parseCommandLineArguments(from: ["PATH", argument])
+    #expect(args.verbosity == expectedVerbosity)
+  }
+
+  @Test("--verbosity argument")
+  func verbosity() throws {
+    let args = try parseCommandLineArguments(from: ["PATH", "--verbosity", "12345"])
+    #expect(args.verbosity == 12345)
+  }
 }

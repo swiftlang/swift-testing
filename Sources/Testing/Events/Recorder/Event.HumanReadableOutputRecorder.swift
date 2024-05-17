@@ -202,19 +202,23 @@ extension Event.HumanReadableOutputRecorder {
   /// - Parameters:
   ///   - event: The event to record.
   ///   - eventContext: The context associated with the event.
-  ///   - verbose: Whether or not to record verbose output.
+  ///   - verbosity: How verbose output should be. When the value of this
+  ///     argument is greater than `0`, additional output is provided. When the
+  ///     value of this argument is less than `0`, some output is suppressed.
+  ///     The exact effects of this argument are implementation-defined and
+  ///     subject to change.
   ///
   /// - Returns: An array of zero or more messages that can be displayed to the
   ///   user.
   @discardableResult public func record(
     _ event: borrowing Event,
     in eventContext: borrowing Event.Context,
-    verbosely verbose: Bool = false
+    verbosity: Int = 0
   ) -> [Message] {
     let test = eventContext.test
     let testName = if let test {
       if let displayName = test.displayName {
-        if verbose {
+        if verbosity > 0 {
           "\"\(displayName)\" (aka '\(test.name)')"
         } else {
           "\"\(displayName)\""
@@ -226,18 +230,79 @@ extension Event.HumanReadableOutputRecorder {
       "«unknown»"
     }
     let instant = event.instant
+    let iterationCount = Configuration.current?.repetitionPolicy.maximumIterationCount
 
+    // First, make any updates to the context/state associated with this
+    // recorder.
+    let context = _context.withLock { context in
+      switch event.kind {
+      case .runStarted:
+        context.runStartInstant = instant
+
+      case .iterationStarted:
+        if let iterationCount, iterationCount > 1 {
+          context.iterationStartInstant = instant
+        }
+
+      case .testStarted:
+        let test = test!
+        context.testData[test.id.keyPathRepresentation] = .init(startInstant: instant)
+        if test.isSuite {
+          context.suiteCount += 1
+        } else {
+          context.testCount += 1
+        }
+
+      case .testSkipped:
+        let test = test!
+        if test.isSuite {
+          context.suiteCount += 1
+        } else {
+          context.testCount += 1
+        }
+
+      case let .issueRecorded(issue):
+        let test = test!
+        let id = test.id.keyPathRepresentation
+        var testData = context.testData[id] ?? .init(startInstant: instant)
+        if issue.isKnown {
+          testData.knownIssueCount += 1
+        } else {
+          testData.issueCount += 1
+        }
+        context.testData[id] = testData
+
+      default:
+        // These events do not manipulate the context structure.
+        break
+      }
+
+      return context
+    }
+
+    // If in quiet mode, only produce messages for a subset of events we'd
+    // otherwise log.
+    if verbosity == .min {
+      // Quietest mode: no messages at all.
+      return []
+    } else if verbosity < 0 {
+      switch event.kind {
+      case .runStarted, .issueRecorded, .runEnded:
+        break
+      default:
+        return []
+      }
+    }
+
+    // Finally, produce any messages for the event.
     switch event.kind {
     case .runStarted:
-      _context.withLock { context in
-        context.runStartInstant = instant
-      }
       var comments = [Comment]()
-      if verbose {
+      if verbosity > 0 {
         comments.append("Swift Version: \(swiftStandardLibraryVersion)")
       }
       comments.append("Testing Library Version: \(testingLibraryVersion)")
-      if verbose {
+      if verbosity > 0 {
 #if targetEnvironment(simulator)
         comments.append("OS Version (Simulator): \(simulatorVersion)")
         comments.append("OS Version (Host): \(operatingSystemVersion)")
@@ -253,10 +318,7 @@ extension Event.HumanReadableOutputRecorder {
       ) + _formattedComments(comments)
 
     case let .iterationStarted(index):
-      if let iterationCount = Configuration.current?.repetitionPolicy.maximumIterationCount, iterationCount > 1 {
-        _context.withLock { context in
-          context.iterationStartInstant = instant
-        }
+      if let iterationCount, iterationCount > 1 {
         return [
           Message(
             symbol: .default,
@@ -272,14 +334,6 @@ extension Event.HumanReadableOutputRecorder {
 
     case .testStarted:
       let test = test!
-      _context.withLock { context in
-        context.testData[test.id.keyPathRepresentation] = .init(startInstant: instant)
-        if test.isSuite {
-          context.suiteCount += 1
-        } else {
-          context.testCount += 1
-        }
-      }
       return [
         Message(
           symbol: .default,
@@ -290,7 +344,7 @@ extension Event.HumanReadableOutputRecorder {
     case .testEnded:
       let test = test!
       let id = test.id
-      let testDataGraph = _context.rawValue.testData.subgraph(at: id.keyPathRepresentation)
+      let testDataGraph = context.testData.subgraph(at: id.keyPathRepresentation)
       let testData = testDataGraph?.value ?? .init(startInstant: instant)
       let issues = _issueCounts(in: testDataGraph)
       let duration = testData.startInstant.descriptionOfDuration(to: instant)
@@ -312,13 +366,6 @@ extension Event.HumanReadableOutputRecorder {
 
     case let .testSkipped(skipInfo):
       let test = test!
-      _context.withLock { context in
-        if test.isSuite {
-          context.suiteCount += 1
-        } else {
-          context.testCount += 1
-        }
-      }
       return if let comment = skipInfo.comment {
         [
           Message(symbol: .skip, stringValue: "\(_capitalizedTitle(for: test)) \(testName) skipped: \"\(comment.rawValue)\"")
@@ -335,18 +382,6 @@ extension Event.HumanReadableOutputRecorder {
       break
 
     case let .issueRecorded(issue):
-      if let test {
-        let id = test.id.keyPathRepresentation
-        _context.withLock { context in
-          var testData = context.testData[id] ?? .init(startInstant: instant)
-          if issue.isKnown {
-            testData.knownIssueCount += 1
-          } else {
-            testData.issueCount += 1
-          }
-          context.testData[id] = testData
-        }
-      }
       let parameterCount = if let parameters = test?.parameters {
         parameters.count
       } else {
@@ -373,7 +408,7 @@ extension Event.HumanReadableOutputRecorder {
       }
       additionalMessages += _formattedComments(issue.comments)
 
-      if verbose, case let .expectationFailed(expectation) = issue.kind {
+      if verbosity > 0, case let .expectationFailed(expectation) = issue.kind {
         let expression = expectation.evaluatedExpression
         func addMessage(about expression: __Expression) {
           let description = expression.expandedDebugDescription()
@@ -413,7 +448,7 @@ extension Event.HumanReadableOutputRecorder {
       return [
         Message(
           symbol: .default,
-          stringValue: "Passing \(testCase.arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbose)) to \(testName)"
+          stringValue: "Passing \(testCase.arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName)"
         )
       ]
 
@@ -421,7 +456,7 @@ extension Event.HumanReadableOutputRecorder {
       break
 
     case let .iterationEnded(index):
-      guard let iterationStartInstant = _context.rawValue.iterationStartInstant else {
+      guard let iterationStartInstant = context.iterationStartInstant else {
         break
       }
       let duration = iterationStartInstant.descriptionOfDuration(to: instant)
@@ -434,8 +469,6 @@ extension Event.HumanReadableOutputRecorder {
       ]
 
     case .runEnded:
-      let context = _context.rawValue
-
       let testCount = context.testCount
       let issues = _issueCounts(in: context.testData)
       let runStartInstant = context.runStartInstant ?? instant

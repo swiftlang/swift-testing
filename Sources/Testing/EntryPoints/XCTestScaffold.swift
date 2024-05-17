@@ -106,6 +106,11 @@ public enum XCTestScaffold: Sendable {
   /// Private Use Area. To disable the use of SF&nbsp;Symbols on macOS, set the
   /// `SWT_SF_SYMBOLS_ENABLED` environment variable to `"false"` or `"0"`.
   ///
+  /// To adjust the verbosity of output, set the `SWT_VERBOSITY` environment
+  /// variable to an integer value greater or less than `0` (the default level.)
+  /// ``XCTestScaffold`` does not support the `--verbose`, `--very-verbose`, or
+  /// `--quiet` command-line arguments passed to `swift test`.
+  ///
   /// ## See Also
   ///
   /// - <doc:TemporaryGettingStarted>
@@ -135,7 +140,9 @@ public enum XCTestScaffold: Sendable {
 
     var args = __CommandLineArguments_v0()
     args.parallel = false
-    args.verbose = (Environment.flag(named: "SWT_VERBOSE_OUTPUT") == true)
+    if let verbosity = Environment.variable(named: "SWT_VERBOSITY").flatMap(Int.init) {
+      args.verbosity = verbosity
+    }
 
     // Specify the hosting XCTestCase instance. This value is currently only
     // used for exit tests.

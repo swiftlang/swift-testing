@@ -22,7 +22,7 @@ func entryPoint(passing args: consuming __CommandLineArguments_v0?, eventHandler
 
   do {
     let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments())
-    if args.listTests {
+    if args.listTests ?? true {
       for testID in await listTestsForEntryPoint(Test.all) {
 #if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
         try? FileHandle.stdout.write("\(testID)\n")
@@ -55,7 +55,7 @@ func entryPoint(passing args: consuming __CommandLineArguments_v0?, eventHandler
 #if !SWT_NO_FILE_IO
       var options = Event.ConsoleOutputRecorder.Options()
       options = .for(.stderr)
-      options.isVerbose = args.verbose
+      options.verbosity = args.verbosity
       let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
         try? FileHandle.stderr.write(string)
       }
@@ -143,13 +143,49 @@ public struct __CommandLineArguments_v0: Sendable {
   public init() {}
 
   /// The value of the `--list-tests` argument.
-  public var listTests = false
+  public var listTests: Bool? = false
 
   /// The value of the `--parallel` or `--no-parallel` argument.
-  public var parallel = true
+  public var parallel: Bool? = true
 
   /// The value of the `--verbose` argument.
-  public var verbose = false
+  public var verbose: Bool? = false
+
+  /// The value of the `--very-verbose` argument.
+  public var veryVerbose: Bool? = false
+
+  /// The value of the `--quiet` argument.
+  public var quiet: Bool? = false
+
+  /// Storage for the ``verbosity`` property.
+  private var _verbosity: Int?
+
+  /// The value of the `--verbosity` argument.
+  ///
+  /// The value of this property may be synthesized from the `--verbose`,
+  /// `--very-verbose`, or `--quiet` arguments.
+  ///
+  /// When the value of this property is greater than `0`, additional output
+  /// is provided. When the value of this property is less than `0`, some
+  /// output is suppressed. The exact effects of this property are
+  /// implementation-defined and subject to change.
+  public var verbosity: Int {
+    get {
+      if let _verbosity {
+        return _verbosity
+      } else if veryVerbose == true {
+        return 2
+      } else if verbose == true {
+        return 1
+      } else if quiet == true {
+        return -1
+      }
+      return 0
+    }
+    set {
+      _verbosity = newValue
+    }
+  }
 
   /// The value of the `--xunit-output` argument.
   public var xunitOutput: String?
@@ -201,7 +237,26 @@ public struct __CommandLineArguments_v0: Sendable {
   var xcTestCaseHostIdentifier: String?
 }
 
-extension __CommandLineArguments_v0: Codable {}
+extension __CommandLineArguments_v0: Codable {
+  // Explicitly list the coding keys so that storage properties like _verbosity
+  // do not end up with leading underscores when encoded.
+  enum CodingKeys: String, CodingKey {
+    case listTests
+    case parallel
+    case verbose
+    case veryVerbose
+    case quiet
+    case _verbosity = "verbosity"
+    case xunitOutput
+    case experimentalEventStreamOutput
+    case experimentalEventStreamVersion
+    case filter
+    case skip
+    case repetitions
+    case repeatUntil
+    case xcTestCaseHostIdentifier
+  }
+}
 
 /// Initialize this instance given a sequence of command-line arguments passed
 /// from Swift Package Manager.
@@ -268,8 +323,19 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     result.parallel = false
   }
 
-  if args.contains("--verbose") || args.contains("-v") || args.contains("--very-verbose") || args.contains("--vv") {
+  // Verbosity
+  if let verbosityIndex = args.firstIndex(of: "--verbosity"), !isLastArgument(at: verbosityIndex),
+     let verbosity = Int(args[args.index(after: verbosityIndex)]) {
+    result.verbosity = verbosity
+  }
+  if args.contains("--verbose") || args.contains("-v") {
     result.verbose = true
+  }
+  if args.contains("--very-verbose") || args.contains("--vv") {
+    result.veryVerbose = true
+  }
+  if args.contains("--quiet") || args.contains("-q") {
+    result.quiet = true
   }
 
   // Filtering
@@ -308,7 +374,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   var configuration = Configuration()
 
   // Parallelization (on by default)
-  configuration.isParallelizationEnabled = args.parallel
+  configuration.isParallelizationEnabled = args.parallel ?? true
 
 #if !SWT_NO_FILE_IO
   // XML output
