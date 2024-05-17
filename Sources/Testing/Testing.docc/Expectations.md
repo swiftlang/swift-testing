@@ -16,17 +16,17 @@ Check for expected values, outcomes, and asynchronous events in tests.
 
 Use ``expect(_:_:sourceLocation:)`` and
 ``require(_:_:sourceLocation:)-5l63q`` macros to validate expected
-outcomes.  To validate that an error is thrown, or _not_ thrown, the
+outcomes. To validate that an error is thrown, or _not_ thrown, the
 testing library provides several overloads of the macros that you can
-use.  Use a ``Confirmation`` to confirm the occurrence of an
+use. Use a ``Confirmation`` to confirm the occurrence of an
 asynchronous event that you can't check directly using an expectation.
 
 ### Validate your code's result
 
 To validate that your code produces an expected value, use
-``expect(_:_:sourceLocation:)``.  ``expect(_:_:sourceLocation:)`` captures the
+``expect(_:_:sourceLocation:)``. ``expect(_:_:sourceLocation:)`` captures the
 expression you pass, and provides detailed information when the code doesn't
-satisfy the expectation:
+satisfy the expectation.
 
 ```swift
 class OrderCalculator {
@@ -44,7 +44,7 @@ class OrderCalculator {
 }
 ```
 
-Your test keeps running after ``expect(_:_:sourceLocation:)`` fails.  To stop
+Your test keeps running after ``expect(_:_:sourceLocation:)`` fails. To stop
 the test when the code doesn't satisfy a requirement, use
 ``require(_:_:sourceLocation:)-5l63q`` instead:
 
