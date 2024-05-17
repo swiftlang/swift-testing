@@ -50,14 +50,14 @@ the test when the code doesn't satisfy a requirement, use
 
 ```swift
 @Test func returningCustomerRemembersUsualOrder() throws {
-    let customer = Customer(id: 123)
-    try #require(customer)
-    #expect(customer?.usualOrder?.countOfItems == 2) // The test runner doesn't reach this line if the customer is nil.
+    let customer = try #require(Customer(id: 123))
+    // The test runner doesn't reach this line if the customer is nil.
+    #expect(customer.usualOrder.countOfItems == 2)
 }
 ```
 
-``require(_:_:sourceLocation:)-5l63q`` throws an instance of ``ExpectationFailedError`` when your code
-fails to satisfy the requirement.
+``require(_:_:sourceLocation:)-5l63q`` throws an instance of
+``ExpectationFailedError`` when your code fails to satisfy the requirement.
 
 ## Topics
 
