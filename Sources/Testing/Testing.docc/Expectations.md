@@ -10,7 +10,7 @@ See https://swift.org/LICENSE.txt for license information
 See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 -->
 
-Check for expected values, outcomes, and events in tests.
+Check for expected values, outcomes, and asynchronous events in tests.
 
 ## Overview
 
