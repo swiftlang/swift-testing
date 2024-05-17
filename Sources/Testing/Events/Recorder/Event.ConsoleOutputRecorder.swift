@@ -59,12 +59,13 @@ extension Event {
       public var useSFSymbols = false
 #endif
 
-      /// Whether or not to record verbose output.
+      /// The level of verbosity of the output.
       ///
-      /// When the value of this property is `true`, additional output is
-      /// provided. The exact nature of the additional output is
+      /// When the value of this property is greater than `0`, additional output
+      /// is provided. When the value of this property is less than `0`, some
+      /// output is suppressed. The exact effects of this property are
       /// implementation-defined and subject to change.
-      public var isVerbose = false
+      public var verbosity = 0
 
       /// Storage for ``tagColors``.
       private var _tagColors = Tag.Color.predefined
@@ -306,7 +307,7 @@ extension Event.ConsoleOutputRecorder {
   /// - Returns: Whether any output was produced and written to this instance's
   ///   destination.
   @discardableResult public func record(_ event: borrowing Event, in context: borrowing Event.Context) -> Bool {
-    let messages = _humanReadableOutputRecorder.record(event, in: context, verbosely: options.isVerbose)
+    let messages = _humanReadableOutputRecorder.record(event, in: context, verbosity: options.verbosity)
     for message in messages {
       let symbol = message.symbol?.stringValue(options: options) ?? " "
 

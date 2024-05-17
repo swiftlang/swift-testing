@@ -25,7 +25,7 @@ private import _TestingInternals
 ///
 /// - Warning: This function is used by Swift Package Manager. Do not call it
 ///   directly.
-@_disfavoredOverload public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) async -> CInt {
+public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) async -> CInt {
   await entryPoint(passing: args, eventHandler: nil)
 }
 
