@@ -40,7 +40,7 @@ struct ABIEntryPointTests {
     arguments.verbosity = .min
     let argumentsJSON = try JSON.withEncoding(of: arguments) { argumentsJSON in
       let result = UnsafeMutableRawBufferPointer.allocate(byteCount: argumentsJSON.count, alignment: 1)
-      _ = memcpy(result.baseAddress!, argumentsJSON.baseAddress!, argumentsJSON.count)
+      result.copyMemory(from: argumentsJSON)
       return result
     }
     defer {
