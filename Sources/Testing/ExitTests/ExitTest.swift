@@ -235,18 +235,42 @@ extension ExitTest {
     // We only need to pass arguments when hosted by XCTest.
     let childArguments: [String] = {
       var result = [String]()
-      if let xcTestCaseIdentifier {
+      lazy var xctestTargetPath = Environment.variable(named: "XCTestBundlePath")
+        ?? CommandLine.arguments().dropFirst().last
 #if SWT_TARGET_OS_APPLE
-        result += ["-XCTest", xcTestCaseIdentifier]
+      // If the running executable appears to be the XCTest runner executable in
+      // Xcode, figure out the path to the running XCTest bundle. If we can find
+      // it, then we can re-run the host XCTestCase instance.
+      // TODO: use basename_r() instead of parsing the path.
+      var isHostedByXCTest = false
+      if let executablePath = try? childProcessExecutablePath.get() {
+        executablePath.withCString { childProcessExecutablePath in
+          withUnsafeTemporaryAllocation(of: CChar.self, capacity: strlen(childProcessExecutablePath) + 1) { baseName in
+            if nil != basename_r(childProcessExecutablePath, baseName.baseAddress!) {
+              isHostedByXCTest = 0 == strcmp(baseName.baseAddress!, "xctest")
+            }
+          }
+        }
+      }
+
+      if isHostedByXCTest, let xctestTargetPath {
+        // HACK: if the current test is being run from within Xcode, we don't
+        // always know we're being hosted by an XCTestCase instance. In cases
+        // where we don't, but the XCTest environment variable specifying the
+        // test bundle is set, assume we _are_ being hosted and specify a
+        // blank test identifier ("/") to force the xctest command-line tool
+        // to run.
+        let xcTestCaseIdentifier = xcTestCaseIdentifier ?? "/"
+        result += ["-XCTest", xcTestCaseIdentifier, xctestTargetPath]
+      }
 #else
+      if let xcTestCaseIdentifier {
         result.append(xcTestCaseIdentifier)
-#endif
-        if let xctestTargetPath = Environment.variable(named: "XCTestBundlePath") {
-          result.append(xctestTargetPath)
-        } else if let xctestTargetPath = CommandLine.arguments().last {
+        if let xctestTargetPath {
           result.append(xctestTargetPath)
         }
       }
+#endif
       return result
     }()
 

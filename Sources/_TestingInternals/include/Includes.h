@@ -95,6 +95,10 @@
 #include <wasi/libc-environ.h>
 #endif
 
+#if __has_include(<libgen.h>)
+#include <libgen.h>
+#endif
+
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
