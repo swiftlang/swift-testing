@@ -8,7 +8,11 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if SWT_BUILDING_WITH_CMAKE
+@_implementationOnly import _TestingInternals
+#else
 private import _TestingInternals
+#endif
 
 /// A protocol describing a type that contains tests.
 ///
@@ -71,7 +75,7 @@ extension Test {
     [ID: Self](
       tests.lazy.map { ($0.id, $0) },
       uniquingKeysWith: { existing, _ in existing }
-    ) 
+    )
   }
 
   /// Synthesize any missing test suite types (that is, types containing test

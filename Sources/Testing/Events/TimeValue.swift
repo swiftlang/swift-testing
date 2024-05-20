@@ -10,7 +10,11 @@
 
 // `internal` because `TimeValue.init(_ timespec:)` below is internal and
 // references a type (`timespec`) which comes from this import.
+#if SWT_BUILDING_WITH_CMAKE
+@_implementationOnly import _TestingInternals
+#else
 internal import _TestingInternals
+#endif
 
 /// A container type representing a time value that is suitable for storage,
 /// conversion, encoding, and decoding.

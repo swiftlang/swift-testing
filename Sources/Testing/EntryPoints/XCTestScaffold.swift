@@ -9,7 +9,13 @@
 //
 
 #if !SWT_NO_XCTEST_SCAFFOLDING && canImport(XCTest)
+
+#if SWT_BUILDING_WITH_CMAKE
+@_implementationOnly import _TestingInternals
+#else
 private import _TestingInternals
+#endif
+
 public import XCTest
 
 #if SWT_TARGET_OS_APPLE

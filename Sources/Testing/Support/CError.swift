@@ -8,7 +8,11 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if SWT_BUILDING_WITH_CMAKE
+@_implementationOnly import _TestingInternals
+#else
 internal import _TestingInternals
+#endif
 
 /// A type representing an error from a C function such as `fopen()`.
 ///
