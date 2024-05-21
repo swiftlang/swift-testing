@@ -615,7 +615,7 @@ final class RunnerTests: XCTestCase {
 
 #if SWT_TARGET_OS_APPLE
     @Test(.hidden)
-    @available(macOS 999.0, iOS 999.0, watchOS 999.0, tvOS 999.0, visionOS 999.0, *)
+    @available(macOS 999.0, iOS 999.0, watchOS 999.0, tvOS 999.0, *)
     func futureAvailable() {}
 
     @Test(.hidden)
@@ -623,13 +623,12 @@ final class RunnerTests: XCTestCase {
     @available(iOS, introduced: 999.0)
     @available(watchOS, introduced: 999.0)
     @available(tvOS, introduced: 999.0)
-    @available(visionOS, introduced: 999.0)
     func futureAvailableLongForm() {}
 
     @Suite(.hidden)
     struct U {
       @Test(.hidden)
-      @available(macOS 999.0, iOS 999.0, watchOS 999.0, tvOS 999.0, visionOS 999.0, *)
+      @available(macOS 999.0, iOS 999.0, watchOS 999.0, tvOS 999.0, *)
       func f() {}
 
       @Test(.hidden)
@@ -644,7 +643,6 @@ final class RunnerTests: XCTestCase {
       @available(iOS, introduced: 999.0)
       @available(watchOS, introduced: 999.0)
       @available(tvOS, introduced: 999.0)
-      @available(visionOS, introduced: 999.0)
       func f() {}
     }
 #endif
@@ -679,7 +677,6 @@ final class RunnerTests: XCTestCase {
     @available(iOS, introduced: 1.0, obsoleted: 999.0)
     @available(watchOS, introduced: 1.0, obsoleted: 999.0)
     @available(tvOS, introduced: 1.0, obsoleted: 999.0)
-    @available(visionOS, introduced: 1.0, obsoleted: 999.0)
     func obsoleted() {}
   }
 
@@ -705,7 +702,6 @@ final class RunnerTests: XCTestCase {
     @available(iOS, introduced: 999.0, message: "Expected Message")
     @available(watchOS, introduced: 999.0, message: "Expected Message")
     @available(tvOS, introduced: 999.0, message: "Expected Message")
-    @available(visionOS, introduced: 999.0, message: "Expected Message")
     func futureAvailableLongForm() {}
 #endif
   }
@@ -843,7 +839,6 @@ final class RunnerTests: XCTestCase {
     @available(iOS, deprecated: 1.0)
     @available(watchOS, deprecated: 1.0)
     @available(tvOS, deprecated: 1.0)
-    @available(visionOS, deprecated: 1.0)
     func deprecatedAppleCallee() {}
 
     @Test(.hidden)
@@ -851,7 +846,6 @@ final class RunnerTests: XCTestCase {
     @available(iOS, deprecated: 1.0)
     @available(watchOS, deprecated: 1.0)
     @available(tvOS, deprecated: 1.0)
-    @available(visionOS, deprecated: 1.0)
     func deprecatedApple() {
       deprecatedAppleCallee()
     }
