@@ -409,6 +409,76 @@ re-running them requires some way to uniquely represent those arguments, which
 overlaps with some of the considerations discussed in
 [Test identity](#test-identity).
 
+### Parallelization and concurrency
+
+A modern testing system should make efficient use of the machine it runs on.
+Many tests can safely run in parallel, and the testing system should encourage
+this by enabling per-test parallelization by default. In addition to faster
+results and shorter iteration time, running tests in parallel can help identify
+bugs due to hidden dependencies between tests and encourage better state
+isolation.
+
+However, some tests may need to disable parallelization and run one at a time.
+It should be possible to opt-out, and this may be especially useful while
+migrating from older testing systems which don't support parallelization.
+Although opting-out of this behavior should be possible, it should be narrowly
+scoped to not sacrifice other tests' ability to run in parallel.
+
+In addition to running tests in parallel relative to each other, tests
+themselves should seamlessly support Swift's concurrency features. In particular,
+this means:
+
+* Tests should be able to use async/await whenever necessary.
+* Tests should support isolation to a global actor such as `@MainActor`, but be
+  nonisolated by default. (Isolation by default would undermine the goal of
+  running tests in parallel by default.)
+* Values passed as arguments to parameterized tests should be `Sendable`, since
+  they may cross between isolation domains within the testing system's execution
+  machinery.
+* Types containing tests functions and their stored properties need not be
+  `Sendable`, since they are only used from a single isolation domain while each
+  test function is run.
+
+### Tools integration
+
+A well-rounded testing library should be integrated with popular tools in the
+community. This integration should include some essential functionality such as:
+
+* Building tests into products which can be be executed.
+* Running all built tests.
+* Showing per-test results, including details of each individual failure during
+  a test.
+* Showing an aggregate summary of a test run, including failure statistics.
+
+Beyond the essentials, tools may offer other useful features, such as:
+
+* Filtering tests by name, specific traits (e.g. custom tags), or other criteria.
+* Outputting results to a standard format such as [xUnit XML](https://xunit.net/docs/format-xml-v2)
+  for importing into other tools.
+* Controlling runtime options such as whether parallel execution is enabled,
+  whether failed tests should be reattempted, etc.
+* Relaunching a test executable after an unexpected crash.
+* Reporting "live" progress as each test finishes.
+
+In order to deliver the functionality above, a testing system needs to track
+significant events which occur during execution, such as when each test starts
+and finishes or encounters a failure. There needs to be a structured,
+machine-readable representation of each event, and to provide granular progress
+updates, there should be an option for tools to observe a stream of such events.
+Any serialization formats involved should be versioned and provide some level of
+stability over time, to ensure compatibility with tools which may evolve on
+differing release schedules.
+
+Some of the features outlined above are much easier to achieve if there are at
+least two processes involved: One which executes the tests themselves (which may
+be unstable and terminate unexpectedly), and another which launches and monitors
+the first process. In this document, we'll refer to this second process as the
+**harness**. A two-process architecture involving a supervisory harness helps
+enable functionality such as relaunching after a crash, live progress reporting,
+or outputting results to a standard format. A modern testing library should
+provide any necessary APIs and runtime support to facilitate integration with a
+harness.
+
 ## Today’s solution: XCTest
 
 [XCTest](https://developer.apple.com/documentation/xctest) has historically
