@@ -43,6 +43,7 @@ let package = Package(
         "_TestingInternals",
         "TestingMacros",
       ],
+      exclude: ["CMakeLists.txt"],
       cxxSettings: .packageSettings,
       swiftSettings: .packageSettings
     ),
@@ -65,6 +66,7 @@ let package = Package(
         .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
         .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
       ],
+      exclude: ["CMakeLists.txt"],
       swiftSettings: .packageSettings + [
         // The only target which needs the ability to import this macro
         // implementation target's module is its unit test target. Users of the
@@ -80,6 +82,7 @@ let package = Package(
     // by other targets above, not directly included in product libraries.
     .target(
       name: "_TestingInternals",
+      exclude: ["CMakeLists.txt"],
       cxxSettings: .packageSettings
     ),
 
