@@ -50,10 +50,10 @@ private let _childProcessContinuations = Locked<[pid_t: CheckedContinuation<Exit
 
 /// A condition variable used to suspend the waiter thread created by
 /// `_createWaitThread()` when there are no child processes to await.
-private let _waitThreadNoChildrenCondition = {
+private nonisolated(unsafe) let _waitThreadNoChildrenCondition = {
   let result = UnsafeMutablePointer<pthread_cond_t>.allocate(capacity: 1)
   _ = pthread_cond_init(result, nil)
-  return UncheckedSendable(rawValue: result)
+  return result
 }()
 
 /// The implementation of `_createWaitThread()`, run only once.
@@ -89,7 +89,7 @@ private let _createWaitThreadImpl: Void = {
       // outside the lock in case acquiring the lock perturbs it.
       _childProcessContinuations.withUnsafeUnderlyingLock { lock, childProcessContinuations in
         if childProcessContinuations.isEmpty {
-          _ = pthread_cond_wait(_waitThreadNoChildrenCondition.rawValue, lock)
+          _ = pthread_cond_wait(_waitThreadNoChildrenCondition, lock)
         }
       }
     }
@@ -171,7 +171,7 @@ func wait(for pid: pid_t) async throws -> ExitCondition {
       assert(oldContinuation == nil, "Unexpected continuation found for PID \(pid). Please file a bug report at https://github.com/apple/swift-testing/issues/new")
 
       // Wake up the waiter thread if it is waiting for more child processes.
-      _ = pthread_cond_signal(_waitThreadNoChildrenCondition.rawValue)
+      _ = pthread_cond_signal(_waitThreadNoChildrenCondition)
     }
   }
 #endif

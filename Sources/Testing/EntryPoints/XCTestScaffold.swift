@@ -139,7 +139,7 @@ public enum XCTestScaffold: Sendable {
 #endif
 #endif
 #else
-    let testCase = UncheckedSendable(rawValue: testCase)
+    nonisolated(unsafe) let testCase = testCase
 #if SWT_TARGET_OS_APPLE
     let isProcessLaunchedByXcode = Environment.variable(named: "XCTestSessionIdentifier") != nil
 #endif
@@ -152,7 +152,7 @@ public enum XCTestScaffold: Sendable {
 
     // Specify the hosting XCTestCase instance. This value is currently only
     // used for exit tests.
-    let typeName = String(reflecting: type(of: testCase.rawValue as Any))
+    let typeName = String(reflecting: type(of: testCase as Any))
     let functionName = if let parenIndex = functionName.lastIndex(of: "(") {
       functionName[..<parenIndex]
     } else {
@@ -168,20 +168,20 @@ public enum XCTestScaffold: Sendable {
 #if SWT_TARGET_OS_APPLE
       if issue.isKnown {
         XCTExpectFailure {
-          testCase.rawValue.record(XCTIssue(issue, processLaunchedByXcode: isProcessLaunchedByXcode))
+          testCase.record(XCTIssue(issue, processLaunchedByXcode: isProcessLaunchedByXcode))
         }
       } else {
-        testCase.rawValue.record(XCTIssue(issue, processLaunchedByXcode: isProcessLaunchedByXcode))
+        testCase.record(XCTIssue(issue, processLaunchedByXcode: isProcessLaunchedByXcode))
       }
 #else
       // NOTE: XCTestCase.recordFailure(withDescription:inFile:atLine:expected:)
       // does not behave as it might appear. The `expected` argument determines
       // if the issue represents an assertion failure or a thrown error.
       if !issue.isKnown {
-        testCase.rawValue.recordFailure(withDescription: String(describing: issue),
-                                        inFile: issue.sourceLocation?._filePath ?? "<unknown>",
-                                        atLine: issue.sourceLocation?.line ?? 0,
-                                        expected: true)
+        testCase.recordFailure(withDescription: String(describing: issue),
+                               inFile: issue.sourceLocation?._filePath ?? "<unknown>",
+                               atLine: issue.sourceLocation?.line ?? 0,
+                               expected: true)
       }
 #endif
     }
