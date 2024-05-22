@@ -155,7 +155,7 @@ actor ActorTests {
 struct TestsWithStaticMemberAccessBySelfKeyword {
   static let x = 0 ..< 100
 
-  static func f(max: Int) -> Range<Int> {
+  @Sendable static func f(max: Int) -> Range<Int> {
     0 ..< max
   }
 
@@ -167,6 +167,13 @@ struct TestsWithStaticMemberAccessBySelfKeyword {
 
   @Test(.hidden, arguments: [Self.f(max:)])
   func h(i: @Sendable (Int) -> Range<Int>) {}
+
+  struct Box<RawValue>: Sendable, RawRepresentable where RawValue: Sendable {
+    var rawValue: RawValue
+  }
+
+  @Test(.hidden, arguments: [Box(rawValue: Self.f(max:))])
+  func j(i: Box<@Sendable (Int) -> Range<Int>>) {}
 
   struct Nested {
     static let x = 0 ..< 100
