@@ -441,8 +441,9 @@ this means:
 
 ### Tools integration
 
-A well-rounded testing library should be integrated with popular tools in the
-community. This integration should include some essential functionality such as:
+A well-rounded testing library should be integrated with popular tools used by
+the community. This integration should include some essential functionality such
+as:
 
 * Building tests into products which can be be executed.
 * Running all built tests.
@@ -453,8 +454,8 @@ community. This integration should include some essential functionality such as:
 Beyond the essentials, tools may offer other useful features, such as:
 
 * Filtering tests by name, specific traits (e.g. custom tags), or other criteria.
-* Outputting results to a standard format such as [xUnit XML](https://xunit.net/docs/format-xml-v2)
-  for importing into other tools.
+* Outputting results to a standard format such as JUnit XML for importing into
+  other tools.
 * Controlling runtime options such as whether parallel execution is enabled,
   whether failed tests should be reattempted, etc.
 * Relaunching a test executable after an unexpected crash.
