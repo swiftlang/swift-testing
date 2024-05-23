@@ -21,8 +21,8 @@ body, `await` any asynchronous interactions:
 
 ```swift
 @Test func priceLookupYieldsExpectedValue() async {
-    let mozarellaPrice = await unitPrice(for: .mozarella)
-    #expect(mozarellaPrice == 3)
+  let mozarellaPrice = await unitPrice(for: .mozarella)
+  #expect(mozarellaPrice == 3)
 }
 ```
 
@@ -41,11 +41,11 @@ test when the event you're testing for occurs:
 ```swift
 @Test("OrderCalculator successfully calculates subtotal for no pizzas")
 func subtotalForNoPizzas() async {
-    let calculator = OrderCalculator()
-    await confirmation() { confirmation in
-        calculator.successHandler = { _ in confirmation() }
-        _ = await calculator.subtotal(for: PizzaToppings(bases: []))
-    }
+  let calculator = OrderCalculator()
+  await confirmation() { confirmation in
+    calculator.successHandler = { _ in confirmation() }
+    _ = await calculator.subtotal(for: PizzaToppings(bases: []))
+  }
 }
 ```
 
@@ -61,10 +61,10 @@ create a `Confirmation` with an expected count of `0`:
 
 ```swift
 @Test func orderCalculatorEncountersNoErrors() async {
-    let calculator = OrderCalculator()
-    await confirmation(expectedCount: 0) { confirmation in
-        calculator.errorHandler = { _ in confirmation() }
-        calculator.subtotal(for: PizzaToppings(bases: []))
-    }
+  let calculator = OrderCalculator()
+  await confirmation(expectedCount: 0) { confirmation in
+    calculator.errorHandler = { _ in confirmation() }
+    calculator.subtotal(for: PizzaToppings(bases: []))
+  }
 }
 ```

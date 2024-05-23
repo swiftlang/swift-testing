@@ -31,10 +31,10 @@ pass a closure that calls the code under test:
 
 ```swift
 @Test func cannotAddToppingToPizzaBeforeStartOfList() {
-    var order = PizzaToppings(bases: [.calzone, .deepCrust])
-    #expect(throws: PizzaToppings.Error.outOfRange) {
-        try order.add(topping: .mozarella, toPizzasIn: -1..<0)
-    }
+  var order = PizzaToppings(bases: [.calzone, .deepCrust])
+  #expect(throws: PizzaToppings.Error.outOfRange) {
+    try order.add(topping: .mozarella, toPizzasIn: -1..<0)
+  }
 }
 ```
 
@@ -53,12 +53,12 @@ the error to `Never`:
 
 ```swift
 @Test func canAddToppingToPizzaInPositionZero() throws {
-    var order = PizzaToppings(bases: [.thinCrust, .thinCrust])
-    #expect(throws: Never.self) {
-        try order.add(topping: .caper, toPizzasIn: 0..<1)
-    }
-    let toppings = try order.toppings(forPizzaAt: 0)
-    #expect(toppings == [.caper])
+  var order = PizzaToppings(bases: [.thinCrust, .thinCrust])
+  #expect(throws: Never.self) {
+    try order.add(topping: .caper, toPizzasIn: 0..<1)
+  }
+  let toppings = try order.toppings(forPizzaAt: 0)
+  #expect(toppings == [.caper])
 }
 ```
 

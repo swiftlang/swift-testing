@@ -30,17 +30,17 @@ satisfy the expectation.
 
 ```swift
 class OrderCalculator {
-    func total(of subtotals: [Int]) -> Int {
-        return subtotals.reduce(1) { partialResult, subtotal in
-            partialResult + subtotal
-        }
+  func total(of subtotals: [Int]) -> Int {
+    return subtotals.reduce(1) { partialResult, subtotal in
+      partialResult + subtotal
     }
+  }
 }
 
 @Test func calculatingOrderTotal() {
-    let calculator = OrderCalculator()
-    #expect(calculator.total(of: [3, 3]) == 6)
-    // Prints "Expectation failed: (calculator.total(of: [3, 3]) → 7) == 6"
+  let calculator = OrderCalculator()
+  #expect(calculator.total(of: [3, 3]) == 6)
+  // Prints "Expectation failed: (calculator.total(of: [3, 3]) → 7) == 6"
 }
 ```
 
@@ -50,9 +50,9 @@ the test when the code doesn't satisfy a requirement, use
 
 ```swift
 @Test func returningCustomerRemembersUsualOrder() throws {
-    let customer = try #require(Customer(id: 123))
-    // The test runner doesn't reach this line if the customer is nil.
-    #expect(customer.usualOrder.countOfItems == 2)
+  let customer = try #require(Customer(id: 123))
+  // The test runner doesn't reach this line if the customer is nil.
+  #expect(customer.usualOrder.countOfItems == 2)
 }
 ```
 
