@@ -16,7 +16,7 @@ Ensure that your code handles errors in the way you expect.
 
 Write tests for your code that validate the conditions in which the
 code throws errors, and the conditions in which it returns without
-throwing an error. Use overrides of the ``expect(_:_:sourceLocation:)`` and
+throwing an error. Use overloads of the ``expect(_:_:sourceLocation:)`` and
 ``require(_:_:sourceLocation:)-5l63q`` macros that check for errors.
 
 ### Validate that your code throws an expected error
@@ -40,7 +40,7 @@ pass a closure that calls the code under test:
 
 If the closure completes without throwing an error, the testing library
 records an issue. Other overloads of ``expect(_:_:sourceLocation:)`` let you
-test that the code throws an error of a given type, or matching an arbitrary
+test that the code throws an error of a given type, or matches an arbitrary
 Boolean test. Similar overloads of ``require(_:_:sourceLocation:)-5l63q`` stop
 running your test if the code doesn't throw the expected error.
 
@@ -62,7 +62,7 @@ the error to `Never`:
 }
 ```
 
-If the closure throws an error, the testing library records an issue.
+If the closure throws _any_ error, the testing library records an issue.
 If you need the test to stop when the code throws an error, include the
 code inline in the test function instead of wrapping it in an
 ``expect(throws:_:sourcelocation:performing:)-1xr34`` block.

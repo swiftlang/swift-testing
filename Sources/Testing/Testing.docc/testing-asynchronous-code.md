@@ -14,7 +14,7 @@ Validate whether your code causes expected events to happen.
 
 ## Overview
 
-`swift-testing` integrates with Swift concurrency, meaning that in many
+The testing library integrates with Swift concurrency, meaning that in many
 situations you can test asynchronous code using standard Swift
 features.  Mark your test function as `async` and, in the function
 body, `await` any asynchronous interactions:
@@ -26,14 +26,14 @@ body, `await` any asynchronous interactions:
 }
 ```
 
-In more complex situations you use ``Confirmation`` to discover whether an
+In more complex situations you can use ``Confirmation`` to discover whether an
 expected event happens.
 
 ### Confirm that an event happens
 
 Call ``confirmation(_:expectedCount:fileID:filePath:line:column:_:)``
 in your asynchronous test function to create a `Confirmation` for the
-expected event. In the trailing block parameter, call the code under
+expected event. In the trailing closure parameter, call the code under
 test. Swift Testing passes a `Confirmation` as the parameter to the
 block, which you call as a function in the event handler for the code under
 test when the event you're testing for occurs:

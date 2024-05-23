@@ -18,8 +18,11 @@ Use ``expect(_:_:sourceLocation:)`` and
 ``require(_:_:sourceLocation:)-5l63q`` macros to validate expected
 outcomes. To validate that an error is thrown, or _not_ thrown, the
 testing library provides several overloads of the macros that you can
-use. Use a ``Confirmation`` to confirm the occurrence of an
+use. For more information, see <doc:testing-for-errors-in-swift-code>.
+
+Use a ``Confirmation`` to confirm the occurrence of an
 asynchronous event that you can't check directly using an expectation.
+For more information, see <doc:testing-asynchronous-code>.
 
 ### Validate your code's result
 
@@ -29,14 +32,6 @@ expression you pass, and provides detailed information when the code doesn't
 satisfy the expectation.
 
 ```swift
-class OrderCalculator {
-  func total(of subtotals: [Int]) -> Int {
-    return subtotals.reduce(1) { partialResult, subtotal in
-      partialResult + subtotal
-    }
-  }
-}
-
 @Test func calculatingOrderTotal() {
   let calculator = OrderCalculator()
   #expect(calculator.total(of: [3, 3]) == 6)
