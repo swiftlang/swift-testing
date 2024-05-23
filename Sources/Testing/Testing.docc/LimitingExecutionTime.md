@@ -23,7 +23,7 @@ complete effectively, consider setting a time limit for it so that it's marked a
 ``Trait/timeLimit(_:)`` trait as an upper bound:
 
 ```swift
-@Test(.timeLimit(.seconds(60 * 60))
+@Test(.timeLimit(.minutes(60))
 func serve100CustomersInOneHour() async {
   for _ in 0 ..< 100 {
     let customer = await Customer.next()
