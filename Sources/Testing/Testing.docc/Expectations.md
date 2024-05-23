@@ -10,15 +10,49 @@ See https://swift.org/LICENSE.txt for license information
 See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 -->
 
-Check for expected values and outcomes in tests.
+Check for expected values, outcomes, and asynchronous events in tests.
 
 ## Overview
 
-The testing library provides `#expect()` and `#require()` macros you use to 
-validate expected outcomes. To validate that an error is thrown, or _not_ thrown, 
-the testing library provides several overloads of the macros that you can use.
-Use a ``Confirmation`` to confirm the occurrence of an asynchronous event that
-you can't check directly using an expectation.
+Use ``expect(_:_:sourceLocation:)`` and
+``require(_:_:sourceLocation:)-5l63q`` macros to validate expected
+outcomes. To validate that an error is thrown, or _not_ thrown, the
+testing library provides several overloads of the macros that you can
+use. For more information, see <doc:testing-for-errors-in-swift-code>.
+
+Use a ``Confirmation`` to confirm the occurrence of an
+asynchronous event that you can't check directly using an expectation.
+For more information, see <doc:testing-asynchronous-code>.
+
+### Validate your code's result
+
+To validate that your code produces an expected value, use
+``expect(_:_:sourceLocation:)``. ``expect(_:_:sourceLocation:)`` captures the
+expression you pass, and provides detailed information when the code doesn't
+satisfy the expectation.
+
+```swift
+@Test func calculatingOrderTotal() {
+  let calculator = OrderCalculator()
+  #expect(calculator.total(of: [3, 3]) == 7)
+  // Prints "Expectation failed: (calculator.total(of: [3, 3]) → 6) == 7"
+}
+```
+
+Your test keeps running after ``expect(_:_:sourceLocation:)`` fails. To stop
+the test when the code doesn't satisfy a requirement, use
+``require(_:_:sourceLocation:)-5l63q`` instead:
+
+```swift
+@Test func returningCustomerRemembersUsualOrder() throws {
+  let customer = try #require(Customer(id: 123))
+  // The test runner doesn't reach this line if the customer is nil.
+  #expect(customer.usualOrder.countOfItems == 2)
+}
+```
+
+``require(_:_:sourceLocation:)-5l63q`` throws an instance of
+``ExpectationFailedError`` when your code fails to satisfy the requirement.
 
 ## Topics
 
@@ -30,6 +64,7 @@ you can't check directly using an expectation.
 
 ### Checking that errors are thrown
 
+- <doc:testing-for-errors-in-swift-code>
 - ``expect(throws:_:sourceLocation:performing:)-79piu``
 - ``expect(throws:_:sourceLocation:performing:)-1xr34``
 - ``expect(_:sourceLocation:performing:throws:)``
@@ -41,6 +76,7 @@ you can't check directly using an expectation.
 
 ### Confirming that asynchronous events occur
 
+- ``<doc:testing-asynchronous-code>
 - ``confirmation(_:expectedCount:fileID:filePath:line:column:_:)``
 - ``Confirmation``
 
