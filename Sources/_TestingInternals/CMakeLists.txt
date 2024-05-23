@@ -12,7 +12,6 @@ add_library(_TestingInternals STATIC
   GetSymbol.cpp
   WillThrow.cpp)
 target_include_directories(_TestingInternals PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_options(_TestingInternals PRIVATE
   -fno-exceptions)
