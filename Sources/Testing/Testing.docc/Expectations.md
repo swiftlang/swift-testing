@@ -34,8 +34,8 @@ satisfy the expectation.
 ```swift
 @Test func calculatingOrderTotal() {
   let calculator = OrderCalculator()
-  #expect(calculator.total(of: [3, 3]) == 6)
-  // Prints "Expectation failed: (calculator.total(of: [3, 3]) → 7) == 6"
+  #expect(calculator.total(of: [3, 3]) == 7)
+  // Prints "Expectation failed: (calculator.total(of: [3, 3]) → 6) == 7"
 }
 ```
 
