@@ -23,8 +23,6 @@ formats are associated with some common bug-tracking systems.
 
 ### Recognized formats
 
-- If the bug identifier begins with `"rdar:"`, it is assumed to represent a bug
-  filed with Apple's Radar system.
 - If the bug identifier can be parsed as a URL according to
   [RFC 3986](https://www.ietf.org/rfc/rfc3986.txt), it is assumed to represent
   an issue tracked at that URL.
@@ -53,7 +51,6 @@ handling to detect:
 | `.bug(12345)` | Yes | None |
 | `.bug("12345")` | Yes | None |
 | `.bug("Things don't work")` | **No** | None |
-| `.bug("rdar:12345")` | Yes | Apple Radar |
 | `.bug("https://github.com/apple/swift/pull/12345")` | Yes | [GitHub Issues for the Swift project](https://github.com/apple/swift/issues) |
 | `.bug("https://bugs.webkit.org/show_bug.cgi?id=12345")` | Yes | [WebKit Bugzilla](https://bugs.webkit.org/) |
 | `.bug("FB12345")` | Yes | Apple Feedback Assistant | <!-- SEE ALSO: rdar://104582015 -->
