@@ -26,7 +26,11 @@ extension ABIv0 {
 
     init(encoding instant: borrowing Test.Clock.Instant) {
       absolute = Double(instant.suspending)
+#if !SWT_NO_UTC_CLOCK
       since1970 = Double(instant.wall)
+#else
+      since1970 = 0
+#endif
     }
   }
 }
