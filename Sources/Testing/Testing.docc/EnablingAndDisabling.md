@@ -90,7 +90,7 @@ bug report, you can use the ``Trait/bug(_:_:)-2u8j9`` or
   "Ice cream is cold",
   .enabled(if: Season.current == .summer),
   .disabled("We ran out of sprinkles"),
-  .bug("12345")
+  .bug(id: "12345")
 )
 func isCold() async throws { ... }
 ```
