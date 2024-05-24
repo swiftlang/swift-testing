@@ -76,7 +76,7 @@ the test when the code doesn't satisfy a requirement, use
 
 ### Confirming that asynchronous events occur
 
-- ``<doc:testing-asynchronous-code>
+- <doc:testing-asynchronous-code>
 - ``confirmation(_:expectedCount:fileID:filePath:line:column:_:)``
 - ``Confirmation``
 
