@@ -27,7 +27,7 @@ internal import _TestingInternals
 /// This type is not part of the public interface of the testing library.
 struct FileHandle: ~Copyable, Sendable {
   /// The underlying C file handle.
-  private var _fileHandle: UncheckedSendable<SWT_FILEHandle>
+  private nonisolated(unsafe) var _fileHandle: SWT_FILEHandle
 
   /// Whether or not to close `_fileHandle` when this instance is deinitialized.
   private var _closeWhenDone: Bool
@@ -105,13 +105,13 @@ struct FileHandle: ~Copyable, Sendable {
   ///     instance is deinitialized. The caller is responsible for ensuring that
   ///     there are no other references to `fileHandle` when passing `true`.
   init(unsafeCFILEHandle fileHandle: SWT_FILEHandle, closeWhenDone: Bool) {
-    _fileHandle = UncheckedSendable(rawValue: fileHandle)
+    _fileHandle = fileHandle
     _closeWhenDone = closeWhenDone
   }
 
   deinit {
     if _closeWhenDone {
-      fclose(_fileHandle.rawValue)
+      fclose(_fileHandle)
     }
   }
 
@@ -127,7 +127,7 @@ struct FileHandle: ~Copyable, Sendable {
   /// Use this function when calling C I/O interfaces such as `fputs()` on the
   /// underlying C file handle.
   borrowing func withUnsafeCFILEHandle<R>(_ body: (SWT_FILEHandle) throws -> R) rethrows -> R {
-    try body(_fileHandle.rawValue)
+    try body(_fileHandle)
   }
 
   /// Call a function and pass the underlying POSIX file descriptor to it.

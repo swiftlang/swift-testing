@@ -69,11 +69,11 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   }
 
   /// Storage for the underlying lock and wrapped value.
-  private var _storage: UncheckedSendable<ManagedBuffer<T, _Lock>>
+  private nonisolated(unsafe) var _storage: ManagedBuffer<T, _Lock>
 
   init(rawValue: T) {
-    let storage = _Storage.create(minimumCapacity: 1, makingHeaderWith: { _ in rawValue })
-    storage.withUnsafeMutablePointerToElements { lock in
+    _storage = _Storage.create(minimumCapacity: 1, makingHeaderWith: { _ in rawValue })
+    _storage.withUnsafeMutablePointerToElements { lock in
 #if SWT_TARGET_OS_APPLE || os(Linux) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
       _ = pthread_mutex_init(lock, nil)
 #elseif os(Windows)
@@ -84,7 +84,6 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
 #warning("Platform-specific implementation missing: locking unavailable")
 #endif
     }
-    _storage = UncheckedSendable(rawValue: storage)
   }
 
   var rawValue: T {
@@ -104,7 +103,7 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   /// synchronous caller. Wherever possible, use actor isolation or other Swift
   /// concurrency tools.
   nonmutating func withLock<R>(_ body: (inout T) throws -> R) rethrows -> R {
-    try _storage.rawValue.withUnsafeMutablePointers { rawValue, lock in
+    try _storage.withUnsafeMutablePointers { rawValue, lock in
 #if SWT_TARGET_OS_APPLE || os(Linux) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
       _ = pthread_mutex_lock(lock)
       defer {
@@ -148,7 +147,7 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   ///   effect is undefined.
   nonmutating func withUnsafeUnderlyingLock<R>(_ body: (UnsafeMutablePointer<pthread_mutex_t>, T) throws -> R) rethrows -> R {
     try withLock { value in
-      try _storage.rawValue.withUnsafeMutablePointerToElements { lock in
+      try _storage.withUnsafeMutablePointerToElements { lock in
         try body(lock, value)
       }
     }

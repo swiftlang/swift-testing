@@ -253,10 +253,10 @@ extension Configuration.TestFilter.Kind {
           throw SystemError(description: "Filtering by regular expression matching is unavailable")
         }
 
-        let regex = UncheckedSendable(rawValue: try Regex(pattern))
+        nonisolated(unsafe) let regex = try Regex(pattern)
         return .function({ test in
           let id = String(describing: test.id)
-          return id.contains(regex.rawValue)
+          return id.contains(regex)
         }, membership: membership)
       case let .combination(lhs, rhs, op):
         return try .combination(lhs.operation, rhs.operation, op)
