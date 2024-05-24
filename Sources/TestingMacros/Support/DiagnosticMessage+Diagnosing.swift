@@ -108,29 +108,11 @@ private func _diagnoseIssuesWithTagsTrait(_ traitExpr: FunctionCallExprSyntax, a
 ///   - attribute: The `@Test` or `@Suite` attribute.
 ///   - context: The macro context in which the expression is being parsed.
 private func _diagnoseIssuesWithBugTrait(_ traitExpr: FunctionCallExprSyntax, addedTo attribute: AttributeSyntax, in context: some MacroExpansionContext) {
-  // If the first argument to the .bug() trait is unlabelled and a string
-  // literal, check that it can be parsed as a URL or at least as an integer.
-  guard let arg = traitExpr.arguments.first.map(Argument.init),
-        arg.label == nil,
-        let stringLiteralExpr = arg.expression.as(StringLiteralExprSyntax.self),
+  // If the firstargument to the .bug() trait has no label and its value is a
+  // string literal, check that it can be parsed the way we expect.
+  guard let urlArg = traitExpr.arguments.first, urlArg.label == nil,
+        let stringLiteralExpr = urlArg.expression.as(StringLiteralExprSyntax.self),
         let urlString = stringLiteralExpr.representedLiteralValue else {
-    return
-  }
-
-  if UInt64(urlString) != nil {
-    // The entire URL string can be parsed as an integer, so allow it. Although
-    // the testing library prefers valid URLs here, some bug-tracking systems
-    // might not provide URLs, or might provide excessively long URLs, so we
-    // allow numeric identifiers as a fallback.
-    return
-  }
-
-  if urlString.count > 3 && urlString.starts(with: "FB") && UInt64(urlString.dropFirst(2)) != nil {
-    // The string appears to be of the form "FBnnn...". Such strings are used by
-    // Apple to indicate issues filed using Feedback Assistant. Although we
-    // don't want to special-case every possible bug-tracking system out there,
-    // Feedback Assistant is very important to Apple so we're making an
-    // exception for it.
     return
   }
 

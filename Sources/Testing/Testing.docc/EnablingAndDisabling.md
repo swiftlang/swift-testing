@@ -82,8 +82,14 @@ func isCold() async throws { ... }
 ```
 
 If a test is disabled because of a problem for which there is a corresponding
-bug report, you can use the ``Trait/bug(_:_:)-2u8j9`` or
-``Trait/bug(_:_:)-7mo2w`` function to show the relationship:
+bug report, you can use one of these functions to show the relationship
+between the test and the bug report:
+
+- ``Trait/bug(_:_:)``
+- ``Trait/bug(_:id:_:)-10yf5``
+- ``Trait/bug(_:id:_:)-3vtpl``
+
+For example, the following test cannot run due to bug number `"12345"`:
 
 ```swift
 @Test(
@@ -96,8 +102,8 @@ func isCold() async throws { ... }
 ```
 
 If a test has multiple conditions applied to it, they must _all_ pass for it to
-run. Otherwise, the test notes the first condition to fail as the reason the test
-is skipped.
+run. Otherwise, the test notes the first condition to fail as the reason the
+test is skipped.
 
 ### Handle complex conditions
 

@@ -12,70 +12,82 @@
 
 @Suite("Bug Tests", .tags(.traitRelated))
 struct BugTests {
+  @Test(".bug() with URL string")
+  func bugFactoryMethodWithURLString() throws {
+    let trait = Bug.bug("https://www.example.com/12345", "Lorem ipsum")
+    #expect((trait as Any) is Bug)
+    #expect(trait.url == "https://www.example.com/12345")
+    #expect(trait.title == "Lorem ipsum")
+    #expect(trait.comments == ["Lorem ipsum"])
+  }
+
   @Test(".bug() with String")
   func bugFactoryMethodWithString() throws {
-    let trait = Bug.bug("12345", "Lorem ipsum")
+    let trait = Bug.bug(id: "12345", "Lorem ipsum")
     #expect((trait as Any) is Bug)
-    #expect(trait.identifier == "12345")
-    #expect(trait.comment == "Lorem ipsum")
+    #expect(trait.id == "12345")
+    #expect(trait.title == "Lorem ipsum")
     #expect(trait.comments == ["Lorem ipsum"])
   }
 
   @Test(".bug() with SignedInteger")
   func bugFactoryMethodWithSignedInteger() throws {
-    let trait = Bug.bug(12345)
+    let trait = Bug.bug(id: 12345)
     #expect((trait as Any) is Bug)
-    #expect(trait.identifier == "12345")
-    #expect(trait.comment == nil)
+    #expect(trait.id == "12345")
+    #expect(trait.title == nil)
     #expect(trait.comments.isEmpty)
   }
 
   @Test(".bug() with UnsignedInteger")
   func bugFactoryMethodWithUnsignedInteger() throws {
-    let trait = Bug.bug(UInt32(12345), "Lorem ipsum")
+    let trait = Bug.bug(id: UInt32(12345), "Lorem ipsum")
     #expect((trait as Any) is Bug)
-    #expect(trait.identifier == "12345")
-    #expect(trait.comment == "Lorem ipsum")
+    #expect(trait.id == "12345")
+    #expect(trait.title == "Lorem ipsum")
     #expect(trait.comments == ["Lorem ipsum"])
   }
 
-  @Test("Comparing Bug instances")
-  func bugComparison() throws {
-    let lhs = Bug.bug(12345)
-    let rhs = Bug.bug("67890")
-
+  @Test("Comparing Bug instances",
+    arguments: [
+      Bug.bug(id: 12345),
+      .bug("https://www.example.com/67890"),
+    ], [
+      Bug.bug("67890"),
+      .bug("https://www.example.com/12345"),
+    ]
+  )
+  func bugComparison(lhs: Bug, rhs: Bug) throws {
     #expect(lhs != rhs)
-    #expect(lhs < rhs)
-    #expect(rhs > lhs)
   }
 
   @Test(".bug() is not recursively applied")
   func bugIsNotRecursive() async throws {
-    let trait = Bug.bug(12345)
+    let trait = Bug.bug(id: 12345)
     #expect(!trait.isRecursive)
   }
 
   @Test("Test.associatedBugs property")
   func testAssociatedBugsProperty() {
-    let test = Test(.bug(12345), .disabled(), .bug(67890), .bug(24680), .bug(54321)) {}
+    let test = Test(.bug(id: 12345), .disabled(), .bug(id: 67890), .bug(id: 24680), .bug(id: 54321)) {}
     let bugIdentifiers = test.associatedBugs
     #expect(bugIdentifiers.count == 4)
-    #expect(bugIdentifiers[0].identifier == "12345")
-    #expect(bugIdentifiers[1].identifier == "67890")
-    #expect(bugIdentifiers[2].identifier == "24680")
-    #expect(bugIdentifiers[3].identifier == "54321")
+    #expect(bugIdentifiers[0].id == "12345")
+    #expect(bugIdentifiers[1].id == "67890")
+    #expect(bugIdentifiers[2].id == "24680")
+    #expect(bugIdentifiers[3].id == "54321")
   }
 
   @Test("Bug hashing")
   func hashing() {
-    let traits: Set<Bug> = [.bug(12345), .bug(12345), .bug(12345), .bug("67890")]
-    #expect(traits.count == 2)
+    let traits: Set<Bug> = [.bug(id: 12345), .bug(id: "12345"), .bug(id: 12345), .bug(id: "67890"), .bug("https://www.example.com/12345")]
+    #expect(traits.count == 3)
   }
 
 #if canImport(Foundation)
   @Test("Encoding/decoding")
   func encodingAndDecoding() throws {
-    let original = Bug.bug(12345, "Lorem ipsum")
+    let original = Bug.bug(id: 12345, "Lorem ipsum")
     let copy = try JSON.encodeAndDecode(original)
     #expect(original == copy)
   }

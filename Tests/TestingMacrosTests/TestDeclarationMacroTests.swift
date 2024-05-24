@@ -357,13 +357,15 @@ struct TestDeclarationMacroTests {
 
   @Test("Valid bug identifiers are allowed",
     arguments: [
-      #"@Test(.bug(12345)) func f() {}"#,
-      #"@Test(.bug("12345")) func f() {}"#,
+      #"@Test(.bug(id: 12345)) func f() {}"#,
+      #"@Test(.bug(id: "12345")) func f() {}"#,
       #"@Test(.bug("mailto:a@example.com")) func f() {}"#,
       #"@Test(.bug("rdar:12345")) func f() {}"#,
       #"@Test(.bug("rdar://12345")) func f() {}"#,
-      #"@Test(.bug("FB12345")) func f() {}"#,
+      #"@Test(.bug(id: "FB12345")) func f() {}"#,
       #"@Test(.bug("https://github.com/apple/swift-testing/issues/12345")) func f() {}"#,
+      #"@Test(.bug("https://github.com/apple/swift-testing/issues/12345", id: "12345")) func f() {}"#,
+      #"@Test(.bug("https://github.com/apple/swift-testing/issues/12345", id: 12345)) func f() {}"#,
       #"@Test(Bug.bug("https://github.com/apple/swift-testing/issues/12345")) func f() {}"#,
       #"@Test(Testing.Bug.bug("https://github.com/apple/swift-testing/issues/12345")) func f() {}"#,
       #"@Test(Bug.bug("https://github.com/apple/swift-testing/issues/12345", "here's what happened...")) func f() {}"#,
@@ -375,21 +377,19 @@ struct TestDeclarationMacroTests {
     #expect(diagnostics.isEmpty)
   }
 
-  @Test("Invalid bug identifiers are detected",
+  @Test("Invalid bug URLs are detected",
     arguments: [
-      "12345 ", "here's what happened...", "🌯", "mailto: a@example.com",
-      "FB", "FBabc", "FB1",
+      "mailto: a@example.com", "example.com",
     ]
   )
-  func invalidBugIdentifiers(id: String) throws {
+  func invalidBugURLs(id: String) throws {
     let input = #"@Test(.bug("\#(id)")) func f() {}"#
     let (_, diagnostics) = try parse(input)
 
     #expect(diagnostics.count > 0)
     for diagnostic in diagnostics {
-      #expect(diagnostic.diagMessage.severity == .error)
+      #expect(diagnostic.diagMessage.severity == .warning)
       #expect(diagnostic.message == #"URL "\#(id)" is invalid and cannot be used with trait 'bug' in attribute 'Test'"#)
     }
   }
-
 }

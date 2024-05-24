@@ -25,12 +25,16 @@ specific bugs with tests that reproduce them or verify they are fixed.
 
 ## Associate a bug with a test
 
-To associate a bug with a test, use the ``Trait/bug(_:_:)-2u8j9`` or
-``Trait/bug(_:_:)-7mo2w`` function. The first argument to this function is the
-bug's _identifier_ in its bug-tracking system:
+To associate a bug with a test, use one of these functions:
+- ``Trait/bug(_:_:)``
+- ``Trait/bug(_:id:_:)-10yf5``
+- ``Trait/bug(_:id:_:)-3vtpl``
+
+The first argument to these functions is a URL representing the bug in its
+bug-tracking system:
 
 ```swift
-@Test("Food truck engine works", .bug("12345"), .bug(67890))
+@Test("Food truck engine works", .bug("https://www.example.com/issues/12345"))
 func engineWorks() async {
   var foodTruck = FoodTruck()
   await foodTruck.engine.start()
@@ -38,22 +42,38 @@ func engineWorks() async {
 }
 ```
 
-The bug identifier can be specified as an integer or as a string; if it is
-specified as a string, it must be parseable as an unsigned integer or as a URL.
-For more information on the formats recognized by the testing library, see
-<doc:BugIdentifiers>.
+You can also specify the bug's _unique identifier_ in its bug-tracking system in
+addition to, or instead of, its URL:
 
-## Add comments to associated bugs
+```swift
+@Test(
+  "Food truck engine works",
+  .bug(id: "12345"),
+  .bug("https://www.example.com/issues/67890", id: 67890)
+)
+func engineWorks() async {
+  var foodTruck = FoodTruck()
+  await foodTruck.engine.start()
+  #expect(foodTruck.engine.isRunning)
+}
+```
 
-A bug identifier may be insufficient to uniquely and clearly identify a bug
-associated with a test. Bug trackers universally provide a "title" field for
-bugs that is not visible to the testing library. To add a bug's title to a test,
-include it after the bug's identifier:
+A bug's URL is passed as a string and must be parseable according to
+[RFC&nbsp;3986](https://www.ietf.org/rfc/rfc3986.txt). A bug's unique identifier
+can be passed as an integer or as a string. For more information on the formats
+recognized by the testing library, see <doc:BugIdentifiers>.
+
+## Add titles to associated bugs
+
+A bug's unique identifier or URL may be insufficient to uniquely and clearly
+identify a bug associated with a test. Bug trackers universally provide a
+"title" field for bugs that is not visible to the testing library. To add a
+bug's title to a test, include it after the bug's unique identifier or URL:
 
 ```swift
 @Test(
   "Food truck has napkins",
-  .bug("12345", "Forgot to buy more napkins")
+  .bug(id: "12345", "Forgot to buy more napkins")
 )
 func hasNapkins() async {
   ...
