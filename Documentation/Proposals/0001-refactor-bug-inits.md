@@ -1,6 +1,6 @@
 # Dedicated `.bug()` functions for URLs and IDs
 
-* Proposal: [SWT-NNNN](NNNN-refactor-bug-inits.md)
+* Proposal: [SWT-0001](0001-refactor-bug-inits.md)
 * Authors: [Jonathan Grynspan](https://github.com/grynspan)
 * Status: **Awaiting review**
 * Implementation: [apple/swift-testing#401](https://github.com/apple/swift-testing/pull/401)
