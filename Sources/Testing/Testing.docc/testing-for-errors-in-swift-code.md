@@ -26,7 +26,7 @@ If the code throws an error, then your test fails.
 
 To check that the code under test throws a specific error, or to continue a
 longer test function after the code throws an error, pass that error as the
-first argument of ``expect(throws:_:sourcelocation:performing:)-1xr34``, and
+first argument of ``expect(throws:_:sourceLocation:performing:)-1xr34``, and
 pass a closure that calls the code under test:
 
 ```swift
@@ -65,4 +65,4 @@ the error to `Never`:
 If the closure throws _any_ error, the testing library records an issue.
 If you need the test to stop when the code throws an error, include the
 code inline in the test function instead of wrapping it in an
-``expect(throws:_:sourcelocation:performing:)-1xr34`` block.
+``expect(throws:_:sourceLocation:performing:)-1xr34`` block.
