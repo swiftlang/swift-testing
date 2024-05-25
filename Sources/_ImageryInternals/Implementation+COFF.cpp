@@ -20,8 +20,16 @@
 #include <Windows.h>
 #include <Psapi.h>
 
+/// Set the name fields of an instance of ``SMLImage``.
+///
+/// - Parameters:
+///   - ioImage: An instance of ``SMLImage`` to modify.
+///
+/// This function asks the Windows API for the name of the image represented by
+/// `ioImage`. If the name is available, it is stored in `ioImage`; otherwise,
+/// the name fields of `ioImage` are cleared.
 static void setImageName(SMLImage *ioImage) {
-  if (0 != GetModuleFileNameW(nullptr, ioImage->nameBuffer, std::size(ioImage->nameBuffer))) {
+  if (0 != GetModuleFileNameW(ioImage->base, ioImage->nameBuffer, std::size(ioImage->nameBuffer))) {
     ioImage->name = ioImage->nameBuffer;
   } else {
     ioImage->nameBuffer[0] = 0;
