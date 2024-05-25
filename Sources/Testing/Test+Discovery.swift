@@ -10,8 +10,10 @@
 
 #if SWT_BUILDING_WITH_CMAKE
 @_implementationOnly import _TestingInternals
+@_implementationOnly import _Imagery
 #else
 private import _TestingInternals
+internal import _Imagery
 #endif
 
 /// A protocol describing a type that contains tests.
@@ -51,15 +53,20 @@ extension Test {
   /// contain duplicates; callers should use ``all`` instead.
   private static var _all: some Sequence<Self> {
     get async {
-      await withTaskGroup(of: [Self].self) { taskGroup in
-        enumerateTypes(withNamesContaining: _testContainerTypeNameMagic) { type, _ in
-          if let type = type as? any __TestContainer.Type {
-            taskGroup.addTask {
-              await type.__tests
-            }
+      var types = [any __TestContainer.Type]()
+
+      enumerateTypes(withNamesContaining: _testContainerTypeNameMagic) { type in
+        if let type = type as? any __TestContainer.Type {
+          types.append(type)
+        }
+      }
+
+      return await withTaskGroup(of: [Self].self) { taskGroup in
+        for type in types {
+          taskGroup.addTask {
+            await type.__tests
           }
         }
-
         return await taskGroup.reduce(into: [], +=)
       }
     }
@@ -115,30 +122,43 @@ extension Test {
 
 // MARK: -
 
-/// The type of callback called by ``enumerateTypes(withNamesContaining:_:)``.
-///
-/// - Parameters:
-///   - type: A Swift type.
-///   - stop: An `inout` boolean variable indicating whether type enumeration
-///     should stop after the function returns. Set `stop` to `true` to stop
-///     type enumeration.
-typealias TypeEnumerator = (_ type: Any.Type, _ stop: inout Bool) -> Void
-
 /// Enumerate all types known to Swift found in the current process whose names
 /// contain a given substring.
 ///
 /// - Parameters:
 ///   - nameSubstring: A string which the names of matching classes all contain.
 ///   - body: A function to invoke, once per matching type.
-func enumerateTypes(withNamesContaining nameSubstring: String, _ typeEnumerator: TypeEnumerator) {
-  withoutActuallyEscaping(typeEnumerator) { typeEnumerator in
-    withUnsafePointer(to: typeEnumerator) { context in
-      swt_enumerateTypes(withNamesContaining: nameSubstring, .init(mutating: context)) { type, stop, context in
-        let typeEnumerator = context!.load(as: TypeEnumerator.self)
-        let type = unsafeBitCast(type, to: Any.Type.self)
-        var stop2 = false
-        typeEnumerator(type, &stop2)
-        stop.pointee = stop2
+func enumerateTypes(withNamesContaining nameSubstring: String, _ typeEnumerator: (_ type: Any.Type) -> Void) {
+  typealias Enumerator = (UnsafeRawPointer, _ stop: UnsafeMutablePointer<CBool>) -> Void
+  let body: Enumerator = { type, stop in
+    let type = unsafeBitCast(type, to: Any.Type.self)
+    typeEnumerator(type)
+  }
+
+  withoutActuallyEscaping(body) { body in
+    withUnsafePointer(to: body) { body in
+      Image.forEach { image in
+#if SWT_TARGET_OS_APPLE
+        let sectionName = "__TEXT,__swift5_types"
+#elseif os(Linux)
+        let sectionName = "swift5_type_metadata"
+#elseif os(Windows)
+        let sectionName = ".sw5tymd"
+#endif
+        guard let section = image.section(named: sectionName) else {
+          return
+        }
+        section.withUnsafeRawBufferPointer { buffer in
+          swt_enumerateTypes(
+            withNamesContaining: nameSubstring,
+            inSectionStartingAt: buffer.baseAddress!,
+            byteCount: buffer.count,
+            .init(mutating: body)
+          ) { type, stop, context in
+            let body = context!.load(as: Enumerator.self)
+            body(type, stop)
+          }
+        }
       }
     }
   }

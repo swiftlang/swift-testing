@@ -40,7 +40,7 @@ let package = Package(
     .target(
       name: "Testing",
       dependencies: [
-        "_ImageryInternals",
+        "_Imagery",
         "_TestingInternals",
         "TestingMacros",
       ],

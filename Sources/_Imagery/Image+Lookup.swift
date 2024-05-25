@@ -26,7 +26,7 @@ extension Image {
   /// contained within any such image, `nil` is returned.
   public init?(containing address: UnsafeRawPointer) {
     let image: SMLImage? = withUnsafeTemporaryAllocation(of: SMLImage.self, capacity: 1) { buffer in
-      guard swt_getImageContainingAddress(address, buffer.baseAddress!) else {
+      guard sml_getImageContainingAddress(address, buffer.baseAddress!) else {
         return nil
       }
       return buffer.baseAddress!.move()
@@ -40,7 +40,7 @@ extension Image {
   /// The main executable image in the current process.
   public static nonisolated(unsafe) let main: Self = {
     let rawValue = withUnsafeTemporaryAllocation(of: SMLImage.self, capacity: 1) { buffer in
-      swt_getMainImage(buffer.baseAddress!)
+      sml_getMainImage(buffer.baseAddress!)
       return buffer.baseAddress!.move()
     }
     return Self(wrapping: rawValue)

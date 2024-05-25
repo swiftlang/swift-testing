@@ -85,14 +85,14 @@ extension ExitTest {
   public static func find(at sourceLocation: SourceLocation) -> Self? {
     var result: Self?
 
-    enumerateTypes(withNamesContaining: _exitTestContainerTypeNameMagic) { type, stop in
+    enumerateTypes(withNamesContaining: _exitTestContainerTypeNameMagic) { type in
       if let type = type as? any __ExitTestContainer.Type, type.__sourceLocation == sourceLocation {
         result = ExitTest(
           expectedExitCondition: type.__expectedExitCondition,
           body: type.__body,
           sourceLocation: type.__sourceLocation
         )
-        stop = true
+        // FIXME: early exit from loop when exit test is found
       }
     }
 

@@ -14,6 +14,7 @@
 #include "Defines.h"
 
 #include <stdbool.h>
+#include <stddef.h>
 
 SWT_ASSUME_NONNULL_BEGIN
 
@@ -32,13 +33,17 @@ typedef void (* SWTTypeEnumerator)(void *typeMetadata, bool *stop, void *_Null_u
 ///
 /// - Parameters:
 ///   - nameSubstring: A string which the names of matching classes all contain.
+///   - sectionStart: The start of the section to examine.
+///   - sectionLength: The length, in bytes, of the section to examine.
 ///   - context: An arbitrary pointer to pass to `body`.
 ///   - body: A function to invoke, once per matching type.
 SWT_EXTERN void swt_enumerateTypesWithNamesContaining(
   const char *nameSubstring,
+  const void *sectionStart,
+  size_t sectionLength,
   void *_Null_unspecified context,
   SWTTypeEnumerator body
-) SWT_SWIFT_NAME(swt_enumerateTypes(withNamesContaining:_:_:));
+) SWT_SWIFT_NAME(swt_enumerateTypes(withNamesContaining:inSectionStartingAt:byteCount:_:_:));
 
 SWT_ASSUME_NONNULL_END
 
