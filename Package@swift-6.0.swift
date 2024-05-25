@@ -40,6 +40,7 @@ let package = Package(
     .target(
       name: "Testing",
       dependencies: [
+        "_ImageryInternals",
         "_TestingInternals",
         "TestingMacros",
       ],
@@ -53,6 +54,16 @@ let package = Package(
         "Testing",
         "_Testing_Foundation",
       ],
+      swiftSettings: .packageSettings
+    ),
+
+    .target(
+      name: "_Imagery",
+      dependencies: [
+        "_ImageryInternals",
+      ],
+      exclude: ["CMakeLists.txt"],
+      cxxSettings: .packageSettings,
       swiftSettings: .packageSettings
     ),
 
@@ -82,6 +93,11 @@ let package = Package(
     // by other targets above, not directly included in product libraries.
     .target(
       name: "_TestingInternals",
+      exclude: ["CMakeLists.txt"],
+      cxxSettings: .packageSettings
+    ),
+    .target(
+      name: "_ImageryInternals",
       exclude: ["CMakeLists.txt"],
       cxxSettings: .packageSettings
     ),
