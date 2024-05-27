@@ -66,6 +66,13 @@ let package = Package(
       cxxSettings: .packageSettings,
       swiftSettings: .packageSettings
     ),
+    .testTarget(
+      name: "_ImageryTests",
+      dependencies: [
+        "_Imagery",
+      ],
+      swiftSettings: .packageSettings
+    ),
 
     .macro(
       name: "TestingMacros",

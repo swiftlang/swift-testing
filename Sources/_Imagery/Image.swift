@@ -39,6 +39,21 @@ public struct Image: ~Copyable {
     rawValue = image
   }
 
+  /// Initialize an instance of this type with an arbitrary base address.
+  ///
+  /// - Parameters:
+  ///   - unsafeBaseAddress: The base address of the image.
+  ///
+  /// The caller is responsible for ensuring that `unsafeBaseAddress` is the
+  /// address of a valid image loaded into the current process.
+  init(unsafeBaseAddress: UnsafeRawPointer) {
+    rawValue = withUnsafeTemporaryAllocation(of: SMLImage.self, capacity: 1) { image in
+      image[0].base = unsafeBaseAddress
+      image[0].name = nil
+      return image.baseAddress!.move()
+    }
+  }
+
   /// The name of the image, if available.
   ///
   /// The name of an image is implementation-defined, but is commonly equal to
