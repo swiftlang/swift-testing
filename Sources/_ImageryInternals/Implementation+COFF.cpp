@@ -20,28 +20,16 @@
 #include <Windows.h>
 #include <Psapi.h>
 
-/// Set the name fields of an instance of ``SMLImage``.
-///
-/// - Parameters:
-///   - ioImage: An instance of ``SMLImage`` to modify.
-///
-/// This function asks the Windows API for the name of the image represented by
-/// `ioImage`. If the name is available, it is stored in `ioImage`; otherwise,
-/// the name fields of `ioImage` are cleared.
-static void setImageName(SMLImage *ioImage) {
-  if (0 != GetModuleFileNameW(ioImage->base, ioImage->nameBuffer, std::size(ioImage->nameBuffer))) {
-    ioImage->name = ioImage->nameBuffer;
-  } else {
-    ioImage->nameBuffer[0] = 0;
-    ioImage->name = nullptr;
+SMLImage::SMLImage(const void *base): base(base) {
+  if (0 == GetModuleFileNameW(this->base, name, std::size(name))) {
+    name[0] = '\0'L;
   }
 }
 
 // MARK: - Image
 
 void sml_getMainImage(SMLImage *outImage) {
-  outImage->base = GetModuleHandleW(nullptr);
-  setImageName(outImage);
+  *outImage = SMLImage(GetModuleHandleW(nullptr));
 }
 
 void sml_enumerateImages(void *_Null_unspecified context, SMLImageEnumerator body) {
@@ -54,11 +42,10 @@ void sml_enumerateImages(void *_Null_unspecified context, SMLImageEnumerator bod
   DWORD hModuleCount = std::min(hModules.size(), byteCountNeeded / sizeof(HMODULE));
 
   for (DWORD i = 0; i < hModuleCount; i++) {
-    SMLImage image = { hModules[i] };
-    setImageName(outImage);
+    SMLImage image = SMLImage(hModules[i]);
 
     bool stop = false;
-    body(context, &image, &stop);
+    body(&image, &stop, context);
     if (stop) {
       break;
     }
@@ -73,11 +60,22 @@ bool sml_getImageContainingAddress(const void *address, SMLImage *outImage) {
     &hModule
   );
   if (gotModule && hModule) {
-    outImage->base = hModule;
-    setImageName(outImage);
+    *outImage = SMLImage(hModule);
     return true;
   }
   return false;
+}
+
+// MARK: -
+
+void sml_withImageName(const SMLImage *image, void *context, SMLImageNameCallback body) {
+  std::array<wchar_t, 2048> name;
+  if (0 != GetModuleFileNameW(image->base, &name[0], name.size())) {
+    return body(image, &name[0], context);
+  }
+  return body(image, nullptr, context);
+}
+wchar_t *sml_copyImageName(const SMLImage *image) {
 }
 
 // MARK: - Section

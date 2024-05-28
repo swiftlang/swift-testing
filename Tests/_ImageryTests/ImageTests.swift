@@ -58,7 +58,7 @@ final class ImageTests: XCTestCase {
       image2.withUnsafePointerToBaseAddress { baseAddress in
         XCTAssertNotNil(baseAddress)
       }
-      XCTAssertNil(image2.name)
+      XCTAssertNotNil(image2.name)
     }
   }
 

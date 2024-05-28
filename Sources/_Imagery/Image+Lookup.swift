@@ -61,7 +61,9 @@ extension Image {
   ///
   /// On some platforms, a global system-owned lock is held while this function
   /// is running. To avoid deadlocks within the system's dynamic loader, it is
-  /// recommended that callers minimize the work that is done in `body`.
+  /// recommended that callers minimize the work that is done in `body`. In
+  /// particular, avoid doing any work in `body` that might load or unload an
+  /// image from the process.
   ///
   /// On platforms that support dynamically unloading images at runtime, the
   /// values yielded by this function are not guaranteed to remain valid after
@@ -81,7 +83,7 @@ extension Image {
 
     withoutActuallyEscaping(body) { body in
       withUnsafePointer(to: body) { body in
-        sml_enumerateImages(.init(mutating: body)) { context, image, stop in
+        sml_enumerateImages(.init(mutating: body)) { image, stop, context in
           let body = context!.load(as: Enumerator.self)
           body(image.pointee, stop)
         }

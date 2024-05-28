@@ -19,7 +19,6 @@
 
 #include <crt_externs.h>
 #include <dispatch/dispatch.h>
-#include <dlfcn.h>
 #include <mach-o/dyld.h>
 #include <mach-o/getsect.h>
 #include <objc/runtime.h>
@@ -36,11 +35,8 @@ using SMLMachHeaderList = std::vector<const mach_header *, SMLHeapAllocator<cons
 // MARK: - Image
 
 void sml_getMainImage(SMLImage *outImage) {
-  auto mh = _NSGetMachExecuteHeader();
-  if (!sml_getImageContainingAddress(mh, outImage)) {
-    outImage->base = mh;
-    outImage->name = nullptr;
-  }
+  outImage->base = _NSGetMachExecuteHeader();
+  outImage->name = nullptr;
 }
 
 void sml_enumerateImages(void *_Null_unspecified context, SMLImageEnumerator body) {
@@ -83,26 +79,14 @@ void sml_enumerateImages(void *_Null_unspecified context, SMLImageEnumerator bod
   // and iterate over the image list.
   pthread_rwlock_rdlock(&lock); {
     for (auto mh : *machHeaders) {
-      SMLImage image = {};
-      if (sml_getImageContainingAddress(mh, &image)) {
-        bool stop = false;
-        body(context, &image, &stop);
-        if (stop) {
-          break;
-        }
+      SMLImage image = { mh, nullptr };
+      bool stop = false;
+      body(&image, &stop, context);
+      if (stop) {
+        break;
       }
     }
   } pthread_rwlock_unlock(&lock);
-}
-
-bool sml_getImageContainingAddress(const void *address, SMLImage *outImage) {
-  Dl_info info;
-  if (dladdr(address, &info)) {
-    *outImage = { info.dli_fbase, info.dli_fname };
-    return true;
-  }
-
-  return false;
 }
 
 // MARK: - Section

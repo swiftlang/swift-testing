@@ -47,11 +47,7 @@ public struct Image: ~Copyable {
   /// The caller is responsible for ensuring that `unsafeBaseAddress` is the
   /// address of a valid image loaded into the current process.
   init(unsafeBaseAddress: UnsafeRawPointer) {
-    rawValue = withUnsafeTemporaryAllocation(of: SMLImage.self, capacity: 1) { image in
-      image[0].base = unsafeBaseAddress
-      image[0].name = nil
-      return image.baseAddress!.move()
-    }
+    rawValue = SMLImage(base: unsafeBaseAddress, name: nil)
   }
 
   /// The name of the image, if available.
@@ -59,13 +55,24 @@ public struct Image: ~Copyable {
   /// The name of an image is implementation-defined, but is commonly equal to
   /// the filename or file system path of the image on disk.
   public var name: String? {
-    rawValue.name.flatMap { name in
+    var result: String?
+
+    withUnsafeMutablePointer(to: &result) { result in
+      withUnsafePointer(to: rawValue) { image in
+        sml_withImageName(image, result) { _, name, context in
+          let result = context!.assumingMemoryBound(to: String?.self)
+          result.pointee = name.flatMap { name in
 #if os(Windows)
-      return String.decodeCString(name, as: UTF16.self)?.result
+            String.decodeCString(name, as: UTF16.self)?.result
 #else
-      return String(validatingCString: name)
+            String(validatingCString: name)
 #endif
+          }
+        }
+      }
     }
+
+    return result
   }
 
   /// Call a function to access the base address of the loaded image.

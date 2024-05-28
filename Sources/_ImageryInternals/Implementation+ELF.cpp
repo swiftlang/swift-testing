@@ -65,7 +65,7 @@ static bool isFileIDConsistent(const char *path, const struct stat& st) {
     unsigned long long ino = 0;
     std::array<char, 2048 + 1> mapPath;
     int count = std::fscanf(maps, "%*llx-%*llx %*4c %*llx %llu:%llu %llu %2048[^\n]\n", &devMajor, &devMinor, &ino, &mapPath[0]);
-    if (count != 4) {
+    if (count < 4 || count == EOF) {
       // Failed to read in the expected format. Stop reading.
       return false;
     }
@@ -148,7 +148,7 @@ void sml_enumerateImages(void *_Null_unspecified context, SMLImageEnumerator bod
     SMLImageEnumerator body;
   };
   Context ctx { context, body };
-  (void)::dl_iterate_phdr([] (struct dl_phdr_info *info, size_t size, void *context) -> int {
+  (void)dl_iterate_phdr([] (struct dl_phdr_info *info, size_t size, void *context) -> int {
     const auto& ctx = *reinterpret_cast<Context *>(context);
     // Find the ehdr loaded into the current process corresponding to the phdr
     // being enumerated. We can do so by looking up the image base for the
@@ -156,7 +156,7 @@ void sml_enumerateImages(void *_Null_unspecified context, SMLImageEnumerator bod
     SMLImage image = {};
     if (sml_getImageContainingAddress(info->dlpi_phdr, &image)) {
       bool stop = false;
-      ctx.body(ctx.context, &image, &stop);
+      ctx.body(&image, &stop, ctx.context);
       if (stop) {
         return -1;
       }
@@ -164,16 +164,6 @@ void sml_enumerateImages(void *_Null_unspecified context, SMLImageEnumerator bod
 
     return 0;
   }, &ctx);
-}
-
-bool sml_getImageContainingAddress(const void *address, SMLImage *outImage) {
-  Dl_info info;
-  if (dladdr(address, &info)) {
-    *outImage = { info.dli_fbase, info.dli_fname };
-    return true;
-  }
-
-  return false;
 }
 
 // MARK: - Section

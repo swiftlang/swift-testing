@@ -100,6 +100,9 @@ let package = Package(
     // by other targets above, not directly included in product libraries.
     .target(
       name: "_TestingInternals",
+      dependencies: [
+        "_ImageryInternals",
+      ],
       exclude: ["CMakeLists.txt"],
       cxxSettings: .packageSettings
     ),
