@@ -21,14 +21,14 @@ SWT_ASSUME_NONNULL_BEGIN
 
 #if !defined(__APPLE__)
 /// Specifies the address range corresponding to a section.
-struct MetadataSectionRange {
+typedef struct MetadataSectionRange {
   uintptr_t start;
   size_t length;
-};
+} MetadataSectionRange;
 
 /// Identifies the address space ranges for the Swift metadata required by the
 /// Swift runtime.
-struct MetadataSections {
+typedef struct MetadataSections {
   uintptr_t version;
   const void *baseAddress;
 
@@ -48,7 +48,7 @@ struct MetadataSections {
   MetadataSectionRange swift5_capture;
   MetadataSectionRange swift5_mpenum;
   MetadataSectionRange swift5_accessible_functions;
-};
+} MetadataSections;
 
 /// A function exported by the Swift runtime that enumerates all metadata
 /// sections loaded into the current process.
