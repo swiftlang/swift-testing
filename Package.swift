@@ -67,15 +67,7 @@ let package = Package(
         .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
       ],
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .packageSettings + [
-        // The only target which needs the ability to import this macro
-        // implementation target's module is its unit test target. Users of the
-        // macros this target implements use them via their declarations in the
-        // Testing module. This target's module is never distributed to users,
-        // but as an additional guard against accidental misuse, this specifies
-        // the unit test target as the only allowable client.
-        .unsafeFlags(["-Xfrontend", "-allowable-client", "-Xfrontend", "TestingMacrosTests"]),
-      ]
+      swiftSettings: .packageSettings
     ),
 
     // "Support" targets: These contain C family code and are used exclusively
@@ -118,7 +110,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
   /// Analogous to project-level build settings in an Xcode project.
   static var packageSettings: Self {
     availabilityMacroSettings + [
-      .unsafeFlags(["-require-explicit-sendable"]),
       .enableExperimentalFeature("StrictConcurrency"),
       .enableUpcomingFeature("ExistentialAny"),
       .enableUpcomingFeature("InferSendableFromCaptures"),
