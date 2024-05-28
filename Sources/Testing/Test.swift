@@ -113,7 +113,7 @@ public struct Test: Sendable {
   /// combination of parameterized inputs. For non-parameterized tests, a single
   /// test case is synthesized. For test suite types (as opposed to test
   /// functions), the value of this property is `nil`.
-  var testCases: (some Sequence<Test.Case> & Sendable)? {
+  var testCases: (some Sequence<Test.Case>)? {
     testCasesState.map { testCasesState in
       guard case let .evaluated(testCases) = testCasesState else {
         // Callers are expected to first attempt to evaluate a test's cases by
