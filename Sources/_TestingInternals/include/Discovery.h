@@ -15,6 +15,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 SWT_ASSUME_NONNULL_BEGIN
 
@@ -29,7 +30,7 @@ struct MetadataSectionRange {
 /// Swift runtime.
 struct MetadataSections {
   uintptr_t version;
-  std::atomic<const void *> baseAddress;
+  const void *baseAddress;
 
   void *unused0;
   void *unused1;
