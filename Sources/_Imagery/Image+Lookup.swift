@@ -25,25 +25,19 @@ extension Image {
   /// the resulting instance represents that image. If `address` is not
   /// contained within any such image, `nil` is returned.
   public init?(containing address: UnsafeRawPointer) {
-    let image: SMLImage? = withUnsafeTemporaryAllocation(of: SMLImage.self, capacity: 1) { buffer in
-      guard sml_getImageContainingAddress(address, buffer.baseAddress!) else {
-        return nil
-      }
-      return buffer.baseAddress!.move()
-    }
-    guard let image else {
+    let rawValue = UnsafeMutablePointer<SMLImage>.allocate(capacity: 1)
+    guard sml_getImageContainingAddress(address, rawValue) else {
+      rawValue.deallocate()
       return nil
     }
-    rawValue = image
+    self.init(consuming: rawValue)
   }
 
   /// The main executable image in the current process.
   public static nonisolated(unsafe) let main: Self = {
-    let rawValue = withUnsafeTemporaryAllocation(of: SMLImage.self, capacity: 1) { buffer in
-      sml_getMainImage(buffer.baseAddress!)
-      return buffer.baseAddress!.move()
-    }
-    return Self(wrapping: rawValue)
+    let rawValue = UnsafeMutablePointer<SMLImage>.allocate(capacity: 1)
+    sml_getMainImage(rawValue)
+    return Self(consuming: .init(rawValue))
   }()
 
   /// Enumerate over all images loaded into the current process.
@@ -71,10 +65,10 @@ extension Image {
   public static func forEach<E>(_ body: (borrowing Image) throws(E) -> Void) throws(E) {
     var result: Result<Void, E> = .success(())
 
-    typealias Enumerator = (SMLImage, _ stop: UnsafeMutablePointer<CBool>) -> Void
+    typealias Enumerator = (UnsafePointer<SMLImage>, _ stop: UnsafeMutablePointer<CBool>) -> Void
     let body: Enumerator = { image, stop in
       do {
-        try body(Self(wrapping: image))
+        try body(Self(borrowing: image))
       } catch {
         result = .failure(error as! E)
         stop.pointee = true
@@ -85,7 +79,7 @@ extension Image {
       withUnsafePointer(to: body) { body in
         sml_enumerateImages(.init(mutating: body)) { image, stop, context in
           let body = context!.load(as: Enumerator.self)
-          body(image.pointee, stop)
+          body(image, stop)
         }
       }
     }

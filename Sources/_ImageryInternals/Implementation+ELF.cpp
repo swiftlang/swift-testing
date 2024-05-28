@@ -196,9 +196,9 @@ bool sml_findSection(const SMLImage *image, const char *sectionName, SMLSection 
     return false;
   }
   auto baseMapped = reinterpret_cast<uintptr_t>(ehdrMapped);
-//  SMLDeferred unmapEhdrWhenDone = [=] {
-//    munmap(const_cast<ElfW(Ehdr) *>(ehdrMapped), ehdrMappedSize);
-//  };
+  SMLDeferred unmapEhdrWhenDone = [=] {
+    munmap(const_cast<ElfW(Ehdr) *>(ehdrMapped), ehdrMappedSize);
+  };
 
   // Find the mapped ehdr's string table.
   auto strtab = reinterpret_cast<const ElfW(Shdr) *>(baseMapped + ehdrMapped->e_shoff + (ehdrMapped->e_shentsize * ehdrMapped->e_shstrndx));

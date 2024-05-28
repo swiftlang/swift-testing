@@ -170,12 +170,6 @@ func enumerateTypes<E>(in image: borrowing Image, withNamesContaining nameSubstr
   }
 #endif
 
-#if os(Linux)
-  image.withUnsafePointerToBaseAddress { baseAddress in
-    try? FileHandle.stderr.write("Found section \(sectionName) in image \(image.name as Any) at \(baseAddress)\n")
-  }
-#endif
-
   var result: Result<Void, E> = .success(())
 
   typealias Enumerator = (UnsafeRawPointer, _ stop: UnsafeMutablePointer<CBool>) -> Void

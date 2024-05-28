@@ -79,10 +79,7 @@ extension Image {
   /// the instance of ``Image`` that contains them.
   public borrowing func section(named sectionName: String) -> Section? {
     let section: SMLSection? = withUnsafeTemporaryAllocation(of: SMLSection.self, capacity: 1) { buffer in
-      // Copy the underlying C++ image structure so it can be passed by address.
-      var image = rawValue
-
-      guard sml_findSection(&image, sectionName, buffer.baseAddress!) else {
+      guard sml_findSection(rawValue, sectionName, buffer.baseAddress!) else {
         return nil
       }
       return buffer.baseAddress!.move()

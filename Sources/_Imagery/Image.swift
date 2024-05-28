@@ -29,14 +29,29 @@ internal import _ImageryInternals
 #endif
 public struct Image: ~Copyable {
   /// The underlying C++ structure.
-  var rawValue: SMLImage
+  var rawValue: UnsafePointer<SMLImage>
+
+  /// Whether or not to deallocate `rawValue` on deinitialization.
+  private var _deallocate = false
 
   /// Initialize an instance of this type wrapping the given C++ structure.
   ///
   /// - Parameters:
-  ///   - image: The C++ structure to wrap.
-  init(wrapping image: SMLImage) {
+  ///   - image: The C++ structure to wrap. The resulting instance does not take
+  ///     ownership of this pointer.
+  init(borrowing image: borrowing UnsafePointer<SMLImage>) {
+    rawValue = copy image
+  }
+
+  /// Initialize an instance of this type wrapping the given C++ structure.
+  ///
+  /// - Parameters:
+  ///   - image: The C++ structure to wrap. The resulting instance takes
+  ///     ownership of this pointer and deinitializes and deallocates it when
+  ///     it is itself deinitialized.
+  init(consuming image: consuming UnsafePointer<SMLImage>) {
     rawValue = image
+    _deallocate = true
   }
 
   /// Initialize an instance of this type with an arbitrary base address.
@@ -47,7 +62,17 @@ public struct Image: ~Copyable {
   /// The caller is responsible for ensuring that `unsafeBaseAddress` is the
   /// address of a valid image loaded into the current process.
   init(unsafeBaseAddress: UnsafeRawPointer) {
-    rawValue = SMLImage(base: unsafeBaseAddress, name: nil)
+    let image = UnsafeMutablePointer<SMLImage>.allocate(capacity: 1)
+    image.initialize(to: SMLImage(base: unsafeBaseAddress, name: nil))
+    self.init(consuming: image)
+  }
+
+  deinit {
+    if _deallocate {
+      let rawValue = UnsafeMutablePointer(mutating: rawValue)
+      rawValue.deinitialize(count: 1)
+      rawValue.deallocate()
+    }
   }
 
   /// The name of the image, if available.
@@ -58,16 +83,14 @@ public struct Image: ~Copyable {
     var result: String?
 
     withUnsafeMutablePointer(to: &result) { result in
-      withUnsafePointer(to: rawValue) { image in
-        sml_withImageName(image, result) { _, name, context in
-          let result = context!.assumingMemoryBound(to: String?.self)
-          result.pointee = name.flatMap { name in
+      sml_withImageName(rawValue, result) { _, name, context in
+        let result = context!.assumingMemoryBound(to: String?.self)
+        result.pointee = name.flatMap { name in
 #if os(Windows)
-            String.decodeCString(name, as: UTF16.self)?.result
+          String.decodeCString(name, as: UTF16.self)?.result
 #else
-            String(validatingCString: name)
+          String(validatingCString: name)
 #endif
-          }
         }
       }
     }
@@ -85,7 +108,7 @@ public struct Image: ~Copyable {
   ///
   /// - Throws: Whatever is thrown by `body`.
   public borrowing func withUnsafePointerToBaseAddress<R, E>(_ body: (UnsafeRawPointer) throws(E) -> R) throws(E) -> R {
-    return try body(rawValue.base)
+    return try body(rawValue.pointee.base)
   }
 }
 
@@ -98,10 +121,10 @@ extension Image: Sendable {}
 
 extension Image {
   public static func ==(lhs: borrowing Self, rhs: borrowing Self) -> Bool {
-    lhs.rawValue.base == rhs.rawValue.base
+    lhs.rawValue.pointee.base == rhs.rawValue.pointee.base
   }
 
   func hash(into hasher: inout Hasher) {
-    hasher.combine(rawValue.base)
+    hasher.combine(rawValue.pointee.base)
   }
 }
