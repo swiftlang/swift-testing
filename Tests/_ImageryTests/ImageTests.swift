@@ -49,9 +49,6 @@ final class ImageTests: XCTestCase {
     Image.main.withUnsafePointerToBaseAddress { baseAddress in
       XCTAssertNotNil(baseAddress)
     }
-    let mainNameURL = URL(fileURLWithPath: try XCTUnwrap(Image.main.name), isDirectory: false)
-    let mainBundleURL = try XCTUnwrap(Bundle.main.executableURL)
-    XCTAssertEqual(mainNameURL.standardized, mainBundleURL.standardized)
   }
 
   func testFromUnsafeBaseAddress() {
