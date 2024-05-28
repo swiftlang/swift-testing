@@ -17,30 +17,34 @@ public import SwiftSyntax
 public import SwiftSyntaxMacros
 #endif
 
-/// Diagnose issues with the traits in a parsed attribute.
-///
-/// - Parameters:
-///   - traitExprs: An array of trait expressions to examine.
-///   - attribute: The `@Test` or `@Suite` attribute.
-///   - context: The macro context in which the expression is being parsed.
-func diagnoseIssuesWithTraits(in traitExprs: [ExprSyntax], addedTo attribute: AttributeSyntax, in context: some MacroExpansionContext) {
-  for traitExpr in traitExprs {
-    // At this time, we are only looking for .tags() and .bug() traits in this
-    // function.
-    guard let functionCallExpr = traitExpr.as(FunctionCallExprSyntax.self),
-          let calledExpr = functionCallExpr.calledExpression.as(MemberAccessExprSyntax.self) else {
-      continue
-    }
-
-    // Check for .tags() traits.
-    switch calledExpr.tokens(viewMode: .fixedUp).map(\.textWithoutBackticks).joined() {
-    case ".tags", "Tag.List.tags", "Testing.Tag.List.tags":
-      _diagnoseIssuesWithTagsTrait(functionCallExpr, addedTo: attribute, in: context)
-    case ".bug", "Bug.bug", "Testing.Bug.bug":
-      _diagnoseIssuesWithBugTrait(functionCallExpr, addedTo: attribute, in: context)
-    default:
-      // This is not a trait we can parse.
-      break
+extension AttributeInfo {
+  /// Diagnose issues with the traits in a parsed attribute.
+  ///
+  /// - Parameters:
+  ///   - context: The macro context in which the expression is being parsed.
+  func diagnoseIssuesWithTraits(in context: some MacroExpansionContext) {
+    for traitExpr in traits {
+      if let functionCallExpr = traitExpr.as(FunctionCallExprSyntax.self),
+         let calledExpr = functionCallExpr.calledExpression.as(MemberAccessExprSyntax.self) {
+        // Check for .tags() traits.
+        switch calledExpr.tokens(viewMode: .fixedUp).map(\.textWithoutBackticks).joined() {
+        case ".tags", "Tag.List.tags", "Testing.Tag.List.tags":
+          _diagnoseIssuesWithTagsTrait(functionCallExpr, addedTo: self, in: context)
+        case ".bug", "Bug.bug", "Testing.Bug.bug":
+          _diagnoseIssuesWithBugTrait(functionCallExpr, addedTo: self, in: context)
+        default:
+          // This is not a trait we can parse.
+          break
+        }
+      } else if let memberAccessExpr = traitExpr.as(MemberAccessExprSyntax.self) {
+        switch memberAccessExpr.tokens(viewMode: .fixedUp).map(\.textWithoutBackticks).joined() {
+        case ".serialized", "SerializationTrait.serialized", "Testing.SerializationTrait.serialized":
+          _diagnoseIssuesWithSerializedTrait(memberAccessExpr, addedTo: self, in: context)
+        default:
+          // This is not a trait we can parse.
+          break
+        }
+      }
     }
   }
 }
@@ -51,7 +55,7 @@ func diagnoseIssuesWithTraits(in traitExprs: [ExprSyntax], addedTo attribute: At
 ///   - traitExpr: The `.tags()` expression.
 ///   - attribute: The `@Test` or `@Suite` attribute.
 ///   - context: The macro context in which the expression is being parsed.
-private func _diagnoseIssuesWithTagsTrait(_ traitExpr: FunctionCallExprSyntax, addedTo attribute: AttributeSyntax, in context: some MacroExpansionContext) {
+private func _diagnoseIssuesWithTagsTrait(_ traitExpr: FunctionCallExprSyntax, addedTo attributeInfo: AttributeInfo, in context: some MacroExpansionContext) {
   // Find tags that are in an unsupported format (only .member and "literal"
   // are allowed.)
   for tagExpr in traitExpr.arguments.lazy.map(\.expression) {
@@ -63,7 +67,7 @@ private func _diagnoseIssuesWithTagsTrait(_ traitExpr: FunctionCallExprSyntax, a
         // These prefixes are all allowed as they specify a member access
         // into the Tag type.
       } else {
-        context.diagnose(.tagExprNotSupported(tagExpr, in: attribute))
+        context.diagnose(.tagExprNotSupported(tagExpr, in: attributeInfo.attribute))
         continue
       }
 
@@ -74,7 +78,7 @@ private func _diagnoseIssuesWithTagsTrait(_ traitExpr: FunctionCallExprSyntax, a
         // (unexpected in this context), it's a function reference and is
         // unsupported.
         if declReferenceExpr.argumentNames != nil {
-          context.diagnose(.tagExprNotSupported(tagExpr, in: attribute))
+          context.diagnose(.tagExprNotSupported(tagExpr, in: attributeInfo.attribute))
         }
       }
       func checkForValidBaseExpr(_ baseExpr: ExprSyntax) {
@@ -88,7 +92,7 @@ private func _diagnoseIssuesWithTagsTrait(_ traitExpr: FunctionCallExprSyntax, a
         } else {
           // The base expression was some other kind of expression and is
           // not supported.
-          context.diagnose(.tagExprNotSupported(tagExpr, in: attribute))
+          context.diagnose(.tagExprNotSupported(tagExpr, in: attributeInfo.attribute))
         }
       }
       if let baseExpr = tagExpr.base {
@@ -96,7 +100,7 @@ private func _diagnoseIssuesWithTagsTrait(_ traitExpr: FunctionCallExprSyntax, a
       }
     } else {
       // This tag is not of a supported expression type.
-      context.diagnose(.tagExprNotSupported(tagExpr, in: attribute))
+      context.diagnose(.tagExprNotSupported(tagExpr, in: attributeInfo.attribute))
     }
   }
 }
@@ -107,7 +111,7 @@ private func _diagnoseIssuesWithTagsTrait(_ traitExpr: FunctionCallExprSyntax, a
 ///   - traitExpr: The `.bug()` expression.
 ///   - attribute: The `@Test` or `@Suite` attribute.
 ///   - context: The macro context in which the expression is being parsed.
-private func _diagnoseIssuesWithBugTrait(_ traitExpr: FunctionCallExprSyntax, addedTo attribute: AttributeSyntax, in context: some MacroExpansionContext) {
+private func _diagnoseIssuesWithBugTrait(_ traitExpr: FunctionCallExprSyntax, addedTo attributeInfo: AttributeInfo, in context: some MacroExpansionContext) {
   // If the firstargument to the .bug() trait has no label and its value is a
   // string literal, check that it can be parsed the way we expect.
   guard let urlArg = traitExpr.arguments.first, urlArg.label == nil,
@@ -127,7 +131,28 @@ private func _diagnoseIssuesWithBugTrait(_ traitExpr: FunctionCallExprSyntax, ad
     && !urlString.contains(where: \.isWhitespace)
     && urlString.contains(":")
   if !isURLStringValid {
-    context.diagnose(.urlExprNotValid(stringLiteralExpr, in: traitExpr, in: attribute))
+    context.diagnose(.urlExprNotValid(stringLiteralExpr, in: traitExpr, in: attributeInfo.attribute))
+  }
+}
+
+/// Diagnose issues with a `.bug()` trait in a parsed attribute.
+///
+/// - Parameters:
+///   - traitExpr: The `.serialized` expression.
+///   - attribute: The `@Test` or `@Suite` attribute.
+///   - context: The macro context in which the expression is being parsed.
+private func _diagnoseIssuesWithSerializedTrait(_ traitExpr: MemberAccessExprSyntax, addedTo attributeInfo: AttributeInfo, in context: some MacroExpansionContext) {
+  guard attributeInfo.attribute.attributeName.isNamed("Test", inModuleNamed: "Testing") else {
+    // We aren't diagnosing any issues on suites.
+    return
+  }
+
+  let hasArguments = attributeInfo.otherArguments.lazy
+    .compactMap(\.label?.textWithoutBackticks)
+    .contains("arguments")
+  if !hasArguments {
+    // Serializing a non-parameterized test function has no effect.
+    context.diagnose(.traitHasNoEffect(traitExpr, in: attributeInfo.attribute))
   }
 }
 

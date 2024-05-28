@@ -154,11 +154,13 @@ struct AttributeInfo {
     if let declaration = declaration.asProtocol((any WithAttributesSyntax).self) {
       traits += createAvailabilityTraitExprs(for: declaration, in: context)
     }
-    diagnoseIssuesWithTraits(in: traits, addedTo: attribute, in: context)
 
     // Use the start of the test attribute's name as the canonical source
     // location of the test.
     sourceLocation = createSourceLocationExpr(of: attribute.attributeName, context: context)
+
+    // After this instance is fully initialized, diagnose known issues.
+    diagnoseIssuesWithTraits(in: context)
   }
 
   /// Convert this instance to a series of arguments suitable for passing to a
