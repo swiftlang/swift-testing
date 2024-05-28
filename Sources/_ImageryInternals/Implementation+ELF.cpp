@@ -135,7 +135,7 @@ static const ElfW(Ehdr) *map(const char *path, size_t *outSize) {
 // MARK: - Image
 
 void sml_getMainImage(SMLImage *outImage) {
-  sml_enumerateImages(outImage, [] (void *context, const SMLImage *image, bool *stop) {
+  sml_enumerateImages(outImage, [] (const SMLImage *image, bool *stop, void *context) {
     auto outImage = reinterpret_cast<SMLImage *>(context);
     *outImage = *image;
     *stop = true;
