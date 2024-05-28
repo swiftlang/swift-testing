@@ -159,6 +159,10 @@ func enumerateTypes<E>(in image: borrowing Image, withNamesContaining nameSubstr
     return
   }
 
+  image.withUnsafePointerToBaseAddress { baseAddress in
+    print("Found section \(sectionName) in image \(image.name as Any) at \(baseAddress)")
+  }
+
   var result: Result<Void, E> = .success(())
 
   typealias Enumerator = (UnsafeRawPointer, _ stop: UnsafeMutablePointer<CBool>) -> Void
