@@ -212,8 +212,6 @@ bool sml_findSection(const SMLImage *image, const char *sectionName, SMLSection 
         outSection->start = reinterpret_cast<const void *>(baseLoaded + shdr->sh_offset);
         outSection->size = shdr->sh_size;
         auto offset = (unsigned long long)((uintptr_t)outSection->start - (uintptr_t)baseLoaded);
-        std::fprintf(stderr, "Found section %s at %p (offset 0x%llx bytes from base %p)\n", thisSectionName, outSection->start, offset, baseLoaded);
-        std::fflush(stderr);
         return true;
       }
       

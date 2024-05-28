@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <cstring>
 #include <type_traits>
+#include <cstdio>
 
 #pragma mark Swift ABI
 
@@ -149,6 +150,8 @@ void swt_enumerateTypesWithNamesContaining(const char *nameSubstring, const void
     const auto& record = records[i];
 
     auto contextDescriptor = record.getContextDescriptor();
+    std::fprintf(stderr, "~~~ TR %p -> CD %p\n", &record, contextDescriptor);
+    std::fflush(stderr);
     if (!contextDescriptor) {
       // This type metadata record is invalid (or we don't understand how to
       // get its context descriptor), so skip it.

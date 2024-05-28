@@ -132,6 +132,12 @@ extension Test {
 /// - Bug: This function uses `rethrows` instead of typed throws due to a bug in
 ///   the Swift compiler. ([128710064](rdar://128710064))
 func enumerateTypes(withNamesContaining nameSubstring: String, _ typeEnumerator: (_ type: Any.Type) throws -> Void) rethrows {
+#if !SWT_TARGET_OS_APPLE
+  swift_enumerateAllMetadataSections({ sections, _ in
+    FileHandle.stderr.write("~~~ Type metadata section at \(String(reflecting: sections.pointee.swift5_type_metadata))\n")
+  }, nil)
+#endif
+
   try Image.forEach { image in
     try enumerateTypes(in: image, withNamesContaining: nameSubstring, typeEnumerator)
   }
