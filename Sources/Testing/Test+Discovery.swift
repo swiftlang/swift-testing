@@ -159,6 +159,17 @@ func enumerateTypes<E>(in image: borrowing Image, withNamesContaining nameSubstr
     return
   }
 
+#if SWT_TARGET_OS_APPLE
+  let flags = image.withUnsafePointerToBaseAddress { $0.load(as: mach_header.self).flags }
+  if 0 != (flags & MH_DYLIB_IN_CACHE) {
+    // Ignore this Mach header if it is in the shared cache. On platforms that
+    // support it (Darwin), most system images are containined in this range.
+    // System images can be expected not to contain test declarations, so we
+    // don't need to walk them.
+    return
+  }
+#endif
+
 #if os(Linux)
   image.withUnsafePointerToBaseAddress { baseAddress in
     try? FileHandle.stderr.write("Found section \(sectionName) in image \(image.name as Any) at \(baseAddress)\n")
