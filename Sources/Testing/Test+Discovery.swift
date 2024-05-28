@@ -127,39 +127,66 @@ extension Test {
 ///
 /// - Parameters:
 ///   - nameSubstring: A string which the names of matching classes all contain.
-///   - body: A function to invoke, once per matching type.
-func enumerateTypes(withNamesContaining nameSubstring: String, _ typeEnumerator: (_ type: Any.Type) -> Void) {
+///   - typeEnumerator: A function to invoke, once per matching type.
+///
+/// - Bug: This function uses `rethrows` instead of typed throws due to a bug in
+///   the Swift compiler. ([128710064](rdar://128710064))
+func enumerateTypes(withNamesContaining nameSubstring: String, _ typeEnumerator: (_ type: Any.Type) throws -> Void) rethrows {
+  try Image.forEach { image in
+    try enumerateTypes(in: image, withNamesContaining: nameSubstring, typeEnumerator)
+  }
+}
+
+/// Enumerate all types known to Swift found in a given image loaded into the
+/// current process whose names contain a given substring.
+///
+/// - Parameters:
+///   - image: The image in which to look for types.
+///   - nameSubstring: A string which the names of matching classes all contain.
+///   - typeEnumerator: A function to invoke, once per matching type.
+///
+/// - Bug: This function uses `rethrows` instead of typed throws due to a bug in
+///   the Swift compiler. [(128710064)](rdar://128710064)
+func enumerateTypes<E>(in image: borrowing Image, withNamesContaining nameSubstring: String, _ typeEnumerator: (_ type: Any.Type) throws(E) -> Void) throws(E) {
+#if SWT_TARGET_OS_APPLE
+  let sectionName = "__TEXT,__swift5_types"
+#elseif os(Linux)
+  let sectionName = "swift5_type_metadata"
+#elseif os(Windows)
+  let sectionName = ".sw5tymd"
+#endif
+  guard let section = image.section(named: sectionName) else {
+    return
+  }
+
+  var result: Result<Void, E> = .success(())
+
   typealias Enumerator = (UnsafeRawPointer, _ stop: UnsafeMutablePointer<CBool>) -> Void
   let body: Enumerator = { type, stop in
-    let type = unsafeBitCast(type, to: Any.Type.self)
-    typeEnumerator(type)
+    do {
+      let type = unsafeBitCast(type, to: Any.Type.self)
+      try typeEnumerator(type)
+    } catch {
+      result = .failure(error as! E)
+      stop.pointee = true
+    }
   }
 
   withoutActuallyEscaping(body) { body in
     withUnsafePointer(to: body) { body in
-      Image.forEach { image in
-#if SWT_TARGET_OS_APPLE
-        let sectionName = "__TEXT,__swift5_types"
-#elseif os(Linux)
-        let sectionName = "swift5_type_metadata"
-#elseif os(Windows)
-        let sectionName = ".sw5tymd"
-#endif
-        guard let section = image.section(named: sectionName) else {
-          return
-        }
-        section.withUnsafeRawBufferPointer { buffer in
-          swt_enumerateTypes(
-            withNamesContaining: nameSubstring,
-            inSectionStartingAt: buffer.baseAddress!,
-            byteCount: buffer.count,
-            .init(mutating: body)
-          ) { type, stop, context in
-            let body = context!.load(as: Enumerator.self)
-            body(type, stop)
-          }
+      section.withUnsafeRawBufferPointer { buffer in
+        swt_enumerateTypes(
+          withNamesContaining: nameSubstring,
+          inSectionStartingAt: buffer.baseAddress!,
+          byteCount: buffer.count,
+          .init(mutating: body)
+        ) { type, stop, context in
+          let body = context!.load(as: Enumerator.self)
+          body(type, stop)
         }
       }
     }
   }
+
+  return try result.get()
 }
