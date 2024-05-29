@@ -21,15 +21,15 @@ internal import _TestingInternals
 /// a value describing the conditions under which it exited.
 ///
 /// - Parameters:
-///   - pid: The ID of the process to wait for.
+///   - processID: The ID of the process to wait for.
 ///
-/// - Throws: If the exit status of the process with ID `pid` cannot be
+/// - Throws: If the exit status of the process with ID `processID` cannot be
 ///   determined (i.e. it does not represent an exit condition.)
-private func _blockAndWait(for pid: pid_t) throws -> ExitCondition {
+private func _blockAndWait(for processID: ProcessID) throws -> ExitCondition {
   // Get the exit status of the process or throw an error (other than EINTR.)
   while true {
     var siginfo = siginfo_t()
-    if 0 == waitid(P_PID, id_t(pid), &siginfo, WEXITED) {
+    if 0 == waitid(P_PID, id_t(processID), &siginfo, WEXITED) {
       switch siginfo.si_code {
       case .init(CLD_EXITED):
         return .exitCode(siginfo.si_status)
@@ -46,7 +46,7 @@ private func _blockAndWait(for pid: pid_t) throws -> ExitCondition {
 
 #if !(SWT_TARGET_OS_APPLE && !SWT_NO_LIBDISPATCH)
 /// A mapping of awaited child PIDs to their corresponding Swift continuations.
-private let _childProcessContinuations = Locked<[pid_t: CheckedContinuation<ExitCondition, any Error>]>()
+private let _childProcessContinuations = Locked<[ProcessID: CheckedContinuation<ExitCondition, any Error>]>()
 
 /// A condition variable used to suspend the waiter thread created by
 /// `_createWaitThread()` when there are no child processes to await.
@@ -65,9 +65,9 @@ private let _createWaitThreadImpl: Void = {
     // continuation (if available) before reaping.
     var siginfo = siginfo_t()
     if 0 == waitid(P_ALL, 0, &siginfo, WEXITED | WNOWAIT) {
-      if case let pid = siginfo.si_pid, pid != 0 {
+      if case let processID = siginfo.si_pid, pid != 0 {
         let continuation = _childProcessContinuations.withLock { childProcessContinuations in
-          childProcessContinuations.removeValue(forKey: pid)
+          childProcessContinuations.removeValue(forKey: processID)
         }
 
         // If we had a continuation for this PID, allow the process to be reaped
@@ -76,7 +76,7 @@ private let _createWaitThreadImpl: Void = {
         // this child process is not tracked by the waiter thread.
         if let continuation {
           let result = Result {
-            try _blockAndWait(for: pid)
+            try _blockAndWait(for: processID)
           }
           continuation.resume(with: result)
         }
@@ -131,19 +131,21 @@ private func _createWaitThread() {
   _createWaitThreadImpl
 }
 #endif
+#endif
 
-/// Wait for a given PID to exit and report its status.
+/// Wait for a given process to exit and report its status.
 ///
 /// - Parameters:
-///   - pid: The PID to wait for.
+///   - processID: The ID of the process to wait for.
 ///
-/// - Returns: The exit condition of `pid`.
+/// - Returns: The exit condition of `processID`.
 ///
-/// - Throws: Any error encountered calling `waitpid()` except for `EINTR`,
-///   which is ignored.
-func wait(for pid: pid_t) async throws -> ExitCondition {
+/// - Throws: On Apple platforms and Linux, any error encountered calling
+///   `waitid()` except for `EINTR`, which is ignored. On Windows, any error
+///   encountered calling `WaitForSingleObject()` or `GetExitCodeProcess()`.
+func wait(for processID: ProcessID) async throws -> ExitCondition {
 #if SWT_TARGET_OS_APPLE && !SWT_NO_LIBDISPATCH
-  let source = DispatchSource.makeProcessSource(identifier: pid, eventMask: .exit)
+  let source = DispatchSource.makeProcessSource(identifier: processID, eventMask: .exit)
   defer {
     source.cancel()
   }
@@ -153,10 +155,11 @@ func wait(for pid: pid_t) async throws -> ExitCondition {
     }
     source.resume()
   }
-  withExtendedLifetime(source) {}
 
-  return try _blockAndWait(for: pid)
-#else
+  return try withExtendedLifetime(source) {
+    try _blockAndWait(for: processID)
+  }
+#elseif SWT_TARGET_OS_APPLE || os(Linux)
   // Ensure the waiter thread is running.
   _createWaitThread()
 
@@ -167,26 +170,14 @@ func wait(for pid: pid_t) async throws -> ExitCondition {
       // the child process has terminated and manages to acquire the lock before
       // we add this continuation to the dictionary, then it will simply loop
       // and report the status again.
-      let oldContinuation = childProcessContinuations.updateValue(continuation, forKey: pid)
-      assert(oldContinuation == nil, "Unexpected continuation found for PID \(pid). Please file a bug report at https://github.com/apple/swift-testing/issues/new")
+      let oldContinuation = childProcessContinuations.updateValue(continuation, forKey: processID)
+      assert(oldContinuation == nil, "Unexpected continuation found for PID \(processID). Please file a bug report at https://github.com/apple/swift-testing/issues/new")
 
       // Wake up the waiter thread if it is waiting for more child processes.
       _ = pthread_cond_signal(_waitThreadNoChildrenCondition)
     }
   }
-#endif
-}
 #elseif os(Windows)
-/// Wait for a given process handle to exit and report its status.
-///
-/// - Parameters:
-///   - processHandle: The handle to wait for.
-///
-/// - Returns: The exit condition of `processHandle`.
-///
-/// - Throws: Any error encountered calling `WaitForSingleObject()` or
-///   `GetExitCodeProcess()`.
-func wait(for processHandle: HANDLE) async throws -> ExitCondition {
   // Once the continuation resumes, it will need to unregister the wait, so
   // yield the wait handle back to the calling scope.
   var waitHandle: HANDLE?
@@ -208,14 +199,14 @@ func wait(for processHandle: HANDLE) async throws -> ExitCondition {
     // We only want the callback to fire once (and not be rescheduled.) Waiting
     // may take an arbitrarily long time, so let the thread pool know that too.
     let flags = ULONG(WT_EXECUTEONLYONCE | WT_EXECUTELONGFUNCTION)
-    guard RegisterWaitForSingleObject(&waitHandle, processHandle, callback, context, INFINITE, flags) else {
+    guard RegisterWaitForSingleObject(&waitHandle, processID, callback, context, INFINITE, flags) else {
       continuation.resume(throwing: Win32Error(rawValue: GetLastError()))
       return
     }
   }
 
   var status: DWORD = 0
-  guard GetExitCodeProcess(processHandle, &status) else {
+  guard GetExitCodeProcess(processID, &status) else {
     // The child process terminated but we couldn't get its status back.
     // Assume generic failure.
     return .failure
@@ -223,6 +214,6 @@ func wait(for processHandle: HANDLE) async throws -> ExitCondition {
 
   // FIXME: handle SEH/VEH uncaught exceptions.
   return .exitCode(CInt(bitPattern: status))
-}
 #endif
+}
 #endif
