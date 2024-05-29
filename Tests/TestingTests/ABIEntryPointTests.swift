@@ -27,7 +27,7 @@ struct ABIEntryPointTests {
     // executables, so dlsym() does not let us find this function on that
     // platform when built as an executable rather than a dynamic library.
     let copyABIEntryPoint_v0 = try #require(
-      swt_getFunctionWithName(nil, "swt_copyABIEntryPoint_v0").map {
+      symbol(named: "swt_copyABIEntryPoint_v0").map {
         unsafeBitCast($0, to: (@convention(c) () -> UnsafeMutableRawPointer).self)
       }
     )
