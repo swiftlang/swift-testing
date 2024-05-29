@@ -167,20 +167,66 @@ public struct __Expression: Sendable {
     /// the value it represents contains substructural values.
     public var children: [Self]?
 
-    /// Initialize an instance of this type describing the specified subject
+    /// Initialize an instance of this type describing the specified subject and
+    /// its children (if any).
+    ///
+    /// - Parameters:
+    ///   - subject: The subject this instance should describe.
+    init(reflecting subject: Any) {
+      var objectIDs: Set<ObjectIdentifier> = []
+      self.init(reflecting: subject, label: nil, objectIDs: &objectIDs)!
+    }
+
+    /// Initialize an instance of this type describing the specified subject and
+    /// its children (if any), recursively.
     ///
     /// - Parameters:
     ///   - subject: The subject this instance should describe.
     ///   - label: An optional label for this value. This should be a non-`nil`
     ///     value when creating instances of this type which describe
     ///     substructural values.
-    init(reflecting subject: some Any, label: String? = nil) {
+    ///   - objectIDs: The identifiers of objects which have been seen so far
+    ///     while calling this initializer recursively. This is used to halt
+    ///     further recursion if a previously-seen object is encountered again.
+    ///
+    /// - Returns: `nil` if the type of `subject` is a class or actor which has
+    ///   already been seen while recursing. Otherwise, an initialized instance
+    ///   reflecting `subject`.
+    private init?(
+        reflecting subject: Any,
+        label: String?,
+        objectIDs: inout Set<ObjectIdentifier>
+    ) {
+      let mirror = Mirror(reflecting: subject)
+
+      // If the subject being reflected is an instance of a reference type (e.g.
+      // a class), keep track of whether it has been seen previously and stop
+      // recursing if it has. This is to avoid infinite recursion for values
+      // which have cyclic object references.
+      //
+      // This behavior is gated on the display style of the subject's mirror
+      // being `.class`. That could be incorrect if a subject implements a
+      // custom mirror, but in that situation, the subject type is responsible
+      // for avoiding data references.
+      //
+      // For efficiency, this logic only stores an `ObjectIdentifier` for each
+      // previously-seen object. This requires conditionally down-casting the
+      // subject to `AnyObject`, but Swift can downcast any value to `AnyObject`,
+      // even value types. To ensure only true reference types are tracked, this
+      // checks the metatype of the subject using `type(of:)`, which is
+      // inexpensive.
+      if mirror.displayStyle == .class, type(of: subject) is AnyObject.Type {
+        let objectIdentifier = ObjectIdentifier(subject as AnyObject)
+        if objectIDs.contains(objectIdentifier) {
+          return nil
+        }
+        objectIDs.insert(objectIdentifier)
+      }
+
       description = String(describingForTest: subject)
       debugDescription = String(reflecting: subject)
       typeInfo = TypeInfo(describingTypeOf: subject)
       self.label = label
-
-      let mirror = Mirror(reflecting: subject)
 
       isCollection = switch mirror.displayStyle {
       case .some(.collection),
@@ -192,7 +238,9 @@ public struct __Expression: Sendable {
       }
 
       if !mirror.children.isEmpty || isCollection {
-        self.children = mirror.children.map { Value(reflecting: $0.value, label: $0.label) }
+        self.children = mirror.children.compactMap { child in
+          Self(reflecting: child.value, label: child.label, objectIDs: &objectIDs)
+        }
       }
     }
   }
