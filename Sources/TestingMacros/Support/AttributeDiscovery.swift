@@ -190,7 +190,7 @@ struct AttributeInfo {
     if let argumentsIndex = otherArguments.firstIndex(where: { $0.label?.tokenKind == .identifier("arguments") }) {
       for index in argumentsIndex ..< otherArguments.endIndex {
         var argument = otherArguments[index]
-        argument.expression = .init(ClosureExprSyntax { argument.expression })
+        argument.expression = .init(ClosureExprSyntax { argument.expression.trimmed })
         otherArguments[index] = argument
       }
     }
