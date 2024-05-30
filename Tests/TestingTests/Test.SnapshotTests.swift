@@ -127,5 +127,5 @@ struct Test_SnapshotTests {
 }
 
 extension Tag {
-  @Tag fileprivate static let testTag: Self
+  @Tag fileprivate static var testTag: Self
 }
