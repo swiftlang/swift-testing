@@ -174,7 +174,7 @@ public struct __Expression: Sendable {
     ///   - subject: The subject this instance should describe.
     init(reflecting subject: Any) {
       var objectIDs: Set<ObjectIdentifier> = []
-      self.init(reflecting: subject, label: nil, objectIDs: &objectIDs)!
+      self.init(_reflecting: subject, label: nil, objectIDs: &objectIDs)!
     }
 
     /// Initialize an instance of this type describing the specified subject and
@@ -193,7 +193,7 @@ public struct __Expression: Sendable {
     ///   already been seen while recursing. Otherwise, an initialized instance
     ///   reflecting `subject`.
     private init?(
-        reflecting subject: Any,
+        _reflecting subject: Any,
         label: String?,
         objectIDs: inout Set<ObjectIdentifier>
     ) {
@@ -216,11 +216,10 @@ public struct __Expression: Sendable {
       // checks the metatype of the subject using `type(of:)`, which is
       // inexpensive.
       if mirror.displayStyle == .class, type(of: subject) is AnyObject.Type {
-        let objectIdentifier = ObjectIdentifier(subject as AnyObject)
-        if objectIDs.contains(objectIdentifier) {
+        let result = objectIDs.insert(ObjectIdentifier(subject as AnyObject))
+        if !result.inserted {
           return nil
         }
-        objectIDs.insert(objectIdentifier)
       }
 
       description = String(describingForTest: subject)
@@ -239,7 +238,7 @@ public struct __Expression: Sendable {
 
       if !mirror.children.isEmpty || isCollection {
         self.children = mirror.children.compactMap { child in
-          Self(reflecting: child.value, label: child.label, objectIDs: &objectIDs)
+          Self(_reflecting: child.value, label: child.label, objectIDs: &objectIDs)
         }
       }
     }
