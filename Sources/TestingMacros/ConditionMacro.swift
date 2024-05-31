@@ -350,7 +350,7 @@ extension ExitTestConditionMacro {
     let enumName = context.makeUniqueName("__🟠$exit_test_body__")
     let enumDecl: DeclSyntax = """
     @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-    @frozen enum \(enumName): Testing.__ExitTestContainer {
+    enum \(enumName): Testing.__ExitTestContainer {
       static var __sourceLocation: Testing.SourceLocation {
         \(createSourceLocationExpr(of: macro, context: context))
       }
