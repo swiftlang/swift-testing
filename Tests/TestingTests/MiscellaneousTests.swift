@@ -201,6 +201,11 @@ struct TestsWithAsyncArguments {
   func g(i: Int, j: Int) {}
 }
 
+@Test(
+  arguments: [0] // Meaningful trivia: This line comment should be omitted during macro expansion
+)
+func parameterizedTestWithTrailingComment(value: Int) {}
+
 @Suite("Miscellaneous tests")
 struct MiscellaneousTests {
   @Test("Free function's name")
