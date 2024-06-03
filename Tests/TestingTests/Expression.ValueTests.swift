@@ -32,6 +32,80 @@ struct Expression_ValueTests {
     #expect(child.children == nil)
   }
 
+  @Test("Value reflecting an object with multiple non-cyclic references")
+  func multipleNonCyclicReferences() throws {
+    class C: CustomStringConvertible {
+      var one: C?
+      var two: C?
+      let description: String
+
+      init(description: String) {
+        self.description = description
+      }
+    }
+
+    let x = C(description: "x")
+    let y = C(description: "y")
+    x.one = y
+    x.two = y
+
+    let value = Expression.Value(reflecting: x)
+    let children = try #require(value.children)
+    try #require(children.count == 3)
+
+    let one = try #require(value.children?[0].children?.first)
+    #expect(String(describing: one) == "y")
+
+    let two = try #require(value.children?[1].children?.first)
+    #expect(String(describing: two) == "y")
+  }
+
+  @Test("Value reflecting an object with multiple cyclic references")
+  func multipleCyclicReferences() throws {
+    class C: CustomStringConvertible {
+      var one: C?
+      weak var two: C?
+      let description: String
+
+      init(description: String) {
+        self.description = description
+      }
+    }
+
+    let x = C(description: "x")
+    let y = C(description: "y")
+    x.one = y
+    x.two = y
+    y.two = x
+
+    let value = Expression.Value(reflecting: x)
+    let children = try #require(value.children)
+    try #require(children.count == 3)
+
+    do {
+      let one = try #require(value.children?[0].children?.first)
+      #expect(String(describing: one) == "y")
+
+      let oneChildren = try #require(one.children)
+      try #require(oneChildren.count == 3)
+      try #require(oneChildren[1].label == "two")
+
+      let childlessX = try #require(oneChildren[1].children?.first)
+      #expect(String(describing: childlessX) == "x")
+    }
+    do {
+      let two = try #require(value.children?[1].children?.first)
+      #expect(String(describing: two) == "y")
+
+      let twoChildren = try #require(two.children)
+      try #require(twoChildren.count == 3)
+      try #require(twoChildren[1].label == "two")
+
+      let childlessX = try #require(twoChildren[1].children?.first)
+      #expect(String(describing: childlessX) == "x")
+    }
+  }
+
   @Test("Value reflecting an object with a cyclic reference to itself")
   func recursiveObjectReference() throws {
     class RecursiveItem {
@@ -86,7 +160,10 @@ struct Expression_ValueTests {
     #expect(oneChild.label == "one")
     #expect(oneChild.typeInfo == TypeInfo(describing: One?.self))
     let oneChildChildren = try #require(oneChild.children)
-    #expect(oneChildChildren.isEmpty)
+    try #require(oneChildChildren.count == 1)
+    let oneChildChildrenOptionalChild = try #require(oneChildChildren.first)
+    #expect(oneChildChildrenOptionalChild.label == "some")
+    #expect(oneChildChildrenOptionalChild.children == nil)
   }
 
 }

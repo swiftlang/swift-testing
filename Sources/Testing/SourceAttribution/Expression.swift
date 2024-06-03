@@ -174,7 +174,7 @@ public struct __Expression: Sendable {
     ///   - subject: The subject this instance should describe.
     init(reflecting subject: Any) {
       var objectIDs: Set<ObjectIdentifier> = []
-      self.init(_reflecting: subject, label: nil, objectIDs: &objectIDs)!
+      self.init(_reflecting: subject, label: nil, objectIDs: &objectIDs)
     }
 
     /// Initialize an instance of this type describing the specified subject and
@@ -188,11 +188,7 @@ public struct __Expression: Sendable {
     ///   - objectIDs: The identifiers of objects which have been seen so far
     ///     while calling this initializer recursively. This is used to halt
     ///     further recursion if a previously-seen object is encountered again.
-    ///
-    /// - Returns: `nil` if the type of `subject` is a class or actor which has
-    ///   already been seen while recursing. Otherwise, an initialized instance
-    ///   reflecting `subject`.
-    private init?(
+    private init(
         _reflecting subject: Any,
         label: String?,
         objectIDs: inout Set<ObjectIdentifier>
@@ -200,9 +196,9 @@ public struct __Expression: Sendable {
       let mirror = Mirror(reflecting: subject)
 
       // If the subject being reflected is an instance of a reference type (e.g.
-      // a class), keep track of whether it has been seen previously and stop
-      // recursing if it has. This is to avoid infinite recursion for values
-      // which have cyclic object references.
+      // a class), keep track of whether it has been seen previously. Later
+      // logic uses this to avoid infinite recursion for values which have
+      // cyclic object references.
       //
       // This behavior is gated on the display style of the subject's mirror
       // being `.class`. That could be incorrect if a subject implements a
@@ -215,10 +211,23 @@ public struct __Expression: Sendable {
       // even value types. To ensure only true reference types are tracked, this
       // checks the metatype of the subject using `type(of:)`, which is
       // inexpensive.
+      var objectIdentifierTeRemove: ObjectIdentifier?
+      var shouldIncludeChildren = true
       if mirror.displayStyle == .class, type(of: subject) is AnyObject.Type {
-        let result = objectIDs.insert(ObjectIdentifier(subject as AnyObject))
+        let objectIdentifier = ObjectIdentifier(subject as AnyObject)
+        let result = objectIDs.insert(objectIdentifier)
         if !result.inserted {
-          return nil
+          shouldIncludeChildren = false
+        }
+        objectIdentifierTeRemove = objectIdentifier
+      }
+      defer {
+        if let objectIdentifierTeRemove {
+          // Remove the object from the set of previously-seen objects after
+          // (potentially) recursing to reflect children. This is so that
+          // repeated references to the same object are still included multiple
+          // times; only _cyclic_ object references should be avoided.
+          objectIDs.remove(objectIdentifierTeRemove)
         }
       }
 
@@ -236,8 +245,8 @@ public struct __Expression: Sendable {
         false
       }
 
-      if !mirror.children.isEmpty || isCollection {
-        self.children = mirror.children.compactMap { child in
+      if shouldIncludeChildren && (!mirror.children.isEmpty || isCollection) {
+        self.children = mirror.children.map { child in
           Self(_reflecting: child.value, label: child.label, objectIDs: &objectIDs)
         }
       }
