@@ -173,8 +173,8 @@ public struct __Expression: Sendable {
     /// - Parameters:
     ///   - subject: The subject this instance should describe.
     init(reflecting subject: Any) {
-      var objectIDs: Set<ObjectIdentifier> = []
-      self.init(_reflecting: subject, label: nil, objectIDs: &objectIDs)
+      var seenObjects: [ObjectIdentifier: AnyObject] = [:]
+      self.init(_reflecting: subject, label: nil, seenObjects: &seenObjects)
     }
 
     /// Initialize an instance of this type describing the specified subject and
@@ -185,13 +185,14 @@ public struct __Expression: Sendable {
     ///   - label: An optional label for this value. This should be a non-`nil`
     ///     value when creating instances of this type which describe
     ///     substructural values.
-    ///   - objectIDs: The identifiers of objects which have been seen so far
-    ///     while calling this initializer recursively. This is used to halt
-    ///     further recursion if a previously-seen object is encountered again.
+    ///   - seenObjects: The objects which have been seen so far while calling
+    ///     this initializer recursively, keyed by their object identifiers.
+    ///     This is used to halt further recursion if a previously-seen object
+    ///     is encountered again.
     private init(
         _reflecting subject: Any,
         label: String?,
-        objectIDs: inout Set<ObjectIdentifier>
+        seenObjects: inout [ObjectIdentifier: AnyObject]
     ) {
       let mirror = Mirror(reflecting: subject)
 
@@ -205,18 +206,20 @@ public struct __Expression: Sendable {
       // custom mirror, but in that situation, the subject type is responsible
       // for avoiding data references.
       //
-      // For efficiency, this logic only stores an `ObjectIdentifier` for each
-      // previously-seen object. This requires conditionally down-casting the
-      // subject to `AnyObject`, but Swift can downcast any value to `AnyObject`,
-      // even value types. To ensure only true reference types are tracked, this
-      // checks the metatype of the subject using `type(of:)`, which is
-      // inexpensive.
+      // For efficiency, this logic matches previously-seen objects based on
+      // their pointer using `ObjectIdentifier`. This requires conditionally
+      // down-casting the subject to `AnyObject`, but Swift can downcast any
+      // value to `AnyObject`, even value types. To ensure only true reference
+      // types are tracked, this checks the metatype of the subject using
+      // `type(of:)`, which is inexpensive. The object itself is stored as the
+      // value in the dictionary to ensure it is retained for the duration of
+      // the recursion.
       var objectIdentifierTeRemove: ObjectIdentifier?
       var shouldIncludeChildren = true
       if mirror.displayStyle == .class, type(of: subject) is AnyObject.Type {
         let objectIdentifier = ObjectIdentifier(subject as AnyObject)
-        let result = objectIDs.insert(objectIdentifier)
-        if !result.inserted {
+        let oldValue = seenObjects.updateValue(subject as AnyObject, forKey: objectIdentifier)
+        if oldValue != nil {
           shouldIncludeChildren = false
         }
         objectIdentifierTeRemove = objectIdentifier
@@ -227,7 +230,7 @@ public struct __Expression: Sendable {
           // (potentially) recursing to reflect children. This is so that
           // repeated references to the same object are still included multiple
           // times; only _cyclic_ object references should be avoided.
-          objectIDs.remove(objectIdentifierTeRemove)
+          seenObjects[objectIdentifierTeRemove] = nil
         }
       }
 
@@ -247,7 +250,7 @@ public struct __Expression: Sendable {
 
       if shouldIncludeChildren && (!mirror.children.isEmpty || isCollection) {
         self.children = mirror.children.map { child in
-          Self(_reflecting: child.value, label: child.label, objectIDs: &objectIDs)
+          Self(_reflecting: child.value, label: child.label, seenObjects: &seenObjects)
         }
       }
     }
