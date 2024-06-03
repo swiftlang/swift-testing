@@ -167,20 +167,78 @@ public struct __Expression: Sendable {
     /// the value it represents contains substructural values.
     public var children: [Self]?
 
-    /// Initialize an instance of this type describing the specified subject
+    /// Initialize an instance of this type describing the specified subject and
+    /// its children (if any).
+    ///
+    /// - Parameters:
+    ///   - subject: The subject this instance should describe.
+    init(reflecting subject: Any) {
+      var seenObjects: [ObjectIdentifier: AnyObject] = [:]
+      self.init(_reflecting: subject, label: nil, seenObjects: &seenObjects)
+    }
+
+    /// Initialize an instance of this type describing the specified subject and
+    /// its children (if any), recursively.
     ///
     /// - Parameters:
     ///   - subject: The subject this instance should describe.
     ///   - label: An optional label for this value. This should be a non-`nil`
     ///     value when creating instances of this type which describe
     ///     substructural values.
-    init(reflecting subject: some Any, label: String? = nil) {
+    ///   - seenObjects: The objects which have been seen so far while calling
+    ///     this initializer recursively, keyed by their object identifiers.
+    ///     This is used to halt further recursion if a previously-seen object
+    ///     is encountered again.
+    private init(
+        _reflecting subject: Any,
+        label: String?,
+        seenObjects: inout [ObjectIdentifier: AnyObject]
+    ) {
+      let mirror = Mirror(reflecting: subject)
+
+      // If the subject being reflected is an instance of a reference type (e.g.
+      // a class), keep track of whether it has been seen previously. Later
+      // logic uses this to avoid infinite recursion for values which have
+      // cyclic object references.
+      //
+      // This behavior is gated on the display style of the subject's mirror
+      // being `.class`. That could be incorrect if a subject implements a
+      // custom mirror, but in that situation, the subject type is responsible
+      // for avoiding data references.
+      //
+      // For efficiency, this logic matches previously-seen objects based on
+      // their pointer using `ObjectIdentifier`. This requires conditionally
+      // down-casting the subject to `AnyObject`, but Swift can downcast any
+      // value to `AnyObject`, even value types. To ensure only true reference
+      // types are tracked, this checks the metatype of the subject using
+      // `type(of:)`, which is inexpensive. The object itself is stored as the
+      // value in the dictionary to ensure it is retained for the duration of
+      // the recursion.
+      var objectIdentifierTeRemove: ObjectIdentifier?
+      var shouldIncludeChildren = true
+      if mirror.displayStyle == .class, type(of: subject) is AnyObject.Type {
+        let object = subject as AnyObject
+        let objectIdentifier = ObjectIdentifier(object)
+        let oldValue = seenObjects.updateValue(object, forKey: objectIdentifier)
+        if oldValue != nil {
+          shouldIncludeChildren = false
+        }
+        objectIdentifierTeRemove = objectIdentifier
+      }
+      defer {
+        if let objectIdentifierTeRemove {
+          // Remove the object from the set of previously-seen objects after
+          // (potentially) recursing to reflect children. This is so that
+          // repeated references to the same object are still included multiple
+          // times; only _cyclic_ object references should be avoided.
+          seenObjects[objectIdentifierTeRemove] = nil
+        }
+      }
+
       description = String(describingForTest: subject)
       debugDescription = String(reflecting: subject)
       typeInfo = TypeInfo(describingTypeOf: subject)
       self.label = label
-
-      let mirror = Mirror(reflecting: subject)
 
       isCollection = switch mirror.displayStyle {
       case .some(.collection),
@@ -191,8 +249,10 @@ public struct __Expression: Sendable {
         false
       }
 
-      if !mirror.children.isEmpty || isCollection {
-        self.children = mirror.children.map { Value(reflecting: $0.value, label: $0.label) }
+      if shouldIncludeChildren && (!mirror.children.isEmpty || isCollection) {
+        self.children = mirror.children.map { child in
+          Self(_reflecting: child.value, label: child.label, seenObjects: &seenObjects)
+        }
       }
     }
   }
