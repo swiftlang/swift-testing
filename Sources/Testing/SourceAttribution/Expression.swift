@@ -217,8 +217,9 @@ public struct __Expression: Sendable {
       var objectIdentifierTeRemove: ObjectIdentifier?
       var shouldIncludeChildren = true
       if mirror.displayStyle == .class, type(of: subject) is AnyObject.Type {
-        let objectIdentifier = ObjectIdentifier(subject as AnyObject)
-        let oldValue = seenObjects.updateValue(subject as AnyObject, forKey: objectIdentifier)
+        let object = subject as AnyObject
+        let objectIdentifier = ObjectIdentifier(object)
+        let oldValue = seenObjects.updateValue(object, forKey: objectIdentifier)
         if oldValue != nil {
           shouldIncludeChildren = false
         }
