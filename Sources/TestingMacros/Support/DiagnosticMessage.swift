@@ -432,32 +432,106 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   /// number of arguments when applied to the given function declaration.
   ///
   /// - Parameters:
-  ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///   - attribute: The `@Test` attribute.
   ///   - functionDecl: The declaration in question.
   ///
   /// - Returns: A diagnostic message.
   static func attributeArgumentCountIncorrect(_ attribute: AttributeSyntax, on functionDecl: FunctionDeclSyntax) -> Self {
     let expectedArgumentCount = functionDecl.signature.parameterClause.parameters.count
-    switch expectedArgumentCount {
-    case 0:
+    if expectedArgumentCount == 0 {
       return Self(
         syntax: Syntax(functionDecl),
         message: "Attribute \(_macroName(attribute)) cannot specify arguments when used with '\(functionDecl.completeName)' because it does not take any",
         severity: .error
       )
-    case 1:
+    } else {
       return Self(
         syntax: Syntax(functionDecl),
-        message: "Attribute \(_macroName(attribute)) must specify an argument when used with '\(functionDecl.completeName)'",
-        severity: .error
-      )
-    default:
-      return Self(
-        syntax: Syntax(functionDecl),
-        message: "Attribute \(_macroName(attribute)) must specify \(expectedArgumentCount) arguments when used with '\(functionDecl.completeName)'",
-        severity: .error
+        message: "Attribute \(_macroName(attribute)) must specify arguments when used with '\(functionDecl.completeName)'",
+        severity: .error,
+        fixIts: _addArgumentsFixIts(for: attribute, given: functionDecl.signature.parameterClause.parameters)
       )
     }
+  }
+
+  /// Create fix-its for a diagnostic stating that the given attribute must
+  /// specify arguments since it is applied to a function which has parameters.
+  ///
+  /// - Parameters:
+  ///   - attribute: The `@Test` attribute.
+  ///   - parameters: The parameter list of the function `attribute` is applied
+  ///     to.
+  ///
+  /// - Returns: An array of fix-its to include in a diagnostic.
+  private static func _addArgumentsFixIts(for attribute: AttributeSyntax, given parameters: FunctionParameterListSyntax) -> [FixIt] {
+    let baseArguments: LabeledExprListSyntax
+    if let existingArguments = attribute.arguments {
+      guard case var .argumentList(existingLabeledArguments) = existingArguments else {
+        // If there are existing arguments but they are of an unexpected type,
+        // don't attempt to provide any fix-its.
+        return []
+      }
+
+      // If the existing argument list is non-empty, ensure the last argument
+      // has a trailing comma and space.
+      if !existingLabeledArguments.isEmpty {
+        let lastIndex = existingLabeledArguments.index(before: existingLabeledArguments.endIndex)
+        existingLabeledArguments[lastIndex].trailingComma = .commaToken(trailingTrivia: .space)
+      }
+
+      baseArguments = existingLabeledArguments
+    } else {
+      baseArguments = .init()
+    }
+
+    var fixIts: [FixIt] = []
+    func addFixIt(_ message: String, appendingArguments arguments: some Collection<LabeledExprSyntax>) {
+      var newAttribute = attribute
+      newAttribute.attributeName = newAttribute.attributeName.trimmed
+      newAttribute.leftParen = .leftParenToken()
+      newAttribute.arguments = .argumentList(baseArguments + arguments)
+      newAttribute.rightParen = .rightParenToken()
+
+      fixIts.append(FixIt(
+        message: MacroExpansionFixItMessage(message),
+        changes: [.replace(oldNode: Syntax(attribute), newNode: Syntax(newAttribute))]
+      ))
+    }
+
+    // Fix-It to add 'arguments:' with one collection. If the function has 2 or
+    // more parameters, the elements of the placeholder collection are of tuple
+    // type.
+    do {
+      let argumentsCollectionType = if parameters.count == 1, let parameter = parameters.first {
+        "[\(parameter.baseTypeName)]"
+      } else {
+        "[(\(parameters.map(\.baseTypeName).joined(separator: ", ")))]"
+      }
+
+      addFixIt(
+        parameters.count == 1 ? "Add 'arguments:'" : "Add 'arguments:' with one collection",
+        appendingArguments: [LabeledExprSyntax(label: "arguments", expression: EditorPlaceholderExprSyntax(argumentsCollectionType, type: argumentsCollectionType))]
+      )
+    }
+
+    // Fix-It to add 'arguments:' with all combinations of <N> collections,
+    // where <N> is the count of the function's parameters. Only offered for
+    // functions with 2 or more parameters.
+    if parameters.count >= 2 {
+      let additionalArguments = parameters.indices.map { index in
+        let label = index == parameters.startIndex ? "arguments" : nil
+        let argumentsCollectionType = "[\(parameters[index].baseTypeName)]"
+        return LabeledExprSyntax(
+          label: label.map { .identifier($0) },
+          colon: label == nil ? nil : .colonToken(trailingTrivia: .space),
+          expression: EditorPlaceholderExprSyntax(argumentsCollectionType, type: argumentsCollectionType),
+          trailingComma: parameters.index(after: index) < parameters.endIndex ? .commaToken(trailingTrivia: .space) : nil
+        )
+      }
+      addFixIt("Add 'arguments:' with all combinations of \(parameters.count) collections", appendingArguments: additionalArguments)
+    }
+
+    return fixIts
   }
 
   /// Create a diagnostic message stating that `@Test` or `@Suite` is
@@ -565,7 +639,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
       fixIts: [
         FixIt(
           message: MacroExpansionFixItMessage(#"Replace "\#(urlString)" with URL"#),
-          changes: [.replace(oldNode: Syntax(urlExpr), newNode: Syntax(EditorPlaceholderExprSyntax("url")))]
+          changes: [.replace(oldNode: Syntax(urlExpr), newNode: Syntax(EditorPlaceholderExprSyntax("url", type: "String")))]
         ),
         FixIt(
           message: MacroExpansionFixItMessage("Remove trait '\(traitName.trimmed)'"),

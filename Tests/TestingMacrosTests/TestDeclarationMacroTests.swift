@@ -99,9 +99,9 @@ struct TestDeclarationMacroTests {
 
       // Argument count mismatches.
       "@Test func f(i: Int) {}":
-        "Attribute 'Test' must specify an argument when used with 'f(i:)'",
+        "Attribute 'Test' must specify arguments when used with 'f(i:)'",
       "@Test func f(i: Int, j: Int) {}":
-        "Attribute 'Test' must specify 2 arguments when used with 'f(i:j:)'",
+        "Attribute 'Test' must specify arguments when used with 'f(i:j:)'",
       "@Test(arguments: []) func f() {}":
         "Attribute 'Test' cannot specify arguments when used with 'f()' because it does not take any",
 
