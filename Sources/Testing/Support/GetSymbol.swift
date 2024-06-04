@@ -53,7 +53,11 @@ func symbol(in handle: UnsafeMutableRawPointer? = nil, named symbolName: String)
   symbolName.withCString { symbolName in
     // If the caller supplied a module, use it.
     if let handle {
-      return GetProcAddress(handle, symbolName)
+      return handle.withMemoryRebound(to: HMODULE.Pointee.self, capacity: 1) { hModule in
+        GetProcAddress(hModule, symbolName).map {
+          unsafeBitCast($0, to: UnsafeRawPointer.self)
+        }
+      }
     }
 
     // Find all the modules loaded in the current process. We assume there
