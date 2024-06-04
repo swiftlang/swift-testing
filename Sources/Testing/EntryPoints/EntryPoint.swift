@@ -14,13 +14,19 @@
 private import _TestingInternals
 #endif
 
-/// The common implementation of the entry point functions in this file.
+/// The common implementation of the entry point functions in this package.
 ///
 /// - Parameters:
 ///   - args: A previously-parsed command-line arguments structure to interpret.
 ///     If `nil`, a new instance is created from the command-line arguments to
 ///     the current process.
-///   - eventHandler: An event handler
+///   - eventHandler: An optional event handler. The testing library always
+///     writes events to the standard error stream in addition to passing them
+///     to this function.
+///
+/// External callers cannot call this function directly. The can use
+/// ``copyABIEntryPoint_v0()`` to get a reference to an ABI-stable version of
+/// this function.
 func entryPoint(passing args: consuming __CommandLineArguments_v0?, eventHandler: Event.Handler?) async -> CInt {
   let exitCode = Locked(rawValue: EXIT_SUCCESS)
 
@@ -55,8 +61,8 @@ func entryPoint(passing args: consuming __CommandLineArguments_v0?, eventHandler
         oldEventHandler(event, context)
       }
 
-      // Configure the event recorder to write events to stderr.
 #if !SWT_NO_FILE_IO
+      // Configure the event recorder to write events to stderr.
       var options = Event.ConsoleOutputRecorder.Options()
       options = .for(.stderr)
       options.verbosity = args.verbosity
@@ -298,7 +304,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     }
 
     // NOTE: We don't return early or block other arguments here: a caller is
-    // allowed to pass a configuration AND --verbose and they'll both be
+    // allowed to pass a configuration AND e.g. "--verbose" and they'll both be
     // respected (it should be the least "surprising" outcome of passing both.)
   }
 
@@ -348,8 +354,14 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
       .filter { args[$0] == label && $0 < args.endIndex }
       .map { args[args.index(after: $0)] }
   }
-  result.filter = filterValues(forArgumentsWithLabel: "--filter")
-  result.skip = filterValues(forArgumentsWithLabel: "--skip")
+  let filter = filterValues(forArgumentsWithLabel: "--filter")
+  if !filter.isEmpty {
+    result.filter = result.filter.map { $0 + filter } ?? filter
+  }
+  let skip = filterValues(forArgumentsWithLabel: "--skip")
+  if !skip.isEmpty {
+    result.skip = result.skip.map { $0 + skip } ?? skip
+  }
 
   // Set up the iteration policy for the test run.
   if let repetitionsIndex = args.firstIndex(of: "--repetitions"), !isLastArgument(at: repetitionsIndex) {
@@ -500,10 +512,17 @@ private func _writeJSONLine(_ json: UnsafeRawBufferPointer, to file: borrowing F
     byte == UInt8(ascii: "\r") || byte == UInt8(ascii: "\n")
   }
 
-#if DEBUG && !SWT_NO_FILE_IO
+  func write(_ json: UnsafeRawBufferPointer) throws {
+    try file.withLock {
+      try file.write(json)
+      try file.write("\n")
+    }
+  }
+
   // We don't actually expect the JSON encoder to produce output containing
   // newline characters, so in debug builds we'll log a diagnostic message.
-  if json.contains(where: isASCIINewline) {
+  if _slowPath(json.contains(where: isASCIINewline)) {
+#if DEBUG
     let message = Event.ConsoleOutputRecorder.warning(
       "JSON encoder produced one or more newline characters while encoding an event snapshot. Please file a bug report at https://github.com/apple/swift-testing/issues/new",
       options: .for(.stderr)
@@ -513,18 +532,17 @@ private func _writeJSONLine(_ json: UnsafeRawBufferPointer, to file: borrowing F
 #else
     print(message)
 #endif
-  }
 #endif
 
-  // Remove newline characters to conform to JSON lines specification.
-  var json = Array(json)
-  json.removeAll(where: isASCIINewline)
-
-  try file.withLock {
+    // Remove the newline characters to conform to JSON lines specification.
+    var json = Array(json)
+    json.removeAll(where: isASCIINewline)
     try json.withUnsafeBytes { json in
-      try file.write(json)
+      try write(json)
     }
-    try file.write("\n")
+  } else {
+    // No newlines found, no need to copy the buffer.
+    try write(json)
   }
 }
 #endif
