@@ -116,7 +116,7 @@ static pid_t swt_siginfo_t_si_pid(const siginfo_t *siginfo) {
 /// platforms and cannot be imported directly into Swift. It is renamed back to
 /// `siginfo_t.si_status` in Swift.
 SWT_SWIFT_NAME(getter:siginfo_t.si_status(self:))
-static pid_t swt_siginfo_t_si_status(const siginfo_t *siginfo) {
+static int swt_siginfo_t_si_status(const siginfo_t *siginfo) {
   return siginfo->si_status;
 }
 #endif
