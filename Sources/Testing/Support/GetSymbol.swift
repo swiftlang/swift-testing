@@ -8,9 +8,19 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _TestingInternals
+internal import _TestingInternals
 
 #if !SWT_NO_DYNAMIC_LINKING
+
+/// The platform-specific type of a loaded image handle.
+#if SWT_TARGET_OS_APPLE || os(Linux)
+typealias ImageAddress = UnsafeMutableRawPointer
+#elseif os(Windows)
+typealias ImageAddress = HMODULE
+#else
+#warning("Platform-specific implementation missing: Dynamic loading unavailable")
+typealias ImageAddress = Never
+#endif
 
 /// The value of `RTLD_DEFAULT` on this platform.
 ///
@@ -19,9 +29,9 @@ private import _TestingInternals
 /// defined on Linux when `_GNU_SOURCE` is defined, so it is not sufficient to
 /// declare a wrapper function in the internal module's Stubs.h file.
 #if SWT_TARGET_OS_APPLE
-private nonisolated(unsafe) let RTLD_DEFAULT = UnsafeMutableRawPointer(bitPattern: -2)
+private nonisolated(unsafe) let RTLD_DEFAULT = ImageAddress(bitPattern: -2)
 #elseif os(Linux)
-private nonisolated(unsafe) let RTLD_DEFAULT = UnsafeMutableRawPointer(bitPattern: 0)
+private nonisolated(unsafe) let RTLD_DEFAULT = ImageAddress(bitPattern: 0)
 #endif
 
 /// Use the platform's dynamic loader to get a symbol in the current process
@@ -46,33 +56,32 @@ private nonisolated(unsafe) let RTLD_DEFAULT = UnsafeMutableRawPointer(bitPatter
 /// On Windows, there is no equivalent of `RTLD_DEFAULT`. It is simulated by
 /// calling `EnumProcessModules()` and iterating over the returned handles
 /// looking for one containing the given function.
-func symbol(in handle: UnsafeMutableRawPointer? = nil, named symbolName: String) -> UnsafeRawPointer? {
+func symbol(in handle: ImageAddress? = nil, named symbolName: String) -> UnsafeRawPointer? {
 #if SWT_TARGET_OS_APPLE || os(Linux)
   dlsym(handle ?? RTLD_DEFAULT, symbolName).map(UnsafeRawPointer.init)
 #elseif os(Windows)
   symbolName.withCString { symbolName in
     // If the caller supplied a module, use it.
     if let handle {
-      if let result = GetProcAddress(HMODULE(handle), symbolName) {
-        return unsafeBitCast(result, to: UnsafeRawPointer.self)
+      return GetProcAddress(handle, symbolName).map {
+        unsafeBitCast($0, to: UnsafeRawPointer.self)
       }
-      return nil
     }
 
     // Find all the modules loaded in the current process. We assume there
     // aren't more than 1024 loaded modules (as does Microsoft sample code.)
-    return withUnsafeTemporaryAllocation(of: HMODULE.self, capacity: 1024) { hModules in
-      let byteCount = DWORD(hModules.count * MemoryLayout<HMODULE>.stride)
+    return withUnsafeTemporaryAllocation(of: HMODULE?.self, capacity: 1024) { hModules in
+      let byteCount = DWORD(hModules.count * MemoryLayout<HMODULE?>.stride)
       var byteCountNeeded: DWORD = 0
       guard K32EnumProcessModules(GetCurrentProcess(), hModules.baseAddress!, byteCount, &byteCountNeeded) else {
         return nil
       }
 
       // Enumerate all modules looking for one containing the given symbol.
-      let hModuleCount = min(hModules.count, Int(byteCountNeeded) / MemoryLayout<HMODULE>.stride)
+      let hModuleCount = min(hModules.count, Int(byteCountNeeded) / MemoryLayout<HMODULE?>.stride)
       let hModulesEnd = hModules.index(hModules.startIndex, offsetBy: hModuleCount)
       for hModule in hModules[..<hModulesEnd] {
-        if let result = GetProcAddress(hModule, symbolName) {
+        if let hModule, let result = GetProcAddress(hModule, symbolName) {
           return unsafeBitCast(result, to: UnsafeRawPointer.self)
         }
       }
