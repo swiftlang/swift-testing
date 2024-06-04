@@ -210,8 +210,8 @@ sufficient information to display the event in a human-readable format.
   "text": <string>, ; the human-readable text of this message
 }
 
-<message-symbol> ::= "default" | "skip" | "pass" | "passWithKnownIssue" | "fail"
-  "difference" | "warning" | "details"
+<message-symbol> ::= "default" | "skip" | "pass" | "passWithKnownIssue" |
+  "fail" | "difference" | "warning" | "details"
 ```
 
 <!--
