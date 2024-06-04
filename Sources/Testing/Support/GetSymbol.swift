@@ -55,7 +55,7 @@ func symbol(in handle: UnsafeMutableRawPointer? = nil, named symbolName: String)
     if let handle {
       return handle.withMemoryRebound(to: HMODULE.Pointee.self, capacity: 1) { hModule in
         GetProcAddress(hModule, symbolName).map {
-          unsafeBitCast($0, to: UnsafeRawPointer.self)
+          unsafeBitCast($0, to: UnsafeRawPointer?.self)
         }
       }
     }

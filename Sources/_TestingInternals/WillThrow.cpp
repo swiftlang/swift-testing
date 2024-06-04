@@ -18,3 +18,5 @@ SWT_IMPORT_FROM_STDLIB std::atomic<SWTWillThrowHandler> _swift_willThrow;
 SWTWillThrowHandler swt_setWillThrowHandler(SWTWillThrowHandler handler) {
   return _swift_willThrow.exchange(handler, std::memory_order_acq_rel);
 }
+
+// Bump compiler cache. (Remove me.)
