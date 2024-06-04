@@ -53,11 +53,10 @@ func symbol(in handle: UnsafeMutableRawPointer? = nil, named symbolName: String)
   symbolName.withCString { symbolName in
     // If the caller supplied a module, use it.
     if let handle {
-      return handle.withMemoryRebound(to: HMODULE.Pointee.self, capacity: 1) { hModule in
-        GetProcAddress(hModule, symbolName).map {
-          unsafeBitCast($0, to: UnsafeRawPointer?.self)
-        }
+      if let result = GetProcAddress(HMODULE(handle), symbolName) {
+        return unsafeBitCast(result, to: UnsafeRawPointer.self)
       }
+      return nil
     }
 
     // Find all the modules loaded in the current process. We assume there
@@ -65,7 +64,7 @@ func symbol(in handle: UnsafeMutableRawPointer? = nil, named symbolName: String)
     return withUnsafeTemporaryAllocation(of: HMODULE.self, capacity: 1024) { hModules in
       let byteCount = DWORD(hModules.count * MemoryLayout<HMODULE>.stride)
       var byteCountNeeded: DWORD = 0
-      guard EnumProcessModules(GetCurrentProcess(), hModules.baseAddress!, byteCount, &byteCountNeeded) else {
+      guard K32EnumProcessModules(GetCurrentProcess(), hModules.baseAddress!, byteCount, &byteCountNeeded) else {
         return nil
       }
 
@@ -74,7 +73,7 @@ func symbol(in handle: UnsafeMutableRawPointer? = nil, named symbolName: String)
       let hModulesEnd = hModules.index(hModules.startIndex, offsetBy: hModuleCount)
       for hModule in hModules[..<hModulesEnd] {
         if let result = GetProcAddress(hModule, symbolName) {
-          return UnsafeRawPointer(result)
+          return unsafeBitCast(result, to: UnsafeRawPointer.self)
         }
       }
       return nil
