@@ -77,7 +77,7 @@ enum Environment {
   /// If the `environ_lock_np()` function is not available on the current
   /// system, the value of this property is `nil`.
   private static let _environ_lock_np = {
-    swt_getFunctionWithName(nil, "environ_lock_np").map {
+    symbol(named: "environ_lock_np").map {
       unsafeBitCast($0, to: (@convention(c) () -> Void).self)
     }
   }()
@@ -87,7 +87,7 @@ enum Environment {
   /// If the `environ_unlock_np()` function is not available on the current
   /// system, the value of this property is `nil`.
   private static let _environ_unlock_np = {
-    swt_getFunctionWithName(nil, "environ_unlock_np").map {
+    symbol(named: "environ_unlock_np").map {
       unsafeBitCast($0, to: (@convention(c) () -> Void).self)
     }
   }()
