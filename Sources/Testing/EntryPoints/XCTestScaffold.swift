@@ -31,6 +31,7 @@ extension XCTSourceCodeContext {
     self.init(callStackAddresses: addresses, location: sourceLocation)
   }
 }
+
 extension XCTIssue {
   init(_ issue: Issue, processLaunchedByXcode: Bool) {
     var error = issue.error

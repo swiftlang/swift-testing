@@ -245,7 +245,6 @@ extension ExitTest {
       // If the running executable appears to be the XCTest runner executable in
       // Xcode, figure out the path to the running XCTest bundle. If we can find
       // it, then we can re-run the host XCTestCase instance.
-      // TODO: use basename_r() instead of parsing the path.
       var isHostedByXCTest = false
       if let executablePath = try? childProcessExecutablePath.get() {
         executablePath.withCString { childProcessExecutablePath in
