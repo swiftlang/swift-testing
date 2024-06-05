@@ -23,8 +23,9 @@ extension ABIv0.Record {
   /// by the resulting event handler, a JSON object representing it and its
   /// associated context is created and is passed to `eventHandler`.
   ///
-  /// Note that `_eventHandlerForStreamingEvents(toFileAtPath:)` calls this
-  /// function and performs additional postprocessing before writing JSON data.
+  /// Note that ``configurationForEntryPoint(from:)`` calls this function and
+  /// performs additional postprocessing before writing JSON data to ensure it
+  /// does not contain any newline characters.
   static func eventHandler(
     forwardingTo eventHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
   ) -> Event.Handler {
@@ -79,12 +80,11 @@ extension EventAndContextSnapshot: Codable {}
 ///
 /// The resulting event handler outputs data as JSON. For each event handled by
 /// the resulting event handler, a JSON object representing it and its
-/// associated context is created and is passed to `eventHandler`. These JSON
-/// objects are guaranteed not to contain any ASCII newline characters (`"\r"`
-/// or `"\n"`).
+/// associated context is created and is passed to `eventHandler`.
 ///
-/// Note that `_eventHandlerForStreamingEvents_v0(toFileAtPath:)` calls this
-/// function and performs additional postprocessing before writing JSON data.
+/// Note that ``configurationForEntryPoint(from:)`` calls this function and
+/// performs additional postprocessing before writing JSON data to ensure it
+/// does not contain any newline characters.
 ///
 /// - Warning: This function will be removed when the ABI version 0 JSON schema
 ///   is finalized.
