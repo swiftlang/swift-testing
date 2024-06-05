@@ -13,6 +13,12 @@ private import Foundation
 #endif
 
 enum JSON {
+  /// Whether or not pretty-printed JSON is enabled for this process.
+  ///
+  /// This is a debugging tool that can be used by developers working on the
+  /// testing library to improve the readability of JSON output.
+  private static let _prettyPrintingEnabled = Environment.flag(named: "SWT_PRETTY_PRINT_JSON") == true
+
   /// Encode a value as JSON.
   ///
   /// - Parameters:
@@ -29,7 +35,7 @@ enum JSON {
 
     // Keys must be sorted to ensure deterministic matching of encoded data.
     encoder.outputFormatting.insert(.sortedKeys)
-    if Environment.flag(named: "SWT_PRETTY_PRINT_JSON") == true {
+    if _prettyPrintingEnabled {
       encoder.outputFormatting.insert(.prettyPrinted)
       encoder.outputFormatting.insert(.withoutEscapingSlashes)
     }
