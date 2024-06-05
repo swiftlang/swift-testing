@@ -38,8 +38,8 @@ extension AttributeInfo {
         }
       } else if let memberAccessExpr = traitExpr.as(MemberAccessExprSyntax.self) {
         switch memberAccessExpr.tokens(viewMode: .fixedUp).map(\.textWithoutBackticks).joined() {
-        case ".serialized", "SerializationTrait.serialized", "Testing.SerializationTrait.serialized":
-          _diagnoseIssuesWithSerializedTrait(memberAccessExpr, addedTo: self, in: context)
+        case ".serialized", "ParallelizationTrait.serialized", "Testing.ParallelizationTrait.serialized":
+          _diagnoseIssuesWithParallelizationTrait(memberAccessExpr, addedTo: self, in: context)
         default:
           // This is not a trait we can parse.
           break
@@ -141,7 +141,7 @@ private func _diagnoseIssuesWithBugTrait(_ traitExpr: FunctionCallExprSyntax, ad
 ///   - traitExpr: The `.serialized` expression.
 ///   - attribute: The `@Test` or `@Suite` attribute.
 ///   - context: The macro context in which the expression is being parsed.
-private func _diagnoseIssuesWithSerializedTrait(_ traitExpr: MemberAccessExprSyntax, addedTo attributeInfo: AttributeInfo, in context: some MacroExpansionContext) {
+private func _diagnoseIssuesWithParallelizationTrait(_ traitExpr: MemberAccessExprSyntax, addedTo attributeInfo: AttributeInfo, in context: some MacroExpansionContext) {
   guard attributeInfo.attribute.attributeName.isNamed("Test", inModuleNamed: "Testing") else {
     // We aren't diagnosing any issues on suites.
     return
