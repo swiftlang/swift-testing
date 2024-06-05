@@ -66,6 +66,7 @@ add_library(Testing
   Support/CError.swift
   Support/Environment.swift
   Support/FileHandle.swift
+  Support/GetSymbol.swift
   Support/Graph.swift
   Support/JSON.swift
   Support/Locked.swift
