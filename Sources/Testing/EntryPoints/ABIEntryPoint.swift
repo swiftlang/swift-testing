@@ -22,6 +22,9 @@
 /// - Returns: The result of invoking the testing library. The type of this
 ///   value is subject to change.
 ///
+/// - Throws: Any error that occurred prior to running tests. Errors that are
+///   thrown while tests are running are handled by the testing library.
+///
 /// This function examines the command-line arguments to the current process
 /// and then invokes available tests in the current process.
 ///
@@ -31,7 +34,7 @@
 public typealias ABIEntryPoint_v0 = @Sendable (
   _ argumentsJSON: UnsafeRawBufferPointer?,
   _ recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
-) async -> CInt
+) async throws -> CInt
 
 /// Get the entry point to the testing library used by tools that want to remain
 /// version-agnostic regarding the testing library.
@@ -58,11 +61,11 @@ public typealias ABIEntryPoint_v0 = @Sendable (
 public func copyABIEntryPoint_v0() -> UnsafeMutableRawPointer {
   let result = UnsafeMutablePointer<ABIEntryPoint_v0>.allocate(capacity: 1)
   result.initialize { argumentsJSON, recordHandler in
-    let args = try! argumentsJSON.map { argumentsJSON in
+    let args = try argumentsJSON.map { argumentsJSON in
       try JSON.decode(__CommandLineArguments_v0.self, from: argumentsJSON)
     }
 
-    let eventHandler = try! eventHandlerForStreamingEvents(version: args?.experimentalEventStreamVersion, forwardingTo: recordHandler)
+    let eventHandler = try eventHandlerForStreamingEvents(version: args?.experimentalEventStreamVersion, forwardingTo: recordHandler)
     return await entryPoint(passing: args, eventHandler: eventHandler)
   }
   return .init(result)

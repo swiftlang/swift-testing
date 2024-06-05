@@ -53,7 +53,7 @@ struct ABIEntryPointTests {
     }
 
     // Call the entry point function.
-    let result = await abiEntryPoint.pointee(.init(argumentsJSON)) { recordJSON in
+    let result = try await abiEntryPoint.pointee(.init(argumentsJSON)) { recordJSON in
       let record = try! JSON.decode(ABIv0.Record.self, from: recordJSON)
       _ = record.version
     }
