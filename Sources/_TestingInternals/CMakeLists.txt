@@ -9,7 +9,6 @@
 include(LibraryVersion)
 add_library(_TestingInternals STATIC
   Discovery.cpp
-  GetSymbol.cpp
   WillThrow.cpp)
 target_include_directories(_TestingInternals PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/include)
