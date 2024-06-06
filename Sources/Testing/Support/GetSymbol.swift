@@ -8,7 +8,11 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if SWT_BUILDING_WITH_CMAKE
+@_implementationOnly import _TestingInternals
+#else
 internal import _TestingInternals
+#endif
 
 #if !SWT_NO_DYNAMIC_LINKING
 
