@@ -8,9 +8,15 @@
 
 # Macros must be built for the build machine, not the host.
 include(ExternalProject)
+if(NOT SwiftTesting_MACRO_MAKE_PROGRAM)
+  set(SwiftTesting_MACRO_MAKE_PROGRAM ${CMAKE_MAKE_PROGRAM})
+endif()
+
 ExternalProject_Add(TestingMacros
   PREFIX "tm"
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/TestingMacros"
+  CMAKE_ARGS
+    -DCMAKE_MAKE_PROGRAM=${SwiftTesting_MACRO_MAKE_PROGRAM}
   INSTALL_COMMAND "")
 ExternalProject_Get_Property(TestingMacros BINARY_DIR)
 if(CMAKE_HOST_WIN32)
