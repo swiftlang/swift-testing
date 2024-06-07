@@ -34,17 +34,16 @@ tests in that suite inherit those tags.
 The testing library doesn't assign any semantic meaning to any tags, nor does
 the presence or absence of tags affect how the testing library runs tests.
 
-Tags themselves are instances of ``Tag`` and can be expressed as string
-literals directly in a test suite or test function's declaration. Tags can also
-be expressed as named constants declared as static members of ``Tag``. To
-declare a named constant tag, use the ``Tag()`` macro:
+Tags themselves are instances of ``Tag`` and expressed as named constants 
+declared as static members of ``Tag``. To declare a named constant tag, use the
+``Tag()`` macro:
 
 ```swift
 extension Tag {
   @Tag static var legallyRequired: Self
 }
 
-@Test("Vendor's license is valid", .tags("critical"), .tags(.legallyRequired))
+@Test("Vendor's license is valid", .tags(.legallyRequired))
 func licenseValid() { ... }
 ```
 
@@ -148,13 +147,13 @@ Tag colors can be represented using several formats:
   the color in a device-independent RGB color space.
 - The `null` literal value, which represents no color.
 
-For example, to set the color of the `"critical"` tag to orange and the color of
+For example, to set the color of the `.critical` tag to orange and the color of
 the `.legallyRequired` tag to teal, the contents of `"tag-colors.json"` can
 be set to:
 
 ```json
 {
-  "critical": "orange",
+  ".critical": "orange",
   ".legallyRequired": "#66FFCC"
 }
 ```
