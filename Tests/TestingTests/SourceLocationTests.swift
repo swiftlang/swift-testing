@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ForToolsIntegrationOnly) import Testing
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
 @Suite("SourceLocation Tests")
 struct SourceLocationTests {
@@ -51,6 +51,21 @@ struct SourceLocationTests {
     #expect(sourceLocation.fileName == "D.swift")
   }
 
+
+#if !SWT_NO_EXIT_TESTS
+  @Test("SourceLocation.fileID property must be well-formed")
+  func sourceLocationFileIDWellFormed() async {
+    await #expect(exitsWith: .failure) {
+      var sourceLocation = SourceLocation()
+      sourceLocation.fileID = ""
+    }
+    await #expect(exitsWith: .failure) {
+      var sourceLocation = SourceLocation()
+      sourceLocation.fileID = "ABC"
+    }
+  }
+#endif
+
   @Test("SourceLocation.line and .column properties")
   func sourceLocationLineAndColumn() {
     var sourceLocation = SourceLocation()
@@ -64,6 +79,20 @@ struct SourceLocationTests {
     sourceLocation.column = 2468
     #expect(sourceLocation.column == 2468)
   }
+
+#if !SWT_NO_EXIT_TESTS
+  @Test("SourceLocation.line and column properties must be positive")
+  func sourceLocationLineAndColumnPositive() async {
+    await #expect(exitsWith: .failure) {
+      var sourceLocation = SourceLocation()
+      sourceLocation.line = -1
+    }
+    await #expect(exitsWith: .failure) {
+      var sourceLocation = SourceLocation()
+      sourceLocation.column = -1
+    }
+  }
+#endif
 
   @Test("SourceLocation._filePath property")
   func sourceLocationFilePath() {

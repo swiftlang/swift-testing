@@ -320,9 +320,7 @@ extension FileHandle {
     let hasContiguousStorage: Void? = try bytes.withContiguousStorageIfAvailable { bytes in
       try write(bytes, flushAfterward: flushAfterward)
     }
-    if hasContiguousStorage == nil {
-      preconditionFailure("byte sequence must provide contiguous storage: \(bytes)")
-    }
+    precondition(hasContiguousStorage != nil, "byte sequence must provide contiguous storage: \(bytes)")
   }
 
   /// Write a sequence of bytes to this file handle.

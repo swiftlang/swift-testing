@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ForToolsIntegrationOnly) import Testing
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
 @Suite("Configuration.RepetitionPolicy Tests")
 struct PlanIterationTests {
@@ -113,4 +113,18 @@ struct PlanIterationTests {
       }
     }
   }
+
+#if !SWT_NO_EXIT_TESTS
+  @Test("Iteration count must be positive")
+  func positiveIterationCount() async {
+    await #expect(exitsWith: .failure) {
+      var configuration = Configuration()
+      configuration.repetitionPolicy.maximumIterationCount = 0
+    }
+    await #expect(exitsWith: .failure) {
+      var configuration = Configuration()
+      configuration.repetitionPolicy.maximumIterationCount = -1
+    }
+  }
+#endif
 }

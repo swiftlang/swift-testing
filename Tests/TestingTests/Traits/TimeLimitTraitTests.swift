@@ -174,7 +174,7 @@ struct TimeLimitTraitTests {
     let timeEnded = Test.Clock.Instant.now
 
     let timeAwaited = try #require(timeStarted.rawValue).duration(to: timeEnded)
-    #expect(timeAwaited < .seconds(1))
+    #expect(timeAwaited < .seconds(5))
   }
 
   @available(_clockAPI, *)

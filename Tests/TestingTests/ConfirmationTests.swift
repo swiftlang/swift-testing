@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ForToolsIntegrationOnly) import Testing
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
 @Suite("Confirmation Tests")
 struct ConfirmationTests {
@@ -42,6 +42,18 @@ struct ConfirmationTests {
       await runner.run()
     }
   }
+
+#if !SWT_NO_EXIT_TESTS
+  @Test("Confirmation requires positive count")
+  func positiveCount() async {
+    await #expect(exitsWith: .failure) {
+      await confirmation { $0.confirm(count: 0) }
+    }
+    await #expect(exitsWith: .failure) {
+      await confirmation { $0.confirm(count: -1) }
+    }
+  }
+#endif
 }
 
 // MARK: - Fixtures
