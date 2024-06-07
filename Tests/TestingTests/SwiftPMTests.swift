@@ -167,6 +167,34 @@ struct SwiftPMTests {
   }
 
 #if canImport(Foundation)
+  @Test("--experimental-configuration-path argument")
+  func configurationPath() async throws {
+    let tempDirPath = try temporaryDirectory()
+    let temporaryFilePath = appendPathComponent("\(UInt64.random(in: 0 ..< .max))", to: tempDirPath)
+    defer {
+      _ = remove(temporaryFilePath)
+    }
+    do {
+      let fileHandle = try FileHandle(forWritingAtPath: temporaryFilePath)
+      try fileHandle.write(
+        """
+        {
+          "verbosity": 50,
+          "filter": ["hello", "world"],
+          "parallel": false
+        }
+        """
+      )
+    }
+    let args = try parseCommandLineArguments(from: ["PATH", "--experimental-configuration-path", temporaryFilePath])
+    #expect(args.verbose == nil)
+    #expect(args.quiet == nil)
+    #expect(args.verbosity == 50)
+    #expect(args.filter == ["hello", "world"])
+    #expect(args.skip == nil)
+    #expect(args.parallel == false)
+  }
+
   func decodeABIv0RecordStream(fromFileAtPath path: String) throws -> [ABIv0.Record] {
     try FileHandle(forReadingAtPath: path).readToEnd()
       .split(separator: 10) // "\n"

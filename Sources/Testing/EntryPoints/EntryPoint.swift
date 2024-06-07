@@ -32,7 +32,7 @@ func entryPoint(passing args: consuming __CommandLineArguments_v0?, eventHandler
 
   do {
     let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments)
-    if args.listTests ?? true {
+    if args.listTests ?? false {
       for testID in await listTestsForEntryPoint(Test.all) {
 #if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
         try? FileHandle.stdout.write("\(testID)\n")
@@ -153,19 +153,19 @@ public struct __CommandLineArguments_v0: Sendable {
   public init() {}
 
   /// The value of the `--list-tests` argument.
-  public var listTests: Bool? = false
+  public var listTests: Bool?
 
   /// The value of the `--parallel` or `--no-parallel` argument.
-  public var parallel: Bool? = true
+  public var parallel: Bool?
 
   /// The value of the `--verbose` argument.
-  public var verbose: Bool? = false
+  public var verbose: Bool?
 
   /// The value of the `--very-verbose` argument.
-  public var veryVerbose: Bool? = false
+  public var veryVerbose: Bool?
 
   /// The value of the `--quiet` argument.
-  public var quiet: Bool? = false
+  public var quiet: Bool?
 
   /// Storage for the ``verbosity`` property.
   private var _verbosity: Int?
@@ -226,7 +226,7 @@ public struct __CommandLineArguments_v0: Sendable {
   ///
   /// - Warning: The behavior of this property will change when the ABI version
   ///   0 JSON schema is finalized.
-  public var experimentalEventStreamVersion: Int? = nil
+  public var experimentalEventStreamVersion: Int?
 
   /// The value(s) of the `--filter` argument.
   public var filter: [String]?
