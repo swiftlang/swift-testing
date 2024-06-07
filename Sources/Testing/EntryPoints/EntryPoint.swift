@@ -31,7 +31,7 @@ func entryPoint(passing args: consuming __CommandLineArguments_v0?, eventHandler
   let exitCode = Locked(rawValue: EXIT_SUCCESS)
 
   do {
-    let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments())
+    let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments)
     if args.listTests ?? true {
       for testID in await listTestsForEntryPoint(Test.all) {
 #if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
