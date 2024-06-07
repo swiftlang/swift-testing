@@ -176,6 +176,10 @@ struct TestDeclarationMacroTests {
         "The result of this function will be discarded during testing",
       "@Test func f() -> (Int, Int) {}":
         "The result of this function will be discarded during testing",
+
+      // .serialized on a non-parameterized test function
+      "@Test(.serialized) func f() {}":
+        "Trait '.serialized' has no effect when used with a non-parameterized test function",
     ]
   )
   func apiMisuseWarnings(input: String, expectedMessage: String) throws {

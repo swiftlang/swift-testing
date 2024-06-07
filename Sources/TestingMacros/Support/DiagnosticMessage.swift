@@ -581,6 +581,22 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
+  /// Create a diagnostic message stating that a trait has no effect on a given
+  /// attribute (assumed to be a non-parameterized `@Test` attribute.)
+  ///
+  /// - Parameters:
+  ///   - traitExpr: The unsupported trait expression.
+  ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///
+  /// - Returns: A diagnostic message.
+  static func traitHasNoEffect(_ traitExpr: some ExprSyntaxProtocol, in attribute: AttributeSyntax) -> Self {
+    Self(
+      syntax: Syntax(traitExpr),
+      message: "Trait '\(traitExpr.trimmed)' has no effect when used with a non-parameterized test function",
+      severity: .warning
+    )
+  }
+
   /// Create a diagnostic messages stating that the expression passed to
   /// `#require()` is ambiguous.
   ///
