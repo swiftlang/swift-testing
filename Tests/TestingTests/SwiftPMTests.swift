@@ -174,16 +174,18 @@ struct SwiftPMTests {
     defer {
       _ = remove(temporaryFilePath)
     }
-    let fileHandle = try FileHandle(forWritingAtPath: temporaryFilePath)
-    try fileHandle.write(
-      """
-      {
-        "verbosity": 50,
-        "filter": ["hello", "world"],
-        "parallel": false
-      }
-      """
-    )
+    do {
+      let fileHandle = try FileHandle(forWritingAtPath: temporaryFilePath)
+      try fileHandle.write(
+        """
+        {
+          "verbosity": 50,
+          "filter": ["hello", "world"],
+          "parallel": false
+        }
+        """
+      )
+    }
     let args = try parseCommandLineArguments(from: ["PATH", "--experimental-configuration-path", temporaryFilePath])
     #expect(args.verbose == nil)
     #expect(args.quiet == nil)
