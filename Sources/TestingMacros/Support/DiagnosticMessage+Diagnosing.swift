@@ -53,7 +53,7 @@ extension AttributeInfo {
 ///
 /// - Parameters:
 ///   - traitExpr: The `.tags()` expression.
-///   - attribute: The `@Test` or `@Suite` attribute.
+///   - attributeInfo: The `@Test` or `@Suite` attribute.
 ///   - context: The macro context in which the expression is being parsed.
 private func _diagnoseIssuesWithTagsTrait(_ traitExpr: FunctionCallExprSyntax, addedTo attributeInfo: AttributeInfo, in context: some MacroExpansionContext) {
   // Find tags that are in an unsupported format (only .member and "literal"
