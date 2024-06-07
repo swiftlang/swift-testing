@@ -26,7 +26,7 @@ struct SwiftPMTests {
   func commandLineArguments() {
     // We can't meaningfully check the actual values of this process' arguments,
     // but we can check that the arguments() function has a non-empty result.
-    #expect(!CommandLine.arguments().isEmpty)
+    #expect(!CommandLine.arguments.isEmpty)
   }
 
   @Test("--parallel/--no-parallel argument")

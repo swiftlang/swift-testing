@@ -15,19 +15,6 @@ private import _TestingInternals
 #endif
 
 extension CommandLine {
-  /// Get the command-line arguments passed to this process.
-  ///
-  /// - Returns: An array of command-line arguments.
-  ///
-  /// This function works around a bug in the Swift standard library that causes
-  /// the built-in `CommandLine.arguments` property to not be concurrency-safe.
-  /// ([swift-#66213](https://github.com/apple/swift/issues/66213))
-  static func arguments() -> [String] {
-    UnsafeBufferPointer(start: unsafeArgv, count: Int(argc)).lazy
-      .compactMap { $0 }
-      .compactMap { String(validatingUTF8CString: $0) }
-  }
-
   /// The path to the current process' executable.
   static var executablePath: String {
     get throws {

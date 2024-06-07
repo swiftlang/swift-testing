@@ -240,7 +240,7 @@ extension ExitTest {
     let childArguments: [String] = {
       var result = [String]()
       lazy var xctestTargetPath = Environment.variable(named: "XCTestBundlePath")
-        ?? CommandLine.arguments().dropFirst().last
+        ?? CommandLine.arguments.dropFirst().last
 #if SWT_TARGET_OS_APPLE
       // If the running executable appears to be the XCTest runner executable in
       // Xcode, figure out the path to the running XCTest bundle. If we can find
