@@ -139,7 +139,7 @@ private func _diagnoseIssuesWithBugTrait(_ traitExpr: FunctionCallExprSyntax, ad
 ///
 /// - Parameters:
 ///   - traitExpr: The `.serialized` expression.
-///   - attribute: The `@Test` or `@Suite` attribute.
+///   - attributeInfo: The `@Test` or `@Suite` attribute.
 ///   - context: The macro context in which the expression is being parsed.
 private func _diagnoseIssuesWithParallelizationTrait(_ traitExpr: MemberAccessExprSyntax, addedTo attributeInfo: AttributeInfo, in context: some MacroExpansionContext) {
   guard attributeInfo.attribute.attributeName.isNamed("Test", inModuleNamed: "Testing") else {
