@@ -63,7 +63,7 @@ extension Tag {
 }
 
 extension Tag.com_example_foodtruck {
-  @Tag static var extraSpecial: Self
+  @Tag static var extraSpecial: Tag
 }
 
 @Test
