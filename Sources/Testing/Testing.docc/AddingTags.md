@@ -66,7 +66,7 @@ extension Tag.com_example_foodtruck {
   @Tag static var extraSpecial: Tag
 }
 
-@Test
+@Test(
   "Extra Special Sauce recipe is secret",
   .tags(.com_example_foodtruck.extraSpecial)
 )
