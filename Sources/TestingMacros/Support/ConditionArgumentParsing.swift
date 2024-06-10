@@ -8,13 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if compiler(>=5.11)
 import SwiftSyntax
 import SwiftSyntaxMacros
-#else
-public import SwiftSyntax
-public import SwiftSyntaxMacros
-#endif
 
 /// The result of parsing the condition argument passed to `#expect()` or
 /// `#require()`.

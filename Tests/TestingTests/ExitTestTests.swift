@@ -62,7 +62,6 @@ private import _TestingInternals
 #endif
   }
 
-#if SWIFT_PM_SUPPORTS_SWIFT_TESTING
   @Test("Exit tests (failing)") func failing() async {
     let expectedCount: Int
 #if os(Windows)
@@ -82,7 +81,6 @@ private import _TestingInternals
       await runTest(for: FailingExitTests.self, configuration: configuration)
     }
   }
-#endif
 
   @Test("Mock exit test handlers (passing)") func passingMockHandler() async {
     await confirmation("System issue recorded", expectedCount: 0) { issueRecorded in

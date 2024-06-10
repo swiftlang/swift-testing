@@ -223,13 +223,9 @@ extension ExitTest {
   /// The exit test handler used when integrating with Swift Package Manager via
   /// the `__swiftPMEntryPoint()` function.
   ///
-  /// - Parameters:
-  ///   - xcTestCaseIdentifier: The identifier of the XCTest-based test hosting
-  ///     the testing library (when using ``XCTestScaffold``.)
-  ///
   /// For a description of the inputs and outputs of this function, see the
   /// documentation for ``ExitTest/Handler``.
-  static func handlerForEntryPoint(forXCTestCaseIdentifiedBy xcTestCaseIdentifier: String? = nil) -> Handler {
+  static func handlerForEntryPoint() -> Handler {
     // The environment could change between invocations if a test calls setenv()
     // or unsetenv(), so we need to recompute the child environment each time.
     // The executable and XCTest bundle paths should not change over time, so we
@@ -263,8 +259,7 @@ extension ExitTest {
         // test bundle is set, assume we _are_ being hosted and specify a
         // blank test identifier ("/") to force the xctest command-line tool
         // to run.
-        let xcTestCaseIdentifier = xcTestCaseIdentifier ?? "/"
-        result += ["-XCTest", xcTestCaseIdentifier, xctestTargetPath]
+        result += ["-XCTest", "/", xctestTargetPath]
       }
 #else
       if let xcTestCaseIdentifier {

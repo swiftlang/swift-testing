@@ -61,7 +61,7 @@ enum Environment {
         break
       }
 
-      if let row = String(validatingUTF8CString: rowp),
+      if let row = String(validatingCString: rowp),
          let (key, value) = _splitEnvironmentVariable(row) {
         result[key] = value
       }
@@ -168,14 +168,14 @@ enum Environment {
         if let equals = strchr(rowp, CInt(UInt8(ascii: "="))) {
           let keyLength = UnsafeRawPointer(equals) - UnsafeRawPointer(rowp)
           if 0 == strncmp(rowp, name, keyLength) {
-            return String(validatingUTF8CString: equals + 1)
+            return String(validatingCString: equals + 1)
           }
         }
       }
       return nil
     }
 #elseif SWT_TARGET_OS_APPLE || os(Linux) || os(WASI)
-    getenv(name).flatMap { String(validatingUTF8CString: $0) }
+    getenv(name).flatMap { String(validatingCString: $0) }
 #elseif os(Windows)
     name.withCString(encodedAs: UTF16.self) { name in
       func getVariable(maxCount: Int) -> String? {

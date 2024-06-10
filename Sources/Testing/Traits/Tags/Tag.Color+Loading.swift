@@ -26,7 +26,7 @@ private var _homeDirectoryPath: String? {
   return if let homeVariable = Environment.variable(named: "HOME") {
     homeVariable
   } else if let pwd = getpwuid(geteuid()) {
-    String(validatingUTF8CString: pwd.pointee.pw_dir)
+    String(validatingCString: pwd.pointee.pw_dir)
   } else {
     nil
   }

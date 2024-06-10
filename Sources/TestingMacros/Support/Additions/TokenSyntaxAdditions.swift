@@ -8,11 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if compiler(>=5.11)
 import SwiftSyntax
-#else
-public import SwiftSyntax
-#endif
 
 extension TokenSyntax {
   /// The text of this instance with all backticks removed.
