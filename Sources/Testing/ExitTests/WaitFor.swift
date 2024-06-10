@@ -110,7 +110,7 @@ private let _createWaitThreadImpl: Void = {
       // platforms support different thread name lengths. See MAXTHREADNAMESIZE
       // on Darwin and TASK_COMM_LEN on Linux.
 #if SWT_TARGET_OS_APPLE
-      _ = pthread_setname_np("swift-testing exit test monitor")
+      _ = pthread_setname_np("Swift Testing exit test monitor")
 #else
       _ = pthread_setname_np(pthread_self(), "SWT ExT monitor")
 #endif

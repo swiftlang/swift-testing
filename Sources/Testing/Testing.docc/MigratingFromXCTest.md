@@ -337,7 +337,7 @@ function. To record an unconditional issue using the testing library, use the
 The following table includes a list of the various `XCTAssert()` functions and
 their equivalents in the testing library:
 
-| XCTest | swift-testing |
+| XCTest | Swift Testing |
 |-|-|
 | `XCTAssert(x)`, `XCTAssertTrue(x)` | `#expect(x)` |
 | `XCTAssertFalse(x)` | `#expect(!x)` |

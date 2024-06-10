@@ -18,26 +18,37 @@ Start running tests in a new or existing XCTest-based test target.
 ## Overview
 
 The testing library has experimental integration with Swift Package Manager's
-`swift test` command and can be used to write and run tests alongside, or in
-place of, tests written using XCTest. This document describes how to start using
-the testing library to write and run tests.
+`swift test` command, and integrates with Xcode 16 Beta and Visual Studio Code
+(VS Code). These tools can be used to write and run tests alongside, or in place
+of, tests written using XCTest. This document describes how to start using the
+testing library to write and run tests.
 
-To learn how to contribute to the testing library itself, see
-[Contributing to `swift-testing`](https://github.com/apple/swift-testing/blob/main/CONTRIBUTING.md).
+To learn how to contribute to Swift Testing, see
+[Contributing to Swift Testing](https://github.com/apple/swift-testing/blob/main/CONTRIBUTING.md).
 
 ### Downloading a development toolchain
 
-A recent **trunk development snapshot** toolchain is required to use all of the
-features of the testing library. Visit [swift.org](https://www.swift.org/download/#trunk-development-main)
-to download and install a toolchain from the section titled
-**Snapshots — Trunk Development (main)**.
+A recent **6.0 development snapshot** toolchain is required to use all of the
+features of the Swift Testing. Visit [swift.org](http://swift.org/install)
+to download and install a toolchain from the section titled **release/6.0**
+under **Development Snapshots** on the page for your platform.
 
-Be aware that development snapshot toolchains are not intended for day-to-day
+Be aware that development snapshot toolchains aren't intended for day-to-day
 development and may contain defects that affect the programs built with them.
+
+#### Swift 5.10 or earlier
+
+Swift Testing doesn't support Swift 5.10 or earlier toolchains. You can use a
+Swift 6.0 development snapshot toolchain to write tests or validate code which
+uses the Swift 5 language mode, however.
 
 ### Adding the testing library as a dependency
 
-In your package's Package.swift file, add the testing library as a dependency:
+- Note: When using Xcode 16 Beta, Swift Testing is available automatically and
+  the steps in this section aren't required.
+
+In your package's `Package.swift` file, add the testing library as a package
+dependency:
 
 ```swift
 dependencies: [
@@ -45,18 +56,7 @@ dependencies: [
 ],
 ```
 
-To ensure that your package's deployment targets meet or exceed those of the
-testing library, you may also need to specify minimum deployment targets for
-macOS, iOS, watchOS, tvOS, and/or visionOS (depending on which ones your package
-can be used with):
-
-```swift
-platforms: [
-  .macOS(.v10_15), .iOS(.v13), .watchOS(.v6), .tvOS(.v13), .macCatalyst(.v13), .visionOS(.v1)
-],
-```
-
-Then, add the testing library as a dependency of your existing test target:
+Then, add the package's `Testing` product as a dependency of your test target:
 
 ```swift
 .testTarget(
@@ -67,6 +67,21 @@ Then, add the testing library as a dependency of your existing test target:
   ]
 )
 ```
+
+### Specifying minimum deployment targets
+
+To ensure that your package's deployment targets meet or exceed those of the
+testing library, you may also need to specify minimum deployment targets for
+iOS, macOS, tvOS, visionOS, and/or watchOS, depending on which platforms your
+package supports:
+
+```swift
+platforms: [
+  .iOS(.v13), .macOS(.v10_15), .macCatalyst(.v13), .tvOS(.v13), .visionOS(.v1), .watchOS(.v6)
+],
+```
+
+### Writing tests
 
 You can now add additional Swift source files to your package's test target that
 contain those tests, written using the testing library, that you want to run
@@ -89,10 +104,20 @@ export TOOLCHAINS=swift
 #### Configuring Xcode
 
 In Xcode, open the **Xcode** menu, then the Toolchains submenu, and select the
-development toolchain from the list of toolchains presented to you&mdash;it will
+development toolchain from the list of toolchains presented to you — it will
 be presented with a name such as "Swift Development Toolchain 2023-01-01 (a)".
 
+#### Configuring VS Code
+
+Follow the instructions under
+ [Install the Extension](https://www.swift.org/documentation/articles/getting-started-with-vscode-swift.html#install-the-extension)
+of the
+[Getting Started with Swift in VS Code](https://www.swift.org/documentation/articles/getting-started-with-vscode-swift.html)
+guide.
+
 ### Running tests
+
+#### Running from the command line
 
 Navigate to the directory containing your package and run the following command:
 
@@ -109,41 +134,16 @@ the `swift test` command.
   dependency, pass `--enable-experimental-swift-testing` to the `swift test`
   command to ensure your tests are run.
 
-#### Swift 5.10
+#### Running tests in Xcode 16 Beta
 
-As of Swift 5.10, the testing library is not integrated into Swift Package
-Manager, but a temporary mechanism is provided for developers who want to start
-using it with their Swift packages and the Swift 5.10 toolchain.
+Click the Product → Test menu item, or press ⌘+U, to run Swift Testing tests
+using Xcode 16 Beta.
 
-- Warning: This functionality is provided temporarily to aid in integrating the
-testing library with existing tools such as Swift Package Manager. It will be
-removed in a future release.
+#### Running tests in VS Code
 
-To use the testing library with Swift 5.10, add a new Swift source
-file to your package's test target named "Scaffolding.swift". Add the following
-code to it:
-
-```swift
-import XCTest
-import Testing
-
-final class AllTests: XCTestCase {
-  func testAll() async {
-    await XCTestScaffold.runAllTests(hostedBy: self)
-  }
-}
-```
-
-Navigate to the directory containing your package, and either run `swift test`
-from the command line or click the Product&nbsp;&rarr;&nbsp;Test menu item in
-Xcode.
-
-Tests will run embedded in an `XCTestCase`-based test function named
-`testAll()`. If a test fails, `testAll()` will report the failure as its own.
-
-#### Swift 5.9 or earlier
-
-The testing library does not support Swift 5.9 or earlier.
+See the [Test Explorer](https://www.swift.org/documentation/articles/getting-started-with-vscode-swift.html#test-explorer)
+section of
+[Getting Started with Swift in VS Code](https://www.swift.org/documentation/articles/getting-started-with-vscode-swift.html).
 
 ## Topics
 

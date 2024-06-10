@@ -1,6 +1,6 @@
-# How to create swift-testing releases
+# How to create a release of Swift Testing
 
-This document describes how to create a new release of swift-testing using git
+This document describes how to create a new release of Swift Testing using Git
 tags.
 
 > [!IMPORTANT]
@@ -9,13 +9,13 @@ tags.
 
 ## Version numbering
 
-swift-testing uses [semantic versioning](https://semver.org) numbers for its 
-open source releases. We use git _tags_ to publish new releases; we do not use
+Swift Testing uses [semantic versioning](https://semver.org) numbers for its
+open source releases. We use Git _tags_ to publish new releases; we don't use
 the GitHub [releases](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases)
 feature.
 
-At this time, all swift-testing releases are experimental, so the major version
-is always `0`. We are not using the patch component, so it is usually (if not
+At this time, all Swift Testing releases are experimental, so the major version
+is always `0`. We aren't using the patch component, so it's usually (if not
 always) `0`. The minor component should be incremented by one for each release.
 
 For example, if the current release is version `0.1.0` and you are publishing
@@ -69,9 +69,9 @@ For example, you can initialize a new package in an empty directory with:
 swift package init --enable-experimental-swift-testing
 ```
 
-And then modify the package's `Package.swift` file to point at your local clone
-of the swift-testing repository. Ensure that the package's test target builds
-and runs successfully with:
+Then modify the package's `Package.swift` file to point at your local clone of
+the Swift Testing repository. Ensure that the package's test target builds and
+runs successfully with:
 
 ```sh
 swift test
@@ -81,8 +81,8 @@ swift test
 > Be sure to test changes on both macOS and Linux using the most recent
 > main-branch Swift toolchain.   
 
-If changes to swift-testing are necessary for the build to succeed, open
-appropriate pull requests on GitHub, then rebase your tag branch after they are
+If changes to Swift Testing are necessary for the build to succeed, open
+appropriate pull requests on GitHub, then rebase your tag branch after they're
 merged.
 
 ## Committing changes and pushing the release
@@ -95,7 +95,7 @@ git push -u origin x.y.z
 ```
 
 The release is now live and publicly visible [here](https://github.com/apple/swift-testing/tags).
-Developers using Swift Package Manager and listing swift-testing as a dependency
+Developers using Swift Package Manager and listing Swift Testing as a dependency
 will automatically update to it.
 
 ## Oh no, I made a mistake…

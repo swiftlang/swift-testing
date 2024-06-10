@@ -1,11 +1,11 @@
-# Contributing to `swift-testing`
+# Contributing to Swift Testing
 
 There are many ways to contribute to this project. If you are making changes
-that do not materially affect the user-facing semantics of `swift-testing`, such
+that don't materially affect the user-facing semantics of Swift Testing, such
 as fixing bugs or writing documentation, feel free to open a pull request (PR)
 directly.
 
-Larger changes that _do_ materially change the semantics of `swift-testing`,
+Larger changes that _do_ materially change the semantics of Swift Testing,
 such as new APIs or modifications to existing APIs, must undergo community
 discussion prior to being accepted.
 
@@ -33,17 +33,17 @@ hosting service.
 
 ## Setting up the development environment
 
-First, clone the `swift-testing` repository from
+First, clone the Swift Testing repository from
 [https://github.com/apple/swift-testing](https://github.com/apple/swift-testing).
 
-If you are preparing to make a contribution, you should fork the repository first
+If you're preparing to make a contribution, you should fork the repository first
 and clone the fork which will make opening PRs easier.
 
 ### Using Xcode (easiest)
 
-1. Install the latest beta or release Xcode from
-   [https://developer.apple.com/xcode](https://developer.apple.com/xcode).
-1. Open the `Package.swift` file from the cloned `swift-testing` repository in
+1. Install the latest beta version of
+   [Xcode](https://developer.apple.com/xcode).
+1. Open the `Package.swift` file from the cloned Swift Testing repository in
    Xcode.
 1. Select the `swift-testing-Package` scheme (if not already selected) and the
    "My Mac" run destination.
@@ -54,18 +54,18 @@ and clone the fork which will make opening PRs easier.
 If you are using macOS and have Xcode installed, you can use Swift from the
 command line immediately.
 
-If you are not using macOS or do not have Xcode installed, you need to download
+If you aren't using macOS or do not have Xcode installed, you need to download
 and install a toolchain.
 
 #### Installing a toolchain
 
-1. Download a toolchain. A recent **trunk development snapshot** toolchain is
+1. Download a toolchain. A recent **6.0 development snapshot** toolchain is
    required to build the testing library. Visit
-   [swift.org](https://www.swift.org/download/#trunk-development-main) and
-   download the most recent toolchain from the section titled
-   **Snapshots — Trunk Development (main)**.
+   [swift.org](http://swift.org/install) and download the most recent toolchain
+   from the section titled **release/6.0** under **Development Snapshots** on
+   the page for your platform.
 
-   Be aware that development snapshot toolchains are not intended for day-to-day
+   Be aware that development snapshot toolchains aren't intended for day-to-day
    development and may contain defects that affect the programs built with them.
 1. Install the toolchain and confirm it can be located successfully:
 
@@ -87,7 +87,7 @@ and install a toolchain.
 
 ## Local development
 
-With a Swift toolchain installed and the `swift-testing` repository cloned, you
+With a Swift toolchain installed and the Swift Testing repository cloned, you
 are ready to make changes and test them locally.
 
 ### Building
@@ -103,7 +103,7 @@ $> swift test
 ```
 
 <!-- FIXME: Uncomment this once the the `swift test` command support running
-  specific `swift-testing` tests.
+  specific Swift Testing tests.
 
 To learn how to run only specific tests or other testing options, run `swift
 test --help` to view the usage documentation.
@@ -166,7 +166,7 @@ your contributions are licensed under the
 
 ## Continuous integration
 
-`swift-testing` uses the [`swift-ci`](https://ci.swift.org/) infrastructure for
+Swift Testing uses the [`swift-ci`](https://ci.swift.org/) infrastructure for
 its continuous integration (CI) testing. The bots can be triggered on PRs if you
 have commit access. Otherwise, ask one of the code owners to trigger them for
 you.

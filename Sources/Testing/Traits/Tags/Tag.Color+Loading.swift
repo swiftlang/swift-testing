@@ -66,7 +66,7 @@ var swiftTestingDirectoryPath: String {
     return appendPathComponent(swiftTestingDirectoryName, to: appDataDirectoryPath)
   }
 #else
-#warning("Platform-specific implementation missing: swift-testing directory location unavailable")
+#warning("Platform-specific implementation missing: .swift-testing directory location unavailable")
 #endif
   return ""
 }
