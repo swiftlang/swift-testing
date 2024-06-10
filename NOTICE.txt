@@ -1,8 +1,8 @@
 
-                           The swift-testing Project
+                           The Swift Testing Project
                            =========================
 
-Please visit the swift-testing web site for more information:
+Please visit the Swift Testing web site for more information:
 
   * https://github.com/apple/swift-testing
 

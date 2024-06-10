@@ -16,8 +16,8 @@ import SwiftSyntaxMacros
 public import SwiftSyntaxMacros
 #endif
 
-/// The main entry point for the compiler plugin executable that provides macros
-/// for the `swift-testing` package.
+/// The main entry point for the compiler plugin executable that implements
+/// macros declared in the `Testing` module.
 @main
 struct TestingMacrosMain: CompilerPlugin {
   var providingMacros: [any Macro.Type] {

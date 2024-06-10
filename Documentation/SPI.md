@@ -1,11 +1,12 @@
-# SPI groups in swift-testing
+# SPI groups in Swift Testing
 
-_Archived from <https://forums.swift.org/t/spi-groups-in-swift-testing/70236>_
+<!-- Archived from
+  <https://forums.swift.org/t/spi-groups-in-swift-testing/70236> -->
 
-This post describes the set of SPI groups used in swift-testing. In general, two
+This post describes the set of SPI groups used in Swift Testing. In general, two
 groups of SPI exist in the testing library:
 
-1. Interfaces that are not needed by test authors, but which may be needed by
+1. Interfaces that aren't needed by test authors, but which may be needed by
    tools that use the testing library such as Swift Package Manager; and
 1. Interfaces that are available for test authors to use, but which are
    experimental or under active development and which may be modified or removed
@@ -40,7 +41,7 @@ modified or removed at any time.
 
 ## API and ABI stability
 
-Once swift-testing reaches its 1.0 release, API changes will follow the same
+When Swift Testing reaches its 1.0 release, API changes will follow the same
 general rules as those in the Swift standard library: removal will be a last
 resort and will always be preceded by deprecation to allow tool and test authors
 time to migrate to newer interfaces.

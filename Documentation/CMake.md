@@ -1,8 +1,9 @@
 # Building with CMake
 
-## Add `swift-testing` to Your Project
+## Add Swift Testing to your project
 
-Add `swift-testing` with to your project using the standard `FetchContent` or `find_package` mechanism, as appropriate for your project. For example:
+Add Swift Testing to your project using the standard `FetchContent` or
+`find_package` mechanism, as appropriate for your project. For example:
 
 ```cmake
 include(FetchContent)
@@ -12,11 +13,12 @@ FetchContent_Declare(SwiftTesting
 FetchContent_MakeAvailable(SwiftTesting)
 ```
 
-## Define Your Test Executable
+## Define a test executable
 
-To build a test executable using `swift-testing`, define an executable target
-of the form `[YOURPROJECT]PackageTests`, set the executable suffix to be
-`.swift-testing`, and link to your project targets with `Testing`.
+To build a test executable using Swift Testing, define an executable target of
+the form `[YOURPROJECT]PackageTests`, set the executable suffix to be
+`.swift-testing`, and link to the `Testing` target as well as any project
+targets you wish to test.
 
 The following
 example shows what this might look like for a hypothetical project called
@@ -44,13 +46,10 @@ if(BUILD_TESTING)
 endif()
 ```
 
-## Add an Entry Point
+## Add an entry point
 
-You must define a custom source file with a `@main` entry point. This should be
-a separate source file that is included in your test executable's `SOURCES`
-list.
-
-The following example uses the SwiftPM entry point:
+You must include a source file in your test executable target with a
+`@main` entry point. The following example uses the SwiftPM entry point:
 
 ```swift
 import Testing
@@ -61,10 +60,10 @@ import Testing
     }
 }
 ```
+
 > [!WARNING]
 > The entry point is expected to change to an entry point designed for other
-> build systems prior to `swift-testing` v1.
-
+> build systems prior to the initial stable release of Swift Testing.
 
 ## Integrate with CTest
 
