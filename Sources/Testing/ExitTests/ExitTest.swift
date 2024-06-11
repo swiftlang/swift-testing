@@ -235,9 +235,9 @@ extension ExitTest {
     // We only need to pass arguments when hosted by XCTest.
     let childArguments: [String] = {
       var result = [String]()
+#if SWT_TARGET_OS_APPLE
       lazy var xctestTargetPath = Environment.variable(named: "XCTestBundlePath")
         ?? CommandLine.arguments.dropFirst().last
-#if SWT_TARGET_OS_APPLE
       // If the running executable appears to be the XCTest runner executable in
       // Xcode, figure out the path to the running XCTest bundle. If we can find
       // it, then we can re-run the host XCTestCase instance.
@@ -260,13 +260,6 @@ extension ExitTest {
         // blank test identifier ("/") to force the xctest command-line tool
         // to run.
         result += ["-XCTest", "/", xctestTargetPath]
-      }
-#else
-      if let xcTestCaseIdentifier {
-        result.append(xcTestCaseIdentifier)
-        if let xctestTargetPath {
-          result.append(xctestTargetPath)
-        }
       }
 #endif
       return result
