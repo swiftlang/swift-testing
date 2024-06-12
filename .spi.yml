@@ -3,8 +3,6 @@ metadata:
   authors: Apple Inc.
 builder:
   configs:
-    - swift_version: 5.10
-      scheme: Testing
     - swift_version: 6.0
       documentation_targets: [Testing]
       scheme: Testing
