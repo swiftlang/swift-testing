@@ -1,4 +1,4 @@
-// swift-tools-version: 5.10
+// swift-tools-version: 6.0
 
 //
 // This source file is part of the Swift.org open source project
@@ -33,7 +33,7 @@ let package = Package(
   ],
 
   dependencies: [
-    .package(url: "https://github.com/apple/swift-syntax.git", from: Version(stringLiteral: Context.environment["SWT_SWIFT_SYNTAX_VERSION"] ?? "600.0.0-latest")),
+    .package(url: "https://github.com/apple/swift-syntax.git", from: "600.0.0-latest"),
   ],
 
   targets: [
@@ -121,7 +121,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .unsafeFlags(["-require-explicit-sendable"]),
       .enableExperimentalFeature("StrictConcurrency"),
       .enableUpcomingFeature("ExistentialAny"),
-      .enableUpcomingFeature("InferSendableFromCaptures"),
 
       .enableExperimentalFeature("AccessLevelOnImport"),
       .enableUpcomingFeature("InternalImportsByDefault"),
@@ -155,8 +154,20 @@ extension Array where Element == PackageDescription.CXXSetting {
   /// Settings intended to be applied to every C++ target in this package.
   /// Analogous to project-level build settings in an Xcode project.
   static var packageSettings: Self {
-    [
-      .define("_SWT_TESTING_LIBRARY_VERSION", to: #""unknown (Swift 5.10 toolchain)""#),
-    ]
+    var result = Self()
+
+    // Capture the testing library's version as a C++ string constant.
+    if let git = Context.gitInformation {
+      let testingLibraryVersion = if let tag = git.currentTag {
+        tag
+      } else if git.hasUncommittedChanges {
+        "\(git.currentCommit) (modified)"
+      } else {
+        git.currentCommit
+      }
+      result.append(.define("_SWT_TESTING_LIBRARY_VERSION", to: #""\#(testingLibraryVersion)""#))
+    }
+
+    return result
   }
 }

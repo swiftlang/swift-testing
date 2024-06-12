@@ -18,7 +18,6 @@ add_library(Testing
   EntryPoints/ABIv0/Encoded/ABIv0.EncodedTest.swift
   EntryPoints/EntryPoint.swift
   EntryPoints/SwiftPMEntryPoint.swift
-  EntryPoints/XCTestScaffold.swift
   Events/Clock.swift
   Events/Event.swift
   Events/Recorder/Event.ConsoleOutputRecorder.swift
@@ -61,7 +60,6 @@ add_library(Testing
   Support/Additions/CommandLineAdditions.swift
   Support/Additions/NumericAdditions.swift
   Support/Additions/ResultAdditions.swift
-  Support/Additions/StringAdditions.swift
   Support/CartesianProduct.swift
   Support/CError.swift
   Support/Environment.swift

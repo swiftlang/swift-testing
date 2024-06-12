@@ -27,7 +27,7 @@ private import _TestingInternals
 /// External callers cannot call this function directly. The can use
 /// ``copyABIEntryPoint_v0()`` to get a reference to an ABI-stable version of
 /// this function.
-func entryPoint(passing args: consuming __CommandLineArguments_v0?, eventHandler: Event.Handler?) async -> CInt {
+func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Handler?) async -> CInt {
   let exitCode = Locked(rawValue: EXIT_SUCCESS)
 
   do {
@@ -239,12 +239,6 @@ public struct __CommandLineArguments_v0: Sendable {
 
   /// The value of the `--repeat-until` argument.
   public var repeatUntil: String?
-
-  /// The identifier of the `XCTestCase` instance hosting the testing library,
-  /// if ``XCTestScaffold`` is being used.
-  ///
-  /// This property is not ABI and will be removed with ``XCTestScaffold``.
-  var xcTestCaseHostIdentifier: String?
 }
 
 extension __CommandLineArguments_v0: Codable {
@@ -264,7 +258,6 @@ extension __CommandLineArguments_v0: Codable {
     case skip
     case repetitions
     case repeatUntil
-    case xcTestCaseHostIdentifier
   }
 }
 
@@ -471,7 +464,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 
 #if !SWT_NO_EXIT_TESTS
   // Enable exit test handling via __swiftPMEntryPoint().
-  configuration.exitTestHandler = ExitTest.handlerForEntryPoint(forXCTestCaseIdentifiedBy: args.xcTestCaseHostIdentifier)
+  configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
 #endif
 
   return configuration

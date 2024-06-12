@@ -93,15 +93,15 @@ very best ideas, from anywhere, can help shape the future of testing in Swift.
 The table below describes the current level of support that Swift Testing has
 for various platforms:
 
-| **Platform** | **CI Status (5.10)** | **CI Status (6.0)** | **CI Status (main)** | **Support Status** |
-|---|:-:|:-:|:-:|---|
-| **macOS** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-5.10-macos)](https://ci.swift.org/job/swift-testing-main-swift-5.10-macos/) | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-6.0-macos)](https://ci.swift.org/job/swift-testing-main-swift-6.0-macos/) | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-macos)](https://ci.swift.org/view/Swift%20Packages/job/swift-testing-main-swift-main-macos/) | Supported |
-| **iOS** | | | | Supported |
-| **watchOS** | | | | Supported |
-| **tvOS** | | | | Supported |
-| **visionOS** | | | | Supported |
-| **Ubuntu 22.04** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-5.10-linux)](https://ci.swift.org/job/swift-testing-main-swift-5.10-linux/) | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-6.0-linux)](https://ci.swift.org/job/swift-testing-main-swift-6.0-linux/) | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-linux)](https://ci.swift.org/view/Swift%20Packages/job/swift-testing-main-swift-main-linux/) | Supported |
-| **Windows** | [![Build Status](https://ci-external.swift.org/buildStatus/icon?job=swift-testing-main-swift-5.10-windows)](https://ci-external.swift.org/job/swift-testing-main-swift-5.10-windows/) | | [![Build Status](https://ci-external.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-windows)](https://ci-external.swift.org/job/swift-testing-main-swift-main-windows/) | Supported |
+| **Platform** | **CI Status (6.0)** | **CI Status (main)** | **Support Status** |
+|---|:-:|:-:|---|
+| **macOS** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-6.0-macos)](https://ci.swift.org/job/swift-testing-main-swift-6.0-macos/) | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-macos)](https://ci.swift.org/view/Swift%20Packages/job/swift-testing-main-swift-main-macos/) | Supported |
+| **iOS** | | | Supported |
+| **watchOS** | | | Supported |
+| **tvOS** | | | Supported |
+| **visionOS** | | | Supported |
+| **Ubuntu 22.04** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-6.0-linux)](https://ci.swift.org/job/swift-testing-main-swift-6.0-linux/) | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-linux)](https://ci.swift.org/view/Swift%20Packages/job/swift-testing-main-swift-main-linux/) | Supported |
+| **Windows** | | [![Build Status](https://ci-external.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-windows)](https://ci-external.swift.org/job/swift-testing-main-swift-main-windows/) | Supported |
 
 ### Works with XCTest
 

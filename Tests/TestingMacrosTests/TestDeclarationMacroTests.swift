@@ -17,16 +17,9 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
-#if compiler(>=5.11)
-private let swift6Compiler = true
-#else
-private let swift6Compiler = false
-#endif
-
 @Suite("TestDeclarationMacro Tests")
 struct TestDeclarationMacroTests {
   @Test("Error diagnostics emitted on API misuse",
-    .enabled(if: swift6Compiler, "Some error diagnostics require lexical context"),
     arguments: [
       // Generic declarations
       "@Suite struct S<T> {}":

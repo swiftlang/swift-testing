@@ -26,7 +26,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     }
 
     let functionDecl = declaration.cast(FunctionDeclSyntax.self)
-    let typeName = context.typeOfLexicalContext(containing: functionDecl)
+    let typeName = context.typeOfLexicalContext
 
     return _createTestContainerDecls(for: functionDecl, on: typeName, testAttribute: node, in: context)
   }
@@ -381,36 +381,9 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
   ) -> [DeclSyntax] {
     var result = [DeclSyntax]()
 
-#if compiler(>=5.11)
     // Get the name of the type containing the function for passing to the test
     // factory function later.
-    let typealiasExpr: ExprSyntax = typeName.map { "\($0).self" } ?? "nil"
-#else
-    // We cannot directly refer to Self here because it will end up being
-    // resolved as the __TestContainer type we generate. Create a uniquely-named
-    // reference to Self outside the context of the generated type, and use it
-    // when the generated type needs to refer to the containing type.
-    //
-    // To support covariant Self on classes, we embed the reference to Self
-    // inside a static computed property instead of a typealias (where covariant
-    // Self is disallowed.)
-    //
-    // This "typealias" is not necessary when using the Swift 6 compiler.
-    var typealiasExpr: ExprSyntax = "nil"
-    if let typeName {
-      let typealiasName = context.makeUniqueName(thunking: functionDecl)
-      result.append(
-        """
-        @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-        private static nonisolated var \(typealiasName): Any.Type {
-          \(typeName).self
-        }
-        """
-      )
-
-      typealiasExpr = "\(typealiasName)"
-    }
-#endif
+    let typeNameExpr: ExprSyntax = typeName.map { "\($0).self" } ?? "nil"
 
     if typeName != nil, let genericGuardDecl = makeGenericGuardDecl(guardingAgainst: functionDecl, in: context) {
       result.append(genericGuardDecl)
@@ -448,7 +421,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     return [
       .__function(
         named: \(literal: functionDecl.completeName),
-        in: \(typealiasExpr),
+        in: \(typeNameExpr),
         xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
         \(raw: attributeInfo.functionArgumentList(in: context)),
         parameters: \(raw: functionDecl.testFunctionParameterList),
@@ -475,7 +448,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
           [
             .__function(
               named: \(literal: functionDecl.completeName),
-              in: \(typealiasExpr),
+              in: \(typeNameExpr),
               xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
               \(raw: attributeInfo.functionArgumentList(in: context)),
               testFunction: {}

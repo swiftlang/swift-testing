@@ -237,7 +237,7 @@ extension Test {
 
 // MARK: -
 
-/// An error that is reported by ``XCTestScaffold`` when a test times out.
+/// An error that is reported when a test times out.
 ///
 /// This type is not part of the public interface of the testing library.
 struct TimeoutError: Error, CustomStringConvertible {

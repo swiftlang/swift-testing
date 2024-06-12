@@ -9,15 +9,9 @@
 //
 
 import SwiftDiagnostics
-#if compiler(>=5.11)
 import SwiftSyntax
 import SwiftSyntaxMacros
 import SwiftSyntaxMacroExpansion
-#else
-public import SwiftSyntax
-public import SwiftSyntaxMacros
-public import SwiftSyntaxMacroExpansion
-#endif
 
 /// A type describing diagnostic messages emitted by this module's macro during
 /// evaluation.

@@ -8,13 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if compiler(>=5.11)
 import SwiftSyntax
 import SwiftSyntaxMacros
-#else
-public import SwiftSyntax
-public import SwiftSyntaxMacros
-#endif
 import SwiftDiagnostics
 
 extension MacroExpansionContext {
@@ -28,12 +23,7 @@ extension MacroExpansionContext {
   ///
   /// If the lexical context includes functions, closures, or some other
   /// non-type scope, the value of this property is `nil`.
-  ///
-  /// When using the Swift 6 or newer compiler, `node` is ignored. The argument
-  /// can be removed once the testing library is updated to require the Swift 6
-  /// compiler.
-  func typeOfLexicalContext(containing node: some WithAttributesSyntax) -> TypeSyntax? {
-#if compiler(>=5.11)
+  var typeOfLexicalContext: TypeSyntax? {
     var typeNames = [String]()
     for lexicalContext in lexicalContext.reversed() {
       guard let decl = lexicalContext.asProtocol((any DeclGroupSyntax).self) else {
@@ -46,42 +36,6 @@ extension MacroExpansionContext {
     }
 
     return "\(raw: typeNames.joined(separator: "."))"
-#else
-    // Find the beginning of the first attribute on the declaration, including
-    // those embedded in #if statements, to account for patterns like
-    // `@MainActor @Test func` where there's a space ahead of @Test, but the
-    // whole function is still at the top level.
-    func firstAttribute(in attributes: AttributeListSyntax) -> AttributeSyntax? {
-      attributes.lazy
-        .compactMap { attribute in
-          switch (attribute as AttributeListSyntax.Element?) {
-          case let .ifConfigDecl(ifConfigDecl):
-            ifConfigDecl.clauses.lazy
-              .compactMap { clause in
-                if case let .attributes(attributes) = clause.elements {
-                  return firstAttribute(in: attributes)
-                }
-                return nil
-              }.first
-          case let .attribute(attribute):
-            attribute
-          default:
-            nil
-          }
-        }.first
-    }
-    let firstAttribute = firstAttribute(in: node.attributes)!
-
-    // HACK: If the test function appears to be indented, assume it is nested in
-    // a type. Use `Self` as the presumptive name of the type.
-    //
-    // This hack works around rdar://105470382.
-    if let lastLeadingTrivia = firstAttribute.leadingTrivia.pieces.last,
-       lastLeadingTrivia.isWhitespace && !lastLeadingTrivia.isNewline {
-      return TypeSyntax(IdentifierTypeSyntax(name: .keyword(.Self)))
-    }
-    return nil
-#endif
   }
 }
 

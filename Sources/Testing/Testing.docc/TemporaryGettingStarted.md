@@ -144,7 +144,3 @@ using Xcode 16 Beta.
 See the [Test Explorer](https://www.swift.org/documentation/articles/getting-started-with-vscode-swift.html#test-explorer)
 section of
 [Getting Started with Swift in VS Code](https://www.swift.org/documentation/articles/getting-started-with-vscode-swift.html).
-
-## Topics
-
-- ``XCTestScaffold``

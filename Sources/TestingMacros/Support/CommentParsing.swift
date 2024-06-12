@@ -8,11 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if compiler(>=5.11)
 import SwiftSyntax
-#else
-public import SwiftSyntax
-#endif
 
 /// Find a common whitespace prefix among all lines in a string and trim it.
 ///

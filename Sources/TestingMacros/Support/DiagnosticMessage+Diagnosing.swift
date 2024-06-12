@@ -9,13 +9,8 @@
 //
 
 import SwiftDiagnostics
-#if compiler(>=5.11)
 import SwiftSyntax
 import SwiftSyntaxMacros
-#else
-public import SwiftSyntax
-public import SwiftSyntaxMacros
-#endif
 
 extension AttributeInfo {
   /// Diagnose issues with the traits in a parsed attribute.

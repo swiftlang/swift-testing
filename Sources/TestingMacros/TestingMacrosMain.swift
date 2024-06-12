@@ -10,11 +10,7 @@
 
 #if canImport(SwiftCompilerPlugin)
 import SwiftCompilerPlugin
-#if compiler(>=5.11)
 import SwiftSyntaxMacros
-#else
-public import SwiftSyntaxMacros
-#endif
 
 /// The main entry point for the compiler plugin executable that implements
 /// macros declared in the `Testing` module.

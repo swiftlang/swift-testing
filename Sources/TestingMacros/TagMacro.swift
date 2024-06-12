@@ -40,12 +40,11 @@ public struct TagMacro: PeerMacro, AccessorMacro, Sendable {
 
     // Figure out what type the tag is declared on. It must be declared on Tag
     // or a type nested in Tag.
-    guard let type = context.typeOfLexicalContext(containing: variableDecl) else {
+    guard let type = context.typeOfLexicalContext else {
       context.diagnose(.nonMemberTagDeclarationNotSupported(variableDecl, whenUsing: node))
       return _fallbackAccessorDecls
     }
 
-#if compiler(>=5.11)
     // Check that the tag is declared within Tag's namespace.
     let typeNameTokens: [String] = type.tokens(viewMode: .fixedUp).lazy
       .filter { $0.tokenKind != .period }
@@ -75,7 +74,6 @@ public struct TagMacro: PeerMacro, AccessorMacro, Sendable {
         return _fallbackAccessorDecls
       }
     }
-#endif
 
     // We know the tag is nested in Tag. Now check that it is a static member.
     guard variableDecl.modifiers.map(\.name.tokenKind).contains(.keyword(.static)) else {

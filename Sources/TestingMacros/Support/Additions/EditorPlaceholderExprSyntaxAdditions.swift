@@ -8,11 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if compiler(>=5.11)
 import SwiftSyntax
-#else
-public import SwiftSyntax
-#endif
 
 extension EditorPlaceholderExprSyntax {
   /// Initialize an instance of this type with the given placeholder string.

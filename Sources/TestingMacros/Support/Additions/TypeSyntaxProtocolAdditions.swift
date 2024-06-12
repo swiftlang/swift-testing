@@ -8,11 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if compiler(>=5.11)
 import SwiftSyntax
-#else
-public import SwiftSyntax
-#endif
 
 extension TypeSyntaxProtocol {
   /// Whether or not this type is an optional type (`T?`, `Optional<T>`, etc.)
