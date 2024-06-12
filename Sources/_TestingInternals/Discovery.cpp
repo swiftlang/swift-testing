@@ -237,7 +237,7 @@ static SWTMachHeaderList getMachHeaders(void) {
       auto mhn = reinterpret_cast<SWTMachHeaderList::value_type>(mh);
 
       // Ignore this Mach header if it is in the shared cache. On platforms that
-      // support it (Darwin), most system images are containined in this range.
+      // support it (Darwin), most system images are contained in this range.
       // System images can be expected not to contain test declarations, so we
       // don't need to walk them.
       if (mhn->flags & MH_DYLIB_IN_CACHE) {
