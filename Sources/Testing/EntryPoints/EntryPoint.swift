@@ -27,7 +27,7 @@ private import _TestingInternals
 /// External callers cannot call this function directly. The can use
 /// ``copyABIEntryPoint_v0()`` to get a reference to an ABI-stable version of
 /// this function.
-func entryPoint(passing args: consuming __CommandLineArguments_v0?, eventHandler: Event.Handler?) async -> CInt {
+func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Handler?) async -> CInt {
   let exitCode = Locked(rawValue: EXIT_SUCCESS)
 
   do {
