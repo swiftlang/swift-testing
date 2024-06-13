@@ -162,7 +162,7 @@ struct TestDeclarationMacroTests {
         fixIts: [
           ExpectedFixIt(
             message: "Add 'arguments:' with one collection",
-            changes: [.replace(oldSourceCode: "@Test ", newSourceCode: "@Test(arguments: \(editorPlaceholder(forType: "[Int]"))) ")]
+            changes: [.replace(oldSourceCode: "@Test ", newSourceCode: "@Test(arguments: \(EditorPlaceholderExprSyntax(type: "[Int]"))) ")]
           ),
         ]
       ),
@@ -172,11 +172,11 @@ struct TestDeclarationMacroTests {
         fixIts: [
           ExpectedFixIt(
             message: "Add 'arguments:' with one collection",
-            changes: [.replace(oldSourceCode: "@Test ", newSourceCode: "@Test(arguments: \(editorPlaceholder(forType: "[(Int, String)]"))) ")]
+            changes: [.replace(oldSourceCode: "@Test ", newSourceCode: "@Test(arguments: \(EditorPlaceholderExprSyntax(type: "[(Int, String)]"))) ")]
           ),
           ExpectedFixIt(
             message: "Add 'arguments:' with all combinations of 2 collections",
-            changes: [.replace(oldSourceCode: "@Test ", newSourceCode: "@Test(arguments: \(editorPlaceholder(forType: "[Int]")), \(editorPlaceholder(forType: "[String]"))) ")]
+            changes: [.replace(oldSourceCode: "@Test ", newSourceCode: "@Test(arguments: \(EditorPlaceholderExprSyntax(type: "[Int]")), \(EditorPlaceholderExprSyntax(type: "[String]"))) ")]
           ),
         ]
       ),
@@ -186,7 +186,7 @@ struct TestDeclarationMacroTests {
         fixIts: [
           ExpectedFixIt(
             message: "Add 'arguments:' with one collection",
-            changes: [.replace(oldSourceCode: "@Test ", newSourceCode: "@Test(arguments: \(editorPlaceholder(forType: "[(Int, String, Double)]"))) ")]
+            changes: [.replace(oldSourceCode: "@Test ", newSourceCode: "@Test(arguments: \(EditorPlaceholderExprSyntax(type: "[(Int, String, Double)]"))) ")]
           ),
         ]
       ),
@@ -196,7 +196,7 @@ struct TestDeclarationMacroTests {
         fixIts: [
           ExpectedFixIt(
             message: "Add 'arguments:' with one collection",
-            changes: [.replace(oldSourceCode: #"@Test("Some display name") "#, newSourceCode: #"@Test("Some display name", arguments: \#(editorPlaceholder(forType: "[Int]"))) "#)]
+            changes: [.replace(oldSourceCode: #"@Test("Some display name") "#, newSourceCode: #"@Test("Some display name", arguments: \#(EditorPlaceholderExprSyntax(type: "[Int]"))) "#)]
           ),
         ]
       ),
@@ -206,11 +206,11 @@ struct TestDeclarationMacroTests {
         fixIts: [
           ExpectedFixIt(
             message: "Add 'arguments:' with one collection",
-            changes: [.replace(oldSourceCode: #"@Test /*comment*/ "#, newSourceCode: #"@Test(arguments: \#(editorPlaceholder(forType: "[Int]"))) /*comment*/ "#)]
+            changes: [.replace(oldSourceCode: #"@Test /*comment*/ "#, newSourceCode: #"@Test(arguments: \#(EditorPlaceholderExprSyntax(type: "[Int]"))) /*comment*/ "#)]
           ),
         ]
       ),
-  ])
+  ] as [String: (message: String, fixIts: [ExpectedFixIt])])
   func apiMisuseErrorsIncludingFixIts(input: String, expectedDiagnostic: (message: String, fixIts: [ExpectedFixIt])) throws {
     let (_, diagnostics) = try parse(input)
 
