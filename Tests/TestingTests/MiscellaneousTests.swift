@@ -422,7 +422,7 @@ struct MiscellaneousTests {
   @Test("Properties related to parameterization")
   func parameterizationRelatedProperties() async throws {
     do {
-      let test = Test.__type(SendableTests.self, displayName: "", traits: [], sourceLocation: .init())
+      let test = Test.__type(SendableTests.self, displayName: "", traits: [], sourceLocation: #_sourceLocation)
       #expect(!test.isParameterized)
       #expect(test.testCases == nil)
       #expect(test.parameters == nil)
@@ -465,7 +465,7 @@ struct MiscellaneousTests {
 
   @Test("Test.id property")
   func id() async throws {
-    let typeTest = Test.__type(SendableTests.self, displayName: "SendableTests", traits: [], sourceLocation: .init())
+    let typeTest = Test.__type(SendableTests.self, displayName: "SendableTests", traits: [], sourceLocation: #_sourceLocation)
     #expect(String(describing: typeTest.id) == "TestingTests.SendableTests")
 
     let fileID = "Module/Y.swift"
@@ -483,7 +483,7 @@ struct MiscellaneousTests {
     #expect(idWithParent.parent != nil)
     #expect(idWithParent.parent?.parent == nil)
 
-    let functionIDWithParent = Test.ID(moduleName: "A", nameComponents: ["B"], sourceLocation: SourceLocation(line: 123))
+    let functionIDWithParent = Test.ID(moduleName: "A", nameComponents: ["B"], sourceLocation: #_sourceLocation)
     let parentOfFunctionID = try #require(functionIDWithParent.parent)
     #expect(parentOfFunctionID.moduleName == "A")
     #expect(parentOfFunctionID.nameComponents == ["B"])

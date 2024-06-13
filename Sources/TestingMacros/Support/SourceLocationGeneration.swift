@@ -23,17 +23,17 @@ import SwiftSyntaxMacros
 ///   ``SourceLocation`` for `expr`.
 func createSourceLocationExpr(of expr: some SyntaxProtocol, context: some MacroExpansionContext) -> ExprSyntax {
   if expr.isProtocol((any FreestandingMacroExpansionSyntax).self) {
-    // Freestanding macro expressions can just use Testing.SourceLocation()
+    // Freestanding macro expressions can just use __here()
     // directly and do not need to talk to the macro context to get source
     // location info.
-    return "Testing.SourceLocation()"
+    return "Testing.SourceLocation.__here()"
   }
 
-  // Get the equivalent source location in both `#fileID` and `#filePath` modes
+  // Get the equivalent source location in both `#fileID` and `#filePath` modes.
   guard let fileIDSourceLoc: AbstractSourceLocation = context.location(of: expr),
         let filePathSourceLoc: AbstractSourceLocation = context.location(of: expr, at: .afterLeadingTrivia, filePathMode: .filePath)
   else {
-    return "Testing.SourceLocation()"
+    return "Testing.SourceLocation.__here()"
   }
 
   return "Testing.SourceLocation(fileID: \(fileIDSourceLoc.file), filePath: \(filePathSourceLoc.file), line: \(fileIDSourceLoc.line), column: \(fileIDSourceLoc.column))"

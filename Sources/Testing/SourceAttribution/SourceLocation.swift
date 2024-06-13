@@ -87,12 +87,7 @@ public struct SourceLocation: Sendable {
     }
   }
 
-  public init(
-    fileID: String = #fileID,
-    filePath: String = #filePath,
-    line: Int = #line,
-    column: Int = #column
-  ) {
+  public init(fileID: String, filePath: String, line: Int, column: Int) {
     self.fileID = fileID
     self._filePath = filePath
     self.line = line

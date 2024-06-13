@@ -26,11 +26,11 @@ behavior of test functions.
 - <doc:EnablingAndDisabling>
 - <doc:LimitingExecutionTime>
 - <doc:Parallelization>
-- ``Trait/enabled(if:_:fileID:filePath:line:column:)``
-- ``Trait/enabled(_:fileID:filePath:line:column:_:)``
-- ``Trait/disabled(_:fileID:filePath:line:column:)``
-- ``Trait/disabled(if:_:fileID:filePath:line:column:)``
-- ``Trait/disabled(_:fileID:filePath:line:column:_:)``
+- ``Trait/enabled(if:_:sourceLocation:)``
+- ``Trait/enabled(_:sourceLocation:_:)``
+- ``Trait/disabled(_:sourceLocation:)``
+- ``Trait/disabled(if:_:sourceLocation:)``
+- ``Trait/disabled(_:sourceLocation:_:)``
 - ``Trait/timeLimit(_:)``
 
 <!--

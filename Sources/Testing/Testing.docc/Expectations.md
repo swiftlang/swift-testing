@@ -77,7 +77,7 @@ the test when the code doesn't satisfy a requirement, use
 ### Confirming that asynchronous events occur
 
 - <doc:testing-asynchronous-code>
-- ``confirmation(_:expectedCount:fileID:filePath:line:column:_:)``
+- ``confirmation(_:expectedCount:sourceLocation:_:)``
 - ``Confirmation``
 
 ### Retrieving information about checked expectations
@@ -89,5 +89,6 @@ the test when the code doesn't satisfy a requirement, use
 ### Representing source locations
 
 - ``SourceLocation``
+<!-- - ``_sourceLocation()`` -->
 - ``SourceContext``
 - ``Backtrace``

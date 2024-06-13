@@ -64,5 +64,5 @@ the error to `Never`:
 
 If the closure throws _any_ error, the testing library records an issue.
 If you need the test to stop when the code throws an error, include the
-code inline in the test function instead of wrapping it in an
-``expect(throws:_:sourceLocation:performing:)-1xr34`` block.
+code inline in the test function instead of wrapping it in a call to
+``expect(throws:_:sourceLocation:performing:)-1xr34``.

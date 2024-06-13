@@ -17,7 +17,7 @@
 ///
 /// This type is not part of the public interface of the testing library.
 /// External callers should generally record issues by throwing their own errors
-/// or by calling ``Issue/record(_:fileID:filePath:line:column:)``.
+/// or by calling ``Issue/record(_:sourceLocation:)``.
 struct SystemError: Error, CustomStringConvertible {
   var description: String
 }
