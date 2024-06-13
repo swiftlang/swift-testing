@@ -441,13 +441,13 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     if expectedArgumentCount == 0 {
       return Self(
         syntax: Syntax(functionDecl),
-        message: "Attribute \(_macroName(attribute)) cannot specify arguments when used with '\(functionDecl.completeName)' because it does not take any",
+        message: "Attribute \(_macroName(attribute)) cannot specify arguments when used with function '\(functionDecl.completeName)' because it does not take any",
         severity: .error
       )
     } else {
       return Self(
         syntax: Syntax(functionDecl),
-        message: "Attribute \(_macroName(attribute)) must specify arguments when used with '\(functionDecl.completeName)'",
+        message: "Attribute \(_macroName(attribute)) must specify arguments when used with function '\(functionDecl.completeName)'",
         severity: .error,
         fixIts: _addArgumentsFixIts(for: attribute, given: functionDecl.signature.parameterClause.parameters)
       )
@@ -487,10 +487,13 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     var fixIts: [FixIt] = []
     func addFixIt(_ message: String, appendingArguments arguments: some Collection<LabeledExprSyntax>) {
       var newAttribute = attribute
-      newAttribute.attributeName = newAttribute.attributeName.trimmed
       newAttribute.leftParen = .leftParenToken()
       newAttribute.arguments = .argumentList(baseArguments + arguments)
-      newAttribute.rightParen = .rightParenToken()
+      let trailingTrivia = newAttribute.rightParen?.trailingTrivia
+        ?? newAttribute.attributeName.as(IdentifierTypeSyntax.self)?.name.trailingTrivia
+        ?? .space
+      newAttribute.rightParen = .rightParenToken(trailingTrivia: trailingTrivia)
+      newAttribute.attributeName = newAttribute.attributeName.trimmed
 
       fixIts.append(FixIt(
         message: MacroExpansionFixItMessage(message),
@@ -509,22 +512,22 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
       }
 
       addFixIt(
-        parameters.count == 1 ? "Add 'arguments:'" : "Add 'arguments:' with one collection",
-        appendingArguments: [LabeledExprSyntax(label: "arguments", expression: EditorPlaceholderExprSyntax(argumentsCollectionType, type: argumentsCollectionType))]
+        "Add 'arguments:' with one collection",
+        appendingArguments: [LabeledExprSyntax(label: "arguments", expression: EditorPlaceholderExprSyntax(type: argumentsCollectionType))]
       )
     }
 
     // Fix-It to add 'arguments:' with all combinations of <N> collections,
     // where <N> is the count of the function's parameters. Only offered for
-    // functions with 2 or more parameters.
-    if parameters.count >= 2 {
+    // functions with 2 parameters.
+    if parameters.count == 2 {
       let additionalArguments = parameters.indices.map { index in
         let label = index == parameters.startIndex ? "arguments" : nil
         let argumentsCollectionType = "[\(parameters[index].baseTypeName)]"
         return LabeledExprSyntax(
           label: label.map { .identifier($0) },
           colon: label == nil ? nil : .colonToken(trailingTrivia: .space),
-          expression: EditorPlaceholderExprSyntax(argumentsCollectionType, type: argumentsCollectionType),
+          expression: EditorPlaceholderExprSyntax(type: argumentsCollectionType),
           trailingComma: parameters.index(after: index) < parameters.endIndex ? .commaToken(trailingTrivia: .space) : nil
         )
       }
