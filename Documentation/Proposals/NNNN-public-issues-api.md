@@ -54,13 +54,9 @@ public struct Issue: Sendable {
   ///     arguments.
   public init(
     kind: Kind,
-    comments: [Comment],
+    comments: [Comment] = [],
     sourceContext: SourceContext = .init()
-  ) {
-    self.kind = kind
-    self.comments = comments
-    self.sourceContext = sourceContext
-  }
+  ) {}
 
   // ...
 }
@@ -77,9 +73,7 @@ extension Issue {
   ///
   /// - Returns: The issue that was recorded (`self` or a modified copy of it.)
   @discardableResult
-  public func record() -> Self {
-    record(configuration: nil)
-  }
+  public func record() -> Self {}
 }
 ```
 
@@ -91,7 +85,7 @@ private. Only new code and making existing code public.
 ## Integration with supporting tools
 
 Third-party assertion tools would be able to directly create an `Issue`
-and then report it using the `Issue.report()` instance method. `Issue.report()`
+and then report it using the `Issue.record()` instance method. `Issue.record()`
 would then work similarly to how it does now. This flow is analogous to
 reporting an issue in XCTest using the XCTIssue API.
 
@@ -103,19 +97,12 @@ current `Test.current` static property, but that returns the
 semantically-incorrect value of nil if you access it from a detached task. This
 will be defined in a future proposal.
 
-A future direction is to remove all of the `@_spi(ForToolsIntegrationOnly)`
-annotations. This would allow third party tools to integrate with Swift
-Testing regardless of the distribution method they use.
-This was left out to keep this proposal small & focused, but the same rationale
-behind making the `Issue` initializer public and available everywhere applies
-to removing the `@_spi(ForToolsIntegrationOnly)` annotation from everything.
-
 ## Alternatives considered
 
-One potential approach is to extend or provide overloads to `Issue.report` that
+One potential approach is to extend or provide overloads to `Issue.record` that
 allows developers to specify every property on an `Issue`. However, this is
 undesirable from a maintenance point of view: every time a property is added to
-or removed from `Issue`, we would similarly have to update `Issue.report`.
+or removed from `Issue`, we would similarly have to update `Issue.record`.
 While trivial, having that extra source of truth is mildly annoying.
 
 Another approach discussed in
