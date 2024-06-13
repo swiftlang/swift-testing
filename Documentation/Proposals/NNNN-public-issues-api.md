@@ -71,7 +71,7 @@ arguments, and simply calls the `Issue.record(configuration:)` instance
 method with nil:
 
 ```swift
-extension Issue: {
+extension Issue {
   /// Record this issue by wrapping it in an ``Event`` and passing it to the
   /// current event handler.
   ///
