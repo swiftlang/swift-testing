@@ -27,7 +27,7 @@ struct EventTests {
               differenceDescription: "Difference Description",
               isPassing: false,
               isRequired: true,
-              sourceLocation: #currentSourceLocation
+              sourceLocation: #_sourceLocation
             )
           ),
           Event.Kind.testSkipped(
@@ -35,7 +35,7 @@ struct EventTests {
               comment: "Comment",
               sourceContext: SourceContext(
                 backtrace: Backtrace.current(),
-                sourceLocation: #currentSourceLocation
+                sourceLocation: #_sourceLocation
               )
             )
           ),
@@ -59,7 +59,7 @@ struct EventTests {
   func codable(kind: Event.Kind) async throws {
     let testID = Test.ID(moduleName: "ModuleName",
                          nameComponents: ["NameComponent1", "NameComponent2"],
-                         sourceLocation: #currentSourceLocation)
+                         sourceLocation: #_sourceLocation)
     let testCaseID = Test.Case.ID(argumentIDs: nil)
     let event = Event(kind, testID: testID, testCaseID: testCaseID, instant: .now)
     let eventSnapshot = Event.Snapshot(snapshotting: event)

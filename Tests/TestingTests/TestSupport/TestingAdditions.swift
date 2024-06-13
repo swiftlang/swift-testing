@@ -139,7 +139,7 @@ extension Test {
   /// the `@Test` macro.
   init(
     _ traits: any TestTrait...,
-    sourceLocation: SourceLocation = #currentSourceLocation,
+    sourceLocation: SourceLocation = #_sourceLocation,
     name: String = #function,
     testFunction: @escaping @Sendable () async throws -> Void
   ) {
@@ -166,7 +166,7 @@ extension Test {
     _ traits: any TestTrait...,
     arguments collection: C,
     parameters: [Parameter] = [],
-    sourceLocation: SourceLocation = #currentSourceLocation,
+    sourceLocation: SourceLocation = #_sourceLocation,
     column: Int = #column,
     name: String = #function,
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
@@ -195,7 +195,7 @@ extension Test {
     _ traits: any TestTrait...,
     arguments collection1: C1, _ collection2: C2,
     parameters: [Parameter] = [],
-    sourceLocation: SourceLocation = #currentSourceLocation,
+    sourceLocation: SourceLocation = #_sourceLocation,
     name: String = #function,
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
@@ -218,7 +218,7 @@ extension Test {
     _ traits: any TestTrait...,
     arguments zippedCollections: Zip2Sequence<C1, C2>,
     parameters: [Parameter] = [],
-    sourceLocation: SourceLocation = #currentSourceLocation,
+    sourceLocation: SourceLocation = #_sourceLocation,
     name: String = #function,
     testFunction: @escaping @Sendable ((C1.Element, C2.Element)) async throws -> Void
   ) where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {

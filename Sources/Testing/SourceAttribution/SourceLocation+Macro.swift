@@ -22,8 +22,8 @@
 extension SourceLocation {
   /// Get the current source location as an instance of ``SourceLocation``.
   ///
-  /// - Warning: This function is used to implement the `#currentSourceLocation` macro. Do not
-  ///   call it directly.
+  /// - Warning: This function is used to implement the `#_sourceLocation`
+  ///   macro. Do not call it directly.
   public static func __here(
     fileID: String = #fileID,
     filePath: String = #filePath,

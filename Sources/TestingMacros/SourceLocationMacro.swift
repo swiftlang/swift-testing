@@ -11,9 +11,9 @@
 public import SwiftSyntax
 public import SwiftSyntaxMacros
 
-/// A type describing the expansion of the `#currentSourceLocation` macro.
+/// A type describing the expansion of the `#_sourceLocation` macro.
 ///
-/// This type is used to implement the `#currentSourceLocation` attribute macro.
+/// This type is used to implement the `#_sourceLocation` attribute macro.
 /// Do not use it directly.
 public struct SourceLocationMacro: ExpressionMacro, Sendable {
   public static func expansion(

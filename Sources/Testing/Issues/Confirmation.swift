@@ -94,7 +94,7 @@ extension Confirmation {
 public func confirmation<R>(
   _ comment: Comment? = nil,
   expectedCount: Int = 1,
-  sourceLocation: SourceLocation = #currentSourceLocation,
+  sourceLocation: SourceLocation = #_sourceLocation,
   _ body: (Confirmation) async throws -> R
 ) async rethrows -> R {
   let confirmation = Confirmation()

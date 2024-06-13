@@ -109,7 +109,7 @@ extension Issue {
   /// or ``require(_:_:sourceLocation:)-5l63q`` macros.)
   @discardableResult public static func record(
     _ comment: Comment? = nil,
-    sourceLocation: SourceLocation = #currentSourceLocation
+    sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
     let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
     let issue = Issue(kind: .unconditional, comments: Array(comment), sourceContext: sourceContext)
@@ -137,7 +137,7 @@ extension Issue {
   @discardableResult public static func record(
     _ error: any Error,
     _ comment: Comment? = nil,
-    sourceLocation: SourceLocation = #currentSourceLocation
+    sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
     let backtrace = Backtrace(forFirstThrowOf: error) ?? Backtrace.current()
     let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: sourceLocation)

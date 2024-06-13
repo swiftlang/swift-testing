@@ -130,7 +130,7 @@ extension Trait where Self == ConditionTrait {
   public static func enabled(
     if condition: @autoclosure @escaping @Sendable () throws -> Bool,
     _ comment: Comment? = nil,
-    sourceLocation: SourceLocation = #currentSourceLocation
+    sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
     Self(comment: comment, kind: .conditional(condition), sourceLocation: sourceLocation)
   }
@@ -149,7 +149,7 @@ extension Trait where Self == ConditionTrait {
   ///   specified closure.
   public static func enabled(
     _ comment: Comment? = nil,
-    sourceLocation: SourceLocation = #currentSourceLocation,
+    sourceLocation: SourceLocation = #_sourceLocation,
     _ condition: @escaping @Sendable () async throws -> Bool
   ) -> Self {
     Self(comment: comment, kind: .conditional(condition), sourceLocation: sourceLocation)
@@ -165,7 +165,7 @@ extension Trait where Self == ConditionTrait {
   ///   test to which it is added.
   public static func disabled(
     _ comment: Comment? = nil,
-    sourceLocation: SourceLocation = #currentSourceLocation
+    sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
     Self(comment: comment, kind: .unconditional(false), sourceLocation: sourceLocation)
   }
@@ -191,7 +191,7 @@ extension Trait where Self == ConditionTrait {
   public static func disabled(
     if condition: @autoclosure @escaping @Sendable () throws -> Bool,
     _ comment: Comment? = nil,
-    sourceLocation: SourceLocation = #currentSourceLocation
+    sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
     Self(comment: comment, kind: .conditional { !(try condition()) }, sourceLocation: sourceLocation)
   }
@@ -210,7 +210,7 @@ extension Trait where Self == ConditionTrait {
   ///   specified closure.
   public static func disabled(
     _ comment: Comment? = nil,
-    sourceLocation: SourceLocation = #currentSourceLocation,
+    sourceLocation: SourceLocation = #_sourceLocation,
     _ condition: @escaping @Sendable () async throws -> Bool
   ) -> Self {
     Self(comment: comment, kind: .conditional { !(try await condition()) }, sourceLocation: sourceLocation)

@@ -14,20 +14,20 @@
 struct SourceLocationTests {
   @Test("SourceLocation.description property")
   func sourceLocationDescription() {
-    let sourceLocation = #currentSourceLocation
+    let sourceLocation = #_sourceLocation
     _ = String(describing: sourceLocation)
     _ = String(reflecting: sourceLocation)
   }
 
   @Test("SourceLocation.fileID property")
   func sourceLocationFileID() {
-    let sourceLocation = #currentSourceLocation
+    let sourceLocation = #_sourceLocation
     #expect(sourceLocation.fileID.hasSuffix("/SourceLocationTests.swift"))
   }
 
   @Test("SourceLocation.fileName property")
   func sourceLocationFileName() {
-    var sourceLocation = #currentSourceLocation
+    var sourceLocation = #_sourceLocation
     #expect(sourceLocation.fileName == "SourceLocationTests.swift")
 
     sourceLocation.fileID = "FakeModule/FakeFileID"
@@ -36,7 +36,7 @@ struct SourceLocationTests {
 
   @Test("SourceLocation.moduleName property")
   func sourceLocationModuleName() {
-    var sourceLocation = #currentSourceLocation
+    var sourceLocation = #_sourceLocation
     #expect(!sourceLocation.moduleName.contains("/"))
     #expect(!sourceLocation.moduleName.isEmpty)
 
@@ -56,11 +56,11 @@ struct SourceLocationTests {
   @Test("SourceLocation.fileID property must be well-formed")
   func sourceLocationFileIDWellFormed() async {
     await #expect(exitsWith: .failure) {
-      var sourceLocation = #currentSourceLocation
+      var sourceLocation = #_sourceLocation
       sourceLocation.fileID = ""
     }
     await #expect(exitsWith: .failure) {
-      var sourceLocation = #currentSourceLocation
+      var sourceLocation = #_sourceLocation
       sourceLocation.fileID = "ABC"
     }
   }
@@ -68,7 +68,7 @@ struct SourceLocationTests {
 
   @Test("SourceLocation.line and .column properties")
   func sourceLocationLineAndColumn() {
-    var sourceLocation = #currentSourceLocation
+    var sourceLocation = #_sourceLocation
     #expect(sourceLocation.line > 0)
     #expect(sourceLocation.line < 500)
     #expect(sourceLocation.column > 0)
@@ -84,11 +84,11 @@ struct SourceLocationTests {
   @Test("SourceLocation.line and column properties must be positive")
   func sourceLocationLineAndColumnPositive() async {
     await #expect(exitsWith: .failure) {
-      var sourceLocation = #currentSourceLocation
+      var sourceLocation = #_sourceLocation
       sourceLocation.line = -1
     }
     await #expect(exitsWith: .failure) {
-      var sourceLocation = #currentSourceLocation
+      var sourceLocation = #_sourceLocation
       sourceLocation.column = -1
     }
   }
@@ -96,7 +96,7 @@ struct SourceLocationTests {
 
   @Test("SourceLocation._filePath property")
   func sourceLocationFilePath() {
-    var sourceLocation = #currentSourceLocation
+    var sourceLocation = #_sourceLocation
     #expect(sourceLocation._filePath == #filePath)
 
     sourceLocation._filePath = "A"

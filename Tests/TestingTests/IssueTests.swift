@@ -1425,7 +1425,7 @@ struct IssueCodingTests {
     Issue.Kind.apiMisused,
     Issue.Kind.confirmationMiscounted(actual: 13, expected: 42),
     Issue.Kind.errorCaught(NSError(domain: "Domain", code: 13, userInfo: ["UserInfoKey": "UserInfoValue"])),
-    Issue.Kind.expectationFailed(Expectation(evaluatedExpression: .__fromSyntaxNode("abc"), isPassing: true, isRequired: true, sourceLocation: #currentSourceLocation)),
+    Issue.Kind.expectationFailed(Expectation(evaluatedExpression: .__fromSyntaxNode("abc"), isPassing: true, isRequired: true, sourceLocation: #_sourceLocation)),
     Issue.Kind.knownIssueNotRecorded,
     Issue.Kind.system,
     Issue.Kind.timeLimitExceeded(timeLimitComponents: (13, 42)),
@@ -1439,7 +1439,7 @@ struct IssueCodingTests {
     let issue = Issue(
       kind: issueKind,
       comments: ["Comment"],
-      sourceContext: SourceContext(backtrace: Backtrace.current(), sourceLocation: #currentSourceLocation)
+      sourceContext: SourceContext(backtrace: Backtrace.current(), sourceLocation: #_sourceLocation)
     )
     let issueSnapshot = Issue.Snapshot(snapshotting: issue)
     let decoded = try JSON.encodeAndDecode(issueSnapshot)
@@ -1522,7 +1522,7 @@ struct IssueCodingTests {
     let issue = Issue(
       kind: issueKind,
       comments: ["Comment"],
-      sourceContext: SourceContext(backtrace: Backtrace.current(), sourceLocation: #currentSourceLocation)
+      sourceContext: SourceContext(backtrace: Backtrace.current(), sourceLocation: #_sourceLocation)
     )
     let issueSnapshot = Issue.Snapshot(snapshotting: issue)
 
