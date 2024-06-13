@@ -17,7 +17,7 @@
 /// ``SourceLocation`` referring to the location of the macro invocation itself
 /// (similar to how `#fileID` expands to the ID of the file containing the
 /// `#fileID` invocation.)
-@freestanding(expression) public macro currentSourceLocation() -> SourceLocation = #externalMacro(module: "TestingMacros", type: "SourceLocationMacro")
+@freestanding(expression) public macro _sourceLocation() -> SourceLocation = #externalMacro(module: "TestingMacros", type: "SourceLocationMacro")
 
 extension SourceLocation {
   /// Get the current source location as an instance of ``SourceLocation``.
