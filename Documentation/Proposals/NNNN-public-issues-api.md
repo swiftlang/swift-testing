@@ -141,5 +141,5 @@ accessing the current test more reliable and robust is a separate concern.
 ## Acknowledgments
 
 I'd like to thank [Jonathon Grynspan](https://github.com/grynspan) and
-[Stuart Montgomery](https://github.com/stmontgomery) for fielding my Issu
+[Stuart Montgomery](https://github.com/stmontgomery) for fielding my Issue
 report and encouraging me to contribute more to this community.
