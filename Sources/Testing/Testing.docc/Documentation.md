@@ -16,24 +16,29 @@ Create and run tests for your Swift packages and Xcode projects.
 
 ## Overview
 
-`swift-testing` is a modern, open-source testing library for Swift with powerful
-and expressive capabilities. It gives developers more confidence with less code.
+With Swift Testing you leverage powerful and expressive capabilities of
+the Swift programming language to develop tests with more confidence and less
+code. The library integrates seamlessly with Swift Package Manager testing
+workflow, supports flexible test organization, customizable metadata, and
+scalable test execution. 
 
-### Flexible test organization
+- Define test functions almost anywhere with a single attribute.
+- Group related tests into hierarchies using Swift's type system.
+- Integrate seamlessly with Swift concurrency.
+- Parameterize test functions across wide ranges of inputs.
+- Enable tests dynamically depending
+on runtime conditions. 
+- Parallelize tests in-process.
+- Categorize tests using tags.
+- Associate bugs directly with the tests that verify their fixes or reproduce
+their problems.
 
-Define test functions almost anywhere with a single attribute and group related
-tests into hierarchies using Swift's type system.
+#### Related videos
 
-### Customizable metadata
-
-Dynamically enable or disable tests depending on runtime conditions, categorize
-tests using tags, and associate bugs directly with the tests that verify their
-fixes or reproduce their problems.
-
-### Scalable execution
-
-Automatically parallelize tests in-process, integrate seamlessly with Swift
-concurrency, and parameterize test functions across wide ranges of inputs.
+@Links(visualStyle: compactGrid) {
+  - <doc://com.apple.documentation/videos/play/wwdc2024/10179>
+  - <doc://com.apple.documentation/videos/play/wwdc2024/10195>
+}
 
 ## Topics
 
