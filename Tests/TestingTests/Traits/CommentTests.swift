@@ -52,6 +52,11 @@ struct CommentTests {
     #expect(inner2Type.comments == ["// L"])
 #endif
   }
+
+  @Test("Explicitly nil comment")
+  func explicitlyNilComment() {
+    #expect(true as Bool, nil as Comment?)
+  }
 }
 
 // MARK: - Fixtures
