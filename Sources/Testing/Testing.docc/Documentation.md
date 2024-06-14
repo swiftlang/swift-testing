@@ -17,9 +17,10 @@ Create and run tests for your Swift packages and Xcode projects.
 ## Overview
 
 With Swift Testing you leverage powerful and expressive capabilities of
-the Swift programming language to develop tests with more confidence and less code.
-The library integrates seamlessly with Swift Package Manager testing workflow, supports flexible
-test organization, customizable metadata, and scalable test execution. 
+the Swift programming language to develop tests with more confidence and less
+code. The library integrates seamlessly with Swift Package Manager testing
+workflow, supports flexible test organization, customizable metadata, and
+scalable test execution. 
 
 - Define test functions almost anywhere with a single attribute.
 - Group related tests into hierarchies using Swift's type system.
@@ -29,13 +30,14 @@ test organization, customizable metadata, and scalable test execution.
 on runtime conditions. 
 - Parallelize tests in-process.
 - Categorize tests using tags.
-- Associate bugs directly with the tests that verify their fixes or reproduce their problems.
+- Associate bugs directly with the tests that verify their fixes or reproduce
+their problems.
 
 #### Related videos
 
 @Links(visualStyle: compactGrid) {
-    - <doc://com.apple.documentation/videos/play/wwdc2024/10179>
-    - <doc://com.apple.documentation/videos/play/wwdc2024/10195>
+  - <doc://com.apple.documentation/videos/play/wwdc2024/10179>
+  - <doc://com.apple.documentation/videos/play/wwdc2024/10195>
 }
 
 ## Topics
