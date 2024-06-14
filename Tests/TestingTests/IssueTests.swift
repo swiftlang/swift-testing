@@ -239,6 +239,7 @@ final class IssueTests: XCTestCase {
     }
 
     await Test {
+      _ = try #require(.memberAccessWithInferredBase(1))
       _ = try #require(TypeWithMemberFunctions.j(1))
     }.run(configuration: configuration)
 
@@ -1528,5 +1529,13 @@ struct IssueCodingTests {
 
     #expect(String(describing: issueSnapshot) == String(describing: issue))
     #expect(String(reflecting: issueSnapshot) == String(reflecting: issue))
+  }
+}
+
+// MARK: - Fixtures
+
+extension Optional {
+  fileprivate static func memberAccessWithInferredBase(_ this: Self) -> Self {
+    this
   }
 }

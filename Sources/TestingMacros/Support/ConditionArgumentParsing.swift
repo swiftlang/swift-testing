@@ -393,12 +393,20 @@ private func _parseCondition(from expr: FunctionCallExprSyntax, for macro: some 
     // closure body since it is unused.
     let parameterList = forwardedArguments.isEmpty ? "_ in" : ""
     conditionArguments.append(Argument(expression: "()"))
+
+    // If memberAccessExpr is not nil here, that means it had a nil base
+    // expression (i.e. the base is inferred.)
+    var dot: TokenSyntax?
+    if memberAccessExpr != nil {
+      dot = .periodToken()
+    }
+
     conditionArguments.append(
       Argument(
         label: "calling",
         expression: """
         { \(raw: parameterList)
-          \(functionName.trimmed)(\(LabeledExprListSyntax(indexedArguments)))
+          \(dot)\(functionName.trimmed)(\(LabeledExprListSyntax(indexedArguments)))
         }
         """
       )
