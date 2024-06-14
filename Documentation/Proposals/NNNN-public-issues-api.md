@@ -2,9 +2,9 @@
 
 * Proposal: [SWT-NNNN](NNNN-public-issues-api.md)
 * Authors: [Rachel Brindle](https://github.com/younata)
-* Status: **Awaiting implementation**
+* Status: **Awaiting review**
 * Bug: [apple/swift-testing#474](https://github.com/apple/swift-testing/issues/474)
-* Implementation: n/a
+* Implementation: [apple/swift-testing#481](https://github.com/apple/swift-testing/pull/481)
 * Review: n/a
 
 ## Introduction
@@ -32,6 +32,11 @@ I propose making the initializer for `Issue` public, and provide a public
 `Issue.record()` instance method to report that Issue. This provides a clean,
 easy to maintain way to create and record custom Issues that assertion tools
 are already used to because it is analogous to the XCTIssue API in XCTest.
+
+To help support this, I also propose making a public initializer for
+`Expectation`. This public initializer will not take in an `Expression`.
+Instead, the public initializer will create an empty `Expression`, in order to
+maintain compatibility with the current JSON ABI.
 
 ## Detailed design
 
@@ -76,6 +81,47 @@ extension Issue {
   public func record() -> Self {}
 }
 ```
+
+This change requires us to eliminate the default value of `nil` for the
+`Issue.record(configuration:)` instance method:
+
+```swift
+extension Issue {
+  func record(configuration: Configuration?)  -> Self {}
+}
+```
+
+Furthermore, to support passing in any `Issue.Kind` to `Issue`, `Expectation`
+needs to have a public initializer. This initializer will not take in an
+`Expression`, but instead directly create an empty `Expression`. To continue
+supporting the existing internal API, there will be a second internal
+initializer that does take in an `Expression`:
+
+```public struct Expectation: Sendable {
+  // ...
+  public init(
+    mismatchedErrorDescription: String? = nil,
+    differenceDescription: String? = nil,
+    isPassing: Bool,
+    isRequired: Bool,
+    sourceLocation: SourceLocation
+  ) {}
+
+  init(
+    evaluatedExpression: Expression,
+    mismatchedErrorDescription: String? = nil,
+    differenceDescription: String? = nil,
+    isPassing: Bool,
+    isRequired: Bool,
+    sourceLocation: SourceLocation
+  )
+}
+```
+
+This also accompanies a change to make the
+`Expectation.mismatchedErrorDescription` and
+`Expectation.differenceDescription` properties publicly accessible. Which is
+done so that third party tools do not need to pass in an `Expression`.
 
 ## Source compatibility
 
