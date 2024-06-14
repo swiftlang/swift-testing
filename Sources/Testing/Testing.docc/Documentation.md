@@ -31,6 +31,13 @@ on runtime conditions.
 - Categorize tests using tags.
 - Associate bugs directly with the tests that verify their fixes or reproduce their problems.
 
+#### Related videos
+
+@Links(visualStyle: compactGrid) {
+    - <doc://com.apple.documentation/videos/play/wwdc2024/10179>
+    - <doc://com.apple.documentation/videos/play/wwdc2024/10195>
+}
+
 ## Topics
 
 ### Essentials
