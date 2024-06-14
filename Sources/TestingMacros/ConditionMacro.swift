@@ -138,17 +138,25 @@ extension ConditionMacro {
       }
 
       // Capture any comments as well (either in source or as a macro argument.)
-      checkArguments.append(Argument(
-        label: "comments",
-        expression: ArrayExprSyntax {
-          for commentTraitExpr in createCommentTraitExprs(for: macro) {
-            ArrayElementSyntax(expression: commentTraitExpr)
-          }
-          if let commentIndex {
-            ArrayElementSyntax(expression: macroArguments[commentIndex].expression.trimmed)
-          }
+      let commentsArrayExpr = ArrayExprSyntax {
+        for commentTraitExpr in createCommentTraitExprs(for: macro) {
+          ArrayElementSyntax(expression: commentTraitExpr)
         }
-      ))
+        if let commentIndex {
+          ArrayElementSyntax(expression: macroArguments[commentIndex].expression.trimmed)
+        }
+      }
+      if let commentIndex, !macroArguments[commentIndex].expression.is(StringLiteralExprSyntax.self) {
+        // The developer supplied a comment argument that isn't a string
+        // literal. It might be nil, so explicitly filter out nil values from
+        // the resulting comment array.
+        checkArguments.append(Argument(
+          label: "comments",
+          expression: #"(\#(commentsArrayExpr) as [Comment?]).compactMap(\.self)"#
+        ))
+      } else {
+        checkArguments.append(Argument(label: "comments", expression: commentsArrayExpr))
+      }
 
       checkArguments.append(Argument(label: "isRequired", expression: BooleanLiteralExprSyntax(isThrowing)))
 
