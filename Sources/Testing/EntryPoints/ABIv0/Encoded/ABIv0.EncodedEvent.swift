@@ -64,11 +64,17 @@ extension ABIv0 {
       case .testStarted:
         kind = .testStarted
       case .testCaseStarted:
+        if eventContext.test?.isParameterized == false {
+          return nil
+        }
         kind = .testCaseStarted
       case let .issueRecorded(recordedIssue):
         kind = .issueRecorded
         issue = EncodedIssue(encoding: recordedIssue)
       case .testCaseEnded:
+        if eventContext.test?.isParameterized == false {
+          return nil
+        }
         kind = .testCaseEnded
       case .testEnded:
         kind = .testEnded
@@ -82,7 +88,9 @@ extension ABIv0 {
       instant = EncodedInstant(encoding: event.instant)
       self.messages = messages.map(EncodedMessage.init)
       testID = event.testID.map(EncodedTest.ID.init)
-      _testCase = eventContext.testCase.map(EncodedTestCase.init)
+      if eventContext.test?.isParameterized == true {
+        _testCase = eventContext.testCase.map(EncodedTestCase.init)
+      }
     }
   }
 }
