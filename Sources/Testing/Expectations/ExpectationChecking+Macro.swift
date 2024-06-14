@@ -114,6 +114,64 @@ public func __checkValue(
   return .failure(ExpectationFailedError(expectation: expectation))
 }
 
+/// Check that an expectation has passed after calling a closure.
+///
+/// This overload is used by `#expect` overloads that take a single
+/// zero-argument closure:
+///
+/// ```swift
+/// #expect {
+///   mathChecksOut()
+/// }
+/// ```
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+public func __checkClosureCall(
+  performing body: () throws -> Bool,
+  expression: __Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) rethrows -> Result<Void, any Error> {
+  return try __checkValue(
+    body(),
+    expression: expression,
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+/// Check that an expectation has passed after calling a closure.
+///
+/// This overload is used by `#expect` overloads that take a single
+/// zero-argument closure:
+///
+/// ```swift
+/// await #expect {
+///   await mathChecksOut()
+/// }
+/// ```
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+public func __checkClosureCall(
+  performing body: () async throws -> Bool,
+  expression: __Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) async rethrows -> Result<Void, any Error> {
+  return try await __checkValue(
+    body(),
+    expression: expression,
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
 // MARK: - Binary operators
 
 /// Call a binary operator, passing the left-hand and right-hand arguments.

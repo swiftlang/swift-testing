@@ -26,6 +26,25 @@
   sourceLocation: SourceLocation = #_sourceLocation
 ) = #externalMacro(module: "TestingMacros", type: "ExpectMacro")
 
+/// Check that an expectation has passed after a condition has been evaluated.
+///
+/// - Parameters:
+///   - comment: A comment describing the expectation.
+///   - sourceLocation: The source location to which recorded expectations and
+///     issues should be attributed.
+///   - condition: A closure to call whose result determines if the expectation
+///     passes or fails.
+///
+/// - Throws: Whatever is thrown by `condition`.
+///
+/// If `condition` returns `false`, an ``Issue`` is recorded for the test that
+/// is running in the current task.
+@freestanding(expression) public macro expect(
+  _ comment: @autoclosure () -> Comment? = nil,
+  sourceLocation: SourceLocation = #_sourceLocation,
+  performing condition: () async throws -> Bool
+) = #externalMacro(module: "TestingMacros", type: "ExpectMacro")
+
 /// Check that an expectation has passed after a condition has been evaluated
 /// and throw an error if it failed.
 ///
@@ -45,6 +64,28 @@
   _ condition: Bool,
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation
+) = #externalMacro(module: "TestingMacros", type: "RequireMacro")
+
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed.
+///
+/// - Parameters:
+///   - comment: A comment describing the expectation.
+///   - sourceLocation: The source location to which recorded expectations and
+///     issues should be attributed.
+///   - condition: A closure to call whose result determines if the expectation
+///     passes or fails.
+///
+/// - Throws: Whatever is thrown by `condition` or an instance of
+///   ``ExpectationFailedError`` if `condition` evaluates to `false`.
+///
+/// If `condition` returns `false`, an ``Issue`` is recorded for the test that
+/// is running in the current task and an instance of ``ExpectationFailedError``
+/// is thrown.
+@freestanding(expression) public macro require(
+  _ comment: @autoclosure () -> Comment? = nil,
+  sourceLocation: SourceLocation = #_sourceLocation,
+  performing condition: () async throws -> Bool
 ) = #externalMacro(module: "TestingMacros", type: "RequireMacro")
 
 // MARK: - Optional checking
@@ -100,6 +141,29 @@ public macro require(
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation
 ) -> Bool = #externalMacro(module: "TestingMacros", type: "AmbiguousRequireMacro")
+
+/// Unwrap an optional value or, if it is `nil`, fail and throw an error.
+///
+/// - Parameters:
+///   - comment: A comment describing the expectation.
+///   - sourceLocation: The source location to which recorded expectations and
+///     issues should be attributed.
+///   - optionalValue: A closure to call whose result determines if the
+///     expectation passes or fails.
+///
+/// - Returns: The unwrapped value of `optionalValue`.
+///
+/// - Throws: Whatever is throwwn by `optionalValue` or an instance of
+///   ``ExpectationFailedError`` if `optionalValue` is `nil`.
+///
+/// If `optionalValue` is `nil`, an ``Issue`` is recorded for the test that is
+/// running in the current task and an instance of ``ExpectationFailedError`` is
+/// thrown.
+@freestanding(expression) public macro require<T>(
+  _ comment: @autoclosure () -> Comment? = nil,
+  sourceLocation: SourceLocation = #_sourceLocation,
+  performing optionalValue: () async throws -> T?
+) -> T = #externalMacro(module: "TestingMacros", type: "RequireMacro")
 
 // MARK: - Matching errors by type
 

@@ -63,6 +63,27 @@ final class IssueTests: XCTestCase {
     }.run(configuration: configuration)
   }
 
+  func testExpectWithClosure() async throws {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      XCTAssertFalse(issue.isKnown)
+      guard case let .expectationFailed(expectation) = issue.kind else {
+        XCTFail("Unexpected issue kind \(issue.kind)")
+        return
+      }
+      XCTAssertFalse(expectation.isRequired)
+    }
+
+    await Test {
+      #expect { true }
+      #expect { false }
+      #expect("Custom message") { false }
+    }.run(configuration: configuration)
+  }
+
   func testRequire() async throws {
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
