@@ -146,9 +146,10 @@ extension ConditionMacro {
           ArrayElementSyntax(expression: macroArguments[commentIndex].expression.trimmed)
         }
       }
-      if commentIndex != nil {
-        // The developer supplied a comment argument. It might be nil, so
-        // explicitly filter out nil values from the resulting comment array.
+      if let commentIndex, !macroArguments[commentIndex].expression.is(StringLiteralExprSyntax.self) {
+        // The developer supplied a comment argument that isn't a string
+        // literal. It might be nil, so explicitly filter out nil values from
+        // the resulting comment array.
         checkArguments.append(Argument(
           label: "comments",
           expression: #"(\#(commentsArrayExpr) as [Comment?]).compactMap(\.self)"#
