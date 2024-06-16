@@ -154,63 +154,67 @@ struct TestDeclarationMacroTests {
     }
   }
 
-  @Test("Error diagnostics which include fix-its emitted on API misuse", arguments: [
-    // 'Test' attribute must specify arguments to parameterized test functions.
-    "@Test func f(i: Int) {}":
-      (
-        message: "Attribute 'Test' must specify arguments when used with function 'f(i:)'",
-        fixIts: [
-          ExpectedFixIt(
-            message: "Add 'arguments:' with one collection",
-            changes: [.replace(oldSourceCode: "@Test ", newSourceCode: "@Test(arguments: \(EditorPlaceholderExprSyntax(type: "[Int]"))) ")]
-          ),
-        ]
-      ),
-    "@Test func f(i: Int, j: String) {}":
-      (
-        message: "Attribute 'Test' must specify arguments when used with function 'f(i:j:)'",
-        fixIts: [
-          ExpectedFixIt(
-            message: "Add 'arguments:' with one collection",
-            changes: [.replace(oldSourceCode: "@Test ", newSourceCode: "@Test(arguments: \(EditorPlaceholderExprSyntax(type: "[(Int, String)]"))) ")]
-          ),
-          ExpectedFixIt(
-            message: "Add 'arguments:' with all combinations of 2 collections",
-            changes: [.replace(oldSourceCode: "@Test ", newSourceCode: "@Test(arguments: \(EditorPlaceholderExprSyntax(type: "[Int]")), \(EditorPlaceholderExprSyntax(type: "[String]"))) ")]
-          ),
-        ]
-      ),
-    "@Test func f(i: Int, j: String, k: Double) {}":
-      (
-        message: "Attribute 'Test' must specify arguments when used with function 'f(i:j:k:)'",
-        fixIts: [
-          ExpectedFixIt(
-            message: "Add 'arguments:' with one collection",
-            changes: [.replace(oldSourceCode: "@Test ", newSourceCode: "@Test(arguments: \(EditorPlaceholderExprSyntax(type: "[(Int, String, Double)]"))) ")]
-          ),
-        ]
-      ),
-    #"@Test("Some display name") func f(i: Int) {}"#:
-      (
-        message: "Attribute 'Test' must specify arguments when used with function 'f(i:)'",
-        fixIts: [
-          ExpectedFixIt(
-            message: "Add 'arguments:' with one collection",
-            changes: [.replace(oldSourceCode: #"@Test("Some display name") "#, newSourceCode: #"@Test("Some display name", arguments: \#(EditorPlaceholderExprSyntax(type: "[Int]"))) "#)]
-          ),
-        ]
-      ),
-    #"@Test /*comment*/ func f(i: Int) {}"#:
-      (
-        message: "Attribute 'Test' must specify arguments when used with function 'f(i:)'",
-        fixIts: [
-          ExpectedFixIt(
-            message: "Add 'arguments:' with one collection",
-            changes: [.replace(oldSourceCode: #"@Test /*comment*/ "#, newSourceCode: #"@Test(arguments: \#(EditorPlaceholderExprSyntax(type: "[Int]"))) /*comment*/ "#)]
-          ),
-        ]
-      ),
-  ] as [String: (message: String, fixIts: [ExpectedFixIt])])
+  static var errorsWithFixIts: [String: (message: String, fixIts: [ExpectedFixIt])] {
+    [
+      // 'Test' attribute must specify arguments to parameterized test functions.
+      "@Test func f(i: Int) {}":
+        (
+          message: "Attribute 'Test' must specify arguments when used with function 'f(i:)'",
+          fixIts: [
+            ExpectedFixIt(
+              message: "Add 'arguments:' with one collection",
+              changes: [.replace(oldSourceCode: "@Test ", newSourceCode: "@Test(arguments: \(EditorPlaceholderExprSyntax(type: "[Int]"))) ")]
+            ),
+          ]
+        ),
+      "@Test func f(i: Int, j: String) {}":
+        (
+          message: "Attribute 'Test' must specify arguments when used with function 'f(i:j:)'",
+          fixIts: [
+            ExpectedFixIt(
+              message: "Add 'arguments:' with one collection",
+              changes: [.replace(oldSourceCode: "@Test ", newSourceCode: "@Test(arguments: \(EditorPlaceholderExprSyntax(type: "[(Int, String)]"))) ")]
+            ),
+            ExpectedFixIt(
+              message: "Add 'arguments:' with all combinations of 2 collections",
+              changes: [.replace(oldSourceCode: "@Test ", newSourceCode: "@Test(arguments: \(EditorPlaceholderExprSyntax(type: "[Int]")), \(EditorPlaceholderExprSyntax(type: "[String]"))) ")]
+            ),
+          ]
+        ),
+      "@Test func f(i: Int, j: String, k: Double) {}":
+        (
+          message: "Attribute 'Test' must specify arguments when used with function 'f(i:j:k:)'",
+          fixIts: [
+            ExpectedFixIt(
+              message: "Add 'arguments:' with one collection",
+              changes: [.replace(oldSourceCode: "@Test ", newSourceCode: "@Test(arguments: \(EditorPlaceholderExprSyntax(type: "[(Int, String, Double)]"))) ")]
+            ),
+          ]
+        ),
+      #"@Test("Some display name") func f(i: Int) {}"#:
+        (
+          message: "Attribute 'Test' must specify arguments when used with function 'f(i:)'",
+          fixIts: [
+            ExpectedFixIt(
+              message: "Add 'arguments:' with one collection",
+              changes: [.replace(oldSourceCode: #"@Test("Some display name") "#, newSourceCode: #"@Test("Some display name", arguments: \#(EditorPlaceholderExprSyntax(type: "[Int]"))) "#)]
+            ),
+          ]
+        ),
+      #"@Test /*comment*/ func f(i: Int) {}"#:
+        (
+          message: "Attribute 'Test' must specify arguments when used with function 'f(i:)'",
+          fixIts: [
+            ExpectedFixIt(
+              message: "Add 'arguments:' with one collection",
+              changes: [.replace(oldSourceCode: #"@Test /*comment*/ "#, newSourceCode: #"@Test(arguments: \#(EditorPlaceholderExprSyntax(type: "[Int]"))) /*comment*/ "#)]
+            ),
+          ]
+        ),
+    ]
+  }
+
+  @Test("Error diagnostics which include fix-its emitted on API misuse", arguments: errorsWithFixIts)
   func apiMisuseErrorsIncludingFixIts(input: String, expectedDiagnostic: (message: String, fixIts: [ExpectedFixIt])) throws {
     let (_, diagnostics) = try parse(input)
 
