@@ -98,12 +98,8 @@ struct TestDeclarationMacroTests {
         "Attribute 'Test' cannot be applied to a function with a parameter marked '_const'",
 
       // Argument count mismatches.
-      "@Test func f(i: Int) {}":
-        "Attribute 'Test' must specify an argument when used with 'f(i:)'",
-      "@Test func f(i: Int, j: Int) {}":
-        "Attribute 'Test' must specify 2 arguments when used with 'f(i:j:)'",
       "@Test(arguments: []) func f() {}":
-        "Attribute 'Test' cannot specify arguments when used with 'f()' because it does not take any",
+        "Attribute 'Test' cannot specify arguments when used with function 'f()' because it does not take any",
 
       // Invalid lexical contexts
       "struct S { func f() { @Test func g() {} } }":
@@ -155,6 +151,95 @@ struct TestDeclarationMacroTests {
     for diagnostic in diagnostics {
       #expect(diagnostic.diagMessage.severity == .error)
       #expect(diagnostic.message == expectedMessage)
+    }
+  }
+
+  static var errorsWithFixIts: [String: (message: String, fixIts: [ExpectedFixIt])] {
+    [
+      // 'Test' attribute must specify arguments to parameterized test functions.
+      "@Test func f(i: Int) {}":
+        (
+          message: "Attribute 'Test' must specify arguments when used with function 'f(i:)'",
+          fixIts: [
+            ExpectedFixIt(
+              message: "Add 'arguments:' with one collection",
+              changes: [.replace(oldSourceCode: "@Test ", newSourceCode: "@Test(arguments: \(EditorPlaceholderExprSyntax(type: "[Int]"))) ")]
+            ),
+          ]
+        ),
+      "@Test func f(i: Int, j: String) {}":
+        (
+          message: "Attribute 'Test' must specify arguments when used with function 'f(i:j:)'",
+          fixIts: [
+            ExpectedFixIt(
+              message: "Add 'arguments:' with one collection",
+              changes: [.replace(oldSourceCode: "@Test ", newSourceCode: "@Test(arguments: \(EditorPlaceholderExprSyntax(type: "[(Int, String)]"))) ")]
+            ),
+            ExpectedFixIt(
+              message: "Add 'arguments:' with all combinations of 2 collections",
+              changes: [.replace(oldSourceCode: "@Test ", newSourceCode: "@Test(arguments: \(EditorPlaceholderExprSyntax(type: "[Int]")), \(EditorPlaceholderExprSyntax(type: "[String]"))) ")]
+            ),
+          ]
+        ),
+      "@Test func f(i: Int, j: String, k: Double) {}":
+        (
+          message: "Attribute 'Test' must specify arguments when used with function 'f(i:j:k:)'",
+          fixIts: [
+            ExpectedFixIt(
+              message: "Add 'arguments:' with one collection",
+              changes: [.replace(oldSourceCode: "@Test ", newSourceCode: "@Test(arguments: \(EditorPlaceholderExprSyntax(type: "[(Int, String, Double)]"))) ")]
+            ),
+          ]
+        ),
+      #"@Test("Some display name") func f(i: Int) {}"#:
+        (
+          message: "Attribute 'Test' must specify arguments when used with function 'f(i:)'",
+          fixIts: [
+            ExpectedFixIt(
+              message: "Add 'arguments:' with one collection",
+              changes: [.replace(oldSourceCode: #"@Test("Some display name") "#, newSourceCode: #"@Test("Some display name", arguments: \#(EditorPlaceholderExprSyntax(type: "[Int]"))) "#)]
+            ),
+          ]
+        ),
+      #"@Test /*comment*/ func f(i: Int) {}"#:
+        (
+          message: "Attribute 'Test' must specify arguments when used with function 'f(i:)'",
+          fixIts: [
+            ExpectedFixIt(
+              message: "Add 'arguments:' with one collection",
+              changes: [.replace(oldSourceCode: #"@Test /*comment*/ "#, newSourceCode: #"@Test(arguments: \#(EditorPlaceholderExprSyntax(type: "[Int]"))) /*comment*/ "#)]
+            ),
+          ]
+        ),
+    ]
+  }
+
+  @Test("Error diagnostics which include fix-its emitted on API misuse", arguments: errorsWithFixIts)
+  func apiMisuseErrorsIncludingFixIts(input: String, expectedDiagnostic: (message: String, fixIts: [ExpectedFixIt])) throws {
+    let (_, diagnostics) = try parse(input)
+
+    #expect(diagnostics.count == 1)
+    let diagnostic = try #require(diagnostics.first)
+    #expect(diagnostic.diagMessage.severity == .error)
+    #expect(diagnostic.message == expectedDiagnostic.message)
+
+    try #require(diagnostic.fixIts.count == expectedDiagnostic.fixIts.count)
+    for (fixIt, expectedFixIt) in zip(diagnostic.fixIts, expectedDiagnostic.fixIts) {
+      #expect(fixIt.message.message == expectedFixIt.message)
+
+      try #require(fixIt.changes.count == expectedFixIt.changes.count)
+      for (change, expectedChange) in zip(fixIt.changes, expectedFixIt.changes) {
+        switch (change, expectedChange) {
+        case let (.replace(oldNode, newNode), .replace(expectedOldSourceCode, expectedNewSourceCode)):
+          let oldSourceCode = String(describing: oldNode.formatted())
+          #expect(oldSourceCode == expectedOldSourceCode)
+
+          let newSourceCode = String(describing: newNode.formatted())
+          #expect(newSourceCode == expectedNewSourceCode)
+        default:
+          Issue.record("Change \(change) differs from expected change \(expectedChange)")
+        }
+      }
     }
   }
 

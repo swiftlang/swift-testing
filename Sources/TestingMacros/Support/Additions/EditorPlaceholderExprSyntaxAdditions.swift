@@ -11,12 +11,44 @@
 import SwiftSyntax
 
 extension EditorPlaceholderExprSyntax {
-  /// Initialize an instance of this type with the given placeholder string.
+  /// Initialize an instance of this type with the given placeholder string and
+  /// optional type.
   ///
   /// - Parameters:
   ///   - placeholder: The placeholder string, not including surrounding angle
   ///     brackets or pound characters.
-  init(_ placeholder: String) {
-    self.init(placeholder: .identifier("<# \(placeholder) #" + ">"))
+  ///   - type: The type which this placeholder have, if any. When non-`nil`,
+  ///     the expression will use typed placeholder syntax.
+  init(_ placeholder: String, type: String? = nil) {
+    let placeholderContent = if let type {
+      // These use typed placeholder syntax, which allows the compiler to
+      // type-check the expression successfully. The resulting code still does
+      // not compile due to the placeholder, but it makes the diagnostic more
+      // clear. See
+      // https://developer.apple.com/documentation/swift-playgrounds/specifying-editable-regions-in-a-playground-page#Mark-Editable-Areas-with-Placeholder-Tokens
+      if placeholder == type {
+        // When the placeholder string is exactly the same as the type string,
+        // use the shorter typed placeholder format.
+        "T##\(placeholder)"
+      } else {
+        "T##\(placeholder)##\(type)"
+      }
+    } else {
+      placeholder
+    }
+
+    // Manually concatenate the string to avoid it being interpreted as a
+    // placeholder when editing this file.
+    self.init(placeholder: .identifier("<#\(placeholderContent)#" + ">"))
+  }
+
+  /// Initialize an instance of this type with the given type, using that as the
+  /// placeholder string.
+  ///
+  /// - Parameters:
+  ///   - type: The type to use both as the placeholder text and as the
+  ///     expression's type.
+  init(type: String) {
+    self.init(type, type: type)
   }
 }
