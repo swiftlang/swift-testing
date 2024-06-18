@@ -429,9 +429,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
     guard #available(_regexAPI, *) else {
       throw _EntryPointError.featureUnavailable("The `\(label)' option is not supported on this OS version.")
     }
-    return try regexes.lazy
-      .map { try Configuration.TestFilter(membership: membership, matching: $0) }
-      .reduce(into: .unfiltered) { $0.combine(with: $1, using: .or) }
+    return try Configuration.TestFilter(membership: membership, matchingAnyOf: regexes)
   }
   filters.append(try testFilter(forRegularExpressions: args.filter, label: "--filter", membership: .including))
   filters.append(try testFilter(forRegularExpressions: args.skip, label: "--skip", membership: .excluding))

@@ -54,9 +54,9 @@ extension Configuration {
       /// The test filter contains a pattern to predicate test IDs against.
       ///
       /// - Parameters:
-      ///   - pattern: The pattern to predicate test IDs against.
+      ///   - patterns: The patterns to predicate test IDs against.
       ///   - membership: How to interpret the result when predicating tests.
-      case pattern(_ pattern: String, membership: Membership)
+      case patterns(_ patterns: [String], membership: Membership)
 
       /// The test filter is a combination of other test filter kinds.
       ///
@@ -126,11 +126,11 @@ extension Configuration.TestFilter {
   ///
   /// - Parameters:
   ///   - membership: How to interpret the result when predicating tests.
-  ///   - pattern: The pattern, expressed as a `Regex`-compatible regular
-  ///     expression, to match test IDs against.
+  ///   - patterns: The patterns, expressed as a `Regex`-compatible regular
+  ///     expressions, to match test IDs against.
   @available(_regexAPI, *)
-  init(membership: Membership, matching pattern: String) throws {
-    // Validate the regular expression by attempting to initialize a `Regex`
+  init(membership: Membership, matchingAnyOf patterns: some Sequence<String>) throws {
+    // Validate each regular expression by attempting to initialize a `Regex`
     // representing it, but do not preserve it. This type only represents
     // the pattern in the abstract, and is not responsible for actually
     // applying it to a test graph — that happens later during planning.
@@ -138,9 +138,11 @@ extension Configuration.TestFilter {
     // Performing this validation here currently makes such errors easier to
     // surface when using the SwiftPM entry point. But longer-term, we should
     // make the planning phase throwing and propagate errors from there instead.
-    _ = try Regex(pattern)
+    for pattern in patterns {
+      _ = try Regex(pattern)
+    }
 
-    self.init(_kind: .pattern(pattern, membership: membership))
+    self.init(_kind: .patterns(Array(patterns), membership: membership))
   }
 
   /// Initialize this instance to include tests with a given set of tags.
@@ -248,15 +250,15 @@ extension Configuration.TestFilter.Kind {
             test.tags.isSuperset(of: tags)
           }
         }, membership: membership)
-      case let .pattern(pattern, membership):
+      case let .patterns(patterns, membership):
         guard #available(_regexAPI, *) else {
           throw SystemError(description: "Filtering by regular expression matching is unavailable")
         }
 
-        nonisolated(unsafe) let regex = try Regex(pattern)
+        nonisolated(unsafe) let regexes = try patterns.map(Regex.init)
         return .function({ test in
           let id = String(describing: test.id)
-          return id.contains(regex)
+          return regexes.contains { id.contains($0) }
         }, membership: membership)
       case let .combination(lhs, rhs, op):
         return try .combination(lhs.operation, rhs.operation, op)
