@@ -20,6 +20,35 @@ private import _TestingInternals
 @Suite("ABI entry point tests")
 struct ABIEntryPointTests {
   @Test func v0() async throws {
+    var arguments = __CommandLineArguments_v0()
+    arguments.filter = ["NonExistentTestThatMatchesNothingHopefully"]
+    arguments.experimentalEventStreamVersion = 0
+    arguments.verbosity = .min
+
+    let result = try await _invokeEntryPointV0(passing: arguments) { recordJSON in
+      let record = try! JSON.decode(ABIv0.Record.self, from: recordJSON)
+      _ = record.version
+    }
+
+    #expect(result == EXIT_SUCCESS)
+  }
+
+  @Test("v0 entry point with a large number of filter arguments")
+  func v0_manyFilters() async throws {
+    var arguments = __CommandLineArguments_v0()
+    arguments.filter = (1...100).map { "NonExistentTestThatMatchesNothingHopefully_\($0)" }
+    arguments.experimentalEventStreamVersion = 0
+    arguments.verbosity = .min
+
+    let result = try await _invokeEntryPointV0(passing: arguments)
+
+    #expect(result == EXIT_SUCCESS)
+  }
+
+  private func _invokeEntryPointV0(
+    passing arguments: __CommandLineArguments_v0,
+    recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void = { _ in }
+  ) async throws -> CInt {
 #if !os(Linux) && !SWT_NO_DYNAMIC_LINKING
     // Get the ABI entry point by dynamically looking it up at runtime.
     //
@@ -38,11 +67,6 @@ struct ABIEntryPointTests {
       abiEntryPoint.deallocate()
     }
 
-    // Construct arguments and convert them to JSON.
-    var arguments = __CommandLineArguments_v0()
-    arguments.filter = ["NonExistentTestThatMatchesNothingHopefully"]
-    arguments.experimentalEventStreamVersion = 0
-    arguments.verbosity = .min
     let argumentsJSON = try JSON.withEncoding(of: arguments) { argumentsJSON in
       let result = UnsafeMutableRawBufferPointer.allocate(byteCount: argumentsJSON.count, alignment: 1)
       result.copyMemory(from: argumentsJSON)
@@ -53,13 +77,7 @@ struct ABIEntryPointTests {
     }
 
     // Call the entry point function.
-    let result = try await abiEntryPoint.pointee(.init(argumentsJSON)) { recordJSON in
-      let record = try! JSON.decode(ABIv0.Record.self, from: recordJSON)
-      _ = record.version
-    }
-
-    // Validate expectations.
-    #expect(result == EXIT_SUCCESS)
+    return try await abiEntryPoint.pointee(.init(argumentsJSON), recordHandler)
   }
 }
 #endif
