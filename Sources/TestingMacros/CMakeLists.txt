@@ -37,6 +37,7 @@ include(AvailabilityDefinitions)
 include(CompilerSettings)
 add_executable(TestingMacros
   ConditionMacro.swift
+  SourceLocationMacro.swift
   SuiteDeclarationMacro.swift
   Support/Additions/DeclGroupSyntaxAdditions.swift
   Support/Additions/EditorPlaceholderExprSyntaxAdditions.swift

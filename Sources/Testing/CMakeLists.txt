@@ -55,6 +55,7 @@ add_library(Testing
   SourceAttribution/Expression+Macro.swift
   SourceAttribution/SourceContext.swift
   SourceAttribution/SourceLocation.swift
+  SourceAttribution/SourceLocation+Macro.swift
   Support/Additions/ArrayAdditions.swift
   Support/Additions/CollectionDifferenceAdditions.swift
   Support/Additions/CommandLineAdditions.swift

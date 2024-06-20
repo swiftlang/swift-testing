@@ -119,7 +119,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
   static var packageSettings: Self {
     availabilityMacroSettings + [
       .unsafeFlags(["-require-explicit-sendable"]),
-      .enableExperimentalFeature("StrictConcurrency"),
       .enableUpcomingFeature("ExistentialAny"),
 
       .enableExperimentalFeature("AccessLevelOnImport"),
