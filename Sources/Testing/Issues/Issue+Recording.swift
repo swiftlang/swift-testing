@@ -259,5 +259,13 @@ extension Issue {
 @inline(never) @_optimize(none)
 @usableFromInline
 func failureBreakpoint() {
-  // Empty.
+  // This function's body cannot be completely empty or else linker symbol
+  // de-duplication will cause its symbol to be consolidated with that of
+  // another, arbitrarily chosen empty function in this module. This linker
+  // behavior can be disabled by passing the `-no_deduplicate` flag described in
+  // ld(1), but that would disable it module-wide and sacrifice optimization
+  // opportunities elsewhere, so instead this function performs some trivial
+  // work to ensure its body is unique.
+  func noOp() {}
+  noOp()
 }
