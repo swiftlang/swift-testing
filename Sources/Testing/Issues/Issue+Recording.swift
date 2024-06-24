@@ -259,5 +259,17 @@ extension Issue {
 @inline(never) @_optimize(none)
 @usableFromInline
 func failureBreakpoint() {
-  // Empty.
+  // This function's body cannot be completely empty or else linker symbol
+  // de-duplication will cause its symbol to be consolidated with that of
+  // another, arbitrarily chosen empty function in this module. This linker
+  // behavior can be disabled by passing the `-no_deduplicate` flag described in
+  // ld(1), but that would disable it module-wide and sacrifice optimization
+  // opportunities elsewhere. Instead, this function performs a trivial
+  // function call, passing it a sufficiently unique value to avoid
+  // de-duplication.
+  struct NoOp {
+    nonisolated(unsafe) static var ignored: Int = 0
+    static func perform(_: inout Int) {}
+  }
+  NoOp.perform(&NoOp.ignored)
 }
