@@ -27,7 +27,7 @@ For more information, see <doc:testing-asynchronous-code>.
 ### Validate your code's result
 
 To validate that your code produces an expected value, use
-``expect(_:_:sourceLocation:)``. ``expect(_:_:sourceLocation:)`` captures the
+``expect(_:_:sourceLocation:)``. This macro captures the
 expression you pass, and provides detailed information when the code doesn't
 satisfy the expectation.
 
