@@ -52,8 +52,7 @@ declared in different files, modules, or other contexts, the testing library
 treats them as equivalent.
 
 If it's important for a tag to be distinguished from similar tags declared
-elsewhere in a package or project (or its dependencies), use
- [reverse-DNS naming](https://en.wikipedia.org/wiki/Reverse_domain_name_notation)
+elsewhere in a package or project (or its dependencies), use reverse-DNS naming
 to create a unique Swift symbol name for your tag:
 
 ```swift
