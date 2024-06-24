@@ -267,6 +267,9 @@ func failureBreakpoint() {
   // opportunities elsewhere. Instead, this function performs a trivial
   // function call, passing it a sufficiently unique value to avoid
   // de-duplication.
-  func noOp(_: String) {}
-  noOp(#function)
+  struct NoOp {
+    nonisolated(unsafe) static var ignored: Int = 0
+    static func perform(_: inout Int) {}
+  }
+  NoOp.perform(&NoOp.ignored)
 }
