@@ -14,7 +14,7 @@ extension TokenSyntax {
   /// The text of this instance with all backticks removed.
   ///
   /// - Bug: This property works around the presence of backticks in `text.`
-  ///   ([swift-syntax-#1936](https://github.com/apple/swift-syntax/issues/1936))
+  ///   ([swift-syntax-#1936](https://github.com/swiftlang/swift-syntax/issues/1936))
   var textWithoutBackticks: String {
     text.filter { $0 != "`" }
   }
