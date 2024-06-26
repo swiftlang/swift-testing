@@ -18,7 +18,7 @@ import SwiftSyntax
 /// - Bug: This type is needed because trimming a syntax node or copying it into
 ///   another node erases its source location information, so we cannot convert
 ///   expressions to `LabeledExprSyntax` instances until we no longer need that
-///   information. ([swift-syntax-#1961](https://github.com/apple/swift-syntax/issues/1961))
+///   information. ([swift-syntax-#1961](https://github.com/swiftlang/swift-syntax/issues/1961))
 struct Argument {
   /// The argument's label, if present.
   var label: TokenSyntax?
