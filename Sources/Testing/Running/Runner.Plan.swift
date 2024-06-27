@@ -253,12 +253,14 @@ extension Runner.Plan {
       // can be evaluated lazily only once it is determined that the test will
       // run, to avoid unnecessary work. But now is the appropriate time to
       // evaluate them.
-      do {
-        try await test.evaluateTestCases()
-      } catch {
-        let sourceContext = SourceContext(backtrace: Backtrace(forFirstThrowOf: error))
-        let issue = Issue(kind: .errorCaught(error), comments: [], sourceContext: sourceContext)
-        action = .recordIssue(issue)
+      if case .run = action {
+        do {
+          try await test.evaluateTestCases()
+        } catch {
+          let sourceContext = SourceContext(backtrace: Backtrace(forFirstThrowOf: error))
+          let issue = Issue(kind: .errorCaught(error), comments: [], sourceContext: sourceContext)
+          action = .recordIssue(issue)
+        }
       }
 
       actionGraph.updateValue(action, at: keyPath)

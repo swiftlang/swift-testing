@@ -152,7 +152,7 @@ struct Test_Case_ArgumentTests {
 // MARK: - Fixture tests
 
 @Suite(.hidden)
-private struct ParameterizedTests {
+struct ParameterizedTests {
   @Test(.hidden, arguments: ["value"])
   func oneParameter(x: String) {}
 
@@ -170,4 +170,6 @@ private struct ParameterizedTests {
 
   @Test(.hidden, arguments: ["value": 123])
   func oneDictionaryElementTupleParameter(x: (key: String, value: Int)) {}
+
+  @Test(.disabled(), arguments: [1, 2, 3]) func disabled(x: Int) {}
 }

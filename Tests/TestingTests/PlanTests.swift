@@ -428,6 +428,20 @@ struct PlanTests {
       #expect(step.test.id.nameComponents.count == 1, "Test is not top-level: \(step.test)")
     }
   }
+
+  @Test("Test cases of a disabled test are not evaluated")
+  func disabledTestCases() async throws {
+    var configuration = Configuration()
+    configuration.setEventHandler { event, context in
+      guard case .testSkipped = event.kind else {
+        return
+      }
+      let testSnapshot = try #require(context.test.map({ Test.Snapshot(snapshotting: $0 )}))
+      #expect(testSnapshot.testCases?.isEmpty ?? false)
+    }
+
+    await runTestFunction(named: "disabled(x:)", in: ParameterizedTests.self, configuration: configuration)
+  }
 }
 
 // MARK: - Fixtures
