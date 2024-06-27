@@ -13,20 +13,13 @@ extension Result {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public func __expected() {}
+  @inlinable public func __expected() {}
 
   /// Handle this instance as if it were returned from a call to `#require()`.
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public func __required() throws -> Success {
-    /// `get()` is current broken in the Swift standard library, so switch
-    /// manually to work around the problem. ([122797397](rdar://122797397))
-    switch self {
-    case let .success(result):
-      return result
-    case let .failure(error):
-      throw error
-    }
+  @inlinable public func __required() throws(Failure) -> Success {
+    try get()
   }
 }
