@@ -19,7 +19,7 @@ extension Result {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __required() throws(Failure) -> Success {
+  @inlinable public func __required() throws -> Success {
     try get()
   }
 }
