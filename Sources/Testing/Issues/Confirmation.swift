@@ -92,13 +92,13 @@ extension Confirmation {
 /// When the closure returns, the testing library checks if the confirmation's
 /// preconditions have been met, and records an issue if they have not.
 public func confirmation<R>(
-  _ comment: @autoclosure () -> Comment? = nil,
+  _ comment: Comment? = nil,
   expectedCount: Int = 1,
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: (Confirmation) async throws -> R
 ) async rethrows -> R {
   try await confirmation(
-    comment(),
+    comment,
     expectedCount: expectedCount ... expectedCount,
     sourceLocation: sourceLocation,
     body
@@ -157,7 +157,7 @@ public func confirmation<R>(
 /// ``confirmation(_:expectedCount:sourceLocation:_:)-7kfko`` instead.
 @_spi(Experimental)
 public func confirmation<R>(
-  _ comment: @autoclosure () -> Comment? = nil,
+  _ comment: Comment? = nil,
   expectedCount: some RangeExpression<Int>,
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: (Confirmation) async throws -> R
@@ -166,7 +166,7 @@ public func confirmation<R>(
   defer {
     let actualCount = confirmation.count.rawValue
     if !expectedCount.contains(actualCount) {
-      var comment = comment()
+      var comment = comment
       let issueKind: Issue.Kind
       if let expectedCount = expectedCount as? ClosedRange<Int>,
          expectedCount.lowerBound == expectedCount.upperBound {
