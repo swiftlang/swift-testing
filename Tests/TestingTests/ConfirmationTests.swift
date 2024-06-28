@@ -29,7 +29,7 @@ struct ConfirmationTests {
 
   @Test("Unsuccessful confirmations")
   func unsuccessfulConfirmations() async {
-    await confirmation("Issue recorded", expectedCount: 3) { issueRecorded in
+    await confirmation("Issue recorded", expectedCount: 4) { issueRecorded in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
         if case let .issueRecorded(issue) = event.kind,
@@ -98,6 +98,13 @@ struct UnsuccessfulConfirmationTests {
   func confirmedTooManyTimes() async {
     await confirmation(expectedCount: 3) { (thingHappened) async in
       thingHappened(count: 10)
+    }
+  }
+
+  @Test(.hidden)
+  func confirmedOutOfRange() async {
+    await confirmation(expectedCount: 1 ... 2) { (thingHappened) async in
+      thingHappened(count: 3)
     }
   }
 }
