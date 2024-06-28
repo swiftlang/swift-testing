@@ -13,13 +13,23 @@
 public struct Event: Sendable {
   /// An enumeration describing the various kinds of event that can be observed.
   public enum Kind: Sendable {
+    /// A test was discovered during test run planning.
+    ///
+    /// This event is recorded once per discovered test when ``Runner/run()`` is
+    /// called. It does not indicate whether or not a test will run or be
+    /// skipped—only that the test was found by the testing library and is part
+    /// of the runner's plan.
+    ///
+    /// This event is also posted once per test when `swift test list` is
+    /// called. In that case, events are posted for all discovered tests
+    /// regardless of whether or not they would run.
+    case testDiscovered
+
     /// A test run started.
     ///
-    /// - Parameters:
-    ///   - plan: The test plan of the run that started.
-    ///
-    /// This event is the first event posted after ``Runner/run()`` is called.
-    indirect case runStarted(_ plan: Runner.Plan)
+    /// This event is posted when ``Runner/run()`` is called after
+    /// ``testDiscovered`` has been posted for all tests in the runner's plan.
+    case runStarted
 
     /// An iteration of the test run started.
     ///
@@ -318,9 +328,22 @@ extension Event {
 extension Event.Kind {
   /// A serializable enumeration describing the various kinds of event that can be observed.
   public enum Snapshot: Sendable, Codable {
+    /// A test was discovered during test run planning.
+    ///
+    /// This event is recorded once per discovered test when ``Runner/run()`` is
+    /// called. It does not indicate whether or not a test will run or be
+    /// skipped—only that the test was found by the testing library and is part
+    /// of the runner's plan.
+    ///
+    /// This event is also posted once per test when `swift test list` is
+    /// called. In that case, events are posted for all discovered tests
+    /// regardless of whether or not they would run.
+    case testDiscovered
+
     /// A test run started.
     ///
-    /// This is the first event posted after ``Runner/run()`` is called.
+    /// This event is posted when ``Runner/run()`` is called after
+    /// ``testDiscovered`` has been posted for all tests in the runner's plan.
     case runStarted
 
     /// An iteration of the test run started.
@@ -420,6 +443,8 @@ extension Event.Kind {
     /// - Parameter kind: The original ``Event.Kind`` to snapshot.
     public init(snapshotting kind: Event.Kind) {
       switch kind {
+      case .testDiscovered:
+        self = .testDiscovered
       case .runStarted:
         self = .runStarted
       case let .iterationStarted(index):

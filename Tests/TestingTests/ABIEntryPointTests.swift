@@ -109,6 +109,25 @@ struct ABIEntryPointTests {
     #expect(result)
   }
 
+  @Test("v0 entry point listing tests only")
+  func v0_listingTestsOnly() async throws {
+    var arguments = __CommandLineArguments_v0()
+    arguments.listTests = true
+    arguments.eventStreamVersion = 0
+    arguments.verbosity = .min
+
+    try await confirmation("Test matched", expectedCount: 1...) { testMatched in
+      _ = try await _invokeEntryPointV0(passing: arguments) { recordJSON in
+        let record = try! JSON.decode(ABIv0.Record.self, from: recordJSON)
+        if case .test = record.kind {
+          testMatched()
+        } else {
+          Issue.record("Unexpected record \(record)")
+        }
+      }
+    }
+  }
+
   private func _invokeEntryPointV0(
     passing arguments: __CommandLineArguments_v0,
     recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void = { _ in }

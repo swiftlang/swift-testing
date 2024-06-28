@@ -31,16 +31,6 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
   let exitCode = Locked(rawValue: EXIT_SUCCESS)
 
   do {
-    let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments)
-    if args.listTests ?? false {
-      for testID in await listTestsForEntryPoint(Test.all) {
-#if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
-        try? FileHandle.stdout.write("\(testID)\n")
-#else
-        print(testID)
-#endif
-      }
-    } else {
 #if !SWT_NO_EXIT_TESTS
       // If an exit test was specified, run it. `exitTest` returns `Never`.
       if let exitTest = ExitTest.findInEnvironmentForEntryPoint() {
@@ -48,41 +38,59 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
       }
 #endif
 
-      // Configure the test runner.
-      var configuration = try configurationForEntryPoint(from: args)
+    let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments)
+    // Configure the test runner.
+    var configuration = try configurationForEntryPoint(from: args)
 
-      // Set up the event handler.
-      configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-        if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
-          exitCode.withLock { exitCode in
-            exitCode = EXIT_FAILURE
-          }
+    // Set up the event handler.
+    configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+      if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
+        exitCode.withLock { exitCode in
+          exitCode = EXIT_FAILURE
         }
-        oldEventHandler(event, context)
       }
+      oldEventHandler(event, context)
+    }
 
 #if !SWT_NO_FILE_IO
-      // Configure the event recorder to write events to stderr.
-      var options = Event.ConsoleOutputRecorder.Options()
-      options = .for(.stderr)
-      options.verbosity = args.verbosity
-      let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
-        try? FileHandle.stderr.write(string)
-      }
-      configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-        eventRecorder.record(event, in: context)
-        oldEventHandler(event, context)
-      }
+    // Configure the event recorder to write events to stderr.
+    var options = Event.ConsoleOutputRecorder.Options()
+    options = .for(.stderr)
+    options.verbosity = args.verbosity
+    let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
+      try? FileHandle.stderr.write(string)
+    }
+    configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+      eventRecorder.record(event, in: context)
+      oldEventHandler(event, context)
+    }
 #endif
 
-      // If the caller specified an alternate event handler, hook it up too.
-      if let eventHandler {
-        configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-          eventHandler(event, context)
-          oldEventHandler(event, context)
-        }
+    // If the caller specified an alternate event handler, hook it up too.
+    if let eventHandler {
+      configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+        eventHandler(event, context)
+        oldEventHandler(event, context)
+      }
+    }
+
+    if args.listTests ?? false {
+      let tests = await Test.all
+      for testID in listTestsForEntryPoint(tests) {
+        // Print the test ID to stdout (classical CLI behavior.)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
+        try? FileHandle.stdout.write("\(testID)\n")
+#else
+        print(testID)
+#endif
       }
 
+      // Post an event for every discovered test. These events are turned into
+      // JSON objects if JSON output is enabled.
+      for test in tests {
+        Event.post(.testDiscovered, for: test, testCase: nil, configuration: configuration)
+      }
+    } else {
       // Run the tests.
       let runner = await Runner(configuration: configuration)
       await runner.run()
