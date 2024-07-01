@@ -172,13 +172,8 @@ public func confirmation<R>(
          expectedCount.lowerBound == expectedCount.upperBound {
         issueKind = .confirmationMiscounted(actual: actualCount, expected: expectedCount.lowerBound)
       } else {
-        // TODO: define an issue kind for out-of-range confirmation failures
-        issueKind = .unconditional
-        comment = if let comment {
-          "\(comment) - expected \(expectedCount) confirmations"
-        } else {
-          "expected \(expectedCount) confirmations"
-        }
+        issueKind = .confirmationMiscountedRange(actual: actualCount, expected: expectedCount)
+        comment = "\(comment?.description ?? "") - expected \(expectedCount) confirmations"
       }
       Issue.record(
         issueKind,

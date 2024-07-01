@@ -37,6 +37,25 @@ public struct Issue: Sendable {
     /// confirmation passed to these functions' `body` closures is confirmed too
     /// few or too many times.
     indirect case confirmationMiscounted(actual: Int, expected: Int)
+      
+    /// An issue due to a confirmation being confirmed the wrong number of
+    /// times.
+    ///
+    /// - Parameters:
+    ///   - actual: The number of times ``Confirmation/confirm(count:)`` was
+    ///     actually called.
+    ///   - expected: The expected range of times
+    ///     ``Confirmation/confirm(count:)`` should have been called.
+    ///
+    /// This issue can occur when calling
+    /// ``confirmation(_:expectedCount:sourceLocation:_:)-1g5pa`` when the
+    /// confirmation passed to these functions' `body` closures is confirmed too
+    /// few or too many times.
+    // FIXME:
+    // 1. Can't use some `RangeExpression` here
+    // 2. RangeExpression is not `Sendable` and will be an error in Swift 6 Mode
+    @_spi(Experimental)
+    indirect case confirmationMiscountedRange(actual: Int, expected: any RangeExpression<Int>)
 
     /// An issue due to an `Error` being thrown by a test function and caught by
     /// the testing library.
@@ -162,6 +181,13 @@ extension Issue.Kind: CustomStringConvertible {
       }
     case let .confirmationMiscounted(actual: actual, expected: expected):
       "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(expected.counting("time"))"
+    case let .confirmationMiscountedRange(actual: actual, expected: expected):
+      if #available(macOS 13, iOS 16, watchOS 9, tvOS 16, *) {
+        "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed in \(expected)"
+      } else {
+        // TODO: Runtime support for parameterized protocol types is only available in macOS 13.0 or newer
+        ""
+      }
     case let .errorCaught(error):
       "Caught error: \(error)"
     case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
@@ -259,6 +285,25 @@ extension Issue.Kind {
     /// confirmation passed to these functions' `body` closures is confirmed too
     /// few or too many times.
     indirect case confirmationMiscounted(actual: Int, expected: Int)
+    
+    /// An issue due to a confirmation being confirmed the wrong number of
+    /// times.
+    ///
+    /// - Parameters:
+    ///   - actual: The number of times ``Confirmation/confirm(count:)`` was
+    ///     actually called.
+    ///   - expected: The expected range of times
+    ///     ``Confirmation/confirm(count:)`` should have been called.
+    ///
+    /// This issue can occur when calling
+    /// ``confirmation(_:expectedCount:sourceLocation:_:)-1g5pa`` when the
+    /// confirmation passed to these functions' `body` closures is confirmed too
+    /// few or too many times.
+    // FIXME:
+    // 1. Can't use some `RangeExpression` here
+    // 2. RangeExpression is not `Sendable` and will be an error in Swift 6 Mode
+    @_spi(Experimental)
+    indirect case confirmationMiscountedRange(actual: Int, expected: any RangeExpression<Int>)
 
     /// An issue due to an `Error` being thrown by a test function and caught by
     /// the testing library.
@@ -300,6 +345,8 @@ extension Issue.Kind {
           .expectationFailed(Expectation.Snapshot(snapshotting: expectation))
       case let .confirmationMiscounted(actual: actual, expected: expected):
           .confirmationMiscounted(actual: actual, expected: expected)
+      case let .confirmationMiscountedRange(actual: actual, expected: expected):
+            .confirmationMiscountedRange(actual: actual, expected: expected)
       case let .errorCaught(error):
           .errorCaught(ErrorSnapshot(snapshotting: error))
       case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
@@ -318,6 +365,7 @@ extension Issue.Kind {
       case unconditional
       case expectationFailed
       case confirmationMiscounted
+      case confirmationMiscountedRange
       case errorCaught
       case timeLimitExceeded
       case knownIssueNotRecorded
@@ -331,6 +379,12 @@ extension Issue.Kind {
 
       /// The keys used to encode ``Issue.Kind.confirmationMiscount``.
       enum _ConfirmationMiscountedKeys: CodingKey {
+        case actual
+        case expected
+      }
+      
+      /// The keys used to encode ``Issue.Kind.confirmationMiscountRange``.
+      enum _ConfirmationMiscountedRangeKeys: CodingKey {
         case actual
         case expected
       }
@@ -354,6 +408,28 @@ extension Issue.Kind {
                                                                                           forKey: .actual),
                                        expected: try confirmationMiscountedContainer.decode(Int.self,
                                                                                             forKey: .expected))
+      } else if let confirmationMiscountedRangeContainer = try? container.nestedContainer(keyedBy: _CodingKeys._ConfirmationMiscountedRangeKeys.self,
+                                                                                     forKey: .confirmationMiscountedRange) {
+        let actual = try confirmationMiscountedRangeContainer.decode(Int.self, forKey: .actual)
+        if let expected = try? confirmationMiscountedRangeContainer.decode(ClosedRange<Int>.self, forKey: .expected) {
+          self = .confirmationMiscountedRange(actual: actual, expected: expected)
+        } else if let expected = try? confirmationMiscountedRangeContainer.decode(PartialRangeFrom<Int>.self, forKey: .expected) {
+          self = .confirmationMiscountedRange(actual: actual, expected: expected)
+        } else if let expected = try? confirmationMiscountedRangeContainer.decode(PartialRangeThrough<Int>.self, forKey: .expected) {
+          self = .confirmationMiscountedRange(actual: actual, expected: expected)
+        } else if let expected = try? confirmationMiscountedRangeContainer.decode(PartialRangeUpTo<Int>.self, forKey: .expected) {
+          self = .confirmationMiscountedRange(actual: actual, expected: expected)
+        } else if let expected = try? confirmationMiscountedRangeContainer.decode(Range<Int>.self, forKey: .expected) {
+          self = .confirmationMiscountedRange(actual: actual, expected: expected)
+        } else {
+          throw DecodingError.typeMismatch(
+            Self.self,
+            DecodingError.Context(
+              codingPath: decoder.codingPath,
+              debugDescription: "expected range value found did not match any of the known Range type for Issue.Kind."
+            )
+          )
+        }
       } else if let errorCaught = try? container.nestedContainer(keyedBy: _CodingKeys._ErrorCaughtKeys.self,
                                                                  forKey: .errorCaught) {
         self = .errorCaught(try errorCaught.decode(ErrorSnapshot.self, forKey: .error))
@@ -390,6 +466,29 @@ extension Issue.Kind {
                                                                         forKey: .confirmationMiscounted)
         try confirmationMiscountedContainer.encode(actual, forKey: .actual)
         try confirmationMiscountedContainer.encode(expected, forKey: .expected)
+      case let .confirmationMiscountedRange(actual, expected):
+        var confirmationMiscountedRangeContainer = container.nestedContainer(keyedBy: _CodingKeys._ConfirmationMiscountedRangeKeys.self,
+                                                                        forKey: .confirmationMiscountedRange)
+        try confirmationMiscountedRangeContainer.encode(actual, forKey: .actual)
+        if let expected = expected as? ClosedRange<Int> {
+          try confirmationMiscountedRangeContainer.encode(expected, forKey: .expected)
+        } else if let expected = expected as? PartialRangeFrom<Int> {
+          try confirmationMiscountedRangeContainer.encode(expected, forKey: .expected)
+        } else if let expected = expected as? PartialRangeThrough<Int> {
+          try confirmationMiscountedRangeContainer.encode(expected, forKey: .expected)
+        } else if let expected = expected as? PartialRangeUpTo<Int> {
+          try confirmationMiscountedRangeContainer.encode(expected, forKey: .expected)
+        } else if let expected = expected as? Range<Int> {
+          try confirmationMiscountedRangeContainer.encode(expected, forKey: .expected)
+        } else {
+          throw EncodingError.invalidValue(
+            expected,
+            EncodingError.Context(
+              codingPath: encoder.codingPath,
+              debugDescription: "expected range value found did not match any of the known Range type for Issue.Kind."
+            )
+          )
+        }
       case let .errorCaught(error):
         var errorCaughtContainer = container.nestedContainer(keyedBy: _CodingKeys._ErrorCaughtKeys.self, forKey: .errorCaught)
         try errorCaughtContainer.encode(error, forKey: .error)
@@ -443,6 +542,13 @@ extension Issue.Kind.Snapshot: CustomStringConvertible {
       }
     case let .confirmationMiscounted(actual: actual, expected: expected):
       "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(expected.counting("time"))"
+    case let .confirmationMiscountedRange(actual: actual, expected: expected):
+      if #available(macOS 13, iOS 16, watchOS 9, tvOS 16, *) {
+        "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed in \(expected)"
+      } else {
+        // TODO: Runtime support for parameterized protocol types is only available in macOS 13.0 or newer
+        ""
+      }
     case let .errorCaught(error):
       "Caught error: \(error)"
     case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):

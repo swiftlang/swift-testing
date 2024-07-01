@@ -29,16 +29,16 @@ struct ConfirmationTests {
 
   @Test("Unsuccessful confirmations")
   func unsuccessfulConfirmations() async {
-    await confirmation("Miscount recorded", expectedCount: 3) { miscountRecorded in
-      await confirmation("Unconditional issue recorded") { unconditionalRecorded in
+    await confirmation("Miscount issue recorded", expectedCount: 3) { miscountRecorded in
+      await confirmation("Miscount Range issue recorded", expectedCount: 1) { miscountRangeRecorded in
         var configuration = Configuration()
         configuration.eventHandler = { event, _ in
           if case let .issueRecorded(issue) = event.kind {
             switch issue.kind {
-            case .confirmationMiscounted:
+            case let .confirmationMiscounted(actual: actual, expected: expected):
               miscountRecorded()
-            case .unconditional:
-              unconditionalRecorded()
+            case let .confirmationMiscountedRange(actual: actual, expected: expected):
+              miscountRangeRecorded()
             default:
               break
             }
