@@ -37,7 +37,7 @@ if(SwiftTesting_BuildMacrosAsExecutables)
 
   set(SwiftTesting_MacroPluginFlags -load-plugin-executable "${BINARY_DIR}/TestingMacros${_TestingMacros_ExecutableSuffix}#TestingMacros")
 else()
-  set(SwiftTesting_MacroPluginFlags -plugin-path "${CMAKE_BINARY_DIR}/lib")
+  set(SwiftTesting_MacroPluginFlags -plugin-path "${BINARY_DIR}")
 endif()
 
 include(AvailabilityDefinitions)
