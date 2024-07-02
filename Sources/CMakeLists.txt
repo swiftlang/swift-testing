@@ -14,9 +14,9 @@ endif()
 
 find_package(SwiftSyntax CONFIG GLOBAL)
 if(SwiftSyntax_FOUND)
-  set(SwiftTesting_BuildMacrosAsExecutables OFF)
+  set(SwiftTesting_BuildMacrosAsExecutables NO)
 else()
-  set(SwiftTesting_BuildMacrosAsExecutables ON)
+  set(SwiftTesting_BuildMacrosAsExecutables YES)
 endif()
 
 ExternalProject_Add(TestingMacros
