@@ -299,13 +299,13 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       thunkBody = ""
     } else if let typeName {
       if functionDecl.isStaticOrClass {
-        thunkBody = "_ = \(forwardCall("\(typeName).\(functionDecl.name)\(forwardedParamsExpr)"))"
+        thunkBody = "_ = \(forwardCall("\(typeName).\(functionDecl.name.trimmed)\(forwardedParamsExpr)"))"
       } else {
         let instanceName = context.makeUniqueName(thunking: functionDecl)
         let varOrLet = functionDecl.isMutating ? "var" : "let"
         thunkBody = """
         \(raw: varOrLet) \(raw: instanceName) = \(forwardInit("\(typeName)()"))
-        _ = \(forwardCall("\(raw: instanceName).\(functionDecl.name)\(forwardedParamsExpr)"))
+        _ = \(forwardCall("\(raw: instanceName).\(functionDecl.name.trimmed)\(forwardedParamsExpr)"))
         """
 
         // If there could be an Objective-C selector associated with this test,
@@ -327,7 +327,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
         }
       }
     } else {
-      thunkBody = "_ = \(forwardCall("\(functionDecl.name)\(forwardedParamsExpr)"))"
+      thunkBody = "_ = \(forwardCall("\(functionDecl.name.trimmed)\(forwardedParamsExpr)"))"
     }
 
     // If this function is synchronous and is not explicitly isolated to the

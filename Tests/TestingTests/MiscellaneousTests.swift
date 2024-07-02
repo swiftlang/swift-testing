@@ -206,6 +206,18 @@ struct TestsWithAsyncArguments {
 )
 func parameterizedTestWithTrailingComment(value: Int) {}
 
+@Test(.hidden) func // Meaningful trivia: intentional newline before name
+globalMultiLineTestDecl() async {}
+
+@Suite(.hidden)
+struct MultiLineSuite {
+  @Test(.hidden) func // Meaningful trivia: intentional newline before name
+  multiLineTestDecl() async {}
+
+  @Test(.hidden) static func // Meaningful trivia: intentional newline before name
+  staticMultiLineTestDecl() async {}
+}
+
 @Suite("Miscellaneous tests")
 struct MiscellaneousTests {
   @Test("Free function's name")
