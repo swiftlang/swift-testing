@@ -303,52 +303,6 @@ extension Runner.Plan {
   }
 }
 
-// MARK: - Parallelization support
-
-extension Runner.Plan {
-  /// Get the steps in a test graph that can run independently of each other.
-  ///
-  /// - Parameters:
-  ///   - stepGraph: The step graph to recursively examine.
-  ///
-  /// - Returns: The steps in `stepGraph` that can run independently of each
-  ///   other.
-  ///
-  /// For more information, see ``independentlyRunnableSteps``.
-  private func _independentlyRunnableSteps(in stepGraph: Graph<String, Step?>) -> [Step] {
-    if let step = stepGraph.value {
-      return [step]
-    }
-    return stepGraph.children.reduce(into: []) { result, childStepGraph in
-      result += _independentlyRunnableSteps(in: childStepGraph.value)
-    }
-  }
-
-  /// The steps of the runner plan that can run independently of each other.
-  ///
-  /// If a test is a child of another test, then it is dependent on that test
-  /// to run. The value of this property is the set of steps that are _not_
-  /// dependent on each other. For example, given the following structure:
-  ///
-  /// ```swift
-  /// struct A {
-  ///   @Suite struct B {
-  ///     @Test func c() {}
-  ///     @Test func d() {}
-  ///   struct E {
-  ///     @Test func f() {}
-  ///   }
-  /// }
-  /// ```
-  ///
-  /// Only `B` and `E` are fully independent of any other tests. `c()` and
-  /// `d()` are independent of each other, but both are dependent on `B`, and
-  /// `f()` is dependent on `E`.
-  public var independentlyRunnableSteps: [Step] {
-    _independentlyRunnableSteps(in: stepGraph)
-  }
-}
-
 // MARK: - Snapshotting
 
 extension Runner.Plan {
