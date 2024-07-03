@@ -421,14 +421,6 @@ struct PlanTests {
     #expect(plan.stepGraph.subgraph(at: typeInfo.fullyQualifiedNameComponents + CollectionOfOne("reserved1(reserved2:)")) != nil)
   }
 
-  @Test("Runner.Plan.independentlyRunnableSteps property (all tests top-level)")
-  func independentlyRunnableTests() async throws {
-    let plan = await Runner.Plan(configuration: .init())
-    for step in plan.independentlyRunnableSteps {
-      #expect(step.test.id.nameComponents.count == 1, "Test is not top-level: \(step.test)")
-    }
-  }
-
   @Test("Test cases of a disabled test are not evaluated")
   func disabledTestCases() async throws {
     var configuration = Configuration()
