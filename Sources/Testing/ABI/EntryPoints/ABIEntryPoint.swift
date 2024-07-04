@@ -42,7 +42,7 @@ extension ABIv0 {
   /// `"swt_abiv0_getEntryPoint"` and can be dynamically looked up at runtime
   /// using `dlsym()` or a platform equivalent.
   ///
-  /// The value of this property can be thought of as equivalent to
+  /// The value of this property can be thought of as equivalent to a call to
   /// `swift test --event-stream-output` except that, instead of streaming JSON
   /// records to a named pipe or file, it streams them to an in-process
   /// callback.
@@ -67,5 +67,29 @@ extension ABIv0 {
 @_cdecl("swt_abiv0_getEntryPoint")
 @usableFromInline func abiv0_getEntryPoint() -> UnsafeRawPointer {
   unsafeBitCast(ABIv0.entryPoint, to: UnsafeRawPointer.self)
+}
+
+// MARK: - Xcode 16 Beta 1 compatibility
+
+/// An older signature for ``ABIv0/EntryPoint-swift.typealias`` used by Xcode 16
+/// Beta 1.
+///
+/// This type will be removed in a future update.
+@available(*, deprecated, message: "Use ABIv0.EntryPoint instead.")
+typealias ABIEntryPoint_v0 = @Sendable (
+  _ argumentsJSON: UnsafeRawBufferPointer?,
+  _ recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
+) async throws -> CInt
+
+/// An older signature for ``ABIv0/entryPoint-swift.type.property`` used by
+/// Xcode 16 Beta 1.
+///
+/// This function will be removed in a future update.
+@available(*, deprecated, message: "Use ABIv0.entryPoint (swt_abiv0_getEntryPoint()) instead.")
+@_cdecl("swt_copyABIEntryPoint_v0")
+@usableFromInline func copyABIEntryPoint_v0() -> UnsafeMutableRawPointer {
+  let result = UnsafeMutablePointer<ABIEntryPoint_v0>.allocate(capacity: 1)
+  result.initialize { try await ABIv0.entryPoint($0, $1) ? EXIT_SUCCESS : EXIT_FAILURE }
+  return .init(result)
 }
 #endif
