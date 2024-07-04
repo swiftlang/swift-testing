@@ -11,7 +11,6 @@
 #if canImport(Foundation) && !SWT_NO_ABI_ENTRY_POINT
 private import _TestingInternals
 
-@_spi(ForToolsIntegrationOnly)
 extension ABIv0 {
   /// The type of the entry point to the testing library used by tools that want
   /// to remain version-agnostic regarding the testing library.
