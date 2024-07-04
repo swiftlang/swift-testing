@@ -260,6 +260,7 @@ static SWTMachHeaderList getMachHeaders(void) {
   // After the first call sets up the loader hook, all calls take the lock and
   // make a copy of whatever has been loaded so far.
   SWTMachHeaderList result;
+  result.reserve(_dyld_image_count());
   os_unfair_lock_lock(&lock); {
     result = *machHeaders;
   } os_unfair_lock_unlock(&lock);
