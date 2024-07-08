@@ -10,26 +10,6 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-private struct CustomTrait: CustomExecutionTrait, TestTrait {
-  var before: Confirmation
-  var after: Confirmation
-  func execute(_ function: @escaping @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
-    before()
-    defer {
-      after()
-    }
-    try await function()
-  }
-}
-
-private struct CustomThrowingErrorTrait: CustomExecutionTrait, TestTrait {
-  fileprivate struct CustomTraitError: Error {}
-
-  func execute(_ function: @escaping @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
-    throw CustomTraitError()
-  }
-}
-
 @Suite("CustomExecutionTrait Tests")
 struct CustomExecutionTraitTests {
   @Test("Execute code before and after a non-parameterized test.")
@@ -75,5 +55,54 @@ struct CustomExecutionTraitTests {
         Issue.record("Expected trait to fail the test. Should not have reached test body.")
       }.run(configuration: configuration)
     }
+  }
+
+  @Test("Teardown occurs after child tests run")
+  func teardownOccursAtEnd() async throws {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      print(event)
+    }
+    await runTest(for: TestsWithCustomTrait.self, configuration: configuration)
+  }
+}
+
+// MARK: - Fixtures
+
+private struct CustomTrait: CustomExecutionTrait, TestTrait {
+  var before: Confirmation
+  var after: Confirmation
+  func execute(_ function: @escaping @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
+    before()
+    defer {
+      after()
+    }
+    try await function()
+  }
+}
+
+private struct CustomThrowingErrorTrait: CustomExecutionTrait, TestTrait {
+  fileprivate struct CustomTraitError: Error {}
+
+  func execute(_ function: @escaping @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
+    throw CustomTraitError()
+  }
+}
+
+struct DoSomethingBeforeAndAfterTrait: CustomExecutionTrait, SuiteTrait, TestTrait {
+  static let state = Locked(rawValue: 0)
+
+  func execute(_ function: @escaping @Sendable () async throws -> Void, for test: Testing.Test, testCase: Testing.Test.Case?) async throws {
+    #expect(Self.state.increment() == 1)
+
+    try await function()
+    #expect(Self.state.increment() == 3)
+  }
+}
+
+@Suite(.hidden, DoSomethingBeforeAndAfterTrait())
+struct TestsWithCustomTrait { // Trait should only excecute once for each test since it is a suite trait, if we want to execute trait logic for each test set isRecursive to true
+  @Test(.hidden) func f() async {
+    #expect(DoSomethingBeforeAndAfterTrait.state.increment() == 2)
   }
 }
