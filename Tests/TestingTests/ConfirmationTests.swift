@@ -29,16 +29,16 @@ struct ConfirmationTests {
 
   @Test("Unsuccessful confirmations")
   func unsuccessfulConfirmations() async {
-    await confirmation("Miscount recorded", expectedCount: 3) { miscountRecorded in
-      await confirmation("Unconditional issue recorded", expectedCount: 5) { unconditionalRecorded in
+    await confirmation("Miscount recorded", expectedCount: 4) { miscountRecorded in
+      await confirmation("Out of range recorded", expectedCount: 5) { outOfRangeRecorded in
         var configuration = Configuration()
         configuration.eventHandler = { event, _ in
           if case let .issueRecorded(issue) = event.kind {
             switch issue.kind {
             case .confirmationMiscounted:
               miscountRecorded()
-            case .unconditional:
-              unconditionalRecorded()
+            case .confirmationOutOfRange:
+              outOfRangeRecorded()
             default:
               break
             }
@@ -110,14 +110,14 @@ struct UnsuccessfulConfirmationTests {
   }
 
   @Test(.hidden, arguments: [
-    1 ... 2 as any RangeExpression & Sendable,
+    1 ... 2 as any Confirmation.ExpectedCount,
     1 ..< 2,
+    1 ..< 3,
     ..<2,
     ...2,
     999...,
   ])
-  func confirmedOutOfRange(_ range: any RangeExpression & Sendable) async {
-    let range = range as! any RangeExpression<Int>
+  func confirmedOutOfRange(_ range: any Confirmation.ExpectedCount) async {
     await confirmation(expectedCount: range) { (thingHappened) async in
       thingHappened(count: 3)
     }

@@ -105,6 +105,8 @@ public func confirmation<R>(
   )
 }
 
+// MARK: - Ranges as expected counts
+
 /// Confirm that some event occurs during the invocation of a function.
 ///
 /// - Parameters:
@@ -158,7 +160,7 @@ public func confirmation<R>(
 @_spi(Experimental)
 public func confirmation<R>(
   _ comment: Comment? = nil,
-  expectedCount: some RangeExpression<Int>,
+  expectedCount: some Confirmation.ExpectedCount,
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: (Confirmation) async throws -> R
 ) async rethrows -> R {
@@ -166,22 +168,8 @@ public func confirmation<R>(
   defer {
     let actualCount = confirmation.count.rawValue
     if !expectedCount.contains(actualCount) {
-      var comment = comment
-      let issueKind: Issue.Kind
-      if let expectedCount = expectedCount as? ClosedRange<Int>,
-         expectedCount.lowerBound == expectedCount.upperBound {
-        issueKind = .confirmationMiscounted(actual: actualCount, expected: expectedCount.lowerBound)
-      } else {
-        // TODO: define an issue kind for out-of-range confirmation failures
-        issueKind = .unconditional
-        comment = if let comment {
-          "\(comment) - expected \(String(describingForTest: expectedCount)) confirmations"
-        } else {
-          "expected \(String(describingForTest: expectedCount)) confirmations"
-        }
-      }
       Issue.record(
-        issueKind,
+        expectedCount.issueKind(forActualCount: actualCount),
         comments: Array(comment),
         backtrace: .current(),
         sourceLocation: sourceLocation
@@ -190,3 +178,52 @@ public func confirmation<R>(
   }
   return try await body(confirmation)
 }
+
+@_spi(Experimental)
+extension Confirmation {
+  /// A protocol that describes a range expression that can be used with
+  /// ``confirmation(_:expectedCount:sourceLocation:_:)-41gmd``.
+  ///
+  /// This protocol represents any expression that describes a range of
+  /// confirmation counts. For example, the expression `1 ..< 10` automatically
+  /// conforms to it.
+  ///
+  /// You do not generally need to add conformances to this type yourself. It is
+  /// used by the testing library to abstract away the different range types
+  /// provided by the Swift standard library.
+  public protocol ExpectedCount: Sendable, RangeExpression<Int> {}
+}
+
+extension Confirmation.ExpectedCount {
+  /// Get an instance of ``Issue/Kind-swift.enum`` corresponding to this value.
+  ///
+  /// - Parameters:
+  ///   - actualCount: The actual count for the failed confirmation.
+  ///
+  /// - Returns: An instance of ``Issue/Kind-swift.enum`` that describes `self`.
+  fileprivate func issueKind(forActualCount actualCount: Int) -> Issue.Kind {
+    switch self {
+    case let expectedCount as ClosedRange<Int> where expectedCount.lowerBound == expectedCount.upperBound:
+      return .confirmationMiscounted(actual: actualCount, expected: expectedCount.lowerBound)
+    case let expectedCount as Range<Int> where expectedCount.lowerBound == expectedCount.upperBound - 1:
+      return .confirmationMiscounted(actual: actualCount, expected: expectedCount.lowerBound)
+    default:
+      return .confirmationOutOfRange(actual: actualCount, expected: self)
+    }
+  }
+}
+
+@_spi(Experimental)
+extension ClosedRange<Int>: Confirmation.ExpectedCount {}
+
+@_spi(Experimental)
+extension PartialRangeFrom<Int>: Confirmation.ExpectedCount {}
+
+@_spi(Experimental)
+extension PartialRangeThrough<Int>: Confirmation.ExpectedCount {}
+
+@_spi(Experimental)
+extension PartialRangeUpTo<Int>: Confirmation.ExpectedCount {}
+
+@_spi(Experimental)
+extension Range<Int>: Confirmation.ExpectedCount {}

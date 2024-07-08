@@ -38,6 +38,22 @@ public struct Issue: Sendable {
     /// few or too many times.
     indirect case confirmationMiscounted(actual: Int, expected: Int)
 
+    /// An issue due to a confirmation being confirmed the wrong number of
+    /// times.
+    ///
+    /// - Parameters:
+    ///   - actual: The number of times ``Confirmation/confirm(count:)`` was
+    ///     actually called.
+    ///   - expected: The expected number of times
+    ///     ``Confirmation/confirm(count:)`` should have been called.
+    ///
+    /// This issue can occur when calling
+    /// ``confirmation(_:expectedCount:sourceLocation:_:)-41gmd`` when the
+    /// confirmation passed to these functions' `body` closures is confirmed too
+    /// few or too many times.
+    @_spi(Experimental)
+    indirect case confirmationOutOfRange(actual: Int, expected: any Confirmation.ExpectedCount)
+
     /// An issue due to an `Error` being thrown by a test function and caught by
     /// the testing library.
     ///
@@ -162,6 +178,8 @@ extension Issue.Kind: CustomStringConvertible {
       }
     case let .confirmationMiscounted(actual: actual, expected: expected):
       "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(expected.counting("time"))"
+    case let .confirmationOutOfRange(actual: actual, expected: expected):
+      "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(String(describingForTest: expected)) time(s)"
     case let .errorCaught(error):
       "Caught error: \(error)"
     case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
@@ -300,6 +318,8 @@ extension Issue.Kind {
           .expectationFailed(Expectation.Snapshot(snapshotting: expectation))
       case let .confirmationMiscounted(actual: actual, expected: expected):
           .confirmationMiscounted(actual: actual, expected: expected)
+      case let .confirmationOutOfRange(actual: actual, expected: _):
+          .confirmationMiscounted(actual: actual, expected: 0)
       case let .errorCaught(error):
           .errorCaught(ErrorSnapshot(snapshotting: error))
       case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
