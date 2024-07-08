@@ -104,6 +104,11 @@ extension TypeInfo {
         result[0] = String(firstComponent.split(separator: ":", maxSplits: 1).last!)
       }
 
+      // If a type is private or embedded in a function, its fully qualified
+      // name may include "(unknown context at $xxxxxxxx)" as a component. Strip
+      // those out as they're uninteresting to us.
+      result = result.filter { !$0.starts(with: "(unknown context at") }
+
       return result
     case let .nameOnly(fullyQualifiedNameComponents, _, _):
       return fullyQualifiedNameComponents
