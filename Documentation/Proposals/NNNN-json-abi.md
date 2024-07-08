@@ -204,6 +204,11 @@ Package Manager:
 | `--event-stream-output` | File system path | Specifies a path to a file, named pipe, etc. to which output should be written. |
 | `--event-stream-version` | Integer | Specifies the version of the stable JSON schema to use for output. |
 
+The process for adding arguments to Swift Package Manager is separate from the
+process for Swift Testing API changes, so the names of these arguments are
+speculative and are subject to change as part of the Swift Package Manager
+review process.
+
 If `--configuration-path` is specified, Swift Testing will open it for reading
 and attempt to decode its contents as JSON. If `--event-stream-output` is
 specified, Swift Testing will open it for writing and will write a sequence of
