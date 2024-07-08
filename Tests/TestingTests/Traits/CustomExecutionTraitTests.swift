@@ -59,11 +59,7 @@ struct CustomExecutionTraitTests {
 
   @Test("Teardown occurs after child tests run")
   func teardownOccursAtEnd() async throws {
-    var configuration = Configuration()
-    configuration.eventHandler = { event, _ in
-      print(event)
-    }
-    await runTest(for: TestsWithCustomTrait.self, configuration: configuration)
+    await runTest(for: TestsWithCustomTrait.self, configuration: .init())
   }
 }
 
