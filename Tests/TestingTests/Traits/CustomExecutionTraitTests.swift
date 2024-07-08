@@ -97,7 +97,7 @@ struct DoSomethingBeforeAndAfterTrait: CustomExecutionTrait, SuiteTrait, TestTra
 }
 
 @Suite(.hidden, DoSomethingBeforeAndAfterTrait())
-struct TestsWithCustomTrait { // Trait should only excecute once for each test since it is a suite trait, if we want to execute trait logic for each test set isRecursive to true
+struct TestsWithCustomTraitWithStrongOrdering {
   @Test(.hidden) func f() async {
     #expect(DoSomethingBeforeAndAfterTrait.state.increment() == 2)
   }
