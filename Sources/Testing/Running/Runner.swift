@@ -209,11 +209,33 @@ extension Runner {
             if let testCases = step.test.testCases {
               try await _runTestCases(testCases, within: step)
             }
+
+            // Run the children of this test (i.e. the tests in this suite.)
+            try await _runChildren(of: stepGraph, depth: depth, lastAncestorStep: lastAncestorStep)
           }
         }
       }
+    } else {
+      // There is no test at this node in the graph, so just skip down to the
+      // child nodes.
+      try await _runChildren(of: stepGraph, depth: depth, lastAncestorStep: lastAncestorStep)
     }
+  }
 
+  /// Recursively run the tests that are children of a given plan step.
+  ///
+  /// - Parameters:
+  ///   - stepGraph: The subgraph whose root value, a step, is to be run.
+  ///   - depth: How deep into the step graph this call is. The first call has a
+  ///     depth of `0`.
+  ///   - lastAncestorStep: The last-known ancestral step, if any, of the step
+  ///     at the root of `stepGraph`. The options in this step (if its action is
+  ///     of case ``Runner/Plan/Action/run(options:)``) inform the execution of
+  ///     `stepGraph`.
+  ///
+  /// - Throws: Whatever is thrown from the test body. Thrown errors are
+  ///   normally reported as test failures.
+  private func _runChildren(of stepGraph: Graph<String, Plan.Step?>, depth: Int, lastAncestorStep: Plan.Step?) async throws {
     // Figure out the last-good step, either the one at the root of `stepGraph`
     // or, if it is nil, the one passed into this function. We need to track
     // this value in case we run into sparse sections of the graph so we don't
