@@ -96,9 +96,17 @@ target_link_libraries(Testing PRIVATE
   _TestingInternals)
 add_dependencies(Testing
   TestingMacros)
-target_compile_definitions(Testing PRIVATE
-  SWT_BUILDING_WITH_CMAKE)
-target_compile_options(Testing PUBLIC
-  -load-plugin-executable "${TestingMacrosPath}")
 target_compile_options(Testing PRIVATE
   -enable-library-evolution)
+
+if(SwiftTesting_BuildMacrosAsExecutables)
+  if(CMAKE_HOST_WIN32)
+    set(_TestingMacros_ExecutableSuffix ".exe")
+  endif()
+
+  target_compile_options(Testing PUBLIC
+    "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-load-plugin-executable ${BINARY_DIR}/TestingMacros${_TestingMacros_ExecutableSuffix}#TestingMacros>")
+else()
+  target_compile_options(Testing PUBLIC
+    "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-plugin-path ${BINARY_DIR}>")
+endif()

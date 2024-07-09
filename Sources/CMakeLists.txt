@@ -12,18 +12,22 @@ if(NOT SwiftTesting_MACRO_MAKE_PROGRAM)
   set(SwiftTesting_MACRO_MAKE_PROGRAM ${CMAKE_MAKE_PROGRAM})
 endif()
 
+find_package(SwiftSyntax CONFIG GLOBAL)
+if(SwiftSyntax_FOUND)
+  set(SwiftTesting_BuildMacrosAsExecutables NO)
+else()
+  set(SwiftTesting_BuildMacrosAsExecutables YES)
+endif()
+
 ExternalProject_Add(TestingMacros
   PREFIX "tm"
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/TestingMacros"
   CMAKE_ARGS
     -DCMAKE_MAKE_PROGRAM=${SwiftTesting_MACRO_MAKE_PROGRAM}
+    -DSwiftTesting_BuildMacrosAsExecutables=${SwiftTesting_BuildMacrosAsExecutables}
+    -DSwiftSyntax_DIR=${SwiftSyntax_DIR}
   INSTALL_COMMAND "")
 ExternalProject_Get_Property(TestingMacros BINARY_DIR)
-if(CMAKE_HOST_WIN32)
-  set(TestingMacrosPath "${BINARY_DIR}/TestingMacros.exe#TestingMacros")
-else()
-  set(TestingMacrosPath "${BINARY_DIR}/TestingMacros#TestingMacros")
-endif()
 
 include(AvailabilityDefinitions)
 include(CompilerSettings)
