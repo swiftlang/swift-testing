@@ -29,17 +29,6 @@ ExternalProject_Add(TestingMacros
   INSTALL_COMMAND "")
 ExternalProject_Get_Property(TestingMacros BINARY_DIR)
 
-if(SwiftTesting_BuildMacrosAsExecutables)
-  set(_TestingMacros_ExecutableSuffix "")
-  if(CMAKE_HOST_WIN32)
-    set(_TestingMacros_ExecutableSuffix ".exe")
-  endif()
-
-  set(SwiftTesting_MacroPluginFlags -load-plugin-executable "${BINARY_DIR}/TestingMacros${_TestingMacros_ExecutableSuffix}#TestingMacros")
-else()
-  set(SwiftTesting_MacroPluginFlags -plugin-path "${BINARY_DIR}")
-endif()
-
 include(AvailabilityDefinitions)
 include(CompilerSettings)
 add_subdirectory(_TestingInternals)
