@@ -220,12 +220,12 @@ public struct __CommandLineArguments_v0: Sendable {
   /// The version of the event stream schema to use when writing events to
   /// ``experimentalEventStreamOutput``.
   ///
-  /// If the value of this property is `nil`, events are encoded verbatim (using
-  /// ``Event/Snapshot``.) Otherwise, the corresponding stable schema is used
-  /// (e.g. ``ABIv0/Record`` for `0`.)
+  /// The corresponding stable schema is used to encode events to the event
+  /// stream (for example, ``ABIv0/Record`` is used if the value of this
+  /// property is `0`.)
   ///
-  /// - Warning: The behavior of this property will change when the ABI version
-  ///   0 JSON schema is finalized.
+  /// If the value of this property is `nil`, the testing library assumes a
+  /// value of `0` instead.
   public var experimentalEventStreamVersion: Int?
 
   /// The value(s) of the `--filter` argument.
@@ -482,9 +482,11 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 /// - Throws: If `version` is not a supported ABI version.
 func eventHandlerForStreamingEvents(version: Int?, forwardingTo eventHandler: @escaping @Sendable (UnsafeRawBufferPointer) -> Void) throws -> Event.Handler {
   switch version {
-  case nil:
+  case -1:
+    // Legacy support for Xcode 16 betas. Support for this undocumented version
+    // will be removed in a future update. Do not use it.
     eventHandlerForStreamingEventSnapshots(to: eventHandler)
-  case 0:
+  case nil, 0:
     ABIv0.Record.eventHandler(forwardingTo: eventHandler)
   case let .some(unsupportedVersion):
     throw _EntryPointError.invalidArgument("--experimental-event-stream-version", value: "\(unsupportedVersion)")

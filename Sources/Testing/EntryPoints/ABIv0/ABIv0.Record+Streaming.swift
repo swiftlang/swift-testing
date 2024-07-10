@@ -57,8 +57,8 @@ extension ABIv0.Record {
 /// External adopters are not necessarily written in Swift and are expected to
 /// decode the JSON produced for this type in implementation-specific ways.
 ///
-/// - Warning: This type will be removed when the ABI version 0 JSON schema is
-///   finalized.
+/// - Warning: This type supports early Xcode 16 betas and will be removed in a
+///   future update.
 struct EventAndContextSnapshot {
   /// A snapshot of the event.
   var event: Event.Snapshot
@@ -86,8 +86,8 @@ extension EventAndContextSnapshot: Codable {}
 /// performs additional postprocessing before writing JSON data to ensure it
 /// does not contain any newline characters.
 ///
-/// - Warning: This function will be removed when the ABI version 0 JSON schema
-///   is finalized.
+/// - Warning: This function supports early Xcode 16 betas and will be removed
+///   in a future update.
 func eventHandlerForStreamingEventSnapshots(
   to eventHandler: @escaping @Sendable (_ eventAndContextJSON: UnsafeRawBufferPointer) -> Void
 ) -> Event.Handler {
