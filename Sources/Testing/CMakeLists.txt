@@ -7,17 +7,17 @@
 # See http://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 add_library(Testing
-  EntryPoints/ABIEntryPoint.swift
-  EntryPoints/ABIv0/ABIv0.Record.swift
-  EntryPoints/ABIv0/ABIv0.Record+Streaming.swift
-  EntryPoints/ABIv0/ABIv0.swift
-  EntryPoints/ABIv0/Encoded/ABIv0.EncodedEvent.swift
-  EntryPoints/ABIv0/Encoded/ABIv0.EncodedInstant.swift
-  EntryPoints/ABIv0/Encoded/ABIv0.EncodedIssue.swift
-  EntryPoints/ABIv0/Encoded/ABIv0.EncodedMessage.swift
-  EntryPoints/ABIv0/Encoded/ABIv0.EncodedTest.swift
-  EntryPoints/EntryPoint.swift
-  EntryPoints/SwiftPMEntryPoint.swift
+  ABI/EntryPoints/ABIEntryPoint.swift
+  ABI/EntryPoints/EntryPoint.swift
+  ABI/EntryPoints/SwiftPMEntryPoint.swift
+  ABI/v0/ABIv0.Record.swift
+  ABI/v0/ABIv0.Record+Streaming.swift
+  ABI/v0/ABIv0.swift
+  ABI/v0/Encoded/ABIv0.EncodedEvent.swift
+  ABI/v0/Encoded/ABIv0.EncodedInstant.swift
+  ABI/v0/Encoded/ABIv0.EncodedIssue.swift
+  ABI/v0/Encoded/ABIv0.EncodedMessage.swift
+  ABI/v0/Encoded/ABIv0.EncodedTest.swift
   Events/Clock.swift
   Events/Event.swift
   Events/Recorder/Event.ConsoleOutputRecorder.swift
