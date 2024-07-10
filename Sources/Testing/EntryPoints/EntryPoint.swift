@@ -224,8 +224,8 @@ public struct __CommandLineArguments_v0: Sendable {
   /// stream (for example, ``ABIv0/Record`` is used if the value of this
   /// property is `0`.)
   ///
-  /// If the value of this property is `nil`, the testing library assumes a
-  /// value of `0` instead.
+  /// If the value of this property is `nil`, the testing library assumes that
+  /// the newest available schema should be used.
   public var experimentalEventStreamVersion: Int?
 
   /// The value(s) of the `--filter` argument.
