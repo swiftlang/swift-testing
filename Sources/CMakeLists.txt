@@ -11,6 +11,15 @@ include(ExternalProject)
 if(NOT SwiftTesting_MACRO_MAKE_PROGRAM)
   set(SwiftTesting_MACRO_MAKE_PROGRAM ${CMAKE_MAKE_PROGRAM})
 endif()
+if(NOT SwiftTesting_MACRO_Swift_COMPILER)
+  set(SwiftTesting_MACRO_Swift_COMPILER ${CMAKE_Swift_COMPILER})
+endif()
+if(NOT SwiftTesting_MACRO_AR)
+  set(SwiftTesting_MACRO_AR ${CMAKE_AR})
+endif()
+if(NOT SwiftTesting_MACRO_RANLIB)
+  set(SwiftTesting_MACRO_RANLIB ${CMAKE_RANLIB})
+endif()
 
 find_package(SwiftSyntax CONFIG GLOBAL)
 if(SwiftSyntax_FOUND)
@@ -23,13 +32,25 @@ ExternalProject_Add(TestingMacros
   PREFIX "tm"
   SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/TestingMacros"
   CMAKE_ARGS
+    -DCMAKE_Swift_COMPILER=${SwiftTesting_MACRO_Swift_COMPILER}
+    -DCMAKE_AR=${SwiftTesting_MACRO_AR}
+    -DCMAKE_RANLIB=${SwiftTesting_MACRO_RANLIB}
     -DCMAKE_MAKE_PROGRAM=${SwiftTesting_MACRO_MAKE_PROGRAM}
     -DSwiftTesting_BuildMacrosAsExecutables=${SwiftTesting_BuildMacrosAsExecutables}
     -DSwiftSyntax_DIR=${SwiftSyntax_DIR}
-  INSTALL_COMMAND "")
+    -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>)
 ExternalProject_Get_Property(TestingMacros BINARY_DIR)
+ExternalProject_Get_Property(TestingMacros INSTALL_DIR)
 
 include(AvailabilityDefinitions)
 include(CompilerSettings)
 add_subdirectory(_TestingInternals)
 add_subdirectory(Testing)
+
+if(SwiftTesting_BuildMacrosAsExecutables)
+  install(PROGRAMS "${INSTALL_DIR}/lib/libTestingMacros.dylib"
+    # TODO: Finalize the install path
+    ARCHIVE DESTINATION lib/swift/host/plugins
+    LIBRARY DESTINATION lib/swift/host/plugins
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+endif()
