@@ -47,13 +47,10 @@ extension ABIv0 {
   /// callback.
   public static var entryPoint: EntryPoint {
     return { configurationJSON, recordHandler in
-      let args = try configurationJSON.map { configurationJSON in
-        try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON)
-      }
-
-      let eventHandler = try eventHandlerForStreamingEvents(version: args?.eventStreamVersion, forwardingTo: recordHandler)
-      let exitCode = await Testing.entryPoint(passing: args, eventHandler: eventHandler)
-      return exitCode == EXIT_SUCCESS
+      try await Testing.entryPoint(
+        configurationJSON: configurationJSON,
+        recordHandler: recordHandler
+      ) == EXIT_SUCCESS
     }
   }
 }
@@ -88,7 +85,39 @@ typealias ABIEntryPoint_v0 = @Sendable (
 @_cdecl("swt_copyABIEntryPoint_v0")
 @usableFromInline func copyABIEntryPoint_v0() -> UnsafeMutableRawPointer {
   let result = UnsafeMutablePointer<ABIEntryPoint_v0>.allocate(capacity: 1)
-  result.initialize { try await ABIv0.entryPoint($0, $1) ? EXIT_SUCCESS : EXIT_FAILURE }
+  result.initialize { configurationJSON, recordHandler in
+    try await entryPoint(
+      configurationJSON: configurationJSON,
+      eventStreamVersionIfNil: -1,
+      recordHandler: recordHandler
+    )
+  }
   return .init(result)
+}
+
+/// A common implementation for ``ABIv0/entryPoint-swift.type.property`` and
+/// ``copyABIEntryPoint_v0()`` that provides Xcode 16 Beta 1 compatibility.
+///
+/// This function will be removed (with its logic incorporated into
+/// ``ABIv0/entryPoint-swift.type.property``) in a future update.
+private func entryPoint(
+  configurationJSON: UnsafeRawBufferPointer?,
+  eventStreamVersionIfNil: Int? = nil,
+  recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
+) async throws -> CInt {
+  var args = try configurationJSON.map { configurationJSON in
+    try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON)
+  }
+
+  // If the caller needs a nil event stream version to default to a specific
+  // JSON schema, apply it here as if they'd specified it in the configuration
+  // JSON blob.
+  if let eventStreamVersionIfNil, args?.eventStreamVersion == nil {
+    args?.eventStreamVersion = eventStreamVersionIfNil
+  }
+
+  let eventHandler = try eventHandlerForStreamingEvents(version: args?.eventStreamVersion, forwardingTo: recordHandler)
+  let exitCode = await entryPoint(passing: args, eventHandler: eventHandler)
+  return exitCode
 }
 #endif
