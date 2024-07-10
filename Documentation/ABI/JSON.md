@@ -11,8 +11,8 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 -->
 
 This document outlines the JSON schemas used by the testing library for its ABI
-entry point and for the `--event-stream-output` command-line argument. For more
-information about the ABI entry point, see the documentation for
+entry point and for the `--event-stream-output-path` command-line argument. For
+more information about the ABI entry point, see the documentation for
 [ABIv0.EntryPoint](https://github.com/search?q=repo%3Aapple%2Fswift-testing%EntryPoint&type=code).
 
 ## Modified Backus-Naur form
@@ -99,8 +99,8 @@ encoded as a single [JSON Lines](https://jsonlines.org) value.
 
 A stream consists of a sequence of values encoded as [JSON Lines](https://jsonlines.org).
 A single instance of `<output-stream>` is defined per test process and can be
-accessed by passing `--event-stream-output` to the test executable created by
-`swift build --build-tests`.
+accessed by passing `--event-stream-output-path` to the test executable created
+by `swift build --build-tests`.
 
 ```
 <output-stream> ::= <output-record>\n | <output-record>\n <output-stream>

@@ -201,7 +201,7 @@ Package Manager:
 | Argument | Value Type | Description |
 |---|:-:|---|
 | `--configuration-path` | File system path | Specifies a path to a file, named pipe, etc. containing test configuration/options. |
-| `--event-stream-output` | File system path | Specifies a path to a file, named pipe, etc. to which output should be written. |
+| `--event-stream-output-path` | File system path | Specifies a path to a file, named pipe, etc. to which output should be written. |
 | `--event-stream-version` | Integer | Specifies the version of the stable JSON schema to use for output. |
 
 The process for adding arguments to Swift Package Manager is separate from the
@@ -210,24 +210,29 @@ speculative and are subject to change as part of the Swift Package Manager
 review process.
 
 If `--configuration-path` is specified, Swift Testing will open it for reading
-and attempt to decode its contents as JSON. If `--event-stream-output` is
+and attempt to decode its contents as JSON. If `--event-stream-output-path` is
 specified, Swift Testing will open it for writing and will write a sequence of
 [JSON Lines](https://jsonlines.org) to it representing the data and events
 produced by the test run. `--event-stream-version` determines the stable schema
 used for output; pass `0` to match the schema proposed in this document.
 
 > [!NOTE]
-> If `--event-stream-output` is specified but `--event-stream-version` is not,
-> the format _currently_ used is based on direct JSON encodings of the internal
-> Swift structures used by Swift Testing. This format is necessary to support
-> Xcode 16 Beta 1. In the future, the default value of this argument will be
-> assumed to be `0` instead (i.e. the JSON schema will match what we are
-> proposing here.)
+> If `--event-stream-output-path` is specified but `--event-stream-version` is
+> not, the format _currently_ used is based on direct JSON encodings of the
+> internal Swift structures used by Swift Testing. This format is necessary to
+> support Xcode 16 Beta 1. In the future, the default value of this argument
+> will be assumed to equal the newest available JSON schema version (`0` as of
+> this document's acceptance, i.e. the JSON schema will match what we are
+> proposing here until a new schema supersedes it.)
+>
+> Tools authors that rely on the JSON schema are strongly advised to specify a
+> version rather than relying on this behavior to avoid breaking changes in the
+> future.
 
 On platforms that support them, callers can use a named pipe with
-`--event-stream-output` to get live results back from the test run rather than
-needing to wait until the file is closed by the test process. Named pipes can be
-created on Darwin or Linux with the POSIX [`mkfifo()`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/mkfifo.2.html)
+`--event-stream-output-path` to get live results back from the test run rather
+than needing to wait until the file is closed by the test process. Named pipes
+can be created on Darwin or Linux with the POSIX [`mkfifo()`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/mkfifo.2.html)
 function or on Windows with the [`CreateNamedPipe()`](https://learn.microsoft.com/en-us/windows/win32/api/namedpipeapi/nf-namedpipeapi-createnamedpipew)
 function.
 
@@ -278,8 +283,8 @@ public enum ABIv0 {
   /// using `dlsym()` or a platform equivalent.
   ///
   /// The value of this property can be thought of as equivalent to
-  /// `swift test --event-stream-output` except that, instead of streaming JSON
-  /// records to a named pipe or file, it streams them to an in-process
+  /// `swift test --event-stream-output-path` except that, instead of streaming
+  /// JSON records to a named pipe or file, it streams them to an in-process
   /// callback.
   public static var entryPoint: EntryPoint { get }
 }

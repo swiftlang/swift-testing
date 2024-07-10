@@ -207,9 +207,9 @@ struct SwiftPMTests {
       }
   }
 
-  @Test("--event-stream-output argument (writes to a stream and can be read back)",
+  @Test("--event-stream-output-path argument (writes to a stream and can be read back)",
         arguments: [
-          ("--event-stream-output", "--event-stream-version", "0"),
+          ("--event-stream-output-path", "--event-stream-version", "0"),
           ("--experimental-event-stream-output", "--experimental-event-stream-version", "0"),
         ])
   func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: String) async throws {

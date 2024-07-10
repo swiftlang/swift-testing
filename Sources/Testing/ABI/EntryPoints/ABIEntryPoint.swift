@@ -42,8 +42,8 @@ extension ABIv0 {
   /// using `dlsym()` or a platform equivalent.
   ///
   /// The value of this property can be thought of as equivalent to a call to
-  /// `swift test --event-stream-output` except that, instead of streaming JSON
-  /// records to a named pipe or file, it streams them to an in-process
+  /// `swift test --event-stream-output-path` except that, instead of streaming
+  /// JSON records to a named pipe or file, it streams them to an in-process
   /// callback.
   public static var entryPoint: EntryPoint {
     return { configurationJSON, recordHandler in

@@ -200,7 +200,7 @@ public struct __CommandLineArguments_v0: Sendable {
   /// The value of the `--xunit-output` argument.
   public var xunitOutput: String?
 
-  /// The value of the `--event-stream-output` argument.
+  /// The value of the `--event-stream-output-path` argument.
   ///
   /// Data is written to this file in the [JSON Lines](https://jsonlines.org)
   /// text format. For each event handled by the resulting event handler, a JSON
@@ -215,7 +215,7 @@ public struct __CommandLineArguments_v0: Sendable {
   ///
   /// The file is closed when this process terminates or the test run completes,
   /// whichever occurs first.
-  public var eventStreamOutput: String?
+  public var eventStreamOutputPath: String?
 
   /// The version of the event stream schema to use when writing events to
   /// ``eventStreamOutput``.
@@ -252,7 +252,7 @@ extension __CommandLineArguments_v0: Codable {
     case quiet
     case _verbosity = "verbosity"
     case xunitOutput
-    case eventStreamOutput
+    case eventStreamOutputPath
     case eventStreamVersion
     case filter
     case skip
@@ -303,9 +303,9 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   }
 
   // Event stream output (experimental)
-  if let eventOutputIndex = args.firstIndex(of: "--event-stream-output") ?? args.firstIndex(of: "--experimental-event-stream-output"),
+  if let eventOutputIndex = args.firstIndex(of: "--event-stream-output-path") ?? args.firstIndex(of: "--experimental-event-stream-output"),
      !isLastArgument(at: eventOutputIndex) {
-    result.eventStreamOutput = args[args.index(after: eventOutputIndex)]
+    result.eventStreamOutputPath = args[args.index(after: eventOutputIndex)]
   }
   // Event stream output (experimental)
   if let eventOutputVersionIndex = args.firstIndex(of: "--event-stream-version") ?? args.firstIndex(of: "--experimental-event-stream-version"),
@@ -407,7 +407,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 
 #if canImport(Foundation)
   // Event stream output (experimental)
-  if let eventStreamOutputPath = args.eventStreamOutput {
+  if let eventStreamOutputPath = args.eventStreamOutputPath {
     let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
     let eventHandler = try eventHandlerForStreamingEvents(version: args.eventStreamVersion) { json in
       try? _writeJSONLine(json, to: file)
