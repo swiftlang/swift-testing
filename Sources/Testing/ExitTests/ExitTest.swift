@@ -232,12 +232,16 @@ extension ExitTest {
     // can precompute them.
     let childProcessExecutablePath = Result { try CommandLine.executablePath }
 
-    // We only need to pass arguments when hosted by XCTest.
+    // Construct appropriate arguments for the child process. Generally these
+    // arguments are going to be whatever's necessary to respawn the current
+    // executable and get back into Swift Testing.
     let childArguments: [String] = {
       var result = [String]()
+
+      let parentArguments = CommandLine.arguments
 #if SWT_TARGET_OS_APPLE
       lazy var xctestTargetPath = Environment.variable(named: "XCTestBundlePath")
-        ?? CommandLine.arguments.dropFirst().last
+        ?? parentArguments.dropFirst().last
       // If the running executable appears to be the XCTest runner executable in
       // Xcode, figure out the path to the running XCTest bundle. If we can find
       // it, then we can re-run the host XCTestCase instance.
@@ -261,7 +265,23 @@ extension ExitTest {
         // to run.
         result += ["-XCTest", "/", xctestTargetPath]
       }
+
+      // When hosted by Swift Package Manager, forward all arguments to the
+      // child process. (They aren't all meaningful in the context of an exit
+      // test, but it keeps this code fairly simple!)
+      lazy var isHostedBySwiftPM = parentArguments.contains("--test-bundle-path")
+      if !isHostedByXCTest && isHostedBySwiftPM {
+        result += parentArguments.dropFirst()
+      }
+#else
+      // When hosted by Swift Package Manager, we'll need to specify exactly
+      // which testing library to call into from the shared test executable.
+      let hasTestingLibraryArgument: Bool = parentArguments.contains { $0.starts(with: "--testing-library") }
+      if hasTestingLibraryArgument {
+        result += ["--testing-library", "swift-testing"]
+      }
 #endif
+
       return result
     }()
 
