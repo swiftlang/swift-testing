@@ -31,18 +31,15 @@ extension ABIv0.Record {
   ) -> Event.Handler {
     let humanReadableOutputRecorder = Event.HumanReadableOutputRecorder()
     return { event, context in
-      if case let .runStarted(plan) = event.kind {
-        // Gather all tests in the run and forward records for them.
-        for test in plan.steps.lazy.map(\.test) {
-          try? JSON.withEncoding(of: Self(encoding: test)) { testJSON in
-            eventHandler(testJSON)
-          }
+      if case .testDiscovered = event.kind, let test = context.test {
+        try? JSON.withEncoding(of: Self(encoding: test)) { testJSON in
+          eventHandler(testJSON)
         }
-      }
-
-      let messages = humanReadableOutputRecorder.record(event, in: context)
-      if let eventRecord = Self(encoding: event, in: context, messages: messages) {
-        try? JSON.withEncoding(of: eventRecord, eventHandler)
+      } else {
+        let messages = humanReadableOutputRecorder.record(event, in: context)
+        if let eventRecord = Self(encoding: event, in: context, messages: messages) {
+          try? JSON.withEncoding(of: eventRecord, eventHandler)
+        }
       }
     }
   }
@@ -92,6 +89,12 @@ func eventHandlerForStreamingEventSnapshots(
   to eventHandler: @escaping @Sendable (_ eventAndContextJSON: UnsafeRawBufferPointer) -> Void
 ) -> Event.Handler {
   return { event, context in
+    if case .testDiscovered = event.kind {
+      // Discard events of this kind rather than forwarding them to avoid a
+      // crash in Xcode 16 Beta 1 (which does not expect any events to occur
+      // before .runStarted.)
+      return
+    }
     let snapshot = EventAndContextSnapshot(
       event: Event.Snapshot(snapshotting: event),
       eventContext: Event.Context.Snapshot(snapshotting: context)

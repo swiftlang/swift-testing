@@ -155,7 +155,7 @@ struct SwiftPMTests {
     do {
       let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--xunit-output", temporaryFilePath])
       let eventContext = Event.Context()
-      configuration.eventHandler(Event(.runStarted(Runner.Plan(steps: [])), testID: nil, testCaseID: nil), eventContext)
+      configuration.eventHandler(Event(.runStarted, testID: nil, testCaseID: nil), eventContext)
       configuration.eventHandler(Event(.runEnded, testID: nil, testCaseID: nil), eventContext)
     }
 
@@ -222,15 +222,11 @@ struct SwiftPMTests {
     }
     do {
       let configuration = try configurationForEntryPoint(withArguments: ["PATH", outputArgumentName, temporaryFilePath, versionArgumentName, version])
-      let eventContext = Event.Context()
-
       let test = Test {}
-      let plan = Runner.Plan(
-        steps: [
-          Runner.Plan.Step(test: test, action: .run(options: .init(isParallelizationEnabled: true)))
-        ]
-      )
-      configuration.handleEvent(Event(.runStarted(plan), testID: nil, testCaseID: nil), in: eventContext)
+      let eventContext = Event.Context(test: test)
+
+      configuration.handleEvent(Event(.testDiscovered, testID: test.id, testCaseID: nil), in: eventContext)
+      configuration.handleEvent(Event(.runStarted, testID: nil, testCaseID: nil), in: eventContext)
       do {
         let eventContext = Event.Context(test: test)
         configuration.handleEvent(Event(.testStarted, testID: test.id, testCaseID: nil), in: eventContext)
