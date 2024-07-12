@@ -41,6 +41,12 @@ extension Issue {
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self
 }
+
+extension Issue.Kind {
+  public protocol ToolContext: Sendable, Encodable {
+    var toolName: String { get }
+  }
+}
 ```
 
 This method is then used by tools to provide a comment of what happened, as well
@@ -73,9 +79,9 @@ This is entirely additive. All existing code will continue to work.
 
 ## Integration with supporting tools
 
-Tool integrating with the testing library need to create an object
-conforming to `Issue.Kind.ToolContext` and use that with `Issue.record` to
-record an issue with an arbitrary message.
+Tool integrating with the testing library need to create a type conforming to
+`Issue.Kind.ToolContext` and use that with `Issue.record` to record an issue
+with an arbitrary message.
 
 But if they wish, they can still use the existing `Issue.record` API to record
 unconditional failures.
@@ -93,12 +99,21 @@ separate enough concern that it should not be part of this proposal.
 
 We could do nothing and require third party tools to use the existing
 `Issue.record` API. However, this results in a subpar experience for developers
-wishing to use those third party tools.
+wishing to use those third party tools, and that tools can't include any custom
+metadata in their issues.
 
 This proposal came out of discussion around a [previous, similar proposal](https://github.com/apple/swift-testing/pull/481)
 to open up the `Issue` API and allowing arbitrary `Issue` instances to be
 recorded. That proposal was dropped in favor of this one, which is significantly
 simpler and opens up as little API surface as possible.
+
+It's likely possible for us to get the module name of the module containing the
+concrete type conforming to `ToolContext`. Which is more reliable than a
+developer-supplied string. However, this also would be a symbolicated string,
+which may or may not be possible to demangle into a human-readable name.
+Additionally, reading the `toolName` allows developers to provide extra
+information that we might not otherwise be able to infer, such as version
+data.
 
 ## Acknowledgments
 
