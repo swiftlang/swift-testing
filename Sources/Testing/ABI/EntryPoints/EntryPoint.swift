@@ -76,13 +76,15 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
 
     if args.listTests ?? false {
       let tests = await Test.all
-      for testID in listTestsForEntryPoint(tests) {
-        // Print the test ID to stdout (classical CLI behavior.)
+      if args.verbosity > .min {
+        for testID in listTestsForEntryPoint(tests) {
+          // Print the test ID to stdout (classical CLI behavior.)
 #if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
-        try? FileHandle.stdout.write("\(testID)\n")
+          try? FileHandle.stdout.write("\(testID)\n")
 #else
-        print(testID)
+          print(testID)
 #endif
+        }
       }
 
       // Post an event for every discovered test. These events are turned into
