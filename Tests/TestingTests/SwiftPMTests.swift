@@ -88,6 +88,14 @@ struct SwiftPMTests {
     }
   }
 
+  @Test("--filter with no matches")
+  func filterWithNoMatches() async {
+    var args = __CommandLineArguments_v0()
+    args.filter = ["NOTHING_MATCHES_THIS_TEST_NAME_HOPEFULLY"]
+    let exitCode = await __swiftPMEntryPoint(passing: args) as CInt
+    #expect(exitCode == EXIT_NO_TESTS_FOUND)
+  }
+
   @Test("--skip argument")
   @available(_regexAPI, *)
   func skip() async throws {
