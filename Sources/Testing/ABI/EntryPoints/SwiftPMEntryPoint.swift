@@ -31,7 +31,7 @@ var EXIT_NO_TESTS_FOUND: CInt {
 #if SWT_TARGET_OS_APPLE || os(Linux)
   EX_UNAVAILABLE
 #elseif os(Windows)
-  CInt(bitPattern: ERROR_NOT_FOUND)
+  ERROR_NOT_FOUND
 #else
 #warning("Platform-specific implementation missing: value for EXIT_NO_TESTS_FOUND unavailable")
 #endif
