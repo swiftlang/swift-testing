@@ -29,6 +29,12 @@ struct SwiftPMTests {
     #expect(!CommandLine.arguments.isEmpty)
   }
 
+  @Test("EXIT_NO_TESTS_FOUND is unique")
+  func valueOfEXIT_NO_TESTS_FOUND() {
+    #expect(EXIT_NO_TESTS_FOUND != EXIT_SUCCESS)
+    #expect(EXIT_NO_TESTS_FOUND != EXIT_FAILURE)
+  }
+
   @Test("--parallel/--no-parallel argument")
   func parallel() throws {
     var configuration = try configurationForEntryPoint(withArguments: ["PATH"])
