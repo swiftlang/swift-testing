@@ -52,7 +52,7 @@ dependency:
 
 ```swift
 dependencies: [
-  .package(url: "https://github.com/apple/swift-testing.git", branch: "main"),
+  .package(url: "https://github.com/apple/swift-testing.git", from: "0.11.0"),
 ],
 ```
 
