@@ -14,6 +14,30 @@
 private import _TestingInternals
 #endif
 
+/// The exit code returned to Swift Package Manager by Swift Testing when no
+/// tests matched the inputs specified by the developer (or, for the case of
+/// `swift test list`, when no tests were found.)
+///
+/// Because Swift Package Manager does not directly link to the testing library,
+/// it duplicates the definition of this constant in its own source. Any changes
+/// to this constant in either package must be mirrored in the other.
+///
+/// Tools authors using the ABI entry point function can determine if no tests
+/// matched the developer's inputs by counting the number of test records passed
+/// to the event handler or written to the event stream output path.
+///
+/// This constant is not part of the public interface of the testing library.
+var EXIT_NO_TESTS_FOUND: CInt {
+#if SWT_TARGET_OS_APPLE || os(Linux)
+  EX_UNAVAILABLE
+#elseif os(Windows)
+  ERROR_NOT_FOUND
+#else
+#warning("Platform-specific implementation missing: value for EXIT_NO_TESTS_FOUND unavailable")
+  return 2 // We're assuming that EXIT_SUCCESS = 0 and EXIT_FAILURE = 1.
+#endif
+}
+
 /// The entry point to the testing library used by Swift Package Manager.
 ///
 /// - Parameters:

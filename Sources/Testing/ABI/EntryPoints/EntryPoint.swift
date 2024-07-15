@@ -74,8 +74,13 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
       }
     }
 
+    // The set of matching tests (or, in the case of `swift test list`, the set
+    // of all tests.)
+    let tests: [Test]
+
     if args.listTests ?? false {
-      let tests = await Test.all
+      tests = await Array(Test.all)
+
       if args.verbosity > .min {
         for testID in listTestsForEntryPoint(tests) {
           // Print the test ID to stdout (classical CLI behavior.)
@@ -95,7 +100,19 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     } else {
       // Run the tests.
       let runner = await Runner(configuration: configuration)
+      tests = runner.tests
       await runner.run()
+    }
+
+    // If there were no matching tests, exit with a dedicated exit code so that
+    // the caller (assumed to be Swift Package Manager) can implement special
+    // handling.
+    if tests.isEmpty {
+      exitCode.withLock { exitCode in
+        if exitCode == EXIT_SUCCESS {
+          exitCode = EXIT_NO_TESTS_FOUND
+        }
+      }
     }
   } catch {
 #if !SWT_NO_FILE_IO

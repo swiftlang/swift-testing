@@ -29,6 +29,12 @@ struct SwiftPMTests {
     #expect(!CommandLine.arguments.isEmpty)
   }
 
+  @Test("EXIT_NO_TESTS_FOUND is unique")
+  func valueOfEXIT_NO_TESTS_FOUND() {
+    #expect(EXIT_NO_TESTS_FOUND != EXIT_SUCCESS)
+    #expect(EXIT_NO_TESTS_FOUND != EXIT_FAILURE)
+  }
+
   @Test("--parallel/--no-parallel argument")
   func parallel() throws {
     var configuration = try configurationForEntryPoint(withArguments: ["PATH"])
@@ -86,6 +92,14 @@ struct SwiftPMTests {
     #expect(throws: (any Error).self) {
       _ = try configurationForEntryPoint(withArguments: ["PATH", "--skip", ")"])
     }
+  }
+
+  @Test("--filter with no matches")
+  func filterWithNoMatches() async {
+    var args = __CommandLineArguments_v0()
+    args.filter = ["NOTHING_MATCHES_THIS_TEST_NAME_HOPEFULLY"]
+    let exitCode = await __swiftPMEntryPoint(passing: args) as CInt
+    #expect(exitCode == EXIT_NO_TESTS_FOUND)
   }
 
   @Test("--skip argument")

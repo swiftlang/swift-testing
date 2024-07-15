@@ -118,6 +118,11 @@ private func entryPoint(
 
   let eventHandler = try eventHandlerForStreamingEvents(version: args?.eventStreamVersion, forwardingTo: recordHandler)
   let exitCode = await entryPoint(passing: args, eventHandler: eventHandler)
+
+  // To maintain compatibility with Xcode 16 Beta 1, suppress custom exit codes.
+  if exitCode == EXIT_NO_TESTS_FOUND {
+    return EXIT_SUCCESS
+  }
   return exitCode
 }
 #endif
