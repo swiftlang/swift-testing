@@ -22,9 +22,13 @@ extension ABIv0 {
     /// The location in source where this issue occurred, if available.
     var sourceLocation: SourceLocation?
 
+    /// The backtrace where this issue occurred, if available.
+    var _backtrace: [Backtrace.Address]?
+
     init(encoding issue: borrowing Issue) {
       isKnown = issue.isKnown
       sourceLocation = issue.sourceLocation
+      _backtrace = issue.sourceContext.backtrace.map(\.addresses)
     }
   }
 }

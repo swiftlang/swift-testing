@@ -94,6 +94,7 @@ public struct Issue: Sendable {
   public var comments: [Comment]
 
   /// A ``SourceContext`` indicating where and how this issue occurred.
+  @_spi(ForToolsIntegrationOnly)
   public var sourceContext: SourceContext
 
   /// Whether or not this issue is known to occur.

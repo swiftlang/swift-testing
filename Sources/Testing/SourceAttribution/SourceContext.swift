@@ -14,6 +14,7 @@
 /// Most commonly used when recording a failure, in order to indicate the source
 /// location where the failure occurred as well as the backtrace of the failing
 /// call, since the latter may be useful to understand how it was invoked.
+@_spi(ForToolsIntegrationOnly)
 public struct SourceContext: Sendable {
   /// The backtrace associated with this instance, if available.
   public var backtrace: Backtrace?
