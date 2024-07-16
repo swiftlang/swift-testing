@@ -66,10 +66,10 @@
 /// running in the current task and an instance of ``ExpectationFailedError`` is
 /// thrown.
 @freestanding(expression) public macro require<T>(
-  _ optionalValue: T?,
+  _ optionalValue: consuming T?,
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation
-) -> T = #externalMacro(module: "TestingMacros", type: "RequireMacro")
+) -> T = #externalMacro(module: "TestingMacros", type: "RequireMacro") where T: ~Copyable
 
 /// Unwrap an optional boolean value or, if it is `nil`, fail and throw an
 /// error.

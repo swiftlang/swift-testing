@@ -8,6 +8,25 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+extension Expectation {
+  public enum __Result<Success, Failure>: ~Copyable where Success: ~Copyable, Failure: Error {
+    case success(Success)
+    case failure(Failure)
+
+    public consuming func map<R>(_ transform: (borrowing Success) throws -> R) rethrows -> __Result<R, Failure> where R: ~Copyable {
+      switch self {
+      case let .success(value):
+        return try .success(transform(value))
+      case let .failure(error):
+        return .failure(error)
+      }
+    }
+  }
+}
+
+extension Expectation.__Result: Copyable where Success: Copyable {}
+extension Expectation.__Result: Sendable where Success: Sendable {}
+
 /// Check that an expectation has passed after a condition has been evaluated
 /// and throw an error if it failed.
 ///
@@ -27,9 +46,9 @@
 ///     failure.
 ///   - sourceLocation: The source location of the expectation.
 ///
-/// - Returns: A `Result<Void, any Error>`. If `condition` is `true`, the result
-///   is `.success`. If `condition` is `false`, the result is an instance of
-///   ``ExpectationFailedError`` describing the failure.
+/// - Returns: An `Expectation.__Result<Void, any Error>`. If `condition` is
+///   `true`, the result is `.success`. If `condition` is `false`, the result is
+///   an instance of ``ExpectationFailedError`` describing the failure.
 ///
 /// If the condition evaluates to `false`, an ``Issue`` is recorded for the test
 /// that is running in the current task.
@@ -67,7 +86,7 @@ public func __checkValue(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> {
+) -> Expectation.__Result<Void, any Error> {
   // If the expression being evaluated is a negation (!x instead of x), flip
   // the condition here so that we evaluate it in the correct sense. We loop
   // in case of multiple prefix operators (!!(a == b), for example.)
@@ -167,7 +186,7 @@ public func __checkBinaryOperation<T, U>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> {
+) -> Expectation.__Result<Void, any Error> {
   let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
   return __checkValue(
     condition,
@@ -198,7 +217,7 @@ public func __checkFunctionCall<T, each U>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<Void, any Error> {
+) rethrows -> Expectation.__Result<Void, any Error> {
   let condition = try functionCall(lhs, repeat each arguments)
   return __checkValue(
     condition,
@@ -226,7 +245,7 @@ public func __checkFunctionCall<T, Arg0>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<Void, any Error> {
+) rethrows -> Expectation.__Result<Void, any Error> {
   let condition = try functionCall(lhs, argument0)
   return __checkValue(
     condition,
@@ -253,7 +272,7 @@ public func __checkFunctionCall<T, Arg0, Arg1>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<Void, any Error> {
+) rethrows -> Expectation.__Result<Void, any Error> {
   let condition = try functionCall(lhs, argument0, argument1)
   return __checkValue(
     condition,
@@ -280,7 +299,7 @@ public func __checkFunctionCall<T, Arg0, Arg1, Arg2>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<Void, any Error> {
+) rethrows -> Expectation.__Result<Void, any Error> {
   let condition = try functionCall(lhs, argument0, argument1, argument2)
   return __checkValue(
     condition,
@@ -307,7 +326,7 @@ public func __checkFunctionCall<T, Arg0, Arg1, Arg2, Arg3>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<Void, any Error> {
+) rethrows -> Expectation.__Result<Void, any Error> {
   let condition = try functionCall(lhs, argument0, argument1, argument2, argument3)
   return __checkValue(
     condition,
@@ -337,7 +356,7 @@ public func __checkInoutFunctionCall<T, /*each*/ U>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<Void, any Error> {
+) rethrows -> Expectation.__Result<Void, any Error> {
   let condition = try functionCall(lhs, /*repeat each*/ &arguments)
   return __checkValue(
     condition,
@@ -367,7 +386,7 @@ public func __checkFunctionCall<T, each U, R>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<R, any Error> {
+) rethrows -> Expectation.__Result<R, any Error> {
   let optionalValue = try functionCall(lhs, repeat each arguments)
   return __checkValue(
     optionalValue,
@@ -395,7 +414,7 @@ public func __checkFunctionCall<T, Arg0, R>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<R, any Error> {
+) rethrows -> Expectation.__Result<R, any Error> {
   let optionalValue = try functionCall(lhs, argument0)
   return __checkValue(
     optionalValue,
@@ -422,7 +441,7 @@ public func __checkFunctionCall<T, Arg0, Arg1, R>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<R, any Error> {
+) rethrows -> Expectation.__Result<R, any Error> {
   let optionalValue = try functionCall(lhs, argument0, argument1)
   return __checkValue(
     optionalValue,
@@ -449,7 +468,7 @@ public func __checkFunctionCall<T, Arg0, Arg1, Arg2, R>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<R, any Error> {
+) rethrows -> Expectation.__Result<R, any Error> {
   let optionalValue = try functionCall(lhs, argument0, argument1, argument2)
   return __checkValue(
     optionalValue,
@@ -476,7 +495,7 @@ public func __checkFunctionCall<T, Arg0, Arg1, Arg2, Arg3, R>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<R, any Error> {
+) rethrows -> Expectation.__Result<R, any Error> {
   let optionalValue = try functionCall(lhs, argument0, argument1, argument2, argument3)
   return __checkValue(
     optionalValue,
@@ -507,7 +526,7 @@ public func __checkInoutFunctionCall<T, /*each*/ U, R>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<R, any Error> {
+) rethrows -> Expectation.__Result<R, any Error> {
   let optionalValue = try functionCall(lhs, /*repeat each*/ &arguments)
   return __checkValue(
     optionalValue,
@@ -538,7 +557,7 @@ public func __checkPropertyAccess<T>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> {
+) -> Expectation.__Result<Void, any Error> {
   let condition = memberAccess(lhs)
   return __checkValue(
     condition,
@@ -568,7 +587,7 @@ public func __checkPropertyAccess<T, U>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<U, any Error> {
+) -> Expectation.__Result<U, any Error> {
   let optionalValue = memberAccess(lhs)
   return __checkValue(
     optionalValue,
@@ -596,7 +615,7 @@ public func __checkBinaryOperation<T>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> where T: BidirectionalCollection, T.Element: Equatable {
+) -> Expectation.__Result<Void, any Error> where T: BidirectionalCollection, T.Element: Equatable {
   let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
   func difference() -> String? {
     guard let rhs else {
@@ -643,7 +662,7 @@ public func __checkBinaryOperation(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> {
+) -> Expectation.__Result<Void, any Error> {
   let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
   return __checkValue(
     condition,
@@ -670,7 +689,7 @@ public func __checkCast<V, T>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> {
+) -> Expectation.__Result<Void, any Error> {
   return __checkValue(
     value is T,
     expression: expression,
@@ -697,28 +716,23 @@ public func __checkCast<V, T>(
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
 public func __checkValue<T>(
-  _ optionalValue: T?,
+  _ optionalValue: consuming T?,
   expression: __Expression,
   expressionWithCapturedRuntimeValues: @autoclosure () -> __Expression? = nil,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<T, any Error> {
-  // The double-optional below is because capturingRuntimeValue() takes optional
-  // values and interprets nil as "no value available". Rather, if optionalValue
-  // is `nil`, we want to actually store `nil` as the expression's evaluated
-  // value. The outer optional satisfies the generic constraint of
-  // capturingRuntimeValue(), and the inner optional represents the actual value
-  // (`nil`) that will be captured.
+) -> Expectation.__Result<T, any Error> where T: ~Copyable {
   __checkValue(
     optionalValue != nil,
     expression: expression,
-    expressionWithCapturedRuntimeValues: (expressionWithCapturedRuntimeValues() ?? expression).capturingRuntimeValue(optionalValue as T??),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
   ).map {
-    optionalValue.unsafelyUnwrapped
+    let result = optionalValue!
+    optionalValue = nil
+    return result
   }
 }
 
@@ -742,7 +756,7 @@ public func __checkBinaryOperation<T>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<T, any Error> {
+) -> Expectation.__Result<T, any Error> {
   let (optionalValue, rhs) = _callBinaryOperator(lhs, op, rhs)
   return __checkValue(
     optionalValue,
@@ -768,7 +782,7 @@ public func __checkCast<V, T>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<T, any Error> {
+) -> Expectation.__Result<T, any Error> {
   // NOTE: this call to __checkValue() does not go through the optional
   // bottleneck because we do not want to capture the nil value on failure (it
   // looks odd in test output.)
@@ -801,7 +815,7 @@ public func __checkClosureCall<E>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> where E: Error {
+) -> Expectation.__Result<Void, any Error> where E: Error {
   if errorType == Never.self {
     __checkClosureCall(
       throws: Never.self,
@@ -838,7 +852,7 @@ public func __checkClosureCall<E>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) async -> Result<Void, any Error> where E: Error {
+) async -> Expectation.__Result<Void, any Error> where E: Error {
   if errorType == Never.self {
     await __checkClosureCall(
       throws: Never.self,
@@ -878,7 +892,7 @@ public func __checkClosureCall(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> {
+) -> Expectation.__Result<Void, any Error> {
   var success = true
   var mismatchExplanationValue: String? = nil
   do {
@@ -914,7 +928,7 @@ public func __checkClosureCall(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) async -> Result<Void, any Error> {
+) async -> Expectation.__Result<Void, any Error> {
   var success = true
   var mismatchExplanationValue: String? = nil
   do {
@@ -950,7 +964,7 @@ public func __checkClosureCall<E>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> where E: Error & Equatable {
+) -> Expectation.__Result<Void, any Error> where E: Error & Equatable {
   __checkClosureCall(
     performing: body,
     throws: { true == (($0 as? E) == error) },
@@ -976,7 +990,7 @@ public func __checkClosureCall<E>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) async -> Result<Void, any Error> where E: Error & Equatable {
+) async -> Expectation.__Result<Void, any Error> where E: Error & Equatable {
   await __checkClosureCall(
     performing: body,
     throws: { true == (($0 as? E) == error) },
@@ -1004,7 +1018,7 @@ public func __checkClosureCall<R>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> {
+) -> Expectation.__Result<Void, any Error> {
   var errorMatches = false
   var mismatchExplanationValue: String? = nil
   var expression = expression
@@ -1052,7 +1066,7 @@ public func __checkClosureCall<R>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) async -> Result<Void, any Error> {
+) async -> Expectation.__Result<Void, any Error> {
   var errorMatches = false
   var mismatchExplanationValue: String? = nil
   var expression = expression
@@ -1106,7 +1120,7 @@ public func __checkClosureCall(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) async -> Result<Void, any Error> {
+) async -> Expectation.__Result<Void, any Error> {
   await callExitTest(
     exitsWith: expectedExitCondition,
     performing: { await body() },

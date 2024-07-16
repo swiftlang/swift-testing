@@ -127,7 +127,7 @@ func callExitTest(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) async -> Result<Void, any Error> {
+) async -> Expectation.__Result<Void, any Error> {
   guard let configuration = Configuration.current ?? Configuration.all.first else {
     preconditionFailure("A test must be running on the current task to use #expect(exitsWith:).")
   }

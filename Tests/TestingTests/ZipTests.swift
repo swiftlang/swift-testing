@@ -26,3 +26,10 @@ struct ZipTests {
     #expect(i == j)
   }
 }
+
+struct S: ~Copyable {}
+@Test func f() throws {
+  let x: S? = nil
+  let y = try #require(x)
+  _ = y
+}
