@@ -160,6 +160,7 @@ extension Test.Case.Argument.ID: Codable {}
 extension Test.Parameter: Hashable {}
 extension Test.Case.Argument.ID: Hashable {}
 
+#if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting
 
 extension Test.Case {
@@ -215,3 +216,4 @@ extension Test.Case.Argument {
     }
   }
 }
+#endif

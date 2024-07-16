@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_SNAPSHOT_TYPES
 @testable @_spi(ForToolsIntegrationOnly) import Testing
 
 @Suite("Runner.Plan.Snapshot tests")
@@ -66,3 +67,4 @@ private struct Runner_Plan_SnapshotFixtures {
   @Test(.hidden, .enabled(if: try _erroneousCondition(), "To demonstrate recordIssue action"))
   func erroneousTest() {}
 }
+#endif

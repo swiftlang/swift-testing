@@ -53,6 +53,7 @@ public struct ExpectationFailedError: Error {
   public var expectation: Expectation
 }
 
+#if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting
 
 extension Expectation {
@@ -100,3 +101,4 @@ extension Expectation {
     }
   }
 }
+#endif

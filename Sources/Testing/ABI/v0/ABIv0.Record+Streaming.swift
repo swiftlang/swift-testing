@@ -45,6 +45,7 @@ extension ABIv0.Record {
   }
 }
 
+#if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Experimental event streaming
 
 /// A type containing an event snapshot and snapshots of the contents of an
@@ -106,4 +107,5 @@ func eventHandlerForStreamingEventSnapshots(
     }
   }
 }
+#endif
 #endif

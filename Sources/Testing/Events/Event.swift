@@ -287,6 +287,7 @@ extension Event {
   }
 }
 
+#if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting
 
 extension Event {
@@ -509,3 +510,4 @@ extension Event.Context {
     }
   }
 }
+#endif

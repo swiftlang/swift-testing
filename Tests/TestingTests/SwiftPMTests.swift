@@ -229,7 +229,7 @@ struct SwiftPMTests {
         ])
   func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: String) async throws {
     // Test that JSON records are successfully streamed to a file and can be
-    // read back as snapshots.
+    // read back into memory and decoded.
     let tempDirPath = try temporaryDirectory()
     let temporaryFilePath = appendPathComponent("\(UInt64.random(in: 0 ..< .max))", to: tempDirPath)
     defer {

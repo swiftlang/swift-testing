@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_SNAPSHOT_TYPES
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly) @testable import Testing
 
 @Suite("Test.Snapshot tests")
@@ -129,3 +130,4 @@ struct Test_SnapshotTests {
 extension Tag {
   @Tag fileprivate static var testTag: Self
 }
+#endif
