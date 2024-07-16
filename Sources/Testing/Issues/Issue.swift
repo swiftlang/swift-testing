@@ -194,6 +194,7 @@ extension Issue.Kind: CustomStringConvertible {
   }
 }
 
+#if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting
 
 extension Issue {
@@ -476,3 +477,4 @@ extension Issue.Kind.Snapshot: CustomStringConvertible {
     }
   }
 }
+#endif

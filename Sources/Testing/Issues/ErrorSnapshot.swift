@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_SNAPSHOT_TYPES
 /// A serializable snapshot of an `Error` value.
 ///
 /// This type conforms to `Error` as well, meaning it can be thrown and treated
@@ -40,3 +41,4 @@ extension ErrorSnapshot: CustomStringConvertible {}
 // MARK: - Codable
 
 extension ErrorSnapshot: Codable {}
+#endif

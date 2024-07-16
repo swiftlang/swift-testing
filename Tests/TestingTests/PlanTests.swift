@@ -421,6 +421,7 @@ struct PlanTests {
     #expect(plan.stepGraph.subgraph(at: typeInfo.fullyQualifiedNameComponents + CollectionOfOne("reserved1(reserved2:)")) != nil)
   }
 
+#if !SWT_NO_SNAPSHOT_TYPES
   @Test("Test cases of a disabled test are not evaluated")
   func disabledTestCases() async throws {
     var configuration = Configuration()
@@ -428,12 +429,13 @@ struct PlanTests {
       guard case .testSkipped = event.kind else {
         return
       }
-      let testSnapshot = try #require(context.test.map({ Test.Snapshot(snapshotting: $0 )}))
+      let testSnapshot = try #require(context.test.map { Test.Snapshot(snapshotting: $0) })
       #expect(testSnapshot.testCases?.isEmpty ?? false)
     }
 
     await runTestFunction(named: "disabled(x:)", in: ParameterizedTests.self, configuration: configuration)
   }
+#endif
 }
 
 // MARK: - Fixtures

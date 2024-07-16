@@ -303,6 +303,7 @@ extension Runner.Plan {
   }
 }
 
+#if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting
 
 extension Runner.Plan {
@@ -430,3 +431,4 @@ extension Runner.Plan.Action {
     }
   }
 }
+#endif

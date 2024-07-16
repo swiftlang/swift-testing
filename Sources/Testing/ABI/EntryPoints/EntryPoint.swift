@@ -512,10 +512,12 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 /// - Throws: If `version` is not a supported ABI version.
 func eventHandlerForStreamingEvents(version: Int?, forwardingTo eventHandler: @escaping @Sendable (UnsafeRawBufferPointer) -> Void) throws -> Event.Handler {
   switch version {
+#if !SWT_NO_SNAPSHOT_TYPES
   case -1:
     // Legacy support for Xcode 16 betas. Support for this undocumented version
     // will be removed in a future update. Do not use it.
     eventHandlerForStreamingEventSnapshots(to: eventHandler)
+#endif
   case nil, 0:
     ABIv0.Record.eventHandler(forwardingTo: eventHandler)
   case let .some(unsupportedVersion):
@@ -547,7 +549,7 @@ private func _writeJSONLine(_ json: UnsafeRawBufferPointer, to file: borrowing F
   if _slowPath(json.contains(where: isASCIINewline)) {
 #if DEBUG
     let message = Event.ConsoleOutputRecorder.warning(
-      "JSON encoder produced one or more newline characters while encoding an event snapshot. Please file a bug report at https://github.com/apple/swift-testing/issues/new",
+      "JSON encoder produced one or more newline characters while encoding an event to JSON. Please file a bug report at https://github.com/apple/swift-testing/issues/new",
       options: .for(.stderr)
     )
 #if SWT_TARGET_OS_APPLE

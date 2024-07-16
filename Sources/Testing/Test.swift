@@ -271,6 +271,7 @@ extension Test: Equatable, Hashable {
   }
 }
 
+#if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting
 
 extension Test {
@@ -388,3 +389,4 @@ extension Test {
     }
   }
 }
+#endif

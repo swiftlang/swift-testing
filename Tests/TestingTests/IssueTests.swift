@@ -1419,6 +1419,7 @@ final class IssueTests: XCTestCase {
 }
 #endif
 
+#if !SWT_NO_SNAPSHOT_TYPES
 @Suite("Issue Codable Conformance Tests")
 struct IssueCodingTests {
 
@@ -1531,6 +1532,7 @@ struct IssueCodingTests {
     #expect(String(reflecting: issueSnapshot) == String(reflecting: issue))
   }
 }
+#endif
 
 // MARK: - Fixtures
 
