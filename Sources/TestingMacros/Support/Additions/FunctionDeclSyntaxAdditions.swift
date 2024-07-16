@@ -142,11 +142,12 @@ extension FunctionParameterSyntax {
     // Enclose the base type declaration reference in a 1-element tuple, e.g.
     // `(<baseType>)`. It will be used in a member access expression below, and
     // some types (such as function types) require this.
-    let metatypeMemberAccessBase = TupleExprSyntax {
-      LabeledExprListSyntax {
-        LabeledExprSyntax(expression: baseTypeDeclReferenceExpr)
-      }
-    }
+    //
+    // Intentionally avoid using the result builder variant of these APIs due to
+    // a bug which affected a range of Swift compilers (including the one
+    // currently used to build swift-syntax in the toolchain) and caused one of
+    // these APIs to have an incorrect representation in the module interface.
+    let metatypeMemberAccessBase = TupleExprSyntax(elements: [LabeledExprSyntax(expression: baseTypeDeclReferenceExpr)])
 
     return MemberAccessExprSyntax(base: metatypeMemberAccessBase, name: .identifier("self"))
   }
