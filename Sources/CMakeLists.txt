@@ -47,7 +47,7 @@ include(CompilerSettings)
 add_subdirectory(_TestingInternals)
 add_subdirectory(Testing)
 
-if(SwiftTesting_BuildMacrosAsExecutables)
+if(NOT SwiftTesting_BuildMacrosAsExecutables)
   install(PROGRAMS "${INSTALL_DIR}/lib/libTestingMacros.dylib"
     # TODO: Finalize the install path
     ARCHIVE DESTINATION lib/swift/host/plugins
