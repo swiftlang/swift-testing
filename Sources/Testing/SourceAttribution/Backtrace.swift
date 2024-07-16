@@ -15,6 +15,7 @@ private import _TestingInternals
 #endif
 
 /// A type representing a backtrace or stack trace.
+@_spi(ForToolsIntegrationOnly)
 public struct Backtrace: Sendable {
   /// A type describing an address in a backtrace.
   ///
