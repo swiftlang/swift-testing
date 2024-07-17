@@ -61,8 +61,8 @@ extension Trait where Self == ConditionTrait {
   ) -> Self {
     // TODO: Semantic capture of platform name/version (rather than just a comment)
     Self(
-      comment: message ?? "Requires \(_description(ofPlatformName: platformName, version: version))",
       kind: .conditional(condition),
+      comments: [message ?? "Requires \(_description(ofPlatformName: platformName, version: version))"],
       sourceLocation: sourceLocation
     )
   }
@@ -93,8 +93,8 @@ extension Trait where Self == ConditionTrait {
   ) -> Self {
     // TODO: Semantic capture of platform name/version (rather than just a comment)
     Self(
-      comment: message ?? "Obsolete as of \(_description(ofPlatformName: platformName, version: version))",
       kind: .conditional(condition),
+      comments: [message ?? "Obsolete as of \(_description(ofPlatformName: platformName, version: version))"],
       sourceLocation: sourceLocation
     )
   }
@@ -112,8 +112,8 @@ extension Trait where Self == ConditionTrait {
   ///   call it directly.
   public static func __unavailable(message: Comment?, sourceLocation: SourceLocation) -> Self {
     Self(
-      comment: message ?? "Marked @available(*, unavailable)",
       kind: .unconditional(false),
+      comments: [message ?? "Marked @available(*, unavailable)"],
       sourceLocation: sourceLocation
     )
   }

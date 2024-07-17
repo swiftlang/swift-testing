@@ -59,7 +59,7 @@ their problems.
 - ``Test(_:_:arguments:_:)``
 - ``Test(_:_:arguments:)-3rzok``
 - ``CustomTestArgumentEncodable``
-- ``Test/Parameter``
+<!-- - ``Test/Parameter`` -->
 - ``Test/Case``
 
 ### Behavior validation

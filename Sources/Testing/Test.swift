@@ -178,6 +178,7 @@ public struct Test: Sendable {
   /// an array of values describing its parameters, which may be empty if the
   /// test function is non-parameterized. If this instance represents a test
   /// suite, the value of this property is `nil`.
+  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
   public var parameters: [Parameter]?
 
   /// Whether or not this instance is a test suite containing other tests.
