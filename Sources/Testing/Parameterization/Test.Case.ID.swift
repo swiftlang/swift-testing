@@ -8,7 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@_spi(ForToolsIntegrationOnly)
 extension Test.Case: Identifiable {
   /// The ID of a test case.
   ///
@@ -21,8 +20,10 @@ extension Test.Case: Identifiable {
     ///
     /// The value of this property is `nil` if _any_ of the associated test
     /// case's arguments has a `nil` ID.
+    @_spi(ForToolsIntegrationOnly)
     public var argumentIDs: [Argument.ID]?
 
+    @_spi(ForToolsIntegrationOnly)
     public init(argumentIDs: [Argument.ID]?) {
       self.argumentIDs = argumentIDs
     }
