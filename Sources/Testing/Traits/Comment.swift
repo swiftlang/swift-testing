@@ -144,6 +144,7 @@ extension Test {
   ///   - traitType: The type of ``Trait`` whose comments should be returned.
   ///
   /// - Returns: The comments found for the specified test trait type.
+  @_spi(Experimental)
   public func comments<T>(from traitType: T.Type) -> [Comment] where T: Trait {
     traits.lazy
       .compactMap { $0 as? T }

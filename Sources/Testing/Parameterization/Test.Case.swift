@@ -17,6 +17,7 @@ extension Test {
   public struct Case: Sendable {
     /// A type representing an argument passed to a parameter of a parameterized
     /// test function.
+    @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
     public struct Argument: Sendable {
       /// A type representing the stable, unique identifier of a parameterized
       /// test argument.
@@ -71,6 +72,7 @@ extension Test {
     /// Non-parameterized test functions will have a single test case instance,
     /// and the value of this property will be an empty array for such test
     /// cases.
+    @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
     public var arguments: [Argument]
 
     init(
@@ -117,6 +119,7 @@ extension Test {
   /// value that might be passed via this parameter to a test function. To
   /// obtain the arguments of a particular ``Test/Case`` paired with their
   /// corresponding parameters, use ``Test/Case/arguments``.
+  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
   public struct Parameter: Sendable {
     /// The zero-based index of this parameter within its associated test's
     /// parameter list.

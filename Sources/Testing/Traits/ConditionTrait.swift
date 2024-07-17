@@ -19,9 +19,6 @@
 /// - ``Trait/disabled(if:_:sourceLocation:)``
 /// - ``Trait/disabled(_:sourceLocation:_:)``
 public struct ConditionTrait: TestTrait, SuiteTrait {
-  /// An optional, user-specified comment describing this trait.
-  public var comment: Comment?
-
   /// An enumeration describing the kinds of conditions that can be represented
   /// by an instance of this type.
   enum Kind: Sendable {
@@ -68,6 +65,7 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
   /// If this trait was created using a function such as
   /// ``enabled(if:_:sourceLocation:)`` that is evaluated at runtime, the value
   /// of this property is `false`.
+  @_spi(ForToolsIntegrationOnly)
   public var isConstant: Bool {
     switch kind {
     case .conditional:
@@ -76,6 +74,8 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
       return true
     }
   }
+
+  public var comments: [Comment]
 
   /// The source location where this trait was specified.
   public var sourceLocation: SourceLocation
@@ -93,16 +93,12 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
 
     if !result {
       let sourceContext = SourceContext(sourceLocation: sourceLocation)
-      throw SkipInfo(comment: commentOverride ?? comment, sourceContext: sourceContext)
+      throw SkipInfo(comment: commentOverride ?? comments.first, sourceContext: sourceContext)
     }
   }
 
   public var isRecursive: Bool {
     true
-  }
-
-  public var comments: [Comment] {
-    Array(comment)
   }
 }
 
@@ -132,7 +128,7 @@ extension Trait where Self == ConditionTrait {
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
-    Self(comment: comment, kind: .conditional(condition), sourceLocation: sourceLocation)
+    Self(kind: .conditional(condition), comments: Array(comment), sourceLocation: sourceLocation)
   }
 
   /// Construct a condition trait that causes a test to be disabled if it
@@ -152,7 +148,7 @@ extension Trait where Self == ConditionTrait {
     sourceLocation: SourceLocation = #_sourceLocation,
     _ condition: @escaping @Sendable () async throws -> Bool
   ) -> Self {
-    Self(comment: comment, kind: .conditional(condition), sourceLocation: sourceLocation)
+    Self(kind: .conditional(condition), comments: Array(comment), sourceLocation: sourceLocation)
   }
 
   /// Construct a condition trait that disables a test unconditionally.
@@ -167,7 +163,7 @@ extension Trait where Self == ConditionTrait {
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
-    Self(comment: comment, kind: .unconditional(false), sourceLocation: sourceLocation)
+    Self(kind: .unconditional(false), comments: Array(comment), sourceLocation: sourceLocation)
   }
 
   /// Construct a condition trait that causes a test to be disabled if it
@@ -193,7 +189,7 @@ extension Trait where Self == ConditionTrait {
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
-    Self(comment: comment, kind: .conditional { !(try condition()) }, sourceLocation: sourceLocation)
+    Self(kind: .conditional { !(try condition()) }, comments: Array(comment), sourceLocation: sourceLocation)
   }
 
   /// Construct a condition trait that causes a test to be disabled if it
@@ -213,6 +209,6 @@ extension Trait where Self == ConditionTrait {
     sourceLocation: SourceLocation = #_sourceLocation,
     _ condition: @escaping @Sendable () async throws -> Bool
   ) -> Self {
-    Self(comment: comment, kind: .conditional { !(try await condition()) }, sourceLocation: sourceLocation)
+    Self(kind: .conditional { !(try await condition()) }, comments: Array(comment), sourceLocation: sourceLocation)
   }
 }
