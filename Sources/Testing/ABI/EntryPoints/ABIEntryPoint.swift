@@ -65,6 +65,7 @@ extension ABIv0 {
   unsafeBitCast(ABIv0.entryPoint, to: UnsafeRawPointer.self)
 }
 
+#if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Xcode 16 Beta 1 compatibility
 
 /// An older signature for ``ABIv0/EntryPoint-swift.typealias`` used by Xcode 16
@@ -94,6 +95,9 @@ typealias ABIEntryPoint_v0 = @Sendable (
   }
   return .init(result)
 }
+#endif
+
+// MARK: -
 
 /// A common implementation for ``ABIv0/entryPoint-swift.type.property`` and
 /// ``copyABIEntryPoint_v0()`` that provides Xcode 16 Beta 1 compatibility.
@@ -120,6 +124,8 @@ private func entryPoint(
   let exitCode = await entryPoint(passing: args, eventHandler: eventHandler)
 
   // To maintain compatibility with Xcode 16 Beta 1, suppress custom exit codes.
+  // (This is also needed by ABIv0.entryPoint to correctly treat the no-tests as
+  // a successful run.)
   if exitCode == EXIT_NO_TESTS_FOUND {
     return EXIT_SUCCESS
   }
