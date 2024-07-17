@@ -19,6 +19,7 @@ private import _TestingInternals
 
 @Suite("ABI entry point tests")
 struct ABIEntryPointTests {
+#if !SWT_NO_SNAPSHOT_TYPES
   @available(*, deprecated)
   @Test func v0_experimental() async throws {
     var arguments = __CommandLineArguments_v0()
@@ -52,18 +53,12 @@ struct ABIEntryPointTests {
     passing arguments: __CommandLineArguments_v0,
     recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void = { _ in }
   ) async throws -> CInt {
-#if !os(Linux) && !SWT_NO_DYNAMIC_LINKING
     // Get the ABI entry point by dynamically looking it up at runtime.
-    //
-    // NOTE: The standard Linux linker does not allow exporting symbols from
-    // executables, so dlsym() does not let us find this function on that
-    // platform when built as an executable rather than a dynamic library.
     let copyABIEntryPoint_v0 = try #require(
       symbol(named: "swt_copyABIEntryPoint_v0").map {
         unsafeBitCast($0, to: (@convention(c) () -> UnsafeMutableRawPointer).self)
       }
     )
-#endif
     let abiEntryPoint = copyABIEntryPoint_v0().assumingMemoryBound(to: ABIEntryPoint_v0.self)
     defer {
       abiEntryPoint.deinitialize(count: 1)
@@ -82,6 +77,7 @@ struct ABIEntryPointTests {
     // Call the entry point function.
     return try await abiEntryPoint.pointee(.init(argumentsJSON), recordHandler)
   }
+#endif
 
   @Test func v0() async throws {
     var arguments = __CommandLineArguments_v0()
