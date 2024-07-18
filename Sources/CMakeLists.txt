@@ -48,7 +48,18 @@ add_subdirectory(_TestingInternals)
 add_subdirectory(Testing)
 
 if(NOT SwiftTesting_BuildMacrosAsExecutables)
-  install(PROGRAMS "${INSTALL_DIR}/lib/libTestingMacros.dylib"
+  # Hardcode the known library names based on system name as a workaround since
+  # TestingMacros uses `ExternalProject` and we cannot directly query the
+  # properties of its targets here.
+  if("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
+    set(SwiftTesting_TestingMacrosLibraryName "libTestingMacros.dylib")
+  elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+    set(SwiftTesting_TestingMacrosLibraryName "libTestingMacros.so")
+  else()
+    message(FATAL_ERROR "Unable to determine the library name for TestingMacros based on system name: ${CMAKE_SYSTEM_NAME}")
+  endif()
+
+  install(PROGRAMS "${INSTALL_DIR}/lib/${SwiftTesting_TestingMacrosLibraryName}"
     # TODO: Finalize the install path
     DESTINATION lib/swift/host/plugins)
 endif()
