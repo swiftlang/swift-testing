@@ -97,7 +97,7 @@ For more information about suites and how to declare and customize them, see
 In XCTest, you can schedule code to run before a test using the
 [`setUp()`](https://developer.apple.com/documentation/xctest/xctest/3856481-setup)
 family of functions. When writing tests using the testing library, you can use
-`init()` for setup. Your suite's initializer can be async, throwing, or
+`init()` for setup. Your suite's initializer can be `async`, `throwing`, or
 actor-isolated if necessary.
 
 @Row {
@@ -132,8 +132,8 @@ family of functions. When writing tests using the testing library, adopt structu
   [concurrency](https://docs.swift.org/swift-book/documentation/the-swift-programming-language/concurrency/) 
 and take advantage of Swift to handle cleanup for you where possible rather 
 than relying on a dedicated teardown method. If teardown is necessary, declare
-your test suite as a `final` class or actor and implement `deinit`. Your cleanup
-operations should be quick, synchronous, and non-throwing.
+your test suite as a class or actor, and implement `deinit` with operations
+that are synchronous and non-throwing.
 
 @Row {
   @Column {
