@@ -64,7 +64,7 @@ else()
   # This is not the plugin's actual, final install location -- it's only
   # relative to this external project's install dir. The final location is
   # determined by the "outer" project.
-  install(TARGETS TestingMacros DESTINATION "")
+  install(TARGETS TestingMacros)
 endif()
 
 target_sources(TestingMacros PRIVATE
