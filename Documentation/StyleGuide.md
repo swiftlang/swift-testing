@@ -25,13 +25,13 @@ it have a consistent experience.
 #### Indentation and spacing
 
 When writing code for the testing library, use two spaces for indentation. Wrap
-comments (especially long block comments) at 80 columns. Code does not need to
-be wrapped at 80 columns, however it is recommended that long argument lists be
-broken up across multiple lines if doing so improves readability.
+comments (especially long block comments) at 80 columns. Code doesn't need to
+be wrapped at 80 columns, however, it's recommended that you break up long 
+argument lists up across multiple lines if doing so improves readability.
 
 #### Symbol names and API design
 
-New API should follow the rules documented in Swift's
+New API should follow the rules documented in the Swift
 [API Design Guidelines](https://www.swift.org/documentation/api-design-guidelines/).
 
 Swift symbols that, for technical reasons, must be `public` but which are not
