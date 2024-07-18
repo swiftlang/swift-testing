@@ -94,11 +94,11 @@ For more information about suites and how to declare and customize them, see
 
 ### Convert setup and teardown functions
 
-In XCTest, code can be scheduled to run before and after a test using the
+In XCTest, you can schedule code to run before a test using the
 [`setUp()`](https://developer.apple.com/documentation/xctest/xctest/3856481-setup)
-and [`tearDown()`](https://developer.apple.com/documentation/xctest/xctest/3856482-teardown)
-family of functions. When writing tests using the testing library, implement
-`init()` and/or `deinit` instead:
+family of functions. When writing tests using the testing library, you can use
+`init()` for setup. Your suite's initializer can be async, throwing, or
+actor-isolated if necessary.
 
 @Row {
   @Column {
@@ -127,9 +127,13 @@ family of functions. When writing tests using the testing library, implement
   }
 }
 
-The use of `async` and `throws` is optional. If teardown is needed, declare your
-test suite as a `final` class or as an actor rather than as a structure and
-implement `deinit`:
+In XCTest, you can also schedule work to run after a test using the [`tearDown()`](https://developer.apple.com/documentation/xctest/xctest/3856482-teardown)
+family of functions. When writing tests using the testing library, adopt structured
+  [concurrency](https://docs.swift.org/swift-book/documentation/the-swift-programming-language/concurrency/) 
+and take advantage of Swift to handle cleanup for you where possible rather 
+than relying on a dedicated teardown method. If teardown is necessary, declare
+your test suite as a `final` class or actor and implement `deinit`. Your cleanup
+operations should be quick, synchronous, and non-throwing.
 
 @Row {
   @Column {
