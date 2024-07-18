@@ -50,7 +50,5 @@ add_subdirectory(Testing)
 if(NOT SwiftTesting_BuildMacrosAsExecutables)
   install(PROGRAMS "${INSTALL_DIR}/lib/libTestingMacros.dylib"
     # TODO: Finalize the install path
-    ARCHIVE DESTINATION lib/swift/host/plugins
-    LIBRARY DESTINATION lib/swift/host/plugins
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+    DESTINATION lib/swift/host/plugins)
 endif()
