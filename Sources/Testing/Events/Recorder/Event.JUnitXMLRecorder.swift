@@ -11,6 +11,9 @@
 extension Event {
   /// A type which handles ``Event`` instances and outputs representations of
   /// them as JUnit-compatible XML.
+  ///
+  /// The maintainers of JUnit do not publish a formal XML schema. A _de facto_
+  /// schema is described in the [JUnit repository](https://github.com/junit-team/junit5/blob/main/junit-platform-reporting/src/main/java/org/junit/platform/reporting/legacy/xml/XmlReportWriter.java).
   @_spi(ForToolsIntegrationOnly)
   public struct JUnitXMLRecorder: Sendable/*, ~Copyable*/ {
     /// The write function for this event recorder.
@@ -43,6 +46,9 @@ extension Event {
 
         /// Any issues recorded for the test.
         var issues = [Issue]()
+
+        /// Information about the test if it was skipped.
+        var skipInfo: SkipInfo?
       }
 
       /// Data tracked on a per-test basis.
@@ -105,7 +111,12 @@ extension Event.JUnitXMLRecorder {
         context.testData[keyPath]?.endInstant = instant
       }
       return nil
-    case .testSkipped where false == test?.isSuite:
+    case let .testSkipped(skipInfo) where false == test?.isSuite:
+      let id = test!.id
+      let keyPath = id.keyPathRepresentation
+      _context.withLock { context in
+        context.testData[keyPath] = _Context.TestData(id: id, startInstant: instant, skipInfo: skipInfo)
+      }
       return nil
     case let .issueRecorded(issue):
       if issue.isKnown {
@@ -124,10 +135,13 @@ extension Event.JUnitXMLRecorder {
         let issueCount = context.testData
           .compactMap(\.value?.issues.count)
           .reduce(into: 0, +=)
+        let skipCount = context.testData
+          .compactMap(\.value?.skipInfo)
+          .count
         let durationNanoseconds = context.runStartInstant.map { $0.nanoseconds(until: instant) } ?? 0
         let durationSeconds = Double(durationNanoseconds) / 1_000_000_000
         return #"""
-            <testsuite name="TestResults" errors="0" tests="\#(context.testCount)" failures="\#(issueCount)" time="\#(durationSeconds)">
+            <testsuite name="TestResults" errors="0" tests="\#(context.testCount)" failures="\#(issueCount)" skipped="\#(skipCount)" time="\#(durationSeconds)">
           \#(Self._xml(for: context.testData))
             </testsuite>
           </testsuites>
@@ -158,13 +172,25 @@ extension Event.JUnitXMLRecorder {
       let name = id.nameComponents.last!
       let durationNanoseconds = testData.startInstant.nanoseconds(until: testData.endInstant ?? .now)
       let durationSeconds = Double(durationNanoseconds) / 1_000_000_000
-      if testData.issues.isEmpty {
+
+      // Build out any child nodes contained within this <testcase> node.
+      var minutiae = [String]()
+      for issue in testData.issues.lazy.map(String.init(describingForTest:)) {
+        minutiae.append(#"      <failure message="\#(Self._escapeForXML(issue))" />"#)
+      }
+      if let skipInfo = testData.skipInfo {
+        if let comment = skipInfo.comment.map(String.init(describingForTest:)) {
+          minutiae.append(#"      <skipped>\#(Self._escapeForXML(comment))</skipped>"#)
+        } else {
+          minutiae.append(#"      <skipped />"#)
+        }
+      }
+
+      if minutiae.isEmpty {
         result.append(#"    <testcase classname="\#(className)" name="\#(name)" time="\#(durationSeconds)" />"#)
       } else {
         result.append(#"    <testcase classname="\#(className)" name="\#(name)" time="\#(durationSeconds)">"#)
-        result += testData.issues.lazy
-          .map(String.init(describing:))
-          .map { #"      <failure message="\#(Self._escapeForXML($0))" />"# }
+        result += minutiae
         result.append(#"    </testcase>"#)
       }
     } else {
@@ -183,14 +209,19 @@ extension Event.JUnitXMLRecorder {
   ///
   /// - Returns: `character`, or a string containing its escaped form.
   private static func _escapeForXML(_ character: Character) -> String {
-    if character == #"""# {
+    switch character {
+    case #"""#:
       "&quot;"
-    } else if !character.isASCII {
+    case "<":
+      "&lt;"
+    case ">":
+      "&gt;"
+    case _ where !character.isASCII:
       character.unicodeScalars.lazy
         .map(\.value)
         .map { "&#\($0);" }
         .joined()
-    } else {
+    default:
       String(character)
     }
   }
