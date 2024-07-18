@@ -84,8 +84,6 @@ struct TestDeclarationMacroTests {
         "Attribute 'Suite' cannot be applied to a subclass of 'XCTestCase'",
 
       // Unsupported inheritance
-      "@Suite class C {}":
-        "Attribute 'Suite' cannot be applied to non-final class 'C'",
       "@Suite protocol P {}":
         "Attribute 'Suite' cannot be applied to a protocol",
 
@@ -110,10 +108,6 @@ struct TestDeclarationMacroTests {
         "Attribute 'Test' cannot be applied to a function within generic structure 'S'",
       "struct S<T> { @Suite struct S {} }":
         "Attribute 'Suite' cannot be applied to a structure within generic structure 'S'",
-      "class C { @Test func f() {} }":
-        "Attribute 'Test' cannot be applied to a function within non-final class 'C'",
-      "class C { @Suite struct S {} }":
-        "Attribute 'Suite' cannot be applied to a structure within non-final class 'C'",
       "protocol P { @Test func f() {} }":
         "Attribute 'Test' cannot be applied to a function within protocol 'P'",
       "protocol P { @Suite struct S {} }":

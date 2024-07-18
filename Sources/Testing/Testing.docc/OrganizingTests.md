@@ -145,15 +145,3 @@ _not_ be annotated with the `@available` attribute:
 
 The compiler emits an error when presented with a test suite that doesn't
 meet this requirement.
-
-#### Classes must be final
-
-The testing library doesn't support inheritance between test suite
-types. When using a class as a test suite type, it may inherit from another
-class, but it must be declared `final`:
-
-```swift
-@Suite final class FoodTruckTests { ... } // ✅ OK: The class is final.
-actor CashRegisterTests: NSObject { ... } // ✅ OK: The actors are implicitly final.
-class MenuItemTests { ... } // ❌ ERROR: This class isn't final.
-```

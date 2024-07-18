@@ -197,17 +197,6 @@ func diagnoseIssuesWithLexicalContext(
     diagnostics.append(.genericDeclarationNotSupported(decl, whenUsing: attribute, becauseOf: lexicalContext.type, on: lexicalContext))
   }
 
-  // Suites that are classes must be final.
-  if let classDecl = lexicalContext.as(ClassDeclSyntax.self) {
-    if !classDecl.modifiers.lazy.map(\.name.tokenKind).contains(.keyword(.final)) {
-      if Syntax(classDecl) == Syntax(decl) {
-        diagnostics.append(.nonFinalClassNotSupported(classDecl, whenUsing: attribute))
-      } else {
-        diagnostics.append(.containingNodeUnsupported(classDecl, whenUsing: attribute, on: decl))
-      }
-    }
-  }
-
   // Suites cannot be protocols (there's nowhere to put most of the
   // declarations we generate.)
   if let protocolDecl = lexicalContext.as(ProtocolDeclSyntax.self) {
