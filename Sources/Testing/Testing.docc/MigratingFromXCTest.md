@@ -87,8 +87,6 @@ concurrency safety:
   }
 }
 
-If you use a class as a test suite, it must be declared `final`.
-
 For more information about suites and how to declare and customize them, see
 <doc:OrganizingTests>.
 
@@ -128,8 +126,8 @@ family of functions. When writing tests using the testing library, implement
 }
 
 The use of `async` and `throws` is optional. If teardown is needed, declare your
-test suite as a `final` class or as an actor rather than as a structure and
-implement `deinit`:
+test suite as a class or as an actor rather than as a structure and implement
+`deinit`:
 
 @Row {
   @Column {

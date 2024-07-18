@@ -151,6 +151,10 @@ actor ActorTests {
   nonisolated func parameterizedNonisolated(i: Int) async throws {}
 }
 
+@Suite(.hidden) class NonFinalClassTests {
+  @Test(.hidden) func f() {}
+}
+
 @Suite(.hidden)
 struct TestsWithStaticMemberAccessBySelfKeyword {
   static let x = 0 ..< 100

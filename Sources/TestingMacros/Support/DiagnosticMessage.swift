@@ -349,17 +349,10 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
         severity: .error
       )
     } else if let namedDecl = node.asProtocol((any NamedDeclSyntax).self) {
-      // Special-case class declarations as implicitly non-final (since we would
-      // only diagnose a class here if it were non-final.)
-      let nonFinal = if node.is(ClassDeclSyntax.self) {
-        " non-final"
-      } else {
-        ""
-      }
       let declName = namedDecl.name.textWithoutBackticks
       return Self(
         syntax: syntax,
-        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within\(generic)\(nonFinal) \(_kindString(for: node)) '\(declName)'",
+        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within\(generic) \(_kindString(for: node)) '\(declName)'",
         severity: .error
       )
     } else if let extensionDecl = node.as(ExtensionDeclSyntax.self) {
@@ -550,22 +543,6 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     Self(
       syntax: Syntax(decl),
       message: "Attribute \(_macroName(attribute)) cannot be applied to a subclass of 'XCTestCase'",
-      severity: .error
-    )
-  }
-
-  /// Create a diagnostic message stating that `@Test` or `@Suite` is
-  /// incompatible with a non-`final` class declaration.
-  ///
-  /// - Parameters:
-  ///   - decl: The unsupported class declaration.
-  ///   - attribute: The `@Test` or `@Suite` attribute.
-  ///
-  /// - Returns: A diagnostic message.
-  static func nonFinalClassNotSupported(_ decl: ClassDeclSyntax, whenUsing attribute: AttributeSyntax) -> Self {
-    Self(
-      syntax: Syntax(decl),
-      message: "Attribute \(_macroName(attribute)) cannot be applied to non-final class '\(decl.name.textWithoutBackticks)'",
       severity: .error
     )
   }
