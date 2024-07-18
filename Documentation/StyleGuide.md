@@ -71,24 +71,59 @@ typedef struct SWTContainer {
 #### Documenting symbols
 
 Most symbols, including symbols marked `private`, should be given markup-style
-documentation. Symbols that fulfill protocol requirements do not need to be
+documentation. Symbols that fulfill protocol requirements don't need to be
 given additional documentation (the documentation in the protocol declaration is
-generally sufficient.)
+generally sufficient).
 
-When writing an abstract for a symbol, start the abstract with either a noun or
-a verb ending in "s" depending on what kind of symbol it is:
+When writing an symbol abstracts, follow these general guidelines: 
 
-|   Noun               |   Verb ending in _s_      |
-|----------------------|---------------------------|
-| Associated type      | Enumerations |
-| Class                | Function and function macro |
-| Constant             | Initializer |
-| Enumerated types     | Macro |
-| Property             | Method |
-| Protocol             | Subscript |
-| Structure            |  |
-| Type alias           |  |
-| Variable             |  |
+**Limit abstracts to a single sentence that's 150 characters or fewer.** 
+Abstracts consist of a single sentence or sentence fragment. Move any additional 
+information or explanation to other sections, such as the Overview (for 
+articles, classes, protocols, structures) or the Discussion (for methods, 
+properties, constants).
+
+**Don't repeat the technical terms in an entity's name.** Abstracts are concise 
+but descriptive, and provide more information than a simple repetition of the 
+symbol name.
+
+**Don't include links to other symbols in the abstract.** Avoid making the 
+reader leave the abstract to investigate terms. Provide links to other symbols 
+in the Overview, Discussion, See Also, or other sections.
+
+**Don't include symbol names or technical terms in code font.** Use “plain 
+English” rather than the literal names to describe symbols. Specify the related 
+symbols in the Overview, Discussion, or other sections. 
+
+**Avoid parentheses or slashes in abstracts.** Don't add alternative versions of
+terms or parenthetical asides in an abstract. If a task or topic requires
+explanation, include the information in the Overview or Discussion. Acronyms are
+an exception; spell out the full name on first use and include the acronym in
+parentheses, such as: *Your computer can transfer information to devices that
+use Bluetooth Low Energy (BLE) wireless technology.*
+
+**Avoid language like *the following* or *below* or *these 
+examples* in your abstract.** Abstracts can appear without context in a search 
+result, so locational modifiers can be confusing.
+
+**Use the correct grammatical style for the symbol.** Abstracts start 
+with a noun phrase or a verb phrase --- either a verb ending in *s* or an 
+imperative statement that conveys the symbol's action. Refer to the following 
+table when constructing your abstract:
+
+| Noun                 | Imperative verb       | Verb ending in *s*        |
+|----------------------|-----------------------|---------------------------|
+| Associated type      | API collection pages  | Enumerations |
+| Class                | Articles              | Function and function macro |
+| Constant             | Sample code projects  | Initializer |
+| Entitlement          |                       | Macro |
+| Enumerated types     |                       | Method |
+| Information property list key |              | Notification |
+| Property             |                       | Subscript |
+| Protocol             |  |  |
+| Structure            |  |  |
+| Type alias           |  |  |
+| Variable             |  |  |
 
 For instance, when writing the abstract for a class `Order`, you could write:
 
@@ -143,7 +178,7 @@ Documentation should be written in a professional voice. The author and the
 reader are not expected to know each other personally, so avoid overly familiar
 terms or colloquialisms such as _we_, _our_, or _let's_.
 
-When writing specific instructions that a reader must follow exactly in order to
+When writing specific instructions that a reader must follow exactly to
 accomplish a task, use the second person (_you_, _your_, and so on).
 
 #### Articles
@@ -160,23 +195,23 @@ these guidelines when creating an article:
 - Start section headings with an imperative verb.
 - Always follow a section heading with some text to setup the code or problem
   you want to solve.
-- Ensure that your filename adheres to the guidance in the [Filenames](#filenames)
-  section, below.
+- Ensure that your filename adhere to the guidance in the 
+[Filenames](#filenames) section, below.
 
 #### API collections
 
 To organize related subsets of symbols, articles, and other content, use an API
 collection. Follow these guidelines when creating an API collection:
 
-- Begin the collection title with a noun that describes what the items in the
-  collection have in common.
-- After the title, include a single sentence that describes the items in the
-  collection.
+- Begin the collection title with a noun that describes what the items in the 
+collection have in common.
+- After the title, include a single sentence abstract that describes the items 
+in the collection.
 - Optionally, include an overview to the collection.
 - Organize the symbols under topic group headings. Begin a topic group heading
-  with a gerund.
-- Ensure that your filename adheres to the guidance in the [Filenames](#filenames)
-  section, below.
+with a gerund.
+- Ensure that your filename adhere to the guidance in the 
+[Filenames](#filenames) section, below.
 
 #### Filenames
 
@@ -193,7 +228,7 @@ page is _Event tags_, the filename would be `event-tags.md`.
 The DocC compiler lowercases URL paths, so filenames converted from
 [UpperCamelCase](https://en.wikipedia.org/wiki/Camel_case) may be difficult to
 read. UpperCamelCase should still be used for Markdown files in the repository
-such as this one that are not part of a DocC bundle.
+such as this one that aren't part of a DocC bundle.
 
 For more information, see [Adding Supplemental Content to a Documentation Catalog](https://www.swift.org/documentation/docc/adding-supplemental-content-to-a-documentation-catalog).
 
@@ -202,6 +237,6 @@ For more information, see [Adding Supplemental Content to a Documentation Catalo
 Documentation is encoded as UTF-8 using Markdown where possible.
 
 Documentation should be wrapped at 80 columns, including code samples in
-documentation where possible, so the reader does not need to scroll
-horizontally. If documentation includes a long link, it does not need to be
+documentation where possible, so the reader doesn't need to scroll
+horizontally. If documentation includes a long link, it doesn't need to be
 split up over multiple lines, and a URL shortener should _not_ be used.
