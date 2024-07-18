@@ -195,7 +195,7 @@ these guidelines when creating an article:
 - Start section headings with an imperative verb.
 - Always follow a section heading with some text to setup the code or problem
   you want to solve.
-- Ensure that your filename adhere to the guidance in the 
+- Ensure that your filename adheres to the guidance in the 
 [Filenames](#filenames) section, below.
 
 #### API collections
@@ -210,7 +210,7 @@ in the collection.
 - Optionally, include an overview to the collection.
 - Organize the symbols under topic group headings. Begin a topic group heading
 with a gerund.
-- Ensure that your filename adhere to the guidance in the 
+- Ensure that your filename adheres to the guidance in the 
 [Filenames](#filenames) section, below.
 
 #### Filenames
