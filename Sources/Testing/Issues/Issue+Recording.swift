@@ -236,6 +236,9 @@ extension Issue {
 
 // MARK: - Debugging failures
 
+/// A unique value used by ``failureBreakpoint()``.
+@usableFromInline nonisolated(unsafe) var failureBreakpointValue = 0
+
 /// A function called by the testing library when a failure occurs.
 ///
 /// Whenever a test failure (specifically, a non-known ``Issue``) is recorded,
@@ -265,11 +268,7 @@ func failureBreakpoint() {
   // behavior can be disabled by passing the `-no_deduplicate` flag described in
   // ld(1), but that would disable it module-wide and sacrifice optimization
   // opportunities elsewhere. Instead, this function performs a trivial
-  // function call, passing it a sufficiently unique value to avoid
-  // de-duplication.
-  struct NoOp {
-    nonisolated(unsafe) static var ignored: Int = 0
-    static func perform(_: inout Int) {}
-  }
-  NoOp.perform(&NoOp.ignored)
+  // operation on a usable-from-inline value, which the compiler must assume
+  // cannot be optimized away.
+  failureBreakpointValue = 1
 }
