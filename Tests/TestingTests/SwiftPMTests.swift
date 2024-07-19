@@ -81,6 +81,7 @@ struct SwiftPMTests {
   }
 
   @Test("--filter or --skip argument with bad regex")
+  @available(_regexAPI, *)
   func badArguments() throws {
     #expect(throws: (any Error).self) {
       _ = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "("])
@@ -91,6 +92,7 @@ struct SwiftPMTests {
   }
 
   @Test("--filter with no matches")
+  @available(_regexAPI, *)
   func filterWithNoMatches() async {
     var args = __CommandLineArguments_v0()
     args.filter = ["NOTHING_MATCHES_THIS_TEST_NAME_HOPEFULLY"]
