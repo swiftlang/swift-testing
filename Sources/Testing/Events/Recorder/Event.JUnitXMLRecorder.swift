@@ -216,6 +216,8 @@ extension Event.JUnitXMLRecorder {
       "&lt;"
     case ">":
       "&gt;"
+    case "&":
+      "&amp;"
     case _ where !character.isASCII:
       character.unicodeScalars.lazy
         .map(\.value)
