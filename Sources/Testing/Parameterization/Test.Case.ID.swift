@@ -8,27 +8,27 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-extension Test.Case: Identifiable {
+extension Test.Case {
   /// The ID of a test case.
   ///
   /// Instances of this type are considered unique within the scope of a given
   /// parameterized test function. They are not necessarily unique across two
   /// different ``Test`` instances.
+  @_spi(ForToolsIntegrationOnly)
   public struct ID: Sendable, Equatable, Hashable {
     /// The IDs of the arguments of this instance's associated ``Test/Case``, in
     /// the order they appear in ``Test/Case/arguments``.
     ///
     /// The value of this property is `nil` if _any_ of the associated test
     /// case's arguments has a `nil` ID.
-    @_spi(ForToolsIntegrationOnly)
     public var argumentIDs: [Argument.ID]?
 
-    @_spi(ForToolsIntegrationOnly)
     public init(argumentIDs: [Argument.ID]?) {
       self.argumentIDs = argumentIDs
     }
   }
 
+  @_spi(ForToolsIntegrationOnly)
   public var id: ID {
     let argumentIDs = arguments.compactMap(\.id)
     guard argumentIDs.count == arguments.count else {
