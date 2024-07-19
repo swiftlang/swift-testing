@@ -525,4 +525,11 @@ struct MiscellaneousTests {
     #expect(mappedTests.count == tests.count)
     #expect(mappedTests.values.allSatisfy { tests.contains($0) })
   }
+
+  @Test("failureBreakpoint() call")
+  func failureBreakpointCall() {
+    failureBreakpointValue = 0
+    failureBreakpoint()
+    #expect(failureBreakpointValue == 1)
+  }
 }
