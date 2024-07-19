@@ -16,9 +16,6 @@ add_compile_options(
   "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-upcoming-feature -Xfrontend ExistentialAny>"
   "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-upcoming-feature -Xfrontend InternalImportsByDefault>")
 
-# Definitions applied unconditionally to files of all languages, in all targets.
-add_compile_definitions("SWT_BUILDING_WITH_CMAKE")
-
 # Platform-specific definitions.
 if(APPLE)
   add_compile_definitions("SWT_TARGET_OS_APPLE")

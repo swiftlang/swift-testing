@@ -9,11 +9,7 @@
 //
 
 @testable import Testing
-#if SWT_BUILDING_WITH_CMAKE
-@_implementationOnly import _TestingInternals
-#else
 private import _TestingInternals
-#endif
 
 @Suite("CError Tests")
 struct CErrorTests {

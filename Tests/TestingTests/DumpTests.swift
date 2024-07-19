@@ -9,11 +9,7 @@
 //
 
 @testable @_spi(ForToolsIntegrationOnly) import Testing
-#if SWT_BUILDING_WITH_CMAKE
-@_implementationOnly import _TestingInternals
-#else
 private import _TestingInternals
-#endif
 
 // NOTE: The tests in this file are here to exercise Plan.dump(), but they are
 // not intended to actually test that the output is in a particular format since
