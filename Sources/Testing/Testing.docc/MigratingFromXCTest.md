@@ -97,7 +97,7 @@ For more information about suites and how to declare and customize them, see
 In XCTest, you can schedule code to run before a test using the
 [`setUp()`](https://developer.apple.com/documentation/xctest/xctest/3856481-setup)
 family of functions. When writing tests using the testing library, you can use
-`init()` for setup. Your suite's initializer can be `async`, `throwing`, or
+`init()` for setup. Your suite's initializer can be `async`, `throws`, or
 actor-isolated if necessary.
 
 @Row {
