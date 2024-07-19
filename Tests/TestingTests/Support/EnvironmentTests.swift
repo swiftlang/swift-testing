@@ -9,11 +9,7 @@
 //
 
 @testable @_spi(Experimental) import Testing
-#if SWT_BUILDING_WITH_CMAKE
-@_implementationOnly import _TestingInternals
-#else
 private import _TestingInternals
-#endif
 
 @Suite("Environment Tests", .serialized)
 struct EnvironmentTests {

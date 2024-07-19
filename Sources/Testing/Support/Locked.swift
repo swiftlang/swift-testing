@@ -8,11 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if SWT_BUILDING_WITH_CMAKE
-@_implementationOnly import _TestingInternals
-#else
 internal import _TestingInternals
-#endif
 
 /// A type that wraps a value requiring access from a synchronous caller during
 /// concurrent execution.

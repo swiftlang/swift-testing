@@ -11,11 +11,7 @@
 #if canImport(Foundation) && !SWT_NO_ABI_ENTRY_POINT
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-#if SWT_BUILDING_WITH_CMAKE
-@_implementationOnly import _TestingInternals
-#else
 private import _TestingInternals
-#endif
 
 @Suite("ABI entry point tests")
 struct ABIEntryPointTests {

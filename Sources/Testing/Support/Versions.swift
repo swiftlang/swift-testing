@@ -8,11 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if SWT_BUILDING_WITH_CMAKE
-@_implementationOnly import _TestingInternals
-#else
 private import _TestingInternals
-#endif
 
 /// A human-readable string describing the current operating system's version.
 ///

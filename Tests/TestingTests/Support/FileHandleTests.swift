@@ -9,11 +9,7 @@
 //
 
 @testable import Testing
-#if SWT_BUILDING_WITH_CMAKE
-@_implementationOnly import _TestingInternals
-#else
 private import _TestingInternals
-#endif
 
 #if !SWT_NO_FILE_IO
 // NOTE: we don't run these tests on iOS (etc.) because processes on those

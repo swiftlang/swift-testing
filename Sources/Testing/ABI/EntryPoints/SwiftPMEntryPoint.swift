@@ -8,11 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if SWT_BUILDING_WITH_CMAKE
-@_implementationOnly import _TestingInternals
-#else
 private import _TestingInternals
-#endif
 
 /// The exit code returned to Swift Package Manager by Swift Testing when no
 /// tests matched the inputs specified by the developer (or, for the case of
