@@ -30,22 +30,21 @@ assertion failing.
 
 ## Proposed solution
 
-We create a new public `Issue.record` static method, specifically to record and
-display only the information given to it:
+We create a new protocol, `ToolMetadata`, as well as a new public `Issue.record`
+static method, specifically to record and display only the information given to
+it:
 
 ```swift
 extension Issue {
   @discardableResult public static func record(
     _ comment: Comment? = nil,
-    context toolContext: some Issue.Kind.ToolContext,
+    context toolContext: some ToolMetadata,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self
 }
 
-extension Issue.Kind {
-  public protocol ToolContext: Sendable, Encodable {
-    var toolName: String { get }
-  }
+public protocol ToolMetadata: Sendable, Encodable {
+  var toolDescription: String { get }
 }
 ```
 
@@ -55,23 +54,32 @@ as information for the user to know what tool actually recorded the issue.
 ## Detailed design
 
 `Issue.record` creates an issue of kind `Issue.Kind.recordedByTool`. This is a
-new case specifically for this API, and serves to hold on to the
-`Issue.Kind.ToolContext`. `ToolContext` is a protocol specifically to allow
-test tool authors to provide information about the tool that produced the issue,
-such as the name of the tool.
+new case specifically for this API, and serves to hold on to the `ToolMetadata`.
+`ToolMetadata` is a protocol specifically to allow test tool authors to provide
+information about the tool that produced the issue, which they can output to the
+console via the `toolDescription` property, or the entire thing can be dumped as
+JSON using the Swift Testing ABI.
 
-When displaying the Issue to the console/IDE, only the comment and toolContext
-are used to generate the failure information:
+When displaying the Issue to the console/IDE, this information is shown to the
+user on the next line of the console output. This avoids additional cluttering
+of inline issues for IDEs and tools that display the first line of an issue.
 
 ```swift
-struct MyToolContext: Issue.Kind.ToolContext {
-    let toolName = "Sample Tool"
+struct MyToolMetadata: ToolMetadata {
+    let toolDescription = "Sample Tool"
 }
 
 // ...
 Issue.record("an example issue", context: MyToolContext())
-// "an example issue (from 'Sample Tool')" would be shown to the user.
+// "an example issue\n(From 'Sample Tool')" would be output to the console.
 ```
+
+To simplify the creation of a `ToolMetadata` type, we will also create an
+extension to `ToolMetadata` to provide a default value for `toolDescription`.
+This default will output the `ToolMetadata`'s module symbol name. This enables
+those who wish to provide custom information to do so by specifying
+`toolDescription`, while simplifying adoption for those who don't want or
+need to provide a custom `toolDescription`.
 
 ## Source compatibility
 
@@ -79,9 +87,9 @@ This is entirely additive. All existing code will continue to work.
 
 ## Integration with supporting tools
 
-Tool integrating with the testing library need to create a type conforming to
-`Issue.Kind.ToolContext` and use that with `Issue.record` to record an issue
-with an arbitrary message.
+Tools integrating with the testing library need to create a type conforming to
+`ToolMetadata` and use that with `Issue.record` to record an issue with an
+arbitrary message.
 
 But if they wish, they can still use the existing `Issue.record` API to record
 unconditional failures.
@@ -95,6 +103,9 @@ or Swift Testing. See [#475](https://github.com/apple/swift-testing/issues/475),
 and FB14167426 for issues related to that. Detecting the test runner is a
 separate enough concern that it should not be part of this proposal.
 
+The `ToolMetadata` protocol can be used in other places intended for integration
+with third party tools to allow them to provide metadata on the tool itself.
+
 ## Alternatives considered
 
 We could do nothing and require third party tools to use the existing
@@ -106,14 +117,6 @@ This proposal came out of discussion around a [previous, similar proposal](https
 to open up the `Issue` API and allowing arbitrary `Issue` instances to be
 recorded. That proposal was dropped in favor of this one, which is significantly
 simpler and opens up as little API surface as possible.
-
-It's likely possible for us to get the module name of the module containing the
-concrete type conforming to `ToolContext`. Which is more reliable than a
-developer-supplied string. However, this also would be a symbolicated string,
-which may or may not be possible to demangle into a human-readable name.
-Additionally, reading the `toolName` allows developers to provide extra
-information that we might not otherwise be able to infer, such as version
-data.
 
 ## Acknowledgments
 
