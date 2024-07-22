@@ -98,6 +98,7 @@ public struct Issue: Sendable {
   public var sourceContext: SourceContext
 
   /// Whether or not this issue is known to occur.
+  @_spi(ForToolsIntegrationOnly)
   public var isKnown = false
 
   /// Initialize an issue instance with the specified details.
@@ -215,7 +216,6 @@ extension Issue {
     public var sourceContext: SourceContext
 
     /// Whether or not this issue is known to occur.
-    @_spi(ForToolsIntegrationOnly)
     public var isKnown = false
 
     /// Initialize an issue instance with the specified details.
