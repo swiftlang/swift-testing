@@ -27,6 +27,7 @@ extension ABIv0 {
       case testStarted
       case testCaseStarted
       case issueRecorded
+      case messageLogged
       case testCaseEnded
       case testEnded
       case testSkipped
@@ -71,6 +72,8 @@ extension ABIv0 {
       case let .issueRecorded(recordedIssue):
         kind = .issueRecorded
         issue = EncodedIssue(encoding: recordedIssue)
+      case .messageLogged:
+        kind = .messageLogged
       case .testCaseEnded:
         if eventContext.test?.isParameterized == false {
           return nil

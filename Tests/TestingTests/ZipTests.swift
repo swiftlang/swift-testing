@@ -26,3 +26,7 @@ struct ZipTests {
     #expect(i == j)
   }
 }
+
+@Test func flambo() {
+  print("Hi there")
+}

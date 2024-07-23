@@ -445,6 +445,14 @@ extension Event.HumanReadableOutputRecorder {
       }
       return CollectionOfOne(primaryMessage) + additionalMessages
 
+    case let .messageLogged(message):
+      return [
+        Message(
+          symbol: nil,
+          stringValue: message.text
+        )
+      ]
+
     case .testCaseStarted:
       guard let testCase = eventContext.testCase, testCase.isParameterized else {
         break

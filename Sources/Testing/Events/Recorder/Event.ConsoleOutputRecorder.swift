@@ -307,6 +307,12 @@ extension Event.ConsoleOutputRecorder {
   /// - Returns: Whether any output was produced and written to this instance's
   ///   destination.
   @discardableResult public func record(_ event: borrowing Event, in context: borrowing Event.Context) -> Bool {
+    if case let .messageLogged(message) = event.kind, message is PrintedMessage || message is DebugPrintedMessage {
+      // Do not re-print these messages as they have already been written to
+      // their corresponding sinks.
+      return false
+    }
+
     let messages = _humanReadableOutputRecorder.record(event, in: context, verbosity: options.verbosity)
     for message in messages {
       let symbol = message.symbol?.stringValue(options: options) ?? " "

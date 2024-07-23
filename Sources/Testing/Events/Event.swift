@@ -98,6 +98,9 @@ public struct Event: Sendable {
     ///   - issue: The issue which was recorded.
     indirect case issueRecorded(_ issue: Issue)
 
+    @_spi(Experimental)
+    indirect case messageLogged(_ message: any LoggedMessage)
+
     /// A test ended.
     ///
     /// The test that ended is contained in the ``Event/Context`` instance that
@@ -404,6 +407,8 @@ extension Event.Kind {
     ///   - issue: The issue which was recorded.
     indirect case issueRecorded(_ issue: Issue.Snapshot)
 
+    indirect case messageLogged(_ message: String)
+
     /// A test ended.
     case testEnded
 
@@ -463,6 +468,8 @@ extension Event.Kind {
         self = Snapshot.expectationChecked(expectationSnapshot)
       case let .issueRecorded(issue):
         self = .issueRecorded(Issue.Snapshot(snapshotting: issue))
+      case let .messageLogged(message):
+        self = .messageLogged(message.text)
       case .testEnded:
         self = .testEnded
       case let .testSkipped(skipInfo):
