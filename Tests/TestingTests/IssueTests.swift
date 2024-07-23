@@ -1415,7 +1415,9 @@ final class IssueTests: XCTestCase {
 }
 #endif
 
-#if !SWT_NO_SNAPSHOT_TYPES
+#if canImport(Foundation) && !SWT_NO_SNAPSHOT_TYPES
+import Foundation
+
 @Suite("Issue Codable Conformance Tests")
 struct IssueCodingTests {
 
