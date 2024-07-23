@@ -69,6 +69,15 @@ public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) 
 /// - Warning: This function is used by Swift Package Manager. Do not call it
 ///   directly.
 public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) async -> Never {
+#if !SWT_NO_FILE_IO
+  // Ensure that stdout is line- rather than block-buffered. Swift Package
+  // Manager reroutes standard I/O through pipes, so we tend to end up with
+  // block-buffered streams.
+  FileHandle.stdout.withUnsafeCFILEHandle { stdout in
+    _ = setvbuf(stdout, nil, _IOLBF, Int(BUFSIZ))
+  }
+#endif
+
   let exitCode: CInt = await __swiftPMEntryPoint(passing: args)
   exit(exitCode)
 }
