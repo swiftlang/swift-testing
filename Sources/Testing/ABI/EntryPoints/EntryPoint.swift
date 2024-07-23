@@ -60,6 +60,13 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
       eventRecorder.record(event, in: context)
       oldEventHandler(event, context)
     }
+
+    // Ensure that stdout is line- rather than block-buffered. Swift Package
+    // Manager reroutes standard I/O through pipes, so we tend to end up with
+    // block-buffered streams.
+    FileHandle.stdout.withUnsafeCFILEHandle { stdout in
+      _ = setvbuf(stdout, nil, _IOLBF, Int(BUFSIZ))
+    }
 #endif
 
     // If the caller specified an alternate event handler, hook it up too.
