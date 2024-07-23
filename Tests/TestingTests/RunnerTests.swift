@@ -878,5 +878,41 @@ final class RunnerTests: XCTestCase {
     await runTest(for: DeprecatedVersionTests.self, configuration: configuration)
     await fulfillment(of: [testStarted, testSkipped], timeout: 0.0)
   }
+
+  func testSerializedSortOrder() async {
+    OrderedTests.state.withLock { state in
+      state = 0
+    }
+    await runTest(for: OrderedTests.self, configuration: .init())
+  }
+}
+
+// MARK: - Fixtures
+
+extension OrderedTests.Inner {
+  @Test(.hidden) func s() { XCTAssertEqual(OrderedTests.state.increment(), 5) }
+}
+
+@Suite(.hidden, .serialized) struct OrderedTests {
+  static let state = Locked(rawValue: 0)
+
+  @Test(.hidden) func z() { XCTAssertEqual(Self.state.increment(), 1) }
+  @Test(.hidden) func y() { XCTAssertEqual(Self.state.increment(), 2) }
+  @Test(.hidden) func x() { XCTAssertEqual(Self.state.increment(), 3) }
+  @Test(.hidden) func w() { XCTAssertEqual(Self.state.increment(), 4) }
+  @Suite(.hidden) struct Inner {
+    // s() in extension above, numbered 5
+    @Test(.hidden) func t() { XCTAssertEqual(OrderedTests.state.increment(), 6) }
+    // u() in extension below, numbered 7
+  }
+
+  @Test(.hidden) func d() { XCTAssertEqual(Self.state.increment(), 8) }
+  @Test(.hidden) func c() { XCTAssertEqual(Self.state.increment(), 9) }
+  @Test(.hidden) func b() { XCTAssertEqual(Self.state.increment(), 10) }
+  @Test(.hidden) func a() { XCTAssertEqual(Self.state.increment(), 11) }
+}
+
+extension OrderedTests.Inner {
+  @Test(.hidden) func u() { XCTAssertEqual(OrderedTests.state.increment(), 7) }
 }
 #endif
