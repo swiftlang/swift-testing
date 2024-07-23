@@ -223,11 +223,15 @@ struct GraphTests {
         "C2": Graph(value: 13579),
       ]),
       "C3": Graph(value: 789, children: [
-        "C4": Graph(value: nil),
+        "C4": Graph(value: nil, children: [
+          "C5": Graph(value: nil, children: [
+            "C6": Graph(value: nil)
+          ])
+        ]),
       ]),
     ])
     #expect(graph.underestimatedCount == 3)
-    #expect(graph.count == 5)
+    #expect(graph.count == 7)
   }
 
   @Test("forEach(_:) function")

@@ -376,7 +376,7 @@ extension Graph {
   /// - Complexity: O(*n*), where *n* is the number of nodes in the graph.
   var count: Int {
     1 + children.reduce(into: 0) { count, child in
-      count += child.value.underestimatedCount
+      count += child.value.count
     }
   }
 }
