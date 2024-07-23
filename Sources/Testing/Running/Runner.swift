@@ -222,6 +222,22 @@ extension Runner {
     }
   }
 
+  /// Get the source location corresponding to the root of a plan step graph.
+  ///
+  /// - Parameters:
+  ///   - stepGraph: The plan step graph whose root node is of interest.
+  ///
+  /// - Returns: The source location of the root node of `stepGraph`, or of the
+  ///   first descendant node thereof (sorted by source location.)
+  private func _sourceLocation(of stepGraph: Graph<String, Plan.Step?>) -> SourceLocation? {
+    if let result = stepGraph.value?.test.sourceLocation {
+      return result
+    }
+    return stepGraph.children.lazy
+      .compactMap { _sourceLocation(of: $0.value) }
+      .min()
+  }
+
   /// Recursively run the tests that are children of a given plan step.
   ///
   /// - Parameters:
@@ -243,8 +259,36 @@ extension Runner {
     // runnable steps' options.
     let stepOrAncestor = stepGraph.value ?? lastAncestorStep
 
-    // Run the children of this step.
-    let childGraphs = stepGraph.children.sorted { $0.key < $1.key }
+    let isParallelizationEnabled = stepOrAncestor?.action.isParallelizationEnabled ?? configuration.isParallelizationEnabled
+    let childGraphs = if isParallelizationEnabled {
+      // Explicitly shuffle the steps to help detect accidental dependencies
+      // between tests due to their ordering.
+      Array(stepGraph.children)
+    } else {
+      // Sort the children by source order. If a child node is empty but has
+      // descendants, the lowest-ordered child node is used. If a child node is
+      // empty and has no descendant nodes with source location information,
+      // then we sort it before nodes with source location information (though
+      // it won't end up doing anything in the test run.)
+      //
+      // FIXME: this operation is likely O(n log n) or worse when amortized
+      // across the entire test plan; Graph should adopt OrderedDictionary if
+      // possible so it can pre-sort its nodes once.
+      stepGraph.children.sorted { lhs, rhs in
+        switch (_sourceLocation(of: lhs.value), _sourceLocation(of: rhs.value)) {
+        case let (.some(lhs), .some(rhs)):
+          lhs < rhs
+        case (.some, _):
+          false // x < nil == false
+        case (_, .some):
+          true // nil < x == true
+        default:
+          false // stable ordering
+        }
+      }
+    }
+
+    // Run the child nodes.
     try await _forEach(in: childGraphs, for: stepOrAncestor) { _, childGraph in
       try await _runStep(atRootOf: childGraph, depth: depth + 1, lastAncestorStep: stepOrAncestor)
     }
