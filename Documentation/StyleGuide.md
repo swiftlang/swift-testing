@@ -140,12 +140,12 @@ Begin topic group headings inside types with a noun or noun phrase.
 
 The macro target of this package produces a number of different compile-time
 diagnostics. These diagnostics should be written according to the Swift style
-guide for compiler diagnostics [here](https://github.com/apple/swift/blob/main/docs/Diagnostics.md).
+guide for compiler diagnostics [here](https://github.com/swiftlang/swift/blob/main/docs/Diagnostics.md).
 
 ### Documentation
 
 Documentation for the testing library should follow the
-[Swift Book style guide](https://github.com/apple/swift-book/blob/main/Style.md)
+[Swift Book style guide](https://github.com/swiftlang/swift-book/blob/main/Style.md)
 and [Apple Style Guide](https://support.apple.com/guide/applestyleguide/) as
 contextually appropriate.
 
