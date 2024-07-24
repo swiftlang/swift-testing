@@ -140,7 +140,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
   ///
   /// These leverage a pseudo-experimental feature in the Swift compiler for
   /// setting availability definitions, which was added in
-  /// [apple/swift#65218](https://github.com/apple/swift/pull/65218).
+  /// [swiftlang/swift#65218](https://github.com/swiftlang/swift/pull/65218).
   private static var availabilityMacroSettings: Self {
     [
       .enableExperimentalFeature("AvailabilityMacro=_mangledTypeNameAPI:macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0"),
