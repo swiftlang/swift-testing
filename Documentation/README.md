@@ -17,7 +17,7 @@ The detailed documentation for Swift Testing can be found on the
 There, you can delve into comprehensive guides, tutorials, and API references to
 make the most out of this package.
 
-This documentation is generated using [DocC](https://github.com/apple/swift-docc)
+This documentation is generated using [DocC](https://github.com/swiftlang/swift-docc)
 and is derived from symbol documentation in this project's source code as well
 as supplemental content located in the
 [`Sources/Testing/Testing.docc/`](https://github.com/apple/swift-testing/tree/main/Sources/Testing/Testing.docc)
@@ -25,7 +25,7 @@ directory.
 
 ## Vision document
 
-The [Vision document](https://github.com/apple/swift-evolution/blob/main/visions/swift-testing.md)
+The [Vision document](https://github.com/swiftlang/swift-evolution/blob/main/visions/swift-testing.md)
 for Swift Testing offers a comprehensive discussion of the project's design
 principles and goals. 
 
