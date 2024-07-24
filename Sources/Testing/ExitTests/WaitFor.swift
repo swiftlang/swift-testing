@@ -42,7 +42,7 @@ private func _blockAndWait(for pid: pid_t) throws -> ExitCondition {
 
 #if !(SWT_TARGET_OS_APPLE && !SWT_NO_LIBDISPATCH)
 /// A mapping of awaited child PIDs to their corresponding Swift continuations.
-private let _childProcessContinuations = Locked<[pid_t: CheckedContinuation<ExitCondition, any Error>]>()
+private let _childProcessContinuations = CustomLocked<[pid_t: CheckedContinuation<ExitCondition, any Error>], pthread_mutex_t>()
 
 /// A condition variable used to suspend the waiter thread created by
 /// `_createWaitThread()` when there are no child processes to await.

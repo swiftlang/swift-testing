@@ -14,72 +14,34 @@ internal import _TestingInternals
 /// concurrent execution.
 ///
 /// Instances of this type use a lock to synchronize access to their raw values.
-/// The lock is not recursive.
+/// The lock is not recursive. If the type of the lock is ``/Swift/Never``, no
+/// locking is performed.
 ///
 /// Instances of this type can be used to synchronize access to shared data from
 /// a synchronous caller. Wherever possible, use actor isolation or other Swift
 /// concurrency tools.
 ///
 /// This type is not part of the public interface of the testing library.
-///
-/// - Bug: The state protected by this type should instead be protected using
-///     actor isolation, but actor-isolated functions cannot be called from
-///     synchronous functions. ([83888717](rdar://83888717))
-struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
-  /// The platform-specific type to use for locking.
-  ///
-  /// It would be preferable to implement this lock in Swift, however there is
-  /// no standard lock or mutex type available across all platforms that is
-  /// visible in Swift. C11 has a standard `mtx_t` type, but it is not widely
-  /// supported and so cannot be relied upon.
-  ///
-  /// To keep the implementation of this type as simple as possible,
-  /// `pthread_mutex_t` is used on Apple platforms instead of `os_unfair_lock`
-  /// or `OSAllocatedUnfairLock`.
-#if SWT_TARGET_OS_APPLE || os(Linux) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
-  private typealias _Lock = pthread_mutex_t
-#elseif os(Windows)
-  private typealias _Lock = SRWLOCK
-#elseif os(WASI)
-  // No locks on WASI without multithreaded runtime.
-  private typealias _Lock = Void
-#else
-#warning("Platform-specific implementation missing: locking unavailable")
-  private typealias _Lock = Void
-#endif
+struct CustomLocked<T, Lock>: RawRepresentable, Sendable where T: Sendable, Lock: Lockable {
+  /// The underlying lock type.
+  typealias Lock = Lock
 
   /// A type providing heap-allocated storage for an instance of ``Locked``.
-  private final class _Storage: ManagedBuffer<T, _Lock> {
+  private final class _Storage: ManagedBuffer<T, Lock> {
     deinit {
       withUnsafeMutablePointerToElements { lock in
-#if SWT_TARGET_OS_APPLE || os(Linux) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
-        _ = pthread_mutex_destroy(lock)
-#elseif os(Windows)
-        // No deinitialization needed.
-#elseif os(WASI)
-        // No locks on WASI without multithreaded runtime.
-#else
-#warning("Platform-specific implementation missing: locking unavailable")
-#endif
+        Lock.deinitialize(at: lock)
       }
     }
   }
 
   /// Storage for the underlying lock and wrapped value.
-  private nonisolated(unsafe) var _storage: ManagedBuffer<T, _Lock>
+  private nonisolated(unsafe) var _storage: ManagedBuffer<T, Lock>
 
   init(rawValue: T) {
     _storage = _Storage.create(minimumCapacity: 1, makingHeaderWith: { _ in rawValue })
     _storage.withUnsafeMutablePointerToElements { lock in
-#if SWT_TARGET_OS_APPLE || os(Linux) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
-      _ = pthread_mutex_init(lock, nil)
-#elseif os(Windows)
-      InitializeSRWLock(lock)
-#elseif os(WASI)
-      // No locks on WASI without multithreaded runtime.
-#else
-#warning("Platform-specific implementation missing: locking unavailable")
-#endif
+      Lock.initialize(at: lock)
     }
   }
 
@@ -99,29 +61,16 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   /// This function can be used to synchronize access to shared data from a
   /// synchronous caller. Wherever possible, use actor isolation or other Swift
   /// concurrency tools.
-  nonmutating func withLock<R>(_ body: (inout T) throws -> R) rethrows -> R {
-    try _storage.withUnsafeMutablePointers { rawValue, lock in
-#if SWT_TARGET_OS_APPLE || os(Linux) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
-      _ = pthread_mutex_lock(lock)
-      defer {
-        _ = pthread_mutex_unlock(lock)
+  nonmutating func withLock<R>(_ body: @Sendable (inout T) throws -> sending R) rethrows -> sending R {
+    try _storage.withUnsafeMutablePointerToElements { lock in
+      try Lock.withLock(at: lock) {
+        try _storage.withUnsafeMutablePointerToHeader { rawValue in
+          try body(&rawValue.pointee)
+        }
       }
-#elseif os(Windows)
-      AcquireSRWLockExclusive(lock)
-      defer {
-        ReleaseSRWLockExclusive(lock)
-      }
-#elseif os(WASI)
-      // No locks on WASI without multithreaded runtime.
-#else
-#warning("Platform-specific implementation missing: locking unavailable")
-#endif
-
-      return try body(&rawValue.pointee)
     }
   }
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
   /// Acquire the lock and invoke a function while it is held, yielding both the
   /// protected value and a reference to the lock itself.
   ///
@@ -142,17 +91,48 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   /// - Warning: Callers that unlock the lock _must_ lock it again before the
   ///   closure returns. If the lock is not acquired when `body` returns, the
   ///   effect is undefined.
-  nonmutating func withUnsafeUnderlyingLock<R>(_ body: (UnsafeMutablePointer<pthread_mutex_t>, T) throws -> R) rethrows -> R {
-    try withLock { value in
-      try _storage.withUnsafeMutablePointerToElements { lock in
-        try body(lock, value)
+  nonmutating func withUnsafeUnderlyingLock<R>(_ body: @Sendable (UnsafeMutablePointer<Lock>, T) throws -> sending R) rethrows -> sending R {
+    try _storage.withUnsafeMutablePointerToElements { lock in
+      try Lock.withLock(at: lock) {
+        try _storage.withUnsafeMutablePointers { rawValue, lock in
+          try body(lock, rawValue.pointee)
+        }
       }
     }
   }
-#endif
 }
 
-extension Locked where T: AdditiveArithmetic {
+// MARK: - Platform-specific default lock
+
+/// The platform-specific lock type used by ``Locked``.
+///
+/// To use a different type as the underlying lock, use ``CustomLocked``.
+
+/// A type that wraps a value requiring access from a synchronous caller during
+/// concurrent execution.
+///
+/// Instances of this type use a lock to synchronize access to their raw values.
+/// The lock is not recursive.
+///
+/// Instances of this type can be used to synchronize access to shared data from
+/// a synchronous caller. Wherever possible, use actor isolation or other Swift
+/// concurrency tools.
+///
+/// This type uses the optimal available platform-specific lock type. To use a
+/// different type as the underlying lock, use ``CustomLocked``.
+///
+/// This type is not part of the public interface of the testing library.
+#if SWT_TARGET_OS_APPLE && canImport(os)
+typealias Locked<T> = CustomLocked<T, os_unfair_lock>
+#elseif SWT_TARGET_OS_APPLE
+typealias Locked<T> = CustomLocked<T, pthread_mutex_t>
+#else
+typealias Locked<T> = CustomLocked<T, Mutex<Void>>
+#endif
+
+// MARK: - Type-specific conveniences
+
+extension CustomLocked where T: AdditiveArithmetic {
   /// Add something to the current wrapped value of this instance.
   ///
   /// - Parameters:
@@ -168,7 +148,7 @@ extension Locked where T: AdditiveArithmetic {
   }
 }
 
-extension Locked where T: Numeric {
+extension CustomLocked where T: Numeric {
   /// Increment the current wrapped value of this instance.
   ///
   /// - Returns: The sum of ``rawValue`` and `1`.
@@ -179,7 +159,7 @@ extension Locked where T: Numeric {
   }
 }
 
-extension Locked {
+extension CustomLocked {
   /// Initialize an instance of this type with a raw value of `nil`.
   init<V>() where T == V? {
     self.init(rawValue: nil)
