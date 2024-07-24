@@ -201,6 +201,24 @@ final class RunnerTests: XCTestCase {
     await fulfillment(of: [testSkipped], timeout: 0.0)
   }
 
+  func testParameterizedTestWithNoCasesIsSkipped() async throws {
+    let testSkipped = expectation(description: "Test was skipped")
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      if case .testSkipped(_) = event.kind {
+        testSkipped.fulfill()
+      }
+      if case .testStarted = event.kind {
+        XCTFail("The test should not be reported as started.")
+      }
+    }
+    let runner = await Runner(testing: [
+      Test(arguments: Array<Int>(), parameters: [.init(index: 0, firstName: "i", type: Int.self)]) { _ in },
+    ], configuration: configuration)
+    await runner.run()
+    await fulfillment(of: [testSkipped], timeout: 0.0)
+  }
+
   func testTestIsSkippedWithBlockingEnabledIfTrait() async throws {
     let testSkipped = expectation(description: "Test was skipped")
     testSkipped.expectedFulfillmentCount = 4
