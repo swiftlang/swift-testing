@@ -263,6 +263,11 @@ extension Runner.Plan {
         }
       }
 
+      // If the test is parameterized but has no cases, mark it as skipped.
+      if case .run = action, let testCases = test.testCases, testCases.first(where: { _ in true }) == nil {
+        action = .skip(SkipInfo(comment: "No test cases found."))
+      }
+
       actionGraph.updateValue(action, at: keyPath)
 
       return test
