@@ -171,7 +171,10 @@ extension Issue.Kind: CustomStringConvertible {
   public var description: String {
     switch self {
     case .unconditional:
-      "Unconditionally failed"
+      // Although the failure is unconditional at the point it is recorded, the
+      // code that recorded the issue may not be unconditionally executing, so
+      // we shouldn't describe it as unconditional (we just don't know!)
+      "Issue recorded"
     case let .expectationFailed(expectation):
       if let mismatchedErrorDescription = expectation.mismatchedErrorDescription {
         "Expectation failed: \(mismatchedErrorDescription)"
@@ -457,7 +460,7 @@ extension Issue.Kind.Snapshot: CustomStringConvertible {
   public var description: String {
     switch self {
     case .unconditional:
-      "Unconditionally failed"
+      "Issue recorded"
     case let .expectationFailed(expectation):
       if let mismatchedErrorDescription = expectation.mismatchedErrorDescription {
         "Expectation failed: \(mismatchedErrorDescription)"
