@@ -264,7 +264,7 @@ extension Runner.Plan {
       }
 
       // If the test is parameterized but has no cases, mark it as skipped.
-      if case .run = action, test.isParameterized, test.testCases?.lazy.first(where: { _ in true }) == nil {
+      if case .run = action, test.isParameterized, test.testCases?.first(where: { _ in true }) == nil {
         action = .skip(SkipInfo(comment: "No test cases found."))
       }
 

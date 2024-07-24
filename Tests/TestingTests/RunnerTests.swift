@@ -205,7 +205,7 @@ final class RunnerTests: XCTestCase {
     let testSkipped = expectation(description: "Test was skipped")
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
-      if case .testSkipped(_) = event.kind {
+      if case .testSkipped = event.kind {
         testSkipped.fulfill()
       }
       if case .testStarted = event.kind {
