@@ -28,9 +28,21 @@ function(_swift_testing_install_target module)
     set(swift swift)
   endif()
 
+  target_compile_options(Testing PRIVATE "-no-toolchain-stdlib-rpath")
+
+  if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(lib_destination_dir "lib/${swift}/${swift_os}/testing")
+    set_property(TARGET ${module} PROPERTY
+      INSTALL_RPATH "@loader_path/..")
+  else()
+    set(lib_destination_dir "lib/${swift}/${swift_os}")
+    set_property(TARGET ${module} PROPERTY
+      INSTALL_RPATH "$ORIGIN")
+  endif()
+
   install(TARGETS ${module}
-    ARCHIVE DESTINATION lib/${swift}/${swift_os}
-    LIBRARY DESTINATION lib/${swift}/${swift_os}
+    ARCHIVE DESTINATION "${lib_destination_dir}"
+    LIBRARY DESTINATION "${lib_destination_dir}"
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
   if(type STREQUAL EXECUTABLE)
     return()
@@ -52,13 +64,17 @@ function(_swift_testing_install_target module)
     mark_as_advanced(SwiftTesting_MODULE_TRIPLE)
   endif()
 
+  set(module_dir "${lib_destination_dir}/${module_name}.swiftmodule")
   install(FILES $<TARGET_PROPERTY:${module},Swift_MODULE_DIRECTORY>/${module_name}.swiftdoc
-    DESTINATION lib/${swift}/${swift_os}/${module_name}.swiftmodule
+    DESTINATION "${module_dir}"
     RENAME ${SwiftTesting_MODULE_TRIPLE}.swiftdoc)
   install(FILES $<TARGET_PROPERTY:${module},Swift_MODULE_DIRECTORY>/${module_name}.swiftmodule
-    DESTINATION lib/${swift}/${swift_os}/${module_name}.swiftmodule
+    DESTINATION "${module_dir}"
     RENAME ${SwiftTesting_MODULE_TRIPLE}.swiftmodule)
-  install(FILES $<TARGET_PROPERTY:${module},Swift_MODULE_DIRECTORY>/${module_name}.swiftinterface
-    DESTINATION lib/${swift}/${swift_os}/${module_name}.swiftmodule
-    RENAME ${SwiftTesting_MODULE_TRIPLE}.swiftinterface)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    # Only Darwin has stable ABI. 
+    install(FILES $<TARGET_PROPERTY:${module},Swift_MODULE_DIRECTORY>/${module_name}.swiftinterface
+      DESTINATION "${module_dir}"
+      RENAME ${SwiftTesting_MODULE_TRIPLE}.swiftinterface)
+  endif()
 endfunction()

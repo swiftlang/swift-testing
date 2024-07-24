@@ -15,6 +15,8 @@ endif()
 project(SwiftTesting
   LANGUAGES CXX Swift)
 
+include(GNUInstallDirs)
+
 list(APPEND CMAKE_MODULE_PATH
   ${PROJECT_SOURCE_DIR}/cmake/modules
   ${PROJECT_SOURCE_DIR}/cmake/modules/shared)
