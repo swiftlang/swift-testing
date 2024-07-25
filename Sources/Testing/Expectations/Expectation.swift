@@ -18,7 +18,7 @@ public struct Expectation: Sendable {
   ///
   /// If this expectation passed, the value of this property is `nil` because no
   /// error mismatch occurred.
-  @_spi(ForToolsIntegrationOnly)
+  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
   public var mismatchedErrorDescription: String?
 
   /// A description of the difference between the operands in the expression
@@ -27,8 +27,15 @@ public struct Expectation: Sendable {
   /// If this expectation passed, the value of this property is `nil` because
   /// the difference is only computed when necessary to assist with diagnosing
   /// test failures.
-  @_spi(ForToolsIntegrationOnly)
+  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
   public var differenceDescription: String?
+
+  /// A description of the exit condition that was expected to be matched.
+  ///
+  /// If this expectation passed, the value of this property is `nil` because no
+  /// exit test failed.
+  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+  public var mismatchedExitConditionDescription: String?
 
   /// Whether the expectation passed or failed.
   ///
@@ -93,7 +100,7 @@ extension Expectation {
     /// - Parameter expectation: The real expectation.
     public init(snapshotting expectation: borrowing Expectation) {
       self.evaluatedExpression = expectation.evaluatedExpression
-      self.mismatchedErrorDescription = expectation.mismatchedErrorDescription
+      self.mismatchedErrorDescription = expectation.mismatchedErrorDescription ?? expectation.mismatchedExitConditionDescription
       self.differenceDescription = expectation.differenceDescription
       self.isPassing = expectation.isPassing
       self.isRequired = expectation.isRequired

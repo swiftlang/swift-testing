@@ -178,6 +178,8 @@ extension Issue.Kind: CustomStringConvertible {
     case let .expectationFailed(expectation):
       if let mismatchedErrorDescription = expectation.mismatchedErrorDescription {
         "Expectation failed: \(mismatchedErrorDescription)"
+      } else if let mismatchedExitConditionDescription = expectation.mismatchedExitConditionDescription {
+        "Expectation failed: \(mismatchedExitConditionDescription)"
       } else {
         "Expectation failed: \(expectation.evaluatedExpression.expandedDescription())"
       }
