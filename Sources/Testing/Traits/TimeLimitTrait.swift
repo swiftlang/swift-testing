@@ -21,7 +21,6 @@ public struct TimeLimitTrait: TestTrait, SuiteTrait {
   /// with ``TimeLimitTrait``. It is used instead of Swift's built-in `Duration`
   /// type because test timeouts do not support high-precision, arbitrarily
   /// short durations. The smallest allowed unit of time is minutes.
-  @_spi(Experimental)
   public struct Duration: Sendable {
     /// The underlying Swift `Duration` which this time limit duration
     /// represents.
@@ -84,6 +83,7 @@ extension Trait where Self == TimeLimitTrait {
   /// test cases individually. If a test has more than one time limit associated
   /// with it, the shortest one is used. A test run may also be configured with
   /// a maximum time limit per test case.
+  @_spi(Experimental)
   public static func timeLimit(_ timeLimit: Duration) -> Self {
     return Self(timeLimit: timeLimit)
   }
@@ -117,7 +117,6 @@ extension Trait where Self == TimeLimitTrait {
   /// test cases individually. If a test has more than one time limit associated
   /// with it, the shortest one is used. A test run may also be configured with
   /// a maximum time limit per test case.
-  @_spi(Experimental)
   public static func timeLimit(_ timeLimit: Self.Duration) -> Self {
     return Self(timeLimit: timeLimit.underlyingDuration)
   }
