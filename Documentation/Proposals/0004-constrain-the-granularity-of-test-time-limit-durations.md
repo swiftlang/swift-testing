@@ -1,14 +1,13 @@
 # Constrain the granularity of test time limit durations
 
 * Proposal: 
-[SWT-NNNN](NNNN-constrain-the-granularity-of-test-time-limit-durations.md)
+[SWT-0004](0004-constrain-the-granularity-of-test-time-limit-durations.md)
 * Authors: [Dennis Weissmann](https://github.com/dennisweissmann)
-* Status: **Awaiting review**
+* Status: **Awaiting Review**
 * Implementation: 
-[apple/swift-testing#NNNNN](https://github.com/apple/swift-testing/pull/NNNNN)
+[apple/swift-testing#534](https://github.com/apple/swift-testing/pull/534)
 * Review: 
-([pitch](https://forums.swift.org/t/pitch-constrain-the-granularity-of-test-time
--limit-durations/73146))
+([pitch](https://forums.swift.org/t/pitch-constrain-the-granularity-of-test-time-limit-durations/73146))
 
 ## Introduction
 
@@ -66,8 +65,10 @@ API.
 
 ## Detailed Design
 
-The `TimeLimitTrait.Duration` struct only has one factory method: `public 
-static func minutes(_ minutes: some BinaryInteger) -> Self`.
+The `TimeLimitTrait.Duration` struct only has one factory method:
+```swift
+public static func minutes(_ minutes: some BinaryInteger) -> Self`
+```
 
 That ensures 2 things:
 1. It's impossible to create short time limits (under a minute).
@@ -114,7 +115,7 @@ public struct TimeLimitTrait: TestTrait, SuiteTrait {
 The extension on `Trait` that allows for `.timeLimit(...)` to work is defined 
 like this:
 
-```
+```swift
 /// Construct a time limit trait that causes a test to time out if it runs for
 /// too long.
 ///
@@ -160,11 +161,11 @@ func serve100CustomersInOneHour() async {
 }
 ```
 
-The `TimeLimitTrait.Duration` struct has various `unavailable` overloads that 
-are included for diagnostic purposes only. They are all documented and 
+The `TimeLimitTrait.Duration` struct has various `unavailable` overloads that
+are included for diagnostic purposes only. They are all documented and
 annotated like this:
 
-```
+```swift
 /// Construct a time limit duration given a number of <unit>.
 ///
 /// This function is unavailable and is provided for diagnostic purposes only.
@@ -181,7 +182,11 @@ N/A
 
 ## Future Directions
 
-N/A.
+We could reconsider the granularity constraints and allow for more finegrained
+time limits if we come to the conclusion that the advantages outweigh the
+disadvantages.
+Part of that could be the automatic detection of environments (like CI vs local
+and providing a way to use different timeouts in different environments.
 
 ## Alternatives Considered
 
