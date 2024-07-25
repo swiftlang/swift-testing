@@ -45,7 +45,7 @@ struct ConditionMacroTests {
       ##"#expect(1 is Int)"##:
         ##"Testing.__checkCast(1, is: (Int).self, expression: .__fromBinaryOperation(.__fromSyntaxNode("1"), "is", .__fromSyntaxNode("Int")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect("123") { 1 == 2 } then: { foo() }"##:
-        ##"Testing.__checkClosureCall(performing: { 1 == 2 }, then: { foo() }, expression: .__fromBinaryOperation(.__fromSyntaxNode("1"), "==", .__fromSyntaxNode("2")), comments: ["123"], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
+        ##"Testing.__checkClosureCall(performing: { 1 == 2 }, then: { foo() }, expression: .__fromSyntaxNode("1 == 2"), comments: ["123"], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect("123") { let x = 0 }"##:
         ##"Testing.__checkClosureCall(performing: { let x = 0 }, expression: .__fromSyntaxNode("let x = 0"), comments: ["123"], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect("123") { let x = 0; return x == 0 }"##:
@@ -121,7 +121,7 @@ struct ConditionMacroTests {
       ##"#require(1 is Int)"##:
         ##"Testing.__checkCast(1, is: (Int).self, expression: .__fromBinaryOperation(.__fromSyntaxNode("1"), "is", .__fromSyntaxNode("Int")), comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require("123") { 1 == 2 } then: { foo() }"##:
-        ##"Testing.__checkClosureCall(performing: { 1 == 2 }, then: { foo() }, expression: .__fromBinaryOperation(.__fromSyntaxNode("1"), "==", .__fromSyntaxNode("2")), comments: ["123"], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+        ##"Testing.__checkClosureCall(performing: { 1 == 2 }, then: { foo() }, expression: .__fromSyntaxNode("1 == 2"), comments: ["123"], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require("123") { let x = 0 }"##:
         ##"Testing.__checkClosureCall(performing: { let x = 0 }, expression: .__fromSyntaxNode("let x = 0"), comments: ["123"], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require("123") { let x = 0; return x == 0 }"##:

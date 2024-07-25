@@ -64,6 +64,7 @@ public func __checkValue(
   expressionWithCapturedRuntimeValues: @autoclosure () -> __Expression? = nil,
   mismatchedErrorDescription: @autoclosure () -> String? = nil,
   difference: @autoclosure () -> String? = nil,
+  mismatchedExitConditionDescription: @autoclosure () -> String? = nil,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -106,6 +107,7 @@ public func __checkValue(
   // only evaluated and included lazily upon failure.
   expectation.mismatchedErrorDescription = mismatchedErrorDescription()
   expectation.differenceDescription = difference()
+  expectation.mismatchedExitConditionDescription = mismatchedExitConditionDescription()
 
   // Ensure the backtrace is captured here so it has fewer extraneous frames
   // from the testing framework which aren't relevant to the user.

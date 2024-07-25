@@ -230,13 +230,8 @@ private func _parseCondition(from expr: AsExprSyntax, for macro: some Freestandi
 /// - Returns: An instance of ``Condition`` describing `expr`.
 private func _parseCondition(from expr: ClosureExprSyntax, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
   if expr.signature == nil && expr.statements.count == 1, let item = expr.statements.first?.item {
-    if case let .expr(bodyExpr) = item {
-      return Condition(
-        "__checkValue",
-        arguments: [Argument(expression: expr)],
-        expression: _parseCondition(from: bodyExpr, for: macro, in: context).expression
-      )
-    }
+    // TODO: capture closures as a different kind of Testing.Expression with a
+    // separate subexpression per code item.
 
     // If a closure contains a single statement or declaration, we can't
     // meaningfully break it down as an expression, but we can still capture its

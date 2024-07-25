@@ -149,21 +149,11 @@ func callExitTest(
     )
   }
 
-  lazy var actualValue: CInt? = switch actualExitCondition {
-  case .failure:
-    nil
-  case let .exitCode(exitCode):
-    exitCode
-#if !os(Windows)
-  case let .signal(signal):
-    signal
-#endif
-  }
-
   return __checkValue(
     expectedExitCondition.matches(actualExitCondition),
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(actualValue),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(actualExitCondition),
+    mismatchedExitConditionDescription: String(describingForTest: expectedExitCondition),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
