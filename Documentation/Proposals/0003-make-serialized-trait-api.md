@@ -1,13 +1,13 @@
 # Make .serialized trait API
 
-* Proposal: [SWT-NNNN](NNNN-make-serialized-trait-api.md)
+* Proposal: [SWT-0003](0003-make-serialized-trait-api.md)
 * Authors: [Dennis Weissmann](https://github.com/dennisweissmann)
-* Status: **Awaiting review**
+* Status: **Accepted**
 * Implementation: 
-[apple/swift-testing#NNNNN](https://github.com/apple/swift-testing/pull/NNNNN)
+[apple/swift-testing#535](https://github.com/apple/swift-testing/pull/535)
 * Review: 
-([pitch](https://forums.swift.org/t/pitch-make-serialized-trait-public-api/73147
-))
+([pitch](https://forums.swift.org/t/pitch-make-serialized-trait-public-api/73147)),
+([acceptance](https://forums.swift.org/t/pitch-make-serialized-trait-public-api/73147/5))
 
 ## Introduction
 
