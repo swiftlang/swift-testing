@@ -121,21 +121,17 @@ extension Runner {
     _ body: @Sendable @escaping (E) async throws -> Void
   ) async throws where E: Sendable {
     let isParallelizationEnabled = step?.action.isParallelizationEnabled ?? configuration.isParallelizationEnabled
-    if isParallelizationEnabled {
-      // Each element gets its own subtask to run in.
-      try await withThrowingTaskGroup(of: Void.self) { taskGroup in
-        for element in sequence {
-          _ = taskGroup.addTaskUnlessCancelled {
-            try await body(element)
-          }
-        }
-        try await taskGroup.waitForAll()
-      }
-    } else {
-      // No task group or subtasks required as parallelization is not enabled.
+    try await withThrowingTaskGroup(of: Void.self) { taskGroup in
       for element in sequence {
-        try Task.checkCancellation()
-        try await body(element)
+        // Each element gets its own subtask to run in.
+        _ = taskGroup.addTaskUnlessCancelled {
+          try await body(element)
+        }
+
+        // If not parallelizing, wait after each task.
+        if !isParallelizationEnabled {
+          try await taskGroup.waitForAll()
+        }
       }
     }
   }
