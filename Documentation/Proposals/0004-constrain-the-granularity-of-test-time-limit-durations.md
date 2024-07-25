@@ -15,7 +15,7 @@ Sometimes tests might get into a state (either due the test code itself or due
 to the code they're testing) where they don't make forward progress and hang.
 Swift Testing provides a way to handle these issues using the TimeLimit trait:
 
-```
+```swift
 @Test(.timeLimit(.minutes(60))
 func testFunction() { ... }
 ```
@@ -60,14 +60,13 @@ tests.
 We propose changing the `.timeLimit` API to accept values of a new `Duration` 
 type defined in `TimeLimitTrait` which only allows for `.minute` values to be 
 passed.
-These types already exist as SPI and this proposal is seeking to making these 
-API.
+This type already exists as SPI and this proposal is seeking to making it API.
 
 ## Detailed Design
 
 The `TimeLimitTrait.Duration` struct only has one factory method:
 ```swift
-public static func minutes(_ minutes: some BinaryInteger) -> Self`
+public static func minutes(_ minutes: some BinaryInteger) -> Self
 ```
 
 That ensures 2 things:
@@ -108,7 +107,7 @@ public struct TimeLimitTrait: TestTrait, SuiteTrait {
   }
 
   /// The maximum amount of time a test may run for before timing out.
-  public var timeLimit: Swift.Duration
+  public var timeLimit: Swift.Duration { get set }
 }
 ```
 
@@ -174,7 +173,9 @@ annotated like this:
 
 ## Source Compatibility
 
-This is purely additional API and does not impact existing code.
+This impacts clients that have adopted the `.timeLimit` trait and use overloads
+of the trait that accept an arbitrary `Swift.Duration` except if they used the
+`minutes` overload.
 
 ## Integration with Supporting Tools
 
@@ -182,16 +183,16 @@ N/A
 
 ## Future Directions
 
-We could reconsider the granularity constraints and allow for more finegrained
-time limits if we come to the conclusion that the advantages outweigh the
-disadvantages.
-Part of that could be the automatic detection of environments (like CI vs local
-and providing a way to use different timeouts in different environments.
+We could allow more finegrained time limits in the future that scale with the
+performance of the test host device.
+Or take a more manual approach where we detect the type of environment
+(like CI vs local) and provide a way to use different timeouts depending on the
+environment.
 
 ## Alternatives Considered
 
 We have considered using `Swift.Duration` as the currency type for this API but 
-decided against it to avoid common pitfals and misuses of this feature such as 
+decided against it to avoid common pitfalls and misuses of this feature such as
 providing very small time limits that lead to flaky tests in different 
 environments.
 
