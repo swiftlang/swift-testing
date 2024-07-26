@@ -19,9 +19,6 @@ accomplished by the testing library using task groups, and tests generally all
 run in the same process. The number of tests that run concurrently is controlled
 by the Swift runtime.
 
-<!--
-HIDDEN: .serialized is experimental SPI pending feature review.
-
 ## Disabling parallelization
 
 Parallelization can be disabled on a per-function or per-suite basis using the
@@ -56,12 +53,6 @@ This trait is recursively applied: if it is applied to a suite, any
 parameterized tests or test suites contained in that suite are also serialized
 (as are any tests contained in those suites, and so on.)
 
-This trait does not affect the execution of a test relative to its peers or to
+This trait doesn't affect the execution of a test relative to its peers or to
 unrelated tests. This trait has no effect if test parallelization is globally
 disabled (by, for example, passing `--no-parallel` to the `swift test` command.)
-
-## Topics
-
-- ``Trait/serialized``
-- ``ParallelizationTrait``
--->

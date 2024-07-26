@@ -25,7 +25,6 @@ behavior of test functions.
 
 - <doc:EnablingAndDisabling>
 - <doc:LimitingExecutionTime>
-- <doc:Parallelization>
 - ``Trait/enabled(if:_:sourceLocation:)``
 - ``Trait/enabled(_:sourceLocation:_:)``
 - ``Trait/disabled(_:sourceLocation:)``
@@ -33,11 +32,10 @@ behavior of test functions.
 - ``Trait/disabled(_:sourceLocation:_:)``
 - ``Trait/timeLimit(_:)``
 
-<!--
-HIDDEN: .serialized is experimental SPI pending feature review.
 ### Running tests serially or in parallel
-- ``ParallelizationTrait``
- -->
+
+- <doc:Parallelization>
+- ``Trait/serialized``
 
 ### Annotating tests
 
@@ -61,6 +59,7 @@ HIDDEN: .serialized is experimental SPI pending feature review.
 - ``Bug``
 - ``Comment``
 - ``ConditionTrait``
+- ``ParallelizationTrait``
 - ``Tag``
 - ``Tag/List``
 - ``TimeLimitTrait``
