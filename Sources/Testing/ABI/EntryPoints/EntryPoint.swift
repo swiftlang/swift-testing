@@ -598,8 +598,7 @@ extension Event.ConsoleOutputRecorder.Options {
     if let environmentVariable = Environment.flag(named: "SWT_SF_SYMBOLS_ENABLED") {
       result.useSFSymbols = environmentVariable
     } else {
-      var statStruct = stat()
-      result.useSFSymbols = (0 == stat("/Library/Fonts/SF-Pro.ttf", &statStruct))
+      result.useSFSymbols = (0 == access("/Library/Fonts/SF-Pro.ttf", F_OK))
     }
 #endif
 
