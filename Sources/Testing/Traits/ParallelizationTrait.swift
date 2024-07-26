@@ -26,7 +26,6 @@
 /// `swift test` command.)
 ///
 /// To add this trait to a test, use ``Trait/serialized``.
-@_spi(Experimental)
 public struct ParallelizationTrait: TestTrait, SuiteTrait {
   public var isRecursive: Bool {
     true
@@ -47,7 +46,6 @@ extension ParallelizationTrait: SPIAwareTrait {
 
 // MARK: -
 
-@_spi(Experimental)
 extension Trait where Self == ParallelizationTrait {
   /// A trait that serializes the test to which it is applied.
   ///

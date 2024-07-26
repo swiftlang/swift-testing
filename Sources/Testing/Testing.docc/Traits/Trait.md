@@ -24,6 +24,10 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 - ``Trait/timeLimit(_:)``
  
+### Running tests serially or in parallel
+
+- ``Trait/serialized``
+
 ### Categorizing tests
 
 - ``Trait/tags(_:)``
