@@ -66,7 +66,7 @@ public struct TypeInfo: Sendable {
   ///
   /// - Parameters:
   ///   - value: The value whose type this instance should describe.
-  init(describingTypeOf value: Any) {
+  init(describingTypeOf value: borrowing Any) {
     self.init(describing: Swift.type(of: value))
   }
 }

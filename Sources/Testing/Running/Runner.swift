@@ -370,6 +370,7 @@ extension Runner {
   private static func _run(_ runner: Self) async {
     var runner = runner
     runner.configureEventHandlerRuntimeState()
+    await runner.configuration.attachObservers()
 
     // Track whether or not any issues were recorded across the entire run.
     let issueRecorded = Locked(rawValue: false)

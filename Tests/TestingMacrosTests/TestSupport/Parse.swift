@@ -26,6 +26,7 @@ fileprivate let allMacros: [String: any Macro.Type] = [
   "requireExitTest": ExitTestRequireMacro.self, // different name needed only for unit testing
   "Suite": SuiteDeclarationMacro.self,
   "Test": TestDeclarationMacro.self,
+  "Observer": ObserverDeclarationMacro.self,
   "Tag": TagMacro.self,
 ]
 

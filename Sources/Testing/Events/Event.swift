@@ -9,7 +9,7 @@
 //
 
 /// An event that occurred during testing.
-@_spi(ForToolsIntegrationOnly)
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 public struct Event: Sendable {
   /// An enumeration describing the various kinds of event that can be observed.
   public enum Kind: Sendable {

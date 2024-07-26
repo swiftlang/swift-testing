@@ -20,6 +20,7 @@ struct TestingMacrosMain: CompilerPlugin {
     [
       SuiteDeclarationMacro.self,
       TestDeclarationMacro.self,
+      ObserverDeclarationMacro.self,
       ExpectMacro.self,
       RequireMacro.self,
       AmbiguousRequireMacro.self,

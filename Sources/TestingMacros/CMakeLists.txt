@@ -62,6 +62,7 @@ endif()
 
 target_sources(TestingMacros PRIVATE
   ConditionMacro.swift
+  ObserverDeclarationMacro.swift
   SourceLocationMacro.swift
   SuiteDeclarationMacro.swift
   Support/Additions/DeclGroupSyntaxAdditions.swift
