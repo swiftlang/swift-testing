@@ -48,6 +48,11 @@ extension CommandLine {
         }
         return path
       }
+#elseif os(WASI)
+      // WASI does not really have the concept of a file system path to the main
+      // executable, so simply return the first argument--presumably the program
+      // name, but as you know this is not guaranteed by the C standard!
+      return String(cString: arguments[0])
 #else
 #warning("Platform-specific implementation missing: executable path unavailable")
       return ""
