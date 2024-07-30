@@ -39,11 +39,13 @@ extension Event {
       ///
       /// Allowed values are `1` (no color support), `4` (16-color), `8`
       /// (256-color), and `24` (true color.) The default value of this property
-      /// is `4` (16-color.)
+      /// is `1` (no color support.) When using Swift Testing from the command
+      /// line with `swift test`, the environment is automatically inspected to
+      /// determine what color support is available.
       ///
       /// The value of this property is ignored unless the value of
       /// ``useANSIEscapeCodes`` is `true`.
-      public var ansiColorBitDepth: Int8 = 4
+      public var ansiColorBitDepth: Int8 = 1
 
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
       /// Whether or not to use [SF&nbsp;Symbols](https://developer.apple.com/sf-symbols/)
