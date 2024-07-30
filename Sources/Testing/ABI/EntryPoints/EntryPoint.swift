@@ -441,6 +441,15 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
     }
   }
 #endif
+
+  let htmlFile = try FileHandle(forWritingAtPath: "/Users/jon/Desktop/test.html")
+  let htmlRecorder = Event.HTMLRecorder { string in
+    try? htmlFile.write(string)
+  }
+  configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+    htmlRecorder.record(event, in: context)
+    oldEventHandler(event, context)
+  }
 #endif
 
   // Filtering
