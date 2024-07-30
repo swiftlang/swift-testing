@@ -585,6 +585,8 @@ extension Event.ConsoleOutputRecorder.Options {
         result.ansiColorBitDepth = 24
       } else if _terminalSupports256ColorANSIEscapeCodes {
         result.ansiColorBitDepth = 8
+      } else if _terminalSupports16ColorANSIEscapeCodes {
+        result.ansiColorBitDepth = 4
       }
     }
 
@@ -632,6 +634,28 @@ extension Event.ConsoleOutputRecorder.Options {
     return false
   }
 
+  /// Whether or not the system terminal claims to support 16-color ANSI escape
+  /// codes.
+  private static var _terminalSupports16ColorANSIEscapeCodes: Bool {
+#if SWT_TARGET_OS_APPLE || os(Linux)
+    if let termVariable = Environment.variable(named: "TERM") {
+      return termVariable != "dumb"
+    }
+    return false
+#elseif os(Windows)
+    // Windows does not set the "TERM" variable, so assume it supports 16-color
+    // ANSI escape codes.
+    true
+#elseif os(WASI)
+    // The "Terminal" under WASI can be assumed to be the browser's JavaScript
+    // console, which we don't expect supports color escape codes.
+    false
+#else
+#warning("Platform-specific implementation missing: terminal colors unavailable")
+    return false
+#endif
+  }
+
   /// Whether or not the system terminal claims to support 256-color ANSI escape
   /// codes.
   private static var _terminalSupports256ColorANSIEscapeCodes: Bool {
@@ -644,6 +668,10 @@ extension Event.ConsoleOutputRecorder.Options {
     // Windows does not set the "TERM" variable, so assume it supports 256-color
     // ANSI escape codes.
     true
+#elseif os(WASI)
+    // The "Terminal" under WASI can be assumed to be the browser's JavaScript
+    // console, which we don't expect supports color escape codes.
+    false
 #else
 #warning("Platform-specific implementation missing: terminal colors unavailable")
     return false
@@ -662,6 +690,10 @@ extension Event.ConsoleOutputRecorder.Options {
     // Windows does not set the "COLORTERM" variable, so assume it supports
     // true-color ANSI escape codes. SEE: https://github.com/microsoft/terminal/issues/11057
     true
+#elseif os(WASI)
+    // The "Terminal" under WASI can be assumed to be the browser's JavaScript
+    // console, which we don't expect supports color escape codes.
+    false
 #else
 #warning("Platform-specific implementation missing: terminal colors unavailable")
     return false

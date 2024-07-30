@@ -374,7 +374,7 @@ extension FileHandle {
 #if SWT_TARGET_OS_APPLE || os(Linux)
     // If stderr is a TTY and TERM is set, that's good enough for us.
     withUnsafePOSIXFileDescriptor { fd in
-      if let fd, 0 != isatty(fd), let term = Environment.variable(named: "TERM"), !term.isEmpty && term != "dumb" {
+      if let fd, 0 != isatty(fd), let term = Environment.variable(named: "TERM"), !term.isEmpty {
         return true
       }
       return false
