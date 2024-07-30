@@ -8,7 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable import Testing
+@_spi(Experimental) @testable import Testing
+import Darwin
 
 @Suite("zip Tests")
 struct ZipTests {
@@ -24,5 +25,11 @@ struct ZipTests {
   @Test("All elements of two ranges are equal", arguments: zip(0 ..< 10, 0 ..< 10))
   func allElementsEqual(i: Int, j: Int) {
     #expect(i == j)
+  }
+}
+
+@Test func leakyMcGee() async {
+  await #expect(leaks: true) {
+    _ = UnsafeMutablePointer<Int>.allocate(capacity: 1000)
   }
 }
