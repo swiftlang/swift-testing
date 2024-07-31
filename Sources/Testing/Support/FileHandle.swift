@@ -141,7 +141,7 @@ struct FileHandle: ~Copyable, Sendable {
   /// descriptor, `nil` is passed to `body`.
   borrowing func withUnsafePOSIXFileDescriptor<R>(_ body: (CInt?) throws -> R) rethrows -> R {
     try withUnsafeCFILEHandle { handle in
-#if SWT_TARGET_OS_APPLE || os(Linux)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(WASI)
       let fd = fileno(handle)
 #elseif os(Windows)
       let fd = _fileno(handle)
@@ -210,6 +210,8 @@ struct FileHandle: ~Copyable, Sendable {
       defer {
         _unlock_file(handle)
       }
+#elseif os(WASI)
+      // No file locking on WASI yet.
 #else
 #warning("Platform-specific implementation missing: cannot lock a file handle")
 #endif
@@ -233,7 +235,7 @@ extension FileHandle {
     // If possible, reserve enough space in the resulting buffer to contain
     // the contents of the file being read.
     var size: Int?
-#if SWT_TARGET_OS_APPLE || os(Linux)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(WASI)
     withUnsafePOSIXFileDescriptor { fd in
       var s = stat()
       if let fd, 0 == fstat(fd, &s) {
@@ -371,7 +373,7 @@ extension FileHandle {
 extension FileHandle {
   /// Is this file handle a TTY or PTY?
   var isTTY: Bool {
-#if SWT_TARGET_OS_APPLE || os(Linux)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(WASI)
     // If stderr is a TTY and TERM is set, that's good enough for us.
     withUnsafePOSIXFileDescriptor { fd in
       if let fd, 0 != isatty(fd), let term = Environment.variable(named: "TERM"), !term.isEmpty {
@@ -397,7 +399,7 @@ extension FileHandle {
 
   /// Is this file handle a pipe or FIFO?
   var isPipe: Bool {
-#if SWT_TARGET_OS_APPLE || os(Linux)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(WASI)
     withUnsafePOSIXFileDescriptor { fd in
       guard let fd else {
         return false

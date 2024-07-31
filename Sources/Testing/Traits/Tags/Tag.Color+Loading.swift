@@ -49,7 +49,10 @@ private var _appDataDirectoryPath: String? {
 /// On Apple platforms and on Linux, this path is equivalent to
 /// `"~/.swift-testing"`. On Windows, it is equivalent to
 /// `"%HOMEPATH%\AppData\Local\.swift-testing"`.
-var swiftTestingDirectoryPath: String {
+/// The value of this property is `nil` if the platform does not support the
+/// concept of a home directory, or if the home directory could not be
+/// determined.
+var swiftTestingDirectoryPath: String? {
   // The (default) name of the .swift-testing directory.
   let swiftTestingDirectoryName = ".swift-testing"
 
@@ -57,14 +60,18 @@ var swiftTestingDirectoryPath: String {
   if let homeDirectoryPath = _homeDirectoryPath {
     return appendPathComponent(swiftTestingDirectoryName, to: homeDirectoryPath)
   }
+  return nil
 #elseif os(Windows)
   if let appDataDirectoryPath = _appDataDirectoryPath {
     return appendPathComponent(swiftTestingDirectoryName, to: appDataDirectoryPath)
   }
+  return nil
+#elseif os(WASI)
+  return nil
 #else
 #warning("Platform-specific implementation missing: .swift-testing directory location unavailable")
+  return nil
 #endif
-  return ""
 }
 
 /// Read tag colors out of the file `"tag-colors.json"` in a given directory.
@@ -83,7 +90,12 @@ var swiftTestingDirectoryPath: String {
 /// assumed to contain a JSON object (a dictionary) where the keys are tags'
 /// string values and the values represent tag colors. For a list of the
 /// supported formats for tag colors in this dictionary, see <doc:AddingTags>.
-func loadTagColors(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String = swiftTestingDirectoryPath) throws -> [Tag: Tag.Color] {
+func loadTagColors(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String? = swiftTestingDirectoryPath) throws -> [Tag: Tag.Color] {
+  guard let swiftTestingDirectoryPath else {
+    // If the platform does not support user-specific configuration, skip custom
+    // tag colors.
+    return [:]
+  }
   // Find the path to the tag-colors.json file and try to load its contents.
   let tagColorsPath = appendPathComponent("tag-colors.json", to: swiftTestingDirectoryPath)
   let fileHandle = try FileHandle(forReadingAtPath: tagColorsPath)
