@@ -27,7 +27,11 @@
 /// - Note: Avoid including headers that aren't actually used.
 
 #include <errno.h>
-#if __has_include(<signal.h>)
+/// Guard against including `signal.h` on WASI. The `signal.h` header file
+/// itself is available in wasi-libc, but it's just a stub that doesn't actually
+/// do anything. And also including it requires a special macro definition
+/// (`_WASI_EMULATED_SIGNAL`) and it causes compilation errors without the macro.
+#if __has_include(<signal.h>) && !defined(__wasi__)
 #include <signal.h>
 #endif
 #include <stdio.h>
