@@ -86,6 +86,26 @@ public:
   }
 };
 
+/// A type representing a 32-bit absolute function pointer, usually used on platforms
+/// where relative function pointers are not supported.
+///
+/// This type is derived from `AbsoluteFunctionPointer` in the Swift repository.
+template <typename T>
+struct SWTAbsoluteFunctionPointer {
+private:
+  T *_pointer;
+  static_assert(sizeof(T *) == sizeof(int32_t), "Function pointer must be 32-bit when using compact absolute pointer");
+
+public:
+  const T *_Nullable get(void) const & {
+    return _pointer;
+  }
+
+  const T *_Nullable operator ->(void) const & {
+    return get();
+  }
+};
+
 /// A type representing a pointer relative to itself with low bits reserved for
 /// use as flags.
 ///
@@ -97,6 +117,13 @@ struct SWTRelativePointerIntPair: public SWTRelativePointer<T, maskValue> {
     return I(this->getRawValue() & maskValue);
   }
 };
+
+template <typename T>
+#if defined(__wasm32__)
+using SWTCompactFunctionPointer = SWTAbsoluteFunctionPointer<T>;
+#else
+using SWTCompactFunctionPointer = SWTRelativePointer<T>;
+#endif
 
 /// A type representing a metatype as constructed during compilation of a Swift
 /// module.
@@ -114,7 +141,7 @@ private:
     size_t state;
   };
   using MetadataAccessFunction = __attribute__((swiftcall)) MetadataAccessResponse(size_t);
-  SWTRelativePointer<MetadataAccessFunction> _metadataAccessFunction;
+  SWTCompactFunctionPointer<MetadataAccessFunction> _metadataAccessFunction;
 
 public:
   const char *_Nullable getName(void) const& {
