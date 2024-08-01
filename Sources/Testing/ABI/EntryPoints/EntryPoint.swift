@@ -355,6 +355,10 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 
   if args.contains("--list-tests") {
     result.listTests = true
+  } else if args.first == "list" {
+    // Allow the "list" subcommand explicitly in place of "--list-tests". This
+    // makes invocation from e.g. Wasmtime a bit more intuitive/idiomatic.
+    result.listTests = true
   }
 
   // Parallelization (on by default)
