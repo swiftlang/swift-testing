@@ -214,7 +214,7 @@ func temporaryDirectory() throws -> String {
     }
     return try #require(Environment.variable(named: "TMPDIR"))
   }
-#elseif os(Linux)
+#elseif os(Linux) || os(WASI)
   "/tmp"
 #elseif os(Windows)
   try withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: Int(MAX_PATH + 1)) { buffer in

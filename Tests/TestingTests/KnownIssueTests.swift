@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !os(WASI) // WASI does not support XCTestExpectation/XCTWaiter
 #if canImport(XCTest)
 import XCTest
 @testable @_spi(ForToolsIntegrationOnly) import Testing
@@ -377,4 +378,5 @@ final class KnownIssueTests: XCTestCase {
     await fulfillment(of: [issueRecorded, knownIssueNotRecorded], timeout: 0.0)
   }
 }
+#endif
 #endif

@@ -117,6 +117,7 @@ final class IssueTests: XCTestCase {
     }.run(configuration: configuration)
   }
 
+#if !os(WASI) // WASI does not support XCTestExpectation/XCTWaiter
   func testOptionalUnwrappingWithCoalescing_Failure() async throws {
     let expectationFailed = expectation(description: "Expectation failed")
 
@@ -350,6 +351,7 @@ final class IssueTests: XCTestCase {
       #expect(someString() == "b")
     }
   }
+#endif
 
   struct ExpressionRuntimeValueCapture_Value {}
 
@@ -441,6 +443,7 @@ final class IssueTests: XCTestCase {
     }
   }
 
+#if !os(WASI) // WASI does not support XCTestExpectation/XCTWaiter
   func testIsAndAsComparisons() async {
     let expectRecorded = expectation(description: "#expect recorded")
     let requireRecorded = expectation(description: "#require recorded")
@@ -482,6 +485,7 @@ final class IssueTests: XCTestCase {
     }.run(configuration: configuration)
     await fulfillment(of: [expectRecorded, requireRecorded], timeout: 0.0)
   }
+#endif
 
   func testCastAsAnyProtocol() async {
     // Sanity check that we parse types cleanly.
@@ -491,6 +495,7 @@ final class IssueTests: XCTestCase {
     }.run(configuration: .init())
   }
 
+#if !os(WASI) // WASI does not support XCTestExpectation/XCTWaiter
   func testErrorCheckingWithExpect() async throws {
     let expectationFailed = expectation(description: "Expectation failed")
     expectationFailed.isInverted = true
@@ -931,6 +936,7 @@ final class IssueTests: XCTestCase {
 
     await fulfillment(of: [errorCaught, expectationFailed], timeout: 0.0)
   }
+#endif
 
   func testFail() async throws {
     var configuration = Configuration()
@@ -1187,6 +1193,7 @@ final class IssueTests: XCTestCase {
     }.run(configuration: configuration)
   }
 
+#if !os(WASI) // WASI does not support XCTestExpectation/XCTWaiter
   func testLazyExpectEvaluatesRightHandValueWhenNeeded() async {
     let rhsCalled = expectation(description: "RHS function called")
     @Sendable func rhs() -> Bool {
@@ -1200,6 +1207,7 @@ final class IssueTests: XCTestCase {
 
     await fulfillment(of: [rhsCalled], timeout: 0.0)
   }
+#endif
 
   func testRequireOptionalMemberAccessEvaluatesToNil() async {
     var configuration = Configuration()
@@ -1223,6 +1231,7 @@ final class IssueTests: XCTestCase {
     }.run(configuration: configuration)
   }
 
+#if !os(WASI) // WASI does not support XCTestExpectation/XCTWaiter
   func testOptionalOperand() async {
     let expectationFailed = expectation(description: "Expectation failed")
 
@@ -1412,6 +1421,7 @@ final class IssueTests: XCTestCase {
 
     await fulfillment(of: [expectationFailed], timeout: 0.0)
   }
+#endif
 }
 #endif
 

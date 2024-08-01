@@ -98,6 +98,7 @@ final class RunnerTests: XCTestCase {
     await runner.run()
   }
 
+#if !os(WASI) // WASI does not support XCTestExpectation/XCTWaiter
   func testYieldingError() async throws {
     let errorObserved = expectation(description: "Error was thrown and caught")
     var configuration = Configuration()
@@ -256,6 +257,7 @@ final class RunnerTests: XCTestCase {
 
     await fulfillment(of: [testSkipped], timeout: 0.0)
   }
+#endif
 
   func testTestIsNotSkippedWithPassingConditionTraits() async throws {
     var configuration = Configuration()
@@ -306,6 +308,7 @@ final class RunnerTests: XCTestCase {
     await runner.run()
   }
 
+#if !os(WASI) // WASI does not support XCTestExpectation/XCTWaiter
   func testTestActionIsRecordIssueDueToErrorThrownByConditionTrait() async throws {
     let testRecordedIssue = expectation(description: "Test recorded an issue")
     var configuration = Configuration()
@@ -324,6 +327,7 @@ final class RunnerTests: XCTestCase {
     await runner.run()
     await fulfillment(of: [testRecordedIssue], timeout: 0.0)
   }
+#endif
 
   func testConditionTraitIsConstant() async throws {
     let test = Test(.disabled()) { }
@@ -361,6 +365,7 @@ final class RunnerTests: XCTestCase {
     XCTAssertEqual(skipInfo.comment, "Some comment")
   }
 
+#if !os(WASI) // WASI does not support XCTestExpectation/XCTWaiter
   func testErrorThrownWhileEvaluatingArguments() async throws {
     let errorObserved = expectation(description: "Error was thrown and caught")
     var configuration = Configuration()
@@ -375,6 +380,7 @@ final class RunnerTests: XCTestCase {
     await Runner(selecting: "parameterizedWithAsyncThrowingArgs(i:)", configuration: configuration).run()
     await fulfillment(of: [errorObserved], timeout: 0.0)
   }
+#endif
 
   @Suite(.hidden) struct S {
     @Test(.hidden) func f() {}
@@ -399,6 +405,7 @@ final class RunnerTests: XCTestCase {
     }
   }
 
+#if !os(WASI) // WASI does not support XCTestExpectation/XCTWaiter
   func testHardCodedPlan() async throws {
     let tests = try await [
       testFunction(named: "succeeds()", in: SendableTests.self),
@@ -422,6 +429,7 @@ final class RunnerTests: XCTestCase {
     await runner.run()
     await fulfillment(of: [testStarted], timeout: 0.0)
   }
+#endif
 
   func testExpectationCheckedEventHandlingWhenDisabled() async {
     var configuration = Configuration()
@@ -449,6 +457,7 @@ final class RunnerTests: XCTestCase {
     await runner.run()
   }
 
+#if !os(WASI) // WASI does not support XCTestExpectation/XCTWaiter
   func testExpectationCheckedEventHandlingWhenEnabled() async {
     let expectationCheckedAndPassed = expectation(description: "Expectation was checked (passed)")
     let expectationCheckedAndFailed = expectation(description: "Expectation was checked (failed)")
@@ -689,6 +698,7 @@ final class RunnerTests: XCTestCase {
     await runTest(for: UnavailableTests.self, configuration: configuration)
     await fulfillment(of: [testStarted, testSkipped], timeout: 0.0)
   }
+#endif
 
 #if SWT_TARGET_OS_APPLE
   @Suite(.hidden) struct ObsoletedTests {
@@ -739,6 +749,7 @@ final class RunnerTests: XCTestCase {
     }
   }
 
+#if !os(WASI) // WASI does not support XCTestExpectation/XCTWaiter
   @Suite(.hidden) struct AvailableWithSwiftVersionTests {
     @Test(.hidden)
     @available(`swift` 1.0)
@@ -801,7 +812,9 @@ final class RunnerTests: XCTestCase {
     await runTest(for: AvailableWithDefinedAvailabilityTests.self, configuration: configuration)
     await fulfillment(of: [testStarted], timeout: 0.0)
   }
+#endif
 
+#if !os(WASI) // WASI does not support Foundation.Thread
 #if !SWT_NO_GLOBAL_ACTORS
   @TaskLocal static var isMainActorIsolationEnforced = false
 
@@ -835,6 +848,7 @@ final class RunnerTests: XCTestCase {
       await runTest(for: MainActorIsolationTests.self, configuration: configuration)
     }
   }
+#endif
 #endif
 
   @Suite(.hidden) struct DeprecatedVersionTests {
@@ -876,6 +890,7 @@ final class RunnerTests: XCTestCase {
 #endif
   }
 
+#if !os(WASI) // WASI does not support XCTestExpectation/XCTWaiter
   func testDeprecated() async throws {
     let testStarted = expectation(description: "Test started")
     let testSkipped = expectation(description: "Test skipped")
@@ -896,6 +911,7 @@ final class RunnerTests: XCTestCase {
     await runTest(for: DeprecatedVersionTests.self, configuration: configuration)
     await fulfillment(of: [testStarted, testSkipped], timeout: 0.0)
   }
+#endif
 
   func testSerializedSortOrder() async {
     OrderedTests.state.withLock { state in
