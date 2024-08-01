@@ -49,6 +49,7 @@ private var _appDataDirectoryPath: String? {
 /// On Apple platforms and on Linux, this path is equivalent to
 /// `"~/.swift-testing"`. On Windows, it is equivalent to
 /// `"%HOMEPATH%\AppData\Local\.swift-testing"`.
+///
 /// The value of this property is `nil` if the platform does not support the
 /// concept of a home directory, or if the home directory could not be
 /// determined.
@@ -60,18 +61,20 @@ var swiftTestingDirectoryPath: String? {
   if let homeDirectoryPath = _homeDirectoryPath {
     return appendPathComponent(swiftTestingDirectoryName, to: homeDirectoryPath)
   }
-  return nil
+#elseif SWT_TARGET_OS_APPLE
+  // Other Apple/Darwin platforms do not support the concept of a home
+  // directory. One exists for the current user, but it's not something that
+  // actually contains user-configurable data like a .swift-testing directory.
 #elseif os(Windows)
   if let appDataDirectoryPath = _appDataDirectoryPath {
     return appendPathComponent(swiftTestingDirectoryName, to: appDataDirectoryPath)
   }
-  return nil
 #elseif os(WASI)
-  return nil
+  // WASI does not support the concept of a home directory.
 #else
 #warning("Platform-specific implementation missing: .swift-testing directory location unavailable")
-  return nil
 #endif
+  return nil
 }
 
 /// Read tag colors out of the file `"tag-colors.json"` in a given directory.
@@ -96,6 +99,7 @@ func loadTagColors(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String? 
     // tag colors.
     return [:]
   }
+
   // Find the path to the tag-colors.json file and try to load its contents.
   let tagColorsPath = appendPathComponent("tag-colors.json", to: swiftTestingDirectoryPath)
   let fileHandle = try FileHandle(forReadingAtPath: tagColorsPath)
