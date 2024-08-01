@@ -46,7 +46,7 @@ convenience, you can also directly pass an integer as a bug's identifier using
 | `.bug(id: 12345)` | None |
 | `.bug(id: "12345")` | None |
 | `.bug("https://www.example.com?id=12345", id: "12345")` | None |
-| `.bug("https://github.com/apple/swift/pull/12345")` | [GitHub Issues for the Swift project](https://github.com/apple/swift/issues) |
+| `.bug("https://github.com/swiftlang/swift/pull/12345")` | [GitHub Issues for the Swift project](https://github.com/swiftlang/swift/issues) |
 | `.bug("https://bugs.webkit.org/show_bug.cgi?id=12345")` | [WebKit Bugzilla](https://bugs.webkit.org/) |
 | `.bug(id: "FB12345")` | Apple Feedback Assistant | <!-- SEE ALSO: rdar://104582015 -->
 <!--
