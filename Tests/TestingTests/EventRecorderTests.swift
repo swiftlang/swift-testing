@@ -359,6 +359,16 @@ struct EventRecorderTests {
     }
   }
 #endif
+
+  @Test("Recorded issues may not have associated tests")
+  func issueWithoutTest() {
+    let issue = Issue(kind: .unconditional, comments: [], sourceContext: .init())
+    let event = Event(.issueRecorded(issue), testID: nil, testCaseID: nil)
+    let context = Event.Context(test: nil, testCase: nil)
+
+    let recorder = Event.HumanReadableOutputRecorder()
+    _ = recorder.record(event, in: context)
+  }
 }
 
 // MARK: - Fixtures
