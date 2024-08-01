@@ -61,6 +61,10 @@ var swiftTestingDirectoryPath: String? {
   if let homeDirectoryPath = _homeDirectoryPath {
     return appendPathComponent(swiftTestingDirectoryName, to: homeDirectoryPath)
   }
+#elseif SWT_TARGET_OS_APPLE
+  // Other Apple/Darwin platforms do not support the concept of a home
+  // directory. One exists for the current user, but it's not something that
+  // actually contains user-configurable data like a .swift-testing directory.
 #elseif os(Windows)
   if let appDataDirectoryPath = _appDataDirectoryPath {
     return appendPathComponent(swiftTestingDirectoryName, to: appDataDirectoryPath)
