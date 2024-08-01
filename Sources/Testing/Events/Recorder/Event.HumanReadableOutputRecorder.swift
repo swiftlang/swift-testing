@@ -262,15 +262,16 @@ extension Event.HumanReadableOutputRecorder {
         }
 
       case let .issueRecorded(issue):
-        let test = test!
-        let id = test.id.keyPathRepresentation
-        var testData = context.testData[id] ?? .init(startInstant: instant)
-        if issue.isKnown {
-          testData.knownIssueCount += 1
-        } else {
-          testData.issueCount += 1
+        if let test {
+          let id = test.id.keyPathRepresentation
+          var testData = context.testData[id] ?? .init(startInstant: instant)
+          if issue.isKnown {
+            testData.knownIssueCount += 1
+          } else {
+            testData.issueCount += 1
+          }
+          context.testData[id] = testData
         }
-        context.testData[id] = testData
 
       default:
         // These events do not manipulate the context structure.
