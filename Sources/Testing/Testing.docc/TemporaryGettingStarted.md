@@ -165,7 +165,7 @@ Wasmtime, use the following command (replace `{YOURPACKAGE}` with your package's
 name):
 
 ```sh
-wasmtime .build/debug/{YOURPACKAGE}PackageTests.wasm
+wasmtime .build/debug/{YOURPACKAGE}PackageTests.wasm --testing-library swift-testing
 ```
 
 Most WebAssembly runtimes forward trailing arguments to the WebAssembly program,
@@ -173,6 +173,6 @@ so you can pass command-line options of the testing library. For example, to lis
 all tests and filter them by name, use the following commands:
 
 ```sh
-wasmtime .build/debug/{YOURPACKAGE}PackageTests.wasm --list-tests
-wasmtime .build/debug/{YOURPACKAGE}PackageTests.wasm --filter "FoodTruckTests.foodTruckExists"
+wasmtime .build/debug/{YOURPACKAGE}PackageTests.wasm list --testing-library swift-testing
+wasmtime .build/debug/{YOURPACKAGE}PackageTests.wasm --testing-library swift-testing --filter "FoodTruckTests.foodTruckExists"
 ```
