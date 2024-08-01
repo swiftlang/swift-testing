@@ -78,7 +78,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
       tests = await Array(Test.all)
 
       if args.verbosity > .min {
-        for testID in listTestsForEntryPoint(tests) {
+        for testID in listTestsForEntryPoint(tests, verbosity: args.verbosity) {
           // Print the test ID to stdout (classical CLI behavior.)
 #if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
           try? FileHandle.stdout.write("\(testID)\n")
@@ -130,15 +130,25 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
 ///
 /// - Parameters:
 ///   - tests: The tests to list.
+///   - verbosity: The verbosity level. A level higher than `0` forces the
+///     inclusion of source locations for all tests.
 ///
 /// - Returns: An array of strings representing the IDs of `tests`.
-func listTestsForEntryPoint(_ tests: some Sequence<Test>) -> [String] {
+func listTestsForEntryPoint(_ tests: some Sequence<Test>, verbosity: Int) -> [String] {
   // Filter out hidden tests and test suites. Hidden tests should not generally
   // be presented to the user, and suites (XCTestCase classes) are not included
   // in the equivalent XCTest-based output.
   let tests = tests.lazy
     .filter { !$0.isSuite }
     .filter { !$0.isHidden }
+
+  // Early exit for verbose output (no need to check for ambiguity.)
+  if verbosity > 0 {
+    return tests.lazy
+      .map(\.id)
+      .map(String.init(describing:))
+      .sorted(by: <)
+  }
 
   // Group tests by the name components of the tests' IDs. If the name
   // components of two tests' IDs are ambiguous, present their source locations
