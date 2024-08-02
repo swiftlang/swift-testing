@@ -360,13 +360,32 @@ struct EventRecorderTests {
   }
 #endif
 
-  @Test("Recorded issues may not have associated tests")
-  func issueWithoutTest() {
+  @Test("HumanReadableOutputRecorder counts issues without associated tests")
+  func humanReadableRecorderCountsIssuesWithoutTests() {
     let issue = Issue(kind: .unconditional, comments: [], sourceContext: .init())
     let event = Event(.issueRecorded(issue), testID: nil, testCaseID: nil)
     let context = Event.Context(test: nil, testCase: nil)
 
     let recorder = Event.HumanReadableOutputRecorder()
+    let messages = recorder.record(event, in: context)
+    #expect(
+      messages.map(\.stringValue).contains { message in
+        message.contains("unknown")
+      }
+    )
+  }
+
+  @Test("JUnitXMLRecorder counts issues without associated tests")
+  func junitRecorderCountsIssuesWithoutTests() async throws {
+    let issue = Issue(kind: .unconditional, comments: [], sourceContext: .init())
+    let event = Event(.issueRecorded(issue), testID: nil, testCaseID: nil)
+    let context = Event.Context(test: nil, testCase: nil)
+
+    let recorder = Event.JUnitXMLRecorder { string in
+      if string.contains("<testsuite") {
+        #expect(string.contains(#"failures=1"#))
+      }
+    }
     _ = recorder.record(event, in: context)
   }
 }
@@ -379,6 +398,7 @@ struct EventRecorderTests {
     await { () async in
       _ = Issue.record("Whales fail asynchronously.")
     }()
+    Issue.record("Whales\nalso\nfall.")
   }
   @Test(.hidden) func expectantKangaroo() {
     #expect("abc" == "xyz")
@@ -448,6 +468,10 @@ struct EventRecorderTests {
 
   @Test(.hidden) func cornyUnicorn🦄() throws {
     throw MyDescriptiveError(description: #"🦄"#)
+  }
+
+  @Test(.hidden) func burdgeoningBudgerigar() {
+    Issue.record(#"</>& "Down\#nwe\#ngo!""#)
   }
 }
 

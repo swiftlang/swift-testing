@@ -33,6 +33,9 @@ extension Event {
       /// This value does not include test suites.
       var testCount = 0
 
+      /// Any recorded issues where the test was not known.
+      var issuesForUnknownTests = [Issue]()
+
       /// A type describing data tracked on a per-test basis.
       struct TestData: Sendable {
         /// The ID of the test.
@@ -122,19 +125,22 @@ extension Event.JUnitXMLRecorder {
       if issue.isKnown {
         return nil
       }
-      guard let id = test?.id else {
-        return nil // FIXME: handle issues without known tests
-      }
-      let keyPath = id.keyPathRepresentation
-      _context.withLock { context in
-        context.testData[keyPath]?.issues.append(issue)
+      if let id = test?.id {
+        let keyPath = id.keyPathRepresentation
+        _context.withLock { context in
+          context.testData[keyPath]?.issues.append(issue)
+        }
+      } else {
+        _context.withLock { context in
+          context.issuesForUnknownTests.append(issue)
+        }
       }
       return nil
     case .runEnded:
       return _context.withLock { context in
         let issueCount = context.testData
           .compactMap(\.value?.issues.count)
-          .reduce(into: 0, +=)
+          .reduce(into: 0, +=) + context.issuesForUnknownTests.count
         let skipCount = context.testData
           .compactMap(\.value?.skipInfo)
           .count
@@ -218,7 +224,7 @@ extension Event.JUnitXMLRecorder {
       "&gt;"
     case "&":
       "&amp;"
-    case _ where !character.isASCII:
+    case _ where !character.isASCII || character.isNewline:
       character.unicodeScalars.lazy
         .map(\.value)
         .map { "&#\($0);" }
