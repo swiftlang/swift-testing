@@ -532,4 +532,20 @@ struct MiscellaneousTests {
     failureBreakpoint()
     #expect(failureBreakpointValue == 1)
   }
+
+#if !SWT_NO_UNSTRUCTURED_TASKS
+  @Test("Test.assumeCurrent(_:) call")
+  func assumeCurrent() async {
+    let test = Test.current!
+    await Task.detached {
+      await test.assumeCurrent { () async in
+        #expect(Test.current != nil)
+      }
+      test.assumeCurrent {
+        #expect(Test.current != nil)
+        #expect(1 == 2)
+      }
+    }.value
+  }
+#endif
 }

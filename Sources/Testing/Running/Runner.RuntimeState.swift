@@ -160,10 +160,93 @@ extension Test {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
+  static func withCurrent<R>(_ test: Self, perform body: () throws -> R) rethrows -> R {
+    var runtimeState = Runner.RuntimeState.current ?? .init()
+    runtimeState.test = test
+    return try Runner.RuntimeState.$current.withValue(runtimeState, operation: body)
+  }
+
+  /// Call a function while the value of ``Test/current`` is set.
+  ///
+  /// - Parameters:
+  ///   - test: The new value to set for ``Test/current``.
+  ///   - body: A function to call.
+  ///
+  /// - Returns: Whatever is returned by `body`.
+  ///
+  /// - Throws: Whatever is thrown by `body`.
   static func withCurrent<R>(_ test: Self, perform body: () async throws -> R) async rethrows -> R {
     var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.test = test
     return try await Runner.RuntimeState.$current.withValue(runtimeState, operation: body)
+  }
+
+  /// Call a function assuming that this test is the currently running one.
+  ///
+  /// - Parameters:
+  ///   - body: A function to call.
+  ///
+  /// - Returns: Whatever is returned by `body`.
+  ///
+  /// - Throws: Whatever is thrown by `body`.
+  ///
+  /// If the current task is detached from a task that started running a test,
+  /// or if the current thread was created without using Swift concurrency (e.g.
+  /// by using [`Thread.detachNewThread(_:)`](https://developer.apple.com/documentation/foundation/thread/2088563-detachnewthread)
+  /// or [`DispatchQueue.async(execute:)`](https://developer.apple.com/documentation/dispatch/dispatchqueue/2016103-async)),
+  /// the testing library may be unable to determine which test to associate
+  /// issues and other events with. This method can be used as a hint to the
+  /// testing library that events occurring within `body` are related to this
+  /// test:
+  ///
+  /// ```swift
+  /// let test = Test.current!
+  /// await Task.detached {
+  ///   await test.assumeCurrent {
+  ///     // ...
+  ///   }
+  /// }.value
+  /// ```
+  ///
+  /// The effect of calling this function when `self` is not running is
+  /// undefined.
+  @_spi(Experimental)
+  public func assumeCurrent<R>(_ body: () throws -> R) rethrows -> R {
+    try Self.withCurrent(self, perform: body)
+  }
+
+  /// Call a function assuming that this test is the currently running one.
+  ///
+  /// - Parameters:
+  ///   - body: A function to call.
+  ///
+  /// - Returns: Whatever is returned by `body`.
+  ///
+  /// - Throws: Whatever is thrown by `body`.
+  ///
+  /// If the current task is detached from a task that started running a test,
+  /// or if the current thread was created without using Swift concurrency (e.g.
+  /// by using [`Thread.detachNewThread(_:)`](https://developer.apple.com/documentation/foundation/thread/2088563-detachnewthread)
+  /// or [`DispatchQueue.async(execute:)`](https://developer.apple.com/documentation/dispatch/dispatchqueue/2016103-async)),
+  /// the testing library may be unable to determine which test to associate
+  /// issues and other events with. This method can be used as a hint to the
+  /// testing library that events occurring within `body` are related to this
+  /// test:
+  ///
+  /// ```swift
+  /// let test = Test.current!
+  /// await Task.detached {
+  ///   await test.assumeCurrent {
+  ///     // ...
+  ///   }
+  /// }.value
+  /// ```
+  ///
+  /// The effect of calling this function when `self` is not running is
+  /// undefined.
+  @_spi(Experimental)
+  public func assumeCurrent<R>(_ body: () async throws -> R) async rethrows -> R {
+    try await Self.withCurrent(self, perform: body)
   }
 }
 
