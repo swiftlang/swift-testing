@@ -4,7 +4,7 @@
 
 Please visit the Swift Testing web site for more information:
 
-  * https://github.com/apple/swift-testing
+  * https://github.com/swiftlang/swift-testing
 
 Copyright (c) 2023 Apple Inc. and the Swift project authors
 

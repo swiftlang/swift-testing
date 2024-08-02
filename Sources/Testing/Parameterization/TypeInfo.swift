@@ -184,19 +184,19 @@ extension TypeInfo {
 extension TypeInfo {
   /// Whether or not the described type is a Swift `enum` type.
   ///
-  /// Per the [Swift mangling ABI](https://github.com/apple/swift/blob/main/docs/ABI/Mangling.rst),
+  /// Per the [Swift mangling ABI](https://github.com/swiftlang/swift/blob/main/docs/ABI/Mangling.rst),
   /// enumeration types are mangled as `"O"`.
   ///
   /// - Bug: We use the internal Swift standard library function
   ///   `_mangledTypeName()` to derive this information. We should use supported
-  ///   API instead. ([swift-#69147](https://github.com/apple/swift/issues/69147))
+  ///   API instead. ([swift-#69147](https://github.com/swiftlang/swift/issues/69147))
   var isSwiftEnumeration: Bool {
     mangledName?.last == "O"
   }
 
   /// Whether or not the described type is imported from C, C++, or Objective-C.
   ///
-  /// Per the [Swift mangling ABI](https://github.com/apple/swift/blob/main/docs/ABI/Mangling.rst),
+  /// Per the [Swift mangling ABI](https://github.com/swiftlang/swift/blob/main/docs/ABI/Mangling.rst),
   /// types imported from C-family languages are placed in a single flat `__C`
   /// module. That module has a standardized mangling of `"So"`. The presence of
   /// those characters at the start of a type's mangled name indicates that it
@@ -204,7 +204,7 @@ extension TypeInfo {
   ///
   /// - Bug: We use the internal Swift standard library function
   ///   `_mangledTypeName()` to derive this information. We should use supported
-  ///   API instead. ([swift-#69146](https://github.com/apple/swift/issues/69146))
+  ///   API instead. ([swift-#69146](https://github.com/swiftlang/swift/issues/69146))
   var isImportedFromC: Bool {
     guard let mangledName, mangledName.count > 2 else {
       return false

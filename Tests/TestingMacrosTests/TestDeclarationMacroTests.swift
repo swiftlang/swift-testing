@@ -439,12 +439,12 @@ struct TestDeclarationMacroTests {
       #"@Test(.bug("rdar:12345")) func f() {}"#,
       #"@Test(.bug("rdar://12345")) func f() {}"#,
       #"@Test(.bug(id: "FB12345")) func f() {}"#,
-      #"@Test(.bug("https://github.com/apple/swift-testing/issues/12345")) func f() {}"#,
-      #"@Test(.bug("https://github.com/apple/swift-testing/issues/12345", id: "12345")) func f() {}"#,
-      #"@Test(.bug("https://github.com/apple/swift-testing/issues/12345", id: 12345)) func f() {}"#,
-      #"@Test(Bug.bug("https://github.com/apple/swift-testing/issues/12345")) func f() {}"#,
-      #"@Test(Testing.Bug.bug("https://github.com/apple/swift-testing/issues/12345")) func f() {}"#,
-      #"@Test(Bug.bug("https://github.com/apple/swift-testing/issues/12345", "here's what happened...")) func f() {}"#,
+      #"@Test(.bug("https://github.com/swiftlang/swift-testing/issues/12345")) func f() {}"#,
+      #"@Test(.bug("https://github.com/swiftlang/swift-testing/issues/12345", id: "12345")) func f() {}"#,
+      #"@Test(.bug("https://github.com/swiftlang/swift-testing/issues/12345", id: 12345)) func f() {}"#,
+      #"@Test(Bug.bug("https://github.com/swiftlang/swift-testing/issues/12345")) func f() {}"#,
+      #"@Test(Testing.Bug.bug("https://github.com/swiftlang/swift-testing/issues/12345")) func f() {}"#,
+      #"@Test(Bug.bug("https://github.com/swiftlang/swift-testing/issues/12345", "here's what happened...")) func f() {}"#,
     ]
   )
   func validBugIdentifiers(input: String) throws {

@@ -18,12 +18,12 @@ discussion prior to being accepted.
 
 To learn how to write tests using the testing library, rather than how to
 contribute to the testing library itself, see
-[Getting Started](https://github.com/apple/swift-testing/tree/main/Sources/Testing/Testing.docc/TemporaryGettingStarted.md).
+[Getting Started](https://github.com/swiftlang/swift-testing/tree/main/Sources/Testing/Testing.docc/TemporaryGettingStarted.md).
 
 ## Reporting issues
 
 Issues are tracked using the testing library's
-[GitHub Issue Tracker](https://github.com/apple/swift-testing/issues).
+[GitHub Issue Tracker](https://github.com/swiftlang/swift-testing/issues).
 
 Fill in the fields of the relevant template form offered on that page when
 creating new issues. For bug report issues, please include a minimal example
@@ -34,7 +34,7 @@ hosting service.
 ## Setting up the development environment
 
 First, clone the Swift Testing repository from
-[https://github.com/apple/swift-testing](https://github.com/apple/swift-testing).
+[https://github.com/swiftlang/swift-testing](https://github.com/swiftlang/swift-testing).
 
 If you're preparing to make a contribution, you should fork the repository first
 and clone the fork which will make opening PRs easier.
@@ -142,7 +142,7 @@ test --help` to view the usage documentation.
 
 ## Creating Pull Requests (PRs)
 
-1. Fork [https://github.com/apple/swift-testing](https://github.com/apple/swift-testing).
+1. Fork [https://github.com/swiftlang/swift-testing](https://github.com/swiftlang/swift-testing).
 1. Clone a working copy of your fork.
 1. Create a new branch.
 1. Make your code changes.

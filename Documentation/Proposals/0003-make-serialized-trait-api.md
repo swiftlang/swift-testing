@@ -4,7 +4,7 @@
 * Authors: [Dennis Weissmann](https://github.com/dennisweissmann)
 * Status: **Accepted**
 * Implementation: 
-[apple/swift-testing#535](https://github.com/apple/swift-testing/pull/535)
+[swiftlang/swift-testing#535](https://github.com/swiftlang/swift-testing/pull/535)
 * Review: 
 ([pitch](https://forums.swift.org/t/pitch-make-serialized-trait-public-api/73147)),
 ([acceptance](https://forums.swift.org/t/pitch-make-serialized-trait-public-api/73147/5))

@@ -369,7 +369,7 @@ XCTest stops an affected test by throwing an Objective-C exception at the
 time the failure occurs.
 
 - Note: `continueAfterFailure` isn't fully supported when using the
-  [swift-corelibs-xctest](https://github.com/apple/swift-corelibs-xctest)
+  [swift-corelibs-xctest](https://github.com/swiftlang/swift-corelibs-xctest)
   library on non-Apple platforms.
 
 The behavior of an exception thrown through a Swift stack frame is undefined. If

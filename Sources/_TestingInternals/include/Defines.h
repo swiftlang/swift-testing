@@ -36,7 +36,7 @@
 ///
 /// - Bug: The value provided to the compiler (`_SWT_TESTING_LIBRARY_VERSION`)
 ///   is not visible in Swift, so this second macro is needed.
-///   ((#43521)[https://github.com/apple/swift/issues/43521])
+///   ((#43521)[https://github.com/swiftlang/swift/issues/43521])
 #if defined(_SWT_TESTING_LIBRARY_VERSION)
 #define SWT_TESTING_LIBRARY_VERSION _SWT_TESTING_LIBRARY_VERSION
 #else

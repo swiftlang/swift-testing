@@ -18,7 +18,7 @@ extension DeclGroupSyntax {
     } else if let extensionDecl = `as`(ExtensionDeclSyntax.self) {
       return extensionDecl.extendedType
     }
-    fatalError("Unexpected DeclGroupSyntax type \(Swift.type(of: self)). Please file a bug report at https://github.com/apple/swift-testing/issues/new")
+    fatalError("Unexpected DeclGroupSyntax type \(Swift.type(of: self)). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
   }
 
   /// Check whether or not this instance includes a given type name in its

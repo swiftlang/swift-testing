@@ -11,7 +11,7 @@
 /// The precomputed CRC-32 lookup table.
 ///
 /// This table is used by the ``crc32(_:)`` function below. It is borrowed from
-/// the [Swift standard library](https://github.com/apple/swift/blob/main/stdlib/public/Backtracing/Elf.swift).
+/// the [Swift standard library](https://github.com/swiftlang/swift/blob/main/stdlib/public/Backtracing/Elf.swift).
 private let _crc32Table: [UInt32] = [
   0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f,
   0xe963a535, 0x9e6495a3, 0x0edb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988,
@@ -66,7 +66,7 @@ private let _crc32Table: [UInt32] = [
 /// - Returns: The CRC-32 code computed for `bytes`.
 ///
 /// A starting value of `0` is assumed. This function is adapted from the
-/// [Swift standard library](https://github.com/apple/swift/blob/main/stdlib/public/Backtracing/Elf.swift).
+/// [Swift standard library](https://github.com/swiftlang/swift/blob/main/stdlib/public/Backtracing/Elf.swift).
 func crc32(_ bytes: some Sequence<UInt8>) -> UInt32 {
   ~bytes.reduce(~0) { crcValue, byte in
     _crc32Table[Int(UInt8(truncatingIfNeeded: crcValue) ^ byte)] ^ (crcValue >> 8)

@@ -191,7 +191,7 @@ public:
 
 // This environment does not have a dynamic linker/loader. Therefore, there is
 // only one image (this one) with Swift code in it.
-// SEE: https://github.com/apple/swift/tree/main/stdlib/public/runtime/ImageInspectionStatic.cpp
+// SEE: https://github.com/swiftlang/swift/tree/main/stdlib/public/runtime/ImageInspectionStatic.cpp
 
 extern "C" const char sectionBegin __asm("section$start$__TEXT$__swift5_types");
 extern "C" const char sectionEnd __asm("section$end$__TEXT$__swift5_types");
