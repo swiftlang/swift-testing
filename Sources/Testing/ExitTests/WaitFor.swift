@@ -218,7 +218,7 @@ func wait(for processHandle: HANDLE) async throws -> ExitCondition {
   }
 
   // FIXME: handle SEH/VEH uncaught exceptions.
-  return .exitCode(CInt(bitPattern: status))
+  return .exitCode(CInt(bitPattern: .init(status)))
 }
 #endif
 #endif

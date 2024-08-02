@@ -27,7 +27,7 @@ var EXIT_NO_TESTS_FOUND: CInt {
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(WASI)
   EX_UNAVAILABLE
 #elseif os(Windows)
-  ERROR_NOT_FOUND
+  CInt(ERROR_NOT_FOUND)
 #else
 #warning("Platform-specific implementation missing: value for EXIT_NO_TESTS_FOUND unavailable")
   return 2 // We're assuming that EXIT_SUCCESS = 0 and EXIT_FAILURE = 1.

@@ -26,14 +26,14 @@ struct CErrorTests {
 struct Win32ErrorTests {
   @Test("Win32Error.description property",
     arguments: [
-      (ERROR_OUTOFMEMORY, "Not enough memory resources are available to complete this operation."),
-      (ERROR_INVALID_ACCESS, "The access code is invalid."),
-      (ERROR_ARITHMETIC_OVERFLOW, "Arithmetic result exceeded 32 bits."),
+      (DWORD(ERROR_OUTOFMEMORY), "Not enough memory resources are available to complete this operation."),
+      (DWORD(ERROR_INVALID_ACCESS), "The access code is invalid."),
+      (DWORD(ERROR_ARITHMETIC_OVERFLOW), "Arithmetic result exceeded 32 bits."),
       (999_999_999, "An unknown error occurred (999999999)."),
     ]
   )
-  fileprivate func errorDescription(errorCode: CInt, expectedMessage: String) {
-    let description = String(describing: Win32Error(rawValue: DWORD(errorCode)))
+  fileprivate func errorDescription(errorCode: DWORD, expectedMessage: String) {
+    let description = String(describing: Win32Error(rawValue: errorCode))
     #expect(!description.isEmpty)
     #expect(expectedMessage == description)
   }
