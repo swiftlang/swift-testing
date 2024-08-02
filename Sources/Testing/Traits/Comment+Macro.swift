@@ -38,7 +38,7 @@ extension Trait where Self == Comment {
   }
 
   /// Construct a comment related to a test from a single-line
-  /// [Markup](https://github.com/apple/swift/blob/main/docs/DocumentationComments.md)
+  /// [Markup](https://github.com/swiftlang/swift/blob/main/docs/DocumentationComments.md)
   /// comment near it.
   ///
   /// - Parameters:
@@ -53,7 +53,7 @@ extension Trait where Self == Comment {
   }
 
   /// Construct a comment related to a test from a
-  /// [Markup](https://github.com/apple/swift/blob/main/docs/DocumentationComments.md)
+  /// [Markup](https://github.com/swiftlang/swift/blob/main/docs/DocumentationComments.md)
   /// block comment near it.
   ///
   /// - Parameters:

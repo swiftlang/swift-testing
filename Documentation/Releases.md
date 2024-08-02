@@ -49,8 +49,8 @@ be updated so that the release can be used as a package dependency:
    update the line:
 
     ```diff
-    -  .package(url: "https://github.com/apple/swift-testing.git", branch: "main"),
-    +  .package(url: "https://github.com/apple/swift-testing.git", from: "x.y.z"),
+    -  .package(url: "https://github.com/swiftlang/swift-testing.git", branch: "main"),
+    +  .package(url: "https://github.com/swiftlang/swift-testing.git", from: "x.y.z"),
     ```
 
 The repository's local state is now updated. To commit it to your branch, run
@@ -94,7 +94,7 @@ git tag x.y.z
 git push -u origin x.y.z
 ```
 
-The release is now live and publicly visible [here](https://github.com/apple/swift-testing/tags).
+The release is now live and publicly visible [here](https://github.com/swiftlang/swift-testing/tags).
 Developers using Swift Package Manager and listing Swift Testing as a dependency
 will automatically update to it.
 

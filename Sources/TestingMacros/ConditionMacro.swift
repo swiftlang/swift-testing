@@ -340,11 +340,11 @@ extension ExitTestConditionMacro {
     var arguments = argumentList(of: macro, in: context)
     let expectedExitConditionIndex = arguments.firstIndex { $0.label?.tokenKind == .identifier("exitsWith") }
     guard let expectedExitConditionIndex else {
-      fatalError("Could not find the exit condition for this exit test. Please file a bug report at https://github.com/apple/swift-testing/issues/new")
+      fatalError("Could not find the exit condition for this exit test. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
     }
     let trailingClosureIndex = arguments.firstIndex { $0.label?.tokenKind == _trailingClosureLabel.tokenKind }
     guard let trailingClosureIndex else {
-      fatalError("Could not find the body argument to this exit test. Please file a bug report at https://github.com/apple/swift-testing/issues/new")
+      fatalError("Could not find the body argument to this exit test. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
     }
 
     let bodyArgumentExpr = arguments[trailingClosureIndex].expression

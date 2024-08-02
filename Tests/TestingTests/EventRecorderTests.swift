@@ -306,7 +306,7 @@ struct EventRecorderTests {
 #if canImport(Foundation) || canImport(FoundationXML)
   @Test(
     "JUnitXMLRecorder outputs valid XML",
-    .bug("https://github.com/apple/swift-testing/issues/254")
+    .bug("https://github.com/swiftlang/swift-testing/issues/254")
   )
   func junitXMLIsValid() async throws {
     let stream = Stream()

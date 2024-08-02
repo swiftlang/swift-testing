@@ -27,7 +27,7 @@ extension Test {
         // that of the Swift Clock API, so we don't use `SuspendingClock`
         // directly on them and instead derive a value from platform-specific
         // API. SuspendingClock corresponds to CLOCK_UPTIME_RAW on Darwin.
-        // SEE: https://github.com/apple/swift/blob/main/stdlib/public/Concurrency/Clock.cpp
+        // SEE: https://github.com/swiftlang/swift/blob/main/stdlib/public/Concurrency/Clock.cpp
         var uptime = timespec()
         _ = clock_gettime(CLOCK_UPTIME_RAW, &uptime)
         return TimeValue(uptime)

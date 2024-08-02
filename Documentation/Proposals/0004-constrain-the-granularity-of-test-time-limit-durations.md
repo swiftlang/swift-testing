@@ -5,7 +5,7 @@
 * Authors: [Dennis Weissmann](https://github.com/dennisweissmann)
 * Status: **Accepted**
 * Implementation: 
-[apple/swift-testing#534](https://github.com/apple/swift-testing/pull/534)
+[swiftlang/swift-testing#534](https://github.com/swiftlang/swift-testing/pull/534)
 * Review: 
 ([pitch](https://forums.swift.org/t/pitch-constrain-the-granularity-of-test-time-limit-durations/73146)),
 ([acceptance](https://forums.swift.org/t/pitch-constrain-the-granularity-of-test-time-limit-durations/73146/3))

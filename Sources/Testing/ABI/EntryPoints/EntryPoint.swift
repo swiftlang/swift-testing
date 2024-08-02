@@ -559,7 +559,7 @@ private func _writeJSONLine(_ json: UnsafeRawBufferPointer, to file: borrowing F
   if _slowPath(json.contains(where: isASCIINewline)) {
 #if DEBUG
     let message = Event.ConsoleOutputRecorder.warning(
-      "JSON encoder produced one or more newline characters while encoding an event to JSON. Please file a bug report at https://github.com/apple/swift-testing/issues/new",
+      "JSON encoder produced one or more newline characters while encoding an event to JSON. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new",
       options: .for(.stderr)
     )
 #if SWT_TARGET_OS_APPLE

@@ -3,7 +3,7 @@
 * Proposal: [SWT-0001](0001-refactor-bug-inits.md)
 * Authors: [Jonathan Grynspan](https://github.com/grynspan)
 * Status: **Accepted**
-* Implementation: [apple/swift-testing#401](https://github.com/apple/swift-testing/pull/401)
+* Implementation: [swiftlang/swift-testing#401](https://github.com/swiftlang/swift-testing/pull/401)
 * Review: ([pitch](https://forums.swift.org/t/pitch-dedicated-bug-functions-for-urls-and-ids/71842)), ([acceptance](https://forums.swift.org/t/swt-0001-dedicated-bug-functions-for-urls-and-ids/71842/2))
 
 ## Introduction

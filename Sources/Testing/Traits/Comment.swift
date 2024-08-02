@@ -42,11 +42,11 @@ public struct Comment: RawRepresentable, Sendable {
     /// starting with `/*` and ending with `*/`.
     case block
 
-    /// This comment came from a single-line [Markup](https://github.com/apple/swift/blob/main/docs/DocumentationComments.md)
+    /// This comment came from a single-line [Markup](https://github.com/swiftlang/swift/blob/main/docs/DocumentationComments.md)
     /// comment in the test's source code starting with `///`.
     case documentationLine
 
-    /// This comment came from a block [Markup](https://github.com/apple/swift/blob/main/docs/DocumentationComments.md)
+    /// This comment came from a block [Markup](https://github.com/swiftlang/swift/blob/main/docs/DocumentationComments.md)
     /// comment in the test's source code starting with `/**` and ending with
     /// `*/`.
     case documentationBlock

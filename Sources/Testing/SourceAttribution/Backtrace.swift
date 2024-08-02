@@ -75,7 +75,7 @@ public struct Backtrace: Sendable {
         initializedCount = Int(RtlCaptureStackBackTrace(0, ULONG(addresses.count), addresses.baseAddress!, nil))
 #elseif os(WASI)
         // SEE: https://github.com/WebAssembly/WASI/issues/159
-        // SEE: https://github.com/apple/swift/pull/31693
+        // SEE: https://github.com/swiftlang/swift/pull/31693
         initializedCount = 0
 #else
 #warning("Platform-specific implementation missing: backtraces unavailable")
@@ -122,7 +122,7 @@ extension Backtrace {
     /// - Bug: On Windows, the weak reference to this object triggers a
     ///   crash. To avoid said crash, we'll keep a strong reference to the
     ///   object (abandoning memory until the process exits.)
-    ///   ([swift-#62985](https://github.com/apple/swift/issues/62985))
+    ///   ([swift-#62985](https://github.com/swiftlang/swift/issues/62985))
 #if os(Windows)
     var errorObject: (any AnyObject & Sendable)?
 #else

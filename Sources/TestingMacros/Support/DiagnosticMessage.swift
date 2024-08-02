@@ -74,7 +74,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   /// - Returns: The name of the macro as understood by a developer, such as
   ///   `"'@Test'"`. Include single quotes.
   private static func _macroName(_ attribute: AttributeSyntax) -> String {
-    // SEE: https://github.com/apple/swift/blob/main/docs/Diagnostics.md?plain=1#L44
+    // SEE: https://github.com/swiftlang/swift/blob/main/docs/Diagnostics.md?plain=1#L44
     "'\(attribute.attributeNameText)'"
   }
 

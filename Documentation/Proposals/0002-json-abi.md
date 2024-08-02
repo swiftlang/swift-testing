@@ -3,8 +3,8 @@
 * Proposal: [SWT-0002](0002-json-abi.md)
 * Authors: [Jonathan Grynspan](https://github.com/grynspan)
 * Status: **Accepted**
-* Implementation: [apple/swift-testing#383](https://github.com/apple/swift-testing/pull/383),
-  [apple/swift-testing#402](https://github.com/apple/swift-testing/pull/402)
+* Implementation: [swiftlang/swift-testing#383](https://github.com/swiftlang/swift-testing/pull/383),
+  [swiftlang/swift-testing#402](https://github.com/swiftlang/swift-testing/pull/402)
 * Review: ([pitch](https://forums.swift.org/t/pitch-a-stable-json-based-abi-for-tools-integration/72627)), ([acceptance](https://forums.swift.org/t/pitch-a-stable-json-based-abi-for-tools-integration/72627/4))
 
 ## Introduction

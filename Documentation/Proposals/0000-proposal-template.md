@@ -3,10 +3,10 @@
 * Proposal: [SWT-NNNN](NNNN-filename.md)
 * Authors: [Author 1](https://github.com/author1), [Author 2](https://github.com/author2)
 * Status: **Awaiting implementation** or **Awaiting review**
-* Bug: _if applicable_ [apple/swift-testing#NNNNN](https://github.com/apple/swift-testing/issues/NNNNN)
-* Implementation: [apple/swift-testing#NNNNN](https://github.com/apple/swift-testing/pull/NNNNN)
+* Bug: _if applicable_ [swiftlang/swift-testing#NNNNN](https://github.com/swiftlang/swift-testing/issues/NNNNN)
+* Implementation: [swiftlang/swift-testing#NNNNN](https://github.com/swiftlang/swift-testing/pull/NNNNN)
 * Previous Proposal: _if applicable_ [SWT-XXXX](XXXX-filename.md)
-* Previous Revision: _if applicable_ [1](https://github.com/apple/swift-testing/blob/...commit-ID.../Documentation/Proposals/NNNN-filename.md)
+* Previous Revision: _if applicable_ [1](https://github.com/swiftlang/swift-testing/blob/...commit-ID.../Documentation/Proposals/NNNN-filename.md)
 * Review: ([pitch](https://forums.swift.org/...))
 
 When filling out this template, you should delete or replace all of the text
@@ -146,7 +146,7 @@ the current proposal. It's important to make focused, self-contained proposals
 that can be incrementally implemented and reviewed, but it's also good when
 proposals feel "complete" rather than leaving significant gaps in their design.
 An an example from the Swift project, when
-[SE-0193](https://github.com/apple/swift-evolution/blob/main/proposals/0193-cross-module-inlining-and-specialization.md)
+[SE-0193](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0193-cross-module-inlining-and-specialization.md)
 introduced the `@inlinable` attribute, it also included the `@usableFromInline`
 attribute so that declarations used in inlinable functions didn't have to be
 `public`. This was a relatively small addition to the proposal which avoided

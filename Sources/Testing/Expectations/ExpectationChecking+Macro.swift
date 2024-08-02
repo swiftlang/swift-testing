@@ -139,7 +139,7 @@ private func _callBinaryOperator<T, U, R>(
   // nonescaping closure, but our use cases are safe (e.g. `true && false`) and
   // we cannot force one function or the other to be escaping. Use
   // withoutActuallyEscaping() to tell the compiler that what we're doing is
-  // okay. SEE: https://github.com/apple/swift-evolution/blob/main/proposals/0176-enforce-exclusive-access-to-memory.md#restrictions-on-recursive-uses-of-non-escaping-closures
+  // okay. SEE: https://github.com/swiftlang/swift-evolution/blob/main/proposals/0176-enforce-exclusive-access-to-memory.md#restrictions-on-recursive-uses-of-non-escaping-closures
   var rhsValue: U?
   let result: R = withoutActuallyEscaping(rhs) { rhs in
     op(lhs, {

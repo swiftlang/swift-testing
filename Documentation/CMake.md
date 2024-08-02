@@ -8,7 +8,7 @@ Add Swift Testing to your project using the standard `FetchContent` or
 ```cmake
 include(FetchContent)
 FetchContent_Declare(SwiftTesting
-  GIT_REPOSITORY https://github.com/apple/swift-testing.git
+  GIT_REPOSITORY https://github.com/swiftlang/swift-testing.git
   GIT_TAG main)
 FetchContent_MakeAvailable(SwiftTesting)
 ```

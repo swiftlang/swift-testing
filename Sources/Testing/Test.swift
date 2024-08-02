@@ -122,7 +122,7 @@ public struct Test: Sendable {
         // error (because the test cannot be run.) If an error was thrown, a
         // `Runner.Plan` is expected to record issue for the test, rather than
         // attempt to run it, and thus never access this property.
-        preconditionFailure("Attempting to access test cases with invalid state. Please file a bug report at https://github.com/apple/swift-testing/issues/new and include this information: \(String(reflecting: testCasesState))")
+        preconditionFailure("Attempting to access test cases with invalid state. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new and include this information: \(String(reflecting: testCasesState))")
       }
       return testCases
     }

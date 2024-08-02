@@ -24,7 +24,7 @@ of, tests written using XCTest. This document describes how to start using the
 testing library to write and run tests.
 
 To learn how to contribute to Swift Testing, see
-[Contributing to Swift Testing](https://github.com/apple/swift-testing/blob/main/CONTRIBUTING.md).
+[Contributing to Swift Testing](https://github.com/swiftlang/swift-testing/blob/main/CONTRIBUTING.md).
 
 ### Downloading a development toolchain
 
@@ -52,7 +52,7 @@ dependency:
 
 ```swift
 dependencies: [
-  .package(url: "https://github.com/apple/swift-testing.git", branch: "main"),
+  .package(url: "https://github.com/swiftlang/swift-testing.git", branch: "main"),
 ],
 ```
 
