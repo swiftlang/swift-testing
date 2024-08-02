@@ -9,12 +9,12 @@
 //
 
 /// A type that can be used to confirm that an event occurs zero or more times.
-public struct Confirmation: Sendable {
+public final class Confirmation: Sendable {
   /// The number of times ``confirm(count:)`` has been called.
   ///
   /// This property is fileprivate because it may be mutated asynchronously and
   /// callers may be tempted to use it in ways that result in data races.
-  fileprivate var count = Locked(rawValue: 0)
+  fileprivate let count = Locked(rawValue: 0)
 
   /// Confirm this confirmation.
   ///
@@ -177,6 +177,22 @@ public func confirmation<R>(
     }
   }
   return try await body(confirmation)
+}
+
+/// An overload of ``confirmation(_:expectedCount:sourceLocation:_:)-9bfdc``
+/// that handles the unbounded range operator (`...`).
+///
+/// This overload is necessary because `UnboundedRange` does not conform to
+/// `RangeExpression`. It effectively always succeeds because any number of
+/// confirmations matches, so it is marked unavailable and is not implemented.
+@available(*, unavailable, message: "Unbounded range '...' has no effect when used with a confirmation.")
+public func confirmation<R>(
+  _ comment: Comment? = nil,
+  expectedCount: UnboundedRange,
+  sourceLocation: SourceLocation = #_sourceLocation,
+  _ body: (Confirmation) async throws -> R
+) async rethrows -> R {
+  fatalError("Unsupported")
 }
 
 @_spi(Experimental)
