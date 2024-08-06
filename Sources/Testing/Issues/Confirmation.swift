@@ -9,12 +9,12 @@
 //
 
 /// A type that can be used to confirm that an event occurs zero or more times.
-public final class Confirmation: Sendable {
+public struct Confirmation: Sendable {
   /// The number of times ``confirm(count:)`` has been called.
   ///
   /// This property is fileprivate because it may be mutated asynchronously and
   /// callers may be tempted to use it in ways that result in data races.
-  fileprivate let count = Locked(rawValue: 0)
+  fileprivate var count = Locked(rawValue: 0)
 
   /// Confirm this confirmation.
   ///
