@@ -41,7 +41,7 @@ public enum ExitCondition: Sendable {
   /// | Platform | Header |
   /// |-|-|
   /// | macOS | [`<stdlib.h>`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/_Exit.3.html), [`<sysexits.h>`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/sysexits.3.html) |
-  /// | Linux | `<stdlib.h>`, `<sysexits.h>` |
+  /// | Linux | [`<stdlib.h>`](https://sourceware.org/glibc/manual/latest/html_node/Exit-Status.html), `<sysexits.h>` |
   /// | Windows | [`<stdlib.h>`](https://learn.microsoft.com/en-us/cpp/c-runtime-library/exit-success-exit-failure) |
   ///
   /// On POSIX-like systems including macOS and Linux, only the low unsigned 8
@@ -60,7 +60,7 @@ public enum ExitCondition: Sendable {
   /// | Platform | Header |
   /// |-|-|
   /// | macOS | [`<signal.h>`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/signal.3.html) |
-  /// | Linux | `<signal.h>` |
+  /// | Linux | [`<signal.h>`](https://sourceware.org/glibc/manual/latest/html_node/Standard-Signals.html) |
   /// | Windows | [`<signal.h>`](https://learn.microsoft.com/en-us/cpp/c-runtime-library/signal-constants) |
 #if os(Windows)
   @available(*, unavailable, message: "On Windows, use .failure instead.")
