@@ -1103,7 +1103,7 @@ public func __checkClosureCall<R>(
 @_spi(Experimental)
 public func __checkClosureCall(
   exitsWith expectedExitCondition: ExitCondition,
-  performing body: @convention(thin) () async -> Void,
+  performing body: @convention(thin) () async throws -> Void,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
@@ -1111,7 +1111,7 @@ public func __checkClosureCall(
 ) async -> Result<Void, any Error> {
   await callExitTest(
     exitsWith: expectedExitCondition,
-    performing: { await body() },
+    performing: { try await body() },
     expression: expression,
     comments: comments(),
     isRequired: isRequired,

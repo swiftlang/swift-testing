@@ -32,6 +32,9 @@ private import _TestingInternals
       await Task.yield()
       exit(123)
     }
+    await #expect(exitsWith: .failure) {
+      throw MyError()
+    }
 #if !os(Windows)
     await #expect(exitsWith: .signal(SIGKILL)) {
       _ = kill(getpid(), SIGKILL)
@@ -196,6 +199,42 @@ private import _TestingInternals
         await #expect(exitsWith: .success) {}
       }.run(configuration: configuration)
     }
+  }
+
+#if !os(Linux)
+  @Test("Exit test reports > 8 bits of the exit code")
+  func fullWidthExitCode() async {
+    // On macOS and Linux, we use waitid() which per POSIX should report the
+    // full exit code, not just the low 8 bits. This behaviour is not
+    // well-documented and while Darwin correctly reports the full value, Linux
+    // does not (at least as of this writing) and other POSIX-like systems may
+    // also have issues. This test serves as a canary when adding new platforms
+    // that we need to document the difference.
+    //
+    // Windows does not have the 8-bit exit code restriction and always reports
+    // the full CInt value back to the testing library.
+    await #expect(exitsWith: .exitCode(512)) {
+      exit(512)
+    }
+  }
+#endif
+
+  @Test("Exit condition exact matching (===)")
+  func exitConditionMatching() {
+    #expect(ExitCondition.success === .success)
+    #expect(ExitCondition.success === .exitCode(EXIT_SUCCESS))
+    #expect(ExitCondition.success !== .exitCode(EXIT_FAILURE))
+
+    #expect(ExitCondition.failure === .failure)
+
+    #expect(ExitCondition.exitCode(EXIT_FAILURE &+ 1) !== .exitCode(EXIT_FAILURE))
+
+#if !os(Windows)
+    #expect(ExitCondition.success !== .exitCode(EXIT_FAILURE))
+    #expect(ExitCondition.success !== .signal(SIGINT))
+    #expect(ExitCondition.signal(SIGINT) === .signal(SIGINT))
+    #expect(ExitCondition.signal(SIGTERM) !== .signal(SIGINT))
+#endif
   }
 }
 

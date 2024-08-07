@@ -17,6 +17,17 @@ private import _TestingInternals
 /// ``expect(exitsWith:_:sourceLocation:performing:)`` or
 /// ``require(exitsWith:_:sourceLocation:performing:)`` to configure which exit
 /// statuses should be considered successful.
+///
+/// Two instances of this type can be compared; if either instance is equal to
+/// ``failure``, it will compare equal to any instance except ``success``. To
+/// check if two instances are exactly equal, use the `===` operator:
+///
+/// ```swift
+/// let lhs: ExitCondition = .failure
+/// let rhs: ExitCondition = .signal(SIGINT)
+/// print(lhs == rhs) // prints "true"
+/// print(lhs === rhs) // prints "false"
+/// ```
 @_spi(Experimental)
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
@@ -44,9 +55,9 @@ public enum ExitCondition: Sendable {
   /// | Linux | [`<stdlib.h>`](https://sourceware.org/glibc/manual/latest/html_node/Exit-Status.html), `<sysexits.h>` |
   /// | Windows | [`<stdlib.h>`](https://learn.microsoft.com/en-us/cpp/c-runtime-library/exit-success-exit-failure) |
   ///
-  /// On POSIX-like systems including macOS and Linux, only the low unsigned 8
-  /// bits (0&ndash;255) of the exit code are reliably preserved and reported to
-  /// a parent process.
+  /// On macOS and Windows, the full exit code reported by the process is
+  /// yielded to the parent process. Linux and other POSIX-like systems may only
+  /// reliably report the low unsigned 8 bits (0&ndash;255) of the exit code.
   case exitCode(_ exitCode: CInt)
 
   /// The process terminated with the given signal.
@@ -62,43 +73,60 @@ public enum ExitCondition: Sendable {
   /// | macOS | [`<signal.h>`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/signal.3.html) |
   /// | Linux | [`<signal.h>`](https://sourceware.org/glibc/manual/latest/html_node/Standard-Signals.html) |
   /// | Windows | [`<signal.h>`](https://learn.microsoft.com/en-us/cpp/c-runtime-library/signal-constants) |
+  ///
+  /// On Windows, by default, the C runtime will terminate a process with exit
+  /// code `-3` if a raised signal is not handled, exactly as if `exit(-3)` were
+  /// called. As a result, this case is unavailable on that platform. Developers
+  /// should use ``failure`` instead when testing signal handling on Windows.
 #if os(Windows)
   @available(*, unavailable, message: "On Windows, use .failure instead.")
 #endif
   case signal(_ signal: CInt)
 }
 
-// MARK: -
+// MARK: - Equatable, Hashable
 
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
-extension ExitCondition {
-  /// Check whether this instance matches another.
-  ///
-  /// - Parameters:
-  ///   - other: The other instance to compare against.
-  ///
-  /// - Returns: Whether or not this instance is equal to, or at least covers,
-  ///   the other instance.
-  func matches(_ other: ExitCondition) -> Bool {
-    return switch (self, other) {
-    case (.failure, .failure):
-      true
+extension ExitCondition: Equatable {
+  public static func ==(lhs: Self, rhs: Self) -> Bool {
+    return switch (lhs, rhs) {
     case let (.failure, .exitCode(exitCode)), let (.exitCode(exitCode), .failure):
       exitCode != EXIT_SUCCESS
+#if !os(Windows)
+    case (.failure, .signal), (.signal, .failure):
+      // All terminating signals are considered failures.
+      true
+#endif
+    default:
+      lhs === rhs
+    }
+  }
+
+  public static func ===(lhs: Self, rhs: Self) -> Bool {
+    return switch (lhs, rhs) {
+    case (.failure, .failure):
+      true
     case let (.exitCode(lhs), .exitCode(rhs)):
       lhs == rhs
 #if !os(Windows)
     case let (.signal(lhs), .signal(rhs)):
       lhs == rhs
-    case (.signal, .failure), (.failure, .signal):
-      // All terminating signals are considered failures.
-      true
-    case (.signal, .exitCode), (.exitCode, .signal):
-      // Signals do not match exit codes.
-      false
 #endif
+    default:
+      false
     }
+  }
+
+  public static func !==(lhs: Self, rhs: Self) -> Bool {
+    !(lhs === rhs)
+  }
+}
+
+@available(*, unavailable, message: "ExitCondition does not conform to Hashable.")
+extension ExitCondition: Hashable {
+  public func hash(into hasher: inout Hasher) {
+    fatalError("Unsupported")
   }
 }
