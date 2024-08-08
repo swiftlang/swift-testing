@@ -65,13 +65,15 @@ else()
   set_property(TARGET TestingMacros PROPERTY INSTALL_RPATH)
   set_property(TARGET TestingMacros PROPERTY BUILD_WITH_INSTALL_RPATH YES)
 
-  if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    install(TARGETS TestingMacros
-      RUNTIME DESTINATION bin)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(plugin_destination_dir "lib/swift/host/plugins/testing")
   else()
-    # Other platforms, TestingMacros is installed by the parent project.
-    install(TARGETS TestingMacros)
+    set(plugin_destination_dir "lib/swift/host/plugins")
   endif()
+
+  install(TARGETS TestingMacros
+    LIBRARY DESTINATION "${plugin_destination_dir}"
+    RUNTIME DESTINATION bin)
 endif()
 
 target_sources(TestingMacros PRIVATE

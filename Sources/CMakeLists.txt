@@ -41,7 +41,7 @@ if(SwiftTesting_MACRO STREQUAL "<auto>")
   endif()
 
   # Build and install the plugin into the current build directry.
-  set(SwiftTesting_MACRO_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/plugin")
+  set(SwiftTesting_MACRO_INSTALL_PREFIX "${CMAKE_BINARY_DIR}")
 
   ExternalProject_Add(TestingMacros
     PREFIX "tm"
@@ -65,17 +65,11 @@ if(SwiftTesting_MACRO STREQUAL "<auto>")
   # properties of its targets here.
   if(NOT SwiftTesting_BuildMacrosAsExecutables)
     if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
-      set(SwiftTesting_MACRO_PATH "${SwiftTesting_MACRO_INSTALL_PREFIX}/lib/libTestingMacros.dylib")
-      install(PROGRAMS "${SwiftTesting_MACRO_PATH}"
-        DESTINATION lib/swift/host/plugins/testing)
+      set(SwiftTesting_MACRO_PATH "${SwiftTesting_MACRO_INSTALL_PREFIX}/lib/swift/host/plugins/testing/libTestingMacros.dylib")
     elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
-      set(SwiftTesting_MACRO_PATH "${SwiftTesting_MACRO_INSTALL_PREFIX}/lib/libTestingMacros.so")
-      install(PROGRAMS "${SwiftTesting_MACRO_PATH}"
-        DESTINATION lib/swift/host/plugins)
+      set(SwiftTesting_MACRO_PATH "${SwiftTesting_MACRO_INSTALL_PREFIX}/lib/swift/host/plugins/libTestingMacros.so")
     elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
       set(SwiftTesting_MACRO_PATH "${SwiftTesting_MACRO_INSTALL_PREFIX}/bin/TestingMacros.dll")
-      install(PROGRAMS "${SwiftTesting_MACRO_PATH}"
-        DESTINATION bin)
     else()
       message(FATAL_ERROR "Unable to determine the library name for TestingMacros based on system name: ${CMAKE_HOST_SYSTEM_NAME}")
     endif()
