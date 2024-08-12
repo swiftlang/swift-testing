@@ -95,8 +95,10 @@ public func __checkValue(
   // Post an event for the expectation regardless of whether or not it passed.
   // If the current event handler is not configured to handle events of this
   // kind, this event is discarded.
-  var expectation = Expectation(evaluatedExpression: expression, isPassing: condition, isRequired: isRequired, sourceLocation: sourceLocation)
-  Event.post(.expectationChecked(expectation))
+  lazy var expectation = Expectation(evaluatedExpression: expression, isPassing: condition, isRequired: isRequired, sourceLocation: sourceLocation)
+  if Configuration.deliverExpectationCheckedEventsAnywhere {
+    Event.post(.expectationChecked(expectation))
+  }
 
   // Early exit if the expectation passed.
   if condition {
