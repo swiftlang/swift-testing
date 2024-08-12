@@ -114,7 +114,7 @@ extension Configuration {
   ///   passed to `_removeFromAll(identifiedBy:)`` to unregister it.
   private func _addToAll() -> UInt64 {
     if deliverExpectationCheckedEvents, #available(_synchronizationAPI, *) {
-      Self._deliverExpectationCheckedEventsAnywhereCount.add(1, ordering: .sequentiallyConsistent)
+      Self._deliverExpectationCheckedEventsCount.add(1, ordering: .sequentiallyConsistent)
     }
     return Self._all.withLock { all in
       let id = all.nextID
@@ -135,7 +135,7 @@ extension Configuration {
         all.instances.removeValue(forKey: id)
       }
       if let configuration, configuration.deliverExpectationCheckedEvents, #available(_synchronizationAPI, *) {
-        Self._deliverExpectationCheckedEventsAnywhereCount.subtract(1, ordering: .sequentiallyConsistent)
+        Self._deliverExpectationCheckedEventsCount.subtract(1, ordering: .sequentiallyConsistent)
       }
     }
   }
@@ -146,17 +146,21 @@ extension Configuration {
   /// On older Apple platforms, this property is not available and ``all`` is
   /// directly consulted instead (which is less efficient.)
   @available(_synchronizationAPI, *)
-  private static let _deliverExpectationCheckedEventsAnywhereCount = Atomic<Int>(0)
+  private static let _deliverExpectationCheckedEventsCount = Atomic<Int>(0)
 
   /// Whether or not events of the kind
   /// ``Event/Kind-swift.enum/expectationChecked(_:)`` should be delivered to
   /// the event handler of _any_ configuration set as current for a task in the
   /// current process.
-  static var deliverExpectationCheckedEventsAnywhere: Bool {
+  ///
+  /// To determine if an individual instance of ``Configuration`` is listening
+  /// for these events, consult the per-instance
+  /// ``Configuration/deliverExpectationCheckedEvents`` property.
+  static var deliverExpectationCheckedEvents: Bool {
     if #available(_synchronizationAPI, *) {
-      Self._deliverExpectationCheckedEventsAnywhereCount.load(ordering: .sequentiallyConsistent) > 0
+      _deliverExpectationCheckedEventsCount.load(ordering: .sequentiallyConsistent) > 0
     } else {
-      Self.all.contains(where: \.deliverExpectationCheckedEvents)
+      all.contains(where: \.deliverExpectationCheckedEvents)
     }
   }
 }

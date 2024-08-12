@@ -96,7 +96,7 @@ public func __checkValue(
   // If the current event handler is not configured to handle events of this
   // kind, this event is discarded.
   lazy var expectation = Expectation(evaluatedExpression: expression, isPassing: condition, isRequired: isRequired, sourceLocation: sourceLocation)
-  if Configuration.deliverExpectationCheckedEventsAnywhere {
+  if Configuration.deliverExpectationCheckedEvents {
     Event.post(.expectationChecked(expectation))
   }
 
