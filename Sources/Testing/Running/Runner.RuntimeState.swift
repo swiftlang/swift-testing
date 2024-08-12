@@ -129,14 +129,12 @@ extension Configuration {
   /// - Parameters:
   ///   - id: The unique identifier of this instance, as previously returned by
   ///     `_addToAll()`. If `nil`, this function has no effect.
-  private func _removeFromAll(identifiedBy id: UInt64?) {
-    if let id {
-      let configuration = Self._all.withLock { all in
-        all.instances.removeValue(forKey: id)
-      }
-      if let configuration, configuration.deliverExpectationCheckedEvents, #available(_synchronizationAPI, *) {
-        Self._deliverExpectationCheckedEventsCount.subtract(1, ordering: .sequentiallyConsistent)
-      }
+  private func _removeFromAll(identifiedBy id: UInt64) {
+    let configuration = Self._all.withLock { all in
+      all.instances.removeValue(forKey: id)
+    }
+    if let configuration, configuration.deliverExpectationCheckedEvents, #available(_synchronizationAPI, *) {
+      Self._deliverExpectationCheckedEventsCount.subtract(1, ordering: .sequentiallyConsistent)
     }
   }
 
