@@ -144,7 +144,7 @@ extension Configuration {
   /// On older Apple platforms, this property is not available and ``all`` is
   /// directly consulted instead (which is less efficient.)
   @available(_synchronizationAPI, *)
-  private static let _deliverExpectationCheckedEventsCount = Atomic<Int>(0)
+  private static let _deliverExpectationCheckedEventsCount = Atomic(0)
 
   /// Whether or not events of the kind
   /// ``Event/Kind-swift.enum/expectationChecked(_:)`` should be delivered to
