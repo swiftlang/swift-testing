@@ -11,6 +11,9 @@
 #if canImport(Foundation) && !SWT_NO_ABI_ENTRY_POINT
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
+#if canImport(Foundation)
+private import Foundation
+#endif
 private import _TestingInternals
 
 @Suite("ABI entry point tests")
@@ -150,5 +153,14 @@ struct ABIEntryPointTests {
     // Call the entry point function.
     return try await abiEntryPoint(.init(argumentsJSON), recordHandler)
   }
+
+#if canImport(Foundation)
+  @Test func decodeEmptyConfiguration() throws {
+    let emptyBuffer = UnsafeRawBufferPointer(start: nil, count: 0)
+    #expect(throws: DecodingError.self) {
+      _ = try JSON.decode(__CommandLineArguments_v0.self, from: emptyBuffer)
+    }
+  }
+#endif
 }
 #endif
