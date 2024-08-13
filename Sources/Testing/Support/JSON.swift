@@ -62,11 +62,16 @@ enum JSON {
   static func decode<T>(_ type: T.Type, from jsonRepresentation: UnsafeRawBufferPointer) throws -> T where T: Decodable {
 #if canImport(Foundation)
     try withExtendedLifetime(jsonRepresentation) {
-      let data = Data(
-        bytesNoCopy: .init(mutating: jsonRepresentation.baseAddress!),
-        count: jsonRepresentation.count,
-        deallocator: .none
-      )
+      let byteCount = jsonRepresentation.count
+      let data = if byteCount > 0 {
+        Data(
+          bytesNoCopy: .init(mutating: jsonRepresentation.baseAddress!),
+          count: byteCount,
+          deallocator: .none
+        )
+      } else {
+        Data()
+      }
       return try JSONDecoder().decode(type, from: data)
     }
 #else
