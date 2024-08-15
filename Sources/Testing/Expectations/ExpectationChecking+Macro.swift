@@ -1104,9 +1104,9 @@ public func __checkClosureCall<R>(
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
 @_spi(Experimental)
-public func __checkClosureCall<E>(
+public func __checkClosureCall(
   exitsWith expectedExitCondition: ExitCondition,
-  performing body: @convention(thin) () async throws(E) -> Void,
+  performing body: @convention(thin) () async throws -> Void,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
