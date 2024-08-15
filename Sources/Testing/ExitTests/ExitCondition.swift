@@ -104,6 +104,20 @@ extension ExitCondition: Equatable {
     }
   }
 
+  /// Check whether or not two values of this type are identical.
+  ///
+  /// - Parameters:
+  ///   - lhs: One value to compare.
+  ///   - rhs: Another value to compare.
+  ///
+  /// - Returns: Whether or not `lhs` and `rhs` are identical.
+  ///
+  /// This operator differs from [`==(lhs:rhs:)`](https://developer.apple.com/documentation/swift/equatable/==(_:_:)-3axv1)
+  /// in that ``failure`` will only compare equal to itself using this operator,
+  /// but will compare equal to any value except ``success`` when using
+  /// [`==(lhs:rhs:)`](https://developer.apple.com/documentation/swift/equatable/==(_:_:)-3axv1).
+  ///
+  /// For any values `a` and `b`, `a === b` implies that `a !== b` is false.
   public static func ===(lhs: Self, rhs: Self) -> Bool {
     return switch (lhs, rhs) {
     case (.failure, .failure):
@@ -119,6 +133,20 @@ extension ExitCondition: Equatable {
     }
   }
 
+  /// Check whether or not two values of this type are _not_ identical.
+  ///
+  /// - Parameters:
+  ///   - lhs: One value to compare.
+  ///   - rhs: Another value to compare.
+  ///
+  /// - Returns: Whether or not `lhs` and `rhs` are _not_ identical.
+  ///
+  /// This operator differs from [`!=(lhs:rhs:)`](https://developer.apple.com/documentation/swift/equatable/!=(_:_:))
+  /// in that ``failure`` will only compare equal to itself using this operator,
+  /// but will compare equal to any value except ``success`` when using
+  /// [`!=(lhs:rhs:)`](https://developer.apple.com/documentation/swift/equatable/!=(_:_:)).
+  ///
+  /// For any values `a` and `b`, `a === b` implies that `a !== b` is false.
   public static func !==(lhs: Self, rhs: Self) -> Bool {
     !(lhs === rhs)
   }
