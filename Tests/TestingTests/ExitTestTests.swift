@@ -32,6 +32,9 @@ private import _TestingInternals
       await Task.yield()
       exit(123)
     }
+    await #expect(exitsWith: .failure) {
+      throw MyError()
+    }
 #if !os(Windows)
     await #expect(exitsWith: .signal(SIGKILL)) {
       _ = kill(getpid(), SIGKILL)
