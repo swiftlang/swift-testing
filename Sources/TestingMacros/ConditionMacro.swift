@@ -370,7 +370,15 @@ extension ExitTestConditionMacro {
       }
     }
     """
-    arguments[trailingClosureIndex].expression = "{ \(enumDecl) }"
+
+    // Explicitly include a closure signature to work around a compiler bug
+    // type-checking thin throwing functions after macro expansion.
+    // SEE: rdar://133979438
+    arguments[trailingClosureIndex].expression = """
+    { () async throws in
+      \(enumDecl)
+    }
+    """
 
     // Replace the exit test body (as an argument to the macro) with a stub
     // closure that hosts the type we created above.

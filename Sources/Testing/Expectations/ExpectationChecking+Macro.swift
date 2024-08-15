@@ -1098,16 +1098,12 @@ public func __checkClosureCall<R>(
 /// that the `body` argument is thin here because it cannot meaningfully capture
 /// state from the enclosing context.
 ///
-/// This function is generic over error type `E` to work around a compiler bug
-/// type-checking thin throwing functions after macro expansion.
-/// ([133979438](rdar://133979438))
-///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
 @_spi(Experimental)
-public func __checkClosureCall<E>(
+public func __checkClosureCall(
   exitsWith expectedExitCondition: ExitCondition,
-  performing body: @convention(thin) () async throws(E) -> Void,
+  performing body: @convention(thin) () async throws -> Void,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
