@@ -42,7 +42,7 @@ public struct ExitTest: Sendable {
     // Run some glue code that terminates the process with an exit condition
     // that does not match the expected one. If the exit test's body doesn't
     // terminate, we'll manually call exit() and cause the test to fail.
-    let expectingFailure = expectedExitCondition.matches(.failure)
+    let expectingFailure = expectedExitCondition == .failure
     exit(expectingFailure ? EXIT_SUCCESS : EXIT_FAILURE)
   }
 }
@@ -150,7 +150,7 @@ func callExitTest(
   }
 
   return __checkValue(
-    expectedExitCondition.matches(actualExitCondition),
+    expectedExitCondition == actualExitCondition,
     expression: expression,
     expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(actualExitCondition),
     mismatchedExitConditionDescription: String(describingForTest: expectedExitCondition),

@@ -17,6 +17,17 @@ private import _TestingInternals
 /// ``expect(exitsWith:_:sourceLocation:performing:)`` or
 /// ``require(exitsWith:_:sourceLocation:performing:)`` to configure which exit
 /// statuses should be considered successful.
+///
+/// Two instances of this type can be compared; if either instance is equal to
+/// ``failure``, it will compare equal to any instance except ``success``. To
+/// check if two instances are exactly equal, use the `===` operator:
+///
+/// ```swift
+/// let lhs: ExitCondition = .failure
+/// let rhs: ExitCondition = .signal(SIGINT)
+/// print(lhs == rhs) // prints "true"
+/// print(lhs === rhs) // prints "false"
+/// ```
 @_spi(Experimental)
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
@@ -68,37 +79,49 @@ public enum ExitCondition: Sendable {
   case signal(_ signal: CInt)
 }
 
-// MARK: -
+// MARK: - Equatable, Hashable
 
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
-extension ExitCondition {
-  /// Check whether this instance matches another.
-  ///
-  /// - Parameters:
-  ///   - other: The other instance to compare against.
-  ///
-  /// - Returns: Whether or not this instance is equal to, or at least covers,
-  ///   the other instance.
-  func matches(_ other: ExitCondition) -> Bool {
-    return switch (self, other) {
-    case (.failure, .failure):
-      true
+extension ExitCondition: Equatable {
+  public static func ==(lhs: Self, rhs: Self) -> Bool {
+    return switch (lhs, rhs) {
     case let (.failure, .exitCode(exitCode)), let (.exitCode(exitCode), .failure):
       exitCode != EXIT_SUCCESS
+#if !os(Windows)
+    case (.failure, .signal), (.signal, .failure):
+      // All terminating signals are considered failures.
+      true
+#endif
+    default:
+      lhs === rhs
+    }
+  }
+
+  public static func ===(lhs: Self, rhs: Self) -> Bool {
+    return switch (lhs, rhs) {
+    case (.failure, .failure):
+      true
     case let (.exitCode(lhs), .exitCode(rhs)):
       lhs == rhs
 #if !os(Windows)
     case let (.signal(lhs), .signal(rhs)):
       lhs == rhs
-    case (.signal, .failure), (.failure, .signal):
-      // All terminating signals are considered failures.
-      true
-    case (.signal, .exitCode), (.exitCode, .signal):
-      // Signals do not match exit codes.
-      false
 #endif
+    default:
+      false
     }
+  }
+
+  public static func !==(lhs: Self, rhs: Self) -> Bool {
+    !(lhs === rhs)
+  }
+}
+
+@available(*, unavailable, message: "ExitCondition does not conform to Hashable.")
+extension ExitCondition: Hashable {
+  public func hash(into hasher: inout Hasher) {
+    fatalError("Unsupported")
   }
 }
