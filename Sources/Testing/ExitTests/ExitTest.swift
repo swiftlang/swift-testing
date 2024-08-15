@@ -21,7 +21,7 @@ public struct ExitTest: Sendable {
   public var expectedExitCondition: ExitCondition
 
   /// The body closure of the exit test.
-  fileprivate var body: @Sendable () async -> Void
+  fileprivate var body: @Sendable () async throws -> Void
 
   /// The source location of the exit test.
   ///
@@ -37,7 +37,11 @@ public struct ExitTest: Sendable {
   /// terminate the process in a way that causes the corresponding expectation
   /// to fail.
   public func callAsFunction() async -> Never {
-    await body()
+    do {
+      try await body()
+    } catch {
+      fatalError()
+    }
 
     // Run some glue code that terminates the process with an exit condition
     // that does not match the expected one. If the exit test's body doesn't
@@ -63,7 +67,7 @@ public protocol __ExitTestContainer {
   static var __sourceLocation: SourceLocation { get }
 
   /// The body function of the exit test.
-  static var __body: @Sendable () async -> Void { get }
+  static var __body: @Sendable () async throws -> Void { get }
 }
 
 extension ExitTest {
@@ -118,7 +122,7 @@ extension ExitTest {
 /// convention.
 func callExitTest(
   exitsWith expectedExitCondition: ExitCondition,
-  performing body: @escaping @Sendable () async -> Void,
+  performing body: @escaping @Sendable () async throws -> Void,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,

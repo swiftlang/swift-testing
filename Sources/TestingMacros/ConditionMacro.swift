@@ -362,7 +362,7 @@ extension ExitTestConditionMacro {
       static var __sourceLocation: Testing.SourceLocation {
         \(createSourceLocationExpr(of: macro, context: context))
       }
-      static var __body: @Sendable () async -> Void {
+      static var __body: @Sendable () async throws -> Void {
         \(bodyArgumentExpr.trimmed)
       }
       static var __expectedExitCondition: Testing.ExitCondition {

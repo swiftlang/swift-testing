@@ -440,7 +440,9 @@ public macro require(
 /// a clean environment for execution, it is not called within the context of
 /// the original test. If `expression` does not terminate the child process, the
 /// process is terminated automatically as if the main function of the child
-/// process were allowed to return naturally.
+/// process were allowed to return naturally. If an error is thrown from within
+/// `expression`, it is caught and the child process is terminated as if by
+/// calling [`fatalError()`](https://developer.apple.com/documentation/swift/fatalerror(_:file:line:)).
 ///
 /// Once the child process terminates, the parent process resumes and compares
 /// its exit status against `exitCondition`. If they match, the exit test has
@@ -488,8 +490,8 @@ public macro require(
 ///     issues should be attributed.
 ///   - expression: The expression to be evaluated.
 ///
-/// - Throws: An instance of ``ExpectationFailedError`` if `condition` evaluates
-///   to `false`.
+/// - Throws: An instance of ``ExpectationFailedError`` if the exit condition of
+///   the child process does not equal `expectedExitCondition`.
 ///
 /// Use this overload of `#require()` when an expression will cause the current
 /// process to terminate and the nature of that termination will determine if
@@ -515,7 +517,9 @@ public macro require(
 /// a clean environment for execution, it is not called within the context of
 /// the original test. If `expression` does not terminate the child process, the
 /// process is terminated automatically as if the main function of the child
-/// process were allowed to return naturally.
+/// process were allowed to return naturally. If an error is thrown from within
+/// `expression`, it is caught and the child process is terminated as if by
+/// calling [`fatalError()`](https://developer.apple.com/documentation/swift/fatalerror(_:file:line:)).
 ///
 /// Once the child process terminates, the parent process resumes and compares
 /// its exit status against `exitCondition`. If they match, the exit test has
@@ -550,5 +554,5 @@ public macro require(
   exitsWith expectedExitCondition: ExitCondition,
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
-  performing expression: @convention(thin) () async -> Void
+  performing expression: @convention(thin) () async throws -> Void
 ) = #externalMacro(module: "TestingMacros", type: "ExitTestRequireMacro")
