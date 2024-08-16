@@ -84,7 +84,7 @@ public enum ExitCondition: Sendable {
   case signal(_ signal: CInt)
 }
 
-// MARK: - Equatable, Hashable
+// MARK: - Equatable
 
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
@@ -152,9 +152,9 @@ extension ExitCondition: Equatable {
   }
 }
 
-@available(*, unavailable, message: "ExitCondition does not conform to Hashable.")
-extension ExitCondition: Hashable {
-  public func hash(into hasher: inout Hasher) {
-    fatalError("Unsupported")
-  }
-}
+// MARK: - Hashable
+
+// Because .failure is fuzzy-matched, the hash of an exit condition cannot
+// distinguish failure cases without violating Hashable's contract. Hence, the
+// only thing we can hash is whether or not it's a failure. That's a terrible
+// hash function, so we have intentionally omitted Hashable conformance.
