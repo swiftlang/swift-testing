@@ -60,15 +60,16 @@ else()
   add_library(TestingMacros SHARED)
 
   target_link_options(TestingMacros PRIVATE "-no-toolchain-stdlib-rpath")
-  # Not setting RPATH means it requires all the dependencies are already loaded
-  # in the process, because 'plugin' directory wouldn't contain any dependencies.
-  set_property(TARGET TestingMacros PROPERTY INSTALL_RPATH)
   set_property(TARGET TestingMacros PROPERTY BUILD_WITH_INSTALL_RPATH YES)
 
   if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(plugin_destination_dir "lib/swift/host/plugins/testing")
+    set_property(TARGET TestingMacros PROPERTY INSTALL_RPATH)
   else()
     set(plugin_destination_dir "lib/swift/host/plugins")
+    # RPATH 'lib/swift/{system}' and 'lib/swift/host'
+    set_property(TARGET TestingMacros PROPERTY
+      INSTALL_RPATH "$ORIGIN/../../<LOWER_CASE:${CMAKE_SYSTEM_NAME}>;$ORIGIN/..")
   endif()
 
   install(TARGETS TestingMacros
@@ -102,6 +103,10 @@ target_sources(TestingMacros PRIVATE
   TagMacro.swift
   TestDeclarationMacro.swift
   TestingMacrosMain.swift)
+
+target_compile_options(TestingMacros PRIVATE
+  "SHELL:-Xfrontend -disable-implicit-string-processing-module-import"
+  "SHELL:-Xfrontend -disable-implicit-backtracing-module-import")
 
 target_link_libraries(TestingMacros PRIVATE
   SwiftSyntax::SwiftSyntax
