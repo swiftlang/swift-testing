@@ -62,7 +62,7 @@ extension Test.Case.Argument.ID {
   ///
   /// - ``CustomTestArgumentEncodable``
   init?(identifying value: some Sendable, parameter: Test.Parameter) throws {
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
     func customArgumentWrapper(for value: some CustomTestArgumentEncodable) -> some Encodable {
       _CustomArgumentWrapper(rawValue: value)
     }
@@ -89,7 +89,7 @@ extension Test.Case.Argument.ID {
 #endif
   }
 
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
   /// Encode the specified test argument value and store its encoded
   /// representation as an array of bytes suitable for storing in an instance of
   /// ``Test/Case/Argument/ID-swift.struct``.

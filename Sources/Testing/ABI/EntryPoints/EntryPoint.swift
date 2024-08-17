@@ -313,7 +313,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   }
 
 #if !SWT_NO_FILE_IO
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
   // Configuration for the test run passed in as a JSON file (experimental)
   //
   // This argument should always be the first one we parse.
@@ -442,7 +442,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
     }
   }
 
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
   // Event stream output (experimental)
   if let eventStreamOutputPath = args.eventStreamOutputPath {
     let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
@@ -508,7 +508,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   return configuration
 }
 
-#if canImport(Foundation) && !SWT_NO_FILE_IO
+#if !SWT_NO_FOUNDATION && canImport(Foundation) && !SWT_NO_FILE_IO
 /// Create an event handler that streams events to the given file using the
 /// specified ABI version.
 ///

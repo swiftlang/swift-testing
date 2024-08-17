@@ -100,5 +100,9 @@ target_compile_options(Testing PRIVATE
   -enable-library-evolution
   -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:Testing,Swift_MODULE_DIRECTORY>/Testing.swiftinterface)
 
+# FIXME: Temporarily drop Foundation dependency in CMake build.
+target_compile_definitions(Testing PRIVATE
+  SWT_NO_FOUNDATION)
+
 include(SwiftModuleInstallation)
 _swift_testing_install_target(Testing)

@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
 private import Foundation
 #endif
 
@@ -30,7 +30,7 @@ enum JSON {
   ///
   /// - Throws: Whatever is thrown by `body` or by the encoding process.
   static func withEncoding<R>(of value: some Encodable, userInfo: [CodingUserInfoKey: Any] = [:], _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
     let encoder = JSONEncoder()
 
     // Keys must be sorted to ensure deterministic matching of encoded data.
@@ -60,7 +60,7 @@ enum JSON {
   ///
   /// - Throws: Whatever is thrown by the decoding process.
   static func decode<T>(_ type: T.Type, from jsonRepresentation: UnsafeRawBufferPointer) throws -> T where T: Decodable {
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
     try withExtendedLifetime(jsonRepresentation) {
       let byteCount = jsonRepresentation.count
       let data = if byteCount > 0 {

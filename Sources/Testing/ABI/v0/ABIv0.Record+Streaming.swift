@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
+#if !SWT_NO_FOUNDATION && canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
 extension ABIv0.Record {
   /// Create an event handler that encodes events as JSON and forwards them to
   /// an ABI-friendly event handler.
