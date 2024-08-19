@@ -70,6 +70,31 @@ public protocol __ExitTestContainer {
   static var __body: @Sendable () async throws -> Void { get }
 }
 
+extension __ExitTestContainer {
+  /// Decode the capture list for the current exit test.
+  ///
+  /// - Parameters:
+  ///   - type: The type of the capture list. This type must match what the exit
+  ///     test body expects or a compile-time error will occur.
+  ///
+  /// - Returns: The decoded capture list.
+  ///
+  /// - Throws: Any error that occurs while decoding the capture list. An error
+  ///   thrown from this function typically causes the exit test to fail.
+  ///
+  /// The location of the encoded capture list is implementation-specific. In
+  /// the current prototype implementation, it is written to the exit test
+  /// process' standard input stream, but it is subject to change.
+  public static func __decodeCaptureList<T>(as type: T.Type) throws -> T where T: Codable {
+    guard var line = readLine() else {
+      throw SystemError(description: "Failed to decode capture list of type \(type).")
+    }
+    return try line.withUTF8 { line in
+      return try JSON.decode(type, from: .init(line))
+    }
+  }
+}
+
 extension ExitTest {
   /// A string that appears within all auto-generated types conforming to the
   /// `__ExitTestContainer` protocol.

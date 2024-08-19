@@ -347,7 +347,45 @@ extension ExitTestConditionMacro {
       fatalError("Could not find the body argument to this exit test. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
     }
 
-    let bodyArgumentExpr = arguments[trailingClosureIndex].expression
+    var bodyArgumentExpr = arguments[trailingClosureIndex].expression
+    var captureListExpr = TupleExprSyntax {}
+    if var bodyClosureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
+       let captureClause = bodyClosureExpr.signature?.capture {
+      // Remove the capture list from the closure we emit into metadata.
+      // Technically we're removing the entire signature, but any other
+      // signature elements would be illegal here anyway.
+      bodyClosureExpr.signature = nil
+
+      // Map the capture list to values we can pass to __checkClosure().
+      captureListExpr = TupleExprSyntax {
+        // Extra unused Int argument to ensure we don't end up with a
+        // single-element tuple (which will decay to the type of that element.)
+        LabeledExprSyntax(expression: IntegerLiteralExprSyntax(literal: .integerLiteral("0")))
+        for item in captureClause.items {
+          LabeledExprSyntax(label: item.name, expression: item.expression)
+        }
+      }
+
+      // Map the capture list (again) to variable declarations that unpack the
+      // capture list passed to __checkClosure().
+      bodyClosureExpr.statements.insert(
+        contentsOf: CodeBlockSyntax {
+          .init(item: .decl("let __captureList = try __decodeCaptureList(as: __captureListType)"))
+          for (index, item) in captureClause.items.enumerated() {
+            if let name = item.name {
+              .init(item: .decl("let \(name.trimmed) = __captureList.\(raw: index + 1)"))
+            } else {
+              .init(item: .decl("let \(item.expression.trimmed) = __captureList.\(raw: index + 1)"))
+            }
+          }
+        }.statements,
+        at: bodyClosureExpr.statements.startIndex
+      )
+      bodyArgumentExpr = ExprSyntax(bodyClosureExpr)
+    }
+
+    // Add the "capturing" argument after the "performing" argument.
+    arguments.append(Argument(label: "capturing", expression: captureListExpr))
 
     // Diagnose any nested conditions in the exit test body.
     let conditionFinder = _NestedConditionFinder(viewMode: .sourceAccurate, macro: macro, context: context)
@@ -368,6 +406,8 @@ extension ExitTestConditionMacro {
       static var __expectedExitCondition: Testing.ExitCondition {
         \(arguments[expectedExitConditionIndex].expression.trimmed)
       }
+    
+      static let __captureListType = type(of: \(captureListExpr))
     }
     """
 

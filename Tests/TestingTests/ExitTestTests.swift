@@ -245,6 +245,14 @@ private import _TestingInternals
     #expect(ExitCondition.signal(SIGTERM) !== .signal(SIGINT))
 #endif
   }
+
+  @Test("State capture")
+  func exitTestWithStateCapture() async {
+    let randomNumber = CInt.random(in: 0 ... 255)
+    await #expect(exitsWith: .exitCode(randomNumber)) { [randomNumber] in
+      exit(randomNumber)
+    }
+  }
 }
 
 // MARK: - Fixtures

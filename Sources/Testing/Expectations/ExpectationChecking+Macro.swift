@@ -1101,14 +1101,15 @@ public func __checkClosureCall<R>(
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
 @_spi(Experimental)
-public func __checkClosureCall(
+public func __checkClosureCall<each T>(
   exitsWith expectedExitCondition: ExitCondition,
   performing body: @convention(thin) () async throws -> Void,
+  capturing: (repeat each T),
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) async -> Result<Void, any Error> {
+) async -> Result<Void, any Error> where repeat each T: Codable {
   await callExitTest(
     exitsWith: expectedExitCondition,
     performing: { try await body() },
