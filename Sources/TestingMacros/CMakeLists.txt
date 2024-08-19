@@ -69,7 +69,7 @@ else()
     set(plugin_destination_dir "lib/swift/host/plugins")
     # RPATH 'lib/swift/{system}' and 'lib/swift/host'
     set_property(TARGET TestingMacros PROPERTY
-      INSTALL_RPATH "$ORIGIN/../../<LOWER_CASE:${CMAKE_SYSTEM_NAME}>;$ORIGIN/..")
+      INSTALL_RPATH "$ORIGIN/../../$<LOWER_CASE:${CMAKE_SYSTEM_NAME}>;$ORIGIN/..")
   endif()
 
   install(TARGETS TestingMacros
