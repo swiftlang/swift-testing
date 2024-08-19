@@ -763,6 +763,7 @@ public func __checkBinaryOperation<T>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
+@_disfavoredOverload
 public func __checkCast<V, T>(
   _ value: V,
   as _: T.Type,
@@ -775,6 +776,37 @@ public func __checkCast<V, T>(
   // bottleneck because we do not want to capture the nil value on failure (it
   // looks odd in test output.)
   let optionalValue = value as? T
+  return __checkValue(
+    optionalValue != nil,
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(value, type(of: value as Any)),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  ).map {
+    optionalValue.unsafelyUnwrapped
+  }
+}
+
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed.
+///
+/// This overload is used for `v as? T` expressions.
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+public func __checkCast<V, T>(
+  _ value: V.Type,
+  as _: T.Type,
+  expression: __Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) -> Result<T.Type, any Error> where V: ~Copyable {
+  // NOTE: this call to __checkValue() does not go through the optional
+  // bottleneck because we do not want to capture the nil value on failure (it
+  // looks odd in test output.)
+  let optionalValue = (value as Any) as? T.Type
   return __checkValue(
     optionalValue != nil,
     expression: expression,
