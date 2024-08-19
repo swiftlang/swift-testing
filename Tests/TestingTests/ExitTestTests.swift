@@ -219,20 +219,29 @@ private import _TestingInternals
   }
 #endif
 
-  @Test("Exit condition exact matching (===)")
+  @Test("Exit condition matching operators (==, !=, ===, !==)")
   func exitConditionMatching() {
+    #expect(ExitCondition.success == .success)
     #expect(ExitCondition.success === .success)
+    #expect(ExitCondition.success == .exitCode(EXIT_SUCCESS))
     #expect(ExitCondition.success === .exitCode(EXIT_SUCCESS))
+    #expect(ExitCondition.success != .exitCode(EXIT_FAILURE))
     #expect(ExitCondition.success !== .exitCode(EXIT_FAILURE))
 
+    #expect(ExitCondition.failure == .failure)
     #expect(ExitCondition.failure === .failure)
 
+    #expect(ExitCondition.exitCode(EXIT_FAILURE &+ 1) != .exitCode(EXIT_FAILURE))
     #expect(ExitCondition.exitCode(EXIT_FAILURE &+ 1) !== .exitCode(EXIT_FAILURE))
 
 #if !os(Windows)
+    #expect(ExitCondition.success != .exitCode(EXIT_FAILURE))
     #expect(ExitCondition.success !== .exitCode(EXIT_FAILURE))
+    #expect(ExitCondition.success != .signal(SIGINT))
     #expect(ExitCondition.success !== .signal(SIGINT))
+    #expect(ExitCondition.signal(SIGINT) == .signal(SIGINT))
     #expect(ExitCondition.signal(SIGINT) === .signal(SIGINT))
+    #expect(ExitCondition.signal(SIGTERM) != .signal(SIGINT))
     #expect(ExitCondition.signal(SIGTERM) !== .signal(SIGINT))
 #endif
   }

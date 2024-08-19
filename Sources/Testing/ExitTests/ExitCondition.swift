@@ -17,17 +17,6 @@ private import _TestingInternals
 /// ``expect(exitsWith:_:sourceLocation:performing:)`` or
 /// ``require(exitsWith:_:sourceLocation:performing:)`` to configure which exit
 /// statuses should be considered successful.
-///
-/// Two instances of this type can be compared; if either instance is equal to
-/// ``failure``, it will compare equal to any instance except ``success``. To
-/// check if two instances are exactly equal, use the `===` operator:
-///
-/// ```swift
-/// let lhs: ExitCondition = .failure
-/// let rhs: ExitCondition = .signal(SIGINT)
-/// print(lhs == rhs) // prints "true"
-/// print(lhs === rhs) // prints "false"
-/// ```
 @_spi(Experimental)
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
@@ -89,7 +78,32 @@ public enum ExitCondition: Sendable {
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
-extension ExitCondition: Equatable {
+extension ExitCondition {
+  /// Check whether or not two values of this type are equal.
+  ///
+  /// - Parameters:
+  ///   - lhs: One value to compare.
+  ///   - rhs: Another value to compare.
+  ///
+  /// - Returns: Whether or not `lhs` and `rhs` are equal.
+  ///
+  /// Two instances of this type can be compared; if either instance is equal to
+  /// ``failure``, it will compare equal to any instance except ``success``. To
+  /// check if two instances are exactly equal, use the ``===(_:_:)`` operator:
+  ///
+  /// ```swift
+  /// let lhs: ExitCondition = .failure
+  /// let rhs: ExitCondition = .signal(SIGINT)
+  /// print(lhs == rhs) // prints "true"
+  /// print(lhs === rhs) // prints "false"
+  /// ```
+  ///
+  /// This special behavior means that the ``==(_:_:)`` operator is not
+  /// transitive, and does not satisfy the requirements of
+  /// [`Equatable`](https://developer.apple.com/documentation/swift/equatable)
+  /// or [`Hashable`](https://developer.apple.com/documentation/swift/hashable).
+  ///
+  /// For any values `a` and `b`, `a == b` implies that `a != b` is `false`.
   public static func ==(lhs: Self, rhs: Self) -> Bool {
     return switch (lhs, rhs) {
     case let (.failure, .exitCode(exitCode)), let (.exitCode(exitCode), .failure):
@@ -104,6 +118,36 @@ extension ExitCondition: Equatable {
     }
   }
 
+  /// Check whether or not two values of this type are _not_ equal.
+  ///
+  /// - Parameters:
+  ///   - lhs: One value to compare.
+  ///   - rhs: Another value to compare.
+  ///
+  /// - Returns: Whether or not `lhs` and `rhs` are _not_ equal.
+  ///
+  /// Two instances of this type can be compared; if either instance is equal to
+  /// ``failure``, it will compare equal to any instance except ``success``. To
+  /// check if two instances are not exactly equal, use the ``!==(_:_:)``
+  /// operator:
+  ///
+  /// ```swift
+  /// let lhs: ExitCondition = .failure
+  /// let rhs: ExitCondition = .signal(SIGINT)
+  /// print(lhs != rhs) // prints "false"
+  /// print(lhs !== rhs) // prints "true"
+  /// ```
+  ///
+  /// This special behavior means that the ``!=(_:_:)`` operator is not
+  /// transitive, and does not satisfy the requirements of
+  /// [`Equatable`](https://developer.apple.com/documentation/swift/equatable)
+  /// or [`Hashable`](https://developer.apple.com/documentation/swift/hashable).
+  ///
+  /// For any values `a` and `b`, `a == b` implies that `a != b` is `false`.
+  public static func !=(lhs: Self, rhs: Self) -> Bool {
+    !(lhs == rhs)
+  }
+
   /// Check whether or not two values of this type are identical.
   ///
   /// - Parameters:
@@ -112,12 +156,23 @@ extension ExitCondition: Equatable {
   ///
   /// - Returns: Whether or not `lhs` and `rhs` are identical.
   ///
-  /// This operator differs from [`==(lhs:rhs:)`](https://developer.apple.com/documentation/swift/equatable/==(_:_:)-3axv1)
-  /// in that ``failure`` will only compare equal to itself using this operator,
-  /// but will compare equal to any value except ``success`` when using
-  /// [`==(lhs:rhs:)`](https://developer.apple.com/documentation/swift/equatable/==(_:_:)-3axv1).
+  /// Two instances of this type can be compared; if either instance is equal to
+  /// ``failure``, it will compare equal to any instance except ``success``. To
+  /// check if two instances are exactly equal, use the ``===(_:_:)`` operator:
   ///
-  /// For any values `a` and `b`, `a === b` implies that `a !== b` is false.
+  /// ```swift
+  /// let lhs: ExitCondition = .failure
+  /// let rhs: ExitCondition = .signal(SIGINT)
+  /// print(lhs == rhs) // prints "true"
+  /// print(lhs === rhs) // prints "false"
+  /// ```
+  ///
+  /// This special behavior means that the ``==(_:_:)`` operator is not
+  /// transitive, and does not satisfy the requirements of
+  /// [`Equatable`](https://developer.apple.com/documentation/swift/equatable)
+  /// or [`Hashable`](https://developer.apple.com/documentation/swift/hashable).
+  ///
+  /// For any values `a` and `b`, `a === b` implies that `a !== b` is `false`.
   public static func ===(lhs: Self, rhs: Self) -> Bool {
     return switch (lhs, rhs) {
     case (.failure, .failure):
@@ -141,20 +196,25 @@ extension ExitCondition: Equatable {
   ///
   /// - Returns: Whether or not `lhs` and `rhs` are _not_ identical.
   ///
-  /// This operator differs from [`!=(lhs:rhs:)`](https://developer.apple.com/documentation/swift/equatable/!=(_:_:))
-  /// in that ``failure`` will only compare equal to itself using this operator,
-  /// but will compare equal to any value except ``success`` when using
-  /// [`!=(lhs:rhs:)`](https://developer.apple.com/documentation/swift/equatable/!=(_:_:)).
+  /// Two instances of this type can be compared; if either instance is equal to
+  /// ``failure``, it will compare equal to any instance except ``success``. To
+  /// check if two instances are not exactly equal, use the ``!==(_:_:)``
+  /// operator:
   ///
-  /// For any values `a` and `b`, `a === b` implies that `a !== b` is false.
+  /// ```swift
+  /// let lhs: ExitCondition = .failure
+  /// let rhs: ExitCondition = .signal(SIGINT)
+  /// print(lhs != rhs) // prints "false"
+  /// print(lhs !== rhs) // prints "true"
+  /// ```
+  ///
+  /// This special behavior means that the ``!=(_:_:)`` operator is not
+  /// transitive, and does not satisfy the requirements of
+  /// [`Equatable`](https://developer.apple.com/documentation/swift/equatable)
+  /// or [`Hashable`](https://developer.apple.com/documentation/swift/hashable).
+  ///
+  /// For any values `a` and `b`, `a === b` implies that `a !== b` is `false`.
   public static func !==(lhs: Self, rhs: Self) -> Bool {
     !(lhs === rhs)
   }
 }
-
-// MARK: - Hashable
-
-// Because .failure is fuzzy-matched, the hash of an exit condition cannot
-// distinguish failure cases without violating Hashable's contract. Hence, the
-// only thing we can hash is whether or not it's a failure. That's a terrible
-// hash function, so we have intentionally omitted Hashable conformance.
