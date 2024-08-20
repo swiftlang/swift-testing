@@ -293,6 +293,26 @@ public struct AmbiguousRequireMacro: RefinedConditionMacro {
   }
 }
 
+/// A type describing the expansion of the `#require()` macro when it is passed
+/// a non-optional, non-`Bool` value.
+///
+/// This type is otherwise exactly equivalent to ``RequireMacro``.
+public struct NonOptionalRequireMacro: RefinedConditionMacro {
+  public typealias Base = RequireMacro
+
+  public static func expansion(
+    of macro: some FreestandingMacroExpansionSyntax,
+    in context: some MacroExpansionContext
+  ) throws -> ExprSyntax {
+    if let argument = macro.arguments.first {
+      context.diagnose(.nonOptionalRequireIsRedundant(argument.expression, in: macro))
+    }
+
+    // Perform the normal macro expansion for #require().
+    return try RequireMacro.expansion(of: macro, in: context)
+  }
+}
+
 // MARK: -
 
 /// A syntax visitor that looks for uses of `#expect()` and `#require()` nested

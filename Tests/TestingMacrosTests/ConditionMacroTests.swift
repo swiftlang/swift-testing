@@ -331,6 +331,19 @@ struct ConditionMacroTests {
     #expect(diagnostics.isEmpty)
   }
 
+  @Test("#require(non-optional value) produces a diagnostic",
+    arguments: [
+      "#requireNonOptional(expression)",
+    ]
+  )
+  func requireNonOptionalProducesDiagnostic(input: String) throws {
+    let (_, diagnostics) = try parse(input)
+
+    let diagnostic = try #require(diagnostics.first)
+    #expect(diagnostic.diagMessage.severity == .warning)
+    #expect(diagnostic.message.contains("is redundant"))
+  }
+
 #if !SWT_NO_EXIT_TESTS
   @Test("Expectation inside an exit test diagnoses",
     arguments: [

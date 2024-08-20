@@ -113,7 +113,7 @@ final class IssueTests: XCTestCase {
 
     await Test {
       let x: String? = nil
-      _ = try #require(x ?? "hello")
+      _ = try #require(x ?? ("hello" as String?))
     }.run(configuration: configuration)
   }
 
