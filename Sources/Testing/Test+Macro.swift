@@ -497,8 +497,8 @@ extension Test {
 /// - Warning: This function is used to implement the `@Test` macro. Do not call
 ///   it directly.
 public func __ifMainActorIsolationEnforced<R>(
-  _ thenBody: @Sendable @MainActor () async throws -> R,
-  else elseBody: @Sendable () async throws -> R
+  _ thenBody: @Sendable @MainActor () async throws -> sending R,
+  else elseBody: @Sendable () async throws -> sending R
 ) async throws -> R where R: Sendable {
   if Configuration.current?.isMainActorIsolationEnforced == true {
     try await thenBody()
@@ -524,8 +524,8 @@ public func __ifMainActorIsolationEnforced<R>(
 /// - Warning: This function is used to implement the `@Test` macro. Do not call
 ///   it directly.
 @inlinable public func __ifMainActorIsolationEnforced<R>(
-  _: @Sendable () async throws -> R,
-  else body: @Sendable () async throws -> R
+  _: @Sendable () async throws -> sending R,
+  else body: @Sendable () async throws -> sending R
 ) async throws -> R where R: Sendable {
   try await body()
 }

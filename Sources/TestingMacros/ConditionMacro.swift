@@ -33,13 +33,19 @@ public import SwiftSyntaxMacros
 ///
 /// The `__check()` function that implements expansions of these macros must
 /// take any developer-supplied arguments _before_ the ones inserted during
-/// macro expansion (starting with the `"expression"` argument.)
+/// macro expansion (starting with the `"expression"` argument.) The `isolation`
+/// argument (if present) and `sourceLocation` argument are placed at the end of
+/// the generated function call's argument list.
 public protocol ConditionMacro: ExpressionMacro, Sendable {
   /// Whether or not the macro's expansion may throw an error.
   static var isThrowing: Bool { get }
 }
 
 // MARK: -
+
+/// The token used as the label of the argument passed to `#expect()` and
+/// `#require()` and used for actor isolation.
+private var _isolationLabel: TokenSyntax { .identifier("isolation") }
 
 /// The token used as the label of the source location argument passed to
 /// `#expect()` and `#require()`.
@@ -89,6 +95,9 @@ extension ConditionMacro {
       // never the first argument.)
       commentIndex = macroArguments.dropFirst().lastIndex { $0.label == nil }
     }
+    let isolationArgumentIndex = macroArguments.lazy
+      .compactMap(\.label)
+      .firstIndex { $0.tokenKind == _isolationLabel.tokenKind }
     let sourceLocationArgumentIndex = macroArguments.lazy
       .compactMap(\.label)
       .firstIndex { $0.tokenKind == _sourceLocationLabel.tokenKind }
@@ -103,6 +112,7 @@ extension ConditionMacro {
         // arguments here.
         checkArguments += macroArguments.indices.lazy
           .filter { $0 != commentIndex }
+          .filter { $0 != isolationArgumentIndex }
           .filter { $0 != sourceLocationArgumentIndex }
           .map { macroArguments[$0] }
 
@@ -124,6 +134,7 @@ extension ConditionMacro {
         // "sourceLocation" arguments here.
         checkArguments += macroArguments.dropFirst().indices.lazy
           .filter { $0 != commentIndex }
+          .filter { $0 != isolationArgumentIndex }
           .filter { $0 != sourceLocationArgumentIndex }
           .map { macroArguments[$0] }
 
@@ -159,6 +170,10 @@ extension ConditionMacro {
       }
 
       checkArguments.append(Argument(label: "isRequired", expression: BooleanLiteralExprSyntax(isThrowing)))
+
+      if let isolationArgumentIndex {
+        checkArguments.append(macroArguments[isolationArgumentIndex])
+      }
 
       if let sourceLocationArgumentIndex {
         checkArguments.append(macroArguments[sourceLocationArgumentIndex])
