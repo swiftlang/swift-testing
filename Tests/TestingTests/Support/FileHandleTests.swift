@@ -14,7 +14,7 @@ private import _TestingInternals
 #if !SWT_NO_FILE_IO
 // NOTE: we don't run these tests on iOS (etc.) because processes on those
 // platforms are sandboxed and do not have arbitrary filesystem access.
-#if os(macOS) || os(Linux) || os(Windows)
+#if os(macOS) || os(Linux) || os(Android) || os(Windows)
 @Suite("FileHandle Tests")
 struct FileHandleTests {
   // FileHandle is non-copyable, so it cannot yet be used as a test parameter.
@@ -226,6 +226,8 @@ func temporaryDirectory() throws -> String {
   }
 #elseif os(Linux)
   "/tmp"
+#elseif os(Android)
+  Environment.variable(named: "TMPDIR") ?? "/data/local/tmp"
 #elseif os(Windows)
   try withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: Int(MAX_PATH + 1)) { buffer in
     // NOTE: GetTempPath2W() was introduced in Windows 10 Build 20348.

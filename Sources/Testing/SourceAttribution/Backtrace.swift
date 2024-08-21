@@ -71,6 +71,10 @@ public struct Backtrace: Sendable {
         }
 #elseif os(Linux)
         initializedCount = .init(backtrace(addresses.baseAddress!, .init(addresses.count)))
+#elseif os(Android)
+        addresses.withMemoryRebound(to: UnsafeMutableRawPointer.self) { addresses in
+          initializedCount = .init(backtrace(addresses.baseAddress!, .init(addresses.count)))
+        }
 #elseif os(Windows)
         initializedCount = Int(RtlCaptureStackBackTrace(0, ULONG(addresses.count), addresses.baseAddress!, nil))
 #elseif os(WASI)

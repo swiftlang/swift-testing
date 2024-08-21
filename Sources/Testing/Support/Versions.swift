@@ -55,6 +55,10 @@ let operatingSystemVersion: String = {
       return "\(release) (\(version))"
     }
   }
+#elseif os(Android)
+  if let version = systemProperty(named: "ro.build.version.release") {
+    return "Android \(version)"
+  }
 #elseif os(Windows)
   // See if we can query the kernel directly, bypassing the fake-out logic added
   // in Windows 10 and later that misreports the OS version. GetVersionExW()
@@ -165,6 +169,25 @@ func sysctlbyname(_ name: String, as _: String.Type) -> String? {
         }
         return nil
       }
+    }
+    return nil
+  }
+}
+#endif
+
+#if os(Android)
+/// Get the Android system property with the given name.
+///
+/// - Parameters:
+///   - name: The name of the system property to get.
+///
+/// - Returns: The value of the requested system property, or `nil` if it could
+///   not be read or could not be converted to a string.
+func systemProperty(named name: String) -> String? {
+  withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(PROP_VALUE_MAX)) { buffer in
+    let length = __system_property_get(name, buffer.baseAddress!)
+    if length > 0 {
+      return String(validatingCString: buffer.baseAddress!)
     }
     return nil
   }

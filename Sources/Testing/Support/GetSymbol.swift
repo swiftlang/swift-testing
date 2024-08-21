@@ -13,7 +13,7 @@ internal import _TestingInternals
 #if !SWT_NO_DYNAMIC_LINKING
 
 /// The platform-specific type of a loaded image handle.
-#if SWT_TARGET_OS_APPLE || os(Linux)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(Android)
 typealias ImageAddress = UnsafeMutableRawPointer
 #elseif os(Windows)
 typealias ImageAddress = HMODULE
@@ -30,7 +30,9 @@ typealias ImageAddress = Never
 /// declare a wrapper function in the internal module's Stubs.h file.
 #if SWT_TARGET_OS_APPLE
 private nonisolated(unsafe) let RTLD_DEFAULT = ImageAddress(bitPattern: -2)
-#elseif os(Linux)
+#elseif os(Android) && _pointerBitWidth(_32)
+private nonisolated(unsafe) let RTLD_DEFAULT = ImageAddress(bitPattern: 0xFFFFFFFF)
+#elseif os(Linux) || os(Android)
 private nonisolated(unsafe) let RTLD_DEFAULT = ImageAddress(bitPattern: 0)
 #endif
 
@@ -57,7 +59,7 @@ private nonisolated(unsafe) let RTLD_DEFAULT = ImageAddress(bitPattern: 0)
 /// calling `EnumProcessModules()` and iterating over the returned handles
 /// looking for one containing the given function.
 func symbol(in handle: ImageAddress? = nil, named symbolName: String) -> UnsafeRawPointer? {
-#if SWT_TARGET_OS_APPLE || os(Linux)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(Android)
   dlsym(handle ?? RTLD_DEFAULT, symbolName).map(UnsafeRawPointer.init)
 #elseif os(Windows)
   symbolName.withCString { symbolName in

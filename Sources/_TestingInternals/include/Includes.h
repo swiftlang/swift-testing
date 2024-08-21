@@ -120,4 +120,9 @@
 #include <Psapi.h>
 #endif
 
+#if defined(__ANDROID__)
+#pragma clang module import posix_filesystem.linux_stat
+#include <sys/system_properties.h>
+#endif
+
 #endif
