@@ -670,6 +670,26 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
+  /// Create a diagnostic messages stating that the expression passed to
+  /// `#require()` is not optional and the macro is redundant.
+  ///
+  /// - Parameters:
+  ///   - expr: The non-optional expression.
+  ///
+  /// - Returns: A diagnostic message.
+  static func nonOptionalRequireIsRedundant(_ expr: ExprSyntax, in macro: some FreestandingMacroExpansionSyntax) -> Self {
+    // We do not provide fix-its because we cannot see the leading "try" keyword
+    // so we can't provide a valid fix-it to remove the macro either. We can
+    // provide a fix-it to add "as Optional", but only providing that fix-it may
+    // confuse or mislead developers (and that's presumably usually the *wrong*
+    // fix-it to select anyway.)
+    Self(
+      syntax: Syntax(expr),
+      message: "\(_macroName(macro)) is redundant because '\(expr.trimmed)' never equals 'nil'",
+      severity: .warning
+    )
+  }
+
   /// Create a diagnostic message stating that a condition macro nested inside
   /// an exit test will not record any diagnostics.
   ///

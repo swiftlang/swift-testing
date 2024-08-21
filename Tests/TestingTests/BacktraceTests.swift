@@ -34,8 +34,8 @@ struct BacktraceTests {
   }
 
   @Test("Backtrace.current() is populated")
-  func currentBacktrace() throws {
-    let backtrace = try #require(Backtrace.current())
+  func currentBacktrace() {
+    let backtrace = Backtrace.current()
     #expect(!backtrace.addresses.isEmpty)
   }
 

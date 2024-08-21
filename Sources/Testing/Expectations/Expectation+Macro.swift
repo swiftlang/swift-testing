@@ -101,6 +101,34 @@ public macro require(
   sourceLocation: SourceLocation = #_sourceLocation
 ) -> Bool = #externalMacro(module: "TestingMacros", type: "AmbiguousRequireMacro")
 
+/// Unwrap an optional value or, if it is `nil`, fail and throw an error.
+///
+/// - Parameters:
+///   - optionalValue: The optional value to be unwrapped.
+///   - comment: A comment describing the expectation.
+///   - sourceLocation: The source location to which recorded expectations and
+///     issues should be attributed.
+///
+/// - Returns: The unwrapped value of `optionalValue`.
+///
+/// - Throws: An instance of ``ExpectationFailedError`` if `optionalValue` is
+///   `nil`.
+///
+/// If `optionalValue` is `nil`, an ``Issue`` is recorded for the test that is
+/// running in the current task and an instance of ``ExpectationFailedError`` is
+/// thrown.
+///
+/// This overload of ``require(_:_:sourceLocation:)-6w9oo`` is used when a
+/// non-optional, non-`Bool` value is passed to `#require()`. It emits a warning
+/// diagnostic indicating that the expectation is redundant.
+@freestanding(expression)
+@_documentation(visibility: private)
+public macro require<T>(
+  _ optionalValue: T,
+  _ comment: @autoclosure () -> Comment? = nil,
+  sourceLocation: SourceLocation = #_sourceLocation
+) -> T = #externalMacro(module: "TestingMacros", type: "NonOptionalRequireMacro")
+
 // MARK: - Matching errors by type
 
 /// Check that an expression always throws an error of a given type.
