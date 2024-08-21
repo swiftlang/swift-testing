@@ -257,7 +257,7 @@ extension FileHandle {
     try withUnsafeCFILEHandle { file in
       try withUnsafeTemporaryAllocation(byteCount: 1024, alignment: 1) { buffer in
         repeat {
-          let countRead = fread(buffer.baseAddress, 1, buffer.count, file)
+          let countRead = fread(buffer.baseAddress!, 1, buffer.count, file)
           if 0 != ferror(file) {
             throw CError(rawValue: swt_errno())
           }
@@ -295,7 +295,7 @@ extension FileHandle {
         }
       }
 
-      let countWritten = fwrite(bytes.baseAddress, MemoryLayout<UInt8>.stride, bytes.count, file)
+      let countWritten = fwrite(bytes.baseAddress!, MemoryLayout<UInt8>.stride, bytes.count, file)
       if countWritten < bytes.count {
         throw CError(rawValue: swt_errno())
       }
