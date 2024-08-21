@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import Synchronization
+
 extension Runner {
   /// A type which collects the task-scoped runtime state for a running
   /// ``Runner`` instance, the tests it runs, and other objects it interacts
@@ -111,7 +113,10 @@ extension Configuration {
   /// - Returns: A unique number identifying `self` that can be
   ///   passed to `_removeFromAll(identifiedBy:)`` to unregister it.
   private func _addToAll() -> UInt64 {
-    Self._all.withLock { all in
+    if deliverExpectationCheckedEvents, #available(_synchronizationAPI, *) {
+      Self._deliverExpectationCheckedEventsCount.add(1, ordering: .sequentiallyConsistent)
+    }
+    return Self._all.withLock { all in
       let id = all.nextID
       all.nextID += 1
       all.instances[id] = self
@@ -123,12 +128,37 @@ extension Configuration {
   ///
   /// - Parameters:
   ///   - id: The unique identifier of this instance, as previously returned by
-  ///     `_addToAll()`. If `nil`, this function has no effect.
-  private func _removeFromAll(identifiedBy id: UInt64?) {
-    if let id {
-      Self._all.withLock { all in
-        _ = all.instances.removeValue(forKey: id)
-      }
+  ///     `_addToAll()`.
+  private func _removeFromAll(identifiedBy id: UInt64) {
+    let configuration = Self._all.withLock { all in
+      all.instances.removeValue(forKey: id)
+    }
+    if let configuration, configuration.deliverExpectationCheckedEvents, #available(_synchronizationAPI, *) {
+      Self._deliverExpectationCheckedEventsCount.subtract(1, ordering: .sequentiallyConsistent)
+    }
+  }
+
+  /// An atomic counter that tracks the number of "current" configurations that
+  /// have set ``deliverExpectationCheckedEvents`` to `true`.
+  ///
+  /// On older Apple platforms, this property is not available and ``all`` is
+  /// directly consulted instead (which is less efficient.)
+  @available(_synchronizationAPI, *)
+  private static let _deliverExpectationCheckedEventsCount = Atomic(0)
+
+  /// Whether or not events of the kind
+  /// ``Event/Kind-swift.enum/expectationChecked(_:)`` should be delivered to
+  /// the event handler of _any_ configuration set as current for a task in the
+  /// current process.
+  ///
+  /// To determine if an individual instance of ``Configuration`` is listening
+  /// for these events, consult the per-instance
+  /// ``Configuration/deliverExpectationCheckedEvents`` property.
+  static var deliverExpectationCheckedEvents: Bool {
+    if #available(_synchronizationAPI, *) {
+      _deliverExpectationCheckedEventsCount.load(ordering: .sequentiallyConsistent) > 0
+    } else {
+      all.contains(where: \.deliverExpectationCheckedEvents)
     }
   }
 }
