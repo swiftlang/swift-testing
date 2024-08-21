@@ -63,7 +63,11 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
     diagnostics += diagnoseIssuesWithLexicalContext(context.lexicalContext, containing: declaration, attribute: suiteAttribute)
     diagnostics += diagnoseIssuesWithLexicalContext(declaration, containing: declaration, attribute: suiteAttribute)
 
-    // Suites inheriting from XCTestCase are not supported.
+    // Suites inheriting from XCTestCase are not supported. This check is
+    // duplicated in TestDeclarationMacro but is not part of
+    // diagnoseIssuesWithLexicalContext() because it doesn't need to recurse
+    // across the entire lexical context list, just the innermost type
+    // declaration.
     if let declaration = declaration.asProtocol((any DeclGroupSyntax).self),
        declaration.inherits(fromTypeNamed: "XCTestCase", inModuleNamed: "XCTest") {
       diagnostics.append(.xcTestCaseNotSupported(declaration, whenUsing: suiteAttribute))
