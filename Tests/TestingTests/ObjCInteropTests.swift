@@ -78,7 +78,9 @@ struct ObjCAndXCTestInteropTests {
     #expect(steps.count > 0)
     for step in steps {
       let selector = try #require(step.test.xcTestCompatibleSelector)
-      let testCaseClass = try #require(step.test.containingTypeInfo?.type as? NSObject.Type)
+      // A compiler crash occurs here without the bitcast. SEE: rdar://134277439
+      let type = unsafeBitCast(step.test.containingTypeInfo?.type, to: Any.Type?.self)
+      let testCaseClass = try #require(type as? NSObject.Type)
       #expect(testCaseClass.instancesRespond(to: selector))
     }
   }
