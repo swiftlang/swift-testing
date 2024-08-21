@@ -75,7 +75,11 @@ public struct TypeInfo: Sendable {
 
 extension TypeInfo {
   /// An in-memory cache of fully-qualified type name components.
-  private static let _fullyQualifiedNameComponentsCache = Locked<[ObjectIdentifier: [String]]>()
+  ///
+  /// - Bug: The key type of this cache should be `ObjectIdentifier`, but such
+  ///   values cannot be constructed from move-only types.
+  ///   ([134276458](rdar://134276458))
+  private static let _fullyQualifiedNameComponentsCache = Locked<[UInt: [String]]>()
 
   /// The complete name of this type, with the names of all referenced types
   /// fully-qualified by their module names when possible.
@@ -95,7 +99,8 @@ extension TypeInfo {
   public var fullyQualifiedNameComponents: [String] {
     switch _kind {
     case let .type(type):
-      if let cachedResult = Self._fullyQualifiedNameComponentsCache.rawValue[ObjectIdentifier(type)] {
+      let cacheKey = unsafeBitCast(type, to: UInt.self)
+      if let cachedResult = Self._fullyQualifiedNameComponentsCache.rawValue[cacheKey] {
         return cachedResult
       }
 
@@ -117,7 +122,7 @@ extension TypeInfo {
       result = result.filter { !$0.starts(with: "(unknown context at") }
 
       Self._fullyQualifiedNameComponentsCache.withLock { fullyQualifiedNameComponentsCache in
-        fullyQualifiedNameComponentsCache[ObjectIdentifier(type)] = result
+        fullyQualifiedNameComponentsCache[cacheKey] = result
       }
 
       return result
@@ -314,7 +319,7 @@ extension TypeInfo: Hashable {
     case let (.type(lhs), .type(rhs)):
       // == and ObjectIdentifier do not support move-only metatypes, so compare
       // the bits of the types directly. SEE: rdar://134276458
-      return unsafeBitCast(lhs, to: UnsafeRawPointer.self) == unsafeBitCast(rhs, to: UnsafeRawPointer.self)
+      return unsafeBitCast(lhs, to: UInt.self) == unsafeBitCast(rhs, to: UInt.self)
     default:
       return lhs.fullyQualifiedNameComponents == rhs.fullyQualifiedNameComponents
     }
