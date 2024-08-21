@@ -40,9 +40,15 @@ extension Test {
 #if !SWT_NO_UTC_CLOCK
       /// The wall-clock time corresponding to this instant.
       fileprivate(set) var wall: TimeValue = {
-        var wall = timespec()
-        timespec_get(&wall, TIME_UTC)
-        return TimeValue(wall)
+        var time = timespec()
+        // Android headers recommend `clock_gettime` over `timespec_get` which
+        // is available with API Level 29+ for `TIME_UTC`.
+#if os(Android)
+        clock_gettime(CLOCK_REALTIME, &time)
+#else
+        timespec_get(&time, TIME_UTC)
+#endif
+        return TimeValue(time)
       }()
 #endif
 
