@@ -59,6 +59,16 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // Check if the lexical context is appropriate for a suite or test.
     diagnostics += diagnoseIssuesWithLexicalContext(context.lexicalContext, containing: declaration, attribute: testAttribute)
 
+    // Suites inheriting from XCTestCase are not supported. We are a bit
+    // conservative here in this check and only check the immediate context.
+    // Presumably, if there's an intermediate lexical context that is *not* a
+    // type declaration, then it must be a function or closure (disallowed
+    // elsewhere) and thus the test function is not a member of any type.
+    if let containingTypeDecl = context.lexicalContext.first?.asProtocol((any DeclGroupSyntax).self),
+       containingTypeDecl.inherits(fromTypeNamed: "XCTestCase", inModuleNamed: "XCTest") {
+      diagnostics.append(.containingNodeUnsupported(containingTypeDecl, whenUsing: testAttribute, on: declaration))
+    }
+
     // Only one @Test attribute is supported.
     let suiteAttributes = function.attributes(named: "Test")
     if suiteAttributes.count > 1 {
