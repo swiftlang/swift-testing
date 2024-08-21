@@ -312,9 +312,7 @@ extension TypeInfo: Hashable {
   public static func ==(lhs: Self, rhs: Self) -> Bool {
     switch (lhs._kind, rhs._kind) {
     case let (.type(lhs), .type(rhs)):
-      // == and ObjectIdentifier do not support move-only metatypes, so compare
-      // the bits of the types directly. SEE: rdar://134276458
-      return unsafeBitCast(lhs, to: UnsafeRawPointer.self) == unsafeBitCast(rhs, to: UnsafeRawPointer.self)
+      return ObjectIdentifier(lhs) == ObjectIdentifier(rhs)
     default:
       return lhs.fullyQualifiedNameComponents == rhs.fullyQualifiedNameComponents
     }
@@ -322,6 +320,21 @@ extension TypeInfo: Hashable {
 
   public func hash(into hasher: inout Hasher) {
     hasher.combine(fullyQualifiedName)
+  }
+}
+
+// MARK: - ObjectIdentifier support
+
+extension ObjectIdentifier {
+  /// Initialize an instance of this type from a type reference.
+  ///
+  /// - Parameters:
+  ///   - type: The type to initialize this instance from.
+  ///
+  /// - Bug: The standard library should support this conversion.
+  ///   ([134276458](rdar://134276458), [134415960](rdar://134415960))
+  fileprivate init(_ type: any ~Copyable.Type) {
+    self.init(unsafeBitCast(type, to: Any.Type.self))
   }
 }
 
