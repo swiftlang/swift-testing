@@ -121,7 +121,7 @@ static int swt_siginfo_t_si_status(const siginfo_t *siginfo) {
 }
 #endif
 
-//#if defined(__wasi__)
+#if defined(__wasi__)
 /// Get the version of the C standard library and runtime used by WASI, if
 /// available.
 ///
@@ -137,7 +137,7 @@ static const char *_Nullable swt_getWASIVersion(void) {
   return 0;
 #endif
 }
-//#endif
+#endif
 
 SWT_ASSUME_NONNULL_END
 
