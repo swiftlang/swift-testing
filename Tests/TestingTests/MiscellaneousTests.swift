@@ -222,6 +222,11 @@ struct MultiLineSuite {
   staticMultiLineTestDecl() async {}
 }
 
+@Test(.hidden) func complexOptionalChainingWithRequire() throws {
+  let x: String? = nil
+  _ = try #require(x?[...].last)
+}
+
 @Suite("Miscellaneous tests")
 struct MiscellaneousTests {
   @Test("Free function's name")

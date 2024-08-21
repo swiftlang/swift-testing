@@ -242,6 +242,18 @@ private func _parseCondition(from expr: ClosureExprSyntax, for macro: some Frees
   return Condition(expression: expr)
 }
 
+/// A class that walks a syntax tree looking for optional chaining expressions
+/// such as `a?.b.c`.
+private final class _OptionalChainFinder: SyntaxVisitor {
+  /// Whether or not any optional chaining was found.
+  var optionalChainFound = false
+
+  override func visit(_ node: OptionalChainingExprSyntax) -> SyntaxVisitorContinueKind {
+    optionalChainFound = true
+    return .skipChildren
+  }
+}
+
 /// Extract the underlying expression from an optional-chained expression as
 /// well as the number of question marks required to reach it.
 ///
@@ -279,15 +291,9 @@ private func _exprFromOptionalChainedExpr(_ expr: some ExprSyntaxProtocol) -> (E
   // the member accesses in the expression use optional chaining and, if one
   // does, ensure we preserve optional chaining in the macro expansion.
   if questionMarkCount == 0 {
-    func isOptionalChained(_ expr: some ExprSyntaxProtocol) -> Bool {
-      if expr.is(OptionalChainingExprSyntax.self) {
-        return true
-      } else if let memberAccessBaseExpr = expr.as(MemberAccessExprSyntax.self)?.base {
-        return isOptionalChained(memberAccessBaseExpr)
-      }
-      return false
-    }
-    if isOptionalChained(originalExpr) {
+    let optionalChainFinder = _OptionalChainFinder(viewMode: .sourceAccurate)
+    optionalChainFinder.walk(originalExpr)
+    if optionalChainFinder.optionalChainFound {
       questionMarkCount = 1
     }
   }
