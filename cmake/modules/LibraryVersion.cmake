@@ -6,34 +6,37 @@
 # See http://swift.org/LICENSE.txt for license information
 # See http://swift.org/CONTRIBUTORS.txt for Swift project authors
 
+# The current version of the Swift Testing release. For release branches,
+# remember to remove -dev.
+set(SWT_TESTING_LIBRARY_VERSION "6.1.0-dev")
+
 find_package(Git QUIET)
 if(Git_FOUND)
+  # Look for a tag (including non-annotated, i.e. commit-specific, ones.)
   execute_process(
-    COMMAND ${GIT_EXECUTABLE} describe --tags --exact-match
+    COMMAND ${GIT_EXECUTABLE} describe --tags
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-    OUTPUT_VARIABLE GIT_TAG
+    OUTPUT_VARIABLE GIT_VERSION
     OUTPUT_STRIP_TRAILING_WHITESPACE
     ERROR_QUIET)
-  if(GIT_TAG)
-    add_compile_definitions(
-      "$<$<COMPILE_LANGUAGE:CXX>:_SWT_TESTING_LIBRARY_VERSION=${GIT_TAG}>")
-  else()
-    execute_process(
-      COMMAND ${GIT_EXECUTABLE} rev-parse --verify HEAD
-      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-      OUTPUT_VARIABLE GIT_REVISION
-      OUTPUT_STRIP_TRAILING_WHITESPACE)
-    execute_process(
-      COMMAND ${GIT_EXECUTABLE} status -s
-      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-      OUTPUT_VARIABLE GIT_STATUS
-      OUTPUT_STRIP_TRAILING_WHITESPACE)
-    if(GIT_STATUS)
-      add_compile_definitions(
-        "$<$<COMPILE_LANGUAGE:CXX>:_SWT_TESTING_LIBRARY_VERSION=${GIT_REVISION} (modified)>")
-    else()
-      add_compile_definitions(
-        "$<$<COMPILE_LANGUAGE:CXX>:_SWT_TESTING_LIBRARY_VERSION=${GIT_REVISION}>")
-    endif()
+
+  # Check if there are local changes.
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} status -s
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_STATUS
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if(GIT_STATUS)
+    set(GIT_VERSION "${GIT_VERSION} - modified")
   endif()
 endif()
+
+# Combine the hard-coded Swift version with available Git information.
+if(GIT_VERSION)
+set(SWT_TESTING_LIBRARY_VERSION "${SWT_TESTING_LIBRARY_VERSION} (${GIT_VERSION})")
+endif()
+
+# All done!
+message(STATUS "Swift Testing version: ${SWT_TESTING_LIBRARY_VERSION}")
+add_compile_definitions(
+  "$<$<COMPILE_LANGUAGE:CXX>:_SWT_TESTING_LIBRARY_VERSION=\"${SWT_TESTING_LIBRARY_VERSION}\">")
