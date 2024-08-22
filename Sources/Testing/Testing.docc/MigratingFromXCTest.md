@@ -532,7 +532,7 @@ to fail. The testing library has an equivalent function with synchronous and
 asynchronous variants:
 
 - ``withKnownIssue(_:isIntermittent:sourceLocation:_:)``
-- ``withKnownIssue(_:isIntermittent:isolation:sourceLocation:_:when:matching:)``
+- ``withKnownIssue(_:isIntermittent:isolation:sourceLocation:_:)``
 
 This function can be used to annotate a section of a test as having a known
 issue:
