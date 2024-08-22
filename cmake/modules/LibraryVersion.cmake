@@ -8,13 +8,14 @@
 
 # The current version of the Swift Testing release. For release branches,
 # remember to remove -dev.
-set(SWT_TESTING_LIBRARY_VERSION "6.1.0-dev")
+set(SWT_TESTING_LIBRARY_VERSION "6.1-dev")
 
 find_package(Git QUIET)
 if(Git_FOUND)
-  # Look for a tag (including non-annotated, i.e. commit-specific, ones.)
+  # Get the commit hash corresponding to the current build. Limit length to 15
+  # to match `swift --version` output format.
   execute_process(
-    COMMAND ${GIT_EXECUTABLE} describe --tags
+    COMMAND ${GIT_EXECUTABLE} rev-parse --short=15 --verify HEAD
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     OUTPUT_VARIABLE GIT_VERSION
     OUTPUT_STRIP_TRAILING_WHITESPACE
