@@ -105,6 +105,9 @@ extension ExitCondition {
   ///
   /// For any values `a` and `b`, `a == b` implies that `a != b` is `false`.
   public static func ==(lhs: Self, rhs: Self) -> Bool {
+#if SWT_NO_EXIT_TESTS
+    fatalError("Unsupported")
+#else
     return switch (lhs, rhs) {
     case let (.failure, .exitCode(exitCode)), let (.exitCode(exitCode), .failure):
       exitCode != EXIT_SUCCESS
@@ -116,6 +119,7 @@ extension ExitCondition {
     default:
       lhs === rhs
     }
+#endif
   }
 
   /// Check whether or not two values of this type are _not_ equal.
@@ -145,7 +149,11 @@ extension ExitCondition {
   ///
   /// For any values `a` and `b`, `a == b` implies that `a != b` is `false`.
   public static func !=(lhs: Self, rhs: Self) -> Bool {
+#if SWT_NO_EXIT_TESTS
+    fatalError("Unsupported")
+#else
     !(lhs == rhs)
+#endif
   }
 
   /// Check whether or not two values of this type are identical.
@@ -215,6 +223,10 @@ extension ExitCondition {
   ///
   /// For any values `a` and `b`, `a === b` implies that `a !== b` is `false`.
   public static func !==(lhs: Self, rhs: Self) -> Bool {
+#if SWT_NO_EXIT_TESTS
+    fatalError("Unsupported")
+#else
     !(lhs === rhs)
+#endif
   }
 }
