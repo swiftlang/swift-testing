@@ -293,6 +293,26 @@ public struct AmbiguousRequireMacro: RefinedConditionMacro {
   }
 }
 
+/// A type describing the expansion of the `#require()` macro when it is passed
+/// a non-optional, non-`Bool` value.
+///
+/// This type is otherwise exactly equivalent to ``RequireMacro``.
+public struct NonOptionalRequireMacro: RefinedConditionMacro {
+  public typealias Base = RequireMacro
+
+  public static func expansion(
+    of macro: some FreestandingMacroExpansionSyntax,
+    in context: some MacroExpansionContext
+  ) throws -> ExprSyntax {
+    if let argument = macro.arguments.first {
+      context.diagnose(.nonOptionalRequireIsRedundant(argument.expression, in: macro))
+    }
+
+    // Perform the normal macro expansion for #require().
+    return try RequireMacro.expansion(of: macro, in: context)
+  }
+}
+
 // MARK: -
 
 /// A syntax visitor that looks for uses of `#expect()` and `#require()` nested
@@ -362,7 +382,7 @@ extension ExitTestConditionMacro {
       static var __sourceLocation: Testing.SourceLocation {
         \(createSourceLocationExpr(of: macro, context: context))
       }
-      static var __body: @Sendable () async -> Void {
+      static var __body: @Sendable () async throws -> Void {
         \(bodyArgumentExpr.trimmed)
       }
       static var __expectedExitCondition: Testing.ExitCondition {
@@ -370,7 +390,15 @@ extension ExitTestConditionMacro {
       }
     }
     """
-    arguments[trailingClosureIndex].expression = "{ \(enumDecl) }"
+
+    // Explicitly include a closure signature to work around a compiler bug
+    // type-checking thin throwing functions after macro expansion.
+    // SEE: rdar://133979438
+    arguments[trailingClosureIndex].expression = """
+    { () async throws in
+      \(enumDecl)
+    }
+    """
 
     // Replace the exit test body (as an argument to the macro) with a stub
     // closure that hosts the type we created above.

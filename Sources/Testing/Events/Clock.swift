@@ -41,7 +41,13 @@ extension Test {
       /// The wall-clock time corresponding to this instant.
       fileprivate(set) var wall: TimeValue = {
         var wall = timespec()
+#if os(Android)
+        // Android headers recommend `clock_gettime` over `timespec_get` which
+        // is available with API Level 29+ for `TIME_UTC`.
+        clock_gettime(CLOCK_REALTIME, &wall)
+#else
         timespec_get(&wall, TIME_UTC)
+#endif
         return TimeValue(wall)
       }()
 #endif

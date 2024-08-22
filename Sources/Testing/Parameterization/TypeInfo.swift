@@ -18,7 +18,7 @@ public struct TypeInfo: Sendable {
     ///
     /// - Parameters:
     ///   - type: The concrete metatype.
-    case type(_ type: Any.Type)
+    case type(_ type: any ~Copyable.Type)
 
     /// The type info represents a metatype, but a reference to that metatype is
     /// not available at runtime.
@@ -38,7 +38,7 @@ public struct TypeInfo: Sendable {
   ///
   /// If this instance was created from a type name, or if it was previously
   /// encoded and decoded, the value of this property is `nil`.
-  public var type: Any.Type? {
+  public var type: (any ~Copyable.Type)? {
     if case let .type(type) = _kind {
       return type
     }
@@ -57,7 +57,7 @@ public struct TypeInfo: Sendable {
   ///
   /// - Parameters:
   ///   - type: The type which this instance should describe.
-  init(describing type: Any.Type) {
+  init(describing type: any ~Copyable.Type) {
     _kind = .type(type)
   }
 
@@ -74,6 +74,9 @@ public struct TypeInfo: Sendable {
 // MARK: - Name
 
 extension TypeInfo {
+  /// An in-memory cache of fully-qualified type name components.
+  private static let _fullyQualifiedNameComponentsCache = Locked<[ObjectIdentifier: [String]]>()
+
   /// The complete name of this type, with the names of all referenced types
   /// fully-qualified by their module names when possible.
   ///
@@ -92,6 +95,10 @@ extension TypeInfo {
   public var fullyQualifiedNameComponents: [String] {
     switch _kind {
     case let .type(type):
+      if let cachedResult = Self._fullyQualifiedNameComponentsCache.rawValue[ObjectIdentifier(type)] {
+        return cachedResult
+      }
+
       var result = String(reflecting: type)
         .split(separator: ".")
         .map(String.init)
@@ -108,6 +115,10 @@ extension TypeInfo {
       // name may include "(unknown context at $xxxxxxxx)" as a component. Strip
       // those out as they're uninteresting to us.
       result = result.filter { !$0.starts(with: "(unknown context at") }
+
+      Self._fullyQualifiedNameComponentsCache.withLock { fullyQualifiedNameComponentsCache in
+        fullyQualifiedNameComponentsCache[ObjectIdentifier(type)] = result
+      }
 
       return result
     case let .nameOnly(fullyQualifiedNameComponents, _, _):
@@ -172,7 +183,9 @@ extension TypeInfo {
     }
     switch _kind {
     case let .type(type):
-      return _mangledTypeName(type)
+      // _mangledTypeName() works with move-only types, but its signature has
+      // not been updated yet. SEE: rdar://134278607
+      return _mangledTypeName(unsafeBitCast(type, to: Any.Type.self))
     case let .nameOnly(_, _, mangledName):
       return mangledName
     }
@@ -299,7 +312,7 @@ extension TypeInfo: Hashable {
   public static func ==(lhs: Self, rhs: Self) -> Bool {
     switch (lhs._kind, rhs._kind) {
     case let (.type(lhs), .type(rhs)):
-      return lhs == rhs
+      return ObjectIdentifier(lhs) == ObjectIdentifier(rhs)
     default:
       return lhs.fullyQualifiedNameComponents == rhs.fullyQualifiedNameComponents
     }
@@ -307,6 +320,21 @@ extension TypeInfo: Hashable {
 
   public func hash(into hasher: inout Hasher) {
     hasher.combine(fullyQualifiedName)
+  }
+}
+
+// MARK: - ObjectIdentifier support
+
+extension ObjectIdentifier {
+  /// Initialize an instance of this type from a type reference.
+  ///
+  /// - Parameters:
+  ///   - type: The type to initialize this instance from.
+  ///
+  /// - Bug: The standard library should support this conversion.
+  ///   ([134276458](rdar://134276458), [134415960](rdar://134415960))
+  fileprivate init(_ type: any ~Copyable.Type) {
+    self.init(unsafeBitCast(type, to: Any.Type.self))
   }
 }
 

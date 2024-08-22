@@ -369,9 +369,8 @@ struct MiscellaneousTests {
       #expect(firstParameter.index == 0)
       #expect(firstParameter.firstName == "i")
       #expect(firstParameter.secondName == nil)
-      let firstParameterTypeInfo = try #require(firstParameter.typeInfo)
-      #expect(firstParameterTypeInfo.fullyQualifiedName == "Swift.Int")
-      #expect(firstParameterTypeInfo.unqualifiedName == "Int")
+      #expect(firstParameter.typeInfo.fullyQualifiedName == "Swift.Int")
+      #expect(firstParameter.typeInfo.unqualifiedName == "Int")
     } catch {}
 
     do {
@@ -386,9 +385,8 @@ struct MiscellaneousTests {
       #expect(secondParameter.index == 1)
       #expect(secondParameter.firstName == "j")
       #expect(secondParameter.secondName == "k")
-      let secondParameterTypeInfo = try #require(secondParameter.typeInfo)
-      #expect(secondParameterTypeInfo.fullyQualifiedName == "Swift.String")
-      #expect(secondParameterTypeInfo.unqualifiedName == "String")
+      #expect(secondParameter.typeInfo.fullyQualifiedName == "Swift.String")
+      #expect(secondParameter.typeInfo.unqualifiedName == "String")
     } catch {}
   }
 
@@ -531,5 +529,16 @@ struct MiscellaneousTests {
     failureBreakpointValue = 0
     failureBreakpoint()
     #expect(failureBreakpointValue == 1)
+  }
+
+  @available(_clockAPI, *)
+  @Test("Repeated calls to #expect() run in reasonable time", .disabled("time-sensitive"))
+  func repeatedlyExpect() {
+    let duration = Test.Clock().measure {
+      for _ in 0 ..< 1_000_000 {
+        #expect(true as Bool)
+      }
+    }
+    #expect(duration < .seconds(1))
   }
 }

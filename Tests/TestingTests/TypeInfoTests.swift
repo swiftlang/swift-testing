@@ -76,4 +76,4 @@ extension String {
   enum NestedType {}
 }
 
-enum SomeEnum {}
+private enum SomeEnum {}

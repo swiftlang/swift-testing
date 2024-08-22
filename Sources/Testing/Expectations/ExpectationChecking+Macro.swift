@@ -95,8 +95,10 @@ public func __checkValue(
   // Post an event for the expectation regardless of whether or not it passed.
   // If the current event handler is not configured to handle events of this
   // kind, this event is discarded.
-  var expectation = Expectation(evaluatedExpression: expression, isPassing: condition, isRequired: isRequired, sourceLocation: sourceLocation)
-  Event.post(.expectationChecked(expectation))
+  lazy var expectation = Expectation(evaluatedExpression: expression, isPassing: condition, isRequired: isRequired, sourceLocation: sourceLocation)
+  if Configuration.deliverExpectationCheckedEvents {
+    Event.post(.expectationChecked(expectation))
+  }
 
   // Early exit if the expectation passed.
   if condition {
@@ -1103,7 +1105,7 @@ public func __checkClosureCall<R>(
 @_spi(Experimental)
 public func __checkClosureCall(
   exitsWith expectedExitCondition: ExitCondition,
-  performing body: @convention(thin) () async -> Void,
+  performing body: @convention(thin) () async throws -> Void,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
@@ -1111,7 +1113,7 @@ public func __checkClosureCall(
 ) async -> Result<Void, any Error> {
   await callExitTest(
     exitsWith: expectedExitCondition,
-    performing: { await body() },
+    performing: { try await body() },
     expression: expression,
     comments: comments(),
     isRequired: isRequired,

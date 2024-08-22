@@ -106,7 +106,7 @@ extension Test {
   /// - Warning: This function is used to implement the `@Suite` macro. Do not
   ///   call it directly.
   public static func __type(
-    _ containingType: Any.Type,
+    _ containingType: any ~Copyable.Type,
     displayName: String? = nil,
     traits: [any SuiteTrait],
     sourceLocation: SourceLocation
@@ -159,7 +159,7 @@ extension Test {
   ///   call it directly.
   public static func __function(
     named testFunctionName: String,
-    in containingType: Any.Type?,
+    in containingType: (any ~Copyable.Type)?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
@@ -167,7 +167,13 @@ extension Test {
     parameters: [__Parameter] = [],
     testFunction: @escaping @Sendable () async throws -> Void
   ) -> Self {
-    let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
+    // Don't use Optional.map here due to a miscompile/crash. Expand out to an
+    // if expression instead. SEE: rdar://134280902
+    let containingTypeInfo: TypeInfo? = if let containingType {
+      TypeInfo(describing: containingType)
+    } else {
+      nil
+    }
     let caseGenerator = { @Sendable in Case.Generator(testFunction: testFunction) }
     return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: [])
   }
@@ -235,7 +241,7 @@ extension Test {
   ///   call it directly.
   public static func __function<C>(
     named testFunctionName: String,
-    in containingType: Any.Type?,
+    in containingType: (any ~Copyable.Type)?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
@@ -244,7 +250,11 @@ extension Test {
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
   ) -> Self where C: Collection & Sendable, C.Element: Sendable {
-    let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
+    let containingTypeInfo: TypeInfo? = if let containingType {
+      TypeInfo(describing: containingType)
+    } else {
+      nil
+    }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction) }
     return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
@@ -366,7 +376,7 @@ extension Test {
   ///   call it directly.
   public static func __function<C1, C2>(
     named testFunctionName: String,
-    in containingType: Any.Type?,
+    in containingType: (any ~Copyable.Type)?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
@@ -375,7 +385,11 @@ extension Test {
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
-    let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
+    let containingTypeInfo: TypeInfo? = if let containingType {
+      TypeInfo(describing: containingType)
+    } else {
+      nil
+    }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in try await Case.Generator(arguments: collection1(), collection2(), parameters: parameters, testFunction: testFunction) }
     return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
@@ -390,7 +404,7 @@ extension Test {
   ///   call it directly.
   public static func __function<C, E1, E2>(
     named testFunctionName: String,
-    in containingType: Any.Type?,
+    in containingType: (any ~Copyable.Type)?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
@@ -399,7 +413,11 @@ extension Test {
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable ((E1, E2)) async throws -> Void
   ) -> Self where C: Collection & Sendable, C.Element == (E1, E2), E1: Sendable, E2: Sendable {
-    let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
+    let containingTypeInfo: TypeInfo? = if let containingType {
+      TypeInfo(describing: containingType)
+    } else {
+      nil
+    }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction) }
     return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
@@ -417,7 +435,7 @@ extension Test {
   ///   call it directly.
   public static func __function<Key, Value>(
     named testFunctionName: String,
-    in containingType: Any.Type?,
+    in containingType: (any ~Copyable.Type)?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
@@ -426,7 +444,11 @@ extension Test {
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable ((Key, Value)) async throws -> Void
   ) -> Self where Key: Sendable, Value: Sendable {
-    let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
+    let containingTypeInfo: TypeInfo? = if let containingType {
+      TypeInfo(describing: containingType)
+    } else {
+      nil
+    }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in Case.Generator(arguments: try await dictionary(), parameters: parameters, testFunction: testFunction) }
     return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
@@ -438,7 +460,7 @@ extension Test {
   ///   call it directly.
   public static func __function<C1, C2>(
     named testFunctionName: String,
-    in containingType: Any.Type?,
+    in containingType: (any ~Copyable.Type)?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
@@ -447,7 +469,11 @@ extension Test {
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
-    let containingTypeInfo = containingType.map(TypeInfo.init(describing:))
+    let containingTypeInfo: TypeInfo? = if let containingType {
+      TypeInfo(describing: containingType)
+    } else {
+      nil
+    }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in
       Case.Generator(arguments: try await zippedCollections(), parameters: parameters) {
@@ -460,22 +486,22 @@ extension Test {
 
 // MARK: - Helper functions
 
-/// A value that abstracts away whether or not the `try` keyword is needed on an
-/// expression.
-///
-/// - Warning: This value is used to implement the `@Test` macro. Do not use
-///   it directly.
-@inlinable public var __requiringTry: Void {
-  @inlinable get throws {}
-}
-
-/// A value that abstracts away whether or not the `await` keyword is needed on
+/// A function that abstracts away whether or not the `try` keyword is needed on
 /// an expression.
 ///
-/// - Warning: This value is used to implement the `@Test` macro. Do not use
+/// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
-@inlinable public var __requiringAwait: Void {
-  @inlinable get async {}
+@inlinable public func __requiringTry<T>(_ value: consuming T) throws -> T where T: ~Copyable {
+  value
+}
+
+/// A function that abstracts away whether or not the `await` keyword is needed
+/// on an expression.
+///
+/// - Warning: This function is used to implement the `@Test` macro. Do not use
+///   it directly.
+@inlinable public func __requiringAwait<T>(_ value: consuming T, isolation: isolated (any Actor)? = #isolation) async -> T where T: ~Copyable {
+  value
 }
 
 #if !SWT_NO_GLOBAL_ACTORS

@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable import Testing
+@testable @_spi(Experimental) import Testing
 private import _TestingInternals
 
 #if !SWT_NO_FILE_IO
@@ -62,6 +62,16 @@ struct FileHandleTests {
       try fileHandle.write("Hello world!")
     }
   }
+
+#if !SWT_NO_EXIT_TESTS
+  @Test("Writing requires contiguous storage")
+  func writeIsContiguous() async {
+    await #expect(exitsWith: .failure) {
+      let fileHandle = try FileHandle.null(mode: "wb")
+      try fileHandle.write([1, 2, 3, 4, 5].lazy.filter { $0 == 1 })
+    }
+  }
+#endif
 
   @Test("Can read from a file")
   func canRead() throws {

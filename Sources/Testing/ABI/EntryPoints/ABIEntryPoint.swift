@@ -9,11 +9,7 @@
 //
 
 #if canImport(Foundation) && !SWT_NO_ABI_ENTRY_POINT
-#if SWT_BUILDING_WITH_CMAKE
-@_implementationOnly import _TestingInternals
-#else
 private import _TestingInternals
-#endif
 
 extension ABIv0 {
   /// The type of the entry point to the testing library used by tools that want

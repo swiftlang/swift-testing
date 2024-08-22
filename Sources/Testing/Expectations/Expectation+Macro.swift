@@ -101,6 +101,34 @@ public macro require(
   sourceLocation: SourceLocation = #_sourceLocation
 ) -> Bool = #externalMacro(module: "TestingMacros", type: "AmbiguousRequireMacro")
 
+/// Unwrap an optional value or, if it is `nil`, fail and throw an error.
+///
+/// - Parameters:
+///   - optionalValue: The optional value to be unwrapped.
+///   - comment: A comment describing the expectation.
+///   - sourceLocation: The source location to which recorded expectations and
+///     issues should be attributed.
+///
+/// - Returns: The unwrapped value of `optionalValue`.
+///
+/// - Throws: An instance of ``ExpectationFailedError`` if `optionalValue` is
+///   `nil`.
+///
+/// If `optionalValue` is `nil`, an ``Issue`` is recorded for the test that is
+/// running in the current task and an instance of ``ExpectationFailedError`` is
+/// thrown.
+///
+/// This overload of ``require(_:_:sourceLocation:)-6w9oo`` is used when a
+/// non-optional, non-`Bool` value is passed to `#require()`. It emits a warning
+/// diagnostic indicating that the expectation is redundant.
+@freestanding(expression)
+@_documentation(visibility: private)
+public macro require<T>(
+  _ optionalValue: T,
+  _ comment: @autoclosure () -> Comment? = nil,
+  sourceLocation: SourceLocation = #_sourceLocation
+) -> T = #externalMacro(module: "TestingMacros", type: "NonOptionalRequireMacro")
+
 // MARK: - Matching errors by type
 
 /// Check that an expression always throws an error of a given type.
@@ -440,7 +468,9 @@ public macro require(
 /// a clean environment for execution, it is not called within the context of
 /// the original test. If `expression` does not terminate the child process, the
 /// process is terminated automatically as if the main function of the child
-/// process were allowed to return naturally.
+/// process were allowed to return naturally. If an error is thrown from
+/// `expression`, it is handed as if the error were thrown from `main()` and the
+/// process is terminated.
 ///
 /// Once the child process terminates, the parent process resumes and compares
 /// its exit status against `exitCondition`. If they match, the exit test has
@@ -488,8 +518,8 @@ public macro require(
 ///     issues should be attributed.
 ///   - expression: The expression to be evaluated.
 ///
-/// - Throws: An instance of ``ExpectationFailedError`` if `condition` evaluates
-///   to `false`.
+/// - Throws: An instance of ``ExpectationFailedError`` if the exit condition of
+///   the child process does not equal `expectedExitCondition`.
 ///
 /// Use this overload of `#require()` when an expression will cause the current
 /// process to terminate and the nature of that termination will determine if
@@ -515,7 +545,9 @@ public macro require(
 /// a clean environment for execution, it is not called within the context of
 /// the original test. If `expression` does not terminate the child process, the
 /// process is terminated automatically as if the main function of the child
-/// process were allowed to return naturally.
+/// process were allowed to return naturally. If an error is thrown from
+/// `expression`, it is handed as if the error were thrown from `main()` and the
+/// process is terminated.
 ///
 /// Once the child process terminates, the parent process resumes and compares
 /// its exit status against `exitCondition`. If they match, the exit test has
@@ -550,5 +582,5 @@ public macro require(
   exitsWith expectedExitCondition: ExitCondition,
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
-  performing expression: @convention(thin) () async -> Void
+  performing expression: @convention(thin) () async throws -> Void
 ) = #externalMacro(module: "TestingMacros", type: "ExitTestRequireMacro")
