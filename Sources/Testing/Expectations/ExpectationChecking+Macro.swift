@@ -1113,12 +1113,47 @@ public func __checkClosureCall(
 ) async -> Result<Void, any Error> {
   await callExitTest(
     exitsWith: expectedExitCondition,
-    performing: { try await body() },
+    performing: { throw SystemError(description: "Exit test body called from parent process.") },
     expression: expression,
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
   )
+}
+
+/// Check that an expression always exits (terminates the current process) with
+/// a given status.
+///
+/// This overload is used for `await #expect(exitsWith:) { }` invocations that
+/// capture state from the calling context.
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+@_spi(Experimental)
+public func __checkClosureCall<each A>(
+  exitsWith expectedExitCondition: ExitCondition,
+  passing args: repeat each A,
+  performing body: @convention(thin) (repeat each A) async throws -> Void,
+  expression: __Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) async -> Result<Void, any Error> where repeat each A: Codable {
+  await callExitTest(
+    exitsWith: expectedExitCondition,
+    performing: { throw SystemError(description: "Exit test body called from parent process.") },
+    expression: expression,
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+@_spi(Experimental)
+public func __decodeCaptureList<each A>(
+  _ types: (repeat (each A).Type)
+) -> (repeat each A) where repeat each A: Codable {
+  fatalError("Unimplemented")
 }
 #endif
 

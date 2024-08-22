@@ -345,6 +345,22 @@ private final class _NestedConditionFinder<M, C>: SyntaxVisitor where M: Freesta
 
 public protocol ExitTestConditionMacro: RefinedConditionMacro {}
 
+struct ExitTestCapturedVariable {
+  /// The type of the variable.
+  var type: TypeSyntax
+
+  /// The expression representing the value when it is captured.
+  ///
+  /// If the original capture list item is of the form `x = y`, the value of
+  /// this property is equivalent to `y`. If the original capture list item is
+  /// of the form `x`, the value of this property is equivalent to `x`.
+  var capturedExpression: ExprSyntax
+
+  /// The name of the parameter as used
+  var parameterLabel: TokenSyntax
+}
+
+
 extension ExitTestConditionMacro {
   public static func expansion(
     of macro: some FreestandingMacroExpansionSyntax,
@@ -367,7 +383,12 @@ extension ExitTestConditionMacro {
       fatalError("Could not find the body argument to this exit test. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
     }
 
-    let bodyArgumentExpr = arguments[trailingClosureIndex].expression
+    var capturedVariables = [ExitTestCapturedVariable]()
+    var bodyArgumentExpr = arguments[trailingClosureIndex].expression
+    if var bodyClosureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self) {
+      let capturedVariables = _createCapturedVariableList(from: &bodyClosureExpr, for: macro, in: context)
+      bodyArgumentExpr = ExprSyntax(bodyClosureExpr)
+    }
 
     // Diagnose any nested conditions in the exit test body.
     let conditionFinder = _NestedConditionFinder(viewMode: .sourceAccurate, macro: macro, context: context)
@@ -383,6 +404,7 @@ extension ExitTestConditionMacro {
         \(createSourceLocationExpr(of: macro, context: context))
       }
       static var __body: @Sendable () async throws -> Void {
+        __decodeCaptureList(
         \(bodyArgumentExpr.trimmed)
       }
       static var __expectedExitCondition: Testing.ExitCondition {
@@ -400,6 +422,16 @@ extension ExitTestConditionMacro {
     }
     """
 
+    // Capture the variables to pass into the closure.
+    var capturedVariablesArguments = [Argument]()
+    if let firstCapturedVariable = capturedVariables.first  {
+      capturedVariablesArguments.append(Argument(label: "passing", expression: firstCapturedVariable.capturedExpression))
+      capturedVariablesArguments += capturedVariables.dropFirst().map { capturedVariable in
+        Argument(expression: capturedVariable.capturedExpression)
+      }
+    }
+    arguments.insert(contentsOf: capturedVariablesArguments, at: arguments.index(after: expectedExitConditionIndex))
+
     // Replace the exit test body (as an argument to the macro) with a stub
     // closure that hosts the type we created above.
     var macro = macro
@@ -408,6 +440,98 @@ extension ExitTestConditionMacro {
     macro.additionalTrailingClosures = MultipleTrailingClosureElementListSyntax()
 
     return try Base.expansion(of: macro, primaryExpression: bodyArgumentExpr, in: context)
+  }
+
+  /// Get all the variables captured by the given closure expression (when used
+  /// as an exit test body.)
+  ///
+  /// - Parameters:
+  ///   - closureExpr: The closure expression whose capture list and argument
+  ///     list should be extracted. On return, the signature of this closure may
+  ///     be modified.
+  ///   - macro: The macro being inspected.
+  ///   - context: The macro context in which the expression is being parsed.
+  ///
+  /// - Returns: An array of `ExitTestCapturedVariable` instances describing the
+  ///   variables to be captured. If the closure does not have a capture list,
+  ///   the empty array is returned.
+  ///
+  /// The signature of an exit test body is interpreted like so: every value in
+  /// the capture list is captured, in the order it's specified, encoded in the
+  /// parent process, sent over the proverbial wire, decoded in the child
+  /// process, and passed to the closure in the same order as they appear in the
+  /// capture list. For example:
+  ///
+  /// ```swift
+  /// await #expect(exitsWith: ...) { [x, y] (y: T, x: U) in
+  ///   ...
+  /// }
+  /// ```
+  ///
+  /// Even though `x` and `y` are in differing orders, we don't try to get
+  /// clever with them, and call the closure as `f(x, y)`.
+  ///
+  /// - Bug: Requiring both the capture list and parameter list is fragile. It
+  ///   would be better to just use the capture list and (somehow) figure out
+  ///   the type information for its values, then synthesize local variables in
+  ///   the closure body, but no solution presents itself that doesn't involve
+  ///   generics or illegally capturing the enclosing state in order to call
+  ///   `type(of:)`.
+  private static func _createCapturedVariableList(
+    from closureExpr: inout ClosureExprSyntax,
+    for macro: some FreestandingMacroExpansionSyntax,
+    in context: some MacroExpansionContext
+  ) -> [ExitTestCapturedVariable] {
+    let captureList = closureExpr.signature?.capture
+    let parameterClause = closureExpr.signature?.parameterClause
+    if captureList == nil && parameterClause == nil {
+      return []
+    }
+
+    // Remove the capture list and parameter list from the closure. We don't
+    // want to emit either one. Removing them can break the signature's
+    // load-bearing whitespace, so ensure there's a newline after it.
+    closureExpr.signature?.capture = nil
+    closureExpr.signature?.parameterClause = nil
+    closureExpr.signature?.trailingTrivia = .newline
+
+    // Validate both inputs.
+    guard let captureList, case let .parameterClause(parameterClause) = parameterClause else {
+      context.diagnose(.exitTestSignatureUnsupported(macro, becauseOf: closureExpr))
+      closureExpr = ClosureExprSyntax {}
+      return []
+    }
+
+    // Make sure the capture list and argument list have the same number of
+    // elements.
+    guard captureList.items.count == parameterClause.parameters.count else {
+      context.diagnose(.exitTestSignatureUnsupported(macro, becauseOf: captureList))
+      closureExpr = ClosureExprSyntax {}
+      return []
+    }
+
+    var result = [ExitTestCapturedVariable]()
+    for (capture, parameter) in zip(captureList.items, parameterClause.parameters) {
+      guard let type = parameter.type else {
+        context.diagnose(.exitTestSignatureUnsupported(macro, becauseOf: parameter))
+        closureExpr = ClosureExprSyntax {}
+        return []
+      }
+      result.append(
+        ExitTestCapturedVariable(
+          type: type,
+          capturedExpression: capture.expression,
+          parameterLabel: parameter.secondName ?? parameter.firstName
+        )
+      )
+    }
+
+    // Now that we've extracted all the information we need, we'll inject an
+    // expression into the closure that decodes the necessary arguments from
+    // some implementation-defined location.
+    
+
+    return result
   }
 }
 

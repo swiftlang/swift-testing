@@ -483,8 +483,8 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
       newAttribute.leftParen = .leftParenToken()
       newAttribute.arguments = .argumentList(baseArguments + arguments)
       let trailingTrivia = newAttribute.rightParen?.trailingTrivia
-        ?? newAttribute.attributeName.as(IdentifierTypeSyntax.self)?.name.trailingTrivia
-        ?? .space
+      ?? newAttribute.attributeName.as(IdentifierTypeSyntax.self)?.name.trailingTrivia
+      ?? .space
       newAttribute.rightParen = .rightParenToken(trailingTrivia: trailingTrivia)
       newAttribute.attributeName = newAttribute.attributeName.trimmed
 
@@ -702,6 +702,14 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     Self(
       syntax: Syntax(checkMacro),
       message: "Expression \(_macroName(checkMacro)) will not record an issue on failure inside exit test \(_macroName(exitTestMacro))",
+      severity: .error
+    )
+  }
+
+  static func exitTestSignatureUnsupported(_ exitTestMacro: some FreestandingMacroExpansionSyntax, becauseOf node: some SyntaxProtocol) -> Self {
+    Self(
+      syntax: Syntax(node),
+      message: "Exit test is bad because of node \(node.kind)",
       severity: .error
     )
   }

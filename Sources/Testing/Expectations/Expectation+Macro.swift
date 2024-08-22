@@ -501,12 +501,12 @@ public macro require<T>(
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
-@freestanding(expression) public macro expect(
+@freestanding(expression) public macro expect<each A>(
   exitsWith expectedExitCondition: ExitCondition,
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
-  performing expression: @convention(thin) () async throws -> Void
-) = #externalMacro(module: "TestingMacros", type: "ExitTestExpectMacro")
+  performing expression: @convention(thin) (repeat each A) async throws -> Void
+) = #externalMacro(module: "TestingMacros", type: "ExitTestExpectMacro") where repeat each A: Codable
 
 /// Check that an expression causes the process to terminate in a given fashion
 /// and throw an error if it did not.
@@ -578,9 +578,9 @@ public macro require<T>(
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
-@freestanding(expression) public macro require(
+@freestanding(expression) public macro require<each A>(
   exitsWith expectedExitCondition: ExitCondition,
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
-  performing expression: @convention(thin) () async throws -> Void
-) = #externalMacro(module: "TestingMacros", type: "ExitTestRequireMacro")
+  performing expression: @convention(thin) (repeat each A) async throws -> Void
+) = #externalMacro(module: "TestingMacros", type: "ExitTestRequireMacro") where repeat each A: Codable

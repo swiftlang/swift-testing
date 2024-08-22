@@ -245,6 +245,14 @@ private import _TestingInternals
     #expect(ExitCondition.signal(SIGTERM) !== .signal(SIGINT))
 #endif
   }
+
+  @Test func captureList() async {
+    let i = "abc"
+    let j = 123
+    await #expect(exitsWith: .success) { [i, j] (i: String, k: Int) in
+      print(i, k)
+    }
+  }
 }
 
 // MARK: - Fixtures
