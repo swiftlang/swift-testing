@@ -26,3 +26,11 @@ struct ZipTests {
     #expect(i == j)
   }
 }
+
+import Foundation
+
+@Test func crashHappensCompilingHere() {
+  Testing.__checkBinaryOperation(IndexPath._getObjectiveCType(), {
+    $0 == $1()
+  }, NSIndexPath.self, expression: .__fromBinaryOperation(.__fromSyntaxNode("IndexPath._getObjectiveCType()"), "==", .__fromSyntaxNode("NSIndexPath.self")), comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+}

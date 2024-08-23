@@ -183,6 +183,35 @@ private func _callBinaryOperator<T, U, R>(
   )
 }
 
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed.
+///
+/// This overload is used by binary operators such as `>`:
+///
+/// ```swift
+/// #expect(2 > 1)
+/// ```
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+public func __checkBinaryOperation<T, U>(
+  _ lhs: T.Type, _ op: (T.Type, () -> U.Type) -> Bool, _ rhs: @autoclosure () -> U.Type,
+  expression: __Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) -> Result<Void, any Error> {
+  let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
+  return __checkValue(
+    condition,
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, rhs),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
 // MARK: - Function calls
 
 /// Check that an expectation has passed after a condition has been evaluated
