@@ -165,7 +165,7 @@ private func _callBinaryOperator<T, U, R>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkBinaryOperation<T, U>(
+@_disfavoredOverload public func __checkBinaryOperation<T, U>(
   _ lhs: T, _ op: (T, () -> U) -> Bool, _ rhs: @autoclosure () -> U,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
@@ -594,7 +594,7 @@ public func __checkPropertyAccess<T, U>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkBinaryOperation<T>(
+@_disfavoredOverload public func __checkBinaryOperation<T>(
   _ lhs: T, _ op: (T, () -> T) -> Bool, _ rhs: @autoclosure () -> T,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
@@ -648,6 +648,34 @@ public func __checkBinaryOperation(
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) -> Result<Void, any Error> {
+  let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
+  return __checkValue(
+    condition,
+    expression: expression,
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, rhs),
+    difference: nil,
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed.
+///
+/// This overload is necessary because ranges are collections and satisfy the
+/// requirements for the difference-calculating overload above, but it doesn't
+/// make sense to diff them and very large ranges can cause overflows or hangs.
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+public func __checkBinaryOperation<T, U>(
+  _ lhs: T, _ op: (T, () -> U) -> Bool, _ rhs: @autoclosure () -> U,
+  expression: __Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) -> Result<Void, any Error> where T: RangeExpression, U: RangeExpression {
   let (condition, rhs) = _callBinaryOperator(lhs, op, rhs)
   return __checkValue(
     condition,

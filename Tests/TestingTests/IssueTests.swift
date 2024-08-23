@@ -1104,6 +1104,38 @@ final class IssueTests: XCTestCase {
     }.run(configuration: configuration)
   }
 
+  func testCollectionDifferenceSkippedForRanges() async {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      guard case let .expectationFailed(expectation) = issue.kind else {
+        XCTFail("Unexpected issue kind \(issue.kind)")
+        return
+      }
+      XCTAssertNil(expectation.differenceDescription)
+    }
+
+    await Test {
+      let range_int8: ClosedRange<Int> = Int(Int8.min)...Int(Int8.max)
+      let range_uint16: ClosedRange<Int> = Int(UInt16.min)...Int(UInt16.max)
+      let range_int64: ClosedRange<Int> = Int(Int64.min)...Int(Int64.max)
+
+      #expect(range_int8 == (-127)...127, "incorrect min")
+      #expect(range_int8 == (-128)...128, "incorrect max")
+      #expect(range_int8 == 0...0, "both incorrect")
+
+      #expect(range_uint16 == (-1)...65_535, "incorrect min")
+      #expect(range_uint16 == 0...65_534, "incorrect max")
+      #expect(range_uint16 == 1...1, "both incorrect")
+
+      #expect(range_int64 == (-9_223_372_036_854_775_807)...9_223_372_036_854_775_807, "incorrect min")
+      #expect(range_int64 == (-9_223_372_036_854_775_808)...9_223_372_036_854_775_806, "incorrect max")
+      #expect(range_int64 == 0...0, "both incorrect")
+    }.run(configuration: configuration)
+  }
+
   func testNegatedExpressions() async {
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
