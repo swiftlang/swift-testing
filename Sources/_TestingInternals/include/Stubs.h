@@ -64,6 +64,17 @@ static bool swt_S_ISFIFO(mode_t mode) {
 #endif
 #endif
 
+#if defined(__APPLE__) && !SWT_NO_MACH_PORTS
+/// Get a Mach port representing the current task (process.)
+///
+/// This function is provided because `mach_task_self()` is a complex macro, but
+/// directly accessing `mach_task_self_` from Swift triggers concurrency
+/// warnings about accessing shared mutable state.
+static mach_port_t swt_mach_task_self(void) {
+  return mach_task_self();
+}
+#endif
+
 #if defined(_WIN32)
 /// Make a Win32 language ID.
 ///

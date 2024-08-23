@@ -39,7 +39,12 @@
 #include <string.h>
 #include <time.h>
 
-#if defined(__APPLE__) && __has_include(<dispatch/dispatch.h>)
+#if defined(__APPLE__) && !SWT_NO_MACH_PORTS
+#include <mach/mach_init.h>
+#include <mach/task.h>
+#endif
+
+#if defined(__APPLE__) && !SWT_NO_LIBDISPATCH
 #include <dispatch/dispatch.h>
 #endif
 
@@ -51,6 +56,10 @@
 #include <fcntl.h>
 #elif __has_include(<sys/fcntl.h>)
 #include <sys/fcntl.h>
+#endif
+
+#if __has_include(<sys/resource.h>)
+#include <sys/resource.h>
 #endif
 
 #if __has_include(<sys/stat.h>)
