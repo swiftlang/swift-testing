@@ -47,10 +47,17 @@ extension MacroExpansionContext {
   /// - Parameters:
   ///   - functionDecl: The function to thunk.
   ///   - prefix: A prefix to apply to the thunked name before returning.
+  ///   - flags: Flags to insert into the type name after `prefix`.
   ///
   /// - Returns: A unique name to use for a thunk function that thunks
   ///   `functionDecl`.
-  func makeUniqueName(thunking functionDecl: FunctionDeclSyntax, withPrefix prefix: String = "") -> TokenSyntax {
+  func makeUniqueName(thunking functionDecl: FunctionDeclSyntax, withPrefix prefix: String = "", flags: UInt64 = 0) -> TokenSyntax {
+    // Insert the flags using specific emoji that we know to look for later.
+    var prefix = prefix
+    if flags != 0 {
+      prefix += "🏳️\(flags)🏁"
+    }
+
     // Find all the tokens of the function declaration including argument
     // types, specifiers, etc. (but not any attributes nor the body of the
     // function.) Use them as the base name we pass to makeUniqueName(). This

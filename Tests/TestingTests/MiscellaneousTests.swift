@@ -222,6 +222,16 @@ struct MultiLineSuite {
   staticMultiLineTestDecl() async {}
 }
 
+extension Array<Int> {
+  @Test(.hidden) func allowedInExtensionToGenericType() throws {}
+}
+
+extension [Int] {
+  @Test(.hidden) func allowedInExtensionToSyntacticSugarGenericType() throws {}
+}
+
+// MARK: -
+
 @Suite("Miscellaneous tests")
 struct MiscellaneousTests {
   @Test("Free function's name")

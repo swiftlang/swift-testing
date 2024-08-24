@@ -185,15 +185,18 @@ func diagnoseIssuesWithLexicalContext(
     return diagnostics
   }
 
-  // Generic suites are not supported.
-  if let genericClause = lexicalContext.asProtocol((any WithGenericParametersSyntax).self)?.genericParameterClause {
+  // Generic suites are not supported unless fully specialized. That means that
+  // you can create a fully-specialized extension to a generic type and use it
+  // as a suite, but you can't use the original type declaration (because it's
+  // unspecialized!) Syntactic sugar types like [String:Int] are also allowed
+  // (as extensions.) Extensions with where clauses (`T where U: V`) are not
+  // allowed because they may not be complete.
+  let isExtensionDecl = lexicalContext.is(ExtensionDeclSyntax.self)
+  if !isExtensionDecl, let genericClause = lexicalContext.asProtocol((any WithGenericParametersSyntax).self)?.genericParameterClause {
     diagnostics.append(.genericDeclarationNotSupported(decl, whenUsing: attribute, becauseOf: genericClause, on: lexicalContext))
   } else if let whereClause = lexicalContext.genericWhereClause {
     diagnostics.append(.genericDeclarationNotSupported(decl, whenUsing: attribute, becauseOf: whereClause, on: lexicalContext))
-  } else if [.arrayType, .dictionaryType, .optionalType, .implicitlyUnwrappedOptionalType].contains(lexicalContext.type.kind) {
-    // These types are all syntactic sugar over generic types (Array<T>,
-    // Dictionary<T>, and Optional<T>) and are just as unsupported. T! is
-    // unsupported in this position, but it's still forbidden so don't even try!
+  } else if !isExtensionDecl, [.arrayType, .dictionaryType, .optionalType, .implicitlyUnwrappedOptionalType].contains(lexicalContext.type.kind) {
     diagnostics.append(.genericDeclarationNotSupported(decl, whenUsing: attribute, becauseOf: lexicalContext.type, on: lexicalContext))
   }
 

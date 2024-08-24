@@ -11,8 +11,10 @@
 #include "Discovery.h"
 
 #include <atomic>
+#include <bitset>
 #include <cstring>
 #include <iterator>
+#include <string_view>
 #include <type_traits>
 #include <vector>
 
@@ -365,7 +367,33 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {}
 
 #pragma mark -
 
+static std::bitset<64> readFlagsFromTypeName(const std::string_view& svTypeName) {
+  std::bitset<64> result;
+
+  constexpr std::string_view flagsMarkerBegin = "🏳️";
+  auto iBegin = svTypeName.find(flagsMarkerBegin);
+  if (iBegin == std::string_view::npos) {
+    return 0;
+  }
+  iBegin += flagsMarkerBegin.size();
+
+  constexpr std::string_view flagsMarkerEnd = "🏁";
+  auto iEnd = svTypeName.find(flagsMarkerEnd);
+  if (iEnd == std::string_view::npos || iEnd <= iBegin) {
+    return 0;
+  }
+
+  auto svFlags = svTypeName.substr(iBegin, iEnd - iBegin);
+
+  // FIXME: use std::from_chars() when compiler is new enough.
+  std::array<char, 128> buffer;
+  std::uninitialized_copy_n(svFlags.cbegin(), std::min(svFlags.size(), buffer.size()), buffer.begin());
+  buffer.back() = '\0';
+  return std::strtoull(buffer.data(), nullptr, 10);
+}
+
 void swt_enumerateTypesWithNamesContaining(const char *nameSubstring, void *context, SWTTypeEnumerator body) {
+  std::string_view svNameSubstring = nameSubstring;
   enumerateTypeMetadataSections([=] (const void *section, size_t size) {
     auto records = reinterpret_cast<const SWTTypeMetadataRecord *>(section);
     size_t recordCount = size / sizeof(SWTTypeMetadataRecord);
@@ -379,18 +407,33 @@ void swt_enumerateTypesWithNamesContaining(const char *nameSubstring, void *cont
         // This type metadata record is invalid (or we don't understand how to
         // get its context descriptor), so skip it.
         continue;
-      } else if (contextDescriptor->isGeneric()) {
-        // Generic types cannot be fully instantiated without generic
-        // parameters, which is not something we can know abstractly.
-        continue;
       }
 
       // Check that the type's name passes. This will be more expensive than the
       // checks above, but should be cheaper than realizing the metadata.
       const char *typeName = contextDescriptor->getName();
-      bool nameOK = typeName && nullptr != std::strstr(typeName, nameSubstring);
-      if (!nameOK) {
+      if (!typeName) {
         continue;
+      }
+      std::string_view svTypeName = typeName;
+      auto iNameSubstring = svTypeName.find(svNameSubstring);
+      if (iNameSubstring == std::string_view::npos) {
+        continue;
+      }
+
+      std::bitset<64> flags = readFlagsFromTypeName(svTypeName);
+      if (flags.any()) {
+#if DEBUG
+        fprintf(stderr, "*** Flags in type name %s: %s\n", typeName, flags.to_string().c_str());
+#endif
+      }
+
+      if (contextDescriptor->isGeneric()) {
+        if (nullptr == std::strstr(typeName, nameSubstring) && flags.test(1 << 0)) {
+          // Generic types cannot be fully instantiated without generic
+          // parameters, which is not something we can know abstractly.
+          continue;
+        }
       }
 
       if (void *typeMetadata = contextDescriptor->getMetadata()) {

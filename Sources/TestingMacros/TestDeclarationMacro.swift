@@ -102,6 +102,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // Disallow generic test functions. Although we can conceivably support
     // generic functions when they are parameterized and the types line up, we
     // have not identified a need for them.
+    // TODO: allow with @_specialize?
     if let genericClause = function.genericParameterClause {
       diagnostics.append(.genericDeclarationNotSupported(function, whenUsing: testAttribute, becauseOf: genericClause, on: function))
     } else if let whereClause = function.genericWhereClause {
@@ -478,6 +479,35 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       )
     }
 
+    // Optionally insert a flags field into the generated type name that we can
+    // extract at runtime before we need to realize the type.
+    let flags: UInt64 = {
+      var result = UInt64(0)
+
+      // A flag indicating that the containing suite has a generic parameter
+      // clause. The flag tells us at runtime that although the type is generic,
+      // we can still realize it because it should be fully specialized.
+      let hasGenericSuite = context.lexicalContext.contains { lexicalContext in
+        guard let lexicalContext = lexicalContext.asProtocol((any DeclGroupSyntax).self) else {
+          return false
+        }
+
+        if lexicalContext.asProtocol((any WithGenericParametersSyntax).self)?.genericParameterClause != nil {
+          return true
+        } else if [.arrayType, .dictionaryType, .optionalType, .implicitlyUnwrappedOptionalType].contains(lexicalContext.type.kind) {
+          // These types are all syntactic sugar over generic types (Array<T>,
+          // Dictionary<T>, and Optional<T>).
+          return true
+        }
+        return false
+      }
+      if hasGenericSuite {
+        result |= 1 << 0
+      }
+
+      return result
+    }()
+
     // The emitted type must be public or the compiler can optimize it away
     // (since it is not actually used anywhere that the compiler can see.)
     //
@@ -488,7 +518,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // by the testing library at runtime. The compiler does not allow combining
     // 'unavailable' and 'deprecated' into a single availability attribute:
     // rdar://111329796
-    let enumName = context.makeUniqueName(thunking: functionDecl, withPrefix: "__🟠$test_container__function__")
+    let enumName = context.makeUniqueName(thunking: functionDecl, withPrefix: "__🟠$test_container__function__", flags: flags)
     result.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
