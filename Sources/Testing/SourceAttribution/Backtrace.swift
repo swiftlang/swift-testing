@@ -72,7 +72,7 @@ public struct Backtrace: Sendable {
     }
 #else
     var addresses = [Address]()
-    if let backtrace = try? _Backtracing.Backtrace.capture(limit: addressCount) {
+    if let backtrace = try? _Backtracing.Backtrace.capture(algorithm: .fast, limit: addressCount) {
       addresses = backtrace.frames.lazy
         .map(\.adjustedProgramCounter)
         .map { Address($0) }
