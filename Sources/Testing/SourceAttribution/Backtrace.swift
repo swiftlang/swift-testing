@@ -9,6 +9,7 @@
 //
 
 private import _TestingInternals
+private import _Backtracing
 
 /// A type representing a backtrace or stack trace.
 @_spi(ForToolsIntegrationOnly)
@@ -59,30 +60,24 @@ public struct Backtrace: Sendable {
   /// The number of symbols captured in this backtrace is an implementation
   /// detail.
   public static func current(maximumAddressCount addressCount: Int = 128) -> Self {
-    // NOTE: the exact argument/return types for backtrace() vary across
-    // platforms, hence the use of .init() when calling it below.
+#if SWT_TARGET_OS_APPLE
     let addresses = [UnsafeRawPointer?](unsafeUninitializedCapacity: addressCount) { addresses, initializedCount in
       addresses.withMemoryRebound(to: UnsafeMutableRawPointer?.self) { addresses in
-#if SWT_TARGET_OS_APPLE
         if #available(_backtraceAsyncAPI, *) {
           initializedCount = backtrace_async(addresses.baseAddress!, addresses.count, nil)
         } else {
           initializedCount = .init(backtrace(addresses.baseAddress!, .init(addresses.count)))
         }
-#elseif os(Linux)
-        initializedCount = .init(backtrace(addresses.baseAddress!, .init(addresses.count)))
-#elseif os(Windows)
-        initializedCount = Int(RtlCaptureStackBackTrace(0, ULONG(addresses.count), addresses.baseAddress!, nil))
-#elseif os(WASI)
-        // SEE: https://github.com/WebAssembly/WASI/issues/159
-        // SEE: https://github.com/swiftlang/swift/pull/31693
-        initializedCount = 0
-#else
-#warning("Platform-specific implementation missing: backtraces unavailable")
-        initializedCount = 0
-#endif
       }
     }
+#else
+    var addresses = [Address]()
+    if let backtrace = try? _Backtracing.Backtrace.capture(limit: addressCount) {
+      addresses = backtrace.frames.lazy
+        .map(\.adjustedProgramCounter)
+        .map { Address($0) }
+    }
+#endif
     return Self(addresses: addresses)
   }
 }
