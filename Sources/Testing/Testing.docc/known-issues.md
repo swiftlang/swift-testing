@@ -22,10 +22,10 @@ at runtime not to mark the test as failing when issues occur.
 
 ### Recording known issues in tests
 
-- ``withKnownIssue(_:isIntermittent:sourceLocation:_:)-95r6o``
-- ``withKnownIssue(_:isIntermittent:sourceLocation:_:)-3g6b7``
-- ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)-5vi5n``
-- ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)-47y3z``
+- ``withKnownIssue(_:isIntermittent:sourceLocation:_:)``
+- ``withKnownIssue(_:isIntermittent:isolation:sourceLocation:_:)``
+- ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``
+- ``withKnownIssue(_:isIntermittent:isolation:sourceLocation:_:when:matching:)``
 - ``KnownIssueMatcher``
 
 ### Describing a failure or warning
