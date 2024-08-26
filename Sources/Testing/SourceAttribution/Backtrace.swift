@@ -61,33 +61,36 @@ public struct Backtrace: Sendable {
   public static func current(maximumAddressCount addressCount: Int = 128) -> Self {
     // NOTE: the exact argument/return types for backtrace() vary across
     // platforms, hence the use of .init() when calling it below.
-    let addresses = [UnsafeRawPointer?](unsafeUninitializedCapacity: addressCount) { addresses, initializedCount in
-      addresses.withMemoryRebound(to: UnsafeMutableRawPointer?.self) { addresses in
+    let addresses = [UnsafeMutableRawPointer?](unsafeUninitializedCapacity: addressCount) { addresses, initializedCount in
 #if SWT_TARGET_OS_APPLE
-        if #available(_backtraceAsyncAPI, *) {
-          initializedCount = backtrace_async(addresses.baseAddress!, addresses.count, nil)
-        } else {
-          initializedCount = .init(backtrace(addresses.baseAddress!, .init(addresses.count)))
-        }
-#elseif os(Linux)
+      if #available(_backtraceAsyncAPI, *) {
+        initializedCount = backtrace_async(addresses.baseAddress!, addresses.count, nil)
+      } else {
         initializedCount = .init(backtrace(addresses.baseAddress!, .init(addresses.count)))
+      }
 #elseif os(Android)
-        addresses.withMemoryRebound(to: UnsafeMutableRawPointer.self) { addresses in
-          initializedCount = .init(backtrace(addresses.baseAddress!, .init(addresses.count)))
-        }
+      initializedCount = addresses.withMemoryRebound(to: UnsafeMutableRawPointer.self) { addresses in
+        .init(backtrace(addresses.baseAddress!, .init(addresses.count)))
+      }
+#elseif os(Linux)
+      initializedCount = .init(backtrace(addresses.baseAddress!, .init(addresses.count)))
 #elseif os(Windows)
-        initializedCount = Int(RtlCaptureStackBackTrace(0, ULONG(addresses.count), addresses.baseAddress!, nil))
+      initializedCount = Int(RtlCaptureStackBackTrace(0, ULONG(addresses.count), addresses.baseAddress!, nil))
 #elseif os(WASI)
-        // SEE: https://github.com/WebAssembly/WASI/issues/159
-        // SEE: https://github.com/swiftlang/swift/pull/31693
-        initializedCount = 0
+      // SEE: https://github.com/WebAssembly/WASI/issues/159
+      // SEE: https://github.com/swiftlang/swift/pull/31693
+      initializedCount = 0
 #else
 #warning("Platform-specific implementation missing: backtraces unavailable")
-        initializedCount = 0
+      initializedCount = 0
 #endif
+    }
+
+    return addresses.withUnsafeBufferPointer { addresses in
+      addresses.withMemoryRebound(to: UnsafeRawPointer?.self) { addresses in
+        Self(addresses: addresses)
       }
     }
-    return Self(addresses: addresses)
   }
 }
 
@@ -164,12 +167,12 @@ extension Backtrace {
   ///   - errorAddress: The error that is about to be thrown. This pointer
   ///     refers to an instance of `SwiftError` or (on platforms with
   ///     Objective-C interop) an instance of `NSError`.
-  @Sendable private static func _willThrow(_ errorAddress: UnsafeMutableRawPointer) {
+  ///   - backtrace: The backtrace from where the error was thrown.
+  private static func _willThrow(_ errorAddress: UnsafeMutableRawPointer, from backtrace: Backtrace) {
     _oldWillThrowHandler.rawValue?(errorAddress)
 
     let errorObject = unsafeBitCast(errorAddress, to: (any AnyObject & Sendable).self)
     let errorID = ObjectIdentifier(errorObject)
-    let backtrace = Backtrace.current()
     let newEntry = _ErrorMappingCacheEntry(errorObject: errorObject, backtrace: backtrace)
 
     _errorMappingCache.withLock { cache in
@@ -185,7 +188,10 @@ extension Backtrace {
   /// only once.
   private static let _startCachingForThrownErrors: Void = {
     _oldWillThrowHandler.withLock { oldWillThrowHandler in
-      oldWillThrowHandler = swt_setWillThrowHandler { _willThrow($0) }
+      oldWillThrowHandler = swt_setWillThrowHandler { errorAddress in
+        let backtrace = Backtrace.current()
+        _willThrow(errorAddress, from: backtrace)
+      }
     }
   }()
 
