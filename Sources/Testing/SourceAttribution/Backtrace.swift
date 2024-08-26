@@ -119,6 +119,55 @@ extension Backtrace: Codable {
 // MARK: - Backtraces for thrown errors
 
 extension Backtrace {
+  // MARK: - Error cache keys
+
+  /// A type used as a cache key that uniquely identifies error existential
+  /// boxes.
+  private struct _ErrorMappingCacheKey: Sendable, Equatable, Hashable {
+    private nonisolated(unsafe) var _rawValue: UnsafeMutableRawPointer?
+
+    /// Initialize an instance of this type from a pointer to an error
+    /// existential box.
+    ///
+    /// - Parameters:
+    ///   - errorAddress: The address of the error existential box.
+    init(_ errorAddress: UnsafeMutableRawPointer) {
+      _rawValue = errorAddress
+#if SWT_TARGET_OS_APPLE
+      let error = Unmanaged<AnyObject>.fromOpaque(errorAddress).takeUnretainedValue() as! any Error
+      if type(of: error) is AnyObject.Type {
+        _rawValue = Unmanaged.passUnretained(error as AnyObject).toOpaque()
+      }
+#else
+      withUnsafeTemporaryAllocation(of: SWTErrorValueResult.self, capacity: 1) { buffer in
+        var scratch: UnsafeMutableRawPointer?
+        return withExtendedLifetime(scratch) {
+          swift_getErrorValue(errorAddress, &scratch, buffer.baseAddress!)
+          let result = buffer.baseAddress!.move()
+
+          if unsafeBitCast(result.type, to: Any.Type.self) is AnyObject.Type {
+            let errorObject = result.value.load(as: AnyObject.self)
+            _rawValue = Unmanaged.passUnretained(errorObject).toOpaque()
+          }
+        }
+      }
+#endif
+    }
+
+    /// Initialize an instance of this type from an error existential box.
+    ///
+    /// - Parameters:
+    ///   - error: The error existential box.
+    ///
+    /// - Note: Care must be taken to avoid unboxing and re-boxing `error`. This
+    ///   initializer cannot be made an instance method or property of `Error`
+    ///   because doing so will cause Swift-native errors to be unboxed into
+    ///   existential containers with different addresses.
+    init(_ error: any Error) {
+      self.init(unsafeBitCast(error as any Error, to: UnsafeMutableRawPointer.self))
+    }
+  }
+
   /// An entry in the error-mapping cache.
   private struct _ErrorMappingCacheEntry: Sendable {
     /// The error object (`SwiftError` or `NSError`) that was thrown.
@@ -133,9 +182,9 @@ extension Backtrace {
     ///   object (abandoning memory until the process exits.)
     ///   ([swift-#62985](https://github.com/swiftlang/swift/issues/62985))
 #if os(Windows)
-    var errorObject: (any AnyObject & Sendable)?
+    nonisolated(unsafe) var errorObject: AnyObject?
 #else
-    weak var errorObject: (any AnyObject & Sendable)?
+    nonisolated(unsafe) weak var errorObject: AnyObject?
 #endif
 
     /// The backtrace captured when `errorObject` was thrown.
@@ -158,10 +207,33 @@ extension Backtrace {
   /// same location.)
   ///
   /// Access to this dictionary is guarded by a lock.
-  private static let _errorMappingCache = Locked<[ObjectIdentifier: _ErrorMappingCacheEntry]>()
+  private static let _errorMappingCache = Locked<[_ErrorMappingCacheKey: _ErrorMappingCacheEntry]>()
 
   /// The previous `swift_willThrow` handler, if any.
   private static let _oldWillThrowHandler = Locked<SWTWillThrowHandler?>()
+
+  /// The previous `swift_willThrowTyped` handler, if any.
+  private static let _oldWillThrowTypedHandler = Locked<SWTWillThrowTypedHandler?>()
+
+  /// Handle a thrown error.
+  ///
+  /// - Parameters:
+  ///   - errorObject: The error that is about to be thrown.
+  ///   - backtrace: The backtrace from where the error was thrown.
+  ///   - errorID: The ID under which the thrown error should be tracked.
+  ///
+  /// This function serves as the bottleneck for the various callbacks below.
+  private static func _willThrow(_ errorObject: AnyObject, from backtrace: Backtrace, forKey errorKey: _ErrorMappingCacheKey) {
+    let newEntry = _ErrorMappingCacheEntry(errorObject: errorObject, backtrace: backtrace)
+
+    _errorMappingCache.withLock { cache in
+      let oldEntry = cache[errorKey]
+      if oldEntry?.errorObject == nil {
+        // Either no entry yet, or its weak reference was zeroed.
+        cache[errorKey] = newEntry
+      }
+    }
+  }
 
   /// Handle a thrown error.
   ///
@@ -173,17 +245,81 @@ extension Backtrace {
   private static func _willThrow(_ errorAddress: UnsafeMutableRawPointer, from backtrace: Backtrace) {
     _oldWillThrowHandler.rawValue?(errorAddress)
 
-    let errorObject = unsafeBitCast(errorAddress, to: (any AnyObject & Sendable).self)
-    let errorID = ObjectIdentifier(errorObject)
-    let newEntry = _ErrorMappingCacheEntry(errorObject: errorObject, backtrace: backtrace)
+    let errorObject = Unmanaged<AnyObject>.fromOpaque(errorAddress).takeUnretainedValue()
+    _willThrow(errorObject, from: backtrace, forKey: .init(errorAddress))
+  }
 
-    _errorMappingCache.withLock { cache in
-      let oldEntry = cache[errorID]
-      if oldEntry?.errorObject == nil {
-        // Either no entry yet, or its weak reference was zeroed.
-        cache[errorID] = newEntry
+  /// Handle a typed thrown error.
+  ///
+  /// - Parameters:
+  ///   - error: The error that is about to be thrown. If the error is of
+  ///     reference type, it is forwarded to `_willThrow()`. Otherwise, it is
+  ///     (currently) discarded because its identity cannot be tracked.
+  ///   - backtrace: The backtrace from where the error was thrown.
+  @available(_typedThrowsAPI, *)
+  private static func _willThrowTyped<E>(_ error: borrowing E, from backtrace: Backtrace) where E: Error {
+    if E.self is AnyObject.Type {
+      // The error has a stable address and can be tracked as an object.
+      let error = copy error
+      _willThrow(error as AnyObject, from: backtrace, forKey: .init(error))
+    } else if E.self == (any Error).self {
+      // The thrown error has non-specific type (any Error). In this case,
+      // the runtime produces a temporary existential box to contain the
+      // error, but discards the box immediately after we return so there's
+      // no stability provided by the error's address. Unbox the error and
+      // recursively call this function in case it contains an instance of a
+      // reference-counted error type.
+      //
+      // This dance through Any lets us unbox the error's existential box
+      // correctly. Skipping it and calling _willThrowTyped() will fail to open
+      // the existential and will result in an infinite recursion. The copy is
+      // unfortunate but necessary due to casting being a consuming operation.
+      let error = ((copy error) as Any) as! any Error
+      _willThrowTyped(error, from: backtrace)
+    } else {
+      // The error does _not_ have a stable address. The Swift runtime does
+      // not give us an opportunity to insert additional information into
+      // arbitrary error values. Thus, we won't attempt to capture any
+      // backtrace for such an error.
+      //
+      // We could, in the future, attempt to track such errors if they conform
+      // to Identifiable, Equatable, etc., but that would still be imperfect.
+      // Perhaps the compiler or runtime could assign a unique ID to each error
+      // at throw time that could be looked up later. SEE: rdar://122824443.
+    }
+  }
+
+  /// Handle a typed thrown error.
+  ///
+  /// - Parameters:
+  ///   - error: The error that is about to be thrown. This pointer points
+  ///     directly to the unboxed error in memory. For errors of reference type,
+  ///     the pointer points to the object and is not the object's address
+  ///     itself.
+  ///   - errorType: The metatype of `error`.
+  ///   - errorConformance: The witness table for `error`'s conformance to the
+  ///     `Error` protocol.
+  ///   - backtrace: The backtrace from where the error was thrown.
+  @available(_typedThrowsAPI, *)
+  private static func _willThrowTyped(_ errorAddress: UnsafeMutableRawPointer, _ errorType: UnsafeRawPointer, _ errorConformance: UnsafeRawPointer, from backtrace: Backtrace) {
+    _oldWillThrowTypedHandler.rawValue?(errorAddress, errorType, errorConformance)
+
+    // Get a thick protocol type back from the C pointer arguments. Ideally we
+    // would specify this function as generic, but then the Swift calling
+    // convention would force us to specialize it immediately in order to pass
+    // it to the C++ thunk that sets the runtime's function pointer.
+    let errorType = unsafeBitCast((errorType, errorConformance), to: (any Error.Type).self)
+
+    // Open `errorType` as an existential. Rebind the memory at `errorAddress`
+    // to the correct type and then pass the error to the fully Swiftified
+    // handler function. Don't call load(as:) to avoid copying the error
+    // (ideally this is a zero-copy operation.) The callee borrows its argument.
+    func forward<E>(_ errorType: E.Type) where E: Error {
+      errorAddress.withMemoryRebound(to: E.self, capacity: 1) { errorAddress in
+        _willThrowTyped(errorAddress.pointee, from: backtrace)
       }
     }
+    forward(errorType)
   }
 
   /// The implementation of ``Backtrace/startCachingForThrownErrors()``, run
@@ -196,6 +332,14 @@ extension Backtrace {
       oldWillThrowHandler = swt_setWillThrowHandler { errorAddress in
         let backtrace = Backtrace.current()
         _willThrow(errorAddress, from: backtrace)
+      }
+    }
+    if #available(_typedThrowsAPI, *) {
+      _oldWillThrowTypedHandler.withLock { oldWillThrowTypedHandler in
+        oldWillThrowTypedHandler = swt_setWillThrowTypedHandler { errorAddress, errorType, errorConformance in
+          let backtrace = Backtrace.current()
+          _willThrowTyped(errorAddress, errorType, errorConformance, from: backtrace)
+        }
       }
     }
   }()
@@ -236,9 +380,8 @@ extension Backtrace {
   ///   existential containers with different addresses.
   @inline(never)
   init?(forFirstThrowOf error: any Error) {
-    let errorID = ObjectIdentifier(unsafeBitCast(error as any Error, to: AnyObject.self))
     let entry = Self._errorMappingCache.withLock { cache in
-      cache[errorID]
+      cache[.init(error)]
     }
     if let entry, entry.errorObject != nil {
       // There was an entry and its weak reference is still valid.
