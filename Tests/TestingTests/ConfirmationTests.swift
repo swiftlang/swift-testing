@@ -62,6 +62,12 @@ struct ConfirmationTests {
     }
   }
 #endif
+
+  @Test("Main actor isolation")
+  @MainActor
+  func mainActorIsolated() async {
+    await confirmation { $0() }
+  }
 }
 
 // MARK: - Fixtures

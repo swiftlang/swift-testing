@@ -55,6 +55,7 @@ extension Confirmation {
 ///     `body` is invoked. The default value of this argument is `1`, indicating
 ///     that the event should occur exactly once. Pass `0` if the event should
 ///     _never_ occur when `body` is invoked.
+///   - isolation: The actor to which `body` is isolated, if any.
 ///   - sourceLocation: The source location to which any recorded issues should
 ///     be attributed.
 ///   - body: The function to invoke.
@@ -94,12 +95,14 @@ extension Confirmation {
 public func confirmation<R>(
   _ comment: Comment? = nil,
   expectedCount: Int = 1,
+  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation = #_sourceLocation,
-  _ body: (Confirmation) async throws -> R
+  _ body: (Confirmation) async throws -> sending R
 ) async rethrows -> R {
   try await confirmation(
     comment,
     expectedCount: expectedCount ... expectedCount,
+    isolation: isolation,
     sourceLocation: sourceLocation,
     body
   )
@@ -114,6 +117,7 @@ public func confirmation<R>(
 ///     function.
 ///   - expectedCount: A range of integers indicating the number of times the
 ///   	expected event should occur when `body` is invoked.
+///   - isolation: The actor to which `body` is isolated, if any.
 ///   - sourceLocation: The source location to which any recorded issues should
 ///     be attributed.
 ///   - body: The function to invoke.
@@ -156,13 +160,14 @@ public func confirmation<R>(
 /// preconditions have been met, and records an issue if they have not.
 ///
 /// If an exact count is expected, use
-/// ``confirmation(_:expectedCount:sourceLocation:_:)-7kfko`` instead.
+/// ``confirmation(_:expectedCount:isolation:sourceLocation:_:)`` instead.
 @_spi(Experimental)
 public func confirmation<R>(
   _ comment: Comment? = nil,
   expectedCount: some Confirmation.ExpectedCount,
+  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation = #_sourceLocation,
-  _ body: (Confirmation) async throws -> R
+  _ body: (Confirmation) async throws -> sending R
 ) async rethrows -> R {
   let confirmation = Confirmation()
   defer {
@@ -198,7 +203,7 @@ public func confirmation<R>(
 @_spi(Experimental)
 extension Confirmation {
   /// A protocol that describes a range expression that can be used with
-  /// ``confirmation(_:expectedCount:sourceLocation:_:)-41gmd``.
+  /// ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-9rt6m``.
   ///
   /// This protocol represents any expression that describes a range of
   /// confirmation counts. For example, the expression `1 ..< 10` automatically

@@ -33,7 +33,7 @@ public struct Issue: Sendable {
     ///     ``Confirmation/confirm(count:)`` should have been called.
     ///
     /// This issue can occur when calling
-    /// ``confirmation(_:expectedCount:sourceLocation:_:)`` when the
+    /// ``confirmation(_:expectedCount:isolation:sourceLocation:_:)`` when the
     /// confirmation passed to these functions' `body` closures is confirmed too
     /// few or too many times.
     indirect case confirmationMiscounted(actual: Int, expected: Int)
@@ -48,9 +48,9 @@ public struct Issue: Sendable {
     ///     ``Confirmation/confirm(count:)`` should have been called.
     ///
     /// This issue can occur when calling
-    /// ``confirmation(_:expectedCount:sourceLocation:_:)-41gmd`` when the
-    /// confirmation passed to these functions' `body` closures is confirmed too
-    /// few or too many times.
+    /// ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-9rt6m`` when
+    /// the confirmation passed to these functions' `body` closures is confirmed
+    /// too few or too many times.
     @_spi(Experimental)
     indirect case confirmationOutOfRange(actual: Int, expected: any Confirmation.ExpectedCount)
 

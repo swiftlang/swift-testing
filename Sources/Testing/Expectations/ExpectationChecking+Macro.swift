@@ -865,10 +865,11 @@ public func __checkClosureCall<E>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkClosureCall<E>(
   throws errorType: E.Type,
-  performing body: () async throws -> some Any,
+  performing body: () async throws -> sending some Any,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
+  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
 ) async -> Result<Void, any Error> where E: Error {
   if errorType == Never.self {
@@ -878,6 +879,7 @@ public func __checkClosureCall<E>(
       expression: expression,
       comments: comments(),
       isRequired: isRequired,
+      isolation: isolation,
       sourceLocation: sourceLocation
     )
   } else {
@@ -888,6 +890,7 @@ public func __checkClosureCall<E>(
       expression: expression,
       comments: comments(),
       isRequired: isRequired,
+      isolation: isolation,
       sourceLocation: sourceLocation
     )
   }
@@ -941,10 +944,11 @@ public func __checkClosureCall(
 ///   `#require()` macros. Do not call it directly.
 public func __checkClosureCall(
   throws _: Never.Type,
-  performing body: () async throws -> some Any,
+  performing body: () async throws -> sending some Any,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
+  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
 ) async -> Result<Void, any Error> {
   var success = true
@@ -1003,10 +1007,11 @@ public func __checkClosureCall<E>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkClosureCall<E>(
   throws error: E,
-  performing body: () async throws -> some Any,
+  performing body: () async throws -> sending some Any,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
+  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
 ) async -> Result<Void, any Error> where E: Error & Equatable {
   await __checkClosureCall(
@@ -1016,6 +1021,7 @@ public func __checkClosureCall<E>(
     expression: expression,
     comments: comments(),
     isRequired: isRequired,
+    isolation: isolation,
     sourceLocation: sourceLocation
   )
 }
@@ -1077,12 +1083,13 @@ public func __checkClosureCall<R>(
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
 public func __checkClosureCall<R>(
-  performing body: () async throws -> R,
+  performing body: () async throws -> sending R,
   throws errorMatcher: (any Error) async throws -> Bool,
   mismatchExplanation: ((any Error) -> String)? = nil,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
+  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
 ) async -> Result<Void, any Error> {
   var errorMatches = false
