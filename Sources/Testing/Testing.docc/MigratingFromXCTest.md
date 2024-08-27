@@ -434,7 +434,7 @@ Some tests, especially those that test asynchronously-delivered events, cannot
 be readily converted to use Swift concurrency. The testing library offers
 functionality called _confirmations_ which can be used to implement these tests.
 Instances of ``Confirmation`` are created and used within the scope of the
-function ``confirmation(_:expectedCount:sourceLocation:_:)``.
+function ``confirmation(_:expectedCount:isolation:sourceLocation:_:)``.
 
 Confirmations function similarly to the expectations API of XCTest, however, they don't
 block or suspend the caller while waiting for a condition to be fulfilled.
@@ -531,8 +531,8 @@ to tell XCTest and its infrastructure that the issue shouldn't cause the test
 to fail. The testing library has an equivalent function with synchronous and
 asynchronous variants:
 
-- ``withKnownIssue(_:isIntermittent:sourceLocation:_:)-95r6o``
-- ``withKnownIssue(_:isIntermittent:sourceLocation:_:)-3g6b7``
+- ``withKnownIssue(_:isIntermittent:sourceLocation:_:)``
+- ``withKnownIssue(_:isIntermittent:isolation:sourceLocation:_:)``
 
 This function can be used to annotate a section of a test as having a known
 issue:
@@ -627,8 +627,8 @@ Additional options can be specified when calling `XCTExpectFailure()`:
 The testing library includes overloads of `withKnownIssue()` that take
 additional arguments with similar behavior:
 
-- ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)-5vi5n``
-- ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)-47y3z``
+- ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``
+- ``withKnownIssue(_:isIntermittent:isolation:sourceLocation:_:when:matching:)``
 
 To conditionally enable known-issue matching or to match only certain kinds
 of issues:

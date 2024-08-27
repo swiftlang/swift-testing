@@ -110,7 +110,7 @@ public typealias KnownIssueMatcher = @Sendable (_ issue: Issue) -> Bool
 /// Because all errors thrown by `body` are caught as known issues, this
 /// function is not throwing. If only some errors or issues are known to occur
 /// while others should continue to cause test failures, use
-/// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)-5vi5n``
+/// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``
 /// instead.
 public func withKnownIssue(
   _ comment: Comment? = nil,
@@ -161,7 +161,7 @@ public func withKnownIssue(
 ///
 /// It is not necessary to specify both `precondition` and `issueMatcher` if
 /// only one is relevant. If all errors and issues should be considered known
-/// issues, use ``withKnownIssue(_:isIntermittent:sourceLocation:_:)-95r6o``
+/// issues, use ``withKnownIssue(_:isIntermittent:sourceLocation:_:)``
 /// instead.
 ///
 /// - Note: `issueMatcher` may be invoked more than once for the same issue.
@@ -200,6 +200,7 @@ public func withKnownIssue(
 ///   - isIntermittent: Whether or not the known issue occurs intermittently. If
 ///     this argument is `true` and the known issue does not occur, no secondary
 ///     issue is recorded.
+///   - isolation: The actor to which `body` is isolated, if any.
 ///   - sourceLocation: The source location to which any recorded issues should
 ///     be attributed.
 ///   - body: The function to invoke.
@@ -218,15 +219,16 @@ public func withKnownIssue(
 /// Because all errors thrown by `body` are caught as known issues, this
 /// function is not throwing. If only some errors or issues are known to occur
 /// while others should continue to cause test failures, use
-/// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)-47y3z``
+/// ``withKnownIssue(_:isIntermittent:isolation:sourceLocation:_:when:matching:)``
 /// instead.
 public func withKnownIssue(
   _ comment: Comment? = nil,
   isIntermittent: Bool = false,
+  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: () async throws -> Void
 ) async {
-  try? await withKnownIssue(comment, isIntermittent: isIntermittent, sourceLocation: sourceLocation, body, matching: { _ in true })
+  try? await withKnownIssue(comment, isIntermittent: isIntermittent, isolation: isolation, sourceLocation: sourceLocation, body, matching: { _ in true })
 }
 
 /// Invoke a function that has a known issue that is expected to occur during
@@ -237,6 +239,7 @@ public func withKnownIssue(
 ///   - isIntermittent: Whether or not the known issue occurs intermittently. If
 ///     this argument is `true` and the known issue does not occur, no secondary
 ///     issue is recorded.
+///   - isolation: The actor to which `body` is isolated, if any.
 ///   - sourceLocation: The source location to which any recorded issues should
 ///     be attributed.
 ///   - body: The function to invoke.
@@ -269,13 +272,14 @@ public func withKnownIssue(
 ///
 /// It is not necessary to specify both `precondition` and `issueMatcher` if
 /// only one is relevant. If all errors and issues should be considered known
-/// issues, use ``withKnownIssue(_:isIntermittent:sourceLocation:_:)-3g6b7``
+/// issues, use ``withKnownIssue(_:isIntermittent:isolation:sourceLocation:_:when:matching:)``
 /// instead.
 ///
 /// - Note: `issueMatcher` may be invoked more than once for the same issue.
 public func withKnownIssue(
   _ comment: Comment? = nil,
   isIntermittent: Bool = false,
+  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: () async throws -> Void,
   when precondition: () async -> Bool = { true },
