@@ -57,6 +57,8 @@ public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) 
   FileHandle.stdout.withUnsafeCFILEHandle { stdout in
     _ = setvbuf(stdout, nil, _IOLBF, Int(BUFSIZ))
   }
+
+  _installStandardOutputHooks
 #endif
 
   return await entryPoint(passing: args, eventHandler: nil)
@@ -81,3 +83,27 @@ public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) 
   let exitCode: CInt = await __swiftPMEntryPoint(passing: args)
   exit(exitCode)
 }
+
+/// Install hooks into the standard output and standard error streams that
+/// intercept lines written to them and emit them as events.
+private let _installStandardOutputHooks: Void = {
+  try? FileHandle.replaceFile(.stdout) { stdout, lineBuffer in
+    lineBuffer.withMemoryRebound(to: UInt8.self) { lineBuffer in
+      stdout.withLock {
+        try? stdout.write("DEEBIDEE DAH", flushAfterward: false)
+        try? stdout.write(lineBuffer, flushAfterward: false)
+        try? stdout.write("\n")
+      }
+    }
+  }
+
+  try? FileHandle.replaceFile(.stderr) { stderr, lineBuffer in
+    lineBuffer.withMemoryRebound(to: UInt8.self) { lineBuffer in
+      stderr.withLock {
+        try? stderr.write("STOMP STOMP STOMP", flushAfterward: false)
+        try? stderr.write(lineBuffer, flushAfterward: false)
+        try? stderr.write("\n")
+      }
+    }
+  }
+}()

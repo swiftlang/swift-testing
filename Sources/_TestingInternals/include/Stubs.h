@@ -33,6 +33,10 @@ static SWT_FILEHandle swt_stdout(void) {
   return stdout;
 }
 
+static void swt_stdout_set(SWT_FILEHandle file) {
+  stdout = file;
+}
+
 /// Get the standard error stream.
 ///
 /// This function is provided because directly accessing `stderr` from Swift
@@ -40,6 +44,10 @@ static SWT_FILEHandle swt_stdout(void) {
 /// mutable state.
 static SWT_FILEHandle swt_stderr(void) {
   return stderr;
+}
+
+static void swt_stderr_set(SWT_FILEHandle file) {
+  stderr = file;
 }
 #endif
 
