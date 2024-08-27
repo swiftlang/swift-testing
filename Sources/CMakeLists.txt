@@ -97,7 +97,7 @@ elseif(SwiftTesting_MACRO_PATH)
     add_compile_options("$<$<COMPILE_LANGUAGE:Swift>:SHELL:-load-plugin-library ${SwiftTesting_MACRO_PATH}>")
   else()
     message(STATUS "TestingMacros: ${SwiftTesting_MACRO_PATH} (executable)")
-    add_compile_options("$<$<COMPILE_LANGUAGE:Swift>:SHELL:-load-plugin-exectuable ${SwiftTesting_MACRO_PATH}#TestingMacros>")
+    add_compile_options("$<$<COMPILE_LANGUAGE:Swift>:SHELL:-load-plugin-executable ${SwiftTesting_MACRO_PATH}#TestingMacros>")
   endif()
 endif()
 
