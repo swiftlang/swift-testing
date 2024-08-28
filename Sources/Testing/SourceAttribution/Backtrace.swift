@@ -61,7 +61,8 @@ public struct Backtrace: Sendable {
   public static func current(maximumAddressCount addressCount: Int = 128) -> Self {
     // NOTE: the exact argument/return types for backtrace() vary across
     // platforms, hence the use of .init() when calling it below.
-    let addresses = [UnsafeMutableRawPointer?](unsafeUninitializedCapacity: addressCount) { addresses, initializedCount in
+    withUnsafeTemporaryAllocation(of: UnsafeMutableRawPointer?.self, capacity: addressCount) { addresses in
+      var initializedCount = 0
 #if SWT_TARGET_OS_APPLE
       if #available(_backtraceAsyncAPI, *) {
         initializedCount = backtrace_async(addresses.baseAddress!, addresses.count, nil)
@@ -79,15 +80,12 @@ public struct Backtrace: Sendable {
 #elseif os(WASI)
       // SEE: https://github.com/WebAssembly/WASI/issues/159
       // SEE: https://github.com/swiftlang/swift/pull/31693
-      initializedCount = 0
 #else
 #warning("Platform-specific implementation missing: backtraces unavailable")
-      initializedCount = 0
 #endif
-    }
 
-    return addresses.withUnsafeBufferPointer { addresses in
-      addresses.withMemoryRebound(to: UnsafeRawPointer?.self) { addresses in
+      let endIndex = addresses.index(addresses.startIndex, offsetBy: initializedCount)
+      return addresses[..<endIndex].withMemoryRebound(to: UnsafeRawPointer?.self) { addresses in
         Self(addresses: addresses)
       }
     }
