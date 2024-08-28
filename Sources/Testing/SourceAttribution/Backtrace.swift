@@ -67,16 +67,16 @@ public struct Backtrace: Sendable {
       if #available(_backtraceAsyncAPI, *) {
         initializedCount = backtrace_async(addresses.baseAddress!, addresses.count, nil)
       } else {
-        initializedCount = .init(backtrace(addresses.baseAddress!, .init(addresses.count)))
+        initializedCount = .init(clamping: backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
       }
 #elseif os(Android)
       initializedCount = addresses.withMemoryRebound(to: UnsafeMutableRawPointer.self) { addresses in
-        .init(backtrace(addresses.baseAddress!, .init(addresses.count)))
+        .init(clamping: backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
       }
 #elseif os(Linux)
-      initializedCount = .init(backtrace(addresses.baseAddress!, .init(addresses.count)))
+      initializedCount = .init(clamping: backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
 #elseif os(Windows)
-      initializedCount = Int(RtlCaptureStackBackTrace(0, ULONG(addresses.count), addresses.baseAddress!, nil))
+      initializedCount = Int(clamping: RtlCaptureStackBackTrace(0, ULONG(clamping: addresses.count), addresses.baseAddress!, nil))
 #elseif os(WASI)
       // SEE: https://github.com/WebAssembly/WASI/issues/159
       // SEE: https://github.com/swiftlang/swift/pull/31693
