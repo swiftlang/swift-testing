@@ -37,11 +37,7 @@ public struct Backtrace: Sendable {
   /// The pointers in `addresses` are converted to instances of ``Address``. Any
   /// `nil` addresses are represented as `0`.
   public init(addresses: some Sequence<UnsafeRawPointer?>) {
-    self.init(
-      addresses: addresses.lazy
-        .map(UInt.init(bitPattern:))
-        .map(Address.init)
-    )
+    self.addresses = addresses.map { Address(UInt(bitPattern: $0)) }
   }
 
   /// Get the current backtrace.
@@ -93,7 +89,7 @@ public struct Backtrace: Sendable {
       }
 #else
       return addresses[..<endIndex].withMemoryRebound(to: UnsafeRawPointer?.self) { addresses in
-        return Self(addresses: addresses)
+        Self(addresses: addresses)
       }
 #endif
     }
