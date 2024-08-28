@@ -192,7 +192,10 @@ extension Backtrace {
 
   /// The implementation of ``Backtrace/startCachingForThrownErrors()``, run
   /// only once.
-  private static let _startCachingForThrownErrors: Void = {
+  ///
+  /// This value is named oddly so that it shows up clearly in symbolicated
+  /// backtraces.
+  private static let __SWIFT_TESTING_IS_CAPTURING_A_BACKTRACE_FOR_A_THROWN_ERROR__: Void = {
     _oldWillThrowHandler.withLock { oldWillThrowHandler in
       oldWillThrowHandler = swt_setWillThrowHandler { errorAddress in
         let backtrace = Backtrace.current()
@@ -208,7 +211,7 @@ extension Backtrace {
   /// developer-supplied code to ensure that thrown errors' backtraces are
   /// always captured.
   static func startCachingForThrownErrors() {
-    _startCachingForThrownErrors
+    __SWIFT_TESTING_IS_CAPTURING_A_BACKTRACE_FOR_A_THROWN_ERROR__
   }
 
   /// Flush stale entries from the error-mapping cache.
