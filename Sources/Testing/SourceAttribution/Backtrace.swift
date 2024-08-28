@@ -85,9 +85,17 @@ public struct Backtrace: Sendable {
 #endif
 
       let endIndex = addresses.index(addresses.startIndex, offsetBy: initializedCount)
-      return addresses[..<endIndex].withMemoryRebound(to: UnsafeRawPointer?.self) { addresses in
+#if _pointerBitWidth(_64)
+      // The width of a pointer equals the width of an `Address`, so we can just
+      // bitcast the memory rather than mapping through UInt first.
+      return addresses[..<endIndex].withMemoryRebound(to: Address.self) { addresses in
         Self(addresses: addresses)
       }
+#else
+      return addresses[..<endIndex].withMemoryRebound(to: UnsafeRawPointer?.self) { addresses in
+        return Self(addresses: addresses)
+      }
+#endif
     }
   }
 }
