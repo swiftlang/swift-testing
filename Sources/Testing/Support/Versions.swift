@@ -125,7 +125,7 @@ let simulatorVersion: String = {
 ///
 /// This value is not part of the public interface of the testing library.
 var testingLibraryVersion: String {
-  SWT_TESTING_LIBRARY_VERSION
+  swt_getTestingLibraryVersion().flatMap(String.init(validatingCString:)) ?? "unknown"
 }
 
 /// A human-readable string describing the Swift Standard Library's version.
