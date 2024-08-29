@@ -56,6 +56,9 @@ if(SwiftTesting_BuildMacrosAsExecutables)
 
   # Include the .swift file which contains its `@main` entry point type.
   target_compile_definitions(TestingMacros PRIVATE SWT_NO_LIBRARY_MACRO_PLUGINS)
+
+  install(TARGETS TestingMacros
+    RUNTIME DESTINATION bin)
 else()
   add_library(TestingMacros SHARED)
 
