@@ -310,6 +310,9 @@ extension Event.HumanReadableOutputRecorder {
         comments.append("Swift Version: \(swiftStandardLibraryVersion)")
       }
       comments.append("Testing Library Version: \(testingLibraryVersion)")
+      if let targetTriple {
+        comments.append("Target Platform: \(targetTriple)")
+      }
       if verbosity > 0 {
 #if targetEnvironment(simulator)
         comments.append("OS Version (Simulator): \(simulatorVersion)")

@@ -132,6 +132,13 @@ var testingLibraryVersion: String {
   swt_getTestingLibraryVersion().flatMap(String.init(validatingCString:)) ?? "unknown"
 }
 
+/// Get the LLVM target triple used to build the testing library, if available.
+///
+/// This value is not part of the public interface of the testing library.
+var targetTriple: String? {
+  swt_getTargetTriple().flatMap(String.init(validatingCString:))
+}
+
 /// A human-readable string describing the Swift Standard Library's version.
 ///
 /// This value's format is platform-specific and is not meant to be

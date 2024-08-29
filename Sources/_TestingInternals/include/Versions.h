@@ -23,6 +23,22 @@ SWT_ASSUME_NONNULL_BEGIN
 ///   other conditions. Do not attempt to parse it.
 SWT_EXTERN const char *_Nullable swt_getTestingLibraryVersion(void);
 
+/// Get the LLVM target triple used to build the testing library.
+///
+/// - Returns: A string containing the LLVM target triple used to build the
+///   testing library, or `nullptr` if that information is not available.
+SWT_EXTERN const char *_Nullable swt_getTargetTriple(void);
+
+/// Get the version of the C standard library and runtime used by WASI, if
+/// available.
+///
+/// This function is provided because `WASI_LIBC_VERSION` may or may not be
+/// defined and may or may not be a complex macro.
+///
+/// For more information about the `WASI_LIBC_VERSION` macro, see
+/// [wasi-libc-#490](https://github.com/WebAssembly/wasi-libc/issues/490).
+SWT_EXTERN const char *_Nullable swt_getWASIVersion(void);
+
 SWT_ASSUME_NONNULL_END
 
 #endif
