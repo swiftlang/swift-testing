@@ -445,7 +445,17 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 #if canImport(Foundation)
   // Event stream output (experimental)
   if let eventStreamOutputPath = args.eventStreamOutputPath {
-    let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
+    let file: FileHandle
+#if os(Windows)
+    let stdoutPath = "CONOUT$"
+#else
+    let stdoutPath = "/dev/stdout"
+#endif
+    if eventStreamOutputPath == stdoutPath {
+      file = .stdout
+    } else {
+      file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
+    }
     let eventHandler = try eventHandlerForStreamingEvents(version: args.eventStreamVersion) { json in
       try? _writeJSONLine(json, to: file)
     }
