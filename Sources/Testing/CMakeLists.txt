@@ -94,11 +94,16 @@ add_library(Testing
   Traits/Trait.swift)
 target_link_libraries(Testing PRIVATE
   _TestingInternals)
+if(NOT BUILD_SHARED_LIBS)
+  # When building a static library, tell clients to autolink the internal
+  # library.
+  target_compile_options(Testing PRIVATE
+    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInternals")
+endif()
 add_dependencies(Testing
   TestingMacros)
 target_compile_options(Testing PRIVATE
   -enable-library-evolution
   -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:Testing,Swift_MODULE_DIRECTORY>/Testing.swiftinterface)
 
-include(SwiftModuleInstallation)
 _swift_testing_install_target(Testing)
