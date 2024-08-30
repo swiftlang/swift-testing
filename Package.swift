@@ -130,7 +130,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
       .define("SWT_TARGET_OS_APPLE", .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])),
 
-      .define("SWT_NO_EXIT_TESTS", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi])),
+      .define("SWT_NO_EXIT_TESTS", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
       .define("SWT_NO_SNAPSHOT_TYPES", .when(platforms: [.linux, .windows, .wasi])),
       .define("SWT_NO_DYNAMIC_LINKING", .when(platforms: [.wasi])),
     ]

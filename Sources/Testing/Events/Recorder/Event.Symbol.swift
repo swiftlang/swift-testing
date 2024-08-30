@@ -100,7 +100,7 @@ extension Event.Symbol {
   /// be used to represent it in text-based output. The value of this property
   /// is platform-dependent.
   public var unicodeCharacter: Character {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(WASI)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(Android) || os(WASI)
     switch self {
     case .default:
       // Unicode: WHITE DIAMOND

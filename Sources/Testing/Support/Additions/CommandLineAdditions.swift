@@ -29,9 +29,9 @@ extension CommandLine {
         }
       }
       return result!
-#elseif os(Linux)
+#elseif os(Linux) || os(Android)
       return try withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(PATH_MAX) * 2) { buffer in
-        let readCount = readlink("/proc/\(getpid())/exe", buffer.baseAddress!, buffer.count - 1)
+        let readCount = readlink("/proc/self/exe", buffer.baseAddress!, buffer.count - 1)
         guard readCount >= 0 else {
           throw CError(rawValue: swt_errno())
         }

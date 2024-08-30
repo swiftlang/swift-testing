@@ -74,7 +74,7 @@ static LANGID swt_MAKELANGID(int p, int s) {
 }
 #endif
 
-#if defined(__linux__)
+#if defined(__linux__) || defined(__ANDROID__)
 /// The environment block.
 ///
 /// By POSIX convention, the environment block variable is declared in client
@@ -97,6 +97,7 @@ static char *_Nullable *_Null_unspecified swt_environ(void) {
 SWT_IMPORT_FROM_STDLIB int pthread_setname_np(pthread_t, const char *);
 #endif
 
+#if !defined(__ANDROID__)
 #if __has_include(<signal.h>) && defined(si_pid)
 /// Get the value of the `si_pid` field of a `siginfo_t` structure.
 ///
@@ -119,6 +120,7 @@ SWT_SWIFT_NAME(getter:siginfo_t.si_status(self:))
 static int swt_siginfo_t_si_status(const siginfo_t *siginfo) {
   return siginfo->si_status;
 }
+#endif
 #endif
 
 #if defined(__wasi__)

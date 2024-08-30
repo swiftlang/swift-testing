@@ -36,7 +36,7 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   /// To keep the implementation of this type as simple as possible,
   /// `pthread_mutex_t` is used on Apple platforms instead of `os_unfair_lock`
   /// or `OSAllocatedUnfairLock`.
-#if SWT_TARGET_OS_APPLE || os(Linux) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
   private typealias _Lock = pthread_mutex_t
 #elseif os(Windows)
   private typealias _Lock = SRWLOCK
@@ -52,7 +52,7 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   private final class _Storage: ManagedBuffer<T, _Lock> {
     deinit {
       withUnsafeMutablePointerToElements { lock in
-#if SWT_TARGET_OS_APPLE || os(Linux) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
         _ = pthread_mutex_destroy(lock)
 #elseif os(Windows)
         // No deinitialization needed.
@@ -71,7 +71,7 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   init(rawValue: T) {
     _storage = _Storage.create(minimumCapacity: 1, makingHeaderWith: { _ in rawValue })
     _storage.withUnsafeMutablePointerToElements { lock in
-#if SWT_TARGET_OS_APPLE || os(Linux) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
       _ = pthread_mutex_init(lock, nil)
 #elseif os(Windows)
       InitializeSRWLock(lock)
@@ -101,7 +101,7 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   /// concurrency tools.
   nonmutating func withLock<R>(_ body: (inout T) throws -> R) rethrows -> R {
     try _storage.withUnsafeMutablePointers { rawValue, lock in
-#if SWT_TARGET_OS_APPLE || os(Linux) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
       _ = pthread_mutex_lock(lock)
       defer {
         _ = pthread_mutex_unlock(lock)
@@ -121,7 +121,7 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
     }
   }
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
   /// Acquire the lock and invoke a function while it is held, yielding both the
   /// protected value and a reference to the lock itself.
   ///
