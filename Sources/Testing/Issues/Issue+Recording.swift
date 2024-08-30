@@ -239,7 +239,7 @@ extension Issue {
 // MARK: - Debugging failures
 
 /// A unique value used by ``failureBreakpoint()``.
-@usableFromInline nonisolated(unsafe) var failureBreakpointValue = 0
+@usableFromInline @exclusivity(unchecked) nonisolated(unsafe) var failureBreakpointValue = 0
 
 /// A function called by the testing library when a failure occurs.
 ///
@@ -261,7 +261,7 @@ extension Issue {
 /// This function performs no action of its own. It is not part of the public
 /// interface of the testing library, but it is exported and its symbol name
 /// must remain stable.
-@inline(never) @_optimize(none)
+@inline(never)
 @usableFromInline
 func failureBreakpoint() {
   // This function's body cannot be completely empty or else linker symbol
