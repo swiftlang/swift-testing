@@ -88,6 +88,22 @@ struct FileHandle: ~Copyable, Sendable {
   ///
   /// - Throws: Any error preventing the stream from being opened.
   init(forWritingAtPath path: String) throws {
+#if os(Windows)
+    // Special-case CONOUT$ to map to stdout. This way, if somebody specifies
+    // CONOUT$ as the target path for XML or JSON output from `swift test`,
+    // output will be correctly interleaved with writes to `stdout`. If we don't
+    // do this, the file will open successfully but will be opened in text mode
+    // (despite us asking for binary mode), will wrap at the virtual console's
+    // column limit, and won't share a file lock with the C `stdout` handle.
+    //
+    // To our knowledge, this sort of special-casing is not required on
+    // POSIX-like platforms (i.e. when opening "/dev/stdout"), but it can be
+    // adapted for use there if some POSIX-like platform does need it.
+    if path == "CONOUT$" {
+      self = .stdout
+      return
+    }
+#endif
     try self.init(atPath: path, mode: "wb")
   }
 
