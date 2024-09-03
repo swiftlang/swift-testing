@@ -420,7 +420,7 @@ extension FileHandle {
         return false
       }
       var statStruct = stat()
-      return (0 == fstat(fd, &statStruct) && swt_S_ISFIFO(statStruct.st_mode))
+      return (0 == fstat(fd, &statStruct) && swt_S_ISFIFO(mode_t(statStruct.st_mode)))
     }
 #elseif os(Windows)
     return withUnsafeWindowsHANDLE { handle in
