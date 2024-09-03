@@ -31,7 +31,7 @@ typealias ImageAddress = Never
 #if SWT_TARGET_OS_APPLE
 private nonisolated(unsafe) let RTLD_DEFAULT = ImageAddress(bitPattern: -2)
 #elseif os(Android) && _pointerBitWidth(_32)
-private nonisolated(unsafe) let RTLD_DEFAULT = ImageAddress(bitPattern: 0xFFFFFFFF)
+private nonisolated(unsafe) let RTLD_DEFAULT = ImageAddress(bitPattern: UInt(0xFFFFFFFF))
 #elseif os(Linux) || os(Android)
 private nonisolated(unsafe) let RTLD_DEFAULT = ImageAddress(bitPattern: 0)
 #endif
