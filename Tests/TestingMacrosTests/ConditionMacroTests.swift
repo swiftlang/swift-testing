@@ -352,6 +352,19 @@ struct ConditionMacroTests {
     #expect(diagnostic.message.contains("is redundant"))
   }
 
+  @Test("#require(throws: Never.self) produces a diagnostic",
+    arguments: [
+      "#requireThrowsNever(throws: Never.self)",
+    ]
+  )
+  func requireThrowsNeverProducesDiagnostic(input: String) throws {
+    let (_, diagnostics) = try parse(input)
+
+    let diagnostic = try #require(diagnostics.first)
+    #expect(diagnostic.diagMessage.severity == .warning)
+    #expect(diagnostic.message.contains("is redundant"))
+  }
+
 #if !SWT_NO_EXIT_TESTS
   @Test("Expectation inside an exit test diagnoses",
     arguments: [

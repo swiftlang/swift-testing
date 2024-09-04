@@ -68,11 +68,9 @@ the test when the code doesn't satisfy a requirement, use
 - ``expect(throws:_:sourceLocation:performing:)-79piu``
 - ``expect(throws:_:sourceLocation:performing:)-1xr34``
 - ``expect(_:sourceLocation:performing:throws:)``
-- ``expect(throws:_:sourceLocation:performing:)-5lzjz``
 - ``require(throws:_:sourceLocation:performing:)-76bjn``
 - ``require(throws:_:sourceLocation:performing:)-7v83e``
 - ``require(_:sourceLocation:performing:throws:)``
-- ``require(throws:_:sourceLocation:performing:)-36uzc``
 
 ### Confirming that asynchronous events occur
 
