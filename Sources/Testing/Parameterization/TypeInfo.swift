@@ -74,9 +74,6 @@ public struct TypeInfo: Sendable {
 // MARK: - Name
 
 extension TypeInfo {
-  /// An in-memory cache of fully-qualified type name components.
-  private static let _fullyQualifiedNameComponentsCache = Locked<[ObjectIdentifier: [String]]>()
-
   /// The complete name of this type, with the names of all referenced types
   /// fully-qualified by their module names when possible.
   ///
@@ -95,10 +92,6 @@ extension TypeInfo {
   public var fullyQualifiedNameComponents: [String] {
     switch _kind {
     case let .type(type):
-      if let cachedResult = Self._fullyQualifiedNameComponentsCache.rawValue[ObjectIdentifier(type)] {
-        return cachedResult
-      }
-
       var result = String(reflecting: type)
         .split(separator: ".")
         .map(String.init)
@@ -115,10 +108,6 @@ extension TypeInfo {
       // name may include "(unknown context at $xxxxxxxx)" as a component. Strip
       // those out as they're uninteresting to us.
       result = result.filter { !$0.starts(with: "(unknown context at") }
-
-      Self._fullyQualifiedNameComponentsCache.withLock { fullyQualifiedNameComponentsCache in
-        fullyQualifiedNameComponentsCache[ObjectIdentifier(type)] = result
-      }
 
       return result
     case let .nameOnly(fullyQualifiedNameComponents, _, _):
