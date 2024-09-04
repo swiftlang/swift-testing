@@ -57,7 +57,7 @@
 #include <sys/stat.h>
 #endif
 
-#if __has_include(<sys/sysctl.h>)
+#if __has_include(<sys/sysctl.h>) && !defined(__linux__)
 #include <sys/sysctl.h>
 #endif
 
