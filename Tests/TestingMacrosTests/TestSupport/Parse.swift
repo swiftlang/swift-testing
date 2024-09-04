@@ -23,6 +23,7 @@ fileprivate let allMacros: [String: any Macro.Type] = [
   "require": RequireMacro.self,
   "requireAmbiguous": AmbiguousRequireMacro.self, // different name needed only for unit testing
   "requireNonOptional": NonOptionalRequireMacro.self, // different name needed only for unit testing
+  "requireThrowsNever": RequireThrowsNeverMacro.self, // different name needed only for unit testing
   "expectExitTest": ExitTestRequireMacro.self, // different name needed only for unit testing
   "requireExitTest": ExitTestRequireMacro.self, // different name needed only for unit testing
   "Suite": SuiteDeclarationMacro.self,
