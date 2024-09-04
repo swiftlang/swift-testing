@@ -532,4 +532,15 @@ struct MiscellaneousTests {
     failureBreakpoint()
     #expect(failureBreakpointValue == 1)
   }
+
+  @available(_clockAPI, *)
+  @Test("Repeated calls to #expect() run in reasonable time", .disabled("time-sensitive"))
+  func repeatedlyExpect() {
+    let duration = Test.Clock().measure {
+      for _ in 0 ..< 1_000_000 {
+        #expect(true as Bool)
+      }
+    }
+    #expect(duration < .seconds(1))
+  }
 }
