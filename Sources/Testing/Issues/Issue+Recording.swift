@@ -239,7 +239,13 @@ extension Issue {
 // MARK: - Debugging failures
 
 /// A unique value used by ``failureBreakpoint()``.
-@usableFromInline @exclusivity(unchecked) nonisolated(unsafe) var failureBreakpointValue = 0
+@usableFromInline
+#if !os(Windows)
+// Work around compiler bug by not specifying unchecked exclusivity on Windows.
+// SEE: https://github.com/swiftlang/swift/issues/76279
+@exclusivity(unchecked)
+#endif
+nonisolated(unsafe) var failureBreakpointValue = 0
 
 /// A function called by the testing library when a failure occurs.
 ///
@@ -272,5 +278,5 @@ func failureBreakpoint() {
   // opportunities elsewhere. Instead, this function performs a trivial
   // operation on a usable-from-inline value, which the compiler must assume
   // cannot be optimized away.
-  failureBreakpointValue = 1
+  failureBreakpointValue = 0
 }
