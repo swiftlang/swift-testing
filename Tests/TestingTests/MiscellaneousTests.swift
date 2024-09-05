@@ -166,8 +166,10 @@ struct TestsWithStaticMemberAccessBySelfKeyword {
   @Test(.hidden, arguments: Self.x)
   func f(i: Int) {}
 
+#if FIXED_135346598
   @Test(.hidden, arguments: Self.f(max: 100))
   func g(i: Int) {}
+#endif
 
   @Test(.hidden, arguments: [Self.f(max:)])
   func h(i: @Sendable (Int) -> Range<Int>) {}
