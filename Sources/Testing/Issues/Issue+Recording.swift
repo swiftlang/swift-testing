@@ -239,8 +239,8 @@ extension Issue {
 // MARK: - Debugging failures
 
 /// A unique value used by ``failureBreakpoint()``.
-#if !os(Windows)
-// Work around compiler bug by not specifying unchecked exclusivity on Windows.
+#if !os(Windows) && !os(Android)
+// Work around compiler bug by not specifying unchecked exclusivity on Windows/Android.
 // SEE: https://github.com/swiftlang/swift/issues/76279
 @exclusivity(unchecked)
 #endif
