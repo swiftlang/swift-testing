@@ -17,18 +17,19 @@ import SwiftSyntaxMacros
 /// If the developer specified Self.something as an argument to the `@Test` or
 /// `@Suite` attribute, we will currently incorrectly infer Self as equalling
 /// the `__TestContainer` type we emit rather than the type containing the
-/// test. This class strips off `Self.` wherever that occurs.
+/// test. This class strips off `Self.` wherever that occurs and, if possible,
+/// replaces it with the actual containing type name.
 ///
 /// Note that this operation is technically incorrect if a subexpression of the
 /// attribute declares a type and refers to it with `Self`. We accept this
 /// constraint as it is unlikely to pose real-world issues and is generally
 /// solvable by using an explicit type name instead of `Self`.
-///
-/// This class should instead replace `Self` with the name of the containing
-/// type when rdar://105470382 is resolved.
 private final class _SelfRemover<C>: SyntaxRewriter where C: MacroExpansionContext {
   /// The macro context in which the expression is being parsed.
   let context: C
+
+  /// The type with which to replace `Self`.
+  let typeExpr: TypeExprSyntax?
 
   /// Initialize an instance of this class.
   ///
@@ -37,18 +38,22 @@ private final class _SelfRemover<C>: SyntaxRewriter where C: MacroExpansionConte
   ///   - viewMode: The view mode to use when walking the syntax tree.
   init(in context: C) {
     self.context = context
+    self.typeExpr = context.typeOfLexicalContext.map { TypeExprSyntax(type: $0) }
   }
 
   override func visit(_ node: MemberAccessExprSyntax) -> ExprSyntax {
     if let base = node.base?.as(DeclReferenceExprSyntax.self) {
       if base.baseName.tokenKind == .keyword(.Self) {
-        // We cannot currently correctly convert Self.self into the expected
-        // type name, but once rdar://105470382 is resolved we can replace the
-        // base expression with the typename here (at which point Self.self
-        // ceases to be an interesting case anyway.)
+        if let typeExpr {
+          // Replace Self with the actual type name.
+          return ExprSyntax(node.with(\.base, ExprSyntax(typeExpr)))
+        }
+        // We don't know the enclosing type name, so just strip Self and hope
+        // the compiler is happy with the leading dot syntax.
         return ExprSyntax(node.declName)
       }
     } else if let base = node.base?.as(MemberAccessExprSyntax.self) {
+      // Recursively walk into the base expression.
       return ExprSyntax(node.with(\.base, visit(base)))
     }
     return ExprSyntax(node)
