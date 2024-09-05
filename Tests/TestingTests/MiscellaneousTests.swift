@@ -533,9 +533,9 @@ struct MiscellaneousTests {
 
   @Test("failureBreakpoint() call")
   func failureBreakpointCall() {
-    failureBreakpointValue = 0
+    failureBreakpointValue = 1
     failureBreakpoint()
-    #expect(failureBreakpointValue == 1)
+    #expect(failureBreakpointValue == 0)
   }
 
   @available(_clockAPI, *)
