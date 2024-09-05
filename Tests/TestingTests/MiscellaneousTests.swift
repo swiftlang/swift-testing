@@ -169,7 +169,6 @@ struct TestsWithStaticMemberAccessBySelfKeyword {
 #if FIXED_135346598
   @Test(.hidden, arguments: Self.f(max: 100))
   func g(i: Int) {}
-#endif
 
   @Test(.hidden, arguments: [Self.f(max:)])
   func h(i: @Sendable (Int) -> Range<Int>) {}
@@ -180,6 +179,7 @@ struct TestsWithStaticMemberAccessBySelfKeyword {
 
   @Test(.hidden, arguments: [Box(rawValue: Self.f(max:))])
   func j(i: Box<@Sendable (Int) -> Range<Int>>) {}
+#endif
 
   struct Nested {
     static let x = 0 ..< 100
