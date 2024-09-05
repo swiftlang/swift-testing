@@ -829,7 +829,7 @@ extension Graph {
   /// - Throws: Whatever is thrown by `transform`.
   ///
   /// This function iterates depth-first.
-  func flatMap<S, E>(_ transform: (Element) throws(E) -> S) throws(E) -> [S.Element] where S: Sequence, E: Error {
+  func flatMap<S, E>(_ transform: (Element) throws(E) -> S) throws(E) -> [S.Element] where S: Sequence {
     try map(transform).flatMap { $0 }
   }
 
@@ -846,7 +846,7 @@ extension Graph {
   /// - Throws: Whatever is thrown by `transform`.
   ///
   /// This function iterates depth-first.
-  func flatMap<S, E>(_ transform: (Element) async throws(E) -> S) async throws(E) -> [S.Element] where S: Sequence, E: Error {
+  func flatMap<S, E>(_ transform: (Element) async throws(E) -> S) async throws(E) -> [S.Element] where S: Sequence {
     try await map(transform).flatMap { $0 }
   }
 }
