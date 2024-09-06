@@ -29,19 +29,14 @@ public struct ExitTest: Sendable {
   /// processes, so it can be used to uniquely identify an exit test at runtime.
   public var sourceLocation: SourceLocation
 
-  /// Call the exit test in the current process.
-  ///
-  /// This function invokes the closure originally passed to
-  /// `#expect(exitsWith:)` _in the current process_. That closure is expected
-  /// to terminate the process; if it does not, the testing library will
-  /// terminate the process in a way that causes the corresponding expectation
-  /// to fail.
-  public func callAsFunction() async -> Never {
+  /// Disable crash reporting, crash logging, or core dumps for the current
+  /// process.
+  private static func _disableCrashReporting() {
 #if SWT_TARGET_OS_APPLE && !SWT_NO_MACH_PORTS
-    // On Darwin, disable exception reporting. We don't need to create a crash
-    // log for an exit test. In the future, we might want to investigate
-    // actually setting up a listener port in the parent process and tracking
-    // interesting exceptions as separate exit conditions.
+    // We don't need to create a crash log (a "corpse notification") for an exit
+    // test. In the future, we might want to investigate actually setting up a
+    // listener port in the parent process and tracking interesting exceptions
+    // as separate exit conditions.
     _ = task_set_exception_ports(
       swt_mach_task_self(),
       exception_mask_t(EXC_MASK_CORPSE_NOTIFY),
@@ -62,6 +57,17 @@ public struct ExitTest: Sendable {
     _ = SetErrorMode(UINT(SEM_NOGPFAULTERRORBOX))
     _ = WerSetFlags(DWORD(WER_FAULT_REPORTING_NO_UI))
 #endif
+  }
+
+  /// Call the exit test in the current process.
+  ///
+  /// This function invokes the closure originally passed to
+  /// `#expect(exitsWith:)` _in the current process_. That closure is expected
+  /// to terminate the process; if it does not, the testing library will
+  /// terminate the process in a way that causes the corresponding expectation
+  /// to fail.
+  public func callAsFunction() async -> Never {
+    Self._disableCrashReporting()
 
     do {
       try await body()
