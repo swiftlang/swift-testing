@@ -177,6 +177,15 @@ extension Locked where T: Numeric {
   @discardableResult func increment() -> T {
     add(1)
   }
+
+  /// Decrement the current wrapped value of this instance.
+  ///
+  /// - Returns: The sum of ``rawValue`` and `-1`.
+  ///
+  /// This function is exactly equivalent to `add(-1)`.
+  @discardableResult func decrement() -> T {
+    add(-1)
+  }
 }
 
 extension Locked {
