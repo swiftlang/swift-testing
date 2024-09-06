@@ -37,6 +37,9 @@ public struct ExitTest: Sendable {
     // test. In the future, we might want to investigate actually setting up a
     // listener port in the parent process and tracking interesting exceptions
     // as separate exit conditions.
+    //
+    // BUG: The system may still opt to write crash logs to /Library/Logs
+    // instead of the user's home folder. rdar://47982238
     _ = task_set_exception_ports(
       swt_mach_task_self(),
       exception_mask_t(EXC_MASK_CORPSE_NOTIFY),
