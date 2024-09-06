@@ -8,8 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import Synchronization
-
 extension Runner {
   /// A type which collects the task-scoped runtime state for a running
   /// ``Runner`` instance, the tests it runs, and other objects it interacts
@@ -113,8 +111,8 @@ extension Configuration {
   /// - Returns: A unique number identifying `self` that can be
   ///   passed to `_removeFromAll(identifiedBy:)`` to unregister it.
   private func _addToAll() -> UInt64 {
-    if deliverExpectationCheckedEvents, #available(_synchronizationAPI, *) {
-      Self._deliverExpectationCheckedEventsCount.add(1, ordering: .sequentiallyConsistent)
+    if deliverExpectationCheckedEvents {
+      Self._deliverExpectationCheckedEventsCount.increment()
     }
     return Self._all.withLock { all in
       let id = all.nextID
@@ -133,8 +131,8 @@ extension Configuration {
     let configuration = Self._all.withLock { all in
       all.instances.removeValue(forKey: id)
     }
-    if let configuration, configuration.deliverExpectationCheckedEvents, #available(_synchronizationAPI, *) {
-      Self._deliverExpectationCheckedEventsCount.subtract(1, ordering: .sequentiallyConsistent)
+    if let configuration, configuration.deliverExpectationCheckedEvents {
+      Self._deliverExpectationCheckedEventsCount.decrement()
     }
   }
 
@@ -143,8 +141,7 @@ extension Configuration {
   ///
   /// On older Apple platforms, this property is not available and ``all`` is
   /// directly consulted instead (which is less efficient.)
-  @available(_synchronizationAPI, *)
-  private static let _deliverExpectationCheckedEventsCount = Atomic(0)
+  private static let _deliverExpectationCheckedEventsCount = Locked(rawValue: 0)
 
   /// Whether or not events of the kind
   /// ``Event/Kind-swift.enum/expectationChecked(_:)`` should be delivered to
@@ -155,11 +152,7 @@ extension Configuration {
   /// for these events, consult the per-instance
   /// ``Configuration/deliverExpectationCheckedEvents`` property.
   static var deliverExpectationCheckedEvents: Bool {
-    if #available(_synchronizationAPI, *) {
-      _deliverExpectationCheckedEventsCount.load(ordering: .sequentiallyConsistent) > 0
-    } else {
-      all.contains(where: \.deliverExpectationCheckedEvents)
-    }
+    _deliverExpectationCheckedEventsCount.rawValue > 0
   }
 }
 
