@@ -29,6 +29,39 @@ public struct ExitTest: Sendable {
   /// processes, so it can be used to uniquely identify an exit test at runtime.
   public var sourceLocation: SourceLocation
 
+  /// Disable crash reporting, crash logging, or core dumps for the current
+  /// process.
+  private static func _disableCrashReporting() {
+#if SWT_TARGET_OS_APPLE && !SWT_NO_MACH_PORTS
+    // We don't need to create a crash log (a "corpse notification") for an exit
+    // test. In the future, we might want to investigate actually setting up a
+    // listener port in the parent process and tracking interesting exceptions
+    // as separate exit conditions.
+    //
+    // BUG: The system may still opt to write crash logs to /Library/Logs
+    // instead of the user's home folder. rdar://47982238
+    _ = task_set_exception_ports(
+      swt_mach_task_self(),
+      exception_mask_t(EXC_MASK_CORPSE_NOTIFY),
+      mach_port_t(MACH_PORT_NULL),
+      EXCEPTION_DEFAULT,
+      THREAD_STATE_NONE
+    )
+#elseif os(Linux)
+    // On Linux, disable the generation of core files (although they will often
+    // be disabled by default.) If a particular Linux distro performs additional
+    // crash diagnostics, we may want to special-case them as well if we can.
+    var rl = rlimit(rlim_cur: 0, rlim_max: 0)
+    _ = setrlimit(CInt(RLIMIT_CORE.rawValue), &rl)
+#elseif os(Windows)
+    // On Windows, similarly disable Windows Error Reporting and the Windows
+    // Error Reporting UI. Note we expect to be the first component to call
+    // these functions, so we don't attempt to preserve any previously-set bits.
+    _ = SetErrorMode(UINT(SEM_NOGPFAULTERRORBOX))
+    _ = WerSetFlags(DWORD(WER_FAULT_REPORTING_NO_UI))
+#endif
+  }
+
   /// Call the exit test in the current process.
   ///
   /// This function invokes the closure originally passed to
@@ -37,6 +70,8 @@ public struct ExitTest: Sendable {
   /// terminate the process in a way that causes the corresponding expectation
   /// to fail.
   public func callAsFunction() async -> Never {
+    Self._disableCrashReporting()
+
     do {
       try await body()
     } catch {
