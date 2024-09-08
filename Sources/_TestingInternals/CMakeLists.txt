@@ -22,7 +22,7 @@ if(NOT BUILD_SHARED_LIBS)
   # When building a static library, install the internal library archive
   # alongside the main library. In shared library builds, the internal library
   # is linked into the main library and does not need to be installed separately.
-  get_swift_install_lib_dir(STATIC_LIBRARY lib_destination_dir)
+  get_swift_testing_install_lib_dir(STATIC_LIBRARY lib_destination_dir)
   install(TARGETS _TestingInternals
     ARCHIVE DESTINATION ${lib_destination_dir})
 endif()
