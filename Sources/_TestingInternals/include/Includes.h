@@ -58,7 +58,7 @@
 #include <sys/fcntl.h>
 #endif
 
-#if __has_include(<sys/resource.h>)
+#if __has_include(<sys/resource.h>) && !defined(__wasi__)
 #include <sys/resource.h>
 #endif
 
