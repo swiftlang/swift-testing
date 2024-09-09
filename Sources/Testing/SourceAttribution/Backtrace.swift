@@ -338,9 +338,9 @@ extension Backtrace {
   static let isFoundationCaptureEnabled = {
 #if SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
     let _CFErrorSetCallStackCaptureEnabled = symbol(named: "_CFErrorSetCallStackCaptureEnabled").map {
-      unsafeBitCast($0, to: (@convention(c) (UInt8) -> UInt8).self)
+      unsafeBitCast($0, to: (@convention(c) (DarwinBoolean) -> DarwinBoolean).self)
     }
-    _ = _CFErrorSetCallStackCaptureEnabled?(1)
+    _ = _CFErrorSetCallStackCaptureEnabled?(true)
     return _CFErrorSetCallStackCaptureEnabled != nil
 #else
     false
