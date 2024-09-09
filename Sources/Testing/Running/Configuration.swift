@@ -20,6 +20,16 @@ public struct Configuration: Sendable {
   /// Whether or not to parallelize the execution of tests and test cases.
   public var isParallelizationEnabled = true
 
+  /// How to symbolicate backtraces captured during a test run.
+  ///
+  /// If the value of this property is not `nil`, symbolication will be
+  /// performed automatically when a backtrace is encoded into an event stream.
+  ///
+  /// The value of this property does not affect event handlers implemented in
+  /// Swift in-process. When handling a backtrace in Swift, use its
+  /// ``Backtrace/symbolicate(_:)`` function to symbolicate it.
+  public var backtraceSymbolicationMode: Backtrace.SymbolicationMode?
+
   /// A type describing whether or not, and how, to iterate a test plan
   /// repeatedly.
   ///

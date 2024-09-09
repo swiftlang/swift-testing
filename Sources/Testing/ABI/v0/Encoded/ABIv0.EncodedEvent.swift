@@ -70,7 +70,7 @@ extension ABIv0 {
         kind = .testCaseStarted
       case let .issueRecorded(recordedIssue):
         kind = .issueRecorded
-        issue = EncodedIssue(encoding: recordedIssue)
+        issue = EncodedIssue(encoding: recordedIssue, in: eventContext)
       case .testCaseEnded:
         if eventContext.test?.isParameterized == false {
           return nil

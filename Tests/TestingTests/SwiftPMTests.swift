@@ -43,6 +43,23 @@ struct SwiftPMTests {
     #expect(!configuration.isParallelizationEnabled)
   }
 
+  @Test("--symbolicate-backtraces argument",
+    arguments: [
+      (String?.none, Backtrace.SymbolicationMode?.none),
+      ("mangled", .mangled), ("on", .mangled), ("true", .mangled),
+      ("demangled", .demangled),
+      ("precise-demangled", .preciseDemangled),
+    ]
+  )
+  func symbolicateBacktraces(argumentValue: String?, expectedMode: Backtrace.SymbolicationMode?) throws {
+    let configuration = if let argumentValue {
+      try configurationForEntryPoint(withArguments: ["PATH", "--symbolicate-backtraces", argumentValue])
+    } else {
+      try configurationForEntryPoint(withArguments: ["PATH"])
+    }
+    #expect(configuration.backtraceSymbolicationMode == expectedMode)
+  }
+
   @Test("No --filter or --skip argument")
   func defaultFiltering() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH"])

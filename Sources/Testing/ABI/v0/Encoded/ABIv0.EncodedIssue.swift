@@ -23,12 +23,14 @@ extension ABIv0 {
     var sourceLocation: SourceLocation?
 
     /// The backtrace where this issue occurred, if available.
-    var _backtrace: [Backtrace.Address]?
+    var _backtrace: EncodedBacktrace?
 
-    init(encoding issue: borrowing Issue) {
+    init(encoding issue: borrowing Issue, in eventContext: borrowing Event.Context) {
       isKnown = issue.isKnown
       sourceLocation = issue.sourceLocation
-      _backtrace = issue.sourceContext.backtrace.map(\.addresses)
+      if let backtrace = issue.sourceContext.backtrace {
+        _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)
+      }
     }
   }
 }

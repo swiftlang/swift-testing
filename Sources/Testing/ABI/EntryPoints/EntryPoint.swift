@@ -191,6 +191,9 @@ public struct __CommandLineArguments_v0: Sendable {
   /// The value of the `--parallel` or `--no-parallel` argument.
   public var parallel: Bool?
 
+  /// The value of the `--symbolicate-backtraces` argument.
+  public var symbolicateBacktraces: String?
+
   /// The value of the `--verbose` argument.
   public var verbose: Bool?
 
@@ -280,6 +283,7 @@ extension __CommandLineArguments_v0: Codable {
   enum CodingKeys: String, CodingKey {
     case listTests
     case parallel
+    case symbolicateBacktraces
     case verbose
     case veryVerbose
     case quiet
@@ -366,6 +370,11 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     result.parallel = false
   }
 
+  // Whether or not to symbolicate backtraces in the event stream.
+  if let symbolicateBacktracesIndex = args.firstIndex(of: "--symbolicate-backtraces"), !isLastArgument(at: symbolicateBacktracesIndex) {
+    result.symbolicateBacktraces = args[args.index(after: symbolicateBacktracesIndex)]
+  }
+
   // Verbosity
   if let verbosityIndex = args.firstIndex(of: "--verbosity"), !isLastArgument(at: verbosityIndex),
      let verbosity = Int(args[args.index(after: verbosityIndex)]) {
@@ -424,6 +433,21 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 
   // Parallelization (on by default)
   configuration.isParallelizationEnabled = args.parallel ?? true
+
+  // Whether or not to symbolicate backtraces in the event stream.
+  if let symbolicateBacktraces = args.symbolicateBacktraces {
+    switch symbolicateBacktraces.lowercased() {
+    case "mangled", "on", "true":
+      configuration.backtraceSymbolicationMode = .mangled
+    case "demangled":
+      configuration.backtraceSymbolicationMode = .demangled
+    case "precise-demangled":
+      configuration.backtraceSymbolicationMode = .preciseDemangled
+    default:
+      throw _EntryPointError.invalidArgument("--symbolicate-backtraces", value: symbolicateBacktraces)
+
+    }
+  }
 
 #if !SWT_NO_FILE_IO
   // XML output
