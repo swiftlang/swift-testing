@@ -95,6 +95,39 @@ struct BacktraceTests {
       await runner.run()
     }
   }
+
+  @inline(never)
+  func throwNSError() throws {
+    let error = NSError(domain: "Oh no!", code: 123, userInfo: [:])
+    throw error
+  }
+
+  @inline(never)
+  func throwBacktracedRefCountedError() throws {
+    throw BacktracedRefCountedError()
+  }
+
+  @Test("Thrown NSError has a different backtrace than we generated", .enabled(if: Backtrace.isFoundationCaptureEnabled))
+  func foundationGeneratedNSError() {
+    do {
+      try throwNSError()
+    } catch {
+      let backtrace1 = Backtrace(forFirstThrowOf: error, checkFoundation: true)
+      let backtrace2 = Backtrace(forFirstThrowOf: error, checkFoundation: false)
+      #expect(backtrace1 != backtrace2)
+    }
+
+    // Foundation won't capture backtraces for reference-counted errors that
+    // don't inherit from NSError (even though the existential error box itself
+    // is of an NSError subclass.)
+    do {
+      try throwBacktracedRefCountedError()
+    } catch {
+      let backtrace1 = Backtrace(forFirstThrowOf: error, checkFoundation: true)
+      let backtrace2 = Backtrace(forFirstThrowOf: error, checkFoundation: false)
+      #expect(backtrace1 == backtrace2)
+    }
+  }
 #endif
 
   @Test("Backtrace.current() is populated")
