@@ -108,7 +108,7 @@ struct BacktraceTests {
   }
 
   @Test("Thrown NSError has a different backtrace than we generated", .enabled(if: Backtrace.isFoundationCaptureEnabled))
-  func foundationGeneratedNSError() throws {
+  func foundationGeneratedNSError() {
     do {
       try throwNSError()
     } catch {
@@ -129,7 +129,6 @@ struct BacktraceTests {
     }
   }
 #endif
-
 
   @Test("Backtrace.current() is populated")
   func currentBacktrace() {
