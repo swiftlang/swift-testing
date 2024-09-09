@@ -322,12 +322,39 @@ extension Backtrace {
     forward(errorType)
   }
 
+  /// Whether or not Foundation provides a function that triggers the capture of
+  /// backtaces when instances of `NSError` or `CFError` are created.
+  ///
+  /// A backtrace created by said function represents the point in execution
+  /// where the error was created by an Objective-C or C stack frame. For an
+  /// error thrown from Objective-C or C through Swift before being caught by
+  /// the testing library, that backtrace is closer to the point of failure than
+  /// the one that would be captured at the point `swift_willThrow()` is called.
+  ///
+  /// On non-Apple platforms, the value of this property is always `false`.
+  ///
+  /// - Note: The underlying Foundation function is called (if present) the
+  ///   first time the value of this property is read.
+  static let isFoundationCaptureEnabled = {
+#if SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
+    let _CFErrorSetCallStackCaptureEnabled = symbol(named: "_CFErrorSetCallStackCaptureEnabled").map {
+      unsafeBitCast($0, to: (@convention(c) (UInt8) -> UInt8).self)
+    }
+    _ = _CFErrorSetCallStackCaptureEnabled?(1)
+    return _CFErrorSetCallStackCaptureEnabled != nil
+#else
+    false
+#endif
+  }()
+
   /// The implementation of ``Backtrace/startCachingForThrownErrors()``, run
   /// only once.
   ///
   /// This value is named oddly so that it shows up clearly in symbolicated
   /// backtraces.
   private static let __SWIFT_TESTING_IS_CAPTURING_A_BACKTRACE_FOR_A_THROWN_ERROR__: Void = {
+    _ = isFoundationCaptureEnabled
+
     _oldWillThrowHandler.withLock { oldWillThrowHandler in
       oldWillThrowHandler = swt_setWillThrowHandler { errorAddress in
         let backtrace = Backtrace.current()
@@ -369,6 +396,9 @@ extension Backtrace {
   ///
   /// - Parameters:
   ///   - error: The error for which a backtrace is needed.
+  ///   - checkFoundation: Whether or not to check for a backtrace created by
+  ///     Foundation with `_CFErrorSetCallStackCaptureEnabled()`. On non-Apple
+  ///     platforms, this argument has no effect.
   ///
   /// If no backtrace information is available for the specified error, this
   /// initializer returns `nil`. To start capturing backtraces, call
@@ -379,7 +409,14 @@ extension Backtrace {
   ///   because doing so will cause Swift-native errors to be unboxed into
   ///   existential containers with different addresses.
   @inline(never)
-  init?(forFirstThrowOf error: any Error) {
+  init?(forFirstThrowOf error: any Error, checkFoundation: Bool = true) {
+    if checkFoundation && Self.isFoundationCaptureEnabled,
+       let userInfo = error._userInfo as? [String: Any],
+       let addresses = userInfo["NSCallStackReturnAddresses"] as? [Address], !addresses.isEmpty {
+      self.init(addresses: addresses)
+      return
+    }
+
     let entry = Self._errorMappingCache.withLock { cache in
       cache[.init(error)]
     }
