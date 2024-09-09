@@ -10,10 +10,6 @@
 
 #include "Versions.h"
 
-#if defined(__wasi__) && __has_include(<wasi/version.h>)
-#include <wasi/version.h>
-#endif
-
 #if defined(_SWT_TESTING_LIBRARY_VERSION) && !defined(SWT_TESTING_LIBRARY_VERSION)
 #warning _SWT_TESTING_LIBRARY_VERSION is deprecated
 #warning Define SWT_TESTING_LIBRARY_VERSION and optionally SWT_TARGET_TRIPLE instead
@@ -43,13 +39,3 @@ const char *swt_getTargetTriple(void) {
   return nullptr;
 #endif
 }
-
-#if defined(__wasi__)
-const char *swt_getWASIVersion(void) {
-#if defined(WASI_SDK_VERSION)
-  return WASI_SDK_VERSION;
-#else
-  return nullptr;
-#endif
-}
-#endif
