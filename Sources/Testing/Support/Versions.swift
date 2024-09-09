@@ -88,8 +88,8 @@ let operatingSystemVersion: String = {
     }
   }
 #elseif os(WASI)
-  if let libcVersion = swt_getWASIVersion().flatMap(String.init(validatingCString:)), !libcVersion.isEmpty {
-    return "WASI with libc \(libcVersion)"
+  if let version = swt_getWASIVersion().flatMap(String.init(validatingCString:)) {
+    return version
   }
 #else
 #warning("Platform-specific implementation missing: OS version unavailable")
