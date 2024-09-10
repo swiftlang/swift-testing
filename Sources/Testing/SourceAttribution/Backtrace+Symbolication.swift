@@ -14,10 +14,10 @@ private import _TestingInternals
 @_spi(ForToolsIntegrationOnly)
 extension Backtrace {
   /// Demangle a symbol name.
-  /// 
+  ///
   /// - Parameters:
   ///   - mangledSymbolName: The symbol name to demangle.
-  /// 
+  ///
   /// - Returns: The demangled form of `mangledSymbolName` according to the
   ///   Swift standard library or the platform's C++ standard library, or `nil`
   ///   if the symbol name could not be demangled.
@@ -31,35 +31,62 @@ extension Backtrace {
     return String(validatingCString: demangledSymbolName)
   }
 
-  /// Symbolicate a sequence of addresses.
-  /// 
+  /// An enumeration describing the symbolication mode to use when handling
+  /// events containing backtraces.
+  public enum SymbolicationMode: Sendable {
+    /// The backtrace should be symbolicated, but no demangling should be
+    /// performed.
+    case mangled
+
+    /// The backtrace should be symbolicated and Swift and C++ symbols should be
+    /// demangled if possible.
+    case demangled
+  }
+
+  /// A type representing an instance of ``Backtrace/Address`` that has been
+  /// symbolicated by a call to ``Backtrace/symbolicate(_:)``.
+  public struct SymbolicatedAddress: Sendable {
+    /// The (unsymbolicated) address from the backtrace.
+    public var address: Address
+
+    /// The offset of ``address`` from the start of the corresponding function,
+    /// if available.
+    ///
+    /// If ``address`` could not be resolved to a symbol, the value of this
+    /// property is `nil`.
+    public var offset: UInt64?
+
+    /// The name of the symbol at ``address``, if available.
+    ///
+    /// If ``address`` could not be resolved to a symbol, the value of this
+    /// property is `nil`.
+    public var symbolName: String?
+  }
+
+  /// Symbolicate the addresses in this backtrace.
+  ///
   /// - Parameters:
-  ///   - addresses: The sequence of addresses. These addresses must have
-  ///     originated in the current process.
   ///   - mode: How to symbolicate the addresses in the backtrace.
-  /// 
+  ///
   /// - Returns: An array of strings representing the names of symbols in
   ///   `addresses`.
-  /// 
-  /// If an address in `addresses` cannot be symbolicated, it is converted to a
-  /// string using ``Swift/String/init(describingForTest:)``.
-  private static func _symbolicate(addresses: UnsafeBufferPointer<UnsafeRawPointer?>, mode: SymbolicationMode) -> [String] {
-    let count = addresses.count
-    var symbolNames = [(String, displacement: UInt)?](repeating: nil, count: count)
+  ///
+  /// If an address in `addresses` cannot be symbolicated, the corresponding
+  /// instance of ``SymbolicatedAddress`` in the resulting array has a `nil`
+  /// value for its ``Backtrace/SymbolicatedAddress/symbolName`` property.
+  public func symbolicate(_ mode: SymbolicationMode) -> [SymbolicatedAddress] {
+    var result = addresses.map { SymbolicatedAddress(address: $0) }
 
 #if SWT_TARGET_OS_APPLE
     for (i, address) in addresses.enumerated() {
-      guard let address else {
-        continue
-      }
       var info = Dl_info()
-      if 0 != dladdr(address, &info) {
-        let displacement = UInt(bitPattern: address) - UInt(bitPattern: info.dli_saddr)
+      if 0 != dladdr(UnsafePointer(bitPattern: UInt(clamping: address)), &info) {
+        let offset = address - Address(clamping: UInt(bitPattern: info.dli_saddr))
         if var symbolName = info.dli_sname.flatMap(String.init(validatingCString:)) {
           if mode != .mangled {
-            symbolName = _demangle(symbolName) ?? symbolName
+            symbolName = Self._demangle(symbolName) ?? symbolName
           }
-          symbolNames[i] = (symbolName, displacement)
+          result[i] = SymbolicatedAddress(address: address, offset: offset, symbolName: symbolName)
         }
       }
     }
@@ -77,21 +104,17 @@ extension Backtrace {
         return
       }
       for (i, address) in addresses.enumerated() {
-        guard let address else {
-          continue
-        }
-
         withUnsafeTemporaryAllocation(of: SYMBOL_INFO_PACKAGEW.self, capacity: 1) { symbolInfo in
           let symbolInfo = symbolInfo.baseAddress!
           symbolInfo.pointee.si.SizeOfStruct = ULONG(MemoryLayout<SYMBOL_INFOW>.stride)
           symbolInfo.pointee.si.MaxNameLen = ULONG(MAX_SYM_NAME)
           var displacement = DWORD64(0)
-          if SymFromAddrW(hProcess, DWORD64(clamping: UInt(bitPattern: address)), &displacement, symbolInfo.pointer(to: \.si)!),
+          if SymFromAddrW(hProcess, DWORD64(clamping: address), &displacement, symbolInfo.pointer(to: \.si)!),
              var symbolName = String.decodeCString(symbolInfo.pointer(to: \.si.Name)!, as: UTF16.self)?.result {
             if mode != .mangled {
-              symbolName = _demangle(symbolName) ?? symbolName
+              symbolName = Self._demangle(symbolName) ?? symbolName
             }
-            symbolNames[i] = (symbolName, UInt(clamping: displacement))
+            result[i] = SymbolicatedAddress(address: address, offset: displacement, symbolName: symbolName)
           }
         }
       }
@@ -102,67 +125,13 @@ extension Backtrace {
 #warning("Platform-specific implementation missing: backtrace symbolication unavailable")
 #endif
 
-    var result = [String]()
-    result.reserveCapacity(count)
-    for (i, address) in addresses.enumerated() {
-      let formatted = if let (symbolName, displacement) = symbolNames[i] {
-        if mode == .preciseDemangled {
-          "\(i) \(symbolName) (\(String(describingForTest: address))+\(displacement))"
-        } else {
-          symbolName
-        }
-      } else {
-        String(describingForTest: address)
-      }
-      result.append(formatted)
-    }
     return result
   }
-
-  /// An enumeration describing the symbolication mode to use when handling
-  /// events containing backtraces.
-  public enum SymbolicationMode: Sendable {
-    /// The backtrace should be symbolicated, but no demangling should be
-    /// performed.
-    case mangled
-
-    /// The backtrace should be symbolicated and Swift and C++ symbols should be
-    /// demangled if possible.
-    case demangled
-
-    /// The backtrace should be symbolicated, Swift and C++ symbols should be
-    /// demangled if possible, and precise symbol addresses and offsets should
-    /// be provided if available.
-    case preciseDemangled
-  }
-
-  /// Symbolicate the addresses in this backtrace.
-  /// 
-  /// - Parameters:
-  ///   - mode: How to symbolicate the addresses in the backtrace.
-  /// 
-  /// - Returns: An array of strings representing the names of symbols in
-  ///   `addresses`.
-  /// 
-  /// If an address in `addresses` cannot be symbolicated, it is converted to a
-  /// string using ``Swift/String/init(describingForTest:)``.
-  public func symbolicate(_ mode: SymbolicationMode) -> [String] {
-#if _pointerBitWidth(_64)
-      // The width of a pointer equals the width of an `Address`, so we can just
-      // bitcast the memory rather than mapping through UInt first.
-    addresses.withUnsafeBufferPointer { addresses in
-      addresses.withMemoryRebound(to: UnsafeRawPointer?.self) { addresses in
-        Self._symbolicate(addresses: addresses, mode: mode)
-      }
-    }
-#else
-    let addresses = addresses.map { UnsafeRawPointer(bitPattern: UInt($0)) }
-    return addresses.withUnsafeBufferPointer { addresses in
-      Self._symbolicate(addresses: addresses, mode: mode)
-    }
-#endif
-  }
 }
+
+// MARK: - Codable
+
+extension Backtrace.SymbolicatedAddress: Codable {}
 
 #if os(Windows)
 // MARK: -

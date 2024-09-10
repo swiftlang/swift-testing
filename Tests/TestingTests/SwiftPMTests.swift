@@ -48,7 +48,6 @@ struct SwiftPMTests {
       (String?.none, Backtrace.SymbolicationMode?.none),
       ("mangled", .mangled), ("on", .mangled), ("true", .mangled),
       ("demangled", .demangled),
-      ("precise-demangled", .preciseDemangled),
     ]
   )
   func symbolicateBacktraces(argumentValue: String?, expectedMode: Backtrace.SymbolicationMode?) throws {

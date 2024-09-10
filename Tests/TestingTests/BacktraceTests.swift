@@ -150,13 +150,13 @@ struct BacktraceTests {
   }
 #endif
 
-  @Test("Symbolication", arguments: [Backtrace.SymbolicationMode.mangled, .demangled, .preciseDemangled])
+  @Test("Symbolication", arguments: [Backtrace.SymbolicationMode.mangled, .demangled])
   func symbolication(mode: Backtrace.SymbolicationMode) {
     let backtrace = Backtrace.current()
     let symbolNames = backtrace.symbolicate(mode)
     #expect(backtrace.addresses.count == symbolNames.count)
     if testsWithSignificantIOAreEnabled {
-      print(symbolNames.joined(separator: "\n"))
+      print(symbolNames.map(String.init(describingForTest:)).joined(separator: "\n"))
     }
   }
 }

@@ -441,8 +441,6 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
       configuration.backtraceSymbolicationMode = .mangled
     case "demangled":
       configuration.backtraceSymbolicationMode = .demangled
-    case "precise-demangled":
-      configuration.backtraceSymbolicationMode = .preciseDemangled
     default:
       throw _EntryPointError.invalidArgument("--symbolicate-backtraces", value: symbolicateBacktraces)
 

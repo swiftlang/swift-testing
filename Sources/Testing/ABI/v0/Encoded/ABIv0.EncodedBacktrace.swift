@@ -16,23 +16,14 @@ extension ABIv0 {
   /// assists in converting values to JSON; clients that consume this JSON are
   /// expected to write their own decoders.
   struct EncodedBacktrace: Sendable {
-    /// A type describing a frame in the backtrace.
-    struct Frame: Sendable {
-      /// The address of the frame.
-      var address: Backtrace.Address
-
-      /// The name of the frame, possibly demangled, if available.
-      var symbolName: String?
-    }
-
     /// The frames in the backtrace.
-    var frames: [Frame]
+    var symbolicatedAddresses: [Backtrace.SymbolicatedAddress]
 
     init(encoding backtrace: borrowing Backtrace, in eventContext: borrowing Event.Context) {
       if let symbolicationMode = eventContext.configuration?.backtraceSymbolicationMode {
-        frames = zip(backtrace.addresses, backtrace.symbolicate(symbolicationMode)).map(Frame.init)
+        symbolicatedAddresses = backtrace.symbolicate(symbolicationMode)
       } else {
-        frames = backtrace.addresses.map { Frame(address: $0) }
+        symbolicatedAddresses = backtrace.addresses.map { Backtrace.SymbolicatedAddress(address: $0) }
       }
     }
   }
@@ -42,12 +33,10 @@ extension ABIv0 {
 
 extension ABIv0.EncodedBacktrace: Codable {
   func encode(to encoder: any Encoder) throws {
-    try frames.encode(to: encoder)
+    try symbolicatedAddresses.encode(to: encoder)
   }
 
   init(from decoder: any Decoder) throws {
-    self.frames = try [Frame](from: decoder)
+    self.symbolicatedAddresses = try [Backtrace.SymbolicatedAddress](from: decoder)
   }
 }
-
-extension ABIv0.EncodedBacktrace.Frame: Codable {}
