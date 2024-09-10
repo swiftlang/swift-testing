@@ -39,15 +39,6 @@
 #include <string.h>
 #include <time.h>
 
-#if defined(__APPLE__) && !SWT_NO_MACH_PORTS
-#include <mach/mach_init.h>
-#include <mach/task.h>
-#endif
-
-#if defined(__APPLE__) && !SWT_NO_LIBDISPATCH
-#include <dispatch/dispatch.h>
-#endif
-
 #if __has_include(<unistd.h>)
 #include <unistd.h>
 #endif
@@ -106,10 +97,6 @@
 #include <crt_externs.h>
 #endif
 
-#if __has_include(<wasi/libc-environ.h>)
-#include <wasi/libc-environ.h>
-#endif
-
 #if __has_include(<libgen.h>)
 #include <libgen.h>
 #endif
@@ -122,11 +109,34 @@
 #include <sysexits.h>
 #endif
 
+// MARK: - Platform-specific includes
+
+#if defined(__APPLE__)
+#if !SWT_NO_MACH_PORTS
+#include <mach/mach_init.h>
+#include <mach/task.h>
+#endif
+
+#if !SWT_NO_LIBDISPATCH
+#include <dispatch/dispatch.h>
+#endif
+#endif
+
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <Windows.h>
 #include <Psapi.h>
+#endif
+
+#if defined(__wasi__)
+#if __has_include(<wasi/libc-environ.h>)
+#include <wasi/libc-environ.h>
+#endif
+
+#if __has_include(<wasi/version.h>)
+#include <wasi/version.h>
+#endif
 #endif
 
 #if defined(__ANDROID__)

@@ -88,8 +88,8 @@ let operatingSystemVersion: String = {
     }
   }
 #elseif os(WASI)
-  if let libcVersion = swt_getWASIVersion().flatMap(String.init(validatingCString:)), !libcVersion.isEmpty {
-    return "WASI with libc \(libcVersion)"
+  if let version = swt_getWASIVersion().flatMap(String.init(validatingCString:)) {
+    return version
   }
 #else
 #warning("Platform-specific implementation missing: OS version unavailable")
@@ -130,6 +130,13 @@ let simulatorVersion: String = {
 /// This value is not part of the public interface of the testing library.
 var testingLibraryVersion: String {
   swt_getTestingLibraryVersion().flatMap(String.init(validatingCString:)) ?? "unknown"
+}
+
+/// Get the LLVM target triple used to build the testing library, if available.
+///
+/// This value is not part of the public interface of the testing library.
+var targetTriple: String? {
+  swt_getTargetTriple().flatMap(String.init(validatingCString:))
 }
 
 /// A human-readable string describing the Swift Standard Library's version.

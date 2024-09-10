@@ -170,7 +170,7 @@ extension Array where Element == PackageDescription.CXXSetting {
       } else {
         git.currentCommit
       }
-      result.append(.define("_SWT_TESTING_LIBRARY_VERSION", to: #""\#(testingLibraryVersion)""#))
+      result.append(.define("SWT_TESTING_LIBRARY_VERSION", to: #""\#(testingLibraryVersion)""#))
     }
 
     return result
