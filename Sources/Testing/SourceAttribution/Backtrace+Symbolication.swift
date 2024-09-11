@@ -11,7 +11,7 @@
 private import _TestingInternals
 
 /// A type representing a backtrace or stack trace.
-@_spi(ForToolsIntegrationOnly)
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 extension Backtrace {
   /// Demangle a symbol name.
   ///
