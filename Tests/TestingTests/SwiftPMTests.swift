@@ -167,9 +167,9 @@ struct SwiftPMTests {
     }
     do {
       let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--xunit-output", temporaryFilePath])
-      let eventContext = Event.Context()
-      configuration.eventHandler(Event(.runStarted, testID: nil, testCaseID: nil), eventContext)
-      configuration.eventHandler(Event(.runEnded, testID: nil, testCaseID: nil), eventContext)
+      let eventContext = Event.Context(test: nil, testCase: nil, configuration: nil)
+      configuration.handleEvent(Event(.runStarted, testID: nil, testCaseID: nil), in: eventContext)
+      configuration.handleEvent(Event(.runEnded, testID: nil, testCaseID: nil), in: eventContext)
     }
 
     let fileHandle = try FileHandle(forReadingAtPath: temporaryFilePath)
@@ -236,12 +236,12 @@ struct SwiftPMTests {
     do {
       let configuration = try configurationForEntryPoint(withArguments: ["PATH", outputArgumentName, temporaryFilePath, versionArgumentName, version])
       let test = Test {}
-      let eventContext = Event.Context(test: test)
+      let eventContext = Event.Context(test: test, testCase: nil, configuration: nil)
 
       configuration.handleEvent(Event(.testDiscovered, testID: test.id, testCaseID: nil), in: eventContext)
       configuration.handleEvent(Event(.runStarted, testID: nil, testCaseID: nil), in: eventContext)
       do {
-        let eventContext = Event.Context(test: test)
+        let eventContext = Event.Context(test: test, testCase: nil, configuration: nil)
         configuration.handleEvent(Event(.testStarted, testID: test.id, testCaseID: nil), in: eventContext)
         configuration.handleEvent(Event(.testEnded, testID: test.id, testCaseID: nil), in: eventContext)
       }

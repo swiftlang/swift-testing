@@ -171,18 +171,18 @@ extension Runner {
 
     // Determine what action to take for this step.
     if let step = stepGraph.value {
-      Event.post(.planStepStarted(step), for: step.test, configuration: configuration)
+      Event.post(.planStepStarted(step), for: (step.test, nil), configuration: configuration)
 
       // Determine what kind of event to send for this step based on its action.
       switch step.action {
       case .run:
-        Event.post(.testStarted, for: step.test, configuration: configuration)
+        Event.post(.testStarted, for: (step.test, nil), configuration: configuration)
         shouldSendTestEnded = true
       case let .skip(skipInfo):
-        Event.post(.testSkipped(skipInfo), for: step.test, configuration: configuration)
+        Event.post(.testSkipped(skipInfo), for: (step.test, nil), configuration: configuration)
         shouldSendTestEnded = false
       case let .recordIssue(issue):
-        Event.post(.issueRecorded(issue), for: step.test, configuration: configuration)
+        Event.post(.issueRecorded(issue), for: (step.test, nil), configuration: configuration)
         shouldSendTestEnded = false
       }
     } else {
@@ -191,9 +191,9 @@ extension Runner {
     defer {
       if let step = stepGraph.value {
         if shouldSendTestEnded {
-          Event.post(.testEnded, for: step.test, configuration: configuration)
+          Event.post(.testEnded, for: (step.test, nil), configuration: configuration)
         }
-        Event.post(.planStepEnded(step), for: step.test, configuration: configuration)
+        Event.post(.planStepEnded(step), for: (step.test, nil), configuration: configuration)
       }
     }
 
@@ -327,9 +327,9 @@ extension Runner {
     // Exit early if the task has already been cancelled.
     try Task.checkCancellation()
 
-    Event.post(.testCaseStarted, for: step.test, testCase: testCase, configuration: configuration)
+    Event.post(.testCaseStarted, for: (step.test, testCase), configuration: configuration)
     defer {
-      Event.post(.testCaseEnded, for: step.test, testCase: testCase, configuration: configuration)
+      Event.post(.testCaseEnded, for: (step.test, testCase), configuration: configuration)
     }
 
     await Test.Case.withCurrent(testCase) {
@@ -386,19 +386,19 @@ extension Runner {
       // Post an event for every test in the test plan being run. These events
       // are turned into JSON objects if JSON output is enabled.
       for test in runner.plan.steps.lazy.map(\.test) {
-        Event.post(.testDiscovered, for: test, testCase: nil, configuration: runner.configuration)
+        Event.post(.testDiscovered, for: (test, nil), configuration: runner.configuration)
       }
 
-      Event.post(.runStarted, for: nil, testCase: nil, configuration: runner.configuration)
+      Event.post(.runStarted, for: (nil, nil), configuration: runner.configuration)
       defer {
-        Event.post(.runEnded, for: nil, testCase: nil, configuration: runner.configuration)
+        Event.post(.runEnded, for: (nil, nil), configuration: runner.configuration)
       }
 
       let repetitionPolicy = runner.configuration.repetitionPolicy
       for iterationIndex in 0 ..< repetitionPolicy.maximumIterationCount {
-        Event.post(.iterationStarted(iterationIndex), for: nil, testCase: nil, configuration: runner.configuration)
+        Event.post(.iterationStarted(iterationIndex), for: (nil, nil), configuration: runner.configuration)
         defer {
-          Event.post(.iterationEnded(iterationIndex), for: nil, testCase: nil, configuration: runner.configuration)
+          Event.post(.iterationEnded(iterationIndex), for: (nil, nil), configuration: runner.configuration)
         }
 
         await withTaskGroup(of: Void.self) { [runner] taskGroup in

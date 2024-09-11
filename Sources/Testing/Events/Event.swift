@@ -186,8 +186,9 @@ public struct Event: Sendable {
   ///
   /// - Parameters:
   ///   - kind: The kind of event that occurred.
-  ///   - test: The test for which the event occurred, if any.
-  ///   - testCase: The test case for which the event occurred, if any.
+  ///   - testAndTestCase: The test and test case for which the event occurred,
+  ///     if any. The default value of this argument is ``Test/current`` and
+  ///     ``Test/Case/current``.
   ///   - instant: The instant at which the event occurred. The default value
   ///     of this argument is `.now`.
   ///   - configuration: The configuration whose event handler should handle
@@ -195,15 +196,18 @@ public struct Event: Sendable {
   ///     used, if known.
   static func post(
     _ kind: Kind,
-    for test: Test? = .current,
-    testCase: Test.Case? = .current,
+    for testAndTestCase: (Test?, Test.Case?) = currentTestAndTestCase(),
     instant: Test.Clock.Instant = .now,
     configuration: Configuration? = nil
   ) {
     // Create both the event and its associated context here at same point, to
-    // ensure their task local-derived values are the same.
+    // ensure their task local-derived values are the same. Note we set the
+    // configuration property of Event.Context to nil initially because we'll
+    // reset it to the actual configuration that handles the event when we call
+    // handleEvent() later, so there's no need to make a copy of it yet.
+    let (test, testCase) = testAndTestCase
     let event = Event(kind, testID: test?.id, testCaseID: testCase?.id, instant: instant)
-    let context = Event.Context(test: test, testCase: testCase)
+    let context = Event.Context(test: test, testCase: testCase, configuration: nil)
     event._post(in: context, configuration: configuration)
   }
 }
@@ -239,6 +243,13 @@ extension Event {
     /// functions), the value of this property is `nil`.
     public var testCase: Test.Case?
 
+    /// The configuration handling the corresponding event, if any.
+    ///
+    /// The value of this property is a copy of the configuration that owns the
+    /// currently-running event handler; to avoid reference cycles, the
+    /// ``Configuration/eventHandler`` property of this instance is cleared.
+    public var configuration: Configuration?
+
     /// Initialize a new instance of this type.
     ///
     /// - Parameters:
@@ -246,9 +257,10 @@ extension Event {
     ///     if any.
     ///   - testCase: The test case for which this instance's associated event
     ///     occurred, if any.
-    init(test: Test? = .current, testCase: Test.Case? = .current) {
+    init(test: Test?, testCase: Test.Case?, configuration: Configuration?) {
       self.test = test
       self.testCase = testCase
+      self.configuration = configuration
     }
   }
 

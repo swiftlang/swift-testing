@@ -97,15 +97,13 @@ struct EventRecorderTests {
   func verboseOutput() async throws {
     let stream = Stream()
 
-    var options = Event.ConsoleOutputRecorder.Options()
-    options.verbosity = 1
-
     var configuration = Configuration()
     configuration.deliverExpectationCheckedEvents = true
-    let eventRecorder = Event.ConsoleOutputRecorder(options: options, writingUsing: stream.write)
+    let eventRecorder = Event.ConsoleOutputRecorder(writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
     }
+    configuration.verbosity = 1
 
     await runTest(for: WrittenTests.self, configuration: configuration)
 
@@ -124,15 +122,13 @@ struct EventRecorderTests {
   func quietOutput() async throws {
     let stream = Stream()
 
-    var options = Event.ConsoleOutputRecorder.Options()
-    options.verbosity = -1
-
     var configuration = Configuration()
     configuration.deliverExpectationCheckedEvents = true
-    let eventRecorder = Event.ConsoleOutputRecorder(options: options, writingUsing: stream.write)
+    let eventRecorder = Event.ConsoleOutputRecorder(writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
     }
+    configuration.verbosity = -1
 
     await runTest(for: WrittenTests.self, configuration: configuration)
 
@@ -364,7 +360,7 @@ struct EventRecorderTests {
   func humanReadableRecorderCountsIssuesWithoutTests() {
     let issue = Issue(kind: .unconditional, comments: [], sourceContext: .init())
     let event = Event(.issueRecorded(issue), testID: nil, testCaseID: nil)
-    let context = Event.Context(test: nil, testCase: nil)
+    let context = Event.Context(test: nil, testCase: nil, configuration: nil)
 
     let recorder = Event.HumanReadableOutputRecorder()
     let messages = recorder.record(event, in: context)
@@ -379,7 +375,7 @@ struct EventRecorderTests {
   func junitRecorderCountsIssuesWithoutTests() async throws {
     let issue = Issue(kind: .unconditional, comments: [], sourceContext: .init())
     let event = Event(.issueRecorded(issue), testID: nil, testCaseID: nil)
-    let context = Event.Context(test: nil, testCase: nil)
+    let context = Event.Context(test: nil, testCase: nil, configuration: nil)
 
     let recorder = Event.JUnitXMLRecorder { string in
       if string.contains("<testsuite") {

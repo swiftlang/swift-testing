@@ -222,3 +222,16 @@ extension Test.Case {
     return try await Runner.RuntimeState.$current.withValue(runtimeState, operation: body)
   }
 }
+
+/// Get the current test and test case in a single operation.
+///
+/// - Returns: The current test and test case.
+///
+/// This function is more efficient than calling both ``Test/current`` and
+/// ``Test/Case/current``.
+func currentTestAndTestCase() -> (Test?, Test.Case?) {
+  guard let state = Runner.RuntimeState.current else {
+    return (nil, nil)
+  }
+  return (state.test, state.testCase)
+}
