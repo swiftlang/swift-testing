@@ -376,12 +376,13 @@ final class KnownIssueTests: XCTestCase {
 
     await fulfillment(of: [issueRecorded, knownIssueNotRecorded], timeout: 0.0)
   }
+}
 
-  @MainActor
-  func testMainActorIsolated() async {
-    await Test {
-      await withKnownIssue(isIntermittent: true) { () async in }
-    }.run(configuration: .init())
-  }
+@MainActor
+@Test("withKnownIssue {} with main actor isolation")
+func mainActorIsolatedKnownIssue() async {
+  await Test {
+    await withKnownIssue(isIntermittent: true) { () async in }
+  }.run(configuration: .init())
 }
 #endif
