@@ -140,7 +140,10 @@
 #endif
 
 #if defined(__ANDROID__)
+#if defined(__swift__)
+// The linux/stat header is private in the Android modulemap.
 #pragma clang module import posix_filesystem.linux_stat
+#endif
 #include <sys/system_properties.h>
 #endif
 
