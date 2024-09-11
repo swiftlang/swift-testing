@@ -195,6 +195,14 @@ public struct Configuration: Sendable {
   }
 #endif
 
+  /// How verbose human-readable output should be.
+  ///
+  /// When the value of this property is greater than `0`, additional output
+  /// is provided. When the value of this property is less than `0`, some
+  /// output is suppressed. The exact effects of this property are determined by
+  /// the instance's event handler.
+  public var verbosity = 0
+
   // MARK: - Test selection
 
   /// The test filter to which tests should be filtered when run.

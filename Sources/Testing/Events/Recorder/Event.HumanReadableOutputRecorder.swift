@@ -202,19 +202,11 @@ extension Event.HumanReadableOutputRecorder {
   /// - Parameters:
   ///   - event: The event to record.
   ///   - eventContext: The context associated with the event.
-  ///   - verbosity: How verbose output should be. When the value of this
-  ///     argument is greater than `0`, additional output is provided. When the
-  ///     value of this argument is less than `0`, some output is suppressed.
-  ///     The exact effects of this argument are implementation-defined and
-  ///     subject to change.
   ///
   /// - Returns: An array of zero or more messages that can be displayed to the
   ///   user.
-  @discardableResult public func record(
-    _ event: borrowing Event,
-    in eventContext: borrowing Event.Context,
-    verbosity: Int = 0
-  ) -> [Message] {
+  @discardableResult public func record(_ event: borrowing Event, in eventContext: borrowing Event.Context) -> [Message] {
+    let verbosity = eventContext.configuration?.verbosity ?? 0
     let test = eventContext.test
     let testName = if let test {
       if let displayName = test.displayName {
@@ -230,7 +222,7 @@ extension Event.HumanReadableOutputRecorder {
       "«unknown»"
     }
     let instant = event.instant
-    let iterationCount = Configuration.current?.repetitionPolicy.maximumIterationCount
+    let iterationCount = eventContext.configuration?.repetitionPolicy.maximumIterationCount
 
     // First, make any updates to the context/state associated with this
     // recorder.
@@ -509,3 +501,12 @@ extension Event.HumanReadableOutputRecorder {
 // MARK: - Codable
 
 extension Event.HumanReadableOutputRecorder.Message: Codable {}
+
+// MARK: - Deprecated
+
+extension Event.HumanReadableOutputRecorder {
+  @available(*, deprecated, message: "Use record(_:in:) instead. Verbosity is now controlled by eventContext.configuration.verbosity.")
+  @discardableResult public func record(_ event: borrowing Event, in eventContext: borrowing Event.Context, verbosity: Int) -> [Message] {
+    record(event, in: eventContext)
+  }
+}

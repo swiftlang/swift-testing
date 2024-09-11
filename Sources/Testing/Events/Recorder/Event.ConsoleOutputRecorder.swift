@@ -61,14 +61,6 @@ extension Event {
       public var useSFSymbols = false
 #endif
 
-      /// The level of verbosity of the output.
-      ///
-      /// When the value of this property is greater than `0`, additional output
-      /// is provided. When the value of this property is less than `0`, some
-      /// output is suppressed. The exact effects of this property are
-      /// implementation-defined and subject to change.
-      public var verbosity = 0
-
       /// Storage for ``tagColors``.
       private var _tagColors = Tag.Color.predefined
 
@@ -309,7 +301,7 @@ extension Event.ConsoleOutputRecorder {
   /// - Returns: Whether any output was produced and written to this instance's
   ///   destination.
   @discardableResult public func record(_ event: borrowing Event, in context: borrowing Event.Context) -> Bool {
-    let messages = _humanReadableOutputRecorder.record(event, in: context, verbosity: options.verbosity)
+    let messages = _humanReadableOutputRecorder.record(event, in: context)
     for message in messages {
       let symbol = message.symbol?.stringValue(options: options) ?? " "
 
@@ -340,5 +332,15 @@ extension Event.ConsoleOutputRecorder {
   static func warning(_ message: String, options: Event.ConsoleOutputRecorder.Options) -> String {
     let symbol = Event.Symbol.warning.stringValue(options: options)
     return "\(symbol) \(message)\n"
+  }
+}
+
+// MARK: - Deprecated
+
+extension Event.ConsoleOutputRecorder.Options {
+  @available(*, deprecated, message: "Set Configuration.verbosity instead.")
+  public var verbosity: Int {
+    get { 0 }
+    set {}
   }
 }

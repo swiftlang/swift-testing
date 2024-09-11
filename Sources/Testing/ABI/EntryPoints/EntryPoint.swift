@@ -47,12 +47,12 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
       }
       oldEventHandler(event, context)
     }
+    configuration.verbosity = args.verbosity
 
 #if !SWT_NO_FILE_IO
     // Configure the event recorder to write events to stderr.
     var options = Event.ConsoleOutputRecorder.Options()
     options = .for(.stderr)
-    options.verbosity = args.verbosity
     let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
       try? FileHandle.stderr.write(string)
     }
@@ -91,7 +91,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
       // Post an event for every discovered test. These events are turned into
       // JSON objects if JSON output is enabled.
       for test in tests {
-        Event.post(.testDiscovered, for: test, testCase: nil, configuration: configuration)
+        Event.post(.testDiscovered, for: (test, nil), configuration: configuration)
       }
     } else {
       // Run the tests.

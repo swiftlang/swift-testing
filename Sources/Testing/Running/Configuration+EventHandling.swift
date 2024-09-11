@@ -20,6 +20,9 @@ extension Configuration {
   /// `eventHandler` but this method may also be used as a customization point
   /// to change how the event is passed to the event handler.
   func handleEvent(_ event: borrowing Event, in context: borrowing Event.Context) {
-    eventHandler(event, context)
+    var contextCopy = copy context
+    contextCopy.configuration = self
+    contextCopy.configuration?.eventHandler = { _, _ in }
+    eventHandler(event, contextCopy)
   }
 }
