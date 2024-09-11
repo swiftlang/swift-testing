@@ -12,8 +12,7 @@
 #define SWT_DISCOVERY_H
 
 #include "Defines.h"
-
-#include <stdbool.h>
+#include "Includes.h"
 
 SWT_ASSUME_NONNULL_BEGIN
 

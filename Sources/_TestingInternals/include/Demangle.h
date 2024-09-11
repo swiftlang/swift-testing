@@ -14,8 +14,6 @@
 #include "Defines.h"
 #include "Includes.h"
 
-#include <stdbool.h>
-
 SWT_ASSUME_NONNULL_BEGIN
 
 /// Demangle a Swift symbol name.
