@@ -13,24 +13,6 @@ private import _TestingInternals
 /// A type representing a backtrace or stack trace.
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 extension Backtrace {
-  /// Demangle a symbol name.
-  ///
-  /// - Parameters:
-  ///   - mangledSymbolName: The symbol name to demangle.
-  ///
-  /// - Returns: The demangled form of `mangledSymbolName` according to the
-  ///   Swift standard library or the platform's C++ standard library, or `nil`
-  ///   if the symbol name could not be demangled.
-  private static func _demangle(_ mangledSymbolName: String) -> String? {
-    guard let demangledSymbolName = swt_copyDemangledSymbolName(mangledSymbolName) else {
-      return nil
-    }
-    defer {
-      free(demangledSymbolName)
-    }
-    return String(validatingCString: demangledSymbolName)
-  }
-
   /// An enumeration describing the symbolication mode to use when handling
   /// events containing backtraces.
   public enum SymbolicationMode: Sendable {
@@ -38,8 +20,10 @@ extension Backtrace {
     /// performed.
     case mangled
 
-    /// The backtrace should be symbolicated and Swift and C++ symbols should be
+    /// The backtrace should be symbolicated and Swift symbols should be
     /// demangled if possible.
+    ///
+    /// "Foreign" symbol names such as those produced by C++ are not demangled.
     case demangled
   }
 
@@ -82,12 +66,8 @@ extension Backtrace {
       var info = Dl_info()
       if 0 != dladdr(UnsafePointer(bitPattern: UInt(clamping: address)), &info) {
         let offset = address - Address(clamping: UInt(bitPattern: info.dli_saddr))
-        if var symbolName = info.dli_sname.flatMap(String.init(validatingCString:)) {
-          if mode != .mangled {
-            symbolName = Self._demangle(symbolName) ?? symbolName
-          }
-          result[i] = SymbolicatedAddress(address: address, offset: offset, symbolName: symbolName)
-        }
+        let symbolName = info.dli_sname.flatMap(String.init(validatingCString:))
+        result[i] = SymbolicatedAddress(address: address, offset: offset, symbolName: symbolName)
       }
     }
 #elseif os(Linux)
@@ -109,11 +89,8 @@ extension Backtrace {
           symbolInfo.pointee.si.SizeOfStruct = ULONG(MemoryLayout<SYMBOL_INFOW>.stride)
           symbolInfo.pointee.si.MaxNameLen = ULONG(MAX_SYM_NAME)
           var displacement = DWORD64(0)
-          if SymFromAddrW(hProcess, DWORD64(clamping: address), &displacement, symbolInfo.pointer(to: \.si)!),
-             var symbolName = String.decodeCString(symbolInfo.pointer(to: \.si.Name)!, as: UTF16.self)?.result {
-            if mode != .mangled {
-              symbolName = Self._demangle(symbolName) ?? symbolName
-            }
+          if SymFromAddrW(hProcess, DWORD64(clamping: address), &displacement, symbolInfo.pointer(to: \.si)!) {
+            let symbolName = String.decodeCString(symbolInfo.pointer(to: \.si.Name)!, as: UTF16.self)?.result
             result[i] = SymbolicatedAddress(address: address, offset: displacement, symbolName: symbolName)
           }
         }
@@ -125,6 +102,16 @@ extension Backtrace {
 #warning("Platform-specific implementation missing: backtrace symbolication unavailable")
 #endif
 
+    if mode != .mangled {
+      result = result.map { symbolicatedAddress in
+        var symbolicatedAddress = symbolicatedAddress
+        if let demangledName = symbolicatedAddress.symbolName.flatMap(_demangle) {
+          symbolicatedAddress.symbolName = demangledName
+        }
+        return symbolicatedAddress
+      }
+    }
+
     return result
   }
 }
@@ -133,9 +120,29 @@ extension Backtrace {
 
 extension Backtrace.SymbolicatedAddress: Codable {}
 
-#if os(Windows)
-// MARK: -
+// MARK: - Swift runtime wrappers
 
+/// Demangle a symbol name.
+///
+/// - Parameters:
+///   - mangledSymbolName: The symbol name to demangle.
+///
+/// - Returns: The demangled form of `mangledSymbolName` according to the
+///   Swift standard library or the platform's C++ standard library, or `nil`
+///   if the symbol name could not be demangled.
+private func _demangle(_ mangledSymbolName: String) -> String? {
+  mangledSymbolName.withCString { mangledSymbolName in
+    guard let demangledSymbolName = swift_demangle(mangledSymbolName, strlen(mangledSymbolName), nil, nil, 0) else {
+      return nil
+    }
+    defer {
+      free(demangledSymbolName)
+    }
+    return String(validatingCString: demangledSymbolName)
+  }
+}
+
+#if os(Windows)
 /// Configure the environment to allow calling into the Debug Help library.
 ///
 /// - Parameters:

@@ -18,18 +18,26 @@
 
 SWT_ASSUME_NONNULL_BEGIN
 
-/// Attempt to demangle the given symbol name.
+/// Demangle a Swift symbol name.
 ///
 /// - Parameters:
-///   - symbolName: The symbol name to demangle.
+///   - mangledName: A pointer to the mangled symbol name to demangle.
+///   - mangledNameLength: The length of `mangledName` in bytes, not including
+///     any trailing null byte.
+///   - outputBuffer: Unused by the testing library. Pass `nullptr`.
+///   - outputBufferSize: Unused by the testing library. Pass `nullptr`.
+///   - flags: Unused by the testing library. Pass `0`.
 ///
-/// - Returns: The demangled form of `symbolName`, or `nullptr` if it could not
-///   be demangled.
-///
-/// On Windows, this function must only be called from within a call to
-/// `_swift_win32_withDbgHelpLibrary()`. Note that Swift symbol demangling may
-/// internally use `operator new`.
-SWT_EXTERN char *_Nullable swt_copyDemangledSymbolName(const char *symbolName);
+/// - Returns: The demangled form of `mangledName`, or `nullptr` if demangling
+///   failed. The caller is responsible for freeing this string with `free()`
+///   when done.
+SWT_IMPORT_FROM_STDLIB char *_Nullable swift_demangle(
+  const char *mangledName,
+  size_t mangledNameLength,
+  char *_Nullable outputBuffer,
+  size_t *_Nullable outputBufferSize,
+  uint32_t flags
+);
 
 #if defined(_WIN32)
 /// Configure the environment to allow calling into the Debug Help library.
