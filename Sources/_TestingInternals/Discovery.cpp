@@ -306,7 +306,7 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
   }
 }
 
-#elif defined(__linux__) || defined(_WIN32) || defined(__wasi__) || defined(__ANDROID__)
+#elif defined(__linux__) || defined(__FreeBSD__) || defined(_WIN32) || defined(__wasi__) || defined(__ANDROID__)
 #pragma mark - Linux/Windows implementation
 
 /// Specifies the address range corresponding to a section.

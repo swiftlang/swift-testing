@@ -38,6 +38,20 @@ extension CommandLine {
         buffer[readCount] = 0 // NUL-terminate the string.
         return String(cString: buffer.baseAddress!)
       }
+#elseif os(FreeBSD)
+      var mib = [CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1]
+      try mib.withUnsafeMutableBufferPointer { mib in
+        var bufferCount = 0
+        guard 0 == sysctl(mib.baseAddress!, .init(mib.count), nil, &bufferCount, nil, 0) else {
+          throw CError(rawValue: swt_errno())
+        }
+        return try withUnsafeTemporaryAllocation(of: CChar.self, capacity: bufferCount) { buffer in
+          guard 0 == sysctl(mib.baseAddress!, .init(mib.count), buffer.baseAddress!, &bufferCount, nil, 0) else {
+            throw CError(rawValue: swt_errno())
+          }
+          return String(cString: buffer.baseAddress!)
+        }
+      }
 #elseif os(Windows)
       return try withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: Int(MAX_PATH) * 2) { buffer in
         guard 0 != GetModuleFileNameW(nil, buffer.baseAddress!, DWORD(buffer.count)) else {

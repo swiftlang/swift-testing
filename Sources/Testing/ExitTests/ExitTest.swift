@@ -47,10 +47,10 @@ public struct ExitTest: Sendable {
       EXCEPTION_DEFAULT,
       THREAD_STATE_NONE
     )
-#elseif os(Linux)
-    // On Linux, disable the generation of core files (although they will often
-    // be disabled by default.) If a particular Linux distro performs additional
-    // crash diagnostics, we may want to special-case them as well if we can.
+#elseif os(Linux) || os(FreeBSD)
+    // On Linux and FreeBSD, disable the generation of core files (although they
+    // will often be disabled by default.) If a particular Linux distro performs
+    // additional crash diagnostics, we may want to special-case them as well if we can.
     var rl = rlimit(rlim_cur: 0, rlim_max: 0)
     _ = setrlimit(CInt(RLIMIT_CORE.rawValue), &rl)
 #elseif os(Windows)
@@ -322,13 +322,14 @@ extension ExitTest {
       for key in childEnvironment.keys where key.starts(with: "XCTest") {
         childEnvironment.removeValue(forKey: key)
       }
-#elseif os(Linux)
+#endif
+
       if childEnvironment["SWIFT_BACKTRACE"] == nil {
         // Disable interactive backtraces unless explicitly enabled to reduce
-        // the noise level during the exit test. Only needed on Linux.
+        // the noise level during the exit test.
         childEnvironment["SWIFT_BACKTRACE"] = "enable=no"
       }
-#endif
+
       // Insert a specific variable that tells the child process which exit test
       // to run.
       try JSON.withEncoding(of: exitTest.sourceLocation) { json in
@@ -364,11 +365,11 @@ extension ExitTest {
     // use, so use this typealias to paper over the differences.
 #if SWT_TARGET_OS_APPLE
     typealias P<T> = T?
-#elseif os(Linux)
+#elseif os(Linux) || os(FreeBSD)
     typealias P<T> = T
 #endif
 
-#if SWT_TARGET_OS_APPLE || os(Linux)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
     let pid = try withUnsafeTemporaryAllocation(of: P<posix_spawn_file_actions_t>.self, capacity: 1) { fileActions in
       guard 0 == posix_spawn_file_actions_init(fileActions.baseAddress!) else {
         throw CError(rawValue: swt_errno())

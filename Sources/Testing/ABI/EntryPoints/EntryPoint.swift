@@ -673,7 +673,7 @@ extension Event.ConsoleOutputRecorder.Options {
   /// Whether or not the system terminal claims to support 16-color ANSI escape
   /// codes.
   private static var _terminalSupports16ColorANSIEscapeCodes: Bool {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(Android)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android)
     if let termVariable = Environment.variable(named: "TERM") {
       return termVariable != "dumb"
     }
@@ -695,7 +695,7 @@ extension Event.ConsoleOutputRecorder.Options {
   /// Whether or not the system terminal claims to support 256-color ANSI escape
   /// codes.
   private static var _terminalSupports256ColorANSIEscapeCodes: Bool {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(Android)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android)
     if let termVariable = Environment.variable(named: "TERM") {
       return strstr(termVariable, "256") != nil
     }
@@ -717,7 +717,7 @@ extension Event.ConsoleOutputRecorder.Options {
   /// Whether or not the system terminal claims to support true-color ANSI
   /// escape codes.
   private static var _terminalSupportsTrueColorANSIEscapeCodes: Bool {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(Android)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android)
     if let colortermVariable = Environment.variable(named: "COLORTERM") {
       return strstr(colortermVariable, "truecolor") != nil
     }

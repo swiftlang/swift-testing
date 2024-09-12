@@ -12,7 +12,7 @@
 
 internal import _TestingInternals
 
-#if SWT_TARGET_OS_APPLE || os(Linux)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
 /// Block the calling thread, wait for the target process to exit, and return
 /// a value describing the conditions under which it exited.
 ///
@@ -104,11 +104,16 @@ private let _createWaitThreadImpl: Void = {
     { _ in
       // Set the thread name to help with diagnostics. Note that different
       // platforms support different thread name lengths. See MAXTHREADNAMESIZE
-      // on Darwin and TASK_COMM_LEN on Linux.
+      // on Darwin, TASK_COMM_LEN on Linux, and MAXCOMLEN on FreeBSD. We try to
+      // maximize legibility in the available space.
 #if SWT_TARGET_OS_APPLE
       _ = pthread_setname_np("Swift Testing exit test monitor")
-#else
+#elseif os(Linux)
       _ = pthread_setname_np(pthread_self(), "SWT ExT monitor")
+#elseif os(FreeBSD)
+      _ = pthread_set_name_np(pthread_self(), "SWT ex test monitor")
+#else
+#warning("Platform-specific implementation missing: thread naming unavailable")
 #endif
 
       // Run an infinite loop that waits for child processes to terminate and

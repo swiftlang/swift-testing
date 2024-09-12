@@ -69,7 +69,7 @@ public struct Backtrace: Sendable {
       initializedCount = addresses.withMemoryRebound(to: UnsafeMutableRawPointer.self) { addresses in
         .init(clamping: backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
       }
-#elseif os(Linux)
+#elseif os(Linux) || os(FreeBSD)
       initializedCount = .init(clamping: backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
 #elseif os(Windows)
       initializedCount = Int(clamping: RtlCaptureStackBackTrace(0, ULONG(clamping: addresses.count), addresses.baseAddress!, nil))
