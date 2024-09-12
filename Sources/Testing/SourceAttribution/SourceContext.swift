@@ -29,7 +29,7 @@ public struct SourceContext: Sendable {
   ///   - backtrace: The backtrace associated with the new instance.
   ///   - sourceLocation: The source location associated with the new instance,
   ///     if available.
-  public init(backtrace: Backtrace?, sourceLocation: SourceLocation? = nil) {
+  public init(backtrace: Backtrace?, sourceLocation: SourceLocation?) {
     self.backtrace = backtrace
     self.sourceLocation = sourceLocation
   }
@@ -40,3 +40,17 @@ extension SourceContext: Equatable, Hashable {}
 // MARK: - Codable
 
 extension SourceContext: Codable {}
+
+// MARK: - Deprecated
+
+extension SourceContext {
+  @available(*, deprecated, message: "Use init(backtrace:sourceLocation:) and pass both arguments explicitly instead.")
+  public init(backtrace: Backtrace?) {
+    self.init(backtrace: backtrace, sourceLocation: nil)
+  }
+
+  @available(*, deprecated, message: "Use init(backtrace:sourceLocation:) and pass both arguments explicitly instead.")
+  public init(sourceLocation: SourceLocation? = nil) {
+    self.init(backtrace: nil, sourceLocation: sourceLocation)
+  }
+}

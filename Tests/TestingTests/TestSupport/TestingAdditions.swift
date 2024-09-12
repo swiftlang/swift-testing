@@ -382,6 +382,10 @@ extension SourceContext {
     self.init(sourceLocation: nil)
   }
 
+  init(backtrace: Backtrace?) {
+    self.init(backtrace: backtrace, sourceLocation: nil)
+  }
+
   init(sourceLocation: SourceLocation?) {
     self.init(backtrace: .current(), sourceLocation: sourceLocation)
   }

@@ -38,7 +38,7 @@ public struct SkipInfo: Sendable {
   ///     current backtrace.
   public init(
     comment: Comment? = nil,
-    sourceContext: SourceContext = .init(backtrace: .current())
+    sourceContext: SourceContext
   ) {
     self.comment = comment
     self.sourceContext = sourceContext
@@ -56,3 +56,12 @@ extension SkipInfo: Equatable, Hashable {}
 // MARK: - Codable
 
 extension SkipInfo: Codable {}
+
+// MARK: - Deprecated
+
+extension SkipInfo {
+  @available(*, deprecated, message: "Use init(comment:sourceContext:) and pass an explicit SourceContext.")
+  public init(comment: Comment? = nil) {
+    self.init(comment: comment, sourceContext: .init(backtrace: .current(), sourceLocation: nil))
+  }
+}

@@ -13,7 +13,7 @@
 @Suite("SkipInfo Tests")
 struct SkipInfoTests {
   @Test("comment property") func comment() {
-    var skipInfo = SkipInfo(comment: "abc123")
+    var skipInfo = SkipInfo(comment: "abc123", sourceContext: .init())
     #expect(skipInfo.comment == "abc123")
     skipInfo.comment = .__line("// Foo")
     #expect(skipInfo.comment == .__line("// Foo"))

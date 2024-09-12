@@ -433,3 +433,12 @@ extension Runner.Plan.Action {
   }
 }
 #endif
+
+// MARK: - Deprecated
+
+extension Runner.Plan.Action {
+  @available(*, deprecated, message: "Use .skip(_:) and pass a SkipInfo explicitly.")
+  public static func skip() -> Self {
+    .skip(SkipInfo())
+  }
+}
