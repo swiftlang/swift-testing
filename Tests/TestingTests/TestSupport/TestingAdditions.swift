@@ -376,3 +376,13 @@ extension Issue {
     self.init(kind: kind, comments: [], sourceContext: sourceContext)
   }
 }
+
+extension SourceContext {
+  init() {
+    self.init(sourceLocation: nil)
+  }
+
+  init(sourceLocation: SourceLocation?) {
+    self.init(backtrace: .current(), sourceLocation: sourceLocation)
+  }
+}

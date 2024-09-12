@@ -26,11 +26,10 @@ public struct SourceContext: Sendable {
   /// source location.
   ///
   /// - Parameters:
-  ///   - backtrace: The backtrace associated with the new instance. Defaults to
-  ///     the current backtrace (obtained via
-  ///     ``Backtrace/current(maximumAddressCount:)``).
-  ///   - sourceLocation: The source location associated with the new instance.
-  public init(backtrace: Backtrace? = .current(), sourceLocation: SourceLocation? = nil) {
+  ///   - backtrace: The backtrace associated with the new instance.
+  ///   - sourceLocation: The source location associated with the new instance,
+  ///     if available.
+  public init(backtrace: Backtrace?, sourceLocation: SourceLocation? = nil) {
     self.backtrace = backtrace
     self.sourceLocation = sourceLocation
   }

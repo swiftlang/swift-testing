@@ -34,10 +34,11 @@ public struct SkipInfo: Sendable {
   ///     Defaults to `nil`.
   ///   - sourceContext: A source context indicating where this skip occurred.
   ///     Defaults to a source context returned by calling
-  ///     ``SourceContext/init(backtrace:sourceLocation:)`` with zero arguments.
+  ///     ``SourceContext/init(backtrace:sourceLocation:)`` passing only the
+  ///     current backtrace.
   public init(
     comment: Comment? = nil,
-    sourceContext: SourceContext = .init()
+    sourceContext: SourceContext = .init(backtrace: .current())
   ) {
     self.comment = comment
     self.sourceContext = sourceContext

@@ -108,9 +108,7 @@ public struct Issue: Sendable {
   ///   - comments: An array of comments describing the issue. This array may be
   ///     empty.
   ///   - sourceContext: A ``SourceContext`` indicating where and how this issue
-  ///     occurred. This defaults to a default source context returned by
-  ///     calling ``SourceContext/init(backtrace:sourceLocation:)`` with zero
-  ///     arguments.
+  ///     occurred.
   init(
     kind: Kind,
     comments: [Comment],
