@@ -33,9 +33,6 @@ public struct SkipInfo: Sendable {
   ///   - comment: A user-specified comment describing this skip, if any.
   ///     Defaults to `nil`.
   ///   - sourceContext: A source context indicating where this skip occurred.
-  ///     Defaults to a source context returned by calling
-  ///     ``SourceContext/init(backtrace:sourceLocation:)`` passing only the
-  ///     current backtrace.
   public init(
     comment: Comment? = nil,
     sourceContext: SourceContext
