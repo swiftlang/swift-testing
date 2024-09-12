@@ -42,11 +42,13 @@ public enum ExitCondition: Sendable {
   /// |-|-|
   /// | macOS | [`<stdlib.h>`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/_Exit.3.html), [`<sysexits.h>`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/sysexits.3.html) |
   /// | Linux | [`<stdlib.h>`](https://sourceware.org/glibc/manual/latest/html_node/Exit-Status.html), `<sysexits.h>` |
+  /// | FreeBSD | `<stdlib.h>`, `<sysexits.h>` |
   /// | Windows | [`<stdlib.h>`](https://learn.microsoft.com/en-us/cpp/c-runtime-library/exit-success-exit-failure) |
   ///
-  /// On macOS and Windows, the full exit code reported by the process is
-  /// yielded to the parent process. Linux and other POSIX-like systems may only
-  /// reliably report the low unsigned 8 bits (0&ndash;255) of the exit code.
+  /// On macOS, FreeBSD, and Windows, the full exit code reported by the process
+  /// is yielded to the parent process. Linux and other POSIX-like systems may
+  /// only reliably report the low unsigned 8 bits (0&ndash;255) of the exit
+  /// code.
   case exitCode(_ exitCode: CInt)
 
   /// The process terminated with the given signal.
@@ -61,6 +63,7 @@ public enum ExitCondition: Sendable {
   /// |-|-|
   /// | macOS | [`<signal.h>`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/signal.3.html) |
   /// | Linux | [`<signal.h>`](https://sourceware.org/glibc/manual/latest/html_node/Standard-Signals.html) |
+  /// | FreeBSD | `<signal.h>` |
   /// | Windows | [`<signal.h>`](https://learn.microsoft.com/en-us/cpp/c-runtime-library/signal-constants) |
   ///
   /// On Windows, by default, the C runtime will terminate a process with exit

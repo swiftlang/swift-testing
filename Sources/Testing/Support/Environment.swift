@@ -42,7 +42,7 @@ enum Environment {
     }
   }
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(Android) || os(WASI)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || os(WASI)
   /// Get all environment variables from a POSIX environment block.
   ///
   /// - Parameters:
@@ -103,7 +103,7 @@ enum Environment {
     }
 #endif
     return _get(fromEnviron: _NSGetEnviron()!.pointee!)
-#elseif os(Linux) || os(Android)
+#elseif os(Linux) || os(FreeBSD) || os(Android)
     _get(fromEnviron: swt_environ())
 #elseif os(WASI)
     _get(fromEnviron: __wasilibc_get_environ())
@@ -170,7 +170,7 @@ enum Environment {
       }
       return nil
     }
-#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(Android) || os(WASI)
+#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || os(WASI)
     getenv(name).flatMap { String(validatingCString: $0) }
 #elseif os(Windows)
     name.withCString(encodedAs: UTF16.self) { name in

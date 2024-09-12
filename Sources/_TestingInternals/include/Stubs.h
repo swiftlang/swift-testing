@@ -85,7 +85,7 @@ static LANGID swt_MAKELANGID(int p, int s) {
 }
 #endif
 
-#if defined(__linux__) || defined(__ANDROID__)
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__ANDROID__)
 /// The environment block.
 ///
 /// By POSIX convention, the environment block variable is declared in client

@@ -127,7 +127,7 @@ struct ABIEntryPointTests {
     passing arguments: __CommandLineArguments_v0,
     recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void = { _ in }
   ) async throws -> Bool {
-#if !os(Linux) && !os(Android) && !SWT_NO_DYNAMIC_LINKING
+#if !os(Linux) && !os(FreeBSD) && !os(Android) && !SWT_NO_DYNAMIC_LINKING
     // Get the ABI entry point by dynamically looking it up at runtime.
     //
     // NOTE: The standard Linux linker does not allow exporting symbols from

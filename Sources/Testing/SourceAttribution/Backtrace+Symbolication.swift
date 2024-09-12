@@ -70,14 +70,12 @@ extension Backtrace {
         result[i] = SymbolicatedAddress(address: address, offset: offset, symbolName: symbolName)
       }
     }
-#elseif os(Linux)
-    // Although Linux has dladdr(), it does not have symbol names from ELF
-    // binaries by default. The standard library's backtracing functionality has
-    // implemented sufficient ELF/DWARF parsing to be able to symbolicate Linux
-    // backtraces. TODO: adopt the standard library's Backtrace on Linux
-    // Note that this means on Linux we don't have demangling capability (since
-    // we don't have the mangled symbol names in the first place) so this code
-    // does not check the mode argument.
+#elseif os(Linux) || os(FreeBSD) || os(Android)
+    // Although these platforms have dladdr(), they do not have symbol names
+    // from DWARF binaries by default, only from shared libraries. The standard
+    // library's backtracing functionality has implemented sufficient ELF/DWARF
+    // parsing to be able to symbolicate Linux backtraces.
+    // TODO: adopt the standard library's Backtrace on these platforms
 #elseif os(Windows)
     _withDbgHelpLibrary { hProcess in
       guard let hProcess else {
