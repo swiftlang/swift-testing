@@ -343,7 +343,7 @@ extension Runner {
           let issue = Issue(
             kind: .timeLimitExceeded(timeLimitComponents: timeLimit),
             comments: [],
-            sourceContext: .init(sourceLocation: sourceLocation)
+            sourceContext: .init(backtrace: .current(), sourceLocation: sourceLocation)
           )
           issue.record(configuration: configuration)
         }

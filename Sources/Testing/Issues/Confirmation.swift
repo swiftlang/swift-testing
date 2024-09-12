@@ -176,7 +176,7 @@ public func confirmation<R>(
       let issue = Issue(
         kind: expectedCount.issueKind(forActualCount: actualCount),
         comments: Array(comment),
-        sourceContext: .init(sourceLocation: sourceLocation)
+        sourceContext: .init(backtrace: .current(), sourceLocation: sourceLocation)
       )
       issue.record()
     }

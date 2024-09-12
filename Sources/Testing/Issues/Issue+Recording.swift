@@ -139,7 +139,7 @@ extension Issue {
       // condition evaluated to `false`. Those functions record their own issue,
       // so we don't need to record another one redundantly.
     } catch {
-      let issue = Issue(forCaughtError: error, sourceLocation: sourceLocation)
+      let issue = Issue(for: error, sourceLocation: sourceLocation)
       issue.record(configuration: configuration)
       return error
     }
@@ -180,7 +180,7 @@ extension Issue {
       // condition evaluated to `false`. Those functions record their own issue,
       // so we don't need to record another one redundantly.
     } catch {
-      let issue = Issue(forCaughtError: error, sourceLocation: sourceLocation)
+      let issue = Issue(for: error, sourceLocation: sourceLocation)
       issue.record(configuration: configuration)
       return error
     }

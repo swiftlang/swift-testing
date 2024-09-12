@@ -131,7 +131,7 @@ public struct Issue: Sendable {
   /// The ``sourceContext`` property will have a ``SourceContext/backtrace``
   /// property whose value is the backtrace for the first throw of `error`.
   init(
-    forCaughtError error: any Error,
+    for error: any Error,
     sourceLocation: SourceLocation? = nil
   ) {
     let sourceContext = SourceContext(backtrace: Backtrace(forFirstThrowOf: error), sourceLocation: sourceLocation)

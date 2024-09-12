@@ -241,8 +241,7 @@ extension Runner.Plan {
       // If no trait specified that the test should be skipped, but one did
       // throw an error, then the action is to record an issue for that error.
       if case .run = action, let error = firstCaughtError {
-        let issue = Issue(forCaughtError: error)
-        action = .recordIssue(issue)
+        action = .recordIssue(Issue(for: error))
       }
 
       // If the test is still planned to run (i.e. nothing thus far has caused
@@ -256,8 +255,7 @@ extension Runner.Plan {
         do {
           try await test.evaluateTestCases()
         } catch {
-          let issue = Issue(forCaughtError: error)
-          action = .recordIssue(issue)
+          action = .recordIssue(Issue(for: error))
         }
       }
 
