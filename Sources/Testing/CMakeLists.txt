@@ -13,6 +13,7 @@ add_library(Testing
   ABI/v0/ABIv0.Record.swift
   ABI/v0/ABIv0.Record+Streaming.swift
   ABI/v0/ABIv0.swift
+  ABI/v0/Encoded/ABIv0.EncodedBacktrace.swift
   ABI/v0/Encoded/ABIv0.EncodedEvent.swift
   ABI/v0/Encoded/ABIv0.EncodedInstant.swift
   ABI/v0/Encoded/ABIv0.EncodedIssue.swift
@@ -50,6 +51,7 @@ add_library(Testing
   Running/Runner.swift
   Running/SkipInfo.swift
   SourceAttribution/Backtrace.swift
+  SourceAttribution/Backtrace+Symbolication.swift
   SourceAttribution/CustomTestStringConvertible.swift
   SourceAttribution/Expression.swift
   SourceAttribution/Expression+Macro.swift
