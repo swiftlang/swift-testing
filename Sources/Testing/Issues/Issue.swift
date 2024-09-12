@@ -105,15 +105,15 @@ public struct Issue: Sendable {
   ///
   /// - Parameters:
   ///   - kind: The kind of issue this value represents.
-  ///   - comments: An array of comments describing the issue. This array may be
-  ///     empty.
+  ///   - comments: An array of comments describing the issue. The default value
+  ///     is an empty array.
   ///   - sourceContext: A ``SourceContext`` indicating where and how this issue
   ///     occurred. This defaults to a default source context returned by
   ///     calling ``SourceContext/init(backtrace:sourceLocation:)`` with zero
   ///     arguments.
   init(
     kind: Kind,
-    comments: [Comment],
+    comments: [Comment] = [],
     sourceContext: SourceContext = .init()
   ) {
     self.kind = kind

@@ -242,7 +242,7 @@ extension Runner.Plan {
       // throw an error, then the action is to record an issue for that error.
       if case .run = action, let error = firstCaughtError {
         let sourceContext = SourceContext(backtrace: Backtrace(forFirstThrowOf: error))
-        let issue = Issue(kind: .errorCaught(error), comments: [], sourceContext: sourceContext)
+        let issue = Issue(kind: .errorCaught(error), sourceContext: sourceContext)
         action = .recordIssue(issue)
       }
 
@@ -258,7 +258,7 @@ extension Runner.Plan {
           try await test.evaluateTestCases()
         } catch {
           let sourceContext = SourceContext(backtrace: Backtrace(forFirstThrowOf: error))
-          let issue = Issue(kind: .errorCaught(error), comments: [], sourceContext: sourceContext)
+          let issue = Issue(kind: .errorCaught(error), sourceContext: sourceContext)
           action = .recordIssue(issue)
         }
       }

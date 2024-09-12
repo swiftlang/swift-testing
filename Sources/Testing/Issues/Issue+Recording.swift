@@ -21,8 +21,8 @@ extension Issue {
   ///
   /// - Parameters:
   ///   - kind: The kind of issue.
-  ///   - comments: An array of comments describing the issue. This array may be
-  ///     empty.
+  ///   - comments: An array of comments describing the issue. The default value
+  ///     is an empty array.
   ///   - backtrace: The backtrace of the issue, if available. This value is
   ///     used to construct an instance of ``SourceContext``.
   ///   - sourceLocation: The source location of the issue. This value is used
@@ -32,7 +32,7 @@ extension Issue {
   ///
   /// - Returns: The issue that was recorded.
   @discardableResult
-  static func record(_ kind: Kind, comments: [Comment], backtrace: Backtrace?, sourceLocation: SourceLocation, configuration: Configuration? = nil) -> Self {
+  static func record(_ kind: Kind, comments: [Comment] = [], backtrace: Backtrace?, sourceLocation: SourceLocation, configuration: Configuration? = nil) -> Self {
     let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: sourceLocation)
     return record(kind, comments: comments, sourceContext: sourceContext, configuration: configuration)
   }
@@ -41,15 +41,15 @@ extension Issue {
   ///
   /// - Parameters:
   ///   - kind: The kind of issue.
-  ///   - comments: An array of comments describing the issue. This array may be
-  ///     empty.
+  ///   - comments: An array of comments describing the issue. The default value
+  ///     is an empty array.
   ///   - sourceContext: The source context of the issue.
   ///   - configuration: The test configuration to use when recording the issue.
   ///     The default value is ``Configuration/current``.
   ///
   /// - Returns: The issue that was recorded.
   @discardableResult
-  static func record(_ kind: Kind, comments: [Comment], sourceContext: SourceContext, configuration: Configuration? = nil) -> Self {
+  static func record(_ kind: Kind, comments: [Comment] = [], sourceContext: SourceContext, configuration: Configuration? = nil) -> Self {
     let issue = Issue(kind: kind, comments: comments, sourceContext: sourceContext)
     return issue.record(configuration: configuration)
   }
@@ -178,7 +178,6 @@ extension Issue {
     } catch {
       Issue.record(
         .errorCaught(error),
-        comments: [],
         backtrace: Backtrace(forFirstThrowOf: error),
         sourceLocation: sourceLocation,
         configuration: configuration
@@ -224,7 +223,6 @@ extension Issue {
     } catch {
       Issue.record(
         .errorCaught(error),
-        comments: [],
         backtrace: Backtrace(forFirstThrowOf: error),
         sourceLocation: sourceLocation,
         configuration: configuration

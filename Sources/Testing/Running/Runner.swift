@@ -342,7 +342,6 @@ extension Runner {
         } timeoutHandler: { timeLimit in
           Issue.record(
             .timeLimitExceeded(timeLimitComponents: timeLimit),
-            comments: [],
             backtrace: .current(),
             sourceLocation: sourceLocation,
             configuration: configuration

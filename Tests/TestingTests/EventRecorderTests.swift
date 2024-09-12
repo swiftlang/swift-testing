@@ -358,7 +358,7 @@ struct EventRecorderTests {
 
   @Test("HumanReadableOutputRecorder counts issues without associated tests")
   func humanReadableRecorderCountsIssuesWithoutTests() {
-    let issue = Issue(kind: .unconditional, comments: [], sourceContext: .init())
+    let issue = Issue(kind: .unconditional)
     let event = Event(.issueRecorded(issue), testID: nil, testCaseID: nil)
     let context = Event.Context(test: nil, testCase: nil, configuration: nil)
 
@@ -373,7 +373,7 @@ struct EventRecorderTests {
 
   @Test("JUnitXMLRecorder counts issues without associated tests")
   func junitRecorderCountsIssuesWithoutTests() async throws {
-    let issue = Issue(kind: .unconditional, comments: [], sourceContext: .init())
+    let issue = Issue(kind: .unconditional)
     let event = Event(.issueRecorded(issue), testID: nil, testCaseID: nil)
     let context = Event.Context(test: nil, testCase: nil, configuration: nil)
 
