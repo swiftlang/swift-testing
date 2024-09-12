@@ -173,12 +173,12 @@ public func confirmation<R>(
   defer {
     let actualCount = confirmation.count.rawValue
     if !expectedCount.contains(actualCount) {
-      Issue.record(
-        expectedCount.issueKind(forActualCount: actualCount),
+      let issue = Issue(
+        kind: expectedCount.issueKind(forActualCount: actualCount),
         comments: Array(comment),
-        backtrace: .current(),
-        sourceLocation: sourceLocation
+        sourceContext: .init(sourceLocation: sourceLocation)
       )
+      issue.record()
     }
   }
   return try await body(confirmation)

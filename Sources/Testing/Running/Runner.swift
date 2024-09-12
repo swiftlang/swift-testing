@@ -340,12 +340,12 @@ extension Runner {
             try await testCase.body()
           }
         } timeoutHandler: { timeLimit in
-          Issue.record(
-            .timeLimitExceeded(timeLimitComponents: timeLimit),
-            backtrace: .current(),
-            sourceLocation: sourceLocation,
-            configuration: configuration
+          let issue = Issue(
+            kind: .timeLimitExceeded(timeLimitComponents: timeLimit),
+            comments: [],
+            sourceContext: .init(sourceLocation: sourceLocation)
           )
+          issue.record(configuration: configuration)
         }
       }
     }

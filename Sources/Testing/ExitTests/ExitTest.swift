@@ -178,7 +178,9 @@ func callExitTest(
     // common issues, however they would constitute a failure of the test
     // infrastructure rather than the test itself and perhaps should not cause
     // the test to terminate early.
-    Issue.record(.errorCaught(error), comments: comments(), backtrace: .current(), sourceLocation: sourceLocation, configuration: configuration)
+    let issue = Issue(kind: .errorCaught(error), comments: comments(), sourceContext: .init(sourceLocation: sourceLocation))
+    issue.record(configuration: configuration)
+
     return __checkValue(
       false,
       expression: expression,
