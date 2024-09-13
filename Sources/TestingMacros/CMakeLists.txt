@@ -29,10 +29,9 @@ if(SwiftTesting_BuildMacrosAsExecutables)
   # swift-syntax.
   include(FetchContent)
   set(FETCHCONTENT_BASE_DIR ${CMAKE_BINARY_DIR}/_d)
-  # TODO: Update GIT_TAG to the 6.0 release tag once it is available.
   FetchContent_Declare(SwiftSyntax
     GIT_REPOSITORY https://github.com/swiftlang/swift-syntax
-    GIT_TAG 27b74edd5de625d0e399869a5af08f1501af8837)
+    GIT_TAG cb53fa1bd3219b0b23ded7dfdd3b2baff266fd25) # 600.0.0
   FetchContent_MakeAvailable(SwiftSyntax)
 endif()
 
