@@ -366,3 +366,23 @@ extension Trait where Self == TimeLimitTrait {
     return Self(timeLimit: timeLimit)
   }
 }
+
+extension Issue {
+  init(kind: Kind, sourceContext: SourceContext = .init()) {
+    self.init(kind: kind, comments: [], sourceContext: sourceContext)
+  }
+}
+
+extension SourceContext {
+  init() {
+    self.init(sourceLocation: nil)
+  }
+
+  init(backtrace: Backtrace?) {
+    self.init(backtrace: backtrace, sourceLocation: nil)
+  }
+
+  init(sourceLocation: SourceLocation?) {
+    self.init(backtrace: .current(), sourceLocation: sourceLocation)
+  }
+}

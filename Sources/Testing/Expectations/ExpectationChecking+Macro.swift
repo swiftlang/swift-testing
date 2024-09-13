@@ -114,7 +114,9 @@ public func __checkValue(
   // Ensure the backtrace is captured here so it has fewer extraneous frames
   // from the testing framework which aren't relevant to the user.
   let backtrace = Backtrace.current()
-  Issue.record(.expectationFailed(expectation), comments: comments(), backtrace: backtrace, sourceLocation: sourceLocation)
+  let issue = Issue(kind: .expectationFailed(expectation), comments: comments(), sourceContext: .init(backtrace: backtrace, sourceLocation: sourceLocation))
+  issue.record()
+
   return .failure(ExpectationFailedError(expectation: expectation))
 }
 

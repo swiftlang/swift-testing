@@ -602,11 +602,11 @@ public func __invokeXCTestCaseMethod<T>(
   guard let xcTestCaseClass, isClass(xcTestCaseSubclass, subclassOf: xcTestCaseClass) else {
     return false
   }
-  Issue.record(
-    .apiMisused,
+  let issue = Issue(
+    kind: .apiMisused,
     comments: ["The @Test attribute cannot be applied to methods on a subclass of XCTestCase."],
-    backtrace: nil,
-    sourceLocation: sourceLocation
+    sourceContext: .init(backtrace: nil, sourceLocation: sourceLocation)
   )
+  issue.record()
   return true
 }

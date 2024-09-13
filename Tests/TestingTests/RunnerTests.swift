@@ -405,8 +405,9 @@ final class RunnerTests: XCTestCase {
       testFunction(named: "succeedsAsync()", in: SendableTests.self),
       testFunction(named: "succeeds()", in: SendableTests.NestedSendableTests.self),
     ].map { try XCTUnwrap($0) }
+    let skipInfo = SkipInfo(sourceContext: .init(backtrace: nil))
     let steps: [Runner.Plan.Step] = tests
-      .map { .init(test: $0, action: .skip()) }
+      .map { .init(test: $0, action: .skip(skipInfo)) }
     let plan = Runner.Plan(steps: steps)
 
     let testStarted = expectation(description: "Test was skipped")

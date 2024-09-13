@@ -108,17 +108,36 @@ public struct Issue: Sendable {
   ///   - comments: An array of comments describing the issue. This array may be
   ///     empty.
   ///   - sourceContext: A ``SourceContext`` indicating where and how this issue
-  ///     occurred. This defaults to a default source context returned by
-  ///     calling ``SourceContext/init(backtrace:sourceLocation:)`` with zero
-  ///     arguments.
+  ///     occurred.
   init(
     kind: Kind,
     comments: [Comment],
-    sourceContext: SourceContext = .init()
+    sourceContext: SourceContext
   ) {
     self.kind = kind
     self.comments = comments
     self.sourceContext = sourceContext
+  }
+
+  /// Initialize an issue instance representing a caught error.
+  ///
+  /// - Parameters:
+  ///   - error: The error which was caught which this issue is describing.
+  ///   - sourceLocation: The source location of the issue. This value is used
+  ///     to construct an instance of ``SourceContext``.
+  ///
+  /// The ``sourceContext`` property will have a ``SourceContext/backtrace``
+  /// property whose value is the backtrace for the first throw of `error`.
+  init(
+    for error: any Error,
+    sourceLocation: SourceLocation? = nil
+  ) {
+    let sourceContext = SourceContext(backtrace: Backtrace(forFirstThrowOf: error), sourceLocation: sourceLocation)
+    self.init(
+      kind: .errorCaught(error),
+      comments: [],
+      sourceContext: sourceContext
+    )
   }
 
   /// The error which was associated with this issue, if any.

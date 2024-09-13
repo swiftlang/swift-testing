@@ -1038,7 +1038,7 @@ final class IssueTests: XCTestCase {
 
   func testSetSourceLocationProperty() async throws {
     let sourceLocation = SourceLocation(fileID: "A/B", filePath: "", line: 12345, column: 1)
-    var issue = Issue(kind: .unconditional, comments: [], sourceContext: .init(sourceLocation: sourceLocation))
+    var issue = Issue(kind: .unconditional, sourceContext: .init(sourceLocation: sourceLocation))
 
     var issueSourceLocation = try XCTUnwrap(issue.sourceLocation)
     XCTAssertEqual(issueSourceLocation.line, 12345)
@@ -1480,7 +1480,7 @@ struct IssueCodingTests {
   }
 
   @Test func errorSnapshot() throws {
-    let issue = Issue(kind: .errorCaught(NSError(domain: "Domain", code: 13)), comments: [])
+    let issue = Issue(kind: .errorCaught(NSError(domain: "Domain", code: 13)))
     let underlyingError = try #require(issue.error)
 
     let issueSnapshot = Issue.Snapshot(snapshotting: issue)
@@ -1501,11 +1501,7 @@ struct IssueCodingTests {
       sourceLocation: sourceLocation
     )
 
-    let issue = Issue(
-      kind: .apiMisused,
-      comments: [],
-      sourceContext: sourceContext
-    )
+    let issue = Issue(kind: .apiMisused, sourceContext: sourceContext)
 
     let issueSnapshot = Issue.Snapshot(snapshotting: issue)
     #expect(issueSnapshot.sourceContext == sourceContext)
@@ -1525,11 +1521,7 @@ struct IssueCodingTests {
       sourceLocation: initialSourceLocation
     )
 
-    let issue = Issue(
-      kind: .apiMisused,
-      comments: [],
-      sourceContext: sourceContext
-    )
+    let issue = Issue(kind: .apiMisused, sourceContext: sourceContext)
 
     let updatedSourceLocation = SourceLocation(
       fileID: "fileID2",

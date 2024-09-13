@@ -17,43 +17,6 @@ extension Issue {
   @TaskLocal
   static var currentKnownIssueMatcher: KnownIssueMatcher?
 
-  /// Record a new issue with the specified properties.
-  ///
-  /// - Parameters:
-  ///   - kind: The kind of issue.
-  ///   - comments: An array of comments describing the issue. This array may be
-  ///     empty.
-  ///   - backtrace: The backtrace of the issue, if available. This value is
-  ///     used to construct an instance of ``SourceContext``.
-  ///   - sourceLocation: The source location of the issue. This value is used
-  ///     to construct an instance of ``SourceContext``.
-  ///   - configuration: The test configuration to use when recording the issue.
-  ///     The default value is ``Configuration/current``.
-  ///
-  /// - Returns: The issue that was recorded.
-  @discardableResult
-  static func record(_ kind: Kind, comments: [Comment], backtrace: Backtrace?, sourceLocation: SourceLocation, configuration: Configuration? = nil) -> Self {
-    let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: sourceLocation)
-    return record(kind, comments: comments, sourceContext: sourceContext, configuration: configuration)
-  }
-
-  /// Record a new issue with the specified properties.
-  ///
-  /// - Parameters:
-  ///   - kind: The kind of issue.
-  ///   - comments: An array of comments describing the issue. This array may be
-  ///     empty.
-  ///   - sourceContext: The source context of the issue.
-  ///   - configuration: The test configuration to use when recording the issue.
-  ///     The default value is ``Configuration/current``.
-  ///
-  /// - Returns: The issue that was recorded.
-  @discardableResult
-  static func record(_ kind: Kind, comments: [Comment], sourceContext: SourceContext, configuration: Configuration? = nil) -> Self {
-    let issue = Issue(kind: kind, comments: comments, sourceContext: sourceContext)
-    return issue.record(configuration: configuration)
-  }
-
   /// Record this issue by wrapping it in an ``Event`` and passing it to the
   /// current event handler.
   ///
@@ -176,13 +139,8 @@ extension Issue {
       // condition evaluated to `false`. Those functions record their own issue,
       // so we don't need to record another one redundantly.
     } catch {
-      Issue.record(
-        .errorCaught(error),
-        comments: [],
-        backtrace: Backtrace(forFirstThrowOf: error),
-        sourceLocation: sourceLocation,
-        configuration: configuration
-      )
+      let issue = Issue(for: error, sourceLocation: sourceLocation)
+      issue.record(configuration: configuration)
       return error
     }
 
@@ -222,13 +180,8 @@ extension Issue {
       // condition evaluated to `false`. Those functions record their own issue,
       // so we don't need to record another one redundantly.
     } catch {
-      Issue.record(
-        .errorCaught(error),
-        comments: [],
-        backtrace: Backtrace(forFirstThrowOf: error),
-        sourceLocation: sourceLocation,
-        configuration: configuration
-      )
+      let issue = Issue(for: error, sourceLocation: sourceLocation)
+      issue.record(configuration: configuration)
       return error
     }
 

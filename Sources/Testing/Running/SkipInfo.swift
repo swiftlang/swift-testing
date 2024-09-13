@@ -33,11 +33,9 @@ public struct SkipInfo: Sendable {
   ///   - comment: A user-specified comment describing this skip, if any.
   ///     Defaults to `nil`.
   ///   - sourceContext: A source context indicating where this skip occurred.
-  ///     Defaults to a source context returned by calling
-  ///     ``SourceContext/init(backtrace:sourceLocation:)`` with zero arguments.
   public init(
     comment: Comment? = nil,
-    sourceContext: SourceContext = .init()
+    sourceContext: SourceContext
   ) {
     self.comment = comment
     self.sourceContext = sourceContext
@@ -55,3 +53,12 @@ extension SkipInfo: Equatable, Hashable {}
 // MARK: - Codable
 
 extension SkipInfo: Codable {}
+
+// MARK: - Deprecated
+
+extension SkipInfo {
+  @available(*, deprecated, message: "Use init(comment:sourceContext:) and pass an explicit SourceContext.")
+  public init(comment: Comment? = nil) {
+    self.init(comment: comment, sourceContext: .init(backtrace: .current(), sourceLocation: nil))
+  }
+}

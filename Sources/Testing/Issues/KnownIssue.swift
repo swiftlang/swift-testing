@@ -65,12 +65,12 @@ private func _matchError(_ error: any Error, using issueMatcher: KnownIssueMatch
 ///     attributed.
 private func _handleMiscount(by matchCounter: Locked<Int>, comment: Comment?, sourceLocation: SourceLocation) {
   if matchCounter.rawValue == 0 {
-    Issue.record(
-      .knownIssueNotRecorded,
+    let issue = Issue(
+      kind: .knownIssueNotRecorded,
       comments: Array(comment),
-      backtrace: nil,
-      sourceLocation: sourceLocation
+      sourceContext: .init(backtrace: nil, sourceLocation: sourceLocation)
     )
+    issue.record()
   }
 }
 

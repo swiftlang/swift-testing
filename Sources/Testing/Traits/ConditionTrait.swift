@@ -92,7 +92,12 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
     }
 
     if !result {
-      let sourceContext = SourceContext(sourceLocation: sourceLocation)
+      // We don't need to consider including a backtrace here because it will
+      // primarily contain frames in the testing library, not user code. If an
+      // error was thrown by a condition evaluated above, the caller _should_
+      // attempt to get the backtrace of the caught error when creating an issue
+      // for it, however.
+      let sourceContext = SourceContext(backtrace: nil, sourceLocation: sourceLocation)
       throw SkipInfo(comment: commentOverride ?? comments.first, sourceContext: sourceContext)
     }
   }
