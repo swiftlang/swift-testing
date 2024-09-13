@@ -52,7 +52,7 @@ public struct Issue: Sendable {
     /// the confirmation passed to these functions' `body` closures is confirmed
     /// too few or too many times.
     @_spi(Experimental)
-    indirect case confirmationOutOfRange(actual: Int, expected: any Confirmation.ExpectedCount)
+    indirect case confirmationOutOfRange(actual: Int, expected: any RangeExpression & Sendable)
 
     /// An issue due to an `Error` being thrown by a test function and caught by
     /// the testing library.

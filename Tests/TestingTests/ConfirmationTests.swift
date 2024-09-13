@@ -116,16 +116,28 @@ struct UnsuccessfulConfirmationTests {
   }
 
   @Test(.hidden, arguments: [
-    1 ... 2 as any Confirmation.ExpectedCount,
+    1 ... 2 as any ExpectedCount,
     1 ..< 2,
     1 ..< 3,
     ..<2,
     ...2,
     999...,
   ])
-  func confirmedOutOfRange(_ range: any Confirmation.ExpectedCount) async {
+  func confirmedOutOfRange(_ range: any ExpectedCount) async {
     await confirmation(expectedCount: range) { (thingHappened) async in
       thingHappened(count: 3)
     }
   }
 }
+
+// MARK: -
+
+/// Needed since we don't have generic test functions, so we need a concrete
+/// argument type for `confirmedOutOfRange(_:)`, but we can't write
+/// `any RangeExpression<Int> & Sendable`. ([96960993](rdar://96960993))
+protocol ExpectedCount: RangeExpression, Sendable where Bound == Int {}
+extension ClosedRange<Int>: ExpectedCount {}
+extension PartialRangeFrom<Int>: ExpectedCount {}
+extension PartialRangeThrough<Int>: ExpectedCount {}
+extension PartialRangeUpTo<Int>: ExpectedCount {}
+extension Range<Int>: ExpectedCount {}

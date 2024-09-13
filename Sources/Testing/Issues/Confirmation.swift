@@ -164,7 +164,7 @@ public func confirmation<R>(
 @_spi(Experimental)
 public func confirmation<R>(
   _ comment: Comment? = nil,
-  expectedCount: some Confirmation.ExpectedCount,
+  expectedCount: some RangeExpression<Int> & Sendable,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: (Confirmation) async throws -> sending R
@@ -200,22 +200,7 @@ public func confirmation<R>(
   fatalError("Unsupported")
 }
 
-@_spi(Experimental)
-extension Confirmation {
-  /// A protocol that describes a range expression that can be used with
-  /// ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-9rt6m``.
-  ///
-  /// This protocol represents any expression that describes a range of
-  /// confirmation counts. For example, the expression `1 ..< 10` automatically
-  /// conforms to it.
-  ///
-  /// You do not generally need to add conformances to this type yourself. It is
-  /// used by the testing library to abstract away the different range types
-  /// provided by the Swift standard library.
-  public protocol ExpectedCount: Sendable, RangeExpression<Int> {}
-}
-
-extension Confirmation.ExpectedCount {
+extension RangeExpression where Bound == Int, Self: Sendable {
   /// Get an instance of ``Issue/Kind-swift.enum`` corresponding to this value.
   ///
   /// - Parameters:
@@ -233,18 +218,3 @@ extension Confirmation.ExpectedCount {
     }
   }
 }
-
-@_spi(Experimental)
-extension ClosedRange<Int>: Confirmation.ExpectedCount {}
-
-@_spi(Experimental)
-extension PartialRangeFrom<Int>: Confirmation.ExpectedCount {}
-
-@_spi(Experimental)
-extension PartialRangeThrough<Int>: Confirmation.ExpectedCount {}
-
-@_spi(Experimental)
-extension PartialRangeUpTo<Int>: Confirmation.ExpectedCount {}
-
-@_spi(Experimental)
-extension Range<Int>: Confirmation.ExpectedCount {}
