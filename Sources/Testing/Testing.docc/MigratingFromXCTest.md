@@ -428,7 +428,8 @@ Some tests, especially those that test asynchronously-delivered events, cannot
 be readily converted to use Swift concurrency. The testing library offers
 functionality called _confirmations_ which can be used to implement these tests.
 Instances of ``Confirmation`` are created and used within the scope of the
-function ``confirmation(_:expectedCount:isolation:sourceLocation:_:)``.
+functions ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-5mqz2``
+and ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-6bkl6``.
 
 Confirmations function similarly to the expectations API of XCTest, however, they don't
 block or suspend the caller while waiting for a condition to be fulfilled.
