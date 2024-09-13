@@ -52,7 +52,7 @@ public struct Issue: Sendable {
     /// the confirmation passed to these functions' `body` closures is confirmed
     /// too few or too many times.
     @_spi(Experimental)
-    indirect case confirmationOutOfRange(actual: Int, expected: any Confirmation.ExpectedCount)
+    indirect case confirmationOutOfRange(actual: Int, expected: any RangeExpression & Sendable)
 
     /// An issue due to an `Error` being thrown by a test function and caught by
     /// the testing library.
@@ -246,8 +246,14 @@ extension Issue {
     ///
     /// - Parameter issue: The original issue that gets snapshotted.
     public init(snapshotting issue: borrowing Issue) {
-      self.kind = Issue.Kind.Snapshot(snapshotting: issue.kind)
-      self.comments = issue.comments
+      if case .confirmationOutOfRange = issue.kind {
+        // Work around poor stringification of this issue kind in Xcode 16.
+        self.kind = .unconditional
+        self.comments = CollectionOfOne("\(issue.kind)") + issue.comments
+      } else {
+        self.kind = Issue.Kind.Snapshot(snapshotting: issue.kind)
+        self.comments = issue.comments
+      }
       self.sourceContext = issue.sourceContext
       self.isKnown = issue.isKnown
     }
