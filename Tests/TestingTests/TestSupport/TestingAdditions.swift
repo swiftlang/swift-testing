@@ -368,11 +368,7 @@ extension Trait where Self == TimeLimitTrait {
 }
 
 extension Issue {
-  init(kind: Kind) {
-    self.init(kind: kind, sourceContext: .init())
-  }
-
-  init(kind: Kind, sourceContext: SourceContext) {
+  init(kind: Kind, sourceContext: SourceContext = .init()) {
     self.init(kind: kind, comments: [], sourceContext: sourceContext)
   }
 }
