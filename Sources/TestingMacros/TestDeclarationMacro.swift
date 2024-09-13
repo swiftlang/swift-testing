@@ -35,6 +35,54 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     .disabled
   }
 
+  /// A syntax visitor that looks for uses of `...n` and `..<n` as arguments to
+  /// `confirmation()`.
+  private final class _AmbiguousConfirmationFinder: SyntaxVisitor {
+    /// The set of discovered ambiguous `expectedCount` expressions.
+    var ambiguousArgumentExprs = [PrefixOperatorExprSyntax]()
+
+    /// Check if a given expression is ambiguous as the `expectedCount` argument
+    /// to `confirmation()`.
+    ///
+    /// - Arguments:
+    ///   - argumentExpr: An expression.
+    ///
+    /// - Returns: `argumentExpr` or a subexpression it contains if it is
+    ///   ambiguous, or `nil` if no ambiguity was found.
+    private func _ambiguousArgumentExpr(_ argumentExpr: ExprSyntax) -> PrefixOperatorExprSyntax? {
+      if let argumentExpr = removeParentheses(from: argumentExpr) {
+        return _ambiguousArgumentExpr(argumentExpr)
+      }
+
+      guard let argumentExpr = argumentExpr.as(PrefixOperatorExprSyntax.self) else {
+        return nil
+      }
+
+      let operatorTokenKind = argumentExpr.operator.tokenKind
+      if operatorTokenKind == .prefixOperator("...") || operatorTokenKind == .prefixOperator("..<") {
+        return argumentExpr
+      }
+      return nil
+    }
+
+    override func visit(_ node: FunctionCallExprSyntax) -> SyntaxVisitorContinueKind {
+      let calledExpr = node.calledExpression.tokens(viewMode: .fixedUp).map(\.textWithoutBackticks).joined()
+      guard calledExpr == "confirmation" || calledExpr == "Testing.confirmation" else {
+        return .visitChildren
+      }
+
+      let expectedCountArgument = node.arguments.first { $0.label?.tokenKind == .identifier("expectedCount") }
+      guard let argumentExpr = expectedCountArgument?.expression else {
+        return .visitChildren
+      }
+
+      if let argumentExpr = _ambiguousArgumentExpr(argumentExpr) {
+        ambiguousArgumentExprs.append(argumentExpr)
+      }
+      return .visitChildren
+    }
+  }
+
   /// Diagnose issues with a `@Test` declaration.
   ///
   /// - Parameters:
@@ -115,6 +163,17 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
         if parameter.type.isSome {
           diagnostics.append(.genericDeclarationNotSupported(function, whenUsing: testAttribute, becauseOf: parameter, on: function))
         }
+      }
+    }
+
+    // Look for calls to confirmation() with a ..<n or ...n expected count
+    // argument: we think these may be ambiguous, so we'd recommend explicitly
+    // specifying the lower bound.
+    if let body = function.body {
+      let ambiguousConfirmationFinder = _AmbiguousConfirmationFinder(viewMode: .sourceAccurate)
+      ambiguousConfirmationFinder.walk(body)
+      for ambiguousArgumentExpr in ambiguousConfirmationFinder.ambiguousArgumentExprs {
+        diagnostics.append(.prefixRangeOperatorIsAmbiguous(ambiguousArgumentExpr))
       }
     }
 

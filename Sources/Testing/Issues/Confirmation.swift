@@ -161,7 +161,6 @@ public func confirmation<R>(
 ///
 /// If an exact count is expected, use
 /// ``confirmation(_:expectedCount:isolation:sourceLocation:_:)`` instead.
-@_spi(Experimental)
 public func confirmation<R>(
   _ comment: Comment? = nil,
   expectedCount: some RangeExpression<Int> & Sendable,
@@ -174,7 +173,7 @@ public func confirmation<R>(
     let actualCount = confirmation.count.rawValue
     if !expectedCount.contains(actualCount) {
       let issue = Issue(
-        kind: expectedCount.issueKind(forActualCount: actualCount),
+        kind: .confirmationMiscounted(actual: actualCount, expected: expectedCount),
         comments: Array(comment),
         sourceContext: .init(backtrace: .current(), sourceLocation: sourceLocation)
       )
@@ -184,7 +183,7 @@ public func confirmation<R>(
   return try await body(confirmation)
 }
 
-/// An overload of ``confirmation(_:expectedCount:sourceLocation:_:)-9bfdc``
+/// An overload of ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-6bkl6``
 /// that handles the unbounded range operator (`...`).
 ///
 /// This overload is necessary because `UnboundedRange` does not conform to
@@ -194,27 +193,9 @@ public func confirmation<R>(
 public func confirmation<R>(
   _ comment: Comment? = nil,
   expectedCount: UnboundedRange,
+  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: (Confirmation) async throws -> R
 ) async rethrows -> R {
   fatalError("Unsupported")
-}
-
-extension RangeExpression where Bound == Int, Self: Sendable {
-  /// Get an instance of ``Issue/Kind-swift.enum`` corresponding to this value.
-  ///
-  /// - Parameters:
-  ///   - actualCount: The actual count for the failed confirmation.
-  ///
-  /// - Returns: An instance of ``Issue/Kind-swift.enum`` that describes `self`.
-  fileprivate func issueKind(forActualCount actualCount: Int) -> Issue.Kind {
-    switch self {
-    case let expectedCount as ClosedRange<Int> where expectedCount.lowerBound == expectedCount.upperBound:
-      return .confirmationMiscounted(actual: actualCount, expected: expectedCount.lowerBound)
-    case let expectedCount as Range<Int> where expectedCount.lowerBound == expectedCount.upperBound - 1:
-      return .confirmationMiscounted(actual: actualCount, expected: expectedCount.lowerBound)
-    default:
-      return .confirmationOutOfRange(actual: actualCount, expected: self)
-    }
-  }
 }
