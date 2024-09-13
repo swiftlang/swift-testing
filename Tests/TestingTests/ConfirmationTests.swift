@@ -29,25 +29,21 @@ struct ConfirmationTests {
 
   @Test("Unsuccessful confirmations")
   func unsuccessfulConfirmations() async {
-    await confirmation("Miscount recorded", expectedCount: 4) { miscountRecorded in
-      await confirmation("Out of range recorded", expectedCount: 5) { outOfRangeRecorded in
-        var configuration = Configuration()
-        configuration.eventHandler = { event, _ in
-          if case let .issueRecorded(issue) = event.kind {
-            switch issue.kind {
-            case .confirmationMiscounted:
-              miscountRecorded()
-            case .confirmationOutOfRange:
-              outOfRangeRecorded()
-            default:
-              break
-            }
+    await confirmation("Miscount recorded", expectedCount: 9) { miscountRecorded in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        if case let .issueRecorded(issue) = event.kind {
+          switch issue.kind {
+          case .confirmationMiscounted:
+            miscountRecorded()
+          default:
+            break
           }
         }
-        let testPlan = await Runner.Plan(selecting: UnsuccessfulConfirmationTests.self)
-        let runner = Runner(plan: testPlan, configuration: configuration)
-        await runner.run()
       }
+      let testPlan = await Runner.Plan(selecting: UnsuccessfulConfirmationTests.self)
+      let runner = Runner(plan: testPlan, configuration: configuration)
+      await runner.run()
     }
   }
 
