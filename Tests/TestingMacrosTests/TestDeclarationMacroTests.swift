@@ -256,6 +256,14 @@ struct TestDeclarationMacroTests {
       // .serialized on a non-parameterized test function
       "@Test(.serialized) func f() {}":
         "Trait '.serialized' has no effect when used with a non-parameterized test function",
+
+      // Confirmation with ambiguous lower bound
+      "@Test func f() { confirmation(expectedCount: ...n) }":
+        "Range expression '...n' is ambiguous without an explicit lower bound",
+      "@Test func f() { confirmation(expectedCount: ..<n) }":
+        "Range expression '..<n' is ambiguous without an explicit lower bound",
+      "@Test func f() { confirmation(expectedCount: (...n)) }":
+        "Range expression '...n' is ambiguous without an explicit lower bound",
     ]
   )
   func apiMisuseWarnings(input: String, expectedMessage: String) throws {
