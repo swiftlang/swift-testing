@@ -44,12 +44,31 @@ struct FileHandleTests {
     }
   }
 
+#if !os(Windows) // Windows does not like invalid file descriptors.
+  @Test("Init from invalid file descriptor")
+  func invalidFileDescriptor() throws {
+    #expect(throws: CError.self) {
+      _ = try FileHandle(unsafePOSIXFileDescriptor: -1, mode: "")
+    }
+  }
+#endif
+
 #if os(Windows)
   @Test("Can get Windows file HANDLE")
   func fileHANDLE() throws {
     let fileHandle = try FileHandle.temporary()
     try fileHandle.withUnsafeWindowsHANDLE { handle in
       try #require(handle != nil)
+    }
+  }
+#endif
+
+#if SWT_TARGET_OS_APPLE
+  @Test("close() function")
+  func closeFunction() async throws {
+    try await confirmation("File handle closed") { closed in
+      let fileHandle = try fileHandleForCloseMonitoring(with: closed)
+      fileHandle.close()
     }
   }
 #endif
@@ -132,25 +151,25 @@ struct FileHandleTests {
 
   @Test("Can recognize opened pipe")
   func isPipe() throws {
-#if os(Windows)
-    var rHandle: HANDLE?
-    var wHandle: HANDLE?
-    try #require(CreatePipe(&rHandle, &wHandle, nil, 0))
-    if let rHandle {
-      CloseHandle(rHandle)
-    }
-    let fdWrite = _open_osfhandle(intptr_t(bitPattern: wHandle), 0)
-    let file = try #require(_fdopen(fdWrite, "wb"))
-#else
-    var fds: [CInt] = [-1, -1]
-    try #require(0 == pipe(&fds))
-    try #require(fds[1] >= 0)
-    close(fds[0])
-    let file = try #require(fdopen(fds[1], "wb"))
-#endif
-    let fileHandle = FileHandle(unsafeCFILEHandle: file, closeWhenDone: true)
-    #expect(Bool(fileHandle.isPipe))
+    let pipe = try FileHandle.Pipe()
+    #expect(pipe.readEnd.isPipe as Bool)
+    #expect(pipe.writeEnd.isPipe as Bool)
   }
+
+#if SWT_TARGET_OS_APPLE
+  @Test("Can close ends of a pipe")
+  func closeEndsOfPipe() async throws {
+    try await confirmation("File handle closed", expectedCount: 2) { closed in
+      var pipe1 = try FileHandle.Pipe()
+      pipe1.readEnd = try fileHandleForCloseMonitoring(with: closed)
+      _ = pipe1.closeReadEnd()
+
+      var pipe2 = try FileHandle.Pipe()
+      pipe2.writeEnd = try fileHandleForCloseMonitoring(with: closed)
+      _ = pipe2.closeWriteEnd()
+    }
+  }
+#endif
 
   @Test("/dev/null is not a TTY or pipe")
   func devNull() throws {
@@ -239,4 +258,23 @@ func temporaryDirectory() throws -> String {
 #endif
 }
 
+#if SWT_TARGET_OS_APPLE
+func fileHandleForCloseMonitoring(with confirmation: Confirmation) throws -> FileHandle {
+  let context = Unmanaged.passRetained(confirmation as AnyObject).toOpaque()
+  let file = try #require(
+    funopen(
+      context,
+      { _, _, _ in 0 },
+      nil,
+      nil,
+      { context in
+        let confirmation = Unmanaged<AnyObject>.fromOpaque(context!).takeRetainedValue() as! Confirmation
+        confirmation()
+        return 0
+      }
+    ) as SWT_FILEHandle?
+  )
+  return FileHandle(unsafeCFILEHandle: file, closeWhenDone: false)
+}
+#endif
 #endif
