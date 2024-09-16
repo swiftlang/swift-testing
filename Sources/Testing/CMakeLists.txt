@@ -96,6 +96,11 @@ add_library(Testing
   Traits/Trait.swift)
 target_link_libraries(Testing PRIVATE
   _TestingInternals)
+if(NOT APPLE)
+  target_link_libraries(Testing PUBLIC
+    dispatch
+    Foundation)
+endif()
 if(NOT BUILD_SHARED_LIBS)
   # When building a static library, tell clients to autolink the internal
   # library.

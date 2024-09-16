@@ -15,6 +15,11 @@ endif()
 project(SwiftTesting
   LANGUAGES CXX Swift)
 
+if(NOT APPLE)
+  find_package(dispatch CONFIG)
+  find_package(Foundation CONFIG)
+endif()
+
 include(GNUInstallDirs)
 
 list(APPEND CMAKE_MODULE_PATH
