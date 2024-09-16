@@ -109,7 +109,7 @@ private let _createWaitThreadImpl: Void = {
 #if SWT_TARGET_OS_APPLE
       _ = pthread_setname_np("Swift Testing exit test monitor")
 #elseif os(Linux)
-      _ = pthread_setname_np(pthread_self(), "SWT ExT monitor")
+      _ = swt_pthread_setname_np(pthread_self(), "SWT ExT monitor")
 #elseif os(FreeBSD)
       _ = pthread_set_name_np(pthread_self(), "SWT ex test monitor")
 #else
@@ -181,13 +181,19 @@ func wait(for pid: pid_t) async throws -> ExitCondition {
 /// Wait for a given process handle to exit and report its status.
 ///
 /// - Parameters:
-///   - processHandle: The handle to wait for.
+///   - processHandle: The handle to wait for. This function takes ownership of
+///     this handle and closes it when done.
 ///
 /// - Returns: The exit condition of `processHandle`.
 ///
 /// - Throws: Any error encountered calling `WaitForSingleObject()` or
 ///   `GetExitCodeProcess()`.
-func wait(for processHandle: HANDLE) async throws -> ExitCondition {
+func wait(for processHandle: consuming HANDLE) async throws -> ExitCondition {
+  let processHandle = copy processHandle
+  defer {
+    _ = CloseHandle(processHandle)
+  }
+
   // Once the continuation resumes, it will need to unregister the wait, so
   // yield the wait handle back to the calling scope.
   var waitHandle: HANDLE?

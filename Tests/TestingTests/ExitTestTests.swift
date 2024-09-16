@@ -201,6 +201,27 @@ private import _TestingInternals
     }
   }
 
+  @Test("Exit test forwards issues") func forwardsIssues() async {
+    await confirmation("Issue recorded") { issueRecorded in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        if case let .issueRecorded(issue) = event.kind,
+           case .unconditional = issue.kind,
+           issue.comments.contains("Something went wrong!") {
+          issueRecorded()
+        }
+      }
+      configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+
+      await Test {
+        await #expect(exitsWith: .success) {
+          #expect(Bool(false), "Something went wrong!")
+          exit(0)
+        }
+      }.run(configuration: configuration)
+    }
+  }
+
 #if !os(Linux)
   @Test("Exit test reports > 8 bits of the exit code")
   func fullWidthExitCode() async {

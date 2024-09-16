@@ -66,6 +66,32 @@ public struct ExitTest: Sendable, ~Copyable {
 #endif
   }
 
+  /// Find a back channel file handle set up by the parent process.
+  ///
+  /// - Returns: A file handle open for writing to which events should be
+  ///   written, or `nil` if the file handle could not be resolved.
+  private static func _findBackChannel() -> FileHandle? {
+    guard let backChannelEnvironmentVariable = Environment.variable(named: "SWT_EXPERIMENTAL_BACKCHANNEL_FD") else {
+      return nil
+    }
+
+    var fd: CInt?
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
+    fd = CInt(backChannelEnvironmentVariable).map(dup)
+#elseif os(Windows)
+    if let handle = UInt(backChannelEnvironmentVariable).flatMap(HANDLE.init(bitPattern:)) {
+      fd = _open_osfhandle(Int(bitPattern: handle), _O_WRONLY | _O_BINARY)
+    }
+#else
+#warning("Platform-specific implementation missing: back-channel pipe unavailable")
+#endif
+    guard let fd, fd >= 0 else {
+      return nil
+    }
+
+    return try? FileHandle(unsafePOSIXFileDescriptor: fd, mode: "wb")
+  }
+
   /// Call the exit test in the current process.
   ///
   /// This function invokes the closure originally passed to
@@ -76,8 +102,27 @@ public struct ExitTest: Sendable, ~Copyable {
   public consuming func callAsFunction() async -> Never {
     Self._disableCrashReporting()
 
+    // Set up the configuration for this process.
+    var configuration = Configuration()
+    if let backChannel = Self._findBackChannel() {
+      // Encode events as JSON and write them to the back channel file handle.
+      var eventHandler = ABIv0.Record.eventHandler(encodeAsJSONLines: true) { json in
+        try? backChannel.write(json)
+      }
+
+      // Only forward issue-recorded events. (If we start handling other kinds
+      // of event in the future, we can forward them too.)
+      eventHandler = { [eventHandler] event, eventContext in
+        if case .issueRecorded = event.kind {
+          eventHandler(event, eventContext)
+        }
+      }
+
+      configuration.eventHandler = eventHandler
+    }
+
     do {
-      try await body()
+      try await Configuration.withCurrent(configuration, perform: body)
     } catch {
       _errorInMain(error)
     }
@@ -343,11 +388,109 @@ extension ExitTest {
         childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION"] = String(decoding: json, as: UTF8.self)
       }
 
-      return try await spawnAndWait(
-        forExecutableAtPath: childProcessExecutablePath,
-        arguments: childArguments,
-        environment: childEnvironment
-      )
+      return try await withThrowingTaskGroup(of: ExitCondition?.self) { taskGroup in
+        // Create a "back channel" pipe to handle events from the child process.
+        let backChannel = try FileHandle.Pipe()
+
+        // Let the child process know how to find the back channel by setting a
+        // known environment variable to the corresponding file descriptor
+        // (HANDLE on Windows.)
+        var backChannelEnvironmentVariable: String?
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
+        backChannelEnvironmentVariable = backChannel.writeEnd.withUnsafePOSIXFileDescriptor { fd in
+          fd.map(String.init(describing:))
+        }
+#elseif os(Windows)
+        backChannelEnvironmentVariable = backChannel.writeEnd.withUnsafeWindowsHANDLE { handle in
+          handle.flatMap { String(describing: UInt(bitPattern: $0)) }
+        }
+#else
+#warning("Platform-specific implementation missing: back-channel pipe unavailable")
+#endif
+        if let backChannelEnvironmentVariable {
+          childEnvironment["SWT_EXPERIMENTAL_BACKCHANNEL_FD"] = backChannelEnvironmentVariable
+        }
+
+        // Spawn the child process.
+        let processID = try withUnsafePointer(to: backChannel.writeEnd) { writeEnd in
+          try spawnExecutable(
+            atPath: childProcessExecutablePath,
+            arguments: childArguments,
+            environment: childEnvironment,
+            additionalFileHandles: .init(start: writeEnd, count: 1)
+          )
+        }
+
+        // Await termination of the child process.
+        taskGroup.addTask {
+          try await wait(for: processID)
+        }
+
+        // Read back all data written to the back channel by the child process
+        // and process it as a (minimal) event stream.
+        let readEnd = backChannel.closeWriteEnd()
+        taskGroup.addTask {
+          Self._processRecordsFromBackChannel(readEnd)
+          return nil
+        }
+
+        // This is a roundabout way of saying "and return the exit condition
+        // yielded by wait(for:)".
+        return try await taskGroup.compactMap { $0 }.first { _ in true }!
+      }
+    }
+  }
+
+  /// Read lines from the given back channel file handle and process them as
+  /// event records.
+  ///
+  /// - Parameters:
+  ///   - backChannel: The file handle to read from. Reading continues until an
+  ///     error is encountered or the end of the file is reached.
+  private static func _processRecordsFromBackChannel(_ backChannel: borrowing FileHandle) {
+    let bytes: [UInt8]
+    do {
+      bytes = try backChannel.readToEnd()
+    } catch {
+      // NOTE: an error caught here indicates an I/O problem.
+      // TODO: should we record these issues as systemic instead?
+      Issue.record(error)
+      return
+    }
+
+    for recordJSON in bytes.split(whereSeparator: \.isASCIINewline) where !recordJSON.isEmpty {
+      do {
+        try recordJSON.withUnsafeBufferPointer { recordJSON in
+          try Self._processRecord(.init(recordJSON), fromBackChannel: backChannel)
+        }
+      } catch {
+        // NOTE: an error caught here indicates a decoding problem.
+        // TODO: should we record these issues as systemic instead?
+        Issue.record(error)
+      }
+    }
+  }
+
+  /// Decode a line of JSON read from a back channel file handle and handle it
+  /// as if the corresponding event occurred locally.
+  ///
+  /// - Parameters:
+  ///   - recordJSON: The JSON to decode and process.
+  ///   - backChannel: The file handle that `recordJSON` was read from.
+  ///
+  /// - Throws: Any error encountered attempting to decode or process the JSON.
+  private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
+    let record = try JSON.decode(ABIv0.Record.self, from: recordJSON)
+
+    if case let .event(event) = record.kind, let issue = event.issue {
+      // Translate the issue back into a "real" issue and record it
+      // in the parent process. This translation is, of course, lossy
+      // due to the process boundary, but we make a best effort.
+      let comments: [Comment] = event.messages.compactMap { message in
+        message.symbol == .details ? Comment(rawValue: message.text) : nil
+      }
+      let issue = Issue(kind: .unconditional, comments: comments, sourceContext: .init(backtrace: nil, sourceLocation: issue.sourceLocation))
+      issue.record()
     }
   }
 }

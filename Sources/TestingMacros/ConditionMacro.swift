@@ -348,34 +348,6 @@ public struct RequireThrowsNeverMacro: RefinedConditionMacro {
   }
 }
 
-// MARK: -
-
-/// A syntax visitor that looks for uses of `#expect()` and `#require()` nested
-/// within another macro invocation and diagnoses them as unsupported.
-private final class _NestedConditionFinder<M, C>: SyntaxVisitor where M: FreestandingMacroExpansionSyntax, C: MacroExpansionContext {
-  /// The enclosing macro invocation.
-  private var _macro: M
-
-  /// The macro context in which the expression is being parsed.
-  private var _context: C
-
-  init(viewMode: SyntaxTreeViewMode, macro: M, context: C) {
-    _macro = macro
-    _context = context
-    super.init(viewMode: viewMode)
-  }
-
-  override func visit(_ node: MacroExpansionExprSyntax) -> SyntaxVisitorContinueKind {
-    switch node.macroName.tokenKind {
-    case .identifier("expect"), .identifier("require"):
-      _context.diagnose(.checkUnsupported(node, inExitTest: _macro))
-    default:
-      break
-    }
-    return .visitChildren
-  }
-}
-
 // MARK: - Exit test condition macros
 
 public protocol ExitTestConditionMacro: RefinedConditionMacro {}
@@ -403,10 +375,6 @@ extension ExitTestConditionMacro {
     }
 
     let bodyArgumentExpr = arguments[trailingClosureIndex].expression
-
-    // Diagnose any nested conditions in the exit test body.
-    let conditionFinder = _NestedConditionFinder(viewMode: .sourceAccurate, macro: macro, context: context)
-    conditionFinder.walk(bodyArgumentExpr)
 
     // Create a local type that can be discovered at runtime and which contains
     // the exit test body.
