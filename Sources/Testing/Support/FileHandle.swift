@@ -140,12 +140,13 @@ struct FileHandle: ~Copyable, Sendable {
     let fileHandle = fdopen(fd, mode)
 #endif
     guard let fileHandle else {
+      let errorCode = swt_errno()
 #if os(Windows)
       _close(fd)
 #else
       _TestingInternals.close(fd)
 #endif
-      throw CError(rawValue: swt_errno())
+      throw CError(rawValue: errorCode)
     }
     self.init(unsafeCFILEHandle: fileHandle, closeWhenDone: true)
   }
@@ -158,11 +159,14 @@ struct FileHandle: ~Copyable, Sendable {
 
   /// Close this file handle.
   ///
-  /// This function effectively deinitializes the file handle. If
-  /// `closeWhenDone` was `false` when this file handle was initialized, this
-  /// function has no effect.
+  /// This function effectively deinitializes the file handle.
+  ///
+  /// - Warning: This function closes the underlying C file handle even if
+  ///   `closeWhenDone` was `false` when this instance was initialized. Callers
+  ///   must take care not to close file handles they do not own.
   consuming func close() {
-    _ = (consume self)
+    fclose(_fileHandle)
+    _closeWhenDone = false
   }
 
   /// Call a function and pass the underlying C file handle to it.
@@ -476,7 +480,8 @@ extension FileHandle {
     /// After calling this function, the read end is closed and the write end
     /// remains open.
     consuming func closeReadEnd() -> FileHandle {
-      (consume self).writeEnd
+      readEnd.close()
+      return writeEnd
     }
 
     /// Close the write end of this pipe.
@@ -486,7 +491,8 @@ extension FileHandle {
     /// After calling this function, the write end is closed and the read end
     /// remains open.
     consuming func closeWriteEnd() -> FileHandle {
-      (consume self).readEnd
+      writeEnd.close()
+      return readEnd
     }
   }
 }
