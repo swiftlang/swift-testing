@@ -154,6 +154,7 @@ struct FileHandleTests {
     #expect(pipe.writeEnd.isPipe as Bool)
   }
 
+#if SWT_TARGET_OS_APPLE
   @Test("Can close ends of a pipe")
   func closeEndsOfPipe() async throws {
     try await confirmation("File handle closed", expectedCount: 2) { closed in
@@ -166,6 +167,7 @@ struct FileHandleTests {
       _ = pipe2.closeWriteEnd()
     }
   }
+#endif
 
   @Test("/dev/null is not a TTY or pipe")
   func devNull() throws {
