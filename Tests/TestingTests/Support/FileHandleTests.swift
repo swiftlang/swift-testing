@@ -44,12 +44,14 @@ struct FileHandleTests {
     }
   }
 
+#if !os(Windows) // Windows does not like invalid file descriptors.
   @Test("Init from invalid file descriptor")
   func invalidFileDescriptor() throws {
     #expect(throws: CError.self) {
       _ = try FileHandle(unsafePOSIXFileDescriptor: -1, mode: "")
     }
   }
+#endif
 
 #if os(Windows)
   @Test("Can get Windows file HANDLE")

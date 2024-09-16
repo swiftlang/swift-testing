@@ -165,8 +165,7 @@ struct FileHandle: ~Copyable, Sendable {
   ///   `closeWhenDone` was `false` when this instance was initialized. Callers
   ///   must take care not to close file handles they do not own.
   consuming func close() {
-    fclose(_fileHandle)
-    _closeWhenDone = false
+    _closeWhenDone = true
   }
 
   /// Call a function and pass the underlying C file handle to it.
