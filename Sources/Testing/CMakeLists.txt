@@ -94,6 +94,11 @@ add_library(Testing
   Traits/Trait.swift)
 target_link_libraries(Testing PRIVATE
   _TestingInternals)
+if(NOT APPLE)
+  target_link_libraries(Testing PUBLIC
+    dispatch
+    Foundation)
+endif()
 add_dependencies(Testing
   TestingMacros)
 target_compile_options(Testing PRIVATE
