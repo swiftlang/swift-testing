@@ -55,13 +55,6 @@ be updated so that the release can be used as a package dependency:
 
 1. Delete any unsafe flags from `var packageSettings` as well as elsewhere in
    the package manifest files.
-1. Open the "Documentation/Testing.docc/TemporaryGettingStarted.md" file and
-   update the line:
-
-    ```diff
-    -  .package(url: "https://github.com/swiftlang/swift-testing.git", branch: "main"),
-    +  .package(url: "https://github.com/swiftlang/swift-testing.git", from: "x.y.z"),
-    ```
 
 The repository's local state is now updated. To commit it to your branch, run
 the typical commit command:

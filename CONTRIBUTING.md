@@ -9,17 +9,6 @@ Larger changes that _do_ materially change the semantics of Swift Testing,
 such as new APIs or modifications to existing APIs, must undergo community
 discussion prior to being accepted.
 
-> [!IMPORTANT]
-> Since this package is currently experimental, a formal process for proposing
-> and reviewing significant changes has not yet been established. Until that
-> happens, please start a new discussion thread on the
-> [Swift forums](https://forums.swift.org) about any such changes prior to
-> submitting a PR.
-
-To learn how to write tests using the testing library, rather than how to
-contribute to the testing library itself, see
-[Getting Started](https://github.com/swiftlang/swift-testing/tree/main/Sources/Testing/Testing.docc/TemporaryGettingStarted.md).
-
 ## Reporting issues
 
 Issues are tracked using the testing library's
@@ -41,8 +30,8 @@ and clone the fork which will make opening PRs easier.
 
 ### Using Xcode (easiest)
 
-1. Install the latest beta version of
-   [Xcode](https://developer.apple.com/xcode).
+1. Install Xcode 16 or newer. You can find Xcode on the [Apple Developer](https://developer.apple.com/xcode/)
+   website.
 1. Open the `Package.swift` file from the cloned Swift Testing repository in
    Xcode.
 1. Select the `swift-testing-Package` scheme (if not already selected) and the

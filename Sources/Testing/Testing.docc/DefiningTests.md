@@ -16,10 +16,6 @@ Define a test function to validate that code is working correctly.
 
 Defining a test function for a Swift package or project is straightforward.
 
-This article assumes that the package or project being tested has already been
-configured with a test target. For help configuring a package to use the testing
-library, see <doc:TemporaryGettingStarted>.
-
 ### Import the testing library
 
 To import the testing library, add the following to the Swift source file that

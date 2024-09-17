@@ -21,12 +21,6 @@ The testing library provides much of the same functionality of XCTest, but uses
 its own syntax to declare test functions and types. Here, you'll learn how to
 convert XCTest-based content to use the testing library instead.
 
-### Add the testing library as a dependency
-
-Before the testing library can be used, it must be added as a dependency of your
-Swift package or Xcode project. For more information on how to add it, see the
-[Getting Started](doc:TemporaryGettingStarted) guide.
-
 ### Import the testing library
 
 XCTest and the testing library are available from different modules. Instead of 

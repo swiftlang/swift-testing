@@ -44,7 +44,6 @@ their problems.
 
 ### Essentials
 
-- <doc:TemporaryGettingStarted>
 - <doc:DefiningTests>
 - <doc:OrganizingTests>
 - <doc:MigratingFromXCTest>
