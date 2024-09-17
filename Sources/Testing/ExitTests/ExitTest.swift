@@ -121,10 +121,13 @@ public struct ExitTest: Sendable {
       configuration.eventHandler = eventHandler
     }
 
-    do {
-      try await Configuration.withCurrent(configuration, perform: body)
-    } catch {
-      _errorInMain(error)
+    await Configuration.withCurrent(configuration) {
+      let error = await Issue.withErrorRecording(at: sourceLocation) {
+        try await body()
+      }
+      if let error {
+        _errorInMain(error)
+      }
     }
 
     // Run some glue code that terminates the process with an exit condition
@@ -488,8 +491,18 @@ extension ExitTest {
       let comments: [Comment] = event.messages.compactMap { message in
         message.symbol == .details ? Comment(rawValue: message.text) : nil
       }
-      let issue = Issue(kind: .unconditional, comments: comments, sourceContext: .init(backtrace: nil, sourceLocation: issue.sourceLocation))
-      issue.record()
+      let issueKind: Issue.Kind = if let error = issue._error {
+        .errorCaught(error)
+      } else {
+        .unconditional
+      }
+      let sourceContext = SourceContext(
+        backtrace: nil, // `issue._backtrace` will have the wrong address space.
+        sourceLocation: issue.sourceLocation
+      )
+      var issueCopy = Issue(kind: issueKind, comments: comments, sourceContext: sourceContext)
+      issueCopy.isKnown = issue.isKnown
+      issueCopy.record()
     }
   }
 }
