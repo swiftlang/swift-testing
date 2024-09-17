@@ -51,14 +51,16 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
 
 #if !SWT_NO_FILE_IO
     // Configure the event recorder to write events to stderr.
-    var options = Event.ConsoleOutputRecorder.Options()
-    options = .for(.stderr)
-    let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
-      try? FileHandle.stderr.write(string)
-    }
-    configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-      eventRecorder.record(event, in: context)
-      oldEventHandler(event, context)
+    if configuration.verbosity > .min {
+      var options = Event.ConsoleOutputRecorder.Options()
+      options = .for(.stderr)
+      let eventRecorder = Event.ConsoleOutputRecorder(options: options) { string in
+        try? FileHandle.stderr.write(string)
+      }
+      configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+        eventRecorder.record(event, in: context)
+        oldEventHandler(event, context)
+      }
     }
 #endif
 
