@@ -202,11 +202,27 @@ extension Event.HumanReadableOutputRecorder {
   /// - Parameters:
   ///   - event: The event to record.
   ///   - eventContext: The context associated with the event.
+  ///   - verbosity: How verbose output should be. When the value of this
+  ///     argument is greater than `0`, additional output is provided. When the
+  ///     value of this argument is less than `0`, some output is suppressed.
+  ///     If the value of this argument is `nil`, the value set for the current
+  ///     configuration is used instead. The exact effects of this argument are
+  ///     implementation-defined and subject to change.
   ///
   /// - Returns: An array of zero or more messages that can be displayed to the
   ///   user.
-  @discardableResult public func record(_ event: borrowing Event, in eventContext: borrowing Event.Context) -> [Message] {
-    let verbosity = eventContext.configuration?.verbosity ?? 0
+  @discardableResult public func record(
+    _ event: borrowing Event,
+    in eventContext: borrowing Event.Context,
+    verbosity: Int? = nil
+  ) -> [Message] {
+    let verbosity: Int = if let verbosity {
+      verbosity
+    } else if let verbosity = eventContext.configuration?.verbosity {
+      verbosity
+    } else {
+      0
+    }
     let test = eventContext.test
     let testName = if let test {
       if let displayName = test.displayName {
@@ -501,12 +517,3 @@ extension Event.HumanReadableOutputRecorder {
 // MARK: - Codable
 
 extension Event.HumanReadableOutputRecorder.Message: Codable {}
-
-// MARK: - Deprecated
-
-extension Event.HumanReadableOutputRecorder {
-  @available(*, deprecated, message: "Use record(_:in:) instead. Verbosity is now controlled by eventContext.configuration.verbosity.")
-  @discardableResult public func record(_ event: borrowing Event, in eventContext: borrowing Event.Context, verbosity: Int) -> [Message] {
-    record(event, in: eventContext)
-  }
-}

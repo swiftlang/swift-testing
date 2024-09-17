@@ -79,7 +79,7 @@ extension ABIv0.Record {
           eventHandler(testJSON)
         }
       } else {
-        let messages = humanReadableOutputRecorder.record(event, in: context)
+        let messages = humanReadableOutputRecorder.record(event, in: context, verbosity: 0)
         if let eventRecord = Self(encoding: event, in: context, messages: messages) {
           try? JSON.withEncoding(of: eventRecord, eventHandler)
         }
