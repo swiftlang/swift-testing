@@ -149,14 +149,16 @@ struct FileHandleTests {
   }
 #endif
 
+#if !SWT_NO_PIPES
   @Test("Can recognize opened pipe")
   func isPipe() throws {
     let pipe = try FileHandle.Pipe()
     #expect(pipe.readEnd.isPipe as Bool)
     #expect(pipe.writeEnd.isPipe as Bool)
   }
+#endif
 
-#if SWT_TARGET_OS_APPLE
+#if SWT_TARGET_OS_APPLE && !SWT_NO_PIPES
   @Test("Can close ends of a pipe")
   func closeEndsOfPipe() async throws {
     try await confirmation("File handle closed", expectedCount: 2) { closed in
@@ -175,7 +177,9 @@ struct FileHandleTests {
   func devNull() throws {
     let fileHandle = try FileHandle.null(mode: "wb")
     #expect(!Bool(fileHandle.isTTY))
+#if !SWT_NO_PIPES
     #expect(!Bool(fileHandle.isPipe))
+#endif
   }
 
 #if !os(Windows)
@@ -186,7 +190,9 @@ struct FileHandleTests {
     let file = try #require(fmemopen(nil, 1, "wb+"))
     let fileHandle = FileHandle(unsafeCFILEHandle: file, closeWhenDone: true)
     #expect(!Bool(fileHandle.isTTY))
+#if !SWT_NO_PIPES
     #expect(!Bool(fileHandle.isPipe))
+#endif
   }
 #endif
 }

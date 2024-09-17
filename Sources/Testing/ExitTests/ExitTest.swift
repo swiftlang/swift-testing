@@ -11,6 +11,10 @@
 private import _TestingInternals
 
 #if !SWT_NO_EXIT_TESTS
+#if SWT_NO_PIPES
+#error("Support for exit tests requires support for (anonymous) pipes.")
+#endif
+
 /// A type describing an exit test.
 ///
 /// Instances of this type describe an exit test defined by the test author and
