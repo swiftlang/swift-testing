@@ -25,3 +25,12 @@ extension Numeric {
     return "\(self) \(noun)s"
   }
 }
+
+// MARK: -
+
+extension UInt8 {
+  /// Whether or not this instance is an ASCII newline character (`\n` or `\r`).
+  var isASCIINewline: Bool {
+    self == UInt8(ascii: "\r") || self == UInt8(ascii: "\n")
+  }
+}

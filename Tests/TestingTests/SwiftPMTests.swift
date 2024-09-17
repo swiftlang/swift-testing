@@ -228,7 +228,7 @@ struct SwiftPMTests {
 
   func decodeABIv0RecordStream(fromFileAtPath path: String) throws -> [ABIv0.Record] {
     try FileHandle(forReadingAtPath: path).readToEnd()
-      .split(separator: 10) // "\n"
+      .split(whereSeparator: \.isASCIINewline)
       .map { line in
         try line.withUnsafeBytes { line in
           try JSON.decode(ABIv0.Record.self, from: line)

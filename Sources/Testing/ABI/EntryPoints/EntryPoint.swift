@@ -468,8 +468,11 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   // Event stream output (experimental)
   if let eventStreamOutputPath = args.eventStreamOutputPath {
     let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
-    let eventHandler = try eventHandlerForStreamingEvents(version: args.eventStreamVersion) { json in
-      try? _writeJSONLine(json, to: file)
+    let eventHandler = try eventHandlerForStreamingEvents(version: args.eventStreamVersion, encodeAsJSONLines: true) { json in
+      _ = try? file.withLock {
+        try file.write(json)
+        try file.write("\n")
+      }
     }
     configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
       eventHandler(event, context)
@@ -536,13 +539,20 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 ///
 /// - Parameters:
 ///   - version: The ABI version to use.
+///   - encodeAsJSONLines: Whether or not to ensure JSON passed to
+///     `eventHandler` is encoded as JSON Lines (i.e. that it does not contain
+///     extra newlines.)
 ///   - eventHandler: The event handler to forward encoded events to. The
 ///     encoding of events depends on `version`.
 ///
 /// - Returns: An event handler.
 ///
 /// - Throws: If `version` is not a supported ABI version.
-func eventHandlerForStreamingEvents(version: Int?, forwardingTo eventHandler: @escaping @Sendable (UnsafeRawBufferPointer) -> Void) throws -> Event.Handler {
+func eventHandlerForStreamingEvents(
+  version: Int?,
+  encodeAsJSONLines: Bool,
+  forwardingTo eventHandler: @escaping @Sendable (UnsafeRawBufferPointer) -> Void
+) throws -> Event.Handler {
   switch version {
 #if !SWT_NO_SNAPSHOT_TYPES
   case -1:
@@ -551,55 +561,9 @@ func eventHandlerForStreamingEvents(version: Int?, forwardingTo eventHandler: @e
     eventHandlerForStreamingEventSnapshots(to: eventHandler)
 #endif
   case nil, 0:
-    ABIv0.Record.eventHandler(forwardingTo: eventHandler)
+    ABIv0.Record.eventHandler(encodeAsJSONLines: encodeAsJSONLines, forwardingTo: eventHandler)
   case let .some(unsupportedVersion):
     throw _EntryPointError.invalidArgument("--event-stream-version", value: "\(unsupportedVersion)")
-  }
-}
-
-/// Post-process encoded JSON and write it to a file.
-///
-/// - Parameters:
-///   - json: The JSON to write.
-///   - file: The file to write to.
-///
-/// - Throws: Whatever is thrown when writing to `file`.
-private func _writeJSONLine(_ json: UnsafeRawBufferPointer, to file: borrowing FileHandle) throws {
-  func isASCIINewline(_ byte: UInt8) -> Bool {
-    byte == UInt8(ascii: "\r") || byte == UInt8(ascii: "\n")
-  }
-
-  func write(_ json: UnsafeRawBufferPointer) throws {
-    try file.withLock {
-      try file.write(json)
-      try file.write("\n")
-    }
-  }
-
-  // We don't actually expect the JSON encoder to produce output containing
-  // newline characters, so in debug builds we'll log a diagnostic message.
-  if _slowPath(json.contains(where: isASCIINewline)) {
-#if DEBUG
-    let message = Event.ConsoleOutputRecorder.warning(
-      "JSON encoder produced one or more newline characters while encoding an event to JSON. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new",
-      options: .for(.stderr)
-    )
-#if SWT_TARGET_OS_APPLE
-    try? FileHandle.stderr.write(message)
-#else
-    print(message)
-#endif
-#endif
-
-    // Remove the newline characters to conform to JSON lines specification.
-    var json = Array(json)
-    json.removeAll(where: isASCIINewline)
-    try json.withUnsafeBytes { json in
-      try write(json)
-    }
-  } else {
-    // No newlines found, no need to copy the buffer.
-    try write(json)
   }
 }
 #endif
