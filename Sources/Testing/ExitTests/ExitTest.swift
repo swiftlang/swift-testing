@@ -66,18 +66,19 @@ public struct ExitTest: Sendable, ~Copyable {
 #endif
   }
 
-  /// Find a back channel file handle set up by the parent process.
+  /// The back channel file handle set up by the parent process.
   ///
-  /// - Returns: A file handle open for writing to which events should be
-  ///   written, or `nil` if the file handle could not be resolved.
-  private static func _findBackChannel() -> FileHandle? {
+  /// The value of this property is a file handle open for writing to which
+  /// events should be written, or `nil` if the file handle could not be
+  /// resolved.
+  private static let _backChannel: FileHandle? = {
     guard let backChannelEnvironmentVariable = Environment.variable(named: "SWT_EXPERIMENTAL_BACKCHANNEL") else {
       return nil
     }
 
     var fd: CInt?
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
-    fd = CInt(backChannelEnvironmentVariable).map(dup)
+    fd = CInt(backChannelEnvironmentVariable)
 #elseif os(Windows)
     if let handle = UInt(backChannelEnvironmentVariable).flatMap(HANDLE.init(bitPattern:)) {
       fd = _open_osfhandle(Int(bitPattern: handle), _O_WRONLY | _O_BINARY)
@@ -90,7 +91,7 @@ public struct ExitTest: Sendable, ~Copyable {
     }
 
     return try? FileHandle(unsafePOSIXFileDescriptor: fd, mode: "wb")
-  }
+  }()
 
   /// Call the exit test in the current process.
   ///
@@ -104,22 +105,21 @@ public struct ExitTest: Sendable, ~Copyable {
 
     // Set up the configuration for this process.
     var configuration = Configuration()
-    if let backChannel = Self._findBackChannel() {
-      // Encode events as JSON and write them to the back channel file handle.
-      var eventHandler = ABIv0.Record.eventHandler(encodeAsJSONLines: true) { json in
-        try? backChannel.write(json)
-      }
 
-      // Only forward issue-recorded events. (If we start handling other kinds
-      // of event in the future, we can forward them too.)
-      eventHandler = { [eventHandler] event, eventContext in
-        if case .issueRecorded = event.kind {
-          eventHandler(event, eventContext)
-        }
-      }
-
-      configuration.eventHandler = eventHandler
+    // Encode events as JSON and write them to the back channel file handle.
+    var eventHandler = ABIv0.Record.eventHandler(encodeAsJSONLines: true) { json in
+      try? Self._backChannel?.write(json)
     }
+
+    // Only forward issue-recorded events. (If we start handling other kinds
+    // of event in the future, we can forward them too.)
+    eventHandler = { [eventHandler] event, eventContext in
+      if case .issueRecorded = event.kind {
+        eventHandler(event, eventContext)
+      }
+    }
+
+    configuration.eventHandler = eventHandler
 
     do {
       try await Configuration.withCurrent(configuration, perform: body)
