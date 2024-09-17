@@ -23,7 +23,6 @@ private import _TestingInternals
       }
     }
     await #expect(exitsWith: .success) {
-      sleep(100)
       exit(EXIT_SUCCESS)
     }
     await #expect(exitsWith: .exitCode(123)) {
