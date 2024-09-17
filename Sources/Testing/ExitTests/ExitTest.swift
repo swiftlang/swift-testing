@@ -71,7 +71,7 @@ public struct ExitTest: Sendable, ~Copyable {
   /// - Returns: A file handle open for writing to which events should be
   ///   written, or `nil` if the file handle could not be resolved.
   private static func _findBackChannel() -> FileHandle? {
-    guard let backChannelEnvironmentVariable = Environment.variable(named: "SWT_EXPERIMENTAL_BACKCHANNEL_FD") else {
+    guard let backChannelEnvironmentVariable = Environment.variable(named: "SWT_EXPERIMENTAL_BACKCHANNEL") else {
       return nil
     }
 
@@ -408,7 +408,7 @@ extension ExitTest {
 #warning("Platform-specific implementation missing: back-channel pipe unavailable")
 #endif
         if let backChannelEnvironmentVariable {
-          childEnvironment["SWT_EXPERIMENTAL_BACKCHANNEL_FD"] = backChannelEnvironmentVariable
+          childEnvironment["SWT_EXPERIMENTAL_BACKCHANNEL"] = backChannelEnvironmentVariable
         }
 
         // Spawn the child process.

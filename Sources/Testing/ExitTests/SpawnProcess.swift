@@ -157,7 +157,7 @@ func spawnExecutable(
     )
 
     let commandLine = _escapeCommandLine(CollectionOfOne(executablePath) + arguments)
-    let environ = environment.map { "\($0.key)=\($0.value)"}.joined(separator: "\0") + "\0\0"
+    let environ = environment.map { "\($0.key)=\($0.value)" }.joined(separator: "\0") + "\0\0"
 
     return try commandLine.withCString(encodedAs: UTF16.self) { commandLine in
       try environ.withCString(encodedAs: UTF16.self) { environ in
@@ -248,7 +248,8 @@ private func _withStartupInfoEx<R>(attributeCount: Int = 0, _ body: (UnsafeMutab
 /// Windows processes are responsible for handling their own command-line
 /// escaping. This function is adapted from the code in
 /// swift-corelibs-foundation (see `quoteWindowsCommandLine()`) which was
-/// itself adapted from code [published by Microsoft](https://learn.microsoft.com/en-us/archive/blogs/twistylittlepassagesallalike/everyone-quotes-command-line-arguments-the-wrong-way).
+/// itself adapted from code [published by Microsoft](https://learn.microsoft.com/en-us/archive/blogs/twistylittlepassagesallalike/everyone-quotes-command-line-arguments-the-wrong-way)
+/// (ADO 8992662).
 private func _escapeCommandLine(_ arguments: [String]) -> String {
   return arguments.lazy
     .map { arg in
