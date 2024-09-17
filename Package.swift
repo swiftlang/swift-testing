@@ -71,14 +71,6 @@ let package = Package(
         // When building as a package, the macro plugin always builds as an
         // executable rather than a library.
         .define("SWT_NO_LIBRARY_MACRO_PLUGINS"),
-
-        // The only target which needs the ability to import this macro
-        // implementation target's module is its unit test target. Users of the
-        // macros this target implements use them via their declarations in the
-        // Testing module. This target's module is never distributed to users,
-        // but as an additional guard against accidental misuse, this specifies
-        // the unit test target as the only allowable client.
-        .unsafeFlags(["-Xfrontend", "-allowable-client", "-Xfrontend", "TestingMacrosTests"]),
       ]
     ),
 
@@ -122,7 +114,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
   /// Analogous to project-level build settings in an Xcode project.
   static var packageSettings: Self {
     availabilityMacroSettings + [
-      .unsafeFlags(["-require-explicit-sendable"]),
       .enableUpcomingFeature("ExistentialAny"),
 
       .enableExperimentalFeature("AccessLevelOnImport"),

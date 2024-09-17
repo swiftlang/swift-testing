@@ -67,6 +67,7 @@ public typealias __XCTestCompatibleSelector = Never
 /// ## See Also
 ///
 /// - <doc:OrganizingTests>
+@available(*, deprecated, message: "Swift Testing is now included in the Swift 6 toolchain. Remove your 'swift-testing' package dependency to silence this warning.")
 @attached(member) @attached(peer)
 @_documentation(visibility: private)
 public macro Suite(
@@ -95,6 +96,7 @@ public macro Suite(
 /// ## See Also
 ///
 /// - <doc:OrganizingTests>
+@available(*, deprecated, message: "Swift Testing is now included in the Swift 6 toolchain. Remove your 'swift-testing' package dependency to silence this warning.")
 @attached(member) @attached(peer) public macro Suite(
   _ displayName: _const String? = nil,
   _ traits: any SuiteTrait...
@@ -124,6 +126,7 @@ extension Test {
 /// ## See Also
 ///
 /// - ``Test(_:_:)``
+@available(*, deprecated, message: "Swift Testing is now included in the Swift 6 toolchain. Remove your 'swift-testing' package dependency to silence this warning.")
 @attached(peer)
 @_documentation(visibility: private)
 public macro Test(
@@ -141,6 +144,7 @@ public macro Test(
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
+@available(*, deprecated, message: "Swift Testing is now included in the Swift 6 toolchain. Remove your 'swift-testing' package dependency to silence this warning.")
 @attached(peer) public macro Test(
   _ displayName: _const String? = nil,
   _ traits: any TestTrait...
@@ -200,6 +204,7 @@ extension [Test.__Parameter] {
 /// ## See Also
 ///
 /// - ``Test(_:arguments:)-35dat``
+@available(*, deprecated, message: "Swift Testing is now included in the Swift 6 toolchain. Remove your 'swift-testing' package dependency to silence this warning.")
 @attached(peer)
 @_documentation(visibility: private)
 public macro Test<C>(
@@ -228,6 +233,7 @@ public macro Test<C>(
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
+@available(*, deprecated, message: "Swift Testing is now included in the Swift 6 toolchain. Remove your 'swift-testing' package dependency to silence this warning.")
 @attached(peer) public macro Test<C>(
   _ displayName: _const String? = nil,
   _ traits: any TestTrait...,
@@ -281,6 +287,7 @@ extension Test {
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
+@available(*, deprecated, message: "Swift Testing is now included in the Swift 6 toolchain. Remove your 'swift-testing' package dependency to silence this warning.")
 @attached(peer)
 @_documentation(visibility: private)
 public macro Test<C1, C2>(
@@ -309,6 +316,7 @@ public macro Test<C1, C2>(
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
+@available(*, deprecated, message: "Swift Testing is now included in the Swift 6 toolchain. Remove your 'swift-testing' package dependency to silence this warning.")
 @attached(peer) public macro Test<C1, C2>(
   _ displayName: _const String? = nil,
   _ traits: any TestTrait...,
@@ -335,6 +343,7 @@ public macro Test<C1, C2>(
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
+@available(*, deprecated, message: "Swift Testing is now included in the Swift 6 toolchain. Remove your 'swift-testing' package dependency to silence this warning.")
 @attached(peer)
 @_documentation(visibility: private)
 public macro Test<C1, C2>(
@@ -363,6 +372,7 @@ public macro Test<C1, C2>(
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
+@available(*, deprecated, message: "Swift Testing is now included in the Swift 6 toolchain. Remove your 'swift-testing' package dependency to silence this warning.")
 @attached(peer) public macro Test<C1, C2>(
   _ displayName: _const String? = nil,
   _ traits: any TestTrait...,
