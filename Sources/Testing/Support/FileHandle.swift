@@ -425,6 +425,7 @@ extension FileHandle {
   }
 }
 
+#if !SWT_NO_PIPES
 // MARK: - Pipes
 
 extension FileHandle {
@@ -495,6 +496,7 @@ extension FileHandle {
     }
   }
 }
+#endif
 
 // MARK: - Attributes
 
@@ -525,9 +527,10 @@ extension FileHandle {
 #endif
   }
 
+#if !SWT_NO_PIPES
   /// Is this file handle a pipe or FIFO?
   var isPipe: Bool {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || os(WASI)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android)
     withUnsafePOSIXFileDescriptor { fd in
       guard let fd else {
         return false
@@ -547,6 +550,7 @@ extension FileHandle {
     return false
 #endif
   }
+#endif
 }
 
 // MARK: - General path utilities
