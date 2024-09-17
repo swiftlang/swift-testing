@@ -447,7 +447,7 @@ extension FileHandle {
           throw CError(rawValue: swt_errno())
         }
 #else
-        guard 0 == pipe(fds.baseAddress) else {
+        guard 0 == pipe(fds.baseAddress!) else {
           throw CError(rawValue: swt_errno())
         }
 #endif
