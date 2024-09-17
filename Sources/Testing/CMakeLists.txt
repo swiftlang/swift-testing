@@ -14,6 +14,7 @@ add_library(Testing
   ABI/v0/ABIv0.Record+Streaming.swift
   ABI/v0/ABIv0.swift
   ABI/v0/Encoded/ABIv0.EncodedBacktrace.swift
+  ABI/v0/Encoded/ABIv0.EncodedError.swift
   ABI/v0/Encoded/ABIv0.EncodedEvent.swift
   ABI/v0/Encoded/ABIv0.EncodedInstant.swift
   ABI/v0/Encoded/ABIv0.EncodedIssue.swift

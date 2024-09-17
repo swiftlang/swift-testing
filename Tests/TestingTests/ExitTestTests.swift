@@ -32,9 +32,6 @@ private import _TestingInternals
       await Task.yield()
       exit(123)
     }
-    await #expect(exitsWith: .failure) {
-      throw MyError()
-    }
 #if !os(Windows)
     await #expect(exitsWith: .signal(SIGKILL)) {
       _ = kill(getpid(), SIGKILL)
@@ -203,22 +200,30 @@ private import _TestingInternals
 
   @Test("Exit test forwards issues") func forwardsIssues() async {
     await confirmation("Issue recorded") { issueRecorded in
-      var configuration = Configuration()
-      configuration.eventHandler = { event, _ in
-        if case let .issueRecorded(issue) = event.kind,
-           case .unconditional = issue.kind,
-           issue.comments.contains("Something went wrong!") {
-          issueRecorded()
+      await confirmation("Error caught") { errorCaught in
+        var configuration = Configuration()
+        configuration.eventHandler = { event, _ in
+          guard case let .issueRecorded(issue) = event.kind else {
+            return
+          }
+          if case .unconditional = issue.kind, issue.comments.contains("Something went wrong!") {
+            issueRecorded()
+          } else if issue.error != nil {
+            errorCaught()
+          }
         }
-      }
-      configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+        configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
 
-      await Test {
-        await #expect(exitsWith: .success) {
-          #expect(Bool(false), "Something went wrong!")
-          exit(0)
-        }
-      }.run(configuration: configuration)
+        await Test {
+          await #expect(exitsWith: .success) {
+            #expect(Bool(false), "Something went wrong!")
+            exit(0)
+          }
+          await #expect(exitsWith: .failure) {
+            Issue.record(MyError())
+          }
+        }.run(configuration: configuration)
+      }
     }
   }
 

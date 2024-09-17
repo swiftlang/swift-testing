@@ -23,13 +23,23 @@ extension ABIv0 {
     var sourceLocation: SourceLocation?
 
     /// The backtrace where this issue occurred, if available.
+    ///
+    /// - Warning: Backtraces are not yet part of the JSON schema.
     var _backtrace: EncodedBacktrace?
+
+    /// The error associated with this issue, if applicable.
+    ///
+    /// - Warning: Errors are not yet part of the JSON schema.
+    var _error: EncodedError?
 
     init(encoding issue: borrowing Issue, in eventContext: borrowing Event.Context) {
       isKnown = issue.isKnown
       sourceLocation = issue.sourceLocation
       if let backtrace = issue.sourceContext.backtrace {
         _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)
+      }
+      if let error = issue.error {
+        _error = EncodedError(encoding: error, in: eventContext)
       }
     }
   }
