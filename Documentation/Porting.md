@@ -147,7 +147,7 @@ to load that information:
 +    UseResFile(oldRefNum);
 +  }
 +}
-+#else
+ #else
  #warning Platform-specific implementation missing: Runtime test discovery unavailable
  template <typename SectionEnumerator>
  static void enumerateTypeMetadataSections(const SectionEnumerator& body) {}
