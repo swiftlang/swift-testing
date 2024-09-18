@@ -27,7 +27,7 @@ directory.
 
 The [Vision document](https://github.com/swiftlang/swift-evolution/blob/main/visions/swift-testing.md)
 for Swift Testing offers a comprehensive discussion of the project's design
-principles and goals. 
+principles and goals.
 
 ## Development and contribution
 
@@ -40,6 +40,11 @@ principles and goals.
   describes this project's guidelines for code and documentation style.
 - [SPI groups in Swift Testing](https://github.com/swiftlang/swift-testing/blob/main/Documentation/SPI.md)
   describes when and how the testing library uses Swift SPI.
+
+## Experimental platform support
+
+- Instructions are provided for running tests against a
+  [WASI/WebAssembly target](https://github.com/swiftlang/swift-testing/blob/main/Documentation/WASI.md).
 
 ## Project maintenance
 

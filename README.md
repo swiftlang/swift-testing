@@ -122,8 +122,8 @@ incrementally, at your own pace.
 Detailed documentation for Swift Testing can be found on the
 [Swift Package Index](https://swiftpackageindex.com/swiftlang/swift-testing/main/documentation/testing).
 There, you can delve into comprehensive guides, tutorials, and API references to
-make the most out of this package. To try it yourself, see
-[Getting Started](https://swiftpackageindex.com/swiftlang/swift-testing/main/documentation/testing/temporarygettingstarted).
+make the most out of this package. Swift Testing is included with the Swift 6
+toolchain and Xcode 16.
 
 Other documentation resources for this project can be found in the
 [README](https://github.com/swiftlang/swift-testing/blob/main/Documentation/README.md) 
