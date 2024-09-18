@@ -28,13 +28,15 @@ extension Test.Case {
     /// multiple times.
     private var _sequence: S
 
+    private var _sourceLocations: [SourceLocation]?
+
     /// A closure that maps an element from `_sequence` to a test case instance.
     ///
     /// - Parameters:
     ///   - element: The element from `_sequence`.
     ///
     /// - Returns: A test case instance that tests `element`.
-    private var _mapElement: @Sendable (_ element: S.Element) -> Test.Case
+    private var _mapElement: @Sendable (_ element: S.Element, _ sourceLocation: SourceLocation?) -> Test.Case
 
     /// Initialize an instance of this type.
     ///
@@ -45,9 +47,11 @@ extension Test.Case {
     ///     corresponding instance of ``Test/Case``.
     private init(
       sequence: S,
-      mapElement: @escaping @Sendable (_ element: S.Element) -> Test.Case
+      argumentSourceLocations: [SourceLocation]?,
+      mapElement: @escaping @Sendable (_ element: S.Element, _ sourceLocation: SourceLocation?) -> Test.Case
     ) {
       _sequence = sequence
+      _sourceLocations = argumentSourceLocations
       _mapElement = mapElement
     }
 
@@ -61,8 +65,8 @@ extension Test.Case {
     ) where S == CollectionOfOne<Void> {
       // A beautiful hack to give us the right number of cases: iterate over a
       // collection containing a single Void value.
-      self.init(sequence: CollectionOfOne(())) { _ in
-        Test.Case(arguments: [], body: testFunction)
+      self.init(sequence: CollectionOfOne(()), argumentSourceLocations: nil) { _, _ in
+        Test.Case(arguments: [], sourceLocation: nil, body: testFunction)
       }
     }
 
@@ -84,11 +88,12 @@ extension Test.Case {
     @_disfavoredOverload
     init(
       arguments collection: S,
+      argumentSourceLocations: [SourceLocation]?,
       parameters: [Test.Parameter],
       testFunction: @escaping @Sendable (S.Element) async throws -> Void
     ) where S: Collection {
       if parameters.count > 1 {
-        self.init(sequence: collection) { element in
+        self.init(sequence: collection, argumentSourceLocations: argumentSourceLocations) { element, sourceLocation in
           let mirror = Mirror(reflecting: element)
           let values: [any Sendable] = if mirror.displayStyle == .tuple {
             mirror.children.map { unsafeBitCast($0.value, to: (any Sendable).self) }
@@ -96,13 +101,13 @@ extension Test.Case {
             [element]
           }
 
-          return Test.Case(values: values, parameters: parameters) {
+          return Test.Case(values: values, sourceLocation: sourceLocation, parameters: parameters) {
             try await testFunction(element)
           }
         }
       } else {
-        self.init(sequence: collection) { element in
-          Test.Case(values: [element], parameters: parameters) {
+        self.init(sequence: collection, argumentSourceLocations: argumentSourceLocations) { element, sourceLocation in
+          Test.Case(values: [element], sourceLocation: sourceLocation, parameters: parameters) {
             try await testFunction(element)
           }
         }
@@ -123,10 +128,11 @@ extension Test.Case {
     ///     passes an argument value from `collection`.
     init<C1, C2>(
       arguments collection1: C1, _ collection2: C2,
+      argumentSourceLocations: ([SourceLocation]?, [SourceLocation]?),
       parameters: [Test.Parameter],
       testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
     ) where S == CartesianProduct<C1, C2> {
-      self.init(sequence: cartesianProduct(collection1, collection2)) { element in
+      self.init(sequence: cartesianProduct(collection1, collection2), argumentSourceLocations: ) { element in
         Test.Case(values: [element.0, element.1], parameters: parameters) {
           try await testFunction(element.0, element.1)
         }

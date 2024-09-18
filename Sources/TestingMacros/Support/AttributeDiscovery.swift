@@ -184,16 +184,52 @@ struct AttributeInfo {
     // begin with a labeled argument named `arguments:` and include all
     // subsequent unlabeled arguments.
     var otherArguments = self.otherArguments
+    var argumentSourceLocations: TupleExprSyntax?
     if let argumentsIndex = otherArguments.firstIndex(where: { $0.label?.tokenKind == .identifier("arguments") }) {
+      var argumentSourceLocationsArray = [ExprSyntax?]()
+
       for index in argumentsIndex ..< otherArguments.endIndex {
         var argument = otherArguments[index]
         argument.expression = .init(ClosureExprSyntax { argument.expression.trimmed })
         otherArguments[index] = argument
+
+        var thisArgumentSourceLocations: ExprSyntax?
+        if let arrayExpr = argument.expression.as(ArrayExprSyntax.self) {
+          thisArgumentSourceLocations = ExprSyntax(
+            ArrayExprSyntax {
+              for elementExpr in arrayExpr.elements {
+                ArrayElementSyntax(expression: createSourceLocationExpr(of: elementExpr, context: context))
+              }
+            }
+          )
+        } else if let dictExpr = argument.expression.as(DictionaryExprSyntax.self),
+                  case let .elements(elements) = dictExpr.content {
+          thisArgumentSourceLocations = ExprSyntax(
+            DictionaryExprSyntax {
+              for elementExpr in elements {
+                DictionaryElementSyntax(key: elementExpr.key.trimmed, value: createSourceLocationExpr(of: elementExpr, context: context))
+              }
+            }
+          )
+        }
+        argumentSourceLocationsArray.append(thisArgumentSourceLocations)
+      }
+
+      if !argumentSourceLocationsArray.compactMap(\.self).isEmpty {
+        argumentSourceLocations = TupleExprSyntax {
+          for thisArgumentSourceLocations in argumentSourceLocationsArray {
+            LabeledExprSyntax(expression: thisArgumentSourceLocations ?? ExprSyntax(NilLiteralExprSyntax()))
+          }
+        }
       }
     }
 
     arguments += otherArguments
     arguments.append(Argument(label: "sourceLocation", expression: sourceLocation))
+    if let argumentSourceLocations {
+      context.debug("\(argumentSourceLocations)", node: attribute)
+      arguments.append(Argument(label: "argumentSourceLocations", expression: argumentSourceLocations))
+    }
 
     return LabeledExprListSyntax(arguments)
   }

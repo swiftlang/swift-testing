@@ -77,9 +77,11 @@ extension Test {
 
     init(
       arguments: [Argument],
+      sourceLocation: SourceLocation?,
       body: @escaping @Sendable () async throws -> Void
     ) {
       self.arguments = arguments
+      self.sourceLocation = sourceLocation
       self.body = body
     }
 
@@ -92,19 +94,22 @@ extension Test {
     ///   - body: The body closure of this test case.
     init(
       values: [any Sendable],
+      sourceLocation: SourceLocation?,
       parameters: [Parameter],
       body: @escaping @Sendable () async throws -> Void
     ) {
       let arguments = zip(values, parameters).map { value, parameter in
         Argument(value: value, parameter: parameter)
       }
-      self.init(arguments: arguments, body: body)
+      self.init(arguments: arguments, sourceLocation: sourceLocation, body: body)
     }
 
     /// Whether or not this test case is from a parameterized test.
     public var isParameterized: Bool {
       !arguments.isEmpty
     }
+
+    var sourceLocation: SourceLocation?
 
     /// The body closure of this test case.
     ///

@@ -239,6 +239,7 @@ extension Test {
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
+  @_disfavoredOverload
   public static func __function<C>(
     named testFunctionName: String,
     in containingType: (any ~Copyable.Type)?,
@@ -247,6 +248,7 @@ extension Test {
     traits: [any TestTrait],
     arguments collection: @escaping @Sendable () async throws -> C,
     sourceLocation: SourceLocation,
+    argumentSourceLocations: [SourceLocation]? = nil,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
   ) -> Self where C: Collection & Sendable, C.Element: Sendable {
@@ -256,7 +258,7 @@ extension Test {
       nil
     }
     let parameters = paramTuples.parameters
-    let caseGenerator = { @Sendable in Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction) }
+    let caseGenerator = { @Sendable in Case.Generator(arguments: try await collection(), argumentSourceLocations: parameters: parameters, testFunction: testFunction) }
     return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 }
@@ -382,6 +384,7 @@ extension Test {
     traits: [any TestTrait],
     arguments collection1: @escaping @Sendable () async throws -> C1, _ collection2: @escaping @Sendable () async throws -> C2,
     sourceLocation: SourceLocation,
+    argumentSourceLocations: ([SourceLocation]?, [SourceLocation]?) = (nil, nil),
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
   ) -> Self where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
@@ -410,6 +413,7 @@ extension Test {
     traits: [any TestTrait],
     arguments collection: @escaping @Sendable () async throws -> C,
     sourceLocation: SourceLocation,
+    argumentSourceLocations: ([SourceLocation]?, [SourceLocation]?) = (nil, nil),
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable ((E1, E2)) async throws -> Void
   ) -> Self where C: Collection & Sendable, C.Element == (E1, E2), E1: Sendable, E2: Sendable {
@@ -441,6 +445,7 @@ extension Test {
     traits: [any TestTrait],
     arguments dictionary: @escaping @Sendable () async throws -> Dictionary<Key, Value>,
     sourceLocation: SourceLocation,
+    argumentSourceLocations: [Key: SourceLocation]? = nil,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable ((Key, Value)) async throws -> Void
   ) -> Self where Key: Sendable, Value: Sendable {
