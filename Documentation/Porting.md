@@ -77,10 +77,16 @@ on Classic, so we would add that header to `Includes.h` in the internal target:
 ```diff
 --- a/Sources/_TestingInternals/include/Includes.h
 +++ b/Sources/_TestingInternals/include/Includes.h
+
 +#if defined(macintosh)
 +#include <DateTimeUtils.h>
 +#endif
 ```
+
+We intentionally don't import platform-specific C standard library modules
+(`Darwin`, `Glibc`, `WinSDK`, etc.) in Swift because they often include overlay
+code written in Swift and adding those modules as dependencies would make it
+more difficult to test that Swift code using Swift Testing. 
 
 ### Changes in Swift
 
@@ -122,6 +128,7 @@ to load that information:
 ```diff
 --- a/Sources/_TestingInternals/Discovery.cpp
 +++ b/Sources/_TestingInternals/Discovery.cpp
+
  // ...
 +#elif defined(macintosh)
 +template <typename SectionEnumerator>
@@ -160,6 +167,7 @@ to `Stubs.h`:
 ```diff
 --- a/Sources/_TestingInternals/include/Stubs.h
 +++ b/Sources/_TestingInternals/include/Stubs.h
+
 +#if defined(macintosh)
 +static TimerUPP swt_NewTimerUPP(TimerProcPtr userRoutine) {
 +  return NewTimerUPP(userRoutine);
@@ -184,11 +192,13 @@ platform conditional and provide a stub implementation:
 ```diff
 --- a/Sources/Testing/Support/FileHandle.swift
 +++ b/Sources/Testing/Support/FileHandle.swift
+
  var isTTY: Bool {
  #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || os(WASI)
    // ...
 +#elseif os(Classic)
 +  return false
+ #else
  #warning("Platform-specific implementation missing: cannot tell if a file is a TTY")
    return false
  #endif
