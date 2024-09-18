@@ -66,33 +66,6 @@ public struct ExitTest: Sendable, ~Copyable {
 #endif
   }
 
-  /// The back channel file handle set up by the parent process.
-  ///
-  /// The value of this property is a file handle open for writing to which
-  /// events should be written, or `nil` if the file handle could not be
-  /// resolved.
-  private static let _backChannel: FileHandle? = {
-    guard let backChannelEnvironmentVariable = Environment.variable(named: "SWT_EXPERIMENTAL_BACKCHANNEL") else {
-      return nil
-    }
-
-    var fd: CInt?
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
-    fd = CInt(backChannelEnvironmentVariable)
-#elseif os(Windows)
-    if let handle = UInt(backChannelEnvironmentVariable).flatMap(HANDLE.init(bitPattern:)) {
-      fd = _open_osfhandle(Int(bitPattern: handle), _O_WRONLY | _O_BINARY)
-    }
-#else
-#warning("Platform-specific implementation missing: back-channel pipe unavailable")
-#endif
-    guard let fd, fd >= 0 else {
-      return nil
-    }
-
-    return try? FileHandle(unsafePOSIXFileDescriptor: fd, mode: "wb")
-  }()
-
   /// Call the exit test in the current process.
   ///
   /// This function invokes the closure originally passed to
@@ -103,26 +76,8 @@ public struct ExitTest: Sendable, ~Copyable {
   public consuming func callAsFunction() async -> Never {
     Self._disableCrashReporting()
 
-    // Set up the configuration for this process.
-    var configuration = Configuration()
-
-    // Encode events as JSON and write them to the back channel file handle.
-    var eventHandler = ABIv0.Record.eventHandler(encodeAsJSONLines: true) { json in
-      try? Self._backChannel?.write(json)
-    }
-
-    // Only forward issue-recorded events. (If we start handling other kinds
-    // of event in the future, we can forward them too.)
-    eventHandler = { [eventHandler] event, eventContext in
-      if case .issueRecorded = event.kind {
-        eventHandler(event, eventContext)
-      }
-    }
-
-    configuration.eventHandler = eventHandler
-
     do {
-      try await Configuration.withCurrent(configuration, perform: body)
+      try await body()
     } catch {
       _errorInMain(error)
     }
@@ -275,6 +230,33 @@ extension ExitTest {
   /// recording any issues that occur.
   public typealias Handler = @Sendable (_ exitTest: borrowing ExitTest) async throws -> ExitCondition
 
+  /// The back channel file handle set up by the parent process.
+  ///
+  /// The value of this property is a file handle open for writing to which
+  /// events should be written, or `nil` if the file handle could not be
+  /// resolved.
+  private static let _backChannelForEntryPoint: FileHandle? = {
+    guard let backChannelEnvironmentVariable = Environment.variable(named: "SWT_EXPERIMENTAL_BACKCHANNEL") else {
+      return nil
+    }
+
+    var fd: CInt?
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
+    fd = CInt(backChannelEnvironmentVariable)
+#elseif os(Windows)
+    if let handle = UInt(backChannelEnvironmentVariable).flatMap(HANDLE.init(bitPattern:)) {
+      fd = _open_osfhandle(Int(bitPattern: handle), _O_WRONLY | _O_BINARY)
+    }
+#else
+#warning("Platform-specific implementation missing: back-channel pipe unavailable")
+#endif
+    guard let fd, fd >= 0 else {
+      return nil
+    }
+
+    return try? FileHandle(unsafePOSIXFileDescriptor: fd, mode: "wb")
+  }()
+
   /// Find the exit test function specified in the environment of the current
   /// process, if any.
   ///
@@ -285,16 +267,50 @@ extension ExitTest {
   /// `__swiftPMEntryPoint()` function. The effect of using it under other
   /// configurations is undefined.
   static func findInEnvironmentForEntryPoint() -> Self? {
+    // Find the source location of the exit test to run, if any, in the
+    // environment block.
+    var sourceLocation: SourceLocation?
     if var sourceLocationString = Environment.variable(named: "SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION") {
-      let sourceLocation = try? sourceLocationString.withUTF8 { sourceLocationBuffer in
+       sourceLocation = try? sourceLocationString.withUTF8 { sourceLocationBuffer in
         let sourceLocationBuffer = UnsafeRawBufferPointer(sourceLocationBuffer)
         return try JSON.decode(SourceLocation.self, from: sourceLocationBuffer)
       }
-      if let sourceLocation {
-        return find(at: sourceLocation)
+    }
+    guard let sourceLocation else {
+      return nil
+    }
+
+    // If an exit test was found, inject back channel handling into its body.
+    // External tools authors should set up their own back channel mechanisms
+    // and ensure they're installed before calling ExitTest.callAsFunction().
+    guard var result = find(at: sourceLocation) else {
+      return nil
+    }
+
+    // We can't say guard let here because it counts as a consume.
+    guard _backChannelForEntryPoint != nil else {
+      return result
+    }
+
+    // Set up the configuration for this process.
+    var configuration = Configuration()
+
+    // Encode events as JSON and write them to the back channel file handle.
+    // Only forward issue-recorded events. (If we start handling other kinds
+    // of event in the future, we can forward them too.)
+    let eventHandler = ABIv0.Record.eventHandler(encodeAsJSONLines: true) { json in
+      try? _backChannelForEntryPoint?.write(json)
+    }
+    configuration.eventHandler = { event, eventContext in
+      if case .issueRecorded = event.kind {
+        eventHandler(event, eventContext)
       }
     }
-    return nil
+
+    result.body = { [configuration, body = result.body] in
+      try await Configuration.withCurrent(configuration, perform: body)
+    }
+    return result
   }
 
   /// The exit test handler used when integrating with Swift Package Manager via
