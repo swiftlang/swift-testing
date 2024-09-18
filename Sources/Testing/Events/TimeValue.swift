@@ -41,9 +41,11 @@ struct TimeValue: Sendable {
     (seconds, attoseconds) = components
   }
 
+#if !SWT_NO_TIMESPEC
   init(_ timespec: timespec) {
     self.init((Int64(timespec.tv_sec), Int64(timespec.tv_nsec) * 1_000_000_000))
   }
+#endif
 
   @available(_clockAPI, *)
   init(_ duration: Duration) {
@@ -112,11 +114,13 @@ extension SuspendingClock.Instant {
   }
 }
 
+#if !SWT_NO_TIMESPEC
 extension timespec {
   init(_ timeValue: TimeValue) {
     self.init(tv_sec: .init(timeValue.seconds), tv_nsec: .init(timeValue.attoseconds / 1_000_000_000))
   }
 }
+#endif
 
 extension FloatingPoint {
   /// Initialize this floating-point value with the total number of seconds

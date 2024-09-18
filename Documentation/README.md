@@ -36,6 +36,9 @@ principles and goals.
   support status of various platforms, and more.
 - [Contributing](https://github.com/swiftlang/swift-testing/blob/main/CONTRIBUTING.md)
   provides guidance for developing and making project contributions.
+- [Porting](https://github.com/swiftlang/swift-testing/blob/main/Documentation/Porting.md)
+  includes advice and instructions for developers who are porting Swift Testing
+  to a new platform.
 - [Style Guide](https://github.com/swiftlang/swift-testing/blob/main/Documentation/StyleGuide.md)
   describes this project's guidelines for code and documentation style.
 - [SPI groups in Swift Testing](https://github.com/swiftlang/swift-testing/blob/main/Documentation/SPI.md)
