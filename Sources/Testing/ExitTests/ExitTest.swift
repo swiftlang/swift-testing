@@ -20,12 +20,12 @@ private import _TestingInternals
 /// Instances of this type describe an exit test defined by the test author and
 /// discovered or called at runtime.
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-public struct ExitTest: Sendable {
+public struct ExitTest: Sendable, ~Copyable {
   /// The expected exit condition of the exit test.
   public var expectedExitCondition: ExitCondition
 
   /// The body closure of the exit test.
-  fileprivate var body: @Sendable () async throws -> Void
+  fileprivate var body: @Sendable () async throws -> Void = {}
 
   /// The source location of the exit test.
   ///
@@ -73,7 +73,7 @@ public struct ExitTest: Sendable {
   /// to terminate the process; if it does not, the testing library will
   /// terminate the process in a way that causes the corresponding expectation
   /// to fail.
-  public func callAsFunction() async -> Never {
+  public consuming func callAsFunction() async -> Never {
     Self._disableCrashReporting()
 
     do {
@@ -146,7 +146,6 @@ extension ExitTest {
 ///
 /// - Parameters:
 ///   - expectedExitCondition: The expected exit condition.
-///   - body: The exit test body.
 ///   - expression: The expression, corresponding to `condition`, that is being
 ///     evaluated (if available at compile time.)
 ///   - comments: An array of comments describing the expectation. This array
@@ -161,7 +160,7 @@ extension ExitTest {
 /// convention.
 func callExitTest(
   exitsWith expectedExitCondition: ExitCondition,
-  performing body: @escaping @Sendable () async throws -> Void,
+  performing _: @escaping @Sendable () async throws -> Void,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
@@ -173,7 +172,7 @@ func callExitTest(
 
   let actualExitCondition: ExitCondition
   do {
-    let exitTest = ExitTest(expectedExitCondition: expectedExitCondition, body: body, sourceLocation: sourceLocation)
+    let exitTest = ExitTest(expectedExitCondition: expectedExitCondition, sourceLocation: sourceLocation)
     actualExitCondition = try await configuration.exitTestHandler(exitTest)
   } catch {
     // An error here would indicate a problem in the exit test handler such as a
@@ -242,9 +241,11 @@ extension ExitTest {
   /// configurations is undefined.
   static func findInEnvironmentForEntryPoint() -> Self? {
     if var sourceLocationString = Environment.variable(named: "SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION") {
-      return try? sourceLocationString.withUTF8 { sourceLocationBuffer in
+      let sourceLocation = try? sourceLocationString.withUTF8 { sourceLocationBuffer in
         let sourceLocationBuffer = UnsafeRawBufferPointer(sourceLocationBuffer)
-        let sourceLocation = try JSON.decode(SourceLocation.self, from: sourceLocationBuffer)
+        return try JSON.decode(SourceLocation.self, from: sourceLocationBuffer)
+      }
+      if let sourceLocation {
         return find(at: sourceLocation)
       }
     }
