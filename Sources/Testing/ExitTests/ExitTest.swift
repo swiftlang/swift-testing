@@ -505,8 +505,14 @@ extension ExitTest {
       let comments: [Comment] = event.messages.compactMap { message in
         message.symbol == .details ? Comment(rawValue: message.text) : nil
       }
-      let issue = Issue(kind: .unconditional, comments: comments, sourceContext: .init(backtrace: nil, sourceLocation: issue.sourceLocation))
-      issue.record()
+      let sourceContext = SourceContext(
+        backtrace: nil, // `issue._backtrace` will have the wrong address space.
+        sourceLocation: issue.sourceLocation
+      )
+      // TODO: improve fidelity of issue kind reporting (especially those without associated values)
+      var issueCopy = Issue(kind: .unconditional, comments: comments, sourceContext: sourceContext)
+      issueCopy.isKnown = issue.isKnown
+      issueCopy.record()
     }
   }
 }
