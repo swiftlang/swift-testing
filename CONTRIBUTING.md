@@ -30,7 +30,7 @@ and clone the fork which will make opening PRs easier.
 
 ### Using Xcode (easiest)
 
-1. Install Xcode 16 or newer. You can find Xcode on the [Apple Developer](https://developer.apple.com/xcode/)
+1. Install Xcode 16 or newer from the [Apple Developer](https://developer.apple.com/xcode/)
    website.
 1. Open the `Package.swift` file from the cloned Swift Testing repository in
    Xcode.
