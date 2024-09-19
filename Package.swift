@@ -96,6 +96,7 @@ let package = Package(
       dependencies: [
         "Testing",
       ],
+      path: "Sources/Overlays/_Testing_Foundation",
       swiftSettings: .packageSettings
     ),
   ],
@@ -147,6 +148,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
   private static var availabilityMacroSettings: Self {
     [
       .enableExperimentalFeature("AvailabilityMacro=_mangledTypeNameAPI:macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0"),
+      .enableExperimentalFeature("AvailabilityMacro=_uttypesAPI:macOS 11.0, iOS 14.0, watchOS 7.0, tvOS 14.0"),
       .enableExperimentalFeature("AvailabilityMacro=_backtraceAsyncAPI:macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0"),
       .enableExperimentalFeature("AvailabilityMacro=_clockAPI:macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0"),
       .enableExperimentalFeature("AvailabilityMacro=_regexAPI:macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0"),
