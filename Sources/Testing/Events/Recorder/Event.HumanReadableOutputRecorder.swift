@@ -459,6 +459,23 @@ extension Event.HumanReadableOutputRecorder {
       }
       return CollectionOfOne(primaryMessage) + additionalMessages
 
+    case let .valueAttached(attachment):
+      var result = [
+        Message(
+          symbol: .attachment,
+          stringValue: "Attached '\(attachment.preferredName)' to \(testName)."
+        )
+      ]
+      if verbosity > 0, let path = attachment.fileSystemPath {
+        result.append(
+          Message(
+            symbol: .details,
+            stringValue: "Written to '\(path)'."
+          )
+        )
+      }
+      return result
+
     case .testCaseStarted:
       guard let testCase = eventContext.testCase, testCase.isParameterized else {
         break
