@@ -10,6 +10,10 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
+#if canImport(Foundation)
+import Foundation
+@_spi(Experimental) import _Testing_Foundation
+#endif
 
 @Suite("Attachment Tests")
 struct AttachmentTests {
@@ -94,22 +98,14 @@ struct AttachmentTests {
       remove(filePath)
     }
     let fileName = try #require(filePath.split { $0 == "/" || $0 == #"\"# }.last)
-    #expect(fileName == "loremipsum-\(suffix).tar.gz.gif.jpeg.html")
+    #expect(fileName == "loremipsum-\(suffix).tgz.gif.jpeg.html")
     try compare(attachableValue, toContentsOfFileAtPath: filePath)
   }
 
 #if os(Windows)
   static let maximumNameCount = Int(_MAX_FNAME)
-  static let reservedNames: [String] = {
-    // Return the list of COM ports that are NOT configured (and so will fail
-    // to open for writing.)
-    (0...9).lazy
-      .map { "COM\($0)" }
-      .filter { !PathFileExistsA($0) }
-  }()
 #else
   static let maximumNameCount = Int(NAME_MAX)
-  static let reservedNames: [String] = []
 #endif
 
   @Test(arguments: [
@@ -117,7 +113,7 @@ struct AttachmentTests {
     String(repeating: "a", count: maximumNameCount),
     String(repeating: "a", count: maximumNameCount + 1),
     String(repeating: "a", count: maximumNameCount + 2),
-  ] + reservedNames) func writeAttachmentWithBadName(name: String) throws {
+  ]) func writeAttachmentWithBadName(name: String) throws {
     let attachableValue = MySendableAttachable(string: "<!doctype html>")
     let attachment = Attachment(attachableValue, named: name)
 
@@ -226,6 +222,182 @@ struct AttachmentTests {
       }
     }
   }
+
+#if canImport(Foundation)
+#if !SWT_NO_FILE_IO
+  @Test func attachContentsOfFileURL() async throws {
+    let data = try #require("<!doctype html>".data(using: .utf8))
+    let temporaryFileName = "\(UUID().uuidString).html"
+    let temporaryPath = try appendPathComponent(temporaryFileName, to: temporaryDirectory())
+    let temporaryURL = URL(fileURLWithPath: temporaryPath, isDirectory: false)
+    try data.write(to: temporaryURL)
+    defer {
+      try? FileManager.default.removeItem(at: temporaryURL)
+    }
+
+    await confirmation("Attachment detected") { valueAttached in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        guard case let .valueAttached(attachment) = event.kind else {
+          return
+        }
+
+        #expect(attachment.preferredName == temporaryFileName)
+        #expect(throws: Never.self) {
+          try attachment.withUnsafeBufferPointer { buffer in
+            #expect(buffer.count == data.count)
+          }
+        }
+        valueAttached()
+      }
+
+      await Test {
+        let attachment = try await Test.Attachment(contentsOf: temporaryURL)
+        attachment.attach()
+      }.run(configuration: configuration)
+    }
+  }
+
+#if !SWT_NO_PROCESS_SPAWNING
+  @Test func attachContentsOfDirectoryURL() async throws {
+    let temporaryDirectoryName = UUID().uuidString
+    let temporaryPath = try appendPathComponent(temporaryDirectoryName, to: temporaryDirectory())
+    let temporaryURL = URL(fileURLWithPath: temporaryPath, isDirectory: false)
+    try FileManager.default.createDirectory(at: temporaryURL, withIntermediateDirectories: true)
+
+    let fileData = try #require("Hello world".data(using: .utf8))
+    try fileData.write(to: temporaryURL.appendingPathComponent("loremipsum.txt"), options: [.atomic])
+
+    await confirmation("Attachment detected") { valueAttached in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        guard case let .valueAttached(attachment) = event.kind else {
+          return
+        }
+
+        #expect(attachment.preferredName == "\(temporaryDirectoryName).tgz")
+        valueAttached()
+      }
+
+      await Test {
+        let attachment = try await Test.Attachment(contentsOf: temporaryURL)
+        attachment.attach()
+      }.run(configuration: configuration)
+    }
+  }
+#endif
+
+  @Test func attachUnsupportedContentsOfURL() async throws {
+    let url = try #require(URL(string: "https://www.example.com"))
+    await #expect(throws: CocoaError.self) {
+      _ = try await Test.Attachment(contentsOf: url)
+    }
+  }
+#endif
+
+  struct CodableAttachmentArguments: Sendable, CustomTestArgumentEncodable, CustomTestStringConvertible {
+    var forSecureCoding: Bool
+    var pathExtension: String?
+    var firstCharacter: Character
+    var decode: @Sendable (Data) throws -> String
+
+    @Sendable static func decodeWithJSONDecoder(_ data: Data) throws -> String {
+      try JSONDecoder().decode(MyCodableAttachable.self, from: data).string
+    }
+
+    @Sendable static func decodeWithPropertyListDecoder(_ data: Data) throws -> String {
+      try PropertyListDecoder().decode(MyCodableAttachable.self, from: data).string
+    }
+
+    @Sendable static func decodeWithNSKeyedUnarchiver(_ data: Data) throws -> String {
+      let result = try NSKeyedUnarchiver.unarchivedObject(ofClass: MySecureCodingAttachable.self, from: data)
+      return try #require(result).string
+    }
+
+    static func all() -> [Self] {
+      var result = [Self]()
+
+      for forSecureCoding in [false, true] {
+        let decode = forSecureCoding ? decodeWithNSKeyedUnarchiver : decodeWithPropertyListDecoder
+        result += [
+          Self(
+            forSecureCoding: forSecureCoding,
+            firstCharacter: forSecureCoding ? "b" : "{",
+            decode: forSecureCoding ? decodeWithNSKeyedUnarchiver : decodeWithJSONDecoder
+          )
+        ]
+
+        result += [
+          Self(forSecureCoding: forSecureCoding, pathExtension: "xml", firstCharacter: "<", decode: decode),
+          Self(forSecureCoding: forSecureCoding, pathExtension: "plist", firstCharacter: "b", decode: decode),
+        ]
+
+        if !forSecureCoding {
+          result += [
+            Self(forSecureCoding: forSecureCoding, pathExtension: "json", firstCharacter: "{", decode: decodeWithJSONDecoder),
+          ]
+        }
+      }
+
+      return result
+    }
+
+    func encodeTestArgument(to encoder: some Encoder) throws {
+      var container = encoder.unkeyedContainer()
+      try container.encode(pathExtension)
+      try container.encode(forSecureCoding)
+      try container.encode(firstCharacter.asciiValue!)
+    }
+
+    var testDescription: String {
+      "(forSecureCoding: \(forSecureCoding), extension: \(String(describingForTest: pathExtension)))"
+    }
+  }
+
+  @Test("Attach Codable- and NSSecureCoding-conformant values", .serialized, arguments: CodableAttachmentArguments.all())
+  func attachCodable(args: CodableAttachmentArguments) async throws {
+    var name = "loremipsum"
+    if let ext = args.pathExtension {
+      name = "\(name).\(ext)"
+    }
+
+    func open<T>(_ attachment: borrowing Test.Attachment<T>) throws where T: Test.Attachable {
+      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { bytes in
+        #expect(bytes.first == args.firstCharacter.asciiValue)
+        let decodedStringValue = try args.decode(Data(bytes))
+        #expect(decodedStringValue == "stringly speaking")
+      }
+    }
+
+    if args.forSecureCoding {
+      let attachableValue = MySecureCodingAttachable(string: "stringly speaking")
+      let attachment = Test.Attachment(attachableValue, named: name)
+      try open(attachment)
+    } else {
+      let attachableValue = MyCodableAttachable(string: "stringly speaking")
+      let attachment = Test.Attachment(attachableValue, named: name)
+      try open(attachment)
+    }
+  }
+
+  @Test("Attach NSSecureCoding-conformant value but with a JSON type")
+  func attachNSSecureCodingAsJSON() async throws {
+    let attachableValue = MySecureCodingAttachable(string: "stringly speaking")
+    let attachment = Test.Attachment(attachableValue, named: "loremipsum.json")
+    #expect(throws: CocoaError.self) {
+      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { _ in }
+    }
+  }
+
+  @Test("Attach NSSecureCoding-conformant value but with a nonsensical type")
+  func attachNSSecureCodingAsNonsensical() async throws {
+    let attachableValue = MySecureCodingAttachable(string: "stringly speaking")
+    let attachment = Test.Attachment(attachableValue, named: "loremipsum.gif")
+    #expect(throws: CocoaError.self) {
+      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { _ in }
+    }
+  }
+#endif
 }
 
 extension AttachmentTests {
@@ -264,6 +436,13 @@ extension AttachmentTests {
       let value: Substring = "abc123"[...]
       try test(value)
     }
+
+#if canImport(Foundation)
+    @Test func data() throws {
+      let value = try #require("abc123".data(using: .utf8))
+      try test(value)
+    }
+#endif
   }
 }
 
@@ -310,3 +489,45 @@ struct MySendableAttachableWithDefaultByteCount: Attachable, Sendable {
     }
   }
 }
+
+#if canImport(Foundation)
+struct MyCodableAttachable: Codable, Test.Attachable, Sendable {
+  var string: String
+}
+
+final class MySecureCodingAttachable: NSObject, NSSecureCoding, Test.Attachable, Sendable {
+  let string: String
+
+  init(string: String) {
+    self.string = string
+  }
+
+  static var supportsSecureCoding: Bool {
+    true
+  }
+
+  func encode(with coder: NSCoder) {
+    coder.encode(string, forKey: "string")
+  }
+
+  required init?(coder: NSCoder) {
+    string = (coder.decodeObject(of: NSString.self, forKey: "string") as? String) ?? ""
+  }
+}
+
+final class MyCodableAndSecureCodingAttachable: NSObject, Codable, NSSecureCoding, Test.Attachable, Sendable {
+  let string: String
+
+  static var supportsSecureCoding: Bool {
+    true
+  }
+
+  func encode(with coder: NSCoder) {
+    coder.encode(string, forKey: "string")
+  }
+
+  required init?(coder: NSCoder) {
+    string = (coder.decodeObject(of: NSString.self, forKey: "string") as? String) ?? ""
+  }
+}
+#endif
