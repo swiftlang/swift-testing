@@ -24,7 +24,7 @@ extension Test {
     /// Storage for ``attachableValue-7dyjv``.
     fileprivate var _attachableValue: AttachableValue
 
-    /// The path to which the this attachment was written, if any.
+    /// The path to which this attachment was written, if any.
     ///
     /// If a developer sets the ``Configuration/attachmentsPath`` property of
     /// the current configuration before running tests, or if a developer passes

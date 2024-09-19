@@ -85,12 +85,8 @@ extension Test.Attachable where Self: Collection, Element == UInt8 {
   // We do not provide an implementation of withUnsafeBufferPointer(for:_:) here
   // because there is no way in the standard library to statically detect if a
   // collection can provide contiguous storage (_HasContiguousBytes is not API.)
-  // If withContiguousBytesIfAvailable(_:) fails, we don't want to make a
+  // If withContiguousStorageIfAvailable(_:) fails, we don't want to make a
   // (potentially expensive!) copy of the collection.
-  //
-  // The planned Foundation cross-import overlay can provide a default
-  // implementation for collection types that conform to Foundation's
-  // ContiguousBytes protocol.
 }
 
 extension Test.Attachable where Self: StringProtocol {
