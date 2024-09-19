@@ -225,7 +225,9 @@ Swift forums for advice.
 > [!WARNING]
 > Swift Testing has some dependencies on Foundation, specifically to support our
 > JSON event stream. Do not add new uses of Foundation without talking to us
-> first.
+> first. If you _do_ add any new uses of Foundation (including any related
+> modules such as CoreFoundation or FoundationEssentials), they _must_ be
+> imported using the `private` keyword.
 
 It is acceptable to add dependencies on C or C++ modules that are included by
 default in the new target platform. For example, Classic always includes the
