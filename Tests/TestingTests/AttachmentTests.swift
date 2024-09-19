@@ -14,6 +14,13 @@ private import _TestingInternals
 import Foundation
 @_spi(Experimental) import _Testing_Foundation
 #endif
+#if canImport(CoreGraphics)
+import CoreGraphics
+@_spi(Experimental) import _Testing_CoreGraphics
+#endif
+#if canImport(UniformTypeIdentifiers)
+import UniformTypeIdentifiers
+#endif
 
 @Suite("Attachment Tests")
 struct AttachmentTests {
@@ -441,6 +448,87 @@ extension AttachmentTests {
     @Test func data() throws {
       let value = try #require("abc123".data(using: .utf8))
       try test(value)
+    }
+#endif
+  }
+}
+
+extension AttachmentTests {
+  @Suite("Image tests")
+  struct ImageTests {
+    enum ImageTestError: Error {
+      case couldNotCreateCGContext
+      case couldNotCreateCGGradient
+      case couldNotCreateCGImage
+    }
+
+#if canImport(CoreGraphics)
+    static let cgImage = Result<CGImage, any Error> {
+      let size = CGSize(width: 32.0, height: 32.0)
+      let rgb = CGColorSpaceCreateDeviceRGB()
+      let bitmapInfo = CGImageAlphaInfo.premultipliedFirst.rawValue
+      guard let context = CGContext(
+        data: nil,
+        width: Int(size.width),
+        height: Int(size.height),
+        bitsPerComponent: 8,
+        bytesPerRow: Int(size.width) * 4,
+        space: rgb,
+        bitmapInfo: bitmapInfo
+      ) else {
+        throw ImageTestError.couldNotCreateCGContext
+      }
+      guard let gradient = CGGradient(
+        colorsSpace: rgb,
+        colors: [
+          CGColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0),
+          CGColor(red: 0.0, green: 1.0, blue: 0.0, alpha: 1.0),
+          CGColor(red: 0.0, green: 0.0, blue: 1.0, alpha: 1.0),
+        ] as CFArray,
+        locations: nil
+      ) else {
+        throw ImageTestError.couldNotCreateCGGradient
+      }
+      context.drawLinearGradient(
+        gradient,
+        start: .zero,
+        end: CGPoint(x: size.width, y: size.height),
+        options: [.drawsBeforeStartLocation, .drawsAfterEndLocation]
+      )
+      guard let image = context.makeImage() else {
+        throw ImageTestError.couldNotCreateCGImage
+      }
+      return image
+    }
+
+    @available(_uttypesAPI, *)
+    @Test func attachCGImage() throws {
+      let image = try Self.cgImage.get()
+      let attachment = Attachment(image, named: "diamond")
+      #expect(attachment.attachableValue === image)
+      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { buffer in
+        #expect(buffer.count > 32)
+      }
+      attachment.attach()
+    }
+
+    @available(_uttypesAPI, *)
+    @Test(arguments: [Float(0.0).nextUp, 0.25, 0.5, 0.75, 1.0], [.png as UTType?, .jpeg, .gif, .image, .data, nil])
+    func attachCGImage(quality: Float, type: UTType?) throws {
+      let image = try Self.cgImage.get()
+      let attachment = Attachment(image, named: "diamond", as: type, encodingQuality: quality)
+      #expect(attachment.attachableValue === image)
+      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { buffer in
+        #expect(buffer.count > 32)
+      }
+    }
+
+    @available(_uttypesAPI, *)
+    @Test func cannotAttachCGImageWithNonImageType() async {
+      #expect(throws: ImageAttachmentError.contentTypeDoesNotConformToImage) {
+        let attachment = Attachment(try Self.cgImage.get(), named: "diamond", as: .mp3)
+        try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { _ in }
+      }
     }
 #endif
   }

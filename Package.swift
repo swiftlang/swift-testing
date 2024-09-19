@@ -51,6 +51,7 @@ let package = Package(
       name: "TestingTests",
       dependencies: [
         "Testing",
+        "_Testing_CoreGraphics",
         "_Testing_Foundation",
       ],
       swiftSettings: .packageSettings
@@ -91,6 +92,14 @@ let package = Package(
     ),
 
     // Cross-import overlays (not supported by Swift Package Manager)
+    .target(
+      name: "_Testing_CoreGraphics",
+      dependencies: [
+        "Testing",
+      ],
+      path: "Sources/Overlays/_Testing_CoreGraphics",
+      swiftSettings: .packageSettings
+    ),
     .target(
       name: "_Testing_Foundation",
       dependencies: [
