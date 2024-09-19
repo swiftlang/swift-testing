@@ -20,6 +20,9 @@ extension Test {
   /// value of some type that conforms to ``Test/Attachable``. Initialize an
   /// instance of ``Test/Attachment`` with that value and, optionally, a
   /// preferred filename to use when writing to disk.
+  ///
+  /// On Apple platforms, additional functionality is available if you import
+  /// the [UniformTypeIdentifiers](https://developer.apple.com/documentation/uniformtypeidentifiers) module.
   public struct Attachment: Sendable {
     /// The value of this attachment.
     ///

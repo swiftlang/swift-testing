@@ -8,4 +8,4 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@_exported import Testing
+@_exported public import Testing

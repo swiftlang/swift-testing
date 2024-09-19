@@ -9,6 +9,14 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+#if canImport(Foundation)
+import Foundation
+@_spi(Experimental) import _Testing_Foundation
+#endif
+#if canImport(UniformTypeIdentifiers)
+import UniformTypeIdentifiers
+@_spi(Experimental) import _Testing_UniformTypeIdentifiers
+#endif
 private import _TestingInternals
 
 @Suite("Attachment Tests")
@@ -206,6 +214,243 @@ struct AttachmentTests {
       }
     }
   }
+
+#if canImport(UniformTypeIdentifiers)
+  @Test func getAndSetContentType() async {
+    let attachableValue = MySendableAttachable(string: "")
+    var attachment = Test.Attachment(attachableValue, named: "loremipsum")
+
+    // Get the default (should just be raw bytes at this point.)
+    #expect(attachment.contentType == .data)
+
+    // Switch to a UTType and confirm it stuck.
+    attachment.contentType = .pdf
+    #expect(attachment.contentType == .pdf)
+    #expect(attachment.preferredName == "loremipsum.pdf")
+
+    // Convert it to a different UTType.
+    attachment.contentType = .jpeg
+    #expect(attachment.contentType == .jpeg)
+    #expect(attachment.preferredName == "loremipsum.pdf.jpeg")
+  }
+#endif
+
+#if canImport(Foundation)
+#if !SWT_NO_FILE_IO
+  @Test func attachContentsOfFileURL() async throws {
+    let data = try #require("<!doctype html>".data(using: .utf8))
+    let temporaryFileName = "\(UUID().uuidString).html"
+    let temporaryPath = try appendPathComponent(temporaryFileName, to: temporaryDirectoryPath())
+    let temporaryURL = URL(fileURLWithPath: temporaryPath, isDirectory: false)
+    try data.write(to: temporaryURL)
+    defer {
+      try? FileManager.default.removeItem(at: temporaryURL)
+    }
+
+    await confirmation("Attachment detected") { valueAttached in
+      await Test {
+        let attachment = try await Test.Attachment(contentsOf: temporaryURL)
+        attachment.attach()
+      }.run { event, _ in
+        guard case let .valueAttached(attachment) = event.kind else {
+          return
+        }
+
+        #expect(attachment.preferredName == temporaryFileName)
+        #expect(throws: Never.self) {
+          try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { buffer in
+            #expect(buffer.count == data.count)
+          }
+        }
+        valueAttached()
+      }
+    }
+  }
+
+#if !SWT_NO_PROCESS_SPAWNING
+  @Test func attachContentsOfDirectoryURL() async throws {
+    let temporaryFileName = UUID().uuidString
+    let temporaryPath = try appendPathComponent(temporaryFileName, to: temporaryDirectoryPath())
+    let temporaryURL = URL(fileURLWithPath: temporaryPath, isDirectory: false)
+    try FileManager.default.createDirectory(at: temporaryURL, withIntermediateDirectories: true)
+
+    await confirmation("Attachment detected") { valueAttached in
+      await Test {
+        let attachment = try await Test.Attachment(contentsOf: temporaryURL)
+        attachment.attach()
+      }.run { event, _ in
+        guard case let .valueAttached(attachment) = event.kind else {
+          return
+        }
+
+        #expect(attachment.preferredName == "\(temporaryFileName).tar.gz")
+        valueAttached()
+      }
+    }
+  }
+#endif
+
+  @Test func attachUnsupportedContentsOfURL() async throws {
+    let url = try #require(URL(string: "https://www.example.com"))
+    await #expect(throws: CocoaError.self) {
+      _ = try await Test.Attachment(contentsOf: url)
+    }
+  }
+#endif
+
+  @available(_uttypesAPI, *)
+  struct CodableAttachmentArguments: Sendable, CustomTestArgumentEncodable, CustomTestStringConvertible {
+    var forSecureCoding: Bool
+    var contentType: (any Sendable)?
+    var pathExtension: String?
+    var firstCharacter: Character
+    var decode: @Sendable (Data) throws -> String
+
+    @Sendable static func decodeWithJSONDecoder(_ data: Data) throws -> String {
+      try JSONDecoder().decode(MyCodableAttachable.self, from: data).string
+    }
+
+    @Sendable static func decodeWithPropertyListDecoder(_ data: Data) throws -> String {
+      try PropertyListDecoder().decode(MyCodableAttachable.self, from: data).string
+    }
+
+    @Sendable static func decodeWithNSKeyedUnarchiver(_ data: Data) throws -> String {
+      let result = try NSKeyedUnarchiver.unarchivedObject(ofClass: MySecureCodingAttachable.self, from: data)
+      return try #require(result).string
+    }
+
+    static func all() -> [Self] {
+      var result = [Self]()
+
+      for forSecureCoding in [false, true] {
+        let decode = forSecureCoding ? decodeWithNSKeyedUnarchiver : decodeWithPropertyListDecoder
+        result += [
+          Self(
+            forSecureCoding: forSecureCoding,
+            firstCharacter: forSecureCoding ? "b" : "{",
+            decode: forSecureCoding ? decodeWithNSKeyedUnarchiver : decodeWithJSONDecoder
+          )
+        ]
+
+        result += [
+          Self(forSecureCoding: forSecureCoding, pathExtension: "xml", firstCharacter: "<", decode: decode),
+          Self(forSecureCoding: forSecureCoding, pathExtension: "plist", firstCharacter: "b", decode: decode),
+        ]
+
+        if !forSecureCoding {
+          result += [
+            Self(forSecureCoding: forSecureCoding, pathExtension: "json", firstCharacter: "{", decode: decodeWithJSONDecoder),
+          ]
+        }
+      }
+
+      return result
+    }
+
+    func encodeTestArgument(to encoder: some Encoder) throws {
+      var container = encoder.unkeyedContainer()
+      try container.encode(pathExtension)
+      try container.encode(forSecureCoding)
+      try container.encode(firstCharacter.asciiValue!)
+    }
+
+    var testDescription: String {
+      "(forSecureCoding: \(forSecureCoding), contentType: \(String(describingForTest: contentType)))"
+    }
+  }
+
+  @available(_uttypesAPI, *)
+  @Test("Attach Codable- and NSSecureCoding-conformant values", .serialized, arguments: CodableAttachmentArguments.all())
+  func attachCodable(args: CodableAttachmentArguments) async throws {
+    var name = "loremipsum"
+    if let ext = args.pathExtension {
+      name = "\(name).\(ext)"
+    }
+
+    var attachment: Test.Attachment
+    if args.forSecureCoding {
+      let attachableValue = MySecureCodingAttachable(string: "stringly speaking")
+      attachment = Test.Attachment(attachableValue, named: name)
+    } else {
+      let attachableValue = MyCodableAttachable(string: "stringly speaking")
+      attachment = Test.Attachment(attachableValue, named: name)
+    }
+
+    try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { bytes in
+      #expect(bytes.first == args.firstCharacter.asciiValue)
+      let decodedStringValue = try args.decode(Data(bytes))
+      #expect(decodedStringValue == "stringly speaking")
+    }
+  }
+
+  @available(_uttypesAPI, *)
+  @Test("Attach NSSecureCoding-conformant value but with a JSON type")
+  func attachNSSecureCodingAsJSON() async throws {
+    let attachableValue = MySecureCodingAttachable(string: "stringly speaking")
+    let attachment = Test.Attachment(attachableValue, named: "loremipsum.json")
+    #expect(throws: CocoaError.self) {
+      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { _ in }
+    }
+  }
+
+  @available(_uttypesAPI, *)
+  @Test("Attach NSSecureCoding-conformant value but with a nonsensical type")
+  func attachNSSecureCodingAsNonsensical() async throws {
+    let attachableValue = MySecureCodingAttachable(string: "stringly speaking")
+    let attachment = Test.Attachment(attachableValue, named: "loremipsum.gif")
+    #expect(throws: CocoaError.self) {
+      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { _ in }
+    }
+  }
+#endif
+
+#if canImport(UniformTypeIdentifiers)
+  @available(_uttypesAPI, *)
+  @Test func attachValueWithUTType() async {
+    await confirmation("Attachment detected") { valueAttached in
+      await Test {
+        let attachableValue = MyAttachable(string: "<!doctype html>")
+        Test.Attachment(attachableValue, named: "loremipsum", as: .plainText).attach()
+      }.run { event, _ in
+        guard case let .valueAttached(attachment) = event.kind else {
+          return
+        }
+
+        #expect(attachment.preferredName == "loremipsum.txt")
+        valueAttached()
+      }
+    }
+  }
+
+  @available(_uttypesAPI, *)
+  @Test func attachSendableValueWithUTType() async {
+    await confirmation("Attachment detected") { valueAttached in
+      await Test {
+        let attachableValue = MySendableAttachable(string: "<!doctype html>")
+        Test.Attachment(attachableValue, named: "loremipsum", as: .plainText).attach()
+      }.run { event, _ in
+        guard case let .valueAttached(attachment) = event.kind else {
+          return
+        }
+
+        #expect(attachment.preferredName == "loremipsum.txt")
+        valueAttached()
+      }
+    }
+  }
+
+  @available(_uttypesAPI, *)
+  @Test func overridingContentType() {
+    // Explicitly passing a type modifies the preferred name. Note it's expected
+    // that we preserve the original extension as this is the behavior of the
+    // underlying UTType API (tries to be non-destructive to user input.)
+    do {
+      let attachableValue = MySendableAttachable(string: "<!doctype html>")
+      let attachment = Test.Attachment(attachableValue, named: "loremipsum.txt", as: .html)
+      #expect(attachment.preferredName == "loremipsum.txt.html")
+    }
+  }
+#endif
 }
 
 extension AttachmentTests {
@@ -272,6 +517,18 @@ extension AttachmentTests {
       let value: Substring = "abc123"[...]
       try test(value)
     }
+
+#if canImport(Foundation)
+    @Test func data() throws {
+      let value = try #require("abc123".data(using: .utf8))
+      try test(value)
+    }
+
+    @Test func contiguousBytesCollection() throws {
+      let value = MyContiguousCollectionAttachable(string: "abc123")
+      try test(value)
+    }
+#endif
   }
 }
 
@@ -317,3 +574,69 @@ struct MySendableAttachableWithDefaultByteCount: Test.Attachable, Sendable {
     }
   }
 }
+
+#if canImport(Foundation)
+struct MyCodableAttachable: Codable, Test.Attachable, Sendable {
+  var string: String
+}
+
+final class MySecureCodingAttachable: NSObject, NSSecureCoding, Test.Attachable, Sendable {
+  let string: String
+
+  init(string: String) {
+    self.string = string
+  }
+
+  static var supportsSecureCoding: Bool {
+    true
+  }
+
+  func encode(with coder: NSCoder) {
+    coder.encode(string, forKey: "string")
+  }
+
+  required init?(coder: NSCoder) {
+    string = (coder.decodeObject(of: NSString.self, forKey: "string") as? String) ?? ""
+  }
+}
+
+struct MyContiguousCollectionAttachable: Collection, ContiguousBytes, Test.Attachable {
+  private var _utf8: String.UTF8View
+
+  var string: String {
+    get {
+      String(_utf8)
+    }
+    set {
+      _utf8 = newValue.utf8
+    }
+  }
+
+  init(string: String) {
+    _utf8 = string.utf8
+  }
+
+  var startIndex: String.UTF8View.Index {
+    _utf8.startIndex
+  }
+
+  var endIndex: String.UTF8View.Index {
+    _utf8.endIndex
+  }
+
+  subscript(position: String.UTF8View.Index) -> UInt8 {
+    _utf8[position]
+  }
+
+  func index(after i: String.UTF8View.Index) -> String.UTF8View.Index {
+    _utf8.index(after: i)
+  }
+
+  func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
+    let result = try _utf8.withContiguousStorageIfAvailable { buffer in
+      try body(.init(buffer))
+    }
+    return try result ?? Array(_utf8).withUnsafeBytes(body)
+  }
+}
+#endif
