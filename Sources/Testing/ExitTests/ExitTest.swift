@@ -296,8 +296,8 @@ extension ExitTest {
     var configuration = Configuration()
 
     // Encode events as JSON and write them to the back channel file handle.
-    // Only forward issue-recorded events. (If we start handling other kinds
-    // of event in the future, we can forward them too.)
+    // Only forward issue-recorded events. (If we start handling other kinds of
+    // events in the future, we can forward them too.)
     let eventHandler = ABIv0.Record.eventHandler(encodeAsJSONLines: true) { json in
       try? _backChannelForEntryPoint?.write(json)
     }
