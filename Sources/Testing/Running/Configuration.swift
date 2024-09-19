@@ -204,6 +204,33 @@ public struct Configuration: Sendable {
   }
 #endif
 
+#if !SWT_NO_FILE_IO
+  /// Storage for ``attachmentDirectoryPath``.
+  private var _attachmentDirectoryPath: String?
+
+  /// The path to which attachments should be written.
+  ///
+  /// By default, attachments are not written to disk when they are created. If
+  /// the value of this property is not `nil`, then when an attachment is
+  /// created and attached to a test, it will automatically be written to a file
+  /// in this directory.
+  ///
+  /// The value of this property must refer to a directory on the local file
+  /// system that already exists and which the current user can write to. If it
+  /// is a relative path, it is resolved to an absolute path automatically.
+  @_spi(Experimental)
+  public var attachmentDirectoryPath: String? {
+    get {
+      _attachmentDirectoryPath
+    }
+    set {
+      _attachmentDirectoryPath = newValue.map { newValue in
+        canonicalizePath(newValue) ?? newValue
+      }
+    }
+  }
+#endif
+
   /// How verbose human-readable output should be.
   ///
   /// When the value of this property is greater than `0`, additional output
