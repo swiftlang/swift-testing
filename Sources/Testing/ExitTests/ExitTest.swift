@@ -230,6 +230,33 @@ extension ExitTest {
   /// recording any issues that occur.
   public typealias Handler = @Sendable (_ exitTest: borrowing ExitTest) async throws -> ExitCondition
 
+  /// The back channel file handle set up by the parent process.
+  ///
+  /// The value of this property is a file handle open for writing to which
+  /// events should be written, or `nil` if the file handle could not be
+  /// resolved.
+  private static let _backChannelForEntryPoint: FileHandle? = {
+    guard let backChannelEnvironmentVariable = Environment.variable(named: "SWT_EXPERIMENTAL_BACKCHANNEL") else {
+      return nil
+    }
+
+    var fd: CInt?
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
+    fd = CInt(backChannelEnvironmentVariable)
+#elseif os(Windows)
+    if let handle = UInt(backChannelEnvironmentVariable).flatMap(HANDLE.init(bitPattern:)) {
+      fd = _open_osfhandle(Int(bitPattern: handle), _O_WRONLY | _O_BINARY)
+    }
+#else
+#warning("Platform-specific implementation missing: back-channel pipe unavailable")
+#endif
+    guard let fd, fd >= 0 else {
+      return nil
+    }
+
+    return try? FileHandle(unsafePOSIXFileDescriptor: fd, mode: "wb")
+  }()
+
   /// Find the exit test function specified in the environment of the current
   /// process, if any.
   ///
@@ -240,16 +267,50 @@ extension ExitTest {
   /// `__swiftPMEntryPoint()` function. The effect of using it under other
   /// configurations is undefined.
   static func findInEnvironmentForEntryPoint() -> Self? {
+    // Find the source location of the exit test to run, if any, in the
+    // environment block.
+    var sourceLocation: SourceLocation?
     if var sourceLocationString = Environment.variable(named: "SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION") {
-      let sourceLocation = try? sourceLocationString.withUTF8 { sourceLocationBuffer in
+       sourceLocation = try? sourceLocationString.withUTF8 { sourceLocationBuffer in
         let sourceLocationBuffer = UnsafeRawBufferPointer(sourceLocationBuffer)
         return try JSON.decode(SourceLocation.self, from: sourceLocationBuffer)
       }
-      if let sourceLocation {
-        return find(at: sourceLocation)
+    }
+    guard let sourceLocation else {
+      return nil
+    }
+
+    // If an exit test was found, inject back channel handling into its body.
+    // External tools authors should set up their own back channel mechanisms
+    // and ensure they're installed before calling ExitTest.callAsFunction().
+    guard var result = find(at: sourceLocation) else {
+      return nil
+    }
+
+    // We can't say guard let here because it counts as a consume.
+    guard _backChannelForEntryPoint != nil else {
+      return result
+    }
+
+    // Set up the configuration for this process.
+    var configuration = Configuration()
+
+    // Encode events as JSON and write them to the back channel file handle.
+    // Only forward issue-recorded events. (If we start handling other kinds of
+    // events in the future, we can forward them too.)
+    let eventHandler = ABIv0.Record.eventHandler(encodeAsJSONLines: true) { json in
+      try? _backChannelForEntryPoint?.write(json)
+    }
+    configuration.eventHandler = { event, eventContext in
+      if case .issueRecorded = event.kind {
+        eventHandler(event, eventContext)
       }
     }
-    return nil
+
+    result.body = { [configuration, body = result.body] in
+      try await Configuration.withCurrent(configuration, perform: body)
+    }
+    return result
   }
 
   /// The exit test handler used when integrating with Swift Package Manager via
@@ -343,11 +404,115 @@ extension ExitTest {
         childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION"] = String(decoding: json, as: UTF8.self)
       }
 
-      return try await spawnAndWait(
-        forExecutableAtPath: childProcessExecutablePath,
-        arguments: childArguments,
-        environment: childEnvironment
+      return try await withThrowingTaskGroup(of: ExitCondition?.self) { taskGroup in
+        // Create a "back channel" pipe to handle events from the child process.
+        let backChannel = try FileHandle.Pipe()
+
+        // Let the child process know how to find the back channel by setting a
+        // known environment variable to the corresponding file descriptor
+        // (HANDLE on Windows.)
+        var backChannelEnvironmentVariable: String?
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
+        backChannelEnvironmentVariable = backChannel.writeEnd.withUnsafePOSIXFileDescriptor { fd in
+          fd.map(String.init(describing:))
+        }
+#elseif os(Windows)
+        backChannelEnvironmentVariable = backChannel.writeEnd.withUnsafeWindowsHANDLE { handle in
+          handle.flatMap { String(describing: UInt(bitPattern: $0)) }
+        }
+#else
+#warning("Platform-specific implementation missing: back-channel pipe unavailable")
+#endif
+        if let backChannelEnvironmentVariable {
+          childEnvironment["SWT_EXPERIMENTAL_BACKCHANNEL"] = backChannelEnvironmentVariable
+        }
+
+        // Spawn the child process.
+        let processID = try withUnsafePointer(to: backChannel.writeEnd) { writeEnd in
+          try spawnExecutable(
+            atPath: childProcessExecutablePath,
+            arguments: childArguments,
+            environment: childEnvironment,
+            additionalFileHandles: .init(start: writeEnd, count: 1)
+          )
+        }
+
+        // Await termination of the child process.
+        taskGroup.addTask {
+          try await wait(for: processID)
+        }
+
+        // Read back all data written to the back channel by the child process
+        // and process it as a (minimal) event stream.
+        let readEnd = backChannel.closeWriteEnd()
+        taskGroup.addTask {
+          Self._processRecords(fromBackChannel: readEnd)
+          return nil
+        }
+
+        // This is a roundabout way of saying "and return the exit condition
+        // yielded by wait(for:)".
+        return try await taskGroup.compactMap { $0 }.first { _ in true }!
+      }
+    }
+  }
+
+  /// Read lines from the given back channel file handle and process them as
+  /// event records.
+  ///
+  /// - Parameters:
+  ///   - backChannel: The file handle to read from. Reading continues until an
+  ///     error is encountered or the end of the file is reached.
+  private static func _processRecords(fromBackChannel backChannel: borrowing FileHandle) {
+    let bytes: [UInt8]
+    do {
+      bytes = try backChannel.readToEnd()
+    } catch {
+      // NOTE: an error caught here indicates an I/O problem.
+      // TODO: should we record these issues as systemic instead?
+      Issue.record(error)
+      return
+    }
+
+    for recordJSON in bytes.split(whereSeparator: \.isASCIINewline) where !recordJSON.isEmpty {
+      do {
+        try recordJSON.withUnsafeBufferPointer { recordJSON in
+          try Self._processRecord(.init(recordJSON), fromBackChannel: backChannel)
+        }
+      } catch {
+        // NOTE: an error caught here indicates a decoding problem.
+        // TODO: should we record these issues as systemic instead?
+        Issue.record(error)
+      }
+    }
+  }
+
+  /// Decode a line of JSON read from a back channel file handle and handle it
+  /// as if the corresponding event occurred locally.
+  ///
+  /// - Parameters:
+  ///   - recordJSON: The JSON to decode and process.
+  ///   - backChannel: The file handle that `recordJSON` was read from.
+  ///
+  /// - Throws: Any error encountered attempting to decode or process the JSON.
+  private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
+    let record = try JSON.decode(ABIv0.Record.self, from: recordJSON)
+
+    if case let .event(event) = record.kind, let issue = event.issue {
+      // Translate the issue back into a "real" issue and record it
+      // in the parent process. This translation is, of course, lossy
+      // due to the process boundary, but we make a best effort.
+      let comments: [Comment] = event.messages.compactMap { message in
+        message.symbol == .details ? Comment(rawValue: message.text) : nil
+      }
+      let sourceContext = SourceContext(
+        backtrace: nil, // `issue._backtrace` will have the wrong address space.
+        sourceLocation: issue.sourceLocation
       )
+      // TODO: improve fidelity of issue kind reporting (especially those without associated values)
+      var issueCopy = Issue(kind: .unconditional, comments: comments, sourceContext: sourceContext)
+      issueCopy.isKnown = issue.isKnown
+      issueCopy.record()
     }
   }
 }

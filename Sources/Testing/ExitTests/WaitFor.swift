@@ -21,7 +21,9 @@ internal import _TestingInternals
 ///
 /// - Throws: If the exit status of the process with ID `pid` cannot be
 ///   determined (i.e. it does not represent an exit condition.)
-private func _blockAndWait(for pid: pid_t) throws -> ExitCondition {
+private func _blockAndWait(for pid: consuming pid_t) throws -> ExitCondition {
+  let pid = consume pid
+
   // Get the exit status of the process or throw an error (other than EINTR.)
   while true {
     var siginfo = siginfo_t()
@@ -109,7 +111,7 @@ private let _createWaitThreadImpl: Void = {
 #if SWT_TARGET_OS_APPLE
       _ = pthread_setname_np("Swift Testing exit test monitor")
 #elseif os(Linux)
-      _ = pthread_setname_np(pthread_self(), "SWT ExT monitor")
+      _ = swt_pthread_setname_np(pthread_self(), "SWT ExT monitor")
 #elseif os(FreeBSD)
       _ = pthread_set_name_np(pthread_self(), "SWT ex test monitor")
 #else
@@ -142,7 +144,9 @@ private func _createWaitThread() {
 ///
 /// - Throws: Any error encountered calling `waitpid()` except for `EINTR`,
 ///   which is ignored.
-func wait(for pid: pid_t) async throws -> ExitCondition {
+func wait(for pid: consuming pid_t) async throws -> ExitCondition {
+  let pid = consume pid
+
 #if SWT_TARGET_OS_APPLE && !SWT_NO_LIBDISPATCH
   let source = DispatchSource.makeProcessSource(identifier: pid, eventMask: .exit)
   defer {
@@ -181,13 +185,19 @@ func wait(for pid: pid_t) async throws -> ExitCondition {
 /// Wait for a given process handle to exit and report its status.
 ///
 /// - Parameters:
-///   - processHandle: The handle to wait for.
+///   - processHandle: The handle to wait for. This function takes ownership of
+///     this handle and closes it when done.
 ///
 /// - Returns: The exit condition of `processHandle`.
 ///
 /// - Throws: Any error encountered calling `WaitForSingleObject()` or
 ///   `GetExitCodeProcess()`.
-func wait(for processHandle: HANDLE) async throws -> ExitCondition {
+func wait(for processHandle: consuming HANDLE) async throws -> ExitCondition {
+  let processHandle = consume processHandle
+  defer {
+    _ = CloseHandle(processHandle)
+  }
+
   // Once the continuation resumes, it will need to unregister the wait, so
   // yield the wait handle back to the calling scope.
   var waitHandle: HANDLE?
