@@ -169,7 +169,11 @@ extension Event.Symbol {
       case .attachment:
         return "\(_ansiEscapeCodePrefix)94m\(symbolCharacter)\(_resetANSIEscapeCode)"
       case .details:
-        return symbolCharacter
+        var padding = "  "
+#if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
+        padding = "   "
+#endif
+        return "\(padding)\(symbolCharacter)"
       }
     }
     return "\(symbolCharacter)"
@@ -306,14 +310,15 @@ extension Event.ConsoleOutputRecorder {
     let messages = _humanReadableOutputRecorder.record(event, in: context)
     for message in messages {
       let symbol = message.symbol?.stringValue(options: options) ?? " "
+      let padding = String(repeating: "  ", count: message.padding)
 
       if case .details = message.symbol, options.useANSIEscapeCodes, options.ansiColorBitDepth > 1 {
         // Special-case the detail symbol to apply grey to the entire line of
         // text instead of just the symbol.
-        write("\(_ansiEscapeCodePrefix)90m\(symbol) \(message.stringValue)\(_resetANSIEscapeCode)\n")
+        write("\(_ansiEscapeCodePrefix)90m\(symbol) \(padding)\(message.stringValue)\(_resetANSIEscapeCode)\n")
       } else {
         let colorDots = context.test.map(\.tags).map { self.colorDots(for: $0) } ?? ""
-        write("\(symbol) \(colorDots)\(message.stringValue)\n")
+        write("\(symbol) \(padding)\(colorDots)\(message.stringValue)\n")
       }
     }
     return !messages.isEmpty

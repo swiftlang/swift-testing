@@ -86,7 +86,9 @@ struct EventRecorderTests {
       #expect(!buffer.contains("●"))
     }
 
-    #expect(buffer.contains("inserted ["))
+    withKnownIssue("Collection diffing unsupported with new expression-capturing model") {
+      #expect(buffer.contains("inserted ["))
+    }
 
     if testsWithSignificantIOAreEnabled {
       print(buffer, terminator: "")
@@ -108,8 +110,8 @@ struct EventRecorderTests {
     await runTest(for: WrittenTests.self, configuration: configuration)
 
     let buffer = stream.buffer.rawValue
-    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter) "abc": Swift.String"#))
-    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter) lhs: Swift.String → "987""#))
+    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter)   "abc": Swift.String"#))
+    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter)   lhs: Swift.String → "987""#))
     #expect(buffer.contains(#""Animal Crackers" (aka 'WrittenTests')"#))
     #expect(buffer.contains(#""Not A Lobster" (aka 'actuallyCrab()')"#))
 

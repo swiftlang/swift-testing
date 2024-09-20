@@ -242,8 +242,8 @@ private import _TestingInternals
   func exitConditionMatching() {
     #expect(Optional<ExitCondition>.none == Optional<ExitCondition>.none)
     #expect(Optional<ExitCondition>.none === Optional<ExitCondition>.none)
-    #expect(Optional<ExitCondition>.none !== .success)
-    #expect(Optional<ExitCondition>.none !== .failure)
+    #expect(Optional<ExitCondition>.none !== .some(.success))
+    #expect(Optional<ExitCondition>.none !== .some(.failure))
 
     #expect(ExitCondition.success == .success)
     #expect(ExitCondition.success === .success)
