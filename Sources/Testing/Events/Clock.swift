@@ -22,7 +22,7 @@ extension Test {
     public struct Instant: Sendable {
       /// The suspending-clock time corresponding to this instant.
       fileprivate(set) var suspending: TimeValue = {
-#if SWT_TARGET_OS_APPLE
+#if !SWT_NO_TIMESPEC && SWT_TARGET_OS_APPLE
         // The testing library's availability on Apple platforms is earlier than
         // that of the Swift Clock API, so we don't use `SuspendingClock`
         // directly on them and instead derive a value from platform-specific
@@ -40,6 +40,7 @@ extension Test {
 #if !SWT_NO_UTC_CLOCK
       /// The wall-clock time corresponding to this instant.
       fileprivate(set) var wall: TimeValue = {
+#if !SWT_NO_TIMESPEC
         var wall = timespec()
 #if os(Android)
         // Android headers recommend `clock_gettime` over `timespec_get` which
@@ -49,6 +50,10 @@ extension Test {
         timespec_get(&wall, TIME_UTC)
 #endif
         return TimeValue(wall)
+#else
+#warning("Platform-specific implementation missing: UTC time unavailable (no timespec)")
+        return TimeValue((0, 0))
+#endif
       }()
 #endif
 
@@ -133,7 +138,9 @@ extension Test.Clock {
   /// can use ``sleep(for:tolerance:)`` or ``sleep(until:tolerance:)`` instead.
   @available(_clockAPI, *)
   static func sleep(for duration: Duration) async throws {
-#if SWT_NO_UNSTRUCTURED_TASKS
+#if !SWT_NO_UNSTRUCTURED_TASKS
+    return try await SuspendingClock().sleep(for: duration)
+#elseif !SWT_NO_TIMESPEC
     let timeValue = TimeValue(duration)
     var ts = timespec(timeValue)
     var tsRemaining = ts
@@ -142,7 +149,7 @@ extension Test.Clock {
       ts = tsRemaining
     }
 #else
-    return try await SuspendingClock().sleep(for: duration)
+#warning("Platform-specific implementation missing: task sleep unavailable")
 #endif
   }
 }
