@@ -55,7 +55,7 @@ final class IssueTests: XCTestCase {
     }.run(configuration: configuration)
 
     await Test { () throws in
-      try #expect({ throw MyError() }())
+      #expect(try { throw MyError() }())
     }.run(configuration: configuration)
   }
 
@@ -354,12 +354,12 @@ final class IssueTests: XCTestCase {
   struct ExpressionRuntimeValueCapture_Value {}
 
   func testExpressionRuntimeValueCapture() throws {
-    var expression = __Expression.__fromSyntaxNode("abc123")
+    var expression = __Expression("abc123")
     XCTAssertEqual(expression.sourceCode, "abc123")
     XCTAssertNil(expression.runtimeValue)
 
     do {
-      expression = expression.capturingRuntimeValues(987 as Int)
+      expression.runtimeValue = __Expression.Value(reflecting: 987 as Int)
       XCTAssertEqual(expression.sourceCode, "abc123")
       let runtimeValue = try XCTUnwrap(expression.runtimeValue)
       XCTAssertEqual(String(describing: runtimeValue), "987")
@@ -368,7 +368,7 @@ final class IssueTests: XCTestCase {
     }
 
     do {
-      expression = expression.capturingRuntimeValues(ExpressionRuntimeValueCapture_Value())
+      expression.runtimeValue = __Expression.Value(reflecting: ExpressionRuntimeValueCapture_Value())
       XCTAssertEqual(expression.sourceCode, "abc123")
       let runtimeValue = try XCTUnwrap(expression.runtimeValue)
       XCTAssertEqual(String(describing: runtimeValue), "ExpressionRuntimeValueCapture_Value()")
@@ -377,7 +377,7 @@ final class IssueTests: XCTestCase {
     }
 
     do {
-      expression = expression.capturingRuntimeValues((123, "abc") as (Int, String), ())
+      expression.runtimeValue = __Expression.Value(reflecting: (123, "abc") as (Int, String))
       XCTAssertEqual(expression.sourceCode, "abc123")
       let runtimeValue = try XCTUnwrap(expression.runtimeValue)
       XCTAssertEqual(String(describing: runtimeValue), #"(123, "abc")"#)
@@ -391,12 +391,12 @@ final class IssueTests: XCTestCase {
   }
 
   func testExpressionRuntimeValueChildren() throws {
-    var expression = __Expression.__fromSyntaxNode("abc123")
+    var expression = __Expression("abc123")
     XCTAssertEqual(expression.sourceCode, "abc123")
     XCTAssertNil(expression.runtimeValue)
 
     do {
-      expression = expression.capturingRuntimeValues(ExpressionRuntimeValueCapture_Value())
+      expression.runtimeValue = __Expression.Value(reflecting: ExpressionRuntimeValueCapture_Value())
       let runtimeValue = try XCTUnwrap(expression.runtimeValue)
       XCTAssertEqual(String(describing: runtimeValue), "ExpressionRuntimeValueCapture_Value()")
       XCTAssertEqual(runtimeValue.typeInfo.fullyQualifiedName, "TestingTests.IssueTests.ExpressionRuntimeValueCapture_Value")
@@ -406,7 +406,7 @@ final class IssueTests: XCTestCase {
     }
 
     do {
-      expression = expression.capturingRuntimeValues(ExpressionRuntimeValueCapture_ValueWithChildren(contents: [123, "abc"]))
+      expression.runtimeValue = __Expression.Value(reflecting: ExpressionRuntimeValueCapture_ValueWithChildren(contents: [123, "abc"]))
       let runtimeValue = try XCTUnwrap(expression.runtimeValue)
       XCTAssertEqual(String(describing: runtimeValue), #"ExpressionRuntimeValueCapture_ValueWithChildren(contents: [123, "abc"])"#)
       XCTAssertEqual(runtimeValue.typeInfo.fullyQualifiedName, "TestingTests.IssueTests.ExpressionRuntimeValueCapture_ValueWithChildren")
@@ -429,7 +429,7 @@ final class IssueTests: XCTestCase {
     }
 
     do {
-      expression = expression.capturingRuntimeValues([])
+      expression.runtimeValue = __Expression.Value(reflecting: [])
       let runtimeValue = try XCTUnwrap(expression.runtimeValue)
       XCTAssertEqual(String(describing: runtimeValue), "[]")
       XCTAssertEqual(runtimeValue.typeInfo.fullyQualifiedName, "Swift.Array<Any>")
@@ -1167,33 +1167,6 @@ final class IssueTests: XCTestCase {
     }.run(configuration: configuration)
   }
 
-  func testNegatedExpressionsExpandToCaptureNegatedExpression() async {
-    var configuration = Configuration()
-    configuration.eventHandler = { event, _ in
-      guard case let .issueRecorded(issue) = event.kind else {
-        return
-      }
-      guard case let .expectationFailed(expectation) = issue.kind else {
-        XCTFail("Unexpected issue \(issue)")
-        return
-      }
-      XCTAssertNotNil(expectation.evaluatedExpression.runtimeValue)
-      XCTAssertTrue(expectation.evaluatedExpression.runtimeValue!.typeInfo.describes(Bool.self))
-      guard case let .negation(subexpression, isParenthetical) = expectation.evaluatedExpression.kind else {
-        XCTFail("Expected expression's kind was negation, but it was \(expectation.evaluatedExpression.kind)")
-        return
-      }
-      XCTAssertTrue(isParenthetical)
-      XCTAssertNotNil(subexpression.runtimeValue)
-      XCTAssertTrue(subexpression.runtimeValue!.typeInfo.describes(Bool.self))
-    }
-
-    @Sendable func g() -> Int { 1 }
-    await Test {
-      #expect(!(g() == 1))
-    }.run(configuration: configuration)
-  }
-
   func testLazyExpectDoesNotEvaluateRightHandValue() async {
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
@@ -1456,7 +1429,7 @@ struct IssueCodingTests {
   private static let issueKinds: [Issue.Kind] = [
     Issue.Kind.apiMisused,
     Issue.Kind.errorCaught(NSError(domain: "Domain", code: 13, userInfo: ["UserInfoKey": "UserInfoValue"])),
-    Issue.Kind.expectationFailed(Expectation(evaluatedExpression: .__fromSyntaxNode("abc"), isPassing: true, isRequired: true, sourceLocation: #_sourceLocation)),
+    Issue.Kind.expectationFailed(Expectation(evaluatedExpression: .init("abc"), isPassing: true, isRequired: true, sourceLocation: #_sourceLocation)),
     Issue.Kind.knownIssueNotRecorded,
     Issue.Kind.system,
     Issue.Kind.timeLimitExceeded(timeLimitComponents: (13, 42)),

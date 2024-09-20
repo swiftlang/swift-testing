@@ -18,4 +18,14 @@ extension TokenSyntax {
   var textWithoutBackticks: String {
     text.filter { $0 != "`" }
   }
+
+  /// Whether this instance represents some kind of operator.
+  var isOperator: Bool {
+    switch tokenKind {
+    case .binaryOperator, .prefixOperator, .postfixOperator:
+      return true
+    default:
+      return false
+    }
+  }
 }

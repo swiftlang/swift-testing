@@ -55,6 +55,13 @@ let package = Package(
       ],
       swiftSettings: .packageSettings
     ),
+    .testTarget(
+      name: "SubexpressionShowcase",
+      dependencies: [
+        "Testing",
+      ],
+      swiftSettings: .packageSettings
+    ),
 
     .macro(
       name: "TestingMacros",
