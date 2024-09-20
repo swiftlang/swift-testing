@@ -11,44 +11,6 @@
 import SwiftSyntax
 import SwiftSyntaxMacros
 
-/// The result of parsing the condition argument passed to `#expect()` or
-/// `#require()`.
-struct Condition {
-  /// The name of the function to call in the macro expansion (e.g.
-  /// `__check()`.)
-  var expandedFunctionName: TokenSyntax
-
-  /// The condition as one or more arguments to the evaluation function,
-  /// suitable for passing as partial arguments to a call to `__check()`.
-  var arguments: [Argument]
-
-  /// The condition's source code as an expression that produces an instance of
-  /// the testing library's `__Expression` type.
-  var expression: ExprSyntax
-
-  init(_ expandedFunctionName: String, arguments: [Argument], expression: ExprSyntax) {
-    self.expandedFunctionName = .identifier(expandedFunctionName)
-    self.arguments = arguments
-    self.expression = expression
-  }
-
-  /// Initialize an instance of this type representing a single expression (i.e.
-  /// one that could not be broken down further.)
-  ///
-  /// - Parameters:
-  ///   - expr: The expression.
-  ///   - expressionNode: The node from which to derive the `expression`
-  ///     property. If `nil`, `expr` is used.
-  init(expression expr: some ExprSyntaxProtocol, expressionNode: Syntax? = nil) {
-    let expressionNode: Syntax = expressionNode ?? Syntax(expr)
-    self.init(
-      "__checkValue",
-      arguments: [Argument(expression: expr)],
-      expression: createExpressionExpr(from: expressionNode)
-    )
-  }
-}
-
 /// Emit a diagnostic if an expression resolves to a trivial boolean literal
 /// (e.g. `#expect(true)`.)
 ///
@@ -69,7 +31,7 @@ private func _diagnoseTrivialBooleanValue(from expr: ExprSyntax, for macro: some
     default:
       break
     }
-  } else if let literal = _negatedExpression(expr)?.0.as(BooleanLiteralExprSyntax.self) {
+  } else if let literal = _negatedExpression(expr)?.as(BooleanLiteralExprSyntax.self) {
     // This expression is of the form !true or !false.
     switch literal.literal.tokenKind {
     case .keyword(.true):
@@ -92,14 +54,14 @@ private func _diagnoseTrivialBooleanValue(from expr: ExprSyntax, for macro: some
 ///   negation expression.
 ///
 /// This function handles expressions such as `!foo` or `!(bar)`.
-private func _negatedExpression(_ expr: ExprSyntax) -> (ExprSyntax, isParenthetical: Bool)? {
+private func _negatedExpression(_ expr: ExprSyntax) -> ExprSyntax? {
   let expr = removeParentheses(from: expr) ?? expr
   if let op = expr.as(PrefixOperatorExprSyntax.self),
      op.operator.tokenKind == .prefixOperator("!") {
     if let negatedExpr = removeParentheses(from: op.expression) {
-      return (negatedExpr, true)
+      return negatedExpr
     } else {
-      return (op.expression, false)
+      return op.expression
     }
   }
 
@@ -118,7 +80,7 @@ private func _negatedExpression(_ expr: ExprSyntax) -> (ExprSyntax, isParentheti
 /// not remove interior parentheses (e.g. `(foo, (bar))`.)
 func removeParentheses(from expr: ExprSyntax) -> ExprSyntax? {
   if let tuple = expr.as(TupleExprSyntax.self),
-      tuple.elements.count == 1,
+     tuple.elements.count == 1,
      let elementExpr = tuple.elements.first,
      elementExpr.label == nil {
     return removeParentheses(from: elementExpr.expression) ?? elementExpr.expression
@@ -127,120 +89,409 @@ func removeParentheses(from expr: ExprSyntax) -> ExprSyntax? {
   return nil
 }
 
-// MARK: -
+// MARK: - Inserting expression context callouts
 
-/// Parse a condition argument from a binary operation expression.
-///
-/// - Parameters:
-///   - expr: The expression to which `lhs` _et al._ belong.
-///   - lhs: The left-hand operand expression.
-///   - op: The operator expression.
-///   - rhs: The right-hand operand expression.
-///   - macro: The macro expression being expanded.
-///   - context: The macro context in which the expression is being parsed.
-///
-/// - Returns: An instance of ``Condition`` describing `expr`.
-///
-/// This function currently only recognizes and converts simple binary operator
-/// expressions. More complex expressions are treated as monolithic.
-private func _parseCondition(from expr: ExprSyntax, leftOperand lhs: ExprSyntax, operator op: BinaryOperatorExprSyntax, rightOperand rhs: ExprSyntax, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
-  return Condition(
-    "__checkBinaryOperation",
-    arguments: [
-      Argument(expression: lhs),
-      Argument(expression: "{ $0 \(op.trimmed) $1() }"),
-      Argument(expression: rhs)
-    ],
-    expression: createExpressionExprForBinaryOperation(lhs, op, rhs)
-  )
-}
+/// A type that inserts calls to an `__ExpectationContext` instance into an
+/// expression's syntax tree.
+private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansionContext, M: FreestandingMacroExpansionSyntax {
+  /// The macro context in which the expression is being parsed.
+  var context: C
 
-/// Parse a condition argument from an `is` expression.
-///
-/// - Parameters:
-///   - expr: The `is` expression.
-///   - macro: The macro expression being expanded.
-///   - context: The macro context in which the expression is being parsed.
-///
-/// - Returns: An instance of ``Condition`` describing `expr`.
-private func _parseCondition(from expr: IsExprSyntax, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
-  let expression = expr.expression
-  let type = expr.type
+  /// The macro expression.
+  var macro: M
 
-  return Condition(
-    "__checkCast",
-    arguments: [
-      Argument(expression: expression),
-      Argument(label: .identifier("is"), expression: "(\(type.trimmed)).self")
-    ],
-    expression: createExpressionExprForBinaryOperation(expression, expr.isKeyword, type)
-  )
-}
+  /// The node to treat as the root node when expanding expressions.
+  var effectiveRootNode: Syntax
 
-/// Parse a condition argument from an `as?` expression.
-///
-/// - Parameters:
-///   - expr: The `as?` expression.
-///   - macro: The macro expression being expanded.
-///   - context: The macro context in which the expression is being parsed.
-///
-/// - Returns: An instance of ``Condition`` describing `expr`.
-private func _parseCondition(from expr: AsExprSyntax, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
-  let expression = expr.expression
-  let type = expr.type
+  /// The name of the instance of `__ExpectationContext` to call.
+  var expressionContextNameExpr: DeclReferenceExprSyntax
 
-  switch expr.questionOrExclamationMark?.tokenKind {
-  case .postfixQuestionMark:
-    return Condition(
-      "__checkCast",
-      arguments: [
-        Argument(expression: expression),
-        Argument(label: .identifier("as"), expression: "(\(type.trimmed)).self")
-      ],
-      expression: createExpressionExprForBinaryOperation(expression, TokenSyntax.unknown("as?"), type)
+  /// A list of any syntax nodes that have been rewritten.
+  ///
+  /// The nodes in this array are the _original_ nodes, not the rewritten nodes.
+  var rewrittenNodes = [Syntax]()
+
+  init(in context: C, for macro: M, rootedAt effectiveRootNode: Syntax, expressionContextName: TokenSyntax) {
+    self.context = context
+    self.macro = macro
+    self.effectiveRootNode = effectiveRootNode
+    self.expressionContextNameExpr = DeclReferenceExprSyntax(baseName: expressionContextName.trimmed)
+    super.init()
+  }
+
+  /// Rewrite a given syntax node by inserting a call to the expression context
+  /// (or rather, its `callAsFunction(_:_:)` member).
+  ///
+  /// - Parameters:
+  ///   - node: The node to rewrite.
+  ///   - originalNode: The original node in the original syntax tree, if `node`
+  ///     has already been partially rewritten or substituted. If `node` has not
+  ///     been rewritten, this argument should equal it.
+  ///
+  /// - Returns: A rewritten copy of `node` that calls into the expression
+  ///   context when it is evaluated at runtime.
+  private func _rewrite<E>(_ node: E, originalWas originalNode: some SyntaxProtocol) -> ExprSyntax where E: ExprSyntaxProtocol {
+    rewrittenNodes.append(Syntax(originalNode))
+
+    var result = FunctionCallExprSyntax(calledExpression: expressionContextNameExpr) {
+      LabeledExprSyntax(expression: node.trimmed)
+      LabeledExprSyntax(expression: originalNode.expressionID(rootedAt: effectiveRootNode))
+    }
+
+    result.leftParen = .leftParenToken()
+    result.rightParen = .rightParenToken()
+    result.leadingTrivia = originalNode.leadingTrivia
+    result.trailingTrivia = originalNode.trailingTrivia
+
+    // If the resulting expression has an optional type due to containing an
+    // optional chaining expression (e.g. `foo?`) *and* its immediate parent
+    // node passes through the syntactical effects of optional chaining, return
+    // it as optional-chained so that it parses correctly post-expansion.
+    switch node.parent?.kind {
+    case .memberAccessExpr, .subscriptCallExpr:
+      let optionalChainFinder = _OptionalChainFinder(viewMode: .sourceAccurate)
+      optionalChainFinder.walk(node)
+      if optionalChainFinder.optionalChainFound {
+        return ExprSyntax(OptionalChainingExprSyntax(expression: result))
+      }
+
+    default:
+      break
+    }
+
+    return ExprSyntax(result)
+  }
+
+  /// Rewrite a given syntax node by inserting a call to the expression context
+  /// (or rather, its `callAsFunction(_:_:)` member).
+  ///
+  /// - Parameters:
+  ///   - node: The node to rewrite.
+  ///
+  /// - Returns: A rewritten copy of `node` that calls into the expression
+  ///   context when it is evaluated at runtime.
+  ///
+  /// This function is equivalent to `_rewrite(node, originalWas: node)`.
+  private func _rewrite<E>(_ node: E) -> ExprSyntax where E: ExprSyntaxProtocol {
+    _rewrite(node, originalWas: node)
+  }
+
+  /// Whether or not the parent node of the given node is capable of containing
+  /// a rewritten `DeclReferenceExprSyntax` instance.
+  ///
+  /// - Parameters:
+  ///   - node: The node that might be rewritten. It does not need to be an
+  ///     instance of `DeclReferenceExprSyntax`.
+  ///
+  /// - Returns: Whether or not the _parent_ of `node` will still be
+  ///   syntactically valid if `node` is rewritten with `_rewrite(_:)`.
+  ///
+  /// Instances of `DeclReferenceExprSyntax` are often present in positions
+  /// where it would be syntactically invalid to extract them out as function
+  /// arguments. This function is used to constrain the cases where we do so to
+  /// those we know (or generally know) are "safe".
+  private func _isParentOfDeclReferenceExprValidForRewriting(_ node: some SyntaxProtocol) -> Bool {
+    guard let parentNode = node.parent else {
+      return false
+    }
+
+    switch parentNode.kind {
+    case .labeledExpr, .functionParameter,
+        .prefixOperatorExpr, .postfixOperatorExpr, .infixOperatorExpr,
+        .asExpr, .isExpr, .optionalChainingExpr, .forceUnwrapExpr,
+        .arrayElement, .dictionaryElement:
+      return true
+    default:
+      return false
+    }
+  }
+
+  override func visit(_ node: DeclReferenceExprSyntax) -> ExprSyntax {
+    // DeclReferenceExprSyntax is used for operator tokens in identifier
+    // position. These generally appear when an operator function is passed to
+    // a higher-order function (e.g. `sort(by: <)`) and also for the unbounded
+    // range expression (`...`). Both are uninteresting to the testing library
+    // and can be dropped.
+    if node.baseName.isOperator {
+      return ExprSyntax(node)
+    }
+
+    if _isParentOfDeclReferenceExprValidForRewriting(node) {
+      return _rewrite(node)
+    }
+
+    // SPECIAL CASE: If this node is the base expression of a member access
+    // expression, and that member access expression is the called expression of
+    // a function, it is generally safe to extract out (but may need `.self`
+    // added to the end.)
+    if let memberAccessExpr = node.parent?.as(MemberAccessExprSyntax.self),
+       ExprSyntax(node) == memberAccessExpr.base,
+       let functionCallExpr = memberAccessExpr.parent?.as(FunctionCallExprSyntax.self),
+       ExprSyntax(memberAccessExpr) == functionCallExpr.calledExpression {
+      return _rewrite(
+        MemberAccessExprSyntax(
+          base: node.trimmed,
+          declName: DeclReferenceExprSyntax(baseName: .keyword(.self))
+        ),
+        originalWas: node
+      )
+    }
+
+    return ExprSyntax(node)
+  }
+
+  override func visit(_ node: TupleExprSyntax) -> ExprSyntax {
+    // We are conservative when descending into tuples because they could be
+    // tuple _types_ rather than _values_ (e.g. `(Int, Double)`) but those
+    // cannot be distinguished with syntax alone.
+    if _isParentOfDeclReferenceExprValidForRewriting(node) {
+      return _rewrite(node)
+    }
+
+    return ExprSyntax(node)
+  }
+
+  override func visit(_ node: MemberAccessExprSyntax) -> ExprSyntax {
+    if case .keyword = node.declName.baseName.tokenKind {
+      // Likely something like Foo.self or X.Type, which we can't reasonably
+      // break down further.
+      return ExprSyntax(node)
+    }
+
+    // As with decl reference expressions, only certain kinds of member access
+    // expressions can be directly extracted out.
+    if _isParentOfDeclReferenceExprValidForRewriting(node) {
+      return _rewrite(
+        node.with(\.base, node.base.map(visit)),
+        originalWas: node
+      )
+    }
+
+    return ExprSyntax(node.with(\.base, node.base.map(visit)))
+  }
+
+  override func visit(_ node: FunctionCallExprSyntax) -> ExprSyntax {
+    _rewrite(
+      node
+        .with(\.calledExpression, visit(node.calledExpression))
+        .with(\.arguments, visit(node.arguments)),
+      originalWas: node
     )
-
-  case .exclamationMark where !type.isNamed("Bool", inModuleNamed: "Swift") && !type.isOptional:
-    // Warn that as! will be evaluated before #expect() or #require(), which is
-    // probably not what the developer intended. We suppress the warning for
-    // casts to Bool and casts to optional types. Presumably such casts are not
-    // being performed for their optional-unwrapping behavior, but because the
-    // developer knows the type of the expression better than we do.
-    context.diagnose(.asExclamationMarkIsEvaluatedEarly(expr, in: macro))
-
-  default:
-    // Only diagnose for `x as! T`. `x as T` is perfectly fine if it otherwise
-    // compiles. For example, `#require(x as Int?)` should compile.
-    //
-    // If the token after "as" is something else entirely and got through the
-    // type checker, just leave it alone as we don't recognize it.
-    break
   }
 
-  return Condition(expression: expr)
+  override func visit(_ node: SubscriptCallExprSyntax) -> ExprSyntax {
+    _rewrite(
+      node
+        .with(\.calledExpression, visit(node.calledExpression))
+        .with(\.arguments, visit(node.arguments)),
+      originalWas: node
+    )
+  }
+
+  override func visit(_ node: ClosureExprSyntax) -> ExprSyntax {
+    // We do not (currently) attempt to descent into closures.
+    ExprSyntax(node)
+  }
+
+  override func visit(_ node: FunctionDeclSyntax) -> DeclSyntax {
+    // We do not (currently) attempt to descent into functions.
+    DeclSyntax(node)
+  }
+
+  // MARK: - Operators
+
+  override func visit(_ node: PrefixOperatorExprSyntax) -> ExprSyntax {
+    // Special-case negative number literals as a single expression.
+    if node.expression.is(IntegerLiteralExprSyntax.self) || node.expression.is(FloatLiteralExprSyntax.self) {
+      if node.operator.tokenKind == .prefixOperator("-") {
+        return ExprSyntax(node)
+      }
+    }
+
+    return _rewrite(
+      node
+        .with(\.expression, visit(node.expression)),
+      originalWas: node
+    )
+  }
+
+  override func visit(_ node: InfixOperatorExprSyntax) -> ExprSyntax {
+    _rewrite(
+      node
+        .with(\.leftOperand, visit(node.leftOperand))
+        .with(\.rightOperand, visit(node.rightOperand)),
+      originalWas: node
+    )
+  }
+
+  override func visit(_ node: InOutExprSyntax) -> ExprSyntax {
+    // inout arguments cannot be forwarded through functions. In the future, we
+    // could experiment with unsafe mutable pointers?
+    return ExprSyntax(node)
+  }
+
+  // MARK: - Casts
+
+  /// Create a function call that represents an `is` or `as?` cast.
+  ///
+  /// - Parameters:
+  ///   - valueExpr: The expression to cast.
+  ///   - isAsKeyword: The casting keyword (either `.is` or `.as`).
+  ///   - type: The type to cast `valueExpr` to.
+  ///
+  /// - Returns: A function call expression equivalent to the described cast.
+  private func _makeCastCall(_ valueExpr: ExprSyntax, _ isAsKeyword: Keyword, _ type: TypeSyntax) -> FunctionCallExprSyntax {
+    var result = FunctionCallExprSyntax(
+      calledExpression: MemberAccessExprSyntax(
+        base: expressionContextNameExpr,
+        name: .identifier("__\(isAsKeyword)")
+      )
+    ) {
+      LabeledExprSyntax(expression: visit(valueExpr))
+      LabeledExprSyntax(
+        expression: _rewrite(
+          MemberAccessExprSyntax(
+            base: TupleExprSyntax {
+              LabeledExprSyntax(expression: TypeExprSyntax(type: type.trimmed))
+            },
+            declName: DeclReferenceExprSyntax(baseName: .keyword(.self))
+          ),
+          originalWas: Syntax(type)
+        )
+      )
+      LabeledExprSyntax(expression: type.expressionID(rootedAt: effectiveRootNode))
+    }
+    result.leftParen = .leftParenToken()
+    result.rightParen = .rightParenToken()
+
+    return result
+  }
+
+  override func visit(_ node: AsExprSyntax) -> ExprSyntax {
+    switch node.questionOrExclamationMark?.tokenKind {
+    case .postfixQuestionMark:
+      return _rewrite(
+        _makeCastCall(node.expression, .as, node.type),
+        originalWas: node
+      )
+
+    case .exclamationMark where !node.type.isNamed("Bool", inModuleNamed: "Swift") && !node.type.isOptional:
+      // Warn that as! will be evaluated before #expect() or #require(), which is
+      // probably not what the developer intended. We suppress the warning for
+      // casts to Bool and casts to optional types. Presumably such casts are not
+      // being performed for their optional-unwrapping behavior, but because the
+      // developer knows the type of the expression better than we do.
+      context.diagnose(.asExclamationMarkIsEvaluatedEarly(node, in: macro))
+      return _rewrite(node)
+
+    default:
+      // Only diagnose for `x as! T`. `x as T` is perfectly fine if it otherwise
+      // compiles. For example, `#require(x as Int?)` should compile.
+      //
+      // If the token after "as" is something else entirely and got through the
+      // type checker, just leave it alone as we don't recognize it.
+      return _rewrite(node)
+    }
+  }
+
+  override func visit(_ node: IsExprSyntax) -> ExprSyntax {
+    _rewrite(
+      _makeCastCall(node.expression, .is, node.type),
+      originalWas: node
+    )
+  }
+
+  // MARK: - Literals
+
+  override func visit(_ node: BooleanLiteralExprSyntax) -> ExprSyntax {
+    // Contrary to the comment immediately below this function, we *do* rewrite
+    // boolean literals so that expressions like `#expect(true)` are expanded.
+    _rewrite(node)
+  }
+
+  // We don't currently rewrite numeric/string/array/dictionary literals. We
+  // could, but it's unclear what the benefit would be and it could seriously
+  // impact type checker time.
+
+#if SWT_DELVE_INTO_LITERALS
+  override func visit(_ node: IntegerLiteralExprSyntax) -> ExprSyntax {
+    _rewrite(node)
+  }
+
+  override func visit(_ node: FloatLiteralExprSyntax) -> ExprSyntax {
+    _rewrite(node)
+  }
+
+  override func visit(_ node: StringLiteralExprSyntax) -> ExprSyntax {
+    _rewrite(node)
+  }
+
+  override func visit(_ node: ArrayExprSyntax) -> ExprSyntax {
+    _rewrite(
+      node.with(
+        \.elements, ArrayElementListSyntax {
+          for element in node.elements {
+            ArrayElementSyntax(expression: visit(element.expression))
+          }
+        }
+      ),
+      originalWas: node
+    )
+  }
+
+  override func visit(_ node: DictionaryExprSyntax) -> ExprSyntax {
+    guard case let .elements(elements) = node.content else {
+      return ExprSyntax(node)
+    }
+    return _rewrite(
+      node.with(
+        \.content, .elements(
+          DictionaryElementListSyntax {
+            for element in elements {
+              DictionaryElementSyntax(key: visit(element.key), value: visit(element.value))
+            }
+          }
+        )
+      ),
+      originalWas: node
+    )
+  }
+#endif
 }
 
-/// Parse a condition argument from a closure expression.
+/// Insert calls to an expression context into a syntax tree.
 ///
 /// - Parameters:
-///   - expr: The closure expression.
-///   - macro: The macro expression being expanded.
+///   - expressionContextName: The name of the instance of
+///     `__ExpectationContext` to call.
+///   - node: The root of a syntax tree to rewrite. This node may not itself be
+///     the root of the overall syntax tree—it's just the root of the subtree
+///     that we're rewriting.
+///   - macro: The macro expression.
+///   - effectiveRootNode: The node to treat as the root of the syntax tree for
+///     the purposes of generating expression ID values.
 ///   - context: The macro context in which the expression is being parsed.
 ///
-/// - Returns: An instance of ``Condition`` describing `expr`.
-private func _parseCondition(from expr: ClosureExprSyntax, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
-  if expr.signature == nil && expr.statements.count == 1, let item = expr.statements.first?.item {
-    // TODO: capture closures as a different kind of Testing.Expression with a
-    // separate subexpression per code item.
-
-    // If a closure contains a single statement or declaration, we can't
-    // meaningfully break it down as an expression, but we can still capture its
-    // source representation.
-    return Condition(expression: expr, expressionNode: Syntax(item))
+/// - Returns: A tuple containing the rewritten copy of `node` as well as a list
+///   of all the nodes within `node` (possibly including `node` itself) that
+///   were rewritten.
+func insertCalls(
+  toExpressionContextNamed expressionContextName: TokenSyntax,
+  into node: some SyntaxProtocol,
+  for macro: some FreestandingMacroExpansionSyntax,
+  rootedAt effectiveRootNode: some SyntaxProtocol,
+  in context: some MacroExpansionContext
+) -> (Syntax, rewrittenNodes: [Syntax]) {
+  if let node = node.as(ExprSyntax.self) {
+    _diagnoseTrivialBooleanValue(from: node, for: macro, in: context)
   }
 
-  return Condition(expression: expr)
+  let contextInserter = _ContextInserter(in: context, for: macro, rootedAt: Syntax(effectiveRootNode), expressionContextName: expressionContextName)
+  let result = contextInserter.rewrite(node)
+  return (result, contextInserter.rewrittenNodes)
 }
+
+// MARK: - Finding optional chains
 
 /// A class that walks a syntax tree looking for optional chaining expressions
 /// such as `a?.b.c`.
@@ -254,279 +505,111 @@ private final class _OptionalChainFinder: SyntaxVisitor {
   }
 }
 
-/// Extract the underlying expression from an optional-chained expression as
-/// well as the number of question marks required to reach it.
-///
-/// - Parameters:
-///   - expr: The expression to examine, typically the `base` expression of a
-///     `MemberAccessExprSyntax` instance.
-///
-/// - Returns: A copy of `expr` with trailing question marks from optional
-///   chaining removed, as well as a string containing the number of question
-///   marks needed to access a member of `expr` after it has been assigned to
-///   another variable. If `expr` does not contain any optional chaining, it is
-///   returned verbatim along with the empty string.
-///
-/// This function is used when expanding member accesses (either functions or
-/// properties) that could contain optional chaining expressions such as
-/// `foo?.bar()`. Since, in this case, `bar()` is ultimately going to be called
-/// on a closure argument (i.e. `$0`), it is necessary to determine the number
-/// of question mark characters needed to correctly construct that expression
-/// and to capture the underlying expression of `foo?` without question marks so
-/// that it remains syntactically correct when used without `bar()`.
-private func _exprFromOptionalChainedExpr(_ expr: some ExprSyntaxProtocol) -> (ExprSyntax, questionMarks: String) {
-  let originalExpr = expr
-  var expr = ExprSyntax(expr)
-  var questionMarkCount = 0
+// MARK: - Finding effect keywords
 
-  while let optionalExpr = expr.as(OptionalChainingExprSyntax.self) {
-    // If the rightmost base expression is an optional-chained member access
-    // expression (e.g. "bar?" in the member access expression
-    // "foo.bar?.isQuux"), drop the question mark.
-    expr = optionalExpr.expression
-    questionMarkCount += 1
-  }
+/// A syntax visitor class that looks for effectful keywords in a given
+/// expression.
+private final class _EffectFinder: SyntaxAnyVisitor {
+  /// The effect keywords discovered so far.
+  var effectKeywords: Set<Keyword> = []
 
-  // If the rightmost expression is not itself optional-chained, check if any of
-  // the member accesses in the expression use optional chaining and, if one
-  // does, ensure we preserve optional chaining in the macro expansion.
-  if questionMarkCount == 0 {
-    let optionalChainFinder = _OptionalChainFinder(viewMode: .sourceAccurate)
-    optionalChainFinder.walk(originalExpr)
-    if optionalChainFinder.optionalChainFound {
-      questionMarkCount = 1
-    }
-  }
-
-  let questionMarks = String(repeating: "?", count: questionMarkCount)
-
-  return (expr, questionMarks)
-}
-
-/// Parse a condition argument from a member function call.
-///
-/// - Parameters:
-///   - expr: The function call expression.
-///   - macro: The macro expression being expanded.
-///   - context: The macro context in which the expression is being parsed.
-///
-/// - Returns: An instance of ``Condition`` describing `expr`.
-private func _parseCondition(from expr: FunctionCallExprSyntax, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
-  // We do not support function calls with trailing closures because the
-  // transform required to forward them requires more information than is
-  // available solely from the syntax tree.
-  if expr.trailingClosure != nil {
-    return Condition(expression: expr)
-  }
-
-  // We also do not support expansion of closure invocations as they are
-  // diagnostically uninteresting.
-  if expr.calledExpression.is(ClosureExprSyntax.self) {
-    return Condition(expression: expr)
-  }
-
-  let memberAccessExpr = expr.calledExpression.as(MemberAccessExprSyntax.self)
-  let functionName = memberAccessExpr.map(\.declName.baseName).map(Syntax.init) ?? Syntax(expr.calledExpression)
-  let argumentList = expr.arguments.map(Argument.init)
-
-  let inOutArguments: [InOutExprSyntax] = argumentList.lazy
-    .map(\.expression)
-    .compactMap({ $0.as(InOutExprSyntax.self) })
-  if inOutArguments.count > 1 {
-    // There is more than one inout argument present. This requires that the
-    // corresponding __check() function support variadic generics, but there is
-    // a compiler bug preventing us from implementing variadic inout support.
-    return Condition(expression: expr)
-  } else if inOutArguments.count != 0 && inOutArguments.count != argumentList.count {
-    // There is a mix of inout and normal arguments. That's not feasible for
-    // us to support here, so back out.
-    return Condition(expression: expr)
-  }
-
-  // Which __check() function are we calling?
-  let expandedFunctionName = inOutArguments.isEmpty ? "__checkFunctionCall" : "__checkInoutFunctionCall"
-
-  let indexedArguments = argumentList.lazy
-    .enumerated()
-    .map { index, argument in
-      if argument.expression.is(InOutExprSyntax.self) {
-        return Argument(label: argument.label, expression: "&$\(raw: index + 1)")
+  override func visitAny(_ node: Syntax) -> SyntaxVisitorContinueKind {
+    switch node.kind {
+    case .tryExpr:
+      effectKeywords.insert(.try)
+    case .awaitExpr:
+      effectKeywords.insert(.await)
+    case .consumeExpr:
+      effectKeywords.insert(.consume)
+    case .closureExpr, .functionDecl:
+      // Do not delve into closures or function declarations.
+      return .skipChildren
+    case .variableDecl:
+      // Delve into variable declarations.
+      return .visitChildren
+    default:
+      // Do not delve into declarations other than variables.
+      if node.isProtocol((any DeclSyntaxProtocol).self) {
+        return .skipChildren
       }
-      return Argument(label: argument.label, expression: "$\(raw: index + 1)")
-    }
-  let forwardedArguments = argumentList.lazy
-    .map(\.expression)
-    .map { Argument(expression: $0) }
-
-  var baseExprForExpression: ExprSyntax?
-  var conditionArguments = [Argument]()
-  if let memberAccessExpr, var baseExpr = memberAccessExpr.base {
-    let questionMarks: String
-    (baseExpr, questionMarks) = _exprFromOptionalChainedExpr(baseExpr)
-    baseExprForExpression = baseExpr
-
-    conditionArguments.append(Argument(expression: "\(baseExpr.trimmed).self")) // BUG: rdar://113152370
-    conditionArguments.append(
-      Argument(
-        label: "calling",
-        expression: """
-        {
-          $0\(raw: questionMarks).\(functionName.trimmed)(\(LabeledExprListSyntax(indexedArguments)))
-        }
-        """
-      )
-    )
-  } else {
-    // Substitute an empty tuple for the self argument, and call the function
-    // directly (without having to reorder the numbered closure arguments.) If
-    // the function takes zero arguments, we'll also need to suppress $0 in the
-    // closure body since it is unused.
-    let parameterList = forwardedArguments.isEmpty ? "_ in" : ""
-    conditionArguments.append(Argument(expression: "()"))
-
-    // If memberAccessExpr is not nil here, that means it had a nil base
-    // expression (i.e. the base is inferred.)
-    var dot: TokenSyntax?
-    if memberAccessExpr != nil {
-      dot = .periodToken()
     }
 
-    conditionArguments.append(
-      Argument(
-        label: "calling",
-        expression: """
-        { \(raw: parameterList)
-          \(dot)\(functionName.trimmed)(\(LabeledExprListSyntax(indexedArguments)))
-        }
-        """
-      )
-    )
+    // Recurse into everything else.
+    return .visitChildren
   }
-  conditionArguments += forwardedArguments
-  return Condition(
-    expandedFunctionName,
-    arguments: conditionArguments,
-    expression: createExpressionExprForFunctionCall(baseExprForExpression, functionName, argumentList)
-  )
 }
 
-/// Parse a condition argument from a property access.
+/// Find effectful keywords in a syntax node.
 ///
 /// - Parameters:
-///   - expr: The member access expression.
-///   - macro: The macro expression being expanded.
-///   - context: The macro context in which the expression is being parsed.
+///   - node: The node to inspect.
 ///
-/// - Returns: An instance of ``Condition`` describing `expr`.
-private func _parseCondition(from expr: MemberAccessExprSyntax, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
-  // Only handle member access expressions where the base expression is known
-  // and where there are no argument names (which would otherwise indicate a
-  // reference to a member function which wouldn't resolve to anything useful at
-  // runtime.)
-  guard var baseExpr = expr.base, expr.declName.argumentNames == nil else {
-    return Condition(expression: expr)
-  }
-
-  let questionMarks: String
-  (baseExpr, questionMarks) = _exprFromOptionalChainedExpr(baseExpr)
-
-  return Condition(
-    "__checkPropertyAccess",
-    arguments: [
-      Argument(expression: "\(baseExpr.trimmed).self"),
-      Argument(label: "getting", expression: "{ $0\(raw: questionMarks).\(expr.declName.baseName) }")
-    ],
-    expression: createExpressionExprForPropertyAccess(baseExpr, expr.declName)
-  )
+/// - Returns: A set of effectful keywords such as `await` that are present in
+///   `node`.
+///
+/// This function does not descend into function declarations or closure
+/// expressions because they represent distinct lexical contexts and their
+/// effects are uninteresting in the context of `node` unless they are called.
+func findEffectKeywords(in node: some SyntaxProtocol) -> Set<Keyword> {
+  let effectFinder = _EffectFinder(viewMode: .sourceAccurate)
+  effectFinder.walk(node)
+  return effectFinder.effectKeywords
 }
 
-/// Parse a condition argument from a property access.
+// MARK: - Replacing dollar identifiers
+
+/// Rewrite a dollar identifier as a normal (non-dollar) identifier.
 ///
 /// - Parameters:
-///   - expr: The expression that was negated.
-///   - isParenthetical: Whether or not `expression` was enclosed in
-///     parentheses (and the `!` operator was outside it.) This argument
-///     affects how this expression is represented as a string.
-///   - macro: The macro expression being expanded.
-///   - context: The macro context in which the expression is being parsed.
+///   - token: The dollar identifier token to rewrite.
 ///
-/// - Returns: An instance of ``Condition`` describing `expr`.
-private func _parseCondition(negating expr: ExprSyntax, isParenthetical: Bool, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
-  var result = _parseCondition(from: expr, for: macro, in: context)
-  result.expression = createExpressionExprForNegation(of: result.expression, isParenthetical: isParenthetical)
-  return result
+/// - Returns: A copy of `token` as an identifier token.
+private func _rewriteDollarIdentifier(_ token: TokenSyntax) -> TokenSyntax {
+  .identifier("__renamedCapture__\(token.trimmedDescription)")
 }
 
-/// Parse a condition argument from an arbitrary expression.
-///
-/// - Parameters:
-///   - expr: The condition expression to parse.
-///   - macro: The macro expression being expanded.
-///   - context: The macro context in which the expression is being parsed.
-///
-/// - Returns: An instance of ``Condition`` describing `expr`.
-private func _parseCondition(from expr: ExprSyntax, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
-  // Handle closures with a single expression in them (e.g. { $0.foo() })
-  if let closureExpr = expr.as(ClosureExprSyntax.self) {
-    return _parseCondition(from: closureExpr, for: macro, in: context)
+/// A syntax rewriter that replaces _numeric_ dollar identifiers (e.g. `$0`)
+/// with normal (non-dollar) identifiers.
+private final class _DollarIdentifierReplacer: SyntaxRewriter {
+  /// The dollar identifier tokens that have been rewritten.
+  var dollarIdentifierTokens = Set<TokenSyntax>()
+
+  override func visit(_ node: TokenSyntax) -> TokenSyntax {
+    if case let .dollarIdentifier(id) = node.tokenKind, id.dropFirst().allSatisfy(\.isWholeNumber) {
+      // This dollar identifier is numeric, so it's a closure argument.
+      dollarIdentifierTokens.insert(node)
+      return _rewriteDollarIdentifier(node)
+    }
+
+    return node
   }
 
-  // If the condition involves the `try` or `await` keywords, assume we cannot
-  // expand it. This check cannot handle expressions like
-  // `try #expect(a.b(c))` where `b()` is throwing because the `try` keyword is
-  // outside the macro expansion. SEE: rdar://109470248
-  let containsTryOrAwait = expr.tokens(viewMode: .sourceAccurate).lazy
-    .map(\.tokenKind)
-    .contains { $0 == .keyword(.try) || $0 == .keyword(.await) }
-  if containsTryOrAwait {
-    return Condition(expression: expr)
+  override func visit(_ node: ClosureExprSyntax) -> ExprSyntax {
+    // Do not recurse into closure expressions because they will have their own
+    // argument lists that won't conflict with the enclosing scope's.
+    return ExprSyntax(node)
   }
-
-  if let infixOperator = expr.as(InfixOperatorExprSyntax.self),
-     let op = infixOperator.operator.as(BinaryOperatorExprSyntax.self) {
-    return _parseCondition(from: expr, leftOperand: infixOperator.leftOperand, operator: op, rightOperand: infixOperator.rightOperand, for: macro, in: context)
-  }
-
-  // Handle `is` and `as?` expressions.
-  if let isExpr = expr.as(IsExprSyntax.self) {
-    return _parseCondition(from: isExpr, for: macro, in: context)
-  } else if let asExpr = expr.as(AsExprSyntax.self) {
-    return _parseCondition(from: asExpr, for: macro, in: context)
-  }
-
-  // Handle function calls and member accesses.
-  if let functionCallExpr = expr.as(FunctionCallExprSyntax.self) {
-    return _parseCondition(from: functionCallExpr, for: macro, in: context)
-  } else if let memberAccessExpr = expr.as(MemberAccessExprSyntax.self) {
-    return _parseCondition(from: memberAccessExpr, for: macro, in: context)
-  }
-
-  // Handle negation.
-  if let negatedExpr = _negatedExpression(expr) {
-    return _parseCondition(negating: negatedExpr.0, isParenthetical: negatedExpr.isParenthetical, for: macro, in: context)
-  }
-
-  // Parentheses are parsed as if they were tuples, so (true && false) appears
-  // to the parser as a tuple containing one expression, `true && false`.
-  if let expr = removeParentheses(from: expr) {
-    return _parseCondition(from: expr, for: macro, in: context)
-  }
-
-  return Condition(expression: expr)
 }
 
-// MARK: -
-
-/// Parse a condition argument from an arbitrary expression.
+/// Rewrite any implicit closure arguments (dollar identifiers such as `$0`) in
+/// the given node as normal (non-dollar) identifiers.
 ///
 /// - Parameters:
-///   - expr: The condition expression to parse.
-///   - macro: The macro expression being expanded.
-///   - context: The macro context in which the expression is being parsed.
+///   - node: The syntax node to rewrite.
 ///
-/// - Returns: An instance of ``Condition`` describing `expr`.
-func parseCondition(from expr: ExprSyntax, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
-  _diagnoseTrivialBooleanValue(from: expr, for: macro, in: context)
-  let result = _parseCondition(from: expr, for: macro, in: context)
-  return result
+/// - Returns: A rewritten copy of `node` as well as a closure capture list that
+///   can be used to transform the original dollar identifiers to their
+///   rewritten counterparts in a nested closure invocation.
+func rewriteClosureArguments(in node: some SyntaxProtocol) -> (rewrittenNode: Syntax, captureList: ClosureCaptureClauseSyntax)? {
+  let replacer = _DollarIdentifierReplacer()
+  let result = replacer.rewrite(node)
+  if replacer.dollarIdentifierTokens.isEmpty {
+    return nil
+  }
+  let captureList = ClosureCaptureClauseSyntax {
+    for token in replacer.dollarIdentifierTokens {
+      ClosureCaptureSyntax(name: _rewriteDollarIdentifier(token), expression: DeclReferenceExprSyntax(baseName: token))
+    }
+  }
+  return (result, captureList)
 }

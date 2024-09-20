@@ -61,11 +61,20 @@ extension ABIv0 {
     /// The symbol associated with this message.
     var symbol: Symbol
 
+    /// The amount of extra padding to insert between the symbol and string
+    /// value when presenting this message.
+    ///
+    /// - Warning: This property is not yet part of the JSON schema.
+    var _padding: Int?
+
     /// The human-readable, unformatted text associated with this message.
     var text: String
 
     init(encoding message: borrowing Event.HumanReadableOutputRecorder.Message) {
       symbol = Symbol(encoding: message.symbol ?? .default)
+      if message.padding > 0 {
+        _padding = message.padding
+      }
       text = message.conciseStringValue ?? message.stringValue
     }
   }
