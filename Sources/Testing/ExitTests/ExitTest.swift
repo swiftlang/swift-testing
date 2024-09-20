@@ -446,7 +446,7 @@ extension ExitTest {
         // and process it as a (minimal) event stream.
         let readEnd = backChannel.closeWriteEnd()
         taskGroup.addTask {
-          Self._processRecordsFromBackChannel(readEnd)
+          Self._processRecords(fromBackChannel: readEnd)
           return nil
         }
 
@@ -463,7 +463,7 @@ extension ExitTest {
   /// - Parameters:
   ///   - backChannel: The file handle to read from. Reading continues until an
   ///     error is encountered or the end of the file is reached.
-  private static func _processRecordsFromBackChannel(_ backChannel: borrowing FileHandle) {
+  private static func _processRecords(fromBackChannel backChannel: borrowing FileHandle) {
     let bytes: [UInt8]
     do {
       bytes = try backChannel.readToEnd()
