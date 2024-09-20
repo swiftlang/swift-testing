@@ -15,6 +15,12 @@ import Foundation
 @_spi(Experimental) import _Testing_Foundation
 #endif
 
+extension Character {
+  var isPathSeparator: Bool {
+    self == "/" || self == #"\"#
+  }
+}
+
 @Suite("Attachment Tests")
 struct AttachmentTests {
   @Test func saveValue() {
@@ -70,7 +76,7 @@ struct AttachmentTests {
       // Write the attachment to disk, then read it back.
       let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectory(), appending: suffixes.next()!)
       createdFilePaths.append(filePath)
-      let fileName = try #require(filePath.split { $0 == "/" || $0 == #"\"# }.last)
+      let fileName = try #require(filePath.split(whereSeparator: \.isPathSeparator).last)
       if i == 0 {
         #expect(fileName == baseFileName)
       } else {
@@ -97,7 +103,7 @@ struct AttachmentTests {
     defer {
       remove(filePath)
     }
-    let fileName = try #require(filePath.split { $0 == "/" || $0 == #"\"# }.last)
+    let fileName = try #require(filePath.split(whereSeparator: \.isPathSeparator).last)
     #expect(fileName == "loremipsum-\(suffix).tgz.gif.jpeg.html")
     try compare(attachableValue, toContentsOfFileAtPath: filePath)
   }
@@ -471,7 +477,7 @@ struct MySendableAttachable: Attachable, Sendable {
   var string: String
 
   func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    #expect(attachment.attachableValue.string == string)
+    #expect(attachment.attachableValue.string == self.string)
     var string = string
     return try string.withUTF8 { buffer in
       try body(.init(buffer))
