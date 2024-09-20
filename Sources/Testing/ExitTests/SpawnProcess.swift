@@ -44,88 +44,64 @@ func spawnExecutable(
   environment: [String: String],
   additionalFileHandles: UnsafeBufferPointer<FileHandle> = .init(start: nil, count: 0)
 ) throws -> ProcessID {
-  // Darwin and Linux differ in their optionality for the posix_spawn types we
-  // use, so use this typealias to paper over the differences.
-#if SWT_TARGET_OS_APPLE
-  typealias P<T> = T?
-#elseif os(Linux) || os(FreeBSD)
-  typealias P<T> = T
-#endif
-
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
-  return try withUnsafeTemporaryAllocation(of: P<posix_spawn_file_actions_t>.self, capacity: 1) { fileActions in
-    guard 0 == posix_spawn_file_actions_init(fileActions.baseAddress!) else {
-      throw CError(rawValue: swt_errno())
-    }
-    defer {
-      _ = posix_spawn_file_actions_destroy(fileActions.baseAddress!)
-    }
-
-    return try withUnsafeTemporaryAllocation(of: P<posix_spawnattr_t>.self, capacity: 1) { attrs in
-      guard 0 == posix_spawnattr_init(attrs.baseAddress!) else {
-        throw CError(rawValue: swt_errno())
-      }
-      defer {
-        _ = posix_spawnattr_destroy(attrs.baseAddress!)
-      }
-
-      // Do not forward standard I/O.
-      _ = posix_spawn_file_actions_addopen(fileActions.baseAddress!, STDIN_FILENO, "/dev/null", O_RDONLY, 0)
-      _ = posix_spawn_file_actions_addopen(fileActions.baseAddress!, STDOUT_FILENO, "/dev/null", O_WRONLY, 0)
-      _ = posix_spawn_file_actions_addopen(fileActions.baseAddress!, STDERR_FILENO, "/dev/null", O_WRONLY, 0)
+  return try _withPosixSpawnAttrs { attrs, fileActions in
+    // Do not forward standard I/O.
+    _ = posix_spawn_file_actions_addopen(fileActions, STDIN_FILENO, "/dev/null", O_RDONLY, 0)
+    _ = posix_spawn_file_actions_addopen(fileActions, STDOUT_FILENO, "/dev/null", O_WRONLY, 0)
+    _ = posix_spawn_file_actions_addopen(fileActions, STDERR_FILENO, "/dev/null", O_WRONLY, 0)
 
 #if os(Linux) || os(FreeBSD)
-      var highestFD = CInt(0)
+    var highestFD = CInt(0)
 #endif
-      for i in 0 ..< additionalFileHandles.count {
-        try additionalFileHandles[i].withUnsafePOSIXFileDescriptor { fd in
-          guard let fd else {
-            throw SystemError(description: "A child process inherit a file handle without an associated file descriptor. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
-          }
-#if SWT_TARGET_OS_APPLE
-          _ = posix_spawn_file_actions_addinherit_np(fileActions.baseAddress!, fd)
-#elseif os(Linux) || os(FreeBSD)
-          highestFD = max(highestFD, fd)
-#endif
+    for i in 0 ..< additionalFileHandles.count {
+      try additionalFileHandles[i].withUnsafePOSIXFileDescriptor { fd in
+        guard let fd else {
+          throw SystemError(description: "A child process inherit a file handle without an associated file descriptor. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
         }
+#if SWT_TARGET_OS_APPLE
+        _ = posix_spawn_file_actions_addinherit_np(fileActions, fd)
+#elseif os(Linux) || os(FreeBSD)
+        highestFD = max(highestFD, fd)
+#endif
       }
+    }
 
 #if SWT_TARGET_OS_APPLE
-      // Close all other file descriptors open in the parent.
-      _ = posix_spawnattr_setflags(attrs.baseAddress!, CShort(POSIX_SPAWN_CLOEXEC_DEFAULT))
+    // Close all other file descriptors open in the parent.
+    _ = posix_spawnattr_setflags(attrs, CShort(POSIX_SPAWN_CLOEXEC_DEFAULT))
 #elseif os(Linux) || os(FreeBSD)
-      // This platform doesn't have POSIX_SPAWN_CLOEXEC_DEFAULT, but we can at
-      // least close all file descriptors higher than the highest inherited one.
-      // We are assuming here that the caller didn't set FD_CLOEXEC on any of
-      // these file descriptors.
-      _ = swt_posix_spawn_file_actions_addclosefrom_np(fileActions.baseAddress!, highestFD + 1)
+    // This platform doesn't have POSIX_SPAWN_CLOEXEC_DEFAULT, but we can at
+    // least close all file descriptors higher than the highest inherited one.
+    // We are assuming here that the caller didn't set FD_CLOEXEC on any of
+    // these file descriptors.
+    _ = swt_posix_spawn_file_actions_addclosefrom_np(fileActions, highestFD + 1)
 #else
 #warning("Platform-specific implementation missing: cannot close unused file descriptors")
 #endif
 
-      var argv: [UnsafeMutablePointer<CChar>?] = [strdup(executablePath)]
-      argv += arguments.lazy.map { strdup($0) }
-      argv.append(nil)
-      defer {
-        for arg in argv {
-          free(arg)
-        }
+    var argv: [UnsafeMutablePointer<CChar>?] = [strdup(executablePath)]
+    argv += arguments.lazy.map { strdup($0) }
+    argv.append(nil)
+    defer {
+      for arg in argv {
+        free(arg)
       }
-
-      var environ: [UnsafeMutablePointer<CChar>?] = environment.map { strdup("\($0.key)=\($0.value)") }
-      environ.append(nil)
-      defer {
-        for environ in environ {
-          free(environ)
-        }
-      }
-
-      var pid = pid_t()
-      guard 0 == posix_spawn(&pid, executablePath, fileActions.baseAddress!, attrs.baseAddress, argv, environ) else {
-        throw CError(rawValue: swt_errno())
-      }
-      return pid
     }
+
+    var environ: [UnsafeMutablePointer<CChar>?] = environment.map { strdup("\($0.key)=\($0.value)") }
+    environ.append(nil)
+    defer {
+      for environ in environ {
+        free(environ)
+      }
+    }
+
+    var pid = pid_t()
+    guard 0 == posix_spawn(&pid, executablePath, fileActions, attrs, argv, environ) else {
+      throw CError(rawValue: swt_errno())
+    }
+    return pid
   }
 #elseif os(Windows)
   return try _withStartupInfoEx(attributeCount: 1) { startupInfo in
@@ -190,6 +166,83 @@ func spawnExecutable(
 }
 
 // MARK: -
+
+/// A pointer type for use with `posix_spawn()`.
+///
+/// Darwin and Linux differ in their optionality for the `posix_spawn()` types
+/// we use, so we use this typealias to paper over the differences.
+#if SWT_TARGET_OS_APPLE || os(FreeBSD)
+private typealias _P<T> = T?
+#elseif os(Linux) || os(Android)
+private typealias _P<T> = T
+#endif
+
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
+/// Call a function and pass pre-initialized pointers to structures needed for
+/// calling `posix_spawn()`.
+///
+/// - Parameters:
+///   - body: The function to call. Preinitialized pointers to instances of
+///     `posix_spawnattr_t` and `posix_spawn_file_actions_t` are passed to this
+///     function and are deinitialized when it returns.
+///
+/// - Returns: Whatever is returned by `body`.
+///
+/// - Throws: Whatever is thrown by `body` or when attempting to initialize the
+///   arguments to `body`.
+///
+/// This function is necessary because different POSIX-conformant platforms
+/// define `posix_spawnattr_t` and `posix_spawn_file_actions_t` in very
+/// different ways. Darwin defines them as raw pointers; Linux defines them
+/// as structures; FreeBSD defines them as opaque pointers; and Android defines
+/// them as opaque pointers _but also specifies differing nullability for
+/// different functions that use them_. The types of the arguments passed to
+/// `body` by this function are intended to be the appropriate types for calling
+/// setter functions on them and for passing to `posix_spawn()`.
+private func _withPosixSpawnAttrs<R>(
+  _ body: (
+    _ attrs: UnsafeMutablePointer<_P<posix_spawnattr_t>>,
+    _ fileActions: UnsafeMutablePointer<_P<posix_spawn_file_actions_t>>
+  ) throws -> R
+) throws -> R {
+  return try withUnsafeTemporaryAllocation(of: _P<posix_spawnattr_t>.self, capacity: 1) { attrs in
+    let attrs = attrs.baseAddress!
+#if os(Android)
+    try attrs.withMemoryRebound(to: posix_spawnattr_t?.self, capacity: 1) { attrs in
+      guard 0 == posix_spawnattr_init(attrs) else {
+        throw CError(rawValue: swt_errno())
+      }
+    }
+#else
+    guard 0 == posix_spawnattr_init(attrs) else {
+      throw CError(rawValue: swt_errno())
+    }
+#endif
+    defer {
+      _ = posix_spawnattr_destroy(attrs)
+    }
+
+    return try withUnsafeTemporaryAllocation(of: _P<posix_spawn_file_actions_t>.self, capacity: 1) { fileActions in
+      let fileActions = fileActions.baseAddress!
+#if os(Android)
+      try fileActions.withMemoryRebound(to: posix_spawn_file_actions_t?.self, capacity: 1) { fileActions in
+        guard 0 == posix_spawn_file_actions_init(fileActions) else {
+          throw CError(rawValue: swt_errno())
+        }
+      }
+#else
+      guard 0 == posix_spawn_file_actions_init(fileActions) else {
+        throw CError(rawValue: swt_errno())
+      }
+#endif
+      defer {
+        _ = posix_spawn_file_actions_destroy(fileActions)
+      }
+      return try body(attrs, fileActions)
+    }
+  }
+}
+#endif
 
 #if os(Windows)
 /// Create a temporary instance of `STARTUPINFOEXW` to pass to
