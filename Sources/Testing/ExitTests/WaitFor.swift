@@ -21,11 +21,11 @@ internal import _TestingInternals
 ///
 /// - Throws: If the exit status of the process with ID `pid` cannot be
 ///   determined (i.e. it does not represent an exit condition.)
-private func _blockAndWait(for pid: pid_t) throws -> ExitCondition {
+private func _blockAndWait(for pid: consuming pid_t) throws -> ExitCondition {
   // Get the exit status of the process or throw an error (other than EINTR.)
   while true {
     var siginfo = siginfo_t()
-    if 0 == waitid(P_PID, id_t(pid), &siginfo, WEXITED) {
+    if 0 == waitid(P_PID, id_t(copy pid), &siginfo, WEXITED) {
       switch siginfo.si_code {
       case .init(CLD_EXITED):
         return .exitCode(siginfo.si_status)
@@ -142,9 +142,9 @@ private func _createWaitThread() {
 ///
 /// - Throws: Any error encountered calling `waitpid()` except for `EINTR`,
 ///   which is ignored.
-func wait(for pid: pid_t) async throws -> ExitCondition {
+func wait(for pid: consuming pid_t) async throws -> ExitCondition {
 #if SWT_TARGET_OS_APPLE && !SWT_NO_LIBDISPATCH
-  let source = DispatchSource.makeProcessSource(identifier: pid, eventMask: .exit)
+  let source = DispatchSource.makeProcessSource(identifier: copy pid, eventMask: .exit)
   defer {
     source.cancel()
   }
