@@ -130,6 +130,13 @@ let package = Package(
       ],
       swiftSettings: .packageSettings
     ),
+    .testTarget(
+      name: "SubexpressionShowcase",
+      dependencies: [
+        "Testing",
+      ],
+      swiftSettings: .packageSettings
+    ),
 
     .macro(
       name: "TestingMacros",
@@ -266,6 +273,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
     result += [
       .enableUpcomingFeature("ExistentialAny"),
+      .enableExperimentalFeature("NonescapableTypes"),
 
       .enableExperimentalFeature("AccessLevelOnImport"),
       .enableUpcomingFeature("InternalImportsByDefault"),

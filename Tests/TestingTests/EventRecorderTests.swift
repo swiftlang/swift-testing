@@ -108,8 +108,8 @@ struct EventRecorderTests {
     await runTest(for: WrittenTests.self, configuration: configuration)
 
     let buffer = stream.buffer.rawValue
-    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter) "abc": Swift.String"#))
-    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter) lhs: Swift.String → "987""#))
+    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter) "abc" == "xyz": Swift.Bool → false"#))
+    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter)   lhs: Swift.String → "987""#))
     #expect(buffer.contains(#""Animal Crackers" (aka 'WrittenTests')"#))
     #expect(buffer.contains(#""Not A Lobster" (aka 'actuallyCrab()')"#))
 
