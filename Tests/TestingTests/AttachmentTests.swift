@@ -22,6 +22,12 @@ import CoreGraphics
 import UniformTypeIdentifiers
 #endif
 
+extension Character {
+  var isPathSeparator: Bool {
+    self == "/" || self == #"\"#
+  }
+}
+
 @Suite("Attachment Tests")
 struct AttachmentTests {
   @Test func saveValue() {
@@ -588,7 +594,8 @@ struct MySendableAttachable: Attachable, Sendable {
   var string: String
 
   func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    #expect(attachment.attachableValue.string == string)
+    let stringValue = attachment.attachableValue.string
+    #expect(stringValue == self.string)
     var string = string
     return try string.withUTF8 { buffer in
       try body(.init(buffer))

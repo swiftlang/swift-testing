@@ -156,7 +156,7 @@ struct AttributeInfo {
       var expr = argument.expression
       if argument.expression.tokens(viewMode: .sourceAccurate).map(\.tokenKind).contains(.keyword(.Self)) {
         let selfRemover = _SelfRemover(in: context)
-        expr = selfRemover.rewrite(Syntax(argument.expression)).cast(ExprSyntax.self)
+        expr = selfRemover.rewrite(Syntax(argument.expression), detach: true).cast(ExprSyntax.self)
       }
       return Argument(label: argument.label, expression: expr)
     }
