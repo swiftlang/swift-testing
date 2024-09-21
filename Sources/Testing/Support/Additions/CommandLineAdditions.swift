@@ -18,14 +18,13 @@ extension CommandLine {
       var result: String?
       var bufferCount = UInt32(PATH_MAX)
       while result == nil {
-        result = withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(bufferCount)) { buffer in
+        withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(bufferCount)) { buffer in
           // _NSGetExecutablePath returns 0 on success and -1 if bufferCount is
           // too small. If that occurs, we'll return nil here and loop with the
           // new value of bufferCount.
           if 0 == _NSGetExecutablePath(buffer.baseAddress, &bufferCount) {
-            return String(cString: buffer.baseAddress!)
+            result = String(cString: buffer.baseAddress!)
           }
-          return nil
         }
       }
       return result!
@@ -56,7 +55,7 @@ extension CommandLine {
       var result: String?
       var bufferCount = Int(MAX_PATH)
       while result == nil {
-        result = try withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: bufferCount) { buffer in
+        try withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: bufferCount) { buffer in
           SetLastError(DWORD(ERROR_SUCCESS))
           _ = GetModuleFileNameW(nil, buffer.baseAddress!, DWORD(buffer.count))
           switch GetLastError() {
@@ -67,7 +66,6 @@ extension CommandLine {
             }
           case DWORD(ERROR_INSUFFICIENT_BUFFER):
             bufferCount += Int(MAX_PATH)
-            return nil
           case let errorCode:
             throw Win32Error(rawValue: errorCode)
           }
