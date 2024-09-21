@@ -16,7 +16,7 @@ extension CommandLine {
     get throws {
 #if os(macOS)
       var result: String?
-      var bufferCount = UInt32(1024)
+      var bufferCount = UInt32(PATH_MAX)
       while result == nil {
         result = withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(bufferCount)) { buffer in
           // _NSGetExecutablePath returns 0 on success and -1 if bufferCount is
@@ -40,7 +40,7 @@ extension CommandLine {
       }
 #elseif os(FreeBSD)
       var mib = [CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1]
-      try mib.withUnsafeMutableBufferPointer { mib in
+      return try mib.withUnsafeMutableBufferPointer { mib in
         var bufferCount = 0
         guard 0 == sysctl(mib.baseAddress!, .init(mib.count), nil, &bufferCount, nil, 0) else {
           throw CError(rawValue: swt_errno())
@@ -53,15 +53,27 @@ extension CommandLine {
         }
       }
 #elseif os(Windows)
-      return try withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: Int(MAX_PATH) * 2) { buffer in
-        guard 0 != GetModuleFileNameW(nil, buffer.baseAddress!, DWORD(buffer.count)) else {
-          throw Win32Error(rawValue: GetLastError())
+      var result: String?
+      var bufferCount = Int(MAX_PATH)
+      while result == nil {
+        result = try withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: bufferCount) { buffer in
+          SetLastError(DWORD(ERROR_SUCCESS))
+          _ = GetModuleFileNameW(nil, buffer.baseAddress!, DWORD(buffer.count))
+          switch GetLastError() {
+          case DWORD(ERROR_SUCCESS):
+            result = String.decodeCString(buffer.baseAddress!, as: UTF16.self)?.result
+            if result == nil {
+              throw Win32Error(rawValue: DWORD(ERROR_ILLEGAL_CHARACTER))
+            }
+          case DWORD(ERROR_INSUFFICIENT_BUFFER):
+            bufferCount += Int(MAX_PATH)
+            return nil
+          case let errorCode:
+            throw Win32Error(rawValue: errorCode)
+          }
         }
-        guard let path = String.decodeCString(buffer.baseAddress!, as: UTF16.self)?.result else {
-          throw Win32Error(rawValue: DWORD(ERROR_ILLEGAL_CHARACTER))
-        }
-        return path
       }
+      return result!
 #elseif os(WASI)
       // WASI does not really have the concept of a file system path to the main
       // executable, so simply return the first argument--presumably the program
