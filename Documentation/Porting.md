@@ -55,7 +55,7 @@ to resolve. These warnings take the form:
 > ⚠️ WARNING: Platform-specific implementation missing: ...
 
 These warnings may be emitted by our internal C++ module (`_TestingInternals`)
-or by our library module (`Testing`). Both indicate areas of our code that needs
+or by our library module (`Testing`). Both indicate areas of our code that need
 platform-specific attention.
 
 Most platform dependencies can be resolved through the use of platform-specific
