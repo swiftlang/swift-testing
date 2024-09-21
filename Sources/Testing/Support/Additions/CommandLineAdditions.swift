@@ -16,7 +16,11 @@ extension CommandLine {
     get throws {
 #if os(macOS)
       var result: String?
+#if DEBUG
+      var bufferCount = UInt32(1) // force looping
+#else
       var bufferCount = UInt32(PATH_MAX)
+#endif
       while result == nil {
         withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(bufferCount)) { buffer in
           // _NSGetExecutablePath returns 0 on success and -1 if bufferCount is
@@ -53,7 +57,11 @@ extension CommandLine {
       }
 #elseif os(Windows)
       var result: String?
+#if DEBUG
+      var bufferCount = Int(1) // force looping
+#else
       var bufferCount = Int(MAX_PATH)
+#endif
       while result == nil {
         try withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: bufferCount) { buffer in
           SetLastError(DWORD(ERROR_SUCCESS))
