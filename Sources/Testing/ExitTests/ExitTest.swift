@@ -470,7 +470,7 @@ extension ExitTest {
     } catch {
       // NOTE: an error caught here indicates an I/O problem.
       // TODO: should we record these issues as systemic instead?
-      Issue.record(error)
+      Issue(for: error).record()
       return
     }
 
@@ -482,7 +482,7 @@ extension ExitTest {
       } catch {
         // NOTE: an error caught here indicates a decoding problem.
         // TODO: should we record these issues as systemic instead?
-        Issue.record(error)
+        Issue(for: error).record()
       }
     }
   }
