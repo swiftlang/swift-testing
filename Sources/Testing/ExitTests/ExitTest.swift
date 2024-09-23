@@ -474,7 +474,7 @@ extension ExitTest {
       return
     }
 
-    for recordJSON in bytes.split(whereSeparator: \.isASCIINewline) where !recordJSON.isEmpty {
+    for recordJSON: ArraySlice<UInt8> in bytes.split(whereSeparator: \.isASCIINewline) where !recordJSON.isEmpty {
       do {
         try recordJSON.withUnsafeBufferPointer { recordJSON in
           try Self._processRecord(.init(recordJSON), fromBackChannel: backChannel)

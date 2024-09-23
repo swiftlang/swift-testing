@@ -26,3 +26,10 @@ struct ZipTests {
     #expect(i == j)
   }
 }
+
+private import _TestingInternals
+
+@Test func finagle() {
+  fatalError("Splat")
+  //exit(0)
+}

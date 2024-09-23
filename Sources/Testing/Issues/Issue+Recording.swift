@@ -21,12 +21,18 @@ extension Issue {
   /// current event handler.
   ///
   /// - Parameters:
+  ///   - testAndTestCase: The test and test case for which the event occurred,
+  ///     if any. The default value of this argument is ``Test/current`` and
+  ///     ``Test/Case/current``.
   ///   - configuration: The test configuration to use when recording the issue.
   ///     The default value is ``Configuration/current``.
   ///
   /// - Returns: The issue that was recorded (`self` or a modified copy of it.)
   @discardableResult
-  func record(configuration: Configuration? = nil) -> Self {
+  func record(
+    for testAndTestCase: (Test?, Test.Case?) = currentTestAndTestCase(),
+    configuration: Configuration? = nil
+  ) -> Self {
     // If this issue is a caught error of kind SystemError, reinterpret it as a
     // testing system issue instead (per the documentation for SystemError.)
     if case let .errorCaught(error) = kind, let error = error as? SystemError {
@@ -44,7 +50,7 @@ extension Issue {
       return selfCopy.record(configuration: configuration)
     }
 
-    Event.post(.issueRecorded(self), configuration: configuration)
+    Event.post(.issueRecorded(self), for: testAndTestCase, configuration: configuration)
 
     if !isKnown {
       // Since this is not a known issue, invoke the failure breakpoint.
@@ -74,7 +80,7 @@ extension Issue {
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
-    let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
+    let sourceContext: SourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
     let issue = Issue(kind: .unconditional, comments: Array(comment), sourceContext: sourceContext)
     return issue.record()
   }

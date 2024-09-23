@@ -24,6 +24,12 @@
 
 #include "Stubs.h"
 
+#include <exception>
+
+SWTTerminateHandler swt_set_terminate(SWTTerminateHandler newHandler) {
+  return std::set_terminate(newHandler);
+}
+
 #if defined(__linux__)
 int swt_pthread_setname_np(pthread_t thread, const char *name) {
   return pthread_setname_np(thread, name);

@@ -51,6 +51,9 @@ static int swt_errno(void) {
   return errno;
 }
 
+typedef void (* SWTTerminateHandler)(void);
+SWT_EXTERN SWTTerminateHandler _Nullable swt_set_terminate(SWTTerminateHandler _Nullable newHandler);
+
 #if !SWT_NO_FILE_IO
 #if __has_include(<sys/stat.h>) && defined(S_ISFIFO)
 /// Check if a given `mode_t` value indicates that a file is a pipe (FIFO.)
@@ -150,6 +153,29 @@ static pid_t swt_siginfo_t_si_pid(const siginfo_t *siginfo) {
 SWT_SWIFT_NAME(getter:siginfo_t.si_status(self:))
 static int swt_siginfo_t_si_status(const siginfo_t *siginfo) {
   return siginfo->si_status;
+}
+#endif
+
+#if __has_include(<signal.h>) && defined(sa_sigaction)
+typedef void (* SWTSigactionHandler) (int, siginfo_t *, void *);
+/// Set the value of the `sa_sigaction` field of a `sigaction` structure.
+///
+/// This function is provided because `sa_sigaction` is a complex macro on some
+/// platforms and cannot be imported directly into Swift. It is renamed back to
+/// `sigaction.sa_sigaction` in Swift.
+SWT_SWIFT_NAME(getter:sigaction.sa_sigaction(self:))
+static SWTSigactionHandler _Nullable swt_sigaction_get_sa_sigaction(struct sigaction *sa) {
+  return sa->sa_sigaction;
+}
+
+/// Set the value of the `sa_sigaction` field of a `sigaction` structure.
+///
+/// This function is provided because `sa_sigaction` is a complex macro on some
+/// platforms and cannot be imported directly into Swift. It is renamed back to
+/// `sigaction.sa_sigaction` in Swift.
+SWT_SWIFT_NAME(setter:sigaction.sa_sigaction(self:_:))
+static void swt_sigaction_set_sa_sigaction(struct sigaction *sa, SWTSigactionHandler _Nullable handler) {
+  sa->sa_sigaction = handler;
 }
 #endif
 #endif

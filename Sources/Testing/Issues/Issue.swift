@@ -82,6 +82,13 @@ public struct Issue: Sendable {
     /// An issue due to a failure in the underlying system, not due to a failure
     /// within the tests being run.
     case system
+
+    /// A test caused the process to terminate.
+    /// 
+    /// When this issue is recorded, the test process is in the act of exiting.
+    /// This kind of issue is unexpected and may prevent delivery of subsequent
+    /// events such as ``Event/Kind-swift.enum/testEnded``.
+    case testExited
   }
 
   /// The kind of issue this value represents.
@@ -216,6 +223,8 @@ extension Issue.Kind: CustomStringConvertible {
       "An API was misused"
     case .system:
       "A system failure occurred"
+    case .testExited:
+      "A test unexpectedly exited"
     }
   }
 }
@@ -341,6 +350,13 @@ extension Issue.Kind {
     /// within the tests being run.
     case system
 
+    /// A test caused the process to terminate.
+    /// 
+    /// When this issue is recorded, the test process is in the act of exiting.
+    /// This kind of issue is unexpected and may prevent delivery of subsequent
+    /// events such as ``Event/Kind-swift.enum/testEnded``.
+    case testExited
+
     /// Snapshots an ``Issue.Kind``.
     /// - Parameter kind: The original ``Issue.Kind`` to snapshot.
     public init(snapshotting kind: Issue.Kind) {
@@ -363,6 +379,8 @@ extension Issue.Kind {
           .apiMisused
       case .system:
           .system
+      case .testExited:
+          .testExited
       }
     }
 
@@ -376,6 +394,7 @@ extension Issue.Kind {
       case knownIssueNotRecorded
       case apiMisused
       case system
+      case testExited
 
       /// The keys used to encode ``Issue.Kind.expectationFailed``.
       enum _ExpectationFailedKeys: CodingKey {
@@ -418,6 +437,8 @@ extension Issue.Kind {
         self = .apiMisused
       } else if try container.decodeIfPresent(Bool.self, forKey: .system) != nil {
         self = .system
+      } else if try container.decodeIfPresent(Bool.self, forKey: .testExited) != nil {
+        self = .testExited
       } else {
         throw DecodingError.valueNotFound(
           Self.self,
@@ -454,6 +475,8 @@ extension Issue.Kind {
         try container.encode(true, forKey: .apiMisused)
       case .system:
         try container.encode(true, forKey: .system)
+      case .testExited:
+        try container.encode(true, forKey: .testExited)
       }
     }
   }
@@ -506,6 +529,8 @@ extension Issue.Kind.Snapshot: CustomStringConvertible {
       "An API was misused"
     case .system:
       "A system failure occurred"
+    case .testExited:
+      "A test unexpectedly exited"
     }
   }
 }

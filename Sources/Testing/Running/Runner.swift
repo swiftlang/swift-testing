@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 /// A type that runs tests according to a given configuration.
 @_spi(ForToolsIntegrationOnly)
 public struct Runner: Sendable {
@@ -351,6 +353,44 @@ extension Runner {
     }
   }
 
+  /// The `atexit()` handler installed by `_installAtExitHandler`.
+  private static func _atExit() {
+      let (test, testCase) = currentTestAndTestCase()
+      if test != nil {
+        let sourceContext: SourceContext = SourceContext(backtrace: .current(), sourceLocation: nil)
+        let issue = Issue(kind: .testExited, comments: [], sourceContext: sourceContext)
+        issue.record(for: (test, testCase))
+      }
+  }
+
+  /// Install an `atexit()` handler to track unexpected early termination of the
+  /// test process.
+  /// 
+  /// This function has no effect when called more than once.
+  private static let _installAtExitHandler: Void = {
+    _ = atexit {
+      _atExit()
+    }
+    _ = at_quick_exit {
+      _atExit()
+    }
+    swt_set_terminate {
+      _atExit()
+    }
+
+    var sa = sigaction()
+    sa.sa_flags = CInt(bitPattern: CUnsignedInt(SA_SIGINFO) | CUnsignedInt(SA_RESETHAND))
+    sa.sa_sigaction = { _, info, _ in
+      // NOTE: we are in a signal handler here, and that means basically any
+      // operation beyond adding two integers is potentially illegal. However,
+      // we're handling SIGABRT and that means the process is about to die, so
+      // we're going to make a best effort to report the issue even though it
+      // might muck things up further.
+      _atExit()
+    }
+    _ = sigaction(SIGABRT, &sa, nil)
+  }()
+
   /// Run the tests in this runner's plan.
   public func run() async {
     await Self._run(self)
@@ -369,6 +409,9 @@ extension Runner {
   private static func _run(_ runner: Self) async {
     var runner = runner
     runner.configureEventHandlerRuntimeState()
+
+    // Handle unexpected early termination by a test.
+    _ = _installAtExitHandler
 
     // Track whether or not any issues were recorded across the entire run.
     let issueRecorded = Locked(rawValue: false)
