@@ -110,5 +110,5 @@ public protocol CustomExecutionTrait: Trait {
   ///
   /// - Note: If a test function or test suite is skipped, this function does
   ///   not get invoked by the runner.
-  @Sendable func execute(_ function: @escaping @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws
+  func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws
 }
