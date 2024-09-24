@@ -48,7 +48,7 @@ extension Test {
   private static var _all: some Sequence<Self> {
     get async {
       await withTaskGroup(of: [Self].self) { taskGroup in
-        enumerateTypes(withNamesContaining: _testContainerTypeNameMagic) { type, _ in
+        enumerateTypes(withNamesContaining: _testContainerTypeNameMagic) { _, type, _ in
           if let type = type as? any __TestContainer.Type {
             taskGroup.addTask {
               await type.__tests
@@ -114,11 +114,15 @@ extension Test {
 /// The type of callback called by ``enumerateTypes(withNamesContaining:_:)``.
 ///
 /// - Parameters:
+///   - imageAddress: A pointer to the start of the image. This value is _not_
+///     equal to the value returned from `dlopen()`. On platforms that do not
+///     support dynamic loading (and so do not have loadable images), this
+///     argument is unspecified.
 ///   - type: A Swift type.
 ///   - stop: An `inout` boolean variable indicating whether type enumeration
 ///     should stop after the function returns. Set `stop` to `true` to stop
 ///     type enumeration.
-typealias TypeEnumerator = (_ type: Any.Type, _ stop: inout Bool) -> Void
+typealias TypeEnumerator = (_ imageAddress: UnsafeRawPointer?, _ type: Any.Type, _ stop: inout Bool) -> Void
 
 /// Enumerate all types known to Swift found in the current process whose names
 /// contain a given substring.
@@ -129,11 +133,11 @@ typealias TypeEnumerator = (_ type: Any.Type, _ stop: inout Bool) -> Void
 func enumerateTypes(withNamesContaining nameSubstring: String, _ typeEnumerator: TypeEnumerator) {
   withoutActuallyEscaping(typeEnumerator) { typeEnumerator in
     withUnsafePointer(to: typeEnumerator) { context in
-      swt_enumerateTypes(withNamesContaining: nameSubstring, .init(mutating: context)) { type, stop, context in
+      swt_enumerateTypes(withNamesContaining: nameSubstring, .init(mutating: context)) { imageAddress, type, stop, context in
         let typeEnumerator = context!.load(as: TypeEnumerator.self)
         let type = unsafeBitCast(type, to: Any.Type.self)
         var stop2 = false
-        typeEnumerator(type, &stop2)
+        typeEnumerator(imageAddress, type, &stop2)
         stop.pointee = stop2
       }
     }

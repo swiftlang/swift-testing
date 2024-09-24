@@ -10,15 +10,16 @@
 
 #include "Discovery.h"
 
+#include <algorithm>
+#include <array>
 #include <atomic>
 #include <cstring>
 #include <iterator>
 #include <type_traits>
 #include <vector>
+#include <optional>
 
-#if defined(SWT_NO_DYNAMIC_LINKING)
-#include <algorithm>
-#elif defined(__APPLE__)
+#if defined(__APPLE__) && !defined(SWT_NO_DYNAMIC_LINKING)
 #include <dispatch/dispatch.h>
 #include <mach-o/dyld.h>
 #include <mach-o/getsect.h>
@@ -199,7 +200,8 @@ extern "C" const char sectionEnd __asm("section$end$__TEXT$__swift5_types");
 template <typename SectionEnumerator>
 static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
   auto size = std::distance(&sectionBegin, &sectionEnd);
-  body(&sectionBegin, size);
+  bool stop = false;
+  body(nullptr, &sectionBegin, size, &stop);
 }
 
 #elif defined(__APPLE__)
@@ -301,13 +303,96 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
     unsigned long size = 0;
     const void *section = getsectiondata(mh, SEG_TEXT, "__swift5_types", &size);
     if (section && size > 0) {
-      body(section, size);
+      bool stop = false;
+      body(mh, section, size, &stop);
+      if (stop) {
+        break;
+      }
     }
   }
 }
 
-#elif defined(__linux__) || defined(__FreeBSD__) || defined(_WIN32) || defined(__wasi__) || defined(__ANDROID__)
-#pragma mark - Linux/Windows implementation
+#elif defined(_WIN32)
+#pragma mark - Windows implementation
+
+/// Find the section with the given name in the given module.
+///
+/// - Parameters:
+///   - module: The module to inspect.
+///   - sectionName: The name of the section to look for. Long section names are
+///     not supported.
+///
+/// - Returns: A pointer to the start of the given section along with its size
+///   in bytes, or `std::nullopt` if the section could not be found. If the
+///   section was emitted by the Swift toolchain, be aware it will have leading
+///   and trailing bytes (`sizeof(uintptr_t)` each.)
+static std::optional<std::pair<const void *, size_t>> findSection(HMODULE module, const char *sectionName) {
+  // Get the DOS header (to which the HMODULE directly points, conveniently!)
+  // and check it's sufficiently valid for us to walk.
+  auto dosHeader = reinterpret_cast<const PIMAGE_DOS_HEADER>(module);
+  if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE || dosHeader->e_lfanew <= 0) {
+    return std::nullopt;
+  }
+
+  // Check the NT header as well as the optional header.
+  auto ntHeader = reinterpret_cast<const PIMAGE_NT_HEADERS>(reinterpret_cast<uintptr_t>(dosHeader) + dosHeader->e_lfanew);
+  if (!ntHeader || ntHeader->Signature != IMAGE_NT_SIGNATURE) {
+    return std::nullopt;
+  }
+  if (ntHeader->FileHeader.SizeOfOptionalHeader < offsetof(decltype(ntHeader->OptionalHeader), Magic) + sizeof(decltype(ntHeader->OptionalHeader)::Magic)) {
+    return std::nullopt;
+  }
+  if (ntHeader->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR_MAGIC) {
+    return std::nullopt;
+  }
+
+  auto sectionCount = ntHeader->FileHeader.NumberOfSections;
+  auto section = IMAGE_FIRST_SECTION(ntHeader);
+  for (size_t i = 0; i < sectionCount; i++, section += 1) {
+    if (section->VirtualAddress == 0) {
+      continue;
+    }
+
+    auto start = reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(dosHeader) + section->VirtualAddress);
+    size_t size = std::min(section->Misc.VirtualSize, section->SizeOfRawData);
+    if (start && size > 0) {
+      // FIXME: Handle longer names ("/%u") from string table
+      auto thisSectionName = reinterpret_cast<const char *>(section->Name);
+      if (0 == std::strncmp(sectionName, thisSectionName, IMAGE_SIZEOF_SHORT_NAME)) {
+        return std::make_pair(start, size);
+      }
+    }
+  }
+
+  return std::nullopt;
+}
+
+template <typename SectionEnumerator>
+static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
+  // Find all the modules loaded in the current process. We assume there aren't
+  // more than 1024 loaded modules (as does Microsoft sample code.)
+  std::array<HMODULE, 1024> hModules;
+  DWORD byteCountNeeded = 0;
+  if (!EnumProcessModules(GetCurrentProcess(), &hModules[0], hModules.size() * sizeof(HMODULE), &byteCountNeeded)) {
+    return;
+  }
+  DWORD hModuleCount = std::min(hModules.size(), byteCountNeeded / sizeof(HMODULE));
+
+  bool stop = false;
+  for (DWORD i = 0; i < hModuleCount && !stop; i++) {
+    if (auto section = findSection(hModules[i], ".sw5tymd")) {
+      // Note we ignore the leading and trailing uintptr_t values: they're both
+      // always set to zero so we'll skip them in the callback, and in the
+      // future the toolchain might not emit them at all in which case we don't
+      // want to skip over real section data.
+      body(hModules[i], section->first, section->second, &stop);
+    }
+  }
+}
+
+
+#elif defined(__linux__) || defined(__FreeBSD__) || defined(__wasi__) || defined(__ANDROID__)
+#pragma mark - ELF implementation
 
 /// Specifies the address range corresponding to a section.
 struct MetadataSectionRange {
@@ -352,7 +437,11 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
     const auto& body = *reinterpret_cast<const SectionEnumerator *>(context);
     MetadataSectionRange section = sections->swift5_type_metadata;
     if (section.start && section.length > 0) {
-      body(reinterpret_cast<const void *>(section.start), section.length);
+      bool stop = false;
+      body(sections->baseAddress.load(), reinterpret_cast<const void *>(section.start), section.length, &stop);
+      if (stop) {
+        return false;
+      }
     }
     return true;
   }, const_cast<SectionEnumerator *>(&body));
@@ -366,12 +455,11 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {}
 #pragma mark -
 
 void swt_enumerateTypesWithNamesContaining(const char *nameSubstring, void *context, SWTTypeEnumerator body) {
-  enumerateTypeMetadataSections([=] (const void *section, size_t size) {
+  enumerateTypeMetadataSections([=] (const void *imageAddress, const void *section, size_t size, bool *stop) {
     auto records = reinterpret_cast<const SWTTypeMetadataRecord *>(section);
     size_t recordCount = size / sizeof(SWTTypeMetadataRecord);
 
-    bool stop = false;
-    for (size_t i = 0; i < recordCount && !stop; i++) {
+    for (size_t i = 0; i < recordCount && !*stop; i++) {
       const auto& record = records[i];
 
       auto contextDescriptor = record.getContextDescriptor();
@@ -394,7 +482,7 @@ void swt_enumerateTypesWithNamesContaining(const char *nameSubstring, void *cont
       }
 
       if (void *typeMetadata = contextDescriptor->getMetadata()) {
-        body(typeMetadata, &stop, context);
+        body(imageAddress, typeMetadata, stop, context);
       }
     }
   });

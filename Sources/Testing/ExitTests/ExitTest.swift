@@ -124,7 +124,7 @@ extension ExitTest {
   public static func find(at sourceLocation: SourceLocation) -> Self? {
     var result: Self?
 
-    enumerateTypes(withNamesContaining: _exitTestContainerTypeNameMagic) { type, stop in
+    enumerateTypes(withNamesContaining: _exitTestContainerTypeNameMagic) { _, type, stop in
       if let type = type as? any __ExitTestContainer.Type, type.__sourceLocation == sourceLocation {
         result = ExitTest(
           expectedExitCondition: type.__expectedExitCondition,

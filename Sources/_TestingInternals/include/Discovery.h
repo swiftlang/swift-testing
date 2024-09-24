@@ -19,13 +19,17 @@ SWT_ASSUME_NONNULL_BEGIN
 /// The type of callback called by `swt_enumerateTypes()`.
 ///
 /// - Parameters:
+///   - imageAddress: A pointer to the start of the image. This value is _not_
+///     equal to the value returned from `dlopen()`. On platforms that do not
+///     support dynamic loading (and so do not have loadable images), this
+///     argument is unspecified.
 ///   - typeMetadata: A type metadata pointer that can be bitcast to `Any.Type`.
 ///   - stop: A pointer to a boolean variable indicating whether type
 ///     enumeration should stop after the function returns. Set `*stop` to
 ///     `true` to stop type enumeration.
 ///   - context: An arbitrary pointer passed by the caller to
 ///     `swt_enumerateTypes()`.
-typedef void (* SWTTypeEnumerator)(void *typeMetadata, bool *stop, void *_Null_unspecified context);
+typedef void (* SWTTypeEnumerator)(const void *_Null_unspecified imageAddress, void *typeMetadata, bool *stop, void *_Null_unspecified context);
 
 /// Enumerate all types known to Swift found in the current process.
 ///
