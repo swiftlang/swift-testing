@@ -327,6 +327,10 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
 ///   section was emitted by the Swift toolchain, be aware it will have leading
 ///   and trailing bytes (`sizeof(uintptr_t)` each.)
 static std::optional<std::pair<const void *, size_t>> findSection(HMODULE module, const char *sectionName) {
+  if (!module) {
+    return std::nullopt;
+  }
+
   // Get the DOS header (to which the HMODULE directly points, conveniently!)
   // and check it's sufficiently valid for us to walk.
   auto dosHeader = reinterpret_cast<const PIMAGE_DOS_HEADER>(module);
