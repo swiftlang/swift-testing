@@ -68,7 +68,7 @@ struct CustomExecutionTraitTests {
 private struct CustomTrait: CustomExecutionTrait, TestTrait {
   var before: Confirmation
   var after: Confirmation
-  func execute(_ function: @escaping @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
+  func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
     before()
     defer {
       after()
@@ -80,7 +80,7 @@ private struct CustomTrait: CustomExecutionTrait, TestTrait {
 private struct CustomThrowingErrorTrait: CustomExecutionTrait, TestTrait {
   fileprivate struct CustomTraitError: Error {}
 
-  func execute(_ function: @escaping @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
+  func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
     throw CustomTraitError()
   }
 }
@@ -88,7 +88,7 @@ private struct CustomThrowingErrorTrait: CustomExecutionTrait, TestTrait {
 struct DoSomethingBeforeAndAfterTrait: CustomExecutionTrait, SuiteTrait, TestTrait {
   static let state = Locked(rawValue: 0)
 
-  func execute(_ function: @escaping @Sendable () async throws -> Void, for test: Testing.Test, testCase: Testing.Test.Case?) async throws {
+  func execute(_ function: @Sendable () async throws -> Void, for test: Testing.Test, testCase: Testing.Test.Case?) async throws {
     #expect(Self.state.increment() == 1)
 
     try await function()
