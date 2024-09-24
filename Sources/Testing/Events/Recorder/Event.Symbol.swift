@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 extension Event {
   /// An enumeration describing the symbols used as prefixes when recording an
   /// event.
@@ -94,6 +96,13 @@ extension Event.Symbol {
 // MARK: - Unicode
 
 extension Event.Symbol {
+  #if os(Windows)
+  static let acp: Void = {
+    let cp = GetACP()
+    print("*** CODEPAGE IN CI: \(cp)")
+  }()
+  #endif
+
   /// The Unicode character corresponding to this instance.
   ///
   /// Each instance of this type has a corresponding Unicode character that can
@@ -130,6 +139,7 @@ extension Event.Symbol {
       return "\u{21B3}"
     }
 #elseif os(Windows)
+    _ = acp
     // The default Windows console font (Consolas) has limited Unicode support,
     // so substitute some other characters that it does have.
     switch self {
