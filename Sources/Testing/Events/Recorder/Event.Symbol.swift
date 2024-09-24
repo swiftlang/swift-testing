@@ -99,7 +99,8 @@ extension Event.Symbol {
   #if os(Windows)
   static let acp: Void = {
     let cp = GetACP()
-    print("*** CODEPAGE IN CI: \(cp)")
+    let consoleCP = GetConsoleOutputCP()
+    print("*** CODEPAGE IN CI: \(cp) -- CONSOLE: \(consoleCP)")
   }()
   #endif
 
@@ -139,7 +140,7 @@ extension Event.Symbol {
       return "\u{21B3}"
     }
 #elseif os(Windows)
-    _ = acp
+    _ = Self.acp
     // The default Windows console font (Consolas) has limited Unicode support,
     // so substitute some other characters that it does have.
     switch self {
