@@ -403,14 +403,14 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
   }
 
   // Pass the loaded module and section info back to the body callback.
+  // Note we ignore the leading and trailing uintptr_t values: they're both
+  // always set to zero so we'll skip them in the callback, and in the future
+  // the toolchain might not emit them at all in which case we don't want to
+  // skip over real section data.
   bool stop = false;
   for (const auto& section : sectionList) {
-    // Note we ignore the leading and trailing uintptr_t values: they're both
-    // always set to zero so we'll skip them in the callback, and in the
-    // future the toolchain might not emit them at all in which case we don't
-    // want to skip over real section data.
-    auto [imageAddress, start, size] = section;
-    body(imageAddress, start, size, &stop);
+    // TODO: Use C++17 unstructured binding here.
+    body(get<0>(section), get<1>(section), get<2>(section), &stop);
     if (stop) {
       break;
     }
