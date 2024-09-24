@@ -27,6 +27,27 @@
 #include <os/lock.h>
 #endif
 
+/// A type that acts as a C++ [Allocator](https://en.cppreference.com/w/cpp/named_req/Allocator)
+/// without using global `operator new` or `operator delete`.
+///
+/// This type is necessary because global `operator new` and `operator delete`
+/// can be overridden in developer-supplied code and cause deadlocks or crashes
+/// when subsequently used while holding a dyld- or libobjc-owned lock. Using
+/// `std::malloc()` and `std::free()` allows the use of C++ container types
+/// without this risk.
+template<typename T>
+struct SWTHeapAllocator {
+  using value_type = T;
+
+  T *allocate(size_t count) {
+    return reinterpret_cast<T *>(std::calloc(count, sizeof(T)));
+  }
+
+  void deallocate(T *ptr, size_t count) {
+    std::free(ptr);
+  }
+};
+
 /// Enumerate over all Swift type metadata sections in the current process.
 ///
 /// - Parameters:
@@ -207,27 +228,6 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
 #elif defined(__APPLE__)
 #pragma mark - Apple implementation
 
-/// A type that acts as a C++ [Allocator](https://en.cppreference.com/w/cpp/named_req/Allocator)
-/// without using global `operator new` or `operator delete`.
-///
-/// This type is necessary because global `operator new` and `operator delete`
-/// can be overridden in developer-supplied code and cause deadlocks or crashes
-/// when subsequently used while holding a dyld- or libobjc-owned lock. Using
-/// `std::malloc()` and `std::free()` allows the use of C++ container types
-/// without this risk.
-template<typename T>
-struct SWTHeapAllocator {
-  using value_type = T;
-
-  T *allocate(size_t count) {
-    return reinterpret_cast<T *>(std::calloc(count, sizeof(T)));
-  }
-
-  void deallocate(T *ptr, size_t count) {
-    std::free(ptr);
-  }
-};
-
 /// A type that acts as a C++ [Container](https://en.cppreference.com/w/cpp/named_req/Container)
 /// and which contains a sequence of Mach headers.
 #if __LP64__
@@ -382,14 +382,31 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
   }
   DWORD hModuleCount = std::min(hModules.size(), byteCountNeeded / sizeof(HMODULE));
 
-  bool stop = false;
+  // Look in all the loaded modules for Swift type metadata sections and store
+  // them in a side table.
+  //
+  // This two-step process is less algorithmically efficient than a single loop,
+  // but it is safer: the callback will eventually invoke developer code that
+  // could theoretically unload a module from the list we're enumerating. (Swift
+  // modules do not support unloading, so we'll just not worry about them.)
+  using SWTSectionList = std::vector<std::tuple<HMODULE, const void *, size_t>, SWTHeapAllocator<std::pair<const void *, size_t>>>;
+  SWTSectionList sectionList;
   for (DWORD i = 0; i < hModuleCount && !stop; i++) {
     if (auto section = findSection(hModules[i], ".sw5tymd")) {
-      // Note we ignore the leading and trailing uintptr_t values: they're both
-      // always set to zero so we'll skip them in the callback, and in the
-      // future the toolchain might not emit them at all in which case we don't
-      // want to skip over real section data.
-      body(hModules[i], section->first, section->second, &stop);
+      sectionList.emplace_back(*section);
+    }
+  }
+
+  // Pass the loaded module and section info back to the body callback.
+  bool stop = false;
+  for (auto section : sectionList) {
+    // Note we ignore the leading and trailing uintptr_t values: they're both
+    // always set to zero so we'll skip them in the callback, and in the
+    // future the toolchain might not emit them at all in which case we don't
+    // want to skip over real section data.
+    body(section->get<0>(), section->get<1>(), section->get<2>(), &stop);
+    if (stop) {
+      break;
     }
   }
 }
