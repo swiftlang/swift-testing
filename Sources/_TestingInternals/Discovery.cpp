@@ -213,24 +213,8 @@ public:
   }
 };
 
-#if defined(SWT_NO_DYNAMIC_LINKING)
-#pragma mark - Statically-linked implementation
-
-// This environment does not have a dynamic linker/loader. Therefore, there is
-// only one image (this one) with Swift code in it.
-// SEE: https://github.com/swiftlang/swift/tree/main/stdlib/public/runtime/ImageInspectionStatic.cpp
-
-extern "C" const char sectionBegin __asm("section$start$__TEXT$__swift5_types");
-extern "C" const char sectionEnd __asm("section$end$__TEXT$__swift5_types");
-
-template <typename SectionEnumerator>
-static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
-  auto size = std::distance(&sectionBegin, &sectionEnd);
-  bool stop = false;
-  body(nullptr, &sectionBegin, size, &stop);
-}
-
-#elif defined(__APPLE__)
+#if defined(__APPLE__)
+#if !defined(SWT_NO_DYNAMIC_LINKING)
 #pragma mark - Apple implementation
 
 /// A type that acts as a C++ [Container](https://en.cppreference.com/w/cpp/named_req/Container)
@@ -316,6 +300,24 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
     }
   }
 }
+
+#else
+#pragma mark - Apple implementation (statically linked)
+
+// This environment does not have a dynamic linker/loader. Therefore, there is
+// only one image (this one) with Swift code in it.
+// SEE: https://github.com/swiftlang/swift/tree/main/stdlib/public/runtime/ImageInspectionStatic.cpp
+
+extern "C" const char sectionBegin __asm("section$start$__TEXT$__swift5_types");
+extern "C" const char sectionEnd __asm("section$end$__TEXT$__swift5_types");
+
+template <typename SectionEnumerator>
+static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
+  auto size = std::distance(&sectionBegin, &sectionEnd);
+  bool stop = false;
+  body(nullptr, &sectionBegin, size, &stop);
+}
+#endif
 
 #elif defined(_WIN32)
 #pragma mark - Windows implementation
@@ -417,8 +419,26 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
   }
 }
 
+#elif defined(__wasi__)
+#pragma mark - WASI implementation (statically linked)
 
-#elif defined(__linux__) || defined(__FreeBSD__) || defined(__wasi__) || defined(__ANDROID__)
+extern "C" const char __start_swift5_type_metadata __attribute__((__visibility__("hidden"), __aligned__(1)));
+extern "C" const char __stop_swift5_type_metadata __attribute__((__visibility__("hidden"), __aligned__(1)));
+
+template <typename SectionEnumerator>
+static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
+  const auto& sectionBegin = __start_swift5_type_metadata;
+  const auto& sectionEnd = __stop_swift5_type_metadata;
+
+  // WASI only has a single image (so far) and it is statically linked, so all
+  // Swift metadata ends up in the same section bounded by the named symbols
+  // above. So we can just yield the section betwixt them.
+  auto size = std::distance(&sectionBegin, &sectionEnd);
+  bool stop = false;
+  body(nullptr, &sectionBegin, size, &stop);
+}
+
+#elif defined(__linux__) || defined(__FreeBSD__) || defined(__ANDROID__)
 #pragma mark - ELF implementation
 
 /// Specifies the address range corresponding to a section.
