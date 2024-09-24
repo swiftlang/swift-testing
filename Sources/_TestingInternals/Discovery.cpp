@@ -398,7 +398,7 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
   // modules do not support unloading, so we'll just not worry about them.)
   using SWTSectionList = SWTVector<std::tuple<HMODULE, const void *, size_t>>;
   SWTSectionList sectionList;
-  for (DWORD i = 0; i < hModuleCount; i++) {
+  for (size_t i = 0; i < hModuleCount; i++) {
     if (auto section = findSection(hModules[i], ".sw5tymd")) {
       sectionList.emplace_back(hModules[i], section->first, section->second);
     }
