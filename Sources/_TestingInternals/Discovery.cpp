@@ -15,6 +15,7 @@
 #include <atomic>
 #include <cstring>
 #include <iterator>
+#include <tuple>
 #include <type_traits>
 #include <vector>
 #include <optional>
@@ -47,6 +48,10 @@ struct SWTHeapAllocator {
     std::free(ptr);
   }
 };
+
+/// A `std::vector` that uses `SWTHeapAllocator`.
+template <typename T>
+using SWTVector = std::vector<T, SWTHeapAllocator<T>>;
 
 /// Enumerate over all Swift type metadata sections in the current process.
 ///
@@ -231,9 +236,9 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
 /// A type that acts as a C++ [Container](https://en.cppreference.com/w/cpp/named_req/Container)
 /// and which contains a sequence of Mach headers.
 #if __LP64__
-using SWTMachHeaderList = std::vector<const mach_header_64 *, SWTHeapAllocator<const mach_header_64 *>>;
+using SWTMachHeaderList = SWTVector<const mach_header_64 *>;
 #else
-using SWTMachHeaderList = std::vector<const mach_header *, SWTHeapAllocator<const mach_header *>>;
+using SWTMachHeaderList = SWTVector<const mach_header *>;
 #endif
 
 /// Get a copy of the currently-loaded Mach headers list.
@@ -389,22 +394,23 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
   // but it is safer: the callback will eventually invoke developer code that
   // could theoretically unload a module from the list we're enumerating. (Swift
   // modules do not support unloading, so we'll just not worry about them.)
-  using SWTSectionList = std::vector<std::tuple<HMODULE, const void *, size_t>, SWTHeapAllocator<std::pair<const void *, size_t>>>;
+  using SWTSectionList = SWTVector<std::tuple<HMODULE, const void *, size_t>>;
   SWTSectionList sectionList;
-  for (DWORD i = 0; i < hModuleCount && !stop; i++) {
+  for (DWORD i = 0; i < hModuleCount; i++) {
     if (auto section = findSection(hModules[i], ".sw5tymd")) {
-      sectionList.emplace_back(*section);
+      sectionList.emplace_back(hModules[i], section->first, section->second);
     }
   }
 
   // Pass the loaded module and section info back to the body callback.
   bool stop = false;
-  for (auto section : sectionList) {
+  for (const auto& section : sectionList) {
     // Note we ignore the leading and trailing uintptr_t values: they're both
     // always set to zero so we'll skip them in the callback, and in the
     // future the toolchain might not emit them at all in which case we don't
     // want to skip over real section data.
-    body(section->get<0>(), section->get<1>(), section->get<2>(), &stop);
+    auto [imageAddress, start, size] = section;
+    body(imageAddress, start, size, &stop);
     if (stop) {
       break;
     }
