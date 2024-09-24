@@ -422,8 +422,8 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
 #elif defined(__wasi__)
 #pragma mark - WASI implementation (statically linked)
 
-extern "C" const char __start_swift5_type_metadata __attribute__((__visibility__("hidden"), __aligned__(1)));
-extern "C" const char __stop_swift5_type_metadata __attribute__((__visibility__("hidden"), __aligned__(1)));
+extern "C" const char __start_swift5_type_metadata;
+extern "C" const char __stop_swift5_type_metadata;
 
 template <typename SectionEnumerator>
 static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
