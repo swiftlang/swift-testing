@@ -385,7 +385,7 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
   if (!EnumProcessModules(GetCurrentProcess(), &hModules[0], hModules.size() * sizeof(HMODULE), &byteCountNeeded)) {
     return;
   }
-  DWORD hModuleCount = std::min(hModules.size(), byteCountNeeded / sizeof(HMODULE));
+  size_t hModuleCount = std::min(hModules.size(), static_cast<size_t>(byteCountNeeded) / sizeof(HMODULE));
 
   // Look in all the loaded modules for Swift type metadata sections and store
   // them in a side table.
