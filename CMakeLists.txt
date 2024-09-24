@@ -45,4 +45,5 @@ if(NOT SWIFT_SYSTEM_NAME)
   endif()
 endif()
 
+include(SwiftModuleInstallation)
 add_subdirectory(Sources)
