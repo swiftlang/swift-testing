@@ -94,6 +94,14 @@ add_library(Testing
   Traits/Trait.swift)
 target_link_libraries(Testing PRIVATE
   _TestingInternals)
+if(NOT APPLE)
+  if(NOT CMAKE_SYSTEM_NAME STREQUAL WASI)
+    target_link_libraries(Testing PUBLIC
+      dispatch)
+  endif()
+  target_link_libraries(Testing PUBLIC
+    Foundation)
+endif()
 add_dependencies(Testing
   TestingMacros)
 target_compile_options(Testing PRIVATE
