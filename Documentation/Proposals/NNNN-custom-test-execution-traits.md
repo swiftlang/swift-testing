@@ -119,7 +119,7 @@ extension APICredentials {
 ```
 
 Binding task local values requires using the scoped access
-[`TaskLocal.withValue()`](https://developer.apple.com/documentation/swift/tasklocal/withvalue(_:operation:isolation:file:line:)
+[`TaskLocal.withValue()`](https://developer.apple.com/documentation/swift/tasklocal/withvalue(_:operation:isolation:file:line:))
 API though, and that would not be possible if `Trait` exposed separate methods
 like `setUp()` and `tearDown()`.
 
@@ -347,10 +347,10 @@ problem described above.
 
 ### Extend the `Trait` protocol
 
-The original SPI implementation of this feature included a protocol named
-`CustomExecutionTrait` which extended `Trait` and had roughly the same method
-requirement as the `CustomTestExecuting` protocol proposed above. This design
-worked, provided scoped access, and avoided the lengthy backtrace problem.
+The original, experimental implementation of this feature included a protocol
+named`CustomExecutionTrait` which extended `Trait` and had roughly the same
+method requirement as the `CustomTestExecuting` protocol proposed above. This
+design worked, provided scoped access, and avoided the lengthy backtrace problem.
 
 After evaluating the design and usage of this SPI though, it seemed unfortunate
 to structure it as a sub-protocol of `Trait` because it means that the full
