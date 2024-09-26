@@ -435,7 +435,7 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
   // the toolchain might not emit them at all in which case we don't want to
   // skip over real section data.
   bool stop = false;
-  for (const auto& sb : sectionList) {
+  for (const auto& sb : sectionBounds) {
     body(sb, &stop);
     if (stop) {
       break;
