@@ -243,12 +243,12 @@ public:
 #if !defined(SWT_NO_DYNAMIC_LINKING)
 #pragma mark - Apple implementation
 
-/// Get a copy of the currently-loaded Mach headers list.
+/// Get a copy of the currently-loaded type metadata sections list.
 ///
-/// - Returns: A list of Mach headers loaded into the current process. The order
-///   of the resulting list is unspecified.
+/// - Returns: A list of type metadata sections in images loaded into the
+///   current process. The order of the resulting list is unspecified.
 ///
-/// On non-Apple platforms, the `swift_enumerateAllMetadataSections()` function
+/// On ELF-based platforms, the `swift_enumerateAllMetadataSections()` function
 /// exported by the runtime serves the same purpose as this function.
 static SWTSectionBoundsList<SWTTypeMetadataRecord> getSectionBounds(void) {
   /// This list is necessarily mutated while a global libobjc- or dyld-owned
@@ -284,10 +284,8 @@ static SWTSectionBoundsList<SWTTypeMetadataRecord> getSectionBounds(void) {
         return;
       }
 
-      // Only store the mach header address if the image contains Swift data.
-      // Swift does not support unloading images, but images that do not contain
-      // Swift code may be unloaded at runtime and later crash
-      // the testing library when it calls enumerateTypeMetadataSections().
+      // If this image contains the Swift section we need, acquire the lock and
+      // store the section's bounds.
       unsigned long size = 0;
       auto start = getsectiondata(mhn, SEG_TEXT, "__swift5_types", &size);
       if (start && size > 0) {
@@ -368,15 +366,9 @@ static std::optional<SWTSectionBounds<SWTTypeMetadataRecord>> findSection(HMODUL
     return std::nullopt;
   }
 
-  // Check the NT header as well as the optional header.
+  // Check the NT header. Since we don't use the optional header, skip it.
   auto ntHeader = reinterpret_cast<const PIMAGE_NT_HEADERS>(reinterpret_cast<uintptr_t>(dosHeader) + dosHeader->e_lfanew);
   if (!ntHeader || ntHeader->Signature != IMAGE_NT_SIGNATURE) {
-    return std::nullopt;
-  }
-  if (ntHeader->FileHeader.SizeOfOptionalHeader < offsetof(decltype(ntHeader->OptionalHeader), Magic) + sizeof(decltype(ntHeader->OptionalHeader)::Magic)) {
-    return std::nullopt;
-  }
-  if (ntHeader->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR_MAGIC) {
     return std::nullopt;
   }
 
