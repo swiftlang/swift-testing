@@ -508,13 +508,13 @@ extension ExitTest {
       let issueKind: Issue.Kind = if let error = issue._error {
         .errorCaught(error)
       } else {
+        // TODO: improve fidelity of issue kind reporting (especially those without associated values)
         .unconditional
       }
       let sourceContext = SourceContext(
         backtrace: nil, // `issue._backtrace` will have the wrong address space.
         sourceLocation: issue.sourceLocation
       )
-      // TODO: improve fidelity of issue kind reporting (especially those without associated values)
       var issueCopy = Issue(kind: issueKind, comments: comments, sourceContext: sourceContext)
       issueCopy.isKnown = issue.isKnown
       issueCopy.record()

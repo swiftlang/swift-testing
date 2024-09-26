@@ -37,7 +37,7 @@ extension ABIv0 {
   }
 }
 
-// MARK: - Error, CustomNSError
+// MARK: - Error
 
 extension ABIv0.EncodedError: Error {
   var _domain: String {
