@@ -28,6 +28,15 @@
 #include <os/lock.h>
 #endif
 
+/// Enumerate over all Swift type metadata sections in the current process.
+///
+/// - Parameters:
+///   - body: A function to call once for every section in the current process.
+///     A pointer to the first type metadata record and the number of records
+///     are passed to this function.
+template <typename SectionEnumerator>
+static void enumerateTypeMetadataSections(const SectionEnumerator& body);
+
 /// A type that acts as a C++ [Allocator](https://en.cppreference.com/w/cpp/named_req/Allocator)
 /// without using global `operator new` or `operator delete`.
 ///
@@ -49,18 +58,35 @@ struct SWTHeapAllocator {
   }
 };
 
-/// A `std::vector` that uses `SWTHeapAllocator`.
-template <typename T>
-using SWTVector = std::vector<T, SWTHeapAllocator<T>>;
-
-/// Enumerate over all Swift type metadata sections in the current process.
+/// A structure describing the bounds of a Swift metadata section.
 ///
-/// - Parameters:
-///   - body: A function to call once for every section in the current process.
-///     A pointer to the first type metadata record and the number of records
-///     are passed to this function.
-template <typename SectionEnumerator>
-static void enumerateTypeMetadataSections(const SectionEnumerator& body);
+/// The template argument `T` is the element type of the metadata section.
+/// Instances of this type can be used with a range-based `for`-loop to iterate
+/// the contents of the section.
+template <typename T>
+struct SWTSectionBounds {
+  /// The base address of the image containing the section, if known.
+  const void *imageAddress;
+
+  /// The base address of the section.
+  const void *start;
+
+  /// The size of the section in bytes.
+  size_t size;
+
+  const struct SWTTypeMetadataRecord *begin(void) const {
+    return reinterpret_cast<const T *>(start);
+  }
+
+  const struct SWTTypeMetadataRecord *end(void) const {
+    return reinterpret_cast<const T *>(reinterpret_cast<uintptr_t>(start) + size);
+  }
+};
+
+/// A type that acts as a C++ [Container](https://en.cppreference.com/w/cpp/named_req/Container)
+/// and which contains a sequence of instances of `SWTSectionBounds<T>`.
+template <typename T>
+using SWTSectionBoundsList = std::vector<SWTSectionBounds<T>, SWTHeapAllocator<SWTSectionBounds<T>>>;
 
 #pragma mark - Swift ABI
 
@@ -217,22 +243,14 @@ public:
 #if !defined(SWT_NO_DYNAMIC_LINKING)
 #pragma mark - Apple implementation
 
-/// A type that acts as a C++ [Container](https://en.cppreference.com/w/cpp/named_req/Container)
-/// and which contains a sequence of Mach headers.
-#if __LP64__
-using SWTMachHeaderList = SWTVector<const mach_header_64 *>;
-#else
-using SWTMachHeaderList = SWTVector<const mach_header *>;
-#endif
-
-/// Get a copy of the currently-loaded Mach headers list.
+/// Get a copy of the currently-loaded type metadata sections list.
 ///
-/// - Returns: A list of Mach headers loaded into the current process. The order
-///   of the resulting list is unspecified.
+/// - Returns: A list of type metadata sections in images loaded into the
+///   current process. The order of the resulting list is unspecified.
 ///
-/// On non-Apple platforms, the `swift_enumerateAllMetadataSections()` function
+/// On ELF-based platforms, the `swift_enumerateAllMetadataSections()` function
 /// exported by the runtime serves the same purpose as this function.
-static SWTMachHeaderList getMachHeaders(void) {
+static SWTSectionBoundsList<SWTTypeMetadataRecord> getSectionBounds(void) {
   /// This list is necessarily mutated while a global libobjc- or dyld-owned
   /// lock is held. Hence, code using this list must avoid potentially
   /// re-entering either library (otherwise it could potentially deadlock.)
@@ -242,17 +260,21 @@ static SWTMachHeaderList getMachHeaders(void) {
   /// testing library is not tasked with the same performance constraints as
   /// Swift's runtime library, we just use a `std::vector` guarded by an unfair
   /// lock.
-  static constinit SWTMachHeaderList *machHeaders = nullptr;
+  static constinit SWTSectionBoundsList<SWTTypeMetadataRecord> *sectionBounds = nullptr;
   static constinit os_unfair_lock lock = OS_UNFAIR_LOCK_INIT;
 
   static constinit dispatch_once_t once = 0;
   dispatch_once_f(&once, nullptr, [] (void *) {
-    machHeaders = reinterpret_cast<SWTMachHeaderList *>(std::malloc(sizeof(SWTMachHeaderList)));
-    ::new (machHeaders) SWTMachHeaderList();
-    machHeaders->reserve(_dyld_image_count());
+    sectionBounds = reinterpret_cast<SWTSectionBoundsList<SWTTypeMetadataRecord> *>(std::malloc(sizeof(SWTSectionBoundsList<SWTTypeMetadataRecord>)));
+    ::new (sectionBounds) SWTSectionBoundsList<SWTTypeMetadataRecord>();
+    sectionBounds->reserve(_dyld_image_count());
 
     objc_addLoadImageFunc([] (const mach_header *mh) {
-      auto mhn = reinterpret_cast<SWTMachHeaderList::value_type>(mh);
+#if __LP64__
+      auto mhn = reinterpret_cast<const mach_header_64 *>(mh);
+#else
+      auto mhn = mh;
+#endif
 
       // Ignore this Mach header if it is in the shared cache. On platforms that
       // support it (Darwin), most system images are contained in this range.
@@ -262,14 +284,13 @@ static SWTMachHeaderList getMachHeaders(void) {
         return;
       }
 
-      // Only store the mach header address if the image contains Swift data.
-      // Swift does not support unloading images, but images that do not contain
-      // Swift code may be unloaded at runtime and later crash
-      // the testing library when it calls enumerateTypeMetadataSections().
+      // If this image contains the Swift section we need, acquire the lock and
+      // store the section's bounds.
       unsigned long size = 0;
-      if (getsectiondata(mhn, SEG_TEXT, "__swift5_types", &size)) {
+      auto start = getsectiondata(mhn, SEG_TEXT, "__swift5_types", &size);
+      if (start && size > 0) {
         os_unfair_lock_lock(&lock); {
-          machHeaders->push_back(mhn);
+          sectionBounds->emplace_back(mhn, start, size);
         } os_unfair_lock_unlock(&lock);
       }
     });
@@ -277,26 +298,22 @@ static SWTMachHeaderList getMachHeaders(void) {
 
   // After the first call sets up the loader hook, all calls take the lock and
   // make a copy of whatever has been loaded so far.
-  SWTMachHeaderList result;
+  SWTSectionBoundsList<SWTTypeMetadataRecord> result;
   result.reserve(_dyld_image_count());
   os_unfair_lock_lock(&lock); {
-    result = *machHeaders;
+    result = *sectionBounds;
   } os_unfair_lock_unlock(&lock);
+  result.shrink_to_fit();
   return result;
 }
 
 template <typename SectionEnumerator>
 static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
-  SWTMachHeaderList machHeaders = getMachHeaders();
-  for (auto mh : machHeaders) {
-    unsigned long size = 0;
-    const void *section = getsectiondata(mh, SEG_TEXT, "__swift5_types", &size);
-    if (section && size > 0) {
-      bool stop = false;
-      body(mh, section, size, &stop);
-      if (stop) {
-        break;
-      }
+  bool stop = false;
+  for (const auto& sb : getSectionBounds()) {
+    body(sb, &stop);
+    if (stop) {
+      break;
     }
   }
 }
@@ -313,9 +330,13 @@ extern "C" const char sectionEnd __asm("section$end$__TEXT$__swift5_types");
 
 template <typename SectionEnumerator>
 static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
-  auto size = std::distance(&sectionBegin, &sectionEnd);
+  SWTSectionBounds<SWTTypeMetadataRecord> sb = {
+    nullptr,
+    &sectionBegin,
+    static_cast<size_t>(std::distance(&sectionBegin, &sectionEnd))
+  };
   bool stop = false;
-  body(nullptr, &sectionBegin, size, &stop);
+  body(sb, &stop);
 }
 #endif
 
@@ -325,7 +346,7 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
 /// Find the section with the given name in the given module.
 ///
 /// - Parameters:
-///   - module: The module to inspect.
+///   - hModule: The module to inspect.
 ///   - sectionName: The name of the section to look for. Long section names are
 ///     not supported.
 ///
@@ -333,27 +354,21 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
 ///   in bytes, or `std::nullopt` if the section could not be found. If the
 ///   section was emitted by the Swift toolchain, be aware it will have leading
 ///   and trailing bytes (`sizeof(uintptr_t)` each.)
-static std::optional<std::pair<const void *, size_t>> findSection(HMODULE module, const char *sectionName) {
-  if (!module) {
+static std::optional<SWTSectionBounds<SWTTypeMetadataRecord>> findSection(HMODULE hModule, const char *sectionName) {
+  if (!hModule) {
     return std::nullopt;
   }
 
   // Get the DOS header (to which the HMODULE directly points, conveniently!)
   // and check it's sufficiently valid for us to walk.
-  auto dosHeader = reinterpret_cast<const PIMAGE_DOS_HEADER>(module);
+  auto dosHeader = reinterpret_cast<const PIMAGE_DOS_HEADER>(hModule);
   if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE || dosHeader->e_lfanew <= 0) {
     return std::nullopt;
   }
 
-  // Check the NT header as well as the optional header.
+  // Check the NT header. Since we don't use the optional header, skip it.
   auto ntHeader = reinterpret_cast<const PIMAGE_NT_HEADERS>(reinterpret_cast<uintptr_t>(dosHeader) + dosHeader->e_lfanew);
   if (!ntHeader || ntHeader->Signature != IMAGE_NT_SIGNATURE) {
-    return std::nullopt;
-  }
-  if (ntHeader->FileHeader.SizeOfOptionalHeader < offsetof(decltype(ntHeader->OptionalHeader), Magic) + sizeof(decltype(ntHeader->OptionalHeader)::Magic)) {
-    return std::nullopt;
-  }
-  if (ntHeader->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR_MAGIC) {
     return std::nullopt;
   }
 
@@ -370,7 +385,7 @@ static std::optional<std::pair<const void *, size_t>> findSection(HMODULE module
       // FIXME: Handle longer names ("/%u") from string table
       auto thisSectionName = reinterpret_cast<const char *>(section->Name);
       if (0 == std::strncmp(sectionName, thisSectionName, IMAGE_SIZEOF_SHORT_NAME)) {
-        return std::make_pair(start, size);
+        return SWTSectionBounds<SWTTypeMetadataRecord> { hModule, start, size };
       }
     }
   }
@@ -392,27 +407,27 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
   // Look in all the loaded modules for Swift type metadata sections and store
   // them in a side table.
   //
-  // This two-step process is less algorithmically efficient than a single loop,
-  // but it is safer: the callback will eventually invoke developer code that
+  // This two-step process is more complicated to read than a single loop would
+  // be but it is safer: the callback will eventually invoke developer code that
   // could theoretically unload a module from the list we're enumerating. (Swift
   // modules do not support unloading, so we'll just not worry about them.)
-  using SWTSectionList = SWTVector<std::tuple<HMODULE, const void *, size_t>>;
-  SWTSectionList sectionList;
+  SWTSectionBoundsList<SWTTypeMetadataRecord> sectionBounds;
+  sectionBounds.reserve(hModuleCount);
   for (size_t i = 0; i < hModuleCount; i++) {
-    if (auto section = findSection(hModules[i], ".sw5tymd")) {
-      sectionList.emplace_back(hModules[i], section->first, section->second);
+    if (auto sb = findSection(hModules[i], ".sw5tymd")) {
+      sectionBounds.push_back(*sb);
     }
   }
 
-  // Pass the loaded module and section info back to the body callback.
-  // Note we ignore the leading and trailing uintptr_t values: they're both
+  // Pass each discovered section back to the body callback.
+  //
+  // NOTE: we ignore the leading and trailing uintptr_t values: they're both
   // always set to zero so we'll skip them in the callback, and in the future
   // the toolchain might not emit them at all in which case we don't want to
   // skip over real section data.
   bool stop = false;
-  for (const auto& section : sectionList) {
-    // TODO: Use C++17 unstructured binding here.
-    body(get<0>(section), get<1>(section), get<2>(section), &stop);
+  for (const auto& sb : sectionBounds) {
+    body(sb, &stop);
     if (stop) {
       break;
     }
@@ -427,15 +442,19 @@ extern "C" const char __stop_swift5_type_metadata;
 
 template <typename SectionEnumerator>
 static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
-  const auto& sectionBegin = __start_swift5_type_metadata;
-  const auto& sectionEnd = __stop_swift5_type_metadata;
-
   // WASI only has a single image (so far) and it is statically linked, so all
   // Swift metadata ends up in the same section bounded by the named symbols
   // above. So we can just yield the section betwixt them.
-  auto size = std::distance(&sectionBegin, &sectionEnd);
+  const auto& sectionBegin = __start_swift5_type_metadata;
+  const auto& sectionEnd = __stop_swift5_type_metadata;
+
+  SWTSectionBounds<SWTTypeMetadataRecord> sb = {
+    nullptr,
+    &sectionBegin,
+    static_cast<size_t>(std::distance(&sectionBegin, &sectionEnd))
+  };
   bool stop = false;
-  body(nullptr, &sectionBegin, size, &stop);
+  body(sb, &stop);
 }
 
 #elif defined(__linux__) || defined(__FreeBSD__) || defined(__ANDROID__)
@@ -481,16 +500,20 @@ SWT_IMPORT_FROM_STDLIB void swift_enumerateAllMetadataSections(
 template <typename SectionEnumerator>
 static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
   swift_enumerateAllMetadataSections([] (const MetadataSections *sections, void *context) {
+    bool stop = false;
+
     const auto& body = *reinterpret_cast<const SectionEnumerator *>(context);
     MetadataSectionRange section = sections->swift5_type_metadata;
     if (section.start && section.length > 0) {
-      bool stop = false;
-      body(sections->baseAddress.load(), reinterpret_cast<const void *>(section.start), section.length, &stop);
-      if (stop) {
-        return false;
-      }
+      SWTSectionBounds<SWTTypeMetadataRecord> sb = {
+        sections->baseAddress.load(),
+        reinterpret_cast<const void *>(section.start),
+        section.length
+      };
+      body(sb, &stop);
     }
-    return true;
+
+    return !stop;
   }, const_cast<SectionEnumerator *>(&body));
 }
 #else
@@ -502,13 +525,8 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {}
 #pragma mark -
 
 void swt_enumerateTypesWithNamesContaining(const char *nameSubstring, void *context, SWTTypeEnumerator body) {
-  enumerateTypeMetadataSections([=] (const void *imageAddress, const void *section, size_t size, bool *stop) {
-    auto records = reinterpret_cast<const SWTTypeMetadataRecord *>(section);
-    size_t recordCount = size / sizeof(SWTTypeMetadataRecord);
-
-    for (size_t i = 0; i < recordCount && !*stop; i++) {
-      const auto& record = records[i];
-
+  enumerateTypeMetadataSections([=] (const SWTSectionBounds<SWTTypeMetadataRecord>& sectionBounds, bool *stop) {
+    for (const auto& record : sectionBounds) {
       auto contextDescriptor = record.getContextDescriptor();
       if (!contextDescriptor) {
         // This type metadata record is invalid (or we don't understand how to
@@ -529,7 +547,7 @@ void swt_enumerateTypesWithNamesContaining(const char *nameSubstring, void *cont
       }
 
       if (void *typeMetadata = contextDescriptor->getMetadata()) {
-        body(imageAddress, typeMetadata, stop, context);
+        body(sectionBounds.imageAddress, typeMetadata, stop, context);
       }
     }
   });
