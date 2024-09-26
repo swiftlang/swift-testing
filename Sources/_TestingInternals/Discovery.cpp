@@ -336,7 +336,7 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
   SWTSectionBounds<SWTTypeMetadataRecord> sb = {
     nullptr,
     &sectionBegin,
-    std::distance(&sectionBegin, &sectionEnd)
+    static_cast<size_t>(std::distance(&sectionBegin, &sectionEnd))
   };
   bool stop = false;
   body(sb, &stop);
@@ -424,7 +424,7 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
   sectionBounds.reserve(hModuleCount);
   for (size_t i = 0; i < hModuleCount; i++) {
     if (auto sb = findSection(hModules[i], ".sw5tymd")) {
-      sectionBounds.push_back(sb);
+      sectionBounds.push_back(*sb);
     }
   }
 
@@ -448,16 +448,20 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
 
 extern "C" const char __start_swift5_type_metadata;
 extern "C" const char __stop_swift5_type_metadata;
+extern "C" const char __dso_handle;
 
 template <typename SectionEnumerator>
 static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
   // WASI only has a single image (so far) and it is statically linked, so all
   // Swift metadata ends up in the same section bounded by the named symbols
   // above. So we can just yield the section betwixt them.
+  const auto& sectionBegin = __start_swift5_type_metadata;
+  const auto& sectionEnd = __stop_swift5_type_metadata;
+
   SWTSectionBounds<SWTTypeMetadataRecord> sb = {
-    nullptr,
-    &__start_swift5_type_metadata,
-    std::distance(&__start_swift5_type_metadata, &__stop_swift5_type_metadata)
+    &__dso_handle,
+    &sectionBegin,
+    static_cast<size_t>(std::distance(&sectionBegin, &sectionEnd))
   };
   bool stop = false;
   body(sb, &stop);
