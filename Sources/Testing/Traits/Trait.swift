@@ -54,12 +54,13 @@ public protocol Trait: Sendable {
   /// test execution. This is the most straightforward way to implement a trait
   /// which customizes the execution of tests.
   ///
-  /// However, if the value of this property is an instance of another type
+  /// If the value of this property is an instance of a different type
   /// conforming to ``CustomTestExecuting``, that instance will be used to
-  /// perform custom test execution instead.  Otherwise, the default value of
-  /// this property is `nil` (with the default type `Never?`), meaning that
-  /// custom test execution will not be performed for tests this trait is
-  /// applied to.
+  /// perform custom test execution instead.
+  ///
+  /// The default value of this property is `nil` (with the default type
+  /// `Never?`), meaning that instances of this type will not perform any custom
+  /// test execution for tests they are applied to.
   var customTestExecutor: CustomTestExecutor? { get }
 }
 
@@ -76,10 +77,13 @@ public protocol CustomTestExecuting: Sendable {
   ///     test function (including all cases if it is parameterized.)
   ///   - test: The test under which `function` is being performed.
   ///   - testCase: The test case, if any, under which `function` is being
-  ///     performed. This is `nil` when invoked on a suite.
+  ///     performed. When invoked on a suite, the value of this argument is
+  ///     `nil`.
   ///
   /// - Throws: Whatever is thrown by `function`, or an error preventing
-  ///   execution from running correctly.
+  ///   execution from running correctly. An error thrown from this function is
+  ///   recorded as an issue associated with `test`. If an error is thrown
+  ///   before `function` is called, the corresponding test will not run.
   ///
   /// This function is called for each ``Trait`` on a test suite or test
   /// function which has a non-`nil` value for ``Trait/customTestExecutor-1dwpt``.
@@ -100,9 +104,7 @@ extension Trait where CustomTestExecutor == Self {
 }
 
 extension Never: CustomTestExecuting {
-  public func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
-    fatalError("Unreachable codepath: Never cannot be instantiated.")
-  }
+  public func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {}
 }
 
 /// A protocol describing traits that can be added to a test function.
@@ -132,7 +134,9 @@ extension Trait {
   public var comments: [Comment] {
     []
   }
+}
 
+extension Trait where CustomTestExecutor == Never {
   public var customTestExecutor: CustomTestExecutor? {
     nil
   }
