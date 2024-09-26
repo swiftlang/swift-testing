@@ -15,6 +15,8 @@ extension ABIv0 {
   /// This type is not part of the public interface of the testing library. It
   /// assists in converting values to JSON; clients that consume this JSON are
   /// expected to write their own decoders.
+  ///
+  /// - Warning: Backtraces are not yet part of the JSON schema.
   struct EncodedBacktrace: Sendable {
     /// The frames in the backtrace.
     var symbolicatedAddresses: [Backtrace.SymbolicatedAddress]
