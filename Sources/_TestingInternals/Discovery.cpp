@@ -289,12 +289,11 @@ static SWTSectionBoundsList<SWTTypeMetadataRecord> getSectionBounds(void) {
       // Swift code may be unloaded at runtime and later crash
       // the testing library when it calls enumerateTypeMetadataSections().
       unsigned long size = 0;
-      if (auto start = getsectiondata(mhn, SEG_TEXT, "__swift5_types", &size)) {
-        if (size > 0) {
-          os_unfair_lock_lock(&lock); {
-            sectionBounds->emplace_back(mhn, start, size);
-          } os_unfair_lock_unlock(&lock);
-        }
+      auto start = getsectiondata(mhn, SEG_TEXT, "__swift5_types", &size);
+      if (start && size > 0) {
+        os_unfair_lock_lock(&lock); {
+          sectionBounds->emplace_back(mhn, start, size);
+        } os_unfair_lock_unlock(&lock);
       }
     });
   });
