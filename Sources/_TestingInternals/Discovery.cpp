@@ -448,7 +448,6 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
 
 extern "C" const char __start_swift5_type_metadata;
 extern "C" const char __stop_swift5_type_metadata;
-extern "C" const char __dso_handle;
 
 template <typename SectionEnumerator>
 static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
@@ -459,7 +458,7 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
   const auto& sectionEnd = __stop_swift5_type_metadata;
 
   SWTSectionBounds<SWTTypeMetadataRecord> sb = {
-    &__dso_handle,
+    nullptr,
     &sectionBegin,
     static_cast<size_t>(std::distance(&sectionBegin, &sectionEnd))
   };
