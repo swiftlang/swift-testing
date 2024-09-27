@@ -1142,15 +1142,15 @@ public func __checkClosureCall<R>(
 @_spi(Experimental)
 public func __checkClosureCall(
   exitsWith expectedExitCondition: ExitCondition,
-  performing body: @convention(thin) () async throws -> Void,
+  performing body: @convention(thin) () -> Void,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
+  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
 ) async -> Result<Void, any Error> {
   await callExitTest(
     exitsWith: expectedExitCondition,
-    performing: { try await body() },
     expression: expression,
     comments: comments(),
     isRequired: isRequired,

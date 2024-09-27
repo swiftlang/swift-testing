@@ -153,6 +153,7 @@ extension ExitTest {
 ///   - isRequired: Whether or not the expectation is required. The value of
 ///     this argument does not affect whether or not an error is thrown on
 ///     failure.
+///   - isolation: The actor to which the exit test is isolated, if any.
 ///   - sourceLocation: The source location of the expectation.
 ///
 /// This function contains the common implementation for all
@@ -160,10 +161,10 @@ extension ExitTest {
 /// convention.
 func callExitTest(
   exitsWith expectedExitCondition: ExitCondition,
-  performing _: @escaping @Sendable () async throws -> Void,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
+  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
 ) async -> Result<Void, any Error> {
   guard let configuration = Configuration.current ?? Configuration.all.first else {

@@ -376,32 +376,46 @@ extension ExitTestConditionMacro {
 
     let bodyArgumentExpr = arguments[trailingClosureIndex].expression
 
+    var decls = [DeclSyntax]()
+
+    // Implement the body of the exit test outside the enum we're declaring so
+    // that `Self` resolves to the type containing the exit test, not the enum.
+    let bodyThunkName = context.makeUniqueName("")
+    decls.append(
+      """
+      @Sendable func \(bodyThunkName)() async throws -> Void {
+        return try await Testing.__requiringTry(Testing.__requiringAwait(\(bodyArgumentExpr.trimmed)))()
+      }
+      """
+    )
+
     // Create a local type that can be discovered at runtime and which contains
     // the exit test body.
     let enumName = context.makeUniqueName("__🟠$exit_test_body__")
-    let enumDecl: DeclSyntax = """
-    @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-    enum \(enumName): Testing.__ExitTestContainer {
-      static var __sourceLocation: Testing.SourceLocation {
-        \(createSourceLocationExpr(of: macro, context: context))
+    decls.append(
+      """
+      @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
+      enum \(enumName): Testing.__ExitTestContainer, Sendable {
+        static var __sourceLocation: Testing.SourceLocation {
+          \(createSourceLocationExpr(of: macro, context: context))
+        }
+        static var __body: @Sendable () async throws -> Void {
+          \(bodyThunkName)
+        }
+        static var __expectedExitCondition: Testing.ExitCondition {
+          \(arguments[expectedExitConditionIndex].expression.trimmed)
+        }
       }
-      static var __body: @Sendable () async throws -> Void {
-        \(bodyArgumentExpr.trimmed)
-      }
-      static var __expectedExitCondition: Testing.ExitCondition {
-        \(arguments[expectedExitConditionIndex].expression.trimmed)
-      }
-    }
-    """
+      """
+    )
 
-    // Explicitly include a closure signature to work around a compiler bug
-    // type-checking thin throwing functions after macro expansion.
-    // SEE: rdar://133979438
-    arguments[trailingClosureIndex].expression = """
-    { () async throws in
-      \(enumDecl)
-    }
-    """
+    arguments[trailingClosureIndex].expression = ExprSyntax(
+      ClosureExprSyntax {
+        for decl in decls {
+          CodeBlockItemSyntax(item: .decl(decl))
+        }
+      }
+    )
 
     // Replace the exit test body (as an argument to the macro) with a stub
     // closure that hosts the type we created above.

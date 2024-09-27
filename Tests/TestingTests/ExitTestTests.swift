@@ -280,6 +280,20 @@ private import _TestingInternals
     #expect(ExitCondition.signal(SIGTERM) !== .signal(SIGINT))
 #endif
   }
+
+  @MainActor static func someMainActorFunction() {
+    MainActor.assertIsolated()
+  }
+
+  @Test("Exit test can be main-actor-isolated")
+  @MainActor
+  func mainActorIsolation() async {
+    await #expect(exitsWith: .success) {
+      await Self.someMainActorFunction()
+      _ = 0
+      exit(EXIT_SUCCESS)
+    }
+  }
 }
 
 // MARK: - Fixtures
