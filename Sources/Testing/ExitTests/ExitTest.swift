@@ -51,10 +51,18 @@ public struct ExitTest: Sendable, ~Copyable {
       EXCEPTION_DEFAULT,
       THREAD_STATE_NONE
     )
-#elseif os(Linux) || os(FreeBSD)
-    // On Linux and FreeBSD, disable the generation of core files (although they
-    // will often be disabled by default.) If a particular Linux distro performs
-    // additional crash diagnostics, we may want to special-case them as well if we can.
+#elseif os(Linux)
+    // On Linux, disable the generation of core files. They may or may not be
+    // disabled by default; if they are enabled, they significantly slow down
+    // the performance of exit tests. The kernel special-cases RLIMIT_CORE=1 to
+    // mean core files should not be generated even if they are being written to
+    // a pipe instead of a regular file; that gets us our performance back.
+    // SEE: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/fs/coredump.c#n610
+    var rl = rlimit(rlim_cur: 1, rlim_max: 1)
+    _ = setrlimit(CInt(RLIMIT_CORE.rawValue), &rl)
+#elseif os(FreeBSD)
+    // As with Linux, disable the generation core files. FreeBSD does not, as
+    // far as I can tell, special-case RLIMIT_CORE=1.
     var rl = rlimit(rlim_cur: 0, rlim_max: 0)
     _ = setrlimit(CInt(RLIMIT_CORE.rawValue), &rl)
 #elseif os(Windows)
@@ -63,6 +71,8 @@ public struct ExitTest: Sendable, ~Copyable {
     // these functions, so we don't attempt to preserve any previously-set bits.
     _ = SetErrorMode(UINT(SEM_NOGPFAULTERRORBOX))
     _ = WerSetFlags(DWORD(WER_FAULT_REPORTING_NO_UI))
+#else
+#warning("Platform-specific implementation missing: unable to disable crash reporting")
 #endif
   }
 
