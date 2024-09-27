@@ -284,9 +284,9 @@ public protocol Trait: Sendable {
   var customTestExecutor: CustomTestExecutor? { get }
 }
 
-extension Trait where CustomTestExecutor == Self {
+extension Trait where Self: CustomTestExecuting {
   // Returns `self`.
-  public var customTestExecutor: CustomTestExecutor? { get }
+  public var customTestExecutor: Self? { get }
 }
 
 extension Trait where CustomTestExecutor == Never {
