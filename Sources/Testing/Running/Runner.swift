@@ -101,26 +101,33 @@ extension Runner {
     try await executeAllTraits()
   }
 
+  /// Whether or not, ignoring external factors like depth in the test plan
+  /// graph, the given step has parallelization enabled.
+  ///
+  /// - Parameters:
+  ///   - step: The step to examine. If `nil`, the value of this instance's
+  ///     ``configuration`` property is examined instead.
+  ///
+  /// - Returns: Whether or not parallelization should be enabled for `step` and
+  ///   its descendants in the test plan graph.
+  private func _isParallelizationEnabled(for step: Plan.Step?) -> Bool {
+    step?.action.isParallelizationEnabled ?? configuration.isParallelizationEnabled
+  }
+
   /// Enumerate the elements of a sequence, parallelizing enumeration in a task
   /// group if a given plan step has parallelization enabled.
   ///
   /// - Parameters:
   ///   - sequence: The sequence to enumerate.
-  ///   - step: The plan step that controls parallelization. If `nil`, or if its
-  ///   ``Runner/Plan/Step/action`` property is not of case
-  ///   ``Runner/Plan/Action/run(options:)``, the
-  ///   ``Configuration/isParallelizationEnabled`` property of this runner's
-  ///   ``configuration`` property is used instead to determine if
-  ///   parallelization is enabled.
+  ///   - isParallelizationEnabled: Whether or not to enable parallelization.
   ///   - body: The function to invoke.
   ///
   /// - Throws: Whatever is thrown by `body`.
   private func _forEach<E>(
     in sequence: some Sequence<E>,
-    for step: Plan.Step?,
+    isParallelizationEnabled: Bool,
     _ body: @Sendable @escaping (E) async throws -> Void
   ) async throws where E: Sendable {
-    let isParallelizationEnabled = step?.action.isParallelizationEnabled ?? configuration.isParallelizationEnabled
     try await withThrowingTaskGroup(of: Void.self) { taskGroup in
       for element in sequence {
         // Each element gets its own subtask to run in.
@@ -255,10 +262,18 @@ extension Runner {
     // runnable steps' options.
     let stepOrAncestor = stepGraph.value ?? lastAncestorStep
 
-    let isParallelizationEnabled = stepOrAncestor?.action.isParallelizationEnabled ?? configuration.isParallelizationEnabled
+    let isParallelizationEnabled = if depth <= 1 {
+      // At this depth, we're looking at whole modules or top-level suite types
+      // (as well as free test functions.) Run modules and top-level suites in
+      // serial.
+      false
+    } else {
+      // As we go deeper, check the step itself or the current configuration.
+      _isParallelizationEnabled(for: stepOrAncestor)
+    }
     let childGraphs = if isParallelizationEnabled {
-      // Explicitly shuffle the steps to help detect accidental dependencies
-      // between tests due to their ordering.
+      // Parallelization, because it runs non-deterministically, will in effect
+      // shuffle the tests for us.
       Array(stepGraph.children)
     } else {
       // Sort the children by source order. If a child node is empty but has
@@ -285,7 +300,7 @@ extension Runner {
     }
 
     // Run the child nodes.
-    try await _forEach(in: childGraphs, for: stepOrAncestor) { _, childGraph in
+    try await _forEach(in: childGraphs, isParallelizationEnabled: isParallelizationEnabled) { _, childGraph in
       try await _runStep(atRootOf: childGraph, depth: depth + 1, lastAncestorStep: stepOrAncestor)
     }
   }
@@ -307,7 +322,7 @@ extension Runner {
       configuration.testCaseFilter(testCase, step.test)
     }
 
-    try await _forEach(in: testCases, for: step) { testCase in
+    try await _forEach(in: testCases, isParallelizationEnabled: _isParallelizationEnabled(for: step)) { testCase in
       try await _runTestCase(testCase, within: step)
     }
   }
