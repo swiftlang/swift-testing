@@ -12,16 +12,6 @@
 
 @Suite("Parallelization Trait Tests", .tags(.traitRelated))
 struct ParallelizationTraitTests {
-  @Test(".serialized trait is recursively applied")
-  func serializedTrait() async {
-    var configuration = Configuration()
-    configuration.isParallelizationEnabled = true
-    let plan = await Runner.Plan(selecting: OuterSuite.self, configuration: configuration)
-    for step in plan.steps {
-      #expect(step.action.isParallelizationEnabled == false, "Step \(step) should have had parallelization disabled")
-    }
-  }
-
   @Test(".serialized trait serializes parameterized test")
   func serializesParameterizedTestFunction() async {
     var configuration = Configuration()

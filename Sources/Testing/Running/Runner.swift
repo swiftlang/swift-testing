@@ -103,25 +103,18 @@ extension Runner {
   }
 
   /// Enumerate the elements of a sequence, parallelizing enumeration in a task
-  /// group if a given plan step has parallelization enabled.
+  /// group if parallelization is currently enabled.
   ///
   /// - Parameters:
   ///   - sequence: The sequence to enumerate.
-  ///   - step: The plan step that controls parallelization. If `nil`, or if its
-  ///   ``Runner/Plan/Step/action`` property is not of case
-  ///   ``Runner/Plan/Action/run(options:)``, the
-  ///   ``Configuration/isParallelizationEnabled`` property of this runner's
-  ///   ``configuration`` property is used instead to determine if
-  ///   parallelization is enabled.
   ///   - body: The function to invoke.
   ///
   /// - Throws: Whatever is thrown by `body`.
   private func _forEach<E>(
     in sequence: some Sequence<E>,
-    for step: Plan.Step?,
     _ body: @Sendable @escaping (E) async throws -> Void
   ) async throws where E: Sendable {
-    let isParallelizationEnabled = step?.action.isParallelizationEnabled ?? configuration.isParallelizationEnabled
+    let isParallelizationEnabled = Configuration.current?.isParallelizationEnabled ?? configuration.isParallelizationEnabled
     try await withThrowingTaskGroup(of: Void.self) { taskGroup in
       for element in sequence {
         // Each element gets its own subtask to run in.
@@ -143,10 +136,6 @@ extension Runner {
   ///   - stepGraph: The subgraph whose root value, a step, is to be run.
   ///   - depth: How deep into the step graph this call is. The first call has a
   ///     depth of `0`.
-  ///   - lastAncestorStep: The last-known ancestral step, if any, of the step
-  ///     at the root of `stepGraph`. The options in this step (if its action is
-  ///     of case ``Runner/Plan/Action/run(options:)``) inform the execution of
-  ///     `stepGraph`.
   ///
   /// - Throws: Whatever is thrown from the test body. Thrown errors are
   ///   normally reported as test failures.
@@ -161,7 +150,7 @@ extension Runner {
   /// ## See Also
   ///
   /// - ``Runner/run()``
-  private func _runStep(atRootOf stepGraph: Graph<String, Plan.Step?>, depth: Int, lastAncestorStep: Plan.Step?) async throws {
+  private func _runStep(atRootOf stepGraph: Graph<String, Plan.Step?>, depth: Int) async throws {
     // Exit early if the task has already been cancelled.
     try Task.checkCancellation()
 
@@ -208,14 +197,14 @@ extension Runner {
             }
 
             // Run the children of this test (i.e. the tests in this suite.)
-            try await _runChildren(of: stepGraph, depth: depth, lastAncestorStep: lastAncestorStep)
+            try await _runChildren(of: stepGraph, depth: depth)
           }
         }
       }
     } else {
       // There is no test at this node in the graph, so just skip down to the
       // child nodes.
-      try await _runChildren(of: stepGraph, depth: depth, lastAncestorStep: lastAncestorStep)
+      try await _runChildren(of: stepGraph, depth: depth)
     }
   }
 
@@ -241,22 +230,11 @@ extension Runner {
   ///   - stepGraph: The subgraph whose root value, a step, is to be run.
   ///   - depth: How deep into the step graph this call is. The first call has a
   ///     depth of `0`.
-  ///   - lastAncestorStep: The last-known ancestral step, if any, of the step
-  ///     at the root of `stepGraph`. The options in this step (if its action is
-  ///     of case ``Runner/Plan/Action/run(options:)``) inform the execution of
-  ///     `stepGraph`.
   ///
   /// - Throws: Whatever is thrown from the test body. Thrown errors are
   ///   normally reported as test failures.
-  private func _runChildren(of stepGraph: Graph<String, Plan.Step?>, depth: Int, lastAncestorStep: Plan.Step?) async throws {
-    // Figure out the last-good step, either the one at the root of `stepGraph`
-    // or, if it is nil, the one passed into this function. We need to track
-    // this value in case we run into sparse sections of the graph so we don't
-    // lose track of the recursive `isParallelizationEnabled` property in the
-    // runnable steps' options.
-    let stepOrAncestor = stepGraph.value ?? lastAncestorStep
-
-    let isParallelizationEnabled = stepOrAncestor?.action.isParallelizationEnabled ?? configuration.isParallelizationEnabled
+  private func _runChildren(of stepGraph: Graph<String, Plan.Step?>, depth: Int) async throws {
+    let isParallelizationEnabled = Configuration.current?.isParallelizationEnabled ?? configuration.isParallelizationEnabled
     let childGraphs = if isParallelizationEnabled {
       // Explicitly shuffle the steps to help detect accidental dependencies
       // between tests due to their ordering.
@@ -286,8 +264,8 @@ extension Runner {
     }
 
     // Run the child nodes.
-    try await _forEach(in: childGraphs, for: stepOrAncestor) { _, childGraph in
-      try await _runStep(atRootOf: childGraph, depth: depth + 1, lastAncestorStep: stepOrAncestor)
+    try await _forEach(in: childGraphs) { _, childGraph in
+      try await _runStep(atRootOf: childGraph, depth: depth + 1)
     }
   }
 
@@ -308,7 +286,7 @@ extension Runner {
       configuration.testCaseFilter(testCase, step.test)
     }
 
-    try await _forEach(in: testCases, for: step) { testCase in
+    try await _forEach(in: testCases) { testCase in
       try await _runTestCase(testCase, within: step)
     }
   }
@@ -403,7 +381,7 @@ extension Runner {
 
         await withTaskGroup(of: Void.self) { [runner] taskGroup in
           _ = taskGroup.addTaskUnlessCancelled {
-            try? await runner._runStep(atRootOf: runner.plan.stepGraph, depth: 0, lastAncestorStep: nil)
+            try? await runner._runStep(atRootOf: runner.plan.stepGraph, depth: 0)
           }
           await taskGroup.waitForAll()
         }

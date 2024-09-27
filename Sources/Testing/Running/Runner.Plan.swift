@@ -13,29 +13,8 @@ extension Runner {
   public struct Plan: Sendable {
     /// The action to perform for a test in this plan.
     public enum Action: Sendable {
-      /// A type describing options to apply to actions of case
-      /// ``Runner/Plan/Action/run(options:)`` when they are run.
-      public struct RunOptions: Sendable, Codable {
-        /// Whether or not this step should be run in parallel with other tests.
-        ///
-        /// By default, all steps in a runner plan are run in parallel if the
-        /// ``Configuration/isParallelizationEnabled`` property of the
-        /// configuration passed during initialization has a value of `true`.
-        ///
-        /// Traits such as ``Trait/serialized`` applied to individual tests may
-        /// affect whether or not that test is parallelized.
-        ///
-        /// ## See Also
-        ///
-        /// - ``ParallelizationTrait``
-        public var isParallelizationEnabled: Bool
-      }
-
       /// The test should be run.
-      ///
-      /// - Parameters:
-      ///   - options: Options to apply to this action when it is run.
-      case run(options: RunOptions)
+      case run
 
       /// The test should be skipped.
       ///
@@ -64,19 +43,6 @@ extension Runner {
           // case.
           return true
         }
-      }
-
-      /// Whether or not this action enables parallelization.
-      ///
-      /// If this action is of case ``run(options:)``, the value of this
-      /// property equals the value of its associated
-      /// ``RunOptions/isParallelizationEnabled`` property. Otherwise, the value
-      /// of this property is `nil`.
-      var isParallelizationEnabled: Bool? {
-        if case let .run(options) = self {
-          return options.isParallelizationEnabled
-        }
-        return nil
       }
     }
 
@@ -172,7 +138,7 @@ extension Runner.Plan {
     // Convert the list of test into a graph of steps. The actions for these
     // steps will all be .run() *unless* an error was thrown while examining
     // them, in which case it will be .recordIssue().
-    let runAction = Action.run(options: .init(isParallelizationEnabled: configuration.isParallelizationEnabled))
+    let runAction: Action = .run
     var testGraph = Graph<String, Test?>()
     var actionGraph = Graph<String, Action>(value: runAction)
     for test in tests {
@@ -224,11 +190,7 @@ extension Runner.Plan {
       // `SkipInfo`, the error should not be recorded.
       for trait in test.traits {
         do {
-          if let trait = trait as? any SPIAwareTrait {
-            try await trait.prepare(for: test, action: &action)
-          } else {
-            try await trait.prepare(for: test)
-          }
+          try await trait.prepare(for: test)
         } catch let error as SkipInfo {
           action = .skip(error)
           break
@@ -399,7 +361,7 @@ extension Runner.Plan.Action {
     ///
     /// - Parameters:
     ///   - options: Options to apply to this action when it is run.
-    case run(options: RunOptions)
+    case run
 
     /// The test should be skipped.
     ///
@@ -422,8 +384,8 @@ extension Runner.Plan.Action {
     ///   - action: The original action to snapshot.
     public init(snapshotting action: Runner.Plan.Action) {
       self = switch action {
-      case let .run(options):
-        .run(options: options)
+      case .run:
+        .run
       case let .skip(skipInfo):
         .skip(skipInfo)
       case let .recordIssue(issue):
@@ -440,5 +402,22 @@ extension Runner.Plan.Action {
   @available(*, deprecated, message: "Use .skip(_:) and pass a SkipInfo explicitly.")
   public static func skip() -> Self {
     .skip(SkipInfo())
+  }
+
+  @available(*, deprecated, message: "Use .run. Run options are ignored.")
+  public struct RunOptions: Sendable, Codable {
+    public var isParallelizationEnabled: Bool
+  }
+
+  @available(*, deprecated, message: "Use .run. Run options are ignored.")
+  public static func run(options: RunOptions) -> Self {
+    .run
+  }
+}
+
+extension Runner.Plan.Action.Snapshot {
+  @available(*, deprecated, message: "Use .run. Run options are ignored.")
+  public static func run(options: Runner.Plan.Action.RunOptions) -> Self {
+    .run
   }
 }

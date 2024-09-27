@@ -66,6 +66,8 @@ struct CustomTestExecutingTraitTests {
 // MARK: - Fixtures
 
 private struct CustomTrait: TestTrait, CustomTestExecuting {
+  typealias CustomTestExecutor = Self
+
   var before: Confirmation
   var after: Confirmation
   func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
@@ -78,6 +80,8 @@ private struct CustomTrait: TestTrait, CustomTestExecuting {
 }
 
 private struct CustomThrowingErrorTrait: TestTrait, CustomTestExecuting {
+  typealias CustomTestExecutor = Self
+
   fileprivate struct CustomTraitError: Error {}
 
   func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
@@ -86,6 +90,8 @@ private struct CustomThrowingErrorTrait: TestTrait, CustomTestExecuting {
 }
 
 struct DoSomethingBeforeAndAfterTrait: SuiteTrait, TestTrait, CustomTestExecuting {
+  typealias CustomTestExecutor = Self
+
   static let state = Locked(rawValue: 0)
 
   func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {

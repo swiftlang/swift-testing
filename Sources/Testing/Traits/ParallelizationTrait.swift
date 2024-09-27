@@ -26,21 +26,17 @@
 /// `swift test` command.)
 ///
 /// To add this trait to a test, use ``Trait/serialized``.
-public struct ParallelizationTrait: TestTrait, SuiteTrait {
+public struct ParallelizationTrait: TestTrait, SuiteTrait, CustomTestExecuting {
+  public typealias CustomTestExecutor = Self
+
   public var isRecursive: Bool {
     true
   }
-}
 
-// MARK: - SPIAwareTrait
-
-@_spi(ForToolsIntegrationOnly)
-extension ParallelizationTrait: SPIAwareTrait {
-  public func prepare(for test: Test, action: inout Runner.Plan.Action) async throws {
-    if case var .run(options) = action {
-      options.isParallelizationEnabled = false
-      action = .run(options: options)
-    }
+  public func execute(_ function: () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
+    var configuration = Configuration.current ?? .init()
+    configuration.isParallelizationEnabled = false
+    try await Configuration.withCurrent(configuration, perform: function)
   }
 }
 
