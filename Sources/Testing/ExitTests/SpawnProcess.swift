@@ -54,25 +54,44 @@ func spawnExecutable(
 
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
   return try withUnsafeTemporaryAllocation(of: P<posix_spawn_file_actions_t>.self, capacity: 1) { fileActions in
-    guard 0 == posix_spawn_file_actions_init(fileActions.baseAddress!) else {
+    let fileActions = fileActions.baseAddress!
+    guard 0 == posix_spawn_file_actions_init(fileActions) else {
       throw CError(rawValue: swt_errno())
     }
     defer {
-      _ = posix_spawn_file_actions_destroy(fileActions.baseAddress!)
+      _ = posix_spawn_file_actions_destroy(fileActions)
     }
 
     return try withUnsafeTemporaryAllocation(of: P<posix_spawnattr_t>.self, capacity: 1) { attrs in
-      guard 0 == posix_spawnattr_init(attrs.baseAddress!) else {
+      let attrs = attrs.baseAddress!
+      guard 0 == posix_spawnattr_init(attrs) else {
         throw CError(rawValue: swt_errno())
       }
       defer {
-        _ = posix_spawnattr_destroy(attrs.baseAddress!)
+        _ = posix_spawnattr_destroy(attrs)
+      }
+
+      // Flags to set on the attributes value before spawning the process.
+      var flags = CShort(0)
+
+      // Reset signal handlers to their defaults.
+      withUnsafeTemporaryAllocation(of: sigset_t.self, capacity: 1) { noSignals in
+        let noSignals = noSignals.baseAddress!
+        sigemptyset(noSignals)
+        posix_spawnattr_setsigmask(attrs, noSignals)
+        flags |= CShort(POSIX_SPAWN_SETSIGMASK)
+      }
+      withUnsafeTemporaryAllocation(of: sigset_t.self, capacity: 1) { allSignals in
+        let allSignals = allSignals.baseAddress!
+        sigfillset(allSignals)
+        posix_spawnattr_setsigdefault(attrs, allSignals);
+        flags |= CShort(POSIX_SPAWN_SETSIGDEF)
       }
 
       // Do not forward standard I/O.
-      _ = posix_spawn_file_actions_addopen(fileActions.baseAddress!, STDIN_FILENO, "/dev/null", O_RDONLY, 0)
-      _ = posix_spawn_file_actions_addopen(fileActions.baseAddress!, STDOUT_FILENO, "/dev/null", O_WRONLY, 0)
-      _ = posix_spawn_file_actions_addopen(fileActions.baseAddress!, STDERR_FILENO, "/dev/null", O_WRONLY, 0)
+      _ = posix_spawn_file_actions_addopen(fileActions, STDIN_FILENO, "/dev/null", O_RDONLY, 0)
+      _ = posix_spawn_file_actions_addopen(fileActions, STDOUT_FILENO, "/dev/null", O_WRONLY, 0)
+      _ = posix_spawn_file_actions_addopen(fileActions, STDERR_FILENO, "/dev/null", O_WRONLY, 0)
 
 #if os(Linux) || os(FreeBSD)
       var highestFD = CInt(0)
@@ -83,7 +102,7 @@ func spawnExecutable(
             throw SystemError(description: "A child process inherit a file handle without an associated file descriptor. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
           }
 #if SWT_TARGET_OS_APPLE
-          _ = posix_spawn_file_actions_addinherit_np(fileActions.baseAddress!, fd)
+          _ = posix_spawn_file_actions_addinherit_np(fileActions, fd)
 #elseif os(Linux) || os(FreeBSD)
           highestFD = max(highestFD, fd)
 #endif
@@ -92,16 +111,20 @@ func spawnExecutable(
 
 #if SWT_TARGET_OS_APPLE
       // Close all other file descriptors open in the parent.
-      _ = posix_spawnattr_setflags(attrs.baseAddress!, CShort(POSIX_SPAWN_CLOEXEC_DEFAULT))
+      flags |= CShort(POSIX_SPAWN_CLOEXEC_DEFAULT)
 #elseif os(Linux) || os(FreeBSD)
       // This platform doesn't have POSIX_SPAWN_CLOEXEC_DEFAULT, but we can at
       // least close all file descriptors higher than the highest inherited one.
       // We are assuming here that the caller didn't set FD_CLOEXEC on any of
       // these file descriptors.
-      _ = swt_posix_spawn_file_actions_addclosefrom_np(fileActions.baseAddress!, highestFD + 1)
+      _ = swt_posix_spawn_file_actions_addclosefrom_np(fileActions, highestFD + 1)
 #else
 #warning("Platform-specific implementation missing: cannot close unused file descriptors")
 #endif
+
+      // Set flags; make sure to keep this call below any code that might modify
+      // the flags mask!
+      _ = posix_spawnattr_setflags(attrs, flags)
 
       var argv: [UnsafeMutablePointer<CChar>?] = [strdup(executablePath)]
       argv += arguments.lazy.map { strdup($0) }
@@ -121,7 +144,7 @@ func spawnExecutable(
       }
 
       var pid = pid_t()
-      guard 0 == posix_spawn(&pid, executablePath, fileActions.baseAddress!, attrs.baseAddress, argv, environ) else {
+      guard 0 == posix_spawn(&pid, executablePath, fileActions, attrs, argv, environ) else {
         throw CError(rawValue: swt_errno())
       }
       return pid
