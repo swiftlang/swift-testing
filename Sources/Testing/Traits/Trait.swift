@@ -114,8 +114,8 @@ public protocol CustomTestExecuting: Sendable {
   func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws
 }
 
-extension Trait where CustomTestExecutor == Self {
-  public var customTestExecutor: CustomTestExecutor? {
+extension Trait where Self: CustomTestExecuting {
+  public var customTestExecutor: Self? {
     self
   }
 }
