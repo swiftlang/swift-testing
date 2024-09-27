@@ -44,7 +44,10 @@ public protocol Trait: Sendable {
 
   /// The type of the custom test executor for this trait.
   ///
-  /// The default type is `Never`.
+  /// The default type is `Never`, which cannot be instantiated. This means the
+  /// value of the ``customTestExecutor-1dwpt`` property for all traits with the
+  /// default custom executor type is `nil`, meaning such traits will not
+  /// perform any custom execution for the tests they're applied to.
   associatedtype CustomTestExecutor: CustomTestExecuting = Never
 
   /// The custom test executor for this trait, if any.
@@ -67,6 +70,14 @@ public protocol Trait: Sendable {
 /// A protocol that allows customizing the execution of a test function (and
 /// each of its cases) or a test suite by performing custom code before or after
 /// it runs.
+///
+/// Types conforming to this protocol may be used in conjunction with a
+/// ``Trait``-conforming type by implementing the
+/// ``Trait/customTestExecutor-1dwpt`` property, allowing custom traits to
+/// customize the execution of tests. Consolidating common set-up and tear-down
+/// logic for tests which have similar needs allows each test function to be
+/// more succinct with less repetitive boilerplate so it can focus on what makes
+/// it unique.
 public protocol CustomTestExecuting: Sendable {
   /// Execute a function for the specified test and/or test case.
   ///
@@ -81,19 +92,25 @@ public protocol CustomTestExecuting: Sendable {
   ///     `nil`.
   ///
   /// - Throws: Whatever is thrown by `function`, or an error preventing
-  ///   execution from running correctly. An error thrown from this function is
+  ///   execution from running correctly. An error thrown from this method is
   ///   recorded as an issue associated with `test`. If an error is thrown
   ///   before `function` is called, the corresponding test will not run.
   ///
-  /// This function is called for each ``Trait`` on a test suite or test
-  /// function which has a non-`nil` value for ``Trait/customTestExecutor-1dwpt``.
-  /// It allows additional work to be performed before or after the test runs.
+  /// When the testing library is preparing to run a test, it finds all traits
+  /// applied to that test (including those inherited from containing suites)
+  /// and asks each for the value of its
+  /// ``Trait/customTestExecutor-1dwpt`` property. It then calls this method on
+  /// all non-`nil` instances, giving each an opportunity to perform
+  /// arbitrary work before or after invoking `function`.
   ///
-  /// This function is invoked once for the test its associated trait is applied
+  /// This method should either invoke `function` once before returning or throw
+  /// an error if it is unable to perform its custom logic successfully.
+  ///
+  /// This method is invoked once for the test its associated trait is applied
   /// to, and then once for each test case in that test, if applicable. If a
-  /// test is skipped, this function is not invoked for that test or its cases.
+  /// test is skipped, this method is not invoked for that test or its cases.
   ///
-  /// Issues recorded by this function are associated with `test`.
+  /// Issues recorded by this method are associated with `test`.
   func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws
 }
 
