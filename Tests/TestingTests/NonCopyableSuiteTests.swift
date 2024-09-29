@@ -16,6 +16,7 @@ struct NonCopyableTests: ~Copyable {
   @Test borrowing func borrowMe() {}
   @Test consuming func consumeMe() {}
   @Test mutating func mutateMe() {}
+  @Test borrowing func testNotAnXCTestCaseMethod() {}
 
   @Test borrowing func typeComparison() {
     let lhs = TypeInfo(describing: Self.self)

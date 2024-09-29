@@ -568,7 +568,7 @@ public func __ifMainActorIsolationEnforced<R>(
   _ selector: __XCTestCompatibleSelector?,
   onInstanceOf type: T.Type,
   sourceLocation: SourceLocation
-) async throws -> Bool {
+) async throws -> Bool where T: ~Copyable {
   false
 }
 
