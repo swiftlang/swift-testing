@@ -354,6 +354,28 @@ struct EventRecorderTests {
       throw caughtError
     }
   }
+
+  @Test(
+    "JUnit XML omits time for skipped tests",
+    .bug("https://github.com/swiftlang/swift-testing/issues/740")
+  )
+  func junitXMLWithTimelessSkippedTest() async throws {
+    let stream = Stream()
+
+    let eventRecorder = Event.JUnitXMLRecorder(writingUsing: stream.write)
+    eventRecorder.record(Event(.runStarted, testID: nil, testCaseID: nil), in: Event.Context(test: nil, testCase: nil, configuration: nil))
+    let test = Test {}
+    eventRecorder.record(Event(.testSkipped(.init(sourceContext: .init())), testID: test.id, testCaseID: nil), in: Event.Context(test: test, testCase: nil, configuration: nil))
+    eventRecorder.record(Event(.runEnded, testID: nil, testCaseID: nil), in: Event.Context(test: nil, testCase: nil, configuration: nil))
+
+    let xmlString = stream.buffer.rawValue
+    #expect(xmlString.hasPrefix("<?xml"))
+    let testCaseLines = xmlString
+      .split(whereSeparator: \.isNewline)
+      .filter { $0.contains("<testcase") }
+    #expect(!testCaseLines.isEmpty)
+    #expect(!testCaseLines.contains { $0.contains("time=") })
+  }
 #endif
 
   @Test("HumanReadableOutputRecorder counts issues without associated tests")
