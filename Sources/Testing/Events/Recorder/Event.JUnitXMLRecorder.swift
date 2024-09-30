@@ -176,8 +176,15 @@ extension Event.JUnitXMLRecorder {
       let classNameComponents = CollectionOfOne(id.moduleName) + id.nameComponents.dropLast()
       let className = classNameComponents.joined(separator: ".")
       let name = id.nameComponents.last!
-      let durationNanoseconds = testData.startInstant.nanoseconds(until: testData.endInstant ?? .now)
-      let durationSeconds = Double(durationNanoseconds) / 1_000_000_000
+
+      // Tests that are skipped or for some reason never completed will not have
+      // an end instant; don't report timing for such tests.
+      var timeClause = ""
+      if let endInstant = testData.endInstant {
+        let durationNanoseconds = testData.startInstant.nanoseconds(until: endInstant)
+        let durationSeconds = Double(durationNanoseconds) / 1_000_000_000
+        timeClause = #"time="\#(durationSeconds)" "#
+      }
 
       // Build out any child nodes contained within this <testcase> node.
       var minutiae = [String]()
@@ -193,9 +200,9 @@ extension Event.JUnitXMLRecorder {
       }
 
       if minutiae.isEmpty {
-        result.append(#"    <testcase classname="\#(className)" name="\#(name)" time="\#(durationSeconds)" />"#)
+        result.append(#"    <testcase classname="\#(className)" name="\#(name)" \#(timeClause)/>"#)
       } else {
-        result.append(#"    <testcase classname="\#(className)" name="\#(name)" time="\#(durationSeconds)">"#)
+        result.append(#"    <testcase classname="\#(className)" name="\#(name)" \#(timeClause)>"#)
         result += minutiae
         result.append(#"    </testcase>"#)
       }
