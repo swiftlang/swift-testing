@@ -16,6 +16,7 @@
 
 SWT_ASSUME_NONNULL_BEGIN
 
+#if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
 /// The type of callback called by `swt_enumerateTypes()`.
 ///
 /// - Parameters:
@@ -42,6 +43,7 @@ SWT_EXTERN void swt_enumerateTypesWithNamesContaining(
   void *_Null_unspecified context,
   SWTTypeEnumerator body
 ) SWT_SWIFT_NAME(swt_enumerateTypes(withNamesContaining:_:_:));
+#endif
 
 SWT_ASSUME_NONNULL_END
 
