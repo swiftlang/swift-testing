@@ -26,6 +26,10 @@ private import _TestingInternals
 ///
 /// Instances of this type describe an exit test defined by the test author and
 /// discovered or called at runtime.
+///
+/// You don't usually need to interact with an instance of this type. To create
+/// an exit test, use the ``expect(exitsWith:_:sourceLocation:performing:)``
+/// or ``require(exitsWith:_:sourceLocation:performing:)`` macro.
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
@@ -34,8 +38,18 @@ public struct ExitTest: Sendable, ~Copyable {
   /// The expected exit condition of the exit test.
   public var expectedExitCondition: ExitCondition
 
+  /// The source location of the exit test.
+  ///
+  /// The source location is unique to each exit test and is consistent between
+  /// processes, so it can be used to uniquely identify an exit test at runtime.
+  public var sourceLocation: SourceLocation
+
   /// The body closure of the exit test.
-  fileprivate var body: @Sendable () async throws -> Void = {}
+  ///
+  /// Do not invoke this closure directly. Instead, invoke ``callAsFunction()``
+  /// to run the exit test. Running the exit test will always terminate the
+  /// current process.
+  fileprivate var body: @Sendable () async throws -> Void
 
   /// Storage for ``observedValues``.
   ///
@@ -72,11 +86,19 @@ public struct ExitTest: Sendable, ~Copyable {
     }
   }
 
-  /// The source location of the exit test.
+  /// Initialize an exit test at runtime.
   ///
-  /// The source location is unique to each exit test and is consistent between
-  /// processes, so it can be used to uniquely identify an exit test at runtime.
-  public var sourceLocation: SourceLocation
+  /// - Warning: This initializer is used to implement the `#expect(exitsWith:)`
+  ///   macro. Do not use it directly.
+  public init(
+    __expectedExitCondition expectedExitCondition: ExitCondition,
+    sourceLocation: SourceLocation,
+    body: @escaping @Sendable () async throws -> Void = {}
+  ) {
+    self.expectedExitCondition = expectedExitCondition
+    self.sourceLocation = sourceLocation
+    self.body = body
+  }
 }
 
 #if !SWT_NO_EXIT_TESTS
@@ -177,16 +199,35 @@ extension ExitTest {
   public static func find(at sourceLocation: SourceLocation) -> Self? {
     var result: Self?
 
-    enumerateTypes(withNamesContaining: exitTestContainerTypeNameMagic) { _, type, stop in
-      if let type = type as? any __ExitTestContainer.Type, type.__sourceLocation == sourceLocation {
+    enumerateTestContent(ofKind: .exitTest, as: ExitTest.self) { _, exitTest, _, stop in
+      if exitTest.sourceLocation == sourceLocation {
         result = ExitTest(
-          expectedExitCondition: type.__expectedExitCondition,
-          body: type.__body,
-          sourceLocation: type.__sourceLocation
+          __expectedExitCondition: exitTest.expectedExitCondition,
+          sourceLocation: exitTest.sourceLocation,
+          body: exitTest.body
         )
         stop = true
       }
     }
+
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+    if result == nil {
+      // Call the legacy lookup function that discovers tests embedded in types.
+      enumerateTypes(withNamesContaining: exitTestContainerTypeNameMagic) { _, type, stop in
+        guard let type = type as? any __ExitTestContainer.Type else {
+          return
+        }
+        if type.__sourceLocation == sourceLocation {
+          result = ExitTest(
+            __expectedExitCondition: type.__expectedExitCondition,
+            sourceLocation: type.__sourceLocation,
+            body: type.__body
+          )
+          stop = true
+        }
+      }
+    }
+#endif
 
     return result
   }
@@ -230,7 +271,7 @@ func callExitTest(
 
   var result: ExitTestArtifacts
   do {
-    var exitTest = ExitTest(expectedExitCondition: expectedExitCondition, sourceLocation: sourceLocation)
+    var exitTest = ExitTest(__expectedExitCondition: expectedExitCondition, sourceLocation: sourceLocation)
     exitTest.observedValues = observedValues
     result = try await configuration.exitTestHandler(exitTest)
 
@@ -366,7 +407,7 @@ extension ExitTest {
     // External tools authors should set up their own back channel mechanisms
     // and ensure they're installed before calling ExitTest.callAsFunction().
     guard var result = find(at: sourceLocation) else {
-      return nil
+      fatalError("Could not find an exit test that should have been located at \(sourceLocation).")
     }
 
     // We can't say guard let here because it counts as a consume.

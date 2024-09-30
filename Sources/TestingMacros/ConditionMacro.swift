@@ -431,11 +431,51 @@ extension ExitTestConditionMacro {
 
     // Create a local type that can be discovered at runtime and which contains
     // the exit test body.
-    let enumName = context.makeUniqueName("__🟠$exit_test_body__")
+    let accessorName = context.makeUniqueName("")
+    decls.append(
+      """
+      #if hasFeature(SymbolLinkageMarkers)
+      func \(accessorName)(_ outValue: UnsafeMutableRawPointer) -> Bool {
+        outValue.initializeMemory(
+          as: Testing.ExitTest.self,
+          to: .init(
+            __expectedExitCondition: \(arguments[expectedExitConditionIndex].expression.trimmed),
+            sourceLocation: \(createSourceLocationExpr(of: macro, context: context)),
+            body: \(bodyThunkName)
+          )
+        )
+        return true
+      }
+      #endif
+      """
+    )
+
+    let enumName = context.makeUniqueName("")
+    let sectionContent = makeTestContentRecordDecl(
+      named: .identifier("__sectionContent"),
+      in: TypeSyntax(IdentifierTypeSyntax(name: enumName)),
+      ofKind: .exitTest,
+      accessingWith: accessorName
+    )
+    decls.append(
+      """
+      #if hasFeature(SymbolLinkageMarkers)
+      @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
+      enum \(enumName) {
+        \(sectionContent)
+      }
+      #endif
+      """
+    )
+
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+    // Emit a legacy type declaration if SymbolLinkageMarkers is off.
+    // TODO: remove this decl when we drop support for emitting legacy metadata
+    let legacyEnumName = context.makeUniqueName("__🟠$exit_test_body__")
     decls.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-      enum \(enumName): Testing.__ExitTestContainer, Sendable {
+      enum \(legacyEnumName): Testing.__ExitTestContainer, Sendable {
         static var __sourceLocation: Testing.SourceLocation {
           \(createSourceLocationExpr(of: macro, context: context))
         }
@@ -448,6 +488,7 @@ extension ExitTestConditionMacro {
       }
       """
     )
+#endif
 
     arguments[trailingClosureIndex].expression = ExprSyntax(
       ClosureExprSyntax {
