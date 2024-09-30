@@ -10,6 +10,7 @@
 
 private import _TestingInternals
 
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
 /// A protocol describing a type that contains tests.
 ///
 /// - Warning: This protocol is used to implement the `@Test` macro. Do not use
@@ -79,3 +80,4 @@ func enumerateTypes(withNamesContaining nameSubstring: String, _ typeEnumerator:
     }
   }
 }
+#endif

@@ -10,6 +10,7 @@
 
 #include "Discovery+Old.h"
 
+#if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -534,3 +535,4 @@ void swt_enumerateTypesWithNamesContaining(const char *nameSubstring, void *cont
     }
   });
 }
+#endif
