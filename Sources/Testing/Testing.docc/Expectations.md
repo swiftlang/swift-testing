@@ -75,7 +75,8 @@ the test when the code doesn't satisfy a requirement, use
 ### Confirming that asynchronous events occur
 
 - <doc:testing-asynchronous-code>
-- ``confirmation(_:expectedCount:isolation:sourceLocation:_:)``
+- ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-5mqz2``
+- ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-6bkl6``
 - ``Confirmation``
 
 ### Retrieving information about checked expectations

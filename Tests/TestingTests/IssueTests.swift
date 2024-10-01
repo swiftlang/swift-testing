@@ -1455,7 +1455,6 @@ struct IssueCodingTests {
 
   private static let issueKinds: [Issue.Kind] = [
     Issue.Kind.apiMisused,
-    Issue.Kind.confirmationMiscounted(actual: 13, expected: 42),
     Issue.Kind.errorCaught(NSError(domain: "Domain", code: 13, userInfo: ["UserInfoKey": "UserInfoValue"])),
     Issue.Kind.expectationFailed(Expectation(evaluatedExpression: .__fromSyntaxNode("abc"), isPassing: true, isRequired: true, sourceLocation: #_sourceLocation)),
     Issue.Kind.knownIssueNotRecorded,
