@@ -63,6 +63,10 @@ extension ConditionMacro {
     return try expansion(of: macro, primaryExpression: nil, in: context)
   }
 
+  public static var formatMode: FormatMode {
+    .disabled
+  }
+
   /// Perform the expansion of this condition macro.
   ///
   /// - Parameters:

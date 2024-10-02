@@ -40,6 +40,10 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
     return []
   }
 
+  public static var formatMode: FormatMode {
+    .disabled
+  }
+
   /// Diagnose issues with a `@Suite` declaration.
   ///
   /// - Parameters:
