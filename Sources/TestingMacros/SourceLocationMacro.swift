@@ -22,4 +22,8 @@ public struct SourceLocationMacro: ExpressionMacro, Sendable {
   ) throws -> ExprSyntax {
     createSourceLocationExpr(of: macro, context: context)
   }
+
+  public static var formatMode: FormatMode {
+    .disabled
+  }
 }

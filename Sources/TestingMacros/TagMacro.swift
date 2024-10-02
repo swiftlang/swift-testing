@@ -102,4 +102,8 @@ public struct TagMacro: PeerMacro, AccessorMacro, Sendable {
     }
     return []
   }
+
+  public static var formatMode: FormatMode {
+    .disabled
+  }
 }
