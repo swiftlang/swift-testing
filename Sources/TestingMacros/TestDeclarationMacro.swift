@@ -31,6 +31,10 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     return _createTestContainerDecls(for: functionDecl, on: typeName, testAttribute: node, in: context)
   }
 
+  public static var formatMode: FormatMode {
+    .disabled
+  }
+
   /// Diagnose issues with a `@Test` declaration.
   ///
   /// - Parameters:
