@@ -417,6 +417,7 @@ extension ExitTestConditionMacro {
       ClosureExprSyntax {
         for decl in decls {
           CodeBlockItemSyntax(item: .decl(decl))
+            .with(\.trailingTrivia, .newline)
         }
       }
     )
