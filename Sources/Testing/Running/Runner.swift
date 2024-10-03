@@ -56,20 +56,19 @@ public struct Runner: Sendable {
 // MARK: - Running tests
 
 extension Runner {
-  /// Execute the ``CustomTestExecuting/execute(_:for:testCase:)`` functions of
-  /// any custom test executors for traits associated with the test in a plan
-  /// step.
+  /// Execute the ``TestExecuting/execute(_:for:testCase:)`` functions of any
+  /// test executors for traits associated with the test in a plan step.
   ///
   /// - Parameters:
   ///   - step: The step being performed.
   ///   - testCase: The test case, if applicable, for which to execute the
   ///     function.
   ///   - body: A function to execute from within the
-  ///     ``CustomTestExecuting/execute(_:for:testCase:)`` function of each
-  ///     non-`nil` custom test executor of the traits applied to `step.test`.
+  ///     ``TestExecuting/execute(_:for:testCase:)`` function of each non-`nil`
+  ///     test executor of the traits applied to `step.test`.
   ///
   /// - Throws: Whatever is thrown by `body` or by any of the
-  ///   ``CustomTestExecuting/execute(_:for:testCase:)`` functions.
+  ///   ``TestExecuting/execute(_:for:testCase:)`` functions.
   private func _executeTraits(
     for step: Plan.Step,
     testCase: Test.Case?,
@@ -91,7 +90,7 @@ extension Runner {
     // and ultimately the first trait is the first one to be invoked.
     let executeAllTraits = step.test.traits.lazy
       .reversed()
-      .compactMap { $0.customTestExecutor }
+      .compactMap { $0.testExecutor }
       .map { $0.execute(_:for:testCase:) }
       .reduce(body) { executeAllTraits, testExecutor in
         {

@@ -6,6 +6,12 @@
 * Implementation: [swiftlang/swift-testing#733](https://github.com/swiftlang/swift-testing/pull/733), [swiftlang/swift-testing#86](https://github.com/swiftlang/swift-testing/pull/86)
 * Review: ([pitch](https://forums.swift.org/...))
 
+### Revision history
+
+* **v1**: Initial pitch.
+* **v2**: Dropped 'Custom' prefix from the proposed API names (although kept the
+  word in certain documentation passages where it clarified behavior).
+
 ## Introduction
 
 This introduces API which enables a custom `Trait`-conforming type to customize
@@ -190,21 +196,19 @@ these scoped access calls to only the traits which require it.
 
 I propose the following new APIs:
 
-- A new protocol `CustomTestExecuting` with a single required `execute(...)`
-  method. This will be called to run a test, and allows the conforming type to
-  perform custom logic before or after.
-- A new property `customTestExecutor` on the `Trait` protocol whose type is an
-  `Optional` value of a type conforming to `CustomTestExecuting`. A `nil` value
-  from this property will skip calling the `execute(...)` method.
-- A default implementation of `Trait.customTestExecutor` whose value is `nil`.
-- A conditional implementation of `Trait.customTestExecutor` whose value is
-  `self` in the common case where the trait type conforms to
-  `CustomTestExecuting` itself.
+- A new protocol `TestExecuting` with a single required `execute(...)` method.
+  This will be called to run a test, and allows the conforming type to perform
+  custom logic before or after.
+- A new property `testExecutor` on the `Trait` protocol whose type is an
+  `Optional` value of a type conforming to `TestExecuting`. A `nil` value for
+  this property will skip calling the `execute(...)` method.
+- A default implementation of `Trait.testExecutor` whose value is `nil`.
+- A conditional implementation of `Trait.testExecutor` whose value is `self`
+  in the common case where the trait type conforms to `TestExecuting` itself.
 
-Since the `customTestExecutor` property is optional and `nil` by default, the
-testing library cannot invoke the `execute(...)` method unless a trait
-customizes test behavior. This avoids the "unnecessarily lengthy backtraces"
-problem above.
+Since the `testExecutor` property is optional and `nil` by default, the testing
+library cannot invoke the `execute(...)` method unless a trait customizes test
+behavior. This avoids the "unnecessarily lengthy backtraces" problem above.
 
 Below are the proposed interfaces:
 
@@ -215,12 +219,12 @@ Below are the proposed interfaces:
 ///
 /// Types conforming to this protocol may be used in conjunction with a
 /// ``Trait``-conforming type by implementing the
-/// ``Trait/customTestExecutor-1dwpt`` property, allowing custom traits to
+/// ``Trait/testExecutor-714gp`` property, allowing custom traits to
 /// customize the execution of tests. Consolidating common set-up and tear-down
 /// logic for tests which have similar needs allows each test function to be
 /// more succinct with less repetitive boilerplate so it can focus on what makes
 /// it unique.
-public protocol CustomTestExecuting: Sendable {
+public protocol TestExecuting: Sendable {
   /// Execute a function for the specified test and/or test case.
   ///
   /// - Parameters:
@@ -241,8 +245,8 @@ public protocol CustomTestExecuting: Sendable {
   /// When the testing library is preparing to run a test, it finds all traits
   /// applied to that test (including those inherited from containing suites)
   /// and asks each for the value of its
-  /// ``Trait/customTestExecutor-1dwpt`` property. It then calls this method on
-  /// all non-`nil` instances, giving each an opportunity to perform
+  /// ``Trait/testExecutor-714gp`` property. It then calls this method
+  /// on all non-`nil` instances, giving each an opportunity to perform
   /// arbitrary work before or after invoking `function`.
   ///
   /// This method should either invoke `function` once before returning or throw
@@ -259,42 +263,42 @@ public protocol CustomTestExecuting: Sendable {
 public protocol Trait: Sendable {
   // ...
 
-  /// The type of the custom test executor for this trait.
+  /// The type of the test executor for this trait.
   ///
   /// The default type is `Never`, which cannot be instantiated. This means the
-  /// value of the ``customTestExecutor-1dwpt`` property for all traits with the
-  /// default custom executor type is `nil`, meaning such traits will not
+  /// value of the ``testExecutor-714gp`` property for all traits with
+  /// the default custom executor type is `nil`, meaning such traits will not
   /// perform any custom execution for the tests they're applied to.
-  associatedtype CustomTestExecutor: CustomTestExecuting = Never
+  associatedtype TestExecutor: TestExecuting = Never
 
-  /// The custom test executor for this trait, if any.
+  /// The test executor for this trait, if any.
   ///
-  /// If this trait's type conforms to ``CustomTestExecuting``, the default
-  /// value of this property is `self` and this trait will be used to customize
-  /// test execution. This is the most straightforward way to implement a trait
-  /// which customizes the execution of tests.
+  /// If this trait's type conforms to ``TestExecuting``, the default value of
+  /// this property is `self` and this trait will be used to customize test
+  /// execution. This is the most straightforward way to implement a trait which
+  /// customizes the execution of tests.
   ///
   /// If the value of this property is an instance of a different type
-  /// conforming to ``CustomTestExecuting``, that instance will be used to
-  /// perform custom test execution instead.
+  /// conforming to ``TestExecuting``, that instance will be used to perform
+  /// test execution instead.
   ///
   /// The default value of this property is `nil` (with the default type
   /// `Never?`), meaning that instances of this type will not perform any custom
   /// test execution for tests they are applied to.
-  var customTestExecutor: CustomTestExecutor? { get }
+  var testExecutor: TestExecutor? { get }
 }
 
-extension Trait where Self: CustomTestExecuting {
+extension Trait where Self: TestExecuting {
   // Returns `self`.
-  public var customTestExecutor: Self? { get }
+  public var testExecutor: Self? {
 }
 
-extension Trait where CustomTestExecutor == Never {
+extension Trait where TestExecutor == Never {
   // Returns `nil`.
-  public var customTestExecutor: CustomTestExecutor? { get }
+  public var testExecutor: TestExecutor? {
 }
 
-extension Never: CustomTestExecuting {}
+extension Never: TestExecuting {}
 ```
 
 Here is a complete example of the usage scenario described earlier, showcasing
@@ -306,7 +310,7 @@ func example() {
   // ...validate API usage, referencing `APICredentials.current`...
 }
 
-struct MockAPICredentialsTrait: TestTrait, CustomTestExecuting {
+struct MockAPICredentialsTrait: TestTrait, TestExecuting {
   func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
     let mockCredentials = APICredentials(apiKey: "...")
     try await APICredentials.$current.withValue(mockCredentials) {
@@ -357,26 +361,26 @@ concurrency technique and reduces the potential for test parallelization.
 ### Add `execute(...)` directly to the `Trait` protocol
 
 The proposed `execute(...)` method could be added as a requirement of the
-`Trait` protocol instead of being part of a separate `CustomTestExecuting`
-protocol, and it could have a default implementation which directly invokes the
-passed-in closure. But this approach would suffer from the lengthy backtrace
-problem described above.
+`Trait` protocol instead of being part of a separate `TestExecuting` protocol,
+and it could have a default implementation which directly invokes the passed-in
+closure. But this approach would suffer from the lengthy backtrace problem
+described above.
 
 ### Extend the `Trait` protocol
 
 The original, experimental implementation of this feature included a protocol
 named`CustomExecutionTrait` which extended `Trait` and had roughly the same
-method requirement as the `CustomTestExecuting` protocol proposed above. This
-design worked, provided scoped access, and avoided the lengthy backtrace problem.
+method requirement as the `TestExecuting` protocol proposed above. This design
+worked, provided scoped access, and avoided the lengthy backtrace problem.
 
 After evaluating the design and usage of this SPI though, it seemed unfortunate
 to structure it as a sub-protocol of `Trait` because it means that the full
 capabilities of the trait system are spread across multiple protocols. In the
-proposed design, the ability to provide a custom test executor value is exposed
-via the main `Trait` protocol, and it relies on an associated type to
-conditionally opt-in to custom test behavior. In other words, the proposed
-design expresses custom test behavior as just a _capability_ that a trait may
-have, rather than a distinct sub-type of trait.
+proposed design, the ability to provide a test executor value is exposed via the
+main `Trait` protocol, and it relies on an associated type to conditionally
+opt-in to custom test behavior. In other words, the proposed design expresses
+custom test behavior as just a _capability_ that a trait may have, rather than a
+distinct sub-type of trait.
 
 Also, the implementation of this approach within the testing library was not
 ideal as it required a conditional `trait as? CustomExecutionTrait` downcast at

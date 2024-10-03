@@ -42,29 +42,29 @@ public protocol Trait: Sendable {
   /// By default, the value of this property is an empty array.
   var comments: [Comment] { get }
 
-  /// The type of the custom test executor for this trait.
+  /// The type of the test executor for this trait.
   ///
   /// The default type is `Never`, which cannot be instantiated. This means the
-  /// value of the ``customTestExecutor-1dwpt`` property for all traits with the
-  /// default custom executor type is `nil`, meaning such traits will not
+  /// value of the ``testExecutor-714gp`` property for all traits with
+  /// the default custom executor type is `nil`, meaning such traits will not
   /// perform any custom execution for the tests they're applied to.
-  associatedtype CustomTestExecutor: CustomTestExecuting = Never
+  associatedtype TestExecutor: TestExecuting = Never
 
-  /// The custom test executor for this trait, if any.
+  /// The test executor for this trait, if any.
   ///
-  /// If this trait's type conforms to ``CustomTestExecuting``, the default
-  /// value of this property is `self` and this trait will be used to customize
-  /// test execution. This is the most straightforward way to implement a trait
-  /// which customizes the execution of tests.
+  /// If this trait's type conforms to ``TestExecuting``, the default value of
+  /// this property is `self` and this trait will be used to customize test
+  /// execution. This is the most straightforward way to implement a trait which
+  /// customizes the execution of tests.
   ///
   /// If the value of this property is an instance of a different type
-  /// conforming to ``CustomTestExecuting``, that instance will be used to
-  /// perform custom test execution instead.
+  /// conforming to ``TestExecuting``, that instance will be used to perform
+  /// test execution instead.
   ///
   /// The default value of this property is `nil` (with the default type
   /// `Never?`), meaning that instances of this type will not perform any custom
   /// test execution for tests they are applied to.
-  var customTestExecutor: CustomTestExecutor? { get }
+  var testExecutor: TestExecutor? { get }
 }
 
 /// A protocol that allows customizing the execution of a test function (and
@@ -73,12 +73,12 @@ public protocol Trait: Sendable {
 ///
 /// Types conforming to this protocol may be used in conjunction with a
 /// ``Trait``-conforming type by implementing the
-/// ``Trait/customTestExecutor-1dwpt`` property, allowing custom traits to
+/// ``Trait/testExecutor-714gp`` property, allowing custom traits to
 /// customize the execution of tests. Consolidating common set-up and tear-down
 /// logic for tests which have similar needs allows each test function to be
 /// more succinct with less repetitive boilerplate so it can focus on what makes
 /// it unique.
-public protocol CustomTestExecuting: Sendable {
+public protocol TestExecuting: Sendable {
   /// Execute a function for the specified test and/or test case.
   ///
   /// - Parameters:
@@ -99,8 +99,8 @@ public protocol CustomTestExecuting: Sendable {
   /// When the testing library is preparing to run a test, it finds all traits
   /// applied to that test (including those inherited from containing suites)
   /// and asks each for the value of its
-  /// ``Trait/customTestExecutor-1dwpt`` property. It then calls this method on
-  /// all non-`nil` instances, giving each an opportunity to perform
+  /// ``Trait/testExecutor-714gp`` property. It then calls this method
+  /// on all non-`nil` instances, giving each an opportunity to perform
   /// arbitrary work before or after invoking `function`.
   ///
   /// This method should either invoke `function` once before returning or throw
@@ -114,13 +114,13 @@ public protocol CustomTestExecuting: Sendable {
   func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws
 }
 
-extension Trait where Self: CustomTestExecuting {
-  public var customTestExecutor: Self? {
+extension Trait where Self: TestExecuting {
+  public var testExecutor: Self? {
     self
   }
 }
 
-extension Never: CustomTestExecuting {
+extension Never: TestExecuting {
   public func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {}
 }
 
@@ -153,8 +153,8 @@ extension Trait {
   }
 }
 
-extension Trait where CustomTestExecutor == Never {
-  public var customTestExecutor: CustomTestExecutor? {
+extension Trait where TestExecutor == Never {
+  public var testExecutor: TestExecutor? {
     nil
   }
 }
