@@ -49,5 +49,5 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 ### Customizing the execution of tests
 
 - ``TestExecuting``
-- ``Trait/testExecutor-714gp``
+- ``Trait/executor(for:testCase:)-26qgm``
 - ``Trait/TestExecutor``

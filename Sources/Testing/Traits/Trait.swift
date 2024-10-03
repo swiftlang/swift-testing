@@ -44,27 +44,55 @@ public protocol Trait: Sendable {
 
   /// The type of the test executor for this trait.
   ///
-  /// The default type is `Never`, which cannot be instantiated. This means the
-  /// value of the ``testExecutor-714gp`` property for all traits with
-  /// the default custom executor type is `nil`, meaning such traits will not
-  /// perform any custom execution for the tests they're applied to.
+  /// The default type is `Never`, which cannot be instantiated. The
+  /// ``executor(for:testCase:)-26qgm`` method for any trait with this default
+  /// test executor type must return `nil`, meaning that trait will not perform
+  /// any custom behavior for the tests it's applied to.
   associatedtype TestExecutor: TestExecuting = Never
 
-  /// The test executor for this trait, if any.
+  /// Get this trait's executor for the specified test and/or test case, if any.
   ///
-  /// If this trait's type conforms to ``TestExecuting``, the default value of
-  /// this property is `self` and this trait will be used to customize test
-  /// execution. This is the most straightforward way to implement a trait which
-  /// customizes the execution of tests.
+  /// - Parameters:
+  ///   - test: The test for which an executor is being requested.
+  ///   - testCase: The test case for which an executor is being requested, if
+  ///     any. When `test` represents a suite, the value of this argument is
+  ///     `nil`.
   ///
-  /// If the value of this property is an instance of a different type
-  /// conforming to ``TestExecuting``, that instance will be used to perform
-  /// test execution instead.
+  /// - Returns: An value of ``Trait/TestExecutor`` which should be used to
+  ///   customize the behavior of `test` and/or `testCase`, or `nil` if custom
+  ///   behavior should not be performed.
   ///
-  /// The default value of this property is `nil` (with the default type
-  /// `Never?`), meaning that instances of this type will not perform any custom
-  /// test execution for tests they are applied to.
-  var testExecutor: TestExecutor? { get }
+  /// If this trait's type conforms to ``TestExecuting``, the default value
+  /// returned by this method depends on `test` and/or `testCase`:
+  ///
+  /// - If `test` represents a suite, this trait must conform to ``SuiteTrait``.
+  ///   If the value of this suite trait's ``SuiteTrait/isRecursive`` property
+  ///   is `true`, then this method returns `nil`; otherwise, it returns `self`.
+  ///   This means that by default, a suite trait will _either_ perform its
+  ///   custom behavior once for the entire suite, or once per-test function it
+  ///   contains.
+  /// - Otherwise `test` represents a test function. If `testCase` is `nil`,
+  ///   this method returns `nil`; otherwise, it returns `self`. This means that
+  ///   by default, a trait which is applied to or inherited by a test function
+  ///   will perform its custom behavior once for each of that function's cases.
+  ///
+  /// A trait may explicitly implement this method to further customize the
+  /// default behaviors above. For example, if a trait should perform custom
+  /// test behavior both once per-suite and once per-test function in that suite,
+  /// it may implement the method and return a non-`nil` executor under those
+  /// conditions.
+  ///
+  /// A trait may also implement this method and return `nil` if it determines
+  /// that it does not need to perform any custom behavior for a particular test
+  /// at runtime, even if the test has the trait applied. This can improve
+  /// performance and make diagnostics clearer by avoiding an unnecessary call
+  /// to ``TestExecuting/execute(_:for:testCase:)``.
+  ///
+  /// If this trait's type does not conform to ``TestExecuting`` and its
+  /// associated ``Trait/TestExecutor`` type is the default `Never`, then this
+  /// method returns `nil` by default. This means that instances of this type
+  /// will not perform any custom test execution for tests they are applied to.
+  func executor(for test: Test, testCase: Test.Case?) -> TestExecutor?
 }
 
 /// A protocol that allows customizing the execution of a test function (and
@@ -73,7 +101,7 @@ public protocol Trait: Sendable {
 ///
 /// Types conforming to this protocol may be used in conjunction with a
 /// ``Trait``-conforming type by implementing the
-/// ``Trait/testExecutor-714gp`` property, allowing custom traits to
+/// ``Trait/executor(for:testCase:)-26qgm`` method, allowing custom traits to
 /// customize the execution of tests. Consolidating common set-up and tear-down
 /// logic for tests which have similar needs allows each test function to be
 /// more succinct with less repetitive boilerplate so it can focus on what makes
@@ -98,8 +126,8 @@ public protocol TestExecuting: Sendable {
   ///
   /// When the testing library is preparing to run a test, it finds all traits
   /// applied to that test (including those inherited from containing suites)
-  /// and asks each for the value of its
-  /// ``Trait/testExecutor-714gp`` property. It then calls this method
+  /// and asks each for its test executor (if any) by calling
+  /// ``Trait/executor(for:testCase:)-26qgm``. It then calls this method
   /// on all non-`nil` instances, giving each an opportunity to perform
   /// arbitrary work before or after invoking `function`.
   ///
@@ -115,8 +143,18 @@ public protocol TestExecuting: Sendable {
 }
 
 extension Trait where Self: TestExecuting {
-  public var testExecutor: Self? {
-    self
+  public func executor(for test: Test, testCase: Test.Case?) -> Self? {
+    testCase == nil ? nil : self
+  }
+}
+
+extension SuiteTrait where Self: TestExecuting {
+  public func executor(for test: Test, testCase: Test.Case?) -> Self? {
+    if test.isSuite {
+      isRecursive ? nil : self
+    } else {
+      testCase == nil ? nil : self
+    }
   }
 }
 
@@ -154,7 +192,7 @@ extension Trait {
 }
 
 extension Trait where TestExecutor == Never {
-  public var testExecutor: TestExecutor? {
+  public func executor(for test: Test, testCase: Test.Case?) -> TestExecutor? {
     nil
   }
 }

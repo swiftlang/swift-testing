@@ -90,7 +90,7 @@ extension Runner {
     // and ultimately the first trait is the first one to be invoked.
     let executeAllTraits = step.test.traits.lazy
       .reversed()
-      .compactMap { $0.testExecutor }
+      .compactMap { $0.executor(for: step.test, testCase: testCase) }
       .map { $0.execute(_:for:testCase:) }
       .reduce(body) { executeAllTraits, testExecutor in
         {
