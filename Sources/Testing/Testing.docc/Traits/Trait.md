@@ -48,6 +48,6 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 ### Customizing the execution of tests
 
-- ``CustomTestExecuting``
-- ``Trait/customTestExecutor-1dwpt``
-- ``Trait/CustomTestExecutor``
+- ``TestExecuting``
+- ``Trait/testExecutor-714gp``
+- ``Trait/TestExecutor``

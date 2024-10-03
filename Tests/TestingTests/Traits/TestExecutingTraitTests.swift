@@ -10,8 +10,8 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-@Suite("CustomTestExecuting-conforming Trait Tests")
-struct CustomTestExecutingTraitTests {
+@Suite("TestExecuting-conforming Trait Tests")
+struct TestExecutingTraitTests {
   @Test("Execute code before and after a non-parameterized test.")
   func executeCodeBeforeAndAfterNonParameterizedTest() async {
     // `expectedCount` is 2 because we run it both for the test and the test case
@@ -65,7 +65,7 @@ struct CustomTestExecutingTraitTests {
 
 // MARK: - Fixtures
 
-private struct CustomTrait: TestTrait, CustomTestExecuting {
+private struct CustomTrait: TestTrait, TestExecuting {
   var before: Confirmation
   var after: Confirmation
   func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
@@ -77,7 +77,7 @@ private struct CustomTrait: TestTrait, CustomTestExecuting {
   }
 }
 
-private struct CustomThrowingErrorTrait: TestTrait, CustomTestExecuting {
+private struct CustomThrowingErrorTrait: TestTrait, TestExecuting {
   fileprivate struct CustomTraitError: Error {}
 
   func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
@@ -85,7 +85,7 @@ private struct CustomThrowingErrorTrait: TestTrait, CustomTestExecuting {
   }
 }
 
-struct DoSomethingBeforeAndAfterTrait: SuiteTrait, TestTrait, CustomTestExecuting {
+struct DoSomethingBeforeAndAfterTrait: SuiteTrait, TestTrait, TestExecuting {
   static let state = Locked(rawValue: 0)
 
   func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
