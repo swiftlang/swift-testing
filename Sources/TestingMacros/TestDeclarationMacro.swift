@@ -172,62 +172,6 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     return FunctionParameterClauseSyntax(parameters: parameterList)
   }
 
-  /// Create a closure capture list used to capture the arguments to a function
-  /// when calling it from its corresponding thunk function.
-  ///
-  /// - Parameters:
-  ///   - parametersWithLabels: A sequence of tuples containing parameters to
-  ///     the original function and their corresponding identifiers as used by
-  ///     the thunk function.
-  ///
-  /// - Returns: A closure capture list syntax node representing the arguments
-  ///   to the thunk function.
-  ///
-  /// We need to construct a capture list when calling a synchronous test
-  /// function because of the call to `__ifMainActorIsolationEnforced(_:else:)`
-  /// that we insert. That function theoretically captures all arguments twice,
-  /// which is not allowed for arguments marked `borrowing` or `consuming`. The
-  /// capture list forces those arguments to be copied, side-stepping the issue.
-  ///
-  /// - Note: We do not support move-only types as arguments yet. Instances of
-  ///   move-only types cannot be used with generics, so they cannot be elements
-  ///   of a `Collection`.
-  private static func _createCaptureListExpr(
-    from parametersWithLabels: some Sequence<(DeclReferenceExprSyntax, FunctionParameterSyntax)>
-  ) -> ClosureCaptureClauseSyntax {
-    let specifierKeywordsNeedingCopy: [TokenKind] = [.keyword(.borrowing), .keyword(.consuming),]
-    let closureCaptures = parametersWithLabels.lazy.map { label, parameter in
-      var needsCopy = false
-      if let parameterType = parameter.type.as(AttributedTypeSyntax.self) {
-        needsCopy = parameterType.specifiers.contains { specifier in
-          guard case let .simpleTypeSpecifier(specifier) = specifier else {
-            return false
-          }
-          return specifierKeywordsNeedingCopy.contains(specifier.specifier.tokenKind)
-        }
-      }
-
-      if needsCopy {
-        return ClosureCaptureSyntax(
-          name: label.baseName,
-          equal: .equalToken(),
-          expression: CopyExprSyntax(
-            copyKeyword: .keyword(.copy).with(\.trailingTrivia, .space),
-            expression: label
-          )
-        )
-      } else {
-        return ClosureCaptureSyntax(expression: label)
-      }
-    }
-
-    return ClosureCaptureClauseSyntax {
-      for closureCapture in closureCaptures {
-        closureCapture
-      }
-    }
-  }
-
   /// The `static` keyword, if `typeName` is not `nil`.
   ///
   /// - Parameters:
@@ -269,7 +213,6 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // needed, so it's lazy.
     let forwardedParamsExpr = _createForwardedParamsExpr(from: parametersWithLabels)
     let thunkParamsExpr = _createThunkParamsExpr(from: parametersWithLabels)
-    lazy var captureListExpr = _createCaptureListExpr(from: parametersWithLabels)
 
     // How do we call a function if we don't know whether it's `async` or
     // `throws`? Yes, we know if the keywords are on the function, but it could
@@ -348,13 +291,21 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // main actor, it may still need to run main-actor-isolated depending on the
     // runtime configuration in the test process.
     if functionDecl.signature.effectSpecifiers?.asyncSpecifier == nil && !isMainActorIsolated {
-      thunkBody = """
-      try await Testing.__ifMainActorIsolationEnforced { \(captureListExpr) in
+      if functionDecl.signature.parameterClause.parameters.tokens(viewMode: .sourceAccurate)
+        .map(\.tokenKind)
+        .contains(.keyword(.borrowing)) {
+        // BUG: rdar://137308488 The compiler cannot tell that this thunk calls
+        // its closure only once, so it emits a diagnostic about consuming the
+        // borrowed parameter. Work around the diagnostic by not emitting the
+        // isolation context hop. It's unfortunate but should rarely be a
+        // problem since we don't support move-only arguments anyway (see #543.)
+      } else {
+        thunkBody = """
+        try await Testing.__withDefaultIsolationContext { _ in
         \(thunkBody)
-      } else: { \(captureListExpr) in
-        \(thunkBody)
+        }
+        """
       }
-      """
     }
 
     // Add availability guards if needed.

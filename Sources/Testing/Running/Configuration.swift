@@ -105,14 +105,13 @@ public struct Configuration: Sendable {
   /// By default, the value of this property allows for a single iteration.
   public var repetitionPolicy: RepetitionPolicy = .once
 
-  // MARK: - Main actor isolation
+  // MARK: - Isolation context for synchronous tests
 
-#if !SWT_NO_GLOBAL_ACTORS
-  /// Whether or not synchronous test functions need to run on the main actor.
+  /// The isolation context to use for synchronous test functions.
   ///
-  /// This property is available on platforms where UI testing is implemented.
-  public var isMainActorIsolationEnforced = false
-#endif
+  /// If the value of this property is `nil`, synchronous test functions run in
+  /// an unspecified isolation context.
+  public var defaultIsolationContext: (any Actor)? = nil
 
   // MARK: - Time limits
 
@@ -232,4 +231,24 @@ public struct Configuration: Sendable {
 
   /// The test case filter to which test cases should be filtered when run.
   public var testCaseFilter: TestCaseFilter = { _, _ in true }
+}
+
+// MARK: - Deprecated
+
+extension Configuration {
+#if !SWT_NO_GLOBAL_ACTORS
+  @available(*, deprecated, message: "Set defaultIsolationContext instead.")
+  public var isMainActorIsolationEnforced: Bool {
+    get {
+      defaultIsolationContext === MainActor.shared
+    }
+    set {
+      if newValue {
+        defaultIsolationContext = MainActor.shared
+      } else {
+        defaultIsolationContext = nil
+      }
+    }
+  }
+#endif
 }

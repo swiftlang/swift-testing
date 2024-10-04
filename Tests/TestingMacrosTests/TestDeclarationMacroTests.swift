@@ -325,8 +325,6 @@ struct TestDeclarationMacroTests {
       ("@Test @_unavailableFromAsync @MainActor func f() {}", nil, "MainActor.run"),
       ("@Test @available(*, noasync) func f() {}", nil, "__requiringTry"),
       ("@Test @_unavailableFromAsync func f() {}", nil, "__requiringTry"),
-      ("@Test(arguments: []) func f(i: borrowing Int) {}", nil, "copy"),
-      ("@Test(arguments: []) func f(_ i: borrowing Int) {}", nil, "copy"),
       ("@Test(arguments: []) func f(f: () -> String) {}", "(() -> String).self", nil),
       ("struct S {\n\t@Test func testF() {} }", nil, "__invokeXCTestCaseMethod"),
       ("struct S {\n\t@Test func testF() throws {} }", nil, "__invokeXCTestCaseMethod"),
