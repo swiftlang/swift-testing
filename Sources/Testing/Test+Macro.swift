@@ -504,25 +504,12 @@ extension Test {
   value
 }
 
-/// Invoke a function isolated to the default isolation context.
+/// The current default isolation context.
 ///
-/// - Parameters:
-///   - body: The function to invoke.
-///
-/// - Returns: Whatever is returned by `body`.
-///
-/// - Throws: Whatever is thrown by `body`.
-///
-/// This function invokes `body` isolated to the default isolation context as
-/// specified when configuring the test run.
-///
-/// - Warning: This function is used to implement the `@Test` macro. Do not call
+/// - Warning: This property is used to implement the `@Test` macro. Do not call
 ///   it directly.
-public func __withDefaultIsolationContext<R>(
-  isolation: isolated (any Actor)? = #isolation,
-  _ body: (isolated (any Actor)?) async throws -> R
-) async throws -> R where R: Sendable {
-  try await body(Configuration.current?.defaultIsolationContext ?? isolation)
+public var __defaultIsolationContext: (any Actor)? {
+  Configuration.current?.defaultIsolationContext ?? #isolation
 }
 
 /// Run a test function as an `XCTestCase`-compatible method.

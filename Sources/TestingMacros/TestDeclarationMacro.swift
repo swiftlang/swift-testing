@@ -233,7 +233,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // If the function is noasync *and* main-actor-isolated, we'll call through
     // MainActor.run to invoke it. We do not have a general mechanism for
     // detecting isolation to other global actors.
-    lazy var isMainActorIsolated = !functionDecl.attributes(named: "MainActor", inModuleNamed: "Swift").isEmpty
+    lazy var isMainActorIsolated = !functionDecl.attributes(named: "MainActor", inModuleNamed: "_Concurrency").isEmpty
     var forwardCall: (ExprSyntax) -> ExprSyntax = {
       "try await Testing.__requiringTry(Testing.__requiringAwait(\($0)))"
     }
@@ -288,24 +288,13 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     }
 
     // If this function is synchronous and is not explicitly isolated to the
-    // main actor, it may still need to run main-actor-isolated depending on the
-    // runtime configuration in the test process.
+    // main actor, it should run in the configured default isolation context.
     if functionDecl.signature.effectSpecifiers?.asyncSpecifier == nil && !isMainActorIsolated {
-      if functionDecl.signature.parameterClause.parameters.tokens(viewMode: .sourceAccurate)
-        .map(\.tokenKind)
-        .contains(.keyword(.borrowing)) {
-        // BUG: rdar://137308488 The compiler cannot tell that this thunk calls
-        // its closure only once, so it emits a diagnostic about consuming the
-        // borrowed parameter. Work around the diagnostic by not emitting the
-        // isolation context hop. It's unfortunate but should rarely be a
-        // problem since we don't support move-only arguments anyway (see #543.)
-      } else {
-        thunkBody = """
-        try await Testing.__withDefaultIsolationContext { _ in
+      thunkBody = """
+      try await { (_: isolated (any Actor)?) async throws in
         \(thunkBody)
-        }
-        """
-      }
+      }(__defaultIsolationContext)
+      """
     }
 
     // Add availability guards if needed.
