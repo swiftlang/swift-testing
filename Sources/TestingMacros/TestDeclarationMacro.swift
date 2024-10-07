@@ -291,12 +291,13 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // not explicitly isolated to some actor, it should run in the configured
     // default isolation context. If the suite type is an actor, this will cause
     // a hop off the actor followed by an immediate hop back on, but otherwise
-    // should be harmless.
+    // should be harmless. Note that we do not support specifying an `isolated`
+    // argument on a test function at this time.
     //
     // We use a second, inner thunk function here instead of just adding the
     // isolation parameter to the "real" thunk because adding it there prevents
     // correct tuple desugaring of the "real" arguments to the thunk.
-    if functionDecl.signature.effectSpecifiers?.asyncSpecifier == nil && !isMainActorIsolated && !functionDecl.isNonisolated && functionDecl.isolatedParameter == nil {
+    if functionDecl.signature.effectSpecifiers?.asyncSpecifier == nil && !isMainActorIsolated && !functionDecl.isNonisolated {
       // Get a unique name for this secondary thunk. We don't need it to be
       // uniqued against functionDecl because it's interior to the "real" thunk,
       // so its name can't conflict with any other names visible in this scope.

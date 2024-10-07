@@ -822,6 +822,10 @@ final class RunnerTests: XCTestCase {
     @Test(.hidden) @MainActor func asyncButRunsOnMainActor() async {
       XCTAssertTrue(Thread.isMainThread)
     }
+
+    @Test(.hidden) nonisolated func runsNonisolated() {
+      XCTAssertFalse(Thread.isMainThread)
+    }
   }
 
   @available(*, deprecated)
