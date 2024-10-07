@@ -172,62 +172,6 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     return FunctionParameterClauseSyntax(parameters: parameterList)
   }
 
-  /// Create a closure capture list used to capture the arguments to a function
-  /// when calling it from its corresponding thunk function.
-  ///
-  /// - Parameters:
-  ///   - parametersWithLabels: A sequence of tuples containing parameters to
-  ///     the original function and their corresponding identifiers as used by
-  ///     the thunk function.
-  ///
-  /// - Returns: A closure capture list syntax node representing the arguments
-  ///   to the thunk function.
-  ///
-  /// We need to construct a capture list when calling a synchronous test
-  /// function because of the call to `__ifMainActorIsolationEnforced(_:else:)`
-  /// that we insert. That function theoretically captures all arguments twice,
-  /// which is not allowed for arguments marked `borrowing` or `consuming`. The
-  /// capture list forces those arguments to be copied, side-stepping the issue.
-  ///
-  /// - Note: We do not support move-only types as arguments yet. Instances of
-  ///   move-only types cannot be used with generics, so they cannot be elements
-  ///   of a `Collection`.
-  private static func _createCaptureListExpr(
-    from parametersWithLabels: some Sequence<(DeclReferenceExprSyntax, FunctionParameterSyntax)>
-  ) -> ClosureCaptureClauseSyntax {
-    let specifierKeywordsNeedingCopy: [TokenKind] = [.keyword(.borrowing), .keyword(.consuming),]
-    let closureCaptures = parametersWithLabels.lazy.map { label, parameter in
-      var needsCopy = false
-      if let parameterType = parameter.type.as(AttributedTypeSyntax.self) {
-        needsCopy = parameterType.specifiers.contains { specifier in
-          guard case let .simpleTypeSpecifier(specifier) = specifier else {
-            return false
-          }
-          return specifierKeywordsNeedingCopy.contains(specifier.specifier.tokenKind)
-        }
-      }
-
-      if needsCopy {
-        return ClosureCaptureSyntax(
-          name: label.baseName,
-          equal: .equalToken(),
-          expression: CopyExprSyntax(
-            copyKeyword: .keyword(.copy).with(\.trailingTrivia, .space),
-            expression: label
-          )
-        )
-      } else {
-        return ClosureCaptureSyntax(expression: label)
-      }
-    }
-
-    return ClosureCaptureClauseSyntax {
-      for closureCapture in closureCaptures {
-        closureCapture
-      }
-    }
-  }
-
   /// The `static` keyword, if `typeName` is not `nil`.
   ///
   /// - Parameters:
@@ -269,7 +213,6 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // needed, so it's lazy.
     let forwardedParamsExpr = _createForwardedParamsExpr(from: parametersWithLabels)
     let thunkParamsExpr = _createThunkParamsExpr(from: parametersWithLabels)
-    lazy var captureListExpr = _createCaptureListExpr(from: parametersWithLabels)
 
     // How do we call a function if we don't know whether it's `async` or
     // `throws`? Yes, we know if the keywords are on the function, but it could
@@ -290,7 +233,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // If the function is noasync *and* main-actor-isolated, we'll call through
     // MainActor.run to invoke it. We do not have a general mechanism for
     // detecting isolation to other global actors.
-    lazy var isMainActorIsolated = !functionDecl.attributes(named: "MainActor", inModuleNamed: "Swift").isEmpty
+    lazy var isMainActorIsolated = !functionDecl.attributes(named: "MainActor", inModuleNamed: "_Concurrency").isEmpty
     var forwardCall: (ExprSyntax) -> ExprSyntax = {
       "try await Testing.__requiringTry(Testing.__requiringAwait(\($0)))"
     }
@@ -315,7 +258,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       if functionDecl.isStaticOrClass {
         thunkBody = "_ = \(forwardCall("\(typeName).\(functionDecl.name.trimmed)\(forwardedParamsExpr)"))"
       } else {
-        let instanceName = context.makeUniqueName(thunking: functionDecl)
+        let instanceName = context.makeUniqueName("")
         let varOrLet = functionDecl.isMutating ? "var" : "let"
         thunkBody = """
         \(raw: varOrLet) \(raw: instanceName) = \(forwardInit("\(typeName)()"))
@@ -344,16 +287,45 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       thunkBody = "_ = \(forwardCall("\(functionDecl.name.trimmed)\(forwardedParamsExpr)"))"
     }
 
-    // If this function is synchronous and is not explicitly isolated to the
-    // main actor, it may still need to run main-actor-isolated depending on the
-    // runtime configuration in the test process.
-    if functionDecl.signature.effectSpecifiers?.asyncSpecifier == nil && !isMainActorIsolated {
+    // If this function is synchronous, is not explicitly nonisolated, and is
+    // not explicitly isolated to some actor, it should run in the configured
+    // default isolation context. If the suite type is an actor, this will cause
+    // a hop off the actor followed by an immediate hop back on, but otherwise
+    // should be harmless. Note that we do not support specifying an `isolated`
+    // parameter on a test function at this time.
+    //
+    // We use a second, inner thunk function here instead of just adding the
+    // isolation parameter to the "real" thunk because adding it there prevents
+    // correct tuple desugaring of the "real" arguments to the thunk.
+    if functionDecl.signature.effectSpecifiers?.asyncSpecifier == nil && !isMainActorIsolated && !functionDecl.isNonisolated {
+      // Get a unique name for this secondary thunk. We don't need it to be
+      // uniqued against functionDecl because it's interior to the "real" thunk,
+      // so its name can't conflict with any other names visible in this scope.
+      let isolationThunkName = context.makeUniqueName("")
+
+      // Insert a (defaulted) isolated argument. If we emit a closure (or inner
+      // function) that captured the arguments to the "real" thunk, the compiler
+      // has trouble reasoning about the lifetime of arguments to that closure
+      // especially if those arguments are borrowed or consumed, which results
+      // in hard-to-avoid compile-time errors. Fortunately, forwarding the full
+      // argument list is straightforward.
+      let thunkParamsExprCopy = FunctionParameterClauseSyntax {
+        for thunkParam in thunkParamsExpr.parameters {
+          thunkParam
+        }
+        FunctionParameterSyntax(
+          modifiers: [DeclModifierSyntax(name: .keyword(.isolated))],
+          firstName: .wildcardToken(),
+          type: "isolated (any Actor)?" as TypeSyntax,
+          defaultValue: InitializerClauseSyntax(value: "Testing.__defaultSynchronousIsolationContext" as ExprSyntax)
+        )
+      }
+
       thunkBody = """
-      try await Testing.__ifMainActorIsolationEnforced { \(captureListExpr) in
-        \(thunkBody)
-      } else: { \(captureListExpr) in
+      @Sendable func \(isolationThunkName)\(thunkParamsExprCopy) async throws {
         \(thunkBody)
       }
+      try await \(isolationThunkName)\(forwardedParamsExpr)
       """
     }
 

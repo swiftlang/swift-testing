@@ -504,58 +504,13 @@ extension Test {
   value
 }
 
-#if !SWT_NO_GLOBAL_ACTORS
-/// Invoke a function isolated to the main actor if appropriate.
+/// The current default isolation context.
 ///
-/// - Parameters:
-///   - thenBody: The function to invoke, isolated to the main actor, if actor
-///     isolation is required.
-///   - elseBody: The function to invoke if actor isolation is not required.
-///
-/// - Returns: Whatever is returned by `thenBody` or `elseBody`.
-///
-/// - Throws: Whatever is thrown by `thenBody` or `elseBody`.
-///
-/// `thenBody` and `elseBody` should represent the same function with differing
-/// actor isolation. Which one is invoked depends on whether or not synchronous
-/// test functions need to run on the main actor.
-///
-/// - Warning: This function is used to implement the `@Test` macro. Do not call
+/// - Warning: This property is used to implement the `@Test` macro. Do not call
 ///   it directly.
-public func __ifMainActorIsolationEnforced<R>(
-  _ thenBody: @Sendable @MainActor () async throws -> R,
-  else elseBody: @Sendable () async throws -> R
-) async throws -> R where R: Sendable {
-  if Configuration.current?.isMainActorIsolationEnforced == true {
-    try await thenBody()
-  } else {
-    try await elseBody()
-  }
+public var __defaultSynchronousIsolationContext: (any Actor)? {
+  Configuration.current?.defaultSynchronousIsolationContext ?? #isolation
 }
-#else
-/// Invoke a function.
-///
-/// - Parameters:
-///   - body: The function to invoke.
-///
-/// - Returns: Whatever is returned by `body`.
-///
-/// - Throws: Whatever is thrown by `body`.
-///
-/// This function simply invokes `body`. Its signature matches that of the same
-/// function when `SWT_NO_GLOBAL_ACTORS` is not defined so that it can be used
-/// during expansion of the `@Test` macro without knowing the value of that
-/// compiler conditional on the target platform.
-///
-/// - Warning: This function is used to implement the `@Test` macro. Do not call
-///   it directly.
-@inlinable public func __ifMainActorIsolationEnforced<R>(
-  _: @Sendable () async throws -> R,
-  else body: @Sendable () async throws -> R
-) async throws -> R where R: Sendable {
-  try await body()
-}
-#endif
 
 /// Run a test function as an `XCTestCase`-compatible method.
 ///

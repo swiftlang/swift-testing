@@ -99,11 +99,27 @@ struct SendableTests: Sendable {
   @Test(.hidden, arguments: FixtureData.zeroUpTo100)
   func parameterizedBorrowingAsync(i: borrowing Int) async {}
 
+  @MainActor
+  @Test(.hidden, arguments: FixtureData.zeroUpTo100)
+  func parameterizedBorrowingMainActor(i: borrowing Int) {}
+
+  @available(*, noasync)
+  @Test(.hidden, arguments: FixtureData.zeroUpTo100)
+  func parameterizedBorrowingNoasync(i: borrowing Int) {}
+
   @Test(.hidden, arguments: FixtureData.zeroUpTo100)
   func parameterizedConsuming(i: consuming Int) {}
 
   @Test(.hidden, arguments: FixtureData.zeroUpTo100)
   func parameterizedConsumingAsync(i: consuming Int) async { }
+
+  @MainActor
+  @Test(.hidden, arguments: FixtureData.zeroUpTo100)
+  func parameterizedConsumingMainActor(i: consuming Int) {}
+
+  @available(*, noasync)
+  @Test(.hidden, arguments: FixtureData.zeroUpTo100)
+  func parameterizedConsumingNoasync(i: consuming Int) {}
 
   @Test(.hidden, arguments: FixtureData.stringReturningClosureArray)
   func parameterizedAcceptingFunction(f: @Sendable () -> String) {}

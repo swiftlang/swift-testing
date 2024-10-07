@@ -26,6 +26,13 @@ extension FunctionDeclSyntax {
       .contains(.keyword(.mutating))
   }
 
+  /// Whether or not this function is a `nonisolated` function.
+  var isNonisolated: Bool {
+    modifiers.lazy
+      .map(\.name.tokenKind)
+      .contains(.keyword(.nonisolated))
+  }
+
   /// The name of this function including parentheses, parameter labels, and
   /// colons.
   var completeName: String {

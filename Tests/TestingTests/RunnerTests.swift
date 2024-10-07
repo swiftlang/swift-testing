@@ -807,7 +807,11 @@ final class RunnerTests: XCTestCase {
   @TaskLocal static var isMainActorIsolationEnforced = false
 
   @Suite(.hidden) struct MainActorIsolationTests {
-    @Test(.hidden) func mustRunOnMainActor() {
+    @Test(.hidden) func mightRunOnMainActor() {
+      XCTAssertEqual(Thread.isMainThread, isMainActorIsolationEnforced)
+    }
+
+    @Test(.hidden, arguments: 0 ..< 10) func mightRunOnMainActor(arg: Int) {
       XCTAssertEqual(Thread.isMainThread, isMainActorIsolationEnforced)
     }
 
@@ -822,8 +826,13 @@ final class RunnerTests: XCTestCase {
     @Test(.hidden) @MainActor func asyncButRunsOnMainActor() async {
       XCTAssertTrue(Thread.isMainThread)
     }
+
+    @Test(.hidden) nonisolated func runsNonisolated() {
+      XCTAssertFalse(Thread.isMainThread)
+    }
   }
 
+  @available(*, deprecated)
   func testSynchronousTestFunctionRunsOnMainActorWhenEnforced() async {
     var configuration = Configuration()
     configuration.isMainActorIsolationEnforced = true
@@ -832,6 +841,19 @@ final class RunnerTests: XCTestCase {
     }
 
     configuration.isMainActorIsolationEnforced = false
+    await Self.$isMainActorIsolationEnforced.withValue(false) {
+      await runTest(for: MainActorIsolationTests.self, configuration: configuration)
+    }
+  }
+
+  func testSynchronousTestFunctionRunsInDefaultIsolationContext() async {
+    var configuration = Configuration()
+    configuration.defaultSynchronousIsolationContext = MainActor.shared
+    await Self.$isMainActorIsolationEnforced.withValue(true) {
+      await runTest(for: MainActorIsolationTests.self, configuration: configuration)
+    }
+
+    configuration.defaultSynchronousIsolationContext = nil
     await Self.$isMainActorIsolationEnforced.withValue(false) {
       await runTest(for: MainActorIsolationTests.self, configuration: configuration)
     }
