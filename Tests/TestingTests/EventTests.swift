@@ -24,7 +24,7 @@ struct EventTests {
               differenceDescription: "Difference Description",
               isPassing: false,
               isRequired: true,
-              sourceLocation: #_sourceLocation
+              sourceLocation: SourceLocation(fileID: "M/f.swift", filePath: "/f.swift", line: 1, column: 1)
             )
           ),
           Event.Kind.testSkipped(
@@ -32,7 +32,7 @@ struct EventTests {
               comment: "Comment",
               sourceContext: SourceContext(
                 backtrace: Backtrace.current(),
-                sourceLocation: #_sourceLocation
+                sourceLocation: SourceLocation(fileID: "M/f.swift", filePath: "/f.swift", line: 1, column: 1)
               )
             )
           ),
