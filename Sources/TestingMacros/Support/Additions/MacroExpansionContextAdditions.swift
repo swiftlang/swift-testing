@@ -62,44 +62,18 @@ extension MacroExpansionContext {
       .tokens(viewMode: .fixedUp)
       .map(\.textWithoutBackticks)
       .joined()
+    let crcValue = crc32(identifierCharacters.utf8)
+    let suffix = String(crcValue, radix: 16, uppercase: false)
 
-    // Strip out any characters in the function's signature that won't play well
-    // in a generated symbol name.
-    let identifier = String(
-      identifierCharacters.map { character in
-        if character.isLetter || character.isWholeNumber {
-          return character
-        }
-        return "_"
-      }
-    )
-
-    // If there is a non-ASCII character in the identifier, we might be
-    // stripping it out above because we are only looking for letters and
-    // digits. If so, add in a hash of the identifier to improve entropy and
-    // reduce the risk of a collision.
-    //
-    // For example, the following function names will produce identical unique
-    // names without this mutation:
-    //
-    // @Test(arguments: [0]) func A(🙃: Int) {}
-    // @Test(arguments: [0]) func A(🙂: Int) {}
-    //
-    // Note the check here is not the same as the one above: punctuation like
-    // "(" should be replaced, but should not cause a hash to be emitted since
-    // it does not contribute any entropy to the makeUniqueName() algorithm.
-    //
-    // The intent here is not to produce a cryptographically strong hash, but to
-    // disambiguate between superficially similar function names. A collision
-    // may still occur, but we only need it to be _unlikely_. CRC-32 is good
-    // enough for our purposes.
-    if !identifierCharacters.allSatisfy(\.isASCII) {
-      let crcValue = crc32(identifierCharacters.utf8)
-      let suffix = String(crcValue, radix: 16, uppercase: false)
-      return makeUniqueName("\(prefix)\(identifier)_\(suffix)")
+    // If the caller did not specify a prefix and the CRC32 value starts with a
+    // digit, include a single-character prefix to ensure that Swift's name
+    // demangling still works correctly.
+    var prefix = prefix
+    if prefix.isEmpty, let firstSuffixCharacter = suffix.first, firstSuffixCharacter.isWholeNumber {
+      prefix = "Z"
     }
 
-    return makeUniqueName("\(prefix)\(identifier)")
+    return makeUniqueName("\(prefix)\(suffix)")
   }
 }
 
