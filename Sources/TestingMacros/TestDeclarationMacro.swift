@@ -287,13 +287,44 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       thunkBody = "_ = \(forwardCall("\(functionDecl.name.trimmed)\(forwardedParamsExpr)"))"
     }
 
-    // If this function is synchronous and is not explicitly isolated to the
-    // main actor, it should run in the configured default isolation context.
-    if functionDecl.signature.effectSpecifiers?.asyncSpecifier == nil && !isMainActorIsolated {
+    // If this function is synchronous, is not explicitly nonisolated, and is
+    // not explicitly isolated to some actor, it should run in the configured
+    // default isolation context. If the suite type is an actor, this will cause
+    // a hop off the actor followed by an immediate hop back on, but otherwise
+    // should be harmless.
+    //
+    // We use a second, inner thunk function here instead of just adding the
+    // isolation parameter to the "real" thunk because adding it there prevents
+    // correct tuple desugaring of the "real" arguments to the thunk.
+    if functionDecl.signature.effectSpecifiers?.asyncSpecifier == nil && !isMainActorIsolated && !functionDecl.isNonisolated && functionDecl.isolatedParameter == nil {
+      // Get a unique name for this secondary thunk. We don't need it to be
+      // uniqued against functionDecl because it's interior to the "real" thunk,
+      // so its name can't conflict with any other names visible in this scope.
+      let isolationThunkName = context.makeUniqueName("")
+
+      // Insert a (defaulted) isolated argument. If we emit a closure (or inner
+      // function) that captured the arguments to the "real" thunk, the compiler
+      // has trouble reasoning about the lifetime of arguments to that closure
+      // especially if those arguments are borrowed or consumed, which results
+      // in hard-to-avoid compile-time errors. Fortunately, forwarding the full
+      // argument list is straightforward.
+      let thunkParamsExprCopy = FunctionParameterClauseSyntax {
+        for thunkParam in thunkParamsExpr.parameters {
+          thunkParam
+        }
+        FunctionParameterSyntax(
+          modifiers: [DeclModifierSyntax(name: .keyword(.isolated))],
+          firstName: .wildcardToken(),
+          type: "isolated (any Actor)?" as TypeSyntax,
+          defaultValue: InitializerClauseSyntax(value: "Testing.__defaultIsolationContext" as ExprSyntax)
+        )
+      }
+
       thunkBody = """
-      try await { (_: isolated (any Actor)?) async throws in
+      @Sendable func \(isolationThunkName)\(thunkParamsExprCopy) async throws {
         \(thunkBody)
-      }(__defaultIsolationContext)
+      }
+      try await \(isolationThunkName)\(forwardedParamsExpr)
       """
     }
 

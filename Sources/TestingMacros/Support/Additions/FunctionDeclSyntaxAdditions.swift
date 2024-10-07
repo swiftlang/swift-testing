@@ -26,6 +26,28 @@ extension FunctionDeclSyntax {
       .contains(.keyword(.mutating))
   }
 
+  /// Whether or not this function is a `nonisolated` function.
+  var isNonisolated: Bool {
+    modifiers.lazy
+      .map(\.name.tokenKind)
+      .contains(.keyword(.nonisolated))
+  }
+
+  /// The `isolated` parameter of this function, if any.
+  var isolatedParameter: FunctionParameterSyntax? {
+    signature.parameterClause.parameters.first { parameter in
+      guard let type = parameter.type.as(AttributedTypeSyntax.self) else {
+        return false
+      }
+      return type.specifiers.contains { specifier in
+        guard case let .simpleTypeSpecifier(specifier) = specifier else {
+          return false
+        }
+        return specifier.specifier.tokenKind == .keyword(.isolated)
+      }
+    }
+  }
+
   /// The name of this function including parentheses, parameter labels, and
   /// colons.
   var completeName: String {
