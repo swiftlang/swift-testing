@@ -848,12 +848,12 @@ final class RunnerTests: XCTestCase {
 
   func testSynchronousTestFunctionRunsInDefaultIsolationContext() async {
     var configuration = Configuration()
-    configuration.defaultIsolationContext = MainActor.shared
+    configuration.defaultSynchronousIsolationContext = MainActor.shared
     await Self.$isMainActorIsolationEnforced.withValue(true) {
       await runTest(for: MainActorIsolationTests.self, configuration: configuration)
     }
 
-    configuration.defaultIsolationContext = nil
+    configuration.defaultSynchronousIsolationContext = nil
     await Self.$isMainActorIsolationEnforced.withValue(false) {
       await runTest(for: MainActorIsolationTests.self, configuration: configuration)
     }

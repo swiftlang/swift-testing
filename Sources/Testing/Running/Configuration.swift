@@ -111,7 +111,7 @@ public struct Configuration: Sendable {
   ///
   /// If the value of this property is `nil`, synchronous test functions run in
   /// an unspecified isolation context.
-  public var defaultIsolationContext: (any Actor)? = nil
+  public var defaultSynchronousIsolationContext: (any Actor)? = nil
 
   // MARK: - Time limits
 
@@ -237,16 +237,16 @@ public struct Configuration: Sendable {
 
 extension Configuration {
 #if !SWT_NO_GLOBAL_ACTORS
-  @available(*, deprecated, message: "Set defaultIsolationContext instead.")
+  @available(*, deprecated, message: "Set defaultSynchronousIsolationContext instead.")
   public var isMainActorIsolationEnforced: Bool {
     get {
-      defaultIsolationContext === MainActor.shared
+      defaultSynchronousIsolationContext === MainActor.shared
     }
     set {
       if newValue {
-        defaultIsolationContext = MainActor.shared
+        defaultSynchronousIsolationContext = MainActor.shared
       } else {
-        defaultIsolationContext = nil
+        defaultSynchronousIsolationContext = nil
       }
     }
   }

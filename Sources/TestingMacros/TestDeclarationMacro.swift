@@ -292,7 +292,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // default isolation context. If the suite type is an actor, this will cause
     // a hop off the actor followed by an immediate hop back on, but otherwise
     // should be harmless. Note that we do not support specifying an `isolated`
-    // argument on a test function at this time.
+    // parameter on a test function at this time.
     //
     // We use a second, inner thunk function here instead of just adding the
     // isolation parameter to the "real" thunk because adding it there prevents
@@ -317,7 +317,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
           modifiers: [DeclModifierSyntax(name: .keyword(.isolated))],
           firstName: .wildcardToken(),
           type: "isolated (any Actor)?" as TypeSyntax,
-          defaultValue: InitializerClauseSyntax(value: "Testing.__defaultIsolationContext" as ExprSyntax)
+          defaultValue: InitializerClauseSyntax(value: "Testing.__defaultSynchronousIsolationContext" as ExprSyntax)
         )
       }
 

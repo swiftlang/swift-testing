@@ -508,8 +508,8 @@ extension Test {
 ///
 /// - Warning: This property is used to implement the `@Test` macro. Do not call
 ///   it directly.
-public var __defaultIsolationContext: (any Actor)? {
-  Configuration.current?.defaultIsolationContext ?? #isolation
+public var __defaultSynchronousIsolationContext: (any Actor)? {
+  Configuration.current?.defaultSynchronousIsolationContext ?? #isolation
 }
 
 /// Run a test function as an `XCTestCase`-compatible method.
