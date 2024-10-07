@@ -258,7 +258,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       if functionDecl.isStaticOrClass {
         thunkBody = "_ = \(forwardCall("\(typeName).\(functionDecl.name.trimmed)\(forwardedParamsExpr)"))"
       } else {
-        let instanceName = context.makeUniqueName(thunking: functionDecl)
+        let instanceName = context.makeUniqueName("")
         let varOrLet = functionDecl.isMutating ? "var" : "let"
         thunkBody = """
         \(raw: varOrLet) \(raw: instanceName) = \(forwardInit("\(typeName)()"))
