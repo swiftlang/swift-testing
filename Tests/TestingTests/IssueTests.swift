@@ -1120,7 +1120,7 @@ final class IssueTests: XCTestCase {
     await Test {
       let range_int8: ClosedRange<Int> = Int(Int8.min)...Int(Int8.max)
       let range_uint16: ClosedRange<Int> = Int(UInt16.min)...Int(UInt16.max)
-      let range_int64: ClosedRange<Int> = Int(Int64.min)...Int(Int64.max)
+      let range_int64: ClosedRange<Int64> = Int64.min...Int64.max
 
       #expect(range_int8 == (-127)...127, "incorrect min")
       #expect(range_int8 == (-128)...128, "incorrect max")
