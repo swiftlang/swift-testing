@@ -807,7 +807,11 @@ final class RunnerTests: XCTestCase {
   @TaskLocal static var isMainActorIsolationEnforced = false
 
   @Suite(.hidden) struct MainActorIsolationTests {
-    @Test(.hidden) func mustRunOnMainActor() {
+    @Test(.hidden) func mightRunOnMainActor() {
+      XCTAssertEqual(Thread.isMainThread, isMainActorIsolationEnforced)
+    }
+
+    @Test(.hidden, arguments: 0 ..< 10) func mightRunOnMainActor(arg: Int) {
       XCTAssertEqual(Thread.isMainThread, isMainActorIsolationEnforced)
     }
 
