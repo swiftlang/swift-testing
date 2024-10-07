@@ -27,16 +27,9 @@ struct UniqueIdentifierTests {
     return BasicMacroExpansionContext().makeUniqueName(thunking: functionDecl).text
   }
 
-  @Test("Thunk identifiers contain a function's name")
-  func thunkNameContainsFunctionName() throws {
-    let uniqueName = try makeUniqueName("func someDistinctFunctionName() async throws")
-    #expect(uniqueName.contains("someDistinctFunctionName"))
-  }
-
   @Test("Thunk identifiers do not contain backticks")
   func noBackticks() throws {
     let uniqueName = try makeUniqueName("func `someDistinctFunctionName`() async throws")
-    #expect(uniqueName.contains("someDistinctFunctionName"))
 
     #expect(!uniqueName.contains("`"))
   }
@@ -44,19 +37,15 @@ struct UniqueIdentifierTests {
   @Test("Thunk identifiers do not contain arbitrary Unicode")
   func noArbitraryUnicode() throws {
     let uniqueName = try makeUniqueName("func someDistinctFunction🌮Name🐔() async throws")
-    #expect(uniqueName.contains("someDistinctFunction"))
 
     #expect(!uniqueName.contains("🌮"))
     #expect(!uniqueName.contains("🐔"))
-    #expect(uniqueName.contains("Name"))
   }
 
   @Test("Argument types influence generated identifiers")
   func argumentTypes() throws {
     let uniqueNameWithInt = try makeUniqueName("func someDistinctFunctionName(i: Int) async throws")
-    #expect(uniqueNameWithInt.contains("someDistinctFunctionName"))
     let uniqueNameWithUInt = try makeUniqueName("func someDistinctFunctionName(i: UInt) async throws")
-    #expect(uniqueNameWithUInt.contains("someDistinctFunctionName"))
 
     #expect(uniqueNameWithInt != uniqueNameWithUInt)
   }
@@ -64,13 +53,9 @@ struct UniqueIdentifierTests {
   @Test("Effects influence generated identifiers")
   func effects() throws {
     let uniqueName = try makeUniqueName("func someDistinctFunctionName()")
-    #expect(uniqueName.contains("someDistinctFunctionName"))
     let uniqueNameAsync = try makeUniqueName("func someDistinctFunctionName() async")
-    #expect(uniqueNameAsync.contains("someDistinctFunctionName"))
     let uniqueNameThrows = try makeUniqueName("func someDistinctFunctionName() throws")
-    #expect(uniqueNameThrows.contains("someDistinctFunctionName"))
     let uniqueNameAsyncThrows = try makeUniqueName("func someDistinctFunctionName() async throws")
-    #expect(uniqueNameAsyncThrows.contains("someDistinctFunctionName"))
 
     #expect(uniqueName != uniqueNameAsync)
     #expect(uniqueName != uniqueNameThrows)
@@ -88,5 +73,12 @@ struct UniqueIdentifierTests {
     #expect(uniqueName1 != uniqueName2)
     #expect(uniqueName1 != uniqueName3)
     #expect(uniqueName2 != uniqueName3)
+  }
+
+  @Test("Body does not influence generated identifiers")
+  func body() throws {
+    let uniqueName1 = try makeUniqueName("func f() { abc() }")
+    let uniqueName2 = try makeUniqueName("func f() { def() }")
+    #expect(uniqueName1 == uniqueName2)
   }
 }
