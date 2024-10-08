@@ -24,8 +24,10 @@ struct SectionBounds: Sendable {
     /// The test content metadata section.
     case testContent
 
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
     /// The type metadata section.
     case typeMetadata
+#endif
   }
 
   /// All section bounds of the given kind found in the current process.
@@ -85,7 +87,9 @@ private let _startCollectingSectionBounds: Void = {
       }
     }
     findSectionBounds(forSectionNamed: "__DATA_CONST", "__swift5_tests", ofKind: .testContent)
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
     findSectionBounds(forSectionNamed: "__TEXT", "__swift5_types", ofKind: .typeMetadata)
+#endif
   }
 
 #if _runtime(_ObjC)
@@ -94,7 +98,7 @@ private let _startCollectingSectionBounds: Void = {
   }
 #else
   _dyld_register_func_for_add_image { mh, _ in
-    addSectionBounds(from: mh)
+    addSectionBounds(from: mh!)
   }
 #endif
 }()
@@ -144,8 +148,10 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
       let range = switch context.pointee.kind {
       case .testContent:
         sections.swift5_tests
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
       case .typeMetadata:
         sections.swift5_type_metadata
+#endif
       }
       let start = UnsafeRawPointer(bitPattern: range.start)
       let size = Int(clamping: range.length)
@@ -234,8 +240,10 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some Sequence<Section
   let sectionName = switch kind {
   case .testContent:
     ".sw5test"
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
   case .typeMetadata:
     ".sw5tymd"
+#endif
   }
   return HMODULE.all.lazy.compactMap { _findSection(named: sectionName, in: $0) }
 }
@@ -267,8 +275,10 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> CollectionOfOne<Secti
   let (sectionBegin, sectionEnd) = switch kind {
   case .testContent:
     SWTTestContentSectionBounds
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
   case .typeMetadata:
     SWTTypeMetadataSectionBounds
+#endif
   }
   let buffer = UnsafeRawBufferPointer(start: sectionBegin, count: max(0, sectionEnd - sectionBegin))
   let sb = SectionBounds(imageAddress: nil, buffer: buffer)

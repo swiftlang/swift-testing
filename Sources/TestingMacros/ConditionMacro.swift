@@ -435,11 +435,57 @@ extension ExitTestConditionMacro {
 
     // Create a local type that can be discovered at runtime and which contains
     // the exit test body.
-    let enumName = context.makeUniqueName("__🟠$exit_test_body__")
+    let accessorName = context.makeUniqueName("")
+    let outValueArgumentName = context.makeUniqueName("outValue")
+    let hintArgumentName = context.makeUniqueName("hint")
+    let idLocalName = context.makeUniqueName("id")
+    decls.append(
+      """
+      #if hasFeature(SymbolLinkageMarkers)
+      func \(accessorName)(_ \(outValueArgumentName): UnsafeMutableRawPointer, _ \(hintArgumentName): UnsafeRawPointer?) -> Bool {
+        let \(idLocalName) = \(exitTestIDExpr)
+        if let \(hintArgumentName) = \(hintArgumentName)?.load(as: Testing.__ExitTest.ID.self),
+          \(hintArgumentName) != \(idLocalName) {
+          return false
+        }
+        \(outValueArgumentName).initializeMemory(
+          as: Testing.__ExitTest.self,
+          to: .init(
+            __identifiedBy: \(idLocalName),
+            body: \(bodyThunkName)
+          )
+        )
+        return true
+      }
+      #endif
+      """
+    )
+
+    let enumName = context.makeUniqueName("")
+    let sectionContent = makeTestContentRecordDecl(
+      named: .identifier("__sectionContent"),
+      in: TypeSyntax(IdentifierTypeSyntax(name: enumName)),
+      ofKind: .exitTest,
+      accessingWith: accessorName
+    )
+    decls.append(
+      """
+      #if hasFeature(SymbolLinkageMarkers)
+      @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
+      enum \(enumName) {
+        \(sectionContent)
+      }
+      #endif
+      """
+    )
+
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+    // Emit a legacy type declaration if SymbolLinkageMarkers is off.
+    let legacyEnumName = context.makeUniqueName("__🟠$exit_test_body__")
     decls.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-      enum \(enumName): Testing.__ExitTestContainer, Sendable {
+      enum \(legacyEnumName): Testing.__ExitTestContainer, Sendable {
         static var __id: Testing.__ExitTest.ID {
           \(exitTestIDExpr)
         }
@@ -449,6 +495,7 @@ extension ExitTestConditionMacro {
       }
       """
     )
+#endif
 
     arguments[trailingClosureIndex].expression = ExprSyntax(
       ClosureExprSyntax {

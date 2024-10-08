@@ -10,9 +10,11 @@
 
 #include "Discovery.h"
 
+#if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
 #include <cstdint>
 #include <cstring>
 #include <type_traits>
+#endif
 
 #if defined(SWT_NO_DYNAMIC_LINKING)
 #pragma mark - Statically-linked section bounds
@@ -20,30 +22,39 @@
 #if defined(__APPLE__)
 extern "C" const char testContentSectionBegin __asm("section$start$__DATA_CONST$__swift5_tests");
 extern "C" const char testContentSectionEnd __asm("section$end$__DATA_CONST$__swift5_tests");
+#if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
 extern "C" const char typeMetadataSectionBegin __asm__("section$start$__TEXT$__swift5_types");
 extern "C" const char typeMetadataSectionEnd __asm__("section$end$__TEXT$__swift5_types");
+#endif
 #elif defined(__wasi__)
 extern "C" const char testContentSectionBegin __asm__("__start_swift5_tests");
 extern "C" const char testContentSectionEnd __asm__("__stop_swift5_tests");
+#if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
 extern "C" const char typeMetadataSectionBegin __asm__("__start_swift5_type_metadata");
 extern "C" const char typeMetadataSectionEnd __asm__("__stop_swift5_type_metadata");
+#endif
 #else
 #warning Platform-specific implementation missing: Runtime test discovery unavailable (static)
 static const char testContentSectionBegin = 0;
 static const char& testContentSectionEnd = testContentSectionBegin;
+#if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
 static const char typeMetadataSectionBegin = 0;
 static const char& typeMetadataSectionEnd = typeMetadataSectionBegin;
+#endif
 #endif
 
 const void *_Nonnull const SWTTestContentSectionBounds[2] = {
   &testContentSectionBegin, &testContentSectionEnd
 };
 
+#if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
 const void *_Nonnull const SWTTypeMetadataSectionBounds[2] = {
   &typeMetadataSectionBegin, &typeMetadataSectionEnd
 };
 #endif
+#endif
 
+#if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
 #pragma mark - Swift ABI
 
 #if defined(__PTRAUTH_INTRINSICS__)
@@ -217,3 +228,4 @@ const void *swt_getTypeFromTypeMetadataRecord(const void *recordAddress, const c
 
   return nullptr;
 }
+#endif
