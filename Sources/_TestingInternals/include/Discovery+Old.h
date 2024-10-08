@@ -8,8 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if !defined(SWT_DISCOVERY_H)
-#define SWT_DISCOVERY_H
+#if !defined(SWT_DISCOVERY_OLD_H)
+#define SWT_DISCOVERY_OLD_H
 
 #include "Defines.h"
 #include "Includes.h"

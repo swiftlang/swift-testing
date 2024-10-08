@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#include "Discovery.h"
+#include "Discovery+Old.h"
 
 #include <algorithm>
 #include <array>
