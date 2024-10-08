@@ -12,6 +12,7 @@ include(LibraryVersion)
 include(TargetTriple)
 add_library(_TestingInternals STATIC
   Discovery.cpp
+  Discovery+Old.cpp
   Stubs.cpp
   Versions.cpp
   WillThrow.cpp)

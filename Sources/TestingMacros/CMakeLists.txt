@@ -103,6 +103,7 @@ target_sources(TestingMacros PRIVATE
   Support/DiagnosticMessage+Diagnosing.swift
   Support/SourceCodeCapturing.swift
   Support/SourceLocationGeneration.swift
+  Support/TestContentGeneration.swift
   TagMacro.swift
   TestDeclarationMacro.swift
   TestingMacrosMain.swift)

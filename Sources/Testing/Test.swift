@@ -53,6 +53,26 @@ public struct Test: Sendable {
   /// The source location of this test.
   public var sourceLocation: SourceLocation
 
+#if !SWT_NO_DYNAMIC_LINKING
+  /// The base address of the image containing this test, if available.
+  ///
+  /// This property's value represents the image that contains this test and is
+  /// equivalent to various platform-specific values:
+  ///
+  /// | Platform | Equivalent To |
+  /// |-|-|
+  /// | macOS, iOS, tvOS, visionOS | `UnsafePointer<mach_header_64>` |
+  /// | watchOS | `UnsafePointer<mach_header>` |
+  /// | Linux, FreeBSD, Android (32-bit) | `UnsafePointer<Elf32_Ehdr>` |
+  /// | Linux, FreeBSD, Android (64-bit) | `UnsafePointer<Elf64_Ehdr>` |
+  /// | Windows | `HMODULE` |
+  ///
+  /// The value of this property is distinct from the pointer returned by
+  /// `dlopen()` (on platforms that have that function.)
+  @_spi(ForToolsIntegrationOnly)
+  public nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
+#endif
+
   /// Information about the type containing this test, if any.
   ///
   /// If a test is associated with a free function or static function, the value

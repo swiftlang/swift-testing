@@ -66,7 +66,7 @@ platform-specific attention.
 > These errors are produced when the configuration you're trying to build has
 > conflicting requirements (for example, attempting to enable support for pipes
 > without also enabling support for file I/O.) You should be able to resolve
-> these issues by updating Package.swift and/or CompilerSettings.cmake.
+> these issues by updating `Package.swift` and/or `CompilerSettings.cmake`.
 
 Most platform dependencies can be resolved through the use of platform-specific
 API. For example, Swift Testing uses the C11 standard [`timespec`](https://en.cppreference.com/w/c/chrono/timespec)
@@ -123,69 +123,101 @@ Once the header is included, we can call `GetDateTime()` from `Clock.swift`:
 ## Runtime test discovery
 
 When porting to a new platform, you may need to provide a new implementation for
-`enumerateTypeMetadataSections()` in `Discovery.cpp`. Test discovery is
+`_testContentSectionBounds()` in `Discovery+Platform.swift`. Test discovery is
 dependent on Swift metadata discovery which is an inherently platform-specific
 operation.
 
-_Most_ platforms will be able to reuse the implementation used by Linux and
-Windows that calls an internal Swift runtime function to enumerate available
-metadata. If you are porting Swift Testing to Classic, this function won't be
+> [!NOTE]
+> You do not need to provide an implementation for the function
+> `enumerateTypeMetadataSections()` in `Discovery+Old.cpp`: it is present for
+> backwards compatibility with Swift 6.0 toolchains and will be removed in a
+> future release.
+
+_Most_ platforms in use today use the ELF image format and will be able to reuse
+the implementation used by Linux. That implementation calls `dl_iterate_phdr()`
+in the GNU C Library to enumerate available metadata.
+
+If you are porting Swift Testing to Classic, `dl_iterate_phdr()` won't be
 available, so you'll need to write a custom implementation instead. Assuming
 that the Swift compiler emits section information into the resource fork on
-Classic, you could use the [Resource Manager](https://developer.apple.com/library/archive/documentation/mac/pdf/MoreMacintoshToolbox.pdf)
+Classic, you would use the [Resource Manager](https://developer.apple.com/library/archive/documentation/mac/pdf/MoreMacintoshToolbox.pdf)
 to load that information:
 
 ```diff
---- a/Sources/_TestingInternals/Discovery.cpp
-+++ b/Sources/_TestingInternals/Discovery.cpp
+--- a/Sources/Testing/Discovery+Platform.swift
++++ b/Sources/Testing/Discovery+Platform.swift
 
  // ...
-+#elif defined(macintosh)
-+template <typename SectionEnumerator>
-+static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
-+  ResFileRefNum refNum;
-+  if (noErr == GetTopResourceFile(&refNum)) {
-+    ResFileRefNum oldRefNum = refNum;
-+    do {
-+      UseResFile(refNum);
-+      Handle handle = Get1NamedResource('swft', "\p__swift5_types");
-+      if (handle && *handle) {
-+        auto imageAddress = reinterpret_cast<const void *>(static_cast<uintptr_t>(refNum));
-+        SWTSectionBounds sb = { imageAddress, *handle, GetHandleSize(handle) };
-+        bool stop = false;
-+        body(sb, &stop);
-+        if (stop) {
-+          break;
-+        }
-+      }
-+    } while (noErr == GetNextResourceFile(refNum, &refNum));
-+    UseResFile(oldRefNum);
++#elseif os(macintosh)
++private func _testContentSectionBounds() -> [SectionBounds] {
++  let oldRefNum = CurResFile()
++  defer {
++    UseResFile(oldRefNum)
 +  }
++
++  var refNum = ResFileRefNum(0)
++  guard noErr == GetTopResourceFile(&refNum) else {
++    return []
++  }
++  repeat {
++    UseResFile(refNum)
++    guard let handle = Get1NamedResource(ResType("swft"), Str255("__swift5_tests")) else {
++      continue
++    }
++    let sb = SectionBounds(
++      imageAddress: UnsafeRawPointer(bitPattern: UInt(refNum)),
++      start: handle.pointee!,
++      size: GetHandleSize(handle)
++    )
++    return [sb]
++  } while noErr == GetNextResourceFile(refNum, &refNum))
 +}
  #else
- #warning Platform-specific implementation missing: Runtime test discovery unavailable (dynamic)
- template <typename SectionEnumerator>
- static void enumerateTypeMetadataSections(const SectionEnumerator& body) {}
+ private func _testContentSectionBounds() -> [SectionBounds] {
+   #warning("Platform-specific implementation missing: Runtime test discovery unavailable (dynamic)")
+   return []
+ }
  #endif
 ```
+
+You will also need to update the `makeTestContentRecordDecl()` function in the
+`TestingMacros` target to emit the correct `@_section` attribute for your
+platform. If your platform uses the ELF image format and supports the
+`dl_iterate_phdr()` function, add it to the existing `#elseif os(Linux) || ...`
+case. Otherwise, add a new case for your platform:
+
+```diff
+--- a/Sources/TestingMacros/Support/TestContentGeneration.swift
++++ b/Sources/TestingMacros/Support/TestContentGeneration.swift
+   // ...
++  #elseif os(Classic)
++  @_section(".rsrc,swft,__swift5_tests")
+   #endif
+```
+
+Keep in mind that this code is emitted by the `@Test` and `@Suite` macros
+directly into test authors' test targets, so you will not be able to use
+compiler conditionals defined in the Swift Testing package (including those that
+start with `"SWT_"`).
 
 ## Runtime test discovery with static linkage
 
 If your platform does not support dynamic linking and loading, you will need to
 use static linkage instead. Define the `"SWT_NO_DYNAMIC_LINKING"` compiler
-conditional for your platform in both Package.swift and CompilerSettings.cmake,
-then define the `sectionBegin` and `sectionEnd` symbols in Discovery.cpp:
+conditional for your platform in both `Package.swift` and
+`CompilerSettings.cmake`, then define the `testContentSectionBegin` and
+`testContentSectionEnd` symbols in `Discovery.cpp`:
 
 ```diff
 diff --git a/Sources/_TestingInternals/Discovery.cpp b/Sources/_TestingInternals/Discovery.cpp
  // ...
 +#elif defined(macintosh)
-+extern "C" const char sectionBegin __asm__("...");
-+extern "C" const char sectionEnd __asm__("...");
++extern "C" const char testContentSectionBegin __asm__("...");
++extern "C" const char testContentSectionEnd __asm__("...");
  #else
  #warning Platform-specific implementation missing: Runtime test discovery unavailable (static)
- static const char sectionBegin = 0;
- static const char& sectionEnd = sectionBegin;
+ static const char testContentSectionBegin = 0;
+ static const char& testContentSectionEnd = testContentSectionBegin;
  #endif
 ```
 
@@ -204,12 +236,12 @@ diff --git a/Sources/_TestingInternals/Discovery.cpp b/Sources/_TestingInternals
 +#elif defined(macintosh)
 +extern "C" const char __linker_defined_begin_symbol;
 +extern "C" const char __linker_defined_end_symbol;
-+static const auto& sectionBegin = __linker_defined_begin_symbol;
-+static const auto& sectionEnd = __linker_defined_end_symbol;
++static const auto& testContentSectionBegin = __linker_defined_begin_symbol;
++static const auto& testContentSectionEnd = __linker_defined_end_symbol;
  #else
  #warning Platform-specific implementation missing: Runtime test discovery unavailable (static)
- static const char sectionBegin = 0;
- static const char& sectionEnd = sectionBegin;
+ static const char testContentSectionBegin = 0;
+ static const char& testContentSectionEnd = testContentSectionBegin;
  #endif
 ```
 

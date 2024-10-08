@@ -34,3 +34,19 @@ extension UInt8 {
     self == UInt8(ascii: "\r") || self == UInt8(ascii: "\n")
   }
 }
+
+// MARK: -
+
+extension Int {
+  /// Get the next integer after this one that is properly aligned to store a
+  /// value of type `T`.
+  ///
+  /// - Parameters:
+  ///   - type: the type whose alignment should be used to compute the result.
+  ///
+  /// - Returns: an integer greater than or equal to `self` whose value is
+  ///   properly aligned to store a value of type `T`.
+  func alignedUp(for type: (some Any).Type) -> Self {
+    Self(bitPattern: UnsafeRawPointer(bitPattern: self)?.alignedUp(for: type))
+  }
+}

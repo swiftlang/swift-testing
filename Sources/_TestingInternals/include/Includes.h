@@ -96,6 +96,10 @@
 #include <limits.h>
 #endif
 
+#if __has_include(<link.h>)
+#include <link.h>
+#endif
+
 #if __has_include(<spawn.h>)
 #include <spawn.h>
 #endif
@@ -126,6 +130,10 @@
 
 #if !SWT_NO_LIBDISPATCH
 #include <dispatch/dispatch.h>
+#endif
+
+#if __has_include(<ptrauth.h>)
+#include <ptrauth.h>
 #endif
 #endif
 

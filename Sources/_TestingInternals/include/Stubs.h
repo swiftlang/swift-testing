@@ -91,6 +91,14 @@ static LANGID swt_MAKELANGID(int p, int s) {
 static DWORD_PTR swt_PROC_THREAD_ATTRIBUTE_HANDLE_LIST(void) {
   return PROC_THREAD_ATTRIBUTE_HANDLE_LIST;
 }
+
+/// Get the first section in an NT image.
+///
+/// This function is provided because `IMAGE_FIRST_SECTION()` is a complex macro
+/// and cannot be imported directly into Swift.
+static const IMAGE_SECTION_HEADER *_Null_unspecified swt_IMAGE_FIRST_SECTION(const IMAGE_NT_HEADERS *ntHeader) {
+  return IMAGE_FIRST_SECTION(ntHeader);
+}
 #endif
 
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__ANDROID__)
@@ -126,6 +134,18 @@ SWT_EXTERN int swt_pthread_setname_np(pthread_t thread, const char *name);
 /// `__GLIBC_PREREQ()` is insufficient because `_DEFAULT_SOURCE` may not be
 /// defined at the point spawn.h is first included.
 SWT_EXTERN int swt_posix_spawn_file_actions_addclosefrom_np(posix_spawn_file_actions_t *fileActions, int from);
+#endif
+
+#if defined(__ELF__)
+/// Enumerate loaded ELF images and their program headers.
+///
+/// This function is provided because `dl_iterate_phdr()` is only declared if
+/// `_GNU_SOURCE` is set, but setting it causes build errors due to conflicts
+/// with Swift's Glibc module.
+///
+/// ELF-based platforms that do not use glibc (such as FreeBSD) also use this
+/// function for the sake of simplicity.
+SWT_EXTERN int swt_dl_iterate_phdr(void *_Null_unspecified context, int (*callback)(const void *dlpi_addr, const ElfW(Phdr) *dlpi_phdr, size_t dlpi_phnum, void *_Null_unspecified context));
 #endif
 
 #if !defined(__ANDROID__)

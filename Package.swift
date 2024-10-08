@@ -152,6 +152,8 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .enableExperimentalFeature("AccessLevelOnImport"),
       .enableUpcomingFeature("InternalImportsByDefault"),
 
+      .enableExperimentalFeature("SymbolLinkageMarkers"),
+
       .define("SWT_TARGET_OS_APPLE", .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])),
 
       .define("SWT_NO_EXIT_TESTS", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
