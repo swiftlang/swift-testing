@@ -53,6 +53,7 @@ extension Test {
       // the legacy and new mechanisms, but we can set an environment variable
       // to explicitly select one or the other. When we remove legacy support,
       // we can also remove this enumeration and environment variable check.
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
       let (useNewMode, useLegacyMode) = switch Environment.flag(named: "SWT_USE_LEGACY_TEST_DISCOVERY") {
       case .none:
         (true, true)
@@ -61,6 +62,9 @@ extension Test {
       case .some(false):
         (true, false)
       }
+#else
+      let useNewMode = true
+#endif
 
       // Walk all test content and gather generator functions, then call them in
       // a task group and collate their results.
@@ -79,6 +83,7 @@ extension Test {
         }
       }
 
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
       // Perform legacy test discovery if needed.
       if useLegacyMode && result.isEmpty {
         let types = types(withNamesContaining: testContainerTypeNameMagic).lazy
@@ -92,6 +97,7 @@ extension Test {
           result = await taskGroup.reduce(into: result) { $0.formUnion($1) }
         }
       }
+#endif
 
       return result
     }
