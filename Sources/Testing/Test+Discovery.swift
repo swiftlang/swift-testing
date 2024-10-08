@@ -18,25 +18,45 @@ extension Test {
   /// indirect `async` accessor function rather than directly producing
   /// instances of ``Test``, but functions are non-nominal types and cannot
   /// directly conform to protocols.
-  ///
-  /// - Note: This helper type must have the exact in-memory layout of the
-  ///   `async` accessor function. Do not add any additional cases or associated
-  ///   values. The layout of this type is [guaranteed](https://github.com/swiftlang/swift/blob/main/docs/ABI/TypeLayout.rst#fragile-enum-layout)
-  ///   by the Swift ABI.
-  /* @frozen */ private enum _Record: TestContent {
+  struct Generator: Sendable, TestContent {
     static var testContentKind: UInt32 {
       0x74657374
     }
 
-    static var testContentAccessorTypeArgument: any ~Copyable.Type {
-      Generator.self
+    /// The actual (asynchronous) accessor function.
+    private var _generator: @Sendable () async -> Test
+
+    init(_ generator: @escaping @Sendable () async -> Test) {
+      _generator = generator
     }
 
-    /// The type of the actual (asynchronous) generator function.
-    typealias Generator = @Sendable () async -> Test
+    func callAsFunction() async -> Test {
+      await _generator()
+    }
+  }
 
-    /// The actual (asynchronous) accessor function.
-    case generator(Generator)
+  /// Store the test generator function into the given memory.
+  ///
+  /// - Parameters:
+  ///   - generator: The generator function to store.
+  ///   - outValue: The uninitialized memory to store `generator` into.
+  ///   - typeAddress: A pointer to the expected type of `generator` as passed
+  ///     to the test content record calling this function.
+  ///
+  /// - Returns: Whether or not `generator` was stored into `outValue`.
+  ///
+  /// - Warning: This function is used to implement the `@Test` macro. Do not
+  ///   use it directly.
+  public static func __store(
+    _ generator: @escaping @Sendable () async -> Test,
+    into outValue: UnsafeMutableRawPointer,
+    asTypeAt typeAddress: UnsafeRawPointer
+  ) -> CBool {
+    guard typeAddress.load(as: Any.Type.self) == Generator.self else {
+      return false
+    }
+    outValue.initializeMemory(as: Generator.self, to: .init(generator))
+    return true
   }
 
   /// All available ``Test`` instances in the process, according to the runtime.
@@ -53,6 +73,7 @@ extension Test {
       // the legacy and new mechanisms, but we can set an environment variable
       // to explicitly select one or the other. When we remove legacy support,
       // we can also remove this enumeration and environment variable check.
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
       let (useNewMode, useLegacyMode) = switch Environment.flag(named: "SWT_USE_LEGACY_TEST_DISCOVERY") {
       case .none:
         (true, true)
@@ -61,24 +82,23 @@ extension Test {
       case .some(false):
         (true, false)
       }
+#else
+      let useNewMode = true
+#endif
 
       // Walk all test content and gather generator functions, then call them in
       // a task group and collate their results.
       if useNewMode {
-        let generators = _Record.allTestContentRecords().lazy.compactMap { record in
-          if case let .generator(generator) = record.load() {
-            return generator
-          }
-          return nil // currently unreachable, but not provably so
-        }
+        let generators = Generator.allTestContentRecords().lazy.compactMap { $0.load() }
         await withTaskGroup(of: Self.self) { taskGroup in
           for generator in generators {
-            taskGroup.addTask(operation: generator)
+            taskGroup.addTask(operation: generator.callAsFunction)
           }
           result = await taskGroup.reduce(into: result) { $0.insert($1) }
         }
       }
 
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
       // Perform legacy test discovery if needed.
       if useLegacyMode && result.isEmpty {
         let types = types(withNamesContaining: testContainerTypeNameMagic).lazy
@@ -92,6 +112,7 @@ extension Test {
           result = await taskGroup.reduce(into: result) { $0.formUnion($1) }
         }
       }
+#endif
 
       return result
     }

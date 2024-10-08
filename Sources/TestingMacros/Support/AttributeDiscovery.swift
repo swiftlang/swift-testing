@@ -60,6 +60,9 @@ struct AttributeInfo {
   /// The attribute node that was parsed to produce this instance.
   var attribute: AttributeSyntax
 
+  /// The declaration to which ``attribute`` was attached.
+  var declaration: DeclSyntax
+
   /// The display name of the attribute, if present.
   var displayName: StringLiteralExprSyntax?
 
@@ -85,6 +88,20 @@ struct AttributeInfo {
   /// as the canonical source location of the test or suite.
   var sourceLocation: ExprSyntax
 
+  var testContentRecordFlags: UInt32 {
+    var result = UInt32(0)
+
+    if declaration.is(FunctionDeclSyntax.self) {
+      if hasFunctionArguments {
+        result |= 1 << 1 /* is parameterized */
+      }
+    } else {
+      result |= 1 << 0 /* suite decl */
+    }
+
+    return result
+  }
+
   /// Create an instance of this type by parsing a `@Test` or `@Suite`
   /// attribute.
   ///
@@ -92,13 +109,11 @@ struct AttributeInfo {
   ///   - attribute: The attribute whose arguments should be extracted. If this
   ///     attribute is not a `@Test` or `@Suite` attribute, the result is
   ///     unspecified.
-  ///   - declaration: The declaration to which `attribute` is attached. For
-  ///     technical reasons, this argument is only constrained to
-  ///     `SyntaxProtocol`, however an instance of a type conforming to
-  ///     `DeclSyntaxProtocol & WithAttributesSyntax` is expected.
+  ///   - declaration: The declaration to which `attribute` is attached.
   ///   - context: The macro context in which the expression is being parsed.
-  init(byParsing attribute: AttributeSyntax, on declaration: some SyntaxProtocol, in context: some MacroExpansionContext) {
+  init(byParsing attribute: AttributeSyntax, on declaration: some DeclSyntaxProtocol, in context: some MacroExpansionContext) {
     self.attribute = attribute
+    self.declaration = DeclSyntax(declaration)
 
     var displayNameArgument: LabeledExprListSyntax.Element?
     var nonDisplayNameArguments: [Argument] = []
