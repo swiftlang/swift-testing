@@ -660,4 +660,21 @@ struct MiscellaneousTests {
     })
   }
 #endif
+
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+  @Test("Legacy test discovery finds the same number of tests") func discoveredTestCount() async {
+    let oldFlag = Environment.variable(named: "SWT_USE_LEGACY_TEST_DISCOVERY")
+    defer {
+      Environment.setVariable(oldFlag, named: "SWT_USE_LEGACY_TEST_DISCOVERY")
+    }
+
+    Environment.setVariable("1", named: "SWT_USE_LEGACY_TEST_DISCOVERY")
+    let testsWithOldCode = await Array(Test.all).count
+
+    Environment.setVariable("0", named: "SWT_USE_LEGACY_TEST_DISCOVERY")
+    let testsWithNewCode = await Array(Test.all).count
+
+    #expect(testsWithOldCode == testsWithNewCode)
+  }
+#endif
 }

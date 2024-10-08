@@ -27,8 +27,10 @@ struct SectionBounds: Sendable {
     /// The test content metadata section.
     case testContent
 
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
     /// The type metadata section.
     case typeMetadata
+#endif
   }
 
   /// All section bounds of the given kind found in the current process.
@@ -60,8 +62,10 @@ extension SectionBounds.Kind {
     switch self {
     case .testContent:
       ("__DATA_CONST", "__swift5_tests")
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
     case .typeMetadata:
       ("__TEXT", "__swift5_types")
+#endif
     }
   }
 }
@@ -101,9 +105,8 @@ private let _startCollectingSectionBounds: Void = {
       var size = CUnsignedLong(0)
       if let start = getsectiondata(mh, segmentName.utf8Start, sectionName.utf8Start, &size), size > 0 {
         let buffer = UnsafeRawBufferPointer(start: start, count: Int(clamping: size))
-        let sb = SectionBounds(imageAddress: mh, buffer: buffer)
         _sectionBounds.withLock { sectionBounds in
-          sectionBounds[kind]!.append(sb)
+          sectionBounds[kind]!.append(SectionBounds(imageAddress: mh, buffer: buffer))
         }
       }
     }
@@ -165,8 +168,10 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
       let range = switch context.pointee.kind {
       case .testContent:
         sections.swift5_tests
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
       case .typeMetadata:
         sections.swift5_type_metadata
+#endif
       }
       let start = UnsafeRawPointer(bitPattern: range.start)
       let size = Int(clamping: range.length)
@@ -255,8 +260,10 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some Sequence<Section
   let sectionName = switch kind {
   case .testContent:
     ".sw5test"
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
   case .typeMetadata:
     ".sw5tymd"
+#endif
   }
   return HMODULE.all.lazy.compactMap { _findSection(named: sectionName, in: $0) }
 }
@@ -288,8 +295,10 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> CollectionOfOne<Secti
   let (sectionBegin, sectionEnd) = switch kind {
   case .testContent:
     SWTTestContentSectionBounds
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
   case .typeMetadata:
     SWTTypeMetadataSectionBounds
+#endif
   }
   let buffer = UnsafeRawBufferPointer(start: sectionBegin, count: max(0, sectionEnd - sectionBegin))
   let sb = SectionBounds(imageAddress: nil, buffer: buffer)

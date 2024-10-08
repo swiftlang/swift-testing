@@ -10,6 +10,23 @@
 
 private import _TestingInternals
 
+/// The type of the accessor function used to access a test content record.
+///
+/// - Parameters:
+///   - outValue: A pointer to uninitialized memory large enough to contain the
+///     corresponding test content record's value.
+///   - hint: An optional pointer to a hint value.
+///
+/// - Returns: Whether or not `outValue` was initialized. The caller is
+///   responsible for deinitializing `outValue` if it was initialized.
+///
+/// - Warning: This type is used to implement the `@Test` macro. Do not use it
+///   directly.
+public typealias __TestContentRecordAccessor = @convention(c) (
+  _ outValue: UnsafeMutableRawPointer,
+  _ hint: UnsafeRawPointer?
+) -> CBool
+
 /// The content of a test content record.
 ///
 /// - Parameters:
@@ -24,7 +41,7 @@ private import _TestingInternals
 public typealias __TestContentRecord = (
   kind: UInt32,
   reserved1: UInt32,
-  accessor: (@convention(c) (_ outValue: UnsafeMutableRawPointer, _ hint: UnsafeRawPointer?) -> CBool)?,
+  accessor: __TestContentRecordAccessor?,
   context: UInt,
   reserved2: UInt
 )

@@ -41,10 +41,15 @@ Regardless of platform, all test content records created and discoverable by the
 testing library have the following layout:
 
 ```swift
+typealias Accessor = @convention(c) (
+  _ outValue: UnsafeMutableRawPointer,
+  _ hint: UnsafeRawPointer?
+) -> CBool
+
 typealias TestContentRecord = (
   kind: UInt32,
   reserved1: UInt32,
-  accessor: (@convention(c) (_ outValue: UnsafeMutableRawPointer, _ hint: UnsafeRawPointer?) -> CBool)?,
+  accessor: Accessor?,
   context: UInt,
   reserved2: UInt
 )
@@ -54,25 +59,30 @@ This type has natural size, stride, and alignment. Its fields are native-endian.
 If needed, this type can be represented in C as a structure:
 
 ```c
+typedef bool (* SWTAccessor)(
+  void *outValue,
+  const void *_Null_unspecified hint
+);
+
 struct SWTTestContentRecord {
   uint32_t kind;
   uint32_t reserved1;
-  bool (* _Nullable accessor)(void *outValue, const void *_Null_unspecified hint);
+  SWTAccessor _Nullable accessor;
   uintptr_t context;
   uintptr_t reserved2;
 };
 ```
 
-Do not use the `__TestContentRecord` typealias defined in the testing library.
-This type exists to support the testing library's macros and may change in the
-future (e.g. to accomodate a generic argument or to make use of one of the
-reserved fields.)
+Do not use the `__TestContentRecord` or `__TestContentRecordAccessor` type
+aliases defined in the testing library. These types exist to support the testing
+library's macros and may change in the future (e.g. to accomodate a generic
+argument or to make use of a reserved field.)
 
-Instead, define your own copy of this type where needed&mdash;you can copy the
-definition above _verbatim_. If your test record type's `context` field (as
+Instead, define your own copy of these types where needed&mdash;you can copy the
+definitions above _verbatim_. If your test record type's `context` field (as
 described below) is a pointer type, make sure to change its type in your version
 of `TestContentRecord` accordingly so that, on systems with pointer
-authentication enabled, the pointer is correctly resigned at load time.
+authentication enabled, the pointer is correctly re-signed at load time.
 
 ### Record content
 

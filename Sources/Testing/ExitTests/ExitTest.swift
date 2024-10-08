@@ -247,11 +247,15 @@ extension ExitTest {
       }
     }
 
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
     // Call the legacy lookup function that discovers tests embedded in types.
     return types(withNamesContaining: exitTestContainerTypeNameMagic).lazy
       .compactMap { $0 as? any __ExitTestContainer.Type }
       .first { $0.__id == id }
       .map { ExitTest(__identifiedBy: $0.__id, body: $0.__body) }
+#else
+    return nil
+#endif
   }
 }
 

@@ -402,7 +402,7 @@ struct TestDeclarationMacroTests {
   func differentFunctionTypes(input: String, expectedTypeName: String?, otherCode: String?) throws {
     let (output, _) = try parse(input)
 
-    #expect(output.contains("__TestContainer"))
+    #expect(output.contains("@_section"))
     if let expectedTypeName {
       #expect(output.contains(expectedTypeName))
     }

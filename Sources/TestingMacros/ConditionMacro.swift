@@ -435,11 +435,41 @@ extension ExitTestConditionMacro {
 
     // Create a local type that can be discovered at runtime and which contains
     // the exit test body.
-    let enumName = context.makeUniqueName("__🟠$exit_test_body__")
+    let enumName = context.makeUniqueName("")
+    let testContentRecordDecl = makeTestContentRecordDecl(
+      named: .identifier("testContentRecord"),
+      in: TypeSyntax(IdentifierTypeSyntax(name: enumName)),
+      ofKind: .exitTest,
+      accessingWith: .identifier("accessor")
+    )
+    decls.append(
+      """
+      #if hasFeature(SymbolLinkageMarkers)
+      @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
+      enum \(enumName) {
+        private static let accessor: Testing.__TestContentRecordAccessor = { outValue, hint in
+          let id = \(exitTestIDExpr)
+          if let hintedID = hint?.load(as: Testing.__ExitTest.ID.self), hintedID != id {
+            return false
+          }
+          let outValue = outValue.assumingMemoryBound(to: Testing.__ExitTest.self)
+          outValue.initialize(to: .init(__identifiedBy: id, body: \(bodyThunkName)))
+          return true
+        }
+
+        \(testContentRecordDecl)
+      }
+      #endif
+      """
+    )
+
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+    // Emit a legacy type declaration if SymbolLinkageMarkers is off.
+    let legacyEnumName = context.makeUniqueName("__🟠$exit_test_body__")
     decls.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-      enum \(enumName): Testing.__ExitTestContainer, Sendable {
+      enum \(legacyEnumName): Testing.__ExitTestContainer, Sendable {
         static var __id: Testing.__ExitTest.ID {
           \(exitTestIDExpr)
         }
@@ -449,12 +479,16 @@ extension ExitTestConditionMacro {
       }
       """
     )
+#endif
 
     arguments[trailingClosureIndex].expression = ExprSyntax(
       ClosureExprSyntax {
         for decl in decls {
-          CodeBlockItemSyntax(item: .decl(decl))
-            .with(\.trailingTrivia, .newline)
+          CodeBlockItemSyntax(
+            leadingTrivia: .newline,
+            item: .decl(decl),
+            trailingTrivia: .newline
+          )
         }
       }
     )
