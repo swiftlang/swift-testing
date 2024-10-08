@@ -27,8 +27,10 @@ struct SectionBounds: Sendable {
     /// The test content metadata section.
     case testContent
 
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
     /// The type metadata section.
     case typeMetadata
+#endif
   }
 
   /// All section bounds of the given kind found in the current process.
@@ -60,8 +62,10 @@ extension SectionBounds.Kind {
     switch self {
     case .testContent:
       ("__DATA_CONST", "__swift5_tests")
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
     case .typeMetadata:
       ("__TEXT", "__swift5_types")
+#endif
     }
   }
 }
@@ -186,8 +190,10 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
       let range = switch context.pointee.kind {
       case .testContent:
         sections.swift5_tests
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
       case .typeMetadata:
         sections.swift5_type_metadata
+#endif
       }
       let start = UnsafeRawPointer(bitPattern: range.start)
       let size = Int(clamping: range.length)
@@ -276,8 +282,10 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some Sequence<Section
   let sectionName = switch kind {
   case .testContent:
     ".sw5test"
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
   case .typeMetadata:
     ".sw5tymd"
+#endif
   }
   return HMODULE.all.lazy.compactMap { _findSection(named: sectionName, in: $0) }
 }
