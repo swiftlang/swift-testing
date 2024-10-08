@@ -4,7 +4,7 @@
 * Authors: [Stuart Montgomery](https://github.com/stmontgomery)
 * Status: **Awaiting review**
 * Implementation: [swiftlang/swift-testing#733](https://github.com/swiftlang/swift-testing/pull/733), [swiftlang/swift-testing#86](https://github.com/swiftlang/swift-testing/pull/86)
-* Review: ([pitch](https://forums.swift.org/...))
+* Review: ([pitch](https://forums.swift.org/t/pitch-custom-test-execution-traits/75055))
 
 ### Revision history
 
@@ -403,6 +403,10 @@ extension Trait where Self == MockAPICredentialsTrait {
 ## Source compatibility
 
 The proposed APIs are purely additive.
+
+This proposal will replace the existing `CustomExecutionTrait` SPI, and after
+further refactoring we anticipate it will obsolete the need for the
+`SPIAwareTrait` SPI as well.
 
 ## Integration with supporting tools
 
