@@ -11,6 +11,10 @@
 public import SwiftSyntax
 public import SwiftSyntaxMacros
 
+#if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY
+#error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand #expect(exitsWith:)")
+#endif
+
 /// A protocol containing the common implementation for the expansions of the
 /// `#expect()` and `#require()` macros.
 ///
@@ -460,9 +464,9 @@ extension ExitTestConditionMacro {
       accessingWith: .identifier("accessor")
     )
 
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
     decls.append(
       """
-      @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
       final class \(className): Testing.__TestContentRecordContainer {
         private nonisolated static let accessor: Testing.__TestContentRecordAccessor = { outValue, type, hint in
           Testing.ExitTest.__store(
@@ -482,12 +486,34 @@ extension ExitTestConditionMacro {
       }
       """
     )
+#else
+    decls.append(
+      """
+      final class \(className) {
+        private nonisolated static let accessor: Testing.__TestContentRecordAccessor = { outValue, type, hint in
+          Testing.ExitTest.__store(
+            \(exitTestIDExpr),
+            \(bodyThunkName),
+            into: outValue,
+            asTypeAt: type,
+            withHintAt: hint
+          )
+        }
+
+        \(testContentRecordDecl)
+      }
+      """
+    )
+#endif
 
     arguments[trailingClosureIndex].expression = ExprSyntax(
       ClosureExprSyntax {
         for decl in decls {
-          CodeBlockItemSyntax(item: .decl(decl))
-            .with(\.trailingTrivia, .newline)
+          CodeBlockItemSyntax(
+            leadingTrivia: .newline,
+            item: .decl(decl),
+            trailingTrivia: .newline
+          )
         }
       }
     )
