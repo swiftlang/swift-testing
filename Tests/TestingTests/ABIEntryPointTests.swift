@@ -52,6 +52,7 @@ struct ABIEntryPointTests {
     passing arguments: __CommandLineArguments_v0,
     recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void = { _ in }
   ) async throws -> CInt {
+#if !SWT_NO_DYNAMIC_LINKING
     // Get the ABI entry point by dynamically looking it up at runtime.
     let copyABIEntryPoint_v0 = try withTestingLibraryImageAddress { testingLibrary in
       try #require(
@@ -60,6 +61,7 @@ struct ABIEntryPointTests {
         }
       )
     }
+#endif
     let abiEntryPoint = copyABIEntryPoint_v0().assumingMemoryBound(to: ABIEntryPoint_v0.self)
     defer {
       abiEntryPoint.deinitialize(count: 1)

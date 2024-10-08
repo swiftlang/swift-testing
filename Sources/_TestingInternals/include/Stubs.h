@@ -91,6 +91,14 @@ static LANGID swt_MAKELANGID(int p, int s) {
 static DWORD_PTR swt_PROC_THREAD_ATTRIBUTE_HANDLE_LIST(void) {
   return PROC_THREAD_ATTRIBUTE_HANDLE_LIST;
 }
+
+/// Get the first section in an NT image.
+///
+/// This function is provided because `IMAGE_FIRST_SECTION()` is a complex macro
+/// and cannot be imported directly into Swift.
+static const IMAGE_SECTION_HEADER *_Null_unspecified swt_IMAGE_FIRST_SECTION(const IMAGE_NT_HEADERS *ntHeader) {
+  return IMAGE_FIRST_SECTION(ntHeader);
+}
 #endif
 
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__ANDROID__)

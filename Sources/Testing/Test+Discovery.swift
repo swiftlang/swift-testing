@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2025 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -10,71 +10,87 @@
 
 private import _TestingInternals
 
-/// A protocol describing a type that contains tests.
-///
-/// - Warning: This protocol is used to implement the `@Test` macro. Do not use
-///   it directly.
-@_alwaysEmitConformanceMetadata
-public protocol __TestContainer {
-  /// The set of tests contained by this type.
-  static var __tests: [Test] { get async }
-}
+extension Test: TestContent {
+  static var testContentKind: UInt32 {
+    0x74657374
+  }
 
-extension Test {
-  /// A string that appears within all auto-generated types conforming to the
-  /// `__TestContainer` protocol.
-  private static let _testContainerTypeNameMagic = "__🟠$test_container__"
+  typealias TestContentAccessorResult = @Sendable () async -> Self
 
   /// All available ``Test`` instances in the process, according to the runtime.
   ///
   /// The order of values in this sequence is unspecified.
   static var all: some Sequence<Self> {
     get async {
-      await withTaskGroup(of: [Self].self) { taskGroup in
-        enumerateTypes(withNamesContaining: _testContainerTypeNameMagic) { _, type, _ in
-          if let type = type as? any __TestContainer.Type {
-            taskGroup.addTask {
-              await type.__tests
-            }
+      var generators = [@Sendable () async -> [Self]]()
+
+      // Figure out which discovery mechanism to use. By default, we'll use both
+      // the legacy and new mechanisms, but we can set an environment variable
+      // to explicitly select one or the other. When we remove legacy support,
+      // we can also remove this enumeration and environment variable check.
+      enum DiscoveryMode {
+        case tryBoth
+        case newOnly
+        case legacyOnly
+      }
+      let discoveryMode: DiscoveryMode = switch Environment.flag(named: "SWT_USE_LEGACY_TEST_DISCOVERY") {
+      case .none:
+        .tryBoth
+      case .some(true):
+        .legacyOnly
+      case .some(false):
+        .newOnly
+      }
+
+      // Walk all test content and gather generator functions. Note we don't
+      // actually call the generators yet because enumerating test content may
+      // involve holding some internal lock such as the ones in libobjc or
+      // dl_iterate_phdr(), and we don't want to accidentally deadlock if the
+      // user code we call ends up loading another image.
+      if discoveryMode != .legacyOnly {
+        enumerateTestContent { imageAddress, generator, _, _ in
+          nonisolated(unsafe) let imageAddress = imageAddress
+          generators.append { @Sendable in
+            var result = await generator()
+#if !SWT_NO_DYNAMIC_LINKING
+            result.imageAddress = imageAddress
+#endif
+            return [result]
           }
         }
-
-        return await taskGroup.reduce(into: [], +=)
       }
-    }
-  }
-}
 
-// MARK: -
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+      if discoveryMode != .newOnly && generators.isEmpty {
+        enumerateTypes(withNamesContaining: testContainerTypeNameMagic) { imageAddress, type, _ in
+          guard let type = type as? any __TestContainer.Type else {
+            return
+          }
+          nonisolated(unsafe) let imageAddress = imageAddress
+          generators.append { @Sendable in
+            var result = await type.__tests
+#if !SWT_NO_DYNAMIC_LINKING
+            for i in 0 ..< result.count {
+              result[i].imageAddress = imageAddress
+            }
+#endif
+            return result
+          }
+        }
+      }
+#endif
 
-/// The type of callback called by ``enumerateTypes(withNamesContaining:_:)``.
-///
-/// - Parameters:
-///   - imageAddress: A pointer to the start of the image. This value is _not_
-///     equal to the value returned from `dlopen()`. On platforms that do not
-///     support dynamic loading (and so do not have loadable images), this
-///     argument is unspecified.
-///   - type: A Swift type.
-///   - stop: An `inout` boolean variable indicating whether type enumeration
-///     should stop after the function returns. Set `stop` to `true` to stop
-///     type enumeration.
-typealias TypeEnumerator = (_ imageAddress: UnsafeRawPointer?, _ type: Any.Type, _ stop: inout Bool) -> Void
-
-/// Enumerate all types known to Swift found in the current process whose names
-/// contain a given substring.
-///
-/// - Parameters:
-///   - nameSubstring: A string which the names of matching classes all contain.
-///   - body: A function to invoke, once per matching type.
-func enumerateTypes(withNamesContaining nameSubstring: String, _ typeEnumerator: TypeEnumerator) {
-  withoutActuallyEscaping(typeEnumerator) { typeEnumerator in
-    withUnsafePointer(to: typeEnumerator) { context in
-      swt_enumerateTypes(withNamesContaining: nameSubstring, .init(mutating: context)) { imageAddress, type, stop, context in
-        let typeEnumerator = context!.load(as: TypeEnumerator.self)
-        let type = unsafeBitCast(type, to: Any.Type.self)
-        var stop2 = false
-        typeEnumerator(imageAddress, type, &stop2)
-        stop.pointee = stop2
+      // *Now* we call all the generators and return their results.
+      // Reduce into a set rather than an array to deduplicate tests that were
+      // generated multiple times (e.g. from multiple discovery modes or from
+      // defective test records.)
+      return await withTaskGroup(of: [Self].self) { taskGroup in
+        for generator in generators {
+          taskGroup.addTask {
+            await generator()
+          }
+        }
+        return await taskGroup.reduce(into: Set()) { $0.formUnion($1) }
       }
     }
   }

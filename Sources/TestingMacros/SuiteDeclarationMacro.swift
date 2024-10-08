@@ -127,6 +127,39 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
     // Parse the @Suite attribute.
     let attributeInfo = AttributeInfo(byParsing: suiteAttribute, on: declaration, in: context)
 
+    let accessorName = context.makeUniqueName("")
+    result.append(
+      """
+      #if hasFeature(SymbolLinkageMarkers)
+      @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
+      private static let \(accessorName): @convention(c) (UnsafeMutableRawPointer, UnsafeRawPointer?) -> Bool = {
+        $0.initializeMemory(as: (@Sendable () async -> Testing.Test).self) { @Sendable () async in
+          .__type(
+            \(declaration.type.trimmed).self,
+            \(raw: attributeInfo.functionArgumentList(in: context))
+          )
+        }
+        _ = $1 // Ignored.
+        return true
+      }
+      #endif
+      """
+    )
+
+    let sectionContentName = context.makeUniqueName("")
+    result.append(
+      makeTestContentRecordDecl(
+        named: sectionContentName,
+        in: declaration.type,
+        ofKind: .testDeclaration,
+        accessingWith: accessorName,
+        context: 1 << 0 /* suite decl */
+      )
+    )
+
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+    // Emit a legacy type declaration if SymbolLinkageMarkers is off.
+    //
     // The emitted type must be public or the compiler can optimize it away
     // (since it is not actually used anywhere that the compiler can see.)
     //
@@ -136,23 +169,31 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
     // also annotated unavailable, since it's meant only for use by the testing
     // library at runtime. The compiler does not allow combining 'unavailable'
     // and 'deprecated' into a single availability attribute: rdar://111329796
+    // TODO: remove this decl when we drop support for emitting legacy metadata
     let typeName = declaration.type.tokens(viewMode: .fixedUp).map(\.textWithoutBackticks).joined()
     let enumName = context.makeUniqueName("__🟠$test_container__suite__\(typeName)")
     result.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
       enum \(enumName): Testing.__TestContainer {
-        static var __tests: [Testing.Test] {
-          get async {[
+        private static var __test: Testing.Test {
+          get async {
             .__type(
               \(declaration.type.trimmed).self,
               \(raw: attributeInfo.functionArgumentList(in: context))
             )
-          ]}
+          }
+        }
+
+        static var __tests: [Testing.Test] {
+          get async {
+            [await __test]
+          }
         }
       }
       """
     )
+#endif
 
     return result
   }
