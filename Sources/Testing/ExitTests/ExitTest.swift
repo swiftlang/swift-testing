@@ -117,28 +117,7 @@ extension ExitTest {
 
 // MARK: - Discovery
 
-/// A protocol describing a type that contains an exit test.
-///
-/// - Warning: This protocol is used to implement the `#expect(exitsWith:)`
-///   macro. Do not use it directly.
-@_alwaysEmitConformanceMetadata
-@_spi(Experimental)
-public protocol __ExitTestContainer {
-  /// The expected exit condition of the exit test.
-  static var __expectedExitCondition: ExitCondition { get }
-
-  /// The source location of the exit test.
-  static var __sourceLocation: SourceLocation { get }
-
-  /// The body function of the exit test.
-  static var __body: @Sendable () async throws -> Void { get }
-}
-
 extension ExitTest {
-  /// A string that appears within all auto-generated types conforming to the
-  /// `__ExitTestContainer` protocol.
-  private static let _exitTestContainerTypeNameMagic = "__🟠$exit_test_body__"
-
   /// Find the exit test function at the given source location.
   ///
   /// - Parameters:
@@ -150,7 +129,7 @@ extension ExitTest {
   public static func find(at sourceLocation: SourceLocation) -> Self? {
     var result: Self?
 
-    enumerateTypes(withNamesContaining: _exitTestContainerTypeNameMagic) { _, type, stop in
+    enumerateTypes(withNamesContaining: exitTestContainerTypeNameMagic) { _, type, stop in
       if let type = type as? any __ExitTestContainer.Type, type.__sourceLocation == sourceLocation {
         result = ExitTest(
           expectedExitCondition: type.__expectedExitCondition,
