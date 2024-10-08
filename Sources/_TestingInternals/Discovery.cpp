@@ -10,6 +10,32 @@
 
 #include "Discovery.h"
 
+#if defined(SWT_NO_DYNAMIC_LINKING)
+#pragma mark - Statically-linked section bounds
+
+#if defined(__APPLE__)
+extern "C" const char testContentSectionBegin __asm("section$start$__DATA_CONST$__swift5_tests");
+extern "C" const char testContentSectionEnd __asm("section$end$__DATA_CONST$__swift5_tests");
+#elif defined(__wasi__)
+extern "C" const char testContentSectionBegin __asm__("__start_swift5_tests");
+extern "C" const char testContentSectionEnd __asm__("__stop_swift5_tests");
+#else
+#warning Platform-specific implementation missing: Runtime test discovery unavailable (static)
+static const char testContentSectionBegin = 0;
+static const char& testContentSectionEnd = testContentSectionBegin;
+#endif
+
+/// The bounds of the test content section statically linked into the image
+/// containing Swift Testing.
+const void *_Nonnull const SWTTestContentSectionBounds[2] = {
+  &testContentSectionBegin,
+  &testContentSectionEnd
+};
+#endif
+
+#if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
+#pragma mark - Legacy test discovery
+
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -534,3 +560,4 @@ void swt_enumerateTypesWithNamesContaining(const char *nameSubstring, void *cont
     }
   });
 }
+#endif
