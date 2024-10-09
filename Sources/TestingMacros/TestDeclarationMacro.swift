@@ -314,7 +314,6 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
           thunkParam
         }
         FunctionParameterSyntax(
-          modifiers: [DeclModifierSyntax(name: .keyword(.isolated))],
           firstName: .wildcardToken(),
           type: "isolated (any Actor)?" as TypeSyntax,
           defaultValue: InitializerClauseSyntax(value: "Testing.__defaultSynchronousIsolationContext" as ExprSyntax)
