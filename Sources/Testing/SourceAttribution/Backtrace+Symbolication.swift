@@ -61,6 +61,7 @@ extension Backtrace {
   public func symbolicate(_ mode: SymbolicationMode) -> [SymbolicatedAddress] {
     var result = addresses.map { SymbolicatedAddress(address: $0) }
 
+#if !SWT_NO_DYNAMIC_LINKING
 #if SWT_TARGET_OS_APPLE
     for (i, address) in addresses.enumerated() {
       var info = Dl_info()
@@ -94,8 +95,6 @@ extension Backtrace {
         }
       }
     }
-#elseif os(WASI)
-    // WASI does not currently support backtracing let alone symbolication.
 #else
 #warning("Platform-specific implementation missing: backtrace symbolication unavailable")
 #endif
@@ -109,6 +108,7 @@ extension Backtrace {
         return symbolicatedAddress
       }
     }
+#endif
 
     return result
   }
