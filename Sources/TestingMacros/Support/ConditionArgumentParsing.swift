@@ -26,6 +26,9 @@ struct Condition {
   /// the testing library's `__Expression` type.
   var expression: ExprSyntax
 
+  /// Effects to apply to the `__check()` call.
+  var effects = [TokenSyntax]()
+
   init(_ expandedFunctionName: String, arguments: [Argument], expression: ExprSyntax) {
     self.expandedFunctionName = .identifier(expandedFunctionName)
     self.arguments = arguments
@@ -451,7 +454,7 @@ private func _parseCondition(from expr: MemberAccessExprSyntax, for macro: some 
   )
 }
 
-/// Parse a condition argument from a property access.
+/// Parse a negated condition argument.
 ///
 /// - Parameters:
 ///   - expr: The expression that was negated.
@@ -465,6 +468,42 @@ private func _parseCondition(from expr: MemberAccessExprSyntax, for macro: some 
 private func _parseCondition(negating expr: ExprSyntax, isParenthetical: Bool, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
   var result = _parseCondition(from: expr, for: macro, in: context)
   result.expression = createExpressionExprForNegation(of: result.expression, isParenthetical: isParenthetical)
+  return result
+}
+
+/// Parse a condition argument from a `try` expression.
+///
+/// - Parameters:
+///   - expr: The `try` expression.
+///   - macro: The macro expression being expanded.
+///   - context: The macro context in which the expression is being parsed.
+///
+/// - Returns: An instance of ``Condition`` describing `expr`.
+private func _parseCondition(from expr: TryExprSyntax, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
+  var result = _parseCondition(from: expr.expression, for: macro, in: context)
+
+  result.arguments = result.arguments.map { argument in
+    var argument = argument
+    if var closureExpr = argument.expression.as(ClosureExprSyntax.self) {
+      closureExpr.statements = CodeBlockItemListSyntax {
+        for stmt in closureExpr.statements {
+          if case let .expr(expr) = stmt.item {
+            CodeBlockItemSyntax(item: .expr("try Testing.__requiringTry(\(expr.trimmed))"))
+              .with(\.leadingTrivia, stmt.leadingTrivia)
+              .with(\.trailingTrivia, stmt.trailingTrivia)
+          } else {
+            stmt
+          }
+        }
+      }
+      argument.expression = ExprSyntax(closureExpr)
+    } else {
+      argument.expression = "try Testing.__requiringTry(\(argument.expression.trimmed))"
+    }
+    return argument
+  }
+  result.effects.append(.keyword(.try))
+
   return result
 }
 
@@ -504,6 +543,13 @@ private func _parseCondition(from expr: ExprSyntax, for macro: some Freestanding
   // Handle negation.
   if let negatedExpr = _negatedExpression(expr) {
     return _parseCondition(negating: negatedExpr.0, isParenthetical: negatedExpr.isParenthetical, for: macro, in: context)
+  }
+
+  // Handle effects.
+  if let tryExpr = expr.as(TryExprSyntax.self) {
+    return _parseCondition(from: tryExpr, for: macro, in: context)
+//  } else if let awaitExpr = expr.as(AwaitExprSyntax.self) {
+//    return _parseCondition(from: awaitExpr, for: macro, in: context)
   }
 
   // Parentheses are parsed as if they were tuples, so (true && false) appears

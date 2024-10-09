@@ -107,6 +107,7 @@ extension ConditionMacro {
       .firstIndex { $0.tokenKind == _sourceLocationLabel.tokenKind }
 
     // Construct the argument list to __check().
+    let effects: [TokenSyntax]
     let expandedFunctionName: TokenSyntax
     var checkArguments = [Argument]()
     do {
@@ -126,6 +127,7 @@ extension ConditionMacro {
         checkArguments.append(Argument(label: "expression", expression: sourceCode))
 
         expandedFunctionName = .identifier("__checkClosureCall")
+        effects = []
 
       } else {
         // Get the condition expression and extract its parsed form and source
@@ -150,6 +152,7 @@ extension ConditionMacro {
         }
 
         expandedFunctionName = conditionArgument.expandedFunctionName
+        effects = conditionArgument.effects
       }
 
       // Capture any comments as well (either in source or as a macro argument.)
@@ -187,11 +190,16 @@ extension ConditionMacro {
     }
 
     // Construct and return the call to __check().
-    let call: ExprSyntax = "Testing.\(expandedFunctionName)(\(LabeledExprListSyntax(checkArguments)))"
-    if isThrowing {
-      return "\(call).__required()"
+    var call: ExprSyntax = "Testing.\(expandedFunctionName)(\(LabeledExprListSyntax(checkArguments)))"
+    call = if isThrowing {
+      "\(call).__required()"
+    } else {
+      "\(call).__expected()"
     }
-    return "\(call).__expected()"
+    for effect in effects {
+      call = "\(effect) \(call)"
+    }
+    return call
   }
 
   /// Get the complete argument list for a given macro, including any trailing

@@ -26,3 +26,10 @@ struct ZipTests {
     #expect(i == j)
   }
 }
+
+
+func floof() throws -> Int { 1 }
+
+@Test func fleef() {
+  #expect(try floof() == 2)
+}
