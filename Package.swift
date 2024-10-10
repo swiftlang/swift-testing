@@ -96,6 +96,7 @@ let package = Package(
       dependencies: [
         "Testing",
       ],
+      exclude: ["Foundation.swiftoverlay"],
       swiftSettings: .packageSettings
     ),
   ],
