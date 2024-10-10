@@ -488,6 +488,8 @@ extern "C" const char sectionBegin __asm__("__start_swift5_type_metadata");
 extern "C" const char sectionEnd __asm__("__stop_swift5_type_metadata");
 #else
 #warning Platform-specific implementation missing: Runtime test discovery unavailable (static)
+static const char sectionBegin = 0;
+static const char& sectionEnd = sectionBegin;
 #endif
 
 template <typename SectionEnumerator>
