@@ -422,6 +422,10 @@ public macro require<R>(
 ///     issues should be attributed.
 ///   - expression: The expression to be evaluated.
 ///
+/// - Returns: An instance of ``ExitTest/Result`` describing the state of the
+///   exit test when it exited including the actual exit condition that it
+///   reported to the testing library.
+///
 /// Use this overload of `#expect()` when an expression will cause the current
 /// process to terminate and the nature of that termination will determine if
 /// the test passes or fails. For example, to test that calling `fatalError()`
@@ -485,7 +489,7 @@ public macro require<R>(
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: @convention(thin) () async throws -> Void
-) -> ExitTest.Result? = #externalMacro(module: "TestingMacros", type: "ExitTestExpectMacro")
+) -> ExitTest.Result = #externalMacro(module: "TestingMacros", type: "ExitTestExpectMacro")
 
 /// Check that an expression causes the process to terminate in a given fashion
 /// and throw an error if it did not.
@@ -496,6 +500,10 @@ public macro require<R>(
 ///   - sourceLocation: The source location to which recorded expectations and
 ///     issues should be attributed.
 ///   - expression: The expression to be evaluated.
+///
+/// - Returns: An instance of ``ExitTest/Result`` describing the state of the
+///   exit test when it exited including the actual exit condition that it
+///   reported to the testing library.
 ///
 /// - Throws: An instance of ``ExpectationFailedError`` if the exit condition of
 ///   the child process does not equal `expectedExitCondition`.

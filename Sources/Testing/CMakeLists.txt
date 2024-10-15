@@ -29,6 +29,7 @@ add_library(Testing
   Events/TimeValue.swift
   ExitTests/ExitCondition.swift
   ExitTests/ExitTest.swift
+  ExitTests/ExitTest.Result.swift
   ExitTests/SpawnProcess.swift
   ExitTests/WaitFor.swift
   Expectations/Expectation.swift
