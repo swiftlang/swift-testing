@@ -19,6 +19,36 @@ private import _TestingInternals
 #endif
 #endif
 
+#if os(Windows)
+/// A bitmask set to the non-code bits of `_STATUS_SIGNAL_CAUGHT_BITS`.
+private let _STATUS_SIGNAL_CAUGHT_MASK = ~NTSTATUS(0xFFFF)
+
+/// The severity and facility bits to mask against a caught signal value before
+/// terminating a child process.
+private let _STATUS_SIGNAL_CAUGHT_BITS = {
+  var result = NTSTATUS(0)
+
+  // Set the severity and status bits.
+  result |= STATUS_SEVERITY_ERROR << 30
+  result |= 1 << 29 // "Customer" bit
+
+  // We only have 12 facility bits, but we'll pretend they spell out "s6", short
+  // for "Swift 6" of course.
+  //
+  // We're camping on a specific "facility" code here that we don't think is
+  // otherwise in use; if it conflicts with an exit test, we can add an
+  // environment variable lookup so callers can override us.
+  let FACILITY_SWIFT6 = ((NTSTATUS(UInt8(ascii: "s")) << 4) | 6)
+  result |= FACILITY_SWIFT6 << 16
+
+#if DEBUG
+  assert((result & _STATUS_SIGNAL_CAUGHT_MASK) == result)
+#endif
+
+  return result
+}()
+#endif
+
 /// A type describing an exit test.
 ///
 /// Instances of this type describe an exit test defined by the test author and
@@ -100,6 +130,22 @@ extension ExitTest {
   @_spi(ForToolsIntegrationOnly)
   public consuming func callAsFunction() async -> Never {
     Self._disableCrashReporting()
+
+#if os(Windows)
+    // Windows does not support signal handling to the degree UNIX-like systems
+    // do. When a signal is raised in a Windows process, the default signal
+    // handler simply calls `exit()` and passes the constant value `3`. To allow
+    // us to handle signals on Windows, we install signal handlers for all
+    // signals supported on Windows. These signal handlers exit with a specific
+    // exit code that is unlikely to be encountered "in the wild" and which
+    // encodes the caught signal. Corresponding code in the parent process looks
+    // for these special exit codes and translates them back to signals.
+    for sig in [SIGABRT, SIGFPE, SIGILL, SIGINT, SIGSEGV, SIGTERM] {
+      _ = signal(sig) { sig in
+        exit(_STATUS_SIGNAL_CAUGHT_BITS | sig)
+      }
+    }
+#endif
 
     do {
       try await body()
@@ -201,6 +247,14 @@ func callExitTest(
   do {
     let exitTest = ExitTest(expectedExitCondition: expectedExitCondition, sourceLocation: sourceLocation)
     result = try await configuration.exitTestHandler(exitTest)
+
+#if os(Windows)
+    // For an explanation of this magic, see the corresponding logic in
+    // ExitTest.callAsFunction().
+    if case let .exitCode(exitCode) = result.exitCondition, (exitCode & _STATUS_SIGNAL_CAUGHT_MASK) == _STATUS_SIGNAL_CAUGHT_BITS {
+      result.exitCondition = .signal(exitCode & ~_STATUS_SIGNAL_CAUGHT_MASK)
+    }
+#endif
   } catch {
     // An error here would indicate a problem in the exit test handler such as a
     // failure to find the process' path, to construct arguments to the
