@@ -24,6 +24,7 @@ extension Result {
   }
 }
 
+#if !SWT_NO_EXIT_TESTS
 @_spi(Experimental)
 extension Result where Success == ExitTest.Result {
   /// Handle this instance as if it were returned from a call to `#expect()`.
@@ -34,3 +35,4 @@ extension Result where Success == ExitTest.Result {
     try? get()
   }
 }
+#endif
