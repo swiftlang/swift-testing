@@ -140,8 +140,13 @@ to load that information:
 +      UseResFile(refNum);
 +      Handle handle = Get1NamedResource('swft', "\p__swift5_types");
 +      if (handle && *handle) {
-+        size_t size = GetHandleSize(handle);
-+        body(*handle, size);
++        auto imageAddress = reinterpret_cast<const void *>(static_cast<uintptr_t>(refNum));
++        SWTSectionBounds sb = { imageAddress, *handle, GetHandleSize(handle) };
++        bool stop = false;
++        body(sb, &stop);
++        if (stop) {
++          break;
++        }
 +      }
 +    } while (noErr == GetNextResourceFile(refNum, &refNum));
 +    UseResFile(oldRefNum);
