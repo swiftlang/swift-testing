@@ -207,8 +207,8 @@ func callExitTest(
     let backtrace = Backtrace(forFirstThrowOf: error) ?? .current()
     let issue = Issue(
       kind: .system,
-      comments: ["\(String(describingForTest: error))"] + comments(),
-      sourceContext: .init(backtrace: backtrace, sourceLocation: sourceLocation)
+      comments: comments() + CollectionOfOne(Comment(rawValue: String(describingForTest: error))),
+      sourceContext: SourceContext(backtrace: backtrace, sourceLocation: sourceLocation)
     )
     issue.record(configuration: configuration)
 
