@@ -86,7 +86,12 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       let invalidSpecifierKeywords: [TokenKind] = [.keyword(.inout), .keyword(.isolated), .keyword(._const),]
       if let parameterType = parameter.type.as(AttributedTypeSyntax.self) {
         for specifier in parameterType.specifiers {
-          if invalidSpecifierKeywords.contains(specifier.specifier.tokenKind) {
+          for token in specifier.tokens(viewMode: .sourceAccurate) {
+            if invalidSpecifierKeywords.contains(token.tokenKind) {
+              diagnostics.append(.specifierNotSupported(token, on: parameter, whenUsing: testAttribute))
+              break
+            }
+          }
             diagnostics.append(.specifierNotSupported(specifier.specifier, on: parameter, whenUsing: testAttribute))
           }
         }
