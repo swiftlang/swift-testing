@@ -140,19 +140,71 @@ to load that information:
 +      UseResFile(refNum);
 +      Handle handle = Get1NamedResource('swft', "\p__swift5_types");
 +      if (handle && *handle) {
-+        size_t size = GetHandleSize(handle);
-+        body(*handle, size);
++        auto imageAddress = reinterpret_cast<const void *>(static_cast<uintptr_t>(refNum));
++        SWTSectionBounds sb = { imageAddress, *handle, GetHandleSize(handle) };
++        bool stop = false;
++        body(sb, &stop);
++        if (stop) {
++          break;
++        }
 +      }
 +    } while (noErr == GetNextResourceFile(refNum, &refNum));
 +    UseResFile(oldRefNum);
 +  }
 +}
  #else
- #warning Platform-specific implementation missing: Runtime test discovery unavailable
+ #warning Platform-specific implementation missing: Runtime test discovery unavailable (dynamic)
  template <typename SectionEnumerator>
  static void enumerateTypeMetadataSections(const SectionEnumerator& body) {}
  #endif
 ```
+
+## Runtime test discovery with static linkage
+
+If your platform does not support dynamic linking and loading, you will need to
+use static linkage instead. Define the `"SWT_NO_DYNAMIC_LINKING"` compiler
+conditional for your platform in both Package.swift and CompilerSettings.cmake,
+then define the `sectionBegin` and `sectionEnd` symbols in Discovery.cpp:
+
+```diff
+diff --git a/Sources/_TestingInternals/Discovery.cpp b/Sources/_TestingInternals/Discovery.cpp
+ // ...
++#elif defined(macintosh)
++extern "C" const char sectionBegin __asm__("...");
++extern "C" const char sectionEnd __asm__("...");
+ #else
+ #warning Platform-specific implementation missing: Runtime test discovery unavailable (static)
+ static const char sectionBegin = 0;
+ static const char& sectionEnd = sectionBegin;
+ #endif
+```
+
+These symbols must have unique addresses corresponding to the first byte of the
+test content section and the first byte _after_ the test content section,
+respectively. Their linker-level names will be platform-dependent: refer to the
+linker documentation for your platform to determine what names to place in the
+`__asm__` attribute applied to each.
+
+If you can't use `__asm__` on your platform, you can declare these symbols as
+C++ references to linker-defined symbols:
+
+```diff
+diff --git a/Sources/_TestingInternals/Discovery.cpp b/Sources/_TestingInternals/Discovery.cpp
+ // ...
++#elif defined(macintosh)
++extern "C" const char __linker_defined_begin_symbol;
++extern "C" const char __linker_defined_end_symbol;
++static const auto& sectionBegin = __linker_defined_begin_symbol;
++static const auto& sectionEnd = __linker_defined_end_symbol;
+ #else
+ #warning Platform-specific implementation missing: Runtime test discovery unavailable (static)
+ static const char sectionBegin = 0;
+ static const char& sectionEnd = sectionBegin;
+ #endif
+```
+
+The names of `__linker_defined_begin_symbol` and `__linker_defined_end_symbol`
+in this example are, as with the shorter implementation, platform-dependent.
 
 ## C++ stub implementations
 
