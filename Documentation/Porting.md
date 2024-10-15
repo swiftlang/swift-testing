@@ -180,6 +180,27 @@ respectively. Their linker-level names will be platform-dependent: refer to the
 linker documentation for your platform to determine what names to place in the
 `__asm__` attribute applied to each.
 
+If you can't use `__asm__` on your platform, you can declare these symbols as
+C++ references to linker-defined symbols:
+
+```diff
+diff --git a/Sources/_TestingInternals/Discovery.cpp b/Sources/_TestingInternals/Discovery.cpp
+ // ...
++#elif defined(macintosh)
++extern "C" const char __linker_defined_begin_symbol;
++extern "C" const char __linker_defined_end_symbol;
++static const auto& sectionBegin = __linker_defined_begin_symbol;
++static const auto& sectionEnd = __linker_defined_end_symbol;
+ #else
+ #warning Platform-specific implementation missing: Runtime test discovery unavailable (static)
+ static const char sectionBegin = 0;
+ static const char& sectionEnd = sectionBegin;
+ #endif
+```
+
+The names of `__linker_defined_begin_symbol` and `__linker_defined_end_symbol`
+in this example are, as with the shorter implementation, platform-dependent.
+
 ## C++ stub implementations
 
 Some symbols defined in C and C++ headers, especially "complex" macros, cannot
