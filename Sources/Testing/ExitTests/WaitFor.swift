@@ -260,7 +260,6 @@ func wait(for processHandle: consuming HANDLE) async throws -> ExitCondition {
     return .failure
   }
 
-  // FIXME: handle SEH/VEH uncaught exceptions.
   return .exitCode(CInt(bitPattern: .init(status)))
 }
 #else
