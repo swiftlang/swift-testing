@@ -23,3 +23,14 @@ extension Result {
     try get()
   }
 }
+
+@_spi(Experimental)
+extension Result where Success == ExitTest.Result {
+  /// Handle this instance as if it were returned from a call to `#expect()`.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  @inlinable public func __expected() -> Success? {
+    try? get()
+  }
+}

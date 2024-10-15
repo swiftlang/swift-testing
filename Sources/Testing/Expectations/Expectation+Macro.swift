@@ -479,12 +479,13 @@ public macro require<R>(
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
+@discardableResult
 @freestanding(expression) public macro expect(
   exitsWith expectedExitCondition: ExitCondition,
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: @convention(thin) () async throws -> Void
-) = #externalMacro(module: "TestingMacros", type: "ExitTestExpectMacro")
+) -> ExitTest.Result? = #externalMacro(module: "TestingMacros", type: "ExitTestExpectMacro")
 
 /// Check that an expression causes the process to terminate in a given fashion
 /// and throw an error if it did not.
@@ -556,9 +557,10 @@ public macro require<R>(
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
+@discardableResult
 @freestanding(expression) public macro require(
   exitsWith expectedExitCondition: ExitCondition,
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: @convention(thin) () async throws -> Void
-) = #externalMacro(module: "TestingMacros", type: "ExitTestRequireMacro")
+) -> ExitTest.Result = #externalMacro(module: "TestingMacros", type: "ExitTestRequireMacro")

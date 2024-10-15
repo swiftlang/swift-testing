@@ -89,7 +89,7 @@ private import _TestingInternals
 
       // Mock an exit test where the process exits successfully.
       configuration.exitTestHandler = { _ in
-        return .exitCode(EXIT_SUCCESS)
+        return ExitTest.Result(exitCondition: .exitCode(EXIT_SUCCESS))
       }
       await Test {
         await #expect(exitsWith: .success) {}
@@ -97,7 +97,7 @@ private import _TestingInternals
 
       // Mock an exit test where the process exits with a generic failure.
       configuration.exitTestHandler = { _ in
-        return .failure
+        return ExitTest.Result(exitCondition: .failure)
       }
       await Test {
         await #expect(exitsWith: .failure) {}
@@ -113,7 +113,7 @@ private import _TestingInternals
 
       // Mock an exit test where the process exits with a particular error code.
       configuration.exitTestHandler = { _ in
-        return .exitCode(123)
+        return ExitTest.Result(exitCondition: .exitCode(123))
       }
       await Test {
         await #expect(exitsWith: .failure) {}
@@ -122,7 +122,7 @@ private import _TestingInternals
 #if !os(Windows)
       // Mock an exit test where the process exits with a signal.
       configuration.exitTestHandler = { _ in
-        return .signal(SIGABRT)
+        return ExitTest.Result(exitCondition: .signal(SIGABRT))
       }
       await Test {
         await #expect(exitsWith: .signal(SIGABRT)) {}
@@ -151,7 +151,7 @@ private import _TestingInternals
 
       // Mock exit tests that were expected to fail but passed.
       configuration.exitTestHandler = { _ in
-        return .exitCode(EXIT_SUCCESS)
+        return ExitTest.Result(exitCondition: .exitCode(EXIT_SUCCESS))
       }
       await Test {
         await #expect(exitsWith: .failure) {}
@@ -168,7 +168,7 @@ private import _TestingInternals
 #if !os(Windows)
       // Mock exit tests that unexpectedly signalled.
       configuration.exitTestHandler = { _ in
-        return .signal(SIGABRT)
+        return ExitTest.Result(exitCondition: .signal(SIGABRT))
       }
       await Test {
         await #expect(exitsWith: .exitCode(EXIT_SUCCESS)) {}
