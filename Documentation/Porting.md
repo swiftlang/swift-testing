@@ -148,11 +148,37 @@ to load that information:
 +  }
 +}
  #else
- #warning Platform-specific implementation missing: Runtime test discovery unavailable
+ #warning Platform-specific implementation missing: Runtime test discovery unavailable (dynamic)
  template <typename SectionEnumerator>
  static void enumerateTypeMetadataSections(const SectionEnumerator& body) {}
  #endif
 ```
+
+## Runtime test discovery with static linkage
+
+If your platform does not support dynamic linking and loading, you will need to
+use static linkage instead. Define the `"SWT_NO_DYNAMIC_LINKING"` compiler
+conditional for your platform in both Package.swift and CompilerSettings.cmake,
+then define the `sectionBegin` and `sectionEnd` symbols in Discovery.cpp:
+
+```diff
+diff --git a/Sources/_TestingInternals/Discovery.cpp b/Sources/_TestingInternals/Discovery.cpp
+ // ...
++#elif defined(macintosh)
++extern "C" const char sectionBegin __asm__("...");
++extern "C" const char sectionEnd __asm__("...");
+ #else
+ #warning Platform-specific implementation missing: Runtime test discovery unavailable (static)
+ static const char sectionBegin = 0;
+ static const char& sectionEnd = sectionBegin;
+ #endif
+```
+
+These symbols must have unique addresses corresponding to the first byte of the
+test content section and the first byte _after_ the test content section,
+respectively. Their linker-level names will be platform-dependent: refer to the
+linker documentation for your platform to determine what names to place in the
+`__asm__` attribute applied to each.
 
 ## C++ stub implementations
 
