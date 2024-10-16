@@ -312,7 +312,7 @@ extension ExitTest {
     let eventHandler = ABIv0.Record.eventHandler(encodeAsJSONLines: true) { json in
       _ = try? _backChannelForEntryPoint?.withLock {
         try _backChannelForEntryPoint?.write(json)
-        try _backChannelForEntryPoint.write("\n")
+        try _backChannelForEntryPoint?.write("\n")
       }
     }
     configuration.eventHandler = { event, eventContext in
