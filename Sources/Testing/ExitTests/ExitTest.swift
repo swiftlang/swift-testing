@@ -310,7 +310,10 @@ extension ExitTest {
     // Only forward issue-recorded events. (If we start handling other kinds of
     // events in the future, we can forward them too.)
     let eventHandler = ABIv0.Record.eventHandler(encodeAsJSONLines: true) { json in
-      try? _backChannelForEntryPoint?.write(json)
+      _ = try? _backChannelForEntryPoint?.withLock {
+        try _backChannelForEntryPoint?.write(json)
+        try _backChannelForEntryPoint?.write("\n")
+      }
     }
     configuration.eventHandler = { event, eventContext in
       if case .issueRecorded = event.kind {
