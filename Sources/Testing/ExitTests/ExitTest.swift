@@ -140,7 +140,7 @@ extension ExitTest {
     // exit code that is unlikely to be encountered "in the wild" and which
     // encodes the caught signal. Corresponding code in the parent process looks
     // for these special exit codes and translates them back to signals.
-    for sig: CInt in 0 ..< NSIG {
+    for sig in [SIGINT, SIGILL, SIGFPE, SIGSEGV, SIGTERM, SIGBREAK, SIGABRT] {
       _ = signal(sig) { sig in
         exit(_STATUS_SIGNAL_CAUGHT_BITS | sig)
       }
