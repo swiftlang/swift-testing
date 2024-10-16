@@ -35,8 +35,6 @@ private import _TestingInternals
 #if os(Windows)
     await #expect(exitsWith: .signal(SIGSEGV)) {
       _ = raise(SIGSEGV)
-      // Allow up to 1s for the signal to be delivered.
-      try! await Task.sleep(nanoseconds: 1_000_000_000_000)
     }
 #else
     await #expect(exitsWith: .signal(SIGKILL)) {
