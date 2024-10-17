@@ -83,6 +83,13 @@ struct AttachmentTests {
     let attachableValue = MyAttachable(string: "<!doctype html>")
     let attachment = Test.Attachment(attachableValue, named: "loremipsum.tar.gz.gif.jpeg.html")
 
+    // Write the attachment to disk once to ensure the original filename is not
+    // available and we add a suffix.
+    let originalFilePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectory())
+    defer {
+      remove(originalFilePath)
+    }
+
     // Write the attachment to disk, then read it back.
     let suffix = String(UInt64.random(in: 0 ..< .max), radix: 36)
     let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectory(), appending: suffix)
