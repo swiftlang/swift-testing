@@ -18,8 +18,10 @@ private import _TestingInternals
 /// ``require(exitsWith:_:sourceLocation:performing:)`` to configure which exit
 /// statuses should be considered successful.
 @_spi(Experimental)
-#if SWT_NO_EXIT_TESTS
+#if SWT_NO_PROCESS_SPAWNING
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
+#elseif SWT_NO_EXIT_TESTS
+@_spi(ForToolsIntegrationOnly)
 #endif
 public enum ExitCondition: Sendable {
   /// The process terminated successfully with status `EXIT_SUCCESS`.
@@ -78,8 +80,10 @@ public enum ExitCondition: Sendable {
 
 // MARK: - Equatable
 
-#if SWT_NO_EXIT_TESTS
+#if SWT_NO_PROCESS_SPAWNING
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
+#elseif SWT_NO_EXIT_TESTS
+@_spi(ForToolsIntegrationOnly)
 #endif
 extension ExitCondition {
   /// Check whether or not two values of this type are equal.
@@ -108,9 +112,7 @@ extension ExitCondition {
   ///
   /// For any values `a` and `b`, `a == b` implies that `a != b` is `false`.
   public static func ==(lhs: Self, rhs: Self) -> Bool {
-#if SWT_NO_EXIT_TESTS
-    fatalError("Unsupported")
-#else
+#if !SWT_NO_PROCESS_SPAWNING
     return switch (lhs, rhs) {
     case let (.failure, .exitCode(exitCode)), let (.exitCode(exitCode), .failure):
       exitCode != EXIT_SUCCESS
@@ -122,6 +124,8 @@ extension ExitCondition {
     default:
       lhs === rhs
     }
+#else
+    fatalError("Unsupported")
 #endif
   }
 
@@ -152,10 +156,10 @@ extension ExitCondition {
   ///
   /// For any values `a` and `b`, `a == b` implies that `a != b` is `false`.
   public static func !=(lhs: Self, rhs: Self) -> Bool {
-#if SWT_NO_EXIT_TESTS
-    fatalError("Unsupported")
-#else
+#if !SWT_NO_PROCESS_SPAWNING
     !(lhs == rhs)
+#else
+    fatalError("Unsupported")
 #endif
   }
 
@@ -226,10 +230,10 @@ extension ExitCondition {
   ///
   /// For any values `a` and `b`, `a === b` implies that `a !== b` is `false`.
   public static func !==(lhs: Self, rhs: Self) -> Bool {
-#if SWT_NO_EXIT_TESTS
-    fatalError("Unsupported")
-#else
+#if !SWT_NO_PROCESS_SPAWNING
     !(lhs === rhs)
+#else
+    fatalError("Unsupported")
 #endif
   }
 }
