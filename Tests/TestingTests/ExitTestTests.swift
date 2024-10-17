@@ -32,17 +32,9 @@ private import _TestingInternals
       await Task.yield()
       exit(123)
     }
-#if os(Windows)
     await #expect(exitsWith: .signal(SIGSEGV)) {
       _ = raise(SIGSEGV)
     }
-#else
-    await #expect(exitsWith: .signal(SIGKILL)) {
-      _ = kill(getpid(), SIGKILL)
-      // Allow up to 1s for the signal to be delivered.
-      try! await Task.sleep(nanoseconds: 1_000_000_000_000)
-    }
-#endif
     await #expect(exitsWith: .signal(SIGABRT)) {
       abort()
     }
