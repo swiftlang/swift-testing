@@ -88,6 +88,22 @@ public struct ExitTest: Sendable, ~Copyable {
   public consuming func callAsFunction() async -> Never {
     Self._disableCrashReporting()
 
+#if os(Windows)
+    // Windows does not support signal handling to the degree UNIX-like systems
+    // do. When a signal is raised in a Windows process, the default signal
+    // handler simply calls `exit()` and passes the constant value `3`. To allow
+    // us to handle signals on Windows, we install signal handlers for all
+    // signals supported on Windows. These signal handlers exit with a specific
+    // exit code that is unlikely to be encountered : String: String"in the wild" and which
+    // encodes the caught signal. Corresponding code in the parent process looks
+    // for these special exit codes and translates them back to signals.
+    for sig in [SIGINT, SIGILL, SIGFPE, SIGSEGV, SIGTERM, SIGBREAK, SIGABRT] {
+      _ = signal(sig) { sig in
+        exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
+      }
+    }
+#endif
+
     do {
       try await body()
     } catch {
@@ -193,6 +209,14 @@ func callExitTest(
   do {
     let exitTest = ExitTest(expectedExitCondition: expectedExitCondition, sourceLocation: sourceLocation)
     result = try await configuration.exitTestHandler(exitTest)
+
+#if os(Windows)
+    // For an explanation of this magic, see the corresponding logic in
+    // ExitTest.callAsFunction().
+    if case let .exitCode(exitCode) = result.exitCondition, (exitCode & ~STATUS_CODE_MASK) == STATUS_SIGNAL_CAUGHT_BITS {
+      result.exitCondition = .signal(exitCode & STATUS_CODE_MASK)
+    }
+#endif
   } catch {
     // An error here would indicate a problem in the exit test handler such as a
     // failure to find the process' path, to construct arguments to the
