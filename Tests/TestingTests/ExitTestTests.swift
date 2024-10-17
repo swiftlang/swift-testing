@@ -89,7 +89,7 @@ private import _TestingInternals
 
       // Mock an exit test where the process exits successfully.
       configuration.exitTestHandler = { _ in
-        return .exitCode(EXIT_SUCCESS)
+        return ExitTest.Result(exitCondition: .exitCode(EXIT_SUCCESS))
       }
       await Test {
         await #expect(exitsWith: .success) {}
@@ -97,7 +97,7 @@ private import _TestingInternals
 
       // Mock an exit test where the process exits with a generic failure.
       configuration.exitTestHandler = { _ in
-        return .failure
+        return ExitTest.Result(exitCondition: .failure)
       }
       await Test {
         await #expect(exitsWith: .failure) {}
@@ -113,7 +113,7 @@ private import _TestingInternals
 
       // Mock an exit test where the process exits with a particular error code.
       configuration.exitTestHandler = { _ in
-        return .exitCode(123)
+        return ExitTest.Result(exitCondition: .exitCode(123))
       }
       await Test {
         await #expect(exitsWith: .failure) {}
@@ -122,7 +122,7 @@ private import _TestingInternals
 #if !os(Windows)
       // Mock an exit test where the process exits with a signal.
       configuration.exitTestHandler = { _ in
-        return .signal(SIGABRT)
+        return ExitTest.Result(exitCondition: .signal(SIGABRT))
       }
       await Test {
         await #expect(exitsWith: .signal(SIGABRT)) {}
@@ -151,7 +151,7 @@ private import _TestingInternals
 
       // Mock exit tests that were expected to fail but passed.
       configuration.exitTestHandler = { _ in
-        return .exitCode(EXIT_SUCCESS)
+        return ExitTest.Result(exitCondition: .exitCode(EXIT_SUCCESS))
       }
       await Test {
         await #expect(exitsWith: .failure) {}
@@ -168,7 +168,7 @@ private import _TestingInternals
 #if !os(Windows)
       // Mock exit tests that unexpectedly signalled.
       configuration.exitTestHandler = { _ in
-        return .signal(SIGABRT)
+        return ExitTest.Result(exitCondition: .signal(SIGABRT))
       }
       await Test {
         await #expect(exitsWith: .exitCode(EXIT_SUCCESS)) {}
@@ -292,6 +292,108 @@ private import _TestingInternals
       await Self.someMainActorFunction()
       _ = 0
       exit(EXIT_SUCCESS)
+    }
+  }
+
+  @Test("Result is set correctly (success)")
+  func exitTestResultOnSuccess() async throws {
+    // Test that basic passing exit tests produce the correct results (#expect)
+    var result = await #expect(exitsWith: .success) {
+      exit(EXIT_SUCCESS)
+    }
+    #expect(result.exitCondition === .success)
+    result = await #expect(exitsWith: .exitCode(123)) {
+      exit(123)
+    }
+    #expect(result.exitCondition === .exitCode(123))
+
+    // Test that basic passing exit tests produce the correct results (#require)
+    result = try await #require(exitsWith: .success) {
+      exit(EXIT_SUCCESS)
+    }
+    #expect(result.exitCondition === .success)
+    result = try await #require(exitsWith: .exitCode(123)) {
+      exit(123)
+    }
+    #expect(result.exitCondition === .exitCode(123))
+  }
+
+  @Test("Result is set correctly (failure)")
+  func exitTestResultOnFailure() async {
+    // Test that an exit test that produces the wrong exit condition reports it
+    // as an expectation failure, but also returns the exit condition (#expect)
+    await confirmation("Expectation failed") { expectationFailed in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        if case let .issueRecorded(issue) = event.kind {
+          if case .expectationFailed = issue.kind {
+            expectationFailed()
+          } else {
+            issue.record()
+          }
+        }
+      }
+      configuration.exitTestHandler = { _ in
+        ExitTest.Result(exitCondition: .exitCode(123))
+      }
+
+      await Test {
+        let result = await #expect(exitsWith: .success) {}
+        #expect(result.exitCondition === .exitCode(123))
+      }.run(configuration: configuration)
+    }
+
+    // Test that an exit test that produces the wrong exit condition throws an
+    // ExpectationFailedError (#require)
+    await confirmation("Expectation failed") { expectationFailed in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        if case let .issueRecorded(issue) = event.kind {
+          if case .expectationFailed = issue.kind {
+            expectationFailed()
+          } else {
+            issue.record()
+          }
+        }
+      }
+      configuration.exitTestHandler = { _ in
+        ExitTest.Result(exitCondition: .failure)
+      }
+
+      await Test {
+        try await #require(exitsWith: .success) {}
+        fatalError("Unreachable")
+      }.run(configuration: configuration)
+    }
+  }
+
+  @Test("Result is set correctly (system failure)")
+  func exitTestResultOnSystemFailure() async {
+    // Test that an exit test that fails to start due to a system error produces
+    // a .system issue and reports .failure as its exit condition.
+    await confirmation("System issue recorded") { systemIssueRecorded in
+      await confirmation("Expectation failed") { expectationFailed in
+        var configuration = Configuration()
+        configuration.eventHandler = { event, _ in
+          if case let .issueRecorded(issue) = event.kind {
+            if case .system = issue.kind {
+              systemIssueRecorded()
+            } else if case .expectationFailed = issue.kind {
+              expectationFailed()
+            } else {
+              issue.record()
+            }
+          }
+        }
+        configuration.exitTestHandler = { _ in
+          throw MyError()
+        }
+
+        await Test {
+          let result = await #expect(exitsWith: .success) {}
+          #expect(result.exitCondition === .failure)
+        }.run(configuration: configuration)
+      }
     }
   }
 }

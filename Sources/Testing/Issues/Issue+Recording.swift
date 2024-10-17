@@ -32,7 +32,7 @@ extension Issue {
     if case let .errorCaught(error) = kind, let error = error as? SystemError {
       var selfCopy = self
       selfCopy.kind = .system
-      selfCopy.comments.append(Comment(rawValue: String(describing: error)))
+      selfCopy.comments.append(Comment(rawValue: String(describingForTest: error)))
       return selfCopy.record(configuration: configuration)
     }
 

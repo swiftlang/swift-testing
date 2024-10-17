@@ -10,18 +10,18 @@
 
 private import _TestingInternals
 
-#if !SWT_NO_EXIT_TESTS
-#if SWT_NO_PIPES
-#error("Support for exit tests requires support for (anonymous) pipes.")
-#endif
-
 /// A type describing an exit test.
 ///
 /// Instances of this type describe an exit test defined by the test author and
 /// discovered or called at runtime.
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+@_spi(Experimental)
+#if SWT_NO_EXIT_TESTS
+@available(*, unavailable, message: "Exit tests are not available on this platform.")
+#endif
 public struct ExitTest: Sendable, ~Copyable {
+#if !SWT_NO_EXIT_TESTS
   /// The expected exit condition of the exit test.
+  @_spi(ForToolsIntegrationOnly)
   public var expectedExitCondition: ExitCondition
 
   /// The body closure of the exit test.
@@ -31,6 +31,7 @@ public struct ExitTest: Sendable, ~Copyable {
   ///
   /// The source location is unique to each exit test and is consistent between
   /// processes, so it can be used to uniquely identify an exit test at runtime.
+  @_spi(ForToolsIntegrationOnly)
   public var sourceLocation: SourceLocation
 
   /// Disable crash reporting, crash logging, or core dumps for the current
@@ -83,6 +84,7 @@ public struct ExitTest: Sendable, ~Copyable {
   /// to terminate the process; if it does not, the testing library will
   /// terminate the process in a way that causes the corresponding expectation
   /// to fail.
+  @_spi(ForToolsIntegrationOnly)
   public consuming func callAsFunction() async -> Never {
     Self._disableCrashReporting()
 
@@ -98,8 +100,13 @@ public struct ExitTest: Sendable, ~Copyable {
     let expectingFailure = expectedExitCondition == .failure
     exit(expectingFailure ? EXIT_SUCCESS : EXIT_FAILURE)
   }
+#endif
 }
 
+#if !SWT_NO_EXIT_TESTS
+#if SWT_NO_PIPES
+#error("Support for exit tests requires support for (anonymous) pipes.")
+#endif
 // MARK: - Discovery
 
 /// A protocol describing a type that contains an exit test.
@@ -131,6 +138,7 @@ extension ExitTest {
   ///
   /// - Returns: The specified exit test function, or `nil` if no such exit test
   ///   could be found.
+  @_spi(ForToolsIntegrationOnly)
   public static func find(at sourceLocation: SourceLocation) -> Self? {
     var result: Self?
 
@@ -176,35 +184,47 @@ func callExitTest(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<Void, any Error> {
+) async -> ExitTest.Result {
   guard let configuration = Configuration.current ?? Configuration.all.first else {
     preconditionFailure("A test must be running on the current task to use #expect(exitsWith:).")
   }
 
-  let actualExitCondition: ExitCondition
+  var result: ExitTest.Result
   do {
     let exitTest = ExitTest(expectedExitCondition: expectedExitCondition, sourceLocation: sourceLocation)
-    actualExitCondition = try await configuration.exitTestHandler(exitTest)
+    result = try await configuration.exitTestHandler(exitTest)
   } catch {
     // An error here would indicate a problem in the exit test handler such as a
     // failure to find the process' path, to construct arguments to the
-    // subprocess, or to spawn the subprocess. These are not expected to be
-    // common issues, however they would constitute a failure of the test
-    // infrastructure rather than the test itself and perhaps should not cause
-    // the test to terminate early.
-    let issue = Issue(kind: .errorCaught(error), comments: comments(), sourceContext: .init(backtrace: .current(), sourceLocation: sourceLocation))
+    // subprocess, or to spawn the subprocess. Such failures are system issues,
+    // not test issues, because they constitute failures of the test
+    // infrastructure rather than the test itself.
+    //
+    // But here's a philosophical question: should the exit test also fail with
+    // an expectation failure? Arguably no, because the issue is a systemic one
+    // and (presumably) not a bug in the test. But also arguably yes, because
+    // the exit test did not do what the test author expected it to do.
+    let backtrace = Backtrace(forFirstThrowOf: error) ?? .current()
+    let issue = Issue(
+      kind: .system,
+      comments: comments() + CollectionOfOne(Comment(rawValue: String(describingForTest: error))),
+      sourceContext: SourceContext(backtrace: backtrace, sourceLocation: sourceLocation)
+    )
     issue.record(configuration: configuration)
 
-    return __checkValue(
-      false,
-      expression: expression,
-      comments: comments(),
-      isRequired: isRequired,
-      sourceLocation: sourceLocation
-    )
+    // For lack of a better way to handle an exit test failing in this way,
+    // we record the system issue above, then let the expectation fail below by
+    // reporting an exit condition that's the inverse of the expected one.
+    result = ExitTest.Result(exitCondition: expectedExitCondition == .failure ? .success : .failure)
   }
 
-  return __checkValue(
+  // How did the exit test actually exit?
+  let actualExitCondition = result.exitCondition
+
+  // Plumb the resulting exit condition through the general expectation
+  // machinery. If the expectation failed, capture the ExpectationFailedError
+  // instance so that calls to #require(exitsWith:) throw it correctly.
+  let checkResult = __checkValue(
     expectedExitCondition == actualExitCondition,
     expression: expression,
     expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(actualExitCondition),
@@ -213,6 +233,11 @@ func callExitTest(
     isRequired: isRequired,
     sourceLocation: sourceLocation
   )
+  if case let .failure(error) = checkResult {
+    result.caughtError = error
+  }
+
+  return result
 }
 
 // MARK: - SwiftPM/tools integration
@@ -223,7 +248,8 @@ extension ExitTest {
   /// - Parameters:
   ///   - exitTest: The exit test that is starting.
   ///
-  /// - Returns: The condition under which the exit test exited.
+  /// - Returns: The result of the exit test including the condition under which
+  ///   it exited.
   ///
   /// - Throws: Any error that prevents the normal invocation or execution of
   ///   the exit test.
@@ -239,7 +265,8 @@ extension ExitTest {
   /// are available or the child environment is otherwise terminated. The parent
   /// environment is then responsible for interpreting those results and
   /// recording any issues that occur.
-  public typealias Handler = @Sendable (_ exitTest: borrowing ExitTest) async throws -> ExitCondition
+  @_spi(ForToolsIntegrationOnly)
+  public typealias Handler = @Sendable (_ exitTest: borrowing ExitTest) async throws -> ExitTest.Result
 
   /// The back channel file handle set up by the parent process.
   ///
@@ -337,7 +364,7 @@ extension ExitTest {
     // or unsetenv(), so we need to recompute the child environment each time.
     // The executable and XCTest bundle paths should not change over time, so we
     // can precompute them.
-    let childProcessExecutablePath = Result { try CommandLine.executablePath }
+    let childProcessExecutablePath = Swift.Result { try CommandLine.executablePath }
 
     // Construct appropriate arguments for the child process. Generally these
     // arguments are going to be whatever's necessary to respawn the current
@@ -418,7 +445,7 @@ extension ExitTest {
         childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION"] = String(decoding: json, as: UTF8.self)
       }
 
-      return try await withThrowingTaskGroup(of: ExitCondition?.self) { taskGroup in
+      return try await withThrowingTaskGroup(of: ExitTest.Result?.self) { taskGroup in
         // Create a "back channel" pipe to handle events from the child process.
         let backChannel = try FileHandle.Pipe()
 
@@ -453,7 +480,8 @@ extension ExitTest {
 
         // Await termination of the child process.
         taskGroup.addTask {
-          try await wait(for: processID)
+          let exitCondition = try await wait(for: processID)
+          return ExitTest.Result(exitCondition: exitCondition)
         }
 
         // Read back all data written to the back channel by the child process
