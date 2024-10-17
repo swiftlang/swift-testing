@@ -8,8 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if !SWT_NO_EXIT_TESTS
-
+#if !SWT_NO_PROCESS_SPAWNING
 internal import _TestingInternals
 
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
@@ -41,8 +40,45 @@ private func _blockAndWait(for pid: consuming pid_t) throws -> ExitCondition {
     }
   }
 }
+#endif
 
-#if !(SWT_TARGET_OS_APPLE && !SWT_NO_LIBDISPATCH)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_LIBDISPATCH
+/// Asynchronously wait for a process to terminate using a dispatch source.
+///
+/// - Parameters:
+///   - processID: The ID of the process to wait for.
+///
+/// - Returns: The exit condition of `processID`.
+///
+/// - Throws: If the exit status of the process with ID `processID` cannot be
+///   determined (i.e. it does not represent an exit condition.)
+///
+/// This implementation of `wait(for:)` suspends the calling task until
+/// libdispatch reports that `processID` has terminated, then synchronously
+/// calls `_blockAndWait(for:)` (which should not block because `processID` will
+/// have already terminated by that point.)
+///
+/// - Note: The open-source implementation of libdispatch available on Linux
+///   and other platforms does not support `DispatchSourceProcess`. Those
+///   platforms use an alternate implementation below.
+func wait(for pid: consuming pid_t) async throws -> ExitCondition {
+  let pid = consume pid
+
+  let source = DispatchSource.makeProcessSource(identifier: pid, eventMask: .exit)
+  defer {
+    source.cancel()
+  }
+  await withCheckedContinuation { continuation in
+    source.setEventHandler {
+      continuation.resume()
+    }
+    source.resume()
+  }
+  withExtendedLifetime(source) {}
+
+  return try _blockAndWait(for: pid)
+}
+#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
 /// A mapping of awaited child PIDs to their corresponding Swift continuations.
 private let _childProcessContinuations = Locked<[pid_t: CheckedContinuation<ExitCondition, any Error>]>()
 
@@ -54,8 +90,9 @@ private nonisolated(unsafe) let _waitThreadNoChildrenCondition = {
   return result
 }()
 
-/// The implementation of `_createWaitThread()`, run only once.
-private let _createWaitThreadImpl: Void = {
+/// Create a waiter thread that is responsible for waiting for child processes
+/// to exit.
+private let _createWaitThread: Void = {
   // The body of the thread's run loop.
   func waitForAnyChild() {
     // Listen for child process exit events. WNOWAIT means we don't perturb the
@@ -128,42 +165,29 @@ private let _createWaitThreadImpl: Void = {
   )
 }()
 
-/// Create a waiter thread that is responsible for waiting for child processes
-/// to exit.
-private func _createWaitThread() {
-  _createWaitThreadImpl
-}
-#endif
-
-/// Wait for a given PID to exit and report its status.
+/// Asynchronously wait for a process to terminate using a background thread
+/// that calls `waitid()` in a loop.
 ///
 /// - Parameters:
-///   - pid: The PID to wait for.
+///   - processID: The ID of the process to wait for.
 ///
-/// - Returns: The exit condition of `pid`.
+/// - Returns: The exit condition of `processID`.
 ///
-/// - Throws: Any error encountered calling `waitpid()` except for `EINTR`,
-///   which is ignored.
+/// - Throws: If the exit status of the process with ID `processID` cannot be
+///   determined (i.e. it does not represent an exit condition.)
+///
+/// This implementation of `wait(for:)` suspends the calling task until
+/// `waitid()`, called on a shared background thread, reports that `processID`
+/// has terminated, then calls `_blockAndWait(for:)` (which should not block
+/// because `processID` will have already terminated by that point.)
+///
+/// On Apple platforms, the libdispatch-based implementation above is more
+/// efficient because it does not need to permanently reserve a thread.
 func wait(for pid: consuming pid_t) async throws -> ExitCondition {
   let pid = consume pid
 
-#if SWT_TARGET_OS_APPLE && !SWT_NO_LIBDISPATCH
-  let source = DispatchSource.makeProcessSource(identifier: pid, eventMask: .exit)
-  defer {
-    source.cancel()
-  }
-  await withCheckedContinuation { continuation in
-    source.setEventHandler {
-      continuation.resume()
-    }
-    source.resume()
-  }
-  withExtendedLifetime(source) {}
-
-  return try _blockAndWait(for: pid)
-#else
   // Ensure the waiter thread is running.
-  _createWaitThread()
+  _createWaitThread
 
   return try await withCheckedThrowingContinuation { continuation in
     _childProcessContinuations.withLock { childProcessContinuations in
@@ -179,19 +203,23 @@ func wait(for pid: consuming pid_t) async throws -> ExitCondition {
       _ = pthread_cond_signal(_waitThreadNoChildrenCondition)
     }
   }
-#endif
 }
 #elseif os(Windows)
-/// Wait for a given process handle to exit and report its status.
+/// Asynchronously wait for a process to terminate using the Windows thread
+/// pool.
 ///
 /// - Parameters:
-///   - processHandle: The handle to wait for. This function takes ownership of
-///     this handle and closes it when done.
+///   - processHandle: A Windows handle representing the process to wait for.
+///     This handle is closed before the function returns.
 ///
 /// - Returns: The exit condition of `processHandle`.
 ///
-/// - Throws: Any error encountered calling `WaitForSingleObject()` or
+/// - Throws: Any error encountered calling `RegisterWaitForSingleObject()` or
 ///   `GetExitCodeProcess()`.
+///
+/// This implementation of `wait(for:)` calls `RegisterWaitForSingleObject()` to
+/// wait for `processHandle`, suspends the calling task until the waiter's
+/// callback is called, then calls `GetExitCodeProcess()`.
 func wait(for processHandle: consuming HANDLE) async throws -> ExitCondition {
   let processHandle = consume processHandle
   defer {
@@ -235,5 +263,8 @@ func wait(for processHandle: consuming HANDLE) async throws -> ExitCondition {
   // FIXME: handle SEH/VEH uncaught exceptions.
   return .exitCode(CInt(bitPattern: .init(status)))
 }
+#else
+#warning("Platform-specific implementation missing: cannot wait for child processes to exit")
+func wait(for processID: consuming Never) async throws -> ExitCondition {}
 #endif
 #endif

@@ -10,7 +10,7 @@
 
 internal import _TestingInternals
 
-#if !SWT_NO_EXIT_TESTS
+#if !SWT_NO_PROCESS_SPAWNING
 /// A platform-specific value identifying a process running on the current
 /// system.
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
