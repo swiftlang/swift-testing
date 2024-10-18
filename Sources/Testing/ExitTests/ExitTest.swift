@@ -10,6 +10,15 @@
 
 private import _TestingInternals
 
+#if !SWT_NO_EXIT_TESTS
+#if SWT_NO_PIPES
+#error("Platform-specific misconfiguration: support for exit tests requires support for (anonymous) pipes")
+#endif
+#if SWT_NO_PROCESS_SPAWNING
+#error("Platform-specific misconfiguration: support for exit tests requires support for process spawning")
+#endif
+#endif
+
 /// A type describing an exit test.
 ///
 /// Instances of this type describe an exit test defined by the test author and
@@ -19,7 +28,6 @@ private import _TestingInternals
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 public struct ExitTest: Sendable, ~Copyable {
-#if !SWT_NO_EXIT_TESTS
   /// The expected exit condition of the exit test.
   @_spi(ForToolsIntegrationOnly)
   public var expectedExitCondition: ExitCondition
@@ -33,7 +41,12 @@ public struct ExitTest: Sendable, ~Copyable {
   /// processes, so it can be used to uniquely identify an exit test at runtime.
   @_spi(ForToolsIntegrationOnly)
   public var sourceLocation: SourceLocation
+}
 
+#if !SWT_NO_EXIT_TESTS
+// MARK: - Invocation
+
+extension ExitTest {
   /// Disable crash reporting, crash logging, or core dumps for the current
   /// process.
   private static func _disableCrashReporting() {
@@ -100,13 +113,8 @@ public struct ExitTest: Sendable, ~Copyable {
     let expectingFailure = expectedExitCondition == .failure
     exit(expectingFailure ? EXIT_SUCCESS : EXIT_FAILURE)
   }
-#endif
 }
 
-#if !SWT_NO_EXIT_TESTS
-#if SWT_NO_PIPES
-#error("Support for exit tests requires support for (anonymous) pipes.")
-#endif
 // MARK: - Discovery
 
 /// A protocol describing a type that contains an exit test.
