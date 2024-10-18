@@ -58,6 +58,16 @@ These warnings may be emitted by our internal C++ module (`_TestingInternals`)
 or by our library module (`Testing`). Both indicate areas of our code that need
 platform-specific attention.
 
+> [!NOTE]
+> Rarely, you may encounter errors of a similar form:
+> 
+> > 🛑 ERROR: Platform-specific misconfiguration: ...
+> 
+> These errors are produced when the configuration you're trying to build has
+> conflicting requirements (for example, attempting to enable support for pipes
+> without also enabling support for file I/O.) You should be able to resolve
+> these issues by updating Package.swift and/or CompilerSettings.cmake.
+
 Most platform dependencies can be resolved through the use of platform-specific
 API. For example, Swift Testing uses the C11 standard [`timespec`](https://en.cppreference.com/w/c/chrono/timespec)
 type to accurately track the durations of test runs. If you are porting Swift

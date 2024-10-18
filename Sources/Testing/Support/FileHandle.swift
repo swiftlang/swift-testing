@@ -10,6 +10,12 @@
 
 internal import _TestingInternals
 
+#if !SWT_NO_PIPES
+#if SWT_NO_FILE_IO
+#error("Platform-specific misconfiguration: support for (anonymous) pipes requires support for file I/O")
+#endif
+#endif
+
 #if !SWT_NO_FILE_IO
 /// A type representing a file handle.
 ///
