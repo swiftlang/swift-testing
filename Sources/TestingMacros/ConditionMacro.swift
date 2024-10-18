@@ -373,6 +373,13 @@ extension ExitTestConditionMacro {
     guard let expectedExitConditionIndex else {
       fatalError("Could not find the exit condition for this exit test. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
     }
+    let observationListIndex = arguments.firstIndex { $0.label?.tokenKind == .identifier("observing") }
+    if observationListIndex == nil {
+      arguments.insert(
+        Argument(label: "observing", expression: ArrayExprSyntax(expressions: [])),
+        at: arguments.index(after: expectedExitConditionIndex)
+      )
+    }
     let trailingClosureIndex = arguments.firstIndex { $0.label?.tokenKind == _trailingClosureLabel.tokenKind }
     guard let trailingClosureIndex else {
       fatalError("Could not find the body argument to this exit test. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
