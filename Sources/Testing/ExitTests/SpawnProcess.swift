@@ -208,8 +208,8 @@ func spawnExecutable(
     defer {
       inheritedHandlesBuffer.deallocate()
     }
-    for additionalFileHandle in additionalFileHandles {
-      try inherit(additionalFileHandle.pointee, as: &inheritedHandlesBuffer[i])
+    for i in 0 ..< additionalFileHandles.count {
+      try inherit(additionalFileHandles[i].pointee, as: &inheritedHandlesBuffer[i])
     }
     _ = UpdateProcThreadAttribute(
       startupInfo.pointee.lpAttributeList,
