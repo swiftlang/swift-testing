@@ -51,6 +51,14 @@ static int swt_errno(void) {
   return errno;
 }
 
+/// Round a value up to the given alignment.
+///
+/// This function is provided because Swift does not expose an equivalent of
+/// `__builtin_align_up()`.
+static size_t swt_alignup(size_t value, size_t alignment) {
+  return __builtin_align_up(value, alignment);
+}
+
 #if !SWT_NO_FILE_IO
 #if __has_include(<sys/stat.h>) && defined(S_ISFIFO)
 /// Check if a given `mode_t` value indicates that a file is a pipe (FIFO.)
