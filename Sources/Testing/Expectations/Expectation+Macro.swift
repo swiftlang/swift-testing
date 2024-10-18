@@ -417,6 +417,9 @@ public macro require<R>(
 ///
 /// - Parameters:
 ///   - expectedExitCondition: The expected exit condition.
+///   - observedValues: An array of key paths representing results from within
+///     the exit test that should be observed and returned by this macro. The
+///     ``ExitTest/Result/exitCondition`` property is always returned.
 ///   - comment: A comment describing the expectation.
 ///   - sourceLocation: The source location to which recorded expectations and
 ///     issues should be attributed.
@@ -458,6 +461,34 @@ public macro require<R>(
 /// its exit status against `exitCondition`. If they match, the exit test has
 /// passed; otherwise, it has failed and an issue is recorded.
 ///
+/// ## Child process output
+///
+/// By default, the child process is configured without a standard output or
+/// standard error stream. If your test needs to review the content of either of
+/// these streams, you can pass its key path in the `observedValues` argument:
+///
+/// ```swift
+/// let result = await #expect(
+///   exitsWith: .failure,
+///   observing: [\.standardOutputContent]
+/// ) {
+///   print("Goodbye, world!")
+///   fatalError()
+/// }
+/// #expect(result.standardOutputContent.contains(UInt8(ascii: "G")))
+/// ```
+///
+/// - Note: The content of the standard output and standard error streams may
+///   contain any arbitrary sequence of bytes, including sequences that are not
+///   valid UTF-8 and cannot be decoded by [`String.init(cString:)`](https://developer.apple.com/documentation/swift/string/init(cstring:)-6kr8s).
+///   These streams are globally accessible within the child process, and any
+///   code running in an exit test may write to it including including the
+///   operating system and any third-party dependencies you have declared in
+///   your package.
+///
+/// The actual exit condition of the child process is always reported by the
+/// testing library even if you do not specify it in `observedValues`.
+///
 /// ## Runtime constraints
 ///
 /// Exit tests cannot capture any state originating in the parent process or
@@ -486,6 +517,7 @@ public macro require<R>(
 @discardableResult
 @freestanding(expression) public macro expect(
   exitsWith expectedExitCondition: ExitCondition,
+  observing observedValues: Set<PartialKeyPath<ExitTestArtifacts>> = [],
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: @convention(thin) () async throws -> Void
@@ -496,6 +528,9 @@ public macro require<R>(
 ///
 /// - Parameters:
 ///   - expectedExitCondition: The expected exit condition.
+///   - observedValues: An array of key paths representing results from within
+///     the exit test that should be observed and returned by this macro. The
+///     ``ExitTest/Result/exitCondition`` property is always returned.
 ///   - comment: A comment describing the expectation.
 ///   - sourceLocation: The source location to which recorded expectations and
 ///     issues should be attributed.
@@ -539,6 +574,34 @@ public macro require<R>(
 /// its exit status against `exitCondition`. If they match, the exit test has
 /// passed; otherwise, it has failed and an issue is recorded.
 ///
+/// ## Child process output
+///
+/// By default, the child process is configured without a standard output or
+/// standard error stream. If your test needs to review the content of either of
+/// these streams, you can pass its key path in the `observedValues` argument:
+///
+/// ```swift
+/// let result = try await #require(
+///   exitsWith: .failure,
+///   observing: [\.standardOutputContent]
+/// ) {
+///   print("Goodbye, world!")
+///   fatalError()
+/// }
+/// #expect(result.standardOutputContent.contains(UInt8(ascii: "G")))
+/// ```
+///
+/// - Note: The content of the standard output and standard error streams may
+///   contain any arbitrary sequence of bytes, including sequences that are not
+///   valid UTF-8 and cannot be decoded by [`String.init(cString:)`](https://developer.apple.com/documentation/swift/string/init(cstring:)-6kr8s).
+///   These streams are globally accessible within the child process, and any
+///   code running in an exit test may write to it including including the
+///   operating system and any third-party dependencies you have declared in
+///   your package.
+///
+/// The actual exit condition of the child process is always reported by the
+/// testing library even if you do not specify it in `observedValues`.
+///
 /// ## Runtime constraints
 ///
 /// Exit tests cannot capture any state originating in the parent process or
@@ -567,6 +630,7 @@ public macro require<R>(
 @discardableResult
 @freestanding(expression) public macro require(
   exitsWith expectedExitCondition: ExitCondition,
+  observing observedValues: Set<PartialKeyPath<ExitTestArtifacts>> = [],
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: @convention(thin) () async throws -> Void

@@ -29,6 +29,15 @@ typealias ProcessID = Never
 ///   - arguments: The arguments to pass to the executable, not including the
 ///     executable path.
 ///   - environment: The environment block to pass to the executable.
+///   - standardInput: If not `nil`, a file handle the child process should
+///     inherit as its standard input stream. This file handle must be backed
+///     by a file descriptor and be open for reading.
+///   - standardOutput: If not `nil`, a file handle the child process should
+///     inherit as its standard output stream. This file handle must be backed
+///     by a file descriptor and be open for writing.
+///   - standardError: If not `nil`, a file handle the child process should
+///     inherit as its standard error stream. This file handle must be backed
+///     by a file descriptor and be open for writing.
 ///   - additionalFileHandles: A collection of file handles to inherit in the
 ///     child process.
 ///
@@ -42,7 +51,10 @@ func spawnExecutable(
   atPath executablePath: String,
   arguments: [String],
   environment: [String: String],
-  additionalFileHandles: UnsafeBufferPointer<FileHandle> = .init(start: nil, count: 0)
+  standardInput: borrowing FileHandle? = nil,
+  standardOutput: borrowing FileHandle? = nil,
+  standardError: borrowing FileHandle? = nil,
+  additionalFileHandles: [UnsafePointer<FileHandle>] = []
 ) throws -> ProcessID {
   // Darwin and Linux differ in their optionality for the posix_spawn types we
   // use, so use this typealias to paper over the differences.
@@ -88,25 +100,40 @@ func spawnExecutable(
         flags |= CShort(POSIX_SPAWN_SETSIGDEF)
       }
 
-      // Do not forward standard I/O.
-      _ = posix_spawn_file_actions_addopen(fileActions, STDIN_FILENO, "/dev/null", O_RDONLY, 0)
-      _ = posix_spawn_file_actions_addopen(fileActions, STDOUT_FILENO, "/dev/null", O_WRONLY, 0)
-      _ = posix_spawn_file_actions_addopen(fileActions, STDERR_FILENO, "/dev/null", O_WRONLY, 0)
-
+      // Forward standard I/O streams and any explicitly added file handles.
 #if os(Linux) || os(FreeBSD)
-      var highestFD = CInt(0)
+      var highestFD = CInt(-1)
 #endif
-      for i in 0 ..< additionalFileHandles.count {
-        try additionalFileHandles[i].withUnsafePOSIXFileDescriptor { fd in
+      func inherit(_ fileHandle: borrowing FileHandle, as standardFD: CInt? = nil) throws {
+        try fileHandle.withUnsafePOSIXFileDescriptor { fd in
           guard let fd else {
-            throw SystemError(description: "A child process inherit a file handle without an associated file descriptor. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+            throw SystemError(description: "A child process cannot inherit a file handle without an associated file descriptor. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
           }
+          if let standardFD {
+            _ = posix_spawn_file_actions_adddup2(fileActions, fd, standardFD)
+          } else {
 #if SWT_TARGET_OS_APPLE
-          _ = posix_spawn_file_actions_addinherit_np(fileActions, fd)
+            _ = posix_spawn_file_actions_addinherit_np(fileActions, fd)
 #elseif os(Linux) || os(FreeBSD)
-          highestFD = max(highestFD, fd)
+            highestFD = max(highestFD, fd)
 #endif
+          }
         }
+      }
+      func inherit(_ fileHandle: borrowing FileHandle?, as standardFD: CInt? = nil) throws {
+        if fileHandle != nil {
+          try inherit(fileHandle!, as: standardFD)
+        } else if let standardFD {
+          let mode = (standardFD == STDIN_FILENO) ? O_RDONLY : O_WRONLY
+          _ = posix_spawn_file_actions_addopen(fileActions, standardFD, "/dev/null", mode, 0)
+        }
+      }
+
+      try inherit(standardInput, as: STDIN_FILENO)
+      try inherit(standardOutput, as: STDOUT_FILENO)
+      try inherit(standardError, as: STDERR_FILENO)
+      for additionalFileHandle in additionalFileHandles {
+        try inherit(additionalFileHandle.pointee)
       }
 
 #if SWT_TARGET_OS_APPLE
@@ -152,6 +179,28 @@ func spawnExecutable(
   }
 #elseif os(Windows)
   return try _withStartupInfoEx(attributeCount: 1) { startupInfo in
+    func inherit(_ fileHandle: borrowing FileHandle, as outWindowsHANDLE: inout HANDLE?) throws {
+      try fileHandle.withUnsafeWindowsHANDLE { windowsHANDLE in
+        guard let windowsHANDLE else {
+          throw SystemError(description: "A child process cannot inherit a file handle without an associated Windows handle. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+        }
+        outWindowsHANDLE = windowsHANDLE
+      }
+    }
+    func inherit(_ fileHandle: borrowing FileHandle?, as outWindowsHANDLE: inout HANDLE?) throws {
+      if fileHandle != nil {
+        try inherit(fileHandle!, as: outWindowsHANDLE)
+      } else {
+        outWindowsHANDLE = nil
+      }
+    }
+
+    // Forward standard I/O streams.
+    try inherit(standardInput, as: &startupInfo.pointee.StartupInfo.hStdInput)
+    try inherit(standardOutput, as: &startupInfo.pointee.StartupInfo.hStdOutput)
+    try inherit(standardError, as: &startupInfo.pointee.StartupInfo.hStdError)
+    startupInfo.pointee.StartupInfo.dwFlags |= STARTF_USESTDHANDLES
+
     // Forward the back channel's write end to the child process so that it can
     // send information back to us. Note that we don't keep the pipe open as
     // bidirectional, though we could if we find we need to in the future.
@@ -159,16 +208,9 @@ func spawnExecutable(
     defer {
       inheritedHandlesBuffer.deallocate()
     }
-    for i in 0 ..< additionalFileHandles.count {
-      try additionalFileHandles[i].withUnsafeWindowsHANDLE { handle in
-        guard let handle else {
-          throw SystemError(description: "A child process inherit a file handle without an associated Windows handle. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
-        }
-        inheritedHandlesBuffer[i] = handle
-      }
+    for additionalFileHandle in additionalFileHandles {
+      try inherit(additionalFileHandle.pointee, as: &inheritedHandlesBuffer[i])
     }
-
-    // Update the attribute list to hold the handle buffer.
     _ = UpdateProcThreadAttribute(
       startupInfo.pointee.lpAttributeList,
       0,

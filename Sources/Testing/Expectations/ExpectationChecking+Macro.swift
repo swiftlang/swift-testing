@@ -1142,6 +1142,7 @@ public func __checkClosureCall<R>(
 @_spi(Experimental)
 public func __checkClosureCall(
   exitsWith expectedExitCondition: ExitCondition,
+  observing observedValues: Set<PartialKeyPath<ExitTestArtifacts>>,
   performing body: @convention(thin) () -> Void,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
@@ -1151,6 +1152,7 @@ public func __checkClosureCall(
 ) async -> Result<ExitTestArtifacts, any Error> {
   await callExitTest(
     exitsWith: expectedExitCondition,
+    observing: observedValues,
     expression: expression,
     comments: comments(),
     isRequired: isRequired,
