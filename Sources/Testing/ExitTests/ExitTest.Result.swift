@@ -15,17 +15,18 @@ extension ExitTest {
   /// A type representing the result of an exit test after it has exited and
   /// returned control to the calling test function.
   ///
-  /// Both ``expect(exitsWith:_:sourceLocation:performing:)`` and
-  /// ``require(exitsWith:_:sourceLocation:performing:)`` return instances of
-  /// this type.
+  /// Both ``expect(exitsWith:observing:_:sourceLocation:performing:)`` and
+  /// ``require(exitsWith:observing:_:sourceLocation:performing:)`` return
+  /// instances of this type.
   public struct Result: Sendable {
     /// The exit condition the exit test exited with.
     ///
     /// When the exit test passes, the value of this property is equal to the
     /// value of the `expectedExitCondition` argument passed to
-    /// ``expect(exitsWith:_:sourceLocation:performing:)`` or to
-    /// ``require(exitsWith:_:sourceLocation:performing:)``. You can compare two
-    /// instances of ``ExitCondition`` with ``ExitCondition/==(lhs:rhs:)``.
+    /// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or to
+    /// ``require(exitsWith:observing:_:sourceLocation:performing:)``. You can
+    /// compare two instances of ``ExitCondition`` with
+    /// ``ExitCondition/==(lhs:rhs:)``.
     public var exitCondition: ExitCondition
 
     /// All bytes written to the standard output stream of the exit test before
@@ -47,8 +48,8 @@ extension ExitTest {
     ///
     /// To enable gathering output from the standard output stream during an
     /// exit test, pass `\.standardOutputContent` in the `observedValues`
-    /// argument of ``expect(exitsWith:_:sourceLocation:performing:)`` or
-    /// ``require(exitsWith:_:sourceLocation:performing:)``.
+    /// argument of ``expect(exitsWith:observing:_:sourceLocation:performing:)``
+    /// or ``require(exitsWith:observing:_:sourceLocation:performing:)``.
     ///
     /// If the exit test could not be started or if you did not request standard
     /// output content, the value of this property is the empty array.
@@ -73,8 +74,8 @@ extension ExitTest {
     ///
     /// To enable gathering output from the standard error stream during an exit
     /// test, pass `\.standardErrorContent` in the `observedValues` argument of
-    /// ``expect(exitsWith:_:sourceLocation:performing:)`` or
-    /// ``require(exitsWith:_:sourceLocation:performing:)``.
+    /// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or
+    /// ``require(exitsWith:observing:_:sourceLocation:performing:)``.
     ///
     /// If the exit test could not be started or if you did not request standard
     /// error content, the value of this property is the empty array.
