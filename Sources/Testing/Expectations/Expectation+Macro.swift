@@ -482,9 +482,8 @@ public macro require<R>(
 ///   contain any arbitrary sequence of bytes, including sequences that are not
 ///   valid UTF-8 and cannot be decoded by [`String.init(cString:)`](https://developer.apple.com/documentation/swift/string/init(cstring:)-6kr8s).
 ///   These streams are globally accessible within the child process, and any
-///   code running in an exit test may write to it including including the
-///   operating system and any third-party dependencies you have declared in
-///   your package.
+///   code running in an exit test may write to it including the operating
+///   system and any third-party dependencies you have declared in your package.
 ///
 /// The actual exit condition of the child process is always reported by the
 /// testing library even if you do not specify it in `observedValues`.
@@ -595,9 +594,8 @@ public macro require<R>(
 ///   contain any arbitrary sequence of bytes, including sequences that are not
 ///   valid UTF-8 and cannot be decoded by [`String.init(cString:)`](https://developer.apple.com/documentation/swift/string/init(cstring:)-6kr8s).
 ///   These streams are globally accessible within the child process, and any
-///   code running in an exit test may write to it including including the
-///   operating system and any third-party dependencies you have declared in
-///   your package.
+///   code running in an exit test may write to it including the operating
+///   system and any third-party dependencies you have declared in your package.
 ///
 /// The actual exit condition of the child process is always reported by the
 /// testing library even if you do not specify it in `observedValues`.
