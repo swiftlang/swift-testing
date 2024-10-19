@@ -307,11 +307,15 @@ extension ExitTest {
   ///   the exit test.
   ///
   /// This handler is invoked when an exit test (i.e. a call to either
-  /// ``expect(exitsWith:_:sourceLocation:performing:)`` or
-  /// ``require(exitsWith:_:sourceLocation:performing:)``) is started. The
-  /// handler is responsible for initializing a new child environment (typically
-  /// a child process) and running the exit test identified by `sourceLocation`
-  /// there. The exit test's body can be found using ``ExitTest/find(at:)``.
+  /// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or
+  /// ``require(exitsWith:observing:_:sourceLocation:performing:)``) is started.
+  /// The handler is responsible for initializing a new child environment
+  /// (typically a child process) and running the exit test identified by
+  /// `sourceLocation` there.
+  ///
+  /// In the child environment, you can find the exit test again using
+  /// ``ExitTest/find(at:)`` and can be run by calling
+  /// ``ExitTest/callAsFunction()``.
   ///
   /// The parent environment should suspend until the results of the exit test
   /// are available or the child environment is otherwise terminated. The parent

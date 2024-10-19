@@ -49,8 +49,8 @@ public struct ExitTestArtifacts: Sendable {
   ///
   /// To enable gathering output from the standard output stream during an
   /// exit test, pass `\.standardOutputContent` in the `observedValues`
-  /// argument of ``expect(exitsWith:_:sourceLocation:performing:)`` or
-  /// ``require(exitsWith:_:sourceLocation:performing:)``.
+  /// argument of ``expect(exitsWith:observing:_:sourceLocation:performing:)``
+  /// or ``require(exitsWith:observing:_:sourceLocation:performing:)``.
   ///
   /// If the exit test could not be started or if you did not request standard
   /// output content, the value of this property is the empty array.
@@ -75,8 +75,8 @@ public struct ExitTestArtifacts: Sendable {
   ///
   /// To enable gathering output from the standard error stream during an exit
   /// test, pass `\.standardErrorContent` in the `observedValues` argument of
-  /// ``expect(exitsWith:_:sourceLocation:performing:)`` or
-  /// ``require(exitsWith:_:sourceLocation:performing:)``.
+  /// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or
+  /// ``require(exitsWith:observing:_:sourceLocation:performing:)``.
   ///
   /// If the exit test could not be started or if you did not request standard
   /// error content, the value of this property is the empty array.
