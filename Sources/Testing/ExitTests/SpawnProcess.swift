@@ -201,50 +201,53 @@ func spawnExecutable(
     try inherit(standardError, as: &startupInfo.pointee.StartupInfo.hStdError)
     startupInfo.pointee.StartupInfo.dwFlags |= STARTF_USESTDHANDLES
 
-    // Forward the back channel's write end to the child process so that it can
-    // send information back to us. Note that we don't keep the pipe open as
-    // bidirectional, though we could if we find we need to in the future.
-    let inheritedHandlesBuffer = UnsafeMutableBufferPointer<HANDLE?>.allocate(capacity: additionalFileHandles.count)
-    defer {
-      inheritedHandlesBuffer.deallocate()
-    }
+    // Ensure standard I/O streams and any explicitly added file handles are
+    // inherited by the child process.
+    var inheritedHandles = [HANDLE?](repeating: nil, count: additionalFileHandles.count + 3)
+    try inherit(standardInput, as: &inheritedHandles[0])
+    try inherit(standardOutput, as: &inheritedHandles[1])
+    try inherit(standardError, as: &inheritedHandles[2])
     for i in 0 ..< additionalFileHandles.count {
-      try inherit(additionalFileHandles[i].pointee, as: &inheritedHandlesBuffer[i])
+      try inherit(additionalFileHandles[i].pointee, as: &inheritedHandles[i + 3])
     }
-    _ = UpdateProcThreadAttribute(
-      startupInfo.pointee.lpAttributeList,
-      0,
-      swt_PROC_THREAD_ATTRIBUTE_HANDLE_LIST(),
-      inheritedHandlesBuffer.baseAddress!,
-      SIZE_T(MemoryLayout<HANDLE>.stride * inheritedHandlesBuffer.count),
-      nil,
-      nil
-    )
+    inheritedHandles = inheritedHandles.compactMap(\.self)
 
-    let commandLine = _escapeCommandLine(CollectionOfOne(executablePath) + arguments)
-    let environ = environment.map { "\($0.key)=\($0.value)" }.joined(separator: "\0") + "\0\0"
+    return try inheritedHandles.withUnsafeMutableBufferPointer { inheritedHandles in
+      _ = UpdateProcThreadAttribute(
+        startupInfo.pointee.lpAttributeList,
+        0,
+        swt_PROC_THREAD_ATTRIBUTE_HANDLE_LIST(),
+        inheritedHandles.baseAddress!,
+        SIZE_T(MemoryLayout<HANDLE>.stride * inheritedHandles.count),
+        nil,
+        nil
+      )
 
-    return try commandLine.withCString(encodedAs: UTF16.self) { commandLine in
-      try environ.withCString(encodedAs: UTF16.self) { environ in
-        var processInfo = PROCESS_INFORMATION()
+      let commandLine = _escapeCommandLine(CollectionOfOne(executablePath) + arguments)
+      let environ = environment.map { "\($0.key)=\($0.value)" }.joined(separator: "\0") + "\0\0"
 
-        guard CreateProcessW(
-          nil,
-          .init(mutating: commandLine),
-          nil,
-          nil,
-          true, // bInheritHandles
-          DWORD(CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT),
-          .init(mutating: environ),
-          nil,
-          startupInfo.pointer(to: \.StartupInfo)!,
-          &processInfo
-        ) else {
-          throw Win32Error(rawValue: GetLastError())
+      return try commandLine.withCString(encodedAs: UTF16.self) { commandLine in
+        try environ.withCString(encodedAs: UTF16.self) { environ in
+          var processInfo = PROCESS_INFORMATION()
+
+          guard CreateProcessW(
+            nil,
+            .init(mutating: commandLine),
+            nil,
+            nil,
+            true, // bInheritHandles
+            DWORD(CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT),
+            .init(mutating: environ),
+            nil,
+            startupInfo.pointer(to: \.StartupInfo)!,
+            &processInfo
+          ) else {
+            throw Win32Error(rawValue: GetLastError())
+          }
+          _ = CloseHandle(processInfo.hThread)
+
+          return processInfo.hProcess!
         }
-        _ = CloseHandle(processInfo.hThread)
-
-        return processInfo.hProcess!
       }
     }
   }
