@@ -496,8 +496,6 @@ extension FileHandle {
 
       throw error
     }
-
-    print(fdReadEnd, fdWriteEnd)
   }
 }
 #endif
