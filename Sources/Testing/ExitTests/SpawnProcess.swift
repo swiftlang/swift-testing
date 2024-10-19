@@ -189,7 +189,7 @@ func spawnExecutable(
     }
     func inherit(_ fileHandle: borrowing FileHandle?, as outWindowsHANDLE: inout HANDLE?) throws {
       if fileHandle != nil {
-        try inherit(fileHandle!, as: outWindowsHANDLE)
+        try inherit(fileHandle!, as: &outWindowsHANDLE)
       } else {
         outWindowsHANDLE = nil
       }
