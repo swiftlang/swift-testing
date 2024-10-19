@@ -313,8 +313,8 @@ extension ExitTest {
   /// (typically a child process) and running the exit test identified by
   /// `sourceLocation` there.
   ///
-  /// In the child environment, you can find the exit test again using
-  /// ``ExitTest/find(at:)`` and can be run by calling
+  /// In the child environment, you can find the exit test again by calling
+  /// ``ExitTest/find(at:)`` and can run it by calling
   /// ``ExitTest/callAsFunction()``.
   ///
   /// The parent environment should suspend until the results of the exit test
