@@ -112,7 +112,7 @@ extension ExitTest {
     // for these special exit codes and translates them back to signals.
     for sig in [SIGINT, SIGILL, SIGFPE, SIGSEGV, SIGTERM, SIGBREAK, SIGABRT] {
       _ = signal(sig) { sig in
-        exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
+        _Exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
       }
     }
 #endif
