@@ -107,7 +107,7 @@ extension ExitTest {
     // handler simply calls `exit()` and passes the constant value `3`. To allow
     // us to handle signals on Windows, we install signal handlers for all
     // signals supported on Windows. These signal handlers exit with a specific
-    // exit code that is unlikely to be encountered : String: String"in the wild" and which
+    // exit code that is unlikely to be encountered "in the wild" and which
     // encodes the caught signal. Corresponding code in the parent process looks
     // for these special exit codes and translates them back to signals.
     for sig in [SIGINT, SIGILL, SIGFPE, SIGSEGV, SIGTERM, SIGBREAK, SIGABRT] {
