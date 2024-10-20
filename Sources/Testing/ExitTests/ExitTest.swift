@@ -35,7 +35,7 @@ public struct ExitTest: Sendable, ~Copyable {
   fileprivate var body: @Sendable () async throws -> Void = {}
 
   /// Storage for ``observedValues``.
-  fileprivate nonisolated(unsafe) var _observedValues = Set<PartialKeyPath<ExitTestArtifacts>>()
+  fileprivate nonisolated(unsafe) var _observedValues = [PartialKeyPath<ExitTestArtifacts>]()
 
   /// Key paths representing results from within this exit test that should be
   /// observed and returned to the caller.
@@ -52,10 +52,12 @@ public struct ExitTest: Sendable, ~Copyable {
   /// Within a child process running an exit test, the value of this property is
   /// otherwise unspecified.
   @_spi(ForToolsIntegrationOnly)
-  public var observedValues: Set<PartialKeyPath<ExitTestArtifacts>> {
+  public var observedValues: [PartialKeyPath<ExitTestArtifacts>] {
     get {
       var result = _observedValues
-      result.insert(\.exitCondition)
+      if !result.contains(\.exitCondition) { // O(n), but n <= 3 (no Set needed)
+        result.append(\.exitCondition)
+      }
       return result
     }
     set {
@@ -228,7 +230,7 @@ extension ExitTest {
 /// convention.
 func callExitTest(
   exitsWith expectedExitCondition: ExitCondition,
-  observing observedValues: Set<PartialKeyPath<ExitTestArtifacts>>,
+  observing observedValues: [PartialKeyPath<ExitTestArtifacts>],
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
