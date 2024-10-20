@@ -1142,7 +1142,7 @@ public func __checkClosureCall<R>(
 @_spi(Experimental)
 public func __checkClosureCall(
   exitsWith expectedExitCondition: ExitCondition,
-  observing observedValues: Set<PartialKeyPath<ExitTest.Result>>,
+  observing observedValues: [PartialKeyPath<ExitTest.Result>],
   performing body: @convention(thin) () -> Void,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
