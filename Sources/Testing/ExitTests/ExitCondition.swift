@@ -14,9 +14,9 @@ private import _TestingInternals
 /// succeed or fail.
 ///
 /// Values of this type can be passed to
-/// ``expect(exitsWith:_:sourceLocation:performing:)`` or
-/// ``require(exitsWith:_:sourceLocation:performing:)`` to configure which exit
-/// statuses should be considered successful.
+/// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or
+/// ``require(exitsWith:observing:_:sourceLocation:performing:)`` to configure
+/// which exit statuses should be considered successful.
 @_spi(Experimental)
 #if SWT_NO_PROCESS_SPAWNING
 @available(*, unavailable, message: "Exit tests are not available on this platform.")

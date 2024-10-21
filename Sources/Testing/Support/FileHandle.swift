@@ -147,11 +147,7 @@ struct FileHandle: ~Copyable, Sendable {
 #endif
     guard let fileHandle else {
       let errorCode = swt_errno()
-#if os(Windows)
-      _close(fd)
-#else
-      _TestingInternals.close(fd)
-#endif
+      Self._close(fd)
       throw CError(rawValue: errorCode)
     }
     self.init(unsafeCFILEHandle: fileHandle, closeWhenDone: true)
@@ -172,6 +168,21 @@ struct FileHandle: ~Copyable, Sendable {
   ///   must take care not to close file handles they do not own.
   consuming func close() {
     _closeWhenDone = true
+  }
+
+  /// Close a file descriptor.
+  ///
+  /// - Parameters:
+  ///   - fd: The file descriptor to close. If the value of this argument is
+  ///     less than `0`, this function does nothing.
+  private static func _close(_ fd: CInt) {
+    if fd >= 0 {
+#if os(Windows)
+      _TestingInternals._close(fd)
+#else
+      _TestingInternals.close(fd)
+#endif
+    }
   }
 
   /// Call a function and pass the underlying C file handle to it.
@@ -435,70 +446,55 @@ extension FileHandle {
 // MARK: - Pipes
 
 extension FileHandle {
-  /// A type representing a bidirectional pipe between two file handles.
-  struct Pipe: ~Copyable, Sendable {
-    /// The end of the pipe capable of reading.
-    var readEnd: FileHandle
-
-    /// The end of the pipe capable of writing.
-    var writeEnd: FileHandle
-
-    /// Initialize a new anonymous pipe.
-    ///
-    /// - Throws: Any error that prevented creation of the pipe.
-    init() throws {
-      let (fdReadEnd, fdWriteEnd) = try withUnsafeTemporaryAllocation(of: CInt.self, capacity: 2) { fds in
+  /// Make a pipe connecting two new file handles.
+  ///
+  /// - Parameters:
+  ///   - readEnd: On successful return, set to a file handle that can read
+  ///     bytes written to `writeEnd`. On failure, set to `nil`.
+  ///   - writeEnd: On successful return, set to a file handle that can write
+  ///     bytes read by `writeEnd`. On failure, set to `nil`.
+  ///
+  /// - Throws: Any error preventing creation of the pipe or corresponding file
+  ///   handles. If an error occurs, both `readEnd` and `writeEnd` are set to
+  ///   `nil` to avoid an inconsistent state.
+  ///
+  /// - Bug: This function should return a tuple containing the file handles
+  ///   instead of returning them via `inout` arguments. Swift does not support
+  ///   tuples with move-only elements. ([104669935](rdar://104669935))
+  static func makePipe(readEnd: inout FileHandle?, writeEnd: inout FileHandle?) throws {
+    var (fdReadEnd, fdWriteEnd) = try withUnsafeTemporaryAllocation(of: CInt.self, capacity: 2) { fds in
 #if os(Windows)
-        guard 0 == _pipe(fds.baseAddress, 0, _O_BINARY) else {
-          throw CError(rawValue: swt_errno())
-        }
-#else
-        guard 0 == pipe(fds.baseAddress!) else {
-          throw CError(rawValue: swt_errno())
-        }
-#endif
-        return (fds[0], fds[1])
+      guard 0 == _pipe(fds.baseAddress, 0, _O_BINARY) else {
+        throw CError(rawValue: swt_errno())
       }
-
-      // NOTE: Partial initialization of a move-only type is disallowed, as is
-      // conditional initialization of a local move-only value, which is why
-      // this section looks a little awkward.
-      let readEnd: FileHandle
-      do {
-        readEnd = try FileHandle(unsafePOSIXFileDescriptor: fdReadEnd, mode: "rb")
-      } catch {
-#if os(Windows)
-        _close(fdWriteEnd)
 #else
-        _TestingInternals.close(fdWriteEnd)
-#endif
-        throw error
+      guard 0 == pipe(fds.baseAddress!) else {
+        throw CError(rawValue: swt_errno())
       }
-      let writeEnd = try FileHandle(unsafePOSIXFileDescriptor: fdWriteEnd, mode: "wb")
-      self.readEnd = readEnd
-      self.writeEnd = writeEnd
+#endif
+      return (fds[0], fds[1])
+    }
+    defer {
+      Self._close(fdReadEnd)
+      Self._close(fdWriteEnd)
     }
 
-    /// Close the read end of this pipe.
-    ///
-    /// - Returns: The remaining open end of the pipe.
-    ///
-    /// After calling this function, the read end is closed and the write end
-    /// remains open.
-    consuming func closeReadEnd() -> FileHandle {
-      readEnd.close()
-      return writeEnd
-    }
+    do {
+      defer {
+        fdReadEnd = -1
+      }
+      try readEnd = FileHandle(unsafePOSIXFileDescriptor: fdReadEnd, mode: "rb")
+      defer {
+        fdWriteEnd = -1
+      }
+      try writeEnd = FileHandle(unsafePOSIXFileDescriptor: fdWriteEnd, mode: "wb")
+    } catch {
+      // Don't leak file handles! Ensure we've cleared both pointers before
+      // returning so the state is consistent in the caller.
+      readEnd = nil
+      writeEnd = nil
 
-    /// Close the write end of this pipe.
-    ///
-    /// - Returns: The remaining open end of the pipe.
-    ///
-    /// After calling this function, the write end is closed and the read end
-    /// remains open.
-    consuming func closeWriteEnd() -> FileHandle {
-      writeEnd.close()
-      return readEnd
+      throw error
     }
   }
 }
