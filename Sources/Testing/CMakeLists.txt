@@ -66,6 +66,7 @@ add_library(Testing
   Support/Additions/CommandLineAdditions.swift
   Support/Additions/NumericAdditions.swift
   Support/Additions/ResultAdditions.swift
+  Support/Additions/WinSDKAdditions.swift
   Support/CartesianProduct.swift
   Support/CError.swift
   Support/Environment.swift

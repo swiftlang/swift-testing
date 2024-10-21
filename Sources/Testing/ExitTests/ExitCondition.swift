@@ -67,14 +67,6 @@ public enum ExitCondition: Sendable {
   /// | Linux | [`<signal.h>`](https://sourceware.org/glibc/manual/latest/html_node/Standard-Signals.html) |
   /// | FreeBSD | [`<signal.h>`](https://man.freebsd.org/cgi/man.cgi?signal(3)) |
   /// | Windows | [`<signal.h>`](https://learn.microsoft.com/en-us/cpp/c-runtime-library/signal-constants) |
-  ///
-  /// On Windows, by default, the C runtime will terminate a process with exit
-  /// code `-3` if a raised signal is not handled, exactly as if `exit(-3)` were
-  /// called. As a result, this case is unavailable on that platform. Developers
-  /// should use ``failure`` instead when testing signal handling on Windows.
-#if os(Windows)
-  @available(*, unavailable, message: "On Windows, use .failure instead.")
-#endif
   case signal(_ signal: CInt)
 }
 
@@ -116,11 +108,9 @@ extension ExitCondition {
     return switch (lhs, rhs) {
     case let (.failure, .exitCode(exitCode)), let (.exitCode(exitCode), .failure):
       exitCode != EXIT_SUCCESS
-#if !os(Windows)
     case (.failure, .signal), (.signal, .failure):
       // All terminating signals are considered failures.
       true
-#endif
     default:
       lhs === rhs
     }
@@ -194,10 +184,8 @@ extension ExitCondition {
       true
     case let (.exitCode(lhs), .exitCode(rhs)):
       lhs == rhs
-#if !os(Windows)
     case let (.signal(lhs), .signal(rhs)):
       lhs == rhs
-#endif
     default:
       false
     }

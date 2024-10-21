@@ -32,16 +32,20 @@ private import _TestingInternals
       await Task.yield()
       exit(123)
     }
-#if !os(Windows)
-    await #expect(exitsWith: .signal(SIGKILL)) {
-      _ = kill(getpid(), SIGKILL)
-      // Allow up to 1s for the signal to be delivered.
-      try! await Task.sleep(nanoseconds: 1_000_000_000_000)
+    await #expect(exitsWith: .signal(SIGSEGV)) {
+      _ = raise(SIGSEGV)
+      // Allow up to 1s for the signal to be delivered. On some platforms,
+      // raise() delivers signals fully asynchronously and may not terminate the
+      // child process before this closure returns.
+      if #available(_clockAPI, *) {
+        try await Test.Clock.sleep(for: .seconds(1))
+      } else {
+        try await Task.sleep(nanoseconds: 1_000_000_000)
+      }
     }
     await #expect(exitsWith: .signal(SIGABRT)) {
       abort()
     }
-#endif
 #if !SWT_NO_UNSTRUCTURED_TASKS
 #if false
     // Test the detached (no task-local configuration) path. Disabled because,
@@ -59,13 +63,7 @@ private import _TestingInternals
   }
 
   @Test("Exit tests (failing)") func failing() async {
-    let expectedCount: Int
-#if os(Windows)
-    expectedCount = 6
-#else
-    expectedCount = 10
-#endif
-    await confirmation("Exit tests failed", expectedCount: expectedCount) { failed in
+    await confirmation("Exit tests failed", expectedCount: 10) { failed in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
         if case .issueRecorded = event.kind {
@@ -105,11 +103,9 @@ private import _TestingInternals
       await Test {
         await #expect(exitsWith: .exitCode(EXIT_FAILURE)) {}
       }.run(configuration: configuration)
-#if !os(Windows)
       await Test {
         await #expect(exitsWith: .signal(SIGABRT)) {}
       }.run(configuration: configuration)
-#endif
 
       // Mock an exit test where the process exits with a particular error code.
       configuration.exitTestHandler = { _ in
@@ -119,7 +115,6 @@ private import _TestingInternals
         await #expect(exitsWith: .failure) {}
       }.run(configuration: configuration)
 
-#if !os(Windows)
       // Mock an exit test where the process exits with a signal.
       configuration.exitTestHandler = { _ in
         return ExitTest.Result(exitCondition: .signal(SIGABRT))
@@ -130,18 +125,11 @@ private import _TestingInternals
       await Test {
         await #expect(exitsWith: .failure) {}
       }.run(configuration: configuration)
-#endif
     }
   }
 
   @Test("Mock exit test handlers (failing)") func failingMockHandlers() async {
-    let expectedCount: Int
-#if os(Windows)
-    expectedCount = 2
-#else
-    expectedCount = 6
-#endif
-    await confirmation("Issue recorded", expectedCount: expectedCount) { issueRecorded in
+    await confirmation("Issue recorded", expectedCount: 6) { issueRecorded in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
         if case .issueRecorded = event.kind {
@@ -159,13 +147,10 @@ private import _TestingInternals
       await Test {
         await #expect(exitsWith: .exitCode(EXIT_FAILURE)) {}
       }.run(configuration: configuration)
-#if !os(Windows)
       await Test {
         await #expect(exitsWith: .signal(SIGABRT)) {}
       }.run(configuration: configuration)
-#endif
 
-#if !os(Windows)
       // Mock exit tests that unexpectedly signalled.
       configuration.exitTestHandler = { _ in
         return ExitTest.Result(exitCondition: .signal(SIGABRT))
@@ -179,7 +164,6 @@ private import _TestingInternals
       await Test {
         await #expect(exitsWith: .success) {}
       }.run(configuration: configuration)
-#endif
     }
   }
 
@@ -269,7 +253,6 @@ private import _TestingInternals
     #expect(ExitCondition.exitCode(EXIT_FAILURE &+ 1) != .exitCode(EXIT_FAILURE))
     #expect(ExitCondition.exitCode(EXIT_FAILURE &+ 1) !== .exitCode(EXIT_FAILURE))
 
-#if !os(Windows)
     #expect(ExitCondition.success != .exitCode(EXIT_FAILURE))
     #expect(ExitCondition.success !== .exitCode(EXIT_FAILURE))
     #expect(ExitCondition.success != .signal(SIGINT))
@@ -278,7 +261,6 @@ private import _TestingInternals
     #expect(ExitCondition.signal(SIGINT) === .signal(SIGINT))
     #expect(ExitCondition.signal(SIGTERM) != .signal(SIGINT))
     #expect(ExitCondition.signal(SIGTERM) !== .signal(SIGINT))
-#endif
   }
 
   @MainActor static func someMainActorFunction() {
@@ -415,7 +397,6 @@ private import _TestingInternals
       exit(0)
     }
 
-#if !os(Windows)
     await #expect(exitsWith: .exitCode(SIGABRT)) {
       // abort() raises on Windows, but we don't handle that yet and it is
       // reported as .failure (which will fuzzy-match with SIGABRT.)
@@ -428,7 +409,6 @@ private import _TestingInternals
     await #expect(exitsWith: .signal(SIGSEGV)) {
       abort() // sends SIGABRT, not SIGSEGV
     }
-#endif
   }
 }
 
