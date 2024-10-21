@@ -110,7 +110,7 @@ A new overload of `confirmation()` is added:
 /// ``confirmation(_:expectedCount:isolation:sourceLocation:_:)`` instead.
 public func confirmation<R>(
   _ comment: Comment? = nil,
-  expectedCount: some RangeExpression<Int> & Sendable,
+  expectedCount: some RangeExpression<Int> & Sequence<Int> Sendable,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: (Confirmation) async throws -> sending R
@@ -121,22 +121,22 @@ public func confirmation<R>(
 
 Certain types of range, specifically [`PartialRangeUpTo`](https://developer.apple.com/documentation/swift/partialrangeupto)
 and [`PartialRangeThrough`](https://developer.apple.com/documentation/swift/partialrangethrough),
-are valid when used with this new interface, but may have surprising behavior
-because they implicitly include `0`. If a test author writes `...10`, do they
-mean "zero to ten" or "one to ten"? The programmatic meaning is the former, but
-some test authors might mean the latter. If an event does not occur, a test
-using `confirmation()` and this `expectedCount` value would pass when the test
-author meant for it to fail.
+may have surprising behavior when used with this new interface because they
+implicitly include `0`. If a test author writes `...10`, do they mean "zero to
+ten" or "one to ten"? The programmatic meaning is the former, but some test
+authors might mean the latter. If an event does not occur, a test using
+`confirmation()` and this `expectedCount` value would pass when the test author
+meant for it to fail.
 
-Swift Testing will attempt to detect these ambiguous uses of `...n` and `..<n`
-expressions and diagnose them, recommending that test authors explicitly write
-`0` or `1` as a lower bound.
+The unbounded range (`...`) type `UnboundedRange` is effectively useless when
+used with this interface and any use of it here is almost certainly a programmer
+error.
 
-### Unbounded ranges
-
-Finally, an overload is added that takes an "unbounded range" (which is not
-technically a range at all, but… a closure?) This overload is marked unavailable
-because an unbounded range is effectively useless for testing:
+`PartialRangeUpTo` and `PartialRangeThrough` conform to `RangeExpression`, but
+not to `Sequence`, so they will be rejected at compile time. `UnboundedRange` is
+a non-nominal type and will not match either. We will provide unavailable
+overloads of `confirmation()` for these types with messages that explain why
+they are unavailable, e.g.:
 
 ```swift
 @available(*, unavailable, message: "Unbounded range '...' has no effect when used with a confirmation.")
@@ -146,9 +146,7 @@ public func confirmation<R>(
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: (Confirmation) async throws -> R
-) async rethrows -> R {
-  fatalError("Unsupported")
-}
+) async rethrows -> R
 ```
 
 ## Source compatibility

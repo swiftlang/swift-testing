@@ -163,7 +163,7 @@ public func confirmation<R>(
 /// ``confirmation(_:expectedCount:isolation:sourceLocation:_:)`` instead.
 public func confirmation<R>(
   _ comment: Comment? = nil,
-  expectedCount: some RangeExpression<Int> & Sendable,
+  expectedCount: some RangeExpression<Int> & Sequence<Int> & Sendable,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: (Confirmation) async throws -> sending R
@@ -193,6 +193,38 @@ public func confirmation<R>(
 public func confirmation<R>(
   _ comment: Comment? = nil,
   expectedCount: UnboundedRange,
+  isolation: isolated (any Actor)? = #isolation,
+  sourceLocation: SourceLocation = #_sourceLocation,
+  _ body: (Confirmation) async throws -> R
+) async rethrows -> R {
+  fatalError("Unsupported")
+}
+
+/// An overload of ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-6bkl6``
+/// that handles the unbounded range operator (`...`).
+///
+/// This overload is necessary because the lower bound of `PartialRangeThrough`
+/// is ambiguous: does it start at `0` or `1`? Test authors should specify a
+@available(*, unavailable, message: "Range expression '...n' is ambiguous without an explicit lower bound")
+public func confirmation<R>(
+  _ comment: Comment? = nil,
+  expectedCount: PartialRangeThrough<Int>,
+  isolation: isolated (any Actor)? = #isolation,
+  sourceLocation: SourceLocation = #_sourceLocation,
+  _ body: (Confirmation) async throws -> R
+) async rethrows -> R {
+  fatalError("Unsupported")
+}
+
+/// An overload of ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-6bkl6``
+/// that handles the unbounded range operator (`...`).
+///
+/// This overload is necessary because the lower bound of `PartialRangeUpTo` is
+/// ambiguous: does it start at `0` or `1`? Test authors should specify a
+@available(*, unavailable, message: "Range expression '..<n' is ambiguous without an explicit lower bound")
+public func confirmation<R>(
+  _ comment: Comment? = nil,
+  expectedCount: PartialRangeUpTo<Int>,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: (Confirmation) async throws -> R
