@@ -32,13 +32,15 @@ private import _TestingInternals
       await Task.yield()
       exit(123)
     }
-    if #available(_clockAPI, *) {
-      await #expect(exitsWith: .signal(SIGSEGV)) {
-        _ = raise(SIGSEGV)
-        // Allow up to 1s for the signal to be delivered. On some platforms,
-        // raise() delivers signals fully asynchronously and may not terminate the
-        // child process before this closure returns.
-        try! await Test.Clock().sleep(for: .seconds(1))
+    await #expect(exitsWith: .signal(SIGSEGV)) {
+      _ = raise(SIGSEGV)
+      // Allow up to 1s for the signal to be delivered. On some platforms,
+      // raise() delivers signals fully asynchronously and may not terminate the
+      // child process before this closure returns.
+      if #available(_clockAPI, *) {
+        try await Test.Clock.sleep(for: .seconds(1))
+      } else {
+        try await Task.sleep(nanoseconds: 1_000_000_000)
       }
     }
     await #expect(exitsWith: .signal(SIGABRT)) {
