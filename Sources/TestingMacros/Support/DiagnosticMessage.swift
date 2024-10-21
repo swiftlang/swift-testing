@@ -710,32 +710,6 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
-  /// Create a diagnostic messages stating that a range expression constructed
-  /// with a prefix operator (`...n` or `..<n`) is ambiguous.
-  ///
-  /// - Parameters:
-  ///   - expr: The range expression.
-  ///
-  /// - Returns: A diagnostic message.
-  static func prefixRangeOperatorIsAmbiguous(_ expr: PrefixOperatorExprSyntax) -> Self {
-    var exprCopy = expr
-    exprCopy.operator.trailingTrivia = .space
-    let lowerBoundPlaceholderExpr = EditorPlaceholderExprSyntax(type: "Int")
-    let replacementExpr: ExprSyntax = "\(lowerBoundPlaceholderExpr) \(exprCopy)"
-
-    return Self(
-      syntax: Syntax(expr),
-      message: "Range expression '\(expr.trimmed)' is ambiguous without an explicit lower bound",
-      severity: .warning,
-      fixIts: [
-        FixIt(
-          message: MacroExpansionFixItMessage("Add lower bound"),
-          changes: [.replace(oldNode: Syntax(expr), newNode: Syntax(replacementExpr)),]
-        ),
-      ]
-    )
-  }
-
   /// Create a diagnostic message stating that a condition macro nested inside
   /// an exit test will not record any diagnostics.
   ///
