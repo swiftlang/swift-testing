@@ -199,7 +199,8 @@ extension ExitTest {
   public static func find(at sourceLocation: SourceLocation) -> Self? {
     var result: Self?
 
-    enumerateTestContent(ofKind: .exitTest, as: ExitTest.self) { _, exitTest, _, stop in
+    let hint = UInt32(exactly: sourceLocation.line)
+    enumerateTestContent(ofKind: .exitTest, as: ExitTest.self, hint: hint) { _, exitTest, _, stop in
       if exitTest.sourceLocation == sourceLocation {
         result = ExitTest(
           __expectedExitCondition: exitTest.expectedExitCondition,

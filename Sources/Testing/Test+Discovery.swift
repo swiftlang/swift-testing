@@ -129,7 +129,8 @@ extension UnsafePointer<SWTTestContentHeader> {
 ///     the kind of test content this instance represents.
 private typealias _TestContent = (
   accessor: (@convention(c) (_ outValue: UnsafeMutableRawPointer) -> Bool)?,
-  flags: UInt32
+  flags: UInt32,
+  hint: UInt32
 )
 
 /// An enumeration representing the different kinds of test content known to the
@@ -165,8 +166,11 @@ typealias TestContentEnumerator<T> = (_ imageAddress: UnsafeRawPointer?, _ conte
 /// - Parameters:
 ///   - kind: The kind of test content to look for.
 ///   - type: The Swift type of test content to look for.
+///   - hint: A kind-specific hint value. If not `nil`, the corresponding `hint`
+///     field of each test content record must equal this value or the test
+///     content record will be ignored.
 ///   - body: A function to invoke, once per matching test content record.
-func enumerateTestContent<T>(ofKind kind: TestContentKind, as type: T.Type, _ body: TestContentEnumerator<T>) where T: ~Copyable {
+func enumerateTestContent<T>(ofKind kind: TestContentKind, as type: T.Type, hint: UInt32? = nil, _ body: TestContentEnumerator<T>) where T: ~Copyable {
   // Wrap the `body` closure in a non-generic closure that we can load from
   // within the C callback below.
   typealias RawTestContentEnumerator = (_ imageAddress: UnsafeRawPointer?, _ header: UnsafePointer<SWTTestContentHeader>, _ stop: UnsafeMutablePointer<Bool>) -> Void
@@ -183,6 +187,10 @@ func enumerateTestContent<T>(ofKind kind: TestContentKind, as type: T.Type, _ bo
       // even on 64-bit systems.
       guard let content = header.n_desc?.loadUnaligned(as: _TestContent.self),
             content.accessor?(buffer.baseAddress!) == true else {
+        return
+      }
+      if let hint, content.hint != hint {
+        // Hint was specified but did not match.
         return
       }
       defer {

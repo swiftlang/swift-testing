@@ -450,12 +450,18 @@ extension ExitTestConditionMacro {
       """
     )
 
+    var hint = UInt32(0)
+    if let lineNumber = context.location(of: macro)?.line.as(IntegerLiteralExprSyntax.self)?.literal.textWithoutBackticks {
+      hint = UInt32(lineNumber) ?? 0
+    }
+
     let enumName = context.makeUniqueName("")
     let sectionContent = makeTestContentRecordDecl(
       named: .identifier("__sectionContent"),
       in: TypeSyntax(IdentifierTypeSyntax(name: enumName)),
       ofKind: .exitTest,
-      accessingWith: accessorName
+      accessingWith: accessorName,
+      hint: hint
     )
     decls.append(
       """

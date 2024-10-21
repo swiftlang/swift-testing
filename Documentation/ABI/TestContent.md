@@ -100,7 +100,7 @@ struct SWTTestContent {
   SWTTestContentHeader header;
   bool (* accessor)(void *outValue);
   uint32_t flags;
-  uint32_t reserved;
+  uint32_t hint;
 };
 ```
 
@@ -111,7 +111,7 @@ typealias SWTTestContent = (
   header: SWTTestContentHeader,
   accessor: @convention(c) (_ outValue: UnsafeMutableRawPointer) -> Bool,
   flags: UInt32,
-  reserved: UInt32
+  hint: UInt32
 )
 ```
 
@@ -145,18 +145,27 @@ of record:
 
 #### The flags field
 
-For test or suite declarations (type `100`), the following flags are defined:
+- For test or suite declarations (type `100`), the following flags are defined:
 
-| Bit | Description |
-|-:|-|
-| `1 << 0` | This record contains a suite declaration |
-| `1 << 1` | This record contains a parameterized test function declaration |
+  | Bit | Description |
+  |-:|-|
+  | `1 << 0` | This record contains a suite declaration |
+  | `1 << 1` | This record contains a parameterized test function declaration |
 
-For exit test declarations (type `101`), no flags are currently defined.
+- For exit test declarations (type `101`), no flags are currently defined.
 
-#### The reserved field
+#### The hint field
 
-This field is reserved for future use. Always set it to `0`.
+This field is used as a hint during test content discovery to improve the
+performance of the discovery operation. Its semantic meaning varies between test
+content type:
+
+- For test or suite declarations (type `100`), it is currently reserved and
+  should always be set to `0`.
+
+- For exit test declarations (type `101`), it shall equal the line on which the
+  exit test is declared per its stored `sourceLocation` property. The value is
+  clamped to `UInt32`.
 
 ## Third-party test content
 

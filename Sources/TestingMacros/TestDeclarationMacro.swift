@@ -454,7 +454,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       """
     )
 
-    var flags = UInt64(0)
+    var flags = UInt32(0)
     if attributeInfo.hasFunctionArguments {
       flags |= 1 << 1 /* is parameterized */
     }
