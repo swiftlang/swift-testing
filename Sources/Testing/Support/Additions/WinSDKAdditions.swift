@@ -13,18 +13,23 @@ internal import _TestingInternals
 #if os(Windows)
 /// A bitmask that can be applied to an `HRESULT` or `NTSTATUS` value to get the
 /// underlying status code.
-let STATUS_CODE_MASK = NTSTATUS(0xFFFF)
+///
+/// The type of this value is `CInt` rather than `HRESULT` or `NTSTATUS` for
+/// consistency between 32-bit and 64-bit Windows.
+let STATUS_CODE_MASK = CInt(0xFFFF)
 
 /// The severity and facility bits to mask against a caught signal value before
 /// terminating a child process.
 ///
-/// For more information about the `NTSTATUS` type including its bitwise layout,
-/// see [Microsoft's documentation](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-erref/87fba13e-bf06-450e-83b1-9241dc81e781).
+/// The type of this value is `CInt` rather than `HRESULT` or `NTSTATUS` for
+/// consistency between 32-bit and 64-bit Windows. For more information about
+/// the `NTSTATUS` type including its bitwise layout, see
+/// [Microsoft's documentation](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-erref/87fba13e-bf06-450e-83b1-9241dc81e781).
 let STATUS_SIGNAL_CAUGHT_BITS = {
-  var result = NTSTATUS(0)
+  var result = CInt(0)
 
   // Set the severity and status bits.
-  result |= STATUS_SEVERITY_ERROR << 30
+  result |= CInt(STATUS_SEVERITY_ERROR) << 30
   result |= 1 << 29 // "Customer" bit
 
   // We only have 12 facility bits, but we'll pretend they spell out "s6", short
@@ -33,7 +38,7 @@ let STATUS_SIGNAL_CAUGHT_BITS = {
   // We're camping on a specific "facility" code here that we don't think is
   // otherwise in use; if it conflicts with an exit test, we can add an
   // environment variable lookup so callers can override us.
-  let FACILITY_SWIFT6 = ((NTSTATUS(UInt8(ascii: "s")) << 4) | 6)
+  let FACILITY_SWIFT6 = ((CInt(UInt8(ascii: "s")) << 4) | 6)
   result |= FACILITY_SWIFT6 << 16
 
 #if DEBUG
