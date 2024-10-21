@@ -17,6 +17,9 @@ let STATUS_CODE_MASK = NTSTATUS(0xFFFF)
 
 /// The severity and facility bits to mask against a caught signal value before
 /// terminating a child process.
+///
+/// For more information about the `NTSTATUS` type including its bitwise layout,
+/// see [Microsoft's documentation](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-erref/87fba13e-bf06-450e-83b1-9241dc81e781).
 let STATUS_SIGNAL_CAUGHT_BITS = {
   var result = NTSTATUS(0)
 
