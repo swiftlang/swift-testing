@@ -484,7 +484,7 @@ extension FileHandle {
         _ = fcntl(fd, F_SETFL, flags)
       }
 #elseif os(Linux) || os(FreeBSD) || os(Android) || os(WASI)
-      guard 0 == pipe2(fds.baseAddress!, O_CLOEXEC) else {
+      guard 0 == swt_pipe2(fds.baseAddress!, O_CLOEXEC) else {
         throw CError(rawValue: swt_errno())
       }
 #elseif os(Windows)

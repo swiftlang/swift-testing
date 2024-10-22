@@ -31,6 +31,10 @@ int swt_pthread_setname_np(pthread_t thread, const char *name) {
 #endif
 
 #if defined(__GLIBC__)
+int swt_pipe2(int pipefd[2], int flags) {
+  return pipe2(pipefd, flags);
+}
+
 int swt_posix_spawn_file_actions_addclosefrom_np(posix_spawn_file_actions_t *fileActions, int from) {
   int result = 0;
 
