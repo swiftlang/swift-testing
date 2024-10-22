@@ -66,3 +66,22 @@ If the closure throws _any_ error, the testing library records an issue.
 If you need the test to stop when the code throws an error, include the
 code inline in the test function instead of wrapping it in a call to
 ``expect(throws:_:sourceLocation:performing:)-7du1h``.
+
+## Inspect an error thrown by your code
+
+When you use `#expect(throws:)` or `#require(throws:)` and the error matches the
+expectation, it is returned to the caller so that you can perform additional
+validation. If the expectation fails because no error was thrown or an error of
+a different type was thrown, `#expect(throws:)` returns `nil`:
+
+```swift
+@Test func cannotAddMarshmallowsToPizza() throws {
+  let error = #expect(throws: PizzaToppings.InvalidToppingError.self) {
+    try Pizza.current.add(topping: .marshmallows)
+  }
+  #expect(error?.topping == .marshmallows)
+  #expect(error?.reason == .dessertToppingOnly)
+}
+```
+
+If you aren't sure what type of error will be thrown, pass `(any Error).self`.
