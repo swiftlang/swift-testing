@@ -70,3 +70,23 @@ extension UnsafeRawBufferPointer: Test.Attachable {
     try body(self)
   }
 }
+
+@_spi(Experimental)
+extension String: Test.Attachable {
+  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    var selfCopy = self
+    return try selfCopy.withUTF8 { utf8 in
+      try body(UnsafeRawBufferPointer(utf8))
+    }
+  }
+}
+
+@_spi(Experimental)
+extension Substring: Test.Attachable {
+  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    var selfCopy = self
+    return try selfCopy.withUTF8 { utf8 in
+      try body(UnsafeRawBufferPointer(utf8))
+    }
+  }
+}

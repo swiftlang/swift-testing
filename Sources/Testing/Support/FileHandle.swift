@@ -632,4 +632,33 @@ func canonicalizePath(_ path: String) -> String? {
   return nil
 #endif
 }
+
+/// Get the path to the user's or system's temporary directory.
+///
+/// - Returns: The path to a directory suitable for storing temporary files.
+///
+/// - Throws: If the user's or system's temporary directory could not be
+///   determined.
+func temporaryDirectoryPath() throws -> String {
+#if SWT_TARGET_OS_APPLE
+  try withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(PATH_MAX)) { buffer in
+    if 0 != confstr(_CS_DARWIN_USER_TEMP_DIR, buffer.baseAddress, buffer.count) {
+      return String(cString: buffer.baseAddress!)
+    }
+    return try #require(Environment.variable(named: "TMPDIR"))
+  }
+#elseif os(Linux) || os(FreeBSD)
+  "/tmp"
+#elseif os(Android)
+  Environment.variable(named: "TMPDIR") ?? "/data/local/tmp"
+#elseif os(Windows)
+  try withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: Int(MAX_PATH + 1)) { buffer in
+    // NOTE: GetTempPath2W() was introduced in Windows 10 Build 20348.
+    if 0 == GetTempPathW(DWORD(buffer.count), buffer.baseAddress) {
+      throw Win32Error(rawValue: GetLastError())
+    }
+    return try #require(String.decodeCString(buffer.baseAddress, as: UTF16.self)?.result)
+  }
+#endif
+}
 #endif
