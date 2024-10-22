@@ -518,7 +518,7 @@ public macro require<R>(
 @discardableResult
 @freestanding(expression) public macro expect(
   exitsWith expectedExitCondition: ExitCondition,
-  observing observedValues: [PartialKeyPath<ExitTestArtifacts>] = [],
+  observing observedValues: [any PartialKeyPath<ExitTestArtifacts> & Sendable] = [],
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: @convention(thin) () async throws -> Void
@@ -630,7 +630,7 @@ public macro require<R>(
 @discardableResult
 @freestanding(expression) public macro require(
   exitsWith expectedExitCondition: ExitCondition,
-  observing observedValues: [PartialKeyPath<ExitTestArtifacts>] = [],
+  observing observedValues: [any PartialKeyPath<ExitTestArtifacts> & Sendable] = [],
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: @convention(thin) () async throws -> Void
