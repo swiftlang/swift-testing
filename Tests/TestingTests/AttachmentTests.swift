@@ -24,7 +24,7 @@ struct AttachmentTests {
     let attachment = Test.Attachment(attachableValue, named: "loremipsum.html")
 
     // Write the attachment to disk, then read it back.
-    let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectory())
+    let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectoryPath())
     defer {
       remove(filePath)
     }
@@ -59,7 +59,7 @@ struct AttachmentTests {
       let attachment = Test.Attachment(attachableValue, named: baseFileName)
 
       // Write the attachment to disk, then read it back.
-      let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectory(), appending: suffixes.next()!)
+      let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectoryPath(), appending: suffixes.next()!)
       createdFilePaths.append(filePath)
       let fileName = try #require(filePath.split { $0 == "/" || $0 == #"\"# }.last)
       if i == 0 {
@@ -85,14 +85,14 @@ struct AttachmentTests {
 
     // Write the attachment to disk once to ensure the original filename is not
     // available and we add a suffix.
-    let originalFilePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectory())
+    let originalFilePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectoryPath())
     defer {
       remove(originalFilePath)
     }
 
     // Write the attachment to disk, then read it back.
     let suffix = String(UInt64.random(in: 0 ..< .max), radix: 36)
-    let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectory(), appending: suffix)
+    let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectoryPath(), appending: suffix)
     defer {
       remove(filePath)
     }
