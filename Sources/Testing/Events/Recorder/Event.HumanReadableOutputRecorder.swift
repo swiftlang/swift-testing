@@ -466,7 +466,7 @@ extension Event.HumanReadableOutputRecorder {
           stringValue: "Attached '\(attachment.preferredName)' to \(testName)."
         )
       ]
-      if verbosity > 0, let path = attachment.fileSystemPath {
+      if let path = attachment.fileSystemPath {
         result.append(
           Message(
             symbol: .details,
