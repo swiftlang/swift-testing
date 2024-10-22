@@ -124,7 +124,7 @@ SWT_EXTERN int swt_pthread_setname_np(pthread_t thread, const char *name);
 /// This function declaration is provided because `pipe2()` is only declared if
 /// `_GNU_SOURCE` is set, but setting it causes build errors due to conflicts
 /// with Swift's Glibc module.
-SWT_EXTERN int swt_pipe2(int pipefd[2], int flags);
+SWT_EXTERN int swt_pipe2(int pipefd[_Nonnull 2], int flags);
 
 /// Close file descriptors above a given value when spawing a new process.
 ///
