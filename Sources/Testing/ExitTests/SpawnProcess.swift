@@ -103,6 +103,16 @@ func spawnExecutable(
       // Forward standard I/O streams and any explicitly added file handles.
 #if os(Linux) || os(FreeBSD)
       var highestFD = CInt(-1)
+      var fdsNeedingFD_CLOEXEC = [CInt]()
+      defer {
+        for fd in fdsNeedingFD_CLOEXEC {
+          var flags = fcntl(fd, F_GETFL)
+          if flags != -1 {
+            flags |= FD_CLOEXEC
+            _ = fcntl(fd, F_SETFL, flags)
+          }
+        }
+      }
 #endif
       func inherit(_ fileHandle: borrowing FileHandle, as standardFD: CInt? = nil) throws {
         try fileHandle.withUnsafePOSIXFileDescriptor { fd in
@@ -115,6 +125,15 @@ func spawnExecutable(
 #if SWT_TARGET_OS_APPLE
             _ = posix_spawn_file_actions_addinherit_np(fileActions, fd)
 #elseif os(Linux) || os(FreeBSD)
+            // Temporarily clear the FD_CLOEXEC flag on any file descriptors we
+            // need to forward to the child process. We will reset the flag
+            // before returning.
+            var flags = fcntl(fd, F_GETFL)
+            if flags != -1 && 0 != (flags & FD_CLOEXEC) {
+              flags &= ~FD_CLOEXEC
+              _ = fcntl(fd, F_SETFL, flags)
+              fdsNeedingFD_CLOEXEC.append(fd)
+            }
             highestFD = max(highestFD, fd)
 #endif
           }

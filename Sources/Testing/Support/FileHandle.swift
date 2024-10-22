@@ -480,8 +480,10 @@ extension FileHandle {
       }
       for fd in fds {
         var flags = fcntl(fd, F_GETFL)
-        flags |= FD_CLOEXEC
-        _ = fcntl(fd, F_SETFL, flags)
+        if flags != -1 && 0 == (flags & FD_CLOEXEC) {
+          flags |= FD_CLOEXEC
+          _ = fcntl(fd, F_SETFL, flags)
+        }
       }
 #elseif os(Linux) || os(FreeBSD) || os(Android) || os(WASI)
       guard 0 == swt_pipe2(fds.baseAddress!, O_CLOEXEC) else {
