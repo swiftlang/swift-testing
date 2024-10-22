@@ -35,6 +35,10 @@ public struct ExitTest: Sendable, ~Copyable {
   fileprivate var body: @Sendable () async throws -> Void = {}
 
   /// Storage for ``observedValues``.
+  ///
+  /// Key paths are not sendable because the properties they refer to may or may
+  /// not be, so this property needs to be `nonisolated(unsafe)`. It is safe to
+  /// use it in this fashion because `ExitTestArtifacts` is sendable.
   fileprivate nonisolated(unsafe) var _observedValues = [PartialKeyPath<ExitTestArtifacts>]()
 
   /// Key paths representing results from within this exit test that should be
@@ -215,6 +219,9 @@ extension ExitTest {
 ///
 /// - Parameters:
 ///   - expectedExitCondition: The expected exit condition.
+///   - observedValues: An array of key paths representing results from within
+///     the exit test that should be observed and returned by this macro. The
+///     ``ExitTestArtifacts/exitCondition`` property is always returned.
 ///   - expression: The expression, corresponding to `condition`, that is being
 ///     evaluated (if available at compile time.)
 ///   - comments: An array of comments describing the expectation. This array
