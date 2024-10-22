@@ -34,6 +34,41 @@ public struct ExitTest: Sendable, ~Copyable {
   /// The body closure of the exit test.
   fileprivate var body: @Sendable () async throws -> Void = {}
 
+  /// Storage for ``observedValues``.
+  ///
+  /// Key paths are not sendable because the properties they refer to may or may
+  /// not be, so this property needs to be `nonisolated(unsafe)`. It is safe to
+  /// use it in this fashion because `ExitTestArtifacts` is sendable.
+  fileprivate nonisolated(unsafe) var _observedValues = [PartialKeyPath<ExitTestArtifacts>]()
+
+  /// Key paths representing results from within this exit test that should be
+  /// observed and returned to the caller.
+  ///
+  /// The testing library sets this property to match what was passed by the
+  /// developer to the `#expect(exitsWith:)` or `#require(exitsWith:)` macro.
+  /// If you are implementing an exit test handler, you can check the value of
+  /// this property to determine what information you need to preserve from your
+  /// child process.
+  ///
+  /// The value of this property always includes ``Result/exitCondition`` even
+  /// if the test author does not specify it.
+  ///
+  /// Within a child process running an exit test, the value of this property is
+  /// otherwise unspecified.
+  @_spi(ForToolsIntegrationOnly)
+  public var observedValues: [PartialKeyPath<ExitTestArtifacts>] {
+    get {
+      var result = _observedValues
+      if !result.contains(\.exitCondition) { // O(n), but n <= 3 (no Set needed)
+        result.append(\.exitCondition)
+      }
+      return result
+    }
+    set {
+      _observedValues = newValue
+    }
+  }
+
   /// The source location of the exit test.
   ///
   /// The source location is unique to each exit test and is consistent between
@@ -184,6 +219,9 @@ extension ExitTest {
 ///
 /// - Parameters:
 ///   - expectedExitCondition: The expected exit condition.
+///   - observedValues: An array of key paths representing results from within
+///     the exit test that should be observed and returned by this macro. The
+///     ``ExitTestArtifacts/exitCondition`` property is always returned.
 ///   - expression: The expression, corresponding to `condition`, that is being
 ///     evaluated (if available at compile time.)
 ///   - comments: An array of comments describing the expectation. This array
@@ -199,19 +237,21 @@ extension ExitTest {
 /// convention.
 func callExitTest(
   exitsWith expectedExitCondition: ExitCondition,
+  observing observedValues: [PartialKeyPath<ExitTestArtifacts>],
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<ExitTestArtifacts, any Error> {
+) async -> Result<ExitTestArtifacts?, any Error> {
   guard let configuration = Configuration.current ?? Configuration.all.first else {
     preconditionFailure("A test must be running on the current task to use #expect(exitsWith:).")
   }
 
   var result: ExitTestArtifacts
   do {
-    let exitTest = ExitTest(expectedExitCondition: expectedExitCondition, sourceLocation: sourceLocation)
+    var exitTest = ExitTest(expectedExitCondition: expectedExitCondition, sourceLocation: sourceLocation)
+    exitTest.observedValues = observedValues
     result = try await configuration.exitTestHandler(exitTest)
 
 #if os(Windows)
@@ -276,11 +316,15 @@ extension ExitTest {
   ///   the exit test.
   ///
   /// This handler is invoked when an exit test (i.e. a call to either
-  /// ``expect(exitsWith:_:sourceLocation:performing:)`` or
-  /// ``require(exitsWith:_:sourceLocation:performing:)``) is started. The
-  /// handler is responsible for initializing a new child environment (typically
-  /// a child process) and running the exit test identified by `sourceLocation`
-  /// there. The exit test's body can be found using ``ExitTest/find(at:)``.
+  /// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or
+  /// ``require(exitsWith:observing:_:sourceLocation:performing:)``) is started.
+  /// The handler is responsible for initializing a new child environment
+  /// (typically a child process) and running the exit test identified by
+  /// `sourceLocation` there.
+  ///
+  /// In the child environment, you can find the exit test again by calling
+  /// ``ExitTest/find(at:)`` and can run it by calling
+  /// ``ExitTest/callAsFunction()``.
   ///
   /// The parent environment should suspend until the results of the exit test
   /// are available or the child environment is otherwise terminated. The parent
@@ -465,20 +509,43 @@ extension ExitTest {
         childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION"] = String(decoding: json, as: UTF8.self)
       }
 
-      return try await withThrowingTaskGroup(of: ExitTestArtifacts?.self) { taskGroup in
+      typealias ResultUpdater = @Sendable (inout ExitTestArtifacts) -> Void
+      return try await withThrowingTaskGroup(of: ResultUpdater?.self) { taskGroup in
+        // Set up stdout and stderr streams. By POSIX convention, stdin/stdout
+        // are line-buffered by default and stderr is unbuffered by default.
+        // SEE: https://en.cppreference.com/w/cpp/io/c/std_streams
+        var stdoutReadEnd: FileHandle?
+        var stdoutWriteEnd: FileHandle?
+        if exitTest._observedValues.contains(\.standardOutputContent) {
+          try FileHandle.makePipe(readEnd: &stdoutReadEnd, writeEnd: &stdoutWriteEnd)
+          stdoutWriteEnd?.withUnsafeCFILEHandle { stdout in
+            _ = setvbuf(stdout, nil, _IOLBF, Int(BUFSIZ))
+          }
+        }
+        var stderrReadEnd: FileHandle?
+        var stderrWriteEnd: FileHandle?
+        if exitTest._observedValues.contains(\.standardErrorContent) {
+          try FileHandle.makePipe(readEnd: &stderrReadEnd, writeEnd: &stderrWriteEnd)
+          stderrWriteEnd?.withUnsafeCFILEHandle { stderr in
+            _ = setvbuf(stderr, nil, _IONBF, Int(BUFSIZ))
+          }
+        }
+
         // Create a "back channel" pipe to handle events from the child process.
-        let backChannel = try FileHandle.Pipe()
+        var backChannelReadEnd: FileHandle!
+        var backChannelWriteEnd: FileHandle!
+        try FileHandle.makePipe(readEnd: &backChannelReadEnd, writeEnd: &backChannelWriteEnd)
 
         // Let the child process know how to find the back channel by setting a
         // known environment variable to the corresponding file descriptor
         // (HANDLE on Windows.)
         var backChannelEnvironmentVariable: String?
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
-        backChannelEnvironmentVariable = backChannel.writeEnd.withUnsafePOSIXFileDescriptor { fd in
+        backChannelEnvironmentVariable = backChannelWriteEnd.withUnsafePOSIXFileDescriptor { fd in
           fd.map(String.init(describing:))
         }
 #elseif os(Windows)
-        backChannelEnvironmentVariable = backChannel.writeEnd.withUnsafeWindowsHANDLE { handle in
+        backChannelEnvironmentVariable = backChannelWriteEnd.withUnsafeWindowsHANDLE { handle in
           handle.flatMap { String(describing: UInt(bitPattern: $0)) }
         }
 #else
@@ -489,32 +556,55 @@ extension ExitTest {
         }
 
         // Spawn the child process.
-        let processID = try withUnsafePointer(to: backChannel.writeEnd) { writeEnd in
+        let processID = try withUnsafePointer(to: backChannelWriteEnd) { backChannelWriteEnd in
           try spawnExecutable(
             atPath: childProcessExecutablePath,
             arguments: childArguments,
             environment: childEnvironment,
-            additionalFileHandles: .init(start: writeEnd, count: 1)
+            standardOutput: stdoutWriteEnd,
+            standardError: stderrWriteEnd,
+            additionalFileHandles: [backChannelWriteEnd]
           )
         }
 
         // Await termination of the child process.
         taskGroup.addTask {
           let exitCondition = try await wait(for: processID)
-          return ExitTestArtifacts(exitCondition: exitCondition)
+          return { $0.exitCondition = exitCondition }
+        }
+
+        // Read back the stdout and stderr streams.
+        if let stdoutReadEnd {
+          stdoutWriteEnd?.close()
+          taskGroup.addTask {
+            let standardOutputContent = try stdoutReadEnd.readToEnd()
+            return { $0.standardOutputContent = standardOutputContent }
+          }
+        }
+        if let stderrReadEnd {
+          stderrWriteEnd?.close()
+          taskGroup.addTask {
+            let standardErrorContent = try stderrReadEnd.readToEnd()
+            return { $0.standardErrorContent = standardErrorContent }
+          }
         }
 
         // Read back all data written to the back channel by the child process
         // and process it as a (minimal) event stream.
-        let readEnd = backChannel.closeWriteEnd()
+        backChannelWriteEnd.close()
         taskGroup.addTask {
-          Self._processRecords(fromBackChannel: readEnd)
+          Self._processRecords(fromBackChannel: backChannelReadEnd)
           return nil
         }
 
-        // This is a roundabout way of saying "and return the exit condition
-        // yielded by wait(for:)".
-        return try await taskGroup.compactMap { $0 }.first { _ in true }!
+        // Collate the various bits of the result. The exit condition .failure
+        // here is just a placeholder and will be replaced by the result of one
+        // of the tasks above.
+        var result = ExitTestArtifacts(exitCondition: .failure)
+        for try await update in taskGroup {
+          update?(&result)
+        }
+        return result
       }
     }
   }

@@ -15,11 +15,23 @@ extension Result {
   ///   `#require()` macros. Do not call it directly.
   @inlinable public func __expected() where Success == Void {}
 
+  /// Handle this instance as if it were returned from a call to `#require()`.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  @inlinable public func __required() throws -> Success {
+    try get()
+  }
+}
+
+// MARK: - Optional success values
+
+extension Result {
   /// Handle this instance as if it were returned from a call to `#expect()`.
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __expected() -> Success? {
+  @inlinable public func __expected<T>() -> Success where Success == T? {
     try? get()
   }
 
@@ -27,7 +39,8 @@ extension Result {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __required() throws -> Success {
-    try get()
+  @inlinable public func __required<T>() throws -> T where Success == T? {
+    // TODO: handle edge case where the value is nil (see #780)
+    try get()!
   }
 }

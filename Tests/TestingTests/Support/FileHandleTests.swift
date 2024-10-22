@@ -152,9 +152,11 @@ struct FileHandleTests {
 #if !SWT_NO_PIPES
   @Test("Can recognize opened pipe")
   func isPipe() throws {
-    let pipe = try FileHandle.Pipe()
-    #expect(pipe.readEnd.isPipe as Bool)
-    #expect(pipe.writeEnd.isPipe as Bool)
+    var readEnd: FileHandle!
+    var writeEnd: FileHandle!
+    try FileHandle.makePipe(readEnd: &readEnd, writeEnd: &writeEnd)
+    #expect(readEnd.isPipe as Bool)
+    #expect(writeEnd.isPipe as Bool)
   }
 #endif
 
@@ -162,13 +164,17 @@ struct FileHandleTests {
   @Test("Can close ends of a pipe")
   func closeEndsOfPipe() async throws {
     try await confirmation("File handle closed", expectedCount: 2) { closed in
-      var pipe1 = try FileHandle.Pipe()
-      pipe1.readEnd = try fileHandleForCloseMonitoring(with: closed)
-      _ = pipe1.closeReadEnd()
+      var pipe1ReadEnd: FileHandle!
+      var pipe1WriteEnd: FileHandle!
+      try FileHandle.makePipe(readEnd: &pipe1ReadEnd, writeEnd: &pipe1WriteEnd)
+      pipe1ReadEnd = try fileHandleForCloseMonitoring(with: closed)
+      pipe1ReadEnd.close()
 
-      var pipe2 = try FileHandle.Pipe()
-      pipe2.writeEnd = try fileHandleForCloseMonitoring(with: closed)
-      _ = pipe2.closeWriteEnd()
+      var pipe2ReadEnd: FileHandle!
+      var pipe2WriteEnd: FileHandle!
+      try FileHandle.makePipe(readEnd: &pipe2ReadEnd, writeEnd: &pipe2WriteEnd)
+      pipe2WriteEnd = try fileHandleForCloseMonitoring(with: closed)
+      pipe2WriteEnd.close()
     }
   }
 #endif

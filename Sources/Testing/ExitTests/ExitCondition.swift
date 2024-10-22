@@ -15,8 +15,8 @@ private import _TestingInternals
 ///
 /// Values of this type are used to describe the conditions under which an exit
 /// test is expected to pass or fail by passing them to
-/// ``expect(exitsWith:_:sourceLocation:performing:)`` or
-/// ``require(exitsWith:_:sourceLocation:performing:)``.
+/// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or
+/// ``require(exitsWith:observing:_:sourceLocation:performing:)``.
 @_spi(Experimental)
 #if SWT_NO_PROCESS_SPAWNING
 @available(*, unavailable, message: "Exit tests are not available on this platform.")

@@ -383,6 +383,27 @@ private import _TestingInternals
       }
     }
   }
+
+  @Test("Result contains stdout/stderr")
+  func exitTestResultContainsStandardStreams() async throws {
+    var result = try await #require(exitsWith: .success, observing: [\.standardOutputContent]) {
+      try FileHandle.stdout.write("STANDARD OUTPUT")
+      try FileHandle.stderr.write(String("STANDARD ERROR".reversed()))
+      exit(EXIT_SUCCESS)
+    }
+    #expect(result.exitCondition === .success)
+    #expect(result.standardOutputContent.contains("STANDARD OUTPUT".utf8))
+    #expect(result.standardErrorContent.isEmpty)
+
+    result = try await #require(exitsWith: .success, observing: [\.standardErrorContent]) {
+      try FileHandle.stdout.write("STANDARD OUTPUT")
+      try FileHandle.stderr.write(String("STANDARD ERROR".reversed()))
+      exit(EXIT_SUCCESS)
+    }
+    #expect(result.exitCondition === .success)
+    #expect(result.standardOutputContent.isEmpty)
+    #expect(result.standardErrorContent.contains("STANDARD ERROR".utf8.reversed()))
+  }
 }
 
 // MARK: - Fixtures
