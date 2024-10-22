@@ -11,9 +11,9 @@
 /// A type representing the result of an exit test after it has exited and
 /// returned control to the calling test function.
 ///
-/// Both ``expect(exitsWith:_:sourceLocation:performing:)`` and
-/// ``require(exitsWith:_:sourceLocation:performing:)`` return instances of
-/// this type.
+/// Both ``expect(exitsWith:observing:_:sourceLocation:performing:)`` and
+/// ``require(exitsWith:observing:_:sourceLocation:performing:)`` return
+/// instances of this type.
 ///
 /// - Warning: The name of this type is still unstable and subject to change.
 @_spi(Experimental)
@@ -25,9 +25,10 @@ public struct ExitTestArtifacts: Sendable {
   ///
   /// When the exit test passes, the value of this property is equal to the
   /// value of the `expectedExitCondition` argument passed to
-  /// ``expect(exitsWith:_:sourceLocation:performing:)`` or to
-  /// ``require(exitsWith:_:sourceLocation:performing:)``. You can compare two
-  /// instances of ``ExitCondition`` with ``/Swift/Optional/==(_:_:)``.
+  /// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or to
+  /// ``require(exitsWith:observing:_:sourceLocation:performing:)``. You can
+  /// compare two instances of ``ExitCondition`` with
+  /// ``/Swift/Optional/==(_:_:)``.
   public var exitCondition: ExitCondition
 
   /// All bytes written to the standard output stream of the exit test before
@@ -52,8 +53,8 @@ public struct ExitTestArtifacts: Sendable {
   /// argument of ``expect(exitsWith:observing:_:sourceLocation:performing:)``
   /// or ``require(exitsWith:observing:_:sourceLocation:performing:)``.
   ///
-  /// If the exit test could not be started or if you did not request standard
-  /// output content, the value of this property is the empty array.
+  /// If you did not request standard output content when running an exit test,
+  /// the value of this property is the empty array.
   public var standardOutputContent = [UInt8]()
 
   /// All bytes written to the standard error stream of the exit test before
@@ -78,8 +79,8 @@ public struct ExitTestArtifacts: Sendable {
   /// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or
   /// ``require(exitsWith:observing:_:sourceLocation:performing:)``.
   ///
-  /// If the exit test could not be started or if you did not request standard
-  /// error content, the value of this property is the empty array.
+  /// If you did not request standard error content when running an exit test,
+  /// the value of this property is the empty array.
   public var standardErrorContent = [UInt8]()
 
   @_spi(ForToolsIntegrationOnly)
