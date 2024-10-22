@@ -23,13 +23,12 @@ private import _TestingInternals
 ///
 /// Instances of this type describe an exit test defined by the test author and
 /// discovered or called at runtime.
-@_spi(Experimental)
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 public struct ExitTest: Sendable, ~Copyable {
   /// The expected exit condition of the exit test.
-  @_spi(ForToolsIntegrationOnly)
   public var expectedExitCondition: ExitCondition
 
   /// The body closure of the exit test.
@@ -39,7 +38,6 @@ public struct ExitTest: Sendable, ~Copyable {
   ///
   /// The source location is unique to each exit test and is consistent between
   /// processes, so it can be used to uniquely identify an exit test at runtime.
-  @_spi(ForToolsIntegrationOnly)
   public var sourceLocation: SourceLocation
 }
 
@@ -97,7 +95,6 @@ extension ExitTest {
   /// to terminate the process; if it does not, the testing library will
   /// terminate the process in a way that causes the corresponding expectation
   /// to fail.
-  @_spi(ForToolsIntegrationOnly)
   public consuming func callAsFunction() async -> Never {
     Self._disableCrashReporting()
 
@@ -162,7 +159,6 @@ extension ExitTest {
   ///
   /// - Returns: The specified exit test function, or `nil` if no such exit test
   ///   could be found.
-  @_spi(ForToolsIntegrationOnly)
   public static func find(at sourceLocation: SourceLocation) -> Self? {
     var result: Self?
 
@@ -208,12 +204,12 @@ func callExitTest(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> ExitTest.Result {
+) async -> Result<ExitTestArtifacts, any Error> {
   guard let configuration = Configuration.current ?? Configuration.all.first else {
     preconditionFailure("A test must be running on the current task to use #expect(exitsWith:).")
   }
 
-  var result: ExitTest.Result
+  var result: ExitTestArtifacts
   do {
     let exitTest = ExitTest(expectedExitCondition: expectedExitCondition, sourceLocation: sourceLocation)
     result = try await configuration.exitTestHandler(exitTest)
@@ -247,16 +243,14 @@ func callExitTest(
     // For lack of a better way to handle an exit test failing in this way,
     // we record the system issue above, then let the expectation fail below by
     // reporting an exit condition that's the inverse of the expected one.
-    result = ExitTest.Result(exitCondition: expectedExitCondition == .failure ? .success : .failure)
+    result = ExitTestArtifacts(exitCondition: expectedExitCondition == .failure ? .success : .failure)
   }
 
   // How did the exit test actually exit?
   let actualExitCondition = result.exitCondition
 
-  // Plumb the resulting exit condition through the general expectation
-  // machinery. If the expectation failed, capture the ExpectationFailedError
-  // instance so that calls to #require(exitsWith:) throw it correctly.
-  let checkResult = __checkValue(
+  // Plumb the exit test's result through the general expectation machinery.
+  return __checkValue(
     expectedExitCondition == actualExitCondition,
     expression: expression,
     expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(actualExitCondition),
@@ -264,12 +258,7 @@ func callExitTest(
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
-  )
-  if case let .failure(error) = checkResult {
-    result.caughtError = error
-  }
-
-  return result
+  ).map { result }
 }
 
 // MARK: - SwiftPM/tools integration
@@ -297,8 +286,7 @@ extension ExitTest {
   /// are available or the child environment is otherwise terminated. The parent
   /// environment is then responsible for interpreting those results and
   /// recording any issues that occur.
-  @_spi(ForToolsIntegrationOnly)
-  public typealias Handler = @Sendable (_ exitTest: borrowing ExitTest) async throws -> ExitTest.Result
+  public typealias Handler = @Sendable (_ exitTest: borrowing ExitTest) async throws -> ExitTestArtifacts
 
   /// The back channel file handle set up by the parent process.
   ///
@@ -477,7 +465,7 @@ extension ExitTest {
         childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION"] = String(decoding: json, as: UTF8.self)
       }
 
-      return try await withThrowingTaskGroup(of: ExitTest.Result?.self) { taskGroup in
+      return try await withThrowingTaskGroup(of: ExitTestArtifacts?.self) { taskGroup in
         // Create a "back channel" pipe to handle events from the child process.
         let backChannel = try FileHandle.Pipe()
 
@@ -513,7 +501,7 @@ extension ExitTest {
         // Await termination of the child process.
         taskGroup.addTask {
           let exitCondition = try await wait(for: processID)
-          return ExitTest.Result(exitCondition: exitCondition)
+          return ExitTestArtifacts(exitCondition: exitCondition)
         }
 
         // Read back all data written to the back channel by the child process

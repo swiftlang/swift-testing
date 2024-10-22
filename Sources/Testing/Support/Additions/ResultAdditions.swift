@@ -13,7 +13,15 @@ extension Result {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __expected() {}
+  @inlinable public func __expected() where Success == Void {}
+
+  /// Handle this instance as if it were returned from a call to `#expect()`.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  @inlinable public func __expected() -> Success? {
+    try? get()
+  }
 
   /// Handle this instance as if it were returned from a call to `#require()`.
   ///
