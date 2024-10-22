@@ -491,6 +491,7 @@ final class IssueTests: XCTestCase {
     }.run(configuration: .init())
   }
 
+  @available(*, deprecated)
   func testErrorCheckingWithExpect() async throws {
     let expectationFailed = expectation(description: "Expectation failed")
     expectationFailed.isInverted = true
@@ -539,6 +540,7 @@ final class IssueTests: XCTestCase {
     await fulfillment(of: [expectationFailed], timeout: 0.0)
   }
 
+  @available(*, deprecated)
   func testErrorCheckingWithExpect_Mismatching() async throws {
     let expectationFailed = expectation(description: "Expectation failed")
     expectationFailed.expectedFulfillmentCount = 13
@@ -663,6 +665,7 @@ final class IssueTests: XCTestCase {
     await fulfillment(of: [expectationFailed], timeout: 0.0)
   }
 
+  @available(*, deprecated)
   func testErrorCheckingWithExpectAsync() async throws {
     let expectationFailed = expectation(description: "Expectation failed")
     expectationFailed.isInverted = true
@@ -706,6 +709,7 @@ final class IssueTests: XCTestCase {
     await fulfillment(of: [expectationFailed], timeout: 0.0)
   }
 
+  @available(*, deprecated)
   func testErrorCheckingWithExpectAsync_Mismatching() async throws {
     let expectationFailed = expectation(description: "Expectation failed")
     expectationFailed.expectedFulfillmentCount = 13
@@ -822,6 +826,7 @@ final class IssueTests: XCTestCase {
     await fulfillment(of: [expectationFailed], timeout: 0.0)
   }
 
+  @available(*, deprecated)
   func testErrorCheckingWithExpect_ThrowingFromErrorMatcher() async throws {
     let errorCaught = expectation(description: "Error matcher's error caught")
     let expectationFailed = expectation(description: "Expectation failed")
@@ -849,6 +854,7 @@ final class IssueTests: XCTestCase {
     await fulfillment(of: [errorCaught, expectationFailed], timeout: 0.0)
   }
 
+  @available(*, deprecated)
   func testErrorCheckingWithExpectAsync_ThrowingFromErrorMatcher() async throws {
     let errorCaught = expectation(description: "Error matcher's error caught")
     let expectationFailed = expectation(description: "Expectation failed")
@@ -876,6 +882,7 @@ final class IssueTests: XCTestCase {
     await fulfillment(of: [errorCaught, expectationFailed], timeout: 0.0)
   }
 
+  @available(*, deprecated)
   func testErrorCheckingWithRequire_ThrowingFromErrorMatcher() async throws {
     let errorCaught = expectation(description: "Error matcher's error caught")
     let expectationFailed = expectation(description: "Expectation failed")
@@ -904,6 +911,7 @@ final class IssueTests: XCTestCase {
     await fulfillment(of: [errorCaught, expectationFailed], timeout: 0.0)
   }
 
+  @available(*, deprecated)
   func testErrorCheckingWithRequireAsync_ThrowingFromErrorMatcher() async throws {
     let errorCaught = expectation(description: "Error matcher's error caught")
     let expectationFailed = expectation(description: "Expectation failed")
