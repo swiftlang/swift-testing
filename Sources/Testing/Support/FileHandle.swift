@@ -57,6 +57,15 @@ struct FileHandle: ~Copyable, Sendable {
   ///
   /// - Throws: Any error preventing the stream from being opened.
   init(atPath path: String, mode: String) throws {
+    // Set the `O_CLOEXEC` flag (`_O_NOINHERIT` on Windows) so that the file
+    // handle isn't inherited by default.
+    var mode = mode
+#if os(Windows)
+    mode = "\(mode)N"
+#else
+    mode = "\(mode)e"
+#endif
+
 #if os(Windows)
     // Special-case CONOUT$ to map to stdout. This way, if somebody specifies
     // CONOUT$ as the target path for XML or JSON output from `swift test`,
@@ -463,14 +472,28 @@ extension FileHandle {
   ///   tuples with move-only elements. ([104669935](rdar://104669935))
   static func makePipe(readEnd: inout FileHandle?, writeEnd: inout FileHandle?) throws {
     var (fdReadEnd, fdWriteEnd) = try withUnsafeTemporaryAllocation(of: CInt.self, capacity: 2) { fds in
-#if os(Windows)
-      guard 0 == _pipe(fds.baseAddress, 0, _O_BINARY) else {
-        throw CError(rawValue: swt_errno())
-      }
-#else
+#if SWT_TARGET_OS_APPLE
+      // Apple platforms do not have the pipe2() interface, so use pipe() and
+      // manually set FD_CLOEXEC on both file descriptors. rdar://138426570
       guard 0 == pipe(fds.baseAddress!) else {
         throw CError(rawValue: swt_errno())
       }
+      for fd in fds {
+        var flags = fcntl(fd, F_GETFL)
+        flags |= FD_CLOEXEC
+        _ = fcntl(fd, F_SETFL, flags)
+      }
+#elseif os(Linux) || os(FreeBSD) || os(Android) || os(WASI)
+      guard 0 == pipe2(fds.baseAddress!, O_CLOEXEC) else {
+        throw CError(rawValue: swt_errno())
+      }
+#elseif os(Windows)
+      guard 0 == _pipe(fds.baseAddress, 0, _O_BINARY | _O_NOINHERIT) else {
+        throw CError(rawValue: swt_errno())
+      }
+#else
+#warning("Platform-specific implementation missing: cannot create a pipe")
+      throw SystemError(description: "The requested pipe could not be created. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
 #endif
       return (fds[0], fds[1])
     }
