@@ -1149,7 +1149,7 @@ public func __checkClosureCall(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<ExitTestArtifacts, any Error> {
+) async -> Result<ExitTestArtifacts?, any Error> {
   await callExitTest(
     exitsWith: expectedExitCondition,
     observing: observedValues,

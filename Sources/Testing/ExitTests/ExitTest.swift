@@ -236,7 +236,7 @@ func callExitTest(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<ExitTestArtifacts, any Error> {
+) async -> Result<ExitTestArtifacts?, any Error> {
   guard let configuration = Configuration.current ?? Configuration.all.first else {
     preconditionFailure("A test must be running on the current task to use #expect(exitsWith:).")
   }
