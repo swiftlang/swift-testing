@@ -10,22 +10,26 @@
 
 private import _TestingInternals
 
-/// An enumeration describing possible conditions under which an exit test will
-/// succeed or fail.
+/// An enumeration describing possible conditions under which a process will
+/// exit.
 ///
-/// Values of this type can be passed to
+/// Values of this type are used to describe the conditions under which an exit
+/// test is expected to pass or fail by passing them to
 /// ``expect(exitsWith:_:sourceLocation:performing:)`` or
-/// ``require(exitsWith:_:sourceLocation:performing:)`` to configure which exit
-/// statuses should be considered successful.
+/// ``require(exitsWith:_:sourceLocation:performing:)``.
 @_spi(Experimental)
 #if SWT_NO_PROCESS_SPAWNING
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
-#elseif SWT_NO_EXIT_TESTS
-@_spi(ForToolsIntegrationOnly)
 #endif
 public enum ExitCondition: Sendable {
   /// The process terminated successfully with status `EXIT_SUCCESS`.
-  public static var success: Self { .exitCode(EXIT_SUCCESS) }
+  public static var success: Self {
+    // Strictly speaking, the C standard treats 0 as a successful exit code and
+    // potentially distinct from EXIT_SUCCESS. To my knowledge, no modern
+    // operating system defines EXIT_SUCCESS to any value other than 0, so the
+    // distinction is academic.
+    .exitCode(EXIT_SUCCESS)
+  }
 
   /// The process terminated abnormally with any status other than
   /// `EXIT_SUCCESS` or with any signal.
@@ -72,13 +76,12 @@ public enum ExitCondition: Sendable {
 
 // MARK: - Equatable
 
+@_spi(Experimental)
 #if SWT_NO_PROCESS_SPAWNING
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
-#elseif SWT_NO_EXIT_TESTS
-@_spi(ForToolsIntegrationOnly)
 #endif
-extension ExitCondition {
-  /// Check whether or not two values of this type are equal.
+extension Optional<ExitCondition> {
+  /// Check whether or not two exit conditions are equal.
   ///
   /// - Parameters:
   ///   - lhs: One value to compare.
@@ -86,9 +89,10 @@ extension ExitCondition {
   ///
   /// - Returns: Whether or not `lhs` and `rhs` are equal.
   ///
-  /// Two instances of this type can be compared; if either instance is equal to
-  /// ``failure``, it will compare equal to any instance except ``success``. To
-  /// check if two instances are exactly equal, use the ``===(_:_:)`` operator:
+  /// Two exit conditions can be compared; if either instance is equal to
+  /// ``ExitCondition/failure``, it will compare equal to any instance except
+  /// ``ExitCondition/success``. To check if two instances are _exactly_ equal,
+  /// use the ``===(_:_:)`` operator:
   ///
   /// ```swift
   /// let lhs: ExitCondition = .failure
@@ -119,7 +123,7 @@ extension ExitCondition {
 #endif
   }
 
-  /// Check whether or not two values of this type are _not_ equal.
+  /// Check whether or not two exit conditions are _not_ equal.
   ///
   /// - Parameters:
   ///   - lhs: One value to compare.
@@ -127,10 +131,10 @@ extension ExitCondition {
   ///
   /// - Returns: Whether or not `lhs` and `rhs` are _not_ equal.
   ///
-  /// Two instances of this type can be compared; if either instance is equal to
-  /// ``failure``, it will compare equal to any instance except ``success``. To
-  /// check if two instances are not exactly equal, use the ``!==(_:_:)``
-  /// operator:
+  /// Two exit conditions can be compared; if either instance is equal to
+  /// ``ExitCondition/failure``, it will compare equal to any instance except
+  /// ``ExitCondition/success``. To check if two instances are not _exactly_
+  /// equal, use the ``!==(_:_:)`` operator:
   ///
   /// ```swift
   /// let lhs: ExitCondition = .failure
@@ -153,7 +157,7 @@ extension ExitCondition {
 #endif
   }
 
-  /// Check whether or not two values of this type are identical.
+  /// Check whether or not two exit conditions are identical.
   ///
   /// - Parameters:
   ///   - lhs: One value to compare.
@@ -161,9 +165,10 @@ extension ExitCondition {
   ///
   /// - Returns: Whether or not `lhs` and `rhs` are identical.
   ///
-  /// Two instances of this type can be compared; if either instance is equal to
-  /// ``failure``, it will compare equal to any instance except ``success``. To
-  /// check if two instances are exactly equal, use the ``===(_:_:)`` operator:
+  /// Two exit conditions can be compared; if either instance is equal to
+  /// ``ExitCondition/failure``, it will compare equal to any instance except
+  /// ``ExitCondition/success``. To check if two instances are _exactly_ equal,
+  /// use the ``===(_:_:)`` operator:
   ///
   /// ```swift
   /// let lhs: ExitCondition = .failure
@@ -180,6 +185,8 @@ extension ExitCondition {
   /// For any values `a` and `b`, `a === b` implies that `a !== b` is `false`.
   public static func ===(lhs: Self, rhs: Self) -> Bool {
     return switch (lhs, rhs) {
+    case (.none, .none):
+      true
     case (.failure, .failure):
       true
     case let (.exitCode(lhs), .exitCode(rhs)):
@@ -191,7 +198,7 @@ extension ExitCondition {
     }
   }
 
-  /// Check whether or not two values of this type are _not_ identical.
+  /// Check whether or not two exit conditions are _not_ identical.
   ///
   /// - Parameters:
   ///   - lhs: One value to compare.
@@ -199,10 +206,10 @@ extension ExitCondition {
   ///
   /// - Returns: Whether or not `lhs` and `rhs` are _not_ identical.
   ///
-  /// Two instances of this type can be compared; if either instance is equal to
-  /// ``failure``, it will compare equal to any instance except ``success``. To
-  /// check if two instances are not exactly equal, use the ``!==(_:_:)``
-  /// operator:
+  /// Two exit conditions can be compared; if either instance is equal to
+  /// ``ExitCondition/failure``, it will compare equal to any instance except
+  /// ``ExitCondition/success``. To check if two instances are not _exactly_
+  /// equal, use the ``!==(_:_:)`` operator:
   ///
   /// ```swift
   /// let lhs: ExitCondition = .failure
