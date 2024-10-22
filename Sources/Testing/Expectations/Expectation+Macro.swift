@@ -475,7 +475,9 @@ public macro require<R>(
 ///   print("Goodbye, world!")
 ///   fatalError()
 /// }
-/// #expect(result.standardOutputContent.contains(UInt8(ascii: "G")))
+/// if let result {
+///   #expect(result.standardOutputContent.contains(UInt8(ascii: "G")))
+/// }
 /// ```
 ///
 /// - Note: The content of the standard output and standard error streams may
