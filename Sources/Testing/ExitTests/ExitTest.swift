@@ -39,7 +39,7 @@ public struct ExitTest: Sendable, ~Copyable {
   /// Key paths are not sendable because the properties they refer to may or may
   /// not be, so this property needs to be `nonisolated(unsafe)`. It is safe to
   /// use it in this fashion because `ExitTestArtifacts` is sendable.
-  fileprivate nonisolated(unsafe) var _observedValues = [PartialKeyPath<ExitTestArtifacts>]()
+  fileprivate var _observedValues = [any PartialKeyPath<ExitTestArtifacts> & Sendable]()
 
   /// Key paths representing results from within this exit test that should be
   /// observed and returned to the caller.
@@ -56,7 +56,7 @@ public struct ExitTest: Sendable, ~Copyable {
   /// Within a child process running an exit test, the value of this property is
   /// otherwise unspecified.
   @_spi(ForToolsIntegrationOnly)
-  public var observedValues: [PartialKeyPath<ExitTestArtifacts>] {
+  public var observedValues: [any PartialKeyPath<ExitTestArtifacts> & Sendable] {
     get {
       var result = _observedValues
       if !result.contains(\.exitCondition) { // O(n), but n <= 3 (no Set needed)
@@ -237,7 +237,7 @@ extension ExitTest {
 /// convention.
 func callExitTest(
   exitsWith expectedExitCondition: ExitCondition,
-  observing observedValues: [PartialKeyPath<ExitTestArtifacts>],
+  observing observedValues: [any PartialKeyPath<ExitTestArtifacts> & Sendable],
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
