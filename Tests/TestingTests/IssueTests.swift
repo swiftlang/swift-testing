@@ -932,6 +932,58 @@ final class IssueTests: XCTestCase {
     await fulfillment(of: [errorCaught, expectationFailed], timeout: 0.0)
   }
 
+  func testErrorCheckingWithExpect_ResultValue() throws {
+    let error = #expect(throws: MyDescriptiveError.self) {
+      throw MyDescriptiveError(description: "abc123")
+    }
+    #expect(error?.description == "abc123")
+  }
+
+  func testErrorCheckingWithRequire_ResultValue() async throws {
+    let error = try #require(throws: MyDescriptiveError.self) {
+      throw MyDescriptiveError(description: "abc123")
+    }
+    #expect(error.description == "abc123")
+  }
+
+  func testErrorCheckingWithExpect_ResultValueIsNever() async throws {
+    let error: Never? = #expect(throws: Never.self) {
+      throw MyDescriptiveError(description: "abc123")
+    }
+    #expect(error == nil)
+  }
+
+  func testErrorCheckingWithRequire_ResultValueIsNever() async throws {
+    let errorCaught = expectation(description: "Error caught")
+    errorCaught.isInverted = true
+    let apiMisused = expectation(description: "API misused")
+    let expectationFailed = expectation(description: "Expectation failed")
+    expectationFailed.isInverted = true
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      if case .errorCaught = issue.kind {
+        errorCaught.fulfill()
+      } else if case .apiMisused = issue.kind {
+        apiMisused.fulfill()
+      } else {
+        expectationFailed.fulfill()
+      }
+    }
+
+    await Test {
+      func f<E>(_ type: E.Type) throws -> E where E: Error {
+        try #require(throws: type) {}
+      }
+      try f(Never.self)
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [errorCaught, apiMisused, expectationFailed], timeout: 0.0)
+  }
+
   func testFail() async throws {
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in

@@ -37,10 +37,18 @@ extension Result {
 
   /// Handle this instance as if it were returned from a call to `#require()`.
   ///
+  /// If `#require()` is used with a `__check()` function that returns an
+  /// optional value on success, that implies that the value cannot actually be
+  /// `nil` on success and that it's safe to unwrap it. If the value really is
+  /// `nil` (which would be a corner case), the testing library throws an error
+  /// representing an issue of kind ``Issue/Kind-swift.enum/apiMisused``.
+  ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __required<T>() throws -> T where Success == T? {
-    // TODO: handle edge case where the value is nil (see #780)
-    try get()!
+  public func __required<T>() throws -> T where Success == T? {
+    guard let result = try get() else {
+      throw APIMisuseError(description: "Could not unwrap 'nil' value of type Optional<\(T.self)>. Consider using #expect() instead of #require() here.")
+    }
+    return result
   }
 }

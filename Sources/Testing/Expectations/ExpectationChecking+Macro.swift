@@ -821,6 +821,14 @@ public func __checkCast<V, T>(
 
 // MARK: - Matching errors by type
 
+/// A placeholder type representing `Never` if a test attempts to instantiate it
+/// by calling `#expect(throws:)` and taking the result.
+///
+/// Errors of this type are never thrown; they act as placeholders in `Result`
+/// so that `#expect(throws: Never.self)` always produces `nil` (since `Never`
+/// cannot be instantiated.)
+private struct _CannotInstantiateNeverError: Error {}
+
 /// Check that an expression always throws an error.
 ///
 /// This overload is used for `#expect(throws:) { }` invocations that take error
@@ -835,7 +843,7 @@ public func __checkClosureCall<E>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> where E: Error {
+) -> Result<E?, any Error> where E: Error {
   if errorType == Never.self {
     __checkClosureCall(
       throws: Never.self,
@@ -844,7 +852,7 @@ public func __checkClosureCall<E>(
       comments: comments(),
       isRequired: isRequired,
       sourceLocation: sourceLocation
-    )
+    ).map { _ in nil }
   } else {
     __checkClosureCall(
       performing: body,
@@ -854,7 +862,7 @@ public func __checkClosureCall<E>(
       comments: comments(),
       isRequired: isRequired,
       sourceLocation: sourceLocation
-    )
+    ).map { $0 as? E }
   }
 }
 
@@ -873,7 +881,7 @@ public func __checkClosureCall<E>(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<Void, any Error> where E: Error {
+) async -> Result<E?, any Error> where E: Error {
   if errorType == Never.self {
     await __checkClosureCall(
       throws: Never.self,
@@ -883,7 +891,7 @@ public func __checkClosureCall<E>(
       isRequired: isRequired,
       isolation: isolation,
       sourceLocation: sourceLocation
-    )
+    ).map { _ in nil }
   } else {
     await __checkClosureCall(
       performing: body,
@@ -894,7 +902,7 @@ public func __checkClosureCall<E>(
       isRequired: isRequired,
       isolation: isolation,
       sourceLocation: sourceLocation
-    )
+    ).map { $0 as? E }
   }
 }
 
@@ -915,7 +923,7 @@ public func __checkClosureCall(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> {
+) -> Result<Never?, any Error> {
   var success = true
   var mismatchExplanationValue: String? = nil
   do {
@@ -932,7 +940,7 @@ public func __checkClosureCall(
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
-  )
+  ).map { _ in nil }
 }
 
 /// Check that an expression never throws an error.
@@ -952,7 +960,7 @@ public func __checkClosureCall(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<Void, any Error> {
+) async -> Result<Never?, any Error> {
   var success = true
   var mismatchExplanationValue: String? = nil
   do {
@@ -969,7 +977,7 @@ public func __checkClosureCall(
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
-  )
+  ).map { _ in nil }
 }
 
 // MARK: - Matching instances of equatable errors
@@ -988,7 +996,7 @@ public func __checkClosureCall<E>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> where E: Error & Equatable {
+) -> Result<E?, any Error> where E: Error & Equatable {
   __checkClosureCall(
     performing: body,
     throws: { true == (($0 as? E) == error) },
@@ -997,7 +1005,7 @@ public func __checkClosureCall<E>(
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
-  )
+  ).map { $0 as? E }
 }
 
 /// Check that an expression always throws an error.
@@ -1015,7 +1023,7 @@ public func __checkClosureCall<E>(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<Void, any Error> where E: Error & Equatable {
+) async -> Result<E?, any Error> where E: Error & Equatable {
   await __checkClosureCall(
     performing: body,
     throws: { true == (($0 as? E) == error) },
@@ -1025,7 +1033,7 @@ public func __checkClosureCall<E>(
     isRequired: isRequired,
     isolation: isolation,
     sourceLocation: sourceLocation
-  )
+  ).map { $0 as? E }
 }
 
 // MARK: - Arbitrary error matching
@@ -1044,10 +1052,11 @@ public func __checkClosureCall<R>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> {
+) -> Result<(any Error)?, any Error> {
   var errorMatches = false
   var mismatchExplanationValue: String? = nil
   var expression = expression
+  var caughtError: (any Error)?
   do {
     let result = try body()
 
@@ -1057,6 +1066,7 @@ public func __checkClosureCall<R>(
     }
     mismatchExplanationValue = explanation
   } catch {
+    caughtError = error
     expression = expression.capturingRuntimeValues(error)
     let secondError = Issue.withErrorRecording(at: sourceLocation) {
       errorMatches = try errorMatcher(error)
@@ -1075,7 +1085,7 @@ public func __checkClosureCall<R>(
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
-  )
+  ).map { caughtError }
 }
 
 /// Check that an expression always throws an error.
@@ -1093,10 +1103,11 @@ public func __checkClosureCall<R>(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<Void, any Error> {
+) async -> Result<(any Error)?, any Error> {
   var errorMatches = false
   var mismatchExplanationValue: String? = nil
   var expression = expression
+  var caughtError: (any Error)?
   do {
     let result = try await body()
 
@@ -1106,6 +1117,7 @@ public func __checkClosureCall<R>(
     }
     mismatchExplanationValue = explanation
   } catch {
+    caughtError = error
     expression = expression.capturingRuntimeValues(error)
     let secondError = await Issue.withErrorRecording(at: sourceLocation) {
       errorMatches = try await errorMatcher(error)
@@ -1124,7 +1136,7 @@ public func __checkClosureCall<R>(
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
-  )
+  ).map { caughtError }
 }
 
 // MARK: - Exit tests
