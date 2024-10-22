@@ -174,7 +174,7 @@ struct AttributeInfo {
     }
     arguments.append(Argument(label: .identifier("traits"), expression: ArrayExprSyntax {
       for traitExpr in traits {
-        ArrayElementSyntax(expression: traitExpr)
+        ArrayElementSyntax(expression: traitExpr).trimmed
       }
     }))
 

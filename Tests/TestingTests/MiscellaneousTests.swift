@@ -228,6 +228,11 @@ struct TestsWithAsyncArguments {
 )
 func parameterizedTestWithTrailingComment(value: Int) {}
 
+@Suite(
+  .serialized // Meaningful trivia: This line comment should be omitted during macro expansion
+)
+private struct SuiteWithTraitContainingTrailingComment {}
+
 @Test(.hidden) func // Meaningful trivia: intentional newline before name
 globalMultiLineTestDecl() async {}
 
