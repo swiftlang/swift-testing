@@ -5,7 +5,7 @@
 * Status: **Awaiting review**
 * Bug: rdar://138235250
 * Implementation: [swiftlang/swift-testing#780](https://github.com/swiftlang/swift-testing/pull/780)
-<!-- * Review: ([pitch](https://forums.swift.org/...)) -->
+* Review: ([pitch](https://forums.swift.org/t/pitch-returning-errors-from-expect-throws/75567))
 
 ## Introduction
 
