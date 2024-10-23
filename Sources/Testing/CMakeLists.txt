@@ -81,6 +81,7 @@ add_library(Testing
   Test.ID.swift
   Test.swift
   Test+Discovery.swift
+  Test+Discovery+Old.swift
   Test+Macro.swift
   Traits/Bug.swift
   Traits/Comment.swift
