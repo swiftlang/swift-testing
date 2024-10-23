@@ -170,6 +170,18 @@ extension Issue: CustomStringConvertible, CustomDebugStringConvertible {
   }
 }
 
+/// An empty protocol defining a type that conforms to `RangeExpression<Int>`.
+///
+/// In the future, when our minimum deployment target supports casting a value
+/// to a constrained existential type ([SE-0353](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0353-constrained-existential-types.md#effect-on-abi-stability)),
+/// we can remove this protocol and cast to `RangeExpression<Int>` instead.
+private protocol _RangeExpressionOverIntValues: RangeExpression where Bound == Int {}
+extension ClosedRange<Int>: _RangeExpressionOverIntValues {}
+extension PartialRangeFrom<Int>: _RangeExpressionOverIntValues {}
+extension PartialRangeThrough<Int>: _RangeExpressionOverIntValues {}
+extension PartialRangeUpTo<Int>: _RangeExpressionOverIntValues {}
+extension Range<Int>: _RangeExpressionOverIntValues {}
+
 extension Issue.Kind: CustomStringConvertible {
   public var description: String {
     switch self {
@@ -187,7 +199,7 @@ extension Issue.Kind: CustomStringConvertible {
         "Expectation failed: \(expectation.evaluatedExpression.expandedDescription())"
       }
     case let .confirmationMiscounted(actual: actual, expected: expected):
-      if #available(_parameterizedProtocolsAPI, *), let expected = expected as? any RangeExpression<Int> {
+      if let expected = expected as? any _RangeExpressionOverIntValues {
         let expected = expected.relative(to: [])
         if expected.upperBound > expected.lowerBound && expected.lowerBound == expected.upperBound - 1 {
           return "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(expected.lowerBound.counting("time"))"
