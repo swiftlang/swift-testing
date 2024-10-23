@@ -992,6 +992,25 @@ final class IssueTests: XCTestCase {
     await fulfillment(of: [errorCaught, apiMisused, expectationFailed], timeout: 0.0)
   }
 
+  @_semantics("testing.macros.nowarnings")
+  func testErrorCheckingWithRequire_ResultValueIsNever_VariousSyntaxes() throws {
+    // Basic expressions succeed and don't diagnose.
+    #expect(throws: Never.self) {}
+    try #require(throws: Never.self) {}
+
+    // Casting to specific types succeeds and doesn't diagnose.
+    let _: Void = try #require(throws: Never.self) {}
+    let _: Any = try #require(throws: Never.self) {}
+
+    // Casting to any Error throws an API misuse error because Never cannot be
+    // instantiated. NOTE: inner function needed for lexical context.
+    @_semantics("testing.macros.nowarnings")
+    func castToAnyError() throws {
+      let _: any Error = try #require(throws: Never.self) {}
+    }
+    #expect(throws: APIMisuseError.self, performing: castToAnyError)
+  }
+
   func testFail() async throws {
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in

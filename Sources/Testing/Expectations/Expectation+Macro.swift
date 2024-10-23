@@ -235,7 +235,7 @@ public macro require<T>(
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: () async throws -> R
-) -> E = #externalMacro(module: "TestingMacros", type: "RequireMacro") where E: Error
+) -> E = #externalMacro(module: "TestingMacros", type: "RequireThrowsMacro") where E: Error
 
 /// Check that an expression never throws an error, and throw an error if it
 /// does.

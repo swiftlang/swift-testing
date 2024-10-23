@@ -80,6 +80,32 @@ extension MacroExpansionContext {
 // MARK: -
 
 extension MacroExpansionContext {
+  /// Whether or not our generated warnings are suppressed in the current
+  /// lexical context.
+  ///
+  /// The value of this property is `true` if the current lexical context
+  /// contains a node with the `@_semantics("testing.macros.nowarnings")`
+  /// attribute applied to it.
+  ///
+  /// - Warning: This functionality is not part of the public interface of the
+  ///   testing library. It may be modified or removed in a future update.
+  var areWarningsSuppressed: Bool {
+    for lexicalContext in self.lexicalContext {
+      guard let lexicalContext = lexicalContext.asProtocol((any WithAttributesSyntax).self) else {
+        continue
+      }
+      for attribute in lexicalContext.attributes {
+        if case let .attribute(attribute) = attribute,
+           attribute.attributeNameText == "_semantics",
+           case let .string(argument) = attribute.arguments,
+           argument.representedLiteralValue == "testing.macros.nowarnings" {
+          return true
+        }
+      }
+    }
+    return false
+  }
+
   /// Emit a diagnostic message.
   ///
   /// - Parameters:
@@ -87,23 +113,27 @@ extension MacroExpansionContext {
   ///     arguments to `Diagnostic.init()` are derived from the message's
   ///     `syntax` property.
   func diagnose(_ message: DiagnosticMessage) {
-    diagnose(
-      Diagnostic(
-        node: message.syntax,
-        position: message.syntax.positionAfterSkippingLeadingTrivia,
-        message: message,
-        fixIts: message.fixIts
-      )
-    )
+    diagnose(CollectionOfOne(message))
   }
 
   /// Emit a sequence of diagnostic messages.
   ///
   /// - Parameters:
   ///   - messages: The diagnostic messages to emit.
-  func diagnose(_ messages: some Sequence<DiagnosticMessage>) {
+  func diagnose(_ messages: some Collection<DiagnosticMessage>) {
+    lazy var areWarningsSuppressed = areWarningsSuppressed
     for message in messages {
-      diagnose(message)
+      if message.severity == .warning && areWarningsSuppressed {
+        continue
+      }
+      diagnose(
+        Diagnostic(
+          node: message.syntax,
+          position: message.syntax.positionAfterSkippingLeadingTrivia,
+          message: message,
+          fixIts: message.fixIts
+        )
+      )
     }
   }
 

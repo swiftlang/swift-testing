@@ -821,18 +821,11 @@ public func __checkCast<V, T>(
 
 // MARK: - Matching errors by type
 
-/// A placeholder type representing `Never` if a test attempts to instantiate it
-/// by calling `#expect(throws:)` and taking the result.
-///
-/// Errors of this type are never thrown; they act as placeholders in `Result`
-/// so that `#expect(throws: Never.self)` always produces `nil` (since `Never`
-/// cannot be instantiated.)
-private struct _CannotInstantiateNeverError: Error {}
-
 /// Check that an expression always throws an error.
 ///
 /// This overload is used for `#expect(throws:) { }` invocations that take error
-/// types.
+/// types. It is disfavored so that `#expect(throws: Never.self)` preferentially
+/// returns `Void`.
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
@@ -869,7 +862,8 @@ public func __checkClosureCall<E>(
 /// Check that an expression always throws an error.
 ///
 /// This overload is used for `await #expect(throws:) { }` invocations that take
-/// error types.
+/// error types. It is disfavored so that `#expect(throws: Never.self)`
+/// preferentially returns `Void`.
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
@@ -923,7 +917,7 @@ public func __checkClosureCall(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Never?, any Error> {
+) -> Result<Void, any Error> {
   var success = true
   var mismatchExplanationValue: String? = nil
   do {
@@ -940,7 +934,7 @@ public func __checkClosureCall(
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
-  ).map { _ in nil }
+  ).map { _ in }
 }
 
 /// Check that an expression never throws an error.
@@ -960,7 +954,7 @@ public func __checkClosureCall(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<Never?, any Error> {
+) async -> Result<Void, any Error> {
   var success = true
   var mismatchExplanationValue: String? = nil
   do {
@@ -977,7 +971,7 @@ public func __checkClosureCall(
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
-  ).map { _ in nil }
+  ).map { _ in }
 }
 
 // MARK: - Matching instances of equatable errors
