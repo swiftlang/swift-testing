@@ -37,17 +37,32 @@ extension Result {
 
   /// Handle this instance as if it were returned from a call to `#require()`.
   ///
-  /// If `#require()` is used with a `__check()` function that returns an
-  /// optional value on success, that implies that the value cannot actually be
-  /// `nil` on success and that it's safe to unwrap it. If the value really is
-  /// `nil` (which would be a corner case), the testing library throws an error
-  /// representing an issue of kind ``Issue/Kind-swift.enum/apiMisused``.
+  /// This overload of `__require()` assumes that the result cannot actually be
+  /// `nil` on success. The optionality is part of our ABI contract for the
+  /// `__check()` function family so that we can support uninhabited types and
+  /// "soft" failures.
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public func __required<T>() throws -> T where Success == T? {
+  @inlinable public func __required<T>() throws -> T where Success == T? {
+    try get()!
+  }
+
+  /// Handle this instance as if it were returned from a call to `#require()`.
+  ///
+  /// This overload of `__require()` is used by `#require(throws:)`. It has
+  /// special handling for a `nil` result so that `Never.self` (which can't be
+  /// instantiated) can be used as the error type in the macro call.
+  ///
+  /// If the value really is `nil` (i.e. we're dealing with `Never`), the
+  /// testing library throws an error representing an issue of kind
+  /// ``Issue/Kind-swift.enum/apiMisused``.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  public func __required<T>() throws -> T where T: Error, Success == T? {
     guard let result = try get() else {
-      throw APIMisuseError(description: "Could not unwrap 'nil' value of type Optional<\(T.self)>. Consider using #expect() instead of #require() here.")
+      throw APIMisuseError(description: "Could not unwrap 'nil' value of type Optional<\(T.self)>. Consider using #expect(throws:) instead of #require(throws:) here.")
     }
     return result
   }
