@@ -177,12 +177,7 @@ this value is `Int`.
 
 ## Acknowledgments
 
-If significant changes or improvements suggested by members of the community
-were incorporated into the proposal as it developed, take a moment here to thank
-them for their contributions. This is a collaborative process, and everyone's
-input should receive recognition!
-
-Generally, you should not acknowledge anyone who is listed as a co-author.
+Thanks to the testing team for their help preparing this pitch!
 
 [^1]: In the future, this type will change to
       `any RangeExpression<Int> & Sendable`. Compiler support is required
