@@ -201,7 +201,7 @@ public func confirmation<R>(
 }
 
 /// An overload of ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-6bkl6``
-/// that handles the unbounded range operator (`...`).
+/// that handles the partial-range-through operator (`...n`).
 ///
 /// This overload is necessary because the lower bound of `PartialRangeThrough`
 /// is ambiguous: does it start at `0` or `1`? Test authors should specify a
@@ -217,7 +217,7 @@ public func confirmation<R>(
 }
 
 /// An overload of ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-6bkl6``
-/// that handles the unbounded range operator (`...`).
+/// that handles the partial-range-up-to operator (`..<n`).
 ///
 /// This overload is necessary because the lower bound of `PartialRangeUpTo` is
 /// ambiguous: does it start at `0` or `1`? Test authors should specify a
