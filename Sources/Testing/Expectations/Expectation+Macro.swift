@@ -511,12 +511,12 @@ public macro require<R>(
 /// ```
 ///
 /// An exit test cannot run within another exit test.
-@_spi(Experimental)
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 @discardableResult
-@freestanding(expression) public macro expect(
+@freestanding(expression)
+public macro expect(
   exitsWith expectedExitCondition: ExitCondition,
   observing observedValues: [any PartialKeyPath<ExitTestArtifacts> & Sendable] = [],
   _ comment: @autoclosure () -> Comment? = nil,
@@ -623,12 +623,12 @@ public macro require<R>(
 /// ```
 ///
 /// An exit test cannot run within another exit test.
-@_spi(Experimental)
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 @discardableResult
-@freestanding(expression) public macro require(
+@freestanding(expression)
+public macro require(
   exitsWith expectedExitCondition: ExitCondition,
   observing observedValues: [any PartialKeyPath<ExitTestArtifacts> & Sendable] = [],
   _ comment: @autoclosure () -> Comment? = nil,
