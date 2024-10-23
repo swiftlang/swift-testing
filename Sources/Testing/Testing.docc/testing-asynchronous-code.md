@@ -74,7 +74,7 @@ func boughtSandwiches() async {
 
 In this example, there may be zero customers or up to (but not including) 1,000
 customers who order sandwiches. Any [range expression](https://developer.apple.com/documentation/swift/rangeexpression)
-can be used:
+which includes an explicit lower bound can be used:
 
 | Range Expression | Usage |
 |-|-|
