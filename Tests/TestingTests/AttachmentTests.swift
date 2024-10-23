@@ -139,6 +139,10 @@ struct AttachmentTests {
 struct MyAttachable: Test.Attachable, ~Copyable {
   var string: String
 
+  var underestimatedAttachableByteCount: Int {
+    string.utf8.count
+  }
+
   func withUnsafeBufferPointer<R>(for attachment: borrowing Testing.Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var string = string
     return try string.withUTF8 { buffer in
@@ -152,6 +156,10 @@ extension MyAttachable: Sendable {}
 
 struct MySendableAttachable: Test.Attachable, Sendable {
   var string: String
+
+  var underestimatedAttachableByteCount: Int {
+    string.utf8.count
+  }
 
   func withUnsafeBufferPointer<R>(for attachment: borrowing Testing.Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var string = string

@@ -22,6 +22,20 @@ extension Test {
   // TODO: write more about this protocol, how it works, and list conforming
   // types (including discussion of the Foundation cross-import overlay.)
   public protocol Attachable: ~Copyable {
+    /// A lower bound for the number of bytes that will be needed by this
+    /// value's ``withUnsafeBufferPointer(for:_:)`` function is called.
+    ///
+    /// The testing library uses the value of this property to determine if an
+    /// attachment should be written to disk immediately or can remain in memory
+    /// until the current test finishes.
+    ///
+    /// The value of this property should be as close as possible to this
+    /// value's size when represented by ``withUnsafeBufferPointer(for:_:)``
+    /// without actually performing an encoding operation. If a reasonable value
+    /// cannot be derived quickly and efficiently, use this property's default
+    /// implementation (which provides a value of `0`.)
+    var underestimatedAttachableByteCount: Int { get }
+
     /// Call a function and pass a buffer representing this instance to it.
     ///
     /// - Parameters:
@@ -48,10 +62,20 @@ extension Test {
 
 // MARK: - Default implementations
 
+extension Test.Attachable {
+  public var underestimatedAttachableByteCount: Int {
+    0
+  }
+}
+
 // Implement the protocol requirements for byte arrays and buffers so that
 // developers can attach raw data when needed.
 @_spi(Experimental)
 extension [UInt8]: Test.Attachable {
+  public var underestimatedAttachableByteCount: Int {
+    count
+  }
+
   public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }
@@ -59,6 +83,10 @@ extension [UInt8]: Test.Attachable {
 
 @_spi(Experimental)
 extension UnsafeBufferPointer<UInt8>: Test.Attachable {
+  public var underestimatedAttachableByteCount: Int {
+    count
+  }
+
   public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try body(.init(self))
   }
@@ -66,6 +94,10 @@ extension UnsafeBufferPointer<UInt8>: Test.Attachable {
 
 @_spi(Experimental)
 extension UnsafeRawBufferPointer: Test.Attachable {
+  public var underestimatedAttachableByteCount: Int {
+    count
+  }
+
   public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try body(self)
   }
@@ -73,6 +105,10 @@ extension UnsafeRawBufferPointer: Test.Attachable {
 
 @_spi(Experimental)
 extension String: Test.Attachable {
+  public var underestimatedAttachableByteCount: Int {
+    utf8.count
+  }
+
   public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var selfCopy = self
     return try selfCopy.withUTF8 { utf8 in
@@ -83,6 +119,10 @@ extension String: Test.Attachable {
 
 @_spi(Experimental)
 extension Substring: Test.Attachable {
+  public var underestimatedAttachableByteCount: Int {
+    utf8.count
+  }
+
   public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var selfCopy = self
     return try selfCopy.withUTF8 { utf8 in

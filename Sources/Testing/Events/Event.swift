@@ -102,8 +102,20 @@ public struct Event: Sendable {
     ///
     /// - Parameters:
     ///   - attachment: The attachment that was created.
+    ///
+    /// The attachment has not been written to disk yet. To observe when an
+    /// attachment is written to disk, look for events of kind
+    /// ``attachmentWritten(_:)``.
     @_spi(Experimental)
     indirect case valueAttached(_ attachment: Test.Attachment)
+
+    /// An attachment was written to disk.
+    ///
+    /// - Parameters:
+    ///   - attachment: The attachment that was created.
+    ///   - path: The path to which the attachment was written.
+    @_spi(Experimental)
+    indirect case attachmentWritten(_ attachment: Test.Attachment, path: String)
 
     /// A test ended.
     ///

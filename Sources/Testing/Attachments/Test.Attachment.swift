@@ -35,6 +35,35 @@ extension Test {
       "untitled"
     }
 
+    /// An enumeration describing conditions under which at attachment should be
+    /// written to disk.
+    public enum WriteCondition: Sendable {
+      /// The attachment should be written to disk as soon as it is attached to
+      /// a test.
+      case immediately
+
+      /// The attachment should be written to disk after the test it is attached
+      /// to finishes (regardless of whether it passes or fails.)
+      case atEnd
+
+      /// The attachment should be written to disk if the test it is attached to
+      /// records an issue.
+      ///
+      /// Known issues recorded using ``withKnownIssue(_:isIntermittent:sourceLocation:_:)``
+      /// are ignored for the purposes of writing an attachment to disk.
+      case ifIssueRecorded
+
+      /// The attachment should be written to disk if the test it is attached to
+      /// does not record an issue.
+      ///
+      /// Known issues recorded using ``withKnownIssue(_:isIntermittent:sourceLocation:_:)``
+      /// are ignored for the purposes of writing an attachment to disk.
+      case unlessIssueRecorded
+    }
+
+    /// The conditions under which this attachment should be written to disk.
+    public var writeCondition: WriteCondition
+
     /// The path to which the this attachment was written, if any.
     ///
     /// If a developer sets the ``Configuration/attachmentDirectoryPath``
@@ -62,10 +91,12 @@ extension Test {
     public init(
       _ attachableValue: some Attachable & Sendable & Copyable,
       named preferredName: String? = nil,
+      writing writeCondition: WriteCondition = .immediately,
       sourceLocation: SourceLocation = #_sourceLocation
     ) {
       self.attachableValue = attachableValue
       self.preferredName = preferredName ?? Self.defaultPreferredName
+      self.writeCondition = writeCondition
       self.sourceLocation = sourceLocation
     }
 
@@ -125,6 +156,7 @@ extension Test.Attachment {
   public init(
     _ attachableValue: borrowing some Test.Attachable & ~Copyable,
     named preferredName: String? = nil,
+    writing writeCondition: WriteCondition = .immediately,
     sourceLocation: SourceLocation = #_sourceLocation
   ) {
     var proxyAttachable = _AttachableProxy()
@@ -132,7 +164,7 @@ extension Test.Attachment {
     // BUG: the borrow checker thinks that withErrorRecording() is consuming
     // attachableValue, so get around it with an additional do/catch clause.
     do {
-      let proxyAttachment = Self(proxyAttachable, named: preferredName, sourceLocation: sourceLocation)
+      let proxyAttachment = Self(proxyAttachable, named: preferredName, writing: writeCondition, sourceLocation: sourceLocation)
       proxyAttachable.encodedValue = try attachableValue.withUnsafeBufferPointer(for: proxyAttachment) { buffer in
         [UInt8](buffer)
       }
@@ -142,7 +174,7 @@ extension Test.Attachment {
       }
     }
 
-    self.init(proxyAttachable, named: preferredName, sourceLocation: sourceLocation)
+    self.init(proxyAttachable, named: preferredName, writing: writeCondition, sourceLocation: sourceLocation)
   }
 }
 
@@ -243,14 +275,109 @@ extension Runner {
   /// handlers provided by callers' (such as those in test harnesses or those
   /// that log output) will always see the attachment path.
   mutating func configureToWriteAttachments(toDirectoryAtPath directoryPath: String) {
+    struct PerTestState: Sendable {
+      var issueRecorded = false
+      var pendingAttachments = [Test.Attachment]()
+    }
+    let state = Locked<[Test.ID: PerTestState]>()
+
     configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-      var event = event
-      if case var .valueAttached(attachment) = event.kind {
+      var attachmentsToWrite = [Test.Attachment]()
+
+      switch event.kind {
+      case let .valueAttached(attachment):
+        // If the attachment is particularly large, write it immediately
+        // regardless of its write condition.
+        if attachment.attachableValue.underestimatedAttachableByteCount > (1 * 1024 * 1024) {
+          attachmentsToWrite.append(attachment)
+          break
+        }
+
+        let writeCondition = attachment.writeCondition
+        switch writeCondition {
+        case .immediately:
+          attachmentsToWrite.append(attachment)
+        case .atEnd:
+          if let testID = event.testID {
+            state.withLock { state in
+              state[testID, default: .init()].pendingAttachments.append(attachment)
+            }
+          }
+        case .ifIssueRecorded, .unlessIssueRecorded:
+          if let testID = event.testID {
+            state.withLock { state in
+              var testState = state[testID, default: .init()]
+              if testState.issueRecorded && writeCondition == .ifIssueRecorded {
+                // Already recorded an issue. Write this attachment immediately.
+                attachmentsToWrite.append(attachment)
+              } else if !testState.issueRecorded && writeCondition == .unlessIssueRecorded {
+                // Already recorded an issue. Do not store this attachment.
+              } else {
+                // Store this attachment for later (either on the next recorded
+                // issue or when the test ends with no recorded issues.)
+                testState.pendingAttachments.append(attachment)
+                state[testID] = testState
+              }
+            }
+          }
+        }
+      case let .issueRecorded(issue) where !issue.isKnown:
+        // An issue was recorded. Write out any pending attachments that specify
+        // .ifIssueRecorded and discard any that specify .unlessIssueRecorded.
+        state.withLock { state in
+          let testIDs = if let testID = event.testID {
+            [testID]
+          } else {
+            // No test ID, so this is an orphaned issue. Since we don't know which
+            // test to attribute this attachment to, we don't know if we should
+            // write it or not. We'll treat all stored attachments as candidates.
+            Array(state.keys)
+          }
+
+          for testID in testIDs {
+            var testState = state[testID, default: .init()]
+            defer {
+              state[testID] = testState
+            }
+
+            // Drop any pending attachments that specify .unlessIssueRecorded.
+            testState.pendingAttachments = testState.pendingAttachments
+              .filter { $0.writeCondition != .unlessIssueRecorded }
+
+            // Write out each attachment that specifies .ifIssueRecorded and
+            // remove them from the pending attachment list.
+            let partitionIndex = testState.pendingAttachments.partition { $0.writeCondition == .ifIssueRecorded }
+            attachmentsToWrite += testState.pendingAttachments[partitionIndex...]
+            testState.pendingAttachments = Array(testState.pendingAttachments[..<partitionIndex])
+          }
+        }
+      case .testEnded:
+        // All remaining pending attachments at this point should have specified
+        // .atEnd or .unlessIssueRecorded.
+        if let testID = event.testID {
+          state.withLock { state in
+            guard let testState = state.removeValue(forKey: testID) else {
+              return
+            }
+            attachmentsToWrite += testState.pendingAttachments
+#if DEBUG
+            assert(testState.pendingAttachments.allSatisfy { $0.writeCondition == .atEnd || $0.writeCondition == .unlessIssueRecorded })
+#endif
+          }
+        }
+      default:
+        // Not a relevant event.
+        break
+      }
+
+      // Write all the attachments we gathered above.
+      for attachment in attachmentsToWrite {
         _ = Issue.withErrorRecording(at: attachment.sourceLocation) {
-          attachment.fileSystemPath = try attachment.write(toFileInDirectoryAtPath: directoryPath)
-          event.kind = .valueAttached(attachment)
+          let path = try attachment.write(toFileInDirectoryAtPath: directoryPath)
+          Event.post(.attachmentWritten(attachment, path: path), for: (context.test, context.testCase), configuration: context.configuration)
         }
       }
+
       oldEventHandler(event, context)
     }
   }
