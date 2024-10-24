@@ -76,7 +76,7 @@ is not statically available. The problematic overloads will also be deprecated:
    sourceLocation: SourceLocation = #_sourceLocation,
    performing expression: () async throws -> R
 -) = #externalMacro(module: "TestingMacros", type: "ExpectMacro") where E: Error
-+) -> E? = #externalMacro(module: "TestingMacros", type: "ExpectMacro") where E: Error
++) -> E? where E: Error
 
 +@discardableResult
  @freestanding(expression) public macro require<E, R>(
@@ -85,7 +85,7 @@ is not statically available. The problematic overloads will also be deprecated:
    sourceLocation: SourceLocation = #_sourceLocation,
    performing expression: () async throws -> R
 -) = #externalMacro(module: "TestingMacros", type: "RequireMacro") where E: Error
-+) -> E = #externalMacro(module: "TestingMacros", type: "RequireThrowsMacro") where E: Error
++) -> E where E: Error
 
 +@discardableResult
  @freestanding(expression) public macro expect<E, R>(
@@ -94,7 +94,7 @@ is not statically available. The problematic overloads will also be deprecated:
    sourceLocation: SourceLocation = #_sourceLocation,
    performing expression: () async throws -> R
 -) = #externalMacro(module: "TestingMacros", type: "ExpectMacro") where E: Error & Equatable
-+) -> E? = #externalMacro(module: "TestingMacros", type: "ExpectMacro") where E: Error & Equatable
++) -> E? where E: Error & Equatable
 
 +@discardableResult
  @freestanding(expression) public macro require<E, R>(
@@ -103,7 +103,7 @@ is not statically available. The problematic overloads will also be deprecated:
    sourceLocation: SourceLocation = #_sourceLocation,
    performing expression: () async throws -> R
 -) = #externalMacro(module: "TestingMacros", type: "RequireMacro") where E: Error & Equatable
-+) -> E = #externalMacro(module: "TestingMacros", type: "RequireMacro") where E: Error & Equatable
++) -> E where E: Error & Equatable
 
 +@available(*, deprecated, message: "Examine the result of '#expect(throws:)' instead.")
 +@discardableResult

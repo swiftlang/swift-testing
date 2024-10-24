@@ -90,6 +90,7 @@ extension MacroExpansionContext {
   /// - Warning: This functionality is not part of the public interface of the
   ///   testing library. It may be modified or removed in a future update.
   var areWarningsSuppressed: Bool {
+#if DEBUG
     for lexicalContext in self.lexicalContext {
       guard let lexicalContext = lexicalContext.asProtocol((any WithAttributesSyntax).self) else {
         continue
@@ -103,6 +104,7 @@ extension MacroExpansionContext {
         }
       }
     }
+#endif
     return false
   }
 

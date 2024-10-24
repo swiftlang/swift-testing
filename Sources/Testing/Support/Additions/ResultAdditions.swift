@@ -31,7 +31,7 @@ extension Result {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __expected<T>() -> Success where Success == T? {
+  @discardableResult @inlinable public func __expected<T>() -> Success where Success == T? {
     try? get()
   }
 
@@ -42,27 +42,15 @@ extension Result {
   /// `__check()` function family so that we can support uninhabited types and
   /// "soft" failures.
   ///
-  /// - Warning: This function is used to implement the `#expect()` and
-  ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __required<T>() throws -> T where Success == T? {
-    try get()!
-  }
-
-  /// Handle this instance as if it were returned from a call to `#require()`.
-  ///
-  /// This overload of `__require()` is used by `#require(throws:)`. It has
-  /// special handling for a `nil` result so that `Never.self` (which can't be
-  /// instantiated) can be used as the error type in the macro call.
-  ///
-  /// If the value really is `nil` (i.e. we're dealing with `Never`), the
+  /// If the value really is `nil` (e.g. we're dealing with `Never`), the
   /// testing library throws an error representing an issue of kind
   /// ``Issue/Kind-swift.enum/apiMisused``.
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public func __required<T>() throws -> T where T: Error, Success == T? {
+  @discardableResult public func __required<T>() throws -> T where Success == T? {
     guard let result = try get() else {
-      throw APIMisuseError(description: "Could not unwrap 'nil' value of type Optional<\(T.self)>. Consider using #expect(throws:) instead of #require(throws:) here.")
+      throw APIMisuseError(description: "Could not unwrap 'nil' value of type Optional<\(T.self)>. Consider using #expect() instead of #require() here.")
     }
     return result
   }
