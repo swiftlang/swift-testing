@@ -580,4 +580,85 @@ func appendPathComponent(_ pathComponent: String, to path: String) -> String {
   "\(path)/\(pathComponent)"
 #endif
 }
+
+/// Check if a file exists at a given path.
+///
+/// - Parameters:
+///   - path: The path to check.
+///
+/// - Returns: Whether or not the path `path` exists on disk.
+func fileExists(atPath path: String) -> Bool {
+#if os(Windows)
+  path.withCString(encodedAs: UTF16.self) { path in
+    PathFileExistsW(path)
+  }
+#else
+  0 == access(path, F_OK)
+#endif
+}
+
+/// Resolve a relative path or a path containing symbolic links to a canonical
+/// absolute path.
+///
+/// - Parameters:
+///   - path: The path to resolve.
+///
+/// - Returns: A fully resolved copy of `path`. If `path` is already fully
+///   resolved, the resulting string may differ slightly but refers to the same
+///   file system object. If the path could not be resolved, returns `nil`.
+func canonicalizePath(_ path: String) -> String? {
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || os(WASI)
+  path.withCString { path in
+    if let resolvedCPath = realpath(path, nil) {
+      defer {
+        free(resolvedCPath)
+      }
+      return String(validatingCString: resolvedCPath)
+    }
+    return nil
+  }
+#elseif os(Windows)
+  path.withCString(encodedAs: UTF16.self) { path in
+    if let resolvedCPath = _wfullpath(nil, path, 0) {
+      defer {
+        free(resolvedCPath)
+      }
+      return String.decodeCString(resolvedCPath, as: UTF16.self)?.result
+    }
+    return nil
+  }
+#else
+#warning("Platform-specific implementation missing: cannot resolve paths")
+  return nil
+#endif
+}
+
+/// Get the path to the user's or system's temporary directory.
+///
+/// - Returns: The path to a directory suitable for storing temporary files.
+///
+/// - Throws: If the user's or system's temporary directory could not be
+///   determined.
+func temporaryDirectoryPath() throws -> String {
+#if SWT_TARGET_OS_APPLE
+  try withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(PATH_MAX)) { buffer in
+    if 0 != confstr(_CS_DARWIN_USER_TEMP_DIR, buffer.baseAddress, buffer.count) {
+      return String(cString: buffer.baseAddress!)
+    }
+    return try #require(Environment.variable(named: "TMPDIR"))
+  }
+#elseif os(Linux) || os(FreeBSD)
+  "/tmp"
+#elseif os(Android)
+  Environment.variable(named: "TMPDIR") ?? "/data/local/tmp"
+#elseif os(Windows)
+  try withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: Int(MAX_PATH + 1)) { buffer in
+    // NOTE: GetTempPath2W() was introduced in Windows 10 Build 20348.
+    if 0 == GetTempPathW(DWORD(buffer.count), buffer.baseAddress) {
+      throw Win32Error(rawValue: GetLastError())
+    }
+    return try #require(String.decodeCString(buffer.baseAddress, as: UTF16.self)?.result)
+  }
+#endif
+}
 #endif

@@ -275,6 +275,9 @@ public struct __CommandLineArguments_v0: Sendable {
 
   /// The value of the `--repeat-until` argument.
   public var repeatUntil: String?
+
+  /// The value of the `--experimental-attachment-path` argument.
+  public var experimentalAttachmentPath: String?
 }
 
 extension __CommandLineArguments_v0: Codable {
@@ -295,6 +298,7 @@ extension __CommandLineArguments_v0: Codable {
     case skip
     case repetitions
     case repeatUntil
+    case experimentalAttachmentPath
   }
 }
 
@@ -354,6 +358,11 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   // XML output
   if let xunitOutputIndex = args.firstIndex(of: "--xunit-output"), !isLastArgument(at: xunitOutputIndex) {
     result.xunitOutput = args[args.index(after: xunitOutputIndex)]
+  }
+
+  // Attachment output
+  if let attachmentPathIndex = args.firstIndex(of: "--experimental-attachment-path"), !isLastArgument(at: attachmentPathIndex) {
+    result.experimentalAttachmentPath = args[args.index(after: attachmentPathIndex)]
   }
 #endif
 
@@ -464,6 +473,17 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
     }
   }
 
+  // Attachment output.
+  if let attachmentPath = args.experimentalAttachmentPath {
+    guard fileExists(atPath: attachmentPath) else {
+      throw _EntryPointError.invalidArgument("--experimental-attachment-path", value: attachmentPath)
+    }
+    configuration.attachmentDirectoryPath = attachmentPath
+  } else {
+    // Write attachments to the system's temporary directory.
+    configuration.attachmentDirectoryPath = try temporaryDirectoryPath()
+  }
+
 #if canImport(Foundation)
   // Event stream output (experimental)
   if let eventStreamOutputPath = args.eventStreamOutputPath {
@@ -533,7 +553,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   return configuration
 }
 
-#if canImport(Foundation) && !SWT_NO_FILE_IO
+#if canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
 /// Create an event handler that streams events to the given file using the
 /// specified ABI version.
 ///

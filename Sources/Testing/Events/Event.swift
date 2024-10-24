@@ -98,6 +98,13 @@ public struct Event: Sendable {
     ///   - issue: The issue which was recorded.
     indirect case issueRecorded(_ issue: Issue)
 
+    /// An attachment was created.
+    ///
+    /// - Parameters:
+    ///   - attachment: The attachment that was created.
+    @_spi(Experimental)
+    indirect case valueAttached(_ attachment: Test.Attachment)
+
     /// A test ended.
     ///
     /// The test that ended is contained in the ``Event/Context`` instance that
@@ -416,6 +423,9 @@ extension Event.Kind {
     ///   - issue: The issue which was recorded.
     indirect case issueRecorded(_ issue: Issue.Snapshot)
 
+    /// An attachment was created.
+    case valueAttached
+
     /// A test ended.
     case testEnded
 
@@ -475,6 +485,8 @@ extension Event.Kind {
         self = Snapshot.expectationChecked(expectationSnapshot)
       case let .issueRecorded(issue):
         self = .issueRecorded(Issue.Snapshot(snapshotting: issue))
+      case .valueAttached:
+        self = .valueAttached
       case .testEnded:
         self = .testEnded
       case let .testSkipped(skipInfo):

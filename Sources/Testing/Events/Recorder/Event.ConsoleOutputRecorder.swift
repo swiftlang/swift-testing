@@ -166,6 +166,8 @@ extension Event.Symbol {
         return "\(_ansiEscapeCodePrefix)91m\(symbolCharacter)\(_resetANSIEscapeCode)"
       case .warning:
         return "\(_ansiEscapeCodePrefix)93m\(symbolCharacter)\(_resetANSIEscapeCode)"
+      case .attachment:
+        return "\(_ansiEscapeCodePrefix)94m\(symbolCharacter)\(_resetANSIEscapeCode)"
       case .details:
         return symbolCharacter
       }

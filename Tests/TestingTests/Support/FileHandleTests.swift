@@ -215,7 +215,7 @@ func withTemporaryPath<R>(_ body: (_ path: String) throws -> R) throws -> R {
     return strnlen(buffer.baseAddress!, buffer.count)
   }
 #else
-  let path = appendPathComponent("file_named_\(UInt64.random(in: 0 ..< .max))", to: try temporaryDirectory())
+  let path = appendPathComponent("file_named_\(UInt64.random(in: 0 ..< .max))", to: try temporaryDirectoryPath())
 #endif
   defer {
     _ = remove(path)
@@ -246,29 +246,6 @@ extension FileHandle {
   }
 }
 #endif
-
-func temporaryDirectory() throws -> String {
-#if SWT_TARGET_OS_APPLE
-  try withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(PATH_MAX)) { buffer in
-    if 0 != confstr(_CS_DARWIN_USER_TEMP_DIR, buffer.baseAddress, buffer.count) {
-      return String(cString: buffer.baseAddress!)
-    }
-    return try #require(Environment.variable(named: "TMPDIR"))
-  }
-#elseif os(Linux) || os(FreeBSD)
-  "/tmp"
-#elseif os(Android)
-  Environment.variable(named: "TMPDIR") ?? "/data/local/tmp"
-#elseif os(Windows)
-  try withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: Int(MAX_PATH + 1)) { buffer in
-    // NOTE: GetTempPath2W() was introduced in Windows 10 Build 20348.
-    if 0 == GetTempPathW(DWORD(buffer.count), buffer.baseAddress) {
-      throw Win32Error(rawValue: GetLastError())
-    }
-    return try #require(String.decodeCString(buffer.baseAddress, as: UTF16.self)?.result)
-  }
-#endif
-}
 
 #if SWT_TARGET_OS_APPLE
 func fileHandleForCloseMonitoring(with confirmation: Confirmation) throws -> FileHandle {

@@ -121,7 +121,7 @@ struct TagListTests {
 #if !SWT_NO_FILE_IO
   @Test("Colors are read from disk")
   func tagColorsReadFromDisk() throws {
-    let tempDirPath = try temporaryDirectory()
+    let tempDirPath = try temporaryDirectoryPath()
     let jsonPath = appendPathComponent("tag-colors.json", to: tempDirPath)
     var jsonContent = """
     {
