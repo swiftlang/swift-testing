@@ -84,7 +84,7 @@ is not statically available. The problematic overloads will also be deprecated:
    _ comment: @autoclosure () -> Comment? = nil,
    sourceLocation: SourceLocation = #_sourceLocation,
    performing expression: () async throws -> R
--) = #externalMacro(module: "TestingMacros", type: "RequireMacro") where E: Error
+-) where E: Error
 +) -> E where E: Error
 
 +@discardableResult
@@ -93,7 +93,7 @@ is not statically available. The problematic overloads will also be deprecated:
    _ comment: @autoclosure () -> Comment? = nil,
    sourceLocation: SourceLocation = #_sourceLocation,
    performing expression: () async throws -> R
--) = #externalMacro(module: "TestingMacros", type: "ExpectMacro") where E: Error & Equatable
+-) where E: Error & Equatable
 +) -> E? where E: Error & Equatable
 
 +@discardableResult
@@ -102,7 +102,7 @@ is not statically available. The problematic overloads will also be deprecated:
    _ comment: @autoclosure () -> Comment? = nil,
    sourceLocation: SourceLocation = #_sourceLocation,
    performing expression: () async throws -> R
--) = #externalMacro(module: "TestingMacros", type: "RequireMacro") where E: Error & Equatable
+-) where E: Error & Equatable
 +) -> E where E: Error & Equatable
 
 +@available(*, deprecated, message: "Examine the result of '#expect(throws:)' instead.")
@@ -112,7 +112,7 @@ is not statically available. The problematic overloads will also be deprecated:
    sourceLocation: SourceLocation = #_sourceLocation,
    performing expression: () async throws -> R,
    throws errorMatcher: (any Error) async throws -> Bool
--) = #externalMacro(module: "TestingMacros", type: "ExpectMacro")
+-)
 +) -> (any Error)?
 
 +@available(*, deprecated, message: "Examine the result of '#require(throws:)' instead.")
@@ -122,7 +122,7 @@ is not statically available. The problematic overloads will also be deprecated:
    sourceLocation: SourceLocation = #_sourceLocation,
    performing expression: () async throws -> R,
    throws errorMatcher: (any Error) async throws -> Bool
--) = #externalMacro(module: "TestingMacros", type: "RequireMacro")
+-)
 +) -> any Error
 ```
 
