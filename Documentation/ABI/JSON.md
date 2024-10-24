@@ -193,8 +193,8 @@ sufficient information to display the event in a human-readable format.
 }
 
 <event-kind> ::= "runStarted" | "testStarted" | "testCaseStarted" |
-  "issueRecorded" | "valueAttached" | "testCaseEnded" | "testEnded" |
-  "testSkipped" | "runEnded" ; additional event kinds may be added in the future
+  "issueRecorded" | "testCaseEnded" | "testEnded" | "testSkipped" |
+  "runEnded" ; additional event kinds may be added in the future
 
 <issue> ::= {
   "isKnown": <bool>, ; is this a known issue or not?
@@ -207,7 +207,7 @@ sufficient information to display the event in a human-readable format.
 }
 
 <message-symbol> ::= "default" | "skip" | "pass" | "passWithKnownIssue" |
-  "fail" | "difference" | "warning" | "details" | "attachment"
+  "fail" | "difference" | "warning" | "details"
 ```
 
 <!--

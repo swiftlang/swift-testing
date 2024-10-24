@@ -27,7 +27,7 @@ extension ABIv0 {
       case testStarted
       case testCaseStarted
       case issueRecorded
-      case valueAttached
+      case valueAttached = "_valueAttached"
       case testCaseEnded
       case testEnded
       case testSkipped
