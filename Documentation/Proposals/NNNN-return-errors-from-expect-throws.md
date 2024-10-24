@@ -75,7 +75,7 @@ is not statically available. The problematic overloads will also be deprecated:
    _ comment: @autoclosure () -> Comment? = nil,
    sourceLocation: SourceLocation = #_sourceLocation,
    performing expression: () async throws -> R
--) = #externalMacro(module: "TestingMacros", type: "ExpectMacro") where E: Error
+-)
 +) -> E? where E: Error
 
 +@discardableResult
