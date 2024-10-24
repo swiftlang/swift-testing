@@ -21,17 +21,17 @@ extension ABIv0.Record {
     // We don't actually expect the JSON encoder to produce output containing
     // newline characters, so in debug builds we'll log a diagnostic message.
     if _slowPath(json.contains(where: \.isASCIINewline)) {
-  #if DEBUG
+#if DEBUG && !SWT_NO_FILE_IO
       let message = Event.ConsoleOutputRecorder.warning(
         "JSON encoder produced one or more newline characters while encoding an event to JSON. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new",
         options: .for(.stderr)
       )
-  #if SWT_TARGET_OS_APPLE
+#if SWT_TARGET_OS_APPLE
       try? FileHandle.stderr.write(message)
-  #else
+#else
       print(message)
-  #endif
-  #endif
+#endif
+#endif
 
       // Remove the newline characters to conform to JSON lines specification.
       var json = Array(json)
