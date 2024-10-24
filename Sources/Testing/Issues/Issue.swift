@@ -32,27 +32,11 @@ public struct Issue: Sendable {
     ///   - expected: The expected number of times
     ///     ``Confirmation/confirm(count:)`` should have been called.
     ///
-    /// This issue can occur when calling
-    /// ``confirmation(_:expectedCount:isolation:sourceLocation:_:)`` when the
-    /// confirmation passed to these functions' `body` closures is confirmed too
-    /// few or too many times.
-    indirect case confirmationMiscounted(actual: Int, expected: Int)
-
-    /// An issue due to a confirmation being confirmed the wrong number of
-    /// times.
-    ///
-    /// - Parameters:
-    ///   - actual: The number of times ``Confirmation/confirm(count:)`` was
-    ///     actually called.
-    ///   - expected: The expected number of times
-    ///     ``Confirmation/confirm(count:)`` should have been called.
-    ///
-    /// This issue can occur when calling
-    /// ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-9rt6m`` when
-    /// the confirmation passed to these functions' `body` closures is confirmed
-    /// too few or too many times.
-    @_spi(Experimental)
-    indirect case confirmationOutOfRange(actual: Int, expected: any RangeExpression & Sendable)
+    /// This issue can occur when calling ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-5mqz2``
+    /// or ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-6bkl6``
+    /// when the confirmation passed to these functions' `body` closures is
+    /// confirmed too few or too many times.
+    indirect case confirmationMiscounted(actual: Int, expected: any RangeExpression & Sendable)
 
     /// An issue due to an `Error` being thrown by a test function and caught by
     /// the testing library.
@@ -186,6 +170,18 @@ extension Issue: CustomStringConvertible, CustomDebugStringConvertible {
   }
 }
 
+/// An empty protocol defining a type that conforms to `RangeExpression<Int>`.
+///
+/// In the future, when our minimum deployment target supports casting a value
+/// to a constrained existential type ([SE-0353](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0353-constrained-existential-types.md#effect-on-abi-stability)),
+/// we can remove this protocol and cast to `RangeExpression<Int>` instead.
+private protocol _RangeExpressionOverIntValues: RangeExpression where Bound == Int {}
+extension ClosedRange<Int>: _RangeExpressionOverIntValues {}
+extension PartialRangeFrom<Int>: _RangeExpressionOverIntValues {}
+extension PartialRangeThrough<Int>: _RangeExpressionOverIntValues {}
+extension PartialRangeUpTo<Int>: _RangeExpressionOverIntValues {}
+extension Range<Int>: _RangeExpressionOverIntValues {}
+
 extension Issue.Kind: CustomStringConvertible {
   public var description: String {
     switch self {
@@ -193,9 +189,9 @@ extension Issue.Kind: CustomStringConvertible {
       // Although the failure is unconditional at the point it is recorded, the
       // code that recorded the issue may not be unconditionally executing, so
       // we shouldn't describe it as unconditional (we just don't know!)
-      "Issue recorded"
+      return "Issue recorded"
     case let .expectationFailed(expectation):
-      if let mismatchedErrorDescription = expectation.mismatchedErrorDescription {
+      return if let mismatchedErrorDescription = expectation.mismatchedErrorDescription {
         "Expectation failed: \(mismatchedErrorDescription)"
       } else if let mismatchedExitConditionDescription = expectation.mismatchedExitConditionDescription {
         "Expectation failed: \(mismatchedExitConditionDescription)"
@@ -203,19 +199,23 @@ extension Issue.Kind: CustomStringConvertible {
         "Expectation failed: \(expectation.evaluatedExpression.expandedDescription())"
       }
     case let .confirmationMiscounted(actual: actual, expected: expected):
-      "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(expected.counting("time"))"
-    case let .confirmationOutOfRange(actual: actual, expected: expected):
-      "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(String(describingForTest: expected)) time(s)"
+      if let expected = expected as? any _RangeExpressionOverIntValues {
+        let expected = expected.relative(to: [])
+        if expected.upperBound > expected.lowerBound && expected.lowerBound == expected.upperBound - 1 {
+          return "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(expected.lowerBound.counting("time"))"
+        }
+      }
+      return "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(String(describingForTest: expected)) time(s)"
     case let .errorCaught(error):
-      "Caught error: \(error)"
+      return "Caught error: \(error)"
     case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
-      "Time limit was exceeded: \(TimeValue(timeLimitComponents))"
+      return "Time limit was exceeded: \(TimeValue(timeLimitComponents))"
     case .knownIssueNotRecorded:
-      "Known issue was not recorded"
+      return "Known issue was not recorded"
     case .apiMisused:
-      "An API was misused"
+      return "An API was misused"
     case .system:
-      "A system failure occurred"
+      return "A system failure occurred"
     }
   }
 }
@@ -246,7 +246,7 @@ extension Issue {
     ///
     /// - Parameter issue: The original issue that gets snapshotted.
     public init(snapshotting issue: borrowing Issue) {
-      if case .confirmationOutOfRange = issue.kind {
+      if case .confirmationMiscounted = issue.kind {
         // Work around poor stringification of this issue kind in Xcode 16.
         self.kind = .unconditional
         self.comments = CollectionOfOne("\(issue.kind)") + issue.comments
@@ -306,7 +306,7 @@ extension Issue.Kind {
     ///     ``Confirmation/confirm(count:)`` should have been called.
     ///
     /// This issue can occur when calling
-    /// ``confirmation(_:expectedCount:sourceLocation:_:)`` when the
+    /// ``confirmation(_:expectedCount:isolation:sourceLocation:_:)`` when the
     /// confirmation passed to these functions' `body` closures is confirmed too
     /// few or too many times.
     indirect case confirmationMiscounted(actual: Int, expected: Int)
@@ -349,10 +349,8 @@ extension Issue.Kind {
           .unconditional
       case let .expectationFailed(expectation):
           .expectationFailed(Expectation.Snapshot(snapshotting: expectation))
-      case let .confirmationMiscounted(actual: actual, expected: expected):
-          .confirmationMiscounted(actual: actual, expected: expected)
-      case let .confirmationOutOfRange(actual: actual, expected: _):
-          .confirmationMiscounted(actual: actual, expected: 0)
+      case .confirmationMiscounted:
+          .unconditional
       case let .errorCaught(error):
           .errorCaught(ErrorSnapshot(snapshotting: error))
       case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
