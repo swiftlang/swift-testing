@@ -354,6 +354,8 @@ struct ConditionMacroTests {
 
   @Test("#require(throws: Never.self) produces a diagnostic",
     arguments: [
+      "#requireThrows(throws: Swift.Never.self)",
+      "#requireThrows(throws: Never.self)",
       "#requireThrowsNever(throws: Never.self)",
     ]
   )
