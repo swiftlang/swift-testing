@@ -15,19 +15,12 @@ private import _TestingInternals
 struct AttachmentTests {
   @Test func saveValue() {
     let attachableValue = MyAttachable(string: "<!doctype html>")
-    Test.Attachment(attachableValue, named: "AttachmentTests.saveValue.html").attach()
+    let attachment = Test.Attachment(attachableValue, named: "AttachmentTests.saveValue.html")
+    attachment.attach()
   }
 
 #if !SWT_NO_FILE_IO
-  @Test func writeAttachment() throws {
-    let attachableValue = MyAttachable(string: "<!doctype html>")
-    let attachment = Test.Attachment(attachableValue, named: "loremipsum.html")
-
-    // Write the attachment to disk, then read it back.
-    let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectoryPath())
-    defer {
-      remove(filePath)
-    }
+  func compare(_ attachableValue: borrowing MyAttachable, toContentsOfFileAtPath filePath: String) throws {
     let file = try FileHandle(forReadingAtPath: filePath)
     let bytes = try file.readToEnd()
 
@@ -37,6 +30,18 @@ struct AttachmentTests {
       String(decoding: bytes, as: UTF8.self)
     }
     #expect(decodedValue == attachableValue.string)
+  }
+
+  @Test func writeAttachment() throws {
+    let attachableValue = MyAttachable(string: "<!doctype html>")
+    let attachment = Test.Attachment(attachableValue, named: "loremipsum.html")
+
+    // Write the attachment to disk, then read it back.
+    let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectoryPath())
+    defer {
+      remove(filePath)
+    }
+    try compare(attachableValue, toContentsOfFileAtPath: filePath)
   }
 
   @Test func writeAttachmentWithNameConflict() throws {
@@ -67,15 +72,7 @@ struct AttachmentTests {
       } else {
         #expect(fileName != baseFileName)
       }
-      let file = try FileHandle(forReadingAtPath: filePath)
-      let bytes = try file.readToEnd()
-
-      let decodedValue = if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
-        try #require(String(validating: bytes, as: UTF8.self))
-      } else {
-        String(decoding: bytes, as: UTF8.self)
-      }
-      #expect(decodedValue == attachableValue.string)
+      try compare(attachableValue, toContentsOfFileAtPath: filePath)
     }
   }
 
@@ -98,6 +95,32 @@ struct AttachmentTests {
     }
     let fileName = try #require(filePath.split { $0 == "/" || $0 == #"\"# }.last)
     #expect(fileName == "loremipsum-\(suffix).tar.gz.gif.jpeg.html")
+    try compare(attachableValue, toContentsOfFileAtPath: filePath)
+  }
+
+#if os(Windows)
+  static let maximumNameCount = Int(_MAX_FNAME)
+  static let reservedNames = ["CON", "COM0", "LPT2"]
+#else
+  static let maximumNameCount = Int(NAME_MAX)
+  static let reservedNames: [String] = []
+#endif
+
+  @Test(arguments: [
+    #"/\:"#,
+    String(repeating: "a", count: maximumNameCount),
+    String(repeating: "a", count: maximumNameCount + 1),
+    String(repeating: "a", count: maximumNameCount + 2),
+  ] + reservedNames) func writeAttachmentWithBadName(name: String) throws {
+    let attachableValue = MyAttachable(string: "<!doctype html>")
+    let attachment = Test.Attachment(attachableValue, named: name)
+
+    // Write the attachment to disk, then read it back.
+    let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectoryPath())
+    defer {
+      remove(filePath)
+    }
+    try compare(attachableValue, toContentsOfFileAtPath: filePath)
   }
 #endif
 
@@ -132,14 +155,82 @@ struct AttachmentTests {
       }
     }
   }
+
+  @Test func issueRecordedWhenAttachingNonSendableValueThatThrows() async {
+    await confirmation("Attachment detected") { valueAttached in
+      await confirmation("Issue recorded") { issueRecorded in
+        await Test {
+          var attachableValue = MyAttachable(string: "<!doctype html>")
+          attachableValue.errorToThrow = MyError()
+          Test.Attachment(attachableValue, named: "loremipsum").attach()
+        }.run { event, _ in
+          if case .valueAttached = event.kind {
+            valueAttached()
+          } else if case let .issueRecorded(issue) = event.kind,
+                    case let .errorCaught(error) = issue.kind,
+                    error is MyError {
+            issueRecorded()
+          }
+        }
+      }
+    }
+  }
+}
+
+extension AttachmentTests {
+  @Suite("Built-in conformances")
+  struct BuiltInConformances {
+    func test(_ value: borrowing some Test.Attachable & ~Copyable) throws {
+      #expect(value.estimatedAttachmentByteCount == 6)
+      let attachment = Test.Attachment(value)
+      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { buffer in
+        #expect(buffer.elementsEqual("abc123".utf8))
+        #expect(buffer.count == 6)
+      }
+    }
+
+    @Test func uint8Array() throws {
+      let value: [UInt8] = Array("abc123".utf8)
+      try test(value)
+    }
+
+    @Test func uint8UnsafeBufferPointer() throws {
+      let value: [UInt8] = Array("abc123".utf8)
+      try value.withUnsafeBufferPointer { value in
+        try test(value)
+      }
+    }
+
+    @Test func unsafeRawBufferPointer() throws {
+      let value: [UInt8] = Array("abc123".utf8)
+      try value.withUnsafeBytes { value in
+        try test(value)
+      }
+    }
+
+    @Test func string() throws {
+      let value = "abc123"
+      try test(value)
+    }
+
+    @Test func substring() throws {
+      let value: Substring = "abc123"[...]
+      try test(value)
+    }
+  }
 }
 
 // MARK: - Fixtures
 
 struct MyAttachable: Test.Attachable, ~Copyable {
   var string: String
+  var errorToThrow: (any Error)?
 
   func withUnsafeBufferPointer<R>(for attachment: borrowing Testing.Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    if let errorToThrow {
+      throw errorToThrow
+    }
+
     var string = string
     return try string.withUTF8 { buffer in
       try body(.init(buffer))
@@ -151,6 +242,17 @@ struct MyAttachable: Test.Attachable, ~Copyable {
 extension MyAttachable: Sendable {}
 
 struct MySendableAttachable: Test.Attachable, Sendable {
+  var string: String
+
+  func withUnsafeBufferPointer<R>(for attachment: borrowing Testing.Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    var string = string
+    return try string.withUTF8 { buffer in
+      try body(.init(buffer))
+    }
+  }
+}
+
+struct MySendableAttachableWithDefaultByteCount: Test.Attachable, Sendable {
   var string: String
 
   func withUnsafeBufferPointer<R>(for attachment: borrowing Testing.Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {

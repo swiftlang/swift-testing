@@ -22,6 +22,24 @@ extension Test {
   // TODO: write more about this protocol, how it works, and list conforming
   // types (including discussion of the Foundation cross-import overlay.)
   public protocol Attachable: ~Copyable {
+    /// An estimate of the number of bytes of memory needed to store this value
+    /// as an attachment.
+    ///
+    /// The testing library uses this property to determine if an attachment
+    /// should be held in memory or should be immediately persisted to storage.
+    /// Larger attachments are more likely to be persisted, but the algorithm
+    /// the testing library uses is an implementation detail and is subject to
+    /// change.
+    ///
+    /// The value of this property is approximately equal to the number of bytes
+    /// that will actually be needed, or `nil` if the value cannot be computed
+    /// efficiently. The default implementation of this property returns a value
+    /// of `nil`.
+    ///
+    /// - Complexity: O(1) unless `Self` conforms to `Collection`, in which case
+    ///   up to O(_n_).
+    var estimatedAttachmentByteCount: Int? { get }
+
     /// Call a function and pass a buffer representing this instance to it.
     ///
     /// - Parameters:
@@ -47,6 +65,28 @@ extension Test {
 }
 
 // MARK: - Default implementations
+
+extension Test.Attachable where Self: ~Copyable {
+  public var estimatedAttachmentByteCount: Int? {
+    nil
+  }
+}
+
+extension Test.Attachable where Self: Collection, Element == UInt8 {
+  public var estimatedAttachmentByteCount: Int? {
+    count
+  }
+}
+
+extension Test.Attachable where Self: StringProtocol {
+  public var estimatedAttachmentByteCount: Int? {
+    // NOTE: utf8.count may be O(n) for foreign strings.
+    // SEE: https://github.com/swiftlang/swift/blob/main/stdlib/public/core/StringUTF8View.swift
+    utf8.count
+  }
+}
+
+// MARK: - Default conformances
 
 // Implement the protocol requirements for byte arrays and buffers so that
 // developers can attach raw data when needed.

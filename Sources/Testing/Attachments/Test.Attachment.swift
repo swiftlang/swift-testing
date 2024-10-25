@@ -99,6 +99,8 @@ private struct _AttachableProxy: Test.Attachable, Sendable {
   /// attachable value.
   var encodedValue = [UInt8]()
 
+  var estimatedAttachmentByteCount: Int?
+
   func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try encodedValue.withUnsafeBufferPointer(for: attachment, body)
   }
@@ -128,6 +130,7 @@ extension Test.Attachment {
     sourceLocation: SourceLocation = #_sourceLocation
   ) {
     var proxyAttachable = _AttachableProxy()
+    proxyAttachable.estimatedAttachmentByteCount = attachableValue.estimatedAttachmentByteCount
 
     // BUG: the borrow checker thinks that withErrorRecording() is consuming
     // attachableValue, so get around it with an additional do/catch clause.
@@ -138,6 +141,9 @@ extension Test.Attachment {
       }
     } catch {
       Issue.withErrorRecording(at: sourceLocation) {
+        // TODO: define new issue kind .valueAttachmentFailed(any Error)
+        // (but only use it if the caught error isn't ExpectationFailedError,
+        // SystemError, or APIMisuseError. We need a protocol for these things.)
         throw error
       }
     }
@@ -176,6 +182,8 @@ extension Test.Attachment {
   /// - Parameters:
   ///   - directoryPath: The directory to which the attachment should be
   ///     written.
+  ///   - usingPreferredName: Whether or not to use the attachment's preferred
+  ///     name. If `false`, ``defaultPreferredName`` is used instead.
   ///   - suffix: A suffix to attach to the file name (instead of randomly
   ///     generating one.) This value may be evaluated multiple times.
   ///
@@ -189,8 +197,10 @@ extension Test.Attachment {
   ///
   /// If the argument `suffix` always produces the same string, the result of
   /// this function is undefined.
-  func write(toFileInDirectoryAtPath directoryPath: String, appending suffix: @autoclosure () -> String) throws -> String {
+  func write(toFileInDirectoryAtPath directoryPath: String, usingPreferredName: Bool = true, appending suffix: @autoclosure () -> String) throws -> String {
     let result: String
+
+    let preferredName = usingPreferredName ? preferredName : Self.defaultPreferredName
 
     var file: FileHandle?
     do {
@@ -217,7 +227,13 @@ extension Test.Attachment {
           file = try FileHandle(atPath: preferredPath, mode: "wxb")
           result = preferredPath
           break
-        } catch let error as CError where error.rawValue == EEXIST {}
+        } catch let error as CError where error.rawValue == EEXIST {
+          // Try again with a new suffix.
+          continue
+        } catch where usingPreferredName {
+          // Try again with the default name before giving up.
+          return try write(toFileInDirectoryAtPath: directoryPath, usingPreferredName: false, appending: suffix())
+        }
       }
     }
 
