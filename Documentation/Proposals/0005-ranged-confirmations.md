@@ -1,8 +1,8 @@
 # Range-based confirmations
 
-* Proposal: [SWT-NNNN](NNNN-ranged-confirmations.md)
+* Proposal: [SWT-0005](0005-ranged-confirmations.md)
 * Authors: [Jonathan Grynspan](https://github.com/grynspan)
-* Status: **Awaiting review**
+* Status: **Accepted**
 * Bug: rdar://138499457
 * Implementation: [swiftlang/swift-testing#598](https://github.com/swiftlang/swift-testing/pull/598), [swiftlang/swift-testing#689](https://github.com/swiftlang/swift-testing/pull689)
 * Review: ([pitch](https://forums.swift.org/t/pitch-range-based-confirmations/74589))
