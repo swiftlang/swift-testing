@@ -11,6 +11,10 @@
 internal import _TestingInternals
 
 #if !SWT_NO_PROCESS_SPAWNING
+#if SWT_NO_FILE_IO
+#error("Platform-specific misconfiguration: support for process spawning requires support for file I/O")
+#endif
+
 /// A platform-specific value identifying a process running on the current
 /// system.
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)

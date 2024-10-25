@@ -533,7 +533,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   return configuration
 }
 
-#if canImport(Foundation) && !SWT_NO_FILE_IO
+#if canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
 /// Create an event handler that streams events to the given file using the
 /// specified ABI version.
 ///

@@ -11,6 +11,9 @@
 private import _TestingInternals
 
 #if !SWT_NO_EXIT_TESTS
+#if SWT_NO_FILE_IO
+#error("Platform-specific misconfiguration: support for exit tests requires support for file I/O")
+#endif
 #if SWT_NO_PIPES
 #error("Platform-specific misconfiguration: support for exit tests requires support for (anonymous) pipes")
 #endif
