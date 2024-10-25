@@ -31,7 +31,7 @@ expected event happens.
 
 ### Confirm that an event happens
 
-Call ``confirmation(_:expectedCount:isolation:sourceLocation:_:)`` in your
+Call ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-5mqz2`` in your
 asynchronous test function to create a `Confirmation` for the expected event. In
 the trailing closure parameter, call the code under test. Swift Testing passes a
 `Confirmation` as the parameter to the closure, which you call as a function in
@@ -53,6 +53,35 @@ If you expect the event to happen more than once, set the
 `expectedCount` parameter to the number of expected occurrences. The
 test passes if the number of occurrences during the test matches the
 expected count, and fails otherwise.
+
+You can also pass a range to ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-6bkl6``
+if the exact number of times the event occurs may change over time or is random:
+
+```swift
+@Test("Customers bought sandwiches")
+func boughtSandwiches() async {
+  await confirmation(expectedCount: 0 ..< 1000) { boughtSandwich in
+    var foodTruck = FoodTruck()
+    foodTruck.orderHandler = { order in
+      if order.contains(.sandwich) {
+        boughtSandwich()
+      }
+    }
+    await FoodTruck.operate()
+  }
+}
+```
+
+In this example, there may be zero customers or up to (but not including) 1,000
+customers who order sandwiches. Any [range expression](https://developer.apple.com/documentation/swift/rangeexpression)
+which includes an explicit lower bound can be used:
+
+| Range Expression | Usage |
+|-|-|
+| `1...` | If an event must occur _at least_ once |
+| `5...` | If an event must occur _at least_ five times |
+| `1 ... 5` | If an event must occur at least once, but not more than five times |
+| `0 ..< 100` | If an event may or may not occur, but _must not_ occur more than 99 times |
 
 ### Confirm that an event doesn't happen
 

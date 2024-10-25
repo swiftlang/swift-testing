@@ -29,25 +29,21 @@ struct ConfirmationTests {
 
   @Test("Unsuccessful confirmations")
   func unsuccessfulConfirmations() async {
-    await confirmation("Miscount recorded", expectedCount: 4) { miscountRecorded in
-      await confirmation("Out of range recorded", expectedCount: 5) { outOfRangeRecorded in
-        var configuration = Configuration()
-        configuration.eventHandler = { event, _ in
-          if case let .issueRecorded(issue) = event.kind {
-            switch issue.kind {
-            case .confirmationMiscounted:
-              miscountRecorded()
-            case .confirmationOutOfRange:
-              outOfRangeRecorded()
-            default:
-              break
-            }
+    await confirmation("Miscount recorded", expectedCount: 7) { miscountRecorded in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        if case let .issueRecorded(issue) = event.kind {
+          switch issue.kind {
+          case .confirmationMiscounted:
+            miscountRecorded()
+          default:
+            break
           }
         }
-        let testPlan = await Runner.Plan(selecting: UnsuccessfulConfirmationTests.self)
-        let runner = Runner(plan: testPlan, configuration: configuration)
-        await runner.run()
       }
+      let testPlan = await Runner.Plan(selecting: UnsuccessfulConfirmationTests.self)
+      let runner = Runner(plan: testPlan, configuration: configuration)
+      await runner.run()
     }
   }
 
@@ -119,8 +115,6 @@ struct UnsuccessfulConfirmationTests {
     1 ... 2 as any ExpectedCount,
     1 ..< 2,
     1 ..< 3,
-    ..<2,
-    ...2,
     999...,
   ])
   func confirmedOutOfRange(_ range: any ExpectedCount) async {
@@ -135,9 +129,7 @@ struct UnsuccessfulConfirmationTests {
 /// Needed since we don't have generic test functions, so we need a concrete
 /// argument type for `confirmedOutOfRange(_:)`, but we can't write
 /// `any RangeExpression<Int> & Sendable`. ([96960993](rdar://96960993))
-protocol ExpectedCount: RangeExpression, Sendable where Bound == Int {}
+protocol ExpectedCount: RangeExpression, Sequence, Sendable where Bound == Int, Element == Int {}
 extension ClosedRange<Int>: ExpectedCount {}
 extension PartialRangeFrom<Int>: ExpectedCount {}
-extension PartialRangeThrough<Int>: ExpectedCount {}
-extension PartialRangeUpTo<Int>: ExpectedCount {}
 extension Range<Int>: ExpectedCount {}
