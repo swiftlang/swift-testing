@@ -54,7 +54,7 @@ If you expect the event to happen more than once, set the
 test passes if the number of occurrences during the test matches the
 expected count, and fails otherwise.
 
-You can also pass a range to ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-6bkl6``
+You can also pass a range to ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-l3il``
 if the exact number of times the event occurs may change over time or is random:
 
 ```swift
