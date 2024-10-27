@@ -678,7 +678,7 @@ of issues:
   @Column {
     ```swift
     // After
-    struct FoodTruckTests {
+    @Test func grillWorks() async {
       withKnownIssue("Grill is out of fuel") {
         try FoodTruck.shared.grill.start()
       } when: {
