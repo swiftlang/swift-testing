@@ -166,4 +166,50 @@ struct Expression_ValueTests {
     #expect(oneChildChildrenOptionalChild.children == nil)
   }
 
+  @Test("Value reflecting an object with two back-references to itself",
+        .bug("https://github.com/swiftlang/swift-testing/issues/785#issuecomment-2440222995"))
+  func multipleSelfReferences() {
+    class A {
+      weak var one: A?
+      weak var two: A?
+    }
+
+    let a = A()
+    a.one = a
+    a.two = a
+
+    let value = Expression.Value(reflecting: a)
+    #expect(value.children?.count == 2)
+  }
+
+  @Test("Value reflecting an object in a complex graph which includes back-references",
+        .bug("https://github.com/swiftlang/swift-testing/issues/785"))
+  func complexObjectGraphWithCyclicReferences() throws {
+    class A {
+      var c1: C!
+      var c2: C!
+      var b: B!
+    }
+    class B {
+      weak var a: A!
+      var c: C!
+    }
+    class C {
+      weak var a: A!
+    }
+
+    let a = A()
+    let b = B()
+    let c = C()
+    a.c1 = c
+    a.c2 = c
+    a.b = b
+    b.a = a
+    b.c = c
+    c.a = a
+
+    let value = Expression.Value(reflecting: a)
+    #expect(value.children?.count == 3)
+  }
+
 }
