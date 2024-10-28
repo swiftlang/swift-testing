@@ -218,30 +218,24 @@ error if its condition isn't met:
   @Column {
     ```swift
     // Before
-    class FoodTruckTests: XCTestCase {
-      func testEngineWorks() throws {
-        let engine = FoodTruck.shared.engine
-        XCTAssertNotNil(engine.parts.first)
-        XCTAssertGreaterThan(engine.batteryLevel, 0)
-        try engine.start()
-        XCTAssertTrue(engine.isRunning)
-      }
-      ...
+    func testEngineWorks() throws {
+      let engine = FoodTruck.shared.engine
+      XCTAssertNotNil(engine.parts.first)
+      XCTAssertGreaterThan(engine.batteryLevel, 0)
+      try engine.start()
+      XCTAssertTrue(engine.isRunning)
     }
     ```
   }
   @Column {
     ```swift
     // After
-    struct FoodTruckTests {
-      @Test func engineWorks() throws {
-        let engine = FoodTruck.shared.engine
-        try #require(engine.parts.first != nil)
-        #expect(engine.batteryLevel > 0)
-        try engine.start()
-        #expect(engine.isRunning)
-      }
-      ...
+    @Test func engineWorks() throws {
+      let engine = FoodTruck.shared.engine
+      try #require(engine.parts.first != nil)
+      #expect(engine.batteryLevel > 0)
+      try engine.start()
+      #expect(engine.isRunning)
     }
     ```
   }
@@ -258,12 +252,9 @@ with optional expressions to unwrap them:
   @Column {
     ```swift
     // Before
-    class FoodTruckTests: XCTestCase {
-      func testEngineWorks() throws {
-        let engine = FoodTruck.shared.engine
-        let part = try XCTUnwrap(engine.parts.first)
-        ...
-      }
+    func testEngineWorks() throws {
+      let engine = FoodTruck.shared.engine
+      let part = try XCTUnwrap(engine.parts.first)
       ...
     }
     ```
@@ -271,12 +262,9 @@ with optional expressions to unwrap them:
   @Column {
     ```swift
     // After
-    struct FoodTruckTests {
-      @Test func engineWorks() throws {
-        let engine = FoodTruck.shared.engine
-        let part = try #require(engine.parts.first)
-        ...
-      }
+    @Test func engineWorks() throws {
+      let engine = FoodTruck.shared.engine
+      let part = try #require(engine.parts.first)
       ...
     }
     ```
@@ -295,14 +283,11 @@ function. To record an unconditional issue using the testing library, use the
   @Column {
     ```swift
     // Before
-    class FoodTruckTests: XCTestCase {
-      func testEngineWorks() {
-        let engine = FoodTruck.shared.engine
-        guard case .electric = engine else {
-          XCTFail("Engine is not electric")
-          return
-        }
-        ...
+    func testEngineWorks() {
+      let engine = FoodTruck.shared.engine
+      guard case .electric = engine else {
+        XCTFail("Engine is not electric")
+        return
       }
       ...
     }
@@ -311,14 +296,11 @@ function. To record an unconditional issue using the testing library, use the
   @Column {
     ```swift
     // After
-    struct FoodTruckTests {
-      @Test func engineWorks() {
-        let engine = FoodTruck.shared.engine
-        guard case .electric = engine else {
-          Issue.record("Engine is not electric")
-          return
-        }
-        ...
+    @Test func engineWorks() {
+      let engine = FoodTruck.shared.engine
+      guard case .electric = engine else {
+        Issue.record("Engine is not electric")
+        return
       }
       ...
     }
@@ -378,12 +360,9 @@ failure:
   @Column {
     ```swift
     // Before
-    class FoodTruckTests: XCTestCase {
-      func testTruck() async {
-        continueAfterFailure = false
-        XCTAssertTrue(FoodTruck.shared.isLicensed)
-        ...
-      }
+    func testTruck() async {
+      continueAfterFailure = false
+      XCTAssertTrue(FoodTruck.shared.isLicensed)
       ...
     }
     ```
@@ -391,11 +370,8 @@ failure:
   @Column {
     ```swift
     // After
-    struct FoodTruckTests {
-      @Test func truck() throws {
-        try #require(FoodTruck.shared.isLicensed)
-        ...
-      }
+    @Test func truck() throws {
+      try #require(FoodTruck.shared.isLicensed)
       ...
     }
     ```
@@ -429,29 +405,27 @@ be readily converted to use Swift concurrency. The testing library offers
 functionality called _confirmations_ which can be used to implement these tests.
 Instances of ``Confirmation`` are created and used within the scope of the
 functions ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-5mqz2``
-and ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-6bkl6``.
+and ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-l3il``.
 
-Confirmations function similarly to the expectations API of XCTest, however, they don't
-block or suspend the caller while waiting for a condition to be fulfilled.
-Instead, the requirement is expected to be _confirmed_ (the equivalent of
-_fulfilling_ an expectation) before `confirmation()` returns, and records an issue otherwise:
+Confirmations function similarly to the expectations API of XCTest, however,
+they don't block or suspend the caller while waiting for a condition to be
+fulfilled. Instead, the requirement is expected to be _confirmed_ (the
+equivalent of _fulfilling_ an expectation) before `confirmation()` returns, and
+records an issue otherwise:
 
 @Row {
   @Column {
     ```swift
     // Before
-    class FoodTruckTests: XCTestCase {
-      func testTruckEvents() async {
-        let soldFood = expectation(description: "…")
-        FoodTruck.shared.eventHandler = { event in
-          if case .soldFood = event {
-            soldFood.fulfill()
-          }
+    func testTruckEvents() async {
+      let soldFood = expectation(description: "…")
+      FoodTruck.shared.eventHandler = { event in
+        if case .soldFood = event {
+          soldFood.fulfill()
         }
-        await Customer().buy(.soup)
-        await fulfillment(of: [soldFood])
-        ...
       }
+      await Customer().buy(.soup)
+      await fulfillment(of: [soldFood])
       ...
     }
     ```
@@ -459,23 +433,88 @@ _fulfilling_ an expectation) before `confirmation()` returns, and records an iss
   @Column {
     ```swift
     // After
-    struct FoodTruckTests {
-      @Test func truckEvents() async {
-        await confirmation("…") { soldFood in
-          FoodTruck.shared.eventHandler = { event in
-            if case .soldFood = event {
-              soldFood()
-            }
+    @Test func truckEvents() async {
+      await confirmation("…") { soldFood in
+        FoodTruck.shared.eventHandler = { event in
+          if case .soldFood = event {
+            soldFood()
           }
-          await Customer().buy(.soup)
         }
-        ...
+        await Customer().buy(.soup)
       }
       ...
     }
     ```
   }
 }
+
+By default, `XCTestExpectation` expects to be fulfilled exactly once, and will
+record an issue in the current test if it is not fulfilled or if it is fulfilled
+more than once. `Confirmation` behaves the same way and expects to be confirmed
+exactly once by default. You can configure the number of times an expectation
+should be fulfilled by setting its [`expectedFulfillmentCount`](https://developer.apple.com/documentation/xctest/xctestexpectation/2806572-expectedfulfillmentcount)
+property, and you can pass a value for the `expectedCount` argument of
+``confirmation(_:expectedCount:isolation:sourceLocation:_:)-5mqz2`` for the same
+purpose.
+
+`XCTestExpectation` has a property, [`assertForOverFulfill`](https://developer.apple.com/documentation/xctest/xctestexpectation/2806575-assertforoverfulfill),
+which when set to `false` allows an expectation to be fulfilled more times than
+expected without causing a test failure. When using a confirmation, you can pass
+a range to ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-l3il`` as
+its expected count to indicate that it must be confirmed _at least_ some number
+of times:
+
+@Row {
+  @Column {
+    ```swift
+    // Before
+    func testRegularCustomerOrders() async {
+      let soldFood = expectation(description: "…")
+      soldFood.expectedFulfillmentCount = 10
+      soldFood.assertForOverFulfill = false
+      FoodTruck.shared.eventHandler = { event in
+        if case .soldFood = event {
+          soldFood.fulfill()
+        }
+      }
+      for customer in regularCustomers() {
+        await customer.buy(customer.regularOrder)
+      }
+      await fulfillment(of: [soldFood])
+      ...
+    }
+    ```
+  }
+  @Column {
+    ```swift
+    // After
+    @Test func regularCustomerOrders() async {
+      await confirmation(
+        "…",
+        expectedCount: 10...
+      ) { soldFood in
+        FoodTruck.shared.eventHandler = { event in
+          if case .soldFood = event {
+            soldFood()
+          }
+        }
+        for customer in regularCustomers() {
+          await customer.buy(customer.regularOrder)
+        }
+      }
+      ...
+    }
+    ```
+  }
+}
+
+Any range expression with a lower bound (that is, whose type conforms to
+both [`RangeExpression<Int>`](https://developer.apple.com/documentation/swift/rangeexpression)
+and [`Sequence<Int>`](https://developer.apple.com/documentation/swift/sequence))
+can be used with ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-l3il``.
+You must specify a lower bound for the number of confirmations because, without
+one, the testing library cannot tell if an issue should be recorded when there
+have been zero confirmations. 
 
 ### Control whether a test runs
 
@@ -536,12 +575,9 @@ issue:
   @Column {
     ```swift
     // Before
-    class FoodTruckTests: XCTestCase {
-      func testGrillWorks() async {
-        XCTExpectFailure("Grill is out of fuel") {
-          try FoodTruck.shared.grill.start()
-        }
-        ...
+    func testGrillWorks() async {
+      XCTExpectFailure("Grill is out of fuel") {
+        try FoodTruck.shared.grill.start()
       }
       ...
     }
@@ -550,12 +586,9 @@ issue:
   @Column {
     ```swift
     // After
-    struct FoodTruckTests {
-      @Test func grillWorks() async {
-        withKnownIssue("Grill is out of fuel") {
-          try FoodTruck.shared.grill.start()
-        }
-        ...
+    @Test func grillWorks() async {
+      withKnownIssue("Grill is out of fuel") {
+        try FoodTruck.shared.grill.start()
       }
       ...
     }
@@ -577,15 +610,12 @@ instead:
   @Column {
     ```swift
     // Before
-    class FoodTruckTests: XCTestCase {
-      func testGrillWorks() async {
-        XCTExpectFailure(
-          "Grill may need fuel",
-          options: .nonStrict()
-        ) {
-          try FoodTruck.shared.grill.start()
-        }
-        ...
+    func testGrillWorks() async {
+      XCTExpectFailure(
+        "Grill may need fuel",
+        options: .nonStrict()
+      ) {
+        try FoodTruck.shared.grill.start()
       }
       ...
     }
@@ -594,15 +624,12 @@ instead:
   @Column {
     ```swift
     // After
-    struct FoodTruckTests {
-      @Test func grillWorks() async {
-        withKnownIssue(
-          "Grill may need fuel", 
-          isIntermittent: true
-        ) {
-          try FoodTruck.shared.grill.start()
-        }
-        ...
+    @Test func grillWorks() async {
+      withKnownIssue(
+        "Grill may need fuel", 
+        isIntermittent: true
+      ) {
+        try FoodTruck.shared.grill.start()
       }
       ...
     }
@@ -632,20 +659,17 @@ of issues:
   @Column {
     ```swift
     // Before
-    class FoodTruckTests: XCTestCase {
-      func testGrillWorks() async {
-        let options = XCTExpectedFailure.Options()
-        options.isEnabled = FoodTruck.shared.hasGrill
-        options.issueMatcher = { issue in
-          issue.type == thrownError
-        }
-        XCTExpectFailure(
-          "Grill is out of fuel",
-          options: options
-        ) {
-          try FoodTruck.shared.grill.start()
-        }
-        ...
+    func testGrillWorks() async {
+      let options = XCTExpectedFailure.Options()
+      options.isEnabled = FoodTruck.shared.hasGrill
+      options.issueMatcher = { issue in
+        issue.type == thrownError
+      }
+      XCTExpectFailure(
+        "Grill is out of fuel",
+        options: options
+      ) {
+        try FoodTruck.shared.grill.start()
       }
       ...
     }
@@ -654,16 +678,13 @@ of issues:
   @Column {
     ```swift
     // After
-    struct FoodTruckTests {
-      @Test func grillWorks() async {
-        withKnownIssue("Grill is out of fuel") {
-          try FoodTruck.shared.grill.start()
-        } when: {
-          FoodTruck.shared.hasGrill
-        } matching: { issue in
-          issue.error != nil 
-        }
-        ...
+    @Test func grillWorks() async {
+      withKnownIssue("Grill is out of fuel") {
+        try FoodTruck.shared.grill.start()
+      } when: {
+        FoodTruck.shared.hasGrill
+      } matching: { issue in
+        issue.error != nil 
       }
       ...
     }

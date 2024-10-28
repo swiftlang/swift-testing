@@ -160,7 +160,7 @@ public func confirmation<R>(
 /// preconditions have been met, and records an issue if they have not.
 ///
 /// If an exact count is expected, use
-/// ``confirmation(_:expectedCount:isolation:sourceLocation:_:)`` instead.
+/// ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-5mqz2`` instead.
 public func confirmation<R>(
   _ comment: Comment? = nil,
   expectedCount: some RangeExpression<Int> & Sequence<Int> & Sendable,
@@ -183,7 +183,7 @@ public func confirmation<R>(
   return try await body(confirmation)
 }
 
-/// An overload of ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-6bkl6``
+/// An overload of ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-l3il``
 /// that handles the unbounded range operator (`...`).
 ///
 /// This overload is necessary because `UnboundedRange` does not conform to
@@ -200,7 +200,7 @@ public func confirmation<R>(
   fatalError("Unsupported")
 }
 
-/// An overload of ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-6bkl6``
+/// An overload of ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-l3il``
 /// that handles the partial-range-through operator (`...n`).
 ///
 /// This overload is necessary because the lower bound of `PartialRangeThrough`
@@ -216,7 +216,7 @@ public func confirmation<R>(
   fatalError("Unsupported")
 }
 
-/// An overload of ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-6bkl6``
+/// An overload of ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-l3il``
 /// that handles the partial-range-up-to operator (`..<n`).
 ///
 /// This overload is necessary because the lower bound of `PartialRangeUpTo` is

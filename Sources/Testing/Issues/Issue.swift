@@ -33,7 +33,7 @@ public struct Issue: Sendable {
     ///     ``Confirmation/confirm(count:)`` should have been called.
     ///
     /// This issue can occur when calling ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-5mqz2``
-    /// or ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-6bkl6``
+    /// or ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-l3il``
     /// when the confirmation passed to these functions' `body` closures is
     /// confirmed too few or too many times.
     indirect case confirmationMiscounted(actual: Int, expected: any RangeExpression & Sendable)
@@ -306,9 +306,9 @@ extension Issue.Kind {
     ///     ``Confirmation/confirm(count:)`` should have been called.
     ///
     /// This issue can occur when calling
-    /// ``confirmation(_:expectedCount:isolation:sourceLocation:_:)`` when the
-    /// confirmation passed to these functions' `body` closures is confirmed too
-    /// few or too many times.
+    /// ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-5mqz2`` when
+    /// the confirmation passed to these functions' `body` closures is confirmed
+    /// too few or too many times.
     indirect case confirmationMiscounted(actual: Int, expected: Int)
 
     /// An issue due to an `Error` being thrown by a test function and caught by
