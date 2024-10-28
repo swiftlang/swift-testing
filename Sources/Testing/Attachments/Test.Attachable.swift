@@ -105,9 +105,23 @@ extension UnsafeBufferPointer<UInt8>: Test.Attachable {
 }
 
 @_spi(Experimental)
+extension UnsafeMutableBufferPointer<UInt8>: Test.Attachable {
+  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try body(.init(self))
+  }
+}
+
+@_spi(Experimental)
 extension UnsafeRawBufferPointer: Test.Attachable {
   public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try body(self)
+  }
+}
+
+@_spi(Experimental)
+extension UnsafeMutableRawBufferPointer: Test.Attachable {
+  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try body(.init(self))
   }
 }
 
