@@ -199,15 +199,16 @@ extension ExitTest {
   public static func find(at sourceLocation: SourceLocation) -> Self? {
     var result: Self?
 
-    let hint = UInt32(exactly: sourceLocation.line)
-    enumerateTestContent(ofKind: .exitTest, as: ExitTest.self, hint: hint) { _, exitTest, _, stop in
-      if exitTest.sourceLocation == sourceLocation {
-        result = ExitTest(
-          __expectedExitCondition: exitTest.expectedExitCondition,
-          sourceLocation: exitTest.sourceLocation,
-          body: exitTest.body
-        )
-        stop = true
+    withUnsafePointer(to: sourceLocation) { hint in
+      enumerateTestContent(ofKind: .exitTest, as: ExitTest.self, hint: hint) { _, exitTest, _, stop in
+        if exitTest.sourceLocation == sourceLocation {
+          result = ExitTest(
+            __expectedExitCondition: exitTest.expectedExitCondition,
+            sourceLocation: exitTest.sourceLocation,
+            body: exitTest.body
+          )
+          stop = true
+        }
       }
     }
 

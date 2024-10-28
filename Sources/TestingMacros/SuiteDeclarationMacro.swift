@@ -132,13 +132,14 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
       """
       #if hasFeature(SymbolLinkageMarkers)
       @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-      private static let \(accessorName): @convention(c) (UnsafeMutableRawPointer) -> Bool = {
+      private static let \(accessorName): @convention(c) (UnsafeMutableRawPointer, UnsafeRawPointer?) -> Bool = {
         $0.initializeMemory(as: (@Sendable () async -> Testing.Test).self) { @Sendable () async in
           .__type(
             \(declaration.type.trimmed).self,
             \(raw: attributeInfo.functionArgumentList(in: context))
           )
         }
+        _ = $1 // Ignored.
         return true
       }
       #endif

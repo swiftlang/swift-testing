@@ -444,10 +444,11 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       """
       #if hasFeature(SymbolLinkageMarkers)
       @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-      private \(staticKeyword(for: typeName)) let \(accessorName): @convention(c) (UnsafeMutableRawPointer) -> Bool = {
+      private \(staticKeyword(for: typeName)) let \(accessorName): @convention(c) (UnsafeMutableRawPointer, UnsafeRawPointer?) -> Bool = {
         $0.initializeMemory(as: (@Sendable () async -> Testing.Test).self) { @Sendable () async in
           \(raw: testsBody)
         }
+        _ = $1 // Ignored.
         return true
       }
       #endif

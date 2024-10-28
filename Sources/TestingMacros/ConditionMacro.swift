@@ -432,15 +432,23 @@ extension ExitTestConditionMacro {
     // Create a local type that can be discovered at runtime and which contains
     // the exit test body.
     let accessorName = context.makeUniqueName("")
+    let outValueArgumentName = context.makeUniqueName("outValue")
+    let hintArgumentName = context.makeUniqueName("hint")
+    let sourceLocationLocalName = context.makeUniqueName("sourceLocation")
     decls.append(
       """
       #if hasFeature(SymbolLinkageMarkers)
-      func \(accessorName)(_ outValue: UnsafeMutableRawPointer) -> Bool {
-        outValue.initializeMemory(
+      func \(accessorName)(_ \(outValueArgumentName): UnsafeMutableRawPointer, _ \(hintArgumentName): UnsafeRawPointer?) -> Bool {
+        let \(sourceLocationLocalName) = \(createSourceLocationExpr(of: macro, context: context))
+        if let \(hintArgumentName) = \(hintArgumentName)?.load(as: Testing.SourceLocation.self),
+          \(hintArgumentName) != \(sourceLocationLocalName) {
+          return false
+        }
+        \(outValueArgumentName).initializeMemory(
           as: Testing.ExitTest.self,
           to: .init(
             __expectedExitCondition: \(arguments[expectedExitConditionIndex].expression.trimmed),
-            sourceLocation: \(createSourceLocationExpr(of: macro, context: context)),
+            sourceLocation: \(sourceLocationLocalName),
             body: \(bodyThunkName)
           )
         )
@@ -450,18 +458,12 @@ extension ExitTestConditionMacro {
       """
     )
 
-    var hint = UInt32(0)
-    if let lineNumber = context.location(of: macro)?.line.as(IntegerLiteralExprSyntax.self)?.literal.textWithoutBackticks {
-      hint = UInt32(lineNumber) ?? 0
-    }
-
     let enumName = context.makeUniqueName("")
     let sectionContent = makeTestContentRecordDecl(
       named: .identifier("__sectionContent"),
       in: TypeSyntax(IdentifierTypeSyntax(name: enumName)),
       ofKind: .exitTest,
-      accessingWith: accessorName,
-      hint: hint
+      accessingWith: accessorName
     )
     decls.append(
       """

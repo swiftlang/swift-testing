@@ -98,9 +98,9 @@ of a record therefore looks like:
 ```c
 struct SWTTestContent {
   SWTTestContentHeader header;
-  bool (* accessor)(void *outValue);
+  bool (* accessor)(void *outValue, const void *_Null_unspecified hint);
   uint32_t flags;
-  uint32_t hint;
+  uint32_t reserved;
 };
 ```
 
@@ -109,9 +109,9 @@ Or, in Swift as a tuple:
 ```swift
 typealias SWTTestContent = (
   header: SWTTestContentHeader,
-  accessor: @convention(c) (_ outValue: UnsafeMutableRawPointer) -> Bool,
+  accessor: @convention(c) (_ outValue: UnsafeMutableRawPointer, _ hint: UnsafeRawPointer?) -> Bool,
   flags: UInt32,
-  hint: UInt32
+  reserved: UInt32
 )
 ```
 
@@ -143,6 +143,19 @@ of record:
       necessary because loading a test or suite declaration is an asynchronous
       operation, but C functions cannot be `async`.
 
+The second argument to this function, `hint`, is an optional input that can be
+passed to help the accessor function determine if its corresponding test content
+record matches what the caller is looking for. Its type is also dependent on the
+type of record:
+
+| Type Value | Hint Type | Notes |
+|-:|-|-|
+| `100` | Reserved | Always pass `nil`/`nullptr`. |
+| `101` | `SourceLocation` | Pass the source location of the exit test. |
+
+If the caller passes `nil` as the `hint` argument, the accessor behaves as if it
+matched (that is, no additional filtering is performed.)
+
 #### The flags field
 
 - For test or suite declarations (type `100`), the following flags are defined:
@@ -154,18 +167,9 @@ of record:
 
 - For exit test declarations (type `101`), no flags are currently defined.
 
-#### The hint field
+#### The reserved field
 
-This field is used as a hint during test content discovery to improve the
-performance of the discovery operation. Its semantic meaning varies between test
-content type:
-
-- For test or suite declarations (type `100`), it is currently reserved and
-  should always be set to `0`.
-
-- For exit test declarations (type `101`), it shall equal the line on which the
-  exit test is declared per its stored `sourceLocation` property. The value is
-  clamped to `UInt32`.
+This field is reserved for future use. Always set it to `0`.
 
 ## Third-party test content
 

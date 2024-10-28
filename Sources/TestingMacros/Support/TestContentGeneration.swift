@@ -90,7 +90,7 @@ private var _swiftTestingELFNoteNameTuple: (expression: TupleExprSyntax, type: T
 ///
 /// When the ELF `PT_NOTE` format is in use, the `kind` argument is used as the
 /// value of the note's `n_type` field.
-func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax? = nil, ofKind kind: TestContentKind, accessingWith accessorName: TokenSyntax, flags: UInt32 = 0, hint: UInt32 = 0) -> DeclSyntax {
+func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax? = nil, ofKind kind: TestContentKind, accessingWith accessorName: TokenSyntax, flags: UInt32 = 0) -> DeclSyntax {
   let elfNoteName = _swiftTestingELFNoteNameTuple
   return """
   #if hasFeature(SymbolLinkageMarkers)
@@ -110,9 +110,9 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
     descsz: Int32,
     type: Int32,
     name: \(elfNoteName.type),
-    accessor: @convention(c) (UnsafeMutableRawPointer) -> Bool,
+    accessor: @convention(c) (UnsafeMutableRawPointer, UnsafeRawPointer?) -> Bool,
     flags: UInt32,
-    hint: UInt32
+    reserved: UInt32
   ) = (
     \(raw: elfNoteName.type.elements.count),
     Int32(MemoryLayout<UnsafeRawPointer>.stride + MemoryLayout<UInt32>.stride + MemoryLayout<UInt32>.stride),
@@ -120,7 +120,7 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
     \(elfNoteName.expression), /* \(literal: _swiftTestingELFNoteName) */
     \(accessorName),
     \(raw: flags),
-    \(raw: hint)
+    0
   )
   #endif
   """
