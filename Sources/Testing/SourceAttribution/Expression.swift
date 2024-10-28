@@ -190,9 +190,9 @@ public struct __Expression: Sendable {
     ///     This is used to halt further recursion if a previously-seen object
     ///     is encountered again.
     private init(
-        _reflecting subject: Any,
-        label: String?,
-        seenObjects: inout [ObjectIdentifier: AnyObject]
+      _reflecting subject: Any,
+      label: String?,
+      seenObjects: inout [ObjectIdentifier: AnyObject]
     ) {
       let mirror = Mirror(reflecting: subject)
 
@@ -214,7 +214,7 @@ public struct __Expression: Sendable {
       // `type(of:)`, which is inexpensive. The object itself is stored as the
       // value in the dictionary to ensure it is retained for the duration of
       // the recursion.
-      var objectIdentifierTeRemove: ObjectIdentifier?
+      var objectIdentifierToRemove: ObjectIdentifier?
       var shouldIncludeChildren = true
       if mirror.displayStyle == .class, type(of: subject) is AnyObject.Type {
         let object = subject as AnyObject
@@ -222,16 +222,17 @@ public struct __Expression: Sendable {
         let oldValue = seenObjects.updateValue(object, forKey: objectIdentifier)
         if oldValue != nil {
           shouldIncludeChildren = false
+        } else {
+          objectIdentifierToRemove = objectIdentifier
         }
-        objectIdentifierTeRemove = objectIdentifier
       }
       defer {
-        if let objectIdentifierTeRemove {
+        if let objectIdentifierToRemove {
           // Remove the object from the set of previously-seen objects after
           // (potentially) recursing to reflect children. This is so that
           // repeated references to the same object are still included multiple
           // times; only _cyclic_ object references should be avoided.
-          seenObjects[objectIdentifierTeRemove] = nil
+          seenObjects[objectIdentifierToRemove] = nil
         }
       }
 
