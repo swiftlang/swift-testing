@@ -299,7 +299,7 @@ struct EventRecorderTests {
   }
 #endif
 
-#if canImport(Foundation) || (SWT_FIXED_138761752 && canImport(FoundationXML))
+#if (SWT_TARGET_OS_APPLE && canImport(Foundation)) || (SWT_FIXED_138761752 && canImport(FoundationXML))
   @Test(
     "JUnitXMLRecorder outputs valid XML",
     .bug("https://github.com/swiftlang/swift-testing/issues/254")
