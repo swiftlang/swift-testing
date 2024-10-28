@@ -445,7 +445,7 @@ extension ExitTestConditionMacro {
           return false
         }
         \(outValueArgumentName).initializeMemory(
-          as: Testing.ExitTest.self,
+          as: Testing.__ExitTest.self,
           to: .init(
             __expectedExitCondition: \(arguments[expectedExitConditionIndex].expression.trimmed),
             sourceLocation: \(sourceLocationLocalName),

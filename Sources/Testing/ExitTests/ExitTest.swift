@@ -25,23 +25,42 @@ private import _TestingInternals
 /// A type describing an exit test.
 ///
 /// Instances of this type describe an exit test defined by the test author and
-/// discovered or called at runtime.
+/// discovered or called at runtime. Tools that implement custom exit test
+/// handling will encounter instances of this type in two contexts:
 ///
-/// You don't usually need to interact with an instance of this type. To create
-/// an exit test, use the ``expect(exitsWith:_:sourceLocation:performing:)``
-/// or ``require(exitsWith:_:sourceLocation:performing:)`` macro.
+/// - When the current configuration's exit test handler, set with
+///   ``Configuration/exitTestHandler``, is called; and
+/// - When, in a child process, they need to look up the exit test to call.
+///
+/// If you are writing tests, you don't usually need to interact directly with
+/// an instance of this type. To create an exit test, use the
+/// ``expect(exitsWith:_:sourceLocation:performing:)`` or
+/// ``require(exitsWith:_:sourceLocation:performing:)`` macro.
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
-public struct ExitTest: Sendable, ~Copyable {
+public typealias ExitTest = __ExitTest
+
+/// A type describing an exit test.
+///
+/// - Warning: This type is used to implement the `#expect(exitsWith:)` macro.
+///   Do not use it directly. Tools can use the SPI ``ExitTest`` typealias if
+///   needed.
+@_spi(Experimental)
+#if SWT_NO_EXIT_TESTS
+@available(*, unavailable, message: "Exit tests are not available on this platform.")
+#endif
+public struct __ExitTest: Sendable, ~Copyable {
   /// The expected exit condition of the exit test.
+  @_spi(ForToolsIntegrationOnly)
   public var expectedExitCondition: ExitCondition
 
   /// The source location of the exit test.
   ///
   /// The source location is unique to each exit test and is consistent between
   /// processes, so it can be used to uniquely identify an exit test at runtime.
+  @_spi(ForToolsIntegrationOnly)
   public var sourceLocation: SourceLocation
 
   /// The body closure of the exit test.
@@ -104,6 +123,7 @@ public struct ExitTest: Sendable, ~Copyable {
 #if !SWT_NO_EXIT_TESTS
 // MARK: - Invocation
 
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 extension ExitTest {
   /// Disable crash reporting, crash logging, or core dumps for the current
   /// process.
@@ -188,6 +208,7 @@ extension ExitTest {
 
 // MARK: - Discovery
 
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 extension ExitTest {
   /// Find the exit test function at the given source location.
   ///
@@ -326,6 +347,7 @@ func callExitTest(
 
 // MARK: - SwiftPM/tools integration
 
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 extension ExitTest {
   /// A handler that is invoked when an exit test starts.
   ///
