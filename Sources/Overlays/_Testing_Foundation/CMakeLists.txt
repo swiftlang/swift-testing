@@ -14,6 +14,7 @@ add_library(_Testing_Foundation
   Attachments/Attachable+Encodable+NSSecureCoding.swift
   Attachments/Attachable+Encodable.swift
   Events/Clock+Date.swift
+  Support/Additions/BundleAdditions.swift
   ReexportTesting.swift)
 
 target_link_libraries(_Testing_Foundation PUBLIC

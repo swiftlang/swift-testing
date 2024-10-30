@@ -58,7 +58,8 @@ extension Test {
 ///   - stop: An `inout` boolean variable indicating whether type enumeration
 ///     should stop after the function returns. Set `stop` to `true` to stop
 ///     type enumeration.
-typealias TypeEnumerator = (_ imageAddress: UnsafeRawPointer?, _ type: Any.Type, _ stop: inout Bool) -> Void
+@_spi(ForSwiftTestingOnly)
+public typealias TypeEnumerator = (_ imageAddress: UnsafeRawPointer?, _ type: Any.Type, _ stop: inout Bool) -> Void
 
 /// Enumerate all types known to Swift found in the current process whose names
 /// contain a given substring.
@@ -66,7 +67,8 @@ typealias TypeEnumerator = (_ imageAddress: UnsafeRawPointer?, _ type: Any.Type,
 /// - Parameters:
 ///   - nameSubstring: A string which the names of matching classes all contain.
 ///   - body: A function to invoke, once per matching type.
-func enumerateTypes(withNamesContaining nameSubstring: String, _ typeEnumerator: TypeEnumerator) {
+@_spi(ForSwiftTestingOnly)
+public func enumerateTypes(withNamesContaining nameSubstring: String, _ typeEnumerator: TypeEnumerator) {
   withoutActuallyEscaping(typeEnumerator) { typeEnumerator in
     withUnsafePointer(to: typeEnumerator) { context in
       swt_enumerateTypes(withNamesContaining: nameSubstring, .init(mutating: context)) { imageAddress, type, stop, context in
