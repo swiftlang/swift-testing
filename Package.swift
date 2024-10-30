@@ -95,6 +95,7 @@ let package = Package(
       name: "_Testing_Foundation",
       dependencies: [
         "Testing",
+        "_TestingInternals"
       ],
       swiftSettings: .packageSettings
     ),

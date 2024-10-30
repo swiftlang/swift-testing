@@ -20,5 +20,13 @@ struct FoundationTests {
     let date = Date(instant)
     #expect(TimeInterval(instant.timeComponentsSince1970.seconds) == date.timeIntervalSince1970.rounded(.down))
   }
+
+  @Test("Test content bundle")
+  func testContentBundle() {
+    let reportedTestContentBundle = Bundle.testContent
+    final class C {}
+    let actualTestContentBundle = Bundle(for: C.self)
+    #expect(actualTestContentBundle == reportedTestContentBundle)
+  }
 }
 #endif
