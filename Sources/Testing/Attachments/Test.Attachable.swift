@@ -75,6 +75,16 @@ extension Test.Attachable where Self: Collection, Element == UInt8 {
   public var estimatedAttachmentByteCount: Int? {
     count
   }
+
+  // We do not provide an implementation of withUnsafeBufferPointer(for:_:) here
+  // because there is no way in the standard library to statically detect if a
+  // collection can provide contiguous storage (_HasContiguousBytes is not API.)
+  // If withContiguousBytesIfAvailable(_:) fails, we don't want to make a
+  // (potentially expensive!) copy of the collection.
+  //
+  // The planned Foundation cross-import overlay can provide a default
+  // implementation for collection types that conform to Foundation's
+  // ContiguousBytes protocol.
 }
 
 extension Test.Attachable where Self: StringProtocol {
@@ -90,7 +100,21 @@ extension Test.Attachable where Self: StringProtocol {
 // Implement the protocol requirements for byte arrays and buffers so that
 // developers can attach raw data when needed.
 @_spi(Experimental)
-extension [UInt8]: Test.Attachable {
+extension Array<UInt8>: Test.Attachable {
+  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try withUnsafeBytes(body)
+  }
+}
+
+@_spi(Experimental)
+extension ContiguousArray<UInt8>: Test.Attachable {
+  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try withUnsafeBytes(body)
+  }
+}
+
+@_spi(Experimental)
+extension ArraySlice<UInt8>: Test.Attachable {
   public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }

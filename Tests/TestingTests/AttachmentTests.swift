@@ -225,6 +225,16 @@ extension AttachmentTests {
       try test(value)
     }
 
+    @Test func uint8ContiguousArray() throws {
+      let value: ContiguousArray<UInt8> = ContiguousArray("abc123".utf8)
+      try test(value)
+    }
+
+    @Test func uint8ArraySlice() throws {
+      let value: ArraySlice<UInt8> = Array("abc123".utf8)[...]
+      try test(value)
+    }
+
     @Test func uint8UnsafeBufferPointer() throws {
       let value: [UInt8] = Array("abc123".utf8)
       try value.withUnsafeBufferPointer { value in
