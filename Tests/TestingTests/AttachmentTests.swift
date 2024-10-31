@@ -20,7 +20,7 @@ struct AttachmentTests {
   }
 
 #if !SWT_NO_FILE_IO
-  func compare(_ attachableValue: borrowing MyAttachable, toContentsOfFileAtPath filePath: String) throws {
+  func compare(_ attachableValue: borrowing MySendableAttachable, toContentsOfFileAtPath filePath: String) throws {
     let file = try FileHandle(forReadingAtPath: filePath)
     let bytes = try file.readToEnd()
 
@@ -33,7 +33,7 @@ struct AttachmentTests {
   }
 
   @Test func writeAttachment() throws {
-    let attachableValue = MyAttachable(string: "<!doctype html>")
+    let attachableValue = MySendableAttachable(string: "<!doctype html>")
     let attachment = Test.Attachment(attachableValue, named: "loremipsum.html")
 
     // Write the attachment to disk, then read it back.
@@ -60,7 +60,7 @@ struct AttachmentTests {
     }
 
     for i in 0 ..< 5 {
-      let attachableValue = MyAttachable(string: "<!doctype html>\(i)")
+      let attachableValue = MySendableAttachable(string: "<!doctype html>\(i)")
       let attachment = Test.Attachment(attachableValue, named: baseFileName)
 
       // Write the attachment to disk, then read it back.
@@ -77,7 +77,7 @@ struct AttachmentTests {
   }
 
   @Test func writeAttachmentWithMultiplePathExtensions() throws {
-    let attachableValue = MyAttachable(string: "<!doctype html>")
+    let attachableValue = MySendableAttachable(string: "<!doctype html>")
     let attachment = Test.Attachment(attachableValue, named: "loremipsum.tar.gz.gif.jpeg.html")
 
     // Write the attachment to disk once to ensure the original filename is not
@@ -112,7 +112,7 @@ struct AttachmentTests {
     String(repeating: "a", count: maximumNameCount + 1),
     String(repeating: "a", count: maximumNameCount + 2),
   ] + reservedNames) func writeAttachmentWithBadName(name: String) throws {
-    let attachableValue = MyAttachable(string: "<!doctype html>")
+    let attachableValue = MySendableAttachable(string: "<!doctype html>")
     let attachment = Test.Attachment(attachableValue, named: name)
 
     // Write the attachment to disk, then read it back.
@@ -121,6 +121,33 @@ struct AttachmentTests {
       remove(filePath)
     }
     try compare(attachableValue, toContentsOfFileAtPath: filePath)
+  }
+
+  @Test func fileSystemPathIsSetAfterWritingViaEventHandler() async throws {
+    var configuration = Configuration()
+    configuration.attachmentDirectoryPath = try temporaryDirectoryPath()
+
+    let attachableValue = MySendableAttachable(string: "<!doctype html>")
+
+    await confirmation("Attachment detected") { valueAttached in
+      await Test {
+        let attachment = Test.Attachment(attachableValue, named: "loremipsum.html")
+        attachment.attach()
+      }.run(configuration: configuration) { event, _ in
+        guard case let .valueAttached(attachment) = event.kind else {
+          return
+        }
+        valueAttached()
+
+        #expect(throws: Never.self) {
+          let filePath = try #require(attachment.fileSystemPath)
+          defer {
+            remove(filePath)
+          }
+          try compare(attachableValue, toContentsOfFileAtPath: filePath)
+        }
+      }
+    }
   }
 #endif
 
