@@ -479,9 +479,6 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
       throw _EntryPointError.invalidArgument("--experimental-attachment-path", value: attachmentPath)
     }
     configuration.attachmentDirectoryPath = attachmentPath
-  } else {
-    // Write attachments to the system's temporary directory.
-    configuration.attachmentDirectoryPath = try temporaryDirectoryPath()
   }
 
 #if canImport(Foundation)
