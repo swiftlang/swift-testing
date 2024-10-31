@@ -17,10 +17,12 @@ extension Test {
   /// to initialize a new instance of ``Test/Attachment``, then call
   /// ``Test/Attachment/attach()``. An attachment can only be attached once.
   ///
-  /// Generally speaking, you should not need to make new types conform to this
-  /// protocol.
-  // TODO: write more about this protocol, how it works, and list conforming
-  // types (including discussion of the Foundation cross-import overlay.)
+  /// The testing library provides default conformances to this protocol for a
+  /// variety of standard library types. Most user-defined types do not need to
+  /// conform to this protocol.
+  ///
+  /// A type should conform to this protocol if it can be represented as a
+  /// sequence of bytes that would be diagnostically useful if a test fails.
   public protocol Attachable: ~Copyable {
     /// An estimate of the number of bytes of memory needed to store this value
     /// as an attachment.
