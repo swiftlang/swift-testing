@@ -169,6 +169,18 @@ extension Test.Attachment {
   /// The attachment is written to a file _within_ `directoryPath`, whose name
   /// is derived from the value of the ``Test/Attachment/preferredName``
   /// property.
+  ///
+  /// If you pass `--experimental-attachment-path` to `swift test`, the testing
+  /// library automatically uses this function to persist attachments to the
+  /// directory you specify.
+  ///
+  /// This function does not get or set the value of the attachment's
+  /// ``fileSystemPath`` property. The caller is responsible for setting the
+  /// value of this property if needed.
+  ///
+  /// This function is provided as a convenience to allow tools authors to write
+  /// attachments to persistent storage the same way that Swift Package Manager
+  /// does. You are not required to use this function.
   @_spi(ForToolsIntegrationOnly)
   public func write(toFileInDirectoryAtPath directoryPath: String) throws -> String {
     try write(
@@ -245,29 +257,43 @@ extension Test.Attachment {
   }
 }
 
-extension Runner {
-  /// Update this runner's configuration to write attachments to a directory
-  /// when they are attached to tests.
+extension Configuration {
+  /// Handle the given "value attached" event.
   ///
   /// - Parameters:
-  ///   - directoryPath: The directory to which attachments should be written.
+  ///   - event: The event to handle. This event must be of kind
+  ///     ``Event/Kind/valueAttached(_:)``. If the associated attachment's
+  ///     ``Test/Attachment/fileSystemPath`` property is not `nil`, this
+  ///     function does nothing.
+  ///   - context: The context associated with the event.
   ///
-  /// If an error occurs writing an attachment to disk, it is recorded as an
-  /// issue in context of the current test.
-  ///
-  /// This event handler should be among the last ones composed so that event
-  /// handlers provided by callers' (such as those in test harnesses or those
-  /// that log output) will always see the attachment path.
-  mutating func configureToWriteAttachments(toDirectoryAtPath directoryPath: String) {
-    configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-      var event = event
-      if case var .valueAttached(attachment) = event.kind {
-        _ = Issue.withErrorRecording(at: attachment.sourceLocation) {
-          attachment.fileSystemPath = try attachment.write(toFileInDirectoryAtPath: directoryPath)
-          event.kind = .valueAttached(attachment)
-        }
-      }
-      oldEventHandler(event, context)
+  /// This function is called automatically by ``handleEvent(_:in:)``. You do
+  /// not need to call it elsewhere. It automatically persists the attachment
+  /// associated with `event` and modifies `event` to include the path where the
+  /// attachment was stored.
+  func handleValueAttachedEvent(_ event: inout Event, in eventContext: borrowing Event.Context) {
+    guard let attachmentDirectoryPath else {
+      // If there is no path to which attachments should be written, there's
+      // nothing to do.
+      return
+    }
+
+    guard case let .valueAttached(attachment) = event.kind else {
+      preconditionFailure("Passed the wrong kind of event to \(#function) (expected valueAttached, got \(event.kind)). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+    }
+    if attachment.fileSystemPath != nil {
+      // Somebody already persisted this attachment. This isn't necessarily a
+      // logic error in the testing library, but it probably means we shouldn't
+      // persist it again.
+      return
+    }
+
+    // Write the attachment. If an error occurs, record it as an issue in the
+    // current test.
+    Issue.withErrorRecording(at: attachment.sourceLocation, configuration: self) {
+      var attachment = attachment
+      attachment.fileSystemPath = try attachment.write(toFileInDirectoryAtPath: attachmentDirectoryPath)
+      event.kind = .valueAttached(attachment)
     }
   }
 }

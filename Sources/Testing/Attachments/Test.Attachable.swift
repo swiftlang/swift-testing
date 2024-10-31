@@ -33,11 +33,10 @@ extension Test {
     ///
     /// The value of this property is approximately equal to the number of bytes
     /// that will actually be needed, or `nil` if the value cannot be computed
-    /// efficiently. The default implementation of this property returns a value
-    /// of `nil`.
+    /// efficiently. The default implementation of this property returns `nil`.
     ///
     /// - Complexity: O(1) unless `Self` conforms to `Collection`, in which case
-    ///   up to O(_n_).
+    ///   up to O(_n_) where _n_ is the length of the collection.
     var estimatedAttachmentByteCount: Int? { get }
 
     /// Call a function and pass a buffer representing this instance to it.

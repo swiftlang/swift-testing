@@ -369,11 +369,6 @@ extension Runner {
   private static func _run(_ runner: Self) async {
     var runner = runner
     runner.configureEventHandlerRuntimeState()
-#if !SWT_NO_FILE_IO
-    if let attachmentDirectoryPath = runner.configuration.attachmentDirectoryPath {
-      runner.configureToWriteAttachments(toDirectoryAtPath: attachmentDirectoryPath)
-    }
-#endif
 
     // Track whether or not any issues were recorded across the entire run.
     let issueRecorded = Locked(rawValue: false)
