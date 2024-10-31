@@ -125,7 +125,7 @@ struct AttachmentTests {
 
   @Test func fileSystemPathIsSetAfterWritingViaEventHandler() async throws {
     var configuration = Configuration()
-    configuration.attachmentDirectoryPath = try temporaryDirectoryPath()
+    configuration.attachmentsPath = try temporaryDirectoryPath()
 
     let attachableValue = MySendableAttachable(string: "<!doctype html>")
 

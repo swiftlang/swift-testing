@@ -205,8 +205,8 @@ public struct Configuration: Sendable {
 #endif
 
 #if !SWT_NO_FILE_IO
-  /// Storage for ``attachmentDirectoryPath``.
-  private var _attachmentDirectoryPath: String?
+  /// Storage for ``attachmentsPath``.
+  private var _attachmentsPath: String?
 
   /// The path to which attachments should be written.
   ///
@@ -219,12 +219,12 @@ public struct Configuration: Sendable {
   /// system that already exists and which the current user can write to. If it
   /// is a relative path, it is resolved to an absolute path automatically.
   @_spi(Experimental)
-  public var attachmentDirectoryPath: String? {
+  public var attachmentsPath: String? {
     get {
-      _attachmentDirectoryPath
+      _attachmentsPath
     }
     set {
-      _attachmentDirectoryPath = newValue.map { newValue in
+      _attachmentsPath = newValue.map { newValue in
         canonicalizePath(newValue) ?? newValue
       }
     }

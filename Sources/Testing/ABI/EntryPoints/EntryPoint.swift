@@ -277,7 +277,7 @@ public struct __CommandLineArguments_v0: Sendable {
   public var repeatUntil: String?
 
   /// The value of the `--experimental-attachment-path` argument.
-  public var experimentalAttachmentPath: String?
+  public var experimentalAttachmentsPath: String?
 }
 
 extension __CommandLineArguments_v0: Codable {
@@ -298,7 +298,7 @@ extension __CommandLineArguments_v0: Codable {
     case skip
     case repetitions
     case repeatUntil
-    case experimentalAttachmentPath
+    case experimentalAttachmentsPath
   }
 }
 
@@ -361,8 +361,8 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   }
 
   // Attachment output
-  if let attachmentPathIndex = args.firstIndex(of: "--experimental-attachment-path"), !isLastArgument(at: attachmentPathIndex) {
-    result.experimentalAttachmentPath = args[args.index(after: attachmentPathIndex)]
+  if let attachmentsPathIndex = args.firstIndex(of: "--experimental-attachments-path"), !isLastArgument(at: attachmentsPathIndex) {
+    result.experimentalAttachmentsPath = args[args.index(after: attachmentsPathIndex)]
   }
 #endif
 
@@ -474,11 +474,11 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   }
 
   // Attachment output.
-  if let attachmentPath = args.experimentalAttachmentPath {
-    guard fileExists(atPath: attachmentPath) else {
-      throw _EntryPointError.invalidArgument("--experimental-attachment-path", value: attachmentPath)
+  if let attachmentsPath = args.experimentalAttachmentsPath {
+    guard fileExists(atPath: attachmentsPath) else {
+      throw _EntryPointError.invalidArgument("--experimental-attachments-path", value: attachmentsPath)
     }
-    configuration.attachmentDirectoryPath = attachmentPath
+    configuration.attachmentsPath = attachmentsPath
   }
 
 #if canImport(Foundation)
