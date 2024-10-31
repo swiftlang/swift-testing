@@ -139,12 +139,16 @@ struct AttachmentTests {
         }
         valueAttached()
 
-        #expect(throws: Never.self) {
+        // BUG: We could use #expect(throws: Never.self) here, but the Swift 6.1
+        // compiler crashes trying to expand the macro (rdar://138997009)
+        do {
           let filePath = try #require(attachment.fileSystemPath)
           defer {
             remove(filePath)
           }
           try compare(attachableValue, toContentsOfFileAtPath: filePath)
+        } catch {
+          Issue.record(error)
         }
       }
     }
