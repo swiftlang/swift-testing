@@ -27,7 +27,10 @@ extension Test {
     /// originally used to create this attachment.
     public var attachableValue: any Attachable & Sendable /* & Copyable rdar://137614425 */
 
-    /// The source location of the attachment.
+    /// The source location where the attachment was initialized.
+    ///
+    /// The value of this property is used when recording issues associated with
+    /// the attachment.
     public var sourceLocation: SourceLocation
 
     /// The default preferred name to use if the developer does not supply one.
@@ -37,12 +40,11 @@ extension Test {
 
     /// The path to which the this attachment was written, if any.
     ///
-    /// If a developer sets the ``Configuration/attachmentDirectoryPath``
-    /// property of the current configuration before running tests, or if a
-    /// developer passes `--experimental-attachment-path` on the command line,
-    /// then attachments will be automatically written to disk when they are
-    /// attached and the value of this property will describe the path where
-    /// they were written.
+    /// If a developer sets the ``Configuration/attachmentsPath`` property of
+    /// the current configuration before running tests, or if a developer passes
+    /// `--experimental-attachments-path` on the command line, then attachments
+    /// will be automatically written to disk when they are attached and the
+    /// value of this property will describe the path where they were written.
     ///
     /// If no destination path is set, or if an error occurred while writing
     /// this attachment to disk, the value of this property is `nil`.
@@ -58,7 +60,9 @@ extension Test {
     ///   - preferredName: The preferred name of the attachment when writing it
     ///     to a test report or to disk. If `nil`, the testing library attempts
     ///     to derive a reasonable filename for the attached value.
-    ///   - sourceLocation: The source location of the attachment.
+    ///   - sourceLocation: The source location of the call to this initializer.
+    ///     This value is used when recording issues associated with the
+    ///     attachment.
     public init(
       _ attachableValue: some Attachable & Sendable & Copyable,
       named preferredName: String? = nil,
@@ -116,7 +120,9 @@ extension Test.Attachment {
   ///   - preferredName: The preferred name of the attachment when writing it
   ///     to a test report or to disk. If `nil`, the testing library attempts
   ///     to derive a reasonable filename for the attached value.
-  ///   - sourceLocation: The source location of the attachment.
+  ///   - sourceLocation: The source location of the call to this initializer.
+  ///     This value is used when recording issues associated with the
+  ///     attachment.
   ///
   /// When attaching a value of a type that does not conform to both `Sendable`
   /// and `Copyable`, the testing library encodes it as data immediately. If the
@@ -272,7 +278,7 @@ extension Configuration {
   /// associated with `event` and modifies `event` to include the path where the
   /// attachment was stored.
   func handleValueAttachedEvent(_ event: inout Event, in eventContext: borrowing Event.Context) {
-    guard let attachmentDirectoryPath else {
+    guard let attachmentsPath else {
       // If there is no path to which attachments should be written, there's
       // nothing to do.
       return
@@ -292,7 +298,7 @@ extension Configuration {
     // current test.
     Issue.withErrorRecording(at: attachment.sourceLocation, configuration: self) {
       var attachment = attachment
-      attachment.fileSystemPath = try attachment.write(toFileInDirectoryAtPath: attachmentDirectoryPath)
+      attachment.fileSystemPath = try attachment.write(toFileInDirectoryAtPath: attachmentsPath)
       event.kind = .valueAttached(attachment)
     }
   }
