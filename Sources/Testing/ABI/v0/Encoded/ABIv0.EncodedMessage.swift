@@ -30,7 +30,7 @@ extension ABIv0 {
       case difference
       case warning
       case details
-      case attachment
+      case attachment = "_attachment"
 
       init(encoding symbol: Event.Symbol) {
         self = switch symbol {
