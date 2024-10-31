@@ -176,7 +176,7 @@ extension Test.Attachment {
   /// is derived from the value of the ``Test/Attachment/preferredName``
   /// property.
   ///
-  /// If you pass `--experimental-attachment-path` to `swift test`, the testing
+  /// If you pass `--experimental-attachments-path` to `swift test`, the testing
   /// library automatically uses this function to persist attachments to the
   /// directory you specify.
   ///

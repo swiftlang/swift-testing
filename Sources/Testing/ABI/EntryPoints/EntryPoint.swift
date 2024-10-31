@@ -276,7 +276,7 @@ public struct __CommandLineArguments_v0: Sendable {
   /// The value of the `--repeat-until` argument.
   public var repeatUntil: String?
 
-  /// The value of the `--experimental-attachment-path` argument.
+  /// The value of the `--experimental-attachments-path` argument.
   public var experimentalAttachmentsPath: String?
 }
 
