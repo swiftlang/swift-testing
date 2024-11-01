@@ -13,6 +13,7 @@ add_library(Testing
   ABI/v0/ABIv0.Record.swift
   ABI/v0/ABIv0.Record+Streaming.swift
   ABI/v0/ABIv0.swift
+  ABI/v0/Encoded/ABIv0.EncodedAttachment.swift
   ABI/v0/Encoded/ABIv0.EncodedBacktrace.swift
   ABI/v0/Encoded/ABIv0.EncodedError.swift
   ABI/v0/Encoded/ABIv0.EncodedEvent.swift
@@ -20,6 +21,8 @@ add_library(Testing
   ABI/v0/Encoded/ABIv0.EncodedIssue.swift
   ABI/v0/Encoded/ABIv0.EncodedMessage.swift
   ABI/v0/Encoded/ABIv0.EncodedTest.swift
+  Attachments/Test.Attachable.swift
+  Attachments/Test.Attachment.swift
   Events/Clock.swift
   Events/Event.swift
   Events/Recorder/Event.ConsoleOutputRecorder.swift
