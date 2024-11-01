@@ -145,6 +145,7 @@ extension Test.Attachment {
       proxyAttachable.encodedValue = try attachableValue.withUnsafeBufferPointer(for: proxyAttachment) { buffer in
         [UInt8](buffer)
       }
+      proxyAttachable.estimatedAttachmentByteCount = proxyAttachable.encodedValue.count
     } catch {
       Issue.withErrorRecording(at: sourceLocation) {
         // TODO: define new issue kind .valueAttachmentFailed(any Error)
