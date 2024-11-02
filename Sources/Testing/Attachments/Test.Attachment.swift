@@ -34,7 +34,7 @@ extension Test {
     public var sourceLocation: SourceLocation
 
     /// The default preferred name to use if the developer does not supply one.
-    package static var defaultPreferredName: String {
+    static var defaultPreferredName: String {
       "untitled"
     }
 
