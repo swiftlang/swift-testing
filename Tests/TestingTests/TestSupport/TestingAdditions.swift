@@ -237,14 +237,7 @@ extension Test {
   /// runs it. It is provided as a convenience for use in the testing library's
   /// own test suite; when writing tests for other test suites, it should not be
   /// necessary to call this function.
-  func run(configuration: Configuration = .init(), eventHandler: Event.Handler? = nil) async {
-    var configuration = configuration
-    if let eventHandler {
-      configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, eventContext in
-        eventHandler(event, eventContext)
-        oldEventHandler(event, eventContext)
-      }
-    }
+  func run(configuration: Configuration = .init()) async {
     let runner = await Runner(testing: [self], configuration: configuration)
     await runner.run()
   }
