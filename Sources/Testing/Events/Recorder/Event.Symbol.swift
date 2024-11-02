@@ -38,10 +38,6 @@ extension Event {
 
     /// The symbol to use when presenting details about an event to the user.
     case details
-
-    /// The symbol to use when describing an instance of ``Test/Attachment``.
-    @_spi(Experimental)
-    case attachment
   }
 }
 
@@ -70,8 +66,6 @@ extension Event.Symbol {
       ("\u{1001FF}", "exclamationmark.triangle.fill")
     case .details:
       ("\u{100135}", "arrow.turn.down.right")
-    case .attachment:
-      ("\u{100237}", "doc")
     }
   }
 
@@ -134,10 +128,6 @@ extension Event.Symbol {
     case .details:
       // Unicode: DOWNWARDS ARROW WITH TIP RIGHTWARDS
       return "\u{21B3}"
-    case .attachment:
-      // TODO: decide on symbol
-      // Unicode: PRINT SCREEN SYMBOL
-      return "\u{2399}"
     }
 #elseif os(Windows)
     // The default Windows console font (Consolas) has limited Unicode support,
@@ -169,10 +159,6 @@ extension Event.Symbol {
     case .details:
       // Unicode: RIGHTWARDS ARROW
       return "\u{2192}"
-    case .attachment:
-      // TODO: decide on symbol
-      // Unicode: PRINT SCREEN SYMBOL
-      return "\u{2399}"
     }
 #else
 #warning("Platform-specific implementation missing: Unicode characters unavailable")
