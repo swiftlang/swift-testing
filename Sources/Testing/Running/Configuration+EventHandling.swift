@@ -23,15 +23,6 @@ extension Configuration {
     var contextCopy = copy context
     contextCopy.configuration = self
     contextCopy.configuration?.eventHandler = { _, _ in }
-
-#if !SWT_NO_FILE_IO
-    if case .valueAttached = event.kind {
-      var eventCopy = copy event
-      handleValueAttachedEvent(&eventCopy, in: context)
-      return eventHandler(eventCopy, contextCopy)
-    }
-#endif
-
-    return eventHandler(event, contextCopy)
+    eventHandler(event, contextCopy)
   }
 }
