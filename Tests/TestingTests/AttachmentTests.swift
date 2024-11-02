@@ -37,7 +37,7 @@ struct AttachmentTests {
     let attachment = Test.Attachment(attachableValue, named: "loremipsum.html")
 
     // Write the attachment to disk, then read it back.
-    let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectoryPath())
+    let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectory())
     defer {
       remove(filePath)
     }
@@ -64,7 +64,7 @@ struct AttachmentTests {
       let attachment = Test.Attachment(attachableValue, named: baseFileName)
 
       // Write the attachment to disk, then read it back.
-      let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectoryPath(), appending: suffixes.next()!)
+      let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectory(), appending: suffixes.next()!)
       createdFilePaths.append(filePath)
       let fileName = try #require(filePath.split { $0 == "/" || $0 == #"\"# }.last)
       if i == 0 {
@@ -82,14 +82,14 @@ struct AttachmentTests {
 
     // Write the attachment to disk once to ensure the original filename is not
     // available and we add a suffix.
-    let originalFilePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectoryPath())
+    let originalFilePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectory())
     defer {
       remove(originalFilePath)
     }
 
     // Write the attachment to disk, then read it back.
     let suffix = String(UInt64.random(in: 0 ..< .max), radix: 36)
-    let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectoryPath(), appending: suffix)
+    let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectory(), appending: suffix)
     defer {
       remove(filePath)
     }
@@ -100,7 +100,13 @@ struct AttachmentTests {
 
 #if os(Windows)
   static let maximumNameCount = Int(_MAX_FNAME)
-  static let reservedNames = ["CON", "COM0", "LPT2"]
+  static let reservedNames: [String] = {
+    // Return the list of COM ports that are NOT configured (and so will fail
+    // to open for writing.)
+    (0...9).lazy
+      .map { "COM\($0)" }
+      .filter { !PathFileExistsA($0) }
+  }()
 #else
   static let maximumNameCount = Int(NAME_MAX)
   static let reservedNames: [String] = []
@@ -116,7 +122,7 @@ struct AttachmentTests {
     let attachment = Test.Attachment(attachableValue, named: name)
 
     // Write the attachment to disk, then read it back.
-    let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectoryPath())
+    let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectory())
     defer {
       remove(filePath)
     }
@@ -124,16 +130,11 @@ struct AttachmentTests {
   }
 
   @Test func fileSystemPathIsSetAfterWritingViaEventHandler() async throws {
-    var configuration = Configuration()
-    configuration.attachmentsPath = try temporaryDirectoryPath()
-
     let attachableValue = MySendableAttachable(string: "<!doctype html>")
-
-    await confirmation("Attachment detected") { valueAttached in
-      await Test {
-        let attachment = Test.Attachment(attachableValue, named: "loremipsum.html")
-        attachment.attach()
-      }.run(configuration: configuration) { event, _ in
+    try await confirmation("Attachment detected") { valueAttached in
+      var configuration = Configuration()
+      configuration.attachmentsPath = try temporaryDirectory()
+      configuration.eventHandler = { event, _ in
         guard case let .valueAttached(attachment) = event.kind else {
           return
         }
@@ -151,16 +152,19 @@ struct AttachmentTests {
           Issue.record(error)
         }
       }
+
+      await Test {
+        let attachment = Test.Attachment(attachableValue, named: "loremipsum.html")
+        attachment.attach()
+      }.run(configuration: configuration)
     }
   }
 #endif
 
   @Test func attachValue() async {
     await confirmation("Attachment detected") { valueAttached in
-      await Test {
-        let attachableValue = MyAttachable(string: "<!doctype html>")
-        Test.Attachment(attachableValue, named: "loremipsum").attach()
-      }.run { event, _ in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
         guard case let .valueAttached(attachment) = event.kind else {
           return
         }
@@ -168,15 +172,18 @@ struct AttachmentTests {
         #expect(attachment.preferredName == "loremipsum")
         valueAttached()
       }
+
+      await Test {
+        let attachableValue = MyAttachable(string: "<!doctype html>")
+        Test.Attachment(attachableValue, named: "loremipsum").attach()
+      }.run(configuration: configuration)
     }
   }
 
   @Test func attachSendableValue() async {
     await confirmation("Attachment detected") { valueAttached in
-      await Test {
-        let attachableValue = MySendableAttachable(string: "<!doctype html>")
-        Test.Attachment(attachableValue, named: "loremipsum").attach()
-      }.run { event, _ in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
         guard case let .valueAttached(attachment) = event.kind else {
           return
         }
@@ -184,17 +191,19 @@ struct AttachmentTests {
         #expect(attachment.preferredName == "loremipsum")
         valueAttached()
       }
+
+      await Test {
+        let attachableValue = MySendableAttachable(string: "<!doctype html>")
+        Test.Attachment(attachableValue, named: "loremipsum").attach()
+      }.run(configuration: configuration)
     }
   }
 
   @Test func issueRecordedWhenAttachingNonSendableValueThatThrows() async {
     await confirmation("Attachment detected") { valueAttached in
       await confirmation("Issue recorded") { issueRecorded in
-        await Test {
-          var attachableValue = MyAttachable(string: "<!doctype html>")
-          attachableValue.errorToThrow = MyError()
-          Test.Attachment(attachableValue, named: "loremipsum").attach()
-        }.run { event, _ in
+        var configuration = Configuration()
+        configuration.eventHandler = { event, _ in
           if case .valueAttached = event.kind {
             valueAttached()
           } else if case let .issueRecorded(issue) = event.kind,
@@ -203,6 +212,12 @@ struct AttachmentTests {
             issueRecorded()
           }
         }
+
+        await Test {
+          var attachableValue = MyAttachable(string: "<!doctype html>")
+          attachableValue.errorToThrow = MyError()
+          Test.Attachment(attachableValue, named: "loremipsum").attach()
+        }.run(configuration: configuration)
       }
     }
   }

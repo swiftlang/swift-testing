@@ -176,7 +176,7 @@ struct SwiftPMTests {
   func xunitOutputIsWrittenToFile() throws {
     // Test that a file is opened when requested. Testing of the actual output
     // occurs in ConsoleOutputRecorderTests.
-    let tempDirPath = try temporaryDirectoryPath()
+    let tempDirPath = try temporaryDirectory()
     let temporaryFilePath = appendPathComponent("\(UInt64.random(in: 0 ..< .max))", to: tempDirPath)
     defer {
       _ = remove(temporaryFilePath)
@@ -200,7 +200,7 @@ struct SwiftPMTests {
     "--configuration-path", "--experimental-configuration-path",
   ])
   func configurationPath(argumentName: String) async throws {
-    let tempDirPath = try temporaryDirectoryPath()
+    let tempDirPath = try temporaryDirectory()
     let temporaryFilePath = appendPathComponent("\(UInt64.random(in: 0 ..< .max))", to: tempDirPath)
     defer {
       _ = remove(temporaryFilePath)
@@ -244,7 +244,7 @@ struct SwiftPMTests {
   func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: String) async throws {
     // Test that JSON records are successfully streamed to a file and can be
     // read back into memory and decoded.
-    let tempDirPath = try temporaryDirectoryPath()
+    let tempDirPath = try temporaryDirectory()
     let temporaryFilePath = appendPathComponent("\(UInt64.random(in: 0 ..< .max))", to: tempDirPath)
     defer {
       _ = remove(temporaryFilePath)
