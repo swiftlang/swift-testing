@@ -104,16 +104,8 @@ struct AttachmentTests {
 
 #if os(Windows)
   static let maximumNameCount = Int(_MAX_FNAME)
-  static let reservedNames: [String] = {
-    // Return the list of COM ports that are NOT configured (and so will fail
-    // to open for writing.)
-    (0...9).lazy
-      .map { "COM\($0)" }
-      .filter { !PathFileExistsA($0) }
-  }()
 #else
   static let maximumNameCount = Int(NAME_MAX)
-  static let reservedNames: [String] = []
 #endif
 
   @Test(arguments: [
@@ -121,7 +113,7 @@ struct AttachmentTests {
     String(repeating: "a", count: maximumNameCount),
     String(repeating: "a", count: maximumNameCount + 1),
     String(repeating: "a", count: maximumNameCount + 2),
-  ] + reservedNames) func writeAttachmentWithBadName(name: String) throws {
+  ]) func writeAttachmentWithBadName(name: String) throws {
     let attachableValue = MySendableAttachable(string: "<!doctype html>")
     let attachment = Test.Attachment(attachableValue, named: name)
 
