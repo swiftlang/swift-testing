@@ -129,6 +129,17 @@ struct AttachmentTests {
     try compare(attachableValue, toContentsOfFileAtPath: filePath)
   }
 
+#if os(Windows)
+  @Test func whichForbiddenFileNamesExist() {
+    for i in 0 ... 9 {
+      let com = "COM\(i)"
+      try? FileHandle.stderr.write("\(com) exists? \(PathFileExistsA(com))\n")
+      let lpt = "LPT\(i)"
+      try? FileHandle.stderr.write("\(lpt) exists? \(PathFileExistsA(lpt))\n")
+    }
+  }
+#endif
+
   @Test func fileSystemPathIsSetAfterWritingViaEventHandler() async throws {
     let attachableValue = MySendableAttachable(string: "<!doctype html>")
     try await confirmation("Attachment detected") { valueAttached in
