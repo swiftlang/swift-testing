@@ -9,6 +9,7 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+private import _TestingInternals
 #if canImport(Foundation)
 import Foundation
 @_spi(Experimental) import _Testing_Foundation
