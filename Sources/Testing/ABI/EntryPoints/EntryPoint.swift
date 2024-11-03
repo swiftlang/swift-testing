@@ -275,6 +275,9 @@ public struct __CommandLineArguments_v0: Sendable {
 
   /// The value of the `--repeat-until` argument.
   public var repeatUntil: String?
+
+  /// The value of the `--experimental-attachments-path` argument.
+  public var experimentalAttachmentsPath: String?
 }
 
 extension __CommandLineArguments_v0: Codable {
@@ -295,6 +298,7 @@ extension __CommandLineArguments_v0: Codable {
     case skip
     case repetitions
     case repeatUntil
+    case experimentalAttachmentsPath
   }
 }
 
@@ -354,6 +358,11 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   // XML output
   if let xunitOutputIndex = args.firstIndex(of: "--xunit-output"), !isLastArgument(at: xunitOutputIndex) {
     result.xunitOutput = args[args.index(after: xunitOutputIndex)]
+  }
+
+  // Attachment output
+  if let attachmentsPathIndex = args.firstIndex(of: "--experimental-attachments-path"), !isLastArgument(at: attachmentsPathIndex) {
+    result.experimentalAttachmentsPath = args[args.index(after: attachmentsPathIndex)]
   }
 #endif
 
@@ -462,6 +471,14 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
       _ = xmlRecorder.record(event, in: context)
       oldEventHandler(event, context)
     }
+  }
+
+  // Attachment output.
+  if let attachmentsPath = args.experimentalAttachmentsPath {
+    guard fileExists(atPath: attachmentsPath) else {
+      throw _EntryPointError.invalidArgument("--experimental-attachments-path", value: attachmentsPath)
+    }
+    configuration.attachmentsPath = attachmentsPath
   }
 
 #if canImport(Foundation)
