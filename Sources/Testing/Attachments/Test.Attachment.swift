@@ -246,7 +246,7 @@ extension Test.Attachment {
           file = try FileHandle(atPath: preferredPath, mode: "wxb")
           result = preferredPath
           break
-        } catch let error as CError where error.rawValue == EEXIST {
+        } catch let error as CError where error.rawValue == swt_EEXIST() {
           // Try again with a new suffix.
           continue
         } catch where usingPreferredName {
