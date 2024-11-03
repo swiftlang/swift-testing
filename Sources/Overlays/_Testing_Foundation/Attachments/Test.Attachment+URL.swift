@@ -12,6 +12,10 @@
 @_spi(Experimental) public import Testing
 public import Foundation
 
+#if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
+private import UniformTypeIdentifiers
+#endif
+
 #if !SWT_NO_FILE_IO
 extension URL {
   /// The file system path of the URL, equivalent to `path`.
@@ -29,6 +33,15 @@ extension URL {
 }
 
 // MARK: - Attaching files
+
+#if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
+@available(_uttypesAPI, *)
+extension UTType {
+  /// A type that represents a `.tgz` archive, or `nil` if the system does not
+  /// recognize that content type.
+  fileprivate static let tgz = UTType("org.gnu.gnu-zip-tar-archive")
+}
+#endif
 
 @_spi(Experimental)
 extension Test.Attachment {
@@ -57,25 +70,33 @@ extension Test.Attachment {
     let url = url.resolvingSymlinksInPath()
     let isDirectory = try url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory!
 
-    let attachableValue: any Test.Attachable & Sendable
+    // Determine the preferred name of the attachment if one was not provided.
+    var preferredName = if let preferredName {
+      preferredName
+    } else if case let lastPathComponent = url.lastPathComponent, !lastPathComponent.isEmpty {
+      lastPathComponent
+    } else {
+      Self.defaultPreferredName
+    }
+
     if isDirectory {
-      attachableValue = try await _DirectoryContentAttachableProxy(contentsOfDirectoryAt: url)
+      // Ensure the preferred name of the archive has an appropriate extension.
+      preferredName = {
+#if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
+        if #available(_uttypesAPI, *), let tgz = UTType.tgz {
+          return (preferredName as NSString).appendingPathExtension(for: tgz)
+        }
+#endif
+        return (preferredName as NSString).appendingPathExtension("tgz") ?? preferredName
+      }()
+
+      let attachableValue = try await _DirectoryContentAttachableProxy(contentsOfDirectoryAt: url)
+      self.init(attachableValue, named: preferredName, sourceLocation: sourceLocation)
     } else {
       // Load the file.
-      attachableValue = try Data(contentsOf: url, options: [.mappedIfSafe])
+      let attachableValue = try Data(contentsOf: url, options: [.mappedIfSafe])
+      self.init(attachableValue, named: preferredName, sourceLocation: sourceLocation)
     }
-
-    // Determine the preferred name of the attachment if one was not provided.
-    var preferredName = preferredName
-    if preferredName == nil, case let lastPathComponent = url.lastPathComponent, !lastPathComponent.isEmpty {
-      if isDirectory {
-        preferredName = (lastPathComponent as NSString).appendingPathExtension("tar.gz")
-      } else {
-        preferredName = lastPathComponent
-      }
-    }
-
-    self.init(attachableValue, named: preferredName, sourceLocation: sourceLocation)
   }
 }
 
@@ -101,12 +122,12 @@ private struct _DirectoryContentAttachableProxy: Test.Attachable {
   ///   directories cannot be compressed on this platform.
   ///
   /// This initializer asynchronously compresses the contents of `directoryURL`
-  /// into an archive (currently of `.tar.gz` format, although this is subject
-  /// to change) and stores a mapped copy of that archive.
+  /// into an archive (currently of `.tgz` format, although this is subject to
+  /// change) and stores a mapped copy of that archive.
   init(contentsOfDirectoryAt directoryURL: URL) async throws {
     url = directoryURL
 
-    let temporaryName = "\(UUID().uuidString).tar.gz"
+    let temporaryName = "\(UUID().uuidString).tgz"
     let temporaryURL = FileManager.default.temporaryDirectory.appendingPathComponent(temporaryName)
 
 #if !SWT_NO_PROCESS_SPAWNING

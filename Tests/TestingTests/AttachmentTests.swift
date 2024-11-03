@@ -82,7 +82,7 @@ struct AttachmentTests {
 
   @Test func writeAttachmentWithMultiplePathExtensions() throws {
     let attachableValue = MySendableAttachable(string: "<!doctype html>")
-    let attachment = Test.Attachment(attachableValue, named: "loremipsum.tar.gz.gif.jpeg.html")
+    let attachment = Test.Attachment(attachableValue, named: "loremipsum.tgz.gif.jpeg.html")
 
     // Write the attachment to disk once to ensure the original filename is not
     // available and we add a suffix.
@@ -98,7 +98,7 @@ struct AttachmentTests {
       remove(filePath)
     }
     let fileName = try #require(filePath.split { $0 == "/" || $0 == #"\"# }.last)
-    #expect(fileName == "loremipsum-\(suffix).tar.gz.gif.jpeg.html")
+    #expect(fileName == "loremipsum-\(suffix).tgz.gif.jpeg.html")
     try compare(attachableValue, toContentsOfFileAtPath: filePath)
   }
 
@@ -271,7 +271,7 @@ struct AttachmentTests {
           return
         }
 
-        #expect(attachment.preferredName == "\(temporaryDirectoryName).tar.gz")
+        #expect(attachment.preferredName == "\(temporaryDirectoryName).tgz")
         valueAttached()
       }
 
