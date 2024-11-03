@@ -263,10 +263,13 @@ struct AttachmentTests {
 
 #if !SWT_NO_PROCESS_SPAWNING
   @Test func attachContentsOfDirectoryURL() async throws {
-    let temporaryFileName = UUID().uuidString
-    let temporaryPath = try appendPathComponent(temporaryFileName, to: temporaryDirectory())
+    let temporaryDirectoryName = UUID().uuidString
+    let temporaryPath = try appendPathComponent(temporaryDirectoryName, to: temporaryDirectory())
     let temporaryURL = URL(fileURLWithPath: temporaryPath, isDirectory: false)
     try FileManager.default.createDirectory(at: temporaryURL, withIntermediateDirectories: true)
+
+    let fileData = try #require("Hello world".data(using: .utf8))
+    try fileData.write(to: temporaryURL.appendingPathComponent("loremipsum.txt"), options: [.atomic])
 
     await confirmation("Attachment detected") { valueAttached in
       var configuration = Configuration()
@@ -275,7 +278,7 @@ struct AttachmentTests {
           return
         }
 
-        #expect(attachment.preferredName == "\(temporaryFileName).tar.gz")
+        #expect(attachment.preferredName == "\(temporaryDirectoryName).tar.gz")
         valueAttached()
       }
 

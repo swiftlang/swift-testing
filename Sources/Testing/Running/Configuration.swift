@@ -8,8 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _TestingInternals
-
 /// A type containing settings for preparing and running tests.
 @_spi(ForToolsIntegrationOnly)
 public struct Configuration: Sendable {

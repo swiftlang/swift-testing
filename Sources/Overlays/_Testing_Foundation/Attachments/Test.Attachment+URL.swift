@@ -19,10 +19,9 @@ extension URL {
 #if os(Windows)
     // BUG: `path` includes a leading slash which makes it invalid on Windows.
     // SEE: https://github.com/swiftlang/swift-foundation/pull/964
-    let utf8 = path.utf8
-    let array = Array(utf8)
-    if array.count > 4, array[0] == UInt8(ascii: "/"), Character(UnicodeScalar(array[1])).isLetter, array[2] == UInt8(ascii: ":"), array[3] == UInt8(ascii: "/") {
-      return String(Substring(utf8.dropFirst()))
+    let path = path
+    if path.starts(with: /\/[A-Za-z]:\//) {
+      return String(path.dropFirst())
     }
 #endif
     return path
@@ -118,12 +117,15 @@ private struct _DirectoryContentAttachableProxy: Test.Attachable {
 #endif
     let sourcePath = url.fileSystemPath
     let destinationPath = temporaryURL.fileSystemPath
+    defer {
+      remove(destinationPath)
+    }
 
     try await withCheckedThrowingContinuation { continuation in
       do {
         _ = try Process.run(
           URL(fileURLWithPath: tarPath, isDirectory: false),
-          arguments: ["--create", "--gzip", "--file", destinationPath, sourcePath]
+          arguments: ["--create", "--gzip", "--directory", sourcePath, "--file", destinationPath, "."]
         ) { process in
           let terminationReason = process.terminationReason
           let terminationStatus = process.terminationStatus
