@@ -1552,6 +1552,23 @@ struct IssueCodingTests {
     #expect(String(describing: issueSnapshot) == String(describing: issue))
     #expect(String(reflecting: issueSnapshot) == String(reflecting: issue))
   }
+
+  @Test func binaryOperatorExpansionPrefersBooleanOverOptional() async throws {
+    await confirmation("Issue recorded", expectedCount: 3) { issueRecorded in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        if case .issueRecorded = event.kind {
+          issueRecorded()
+        }
+      }
+
+      await Test {
+        #expect(true == false)
+        #expect(false != false)
+        try #require(true != true)
+      }.run(configuration: configuration)
+    }
+  }
 }
 #endif
 

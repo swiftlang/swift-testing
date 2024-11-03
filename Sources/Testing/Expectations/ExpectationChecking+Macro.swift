@@ -770,7 +770,7 @@ public func __checkValue<T>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkBinaryOperation<T>(
+@_disfavoredOverload public func __checkBinaryOperation<T>(
   _ lhs: T?, _ op: (T?, () -> T?) -> T?, _ rhs: @autoclosure () -> T?,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
