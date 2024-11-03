@@ -154,6 +154,14 @@ static int swt_siginfo_t_si_status(const siginfo_t *siginfo) {
 #endif
 #endif
 
+/// Get the value of `EEXIST`.
+///
+/// This function is provided because `EEXIST` is a complex macro in wasi-libc
+/// and cannot be imported directly into Swift.
+static int swt_EEXIST(void) {
+  return EEXIST;
+}
+
 SWT_ASSUME_NONNULL_END
 
 #endif
