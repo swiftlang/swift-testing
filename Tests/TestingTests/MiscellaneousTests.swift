@@ -224,11 +224,13 @@ struct TestsWithAsyncArguments {
 }
 
 @Test(
+  .hidden,
   arguments: [0] // Meaningful trivia: This line comment should be omitted during macro expansion
 )
 func parameterizedTestWithTrailingComment(value: Int) {}
 
 @Suite(
+  .hidden,
   .serialized // Meaningful trivia: This line comment should be omitted during macro expansion
 )
 private struct SuiteWithTraitContainingTrailingComment {}
