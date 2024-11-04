@@ -92,9 +92,16 @@ extension Trait where Self == ConditionTrait {
     _ condition: @escaping @Sendable () -> Bool
   ) -> Self {
     // TODO: Semantic capture of platform name/version (rather than just a comment)
-    Self(
+    let message: Comment = if let message {
+      message
+    } else if let version {
+      "Obsolete as of \(_description(ofPlatformName: platformName, version: version))"
+    } else {
+      "Unavailable on \(_description(ofPlatformName: platformName, version: nil))"
+    }
+    return Self(
       kind: .conditional(condition),
-      comments: [message ?? "Obsolete as of \(_description(ofPlatformName: platformName, version: version))"],
+      comments: [message],
       sourceLocation: sourceLocation
     )
   }

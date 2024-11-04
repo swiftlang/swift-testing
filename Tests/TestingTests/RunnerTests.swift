@@ -638,6 +638,14 @@ final class RunnerTests: XCTestCase {
     func futureAvailable() {}
 
     @Test(.hidden)
+    @available(macOS, unavailable)
+    @available(iOS, unavailable)
+    @available(watchOS, unavailable)
+    @available(tvOS, unavailable)
+    @available(visionOS, unavailable)
+    func perPlatformUnavailable() {}
+
+    @Test(.hidden)
     @available(macOS, introduced: 999.0)
     @available(iOS, introduced: 999.0)
     @available(watchOS, introduced: 999.0)
@@ -674,7 +682,7 @@ final class RunnerTests: XCTestCase {
     let testSkipped = expectation(description: "Test skipped")
 #if SWT_TARGET_OS_APPLE
     testStarted.expectedFulfillmentCount = 4
-    testSkipped.expectedFulfillmentCount = 7
+    testSkipped.expectedFulfillmentCount = 8
 #else
     testStarted.expectedFulfillmentCount = 2
     testSkipped.expectedFulfillmentCount = 2
@@ -719,6 +727,14 @@ final class RunnerTests: XCTestCase {
     func unavailable() {}
 
 #if SWT_TARGET_OS_APPLE
+    @Test(.hidden)
+    @available(macOS, unavailable, message: "Expected Message")
+    @available(iOS, unavailable, message: "Expected Message")
+    @available(watchOS, unavailable, message: "Expected Message")
+    @available(tvOS, unavailable, message: "Expected Message")
+    @available(visionOS, unavailable, message: "Expected Message")
+    func perPlatformUnavailable() {}
+
     @Test(.hidden)
     @available(macOS, introduced: 999.0, message: "Expected Message")
     @available(iOS, introduced: 999.0, message: "Expected Message")
