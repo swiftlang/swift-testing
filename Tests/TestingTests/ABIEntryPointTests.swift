@@ -53,11 +53,13 @@ struct ABIEntryPointTests {
     recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void = { _ in }
   ) async throws -> CInt {
     // Get the ABI entry point by dynamically looking it up at runtime.
-    let copyABIEntryPoint_v0 = try #require(
-      symbol(named: "swt_copyABIEntryPoint_v0").map {
-        unsafeBitCast($0, to: (@convention(c) () -> UnsafeMutableRawPointer).self)
-      }
-    )
+    let copyABIEntryPoint_v0 = try withTestingLibraryImageAddress { testingLibrary in
+      try #require(
+        symbol(in: testingLibrary, named: "swt_copyABIEntryPoint_v0").map {
+          unsafeBitCast($0, to: (@convention(c) () -> UnsafeMutableRawPointer).self)
+        }
+      )
+    }
     let abiEntryPoint = copyABIEntryPoint_v0().assumingMemoryBound(to: ABIEntryPoint_v0.self)
     defer {
       abiEntryPoint.deinitialize(count: 1)
@@ -133,11 +135,13 @@ struct ABIEntryPointTests {
     // NOTE: The standard Linux linker does not allow exporting symbols from
     // executables, so dlsym() does not let us find this function on that
     // platform when built as an executable rather than a dynamic library.
-    let abiv0_getEntryPoint = try #require(
-      symbol(named: "swt_abiv0_getEntryPoint").map {
-        unsafeBitCast($0, to: (@convention(c) () -> UnsafeRawPointer).self)
-      }
-    )
+    let abiv0_getEntryPoint = try withTestingLibraryImageAddress { testingLibrary in
+      try #require(
+        symbol(in: testingLibrary, named: "swt_abiv0_getEntryPoint").map {
+          unsafeBitCast($0, to: (@convention(c) () -> UnsafeRawPointer).self)
+        }
+      )
+    }
 #endif
     let abiEntryPoint = unsafeBitCast(abiv0_getEntryPoint(), to: ABIv0.EntryPoint.self)
 
@@ -163,4 +167,36 @@ struct ABIEntryPointTests {
   }
 #endif
 }
+
+#if !SWT_NO_DYNAMIC_LINKING
+private func withTestingLibraryImageAddress<R>(_ body: (ImageAddress?) throws -> R) throws -> R {
+  let addressInTestingLibrary = unsafeBitCast(ABIv0.entryPoint, to: UnsafeRawPointer.self)
+
+  var testingLibraryAddress: ImageAddress?
+#if SWT_TARGET_OS_APPLE
+  var info = Dl_info()
+  try #require(0 != dladdr(addressInTestingLibrary, &info))
+
+  testingLibraryAddress = dlopen(info.dli_fname, RTLD_NOLOAD)
+  try #require(testingLibraryAddress != nil)
+  defer {
+    dlclose(testingLibraryAddress)
+  }
+#elseif os(Linux) || os(FreeBSD) || os(Android)
+  // When using glibc, dladdr() is only available if __USE_GNU is specified.
+#elseif os(Windows)
+  let flags = DWORD(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS)
+  try addressInTestingLibrary.withMemoryRebound(to: wchar_t.self, capacity: MemoryLayout<UnsafeRawPointer>.stride / MemoryLayout<wchar_t>.stride) { addressInTestingLibrary in
+    try #require(GetModuleHandleExW(flags, addressInTestingLibrary, &testingLibraryAddress))
+  }
+  defer {
+    FreeLibrary(testingLibraryAddress)
+  }
+#else
+#warning("Platform-specific implementation missing: cannot find the testing library image the test suite is linked against")
+#endif
+
+  return try body(testingLibraryAddress)
+}
+#endif
 #endif
