@@ -47,6 +47,19 @@ struct ConfirmationTests {
     }
   }
 
+  @Test func confirmationFailureCanBeDescribed() async {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      if case let .issueRecorded(issue) = event.kind {
+        #expect(String(describing: issue) != "")
+      }
+    }
+
+    await Test {
+      await confirmation(expectedCount: 1...) { _ in }
+    }.run(configuration: configuration)
+  }
+
 #if !SWT_NO_EXIT_TESTS
   @Test("Confirmation requires positive count")
   func positiveCount() async {

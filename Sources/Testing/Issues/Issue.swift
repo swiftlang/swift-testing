@@ -175,11 +175,9 @@ extension Issue: CustomStringConvertible, CustomDebugStringConvertible {
 /// In the future, when our minimum deployment target supports casting a value
 /// to a constrained existential type ([SE-0353](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0353-constrained-existential-types.md#effect-on-abi-stability)),
 /// we can remove this protocol and cast to `RangeExpression<Int>` instead.
-private protocol _RangeExpressionOverIntValues: RangeExpression where Bound == Int {}
+private protocol _RangeExpressionOverIntValues: RangeExpression & Sequence where Bound == Int, Element == Int {}
 extension ClosedRange<Int>: _RangeExpressionOverIntValues {}
 extension PartialRangeFrom<Int>: _RangeExpressionOverIntValues {}
-extension PartialRangeThrough<Int>: _RangeExpressionOverIntValues {}
-extension PartialRangeUpTo<Int>: _RangeExpressionOverIntValues {}
 extension Range<Int>: _RangeExpressionOverIntValues {}
 
 extension Issue.Kind: CustomStringConvertible {
@@ -200,9 +198,15 @@ extension Issue.Kind: CustomStringConvertible {
       }
     case let .confirmationMiscounted(actual: actual, expected: expected):
       if let expected = expected as? any _RangeExpressionOverIntValues {
-        let expected = expected.relative(to: [])
-        if expected.upperBound > expected.lowerBound && expected.lowerBound == expected.upperBound - 1 {
-          return "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(expected.lowerBound.counting("time"))"
+        let lowerBound = expected.first { _ in true }
+        if let lowerBound {
+          // Not actually an upper bound, just "any value greater than the lower
+          // bound." That's sufficient for us to determine if the range contains
+          // a single value.
+          let upperBound = expected.first { $0 > lowerBound }
+          if let upperBound, upperBound > lowerBound && lowerBound == upperBound - 1 {
+            return "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(lowerBound.counting("time"))"
+          }
         }
       }
       return "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(String(describingForTest: expected)) time(s)"
