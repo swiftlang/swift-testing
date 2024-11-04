@@ -80,10 +80,14 @@ extension WithAttributesSyntax {
             if let lastPlatformName, whenKeyword == .introduced {
               return Availability(attribute: attribute, platformName: lastPlatformName, version: nil, message: message)
             }
-          } else if case let .keyword(keyword) = token.tokenKind, keyword == whenKeyword, asteriskEncountered {
-            // Match the "always this availability" construct, i.e.
-            // `@available(*, deprecated)` and `@available(*, unavailable)`.
-            return Availability(attribute: attribute, platformName: lastPlatformName, version: nil, message: message)
+          } else if case let .keyword(keyword) = token.tokenKind, keyword == whenKeyword {
+            if asteriskEncountered {
+              // Match the "always this availability" construct, i.e.
+              // `@available(*, deprecated)` and `@available(*, unavailable)`.
+              return Availability(attribute: attribute, platformName: lastPlatformName, version: nil, message: message)
+            } else if keyword == .unavailable {
+              return Availability(attribute: attribute, platformName: lastPlatformName, version: nil, message: message)
+            }
           }
         case let .availabilityLabeledArgument(argument):
           if argument.label.tokenKind == .keyword(whenKeyword), case let .version(version) = argument.value {

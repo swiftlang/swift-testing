@@ -252,7 +252,9 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
 
     // Generate a thunk function that invokes the actual function.
     var thunkBody: CodeBlockItemListSyntax
-    if functionDecl.availability(when: .unavailable).first != nil {
+    if functionDecl.availability(when: .unavailable).first(where: { $0.platformVersion == nil }) != nil {
+      // The function is unconditionally disabled, so don't bother emitting a
+      // thunk body that calls it.
       thunkBody = ""
     } else if let typeName {
       if functionDecl.isStaticOrClass {

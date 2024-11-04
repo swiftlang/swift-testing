@@ -307,6 +307,11 @@ struct TestDeclarationMacroTests {
           #".__available("Swift", obsoleted: (2, 0, nil), "#,
           #"#if swift(>=1.0) && swift(<2.0)"#,
         ],
+      #"@available(moofOS, unavailable, message: "Moof!") @Test func f() {}"#:
+        [
+          #"#if os(moofOS)"#,
+          #".__available("moofOS", obsoleted: nil, message: "Moof!", "#,
+        ]
     ]
   )
   func availabilityAttributeCapture(input: String, expectedOutputs: [String]) throws {

@@ -114,8 +114,25 @@ private func _createAvailabilityTraitExpr(
     }
     """
 
-  case (.unavailable, _):
-    return ".__unavailable(message: \(message), sourceLocation: \(sourceLocationExpr))"
+  case (.unavailable, true):
+    // @available(swift, unavailable) is unsupported. The compiler emits a
+    // warning but doesn't prevent calling the function. Emit a no-op.
+    return ".enabled(if: true)"
+
+  case (.unavailable, false):
+    if let platformName = availability.platformName {
+      return """
+      .__available(\(literal: platformName.textWithoutBackticks), obsoleted: nil, message: \(message), sourceLocation: \(sourceLocationExpr)) {
+        #if os(\(platformName.trimmed))
+        return false
+        #else
+        return true
+        #endif
+      }
+      """
+    } else {
+      return ".__unavailable(message: \(message), sourceLocation: \(sourceLocationExpr))"
+    }
 
   default:
     fatalError("Unsupported keyword \(whenKeyword) passed to \(#function). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
@@ -203,14 +220,14 @@ func createSyntaxNode(
 
   // As above, but for unavailability (`#unavailable(...)`.)
   do {
-    let unavailableExprs: [ExprSyntax] = decl.availability(when: .obsoleted).lazy
+    let obsoletedExprs: [ExprSyntax] = decl.availability(when: .obsoleted).lazy
       .filter { !$0.isSwift }
       .compactMap(\.platformVersion)
       .map { "#unavailable(\($0))" }
-    if !unavailableExprs.isEmpty {
+    if !obsoletedExprs.isEmpty {
       let conditionList = ConditionElementListSyntax {
-        for unavailableExpr in unavailableExprs {
-          unavailableExpr
+        for obsoletedExpr in obsoletedExprs {
+          obsoletedExpr
         }
       }
       result = """
@@ -219,6 +236,23 @@ func createSyntaxNode(
       }
       \(result)
       """
+    }
+
+    let unavailableExprs: [ExprSyntax] = decl.availability(when: .unavailable).lazy
+      .filter { !$0.isSwift }
+      .filter { $0.version == nil }
+      .compactMap(\.platformName)
+      .map { "os(\($0.trimmed))" }
+    if !unavailableExprs.isEmpty {
+      for unavailableExpr in unavailableExprs {
+        result = """
+        #if \(unavailableExpr)
+        \(exitStatement)
+        #else
+        \(result)
+        #endif
+        """
+      }
     }
   }
 
