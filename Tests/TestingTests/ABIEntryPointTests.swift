@@ -173,7 +173,7 @@ private func withTestingLibraryImageAddress<R>(_ body: (ImageAddress?) throws ->
   let addressInTestingLibrary = unsafeBitCast(ABIv0.entryPoint, to: UnsafeRawPointer.self)
 
   var testingLibraryAddress: ImageAddress?
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android)
+#if SWT_TARGET_OS_APPLE
   var info = Dl_info()
   try #require(0 != dladdr(addressInTestingLibrary, &info))
 
@@ -182,6 +182,8 @@ private func withTestingLibraryImageAddress<R>(_ body: (ImageAddress?) throws ->
   defer {
     dlclose(testingLibraryAddress)
   }
+#elseif os(Linux) || os(FreeBSD) || os(Android)
+  // When using glibc, dladdr() is only available if __USE_GNU is specified.
 #elseif os(Windows)
   let flags = DWORD(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS)
   try addressInTestingLibrary.withMemoryRebound(to: wchar_t.self, capacity: MemoryLayout<UnsafeRawPointer>.stride / MemoryLayout<wchar_t>.stride) { addressInTestingLibrary in
