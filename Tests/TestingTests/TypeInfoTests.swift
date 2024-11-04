@@ -34,7 +34,7 @@ struct TypeInfoTests {
       (() -> String).self,
       TypeInfo(fullyQualifiedName: "() -> Swift.String", unqualifiedName: "() -> String", mangledName: "")
     ),
-  ] as [(Any.Type, TypeInfo)])
+  ])
   func initWithType(type: Any.Type, expectedTypeInfo: TypeInfo) {
     let typeInfo = TypeInfo(describing: type)
     #expect(typeInfo == expectedTypeInfo)

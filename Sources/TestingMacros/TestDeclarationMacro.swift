@@ -423,9 +423,8 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       // case the availability checks fail below.
       let unavailableTestName = context.makeUniqueName(thunking: functionDecl)
 
-      // TODO: don't assume otherArguments is only parameterized function arguments
       var attributeInfo = attributeInfo
-      attributeInfo.otherArguments = []
+      attributeInfo.testFunctionArguments = nil
       result.append(
         """
         @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
