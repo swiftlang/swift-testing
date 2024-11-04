@@ -439,7 +439,7 @@ private import _TestingInternals
 }
 
 #if false // intentionally fails to compile
-@Test(arguments: 100 ..< 200)
+@Test(.hidden, arguments: 100 ..< 200)
 func sellIceCreamCones(count: Int) async throws {
   try await #require(exitsWith: .failure) {
     precondition(count < 10, "Too many ice cream cones")

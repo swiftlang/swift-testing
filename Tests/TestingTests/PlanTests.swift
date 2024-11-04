@@ -456,20 +456,6 @@ private struct DummyRecursiveTrait: TestTrait, SuiteTrait {
   }
 }
 
-struct IndependentlyRunnableTests {
-  struct A {
-    @Suite(.hidden) struct B {
-      @Test(.hidden) func c() {}
-      struct D {
-        @Test(.hidden) func e() {}
-      }
-    }
-    @Suite(.hidden) struct F {
-      @Test(.hidden) func g() {}
-    }
-  }
-}
-
 @Suite(.hidden)
 struct RelativeTraitOrderingTests {
   @Suite(.hidden, BasicRecursiveTrait("A"))
