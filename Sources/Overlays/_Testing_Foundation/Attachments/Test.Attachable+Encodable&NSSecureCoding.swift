@@ -16,10 +16,10 @@ public import Foundation
 extension Test.Attachable where Self: Encodable & NSSecureCoding {
   @_documentation(visibility: private)
   public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    func open(_ value: some Encodable & Test.Attachable) throws -> R {
+    func open(_ value: some Encodable & Test.Attachable, for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
       return try value.withUnsafeBufferPointer(for: attachment, body)
     }
-    return try open(self)
+    return try open(self, for: attachment, body)
   }
 }
 #endif
