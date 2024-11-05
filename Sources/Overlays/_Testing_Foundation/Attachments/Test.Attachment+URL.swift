@@ -32,8 +32,6 @@ extension URL {
   }
 }
 
-// MARK: - Attaching files
-
 #if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
 @available(_uttypesAPI, *)
 extension UTType {
