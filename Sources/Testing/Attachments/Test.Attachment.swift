@@ -68,7 +68,11 @@ extension Test {
       named preferredName: String? = nil,
       sourceLocation: SourceLocation = #_sourceLocation
     ) {
-      self.attachableValue = attachableValue
+      if _shouldMoveValueToHeap(attachableValue) {
+        self.attachableValue = _HeapAllocatedAttachableProxy(rawValue: attachableValue)
+      } else {
+        self.attachableValue = attachableValue
+      }
       self.preferredName = preferredName ?? Self.defaultPreferredName
       self.sourceLocation = sourceLocation
     }
@@ -95,10 +99,71 @@ extension Test.Attachment {
   }
 }
 
+// MARK: - Heap allocation optimizations
+
+/// A type that stands in for an attachable value of value type (as opposed to
+/// reference type.)
+///
+/// We don't know the in-memory layout of an attachable value; it may be very
+/// expensive to make the typical copies Swift makes over the course of a test
+/// run if a value is large or contains lots of references to objects. So we
+/// eagerly move attachments of value type to the heap by ensconcing them in
+/// instances of this type.
+private final class _HeapAllocatedAttachableProxy<RawValue>: RawRepresentable, Test.Attachable, Sendable where RawValue: Test.Attachable & Sendable {
+  let rawValue: RawValue
+
+  init(rawValue: RawValue) {
+    self.rawValue = rawValue
+  }
+
+  var estimatedAttachmentByteCount: Int? {
+    rawValue.estimatedAttachmentByteCount
+  }
+
+  func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try rawValue.withUnsafeBufferPointer(for: attachment, body)
+  }
+}
+
+/// Whether or not an attachable value should be moved to the heap when adding
+/// it to an attachment.
+///
+/// - Parameters:
+///   - attachableValue: The value that is being attached.
+///
+/// - Returns: Whether or not `attachableValue` should be boxed in an instance
+///   of `_HeapAllocatedAttachableProxy`.
+private func _shouldMoveValueToHeap<T>(_ attachableValue: borrowing T) -> Bool where T: Test.Attachable {
+  // Do not (redundantly) move existing heap-allocated objects to the heap.
+  if T.self is AnyClass {
+    return false
+  }
+
+  // Do not move small POD value types to the heap.
+  //
+  // _isPOD() is defined in the standard library and is approximately equivalent
+  // to testing for conformance to BitwiseCopyable, but it's a marker protocol
+  // which means we can't test for conformance in a generic context.
+  //
+  // The size limit used is the size of an existential box's inline storage (see
+  // NumWords_ValueBuffer in the Swift repository.) Such values can be directly
+  // stored inside an `Attachment` and are cheap to copy.
+  if _isPOD(T.self) && MemoryLayout<T>.stride <= (MemoryLayout<Int>.stride * 3) {
+    return false
+  }
+
+  return true
+}
+
 // MARK: - Non-sendable and move-only attachments
 
-/// A type that stands in for an attachable type that is not also sendable.
-private struct _AttachableProxy: Test.Attachable, Sendable {
+/// A type that stands in for an attachable value that is not also sendable.
+///
+/// This type is a value type so that we can mutate its properties while
+/// transferring information from the original attachable value. Consequently,
+/// instances will be boxed in an instance of `_HeapAllocatedAttachableProxy`
+/// when they are used to initialize instances of ``Test/Attachment``.
+private struct _EagerlyCopiedAttachableProxy: Test.Attachable, Sendable {
   /// The result of `withUnsafeBufferPointer(for:_:)` from the original
   /// attachable value.
   var encodedValue = [UInt8]()
@@ -135,7 +200,7 @@ extension Test.Attachment {
     named preferredName: String? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) {
-    var proxyAttachable = _AttachableProxy()
+    var proxyAttachable = _EagerlyCopiedAttachableProxy()
     proxyAttachable.estimatedAttachmentByteCount = attachableValue.estimatedAttachmentByteCount
 
     // BUG: the borrow checker thinks that withErrorRecording() is consuming
