@@ -16,7 +16,7 @@ public import Foundation
 // NSSecureCoding-conformant classes by default. The implementation uses
 // NSKeyedArchiver for encoding.
 @_spi(Experimental)
-extension NSSecureCoding where Self: Test.Attachable {
+extension Test.Attachable where Self: NSSecureCoding {
   /// Encode this object using [`NSKeyedArchiver`](https://developer.apple.com/documentation/foundation/nskeyedarchiver)
   /// into a buffer, then call a function and pass that buffer to it.
   ///
@@ -41,7 +41,11 @@ extension NSSecureCoding where Self: Test.Attachable {
   /// | `".xml"` | XML property list | [`NSKeyedArchiver`](https://developer.apple.com/documentation/foundation/nskeyedarchiver) |
   /// | None, `".plist"` | Binary property list | [`NSKeyedArchiver`](https://developer.apple.com/documentation/foundation/nskeyedarchiver) |
   ///
-  /// OpenStep-style property lists are not supported.
+  /// OpenStep-style property lists are not supported. If a value conforms to
+  /// _both_ [`Encodable`](https://developer.apple.com/documentation/swift/encodable)
+  /// _and_ [`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding),
+  /// the default implementation of this function uses the value's conformance
+  /// to `Encodable`.
   ///
   /// - Note: On Apple platforms, if the attachment's preferred name includes
   ///   some other path extension, that path extension must represent a type

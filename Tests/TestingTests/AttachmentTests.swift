@@ -541,6 +541,23 @@ final class MySecureCodingAttachable: NSObject, NSSecureCoding, Test.Attachable,
   }
 }
 
+final class MyCodableAndSecureCodingAttachable: NSObject, Codable, NSSecureCoding, Test.Attachable, Sendable {
+  let string: String
+
+  static var supportsSecureCoding: Bool {
+    true
+  }
+
+  func encode(with coder: NSCoder) {
+    coder.encode(string, forKey: "string")
+  }
+
+  required init?(coder: NSCoder) {
+    string = (coder.decodeObject(of: NSString.self, forKey: "string") as? String) ?? ""
+  }
+}
+
+
 struct MyContiguousCollectionAttachable: Collection, ContiguousBytes, Test.Attachable, Sendable {
   private var _utf8: String.UTF8View
 

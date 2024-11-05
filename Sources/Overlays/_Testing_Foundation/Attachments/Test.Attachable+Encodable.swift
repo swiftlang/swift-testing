@@ -16,7 +16,7 @@ private import Foundation
 // encoding to JSON. This lets developers provide trivial conformance to the
 // protocol for types that already support Codable.
 @_spi(Experimental)
-extension Encodable where Self: Test.Attachable {
+extension Test.Attachable where Self: Encodable {
   /// Encode this value into a buffer using either [`PropertyListEncoder`](https://developer.apple.com/documentation/foundation/propertylistencoder)
   /// or [`JSONEncoder`](https://developer.apple.com/documentation/foundation/jsonencoder),
   /// then call a function and pass that buffer to it.
@@ -43,7 +43,11 @@ extension Encodable where Self: Test.Attachable {
   /// | `".plist"` | Binary property list | [`PropertyListEncoder`](https://developer.apple.com/documentation/foundation/propertylistencoder) |
   /// | None, `".json"` | JSON | [`JSONEncoder`](https://developer.apple.com/documentation/foundation/jsonencoder) |
   ///
-  /// OpenStep-style property lists are not supported.
+  /// OpenStep-style property lists are not supported. If a value conforms to
+  /// _both_ [`Encodable`](https://developer.apple.com/documentation/swift/encodable)
+  /// _and_ [`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding),
+  /// the default implementation of this function uses the value's conformance
+  /// to `Encodable`.
   ///
   /// - Note: On Apple platforms, if the attachment's preferred name includes
   ///   some other path extension, that path extension must represent a type

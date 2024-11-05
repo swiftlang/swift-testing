@@ -13,7 +13,7 @@
 public import Foundation
 
 @_spi(Experimental)
-extension ContiguousBytes where Self: Test.Attachable {
+extension Test.Attachable where Self: ContiguousBytes {
   public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }
