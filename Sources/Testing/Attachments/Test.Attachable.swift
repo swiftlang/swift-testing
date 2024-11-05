@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 @_spi(Experimental)
 extension Test {
   /// A protocol describing a type that can be attached to a test report or
@@ -24,6 +26,17 @@ extension Test {
   /// A type should conform to this protocol if it can be represented as a
   /// sequence of bytes that would be diagnostically useful if a test fails.
   public protocol Attachable: ~Copyable {
+    /// A filename to use when writing this value to a test report or to a file
+    /// on disk.
+    ///
+    /// The value of this property is used as a hint to the testing library. The
+    /// testing library may substitute a different filename as needed. If the
+    /// value of this property is `nil`, the testing library will attempt to
+    /// generate its own value.
+    ///
+    /// The default implementation of this property returns `nil`.
+    var preferredNameOfAttachment: String? { get }
+
     /// An estimate of the number of bytes of memory needed to store this value
     /// as an attachment.
     ///
@@ -68,6 +81,10 @@ extension Test {
 // MARK: - Default implementations
 
 extension Test.Attachable where Self: ~Copyable {
+  public var preferredNameOfAttachment: String? {
+    nil
+  }
+
   public var estimatedAttachmentByteCount: Int? {
     nil
   }

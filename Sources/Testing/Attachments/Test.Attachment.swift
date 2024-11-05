@@ -69,7 +69,7 @@ extension Test {
       sourceLocation: SourceLocation = #_sourceLocation
     ) {
       self.attachableValue = attachableValue
-      self.preferredName = preferredName ?? Self.defaultPreferredName
+      self.preferredName = preferredName ?? attachableValue.preferredNameOfAttachment ?? Self.defaultPreferredName
       self.sourceLocation = sourceLocation
     }
 
@@ -79,7 +79,9 @@ extension Test {
     /// The value of this property is used as a hint to the testing library. The
     /// testing library may substitute a different filename as needed. If the
     /// value of this property has not been explicitly set, the testing library
-    /// will attempt to generate its own value.
+    /// will check the value of ``attachableValue``'s
+    /// ``Test/Attachable/preferredNameOfAttachment`` property. If the value of
+    /// that property is `nil`, the testing library will generate its own value.
     public var preferredName: String
   }
 }
@@ -103,6 +105,7 @@ private struct _AttachableProxy: Test.Attachable, Sendable {
   /// attachable value.
   var encodedValue = [UInt8]()
 
+  var preferredNameOfAttachment: String?
   var estimatedAttachmentByteCount: Int?
 
   func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
@@ -136,6 +139,7 @@ extension Test.Attachment {
     sourceLocation: SourceLocation = #_sourceLocation
   ) {
     var proxyAttachable = _AttachableProxy()
+    proxyAttachable.preferredNameOfAttachment = attachableValue.preferredNameOfAttachment
     proxyAttachable.estimatedAttachmentByteCount = attachableValue.estimatedAttachmentByteCount
 
     // BUG: the borrow checker thinks that withErrorRecording() is consuming
