@@ -463,11 +463,6 @@ extension AttachmentTests {
       let value = try #require("abc123".data(using: .utf8))
       try test(value)
     }
-
-    @Test func contiguousBytesCollection() throws {
-      let value = MyContiguousCollectionAttachable(string: "abc123")
-      try test(value)
-    }
 #endif
   }
 }
@@ -554,47 +549,6 @@ final class MyCodableAndSecureCodingAttachable: NSObject, Codable, NSSecureCodin
 
   required init?(coder: NSCoder) {
     string = (coder.decodeObject(of: NSString.self, forKey: "string") as? String) ?? ""
-  }
-}
-
-
-struct MyContiguousCollectionAttachable: Collection, ContiguousBytes, Test.Attachable, Sendable {
-  private var _utf8: String.UTF8View
-
-  var string: String {
-    get {
-      String(_utf8)
-    }
-    set {
-      _utf8 = newValue.utf8
-    }
-  }
-
-  init(string: String) {
-    _utf8 = string.utf8
-  }
-
-  var startIndex: String.UTF8View.Index {
-    _utf8.startIndex
-  }
-
-  var endIndex: String.UTF8View.Index {
-    _utf8.endIndex
-  }
-
-  subscript(position: String.UTF8View.Index) -> String.UTF8View.Element {
-    _utf8[position]
-  }
-
-  func index(after i: String.UTF8View.Index) -> String.UTF8View.Index {
-    _utf8.index(after: i)
-  }
-
-  func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
-    let result = try _utf8.withContiguousStorageIfAvailable { buffer in
-      try body(.init(buffer))
-    }
-    return try result ?? Array(_utf8).withUnsafeBytes(body)
   }
 }
 #endif
