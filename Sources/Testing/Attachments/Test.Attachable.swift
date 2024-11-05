@@ -115,9 +115,6 @@ extension Test.Attachable where Self: Collection, Element == UInt8 {
   // collection can provide contiguous storage (_HasContiguousBytes is not API.)
   // If withContiguousBytesIfAvailable(_:) fails, we don't want to make a
   // (potentially expensive!) copy of the collection.
-  //
-  // The Foundation cross-import overlay provides a default implementation for
-  // collection types that conform to Foundation's ContiguousBytes protocol.
 }
 
 extension Test.Attachable where Self: StringProtocol {
