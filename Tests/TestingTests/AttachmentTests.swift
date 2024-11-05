@@ -541,7 +541,7 @@ final class MySecureCodingAttachable: NSObject, NSSecureCoding, Test.Attachable,
   }
 }
 
-struct MyContiguousCollectionAttachable: Collection, ContiguousBytes, Test.Attachable {
+struct MyContiguousCollectionAttachable: Collection, ContiguousBytes, Test.Attachable, Sendable {
   private var _utf8: String.UTF8View
 
   var string: String {
