@@ -123,6 +123,15 @@ struct SendableTests: Sendable {
 
   @Test(.hidden, arguments: FixtureData.stringReturningClosureArray)
   func parameterizedAcceptingFunction(f: @Sendable () -> String) {}
+
+  @Test(.hidden) func throwKeywordInExpectation() throws {
+    #expect(UInt() == UInt(try #require(Int("0"))))
+  }
+
+  @Test(.hidden) func asyncKeywordInExpectation() async {
+    func f() async -> Int { 0 }
+    #expect(UInt() == UInt(await f()))
+  }
 }
 
 @Suite("Named Sendable test type", .hidden)
