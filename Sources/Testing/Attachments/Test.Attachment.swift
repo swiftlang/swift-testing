@@ -20,30 +20,13 @@ extension Test {
   /// value of some type that conforms to ``Test/Attachable``. Initialize an
   /// instance of ``Test/Attachment`` with that value and, optionally, a
   /// preferred filename to use when writing to disk.
-  public struct Attachment: Sendable {
-#if !SWT_NO_LAZY_ATTACHMENTS
-    /// Storage for ``attachableValue``.
-    private var _attachableValue: any Attachable & Sendable /* & Copyable rdar://137614425 */
-
+  ///
+  /// Although it is not a constraint of `AttachableValue`, instances of this
+  /// type can only be created with attachable values that conform to
+  /// ``Test/Attachable``.
+  public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: ~Copyable {
     /// The value of this attachment.
-    ///
-    /// The type of this property's value may not match the type of the value
-    /// originally used to create this attachment.
-    public var attachableValue: any Attachable & Sendable /* & Copyable rdar://137614425 */ {
-      _attachableValue
-    }
-#else
-    /// Storage for ``attachableValue``.
-    private var _attachableValue: _AttachableProxy
-
-    /// The value of this attachment.
-    ///
-    /// The type of this property's value may not match the type of the value
-    /// originally used to create this attachment.
-    public var attachableValue: some Test.Attachable & Sendable & Copyable {
-      _attachableValue
-    }
-#endif
+    public var attachableValue: AttachableValue
 
     /// The path to which the this attachment was written, if any.
     ///
@@ -71,19 +54,16 @@ extension Test {
     /// value of this property has not been explicitly set, the testing library
     /// will attempt to generate its own value.
     public var preferredName: String
-
-    /// The source location where the attachment was initialized.
-    ///
-    /// The value of this property is used when recording issues associated with
-    /// the attachment.
-    public var sourceLocation: SourceLocation
   }
 }
 
-// MARK: -
+extension Test.Attachment: Copyable where AttachableValue: Copyable {}
+extension Test.Attachment: Sendable where AttachableValue: Sendable {}
 
-extension Test.Attachment {
+// MARK: - Initializing an attachment
+
 #if !SWT_NO_LAZY_ATTACHMENTS
+extension Test.Attachment where AttachableValue: Test.Attachable & ~Copyable {
   /// Initialize an instance of this type that encloses the given attachable
   /// value.
   ///
@@ -93,98 +73,80 @@ extension Test.Attachment {
   ///   - preferredName: The preferred name of the attachment when writing it
   ///     to a test report or to disk. If `nil`, the testing library attempts
   ///     to derive a reasonable filename for the attached value.
-  ///   - sourceLocation: The source location of the call to this initializer.
-  ///     This value is used when recording issues associated with the
-  ///     attachment.
-  public init(
-    _ attachableValue: some Test.Attachable & Sendable & Copyable,
-    named preferredName: String? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation
-  ) {
-    let preferredName = preferredName ?? Self.defaultPreferredName
-    self.init(_attachableValue: attachableValue, preferredName: preferredName, sourceLocation: sourceLocation)
+  public init(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil) {
+    self.attachableValue = attachableValue
+    self.preferredName = preferredName ?? Self.defaultPreferredName
   }
+}
+
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+extension Test.Attachment where AttachableValue == any Test.Attachable & Sendable & Copyable {
+  /// Create a type-erased attachment from an instance of ``Test/Attachment``.
+  ///
+  /// - Parameters:
+  ///   - attachment: The attachment to type-erase.
+  fileprivate init(_ attachment: Test.Attachment<some Test.Attachable & Sendable & Copyable>) {
+    self.init(
+      attachableValue: attachment.attachableValue,
+      fileSystemPath: attachment.fileSystemPath,
+      preferredName: attachment.preferredName
+    )
+  }
+}
 #endif
 
+// MARK: - Attaching an attachment to a test (etc.)
+
+extension Test.Attachment where AttachableValue: Test.Attachable & Sendable & Copyable {
   /// Attach this instance to the current test.
   ///
+  /// - Parameters:
+  ///   - sourceLocation: The source location of the call to this function.
+  ///
   /// An attachment can only be attached once.
-  public consuming func attach() {
-    Event.post(.valueAttached(self))
+  @_documentation(visibility: private)
+  public consuming func attach(sourceLocation: SourceLocation = #_sourceLocation) {
+    let attachmentCopy = Test.Attachment<any Test.Attachable & Sendable & Copyable>(self)
+    Event.post(.valueAttached(attachmentCopy, sourceLocation: sourceLocation))
   }
 }
 
-// MARK: - Non-sendable and move-only attachments
-
-/// A type that stands in for an attachable type that is not also sendable.
-private struct _AttachableProxy: Test.Attachable, Sendable {
-  /// The result of `withUnsafeBufferPointer(for:_:)` from the original
-  /// attachable value.
-  var encodedValue = [UInt8]()
-
-  var estimatedAttachmentByteCount: Int?
-
-  func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try encodedValue.withUnsafeBufferPointer(for: attachment, body)
-  }
-}
-
-extension Test.Attachment {
-  /// Initialize an instance of this type that encloses the given attachable
-  /// value.
+extension Test.Attachment where AttachableValue: Test.Attachable & ~Copyable {
+  /// Attach this instance to the current test.
   ///
   /// - Parameters:
-  ///   - attachableValue: The value that will be attached to the output of
-  ///     the test run.
-  ///   - preferredName: The preferred name of the attachment when writing it
-  ///     to a test report or to disk. If `nil`, the testing library attempts
-  ///     to derive a reasonable filename for the attached value.
-  ///   - sourceLocation: The source location of the call to this initializer.
-  ///     This value is used when recording issues associated with the
-  ///     attachment.
+  ///   - sourceLocation: The source location of the call to this function.
   ///
-  /// When attaching a value of a type that does not conform to both `Sendable`
-  /// and `Copyable`, the testing library encodes it as data immediately. If the
-  /// value cannot be encoded and an error is thrown, that error is recorded as
-  /// an issue in the current test and the resulting instance of
-  /// ``Test/Attachment`` is empty.
-#if !SWT_NO_LAZY_ATTACHMENTS
-  @_disfavoredOverload
-#endif
-  public init(
-    _ attachableValue: borrowing some Test.Attachable & ~Copyable,
-    named preferredName: String? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation
-  ) {
-    let preferredName = preferredName ?? Self.defaultPreferredName
-    var proxyAttachable = _AttachableProxy()
-    proxyAttachable.estimatedAttachmentByteCount = attachableValue.estimatedAttachmentByteCount
-
-    // BUG: the borrow checker thinks that withErrorRecording() is consuming
-    // attachableValue, so get around it with an additional do/catch clause.
+  /// When attaching a value of a type that does not conform to both
+  /// [`Sendable`](https://developer.apple.com/documentation/swift/sendable) and
+  /// [`Copyable`](https://developer.apple.com/documentation/swift/copyable),
+  /// the testing library encodes it as data immediately. If the value cannot be
+  /// encoded and an error is thrown, that error is recorded as an issue in the
+  /// current test and the attachment is not written to the test report or to
+  /// disk.
+  ///
+  /// An attachment can only be attached once.
+  public consuming func attach(sourceLocation: SourceLocation = #_sourceLocation) {
     do {
-      let proxyAttachment = Self(_attachableValue: proxyAttachable, preferredName: preferredName, sourceLocation: sourceLocation)
-      proxyAttachable.encodedValue = try attachableValue.withUnsafeBufferPointer(for: proxyAttachment) { buffer in
-        [UInt8](buffer)
+      let attachmentCopy = try attachableValue.withUnsafeBufferPointer(for: self) { buffer in
+        Test.Attachment(attachableValue: Array(buffer), fileSystemPath: fileSystemPath, preferredName: preferredName)
       }
-      proxyAttachable.estimatedAttachmentByteCount = proxyAttachable.encodedValue.count
+#if !SWT_NO_LAZY_ATTACHMENTS
+      attachmentCopy.attach(sourceLocation: sourceLocation)
+#else
+      Event.post(.valueAttached(attachmentCopy, sourceLocation: sourceLocation))
+#endif
     } catch {
-      Issue.withErrorRecording(at: sourceLocation) {
-        // TODO: define new issue kind .valueAttachmentFailed(any Error)
-        // (but only use it if the caught error isn't ExpectationFailedError,
-        // SystemError, or APIMisuseError. We need a protocol for these things.)
-        throw error
-      }
+      let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
+      Issue(kind: .valueAttachmentFailed(error), comments: [], sourceContext: sourceContext).record()
     }
-
-    self.init(_attachableValue: proxyAttachable, preferredName: preferredName, sourceLocation: sourceLocation)
   }
 }
 
 #if !SWT_NO_FILE_IO
 // MARK: - Writing
 
-extension Test.Attachment {
+extension Test.Attachment where AttachableValue: Test.Attachable & ~Copyable {
   /// Write the attachment's contents to a file in the specified directory.
   ///
   /// - Parameters:
@@ -210,8 +172,8 @@ extension Test.Attachment {
   /// This function is provided as a convenience to allow tools authors to write
   /// attachments to persistent storage the same way that Swift Package Manager
   /// does. You are not required to use this function.
-  @_spi(ForToolsIntegrationOnly)
-  public func write(toFileInDirectoryAtPath directoryPath: String) throws -> String {
+  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+  public borrowing func write(toFileInDirectoryAtPath directoryPath: String) throws -> String {
     try write(
       toFileInDirectoryAtPath: directoryPath,
       appending: String(UInt64.random(in: 0 ..< .max), radix: 36)
@@ -238,7 +200,7 @@ extension Test.Attachment {
   ///
   /// If the argument `suffix` always produces the same string, the result of
   /// this function is undefined.
-  func write(toFileInDirectoryAtPath directoryPath: String, usingPreferredName: Bool = true, appending suffix: @autoclosure () -> String) throws -> String {
+  borrowing func write(toFileInDirectoryAtPath directoryPath: String, usingPreferredName: Bool = true, appending suffix: @autoclosure () -> String) throws -> String {
     let result: String
 
     let preferredName = usingPreferredName ? preferredName : Self.defaultPreferredName
@@ -278,11 +240,53 @@ extension Test.Attachment {
       }
     }
 
+    // There should be no code path that leads to this call where the attachable
+    // value is nil.
     try attachableValue.withUnsafeBufferPointer(for: self) { buffer in
       try file!.write(buffer)
     }
 
     return result
+  }
+}
+
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+extension Test.Attachment where AttachableValue == any Test.Attachable & Sendable & Copyable {
+  /// Write the attachment's contents to a file in the specified directory.
+  ///
+  /// - Parameters:
+  ///   - directoryPath: The directory that should contain the attachment when
+  ///     written.
+  ///
+  /// - Throws: Any error preventing writing the attachment.
+  ///
+  /// - Returns: The path to the file that was written.
+  ///
+  /// The attachment is written to a file _within_ `directoryPath`, whose name
+  /// is derived from the value of the ``Test/Attachment/preferredName``
+  /// property.
+  ///
+  /// If you pass `--experimental-attachments-path` to `swift test`, the testing
+  /// library automatically uses this function to persist attachments to the
+  /// directory you specify.
+  ///
+  /// This function does not get or set the value of the attachment's
+  /// ``fileSystemPath`` property. The caller is responsible for setting the
+  /// value of this property if needed.
+  ///
+  /// This function is provided as a convenience to allow tools authors to write
+  /// attachments to persistent storage the same way that Swift Package Manager
+  /// does. You are not required to use this function.
+  public borrowing func write(toFileInDirectoryAtPath directoryPath: String) throws -> String {
+    func open<T>(_ attachableValue: T) throws -> String where T: Test.Attachable & Copyable {
+      let temporaryAttachment = Test.Attachment<T>(
+        attachableValue: attachableValue,
+        fileSystemPath: fileSystemPath,
+        preferredName: preferredName
+      )
+      return try temporaryAttachment.write(toFileInDirectoryAtPath: directoryPath)
+    }
+    return try open(attachableValue)
   }
 }
 
@@ -296,33 +300,42 @@ extension Configuration {
   ///     function does nothing.
   ///   - context: The context associated with the event.
   ///
+  /// - Returns: Whether or not to continue handling the event.
+  ///
   /// This function is called automatically by ``handleEvent(_:in:)``. You do
   /// not need to call it elsewhere. It automatically persists the attachment
   /// associated with `event` and modifies `event` to include the path where the
   /// attachment was stored.
-  func handleValueAttachedEvent(_ event: inout Event, in eventContext: borrowing Event.Context) {
+  func handleValueAttachedEvent(_ event: inout Event, in eventContext: borrowing Event.Context) -> Bool {
     guard let attachmentsPath else {
       // If there is no path to which attachments should be written, there's
-      // nothing to do.
-      return
+      // nothing to do here. The event handler may still want to handle it.
+      return true
     }
 
-    guard case let .valueAttached(attachment) = event.kind else {
+    guard case let .valueAttached(attachment, sourceLocation) = event.kind else {
       preconditionFailure("Passed the wrong kind of event to \(#function) (expected valueAttached, got \(event.kind)). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
     }
     if attachment.fileSystemPath != nil {
       // Somebody already persisted this attachment. This isn't necessarily a
       // logic error in the testing library, but it probably means we shouldn't
-      // persist it again.
-      return
+      // persist it again. Suppress the event.
+      return false
     }
 
-    // Write the attachment. If an error occurs, record it as an issue in the
-    // current test.
-    Issue.withErrorRecording(at: attachment.sourceLocation, configuration: self) {
+    do {
+      // Write the attachment.
       var attachment = attachment
       attachment.fileSystemPath = try attachment.write(toFileInDirectoryAtPath: attachmentsPath)
-      event.kind = .valueAttached(attachment)
+
+      // Update the event before returning and continuing to handle it.
+      event.kind = .valueAttached(attachment, sourceLocation: sourceLocation)
+      return true
+    } catch {
+      // Record the error as an issue and suppress the event.
+      let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
+      Issue(kind: .valueAttachmentFailed(error), comments: [], sourceContext: sourceContext).record()
+      return false
     }
   }
 }

@@ -80,7 +80,7 @@ extension ABIv0 {
       case let .issueRecorded(recordedIssue):
         kind = .issueRecorded
         issue = EncodedIssue(encoding: recordedIssue, in: eventContext)
-      case let .valueAttached(attachment):
+      case let .valueAttached(attachment, _):
         kind = .valueAttached
         _attachment = EncodedAttachment(encoding: attachment, in: eventContext)
       case .testCaseEnded:

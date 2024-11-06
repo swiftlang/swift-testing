@@ -27,7 +27,10 @@ extension Configuration {
 #if !SWT_NO_FILE_IO
     if case .valueAttached = event.kind {
       var eventCopy = copy event
-      handleValueAttachedEvent(&eventCopy, in: context)
+      guard handleValueAttachedEvent(&eventCopy, in: contextCopy) else {
+        // The attachment could not be handled, so suppress this event.
+        return
+      }
       return eventHandler(eventCopy, contextCopy)
     }
 #endif

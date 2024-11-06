@@ -135,7 +135,7 @@ struct AttachmentTests {
       var configuration = Configuration()
       configuration.attachmentsPath = try temporaryDirectory()
       configuration.eventHandler = { event, _ in
-        guard case let .valueAttached(attachment) = event.kind else {
+        guard case let .valueAttached(attachment, _) = event.kind else {
           return
         }
         valueAttached()
@@ -165,7 +165,7 @@ struct AttachmentTests {
     await confirmation("Attachment detected") { valueAttached in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
-        guard case let .valueAttached(attachment) = event.kind else {
+        guard case let .valueAttached(attachment, _) = event.kind else {
           return
         }
 
@@ -184,7 +184,7 @@ struct AttachmentTests {
     await confirmation("Attachment detected") { valueAttached in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
-        guard case let .valueAttached(attachment) = event.kind else {
+        guard case let .valueAttached(attachment, _) = event.kind else {
           return
         }
 
@@ -200,14 +200,14 @@ struct AttachmentTests {
   }
 
   @Test func issueRecordedWhenAttachingNonSendableValueThatThrows() async {
-    await confirmation("Attachment detected") { valueAttached in
+    await confirmation("Attachment detected", expectedCount: 0) { valueAttached in
       await confirmation("Issue recorded") { issueRecorded in
         var configuration = Configuration()
         configuration.eventHandler = { event, _ in
           if case .valueAttached = event.kind {
             valueAttached()
           } else if case let .issueRecorded(issue) = event.kind,
-                    case let .errorCaught(error) = issue.kind,
+                    case let .valueAttachmentFailed(error) = issue.kind,
                     error is MyError {
             issueRecorded()
           }
@@ -226,7 +226,7 @@ struct AttachmentTests {
 extension AttachmentTests {
   @Suite("Built-in conformances")
   struct BuiltInConformances {
-    func test(_ value: borrowing some Test.Attachable & ~Copyable) throws {
+    func test(_ value: some Test.Attachable) throws {
       #expect(value.estimatedAttachmentByteCount == 6)
       let attachment = Test.Attachment(value)
       try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { buffer in
@@ -296,7 +296,7 @@ struct MyAttachable: Test.Attachable, ~Copyable {
   var string: String
   var errorToThrow: (any Error)?
 
-  func withUnsafeBufferPointer<R>(for attachment: borrowing Testing.Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     if let errorToThrow {
       throw errorToThrow
     }
@@ -314,7 +314,8 @@ extension MyAttachable: Sendable {}
 struct MySendableAttachable: Test.Attachable, Sendable {
   var string: String
 
-  func withUnsafeBufferPointer<R>(for attachment: borrowing Testing.Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    #expect(attachment.attachableValue.string == string)
     var string = string
     return try string.withUTF8 { buffer in
       try body(.init(buffer))
@@ -325,7 +326,7 @@ struct MySendableAttachable: Test.Attachable, Sendable {
 struct MySendableAttachableWithDefaultByteCount: Test.Attachable, Sendable {
   var string: String
 
-  func withUnsafeBufferPointer<R>(for attachment: borrowing Testing.Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var string = string
     return try string.withUTF8 { buffer in
       try body(.init(buffer))

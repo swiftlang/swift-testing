@@ -21,7 +21,7 @@ extension ABIv0 {
     /// The path where the attachment was written.
     var path: String?
 
-    init(encoding attachment: borrowing Test.Attachment, in eventContext: borrowing Event.Context) {
+    init<T>(encoding attachment: borrowing Test.Attachment<T>, in eventContext: borrowing Event.Context) {
       path = attachment.fileSystemPath
     }
   }
