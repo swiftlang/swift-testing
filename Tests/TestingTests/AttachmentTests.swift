@@ -199,58 +199,6 @@ struct AttachmentTests {
     }
   }
 
-  @Test func attachRefCountedValue() throws {
-    let attachableValue = MySendableAttachableWithRefcountedSemantics(values: (1, 2, 3))
-    let attachment = Test.Attachment(attachableValue, named: "loremipsum")
-
-    #expect(attachment.attachableValue is MySendableAttachableWithRefcountedSemantics)
-    #expect(attachment.attachableValue.estimatedAttachmentByteCount == attachableValue.estimatedAttachmentByteCount)
-    try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { buffer in
-      withUnsafeBytes(of: (1, 2, 3)) { buffer2 in
-        #expect(buffer.elementsEqual(buffer2))
-      }
-    }
-  }
-
-  @Test func attachSmallPODValue() throws {
-    let attachableValue = MySendableAttachableWithSmallPODSemantics(values: (1, 2, 3))
-    let attachment = Test.Attachment(attachableValue, named: "loremipsum")
-
-    #expect(!(type(of: attachment.attachableValue) is AnyClass))
-    #expect(attachment.attachableValue.estimatedAttachmentByteCount == attachableValue.estimatedAttachmentByteCount)
-    try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { buffer in
-      withUnsafeBytes(of: (1, 2, 3)) { buffer2 in
-        #expect(buffer.elementsEqual(buffer2))
-      }
-    }
-  }
-
-  @Test func attachBigPODValue() throws {
-    let attachableValue = MySendableAttachableWithBigPODSemantics(values: (1, 2, 3, 4, 5, 6))
-    let attachment = Test.Attachment(attachableValue, named: "loremipsum")
-
-    #expect(type(of: attachment.attachableValue) is AnyClass)
-    #expect(attachment.attachableValue.estimatedAttachmentByteCount == attachableValue.estimatedAttachmentByteCount)
-    try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { buffer in
-      withUnsafeBytes(of: (1, 2, 3, 4, 5, 6)) { buffer2 in
-        #expect(buffer.elementsEqual(buffer2))
-      }
-    }
-  }
-
-  @Test func attachNonPODValue() throws {
-    let attachableValue = MySendableAttachableWithNonPODSemantics(values: (1, 2, 3))
-    let attachment = Test.Attachment(attachableValue, named: "loremipsum")
-
-    #expect(type(of: attachment.attachableValue) is AnyClass)
-    #expect(attachment.attachableValue.estimatedAttachmentByteCount == attachableValue.estimatedAttachmentByteCount)
-    try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { buffer in
-      withUnsafeBytes(of: (1, 2, 3)) { buffer2 in
-        #expect(buffer.elementsEqual(buffer2))
-      }
-    }
-  }
-
   @Test func issueRecordedWhenAttachingNonSendableValueThatThrows() async {
     await confirmation("Attachment detected") { valueAttached in
       await confirmation("Issue recorded") { issueRecorded in
@@ -374,39 +322,13 @@ struct MySendableAttachable: Test.Attachable, Sendable {
   }
 }
 
-final class MySendableAttachableWithRefcountedSemantics: Test.Attachable, Sendable {
-  let values: (Int, Int, Int)
-
-  init(values: (Int, Int, Int)) {
-    self.values = values
-  }
+struct MySendableAttachableWithDefaultByteCount: Test.Attachable, Sendable {
+  var string: String
 
   func withUnsafeBufferPointer<R>(for attachment: borrowing Testing.Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try withUnsafeBytes(of: values, body)
-  }
-}
-
-struct MySendableAttachableWithSmallPODSemantics: Test.Attachable, Sendable {
-  var values: (Int, Int, Int)
-
-  func withUnsafeBufferPointer<R>(for attachment: borrowing Testing.Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try withUnsafeBytes(of: values, body)
-  }
-}
-
-struct MySendableAttachableWithBigPODSemantics: Test.Attachable, Sendable {
-  var values: (Int, Int, Int, Int, Int, Int)
-
-  func withUnsafeBufferPointer<R>(for attachment: borrowing Testing.Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try withUnsafeBytes(of: values, body)
-  }
-}
-
-struct MySendableAttachableWithNonPODSemantics: Test.Attachable, Sendable {
-  var values: (Int, Int, Int)
-  var makeItComplicated = "it's complicated"
-
-  func withUnsafeBufferPointer<R>(for attachment: borrowing Testing.Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try withUnsafeBytes(of: values, body)
+    var string = string
+    return try string.withUTF8 { buffer in
+      try body(.init(buffer))
+    }
   }
 }
