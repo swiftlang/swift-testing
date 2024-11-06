@@ -21,22 +21,29 @@ extension Test {
   /// instance of ``Test/Attachment`` with that value and, optionally, a
   /// preferred filename to use when writing to disk.
   public struct Attachment: Sendable {
+#if !SWT_NO_LAZY_ATTACHMENTS
+    /// Storage for ``attachableValue``.
+    private var _attachableValue: any Attachable & Sendable /* & Copyable rdar://137614425 */
+
     /// The value of this attachment.
     ///
     /// The type of this property's value may not match the type of the value
     /// originally used to create this attachment.
-    public var attachableValue: any Attachable & Sendable /* & Copyable rdar://137614425 */
-
-    /// The source location where the attachment was initialized.
-    ///
-    /// The value of this property is used when recording issues associated with
-    /// the attachment.
-    public var sourceLocation: SourceLocation
-
-    /// The default preferred name to use if the developer does not supply one.
-    package static var defaultPreferredName: String {
-      "untitled"
+    public var attachableValue: any Attachable & Sendable /* & Copyable rdar://137614425 */ {
+      _attachableValue
     }
+#else
+    /// Storage for ``attachableValue``.
+    private var _attachableValue: _AttachableProxy
+
+    /// The value of this attachment.
+    ///
+    /// The type of this property's value may not match the type of the value
+    /// originally used to create this attachment.
+    public var attachableValue: some Test.Attachable & Sendable & Copyable {
+      _attachableValue
+    }
+#endif
 
     /// The path to which the this attachment was written, if any.
     ///
@@ -51,26 +58,9 @@ extension Test {
     @_spi(ForToolsIntegrationOnly)
     public var fileSystemPath: String?
 
-    /// Initialize an instance of this type that encloses the given attachable
-    /// value.
-    ///
-    /// - Parameters:
-    ///   - attachableValue: The value that will be attached to the output of
-    ///     the test run.
-    ///   - preferredName: The preferred name of the attachment when writing it
-    ///     to a test report or to disk. If `nil`, the testing library attempts
-    ///     to derive a reasonable filename for the attached value.
-    ///   - sourceLocation: The source location of the call to this initializer.
-    ///     This value is used when recording issues associated with the
-    ///     attachment.
-    public init(
-      _ attachableValue: some Attachable & Sendable & Copyable,
-      named preferredName: String? = nil,
-      sourceLocation: SourceLocation = #_sourceLocation
-    ) {
-      self.attachableValue = attachableValue
-      self.preferredName = preferredName ?? Self.defaultPreferredName
-      self.sourceLocation = sourceLocation
+    /// The default preferred name to use if the developer does not supply one.
+    package static var defaultPreferredName: String {
+      "untitled"
     }
 
     /// A filename to use when writing this attachment to a test report or to a
@@ -81,12 +71,41 @@ extension Test {
     /// value of this property has not been explicitly set, the testing library
     /// will attempt to generate its own value.
     public var preferredName: String
+
+    /// The source location where the attachment was initialized.
+    ///
+    /// The value of this property is used when recording issues associated with
+    /// the attachment.
+    public var sourceLocation: SourceLocation
   }
 }
 
 // MARK: -
 
 extension Test.Attachment {
+#if !SWT_NO_LAZY_ATTACHMENTS
+  /// Initialize an instance of this type that encloses the given attachable
+  /// value.
+  ///
+  /// - Parameters:
+  ///   - attachableValue: The value that will be attached to the output of
+  ///     the test run.
+  ///   - preferredName: The preferred name of the attachment when writing it
+  ///     to a test report or to disk. If `nil`, the testing library attempts
+  ///     to derive a reasonable filename for the attached value.
+  ///   - sourceLocation: The source location of the call to this initializer.
+  ///     This value is used when recording issues associated with the
+  ///     attachment.
+  public init(
+    _ attachableValue: some Test.Attachable & Sendable & Copyable,
+    named preferredName: String? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) {
+    let preferredName = preferredName ?? Self.defaultPreferredName
+    self.init(_attachableValue: attachableValue, preferredName: preferredName, sourceLocation: sourceLocation)
+  }
+#endif
+
   /// Attach this instance to the current test.
   ///
   /// An attachment can only be attached once.
@@ -129,19 +148,22 @@ extension Test.Attachment {
   /// value cannot be encoded and an error is thrown, that error is recorded as
   /// an issue in the current test and the resulting instance of
   /// ``Test/Attachment`` is empty.
+#if !SWT_NO_LAZY_ATTACHMENTS
   @_disfavoredOverload
+#endif
   public init(
     _ attachableValue: borrowing some Test.Attachable & ~Copyable,
     named preferredName: String? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) {
+    let preferredName = preferredName ?? Self.defaultPreferredName
     var proxyAttachable = _AttachableProxy()
     proxyAttachable.estimatedAttachmentByteCount = attachableValue.estimatedAttachmentByteCount
 
     // BUG: the borrow checker thinks that withErrorRecording() is consuming
     // attachableValue, so get around it with an additional do/catch clause.
     do {
-      let proxyAttachment = Self(proxyAttachable, named: preferredName, sourceLocation: sourceLocation)
+      let proxyAttachment = Self(_attachableValue: proxyAttachable, preferredName: preferredName, sourceLocation: sourceLocation)
       proxyAttachable.encodedValue = try attachableValue.withUnsafeBufferPointer(for: proxyAttachment) { buffer in
         [UInt8](buffer)
       }
@@ -155,7 +177,7 @@ extension Test.Attachment {
       }
     }
 
-    self.init(proxyAttachable, named: preferredName, sourceLocation: sourceLocation)
+    self.init(_attachableValue: proxyAttachable, preferredName: preferredName, sourceLocation: sourceLocation)
   }
 }
 
