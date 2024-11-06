@@ -353,24 +353,25 @@ extension Backtrace {
   /// This value is named oddly so that it shows up clearly in symbolicated
   /// backtraces.
   private static let __SWIFT_TESTING_IS_CAPTURING_A_BACKTRACE_FOR_A_THROWN_ERROR__: Void = {
-    if Environment.flag(named: "SWT_ERROR_BACKTRACING_ENABLED") == false {
-      // Backtraces have been explicitly disabled in the current environment.
-      return
+#if SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
+    if Environment.flag(named: "SWT_FOUNDATION_ERROR_BACKTRACING_ENABLED") != false {
+      _ = isFoundationCaptureEnabled
     }
+#endif
 
-    _ = isFoundationCaptureEnabled
-
-    _oldWillThrowHandler.withLock { oldWillThrowHandler in
-      oldWillThrowHandler = swt_setWillThrowHandler { errorAddress in
-        let backtrace = Backtrace.current()
-        _willThrow(errorAddress, from: backtrace)
-      }
-    }
-    if #available(_typedThrowsAPI, *) {
-      _oldWillThrowTypedHandler.withLock { oldWillThrowTypedHandler in
-        oldWillThrowTypedHandler = swt_setWillThrowTypedHandler { errorAddress, errorType, errorConformance in
+    if Environment.flag(named: "SWT_SWIFT_ERROR_BACKTRACING_ENABLED") != false {
+      _oldWillThrowHandler.withLock { oldWillThrowHandler in
+        oldWillThrowHandler = swt_setWillThrowHandler { errorAddress in
           let backtrace = Backtrace.current()
-          _willThrowTyped(errorAddress, errorType, errorConformance, from: backtrace)
+          _willThrow(errorAddress, from: backtrace)
+        }
+      }
+      if #available(_typedThrowsAPI, *) {
+        _oldWillThrowTypedHandler.withLock { oldWillThrowTypedHandler in
+          oldWillThrowTypedHandler = swt_setWillThrowTypedHandler { errorAddress, errorType, errorConformance in
+            let backtrace = Backtrace.current()
+            _willThrowTyped(errorAddress, errorType, errorConformance, from: backtrace)
+          }
         }
       }
     }
