@@ -353,6 +353,11 @@ extension Backtrace {
   /// This value is named oddly so that it shows up clearly in symbolicated
   /// backtraces.
   private static let __SWIFT_TESTING_IS_CAPTURING_A_BACKTRACE_FOR_A_THROWN_ERROR__: Void = {
+    if Environment.flag(named: "SWT_ERROR_BACKTRACING_ENABLED") == false {
+      // Backtraces have been explicitly disabled in the current environment.
+      return
+    }
+
     _ = isFoundationCaptureEnabled
 
     _oldWillThrowHandler.withLock { oldWillThrowHandler in
