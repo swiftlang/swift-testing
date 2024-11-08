@@ -332,15 +332,15 @@ extension Test.Attachment where AttachableValue == any Test.Attachable & Sendabl
   /// attachments to persistent storage the same way that Swift Package Manager
   /// does. You are not required to use this function.
   public borrowing func write(toFileInDirectoryAtPath directoryPath: String) throws -> String {
-    func open<T>(_ attachableValue: T) throws -> String where T: Test.Attachable & Copyable {
+    func open<T>(_ attachableValue: T, for attachment: Self) throws -> String where T: Test.Attachable & Copyable {
       let temporaryAttachment = Test.Attachment<T>(
         attachableValue: attachableValue,
-        fileSystemPath: fileSystemPath,
-        preferredName: preferredName
+        fileSystemPath: attachment.fileSystemPath,
+        preferredName: attachment.preferredName
       )
       return try temporaryAttachment.write(toFileInDirectoryAtPath: directoryPath)
     }
-    return try open(attachableValue)
+    return try open(attachableValue, for: self)
   }
 }
 
