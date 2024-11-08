@@ -106,7 +106,7 @@ public struct Event: Sendable {
     ///   - sourceLocation: The source location of the function call that caused
     ///     this event.
     @_spi(Experimental)
-    indirect case valueAttached(_ attachment: Test.Attachment<any Test.Attachable & Sendable & Copyable>, sourceLocation: SourceLocation)
+    indirect case valueAttached(_ attachment: Test.Attachment<any Test.Attachable & Sendable /* & Copyable rdar://137614425 */>, sourceLocation: SourceLocation)
 #else
     /// An attachment was created.
     ///
