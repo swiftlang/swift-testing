@@ -15,11 +15,8 @@ public import Foundation
 @_spi(Experimental)
 extension Test.Attachable where Self: Encodable & NSSecureCoding {
   @_documentation(visibility: private)
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    func open(_ value: some Encodable & Test.Attachable, for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-      return try value.withUnsafeBufferPointer(for: attachment, body)
-    }
-    return try open(self, for: attachment, body)
+  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try _Testing_Foundation.withUnsafeBufferPointer(encoding: self, for: attachment, body)
   }
 }
 #endif

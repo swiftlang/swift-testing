@@ -42,7 +42,7 @@ extension UTType {
 #endif
 
 @_spi(Experimental)
-extension Test.Attachment {
+extension Test.Attachment where AttachableValue == FileAttachment {
   /// Initialize an instance of this type with the contents of the given URL.
   ///
   /// - Parameters:
@@ -55,8 +55,7 @@ extension Test.Attachment {
   /// - Throws: Any error that occurs attempting to read from `url`.
   public init(
     contentsOf url: URL,
-    named preferredName: String? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation
+    named preferredName: String? = nil
   ) async throws {
     guard url.isFileURL else {
       // TODO: network URLs?
@@ -88,30 +87,39 @@ extension Test.Attachment {
         return (preferredName as NSString).appendingPathExtension("tgz") ?? preferredName
       }()
 
-      let attachableValue = try await _DirectoryContentAttachableProxy(contentsOfDirectoryAt: url)
-      self.init(attachableValue, named: preferredName, sourceLocation: sourceLocation)
+      try await self.init(FileAttachment(compressedContentsOfDirectoryAt: url), named: preferredName)
     } else {
       // Load the file.
-      let attachableValue = try Data(contentsOf: url, options: [.mappedIfSafe])
-      self.init(attachableValue, named: preferredName, sourceLocation: sourceLocation)
+      try self.init(FileAttachment(contentsOfFileAt: url), named: preferredName)
     }
   }
 }
 
-// MARK: - Attaching directories
+// MARK: - Attaching files and directories
 
-/// A type representing the content of a directory as an attachable value.
-private struct _DirectoryContentAttachableProxy: Test.Attachable {
-  /// The URL of the directory.
+/// A type representing a file system object that has been added to an
+/// attachment.
+@_spi(Experimental)
+public struct FileAttachment: Test.Attachable, Sendable {
+  /// The file URL where the represented file system object is located.
+  public private(set) var url: URL
+
+  /// The contents of the file or directory at `url`.
+  private var _data: Data
+
+  /// Initialize an instance of this type by reading the contents of a file.
   ///
-  /// The contents of this directory may change after this instance is
-  /// initialized. Such changes are not tracked.
-  var url: URL
+  /// - Parameters:
+  ///   - fileURL: A URL referring to the file to attach.
+  ///
+  /// - Throws: Any error encountered trying to read the file at `fileURL`.
+  init(contentsOfFileAt fileURL: URL) throws {
+    url = fileURL
+    _data = try Data(contentsOf: url, options: [.mappedIfSafe])
+  }
 
-  /// The archived contents of the directory.
-  private let _directoryContent: Data
-
-  /// Initialize an instance of this type.
+  /// Initialize an instance of this type by compressing the contents of a
+  /// directory.
   ///
   /// - Parameters:
   ///   - directoryURL: A URL referring to the directory to attach.
@@ -122,9 +130,7 @@ private struct _DirectoryContentAttachableProxy: Test.Attachable {
   /// This initializer asynchronously compresses the contents of `directoryURL`
   /// into an archive (currently of `.tgz` format, although this is subject to
   /// change) and stores a mapped copy of that archive.
-  init(contentsOfDirectoryAt directoryURL: URL) async throws {
-    url = directoryURL
-
+  init(compressedContentsOfDirectoryAt directoryURL: URL) async throws {
     let temporaryName = "\(UUID().uuidString).tgz"
     let temporaryURL = FileManager.default.temporaryDirectory.appendingPathComponent(temporaryName)
 
@@ -134,7 +140,7 @@ private struct _DirectoryContentAttachableProxy: Test.Attachable {
 #else
     let tarPath = "/usr/bin/tar"
 #endif
-    let sourcePath = url.fileSystemPath
+    let sourcePath = directoryURL.fileSystemPath
     let destinationPath = temporaryURL.fileSystemPath
     defer {
       remove(destinationPath)
@@ -161,14 +167,20 @@ private struct _DirectoryContentAttachableProxy: Test.Attachable {
         continuation.resume(throwing: error)
       }
     }
-    _directoryContent = try Data(contentsOf: temporaryURL, options: [.mappedIfSafe])
+
+    url = directoryURL
+    _data = try Data(contentsOf: temporaryURL, options: [.mappedIfSafe])
 #else
     throw CocoaError(.featureUnsupported, userInfo: [NSLocalizedDescriptionKey: "This platform does not support attaching directories to tests."])
 #endif
   }
 
-  func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try _directoryContent.withUnsafeBytes(body)
+  public var estimatedAttachmentByteCount: Int? {
+    _data.count
+  }
+
+  public func withUnsafeBufferPointer<R>(for attachment: borrowing Testing.Test.Attachment<FileAttachment>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try _data.withUnsafeBytes(body)
   }
 }
 #endif

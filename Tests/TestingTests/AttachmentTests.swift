@@ -234,13 +234,13 @@ struct AttachmentTests {
     await confirmation("Attachment detected") { valueAttached in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
-        guard case let .valueAttached(attachment) = event.kind else {
+        guard case let .valueAttached(attachment, _) = event.kind else {
           return
         }
 
         #expect(attachment.preferredName == temporaryFileName)
         #expect(throws: Never.self) {
-          try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { buffer in
+          try attachment.withUnsafeBufferPointer { buffer in
             #expect(buffer.count == data.count)
           }
         }
@@ -267,7 +267,7 @@ struct AttachmentTests {
     await confirmation("Attachment detected") { valueAttached in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
-        guard case let .valueAttached(attachment) = event.kind else {
+        guard case let .valueAttached(attachment, _) = event.kind else {
           return
         }
 
@@ -357,19 +357,22 @@ struct AttachmentTests {
       name = "\(name).\(ext)"
     }
 
-    var attachment: Test.Attachment
-    if args.forSecureCoding {
-      let attachableValue = MySecureCodingAttachable(string: "stringly speaking")
-      attachment = Test.Attachment(attachableValue, named: name)
-    } else {
-      let attachableValue = MyCodableAttachable(string: "stringly speaking")
-      attachment = Test.Attachment(attachableValue, named: name)
+    func open<T>(_ attachment: borrowing Test.Attachment<T>) throws where T: Test.Attachable {
+      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { bytes in
+        #expect(bytes.first == args.firstCharacter.asciiValue)
+        let decodedStringValue = try args.decode(Data(bytes))
+        #expect(decodedStringValue == "stringly speaking")
+      }
     }
 
-    try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { bytes in
-      #expect(bytes.first == args.firstCharacter.asciiValue)
-      let decodedStringValue = try args.decode(Data(bytes))
-      #expect(decodedStringValue == "stringly speaking")
+    if args.forSecureCoding {
+      let attachableValue = MySecureCodingAttachable(string: "stringly speaking")
+      let attachment = Test.Attachment(attachableValue, named: name)
+      try open(attachment)
+    } else {
+      let attachableValue = MyCodableAttachable(string: "stringly speaking")
+      let attachment = Test.Attachment(attachableValue, named: name)
+      try open(attachment)
     }
   }
 

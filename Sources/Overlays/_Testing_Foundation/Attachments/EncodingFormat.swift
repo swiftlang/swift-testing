@@ -41,7 +41,7 @@ enum EncodingFormat {
   ///   - attachment: The attachment that will be encoded.
   ///
   /// - Throws: If the attachment's content type or media type is unsupported.
-  init(for attachment: borrowing Test.Attachment) throws {
+  init(for attachment: borrowing Test.Attachment<some Test.Attachable>) throws {
     let ext = (attachment.preferredName as NSString).pathExtension
 
 #if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
