@@ -143,6 +143,60 @@ extension Test.Attachment where AttachableValue: Test.Attachable & ~Copyable {
   }
 }
 
+// MARK: - Getting the serialized form of an attachable value (generically)
+
+extension Test.Attachment where AttachableValue: Test.Attachable & ~Copyable {
+  /// Call a function and pass a buffer representing the value of this
+  /// instance's ``attachableValue`` property to it.
+  ///
+  /// - Parameters:
+  ///   - body: A function to call. A temporary buffer containing a data
+  ///     representation of this instance is passed to it.
+  ///
+  /// - Returns: Whatever is returned by `body`.
+  ///
+  /// - Throws: Whatever is thrown by `body`, or any error that prevented the
+  ///   creation of the buffer.
+  ///
+  /// The testing library uses this function when writing an attachment to a
+  /// test report or to a file on disk. This function calls the
+  /// ``Test/Attachable/withUnsafeBufferPointer(for:_:)`` function on this
+  /// attachment's ``attachableValue`` property.
+  @inlinable public borrowing func withUnsafeBufferPointer<R>(_ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try attachableValue.withUnsafeBufferPointer(for: self, body)
+  }
+}
+
+extension Test.Attachment where AttachableValue == any Test.Attachable & Sendable & Copyable {
+  /// Call a function and pass a buffer representing the value of this
+  /// instance's ``attachableValue`` property to it.
+  ///
+  /// - Parameters:
+  ///   - body: A function to call. A temporary buffer containing a data
+  ///     representation of this instance is passed to it.
+  ///
+  /// - Returns: Whatever is returned by `body`.
+  ///
+  /// - Throws: Whatever is thrown by `body`, or any error that prevented the
+  ///   creation of the buffer.
+  ///
+  /// The testing library uses this function when writing an attachment to a
+  /// test report or to a file on disk. This function calls the
+  /// ``Test/Attachable/withUnsafeBufferPointer(for:_:)`` function on this
+  /// attachment's ``attachableValue`` property.
+  public borrowing func withUnsafeBufferPointer<R>(_ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    func open<T>(_ attachableValue: T) throws -> R where T: Test.Attachable & Copyable {
+      let temporaryAttachment = Test.Attachment<T>(
+        attachableValue: attachableValue,
+        fileSystemPath: fileSystemPath,
+        preferredName: preferredName
+      )
+      return try temporaryAttachment.withUnsafeBufferPointer(body)
+    }
+    return try open(attachableValue)
+  }
+}
+
 #if !SWT_NO_FILE_IO
 // MARK: - Writing
 
