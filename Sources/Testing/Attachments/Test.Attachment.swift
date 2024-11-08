@@ -185,15 +185,15 @@ extension Test.Attachment where AttachableValue == any Test.Attachable & Sendabl
   /// ``Test/Attachable/withUnsafeBufferPointer(for:_:)`` function on this
   /// attachment's ``attachableValue`` property.
   public borrowing func withUnsafeBufferPointer<R>(_ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    func open<T>(_ attachableValue: T) throws -> R where T: Test.Attachable & Copyable {
+    func open<T>(_ attachableValue: T, for attachment: Self) throws -> R where T: Test.Attachable & Copyable {
       let temporaryAttachment = Test.Attachment<T>(
         attachableValue: attachableValue,
-        fileSystemPath: fileSystemPath,
-        preferredName: preferredName
+        fileSystemPath: attachment.fileSystemPath,
+        preferredName: attachment.preferredName
       )
-      return try temporaryAttachment.withUnsafeBufferPointer(body)
+      return try attachableValue.withUnsafeBufferPointer(for: temporaryAttachment, body)
     }
-    return try open(attachableValue)
+    return try open(attachableValue, for: self)
   }
 }
 
