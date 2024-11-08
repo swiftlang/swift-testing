@@ -42,7 +42,7 @@ extension UTType {
 #endif
 
 @_spi(Experimental)
-extension Test.Attachment where AttachableValue == FileAttachment {
+extension Test.Attachment where AttachableValue == Data {
   /// Initialize an instance of this type with the contents of the given URL.
   ///
   /// - Parameters:
@@ -87,37 +87,17 @@ extension Test.Attachment where AttachableValue == FileAttachment {
         return (preferredName as NSString).appendingPathExtension("tgz") ?? preferredName
       }()
 
-      try await self.init(FileAttachment(compressedContentsOfDirectoryAt: url), named: preferredName)
+      try await self.init(Data(compressedContentsOfDirectoryAt: url), named: preferredName)
     } else {
       // Load the file.
-      try self.init(FileAttachment(contentsOfFileAt: url), named: preferredName)
+      try self.init(Data(contentsOf: url, options: [.mappedIfSafe]), named: preferredName)
     }
   }
 }
 
-// MARK: - Attaching files and directories
+// MARK: - Attaching directories
 
-/// A type representing a file system object that has been added to an
-/// attachment.
-@_spi(Experimental)
-public struct FileAttachment: Test.Attachable, Sendable {
-  /// The file URL where the represented file system object is located.
-  public private(set) var url: URL
-
-  /// The contents of the file or directory at `url`.
-  private var _data: Data
-
-  /// Initialize an instance of this type by reading the contents of a file.
-  ///
-  /// - Parameters:
-  ///   - fileURL: A URL referring to the file to attach.
-  ///
-  /// - Throws: Any error encountered trying to read the file at `fileURL`.
-  init(contentsOfFileAt fileURL: URL) throws {
-    url = fileURL
-    _data = try Data(contentsOf: url, options: [.mappedIfSafe])
-  }
-
+extension Data {
   /// Initialize an instance of this type by compressing the contents of a
   /// directory.
   ///
@@ -143,7 +123,7 @@ public struct FileAttachment: Test.Attachable, Sendable {
     let sourcePath = directoryURL.fileSystemPath
     let destinationPath = temporaryURL.fileSystemPath
     defer {
-      remove(destinationPath)
+      try? FileManager().removeItem(at: temporaryURL)
     }
 
     try await withCheckedThrowingContinuation { continuation in
@@ -168,19 +148,10 @@ public struct FileAttachment: Test.Attachable, Sendable {
       }
     }
 
-    url = directoryURL
-    _data = try Data(contentsOf: temporaryURL, options: [.mappedIfSafe])
+    try self.init(contentsOf: temporaryURL, options: [.mappedIfSafe])
 #else
     throw CocoaError(.featureUnsupported, userInfo: [NSLocalizedDescriptionKey: "This platform does not support attaching directories to tests."])
 #endif
-  }
-
-  public var estimatedAttachmentByteCount: Int? {
-    _data.count
-  }
-
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Testing.Test.Attachment<FileAttachment>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try _data.withUnsafeBytes(body)
   }
 }
 #endif
