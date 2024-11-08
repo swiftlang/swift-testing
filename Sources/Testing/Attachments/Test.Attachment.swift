@@ -80,7 +80,7 @@ extension Test.Attachment where AttachableValue: Test.Attachable & ~Copyable {
 }
 
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-extension Test.Attachment where AttachableValue == any Test.Attachable & Sendable & Copyable {
+extension Test.Attachment where AttachableValue == any Test.Attachable & Sendable /* & Copyable rdar://137614425 */ {
   /// Create a type-erased attachment from an instance of ``Test/Attachment``.
   ///
   /// - Parameters:
@@ -106,7 +106,7 @@ extension Test.Attachment where AttachableValue: Test.Attachable & Sendable & Co
   /// An attachment can only be attached once.
   @_documentation(visibility: private)
   public consuming func attach(sourceLocation: SourceLocation = #_sourceLocation) {
-    let attachmentCopy = Test.Attachment<any Test.Attachable & Sendable & Copyable>(self)
+    let attachmentCopy = Test.Attachment<any Test.Attachable & Sendable /* & Copyable rdar://137614425 */>(self)
     Event.post(.valueAttached(attachmentCopy, sourceLocation: sourceLocation))
   }
 }
@@ -167,7 +167,7 @@ extension Test.Attachment where AttachableValue: Test.Attachable & ~Copyable {
   }
 }
 
-extension Test.Attachment where AttachableValue == any Test.Attachable & Sendable & Copyable {
+extension Test.Attachment where AttachableValue == any Test.Attachable & Sendable /* & Copyable rdar://137614425 */ {
   /// Call a function and pass a buffer representing the value of this
   /// instance's ``attachableValue`` property to it.
   ///
@@ -305,7 +305,7 @@ extension Test.Attachment where AttachableValue: Test.Attachable & ~Copyable {
 }
 
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-extension Test.Attachment where AttachableValue == any Test.Attachable & Sendable & Copyable {
+extension Test.Attachment where AttachableValue == any Test.Attachable & Sendable /* & Copyable rdar://137614425 */ {
   /// Write the attachment's contents to a file in the specified directory.
   ///
   /// - Parameters:
