@@ -337,14 +337,15 @@ extension Backtrace {
   ///   first time the value of this property is read.
   static let isFoundationCaptureEnabled = {
 #if SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
-    let _CFErrorSetCallStackCaptureEnabled = symbol(named: "_CFErrorSetCallStackCaptureEnabled").map {
-      unsafeBitCast($0, to: (@convention(c) (DarwinBoolean) -> DarwinBoolean).self)
+    if Environment.flag(named: "SWT_FOUNDATION_ERROR_BACKTRACING_ENABLED") == true {
+      let _CFErrorSetCallStackCaptureEnabled = symbol(named: "_CFErrorSetCallStackCaptureEnabled").map {
+        unsafeBitCast($0, to: (@convention(c) (DarwinBoolean) -> DarwinBoolean).self)
+      }
+      _ = _CFErrorSetCallStackCaptureEnabled?(true)
+      return _CFErrorSetCallStackCaptureEnabled != nil
     }
-    _ = _CFErrorSetCallStackCaptureEnabled?(true)
-    return _CFErrorSetCallStackCaptureEnabled != nil
-#else
-    false
 #endif
+    return false
   }()
 
   /// The implementation of ``Backtrace/startCachingForThrownErrors()``, run
@@ -353,11 +354,7 @@ extension Backtrace {
   /// This value is named oddly so that it shows up clearly in symbolicated
   /// backtraces.
   private static let __SWIFT_TESTING_IS_CAPTURING_A_BACKTRACE_FOR_A_THROWN_ERROR__: Void = {
-#if SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
-    if Environment.flag(named: "SWT_FOUNDATION_ERROR_BACKTRACING_ENABLED") != false {
-      _ = isFoundationCaptureEnabled
-    }
-#endif
+    _ = isFoundationCaptureEnabled
 
     if Environment.flag(named: "SWT_SWIFT_ERROR_BACKTRACING_ENABLED") != false {
       _oldWillThrowHandler.withLock { oldWillThrowHandler in
