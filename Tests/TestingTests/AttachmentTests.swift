@@ -229,7 +229,7 @@ extension AttachmentTests {
     func test(_ value: some Test.Attachable) throws {
       #expect(value.estimatedAttachmentByteCount == 6)
       let attachment = Test.Attachment(value)
-      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { buffer in
+      try attachment.withUnsafeBufferPointer { buffer in
         #expect(buffer.elementsEqual("abc123".utf8))
         #expect(buffer.count == 6)
       }
