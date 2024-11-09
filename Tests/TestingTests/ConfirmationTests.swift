@@ -51,12 +51,36 @@ struct ConfirmationTests {
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       if case let .issueRecorded(issue) = event.kind {
-        #expect(String(describing: issue) != "")
+        #expect(String(describing: issue).contains("time(s)"))
       }
     }
 
     await Test {
       await confirmation(expectedCount: 1...) { _ in }
+      await confirmation(expectedCount: 1...2) { _ in }
+      await confirmation(expectedCount: 1..<3) { _ in }
+    }.run(configuration: configuration)
+  }
+
+  @Test func confirmationFailureCanBeDescribedAsSingleValue() async {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      if case let .issueRecorded(issue) = event.kind {
+        #expect(!String(describing: issue).contains("time(s)"))
+      }
+    }
+
+    await Test {
+      await confirmation(expectedCount: 1...1) { _ in }
+      await confirmation(expectedCount: 1..<2) { _ in }
+      await confirmation(expectedCount: Int.max...Int.max) { _ in }
+#if !SWT_NO_EXIT_TESTS
+      await withKnownIssue("Crashes in Swift standard library (rdar://139568287)") {
+        await #expect(exitsWith: .success) {
+          await confirmation(expectedCount: Int.max...) { _ in }
+        }
+      }
+#endif
     }.run(configuration: configuration)
   }
 
