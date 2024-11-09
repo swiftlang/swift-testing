@@ -46,11 +46,13 @@ function(_swift_testing_install_target module)
   target_compile_options(Testing PRIVATE "-no-toolchain-stdlib-rpath")
 
   if(APPLE)
-    set_property(TARGET ${module} PROPERTY
-      INSTALL_RPATH "@loader_path/..")
+    set_target_properties(${module} PROPERTIES
+      INSTALL_RPATH "@loader_path/.."
+      INSTALL_REMOVE_ENVIRONMENT_RPATH ON)
   else()
-    set_property(TARGET ${module} PROPERTY
-      INSTALL_RPATH "$ORIGIN")
+    set_target_properties(${module} PROPERTIES
+      INSTALL_RPATH "$ORIGIN"
+      INSTALL_REMOVE_ENVIRONMENT_RPATH ON)
   endif()
 
   get_target_property(type ${module} TYPE)
