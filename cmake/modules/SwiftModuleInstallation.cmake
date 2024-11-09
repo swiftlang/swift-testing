@@ -32,12 +32,14 @@ function(_swift_testing_install_target module)
 
   if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(lib_destination_dir "lib/${swift}/${swift_os}/testing")
-    set_property(TARGET ${module} PROPERTY
-      INSTALL_RPATH "@loader_path/..")
+    set_target_properties(${module} PROPERTIES
+      INSTALL_RPATH "@loader_path/.."
+      INSTALL_REMOVE_ENVIRONMENT_RPATH ON)
   else()
     set(lib_destination_dir "lib/${swift}/${swift_os}")
-    set_property(TARGET ${module} PROPERTY
-      INSTALL_RPATH "$ORIGIN")
+    set_target_properties(${module} PROPERTIES
+      INSTALL_RPATH "$ORIGIN"
+      INSTALL_REMOVE_ENVIRONMENT_RPATH ON)
   endif()
 
   install(TARGETS ${module}
