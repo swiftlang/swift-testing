@@ -23,7 +23,10 @@ extension Test {
   /// conform to this protocol.
   ///
   /// A type should conform to this protocol if it can be represented as a
-  /// sequence of bytes that would be diagnostically useful if a test fails.
+  /// sequence of bytes that would be diagnostically useful if a test fails. If
+  /// a type cannot conform directly to this protocol (such as a non-final class
+  /// or a type declared in a third-party module), you can create a container
+  /// type that conforms to ``Test/AttachableContainer`` to act as a proxy.
   public protocol Attachable: ~Copyable {
     /// An estimate of the number of bytes of memory needed to store this value
     /// as an attachment.
@@ -76,8 +79,11 @@ extension Test {
   ///
   /// A type can conform to this protocol if it represents another type that
   /// cannot directly conform to ``Test/Attachable``, such as a non-final class
-  /// or a type declared in a third-party module.
-  public protocol AttachableContainer: Attachable, ~Copyable {
+  /// or a type declared in a third-party module. Unlike ``Test/Attachable``,
+  /// types that conform to ``Test/AttachableContainer`` must also conform to
+  /// both [`Sendable`](https://developer.apple.com/documentation/swift/sendable)
+  /// and [`Copyable`](https://developer.apple.com/documentation/swift/copyable).
+  public protocol AttachableContainer<AttachableValue>: Attachable, Sendable {
 #if hasFeature(SuppressedAssociatedTypes)
     /// The type of the attachable value represented by this type.
     associatedtype AttachableValue: ~Copyable
