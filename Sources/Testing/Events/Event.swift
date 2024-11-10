@@ -105,7 +105,7 @@ public struct Event: Sendable {
     ///   - sourceLocation: The source location of the function call that caused
     ///     this event.
     @_spi(Experimental)
-    indirect case valueAttached(_ attachment: Test.Attachment<AnyAttachable>, sourceLocation: SourceLocation)
+    indirect case valueAttached(_ attachment: Test.Attachment<Test.AnyAttachable>, sourceLocation: SourceLocation)
 
     /// A test ended.
     ///

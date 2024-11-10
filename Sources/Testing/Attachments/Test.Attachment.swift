@@ -80,20 +80,20 @@ extension Test.Attachment where AttachableValue: ~Copyable {
 }
 
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-extension Test.Attachment where AttachableValue == AnyAttachable {
+extension Test.Attachment where AttachableValue == Test.AnyAttachable {
   /// The value of this attachment.
   ///
   /// When working with a type-erased attachment, the value of this property
   /// equals the underlying attachable value. To access the attachable value as
-  /// an instance of ``AnyAttachable``, specify the type explicitly:
+  /// an instance of ``Test/AnyAttachable``, specify the type explicitly:
   ///
   /// ```swift
-  /// let attachableValue = attachment.attachableValue as AnyAttachable
+  /// let attachableValue = attachment.attachableValue as Test.AnyAttachable
   /// ```
   ///
   /// In Embedded Swift, the value of this property is always an instance of
   /// [`Array<UInt8>`](https://developer.apple.com/documentation/swift/array).
-  public var attachableValue: AnyAttachable.RawValue {
+  public var attachableValue: Test.AnyAttachable.RawValue {
     attachableValue.rawValue
   }
 
@@ -103,7 +103,7 @@ extension Test.Attachment where AttachableValue == AnyAttachable {
   ///   - attachment: The attachment to type-erase.
   fileprivate init(_ attachment: Test.Attachment<some Test.Attachable & Sendable & Copyable>) {
     self.init(
-      attachableValue: AnyAttachable(rawValue: attachment.attachableValue),
+      attachableValue: Test.AnyAttachable(rawValue: attachment.attachableValue),
       fileSystemPath: attachment.fileSystemPath,
       preferredName: attachment.preferredName
     )
@@ -111,46 +111,48 @@ extension Test.Attachment where AttachableValue == AnyAttachable {
 }
 #endif
 
-/// A type-erased container type that represents any attachable value.
-///
-/// This type is not generally visible to developers. It is used when posting
-/// events of kind ``Event/Kind/valueAttached(_:sourceLocation:)``. Test tools
-/// authors who use `@_spi(ForToolsIntegrationOnly)` will see instances of this
-/// type when handling those events.
-///
-/// @Comment {
-///   Swift's type system requires that this type be at least as visible as
-///   `Event.Kind.valueAttached(_:sourceLocation:)`, otherwise it would be
-///   declared as `private`.
-/// }
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-public struct AnyAttachable: RawRepresentable, Test.Attachable, Copyable, Sendable {
+extension Test {
+  /// A type-erased container type that represents any attachable value.
+  ///
+  /// This type is not generally visible to developers. It is used when posting
+  /// events of kind ``Event/Kind/valueAttached(_:sourceLocation:)``. Test tools
+  /// authors who use `@_spi(ForToolsIntegrationOnly)` will see instances of
+  /// this type when handling those events.
+  ///
+  /// @Comment {
+  ///   Swift's type system requires that this type be at least as visible as
+  ///   `Event.Kind.valueAttached(_:sourceLocation:)`, otherwise it would be
+  ///   declared as `private`.
+  /// }
+  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+  public struct AnyAttachable: RawRepresentable, Test.Attachable, Copyable, Sendable {
 #if !SWT_NO_LAZY_ATTACHMENTS
-  public typealias RawValue = any Test.Attachable & Sendable /* & Copyable rdar://137614425 */
+    public typealias RawValue = any Test.Attachable & Sendable /* & Copyable rdar://137614425 */
 #else
-  public typealias RawValue = [UInt8]
+    public typealias RawValue = [UInt8]
 #endif
 
-  public var rawValue: RawValue
+    public var rawValue: RawValue
 
-  public init(rawValue: RawValue) {
-    self.rawValue = rawValue
-  }
-
-  public var estimatedAttachmentByteCount: Int? {
-    rawValue.estimatedAttachmentByteCount
-  }
-
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    func open<T>(_ attachableValue: T, for attachment: borrowing Test.Attachment<Self>) throws -> R where T: Test.Attachable & Sendable & Copyable {
-      let temporaryAttachment = Test.Attachment<T>(
-        attachableValue: attachableValue,
-        fileSystemPath: attachment.fileSystemPath,
-        preferredName: attachment.preferredName
-      )
-      return try attachableValue.withUnsafeBufferPointer(for: temporaryAttachment, body)
+    public init(rawValue: RawValue) {
+      self.rawValue = rawValue
     }
-    return try open(rawValue, for: attachment)
+
+    public var estimatedAttachmentByteCount: Int? {
+      rawValue.estimatedAttachmentByteCount
+    }
+
+    public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+      func open<T>(_ attachableValue: T, for attachment: borrowing Test.Attachment<Self>) throws -> R where T: Test.Attachable & Sendable & Copyable {
+        let temporaryAttachment = Test.Attachment<T>(
+          attachableValue: attachableValue,
+          fileSystemPath: attachment.fileSystemPath,
+          preferredName: attachment.preferredName
+        )
+        return try attachableValue.withUnsafeBufferPointer(for: temporaryAttachment, body)
+      }
+      return try open(rawValue, for: attachment)
+    }
   }
 }
 
@@ -166,7 +168,7 @@ extension Test.Attachment where AttachableValue: Sendable & Copyable {
   /// An attachment can only be attached once.
   @_documentation(visibility: private)
   public consuming func attach(sourceLocation: SourceLocation = #_sourceLocation) {
-    let attachmentCopy = Test.Attachment<AnyAttachable>(self)
+    let attachmentCopy = Test.Attachment<Test.AnyAttachable>(self)
     Event.post(.valueAttached(attachmentCopy, sourceLocation: sourceLocation))
   }
 }
@@ -191,7 +193,7 @@ extension Test.Attachment where AttachableValue: ~Copyable {
     do {
       let attachmentCopy = try attachableValue.withUnsafeBufferPointer(for: self) { buffer in
         let attachmentCopy = Test.Attachment(attachableValue: Array(buffer), fileSystemPath: fileSystemPath, preferredName: preferredName)
-        return Test.Attachment<AnyAttachable>(attachmentCopy)
+        return Test.Attachment<Test.AnyAttachable>(attachmentCopy)
       }
       Event.post(.valueAttached(attachmentCopy, sourceLocation: sourceLocation))
     } catch {
