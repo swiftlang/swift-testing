@@ -25,8 +25,8 @@ extension Test {
   /// type can only be created with attachable values that conform to
   /// ``Test/Attachable``.
   public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: Test.Attachable & ~Copyable {
-    /// The value of this attachment.
-    public fileprivate(set) var attachableValue: AttachableValue
+    /// Storage for ``attachableValue-29ppv``.
+    fileprivate var _attachableValue: AttachableValue
 
     /// The path to which the this attachment was written, if any.
     ///
@@ -74,36 +74,20 @@ extension Test.Attachment where AttachableValue: ~Copyable {
   ///     to a test report or to disk. If `nil`, the testing library attempts
   ///     to derive a reasonable filename for the attached value.
   public init(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil) {
-    self.attachableValue = attachableValue
+    self._attachableValue = attachableValue
     self.preferredName = preferredName ?? Self.defaultPreferredName
   }
 }
 
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 extension Test.Attachment where AttachableValue == Test.AnyAttachable {
-  /// The value of this attachment.
-  ///
-  /// When working with a type-erased attachment, the value of this property
-  /// equals the underlying attachable value. To access the attachable value as
-  /// an instance of ``Test/AnyAttachable``, specify the type explicitly:
-  ///
-  /// ```swift
-  /// let attachableValue = attachment.attachableValue as Test.AnyAttachable
-  /// ```
-  ///
-  /// In Embedded Swift, the value of this property is always an instance of
-  /// [`Array<UInt8>`](https://developer.apple.com/documentation/swift/array).
-  public var attachableValue: Test.AnyAttachable.RawValue {
-    attachableValue.rawValue
-  }
-
   /// Create a type-erased attachment from an instance of ``Test/Attachment``.
   ///
   /// - Parameters:
   ///   - attachment: The attachment to type-erase.
   fileprivate init(_ attachment: Test.Attachment<some Test.Attachable & Sendable & Copyable>) {
     self.init(
-      attachableValue: Test.AnyAttachable(rawValue: attachment.attachableValue),
+      _attachableValue: Test.AnyAttachable(attachableValue: attachment.attachableValue),
       fileSystemPath: attachment.fileSystemPath,
       preferredName: attachment.preferredName
     )
@@ -125,33 +109,64 @@ extension Test {
   ///   declared as `private`.
   /// }
   @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-  public struct AnyAttachable: RawRepresentable, Test.Attachable, Copyable, Sendable {
+  public struct AnyAttachable: Test.AttachableContainer, Copyable, Sendable {
 #if !SWT_NO_LAZY_ATTACHMENTS
-    public typealias RawValue = any Test.Attachable & Sendable /* & Copyable rdar://137614425 */
+    public typealias AttachableValue = any Test.Attachable & Sendable /* & Copyable rdar://137614425 */
 #else
-    public typealias RawValue = [UInt8]
+    public typealias AttachableValue = [UInt8]
 #endif
 
-    public var rawValue: RawValue
+    public var attachableValue: AttachableValue
 
-    public init(rawValue: RawValue) {
-      self.rawValue = rawValue
+    fileprivate init(attachableValue: AttachableValue) {
+      self.attachableValue = attachableValue
     }
 
     public var estimatedAttachmentByteCount: Int? {
-      rawValue.estimatedAttachmentByteCount
+      attachableValue.estimatedAttachmentByteCount
     }
 
     public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
       func open<T>(_ attachableValue: T, for attachment: borrowing Test.Attachment<Self>) throws -> R where T: Test.Attachable & Sendable & Copyable {
         let temporaryAttachment = Test.Attachment<T>(
-          attachableValue: attachableValue,
+          _attachableValue: attachableValue,
           fileSystemPath: attachment.fileSystemPath,
           preferredName: attachment.preferredName
         )
         return try attachableValue.withUnsafeBufferPointer(for: temporaryAttachment, body)
       }
-      return try open(rawValue, for: attachment)
+      return try open(attachableValue, for: attachment)
+    }
+  }
+}
+
+// MARK: - Getting an attachable value from an attachment
+
+@_spi(Experimental)
+extension Test.Attachment where AttachableValue: ~Copyable {
+  /// The value of this attachment.
+  @_disfavoredOverload public var attachableValue: AttachableValue {
+    _read {
+      yield _attachableValue
+    }
+  }
+}
+
+@_spi(Experimental)
+extension Test.Attachment where AttachableValue: Test.AttachableContainer & ~Copyable {
+  /// The value of this attachment.
+  ///
+  /// When the attachable value's type conforms to ``Test/AttachableContainer``,
+  /// the value of this property equals the container's underlying attachable
+  /// value. To access the attachable value as an instance of `T` (where `T`
+  /// conforms to ``Test/AttachableContainer``), specify the type explicitly:
+  ///
+  /// ```swift
+  /// let attachableValue = attachment.attachableValue as T
+  /// ```
+  public var attachableValue: AttachableValue.AttachableValue {
+    _read {
+      yield attachableValue.attachableValue
     }
   }
 }
@@ -192,7 +207,7 @@ extension Test.Attachment where AttachableValue: ~Copyable {
   public consuming func attach(sourceLocation: SourceLocation = #_sourceLocation) {
     do {
       let attachmentCopy = try attachableValue.withUnsafeBufferPointer(for: self) { buffer in
-        let attachmentCopy = Test.Attachment(attachableValue: Array(buffer), fileSystemPath: fileSystemPath, preferredName: preferredName)
+        let attachmentCopy = Test.Attachment(_attachableValue: Array(buffer), fileSystemPath: fileSystemPath, preferredName: preferredName)
         return Test.Attachment<Test.AnyAttachable>(attachmentCopy)
       }
       Event.post(.valueAttached(attachmentCopy, sourceLocation: sourceLocation))
@@ -207,7 +222,7 @@ extension Test.Attachment where AttachableValue: ~Copyable {
 
 extension Test.Attachment where AttachableValue: ~Copyable {
   /// Call a function and pass a buffer representing the value of this
-  /// instance's ``attachableValue`` property to it.
+  /// instance's ``attachableValue-29ppv`` property to it.
   ///
   /// - Parameters:
   ///   - body: A function to call. A temporary buffer containing a data
@@ -221,7 +236,7 @@ extension Test.Attachment where AttachableValue: ~Copyable {
   /// The testing library uses this function when writing an attachment to a
   /// test report or to a file on disk. This function calls the
   /// ``Test/Attachable/withUnsafeBufferPointer(for:_:)`` function on this
-  /// attachment's ``attachableValue`` property.
+  /// attachment's ``attachableValue-29ppv`` property.
   @inlinable public borrowing func withUnsafeBufferPointer<R>(_ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try attachableValue.withUnsafeBufferPointer(for: self, body)
   }
