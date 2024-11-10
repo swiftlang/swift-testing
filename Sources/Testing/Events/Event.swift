@@ -98,7 +98,6 @@ public struct Event: Sendable {
     ///   - issue: The issue which was recorded.
     indirect case issueRecorded(_ issue: Issue)
 
-#if !SWT_NO_LAZY_ATTACHMENTS
     /// An attachment was created.
     ///
     /// - Parameters:
@@ -106,17 +105,7 @@ public struct Event: Sendable {
     ///   - sourceLocation: The source location of the function call that caused
     ///     this event.
     @_spi(Experimental)
-    indirect case valueAttached(_ attachment: Test.Attachment<any Test.Attachable & Sendable /* & Copyable rdar://137614425 */>, sourceLocation: SourceLocation)
-#else
-    /// An attachment was created.
-    ///
-    /// - Parameters:
-    ///   - attachment: The attachment that was created.
-    ///   - sourceLocation: The source location of the function call that caused
-    ///     this event.
-    @_spi(Experimental)
-    indirect case valueAttached(_ attachment: Test.Attachment<[UInt8]>, sourceLocation: SourceLocation)
-#endif
+    indirect case valueAttached(_ attachment: Test.Attachment<AnyAttachable>, sourceLocation: SourceLocation)
 
     /// A test ended.
     ///
