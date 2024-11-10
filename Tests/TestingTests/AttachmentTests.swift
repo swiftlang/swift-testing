@@ -189,6 +189,7 @@ struct AttachmentTests {
         }
 
         #expect(attachment.preferredName == "loremipsum")
+        #expect(attachment.attachableValue is MySendableAttachable)
         valueAttached()
       }
 

@@ -64,6 +64,31 @@ extension Test {
     /// of the image.
     borrowing func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
   }
+
+  /// A protocol describing a type that can be attached to a test report or
+  /// written to disk when a test is run and which contains another value that
+  /// it stands in for.
+  ///
+  /// To attach an attachable value to a test report or test run output, use it
+  /// to initialize a new instance of ``Test/Attachment``, then call
+  /// ``Test/Attachment/attach(sourceLocation:)``. An attachment can only be
+  /// attached once.
+  ///
+  /// A type can conform to this protocol if it represents another type that
+  /// cannot directly conform to ``Test/Attachable``, such as a non-final class
+  /// or a type declared in a third-party module.
+  public protocol AttachableContainer: Attachable, ~Copyable {
+#if hasFeature(SuppressedAssociatedTypes)
+    /// The type of the attachable value represented by this type.
+    associatedtype AttachableValue: ~Copyable
+#else
+    /// The type of the attachable value represented by this type.
+    associatedtype AttachableValue
+#endif
+
+    /// The attachable value represented by this instance.
+    var attachableValue: AttachableValue { get }
+  }
 }
 
 // MARK: - Default implementations

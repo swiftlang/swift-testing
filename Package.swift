@@ -124,6 +124,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
     availabilityMacroSettings + [
       .unsafeFlags(["-require-explicit-sendable"]),
       .enableUpcomingFeature("ExistentialAny"),
+      //.enableExperimentalFeature("SuppressedAssociatedTypes"),
 
       .enableExperimentalFeature("AccessLevelOnImport"),
       .enableUpcomingFeature("InternalImportsByDefault"),
