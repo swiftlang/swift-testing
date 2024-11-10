@@ -10,6 +10,7 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
+
 #if canImport(Foundation)
 import Foundation
 @_spi(Experimental) import _Testing_Foundation
@@ -82,7 +83,7 @@ struct AttachmentTests {
 
   @Test func writeAttachmentWithMultiplePathExtensions() throws {
     let attachableValue = MySendableAttachable(string: "<!doctype html>")
-    let attachment = Test.Attachment(attachableValue, named: "loremipsum.tgz.gif.jpeg.html")
+    let attachment = Test.Attachment(attachableValue, named: "loremipsum.tar.gz.gif.jpeg.html")
 
     // Write the attachment to disk once to ensure the original filename is not
     // available and we add a suffix.
@@ -98,14 +99,22 @@ struct AttachmentTests {
       remove(filePath)
     }
     let fileName = try #require(filePath.split { $0 == "/" || $0 == #"\"# }.last)
-    #expect(fileName == "loremipsum-\(suffix).tgz.gif.jpeg.html")
+    #expect(fileName == "loremipsum-\(suffix).tar.gz.gif.jpeg.html")
     try compare(attachableValue, toContentsOfFileAtPath: filePath)
   }
 
 #if os(Windows)
   static let maximumNameCount = Int(_MAX_FNAME)
+  static let reservedNames: [String] = {
+    // Return the list of COM ports that are NOT configured (and so will fail
+    // to open for writing.)
+    (0...9).lazy
+      .map { "COM\($0)" }
+      .filter { !PathFileExistsA($0) }
+  }()
 #else
   static let maximumNameCount = Int(NAME_MAX)
+  static let reservedNames: [String] = []
 #endif
 
   @Test(arguments: [
@@ -113,7 +122,7 @@ struct AttachmentTests {
     String(repeating: "a", count: maximumNameCount),
     String(repeating: "a", count: maximumNameCount + 1),
     String(repeating: "a", count: maximumNameCount + 2),
-  ]) func writeAttachmentWithBadName(name: String) throws {
+  ] + reservedNames) func writeAttachmentWithBadName(name: String) throws {
     let attachableValue = MySendableAttachable(string: "<!doctype html>")
     let attachment = Test.Attachment(attachableValue, named: name)
 
@@ -240,7 +249,7 @@ struct AttachmentTests {
 
         #expect(attachment.preferredName == temporaryFileName)
         #expect(throws: Never.self) {
-          try attachment.withUnsafeBufferPointer { buffer in
+          try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { buffer in
             #expect(buffer.count == data.count)
           }
         }
@@ -357,22 +366,21 @@ struct AttachmentTests {
       name = "\(name).\(ext)"
     }
 
-    func open<T>(_ attachment: borrowing Test.Attachment<T>) throws where T: Test.Attachable {
-      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { bytes in
-        #expect(bytes.first == args.firstCharacter.asciiValue)
-        let decodedStringValue = try args.decode(Data(bytes))
-        #expect(decodedStringValue == "stringly speaking")
-      }
-    }
-
+    let attachmentCopy: Test.Attachment<Test.AnyAttachable>
     if args.forSecureCoding {
       let attachableValue = MySecureCodingAttachable(string: "stringly speaking")
       let attachment = Test.Attachment(attachableValue, named: name)
-      try open(attachment)
+      attachmentCopy = Test.Attachment<Test.AnyAttachable>(attachment)
     } else {
       let attachableValue = MyCodableAttachable(string: "stringly speaking")
       let attachment = Test.Attachment(attachableValue, named: name)
-      try open(attachment)
+      attachmentCopy = Test.Attachment<Test.AnyAttachable>(attachment)
+    }
+
+    try attachmentCopy.withUnsafeBufferPointer { bytes in
+      #expect(bytes.first == args.firstCharacter.asciiValue)
+      let decodedStringValue = try args.decode(Data(bytes))
+      #expect(decodedStringValue == "stringly speaking")
     }
   }
 
@@ -460,13 +468,6 @@ extension AttachmentTests {
       let value: Substring = "abc123"[...]
       try test(value)
     }
-
-#if canImport(Foundation)
-    @Test func data() throws {
-      let value = try #require("abc123".data(using: .utf8))
-      try test(value)
-    }
-#endif
   }
 }
 

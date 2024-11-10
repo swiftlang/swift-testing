@@ -85,7 +85,7 @@ extension Test.Attachment where AttachableValue == Test.AnyAttachable {
   ///
   /// - Parameters:
   ///   - attachment: The attachment to type-erase.
-  fileprivate init(_ attachment: Test.Attachment<some Test.Attachable & Sendable & Copyable>) {
+  package init(_ attachment: Test.Attachment<some Test.Attachable & Sendable & Copyable>) {
     self.init(
       _attachableValue: Test.AnyAttachable(attachableValue: attachment.attachableValue),
       fileSystemPath: attachment.fileSystemPath,
