@@ -153,7 +153,7 @@ extension Test.Attachment where AttachableValue: ~Copyable {
 }
 
 @_spi(Experimental)
-extension Test.Attachment where AttachableValue: Test.AttachableContainer {
+extension Test.Attachment where AttachableValue: Test.AttachableContainer & ~Copyable {
   /// The value of this attachment.
   ///
   /// When the attachable value's type conforms to ``Test/AttachableContainer``,

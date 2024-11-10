@@ -83,7 +83,7 @@ extension Test {
   /// types that conform to ``Test/AttachableContainer`` must also conform to
   /// both [`Sendable`](https://developer.apple.com/documentation/swift/sendable)
   /// and [`Copyable`](https://developer.apple.com/documentation/swift/copyable).
-  public protocol AttachableContainer<AttachableValue>: Attachable, Sendable {
+  public protocol AttachableContainer<AttachableValue>: Attachable, ~Copyable {
 #if hasFeature(SuppressedAssociatedTypes)
     /// The type of the attachable value represented by this type.
     associatedtype AttachableValue: ~Copyable
