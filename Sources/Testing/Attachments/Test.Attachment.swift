@@ -26,6 +26,7 @@ extension Test {
   /// ``Test/Attachable``.
   public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: Test.Attachable & ~Copyable {
     /// The value of this attachment.
+		@_disfavoredOverload
     public fileprivate(set) var attachableValue: AttachableValue
 
     /// The path to which the this attachment was written, if any.
@@ -54,11 +55,15 @@ extension Test {
     /// value of this property has not been explicitly set, the testing library
     /// will attempt to generate its own value.
     public var preferredName: String
+
+    /// The metadata for this attachment specified during initialization, or
+    /// `nil` if none was provided.
+    public fileprivate(set) var metadata: AttachableValue.AttachmentMetadata?
   }
 }
 
 extension Test.Attachment: Copyable where AttachableValue: Copyable {}
-extension Test.Attachment: Sendable where AttachableValue: Sendable {}
+extension Test.Attachment: Sendable where AttachableValue: Sendable, AttachableValue.AttachmentMetadata: Sendable {}
 
 // MARK: - Initializing an attachment
 
@@ -73,9 +78,13 @@ extension Test.Attachment where AttachableValue: ~Copyable {
   ///   - preferredName: The preferred name of the attachment when writing it
   ///     to a test report or to disk. If `nil`, the testing library attempts
   ///     to derive a reasonable filename for the attached value.
-  public init(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil) {
+  ///   - metadata: Optional metadata to associate with this attachment. This
+  ///     value, if not `nil`, can be accessed from `attachableValue`'s
+  ///     ``Test/Attachable/withUnsafeBufferPointer(for:_:)`` method.
+  public init(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, metadata: AttachableValue.AttachmentMetadata? = nil) {
     self.attachableValue = attachableValue
     self.preferredName = preferredName ?? Self.defaultPreferredName
+    self.metadata = metadata
   }
 }
 
@@ -101,11 +110,18 @@ extension Test.Attachment where AttachableValue == Test.AnyAttachable {
   ///
   /// - Parameters:
   ///   - attachment: The attachment to type-erase.
-  fileprivate init(_ attachment: Test.Attachment<some Test.Attachable & Sendable & Copyable>) {
+  init(_ attachment: Test.Attachment<some Test.Attachable & Sendable & Copyable>) {
+#if !SWT_NO_LAZY_ATTACHMENTS
+    let metadata = attachment.metadata
+#else
+    let metadata: Never? = nil
+#endif
+
     self.init(
       attachableValue: Test.AnyAttachable(rawValue: attachment.attachableValue),
       fileSystemPath: attachment.fileSystemPath,
-      preferredName: attachment.preferredName
+      preferredName: attachment.preferredName,
+      metadata: metadata
     )
   }
 }
@@ -138,6 +154,10 @@ extension Test {
       self.rawValue = rawValue
     }
 
+#if !SWT_NO_LAZY_ATTACHMENTS
+    public typealias AttachmentMetadata = any Sendable
+#endif
+
     public var estimatedAttachmentByteCount: Int? {
       rawValue.estimatedAttachmentByteCount
     }
@@ -147,7 +167,8 @@ extension Test {
         let temporaryAttachment = Test.Attachment<T>(
           attachableValue: attachableValue,
           fileSystemPath: attachment.fileSystemPath,
-          preferredName: attachment.preferredName
+          preferredName: attachment.preferredName,
+          metadata: attachment.metadata as? T.AttachmentMetadata
         )
         return try attachableValue.withUnsafeBufferPointer(for: temporaryAttachment, body)
       }

@@ -25,6 +25,22 @@ extension Test {
   /// A type should conform to this protocol if it can be represented as a
   /// sequence of bytes that would be diagnostically useful if a test fails.
   public protocol Attachable: ~Copyable {
+    /// A type describing metadata about an instance of this attachable type.
+    ///
+    /// By default, this type is equivalent to `Never`, indicating that the
+    /// testing library does not need to keep track of any additional metadata
+    /// about instances of this attachable type.
+    ///
+    /// If your type's conformance uses a different ``AttachmentMetadata`` type,
+    /// developers can pass an instance of this type to the ``Test/Attachment``
+    /// initializer and store it alongside the attachable value. The testing
+    /// library will then pass it to ``withUnsafeBufferPointer(for:metadata:_:)``.
+    ///
+    /// - Note: This associated type must always conform to [`Sendable`](https://developer.apple.com/documentation/swift/sendable)
+    ///   and to [`Copyable`](https://developer.apple.com/documentation/swift/copyable)
+    ///   even if its corresponding ``Attachable``-conforming type does not.
+    associatedtype AttachmentMetadata: Sendable & Copyable = Never
+
     /// An estimate of the number of bytes of memory needed to store this value
     /// as an attachment.
     ///

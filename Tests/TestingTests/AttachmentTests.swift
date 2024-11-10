@@ -13,7 +13,7 @@ private import _TestingInternals
 
 @Suite("Attachment Tests")
 struct AttachmentTests {
-  @Test func saveValue() {
+  @Test func saveValue() throws {
     let attachableValue = MyAttachable(string: "<!doctype html>")
     let attachment = Test.Attachment(attachableValue, named: "AttachmentTests.saveValue.html")
     attachment.attach()
@@ -190,6 +190,11 @@ struct AttachmentTests {
 
         #expect(attachment.preferredName == "loremipsum")
         valueAttached()
+
+        #expect(throws: Never.self) {
+          let attachableValue = try #require(attachment.attachableValue as? MySendableAttachable)
+          #expect(attachableValue.string == "<!doctype html>")
+        }
       }
 
       await Test {
@@ -288,6 +293,17 @@ extension AttachmentTests {
       try test(value)
     }
   }
+
+  @Test func attachmentMetadata() throws {
+    let attachableValue = MySendableAttachableWithMetadata(string: "abc123")
+    let attachment = Test.Attachment(attachableValue, metadata: ["abc123": 456])
+    let metadata = try #require(attachment.metadata)
+    #expect(metadata[attachableValue.string] == 456)
+
+    let attachmentCopy = Test.Attachment<Test.AnyAttachable>(attachment)
+    let metadata2 = try #require(attachmentCopy.metadata as? [String: Int])
+    #expect(metadata == metadata2)
+  }
 }
 
 // MARK: - Fixtures
@@ -325,6 +341,19 @@ struct MySendableAttachable: Test.Attachable, Sendable {
 
 struct MySendableAttachableWithDefaultByteCount: Test.Attachable, Sendable {
   var string: String
+
+  func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    var string = string
+    return try string.withUTF8 { buffer in
+      try body(.init(buffer))
+    }
+  }
+}
+
+struct MySendableAttachableWithMetadata: Test.Attachable, Sendable {
+  var string: String
+
+  typealias AttachmentMetadata = [String: Int]
 
   func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var string = string
