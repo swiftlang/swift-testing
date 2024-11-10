@@ -25,7 +25,7 @@ extension Test {
   /// type can only be created with attachable values that conform to
   /// ``Test/Attachable``.
   public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: Test.Attachable & ~Copyable {
-    /// Storage for ``attachableValue-29ppv``.
+    /// Storage for ``attachableValue-7dyjv``.
     fileprivate var _attachableValue: AttachableValue
 
     /// The path to which the this attachment was written, if any.
@@ -118,7 +118,7 @@ extension Test {
 
     public var attachableValue: AttachableValue
 
-    fileprivate init(attachableValue: AttachableValue) {
+    init(attachableValue: AttachableValue) {
       self.attachableValue = attachableValue
     }
 
@@ -207,8 +207,8 @@ extension Test.Attachment where AttachableValue: ~Copyable {
   public consuming func attach(sourceLocation: SourceLocation = #_sourceLocation) {
     do {
       let attachmentCopy = try attachableValue.withUnsafeBufferPointer(for: self) { buffer in
-        let attachmentCopy = Test.Attachment(_attachableValue: Array(buffer), fileSystemPath: fileSystemPath, preferredName: preferredName)
-        return Test.Attachment<Test.AnyAttachable>(attachmentCopy)
+        let attachableContainer = Test.AnyAttachable(attachableValue: Array(buffer))
+        return Test.Attachment(_attachableValue: attachableContainer, fileSystemPath: fileSystemPath, preferredName: preferredName)
       }
       Event.post(.valueAttached(attachmentCopy, sourceLocation: sourceLocation))
     } catch {
@@ -222,7 +222,7 @@ extension Test.Attachment where AttachableValue: ~Copyable {
 
 extension Test.Attachment where AttachableValue: ~Copyable {
   /// Call a function and pass a buffer representing the value of this
-  /// instance's ``attachableValue-29ppv`` property to it.
+  /// instance's ``attachableValue-7dyjv`` property to it.
   ///
   /// - Parameters:
   ///   - body: A function to call. A temporary buffer containing a data
@@ -236,7 +236,7 @@ extension Test.Attachment where AttachableValue: ~Copyable {
   /// The testing library uses this function when writing an attachment to a
   /// test report or to a file on disk. This function calls the
   /// ``Test/Attachable/withUnsafeBufferPointer(for:_:)`` function on this
-  /// attachment's ``attachableValue-29ppv`` property.
+  /// attachment's ``attachableValue-7dyjv`` property.
   @inlinable public borrowing func withUnsafeBufferPointer<R>(_ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try attachableValue.withUnsafeBufferPointer(for: self, body)
   }
