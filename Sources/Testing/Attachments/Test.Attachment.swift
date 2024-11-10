@@ -24,9 +24,9 @@ extension Test {
   /// Although it is not a constraint of `AttachableValue`, instances of this
   /// type can only be created with attachable values that conform to
   /// ``Test/Attachable``.
-  public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: ~Copyable {
+  public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: Test.Attachable & ~Copyable {
     /// The value of this attachment.
-    public var attachableValue: AttachableValue
+    public fileprivate(set) var attachableValue: AttachableValue
 
     /// The path to which the this attachment was written, if any.
     ///
@@ -63,7 +63,7 @@ extension Test.Attachment: Sendable where AttachableValue: Sendable {}
 // MARK: - Initializing an attachment
 
 #if !SWT_NO_LAZY_ATTACHMENTS
-extension Test.Attachment where AttachableValue: Test.Attachable & ~Copyable {
+extension Test.Attachment where AttachableValue: ~Copyable {
   /// Initialize an instance of this type that encloses the given attachable
   /// value.
   ///
@@ -80,14 +80,30 @@ extension Test.Attachment where AttachableValue: Test.Attachable & ~Copyable {
 }
 
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-extension Test.Attachment where AttachableValue == any Test.Attachable & Sendable /* & Copyable rdar://137614425 */ {
+extension Test.Attachment where AttachableValue == AnyAttachable {
+  /// The value of this attachment.
+  ///
+  /// When working with a type-erased attachment, the value of this property
+  /// equals the underlying attachable value. To access the attachable value as
+  /// an instance of ``AnyAttachable``, specify the type explicitly:
+  ///
+  /// ```swift
+  /// let attachableValue = attachment.attachableValue as AnyAttachable
+  /// ```
+  ///
+  /// In Embedded Swift, the value of this property is always an instance of
+  /// [`Array<UInt8>`](https://developer.apple.com/documentation/swift/array).
+  public var attachableValue: AnyAttachable.RawValue {
+    attachableValue.rawValue
+  }
+
   /// Create a type-erased attachment from an instance of ``Test/Attachment``.
   ///
   /// - Parameters:
   ///   - attachment: The attachment to type-erase.
   fileprivate init(_ attachment: Test.Attachment<some Test.Attachable & Sendable & Copyable>) {
     self.init(
-      attachableValue: attachment.attachableValue,
+      attachableValue: AnyAttachable(rawValue: attachment.attachableValue),
       fileSystemPath: attachment.fileSystemPath,
       preferredName: attachment.preferredName
     )
@@ -95,9 +111,53 @@ extension Test.Attachment where AttachableValue == any Test.Attachable & Sendabl
 }
 #endif
 
+/// A type-erased container type that represents any attachable value.
+///
+/// This type is not generally visible to developers. It is used when posting
+/// events of kind ``Event/Kind/valueAttached(_:sourceLocation:)``. Test tools
+/// authors who use `@_spi(ForToolsIntegrationOnly)` will see instances of this
+/// type when handling those events.
+///
+/// @Comment {
+///   Swift's type system requires that this type be at least as visible as
+///   `Event.Kind.valueAttached(_:sourceLocation:)`, otherwise it would be
+///   declared as `private`.
+/// }
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+public struct AnyAttachable: RawRepresentable, Test.Attachable, Copyable, Sendable {
+#if !SWT_NO_LAZY_ATTACHMENTS
+  public typealias RawValue = any Test.Attachable & Sendable /* & Copyable rdar://137614425 */
+#else
+  public typealias RawValue = [UInt8]
+#endif
+
+  public var rawValue: RawValue
+
+  public init(rawValue: RawValue) {
+    self.rawValue = rawValue
+  }
+
+  public var estimatedAttachmentByteCount: Int? {
+    rawValue.estimatedAttachmentByteCount
+  }
+
+  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    func open<T>(_ attachableValue: T, for attachment: borrowing Test.Attachment<Self>) throws -> R where T: Test.Attachable & Sendable & Copyable {
+      let temporaryAttachment = Test.Attachment<T>(
+        attachableValue: attachableValue,
+        fileSystemPath: attachment.fileSystemPath,
+        preferredName: attachment.preferredName
+      )
+      return try attachableValue.withUnsafeBufferPointer(for: temporaryAttachment, body)
+    }
+    return try open(rawValue, for: attachment)
+  }
+}
+
 // MARK: - Attaching an attachment to a test (etc.)
 
-extension Test.Attachment where AttachableValue: Test.Attachable & Sendable & Copyable {
+#if !SWT_NO_LAZY_ATTACHMENTS
+extension Test.Attachment where AttachableValue: Sendable & Copyable {
   /// Attach this instance to the current test.
   ///
   /// - Parameters:
@@ -106,12 +166,13 @@ extension Test.Attachment where AttachableValue: Test.Attachable & Sendable & Co
   /// An attachment can only be attached once.
   @_documentation(visibility: private)
   public consuming func attach(sourceLocation: SourceLocation = #_sourceLocation) {
-    let attachmentCopy = Test.Attachment<any Test.Attachable & Sendable /* & Copyable rdar://137614425 */>(self)
+    let attachmentCopy = Test.Attachment<AnyAttachable>(self)
     Event.post(.valueAttached(attachmentCopy, sourceLocation: sourceLocation))
   }
 }
+#endif
 
-extension Test.Attachment where AttachableValue: Test.Attachable & ~Copyable {
+extension Test.Attachment where AttachableValue: ~Copyable {
   /// Attach this instance to the current test.
   ///
   /// - Parameters:
@@ -129,13 +190,10 @@ extension Test.Attachment where AttachableValue: Test.Attachable & ~Copyable {
   public consuming func attach(sourceLocation: SourceLocation = #_sourceLocation) {
     do {
       let attachmentCopy = try attachableValue.withUnsafeBufferPointer(for: self) { buffer in
-        Test.Attachment(attachableValue: Array(buffer), fileSystemPath: fileSystemPath, preferredName: preferredName)
+        let attachmentCopy = Test.Attachment(attachableValue: Array(buffer), fileSystemPath: fileSystemPath, preferredName: preferredName)
+        return Test.Attachment<AnyAttachable>(attachmentCopy)
       }
-#if !SWT_NO_LAZY_ATTACHMENTS
-      attachmentCopy.attach(sourceLocation: sourceLocation)
-#else
       Event.post(.valueAttached(attachmentCopy, sourceLocation: sourceLocation))
-#endif
     } catch {
       let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
       Issue(kind: .valueAttachmentFailed(error), comments: [], sourceContext: sourceContext).record()
@@ -145,7 +203,7 @@ extension Test.Attachment where AttachableValue: Test.Attachable & ~Copyable {
 
 // MARK: - Getting the serialized form of an attachable value (generically)
 
-extension Test.Attachment where AttachableValue: Test.Attachable & ~Copyable {
+extension Test.Attachment where AttachableValue: ~Copyable {
   /// Call a function and pass a buffer representing the value of this
   /// instance's ``attachableValue`` property to it.
   ///
@@ -167,40 +225,10 @@ extension Test.Attachment where AttachableValue: Test.Attachable & ~Copyable {
   }
 }
 
-extension Test.Attachment where AttachableValue == any Test.Attachable & Sendable /* & Copyable rdar://137614425 */ {
-  /// Call a function and pass a buffer representing the value of this
-  /// instance's ``attachableValue`` property to it.
-  ///
-  /// - Parameters:
-  ///   - body: A function to call. A temporary buffer containing a data
-  ///     representation of this instance is passed to it.
-  ///
-  /// - Returns: Whatever is returned by `body`.
-  ///
-  /// - Throws: Whatever is thrown by `body`, or any error that prevented the
-  ///   creation of the buffer.
-  ///
-  /// The testing library uses this function when writing an attachment to a
-  /// test report or to a file on disk. This function calls the
-  /// ``Test/Attachable/withUnsafeBufferPointer(for:_:)`` function on this
-  /// attachment's ``attachableValue`` property.
-  public borrowing func withUnsafeBufferPointer<R>(_ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    func open<T>(_ attachableValue: T, for attachment: Self) throws -> R where T: Test.Attachable & Copyable {
-      let temporaryAttachment = Test.Attachment<T>(
-        attachableValue: attachableValue,
-        fileSystemPath: attachment.fileSystemPath,
-        preferredName: attachment.preferredName
-      )
-      return try attachableValue.withUnsafeBufferPointer(for: temporaryAttachment, body)
-    }
-    return try open(attachableValue, for: self)
-  }
-}
-
 #if !SWT_NO_FILE_IO
 // MARK: - Writing
 
-extension Test.Attachment where AttachableValue: Test.Attachable & ~Copyable {
+extension Test.Attachment where AttachableValue: ~Copyable {
   /// Write the attachment's contents to a file in the specified directory.
   ///
   /// - Parameters:
@@ -301,46 +329,6 @@ extension Test.Attachment where AttachableValue: Test.Attachable & ~Copyable {
     }
 
     return result
-  }
-}
-
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-extension Test.Attachment where AttachableValue == any Test.Attachable & Sendable /* & Copyable rdar://137614425 */ {
-  /// Write the attachment's contents to a file in the specified directory.
-  ///
-  /// - Parameters:
-  ///   - directoryPath: The directory that should contain the attachment when
-  ///     written.
-  ///
-  /// - Throws: Any error preventing writing the attachment.
-  ///
-  /// - Returns: The path to the file that was written.
-  ///
-  /// The attachment is written to a file _within_ `directoryPath`, whose name
-  /// is derived from the value of the ``Test/Attachment/preferredName``
-  /// property.
-  ///
-  /// If you pass `--experimental-attachments-path` to `swift test`, the testing
-  /// library automatically uses this function to persist attachments to the
-  /// directory you specify.
-  ///
-  /// This function does not get or set the value of the attachment's
-  /// ``fileSystemPath`` property. The caller is responsible for setting the
-  /// value of this property if needed.
-  ///
-  /// This function is provided as a convenience to allow tools authors to write
-  /// attachments to persistent storage the same way that Swift Package Manager
-  /// does. You are not required to use this function.
-  public borrowing func write(toFileInDirectoryAtPath directoryPath: String) throws -> String {
-    func open<T>(_ attachableValue: T, for attachment: Self) throws -> String where T: Test.Attachable & Copyable {
-      let temporaryAttachment = Test.Attachment<T>(
-        attachableValue: attachableValue,
-        fileSystemPath: attachment.fileSystemPath,
-        preferredName: attachment.preferredName
-      )
-      return try temporaryAttachment.write(toFileInDirectoryAtPath: directoryPath)
-    }
-    return try open(attachableValue, for: self)
   }
 }
 
