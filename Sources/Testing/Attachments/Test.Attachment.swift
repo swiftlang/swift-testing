@@ -50,6 +50,16 @@ extension Test {
     /// value of this property has not been explicitly set, the testing library
     /// will attempt to generate its own value.
     public var preferredName: String
+
+    /// The source location of this instance.
+    ///
+    /// This property is not part of the public interface of the testing
+    /// library. It is initially set when the attachment is created and is
+    /// updated later when the attachment is attached to something.
+    ///
+    /// The value of this property is used when recording issues associated with
+    /// the attachment.
+    var sourceLocation: SourceLocation
   }
 }
 
@@ -69,9 +79,13 @@ extension Test.Attachment where AttachableValue: ~Copyable {
   ///   - preferredName: The preferred name of the attachment when writing it
   ///     to a test report or to disk. If `nil`, the testing library attempts
   ///     to derive a reasonable filename for the attached value.
-  public init(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil) {
+  ///   - sourceLocation: The source location of the call to this initializer.
+  ///     This value is used when recording issues associated with the
+  ///     attachment.
+  public init(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
     self._attachableValue = attachableValue
     self.preferredName = preferredName ?? Self.defaultPreferredName
+    self.sourceLocation = sourceLocation
   }
 }
 
@@ -85,7 +99,8 @@ extension Test.Attachment where AttachableValue == Test.AnyAttachable {
     self.init(
       _attachableValue: Test.AnyAttachable(attachableValue: attachment.attachableValue),
       fileSystemPath: attachment.fileSystemPath,
-      preferredName: attachment.preferredName
+      preferredName: attachment.preferredName,
+      sourceLocation: attachment.sourceLocation
     )
   }
 }
@@ -126,7 +141,8 @@ extension Test {
         let temporaryAttachment = Test.Attachment<T>(
           _attachableValue: attachableValue,
           fileSystemPath: attachment.fileSystemPath,
-          preferredName: attachment.preferredName
+          preferredName: attachment.preferredName,
+          sourceLocation: attachment.sourceLocation
         )
         return try temporaryAttachment.withUnsafeBufferPointer(body)
       }
@@ -178,8 +194,9 @@ extension Test.Attachment where AttachableValue: Sendable & Copyable {
   /// An attachment can only be attached once.
   @_documentation(visibility: private)
   public consuming func attach(sourceLocation: SourceLocation = #_sourceLocation) {
-    let attachmentCopy = Test.Attachment<Test.AnyAttachable>(self)
-    Event.post(.valueAttached(attachmentCopy), sourceLocation: sourceLocation)
+    var attachmentCopy = Test.Attachment<Test.AnyAttachable>(self)
+    attachmentCopy.sourceLocation = sourceLocation
+    Event.post(.valueAttached(attachmentCopy))
   }
 }
 #endif
@@ -203,9 +220,9 @@ extension Test.Attachment where AttachableValue: ~Copyable {
     do {
       let attachmentCopy = try withUnsafeBufferPointer { buffer in
         let attachableContainer = Test.AnyAttachable(attachableValue: Array(buffer))
-        return Test.Attachment(_attachableValue: attachableContainer, fileSystemPath: fileSystemPath, preferredName: preferredName)
+        return Test.Attachment(_attachableValue: attachableContainer, fileSystemPath: fileSystemPath, preferredName: preferredName, sourceLocation: sourceLocation)
       }
-      Event.post(.valueAttached(attachmentCopy), sourceLocation: sourceLocation)
+      Event.post(.valueAttached(attachmentCopy))
     } catch {
       let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
       Issue(kind: .valueAttachmentFailed(error), comments: [], sourceContext: sourceContext).record()
@@ -387,7 +404,7 @@ extension Configuration {
       return true
     } catch {
       // Record the error as an issue and suppress the event.
-      let sourceContext = SourceContext(backtrace: .current(), sourceLocation: event.sourceLocation)
+      let sourceContext = SourceContext(backtrace: .current(), sourceLocation: attachment.sourceLocation)
       Issue(kind: .valueAttachmentFailed(error), comments: [], sourceContext: sourceContext).record(configuration: self)
       return false
     }

@@ -170,7 +170,7 @@ struct AttachmentTests {
         }
 
         #expect(attachment.preferredName == "loremipsum")
-        #expect(event.sourceLocation?.fileID == #fileID)
+        #expect(attachment.sourceLocation.fileID == #fileID)
         valueAttached()
       }
 
@@ -191,7 +191,7 @@ struct AttachmentTests {
 
         #expect(attachment.preferredName == "loremipsum")
         #expect(attachment.attachableValue is MySendableAttachable)
-        #expect(event.sourceLocation?.fileID == #fileID)
+        #expect(attachment.sourceLocation.fileID == #fileID)
        valueAttached()
       }
 
@@ -207,13 +207,13 @@ struct AttachmentTests {
       await confirmation("Issue recorded") { issueRecorded in
         var configuration = Configuration()
         configuration.eventHandler = { event, _ in
-          if case .valueAttached = event.kind {
-            #expect(event.sourceLocation?.fileID == #fileID)
+          if case let .valueAttached(attachment) = event.kind {
+            #expect(attachment.sourceLocation.fileID == #fileID)
             valueAttached()
           } else if case let .issueRecorded(issue) = event.kind,
                     case let .valueAttachmentFailed(error) = issue.kind,
                     error is MyError {
-            #expect(event.sourceLocation?.fileID == #fileID)
+            #expect(issue.sourceLocation?.fileID == #fileID)
             issueRecorded()
           }
         }

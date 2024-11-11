@@ -168,28 +168,6 @@ public struct Event: Sendable {
   /// The instant at which the event occurred.
   public var instant: Test.Clock.Instant
 
-  /// Storage for ``sourceLocation``.
-  private var _sourceLocation: SourceLocation?
-
-  /// The source location where this event occurred, if available.
-  ///
-  /// Not all events have associated source location information. In particular,
-  /// source location information is available for events with the following
-  /// ``kind-swift.property``:
-  ///
-  /// - ``Kind-swift.enum/expectationChecked(_:)``
-  /// - ``Kind-swift.enum/issueRecorded(_:)``
-  /// - ``Kind-swift.enum/valueAttached(_:)``
-  public var sourceLocation: SourceLocation? {
-    if let _sourceLocation {
-      return _sourceLocation
-    }
-    if case let .issueRecorded(issue) = kind {
-      return issue.sourceLocation
-    }
-    return nil
-  }
-
   /// Initialize an instance of this type.
   ///
   /// - Parameters:
@@ -199,19 +177,16 @@ public struct Event: Sendable {
   ///     any.
   ///   - instant: The instant at which the event occurred. The default value
   ///     of this argument is `.now`.
-  ///   - sourceLocation: The source location at which the event occurred, if
-  ///     known, or `nil` if that information is not applicable.
   ///
   /// When creating an event to be posted, use
   /// ``post(_:for:testCase:instant:configuration)`` instead since that ensures
   /// any task local-derived values in the associated ``Event/Context`` match
   /// the event.
-  init(_ kind: Kind, testID: Test.ID?, testCaseID: Test.Case.ID?, instant: Test.Clock.Instant = .now, sourceLocation: SourceLocation? = nil) {
+  init(_ kind: Kind, testID: Test.ID?, testCaseID: Test.Case.ID?, instant: Test.Clock.Instant = .now) {
     self.kind = kind
     self.testID = testID
     self.testCaseID = testCaseID
     self.instant = instant
-    self._sourceLocation = sourceLocation
   }
 
   /// Post an ``Event`` with the specified values.
@@ -223,8 +198,6 @@ public struct Event: Sendable {
   ///     ``Test/Case/current``.
   ///   - instant: The instant at which the event occurred. The default value
   ///     of this argument is `.now`.
-  ///   - sourceLocation: The source location at which the event occurred, if
-  ///     known, or `nil` if that information is not applicable.
   ///   - configuration: The configuration whose event handler should handle
   ///     this event. If `nil` is passed, the current task's configuration is
   ///     used, if known.
@@ -232,7 +205,6 @@ public struct Event: Sendable {
     _ kind: Kind,
     for testAndTestCase: (Test?, Test.Case?) = currentTestAndTestCase(),
     instant: Test.Clock.Instant = .now,
-    sourceLocation: SourceLocation? = nil,
     configuration: Configuration? = nil
   ) {
     // Create both the event and its associated context here at same point, to
@@ -241,7 +213,7 @@ public struct Event: Sendable {
     // reset it to the actual configuration that handles the event when we call
     // handleEvent() later, so there's no need to make a copy of it yet.
     let (test, testCase) = testAndTestCase
-    let event = Event(kind, testID: test?.id, testCaseID: testCase?.id, instant: instant, sourceLocation: sourceLocation)
+    let event = Event(kind, testID: test?.id, testCaseID: testCase?.id, instant: instant)
     let context = Event.Context(test: test, testCase: testCase, configuration: nil)
     event._post(in: context, configuration: configuration)
   }
@@ -360,9 +332,6 @@ extension Event {
     /// The instant at which the event occurred.
     public var instant: Test.Clock.Instant
 
-    /// The source location where this event occurred, if available.
-    public var sourceLocation: SourceLocation?
-
     /// Snapshots an ``Event``.
     ///
     /// - Parameters:
@@ -372,7 +341,6 @@ extension Event {
       testID = event.testID
       testCaseID = event.testCaseID
       instant = event.instant
-      sourceLocation = event.sourceLocation
     }
   }
 }
