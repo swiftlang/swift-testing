@@ -255,34 +255,6 @@ extension AttachmentTests {
       try test(value)
     }
 
-    @Test func uint8UnsafeBufferPointer() throws {
-      let value: [UInt8] = Array("abc123".utf8)
-      try value.withUnsafeBufferPointer { value in
-        try test(value)
-      }
-    }
-
-    @Test func uint8UnsafeMutableBufferPointer() throws {
-      var value: [UInt8] = Array("abc123".utf8)
-      try value.withUnsafeMutableBufferPointer { value in
-        try test(value)
-      }
-    }
-
-    @Test func unsafeRawBufferPointer() throws {
-      let value: [UInt8] = Array("abc123".utf8)
-      try value.withUnsafeBytes { value in
-        try test(value)
-      }
-    }
-
-    @Test func unsafeMutableRawBufferPointer() throws {
-      var value: [UInt8] = Array("abc123".utf8)
-      try value.withUnsafeMutableBytes { value in
-        try test(value)
-      }
-    }
-
     @Test func string() throws {
       let value = "abc123"
       try test(value)

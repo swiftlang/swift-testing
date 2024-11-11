@@ -127,34 +127,6 @@ extension ArraySlice<UInt8>: Test.Attachable {
 }
 
 @_spi(Experimental)
-extension UnsafeBufferPointer<UInt8>: Test.Attachable {
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try body(.init(self))
-  }
-}
-
-@_spi(Experimental)
-extension UnsafeMutableBufferPointer<UInt8>: Test.Attachable {
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try body(.init(self))
-  }
-}
-
-@_spi(Experimental)
-extension UnsafeRawBufferPointer: Test.Attachable {
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try body(self)
-  }
-}
-
-@_spi(Experimental)
-extension UnsafeMutableRawBufferPointer: Test.Attachable {
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try body(.init(self))
-  }
-}
-
-@_spi(Experimental)
 extension String: Test.Attachable {
   public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var selfCopy = self
