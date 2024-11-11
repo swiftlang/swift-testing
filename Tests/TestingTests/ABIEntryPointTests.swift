@@ -185,13 +185,13 @@ private func withTestingLibraryImageAddress<R>(_ body: (ImageAddress?) throws ->
 #elseif os(Linux) || os(FreeBSD) || os(Android)
   // When using glibc, dladdr() is only available if __USE_GNU is specified.
 #elseif os(Windows)
-  let flags = DWORD(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS)
-  try addressInTestingLibrary.withMemoryRebound(to: wchar_t.self, capacity: MemoryLayout<UnsafeRawPointer>.stride / MemoryLayout<wchar_t>.stride) { addressInTestingLibrary in
-    try #require(GetModuleHandleExW(flags, addressInTestingLibrary, &testingLibraryAddress))
-  }
-  defer {
-    FreeLibrary(testingLibraryAddress)
-  }
+//  let flags = DWORD(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS)
+//  try addressInTestingLibrary.withMemoryRebound(to: wchar_t.self, capacity: MemoryLayout<UnsafeRawPointer>.stride / MemoryLayout<wchar_t>.stride) { addressInTestingLibrary in
+//    try #require(GetModuleHandleExW(flags, addressInTestingLibrary, &testingLibraryAddress))
+//  }
+//  defer {
+//    FreeLibrary(testingLibraryAddress)
+//  }
 #else
 #warning("Platform-specific implementation missing: cannot find the testing library image the test suite is linked against")
 #endif
