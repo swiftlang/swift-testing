@@ -177,9 +177,9 @@ public struct Event: Sendable {
   /// source location information is available for events with the following
   /// ``kind-swift.property``:
   ///
-  /// - ``Kind/expectationChecked(_:)``
-  /// - ``Kind/issueRecorded(_:)``
-  /// - ``Kind/valueAttached(_:)``
+  /// - ``Kind-swift.enum/expectationChecked(_:)``
+  /// - ``Kind-swift.enum/issueRecorded(_:)``
+  /// - ``Kind-swift.enum/valueAttached(_:)``
   public var sourceLocation: SourceLocation? {
     if let _sourceLocation {
       return _sourceLocation
