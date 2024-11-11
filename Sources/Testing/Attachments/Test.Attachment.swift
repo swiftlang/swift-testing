@@ -133,7 +133,7 @@ extension Test {
           fileSystemPath: attachment.fileSystemPath,
           preferredName: attachment.preferredName
         )
-        return try attachableValue.withUnsafeBufferPointer(for: temporaryAttachment, body)
+        return try temporaryAttachment.withUnsafeBufferPointer(body)
       }
       return try open(attachableValue, for: attachment)
     }
@@ -206,7 +206,7 @@ extension Test.Attachment where AttachableValue: ~Copyable {
   /// An attachment can only be attached once.
   public consuming func attach(sourceLocation: SourceLocation = #_sourceLocation) {
     do {
-      let attachmentCopy = try attachableValue.withUnsafeBufferPointer(for: self) { buffer in
+      let attachmentCopy = try withUnsafeBufferPointer { buffer in
         let attachableContainer = Test.AnyAttachable(attachableValue: Array(buffer))
         return Test.Attachment(_attachableValue: attachableContainer, fileSystemPath: fileSystemPath, preferredName: preferredName)
       }
@@ -341,7 +341,7 @@ extension Test.Attachment where AttachableValue: ~Copyable {
 
     // There should be no code path that leads to this call where the attachable
     // value is nil.
-    try attachableValue.withUnsafeBufferPointer(for: self) { buffer in
+    try withUnsafeBufferPointer { buffer in
       try file!.write(buffer)
     }
 
