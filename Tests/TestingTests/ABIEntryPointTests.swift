@@ -125,11 +125,11 @@ struct ABIEntryPointTests {
     }
   }
 
-#if !(!SWT_FIXED_SWIFTPM_8111 && os(Windows))
   private func _invokeEntryPointV0(
     passing arguments: __CommandLineArguments_v0,
     recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void = { _ in }
   ) async throws -> Bool {
+#if !(!SWT_FIXED_SWIFTPM_8111 && os(Windows))
 #if !os(Linux) && !os(FreeBSD) && !os(Android) && !SWT_NO_DYNAMIC_LINKING
     // Get the ABI entry point by dynamically looking it up at runtime.
     //
@@ -143,6 +143,7 @@ struct ABIEntryPointTests {
         }
       )
     }
+#endif
 #endif
     let abiEntryPoint = unsafeBitCast(abiv0_getEntryPoint(), to: ABIv0.EntryPoint.self)
 
@@ -158,7 +159,6 @@ struct ABIEntryPointTests {
     // Call the entry point function.
     return try await abiEntryPoint(.init(argumentsJSON), recordHandler)
   }
-#endif
 
 #if canImport(Foundation)
   @Test func decodeEmptyConfiguration() throws {
