@@ -12,14 +12,19 @@
 public struct SourceLocation: Sendable {
   /// The file ID of the source file.
   ///
+  /// - Precondition: The value of this property must not be empty and must be
+  ///   formatted as described in the documentation for the
+  ///   [`#fileID`](https://developer.apple.com/documentation/swift/fileID()).
+  ///   macro in the Swift standard library.
+  ///
   /// ## See Also
   ///
   /// - ``moduleName``
   /// - ``fileName``
   public var fileID: String {
-    didSet {
-      precondition(!fileID.isEmpty)
-      precondition(fileID.contains("/"))
+    willSet {
+      precondition(!newValue.isEmpty, "SourceLocation.fileID must not be empty (was \(newValue))")
+      precondition(newValue.contains("/"), "SourceLocation.fileID must be a well-formed file ID (was \(newValue))")
     }
   }
 
@@ -74,20 +79,45 @@ public struct SourceLocation: Sendable {
   public var _filePath: String
 
   /// The line in the source file.
+  ///
+  /// - Precondition: The value of this property must be greater than `0`.
   public var line: Int {
-    didSet {
-      precondition(line > 0)
+    willSet {
+      precondition(newValue > 0, "SourceLocation.line must be greater than 0 (was \(newValue))")
     }
   }
 
   /// The column in the source file.
+  ///
+  /// - Precondition: The value of this property must be greater than `0`.
   public var column: Int {
-    didSet {
-      precondition(column > 0)
+    willSet {
+      precondition(newValue > 0, "SourceLocation.column must be greater than 0 (was \(newValue))")
     }
   }
 
+  /// Initialize an instance of this type with the specified location details.
+  ///
+  /// - Parameters:
+  ///   - fileID: The file ID of the source file, using the format described in
+  ///     the documentation for the
+  ///     [`#fileID`](https://developer.apple.com/documentation/swift/fileID())
+  ///     macro in the Swift standard library.
+  ///   - filePath: The path to the source file.
+  ///   - line: The line in the source file. Must be greater than `0`.
+  ///   - column: The column in the source file. Must be greater than `0`.
+  ///
+  /// - Precondition: `fileID` must not be empty and must be formatted as
+  ///   described in the documentation for
+  ///   [`#fileID`](https://developer.apple.com/documentation/swift/fileID()).
+  /// - Precondition: `line` must be greater than `0`.
+  /// - Precondition: `column` must be greater than `0`.
   public init(fileID: String, filePath: String, line: Int, column: Int) {
+    precondition(!fileID.isEmpty, "SourceLocation.fileID must not be empty (was \(fileID))")
+    precondition(fileID.contains("/"), "SourceLocation.fileID must be a well-formed file ID (was \(fileID))")
+    precondition(line > 0, "SourceLocation.line must be greater than 0 (was \(line))")
+    precondition(column > 0, "SourceLocation.column must be greater than 0 (was \(column))")
+
     self.fileID = fileID
     self._filePath = filePath
     self.line = line

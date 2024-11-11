@@ -1489,8 +1489,8 @@ struct IssueCodingTests {
 
   @Test func sourceLocationPropertyGetter() throws {
     let sourceLocation = SourceLocation(
-      fileID: "fileID",
-      filePath: "filePath",
+      fileID: "M/file.swift",
+      filePath: "M/file.swift",
       line: 13,
       column: 42
     )
@@ -1509,8 +1509,8 @@ struct IssueCodingTests {
 
   @Test func sourceLocationPropertySetter() throws {
     let initialSourceLocation = SourceLocation(
-      fileID: "fileID",
-      filePath: "filePath",
+      fileID: "M/file.swift",
+      filePath: "file.swift",
       line: 13,
       column: 42
     )
@@ -1523,8 +1523,8 @@ struct IssueCodingTests {
     let issue = Issue(kind: .apiMisused, sourceContext: sourceContext)
 
     let updatedSourceLocation = SourceLocation(
-      fileID: "fileID2",
-      filePath: "filePath2",
+      fileID: "M/file2.swift",
+      filePath: "file2.swift",
       line: 14,
       column: 43
     )

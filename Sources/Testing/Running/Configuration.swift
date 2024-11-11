@@ -75,11 +75,10 @@ public struct Configuration: Sendable {
 
     /// The maximum number of times the test run should iterate.
     ///
-    /// - Precondition: The value of this property must be greater than or equal
-    ///   to `1`.
+    /// - Precondition: The value of this property must be greater than `0`.
     public var maximumIterationCount: Int {
       willSet {
-        precondition(newValue >= 1, "Test runs must iterate at least once.")
+        precondition(newValue > 0, "Test runs must iterate at least once (maximumIterationCount was \(newValue)).")
       }
     }
 
