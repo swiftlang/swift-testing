@@ -170,6 +170,7 @@ struct AttachmentTests {
         }
 
         #expect(attachment.preferredName == "loremipsum")
+        #expect(attachment.sourceLocation.fileID == #fileID)
         valueAttached()
       }
 
@@ -189,7 +190,9 @@ struct AttachmentTests {
         }
 
         #expect(attachment.preferredName == "loremipsum")
-        valueAttached()
+        #expect(attachment.attachableValue is MySendableAttachable)
+        #expect(attachment.sourceLocation.fileID == #fileID)
+       valueAttached()
       }
 
       await Test {
@@ -200,15 +203,17 @@ struct AttachmentTests {
   }
 
   @Test func issueRecordedWhenAttachingNonSendableValueThatThrows() async {
-    await confirmation("Attachment detected") { valueAttached in
+    await confirmation("Attachment detected", expectedCount: 0) { valueAttached in
       await confirmation("Issue recorded") { issueRecorded in
         var configuration = Configuration()
         configuration.eventHandler = { event, _ in
-          if case .valueAttached = event.kind {
+          if case let .valueAttached(attachment) = event.kind {
+            #expect(attachment.sourceLocation.fileID == #fileID)
             valueAttached()
           } else if case let .issueRecorded(issue) = event.kind,
-                    case let .errorCaught(error) = issue.kind,
+                    case let .valueAttachmentFailed(error) = issue.kind,
                     error is MyError {
+            #expect(issue.sourceLocation?.fileID == #fileID)
             issueRecorded()
           }
         }
@@ -226,10 +231,10 @@ struct AttachmentTests {
 extension AttachmentTests {
   @Suite("Built-in conformances")
   struct BuiltInConformances {
-    func test(_ value: borrowing some Test.Attachable & ~Copyable) throws {
+    func test(_ value: some Test.Attachable) throws {
       #expect(value.estimatedAttachmentByteCount == 6)
       let attachment = Test.Attachment(value)
-      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { buffer in
+      try attachment.withUnsafeBufferPointer { buffer in
         #expect(buffer.elementsEqual("abc123".utf8))
         #expect(buffer.count == 6)
       }
@@ -250,34 +255,6 @@ extension AttachmentTests {
       try test(value)
     }
 
-    @Test func uint8UnsafeBufferPointer() throws {
-      let value: [UInt8] = Array("abc123".utf8)
-      try value.withUnsafeBufferPointer { value in
-        try test(value)
-      }
-    }
-
-    @Test func uint8UnsafeMutableBufferPointer() throws {
-      var value: [UInt8] = Array("abc123".utf8)
-      try value.withUnsafeMutableBufferPointer { value in
-        try test(value)
-      }
-    }
-
-    @Test func unsafeRawBufferPointer() throws {
-      let value: [UInt8] = Array("abc123".utf8)
-      try value.withUnsafeBytes { value in
-        try test(value)
-      }
-    }
-
-    @Test func unsafeMutableRawBufferPointer() throws {
-      var value: [UInt8] = Array("abc123".utf8)
-      try value.withUnsafeMutableBytes { value in
-        try test(value)
-      }
-    }
-
     @Test func string() throws {
       let value = "abc123"
       try test(value)
@@ -296,7 +273,7 @@ struct MyAttachable: Test.Attachable, ~Copyable {
   var string: String
   var errorToThrow: (any Error)?
 
-  func withUnsafeBufferPointer<R>(for attachment: borrowing Testing.Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     if let errorToThrow {
       throw errorToThrow
     }
@@ -314,7 +291,8 @@ extension MyAttachable: Sendable {}
 struct MySendableAttachable: Test.Attachable, Sendable {
   var string: String
 
-  func withUnsafeBufferPointer<R>(for attachment: borrowing Testing.Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    #expect(attachment.attachableValue.string == string)
     var string = string
     return try string.withUTF8 { buffer in
       try body(.init(buffer))
@@ -325,7 +303,7 @@ struct MySendableAttachable: Test.Attachable, Sendable {
 struct MySendableAttachableWithDefaultByteCount: Test.Attachable, Sendable {
   var string: String
 
-  func withUnsafeBufferPointer<R>(for attachment: borrowing Testing.Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var string = string
     return try string.withUTF8 { buffer in
       try body(.init(buffer))

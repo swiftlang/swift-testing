@@ -15,14 +15,18 @@ extension Test {
   ///
   /// To attach an attachable value to a test report or test run output, use it
   /// to initialize a new instance of ``Test/Attachment``, then call
-  /// ``Test/Attachment/attach()``. An attachment can only be attached once.
+  /// ``Test/Attachment/attach(sourceLocation:)``. An attachment can only be
+  /// attached once.
   ///
   /// The testing library provides default conformances to this protocol for a
   /// variety of standard library types. Most user-defined types do not need to
   /// conform to this protocol.
   ///
   /// A type should conform to this protocol if it can be represented as a
-  /// sequence of bytes that would be diagnostically useful if a test fails.
+  /// sequence of bytes that would be diagnostically useful if a test fails. If
+  /// a type cannot conform directly to this protocol (such as a non-final class
+  /// or a type declared in a third-party module), you can create a container
+  /// type that conforms to ``Test/AttachableContainer`` to act as a proxy.
   public protocol Attachable: ~Copyable {
     /// An estimate of the number of bytes of memory needed to store this value
     /// as an attachment.
@@ -61,7 +65,7 @@ extension Test {
     /// the buffer to contain an image in PNG format, JPEG format, etc., but it
     /// would not be idiomatic for the buffer to contain a textual description
     /// of the image.
-    borrowing func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
+    borrowing func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
   }
 }
 
@@ -103,56 +107,28 @@ extension Test.Attachable where Self: StringProtocol {
 // developers can attach raw data when needed.
 @_spi(Experimental)
 extension Array<UInt8>: Test.Attachable {
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }
 }
 
 @_spi(Experimental)
 extension ContiguousArray<UInt8>: Test.Attachable {
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }
 }
 
 @_spi(Experimental)
 extension ArraySlice<UInt8>: Test.Attachable {
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }
 }
 
 @_spi(Experimental)
-extension UnsafeBufferPointer<UInt8>: Test.Attachable {
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try body(.init(self))
-  }
-}
-
-@_spi(Experimental)
-extension UnsafeMutableBufferPointer<UInt8>: Test.Attachable {
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try body(.init(self))
-  }
-}
-
-@_spi(Experimental)
-extension UnsafeRawBufferPointer: Test.Attachable {
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try body(self)
-  }
-}
-
-@_spi(Experimental)
-extension UnsafeMutableRawBufferPointer: Test.Attachable {
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try body(.init(self))
-  }
-}
-
-@_spi(Experimental)
 extension String: Test.Attachable {
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var selfCopy = self
     return try selfCopy.withUTF8 { utf8 in
       try body(UnsafeRawBufferPointer(utf8))
@@ -162,7 +138,7 @@ extension String: Test.Attachable {
 
 @_spi(Experimental)
 extension Substring: Test.Attachable {
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var selfCopy = self
     return try selfCopy.withUTF8 { utf8 in
       try body(UnsafeRawBufferPointer(utf8))

@@ -103,7 +103,7 @@ public struct Event: Sendable {
     /// - Parameters:
     ///   - attachment: The attachment that was created.
     @_spi(Experimental)
-    indirect case valueAttached(_ attachment: Test.Attachment)
+    indirect case valueAttached(_ attachment: Test.Attachment<Test.AnyAttachable>)
 
     /// A test ended.
     ///

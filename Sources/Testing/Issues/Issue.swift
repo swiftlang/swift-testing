@@ -60,6 +60,14 @@ public struct Issue: Sendable {
     /// A known issue was expected, but was not recorded.
     case knownIssueNotRecorded
 
+    /// An issue due to an `Error` being thrown while attempting to save an
+    /// attachment to a test report or to disk.
+    ///
+    /// - Parameters:
+    ///   - error: The error which was associated with this issue.
+    @_spi(Experimental)
+    case valueAttachmentFailed(_ error: any Error)
+
     /// An issue occurred due to misuse of the testing library.
     case apiMisused
 
@@ -216,6 +224,8 @@ extension Issue.Kind: CustomStringConvertible {
       return "Time limit was exceeded: \(TimeValue(timeLimitComponents))"
     case .knownIssueNotRecorded:
       return "Known issue was not recorded"
+    case let .valueAttachmentFailed(error):
+      return "Caught error while saving attachment: \(error)"
     case .apiMisused:
       return "An API was misused"
     case .system:
@@ -355,7 +365,7 @@ extension Issue.Kind {
           .expectationFailed(Expectation.Snapshot(snapshotting: expectation))
       case .confirmationMiscounted:
           .unconditional
-      case let .errorCaught(error):
+      case let .errorCaught(error), let .valueAttachmentFailed(error):
           .errorCaught(ErrorSnapshot(snapshotting: error))
       case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
           .timeLimitExceeded(timeLimitComponents: timeLimitComponents)
