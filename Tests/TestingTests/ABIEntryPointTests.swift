@@ -125,6 +125,7 @@ struct ABIEntryPointTests {
     }
   }
 
+#if !(!SWT_FIXED_SWIFTPM_8111 && os(Windows))
   private func _invokeEntryPointV0(
     passing arguments: __CommandLineArguments_v0,
     recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void = { _ in }
@@ -157,6 +158,7 @@ struct ABIEntryPointTests {
     // Call the entry point function.
     return try await abiEntryPoint(.init(argumentsJSON), recordHandler)
   }
+#endif
 
 #if canImport(Foundation)
   @Test func decodeEmptyConfiguration() throws {
