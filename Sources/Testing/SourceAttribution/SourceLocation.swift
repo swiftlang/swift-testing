@@ -12,13 +12,17 @@
 public struct SourceLocation: Sendable {
   /// The file ID of the source file.
   ///
+  /// - Precondition: The value of this property must be non-empty and be
+  ///   formatted as described in the documentation for the
+  ///   [`#fileID`](https://developer.apple.com/documentation/swift/fileID()).
+  ///   macro in the Swift standard library.
+  ///
   /// ## See Also
   ///
   /// - ``moduleName``
   /// - ``fileName``
   public var fileID: String {
     didSet {
-      precondition(!fileID.isEmpty)
       precondition(fileID.contains("/"))
     }
   }
@@ -74,6 +78,9 @@ public struct SourceLocation: Sendable {
   public var _filePath: String
 
   /// The line in the source file.
+  ///
+  /// - Precondition: The value of this property must be greater than or equal
+  ///   to `1`.
   public var line: Int {
     didSet {
       precondition(line > 0)
@@ -81,13 +88,38 @@ public struct SourceLocation: Sendable {
   }
 
   /// The column in the source file.
+  ///
+  /// - Precondition: The value of this property must be greater than or equal
+  ///   to `1`.
   public var column: Int {
     didSet {
       precondition(column > 0)
     }
   }
 
+  /// Initialize an instance of this type with the specified location details.
+  ///
+  /// - Parameters:
+  ///   - fileID: The file ID of the source file, using the format described in
+  ///     the documentation for the
+  ///     [`#fileID`](https://developer.apple.com/documentation/swift/fileID())
+  ///     macro in the Swift standard library.
+  ///   - filePath: The path to the source file.
+  ///   - line: The line in the source file. Must be greater than or equal to
+  ///     `1`.
+  ///   - column: The column in the source file. Must be greater than or equal
+  ///     to `1`.
+  ///
+  /// - Precondition: `fileID` must be non-empty and be formatted as described
+  ///   in the documentation for
+  ///   [`#fileID`](https://developer.apple.com/documentation/swift/fileID()).
+  /// - Precondition: `line` must be greater than or equal to `1`.
+  /// - Precondition: `column` must be greater than or equal to `1`.
   public init(fileID: String, filePath: String, line: Int, column: Int) {
+    precondition(fileID.contains("/"))
+    precondition(line > 0)
+    precondition(column > 0)
+
     self.fileID = fileID
     self._filePath = filePath
     self.line = line

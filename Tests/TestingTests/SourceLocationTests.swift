@@ -51,21 +51,6 @@ struct SourceLocationTests {
     #expect(sourceLocation.fileName == "D.swift")
   }
 
-
-#if !SWT_NO_EXIT_TESTS
-  @Test("SourceLocation.fileID property must be well-formed")
-  func sourceLocationFileIDWellFormed() async {
-    await #expect(exitsWith: .failure) {
-      var sourceLocation = #_sourceLocation
-      sourceLocation.fileID = ""
-    }
-    await #expect(exitsWith: .failure) {
-      var sourceLocation = #_sourceLocation
-      sourceLocation.fileID = "ABC"
-    }
-  }
-#endif
-
   @Test("SourceLocation.line and .column properties")
   func sourceLocationLineAndColumn() {
     var sourceLocation = #_sourceLocation
@@ -81,6 +66,34 @@ struct SourceLocationTests {
   }
 
 #if !SWT_NO_EXIT_TESTS
+  @Test("SourceLocation.init requires well-formed arguments")
+  func sourceLocationInitPreconditions() async {
+    await #expect(exitsWith: .failure, "Empty fileID") {
+      _ = SourceLocation(fileID: "", filePath: "", line: 1, column: 1)
+    }
+    await #expect(exitsWith: .failure, "Invalid fileID") {
+      _ = SourceLocation(fileID: "B.swift", filePath: "", line: 1, column: 1)
+    }
+    await #expect(exitsWith: .failure, "Zero line") {
+      _ = SourceLocation(fileID: "A/B.swift", filePath: "", line: 0, column: 1)
+    }
+    await #expect(exitsWith: .failure, "Zero column") {
+      _ = SourceLocation(fileID: "A/B.swift", filePath: "", line: 1, column: 0)
+    }
+  }
+
+  @Test("SourceLocation.fileID property must be well-formed")
+  func sourceLocationFileIDWellFormed() async {
+    await #expect(exitsWith: .failure) {
+      var sourceLocation = #_sourceLocation
+      sourceLocation.fileID = ""
+    }
+    await #expect(exitsWith: .failure) {
+      var sourceLocation = #_sourceLocation
+      sourceLocation.fileID = "ABC"
+    }
+  }
+
   @Test("SourceLocation.line and column properties must be positive")
   func sourceLocationLineAndColumnPositive() async {
     await #expect(exitsWith: .failure) {
