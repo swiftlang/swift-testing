@@ -12,7 +12,7 @@
 public struct SourceLocation: Sendable {
   /// The file ID of the source file.
   ///
-  /// - Precondition: The value of this property must not be empty and be
+  /// - Precondition: The value of this property must not be empty and must be
   ///   formatted as described in the documentation for the
   ///   [`#fileID`](https://developer.apple.com/documentation/swift/fileID()).
   ///   macro in the Swift standard library.
@@ -24,7 +24,7 @@ public struct SourceLocation: Sendable {
   public var fileID: String {
     willSet {
       precondition(!newValue.isEmpty, "SourceLocation.fileID must not be empty (was \(newValue))")
-      precondition(newValue.contains("/"), "SourceLocation.fileID must use the format described in documentation for #fileID (was \(newValue))")
+      precondition(newValue.contains("/"), "SourceLocation.fileID must be a well-formed file ID (was \(newValue))")
     }
   }
 
@@ -107,14 +107,14 @@ public struct SourceLocation: Sendable {
   ///   - line: The line in the source file. Must be greater than `0`.
   ///   - column: The column in the source file. Must be greater than `0`.
   ///
-  /// - Precondition: `fileID` must not be empty and be formatted as described
-  ///   in the documentation for
+  /// - Precondition: `fileID` must not be empty and must be formatted as
+  ///   described in the documentation for
   ///   [`#fileID`](https://developer.apple.com/documentation/swift/fileID()).
   /// - Precondition: `line` must be greater than `0`.
   /// - Precondition: `column` must be greater than `0`.
   public init(fileID: String, filePath: String, line: Int, column: Int) {
     precondition(!fileID.isEmpty, "SourceLocation.fileID must not be empty (was \(fileID))")
-    precondition(fileID.contains("/"), "SourceLocation.fileID must use the format described in documentation for #fileID (was \(fileID))")
+    precondition(fileID.contains("/"), "SourceLocation.fileID must be a well-formed file ID (was \(fileID))")
     precondition(line > 0, "SourceLocation.line must be greater than 0 (was \(line))")
     precondition(column > 0, "SourceLocation.column must be greater than 0 (was \(column))")
 
