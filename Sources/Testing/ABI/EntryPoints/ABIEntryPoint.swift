@@ -55,6 +55,13 @@ extension ABIv0 {
   }
 }
 
+#if !SWT_FIXED_SWIFTPM_8111 && os(Windows)
+@_spi(__Workaround8111)
+@_cdecl("swt_abiv0_getEntryPoint")
+public func abiv0_getEntryPoint() -> UnsafeRawPointer {
+  unsafeBitCast(ABIv0.entryPoint, to: UnsafeRawPointer.self)
+}
+#else
 /// An exported C function that is the equivalent of
 /// ``ABIv0/entryPoint-swift.type.property``.
 ///
@@ -64,6 +71,7 @@ extension ABIv0 {
 @usableFromInline func abiv0_getEntryPoint() -> UnsafeRawPointer {
   unsafeBitCast(ABIv0.entryPoint, to: UnsafeRawPointer.self)
 }
+#endif
 
 #if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Xcode 16 Beta 1 compatibility

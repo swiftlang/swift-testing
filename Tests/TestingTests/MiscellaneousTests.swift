@@ -9,6 +9,9 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+#if !SWT_FIXED_SWIFTPM_8111 && os(Windows)
+@testable @_spi(__Workaround8111) import Testing
+#endif
 
 @Test(/* name unspecified */ .hidden)
 @Sendable func freeSyncFunction() {}
