@@ -224,7 +224,7 @@ public struct Event: Sendable {
   ///   - instant: The instant at which the event occurred. The default value
   ///     of this argument is `.now`.
   ///   - sourceLocation: The source location at which the event occurred, if
-  ///   	known, or `nil` if that information is not applicable.
+  ///     known, or `nil` if that information is not applicable.
   ///   - configuration: The configuration whose event handler should handle
   ///     this event. If `nil` is passed, the current task's configuration is
   ///     used, if known.
