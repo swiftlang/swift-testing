@@ -204,7 +204,7 @@ extension Issue.Kind: CustomStringConvertible {
           // bound." That's sufficient for us to determine if the range contains
           // a single value.
           let upperBound = expected.first { $0 > lowerBound }
-          if let upperBound, upperBound > lowerBound && lowerBound == upperBound - 1 {
+          if upperBound == nil {
             return "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(lowerBound.counting("time"))"
           }
         }
