@@ -184,7 +184,7 @@ extension Test.Attachment where AttachableValue: Sendable & Copyable {
   @_documentation(visibility: private)
   public consuming func attach(sourceLocation: SourceLocation = #_sourceLocation) {
     let attachmentCopy = Test.Attachment<Test.AnyAttachable>(self)
-    Event.post(.valueAttached(attachmentCopy, sourceLocation: sourceLocation))
+    Event.post(.valueAttached(attachmentCopy), sourceLocation: sourceLocation)
   }
 }
 #endif
@@ -210,7 +210,7 @@ extension Test.Attachment where AttachableValue: ~Copyable {
         let attachableContainer = Test.AnyAttachable(attachableValue: Array(buffer))
         return Test.Attachment(_attachableValue: attachableContainer, fileSystemPath: fileSystemPath, preferredName: preferredName)
       }
-      Event.post(.valueAttached(attachmentCopy, sourceLocation: sourceLocation))
+      Event.post(.valueAttached(attachmentCopy), sourceLocation: sourceLocation)
     } catch {
       let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
       Issue(kind: .valueAttachmentFailed(error), comments: [], sourceContext: sourceContext).record()
@@ -372,7 +372,7 @@ extension Configuration {
       return true
     }
 
-    guard case let .valueAttached(attachment, sourceLocation) = event.kind else {
+    guard case let .valueAttached(attachment) = event.kind else {
       preconditionFailure("Passed the wrong kind of event to \(#function) (expected valueAttached, got \(event.kind)). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
     }
     if attachment.fileSystemPath != nil {
@@ -388,11 +388,11 @@ extension Configuration {
       attachment.fileSystemPath = try attachment.write(toFileInDirectoryAtPath: attachmentsPath)
 
       // Update the event before returning and continuing to handle it.
-      event.kind = .valueAttached(attachment, sourceLocation: sourceLocation)
+      event.kind = .valueAttached(attachment)
       return true
     } catch {
       // Record the error as an issue and suppress the event.
-      let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
+      let sourceContext = SourceContext(backtrace: .current(), sourceLocation: event.sourceLocation)
       Issue(kind: .valueAttachmentFailed(error), comments: [], sourceContext: sourceContext).record()
       return false
     }

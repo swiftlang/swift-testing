@@ -135,7 +135,7 @@ struct AttachmentTests {
       var configuration = Configuration()
       configuration.attachmentsPath = try temporaryDirectory()
       configuration.eventHandler = { event, _ in
-        guard case let .valueAttached(attachment, _) = event.kind else {
+        guard case let .valueAttached(attachment) = event.kind else {
           return
         }
         valueAttached()
@@ -165,11 +165,12 @@ struct AttachmentTests {
     await confirmation("Attachment detected") { valueAttached in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
-        guard case let .valueAttached(attachment, _) = event.kind else {
+        guard case let .valueAttached(attachment) = event.kind else {
           return
         }
 
         #expect(attachment.preferredName == "loremipsum")
+        #expect(event.sourceLocation?.fileID == #fileID)
         valueAttached()
       }
 
@@ -184,13 +185,14 @@ struct AttachmentTests {
     await confirmation("Attachment detected") { valueAttached in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
-        guard case let .valueAttached(attachment, _) = event.kind else {
+        guard case let .valueAttached(attachment) = event.kind else {
           return
         }
 
         #expect(attachment.preferredName == "loremipsum")
         #expect(attachment.attachableValue is MySendableAttachable)
-        valueAttached()
+        #expect(event.sourceLocation?.fileID == #fileID)
+       valueAttached()
       }
 
       await Test {
@@ -206,10 +208,12 @@ struct AttachmentTests {
         var configuration = Configuration()
         configuration.eventHandler = { event, _ in
           if case .valueAttached = event.kind {
+            #expect(event.sourceLocation?.fileID == #fileID)
             valueAttached()
           } else if case let .issueRecorded(issue) = event.kind,
                     case let .valueAttachmentFailed(error) = issue.kind,
                     error is MyError {
+            #expect(event.sourceLocation?.fileID == #fileID)
             issueRecorded()
           }
         }

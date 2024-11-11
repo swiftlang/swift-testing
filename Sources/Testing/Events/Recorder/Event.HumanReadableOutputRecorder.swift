@@ -459,7 +459,7 @@ extension Event.HumanReadableOutputRecorder {
       }
       return CollectionOfOne(primaryMessage) + additionalMessages
 
-    case let .valueAttached(attachment, _):
+    case let .valueAttached(attachment):
       var result = [
         Message(
           symbol: .attachment,

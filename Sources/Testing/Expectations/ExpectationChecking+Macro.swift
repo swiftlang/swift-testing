@@ -97,7 +97,7 @@ public func __checkValue(
   // kind, this event is discarded.
   lazy var expectation = Expectation(evaluatedExpression: expression, isPassing: condition, isRequired: isRequired, sourceLocation: sourceLocation)
   if Configuration.deliverExpectationCheckedEvents {
-    Event.post(.expectationChecked(expectation))
+    Event.post(.expectationChecked(expectation), sourceLocation: sourceLocation)
   }
 
   // Early exit if the expectation passed.
