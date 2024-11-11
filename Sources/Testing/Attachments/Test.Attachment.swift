@@ -20,10 +20,6 @@ extension Test {
   /// value of some type that conforms to ``Test/Attachable``. Initialize an
   /// instance of ``Test/Attachment`` with that value and, optionally, a
   /// preferred filename to use when writing to disk.
-  ///
-  /// Although it is not a constraint of `AttachableValue`, instances of this
-  /// type can only be created with attachable values that conform to
-  /// ``Test/Attachable``.
   public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: Test.Attachable & ~Copyable {
     /// Storage for ``attachableValue-7dyjv``.
     fileprivate var _attachableValue: AttachableValue
