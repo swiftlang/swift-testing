@@ -21,10 +21,7 @@ extension Test {
   ///
   /// A type can conform to this protocol if it represents another type that
   /// cannot directly conform to ``Test/Attachable``, such as a non-final class
-  /// or a type declared in a third-party module. Unlike ``Test/Attachable``,
-  /// types that conform to ``Test/AttachableContainer`` must also conform to
-  /// both [`Sendable`](https://developer.apple.com/documentation/swift/sendable)
-  /// and [`Copyable`](https://developer.apple.com/documentation/swift/copyable).
+  /// or a type declared in a third-party module.
   public protocol AttachableContainer<AttachableValue>: Attachable, ~Copyable {
 #if hasFeature(SuppressedAssociatedTypes)
     /// The type of the attachable value represented by this type.
