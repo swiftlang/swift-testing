@@ -12,7 +12,7 @@
 public struct SourceLocation: Sendable {
   /// The file ID of the source file.
   ///
-  /// - Precondition: The value of this property must be non-empty and be
+  /// - Precondition: The value of this property must not be empty and be
   ///   formatted as described in the documentation for the
   ///   [`#fileID`](https://developer.apple.com/documentation/swift/fileID()).
   ///   macro in the Swift standard library.
@@ -22,8 +22,9 @@ public struct SourceLocation: Sendable {
   /// - ``moduleName``
   /// - ``fileName``
   public var fileID: String {
-    didSet {
-      precondition(fileID.contains("/"))
+    willSet {
+      precondition(!newValue.isEmpty, "SourceLocation.fileID must not be empty (was \(newValue))")
+      precondition(newValue.contains("/"), "SourceLocation.fileID must use the format described in documentation for #fileID (was \(newValue))")
     }
   }
 
@@ -79,21 +80,19 @@ public struct SourceLocation: Sendable {
 
   /// The line in the source file.
   ///
-  /// - Precondition: The value of this property must be greater than or equal
-  ///   to `1`.
+  /// - Precondition: The value of this property must be greater than `0`.
   public var line: Int {
-    didSet {
-      precondition(line > 0)
+    willSet {
+      precondition(newValue > 0, "SourceLocation.line must be greater than 0 (was \(newValue))")
     }
   }
 
   /// The column in the source file.
   ///
-  /// - Precondition: The value of this property must be greater than or equal
-  ///   to `1`.
+  /// - Precondition: The value of this property must be greater than `0`.
   public var column: Int {
-    didSet {
-      precondition(column > 0)
+    willSet {
+      precondition(newValue > 0, "SourceLocation.column must be greater than 0 (was \(newValue))")
     }
   }
 
@@ -105,20 +104,19 @@ public struct SourceLocation: Sendable {
   ///     [`#fileID`](https://developer.apple.com/documentation/swift/fileID())
   ///     macro in the Swift standard library.
   ///   - filePath: The path to the source file.
-  ///   - line: The line in the source file. Must be greater than or equal to
-  ///     `1`.
-  ///   - column: The column in the source file. Must be greater than or equal
-  ///     to `1`.
+  ///   - line: The line in the source file. Must be greater than `0`.
+  ///   - column: The column in the source file. Must be greater than `0`.
   ///
-  /// - Precondition: `fileID` must be non-empty and be formatted as described
+  /// - Precondition: `fileID` must not be empty and be formatted as described
   ///   in the documentation for
   ///   [`#fileID`](https://developer.apple.com/documentation/swift/fileID()).
-  /// - Precondition: `line` must be greater than or equal to `1`.
-  /// - Precondition: `column` must be greater than or equal to `1`.
+  /// - Precondition: `line` must be greater than `0`.
+  /// - Precondition: `column` must be greater than `0`.
   public init(fileID: String, filePath: String, line: Int, column: Int) {
-    precondition(fileID.contains("/"))
-    precondition(line > 0)
-    precondition(column > 0)
+    precondition(!fileID.isEmpty, "SourceLocation.fileID must not be empty (was \(fileID))")
+    precondition(fileID.contains("/"), "SourceLocation.fileID must use the format described in documentation for #fileID (was \(fileID))")
+    precondition(line > 0, "SourceLocation.line must be greater than 0 (was \(line))")
+    precondition(column > 0, "SourceLocation.column must be greater than 0 (was \(column))")
 
     self.fileID = fileID
     self._filePath = filePath
