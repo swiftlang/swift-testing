@@ -99,14 +99,13 @@ extension Test {
   /// A type-erased container type that represents any attachable value.
   ///
   /// This type is not generally visible to developers. It is used when posting
-  /// events of kind ``Event/Kind/valueAttached(_:sourceLocation:)``. Test tools
-  /// authors who use `@_spi(ForToolsIntegrationOnly)` will see instances of
-  /// this type when handling those events.
+  /// events of kind ``Event/Kind/valueAttached(_:)``. Test tools authors who
+  /// use `@_spi(ForToolsIntegrationOnly)` will see instances of this type when
+  /// handling those events.
   ///
   /// @Comment {
   ///   Swift's type system requires that this type be at least as visible as
-  ///   `Event.Kind.valueAttached(_:sourceLocation:)`, otherwise it would be
-  ///   declared as `private`.
+  ///   `Event.Kind.valueAttached(_:)`, otherwise it would be declared private.
   /// }
   @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
   public struct AnyAttachable: Test.AttachableContainer, Copyable, Sendable {

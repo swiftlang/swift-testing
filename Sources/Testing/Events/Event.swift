@@ -102,8 +102,6 @@ public struct Event: Sendable {
     ///
     /// - Parameters:
     ///   - attachment: The attachment that was created.
-    ///   - sourceLocation: The source location of the function call that caused
-    ///     this event.
     @_spi(Experimental)
     indirect case valueAttached(_ attachment: Test.Attachment<Test.AnyAttachable>)
 
