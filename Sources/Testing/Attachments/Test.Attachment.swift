@@ -393,7 +393,7 @@ extension Configuration {
     } catch {
       // Record the error as an issue and suppress the event.
       let sourceContext = SourceContext(backtrace: .current(), sourceLocation: event.sourceLocation)
-      Issue(kind: .valueAttachmentFailed(error), comments: [], sourceContext: sourceContext).record()
+      Issue(kind: .valueAttachmentFailed(error), comments: [], sourceContext: sourceContext).record(configuration: self)
       return false
     }
   }
