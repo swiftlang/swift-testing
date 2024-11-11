@@ -199,13 +199,6 @@ extension Issue {
 #endif
 @usableFromInline nonisolated(unsafe) var failureBreakpointValue = 0
 
-#if !SWT_FIXED_SWIFTPM_8111 && os(Windows)
-@inline(never)
-@_spi(__Workaround8111)
-func failureBreakpoint() {
-  failureBreakpointValue = 0
-}
-#else
 /// A function called by the testing library when a failure occurs.
 ///
 /// Whenever a test failure (specifically, a non-known ``Issue``) is recorded,
@@ -239,4 +232,3 @@ func failureBreakpoint() {
   // cannot be optimized away.
   failureBreakpointValue = 0
 }
-#endif
