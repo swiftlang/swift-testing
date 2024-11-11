@@ -202,7 +202,7 @@ extension Issue {
 #if !SWT_FIXED_SWIFTPM_8111 && os(Windows)
 @inline(never)
 @_spi(__Workaround8111)
-public func failureBreakpoint() {
+func failureBreakpoint() {
   failureBreakpointValue = 0
 }
 #else
