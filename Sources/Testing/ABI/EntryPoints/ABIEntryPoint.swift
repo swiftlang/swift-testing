@@ -60,6 +60,9 @@ extension ABIv0 {
 ///
 /// - Returns: The value of ``ABIv0/entryPoint-swift.type.property`` cast to an
 ///   untyped pointer.
+#if hasFeature(SymbolLinkageMarkers)
+@_used
+#endif
 @_cdecl("swt_abiv0_getEntryPoint")
 @usableFromInline func abiv0_getEntryPoint() -> UnsafeRawPointer {
   unsafeBitCast(ABIv0.entryPoint, to: UnsafeRawPointer.self)
@@ -82,6 +85,9 @@ typealias ABIEntryPoint_v0 = @Sendable (
 /// Xcode 16 Beta 1.
 ///
 /// This function will be removed in a future update.
+#if hasFeature(SymbolLinkageMarkers)
+@_used
+#endif
 @available(*, deprecated, message: "Use ABIv0.entryPoint (swt_abiv0_getEntryPoint()) instead.")
 @_cdecl("swt_copyABIEntryPoint_v0")
 @usableFromInline func copyABIEntryPoint_v0() -> UnsafeMutableRawPointer {
