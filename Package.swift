@@ -137,6 +137,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .define("SWT_NO_SNAPSHOT_TYPES", .when(platforms: [.linux, .windows, .wasi])),
       .define("SWT_NO_DYNAMIC_LINKING", .when(platforms: [.wasi])),
       .define("SWT_NO_PIPES", .when(platforms: [.wasi])),
+      .define("SWT_NO_NETWORKING", .when(platforms: [.wasi])),
     ]
   }
 

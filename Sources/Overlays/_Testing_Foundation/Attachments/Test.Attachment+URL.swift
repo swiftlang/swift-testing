@@ -12,6 +12,10 @@
 @_spi(Experimental) public import Testing
 public import Foundation
 
+#if canImport(FoundationNetworking)
+private import FoundationNetworking
+#endif
+
 #if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
 private import UniformTypeIdentifiers
 #endif
@@ -60,15 +64,14 @@ extension Test.Attachment where AttachableValue == Data {
     named preferredName: String? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) async throws {
-    guard url.isFileURL else {
-      // TODO: network URLs?
-      throw CocoaError(.featureUnsupported, userInfo: [NSLocalizedDescriptionKey: "Attaching downloaded files is not supported"])
-    }
-
     // FIXME: use NSFileCoordinator on Darwin?
 
-    let url = url.resolvingSymlinksInPath()
-    let isDirectory = try url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory!
+    var url = url
+    var isDirectory = false
+    if url.isFileURL {
+      url = url.resolvingSymlinksInPath()
+      isDirectory = try url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory!
+    }
 
     // Determine the preferred name of the attachment if one was not provided.
     var preferredName = if let preferredName {
@@ -79,21 +82,41 @@ extension Test.Attachment where AttachableValue == Data {
       Self.defaultPreferredName
     }
 
-    if isDirectory {
-      // Ensure the preferred name of the archive has an appropriate extension.
-      preferredName = {
+    if url.isFileURL {
+      if isDirectory {
+        // Ensure the preferred name of the archive has an appropriate extension.
+        preferredName = {
 #if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
-        if #available(_uttypesAPI, *), let tgz = UTType.tgz {
-          return (preferredName as NSString).appendingPathExtension(for: tgz)
-        }
+          if #available(_uttypesAPI, *), let tgz = UTType.tgz {
+            return (preferredName as NSString).appendingPathExtension(for: tgz)
+          }
 #endif
-        return (preferredName as NSString).appendingPathExtension("tgz") ?? preferredName
-      }()
+          return (preferredName as NSString).appendingPathExtension("tgz") ?? preferredName
+        }()
 
-      try await self.init(Data(compressedContentsOfDirectoryAt: url), named: preferredName, sourceLocation: sourceLocation)
+        try await self.init(Data(compressedContentsOfDirectoryAt: url), named: preferredName, sourceLocation: sourceLocation)
+      } else {
+        // Load the file.
+        try self.init(Data(contentsOf: url, options: [.mappedIfSafe]), named: preferredName, sourceLocation: sourceLocation)
+      }
     } else {
-      // Load the file.
-      try self.init(Data(contentsOf: url, options: [.mappedIfSafe]), named: preferredName, sourceLocation: sourceLocation)
+#if !SWT_NO_NETWORKING
+      let session = URLSession(configuration: .default)
+      let (data, response) = try await session.data(from: url)
+
+#if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
+      preferredName = {
+        if let mimeType = response.mimeType, #available(_uttypesAPI, *), let contentType = UTType(mimeType: mimeType) {
+          return (preferredName as NSString).appendingPathExtension(for: contentType)
+        }
+        return preferredName
+      }()
+#endif
+
+      self.init(data, named: preferredName, sourceLocation: sourceLocation)
+#else
+      throw CocoaError(.featureUnsupported, userInfo: [NSLocalizedDescriptionKey: "This platform does not support creating attachments from downloaded files."])
+#endif
     }
   }
 }

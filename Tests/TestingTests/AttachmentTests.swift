@@ -287,6 +287,19 @@ struct AttachmentTests {
   }
 #endif
 
+#if !SWT_NO_NETWORKING
+  @Test func attachContentsOfNetworkURL() async throws {
+    let url = try #require(URL(string: "https://www.swift.org"))
+    let attachment = try await Test.Attachment(contentsOf: url)
+#if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
+    #expect((attachment.preferredName as NSString).pathExtension.caseInsensitiveCompare("html") == .orderedSame)
+#endif
+    try attachment.withUnsafeBufferPointer { buffer in
+      #expect(buffer.count > 0)
+    }
+  }
+#endif
+
   @Test func attachUnsupportedContentsOfURL() async throws {
     let url = try #require(URL(string: "https://www.example.com"))
     await #expect(throws: CocoaError.self) {
