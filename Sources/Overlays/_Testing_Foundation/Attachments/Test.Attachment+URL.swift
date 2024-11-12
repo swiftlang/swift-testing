@@ -50,12 +50,15 @@ extension Test.Attachment where AttachableValue == Data {
   ///   - preferredName: The preferred name of the attachment when writing it
   ///     to a test report or to disk. If `nil`, the name of the attachment is
   ///     derived from the last path component of `url`.
-  ///   - sourceLocation: The source location of the attachment.
+  ///   - sourceLocation: The source location of the call to this initializer.
+  ///     This value is used when recording issues associated with the
+  ///     attachment.
   ///
   /// - Throws: Any error that occurs attempting to read from `url`.
   public init(
     contentsOf url: URL,
-    named preferredName: String? = nil
+    named preferredName: String? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation
   ) async throws {
     guard url.isFileURL else {
       // TODO: network URLs?
@@ -87,10 +90,10 @@ extension Test.Attachment where AttachableValue == Data {
         return (preferredName as NSString).appendingPathExtension("tgz") ?? preferredName
       }()
 
-      try await self.init(Data(compressedContentsOfDirectoryAt: url), named: preferredName)
+      try await self.init(Data(compressedContentsOfDirectoryAt: url), named: preferredName, sourceLocation: sourceLocation)
     } else {
       // Load the file.
-      try self.init(Data(contentsOf: url, options: [.mappedIfSafe]), named: preferredName)
+      try self.init(Data(contentsOf: url, options: [.mappedIfSafe]), named: preferredName, sourceLocation: sourceLocation)
     }
   }
 }
