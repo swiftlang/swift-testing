@@ -421,6 +421,14 @@ struct PlanTests {
     #expect(plan.stepGraph.subgraph(at: typeInfo.fullyQualifiedNameComponents + CollectionOfOne("reserved1(reserved2:)")) != nil)
   }
 
+  @Test("Nodes for filtered-out tests are removed from the step graph")
+  func filteringPrunesGraph() async throws {
+    let plan = await Runner.Plan(selecting: SendableTests.self)
+    #expect(plan.stepGraph.children.count == 1)
+    let moduleGraph = try #require(plan.stepGraph.children.values.first)
+    #expect(moduleGraph.children.count == 1)
+  }
+
 #if !SWT_NO_SNAPSHOT_TYPES
   @Test("Test cases of a disabled test are not evaluated")
   func disabledTestCases() async throws {

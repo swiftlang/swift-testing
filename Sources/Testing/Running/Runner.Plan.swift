@@ -141,8 +141,8 @@ extension Runner.Plan {
   /// The traits in `testGraph.value?.traits` are added to each node in
   /// `testGraph`, and then this function is called recursively on each child
   /// node.
-  private static func _recursivelyApplyTraits(_ parentTraits: [any Trait] = [], to testGraph: inout Graph<String, Test?>) {
-    let traits: [any SuiteTrait] = (parentTraits + (testGraph.value?.traits ?? [])).lazy
+  private static func _recursivelyApplyTraits(_ parentTraits: [any SuiteTrait] = [], to testGraph: inout Graph<String, Test?>) {
+    let traits: [any SuiteTrait] = parentTraits + (testGraph.value?.traits ?? []).lazy
       .compactMap { $0 as? any SuiteTrait }
       .filter(\.isRecursive)
 
@@ -181,11 +181,6 @@ extension Runner.Plan {
       actionGraph.insertValue(runAction, at: idComponents, intermediateValue: runAction)
     }
 
-    // Ensure the trait lists are complete for all nested tests. (Make sure to
-    // do this before we start calling configuration.testFilter or prepare(for:)
-    // or we'll miss the recursively-added traits.)
-    _recursivelyApplyTraits(to: &testGraph)
-
     // Remove any tests that should be filtered out per the runner's
     // configuration. The action graph is not modified here: actions that lose
     // their corresponding tests are effectively filtered out by the call to
@@ -202,6 +197,16 @@ extension Runner.Plan {
       // the only scenario where this will throw is when using regex filtering,
       // and that is already guarded earlier in the SwiftPM entry point.
     }
+
+    // Recursively apply all recursive suite traits to children.
+    //
+    // This must be done _before_ calling `prepare(for:)` on the traits below.
+    // It is safe to do this _after_ filtering the test graph since filtering
+    // internally propagates information about traits which are needed to
+    // correctly evaluate the filter. It's also more efficient, since it avoids
+    // needlessly applying non-filtering related traits to tests which might be
+    // filtered out.
+    _recursivelyApplyTraits(to: &testGraph)
 
     // For each test value, determine the appropriate action for it.
     //
