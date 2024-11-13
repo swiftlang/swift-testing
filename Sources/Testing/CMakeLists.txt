@@ -21,9 +21,9 @@ add_library(Testing
   ABI/v0/Encoded/ABIv0.EncodedIssue.swift
   ABI/v0/Encoded/ABIv0.EncodedMessage.swift
   ABI/v0/Encoded/ABIv0.EncodedTest.swift
-  Attachments/Test.Attachable.swift
-  Attachments/Test.AttachableContainer.swift
-  Attachments/Test.Attachment.swift
+  Attachments/Attachable.swift
+  Attachments/AttachableContainer.swift
+  Attachments/Attachment.swift
   Events/Clock.swift
   Events/Event.swift
   Events/Recorder/Event.ConsoleOutputRecorder.swift
