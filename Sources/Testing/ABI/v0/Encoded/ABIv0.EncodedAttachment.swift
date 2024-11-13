@@ -9,8 +9,8 @@
 //
 
 extension ABIv0 {
-  /// A type implementing the JSON encoding of ``Test/Attachment`` for the ABI
-  /// entry point and event stream output.
+  /// A type implementing the JSON encoding of ``Attachment`` for the ABI entry
+  /// point and event stream output.
   ///
   /// This type is not part of the public interface of the testing library. It
   /// assists in converting values to JSON; clients that consume this JSON are

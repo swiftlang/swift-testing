@@ -39,7 +39,7 @@ extension Event {
     /// The symbol to use when presenting details about an event to the user.
     case details
 
-    /// The symbol to use when describing an instance of ``Test/Attachment``.
+    /// The symbol to use when describing an instance of ``Attachment``.
     @_spi(Experimental)
     case attachment
   }
