@@ -317,7 +317,7 @@ extension Configuration.TestFilter.Operation {
         lhs.apply(to: testGraph),
         rhs.apply(to: testGraph)
       ).mapValues { _, value in
-        op.functionValue()(value.0, value.1)
+        op(value.0, value.1)
       }
     }
   }
@@ -334,7 +334,7 @@ extension Configuration.TestFilter {
   func apply(to testGraph: Graph<String, Test?>) throws -> Graph<String, Test?> {
     var result: Graph<String, Test?>
 
-    if _kind.requiresFilterItemConversion {
+    if _kind.requiresTraitPropagation {
       // Convert the specified test graph to a graph of filter items temporarily
       // while performing filtering, and apply inheritance for the properties
       // which are relevant when performing filtering (e.g. tags).
@@ -427,21 +427,23 @@ extension Configuration.TestFilter {
     /// This operator is equivalent to `||`.
     case or
 
-    /// The equivalent of this instance as a callable function.
-    fileprivate func functionValue<T>() -> @Sendable (T?, T?) -> T? where T: _FilterableItem {
+    /// Evaluate this combination operator with two optional operands.
+    ///
+    /// - Parameters:
+    ///   - lhs: The left-hand argument
+    ///   - rhs: The right-hand argument.
+    ///
+    /// - Returns: The combined result of evaluating this operator.
+    fileprivate func callAsFunction<T>(_ lhs: T?, _ rhs: T?) -> T? where T: _FilterableItem {
       switch self {
       case .and:
-        return { lhs, rhs in
-          if lhs != nil && rhs != nil {
-            lhs
-          } else {
-            nil
-          }
+        if lhs != nil && rhs != nil {
+          lhs
+        } else {
+          nil
         }
       case .or:
-        return { lhs, rhs in
-          lhs ?? rhs
-        }
+        lhs ?? rhs
       }
     }
   }
@@ -496,7 +498,7 @@ extension Configuration.TestFilter.Kind {
   /// propagated before the filter can be applied, or else the results may be
   /// inaccurate. This facilitates a performance optimization where trait
   /// propagation can be skipped for filters which don't require such knowledge.
-  fileprivate var requiresFilterItemConversion: Bool {
+  fileprivate var requiresTraitPropagation: Bool {
     switch self {
     case .unfiltered,
          .testIDs,
@@ -505,7 +507,7 @@ extension Configuration.TestFilter.Kind {
     case .tags:
       true
     case let .combination(lhs, rhs, _):
-      lhs.requiresFilterItemConversion || rhs.requiresFilterItemConversion
+      lhs.requiresTraitPropagation || rhs.requiresTraitPropagation
     }
   }
 }
