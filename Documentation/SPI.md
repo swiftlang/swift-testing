@@ -13,14 +13,16 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 <!-- Archived from
   <https://forums.swift.org/t/spi-groups-in-swift-testing/70236> -->
 
-This post describes the set of SPI groups used in Swift Testing. In general, two
-groups of SPI exist in the testing library:
+This post describes the set of SPI groups used in Swift Testing. In general,
+three groups of SPI exist in the testing library:
 
 1. Interfaces that aren't needed by test authors, but which may be needed by
-   tools that use the testing library such as Swift Package Manager; and
+   tools that use the testing library such as Swift Package Manager;
 1. Interfaces that are available for test authors to use, but which are
    experimental or under active development and which may be modified or removed
-   in the future.
+   in the future; and
+1. Interfaces that are private to the testing library but need to be shared
+   across targets, but which for technical reasons cannot use `package`.
 
 For interfaces used to integrate with external tools, the SPI group
 `@_spi(ForToolsIntegrationOnly)` is used. The name is a hint to adopters that
@@ -37,6 +39,13 @@ external tools, _both_ groups are specified. Such SPI is not generally meant to
 be promoted to public API, but is still experimental until tools authors have a
 chance to evaluate it.
 
+For interfaces internal to Swift Testing that must be available across targets,
+the SPI group `@_spi(ForSwiftTestingOnly)` is used. They _should_ be marked
+`package` and may be in the future, but are currently exported due to technical
+constraints when Swift Testing is built using CMake.
+
+- Warning: Never use symbols marked `@_spi(ForSwiftTestingOnly)`.
+
 ## SPI stability
 
 The testing library does **not** guarantee SPI stability for either group of
@@ -48,6 +57,11 @@ to newer interfaces.
 
 SPI marked `@_spi(Experimental)` should be assumed to be unstable. It may be
 modified or removed at any time.
+
+SPI marked `@_spi(ForSwiftTestingOnly)` is unstable and subject to change at any
+time.
+
+- Warning: Never use symbols marked `@_spi(ForSwiftTestingOnly)`.
 
 ## API and ABI stability
 

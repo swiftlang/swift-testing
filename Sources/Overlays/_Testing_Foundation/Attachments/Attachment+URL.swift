@@ -9,7 +9,7 @@
 //
 
 #if canImport(Foundation)
-@_spi(Experimental) public import Testing
+@_spi(Experimental) @_spi(ForSwiftTestingOnly) public import Testing
 public import Foundation
 
 #if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
