@@ -15,7 +15,7 @@ private import _TestingInternals
 struct AttachmentTests {
   @Test func saveValue() {
     let attachableValue = MyAttachable(string: "<!doctype html>")
-    let attachment = Test.Attachment(attachableValue, named: "AttachmentTests.saveValue.html")
+    let attachment = Attachment(attachableValue, named: "AttachmentTests.saveValue.html")
     attachment.attach()
   }
 
@@ -34,7 +34,7 @@ struct AttachmentTests {
 
   @Test func writeAttachment() throws {
     let attachableValue = MySendableAttachable(string: "<!doctype html>")
-    let attachment = Test.Attachment(attachableValue, named: "loremipsum.html")
+    let attachment = Attachment(attachableValue, named: "loremipsum.html")
 
     // Write the attachment to disk, then read it back.
     let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectory())
@@ -61,7 +61,7 @@ struct AttachmentTests {
 
     for i in 0 ..< 5 {
       let attachableValue = MySendableAttachable(string: "<!doctype html>\(i)")
-      let attachment = Test.Attachment(attachableValue, named: baseFileName)
+      let attachment = Attachment(attachableValue, named: baseFileName)
 
       // Write the attachment to disk, then read it back.
       let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectory(), appending: suffixes.next()!)
@@ -78,7 +78,7 @@ struct AttachmentTests {
 
   @Test func writeAttachmentWithMultiplePathExtensions() throws {
     let attachableValue = MySendableAttachable(string: "<!doctype html>")
-    let attachment = Test.Attachment(attachableValue, named: "loremipsum.tar.gz.gif.jpeg.html")
+    let attachment = Attachment(attachableValue, named: "loremipsum.tar.gz.gif.jpeg.html")
 
     // Write the attachment to disk once to ensure the original filename is not
     // available and we add a suffix.
@@ -119,7 +119,7 @@ struct AttachmentTests {
     String(repeating: "a", count: maximumNameCount + 2),
   ] + reservedNames) func writeAttachmentWithBadName(name: String) throws {
     let attachableValue = MySendableAttachable(string: "<!doctype html>")
-    let attachment = Test.Attachment(attachableValue, named: name)
+    let attachment = Attachment(attachableValue, named: name)
 
     // Write the attachment to disk, then read it back.
     let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectory())
@@ -154,7 +154,7 @@ struct AttachmentTests {
       }
 
       await Test {
-        let attachment = Test.Attachment(attachableValue, named: "loremipsum.html")
+        let attachment = Attachment(attachableValue, named: "loremipsum.html")
         attachment.attach()
       }.run(configuration: configuration)
     }
@@ -176,7 +176,7 @@ struct AttachmentTests {
 
       await Test {
         let attachableValue = MyAttachable(string: "<!doctype html>")
-        Test.Attachment(attachableValue, named: "loremipsum").attach()
+        Attachment(attachableValue, named: "loremipsum").attach()
       }.run(configuration: configuration)
     }
   }
@@ -197,7 +197,7 @@ struct AttachmentTests {
 
       await Test {
         let attachableValue = MySendableAttachable(string: "<!doctype html>")
-        Test.Attachment(attachableValue, named: "loremipsum").attach()
+        Attachment(attachableValue, named: "loremipsum").attach()
       }.run(configuration: configuration)
     }
   }
@@ -221,7 +221,7 @@ struct AttachmentTests {
         await Test {
           var attachableValue = MyAttachable(string: "<!doctype html>")
           attachableValue.errorToThrow = MyError()
-          Test.Attachment(attachableValue, named: "loremipsum").attach()
+          Attachment(attachableValue, named: "loremipsum").attach()
         }.run(configuration: configuration)
       }
     }
@@ -231,9 +231,9 @@ struct AttachmentTests {
 extension AttachmentTests {
   @Suite("Built-in conformances")
   struct BuiltInConformances {
-    func test(_ value: some Test.Attachable) throws {
+    func test(_ value: some Attachable) throws {
       #expect(value.estimatedAttachmentByteCount == 6)
-      let attachment = Test.Attachment(value)
+      let attachment = Attachment(value)
       try attachment.withUnsafeBufferPointer { buffer in
         #expect(buffer.elementsEqual("abc123".utf8))
         #expect(buffer.count == 6)
@@ -269,11 +269,11 @@ extension AttachmentTests {
 
 // MARK: - Fixtures
 
-struct MyAttachable: Test.Attachable, ~Copyable {
+struct MyAttachable: Attachable, ~Copyable {
   var string: String
   var errorToThrow: (any Error)?
 
-  func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     if let errorToThrow {
       throw errorToThrow
     }
@@ -288,10 +288,10 @@ struct MyAttachable: Test.Attachable, ~Copyable {
 @available(*, unavailable)
 extension MyAttachable: Sendable {}
 
-struct MySendableAttachable: Test.Attachable, Sendable {
+struct MySendableAttachable: Attachable, Sendable {
   var string: String
 
-  func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     #expect(attachment.attachableValue.string == string)
     var string = string
     return try string.withUTF8 { buffer in
@@ -300,10 +300,10 @@ struct MySendableAttachable: Test.Attachable, Sendable {
   }
 }
 
-struct MySendableAttachableWithDefaultByteCount: Test.Attachable, Sendable {
+struct MySendableAttachableWithDefaultByteCount: Attachable, Sendable {
   var string: String
 
-  func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var string = string
     return try string.withUTF8 { buffer in
       try body(.init(buffer))

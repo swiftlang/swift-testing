@@ -10,75 +10,73 @@
 
 private import _TestingInternals
 
+/// A type describing values that can be attached to the output of a test run
+/// and inspected later by the user.
+///
+/// Attachments are included in test reports in Xcode or written to disk when
+/// tests are run at the command line. To create an attachment, you need a value
+/// of some type that conforms to ``Test/Attachable``. Initialize an instance of
+/// ``Test/Attachment`` with that value and, optionally, a preferred filename to
+/// use when writing to disk.
 @_spi(Experimental)
-extension Test {
-  /// A type describing values that can be attached to the output of a test run
-  /// and inspected later by the user.
+public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: Attachable & ~Copyable {
+  /// Storage for ``attachableValue-7dyjv``.
+  fileprivate var _attachableValue: AttachableValue
+
+  /// The path to which the this attachment was written, if any.
   ///
-  /// Attachments are included in test reports in Xcode or written to disk when
-  /// tests are run at the command line. To create an attachment, you need a
-  /// value of some type that conforms to ``Test/Attachable``. Initialize an
-  /// instance of ``Test/Attachment`` with that value and, optionally, a
-  /// preferred filename to use when writing to disk.
-  public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: Test.Attachable & ~Copyable {
-    /// Storage for ``attachableValue-7dyjv``.
-    fileprivate var _attachableValue: AttachableValue
+  /// If a developer sets the ``Configuration/attachmentsPath`` property of the
+  /// current configuration before running tests, or if a developer passes
+  /// `--experimental-attachments-path` on the command line, then attachments
+  /// will be automatically written to disk when they are attached and the value
+  /// of this property will describe the path where they were written.
+  ///
+  /// If no destination path is set, or if an error occurred while writing this
+  /// attachment to disk, the value of this property is `nil`.
+  @_spi(ForToolsIntegrationOnly)
+  public var fileSystemPath: String?
 
-    /// The path to which the this attachment was written, if any.
-    ///
-    /// If a developer sets the ``Configuration/attachmentsPath`` property of
-    /// the current configuration before running tests, or if a developer passes
-    /// `--experimental-attachments-path` on the command line, then attachments
-    /// will be automatically written to disk when they are attached and the
-    /// value of this property will describe the path where they were written.
-    ///
-    /// If no destination path is set, or if an error occurred while writing
-    /// this attachment to disk, the value of this property is `nil`.
-    @_spi(ForToolsIntegrationOnly)
-    public var fileSystemPath: String?
-
-    /// The default preferred name to use if the developer does not supply one.
-    package static var defaultPreferredName: String {
-      "untitled"
-    }
-
-    /// A filename to use when writing this attachment to a test report or to a
-    /// file on disk.
-    ///
-    /// The value of this property is used as a hint to the testing library. The
-    /// testing library may substitute a different filename as needed. If the
-    /// value of this property has not been explicitly set, the testing library
-    /// will attempt to generate its own value.
-    public var preferredName: String
-
-    /// The source location of this instance.
-    ///
-    /// This property is not part of the public interface of the testing
-    /// library. It is initially set when the attachment is created and is
-    /// updated later when the attachment is attached to something.
-    ///
-    /// The value of this property is used when recording issues associated with
-    /// the attachment.
-    var sourceLocation: SourceLocation
+  /// The default preferred name to use if the developer does not supply one.
+  package static var defaultPreferredName: String {
+    "untitled"
   }
+
+  /// A filename to use when writing this attachment to a test report or to a
+  /// file on disk.
+  ///
+  /// The value of this property is used as a hint to the testing library. The
+  /// testing library may substitute a different filename as needed. If the
+  /// value of this property has not been explicitly set, the testing library
+  /// will attempt to generate its own value.
+  public var preferredName: String
+
+  /// The source location of this instance.
+  ///
+  /// This property is not part of the public interface of the testing library.
+  /// It is initially set when the attachment is created and is updated later
+  /// when the attachment is attached to something.
+  ///
+  /// The value of this property is used when recording issues associated with
+  /// the attachment.
+  var sourceLocation: SourceLocation
 }
 
-extension Test.Attachment: Copyable where AttachableValue: Copyable {}
-extension Test.Attachment: Sendable where AttachableValue: Sendable {}
+extension Attachment: Copyable where AttachableValue: Copyable {}
+extension Attachment: Sendable where AttachableValue: Sendable {}
 
 // MARK: - Initializing an attachment
 
 #if !SWT_NO_LAZY_ATTACHMENTS
-extension Test.Attachment where AttachableValue: ~Copyable {
+extension Attachment where AttachableValue: ~Copyable {
   /// Initialize an instance of this type that encloses the given attachable
   /// value.
   ///
   /// - Parameters:
-  ///   - attachableValue: The value that will be attached to the output of
-  ///     the test run.
-  ///   - preferredName: The preferred name of the attachment when writing it
-  ///     to a test report or to disk. If `nil`, the testing library attempts
-  ///     to derive a reasonable filename for the attached value.
+  ///   - attachableValue: The value that will be attached to the output of the
+  ///     test run.
+  ///   - preferredName: The preferred name of the attachment when writing it to
+  ///     a test report or to disk. If `nil`, the testing library attempts to
+  ///     derive a reasonable filename for the attached value.
   ///   - sourceLocation: The source location of the call to this initializer.
   ///     This value is used when recording issues associated with the
   ///     attachment.
@@ -90,14 +88,14 @@ extension Test.Attachment where AttachableValue: ~Copyable {
 }
 
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-extension Test.Attachment where AttachableValue == Test.AnyAttachable {
+extension Attachment where AttachableValue == AnyAttachable {
   /// Create a type-erased attachment from an instance of ``Test/Attachment``.
   ///
   /// - Parameters:
   ///   - attachment: The attachment to type-erase.
-  fileprivate init(_ attachment: Test.Attachment<some Test.Attachable & Sendable & Copyable>) {
+  fileprivate init(_ attachment: Attachment<some Attachable & Sendable & Copyable>) {
     self.init(
-      _attachableValue: Test.AnyAttachable(attachableValue: attachment.attachableValue),
+      _attachableValue: AnyAttachable(attachableValue: attachment.attachableValue),
       fileSystemPath: attachment.fileSystemPath,
       preferredName: attachment.preferredName,
       sourceLocation: attachment.sourceLocation
@@ -106,55 +104,53 @@ extension Test.Attachment where AttachableValue == Test.AnyAttachable {
 }
 #endif
 
-extension Test {
-  /// A type-erased container type that represents any attachable value.
-  ///
-  /// This type is not generally visible to developers. It is used when posting
-  /// events of kind ``Event/Kind/valueAttached(_:)``. Test tools authors who
-  /// use `@_spi(ForToolsIntegrationOnly)` will see instances of this type when
-  /// handling those events.
-  ///
-  /// @Comment {
-  ///   Swift's type system requires that this type be at least as visible as
-  ///   `Event.Kind.valueAttached(_:)`, otherwise it would be declared private.
-  /// }
-  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-  public struct AnyAttachable: Test.AttachableContainer, Copyable, Sendable {
+/// A type-erased container type that represents any attachable value.
+///
+/// This type is not generally visible to developers. It is used when posting
+/// events of kind ``Event/Kind/valueAttached(_:)``. Test tools authors who use
+/// `@_spi(ForToolsIntegrationOnly)` will see instances of this type when
+/// handling those events.
+///
+/// @Comment {
+///   Swift's type system requires that this type be at least as visible as
+///   `Event.Kind.valueAttached(_:)`, otherwise it would be declared private.
+/// }
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+public struct AnyAttachable: AttachableContainer, Copyable, Sendable {
 #if !SWT_NO_LAZY_ATTACHMENTS
-    public typealias AttachableValue = any Test.Attachable & Sendable /* & Copyable rdar://137614425 */
+  public typealias AttachableValue = any Attachable & Sendable /* & Copyable rdar://137614425 */
 #else
-    public typealias AttachableValue = [UInt8]
+  public typealias AttachableValue = [UInt8]
 #endif
 
-    public var attachableValue: AttachableValue
+  public var attachableValue: AttachableValue
 
-    init(attachableValue: AttachableValue) {
-      self.attachableValue = attachableValue
-    }
+  init(attachableValue: AttachableValue) {
+    self.attachableValue = attachableValue
+  }
 
-    public var estimatedAttachmentByteCount: Int? {
-      attachableValue.estimatedAttachmentByteCount
-    }
+  public var estimatedAttachmentByteCount: Int? {
+    attachableValue.estimatedAttachmentByteCount
+  }
 
-    public func withUnsafeBufferPointer<R>(for attachment: borrowing Test.Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-      func open<T>(_ attachableValue: T, for attachment: borrowing Test.Attachment<Self>) throws -> R where T: Test.Attachable & Sendable & Copyable {
-        let temporaryAttachment = Test.Attachment<T>(
-          _attachableValue: attachableValue,
-          fileSystemPath: attachment.fileSystemPath,
-          preferredName: attachment.preferredName,
-          sourceLocation: attachment.sourceLocation
-        )
-        return try temporaryAttachment.withUnsafeBufferPointer(body)
-      }
-      return try open(attachableValue, for: attachment)
+  public func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    func open<T>(_ attachableValue: T, for attachment: borrowing Attachment<Self>) throws -> R where T: Attachable & Sendable & Copyable {
+      let temporaryAttachment = Attachment<T>(
+        _attachableValue: attachableValue,
+        fileSystemPath: attachment.fileSystemPath,
+        preferredName: attachment.preferredName,
+        sourceLocation: attachment.sourceLocation
+      )
+      return try temporaryAttachment.withUnsafeBufferPointer(body)
     }
+    return try open(attachableValue, for: attachment)
   }
 }
 
 // MARK: - Getting an attachable value from an attachment
 
 @_spi(Experimental)
-extension Test.Attachment where AttachableValue: ~Copyable {
+extension Attachment where AttachableValue: ~Copyable {
   /// The value of this attachment.
   @_disfavoredOverload public var attachableValue: AttachableValue {
     _read {
@@ -164,7 +160,7 @@ extension Test.Attachment where AttachableValue: ~Copyable {
 }
 
 @_spi(Experimental)
-extension Test.Attachment where AttachableValue: Test.AttachableContainer & ~Copyable {
+extension Attachment where AttachableValue: AttachableContainer & ~Copyable {
   /// The value of this attachment.
   ///
   /// When the attachable value's type conforms to ``Test/AttachableContainer``,
@@ -185,7 +181,7 @@ extension Test.Attachment where AttachableValue: Test.AttachableContainer & ~Cop
 // MARK: - Attaching an attachment to a test (etc.)
 
 #if !SWT_NO_LAZY_ATTACHMENTS
-extension Test.Attachment where AttachableValue: Sendable & Copyable {
+extension Attachment where AttachableValue: Sendable & Copyable {
   /// Attach this instance to the current test.
   ///
   /// - Parameters:
@@ -194,14 +190,14 @@ extension Test.Attachment where AttachableValue: Sendable & Copyable {
   /// An attachment can only be attached once.
   @_documentation(visibility: private)
   public consuming func attach(sourceLocation: SourceLocation = #_sourceLocation) {
-    var attachmentCopy = Test.Attachment<Test.AnyAttachable>(self)
+    var attachmentCopy = Attachment<AnyAttachable>(self)
     attachmentCopy.sourceLocation = sourceLocation
     Event.post(.valueAttached(attachmentCopy))
   }
 }
 #endif
 
-extension Test.Attachment where AttachableValue: ~Copyable {
+extension Attachment where AttachableValue: ~Copyable {
   /// Attach this instance to the current test.
   ///
   /// - Parameters:
@@ -219,8 +215,8 @@ extension Test.Attachment where AttachableValue: ~Copyable {
   public consuming func attach(sourceLocation: SourceLocation = #_sourceLocation) {
     do {
       let attachmentCopy = try withUnsafeBufferPointer { buffer in
-        let attachableContainer = Test.AnyAttachable(attachableValue: Array(buffer))
-        return Test.Attachment(_attachableValue: attachableContainer, fileSystemPath: fileSystemPath, preferredName: preferredName, sourceLocation: sourceLocation)
+        let attachableContainer = AnyAttachable(attachableValue: Array(buffer))
+        return Attachment<AnyAttachable>(_attachableValue: attachableContainer, fileSystemPath: fileSystemPath, preferredName: preferredName, sourceLocation: sourceLocation)
       }
       Event.post(.valueAttached(attachmentCopy))
     } catch {
@@ -232,7 +228,7 @@ extension Test.Attachment where AttachableValue: ~Copyable {
 
 // MARK: - Getting the serialized form of an attachable value (generically)
 
-extension Test.Attachment where AttachableValue: ~Copyable {
+extension Attachment where AttachableValue: ~Copyable {
   /// Call a function and pass a buffer representing the value of this
   /// instance's ``attachableValue-7dyjv`` property to it.
   ///
@@ -257,7 +253,7 @@ extension Test.Attachment where AttachableValue: ~Copyable {
 #if !SWT_NO_FILE_IO
 // MARK: - Writing
 
-extension Test.Attachment where AttachableValue: ~Copyable {
+extension Attachment where AttachableValue: ~Copyable {
   /// Write the attachment's contents to a file in the specified directory.
   ///
   /// - Parameters:
