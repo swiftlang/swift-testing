@@ -82,7 +82,7 @@ struct AttachmentTests {
 
   @Test func writeAttachmentWithMultiplePathExtensions() throws {
     let attachableValue = MySendableAttachable(string: "<!doctype html>")
-    let attachment = Attachment(attachableValue, named: "loremipsum.tar.gz.gif.jpeg.html")
+    let attachment = Attachment(attachableValue, named: "loremipsum.tgz.gif.jpeg.html")
 
     // Write the attachment to disk once to ensure the original filename is not
     // available and we add a suffix.
