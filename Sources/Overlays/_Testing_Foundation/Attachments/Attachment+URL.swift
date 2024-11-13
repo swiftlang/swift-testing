@@ -42,13 +42,13 @@ extension UTType {
 #endif
 
 @_spi(Experimental)
-extension Test.Attachment where AttachableValue == Data {
+extension Attachment where AttachableValue == Data {
   /// Initialize an instance of this type with the contents of the given URL.
   ///
   /// - Parameters:
   ///   - url: The URL containing the attachment's data.
-  ///   - preferredName: The preferred name of the attachment when writing it
-  ///     to a test report or to disk. If `nil`, the name of the attachment is
+  ///   - preferredName: The preferred name of the attachment when writing it to
+  ///     a test report or to disk. If `nil`, the name of the attachment is
   ///     derived from the last path component of `url`.
   ///   - sourceLocation: The source location of the call to this initializer.
   ///     This value is used when recording issues associated with the

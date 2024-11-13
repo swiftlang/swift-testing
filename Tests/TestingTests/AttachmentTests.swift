@@ -252,7 +252,7 @@ struct AttachmentTests {
       }
 
       await Test {
-        let attachment = try await Test.Attachment(contentsOf: temporaryURL)
+        let attachment = try await Attachment(contentsOf: temporaryURL)
         attachment.attach()
       }.run(configuration: configuration)
     }
@@ -280,7 +280,7 @@ struct AttachmentTests {
       }
 
       await Test {
-        let attachment = try await Test.Attachment(contentsOf: temporaryURL)
+        let attachment = try await Attachment(contentsOf: temporaryURL)
         attachment.attach()
       }.run(configuration: configuration)
     }
@@ -290,7 +290,7 @@ struct AttachmentTests {
   @Test func attachUnsupportedContentsOfURL() async throws {
     let url = try #require(URL(string: "https://www.example.com"))
     await #expect(throws: CocoaError.self) {
-      _ = try await Test.Attachment(contentsOf: url)
+      _ = try await Attachment(contentsOf: url)
     }
   }
 #endif
@@ -361,7 +361,7 @@ struct AttachmentTests {
       name = "\(name).\(ext)"
     }
 
-    func open<T>(_ attachment: borrowing Test.Attachment<T>) throws where T: Test.Attachable {
+    func open<T>(_ attachment: borrowing Attachment<T>) throws where T: Attachable {
       try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { bytes in
         #expect(bytes.first == args.firstCharacter.asciiValue)
         let decodedStringValue = try args.decode(Data(bytes))
@@ -371,11 +371,11 @@ struct AttachmentTests {
 
     if args.forSecureCoding {
       let attachableValue = MySecureCodingAttachable(string: "stringly speaking")
-      let attachment = Test.Attachment(attachableValue, named: name)
+      let attachment = Attachment(attachableValue, named: name)
       try open(attachment)
     } else {
       let attachableValue = MyCodableAttachable(string: "stringly speaking")
-      let attachment = Test.Attachment(attachableValue, named: name)
+      let attachment = Attachment(attachableValue, named: name)
       try open(attachment)
     }
   }
@@ -383,7 +383,7 @@ struct AttachmentTests {
   @Test("Attach NSSecureCoding-conformant value but with a JSON type")
   func attachNSSecureCodingAsJSON() async throws {
     let attachableValue = MySecureCodingAttachable(string: "stringly speaking")
-    let attachment = Test.Attachment(attachableValue, named: "loremipsum.json")
+    let attachment = Attachment(attachableValue, named: "loremipsum.json")
     #expect(throws: CocoaError.self) {
       try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { _ in }
     }
@@ -392,7 +392,7 @@ struct AttachmentTests {
   @Test("Attach NSSecureCoding-conformant value but with a nonsensical type")
   func attachNSSecureCodingAsNonsensical() async throws {
     let attachableValue = MySecureCodingAttachable(string: "stringly speaking")
-    let attachment = Test.Attachment(attachableValue, named: "loremipsum.gif")
+    let attachment = Attachment(attachableValue, named: "loremipsum.gif")
     #expect(throws: CocoaError.self) {
       try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { _ in }
     }
@@ -491,11 +491,11 @@ struct MySendableAttachableWithDefaultByteCount: Attachable, Sendable {
 }
 
 #if canImport(Foundation)
-struct MyCodableAttachable: Codable, Test.Attachable, Sendable {
+struct MyCodableAttachable: Codable, Attachable, Sendable {
   var string: String
 }
 
-final class MySecureCodingAttachable: NSObject, NSSecureCoding, Test.Attachable, Sendable {
+final class MySecureCodingAttachable: NSObject, NSSecureCoding, Attachable, Sendable {
   let string: String
 
   init(string: String) {
@@ -515,7 +515,7 @@ final class MySecureCodingAttachable: NSObject, NSSecureCoding, Test.Attachable,
   }
 }
 
-final class MyCodableAndSecureCodingAttachable: NSObject, Codable, NSSecureCoding, Test.Attachable, Sendable {
+final class MyCodableAndSecureCodingAttachable: NSObject, Codable, NSSecureCoding, Attachable, Sendable {
   let string: String
 
   static var supportsSecureCoding: Bool {
