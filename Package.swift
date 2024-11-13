@@ -90,7 +90,7 @@ let package = Package(
       cxxSettings: .packageSettings
     ),
 
-    // Cross-module overlays (unsupported)
+    // Cross-import overlays (not supported by Swift Package Manager)
     .target(
       name: "_Testing_Foundation",
       dependencies: [

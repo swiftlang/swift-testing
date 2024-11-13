@@ -12,6 +12,12 @@
 @_spi(Experimental) public import Testing
 public import Foundation
 
+// This implementation is necessary to let the compiler disambiguate when a type
+// conforms to both Encodable and NSSecureCoding. It is hidden from the DocC
+// compiler because it appears redundant next to the other two implementations
+// (which explicitly document what happens when a type conforms to both
+// protocols.)
+
 @_spi(Experimental)
 extension Attachable where Self: Encodable & NSSecureCoding {
   @_documentation(visibility: private)

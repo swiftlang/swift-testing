@@ -19,6 +19,12 @@ private import UniformTypeIdentifiers
 /// An enumeration describing the encoding formats we support for `Encodable`
 /// and `NSSecureCoding` types that conform to `Attachable`.
 enum EncodingFormat {
+  /// The encoding format to use by default.
+  ///
+  /// The specific format this case corresponds to depends on if we are encoding
+  /// an `Encodable` value or an `NSSecureCoding` value.
+  case `default`
+
   /// A property list format.
   ///
   /// - Parameters:
@@ -27,12 +33,6 @@ enum EncodingFormat {
 
   /// The JSON format.
   case json
-
-  /// The encoding format to use by default.
-  ///
-  /// The specific format this case corresponds to depends on if we are encoding
-  /// an `Encodable` value or an `NSSecureCoding` value.
-  case `default`
 
   /// Initialize an instance of this type representing the content type or media
   /// type of the specified attachment.

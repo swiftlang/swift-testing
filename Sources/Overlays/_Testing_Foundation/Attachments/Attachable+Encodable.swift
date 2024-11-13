@@ -17,6 +17,7 @@ private import Foundation
 /// to `NSSecureCoding`.
 ///
 /// - Parameters:
+///   - attachableValue: The value to encode.
 ///   - attachment: The attachment that is requesting a buffer (that is, the
 ///     attachment containing this instance.)
 ///   - body: A function to call. A temporary buffer containing a data
