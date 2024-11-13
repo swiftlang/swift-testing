@@ -15,8 +15,8 @@ Mark issues as known when running tests.
 ## Overview
 
 The testing library provides several functions named `withKnownIssue()` that
-you can use to mark issues as known. Use them to inform the testing library not
-to mark a test as failing if only known issues are recorded.
+you can use to mark issues as known. Use them to inform the testing library that
+a test should not be marked as failing if only known issues are recorded.
 
 ### Mark an expectation failure as known
 
