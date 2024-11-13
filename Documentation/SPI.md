@@ -44,7 +44,8 @@ the SPI group `@_spi(ForSwiftTestingOnly)` is used. They _should_ be marked
 `package` and may be in the future, but are currently exported due to technical
 constraints when Swift Testing is built using CMake.
 
-- Warning: Never use symbols marked `@_spi(ForSwiftTestingOnly)`.
+> [!WARNING]
+> Never use symbols marked `@_spi(ForSwiftTestingOnly)`.
 
 ## SPI stability
 
@@ -61,7 +62,8 @@ modified or removed at any time.
 SPI marked `@_spi(ForSwiftTestingOnly)` is unstable and subject to change at any
 time.
 
-- Warning: Never use symbols marked `@_spi(ForSwiftTestingOnly)`.
+> [!WARNING]
+> Never use symbols marked `@_spi(ForSwiftTestingOnly)`.
 
 ## API and ABI stability
 
