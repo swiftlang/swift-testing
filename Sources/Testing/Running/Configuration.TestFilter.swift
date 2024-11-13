@@ -191,7 +191,7 @@ extension Configuration.TestFilter {
 extension Configuration.TestFilter {
   /// An enumeration which represents filtering logic to be applied to a test
   /// graph.
-  fileprivate enum Operation: Sendable {
+  fileprivate enum Operation<Item>: Sendable where Item: _FilterableItem {
     /// A filter operation which has no effect.
     ///
     /// All tests are allowed when this operation is applied.
@@ -211,7 +211,7 @@ extension Configuration.TestFilter {
     /// - Parameters:
     ///   - predicate: The function to predicate tests against.
     ///   - membership: How to interpret the result when predicating tests.
-    case function(_ predicate: @Sendable (borrowing Test) -> Bool, membership: Membership)
+    case function(_ predicate: @Sendable (borrowing Item) -> Bool, membership: Membership)
 
     /// A filter operation which is a combination of other operations.
     ///
@@ -235,34 +235,31 @@ extension Configuration.TestFilter.Kind {
   ///   test filter kind. One example is the creation of a `Regex` from a
   ///   `.pattern` kind: if the pattern is not a valid regular expression, an
   ///   error will be thrown.
-  var operation: Configuration.TestFilter.Operation {
-    get throws {
-      switch self {
-      case .unfiltered:
-        return .unfiltered
-      case let .testIDs(testIDs, membership):
-        return .precomputed(Test.ID.Selection(testIDs: testIDs), membership: membership)
-      case let .tags(tags, anyOf, membership):
-        return .function({ test in
-          if anyOf {
-            !test.tags.isDisjoint(with: tags) // .intersects()
-          } else {
-            test.tags.isSuperset(of: tags)
-          }
-        }, membership: membership)
-      case let .patterns(patterns, membership):
-        guard #available(_regexAPI, *) else {
-          throw SystemError(description: "Filtering by regular expression matching is unavailable")
-        }
-
-        nonisolated(unsafe) let regexes = try patterns.map(Regex.init)
-        return .function({ test in
-          let id = String(describing: test.id)
-          return regexes.contains { id.contains($0) }
-        }, membership: membership)
-      case let .combination(lhs, rhs, op):
-        return try .combination(lhs.operation, rhs.operation, op)
+  func operation<T>(itemType: T.Type = T.self) throws -> Configuration.TestFilter.Operation<T> where T: _FilterableItem {
+    switch self {
+    case .unfiltered:
+      return .unfiltered
+    case let .testIDs(testIDs, membership):
+      return .precomputed(Test.ID.Selection(testIDs: testIDs), membership: membership)
+    case let .tags(tags, anyOf, membership):
+      let predicate: @Sendable (borrowing T) -> Bool = if anyOf {
+        { !$0.tags.isDisjoint(with: tags) /* .intersects() */ }
+      } else {
+        { $0.tags.isSuperset(of: tags) }
       }
+      return .function(predicate, membership: membership)
+    case let .patterns(patterns, membership):
+      guard #available(_regexAPI, *) else {
+        throw SystemError(description: "Filtering by regular expression matching is unavailable")
+      }
+
+      nonisolated(unsafe) let regexes = try patterns.map(Regex.init)
+      return .function({ item in
+        let id = String(describing: item.test.id)
+        return regexes.contains { id.contains($0) }
+      }, membership: membership)
+    case let .combination(lhs, rhs, op):
+      return try .combination(lhs.operation(), rhs.operation(), op)
     }
   }
 }
@@ -278,20 +275,25 @@ extension Configuration.TestFilter.Operation {
   ///
   /// This function provides the bulk of the implementation of
   /// ``Configuration/TestFilter/apply(to:)``.
-  fileprivate func apply(to testGraph: Graph<String, Test?>) -> Graph<String, Test?> {
+  fileprivate func apply(to testGraph: Graph<String, Item?>) -> Graph<String, Item?> {
     switch self {
     case .unfiltered:
       return testGraph
     case let .precomputed(selection, membership):
-      return testGraph.mapValues { _, test in
-        guard let test else {
-          return nil
+      switch membership {
+      case .including:
+        return testGraph.mapValues { _, item in
+          guard let item else {
+            return nil
+          }
+          return selection.contains(item.test) ? item : nil
         }
-        return switch membership {
-        case .including:
-          selection.contains(test) ? test : nil
-        case .excluding:
-          !selection.contains(test, inferAncestors: false) ? test : nil
+      case .excluding:
+        return testGraph.mapValues { _, item in
+          guard let item else {
+            return nil
+          }
+          return !selection.contains(item.test, inferAncestors: false) ? item : nil
         }
       }
     case let .function(function, membership):
@@ -307,7 +309,7 @@ extension Configuration.TestFilter.Operation {
       let testIDs = testGraph
         .compactMap(\.value).lazy
         .filter(function)
-        .map(\.id)
+        .map(\.test.id)
       let selection = Test.ID.Selection(testIDs: testIDs)
       return Self.precomputed(selection, membership: membership).apply(to: testGraph)
     case let .combination(lhs, rhs, op):
@@ -315,7 +317,7 @@ extension Configuration.TestFilter.Operation {
         lhs.apply(to: testGraph),
         rhs.apply(to: testGraph)
       ).mapValues { _, value in
-        op.functionValue(value.0, value.1)
+        op(value.0, value.1)
       }
     }
   }
@@ -330,19 +332,80 @@ extension Configuration.TestFilter {
   ///
   /// - Returns: A copy of `testGraph` with filtered tests replaced with `nil`.
   func apply(to testGraph: Graph<String, Test?>) throws -> Graph<String, Test?> {
-    var result = try _kind.operation.apply(to: testGraph)
+    var result: Graph<String, Test?>
 
-    // After performing the test function, run through one more time and remove
-    // hidden tests. (Note that this property's value is not recursively set on
-    // combined test filters. It is only consulted on the outermost call to
-    // apply(to:), not in _apply(to:).)
-    if !includeHiddenTests {
-      result = result.mapValues { _, test in
-        (test?.isHidden == true) ? nil : test
-      }
+    if _kind.requiresTraitPropagation {
+      // Convert the specified test graph to a graph of filter items temporarily
+      // while performing filtering, and apply inheritance for the properties
+      // which are relevant when performing filtering (e.g. tags).
+      var filterItemGraph = testGraph.mapValues { $1.map(FilterItem.init(test:)) }
+      _recursivelyApplyFilterProperties(to: &filterItemGraph)
+
+      result = try _kind.operation().apply(to: filterItemGraph)
+        .mapValues { $1?.test }
+    } else {
+      result = try _kind.operation().apply(to: testGraph)
     }
 
+    // After filtering, run through one more time and prune the test graph to
+    // remove any unnecessary nodes, since that reduces work in later stages of
+    // planning.
+    //
+    // If `includeHiddenTests` is false, this will also remove any nodes
+    // representing hidden tests. (Note that the value of the
+    // `includeHiddenTests` property is not recursively set on combined test
+    // filters. It is only consulted on the outermost call to apply(to:), not in
+    // _apply(to:).)
+    _recursivelyPruneTestGraph(&result)
+
     return result
+  }
+
+  /// Recursively apply filtering-related properties from test suites to their
+  /// children in a graph.
+  ///
+  /// - Parameters:
+  ///   - graph: The graph of filter items to modify.
+  ///   - tags: Tags from the parent of `graph` which `graph` should inherit.
+  private func _recursivelyApplyFilterProperties(to graph: inout Graph<String, FilterItem?>, tags: Set<Tag> = []) {
+    var tags = tags
+    if let item = graph.value {
+      tags.formUnion(item.tags)
+      graph.value?.tags = tags
+    }
+
+    for (key, var childGraph) in graph.children {
+      _recursivelyApplyFilterProperties(to: &childGraph, tags: tags)
+      graph.children[key] = childGraph
+    }
+  }
+
+  /// Recursively prune a test graph to remove unnecessary nodes.
+  ///
+  /// - Parameters:
+  ///   - testGraph: The graph of tests to modify.
+  private func _recursivelyPruneTestGraph(_ graph: inout Graph<String, Test?>) {
+    // The recursive function. This is structured as a distinct function to
+    // ensure that the root node itself is always preserved (despite its value
+    // being `nil`).
+    func pruneGraph(_ graph: Graph<String, Test?>) -> Graph<String, Test?>? {
+      if !includeHiddenTests, let test = graph.value, test.isHidden {
+        return nil
+      }
+
+      var graph = graph
+      for (key, childGraph) in graph.children {
+        graph.children[key] = pruneGraph(childGraph)
+      }
+      if graph.value == nil && graph.children.isEmpty {
+        return nil
+      }
+      return graph
+    }
+
+    for (key, childGraph) in graph.children {
+      graph.children[key] = pruneGraph(childGraph)
+    }
   }
 }
 
@@ -364,21 +427,23 @@ extension Configuration.TestFilter {
     /// This operator is equivalent to `||`.
     case or
 
-    /// The equivalent of this instance as a callable function.
-    fileprivate var functionValue: @Sendable (Test?, Test?) -> Test? {
+    /// Evaluate this combination operator with two optional operands.
+    ///
+    /// - Parameters:
+    ///   - lhs: The left-hand argument
+    ///   - rhs: The right-hand argument.
+    ///
+    /// - Returns: The combined result of evaluating this operator.
+    fileprivate func callAsFunction<T>(_ lhs: T?, _ rhs: T?) -> T? where T: _FilterableItem {
       switch self {
       case .and:
-        return { lhs, rhs in
-          if lhs != nil && rhs != nil {
-            lhs
-          } else {
-            nil
-          }
+        if lhs != nil && rhs != nil {
+          lhs
+        } else {
+          nil
         }
       case .or:
-        return { lhs, rhs in
-          lhs ?? rhs
-        }
+        lhs ?? rhs
       }
     }
   }
@@ -420,5 +485,62 @@ extension Configuration.TestFilter {
   /// in results if they pass both.
   public mutating func combine(with other: Self, using op: CombinationOperator = .and) {
     self = combining(with: other, using: op)
+  }
+}
+
+// MARK: - Filterable types
+
+extension Configuration.TestFilter.Kind {
+  /// Whether this kind of test filter requires knowledge of test traits.
+  ///
+  /// If the value of this property is `true`, the values of a test graph must
+  /// be converted to `FilterItem` and have trait information recursively
+  /// propagated before the filter can be applied, or else the results may be
+  /// inaccurate. This facilitates a performance optimization where trait
+  /// propagation can be skipped for filters which don't require such knowledge.
+  fileprivate var requiresTraitPropagation: Bool {
+    switch self {
+    case .unfiltered,
+         .testIDs,
+         .patterns:
+      false
+    case .tags:
+      true
+    case let .combination(lhs, rhs, _):
+      lhs.requiresTraitPropagation || rhs.requiresTraitPropagation
+    }
+  }
+}
+
+/// A protocol representing a value which can be filtered using
+/// ``Configuration/TestFilter-swift.struct``.
+private protocol _FilterableItem {
+  /// The test this item represents.
+  var test: Test { get }
+
+  /// The complete set of tags for ``test``, including those inherited from
+  /// containing suites.
+  var tags: Set<Tag> { get }
+}
+
+extension Test: _FilterableItem {
+  var test: Test {
+    self
+  }
+}
+
+/// An item representing a test and its filtering-related properties.
+///
+/// Instances of this type are needed when applying a test graph to a kind of
+/// filter for which the value of the `requiresFilterItemConversion` property
+/// is `true`.
+fileprivate struct FilterItem: _FilterableItem {
+  var test: Test
+
+  var tags: Set<Tag>
+
+  init(test: Test) {
+    self.test = test
+    self.tags = test.tags
   }
 }
