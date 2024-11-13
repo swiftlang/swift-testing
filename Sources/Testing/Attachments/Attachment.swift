@@ -37,7 +37,8 @@ public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: Atta
   public var fileSystemPath: String?
 
   /// The default preferred name to use if the developer does not supply one.
-  package static var defaultPreferredName: String {
+  @_spi(ForSwiftTestingOnly)
+  public static var defaultPreferredName: String {
     "untitled"
   }
 
