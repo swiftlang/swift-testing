@@ -15,9 +15,9 @@ private import _TestingInternals
 ///
 /// Attachments are included in test reports in Xcode or written to disk when
 /// tests are run at the command line. To create an attachment, you need a value
-/// of some type that conforms to ``Test/Attachable``. Initialize an instance of
-/// ``Test/Attachment`` with that value and, optionally, a preferred filename to
-/// use when writing to disk.
+/// of some type that conforms to ``Attachable``. Initialize an instance of
+/// ``Attachment`` with that value and, optionally, a preferred filename to use
+/// when writing to disk.
 @_spi(Experimental)
 public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: Attachable & ~Copyable {
   /// Storage for ``attachableValue-7dyjv``.
@@ -89,7 +89,7 @@ extension Attachment where AttachableValue: ~Copyable {
 
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 extension Attachment where AttachableValue == AnyAttachable {
-  /// Create a type-erased attachment from an instance of ``Test/Attachment``.
+  /// Create a type-erased attachment from an instance of ``Attachment``.
   ///
   /// - Parameters:
   ///   - attachment: The attachment to type-erase.
@@ -163,10 +163,10 @@ extension Attachment where AttachableValue: ~Copyable {
 extension Attachment where AttachableValue: AttachableContainer & ~Copyable {
   /// The value of this attachment.
   ///
-  /// When the attachable value's type conforms to ``Test/AttachableContainer``,
-  /// the value of this property equals the container's underlying attachable
-  /// value. To access the attachable value as an instance of `T` (where `T`
-  /// conforms to ``Test/AttachableContainer``), specify the type explicitly:
+  /// When the attachable value's type conforms to ``AttachableContainer``, the
+  /// value of this property equals the container's underlying attachable value.
+  /// To access the attachable value as an instance of `T` (where `T` conforms
+  /// to ``AttachableContainer``), specify the type explicitly:
   ///
   /// ```swift
   /// let attachableValue = attachment.attachableValue as T
@@ -230,7 +230,7 @@ extension Attachment where AttachableValue: ~Copyable {
 
 extension Attachment where AttachableValue: ~Copyable {
   /// Call a function and pass a buffer representing the value of this
-  /// instance's ``attachableValue-7dyjv`` property to it.
+  /// instance's ``attachableValue-2tnj5`` property to it.
   ///
   /// - Parameters:
   ///   - body: A function to call. A temporary buffer containing a data
@@ -243,8 +243,8 @@ extension Attachment where AttachableValue: ~Copyable {
   ///
   /// The testing library uses this function when writing an attachment to a
   /// test report or to a file on disk. This function calls the
-  /// ``Test/Attachable/withUnsafeBufferPointer(for:_:)`` function on this
-  /// attachment's ``attachableValue-7dyjv`` property.
+  /// ``Attachable/withUnsafeBufferPointer(for:_:)`` function on this
+  /// attachment's ``attachableValue-2tnj5`` property.
   @inlinable public borrowing func withUnsafeBufferPointer<R>(_ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try attachableValue.withUnsafeBufferPointer(for: self, body)
   }
@@ -265,8 +265,7 @@ extension Attachment where AttachableValue: ~Copyable {
   /// - Returns: The path to the file that was written.
   ///
   /// The attachment is written to a file _within_ `directoryPath`, whose name
-  /// is derived from the value of the ``Test/Attachment/preferredName``
-  /// property.
+  /// is derived from the value of the ``Attachment/preferredName`` property.
   ///
   /// If you pass `--experimental-attachments-path` to `swift test`, the testing
   /// library automatically uses this function to persist attachments to the
@@ -302,8 +301,8 @@ extension Attachment where AttachableValue: ~Copyable {
   /// - Returns: The path to the file that was written.
   ///
   /// The attachment is written to a file _within_ `directoryPath`, whose name
-  /// is derived from the value of the ``Test/Attachment/preferredName``
-  /// property and the value of `suffix`.
+  /// is derived from the value of the ``Attachment/preferredName`` property and
+  /// the value of `suffix`.
   ///
   /// If the argument `suffix` always produces the same string, the result of
   /// this function is undefined.
@@ -363,8 +362,8 @@ extension Configuration {
   /// - Parameters:
   ///   - event: The event to handle. This event must be of kind
   ///     ``Event/Kind/valueAttached(_:)``. If the associated attachment's
-  ///     ``Test/Attachment/fileSystemPath`` property is not `nil`, this
-  ///     function does nothing.
+  ///     ``Attachment/fileSystemPath`` property is not `nil`, this function
+  ///     does nothing.
   ///   - context: The context associated with the event.
   ///
   /// - Returns: Whether or not to continue handling the event.

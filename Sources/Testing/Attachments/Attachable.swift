@@ -12,9 +12,9 @@
 /// written to disk when a test is run.
 ///
 /// To attach an attachable value to a test report or test run output, use it to
-/// initialize a new instance of ``Test/Attachment``, then call
-/// ``Test/Attachment/attach(sourceLocation:)``. An attachment can only be
-/// attached once.
+/// initialize a new instance of ``Attachment``, then call
+/// ``Attachment/attach(sourceLocation:)``. An attachment can only be attached
+/// once.
 ///
 /// The testing library provides default conformances to this protocol for a
 /// variety of standard library types. Most user-defined types do not need to
@@ -24,7 +24,7 @@
 /// sequence of bytes that would be diagnostically useful if a test fails. If a
 /// type cannot conform directly to this protocol (such as a non-final class or
 /// a type declared in a third-party module), you can create a container type
-/// that conforms to ``Test/AttachableContainer`` to act as a proxy.
+/// that conforms to ``AttachableContainer`` to act as a proxy.
 @_spi(Experimental)
 public protocol Attachable: ~Copyable {
   /// An estimate of the number of bytes of memory needed to store this value as

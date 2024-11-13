@@ -13,13 +13,13 @@
 /// stands in for.
 ///
 /// To attach an attachable value to a test report or test run output, use it to
-/// initialize a new instance of ``Test/Attachment``, then call
-/// ``Test/Attachment/attach(sourceLocation:)``. An attachment can only be
-/// attached once.
+/// initialize a new instance of ``Attachment``, then call
+/// ``Attachment/attach(sourceLocation:)``. An attachment can only be attached
+/// once.
 ///
 /// A type can conform to this protocol if it represents another type that
-/// cannot directly conform to ``Test/Attachable``, such as a non-final class or
-/// a type declared in a third-party module.
+/// cannot directly conform to ``Attachable``, such as a non-final class or a
+/// type declared in a third-party module.
 @_spi(Experimental)
 public protocol AttachableContainer<AttachableValue>: Attachable, ~Copyable {
 #if hasFeature(SuppressedAssociatedTypes)
