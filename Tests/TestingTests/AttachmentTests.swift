@@ -82,7 +82,7 @@ struct AttachmentTests {
 
   @Test func writeAttachmentWithMultiplePathExtensions() throws {
     let attachableValue = MySendableAttachable(string: "<!doctype html>")
-    let attachment = Attachment(attachableValue, named: "loremipsum.tar.gz.gif.jpeg.html")
+    let attachment = Attachment(attachableValue, named: "loremipsum.tgz.gif.jpeg.html")
 
     // Write the attachment to disk once to ensure the original filename is not
     // available and we add a suffix.
@@ -302,15 +302,15 @@ struct AttachmentTests {
     var decode: @Sendable (Data) throws -> String
 
     @Sendable static func decodeWithJSONDecoder(_ data: Data) throws -> String {
-      try JSONDecoder().decode(MyCodableAttachable.self, from: data).string
+      try JSONDecoder().decode(MyCodable.self, from: data).string
     }
 
     @Sendable static func decodeWithPropertyListDecoder(_ data: Data) throws -> String {
-      try PropertyListDecoder().decode(MyCodableAttachable.self, from: data).string
+      try PropertyListDecoder().decode(MyCodable.self, from: data).string
     }
 
     @Sendable static func decodeWithNSKeyedUnarchiver(_ data: Data) throws -> String {
-      let result = try NSKeyedUnarchiver.unarchivedObject(ofClass: MySecureCodingAttachable.self, from: data)
+      let result = try NSKeyedUnarchiver.unarchivedObject(ofClass: MySecureCoding.self, from: data)
       return try #require(result).string
     }
 
@@ -370,20 +370,20 @@ struct AttachmentTests {
     }
 
     if args.forSecureCoding {
-      let attachableValue = MySecureCodingAttachable(string: "stringly speaking")
-      let attachment = Attachment(attachableValue, named: name)
+      let attachableValue = MySecureCoding(string: "stringly speaking")
+      let attachment = Attachment(encoding: attachableValue, named: name)
       try open(attachment)
     } else {
-      let attachableValue = MyCodableAttachable(string: "stringly speaking")
-      let attachment = Attachment(attachableValue, named: name)
+      let attachableValue = MyCodable(string: "stringly speaking")
+      let attachment = Attachment(encoding: attachableValue, named: name)
       try open(attachment)
     }
   }
 
   @Test("Attach NSSecureCoding-conformant value but with a JSON type")
   func attachNSSecureCodingAsJSON() async throws {
-    let attachableValue = MySecureCodingAttachable(string: "stringly speaking")
-    let attachment = Attachment(attachableValue, named: "loremipsum.json")
+    let attachableValue = MySecureCoding(string: "stringly speaking")
+    let attachment = Attachment(encoding: attachableValue, named: "loremipsum.json")
     #expect(throws: CocoaError.self) {
       try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { _ in }
     }
@@ -391,8 +391,8 @@ struct AttachmentTests {
 
   @Test("Attach NSSecureCoding-conformant value but with a nonsensical type")
   func attachNSSecureCodingAsNonsensical() async throws {
-    let attachableValue = MySecureCodingAttachable(string: "stringly speaking")
-    let attachment = Attachment(attachableValue, named: "loremipsum.gif")
+    let attachableValue = MySecureCoding(string: "stringly speaking")
+    let attachment = Attachment(encoding: attachableValue, named: "loremipsum.gif")
     #expect(throws: CocoaError.self) {
       try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { _ in }
     }
@@ -491,32 +491,16 @@ struct MySendableAttachableWithDefaultByteCount: Attachable, Sendable {
 }
 
 #if canImport(Foundation)
-struct MyCodableAttachable: Codable, Attachable, Sendable {
+struct MyCodable: Codable, Sendable {
   var string: String
 }
 
-final class MySecureCodingAttachable: NSObject, NSSecureCoding, Attachable, Sendable {
+final class MySecureCoding: NSObject, NSSecureCoding, Sendable {
   let string: String
 
   init(string: String) {
     self.string = string
   }
-
-  static var supportsSecureCoding: Bool {
-    true
-  }
-
-  func encode(with coder: NSCoder) {
-    coder.encode(string, forKey: "string")
-  }
-
-  required init?(coder: NSCoder) {
-    string = (coder.decodeObject(of: NSString.self, forKey: "string") as? String) ?? ""
-  }
-}
-
-final class MyCodableAndSecureCodingAttachable: NSObject, Codable, NSSecureCoding, Attachable, Sendable {
-  let string: String
 
   static var supportsSecureCoding: Bool {
     true
