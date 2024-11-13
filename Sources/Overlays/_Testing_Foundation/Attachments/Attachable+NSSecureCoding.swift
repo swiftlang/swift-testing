@@ -33,7 +33,7 @@ extension Attachable where Self: NSSecureCoding {
   ///
   /// The testing library uses this function when writing an attachment to a
   /// test report or to a file on disk. The encoding used depends on the path
-  /// extension specified by the value of `attachment`'s ``Testing/Test/Attachment/preferredName``
+  /// extension specified by the value of `attachment`'s ``Testing/Attachment/preferredName``
   /// property:
   ///
   /// | Extension | Encoding Used | Encoder Used |
