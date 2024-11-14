@@ -17,6 +17,8 @@ public import Foundation
 // NSKeyedArchiver for encoding.
 @_spi(Experimental)
 extension Attachable where Self: NSSecureCoding {
+  public typealias AttachmentMetadata = EncodableAttachmentMetadata
+
   /// Encode this object using [`NSKeyedArchiver`](https://developer.apple.com/documentation/foundation/nskeyedarchiver)
   /// into a buffer, then call a function and pass that buffer to it.
   ///
@@ -51,7 +53,7 @@ extension Attachable where Self: NSSecureCoding {
   ///   some other path extension, that path extension must represent a type
   ///   that conforms to [`UTType.propertyList`](https://developer.apple.com/documentation/uniformtypeidentifiers/uttype-swift.struct/propertylist).
   public func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    let format = try EncodingFormat(for: attachment)
+    let format = try EncodableAttachmentMetadata.Format(for: attachment)
 
     var data = try NSKeyedArchiver.archivedData(withRootObject: self, requiringSecureCoding: true)
     switch format {

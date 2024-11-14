@@ -20,6 +20,8 @@ public import Foundation
 
 @_spi(Experimental)
 extension Attachable where Self: Encodable & NSSecureCoding {
+  public typealias AttachmentMetadata = EncodableAttachmentMetadata
+
   @_documentation(visibility: private)
   public func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try _Testing_Foundation.withUnsafeBufferPointer(encoding: self, for: attachment, body)
