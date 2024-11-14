@@ -192,7 +192,7 @@ extension Runner.Plan {
         // source location, so we use the source location of a close descendant
         // test. We do this instead of falling back to some "unknown"
         // placeholder in an attempt to preserve the correct sort ordering.
-        graph.value = Test(traits: [], sourceLocation: sourceLocation, containingTypeInfo: typeInfo)
+        graph.value = Test(traits: [], sourceLocation: sourceLocation, containingTypeInfo: typeInfo, isSynthesized: true)
       }
     }
 

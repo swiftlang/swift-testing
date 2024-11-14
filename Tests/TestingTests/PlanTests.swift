@@ -443,6 +443,7 @@ struct PlanTests {
       let testFunction = try #require(plan.steps.map(\.test).first { $0.name == "example()" })
       let implicitParentSuite_A = try #require(plan.steps.map(\.test).first { $0.name == "ImplicitParentSuite_A" })
       #expect(implicitParentSuite_A.sourceLocation == testFunction.sourceLocation)
+      #expect(implicitParentSuite_A.isSynthesized)
     }
 
     @Test("A test function in a type hierarchy where the nearest suite is explicit and outer ones are implicit", arguments: [
@@ -463,12 +464,15 @@ struct PlanTests {
       let testFunction = try #require(plan.steps.map(\.test).first { $0.name == "example()" })
       let explicitChildSuite_B = try #require(plan.steps.map(\.test).first { $0.name == "ExplicitChildSuite_B" })
       #expect(explicitChildSuite_B.sourceLocation != testFunction.sourceLocation)
+      #expect(!explicitChildSuite_B.isSynthesized)
 
       let implicitParentSuite_B = try #require(plan.steps.map(\.test).first { $0.name == "ImplicitParentSuite_B" })
       #expect(implicitParentSuite_B.sourceLocation == explicitChildSuite_B.sourceLocation)
+      #expect(implicitParentSuite_B.isSynthesized)
 
       let implicitGrandparentSuite_B = try #require(plan.steps.map(\.test).first { $0.name == "ImplicitGrandparentSuite_B" })
       #expect(implicitGrandparentSuite_B.sourceLocation == implicitParentSuite_B.sourceLocation)
+      #expect(implicitGrandparentSuite_B.isSynthesized)
     }
 
     @Test("A test function in a type hierarchy with both explicit and implicit suites")
@@ -485,12 +489,15 @@ struct PlanTests {
       let testFunction = try #require(plan.steps.map(\.test).first { $0.name == "example()" })
       let explicitChildSuite_C = try #require(plan.steps.map(\.test).first { $0.name == "ExplicitChildSuite_C" })
       #expect(explicitChildSuite_C.sourceLocation != testFunction.sourceLocation)
+      #expect(!explicitChildSuite_C.isSynthesized)
 
       let implicitParentSuite_C = try #require(plan.steps.map(\.test).first { $0.name == "ImplicitParentSuite_C" })
       #expect(implicitParentSuite_C.sourceLocation == explicitChildSuite_C.sourceLocation)
+      #expect(implicitParentSuite_C.isSynthesized)
 
       let explicitGrandparentSuite_C = try #require(plan.steps.map(\.test).first { $0.name == "ExplicitGrandparentSuite_C" })
       #expect(explicitGrandparentSuite_C.sourceLocation != implicitParentSuite_C.sourceLocation)
+      #expect(!explicitGrandparentSuite_C.isSynthesized)
     }
 
     @Test("A test function in a type hierarchy with all implicit suites")
