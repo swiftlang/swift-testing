@@ -45,11 +45,33 @@ public struct TypeInfo: Sendable {
     return nil
   }
 
-  init(fullyQualifiedName: String, unqualifiedName: String, mangledName: String?) {
+  /// Initialize an instance of this type with the specified names.
+  ///
+  /// - Parameters:
+  ///   - fullyQualifiedComponents: The fully-qualified name components of the
+  ///     type.
+  ///   - unqualified: The unqualified name of the type.
+  ///   - mangled: The mangled name of the type, if available.
+  init(fullyQualifiedNameComponents: [String], unqualifiedName: String, mangledName: String? = nil) {
     _kind = .nameOnly(
-      fullyQualifiedComponents: fullyQualifiedName.split(separator: ".").map(String.init),
+      fullyQualifiedComponents: fullyQualifiedNameComponents,
       unqualified: unqualifiedName,
-      mangled: mangledName
+      mangled: mangledName,
+    )
+  }
+
+  /// Initialize an instance of this type with the specified names.
+  ///
+  /// - Parameters:
+  ///   - fullyQualifiedName: The fully-qualified name of the type, with its
+  ///     components separated by a period character (`"."`).
+  ///   - unqualified: The unqualified name of the type.
+  ///   - mangled: The mangled name of the type, if available.
+  init(fullyQualifiedName: String, unqualifiedName: String, mangledName: String?) {
+    self.init(
+      fullyQualifiedNameComponents: fullyQualifiedName.split(separator: ".").map(String.init),
+      unqualifiedName: unqualifiedName,
+      mangledName: mangledName
     )
   }
 
@@ -243,44 +265,6 @@ func isClass(_ subclass: AnyClass, subclassOf superclass: AnyClass) -> Bool {
     isClass(subclassImmediateSuperclass, subclassOf: superclass)
   } else {
     false
-  }
-}
-
-// MARK: - Containing types
-
-extension TypeInfo {
-  /// An instance of this type representing the type immediately containing the
-  /// described type.
-  ///
-  /// For instance, given the following declaration in the `Example` module:
-  ///
-  /// ```swift
-  /// struct A {
-  ///   struct B {}
-  /// }
-  /// ```
-  ///
-  /// The value of this property for the type `A.B` would describe `A`, while
-  /// the value for `A` would be `nil` because it has no enclosing type.
-  var containingTypeInfo: Self? {
-    let fqnComponents = fullyQualifiedNameComponents
-    if fqnComponents.count > 2 { // the module is not a type
-      let fqn = fqnComponents.dropLast().joined(separator: ".")
-#if false // currently non-functional
-      if let type = _typeByName(fqn) {
-        return Self(describing: type)
-      }
-#endif
-      let name = fqnComponents[fqnComponents.count - 2]
-      return Self(fullyQualifiedName: fqn, unqualifiedName: name, mangledName: nil)
-    }
-    return nil
-  }
-
-  /// A sequence of instances of this type representing the types that
-  /// recursively contain it, starting with the immediate parent (if any.)
-  var allContainingTypeInfo: some Sequence<Self> {
-    sequence(first: self, next: \.containingTypeInfo).dropFirst()
   }
 }
 

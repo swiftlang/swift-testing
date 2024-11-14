@@ -501,7 +501,7 @@ final class RunnerTests: XCTestCase {
 
   func testPoundIfTrueTestFunctionRuns() async throws {
     let testStarted = expectation(description: "Test started")
-    testStarted.expectedFulfillmentCount = 4
+    testStarted.expectedFulfillmentCount = 5
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       if case .testStarted = event.kind {
@@ -522,7 +522,7 @@ final class RunnerTests: XCTestCase {
 
   func testPoundIfFalseTestFunctionDoesNotRun() async throws {
     let testStarted = expectation(description: "Test started")
-    testStarted.expectedFulfillmentCount = 2
+    testStarted.expectedFulfillmentCount = 3
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       if case .testStarted = event.kind {
@@ -545,7 +545,7 @@ final class RunnerTests: XCTestCase {
 
   func testPoundIfFalseElseTestFunctionRuns() async throws {
     let testStarted = expectation(description: "Test started")
-    testStarted.expectedFulfillmentCount = 4
+    testStarted.expectedFulfillmentCount = 5
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       if case .testStarted = event.kind {
@@ -568,7 +568,7 @@ final class RunnerTests: XCTestCase {
 
   func testPoundIfFalseElseIfTestFunctionRuns() async throws {
     let testStarted = expectation(description: "Test started")
-    testStarted.expectedFulfillmentCount = 4
+    testStarted.expectedFulfillmentCount = 5
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       if case .testStarted = event.kind {
@@ -606,9 +606,9 @@ final class RunnerTests: XCTestCase {
   func testNoasyncTestsAreCallable() async throws {
     let testStarted = expectation(description: "Test started")
 #if !SWT_NO_GLOBAL_ACTORS
-    testStarted.expectedFulfillmentCount = 6
+    testStarted.expectedFulfillmentCount = 7
 #else
-    testStarted.expectedFulfillmentCount = 5
+    testStarted.expectedFulfillmentCount = 6
 #endif
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
@@ -681,10 +681,10 @@ final class RunnerTests: XCTestCase {
     let testStarted = expectation(description: "Test started")
     let testSkipped = expectation(description: "Test skipped")
 #if SWT_TARGET_OS_APPLE
-    testStarted.expectedFulfillmentCount = 4
+    testStarted.expectedFulfillmentCount = 5
     testSkipped.expectedFulfillmentCount = 8
 #else
-    testStarted.expectedFulfillmentCount = 2
+    testStarted.expectedFulfillmentCount = 3
     testSkipped.expectedFulfillmentCount = 2
 #endif
     var configuration = Configuration()
@@ -782,7 +782,7 @@ final class RunnerTests: XCTestCase {
   func testAvailableWithSwiftVersion() async throws {
     let testStarted = expectation(description: "Test started")
     let testSkipped = expectation(description: "Test skipped")
-    testStarted.expectedFulfillmentCount = 3
+    testStarted.expectedFulfillmentCount = 4
     testSkipped.expectedFulfillmentCount = 2
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
@@ -808,7 +808,7 @@ final class RunnerTests: XCTestCase {
     }
 
     let testStarted = expectation(description: "Test started")
-    testStarted.expectedFulfillmentCount = 2
+    testStarted.expectedFulfillmentCount = 3
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       if case .testStarted = event.kind {
@@ -919,9 +919,9 @@ final class RunnerTests: XCTestCase {
     let testStarted = expectation(description: "Test started")
     let testSkipped = expectation(description: "Test skipped")
 #if SWT_TARGET_OS_APPLE
-    testStarted.expectedFulfillmentCount = 4
+    testStarted.expectedFulfillmentCount = 5
 #else
-    testStarted.expectedFulfillmentCount = 3
+    testStarted.expectedFulfillmentCount = 4
 #endif
     testSkipped.isInverted = true
     var configuration = Configuration()
