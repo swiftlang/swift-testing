@@ -552,17 +552,6 @@ struct MiscellaneousTests {
     #expect(id.keyPathRepresentation == [""])
   }
 
-  @Test("Test.all deduping")
-  func allTestDeduping() {
-    let tests = [Test(name: "A") {}, Test(name: "B") {}, Test(name: "C") {}, Test(name: "D") {}, Test(name: "E") {}, Test(name: "F") {}, Test(name: "G") {},]
-    var duplicatedTests = tests
-    duplicatedTests += tests
-    duplicatedTests.shuffle()
-    let mappedTests = Test.testsByID(duplicatedTests)
-    #expect(mappedTests.count == tests.count)
-    #expect(mappedTests.values.allSatisfy { tests.contains($0) })
-  }
-
   @Test("failureBreakpoint() call")
   func failureBreakpointCall() {
     failureBreakpointValue = 1

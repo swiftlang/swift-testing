@@ -154,6 +154,52 @@ extension Runner.Plan {
     }
   }
 
+  /// Recursively synthesize test instances representing suites for all missing
+  /// values in the specified test graph.
+  ///
+  /// - Parameters:
+  ///   - graph: The graph in which suites should be synthesized.
+  ///   - nameComponents: The name components of the suite to synthesize, based
+  ///     on the key path from the root node of the test graph to `graph`.
+  private static func _recursivelySynthesizeSuites(in graph: inout Graph<String, Test?>, nameComponents: [String] = []) {
+    // The recursive function. This is a local function to simplify the initial
+    // call which does not need to pass the `sourceLocation:` inout argument.
+    func synthesizeSuites(in graph: inout Graph<String, Test?>, nameComponents: [String] = [], sourceLocation: inout SourceLocation?) {
+      for (key, var childGraph) in graph.children {
+        synthesizeSuites(in: &childGraph, nameComponents: nameComponents + [key], sourceLocation: &sourceLocation)
+        graph.children[key] = childGraph
+      }
+
+      if let test = graph.value {
+        sourceLocation = test.sourceLocation
+      } else if let unqualifiedName = nameComponents.last, let sourceLocation {
+        // Don't synthesize suites representing modules.
+        if nameComponents.count <= 1 {
+          return
+        }
+
+        // Don't synthesize suites for nodes in the graph which are the
+        // immediate ancestor of a test function. That level of the hierarchy is
+        // used to disambiguate test functions which have equal names but
+        // different source locations.
+        if let firstChildTest = graph.children.values.first?.value, !firstChildTest.isSuite {
+          return
+        }
+
+        let typeInfo = TypeInfo(fullyQualifiedNameComponents: nameComponents, unqualifiedName: unqualifiedName)
+
+        // Note: When a suite is synthesized, it does not have an accurate
+        // source location, so we use the source location of a close descendant
+        // test. We do this instead of falling back to some "unknown"
+        // placeholder in an attempt to preserve the correct sort ordering.
+        graph.value = Test(traits: [], sourceLocation: sourceLocation, containingTypeInfo: typeInfo, isSynthesized: true)
+      }
+    }
+
+    var sourceLocation: SourceLocation?
+    synthesizeSuites(in: &graph, sourceLocation: &sourceLocation)
+  }
+
   /// Construct a graph of runner plan steps for the specified tests.
   ///
   /// - Parameters:
@@ -197,6 +243,9 @@ extension Runner.Plan {
       // the only scenario where this will throw is when using regex filtering,
       // and that is already guarded earlier in the SwiftPM entry point.
     }
+
+    // Synthesize suites for nodes in the test graph for which they are missing.
+    _recursivelySynthesizeSuites(in: &testGraph)
 
     // Recursively apply all recursive suite traits to children.
     //
