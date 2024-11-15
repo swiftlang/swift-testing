@@ -96,3 +96,23 @@ function(_swift_testing_install_target module)
       RENAME ${SwiftTesting_MODULE_TRIPLE}.swiftinterface)
   endif()
 endfunction()
+
+# Install the specified .swiftcrossimport directory for the specified declaring
+# module.
+#
+# Usage:
+#   _swift_testing_install_swiftcrossimport(module swiftcrossimport_dir)
+#
+# Arguments:
+#   module: The name of the declaring module. This is used to determine where
+#     the .swiftcrossimport directory should be installed, since it must be
+#     adjacent to the declaring module's .swiftmodule directory.
+#   swiftcrossimport_dir: The path to the source .swiftcrossimport directory
+#     which will be installed.
+function(_swift_testing_install_swiftcrossimport module swiftcrossimport_dir)
+  get_target_property(type ${module} TYPE)
+  get_swift_testing_install_lib_dir(${type} lib_destination_dir)
+
+  install(DIRECTORY "${swiftcrossimport_dir}"
+    DESTINATION "${lib_destination_dir}")
+endfunction()

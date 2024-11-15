@@ -125,3 +125,7 @@ target_compile_options(Testing PRIVATE
   -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:Testing,Swift_MODULE_DIRECTORY>/Testing.swiftinterface)
 
 _swift_testing_install_target(Testing)
+
+# Install the Swift cross-import overlay directory.
+_swift_testing_install_swiftcrossimport(Testing
+  Testing.swiftcrossimport)
