@@ -56,7 +56,7 @@ public struct TypeInfo: Sendable {
     _kind = .nameOnly(
       fullyQualifiedComponents: fullyQualifiedNameComponents,
       unqualified: unqualifiedName,
-      mangled: mangledName,
+      mangled: mangledName
     )
   }
 
