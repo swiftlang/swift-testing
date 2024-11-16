@@ -241,6 +241,7 @@ private func compressContentsOfDirectory(at directoryURL: URL) async throws -> D
         continuation.resume(throwing: error)
       }
     }
+
     do {
       try process.run()
     } catch {
