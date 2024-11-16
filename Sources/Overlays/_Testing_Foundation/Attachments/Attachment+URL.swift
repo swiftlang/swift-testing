@@ -16,6 +16,10 @@ public import Foundation
 private import UniformTypeIdentifiers
 #endif
 
+#if !SWT_NO_PROCESS_SPAWNING && os(Windows)
+private import WinSDK
+#endif
+
 #if !SWT_NO_FILE_IO
 extension URL {
   /// The file system path of the URL, equivalent to `path`.
@@ -113,6 +117,45 @@ extension Attachment where AttachableValue == Data {
   }
 }
 
+#if !SWT_NO_PROCESS_SPAWNING && os(Windows)
+/// The filename of the archiver tool.
+private let _archiverName = "tar.exe"
+
+/// The path to the archiver tool.
+///
+/// This path refers to a file (named `_archiverName`) within the `"System32"`
+/// folder of the current system, which is not always located in `"C:\Windows."`
+///
+/// If the path cannot be determined, the value of this property is `nil`.
+private let _archiverPath: String? = {
+  let bufferCount = GetSystemDirectoryW(nil, 0)
+  guard bufferCount > 0 else {
+    return nil
+  }
+
+  return withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: Int(bufferCount)) { buffer -> String? in
+    let bufferCount = GetSystemDirectoryW(buffer.baseAddress!, UINT(buffer.count))
+    guard bufferCount > 0 && bufferCount < buffer.count else {
+      return nil
+    }
+
+    return _archiverName.withCString(encodedAs: UTF16.self) { archiverName -> String? in
+      var result: UnsafeMutablePointer<wchar_t>?
+
+      let flags = ULONG(PATHCCH_ALLOW_LONG_PATHS.rawValue)
+      guard S_OK == PathAllocCombine(buffer.baseAddress!, archiverName, flags, &result) else {
+        return nil
+      }
+      defer {
+        LocalFree(result)
+      }
+
+      return result.flatMap { String.decodeCString($0, as: UTF16.self)?.result }
+    }
+  }
+}()
+#endif
+
 /// Compress the contents of a directory to an archive, then map that archive
 /// back into memory.
 ///
@@ -135,27 +178,31 @@ private func compressContentsOfDirectory(at directoryURL: URL) async throws -> D
     try? FileManager().removeItem(at: temporaryURL)
   }
 
-  try await withCheckedThrowingContinuation { continuation in
-    let process = Process()
-
-    // The standard version of tar(1) does not (appear to) support writing PKZIP
-    // archives. FreeBSD's (AKA bsdtar) was long ago rebased atop libarchive and
-    // knows how to write PKZIP archives, while Windows inherited FreeBSD's tar
-    // tool in Windows 10 Build 17063 (per https://techcommunity.microsoft.com/blog/containers/tar-and-curl-come-to-windows/382409).
-    //
-    // On Linux (which does not have FreeBSD's version of tar(1)), we can use
-    // zip(1) instead.
+  // The standard version of tar(1) does not (appear to) support writing PKZIP
+  // archives. FreeBSD's (AKA bsdtar) was long ago rebased atop libarchive and
+  // knows how to write PKZIP archives, while Windows inherited FreeBSD's tar
+  // tool in Windows 10 Build 17063 (per https://techcommunity.microsoft.com/blog/containers/tar-and-curl-come-to-windows/382409).
+  //
+  // On Linux (which does not have FreeBSD's version of tar(1)), we can use
+  // zip(1) instead.
 #if os(Linux)
-    let archiverPath = "/usr/bin/zip"
+  let archiverPath = "/usr/bin/zip"
 #elseif SWT_TARGET_OS_APPLE || os(FreeBSD)
-    let archiverPath = "/usr/bin/tar"
+  let archiverPath = "/usr/bin/tar"
 #elseif os(Windows)
-    let archiverPath = #"C:\Windows\System32\tar.exe"#
+  guard let archiverPath = _archiverPath else {
+    throw CocoaError(.fileWriteUnknown, userInfo: [
+      NSLocalizedDescriptionKey: "Could not determine the path to '\(_archiverName)'.",
+    ])
+  }
 #else
 #warning("Platform-specific implementation missing: tar or zip tool unavailable")
-    let archiverPath = ""
-    throw CocoaError(.featureUnsupported, userInfo: [NSLocalizedDescriptionKey: "This platform does not support attaching directories to tests."])
+  let archiverPath = ""
+  throw CocoaError(.featureUnsupported, userInfo: [NSLocalizedDescriptionKey: "This platform does not support attaching directories to tests."])
 #endif
+
+  try await withCheckedThrowingContinuation { continuation in
+    let process = Process()
 
     process.executableURL = URL(fileURLWithPath: archiverPath, isDirectory: false)
 
