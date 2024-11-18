@@ -16,7 +16,8 @@ import Foundation
 #endif
 #if canImport(CoreGraphics)
 import CoreGraphics
-@_spi(Experimental) import _Testing_CoreGraphics
+@testable @_spi(Experimental) import _Testing_CoreGraphics
+import ImageIO
 #endif
 #if canImport(UniformTypeIdentifiers)
 import UniformTypeIdentifiers
@@ -456,49 +457,11 @@ extension AttachmentTests {
 extension AttachmentTests {
   @Suite("Image tests")
   struct ImageTests {
-    enum ImageTestError: Error {
-      case couldNotCreateCGContext
-      case couldNotCreateCGGradient
-      case couldNotCreateCGImage
-    }
-
 #if canImport(CoreGraphics)
     static let cgImage = Result<CGImage, any Error> {
-      let size = CGSize(width: 32.0, height: 32.0)
-      let rgb = CGColorSpaceCreateDeviceRGB()
-      let bitmapInfo = CGImageAlphaInfo.premultipliedFirst.rawValue
-      guard let context = CGContext(
-        data: nil,
-        width: Int(size.width),
-        height: Int(size.height),
-        bitsPerComponent: 8,
-        bytesPerRow: Int(size.width) * 4,
-        space: rgb,
-        bitmapInfo: bitmapInfo
-      ) else {
-        throw ImageTestError.couldNotCreateCGContext
-      }
-      guard let gradient = CGGradient(
-        colorsSpace: rgb,
-        colors: [
-          CGColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0),
-          CGColor(red: 0.0, green: 1.0, blue: 0.0, alpha: 1.0),
-          CGColor(red: 0.0, green: 0.0, blue: 1.0, alpha: 1.0),
-        ] as CFArray,
-        locations: nil
-      ) else {
-        throw ImageTestError.couldNotCreateCGGradient
-      }
-      context.drawLinearGradient(
-        gradient,
-        start: .zero,
-        end: CGPoint(x: size.width, y: size.height),
-        options: [.drawsBeforeStartLocation, .drawsAfterEndLocation]
-      )
-      guard let image = context.makeImage() else {
-        throw ImageTestError.couldNotCreateCGImage
-      }
-      return image
+      let image = GradientImage()
+      let attachment = Attachment(image)
+      return try image.makeCGImage(for: attachment)
     }
 
     @available(_uttypesAPI, *)
@@ -616,6 +579,35 @@ final class MyCodableAndSecureCodingAttachable: NSObject, Codable, NSSecureCodin
 
   required init?(coder: NSCoder) {
     string = (coder.decodeObject(of: NSString.self, forKey: "string") as? String) ?? ""
+  }
+}
+
+struct GradientImage: AttachableByDrawing {
+  var attachmentBounds: CGRect {
+    CGRect(x: 0.0, y: 0.0, width: 32.0, height: 32.0)
+  }
+
+  func draw<A>(in context: CGContext, for attachment: Testing.Attachment<A>) throws where A : Testing.AttachableContainer, A.AttachableValue : _Testing_CoreGraphics.AttachableByDrawing {
+    let bounds = attachmentBounds
+
+    let gradient = try #require(
+      CGGradient(
+        colorsSpace: attachmentColorSpace,
+        colors: [
+          CGColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0),
+          CGColor(red: 0.0, green: 1.0, blue: 0.0, alpha: 1.0),
+          CGColor(red: 0.0, green: 0.0, blue: 1.0, alpha: 1.0),
+        ] as CFArray,
+        locations: nil
+      )
+    )
+
+    context.drawLinearGradient(
+      gradient,
+      start: bounds.origin,
+      end: CGPoint(x: bounds.width, y: bounds.height),
+      options: [.drawsBeforeStartLocation, .drawsAfterEndLocation]
+    )
   }
 }
 #endif

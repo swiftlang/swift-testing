@@ -35,7 +35,7 @@ extension Attachment {
   ///     attachment.
   ///
   /// This is the designated initializer for this type when attaching an image
-  /// that conforms to ``AttachableAsCGImage``.
+  /// that conforms to ``AttachableByDrawing``.
   fileprivate init<T>(
     attachableValue: T,
     named preferredName: String?,
@@ -99,7 +99,7 @@ extension Attachment {
   ///     attachment.
   ///
   /// The following system-provided image types conform to the
-  /// ``AttachableAsCGImage`` protocol and can be attached to a test:
+  /// ``AttachableByDrawing`` protocol and can be attached to a test:
   ///
   /// - [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage)
   @_spi(Experimental)
@@ -131,7 +131,7 @@ extension Attachment {
   ///     attachment.
   ///
   /// The following system-provided image types conform to the
-  /// ``AttachableAsCGImage`` protocol and can be attached to a test:
+  /// ``AttachableByDrawing`` protocol and can be attached to a test:
   ///
   /// - [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage)
   @_spi(Experimental)

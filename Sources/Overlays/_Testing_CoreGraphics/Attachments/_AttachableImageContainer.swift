@@ -48,7 +48,7 @@ import UniformTypeIdentifiers
 ///
 /// - [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage)
 @_spi(Experimental)
-public struct _AttachableImageContainer<ImageClass>: Sendable where ImageClass: AttachableAsCGImage {
+public struct _AttachableImageContainer<ImageClass>: Sendable where ImageClass: AttachableByDrawing {
   /// The underlying image.
   ///
   /// `CGImage` and `UIImage` are sendable, but `NSImage` is not. `NSImage`
@@ -114,7 +114,7 @@ extension _AttachableImageContainer: AttachableContainer {
     let data = NSMutableData()
 
     // Convert the image to a CGImage.
-    let attachableCGImage = try image.attachableCGImage
+    let attachableCGImage = try image.makeCGImage(for: attachment)
 
     // Get the type to encode as. (Note the `else` branches duplicate the logic
     // in `preferredContentType(forEncodingQuality:)` but will go away once our
