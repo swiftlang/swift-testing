@@ -96,7 +96,7 @@ public typealias KnownIssueMatcher = @Sendable (_ issue: Issue) -> Bool
 ///     be attributed.
 ///   - body: The function to invoke.
 ///
-/// Use this function when a test is known to raise one or more issues that
+/// Use this function when a test is known to record one or more issues that
 /// should not cause the test to fail. For example:
 ///
 /// ```swift
@@ -112,6 +112,10 @@ public typealias KnownIssueMatcher = @Sendable (_ issue: Issue) -> Bool
 /// while others should continue to cause test failures, use
 /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``
 /// instead.
+///
+/// ## See Also
+///
+/// - <doc:known-issues>
 public func withKnownIssue(
   _ comment: Comment? = nil,
   isIntermittent: Bool = false,
@@ -143,7 +147,7 @@ public func withKnownIssue(
 /// - Throws: Whatever is thrown by `body`, unless it is matched by
 ///   `issueMatcher`.
 ///
-/// Use this function when a test is known to raise one or more issues that
+/// Use this function when a test is known to record one or more issues that
 /// should not cause the test to fail, or if a precondition affects whether
 /// issues are known to occur. For example:
 ///
@@ -165,6 +169,10 @@ public func withKnownIssue(
 /// instead.
 ///
 /// - Note: `issueMatcher` may be invoked more than once for the same issue.
+///
+/// ## See Also
+///
+/// - <doc:known-issues>
 public func withKnownIssue(
   _ comment: Comment? = nil,
   isIntermittent: Bool = false,
@@ -205,7 +213,7 @@ public func withKnownIssue(
 ///     be attributed.
 ///   - body: The function to invoke.
 ///
-/// Use this function when a test is known to raise one or more issues that
+/// Use this function when a test is known to record one or more issues that
 /// should not cause the test to fail. For example:
 ///
 /// ```swift
@@ -221,6 +229,10 @@ public func withKnownIssue(
 /// while others should continue to cause test failures, use
 /// ``withKnownIssue(_:isIntermittent:isolation:sourceLocation:_:when:matching:)``
 /// instead.
+///
+/// ## See Also
+///
+/// - <doc:known-issues>
 public func withKnownIssue(
   _ comment: Comment? = nil,
   isIntermittent: Bool = false,
@@ -254,7 +266,7 @@ public func withKnownIssue(
 /// - Throws: Whatever is thrown by `body`, unless it is matched by
 ///   `issueMatcher`.
 ///
-/// Use this function when a test is known to raise one or more issues that
+/// Use this function when a test is known to record one or more issues that
 /// should not cause the test to fail, or if a precondition affects whether
 /// issues are known to occur. For example:
 ///
@@ -276,6 +288,10 @@ public func withKnownIssue(
 /// instead.
 ///
 /// - Note: `issueMatcher` may be invoked more than once for the same issue.
+///
+/// ## See Also
+///
+/// - <doc:known-issues>
 public func withKnownIssue(
   _ comment: Comment? = nil,
   isIntermittent: Bool = false,
