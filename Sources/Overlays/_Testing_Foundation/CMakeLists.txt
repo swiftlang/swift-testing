@@ -20,8 +20,10 @@ target_link_libraries(_Testing_Foundation PUBLIC
   Testing
   Foundation)
 
+# Note: This does not enable Library Evolution, despite emitting a module
+# interface, because Foundation does not have Library Evolution enabled for all
+# platforms.
 target_compile_options(_Testing_Foundation PRIVATE
-  -enable-library-evolution
   -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:_Testing_Foundation,Swift_MODULE_DIRECTORY>/_Testing_Foundation.swiftinterface)
 
 _swift_testing_install_target(_Testing_Foundation)
