@@ -17,8 +17,18 @@ add_library(_Testing_Foundation
   ReexportTesting.swift)
 
 target_link_libraries(_Testing_Foundation PUBLIC
-  Testing
-  Foundation)
+  Testing)
+
+# Although this library links Foundation on all platforms, it only does so using
+# `target_link_libraries()` when building for non-Apple platforms. This is
+# because that command uses the `-lFoundation` linker flag, but on Apple
+# platforms Foundation is a .framework and requires a different flag. However,
+# we don't need to explicitly pass any linker flag since it's handled
+# automatically on Apple platforms via auto-linking.
+if(NOT APPLE)
+  target_link_libraries(Testing PUBLIC
+    Foundation)
+endif()
 
 # Note: This does not enable Library Evolution, despite emitting a module
 # interface, because Foundation does not have Library Evolution enabled for all
