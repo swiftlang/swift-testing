@@ -71,6 +71,10 @@ subsequent code which depends on the throwing call having succeeded (such as the
 `#expect` after `startGrill()`) must be included in the closure to avoid
 additional issues.
 
+- Note: `withKnownIssue()` is recommended instead of `#expect(throws:)` for any
+  error which is considered a known issue so that the test status and results
+  will reflect the situation more accurately.
+
 ### Match a specific issue
 
 By default, `withKnownIssue()` considers all issues recorded while invoking the
@@ -107,6 +111,12 @@ If `withKnownIssue()` sometimes succeeds but other times records an issue
 indicating there were no known issues, this may indicate a nondeterministic
 failure or a "flaky" test.
 
+The first step in resolving a nondeterministic test failure is to analyze the
+code being tested and determine the source of the unpredictable behavior. If
+you discover a bug, such as a race condition, the ideal resolution is to fix
+that underlying problem so that the code always behaves consistently, even if
+it continues to exhibit the known issue.
+
 If the underlying problem only occurs in certain circumstances, consider
 including a precondition. For example, if the grill only fails to heat when
 there's no propane, you can pass a trailing closure labeled `when:` which
@@ -126,9 +136,10 @@ known:
 }
 ```
 
-If the underlying problem is truly nondeterministic, you may acknowledge this
-and instruct `withKnownIssue()` to not record an issue indicating there were no
-known issues by passing `isIntermittent: true`:
+If the underlying problem is unpredictable and fails at random, you can pass
+`isIntermittent: true` to let the testing library know that it will not always
+occur. Then, the testing library will _not_ record the issue indicating that no
+known issues were recorded:
 
 ```swift
 @Test func grillHeating() throws {
