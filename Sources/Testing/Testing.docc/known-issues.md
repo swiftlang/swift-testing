@@ -113,8 +113,8 @@ failure or a "flaky" test.
 
 The first step in resolving a nondeterministic test failure is to analyze the
 code being tested and determine the source of the unpredictable behavior. If
-you discover a bug, such as a race condition, the ideal resolution is to fix
-that underlying problem so that the code always behaves consistently, even if
+you discover a bug such as a race condition, the ideal resolution is to fix
+the underlying problem so that the code always behaves consistently even if
 it continues to exhibit the known issue.
 
 If the underlying problem only occurs in certain circumstances, consider
@@ -138,8 +138,8 @@ known:
 
 If the underlying problem is unpredictable and fails at random, you can pass
 `isIntermittent: true` to let the testing library know that it will not always
-occur. Then, the testing library will _not_ record the issue indicating that no
-known issues were recorded:
+occur. Then, the testing library will not record an issue when zero known issues
+are recorded:
 
 ```swift
 @Test func grillHeating() throws {
