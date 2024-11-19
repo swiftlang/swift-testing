@@ -43,7 +43,7 @@ function(get_swift_testing_install_lib_dir type result_var_name)
 endfunction()
 
 function(_swift_testing_install_target module)
-  target_compile_options(Testing PRIVATE "-no-toolchain-stdlib-rpath")
+  target_compile_options(${module} PRIVATE "-no-toolchain-stdlib-rpath")
 
   if(APPLE)
     set_target_properties(${module} PROPERTIES
