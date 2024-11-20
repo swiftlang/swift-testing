@@ -1,4 +1,4 @@
-# Custom Test Execution Traits
+# Test Scoping Traits
 
 * Proposal: [SWT-NNNN](NNNN-filename.md)
 * Authors: [Stuart Montgomery](https://github.com/stmontgomery)
@@ -14,11 +14,12 @@
 * **v3**: Changed the `Trait` requirement from a property to a method which
   accepts the test and/or test case, and modify its default implementations such
   that custom behavior is either performed per-suite or per-test case by default.
+* **v4**: Renamed the APIs to use "scope" as the base verb instead of "execute".
 
 ## Introduction
 
-This introduces API which enables a custom `Trait`-conforming type to customize
-the execution of test functions and suites, including running code before or
+This introduces API which enables a `Trait`-conforming type to provide a custom
+execution scope for test functions and suites, including running code before or
 after them.
 
 ## Motivation
@@ -43,8 +44,8 @@ can focus on what makes it unique.
 ## Proposed solution
 
 At a high level, this proposal entails adding API to the `Trait` protocol
-allowing a conforming type to opt-in to customizing the execution of test
-behavior. We discuss how that capability should be exposed to trait types below.
+allowing a conforming type to opt-in to providing a custom execution scope for a
+test. We discuss how that capability should be exposed to trait types below.
 
 ### Supporting scoped access
 
@@ -169,9 +170,9 @@ func exampleTest() {
 }
 ```
 
-If all three of those traits customize test execution behavior, then each of
-them needs to wrap the call to the next one, and the last trait needs to wrap
-the invocation of the test, illustrated by the following:
+If all three of those traits provide a custom scope for tests, then each of them
+needs to wrap the call to the next one, and the last trait needs to wrap the
+invocation of the test, illustrated by the following:
 
 ```
 TraitA.executeTest {
@@ -190,10 +191,11 @@ access API might cause unnecessarily lengthy backtraces that make debugging the
 body of tests more difficult. Or worse: if the number of traits is great enough,
 it could cause a stack overflow.
 
-In practice, most traits probably will _not_ need to customize test behavior, so
-to mitigate these downsides it's important that there be some way to distinguish
-traits which customize test behavior. That way, the testing library can limit
-these scoped access calls to only the traits which require it.
+In practice, most traits probably do _not_ need to provide a custom scope for
+the tests they're applied to, so to mitigate these downsides it's important that
+there be some way to distinguish traits which customize test behavior. That way,
+the testing library can limit these scoped access calls to only traits which
+need it.
 
 ### Avoiding unnecessary (re-)execution
 
@@ -215,13 +217,12 @@ repeated multiple times needlessly, or unintentional state sharing across tests,
 unless the trait is implemented carefully to avoid those problems.
 
 When a trait conforms to `SuiteTrait` and is applied to a suite, the question of
-when its custom behavior (if any) should be performed is less obvious. Some
-suite traits support inheritance and are recursively applied to all the test
-functions they contain (including transitively, via sub-suites). Other suite
-traits don't support inheritance, and only affect the specific suite they're
-applied to. (It's also worth noting that a sub-suite _can_ have the same
-non-recursive suite trait one of its ancestors has, as long as it's applied
-explicitly.)
+when its custom scope (if any) should be applied is less obvious. Some suite
+traits support inheritance and are recursively applied to all the test functions
+they contain (including transitively, via sub-suites). Other suite traits don't
+support inheritance, and only affect the specific suite they're applied to.
+(It's also worth noting that a sub-suite _can_ have the same non-recursive suite
+trait one of its ancestors has, as long as it's applied explicitly.)
 
 As a general rule of thumb, we believe most traits will either want to perform
 custom logic once for _all_ children or once for _each_ child, not both.
@@ -235,144 +236,147 @@ need it.
 
 I propose the following new APIs:
 
-- A new protocol `TestExecuting` with a single required `execute(...)` method.
-  This will be called to run a test, and allows the conforming type to perform
-  custom logic before or after.
-- A new property `testExecutor` on the `Trait` protocol whose type is an
-  `Optional` value of a type conforming to `TestExecuting`. A `nil` value for
-  this property will skip calling the `execute(...)` method.
-- A default implementation of `Trait.testExecutor` whose value is `nil`.
-- A conditional implementation of `Trait.testExecutor` whose value is `self`
-  in the common case where the trait type conforms to `TestExecuting` itself.
+- A new protocol `TestScoping` with a single required `provideScope(...)` method.
+  This will be called to provide scope for a test, and allows the conforming
+  type to perform custom logic before or after.
+- A new method `scopeProvider(for:testCase:)` on the `Trait` protocol whose
+  result type is an `Optional` value of a type conforming to `TestScoping`. A
+  `nil` value returned by this method will skip calling the `provideScope(...)`
+  method.
+- A default implementation of `Trait.scopeProvider(...)` which returns `nil`.
+- A conditional implementation of `Trait.scopeProvider(...)` which returns `self`
+  in the common case where the trait type conforms to `TestScoping` itself.
 
-Since the `testExecutor` property is optional and `nil` by default, the testing
-library cannot invoke the `execute(...)` method unless a trait customizes test
-behavior. This avoids the "unnecessarily lengthy backtraces" problem above.
+Since the `scopeProvider(...)` method's return type is optional and returns `nil`
+by default, the testing library cannot invoke the `provideScope(...)` method
+unless a trait customizes test behavior. This avoids the "unnecessarily lengthy
+backtraces" problem above.
 
 Below are the proposed interfaces:
 
 ```swift
-/// A protocol that allows customizing the execution of a test function (and
-/// each of its cases) or a test suite by performing custom code before or after
-/// it runs.
+/// A protocol that allows providing a custom execution scope for a test
+/// function (and each of its cases) or a test suite by performing custom code
+/// before or after it runs.
 ///
 /// Types conforming to this protocol may be used in conjunction with a
 /// ``Trait``-conforming type by implementing the
-/// ``Trait/executor(for:testCase:)-26qgm`` method, allowing custom traits to
-/// customize the execution of tests. Consolidating common set-up and tear-down
+/// ``Trait/scopeProvider(for:testCase:)-cjmg`` method, allowing custom traits
+/// to provide custom scope for tests. Consolidating common set-up and tear-down
 /// logic for tests which have similar needs allows each test function to be
 /// more succinct with less repetitive boilerplate so it can focus on what makes
 /// it unique.
-public protocol TestExecuting: Sendable {
-  /// Execute a function for the specified test and/or test case.
+public protocol TestScoping: Sendable {
+  /// Provide custom execution scope for a function call which is related to the
+  /// specified test and/or test case.
   ///
   /// - Parameters:
-  ///   - function: The function to perform. If `test` represents a test suite,
-  ///     this function encapsulates running all the tests in that suite. If
-  ///     `test` represents a test function, this function is the body of that
-  ///     test function (including all cases if it is parameterized.)
   ///   - test: The test under which `function` is being performed.
   ///   - testCase: The test case, if any, under which `function` is being
   ///     performed. When invoked on a suite, the value of this argument is
   ///     `nil`.
+  ///   - function: The function to perform. If `test` represents a test suite,
+  ///     this function encapsulates running all the tests in that suite. If
+  ///     `test` represents a test function, this function is the body of that
+  ///     test function (including all cases if it is parameterized.)
   ///
-  /// - Throws: Whatever is thrown by `function`, or an error preventing
-  ///   execution from running correctly. An error thrown from this method is
-  ///   recorded as an issue associated with `test`. If an error is thrown
-  ///   before `function` is called, the corresponding test will not run.
+  /// - Throws: Whatever is thrown by `function`, or an error preventing this
+  ///   type from providing a custom scope correctly. An error thrown from this
+  ///   method is recorded as an issue associated with `test`. If an error is
+  ///   thrown before `function` is called, the corresponding test will not run.
   ///
-  /// When the testing library is preparing to run a test, it finds all traits
-  /// applied to that test (including those inherited from containing suites)
-  /// and asks each for its test executor (if any) by calling
-  /// ``Trait/executor(for:testCase:)-26qgm``. It then calls this method
-  /// on all non-`nil` instances, giving each an opportunity to perform
-  /// arbitrary work before or after invoking `function`.
+  /// When the testing library is preparing to run a test, it starts by finding
+  /// all traits applied to that test, including those inherited from containing
+  /// suites. It begins with inherited suite traits, sorting them
+  /// outermost-to-innermost, and if the test is a function, it then adds all
+  /// traits applied directly to that functions in the order they were applied
+  /// (left-to-right). It then asks each trait for its scope provider (if any)
+  /// by calling ``Trait/scopeProvider(for:testCase:)-cjmg``. Finally, it calls
+  /// this method on all non-`nil` scope providers, giving each an opportunity
+  /// to perform arbitrary work before or after invoking `function`.
   ///
   /// This method should either invoke `function` once before returning or throw
-  /// an error if it is unable to perform its custom logic successfully.
-  ///
-  /// This method is invoked once for the test its associated trait is applied
-  /// to, and then once for each test case in that test, if applicable. If a
-  /// test is skipped, this method is not invoked for that test or its cases.
+  /// an error if it is unable to provide a custom scope.
   ///
   /// Issues recorded by this method are associated with `test`.
-  func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws
+  func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws
 }
 
 public protocol Trait: Sendable {
   // ...
 
-  /// The type of the test executor for this trait.
+  /// The type of the test scope provider for this trait.
   ///
   /// The default type is `Never`, which cannot be instantiated. The
-  /// ``executor(for:testCase:)-26qgm`` method for any trait with this default
-  /// test executor type must return `nil`, meaning that trait will not perform
-  /// any custom behavior for the tests it's applied to.
-  associatedtype TestExecutor: TestExecuting = Never
+  /// ``scopeProvider(for:testCase:)-cjmg`` method for any trait with this
+  /// default type must return `nil`, meaning that trait will not provide a
+  /// custom scope for the tests it's applied to.
+  associatedtype TestScopeProvider: TestScoping = Never
 
-  /// Get this trait's executor for the specified test and/or test case, if any.
+  /// Get this trait's scope provider for the specified test and/or test case,
+  /// if any.
   ///
   /// - Parameters:
-  ///   - test: The test for which an executor is being requested.
-  ///   - testCase: The test case for which an executor is being requested, if
-  ///     any. When `test` represents a suite, the value of this argument is
+  ///   - test: The test for which a scope provider is being requested.
+  ///   - testCase: The test case for which a scope provider is being requested,
+  ///     if any. When `test` represents a suite, the value of this argument is
   ///     `nil`.
   ///
-  /// - Returns: An value of ``Trait/TestExecutor`` which should be used to
-  ///   customize the behavior of `test` and/or `testCase`, or `nil` if custom
-  ///   behavior should not be performed.
+  /// - Returns: A value conforming to ``Trait/TestScopeProvider`` which may be
+  ///   used to provide custom scoping for `test` and/or `testCase`, or `nil` if
+  ///   they should not have any custom scope.
   ///
-  /// If this trait's type conforms to ``TestExecuting``, the default value
+  /// If this trait's type conforms to ``TestScoping``, the default value
   /// returned by this method depends on `test` and/or `testCase`:
   ///
   /// - If `test` represents a suite, this trait must conform to ``SuiteTrait``.
   ///   If the value of this suite trait's ``SuiteTrait/isRecursive`` property
   ///   is `true`, then this method returns `nil`; otherwise, it returns `self`.
-  ///   This means that by default, a suite trait will _either_ perform its
-  ///   custom behavior once for the entire suite, or once per-test function it
+  ///   This means that by default, a suite trait will _either_ provide its
+  ///   custom scope once for the entire suite, or once per-test function it
   ///   contains.
   /// - Otherwise `test` represents a test function. If `testCase` is `nil`,
   ///   this method returns `nil`; otherwise, it returns `self`. This means that
   ///   by default, a trait which is applied to or inherited by a test function
-  ///   will perform its custom behavior once for each of that function's cases.
+  ///   will provide its custom scope once for each of that function's cases.
   ///
   /// A trait may explicitly implement this method to further customize the
-  /// default behaviors above. For example, if a trait should perform custom
-  /// test behavior both once per-suite and once per-test function in that suite,
-  /// it may implement the method and return a non-`nil` executor under those
-  /// conditions.
+  /// default behaviors above. For example, if a trait should provide custom
+  /// test scope both once per-suite and once per-test function in that suite,
+  /// it may implement the method and return a non-`nil` scope provider under
+  /// those conditions.
   ///
   /// A trait may also implement this method and return `nil` if it determines
-  /// that it does not need to perform any custom behavior for a particular test
-  /// at runtime, even if the test has the trait applied. This can improve
+  /// that it does not need to provide a custom scope for a particular test at
+  /// runtime, even if the test has the trait applied. This can improve
   /// performance and make diagnostics clearer by avoiding an unnecessary call
-  /// to ``TestExecuting/execute(_:for:testCase:)``.
+  /// to ``TestScoping/provideScope(for:testCase:performing:)``.
   ///
-  /// If this trait's type does not conform to ``TestExecuting`` and its
-  /// associated ``Trait/TestExecutor`` type is the default `Never`, then this
-  /// method returns `nil` by default. This means that instances of this type
-  /// will not perform any custom test execution for tests they are applied to.
-  func executor(for test: Test, testCase: Test.Case?) -> TestExecutor?
+  /// If this trait's type does not conform to ``TestScoping`` and its
+  /// associated ``Trait/TestScopeProvider`` type is the default `Never`, then
+  /// this method returns `nil` by default. This means that instances of this
+  /// trait will not provide a custom scope for tests to which they're applied.
+  func scopeProvider(for test: Test, testCase: Test.Case?) -> TestScopeProvider?
 }
 
-extension Trait where Self: TestExecuting {
+extension Trait where Self: TestScoping {
   // Returns `nil` if `testCase` is `nil`, else `self`.
-  public func executor(for test: Test, testCase: Test.Case?) -> Self?
+  public func scopeProvider(for test: Test, testCase: Test.Case?) -> Self?
 }
 
-extension SuiteTrait where Self: TestExecuting {
+extension SuiteTrait where Self: TestScoping {
   // If `test` is a suite, returns `nil` if `isRecursive` is `true`, else `self`.
   // Otherwise, `test` is a function and this returns `nil` if `testCase` is
   // `nil`, else `self`.
-  public func executor(for test: Test, testCase: Test.Case?) -> Self?
+  public func scopeProvider(for test: Test, testCase: Test.Case?) -> Self?
 }
 
-extension Trait where TestExecutor == Never {
+extension Trait where TestScopeProvider == Never {
   // Returns `nil`.
-  public func executor(for test: Test, testCase: Test.Case?) -> TestExecutor?
+  public func scopeProvider(for test: Test, testCase: Test.Case?) -> Never?
 }
 
-extension Never: TestExecuting {}
+extension Never: TestScoping {}
 ```
 
 Here is a complete example of the usage scenario described earlier, showcasing
@@ -384,8 +388,8 @@ func example() {
   // ...validate API usage, referencing `APICredentials.current`...
 }
 
-struct MockAPICredentialsTrait: TestTrait, TestExecuting {
-  func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
+struct MockAPICredentialsTrait: TestTrait, TestScoping {
+  func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
     let mockCredentials = APICredentials(apiKey: "...")
     try await APICredentials.$current.withValue(mockCredentials) {
       try await function()
@@ -436,11 +440,11 @@ cannot be used with scoped access-style APIs, including (importantly)
 `TaskLocal.withValue()`. For that reason, it prevents using that common Swift
 concurrency technique and reduces the potential for test parallelization.
 
-### Add `execute(...)` directly to the `Trait` protocol
+### Add `provideScope(...)` directly to the `Trait` protocol
 
-The proposed `execute(...)` method could be added as a requirement of the
-`Trait` protocol instead of being part of a separate `TestExecuting` protocol,
-and it could have a default implementation which directly invokes the passed-in
+The proposed `provideScope(...)` method could be added as a requirement of the
+`Trait` protocol instead of being part of a separate `TestScoping` protocol, and
+it could have a default implementation which directly invokes the passed-in
 closure. But this approach would suffer from the lengthy backtrace problem
 described above.
 
@@ -448,14 +452,14 @@ described above.
 
 The original, experimental implementation of this feature included a protocol
 named`CustomExecutionTrait` which extended `Trait` and had roughly the same
-method requirement as the `TestExecuting` protocol proposed above. This design
+method requirement as the `TestScoping` protocol proposed above. This design
 worked, provided scoped access, and avoided the lengthy backtrace problem.
 
 After evaluating the design and usage of this SPI though, it seemed unfortunate
 to structure it as a sub-protocol of `Trait` because it means that the full
 capabilities of the trait system are spread across multiple protocols. In the
-proposed design, the ability to provide a test executor value is exposed via the
-main `Trait` protocol, and it relies on an associated type to conditionally
+proposed design, the ability to return a test scoping provider is exposed via
+the main `Trait` protocol, and it relies on an associated type to conditionally
 opt-in to custom test behavior. In other words, the proposed design expresses
 custom test behavior as just a _capability_ that a trait may have, rather than a
 distinct sub-type of trait.
@@ -467,8 +471,15 @@ proposed API.
 
 ### API names
 
-We considered "run" as the base verb for the proposed new concept instead of
-"execute", which would imply the names `TestRunning`, `TestRunner`,
+We first considered "execute" as the base verb for the proposed new concept, but
+felt this wasn't appropriate since these trait types are not "the executor" of
+tests, they merely customize behavior and provide scope(s) for tests to run
+within. Also, the term "executor" has prior art in Swift Concurrency, and
+although that word is used in other contexts too, it may be helpful to avoid
+potential confusion with concurrency executors.
+
+We also considered "run" as the base verb for the proposed new concept instead
+of "execute", which would imply the names `TestRunning`, `TestRunner`,
 `runner(for:testCase)`, and `run(_:for:testCase:)`. The word "run" is used in
 many other contexts related to testing though, such as the `Runner` SPI type and
 more casually to refer to a run which occurred of a test, in the past tense, so
@@ -482,3 +493,7 @@ implementing this as SPI, and for helping promote its usefulness.
 Thanks to [Jonathan Grynspan](https://github.com/grynspan) for exploring ideas
 to refine the API, and considering alternatives to avoid unnecessarily long
 backtraces.
+
+Thanks to [Brandon Williams](https://github.com/mbrandonw) for feedback on the
+Forum pitch thread which ultimately led to the refinements described in the
+"Avoiding unnecessary (re-)execution" section.

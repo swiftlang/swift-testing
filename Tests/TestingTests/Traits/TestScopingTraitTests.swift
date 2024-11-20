@@ -10,8 +10,8 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-@Suite("TestExecuting-conforming Trait Tests")
-struct TestExecutingTraitTests {
+@Suite("TestScoping-conforming Trait Tests")
+struct TestScopingTraitTests {
   @Test("Execute code before and after a non-parameterized test.")
   func executeCodeBeforeAndAfterNonParameterizedTest() async {
     await confirmation("Code was run before the test") { before in
@@ -71,7 +71,7 @@ struct TestExecutingTraitTests {
       #expect(counter.rawValue == 1)
     }
 
-    @Test("Non-recursive suite trait with default custom test executor implementation")
+    @Test("Non-recursive suite trait with default scope provider implementation")
     func nonRecursiveSuiteTrait() async {
       let counter = Locked(rawValue: 0)
       await DefaultExecutionTrait.$counter.withValue(counter) {
@@ -80,7 +80,7 @@ struct TestExecutingTraitTests {
       #expect(counter.rawValue == 1)
     }
 
-    @Test("Recursive suite trait with default custom test executor implementation")
+    @Test("Recursive suite trait with default scope provider implementation")
     func recursiveSuiteTrait() async {
       let counter = Locked(rawValue: 0)
       await DefaultExecutionTrait.$counter.withValue(counter) {
@@ -102,10 +102,10 @@ struct TestExecutingTraitTests {
 
 // MARK: - Fixtures
 
-private struct CustomTrait: TestTrait, TestExecuting {
+private struct CustomTrait: TestTrait, TestScoping {
   var before: Confirmation
   var after: Confirmation
-  func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
+  func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
     before()
     defer {
       after()
@@ -114,18 +114,18 @@ private struct CustomTrait: TestTrait, TestExecuting {
   }
 }
 
-private struct CustomThrowingErrorTrait: TestTrait, TestExecuting {
+private struct CustomThrowingErrorTrait: TestTrait, TestScoping {
   fileprivate struct CustomTraitError: Error {}
 
-  func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
+  func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
     throw CustomTraitError()
   }
 }
 
-struct DoSomethingBeforeAndAfterTrait: SuiteTrait, TestTrait, TestExecuting {
+struct DoSomethingBeforeAndAfterTrait: SuiteTrait, TestTrait, TestScoping {
   static let state = Locked(rawValue: 0)
 
-  func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
+  func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
     #expect(Self.state.increment() == 1)
 
     try await function()
@@ -140,11 +140,11 @@ struct TestsWithCustomTraitWithStrongOrdering {
   }
 }
 
-private struct DefaultExecutionTrait: SuiteTrait, TestTrait, TestExecuting {
+private struct DefaultExecutionTrait: SuiteTrait, TestTrait, TestScoping {
   @TaskLocal static var counter: Locked<Int>?
   var isRecursive: Bool = false
 
-  func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
+  func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
     Self.counter!.increment()
     try await function()
   }
@@ -160,19 +160,19 @@ private struct SuiteWithRecursiveDefaultExecutionTrait {
   @Test func f() {}
 }
 
-private struct AllInclusiveExecutionTrait: SuiteTrait, TestTrait, TestExecuting {
+private struct AllInclusiveExecutionTrait: SuiteTrait, TestTrait, TestScoping {
   @TaskLocal static var counter: Locked<Int>?
 
   var isRecursive: Bool {
     true
   }
 
-  func executor(for test: Test, testCase: Test.Case?) -> AllInclusiveExecutionTrait? {
+  func scopeProvider(for test: Test, testCase: Test.Case?) -> AllInclusiveExecutionTrait? {
     // Unconditionally returning self makes this trait "all inclusive".
     self
   }
 
-  func execute(_ function: () async throws -> Void, for test: Test, testCase: Test.Case?) async throws {
+  func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
     Self.counter!.increment()
     try await function()
   }

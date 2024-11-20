@@ -46,8 +46,8 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 - ``Trait/prepare(for:)-3s3zo``
 
-### Customizing the execution of tests
+### Providing custom execution scope for tests
 
-- ``TestExecuting``
-- ``Trait/executor(for:testCase:)-26qgm``
-- ``Trait/TestExecutor``
+- ``TestScoping``
+- ``Trait/scopeProvider(for:testCase:)-cjmg``
+- ``Trait/TestScopeProvider``
