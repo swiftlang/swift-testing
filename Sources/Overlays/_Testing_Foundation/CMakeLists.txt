@@ -26,7 +26,7 @@ target_link_libraries(_Testing_Foundation PUBLIC
 # we don't need to explicitly pass any linker flag since it's handled
 # automatically on Apple platforms via auto-linking.
 if(NOT APPLE)
-  target_link_libraries(Testing PUBLIC
+  target_link_libraries(_Testing_Foundation PUBLIC
     Foundation)
 endif()
 
