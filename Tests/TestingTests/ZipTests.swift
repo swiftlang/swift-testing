@@ -26,3 +26,10 @@ struct ZipTests {
     #expect(i == j)
   }
 }
+
+
+@Test func foo() async {
+  await Test.current?.defer {
+    print("End of line.")
+  }
+}

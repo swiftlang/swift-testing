@@ -258,6 +258,12 @@ public struct Test: Sendable {
     self.testCasesState = .evaluated(.init(testCases))
     self.parameters = parameters
   }
+
+  var asyncDefers = AsyncDefer.Group()
+
+  public func `defer`(sourceLocation: SourceLocation = #_sourceLocation, _ body: @escaping @Sendable () async -> Void) async {
+    await asyncDefers.add(at: sourceLocation, body)
+  }
 }
 
 // MARK: - Equatable, Hashable

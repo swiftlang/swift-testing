@@ -111,6 +111,12 @@ extension Test {
     /// Do not invoke this closure directly. Always use a ``Runner`` to invoke a
     /// test or test case.
     var body: @Sendable () async throws -> Void
+
+    var asyncDefers = AsyncDefer.Group()
+
+    public func `defer`(sourceLocation: SourceLocation = #_sourceLocation, _ body: @escaping @Sendable () async -> Void) async {
+      await asyncDefers.add(at: sourceLocation, body)
+    }
   }
 
   /// A type representing a single parameter to a parameterized test function.

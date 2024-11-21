@@ -210,6 +210,7 @@ extension Runner {
             try await _runChildren(of: stepGraph, depth: depth, lastAncestorStep: lastAncestorStep)
           }
         }
+        await step.test.asyncDefers.runAll()
       }
     } else {
       // There is no test at this node in the graph, so just skip down to the
@@ -348,6 +349,7 @@ extension Runner {
           issue.record(configuration: configuration)
         }
       }
+      await step.test.asyncDefers.runAll()
     }
   }
 
