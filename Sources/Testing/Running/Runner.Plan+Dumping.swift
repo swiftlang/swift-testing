@@ -96,7 +96,6 @@ extension Runner.Plan {
   ///     `true`, `Swift.dump(_:to:name:indent:maxDepth:maxItems:)` is called
   ///     instead of the testing library's implementation.
   ///   - indent: How many spaces to indent each level of text in the dump.
-  ///   - depth: How many levels deep `stepGraph` is in the total graph.
   ///
   /// This function produces a detailed dump of the runner plan suitable for
   /// inclusion in diagnostics or for display as part of a command-line

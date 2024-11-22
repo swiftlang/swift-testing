@@ -462,8 +462,11 @@ extension Event.Kind {
     /// This is the last event posted before ``Runner/run()`` returns.
     case runEnded
 
-    /// Snapshots an ``Event.Kind``.
-    /// - Parameter kind: The original ``Event.Kind`` to snapshot.
+    /// Initialize an instance of this type by snapshotting the specified event
+    /// kind.
+    ///
+    /// - Parameters:
+    ///   - kind: The original event kind to snapshot.
     public init(snapshotting kind: Event.Kind) {
       switch kind {
       case .testDiscovered:
