@@ -56,7 +56,7 @@ struct FileHandle: ~Copyable, Sendable {
   ///   - mode: The mode to open `path` with, such as `"wb"`.
   ///
   /// - Throws: Any error preventing the stream from being opened.
-  init(atPath path: String, mode: String) throws {
+  init(at path: Path, mode: String) throws {
 #if os(Windows)
     // Special-case CONOUT$ to map to stdout. This way, if somebody specifies
     // CONOUT$ as the target path for XML or JSON output from `swift test`,
@@ -74,7 +74,7 @@ struct FileHandle: ~Copyable, Sendable {
     }
 
     // Windows deprecates fopen() as insecure, so call _wfopen_s() instead.
-    let fileHandle = try path.withCString(encodedAs: UTF16.self) { path in
+    let fileHandle = try path.withCString { path in
       try mode.withCString(encodedAs: UTF16.self) { mode in
         var file: SWT_FILEHandle?
         let result = _wfopen_s(&file, path, mode)
@@ -85,11 +85,19 @@ struct FileHandle: ~Copyable, Sendable {
       }
     }
 #else
-    guard let fileHandle = fopen(path, mode) else {
-      throw CError(rawValue: swt_errno())
+    let fileHandle = try path.withCString { path in
+      guard let result = fopen(path, mode) else {
+        throw CError(rawValue: swt_errno())
+      }
+      return result
     }
 #endif
     self.init(unsafeCFILEHandle: fileHandle, closeWhenDone: true)
+  }
+
+  @available(*, deprecated, message: "Use init(at:mode:) instead.")
+  init(atPath path: String, mode: String) throws {
+    try self.init(at: Path(path), mode: mode)
   }
 
   /// Initialize an instance of this type to read from the given path.
@@ -98,8 +106,13 @@ struct FileHandle: ~Copyable, Sendable {
   ///   - path: The path to read from.
   ///
   /// - Throws: Any error preventing the stream from being opened.
+  init(forReadingAt path: Path) throws {
+    try self.init(at: path, mode: "rb")
+  }
+
+  @available(*, deprecated, message: "Use init(forReadingAt:) instead.")
   init(forReadingAtPath path: String) throws {
-    try self.init(atPath: path, mode: "rb")
+    try self.init(forReadingAt: Path(path))
   }
 
   /// Initialize an instance of this type to write to the given path.
@@ -108,8 +121,13 @@ struct FileHandle: ~Copyable, Sendable {
   ///   - path: The path to write to.
   ///
   /// - Throws: Any error preventing the stream from being opened.
+  init(forWritingAt path: Path) throws {
+    try self.init(at: path, mode: "wb")
+  }
+
+  @available(*, deprecated, message: "Use init(forWritingAt:) instead.")
   init(forWritingAtPath path: String) throws {
-    try self.init(atPath: path, mode: "wb")
+    try self.init(forWritingAt: Path(path))
   }
 
   /// Initialize an instance of this type with an existing C file handle.
@@ -552,84 +570,6 @@ extension FileHandle {
     return false
 #endif
   }
-#endif
-}
-
-// MARK: - General path utilities
-
-/// Append a path component to a path.
-///
-/// - Parameters:
-///   - pathComponent: The path component to append.
-///   - path: The path to which `pathComponent` should be appended.
-///
-/// - Returns: The full path to `pathComponent`, or `nil` if the resulting
-///   string could not be created.
-func appendPathComponent(_ pathComponent: String, to path: String) -> String {
-#if os(Windows)
-  path.withCString(encodedAs: UTF16.self) { path in
-    pathComponent.withCString(encodedAs: UTF16.self) { pathComponent in
-      withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: (wcslen(path) + wcslen(pathComponent)) * 2 + 1) { buffer in
-        _ = wcscpy_s(buffer.baseAddress, buffer.count, path)
-        _ = PathCchAppendEx(buffer.baseAddress, buffer.count, pathComponent, ULONG(PATHCCH_ALLOW_LONG_PATHS.rawValue))
-        return (String.decodeCString(buffer.baseAddress, as: UTF16.self)?.result)!
-      }
-    }
-  }
-#else
-  "\(path)/\(pathComponent)"
-#endif
-}
-
-/// Check if a file exists at a given path.
-///
-/// - Parameters:
-///   - path: The path to check.
-///
-/// - Returns: Whether or not the path `path` exists on disk.
-func fileExists(atPath path: String) -> Bool {
-#if os(Windows)
-  path.withCString(encodedAs: UTF16.self) { path in
-    PathFileExistsW(path)
-  }
-#else
-  0 == access(path, F_OK)
-#endif
-}
-
-/// Resolve a relative path or a path containing symbolic links to a canonical
-/// absolute path.
-///
-/// - Parameters:
-///   - path: The path to resolve.
-///
-/// - Returns: A fully resolved copy of `path`. If `path` is already fully
-///   resolved, the resulting string may differ slightly but refers to the same
-///   file system object. If the path could not be resolved, returns `nil`.
-func canonicalizePath(_ path: String) -> String? {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || os(WASI)
-  path.withCString { path in
-    if let resolvedCPath = realpath(path, nil) {
-      defer {
-        free(resolvedCPath)
-      }
-      return String(validatingCString: resolvedCPath)
-    }
-    return nil
-  }
-#elseif os(Windows)
-  path.withCString(encodedAs: UTF16.self) { path in
-    if let resolvedCPath = _wfullpath(nil, path, 0) {
-      defer {
-        free(resolvedCPath)
-      }
-      return String.decodeCString(resolvedCPath, as: UTF16.self)?.result
-    }
-    return nil
-  }
-#else
-#warning("Platform-specific implementation missing: cannot resolve paths")
-  return nil
 #endif
 }
 #endif

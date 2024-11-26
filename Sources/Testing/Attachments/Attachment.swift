@@ -281,10 +281,11 @@ extension Attachment where AttachableValue: ~Copyable {
   /// does. You are not required to use this function.
   @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
   public borrowing func write(toFileInDirectoryAtPath directoryPath: String) throws -> String {
-    try write(
-      toFileInDirectoryAtPath: directoryPath,
+    let result = try write(
+      toFileInDirectoryAt: Path(directoryPath),
       appending: String(UInt64.random(in: 0 ..< .max), radix: 36)
     )
+    return String(describing: result)
   }
 
   /// Write the attachment's contents to a file in the specified directory.
@@ -307,8 +308,8 @@ extension Attachment where AttachableValue: ~Copyable {
   ///
   /// If the argument `suffix` always produces the same string, the result of
   /// this function is undefined.
-  borrowing func write(toFileInDirectoryAtPath directoryPath: String, usingPreferredName: Bool = true, appending suffix: @autoclosure () -> String) throws -> String {
-    let result: String
+  borrowing func write(toFileInDirectoryAt directoryPath: Path, usingPreferredName: Bool = true, appending suffix: @autoclosure () -> String) throws -> Path {
+    let result: Path
 
     let preferredName = usingPreferredName ? preferredName : Self.defaultPreferredName
 
@@ -317,8 +318,8 @@ extension Attachment where AttachableValue: ~Copyable {
       // First, attempt to create the file with the exact preferred name. If a
       // file exists at this path (note "x" in the mode string), an error will
       // be thrown and we'll try again by adding a suffix.
-      let preferredPath = appendPathComponent(preferredName, to: directoryPath)
-      file = try FileHandle(atPath: preferredPath, mode: "wxb")
+      let preferredPath = directoryPath.appending(Path.Component(preferredName))
+      file = try FileHandle(at: preferredPath, mode: "wxb")
       result = preferredPath
     } catch {
       // Split the extension(s) off the preferred name. The first component in
@@ -329,12 +330,12 @@ extension Attachment where AttachableValue: ~Copyable {
       while true {
         preferredNameComponents[0] = "\(firstPreferredNameComponent)-\(suffix())"
         let preferredName = preferredNameComponents.joined(separator: ".")
-        let preferredPath = appendPathComponent(preferredName, to: directoryPath)
+        let preferredPath = directoryPath.appending(Path.Component(preferredName))
 
         // Propagate any error *except* EEXIST, which would indicate that the
         // name was already in use (so we should try again with a new suffix.)
         do {
-          file = try FileHandle(atPath: preferredPath, mode: "wxb")
+          file = try FileHandle(at: preferredPath, mode: "wxb")
           result = preferredPath
           break
         } catch let error as CError where error.rawValue == swt_EEXIST() {
@@ -342,7 +343,7 @@ extension Attachment where AttachableValue: ~Copyable {
           continue
         } catch where usingPreferredName {
           // Try again with the default name before giving up.
-          return try write(toFileInDirectoryAtPath: directoryPath, usingPreferredName: false, appending: suffix())
+          return try write(toFileInDirectoryAt: directoryPath, usingPreferredName: false, appending: suffix())
         }
       }
     }
@@ -354,6 +355,16 @@ extension Attachment where AttachableValue: ~Copyable {
     }
 
     return result
+  }
+
+  @available(*, deprecated, message: "Use write(toFileInDirectoryAt:usingPreferredName:appending:) instead.")
+  borrowing func write(toFileInDirectoryAtPath directoryPath: String, usingPreferredName: Bool = true, appending suffix: @autoclosure () -> String) throws -> String {
+    let result = try write(
+      toFileInDirectoryAt: Path(directoryPath),
+      usingPreferredName: usingPreferredName,
+      appending: suffix()
+    )
+    return String(describing: result)
   }
 }
 

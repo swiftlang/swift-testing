@@ -13,16 +13,16 @@ private import _TestingInternals
 #if !SWT_NO_FILE_IO
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst)) || os(Linux) || os(FreeBSD)
 /// The path to the current user's home directory, if known.
-private var _homeDirectoryPath: String? {
+private var _homeDirectoryPath: Path? {
 #if SWT_TARGET_OS_APPLE
   if let fixedHomeVariable = Environment.variable(named: "CFFIXED_USER_HOME") {
-    return fixedHomeVariable
+    return Path(fixedHomeVariable)
   }
 #endif
   return if let homeVariable = Environment.variable(named: "HOME") {
-    homeVariable
-  } else if let pwd = getpwuid(geteuid()) {
-    String(validatingCString: pwd.pointee.pw_dir)
+    Path(homeVariable)
+  } else if let pwd = getpwuid(geteuid()), let path = pwd.pointee.pw_dir {
+    Path(unsafeCString: path)
   } else {
     nil
   }
@@ -31,14 +31,16 @@ private var _homeDirectoryPath: String? {
 
 #if os(Windows)
 /// The path to the current user's App Data directory, if known.
-private var _appDataDirectoryPath: String? {
+private var _appDataDirectoryPath: Path? {
   var appDataDirectoryPath: PWSTR? = nil
   var FOLDERID_LocalAppData = FOLDERID_LocalAppData
   if S_OK == SHGetKnownFolderPath(&FOLDERID_LocalAppData, 0, nil, &appDataDirectoryPath), let appDataDirectoryPath {
     defer {
       CoTaskMemFree(appDataDirectoryPath)
     }
-    return String.decodeCString(appDataDirectoryPath, as: UTF16.self)?.result
+    if let path = String.decodeCString(appDataDirectoryPath, as: UTF16.self)?.result {
+      return Path(path)
+    }
   }
   return nil
 }
@@ -53,13 +55,13 @@ private var _appDataDirectoryPath: String? {
 /// The value of this property is `nil` if the platform does not support the
 /// concept of a home directory, or if the home directory could not be
 /// determined.
-var swiftTestingDirectoryPath: String? {
+var swiftTestingDirectoryPath: Path? {
   // The (default) name of the .swift-testing directory.
   let swiftTestingDirectoryName = ".swift-testing"
 
 #if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst)) || os(Linux) || os(FreeBSD)
   if let homeDirectoryPath = _homeDirectoryPath {
-    return appendPathComponent(swiftTestingDirectoryName, to: homeDirectoryPath)
+    return homeDirectoryPath.appending(Path.Component(swiftTestingDirectoryName))
   }
 #elseif SWT_TARGET_OS_APPLE || os(Android)
   // Other Apple/Darwin platforms do not support the concept of a home
@@ -68,7 +70,7 @@ var swiftTestingDirectoryPath: String? {
   // Android also does not support per-user home directories (does it?)
 #elseif os(Windows)
   if let appDataDirectoryPath = _appDataDirectoryPath {
-    return appendPathComponent(swiftTestingDirectoryName, to: appDataDirectoryPath)
+    return appDataDirectoryPath.appending(Path.Component(swiftTestingDirectoryName))
   }
 #elseif os(WASI)
   // WASI does not support the concept of a home directory.
@@ -94,7 +96,7 @@ var swiftTestingDirectoryPath: String? {
 /// assumed to contain a JSON object (a dictionary) where the keys are tags'
 /// string values and the values represent tag colors. For a list of the
 /// supported formats for tag colors in this dictionary, see <doc:AddingTags>.
-func loadTagColors(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String? = swiftTestingDirectoryPath) throws -> [Tag: Tag.Color] {
+func loadTagColors(fromFileInDirectoryAt swiftTestingDirectoryPath: Path? = swiftTestingDirectoryPath) throws -> [Tag: Tag.Color] {
   guard let swiftTestingDirectoryPath else {
     // If the platform does not support user-specific configuration, skip custom
     // tag colors.
@@ -102,8 +104,8 @@ func loadTagColors(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String? 
   }
 
   // Find the path to the tag-colors.json file and try to load its contents.
-  let tagColorsPath = appendPathComponent("tag-colors.json", to: swiftTestingDirectoryPath)
-  let fileHandle = try FileHandle(forReadingAtPath: tagColorsPath)
+  let tagColorsPath = swiftTestingDirectoryPath.appending("tag-colors.json")
+  let fileHandle = try FileHandle(forReadingAt: tagColorsPath)
   let tagColorsData = try fileHandle.readToEnd()
 
   // By default, a dictionary with non-string keys is encoded to and decoded
@@ -117,5 +119,10 @@ func loadTagColors(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String? 
     try JSON.decode([Tag: Tag.Color?].self, from: tagColorsData)
       .compactMapValues { $0 }
   }
+}
+
+@available(*, deprecated, message: "Use loadTagColors(fromFileInDirectoryAt:) instead.")
+func loadTagColors(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String?) throws -> [Tag: Tag.Color] {
+  try loadTagColors(fromFileInDirectoryAt: swiftTestingDirectoryPath.map(Path.init(_:)))
 }
 #endif
