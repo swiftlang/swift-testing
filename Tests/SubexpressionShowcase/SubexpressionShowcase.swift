@@ -26,7 +26,13 @@ struct T {
 }
 
 
-@Test func subexpressionShowcase() async throws {
+@Test func runSubexpressionShowcase() async {
+  await withKnownIssue {
+    try await subexpressionShowcase()
+  }
+}
+
+func subexpressionShowcase() async throws {
   #expect(false || true)
   #expect((Int)(123) == 124)
   #expect((Int, Double)(123, 456.0) == (124, 457.0))

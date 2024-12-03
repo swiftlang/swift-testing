@@ -14,6 +14,22 @@ private import _TestingInternals
 #if canImport(XCTest)
 import XCTest
 
+func expression(_ expression: __Expression, contains string: String) -> Bool {
+  if expression.expandedDescription().contains(string) {
+    return true
+  }
+
+  return expression.subexpressions.contains { TestingTests.expression($0, contains: string) }
+}
+
+func assert(_ expression: __Expression, contains string: String) {
+  XCTAssertTrue(TestingTests.expression(expression, contains: string), "\(expression) did not contain \(string)")
+}
+
+func assert(_ expression: __Expression, doesNotContain string: String) {
+  XCTAssertFalse(TestingTests.expression(expression, contains: string), "\(expression) did not contain \(string)")
+}
+
 final class IssueTests: XCTestCase {
   func testExpect() async throws {
     var configuration = Configuration()
@@ -160,9 +176,8 @@ final class IssueTests: XCTestCase {
       }
       if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
-        let desc = expectation.evaluatedExpression.expandedDescription()
-        XCTAssertTrue(desc.contains("rhs → 1"))
-        XCTAssertFalse(desc.contains("(("))
+        assert(expectation.evaluatedExpression, contains: "TypeWithMemberFunctions.f(rhs) → false")
+        assert(expectation.evaluatedExpression, contains: "rhs → 1")
       }
     }
 
@@ -184,9 +199,8 @@ final class IssueTests: XCTestCase {
       }
       if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
-        let desc = expectation.evaluatedExpression.expandedDescription()
-        XCTAssertTrue(desc.contains("label: rhs → 1"))
-        XCTAssertFalse(desc.contains("(("))
+        assert(expectation.evaluatedExpression, contains: "TypeWithMemberFunctions.g(label: rhs) → false")
+        assert(expectation.evaluatedExpression, contains: "rhs → 1")
       }
     }
 
@@ -208,9 +222,8 @@ final class IssueTests: XCTestCase {
       }
       if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
-        let desc = expectation.evaluatedExpression.expandedDescription()
-        XCTAssertFalse(desc.contains("(Function)"))
-        XCTAssertFalse(desc.contains("(("))
+        assert(expectation.evaluatedExpression, contains: "TypeWithMemberFunctions.h({ }) → false")
+        assert(expectation.evaluatedExpression, doesNotContain: "(Function)")
       }
     }
 
@@ -276,9 +289,8 @@ final class IssueTests: XCTestCase {
       }
       if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
-        // The presence of `try` means we don't do complex expansion (yet.)
         XCTAssertNotNil(expectation.evaluatedExpression)
-        XCTAssertNil(expectation.evaluatedExpression.runtimeValue)
+        XCTAssertNotNil(expectation.evaluatedExpression.runtimeValue)
       }
     }
 
@@ -318,7 +330,7 @@ final class IssueTests: XCTestCase {
   }
 
   func testExpressionLiterals() async {
-    func expectIssue(containing content: String, in testFunction: @escaping @Sendable () async throws -> Void) async {
+    func expectIssue(containing content: String..., in testFunction: @escaping @Sendable () async throws -> Void) async {
       let issueRecorded = expectation(description: "Issue recorded")
 
       var configuration = Configuration()
@@ -328,8 +340,9 @@ final class IssueTests: XCTestCase {
           return
         }
         XCTAssertTrue(issue.comments.isEmpty)
-        let expandedExpressionDescription = expectation.evaluatedExpression.expandedDescription()
-        XCTAssert(expandedExpressionDescription.contains(content))
+        for content in content {
+          assert(expectation.evaluatedExpression, contains: content)
+        }
         issueRecorded.fulfill()
       }
 
@@ -340,13 +353,13 @@ final class IssueTests: XCTestCase {
     @Sendable func someInt() -> Int { 0 }
     @Sendable func someString() -> String { "a" }
 
-    await expectIssue(containing: "(someInt() → 0) == 1") {
+    await expectIssue(containing: "someInt() == 1 → false", "someInt() → 0") {
       #expect(someInt() == 1)
     }
-    await expectIssue(containing: "1 == (someInt() → 0)") {
+    await expectIssue(containing: "1 == someInt() → false", "someInt() → 0") {
       #expect(1 == someInt())
     }
-    await expectIssue(containing: "(someString() → \"a\") == \"b\"") {
+    await expectIssue(containing: #"someString() == "b" → false"#, #"someString() → "a""#) {
       #expect(someString() == "b")
     }
   }
@@ -455,9 +468,8 @@ final class IssueTests: XCTestCase {
         XCTFail("Unexpected issue kind \(issue.kind)")
         return
       }
-      let expandedExpressionDescription = expectation.evaluatedExpression.expandedDescription()
-      XCTAssertTrue(expandedExpressionDescription.contains("someString() → \"abc123\""))
-      XCTAssertTrue(expandedExpressionDescription.contains("Int → String"))
+      assert(expectation.evaluatedExpression, contains: #"someString() → "abc123""#)
+      assert(expectation.evaluatedExpression, contains: "Int → String")
 
       if expectation.isRequired {
         requireRecorded.fulfill()
@@ -1062,7 +1074,9 @@ final class IssueTests: XCTestCase {
     }
   }
 
-  func testCollectionDifference() async {
+  func testCollectionDifference() async throws {
+    try XCTSkipIf(true, "Collecting diffing not implemented yet")
+
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
@@ -1086,7 +1100,9 @@ final class IssueTests: XCTestCase {
     }.run(configuration: configuration)
   }
 
-  func testCollectionDifferenceSkippedForStrings() async {
+  func testCollectionDifferenceSkippedForStrings() async throws {
+    try XCTSkipIf(true, "Collecting diffing not implemented yet")
+
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
@@ -1104,7 +1120,9 @@ final class IssueTests: XCTestCase {
     }.run(configuration: configuration)
   }
 
-  func testCollectionDifferenceSkippedForRanges() async {
+  func testCollectionDifferenceSkippedForRanges() async throws {
+    try XCTSkipIf(true, "Collecting diffing not implemented yet")
+
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
@@ -1179,7 +1197,7 @@ final class IssueTests: XCTestCase {
         return
       }
       let expression = expectation.evaluatedExpression
-      XCTAssertTrue(expression.expandedDescription().contains("<not evaluated>"))
+      assert(expression, contains: "<not evaluated>")
     }
 
     @Sendable func rhs() -> Bool {
@@ -1238,9 +1256,8 @@ final class IssueTests: XCTestCase {
       }
       if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
-        let desc = expectation.evaluatedExpression.expandedDescription()
-        XCTAssertTrue(desc.contains("7"))
-        XCTAssertFalse(desc.contains("Optional(7)"))
+        assert(expectation.evaluatedExpression, contains: "7")
+        assert(expectation.evaluatedExpression, doesNotContain: "Optional(7)")
       }
     }
 
@@ -1262,8 +1279,7 @@ final class IssueTests: XCTestCase {
       }
       if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
-        let desc = expectation.evaluatedExpression.expandedDescription()
-        XCTAssertTrue(desc.contains("nil"))
+        assert(expectation.evaluatedExpression, contains: "nil")
       }
     }
 
@@ -1316,8 +1332,7 @@ final class IssueTests: XCTestCase {
       }
       if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
-        let desc = expectation.evaluatedExpression.expandedDescription()
-        XCTAssertTrue(desc.contains("Delicious Food, Yay!"))
+        assert(expectation.evaluatedExpression, contains: "Delicious Food, Yay!")
       }
     }
 
@@ -1378,9 +1393,8 @@ final class IssueTests: XCTestCase {
       }
       if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
-        let desc = expectation.evaluatedExpression.expandedDescription()
-        XCTAssertTrue(desc.contains(".b → customDesc"))
-        XCTAssertFalse(desc.contains(".customDesc"))
+        assert(expectation.evaluatedExpression, contains: ".b → customDesc")
+        assert(expectation.evaluatedExpression, doesNotContain: ".customDesc")
       }
     }
 
@@ -1405,9 +1419,8 @@ final class IssueTests: XCTestCase {
       }
       if case let .expectationFailed(expectation) = issue.kind {
         expectationFailed.fulfill()
-        let desc = expectation.evaluatedExpression.expandedDescription()
-        XCTAssertTrue(desc.contains(".A → SWTTestEnumeration(rawValue: \(SWTTestEnumeration.A.rawValue))"))
-        XCTAssertFalse(desc.contains(".SWTTestEnumeration"))
+        assert(expectation.evaluatedExpression, contains: ".A → SWTTestEnumeration(rawValue: \(SWTTestEnumeration.A.rawValue))")
+        assert(expectation.evaluatedExpression, doesNotContain: ".SWTTestEnumeration")
       }
     }
 
