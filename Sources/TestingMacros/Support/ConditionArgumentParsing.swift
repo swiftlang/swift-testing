@@ -318,8 +318,8 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   override func visit(_ node: InfixOperatorExprSyntax) -> ExprSyntax {
     _rewrite(
       node
-        .with(\.leftOperand, visit(node.leftOperand).trimmed)
-        .with(\.rightOperand, visit(node.rightOperand).trimmed),
+        .with(\.leftOperand, visit(node.leftOperand))
+        .with(\.rightOperand, visit(node.rightOperand)),
       originalWas: node
     )
   }

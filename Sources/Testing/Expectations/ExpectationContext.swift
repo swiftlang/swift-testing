@@ -20,7 +20,7 @@ private import _TestingInternals
 ///
 /// - Warning: This type is used to implement the `#expect()` and `#require()`
 ///   macros. Do not use it directly.
-public struct __ExpectationContext {
+public struct __ExpectationContext: ~Copyable {
   /// The source code of any captured expressions.
   var sourceCode: [__ExpressionID: String]
 
@@ -49,7 +49,7 @@ public struct __ExpectationContext {
   /// - Returns: An array of expressions under the root node of
   ///   `expressionGraph`. The expression at the root of the graph is not
   ///   included in the result.
-  private func _squashExpressionGraph(_ expressionGraph: Graph<UInt32, __Expression?>, depth: Int) -> [__Expression] {
+  private borrowing func _squashExpressionGraph(_ expressionGraph: Graph<UInt32, __Expression?>, depth: Int) -> [__Expression] {
     var result = [__Expression]()
 
     let childGraphs = expressionGraph.children.sorted { $0.key < $1.key }
@@ -80,7 +80,10 @@ public struct __ExpectationContext {
   ///
   /// - Returns: An expression value representing the condition expression that
   ///   was evaluated.
-  consuming func finalize(successfully: Bool) -> __Expression {
+  ///
+  /// This function should ideally be `consuming`, but because it is used in a
+  /// `lazy var` declaration, the compiler currently disallows it.
+  borrowing func finalize(successfully: Bool) -> __Expression {
     // Construct a graph containing the source code for all the subexpressions
     // we've captured during evaluation.
     var expressionGraph = Graph<UInt32, __Expression?>()
@@ -123,7 +126,13 @@ public struct __ExpectationContext {
 
 #if !SWT_FIXED_122011759
   /// Storage for any locally-created C strings.
-  private var _transformedCStrings: _TransformedCStrings?
+  private var _transformedCStrings = [UnsafeMutablePointer<CChar>]()
+
+  deinit {
+    for cString in _transformedCStrings {
+      free(cString)
+    }
+  }
 #endif
 }
 
@@ -227,19 +236,6 @@ extension __ExpectationContext {
 // MARK: - String-to-C-string handling
 
 extension __ExpectationContext {
-  /// A class that manages the lifetimes of any temporary C strings created in
-  /// the context of an expectation.
-  private final class _TransformedCStrings {
-    /// The set of temporary C strings managed by this instance.
-    var values = [UnsafeMutablePointer<CChar>]()
-
-    deinit {
-      for cString in values {
-        free(cString)
-      }
-    }
-  }
-
   /// Convert a string to a C string and capture information about it for use if
   /// the expectation currently being evaluated fails.
   ///
@@ -275,10 +271,10 @@ extension __ExpectationContext {
 
     // Store the C string pointer so we can free it later when this context is
     // torn down.
-    if _transformedCStrings == nil {
-      _transformedCStrings = _TransformedCStrings()
+    if _transformedCStrings.capacity == 0 {
+      _transformedCStrings.reserveCapacity(2)
     }
-    _transformedCStrings?.values.append(resultCString)
+    _transformedCStrings.append(resultCString)
 
     // Return the C string as whatever pointer type the caller wants.
     return U(bitPattern: Int(bitPattern: resultCString)).unsafelyUnwrapped
