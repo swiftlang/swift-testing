@@ -219,7 +219,7 @@ extension __ExpectationContext {
       runtimeValues[typeID] = { Expression.Value(reflecting: correctType) }
     }
 
-    return true
+    return result
   }
 }
 
