@@ -318,8 +318,8 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   override func visit(_ node: InfixOperatorExprSyntax) -> ExprSyntax {
     _rewrite(
       node
-        .with(\.leftOperand, visit(node.leftOperand))
-        .with(\.rightOperand, visit(node.rightOperand)),
+        .with(\.leftOperand, visit(node.leftOperand).trimmed)
+        .with(\.rightOperand, visit(node.rightOperand).trimmed),
       originalWas: node
     )
   }
@@ -347,7 +347,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
         name: .identifier("__\(isAsKeyword)")
       )
     ) {
-      LabeledExprSyntax(expression: visit(valueExpr))
+      LabeledExprSyntax(expression: visit(valueExpr).trimmed)
       LabeledExprSyntax(
         expression: _rewrite(
           MemberAccessExprSyntax(
@@ -356,7 +356,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
             },
             declName: DeclReferenceExprSyntax(baseName: .keyword(.self))
           ),
-          originalWas: Syntax(type)
+          originalWas: type
         )
       )
       LabeledExprSyntax(expression: type.expressionID(rootedAt: effectiveRootNode))
@@ -431,7 +431,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
       node.with(
         \.elements, ArrayElementListSyntax {
           for element in node.elements {
-            ArrayElementSyntax(expression: visit(element.expression))
+            ArrayElementSyntax(expression: visit(element.expression).trimmed)
           }
         }
       ),
@@ -448,7 +448,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
         \.content, .elements(
           DictionaryElementListSyntax {
             for element in elements {
-              DictionaryElementSyntax(key: visit(element.key), value: visit(element.value))
+              DictionaryElementSyntax(key: visit(element.key).trimmed, value: visit(element.value).trimmed)
             }
           }
         )
