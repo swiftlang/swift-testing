@@ -185,17 +185,17 @@ struct ConditionMacroTests {
   @Test("Unwrapping #require() macro",
     arguments: [
       ##"#require(Optional<Int>.none)"##:
-        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(Optional<Int>.none) }, comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec(Optional<Int>.none, "")) }, sourceCode: ["": "Optional<Int>.none"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(nil ?? 123)"##:
-        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec(nil ?? __ec(123, "123", [0, 3]), "nil ?? 123", "")) }, comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec(nil ?? 123, "")) }, sourceCode: ["": "nil ?? 123"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(123 ?? nil)"##:
-        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec(__ec(123, "123", "1c") ?? nil, "123 ?? nil", "")) }, comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec(123 ?? nil, "")) }, sourceCode: ["": "123 ?? nil"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(123 as? Double)"##:
-        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec(__ec(123, "123", "1c"), #"__ec(123,"123",[0,1])"#, "", as: (Double).self, "Double")) }, comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec(__ec.__as(123 , __ec((Double).self, "20"), "20"), "")) }, sourceCode: ["20": "Double", "": "123 as? Double"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(123 as Double)"##:
         ##"Testing.__checkEscapedCondition(123 as Double, sourceCode: "123 as Double", comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(123 as! Double)"##:
-        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec(123 as! Double, "123 as! Double", "")) }, comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec(123 as! Double, "")) }, sourceCode: ["": "123 as! Double"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
     ]
   )
   func unwrappingRequireMacro(input: String, expectedOutput: String) throws {
@@ -215,7 +215,7 @@ struct ConditionMacroTests {
       """
       // Source comment
       /** Doc comment */
-      try Testing.__checkCondition({  (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(try __ec(x(), "x()", [0, 2])) }, comments: [.__line("// Source comment"),.__documentationBlock("/** Doc comment */"),"Argument comment"], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+      try Testing.__checkCondition({  (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(try __ec(x(), "4")) }, sourceCode: ["4": "x()"], comments: [.__line("// Source comment"),.__documentationBlock("/** Doc comment */"),"Argument comment"], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
       """,
 
       """
@@ -228,7 +228,7 @@ struct ConditionMacroTests {
       // Ignore me
 
       // Capture me
-      try Testing.__checkCondition({  (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(try __ec(x(), "x()", [0, 2])) }, comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+      try Testing.__checkCondition({  (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(try __ec(x(), "4")) }, sourceCode: ["4": "x()"], comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
       """,
 
       """
@@ -241,7 +241,7 @@ struct ConditionMacroTests {
       // Ignore me
       \t
       // Capture me
-      try Testing.__checkCondition({  (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(try __ec(x(), "x()", [0, 2])) }, comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+      try Testing.__checkCondition({  (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(try __ec(x(), "4")) }, sourceCode: ["4": "x()"], comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
       """,
     ]
   )
