@@ -230,6 +230,7 @@ extension __ExpectationContext {
   /// A class that manages the lifetimes of any temporary C strings created in
   /// the context of an expectation.
   private final class _TransformedCStrings {
+    /// The set of temporary C strings managed by this instance.
     var values = [UnsafeMutablePointer<CChar>]()
 
     deinit {
