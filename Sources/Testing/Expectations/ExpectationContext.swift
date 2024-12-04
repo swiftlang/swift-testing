@@ -33,9 +33,20 @@ public struct __ExpectationContext: ~Copyable {
   /// will not be assigned a runtime value.
   var runtimeValues: [__ExpressionID: () -> Expression.Value?]
 
-  init(sourceCode: [__ExpressionID: String] = [:], runtimeValues: [__ExpressionID: () -> Expression.Value?] = [:]) {
+  /// Computed differences between the operands or arguments of expressions.
+  ///
+  /// The values in this dictionary are gathered at runtime as subexpressions
+  /// are evaluated, much like ``runtimeValues``.
+  var differences: [__ExpressionID: () -> CollectionDifference<Any>?]
+
+  init(
+    sourceCode: [__ExpressionID: String] = [:],
+    runtimeValues: [__ExpressionID: () -> Expression.Value?] = [:],
+    differences: [__ExpressionID: () -> CollectionDifference<Any>?] = [:]
+  ) {
     self.sourceCode = sourceCode
     self.runtimeValues = runtimeValues
+    self.differences = differences
   }
 
   /// Collapse the given expression graph into one or more expressions with
@@ -81,8 +92,8 @@ public struct __ExpectationContext: ~Copyable {
   /// - Returns: An expression value representing the condition expression that
   ///   was evaluated.
   ///
-  /// This function should ideally be `consuming`, but because it is used in a
-  /// `lazy var` declaration, the compiler currently disallows it.
+  /// - Bug: This function should ideally be `consuming`, but because it is used
+  ///   in a `lazy var` declaration, the compiler currently disallows it.
   borrowing func finalize(successfully: Bool) -> __Expression {
     // Construct a graph containing the source code for all the subexpressions
     // we've captured during evaluation.
@@ -99,6 +110,15 @@ public struct __ExpectationContext: ~Copyable {
         let keyPath = id.keyPath
         if var expression = expressionGraph[keyPath], let runtimeValue = runtimeValue() {
           expression.runtimeValue = runtimeValue
+          expressionGraph[keyPath] = expression
+        }
+      }
+
+      for (id, difference) in differences {
+        let keyPath = id.keyPath
+        if var expression = expressionGraph[keyPath], let difference = difference() {
+          let differenceDescription = Self._description(of: difference)
+          expression.differenceDescription = differenceDescription
           expressionGraph[keyPath] = expression
         }
       }
@@ -154,11 +174,12 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public mutating func callAsFunction<T>(_ value: T, _ id: __ExpressionID) -> T where T: Copyable {
+  public mutating func callAsFunction<T>(_ value: T, _ id: __ExpressionID) -> T {
     runtimeValues[id] = { Expression.Value(reflecting: value) }
     return value
   }
 
+#if SWT_SUPPORTS_MOVE_ONLY_EXPRESSION_EXPANSION
   /// Capture information about a value for use if the expectation currently
   /// being evaluated fails.
   ///
@@ -176,7 +197,181 @@ extension __ExpectationContext {
     // TODO: add support for borrowing non-copyable expressions (need @lifetime)
     return value
   }
+#endif
+}
 
+// MARK: - Collection comparison and diffing
+
+extension __ExpectationContext {
+  /// Convert an instance of `CollectionDifference` to one that is type-erased
+  /// over elements of type `Any`.
+  ///
+  /// - Parameters:
+  ///   - difference: The difference to convert.
+  ///
+  /// - Returns: A type-erased copy of `difference`.
+  private static func _typeEraseCollectionDifference(_ difference: CollectionDifference<some Any>) -> CollectionDifference<Any> {
+    CollectionDifference<Any>(
+      difference.lazy.map { change in
+        switch change {
+        case let .insert(offset, element, associatedWith):
+          return .insert(offset: offset, element: element as Any, associatedWith: associatedWith)
+        case let .remove(offset, element, associatedWith):
+          return .remove(offset: offset, element: element as Any, associatedWith: associatedWith)
+        }
+      }
+    )!
+  }
+
+  /// Generate a description of a previously-computed collection difference.
+  ///
+  /// - Parameters:
+  ///   - difference: The difference to describe.
+  ///
+  /// - Returns: A human-readable string describing `difference`.
+  private static func _description(of difference: CollectionDifference<some Any>) -> String {
+    let insertions: [String] = difference.insertions.lazy
+      .map(\.element)
+      .map(String.init(describingForTest:))
+    let removals: [String] = difference.removals.lazy
+      .map(\.element)
+      .map(String.init(describingForTest:))
+
+    var resultComponents = [String]()
+    if !insertions.isEmpty {
+      resultComponents.append("inserted [\(insertions.joined(separator: ", "))]")
+    }
+    if !removals.isEmpty {
+      resultComponents.append("removed [\(removals.joined(separator: ", "))]")
+    }
+
+    return resultComponents.joined(separator: ", ")
+  }
+
+  /// Compare two values using `==` or `!=`.
+  ///
+  /// - Parameters:
+  ///   - lhs: The left-hand operand.
+  ///   - lhsID: A value that uniquely identifies the expression represented by
+  ///     `lhs` in the context of the expectation currently being evaluated.
+  ///   - rhs: The left-hand operand.
+  ///   - rhsID: A value that uniquely identifies the expression represented by
+  ///     `rhs` in the context of the expectation currently being evaluated.
+  ///   - op: A function that performs an operation on `lhs` and `rhs`.
+  ///   - opID: A value that uniquely identifies the expression represented by
+  ///     `op` in the context of the expectation currently being evaluated.
+  ///
+  /// - Returns: The result of calling `op(lhs, rhs)`.
+  ///
+  /// This overload of `__cmp()` serves as a catch-all for operands that are not
+  /// collections or otherwise are not interesting to the testing library.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  public mutating func __cmp<T, U, R>(
+    _ lhs: T,
+    _ lhsID: __ExpressionID,
+    _ rhs: U,
+    _ rhsID: __ExpressionID,
+    _ op: (T, U) throws -> R,
+    _ opID: __ExpressionID
+  ) rethrows -> R {
+    try self(op(self(lhs, lhsID), self(rhs, rhsID)), opID)
+  }
+
+  /// Compare two bidirectional collections using `==` or `!=`.
+  ///
+  /// This overload of `__cmp()` performs a diffing operation on `lhs` and `rhs`
+  /// if the result of `op(lhs, rhs)` is `false`.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  public mutating func __cmp<C>(
+    _ lhs: C,
+    _ lhsID: __ExpressionID,
+    _ rhs: C,
+    _ rhsID: __ExpressionID,
+    _ op: (C, C) -> Bool,
+    _ opID: __ExpressionID
+  ) -> Bool where C: BidirectionalCollection, C.Element: Equatable {
+    let result = self(op(self(lhs, lhsID), self(rhs, rhsID)), opID)
+
+    if !result {
+      differences[opID] = { [lhs, rhs] in
+        Self._typeEraseCollectionDifference(lhs.difference(from: rhs))
+      }
+    }
+
+    return result
+  }
+
+  /// Compare two range expressions using `==` or `!=`.
+  ///
+  /// This overload of `__cmp()` does _not_ perform a diffing operation on `lhs`
+  /// and `rhs`. Range expressions are not usefully diffable the way other kinds
+  /// of collections are. ([139222774](rdar://139222774))
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  public mutating func __cmp<R>(
+    _ lhs: R,
+    _ lhsID: __ExpressionID,
+    _ rhs: R,
+    _ rhsID: __ExpressionID,
+    _ op: (R, R) -> Bool,
+    _ opID: __ExpressionID
+  ) -> Bool where R: RangeExpression & BidirectionalCollection, R.Element: Equatable {
+    self(op(self(lhs, lhsID), self(rhs, rhsID)), opID)
+  }
+
+  /// Compare two strings using `==` or `!=`.
+  ///
+  /// This overload of `__cmp()` performs a diffing operation on `lhs` and `rhs`
+  /// if the result of `op(lhs, rhs)` is `false`, but does so by _line_, not by
+  /// _character_.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  public mutating func __cmp<S>(
+    _ lhs: S,
+    _ lhsID: __ExpressionID,
+    _ rhs: S,
+    _ rhsID: __ExpressionID,
+    _ op: (S, S) -> Bool,
+    _ opID: __ExpressionID
+  ) -> Bool where S: StringProtocol {
+    let result = self(op(self(lhs, lhsID), self(rhs, rhsID)), opID)
+
+    if !result {
+      differences[opID] = { [lhs, rhs] in
+        // Compare strings by line, not by character.
+        let lhsLines = String(lhs).split(whereSeparator: \.isNewline)
+        let rhsLines = String(rhs).split(whereSeparator: \.isNewline)
+
+        if lhsLines.count == 1 && rhsLines.count == 1 {
+          // There are no newlines in either string, so there's no meaningful
+          // per-line difference. Bail.
+          return nil
+        }
+
+        let diff = lhsLines.difference(from: rhsLines)
+        if diff.isEmpty {
+          // The strings must have compared on a per-character basis, or this
+          // operator doesn't behave the way we expected. Bail.
+          return nil
+        }
+
+        return Self._typeEraseCollectionDifference(diff)
+      }
+    }
+
+    return result
+  }
+}
+
+// MARK: - Casting
+
+extension __ExpectationContext {
   /// Perform a conditional cast (`as?`) on a value.
   ///
   /// - Parameters:
@@ -258,15 +453,15 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public mutating func callAsFunction<T, U>(_ value: T, _ id: __ExpressionID) -> U where T: StringProtocol, U: _Pointer {
+  public mutating func callAsFunction<P>(_ value: String, _ id: __ExpressionID) -> P where P: _Pointer {
     // Perform the normal value capture.
     let result = self(value, id)
 
     // Create a C string copy of `value`.
 #if os(Windows)
-    let resultCString = _strdup(String(result))!
+    let resultCString = _strdup(result)!
 #else
-    let resultCString = strdup(String(result))!
+    let resultCString = strdup(result)!
 #endif
 
     // Store the C string pointer so we can free it later when this context is
@@ -277,7 +472,7 @@ extension __ExpectationContext {
     _transformedCStrings.append(resultCString)
 
     // Return the C string as whatever pointer type the caller wants.
-    return U(bitPattern: Int(bitPattern: resultCString)).unsafelyUnwrapped
+    return P(bitPattern: Int(bitPattern: resultCString)).unsafelyUnwrapped
   }
 }
 #endif

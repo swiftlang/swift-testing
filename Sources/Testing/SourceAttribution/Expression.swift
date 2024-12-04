@@ -240,6 +240,18 @@ public struct __Expression: Sendable {
   @_spi(ForToolsIntegrationOnly)
   public internal(set) var subexpressions = [Self]()
 
+  /// A description of the difference between the operands in this expression,
+  /// if that difference could be determined.
+  ///
+  /// The value of this property is set for the binary operators `==` and `!=`
+  /// when used to compare collections.
+  ///
+  /// If the containing expectation passed, the value of this property is `nil`
+  /// because the difference is only computed when necessary to assist with
+  /// diagnosing test failures.
+  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+  public internal(set) var differenceDescription: String?
+
   @_spi(ForToolsIntegrationOnly)
   @available(*, deprecated, message: "The value of this property is always nil.")
   public var stringLiteralValue: String? {

@@ -109,7 +109,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   /// A list of any syntax nodes that have been rewritten.
   ///
   /// The nodes in this array are the _original_ nodes, not the rewritten nodes.
-  var rewrittenNodes = [Syntax]()
+  var rewrittenNodes = Set<Syntax>()
 
   init(in context: C, for macro: M, rootedAt effectiveRootNode: Syntax, expressionContextName: TokenSyntax) {
     self.context = context
@@ -131,7 +131,14 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   /// - Returns: A rewritten copy of `node` that calls into the expression
   ///   context when it is evaluated at runtime.
   private func _rewrite<E>(_ node: E, originalWas originalNode: some SyntaxProtocol) -> ExprSyntax where E: ExprSyntaxProtocol {
-    rewrittenNodes.append(Syntax(originalNode))
+    if rewrittenNodes.contains(Syntax(originalNode)) {
+      // If this node has already been rewritten, we don't need to rewrite it
+      // again. (Currently, this can only happen when expanding binary operators
+      // which need a bit of extra help.)
+      return ExprSyntax(node)
+    }
+
+    rewrittenNodes.insert(Syntax(originalNode))
 
     var result = FunctionCallExprSyntax(calledExpression: expressionContextNameExpr) {
       LabeledExprSyntax(expression: node.trimmed)
@@ -316,7 +323,47 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   }
 
   override func visit(_ node: InfixOperatorExprSyntax) -> ExprSyntax {
-    _rewrite(
+    if let op = node.operator.as(BinaryOperatorExprSyntax.self)?.operator.textWithoutBackticks,
+       op == "==" || op == "!=" || op == "===" || op == "!==" {
+
+      rewrittenNodes.insert(Syntax(node))
+      rewrittenNodes.insert(Syntax(node.leftOperand))
+      rewrittenNodes.insert(Syntax(node.rightOperand))
+
+      var result = FunctionCallExprSyntax(
+        calledExpression: MemberAccessExprSyntax(
+          base: expressionContextNameExpr,
+          name: .identifier("__cmp")
+        )
+      ) {
+        LabeledExprSyntax(expression: visit(node.leftOperand))
+        LabeledExprSyntax(expression: node.leftOperand.expressionID(rootedAt: effectiveRootNode))
+        LabeledExprSyntax(expression: visit(node.rightOperand))
+        LabeledExprSyntax(expression: node.rightOperand.expressionID(rootedAt: effectiveRootNode))
+        LabeledExprSyntax(
+          expression: ClosureExprSyntax {
+            InfixOperatorExprSyntax(
+              leftOperand: DeclReferenceExprSyntax(
+                baseName: .dollarIdentifier("$0")
+              ).with(\.trailingTrivia, .space),
+              operator: BinaryOperatorExprSyntax(text: op),
+              rightOperand: DeclReferenceExprSyntax(
+                baseName: .dollarIdentifier("$1")
+              ).with(\.leadingTrivia, .space)
+            )
+          }
+        )
+        LabeledExprSyntax(expression: node.expressionID(rootedAt: effectiveRootNode))
+      }
+      result.leftParen = .leftParenToken()
+      result.rightParen = .rightParenToken()
+      result.leadingTrivia = node.leadingTrivia
+      result.trailingTrivia = node.trailingTrivia
+
+      return ExprSyntax(result)
+    }
+
+    return _rewrite(
       node
         .with(\.leftOperand, visit(node.leftOperand))
         .with(\.rightOperand, visit(node.rightOperand)),
@@ -481,7 +528,7 @@ func insertCalls(
   for macro: some FreestandingMacroExpansionSyntax,
   rootedAt effectiveRootNode: some SyntaxProtocol,
   in context: some MacroExpansionContext
-) -> (Syntax, rewrittenNodes: [Syntax]) {
+) -> (Syntax, rewrittenNodes: Set<Syntax>) {
   if let node = node.as(ExprSyntax.self) {
     _diagnoseTrivialBooleanValue(from: node, for: macro, in: context)
   }
