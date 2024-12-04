@@ -21,8 +21,33 @@ private import _TestingInternals
 /// - Warning: This type is used to implement the `#expect()` and `#require()`
 ///   macros. Do not use it directly.
 public struct __ExpectationContext: ~Copyable {
-  /// The source code of any captured expressions.
-  var sourceCode: [__ExpressionID: String]
+  /// The source code of the represented expression.
+  var sourceCode: String
+
+  /// The ranges of captured expressions in the source code (``sourceCode``)
+  /// when represented as UTF-8.
+  var sourceCodeRanges: [__ExpressionID: Range<Int>]
+
+  private static func _subexpressionSourceCode(in sourceCode: String, utf8Ranges: [__ExpressionID: Range<Int>]) -> [__ExpressionID: String] {
+    let sourceCodeUTF8 = sourceCode.utf8CString
+    let fullRange = 0 ..< sourceCodeUTF8.count
+
+    if #available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
+      return utf8Ranges.compactMapValues { range in
+        let range = range.clamped(to: fullRange)
+        return String(validating: sourceCodeUTF8[range], as: UTF8.self)
+      }
+    } else {
+      return utf8Ranges.compactMapValues { range in
+        let range = range.clamped(to: fullRange)
+        var utf8 = ContiguousArray(sourceCodeUTF8[range])
+        utf8.append(0)
+        return utf8.withUnsafeBufferPointer { utf8 in
+          return String(validatingCString: utf8.baseAddress!)
+        }
+      }
+    }
+  }
 
   /// The runtime values of any captured expressions.
   ///
@@ -38,16 +63,6 @@ public struct __ExpectationContext: ~Copyable {
   /// The values in this dictionary are gathered at runtime as subexpressions
   /// are evaluated, much like ``runtimeValues``.
   var differences: [__ExpressionID: () -> CollectionDifference<Any>?]
-
-  init(
-    sourceCode: [__ExpressionID: String] = [:],
-    runtimeValues: [__ExpressionID: () -> Expression.Value?] = [:],
-    differences: [__ExpressionID: () -> CollectionDifference<Any>?] = [:]
-  ) {
-    self.sourceCode = sourceCode
-    self.runtimeValues = runtimeValues
-    self.differences = differences
-  }
 
   /// Convert an instance of `CollectionDifference` to one that is type-erased
   /// over elements of type `Any`.
@@ -67,6 +82,18 @@ public struct __ExpectationContext: ~Copyable {
         }
       }
     )!
+  }
+
+  init(
+    sourceCode: String = "",
+    sourceCodeRanges: [__ExpressionID: Range<Int>] = [:],
+    runtimeValues: [__ExpressionID: () -> Expression.Value?] = [:],
+    differences: [__ExpressionID: () -> CollectionDifference<Any>?] = [:]
+  ) {
+    self.sourceCode = sourceCode
+    self.sourceCodeRanges = sourceCodeRanges
+    self.runtimeValues = runtimeValues
+    self.differences = differences
   }
 
   /// Generate a description of a previously-computed collection difference./
@@ -143,6 +170,7 @@ public struct __ExpectationContext: ~Copyable {
     // Construct a graph containing the source code for all the subexpressions
     // we've captured during evaluation.
     var expressionGraph = Graph<UInt32, __Expression?>()
+    let sourceCode = Self._subexpressionSourceCode(in: sourceCode, utf8Ranges: sourceCodeRanges)
     for (id, sourceCode) in sourceCode {
       let keyPath = id.keyPath
       expressionGraph.insertValue(__Expression(sourceCode), at: keyPath)

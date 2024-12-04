@@ -106,12 +106,12 @@ func check(
 ///   `#require()` macros. Do not call it directly.
 public func __checkCondition(
   _ condition: (inout __ExpectationContext) throws -> Bool,
-  sourceCode: [__ExpressionID: String],
+  sourceCode: String, _ sourceCodeRanges: [__ExpressionID: Range<Int>],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) rethrows -> Result<Void, any Error> {
-  var expectationContext = __ExpectationContext.init(sourceCode: sourceCode)
+  var expectationContext = __ExpectationContext(sourceCode: sourceCode, sourceCodeRanges: sourceCodeRanges)
   let condition = try condition(&expectationContext)
 
   return check(
@@ -132,12 +132,12 @@ public func __checkCondition(
 ///   `#require()` macros. Do not call it directly.
 public func __checkCondition<T>(
   _ optionalValue: (inout __ExpectationContext) throws -> T?,
-  sourceCode: [__ExpressionID: String],
+  sourceCode: String, _ sourceCodeRanges: [__ExpressionID: Range<Int>],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) rethrows -> Result<T, any Error> where T: ~Copyable {
-  var expectationContext = __ExpectationContext(sourceCode: sourceCode)
+  var expectationContext = __ExpectationContext(sourceCode: sourceCode, sourceCodeRanges: sourceCodeRanges)
   let optionalValue = try optionalValue(&expectationContext)
 
   let result = check(
@@ -167,13 +167,13 @@ public func __checkCondition<T>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkConditionAsync(
   _ condition: (inout __ExpectationContext) async throws -> Bool,
-  sourceCode: [__ExpressionID: String],
+  sourceCode: String, _ sourceCodeRanges: [__ExpressionID: Range<Int>],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
 ) async rethrows -> Result<Void, any Error> {
-  var expectationContext = __ExpectationContext(sourceCode: sourceCode)
+  var expectationContext = __ExpectationContext(sourceCode: sourceCode, sourceCodeRanges: sourceCodeRanges)
   let condition = try await condition(&expectationContext)
 
   return check(
@@ -194,13 +194,13 @@ public func __checkConditionAsync(
 ///   `#require()` macros. Do not call it directly.
 public func __checkConditionAsync<T>(
   _ optionalValue: (inout __ExpectationContext) async throws -> sending T?,
-  sourceCode: [__ExpressionID: String],
+  sourceCode: String, _ sourceCodeRanges: [__ExpressionID: Range<Int>],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
 ) async rethrows -> Result<T, any Error> where T: ~Copyable {
-  var expectationContext = __ExpectationContext(sourceCode: sourceCode)
+  var expectationContext = __ExpectationContext(sourceCode: sourceCode, sourceCodeRanges: sourceCodeRanges)
   let optionalValue = try await optionalValue(&expectationContext)
 
   let result = check(
@@ -237,7 +237,8 @@ public func __checkEscapedCondition(
   sourceLocation: SourceLocation
 ) -> Result<Void, any Error> {
   var expectationContext = __ExpectationContext()
-  expectationContext.sourceCode[""] = sourceCode
+  expectationContext.sourceCode = sourceCode
+  expectationContext.sourceCodeRanges[""] = 0 ..< sourceCode.utf8.count
 
   return check(
     condition,
@@ -266,7 +267,7 @@ public func __checkEscapedCondition<T>(
   sourceLocation: SourceLocation
 ) -> Result<T, any Error> where T: ~Copyable {
   var expectationContext = __ExpectationContext()
-  expectationContext.sourceCode[""] = sourceCode
+  expectationContext.sourceCode = sourceCode
 
   let result = check(
     optionalValue != nil,
@@ -393,7 +394,7 @@ public func __checkClosureCall(
   }
 
   var expectationContext = __ExpectationContext()
-  expectationContext.sourceCode[""] = sourceCode
+  expectationContext.sourceCode = sourceCode
   return check(
     success,
     expectationContext: expectationContext,
@@ -433,7 +434,7 @@ public func __checkClosureCall(
   }
 
   var expectationContext = __ExpectationContext()
-  expectationContext.sourceCode[""] = sourceCode
+  expectationContext.sourceCode = sourceCode
   return check(
     success,
     expectationContext: expectationContext,
@@ -519,7 +520,7 @@ public func __checkClosureCall<R>(
   sourceLocation: SourceLocation
 ) -> Result<Void, any Error> {
   var expectationContext = __ExpectationContext()
-  expectationContext.sourceCode[""] = sourceCode
+  expectationContext.sourceCode = sourceCode
 
   var errorMatches = false
   var mismatchExplanationValue: String? = nil
@@ -571,7 +572,7 @@ public func __checkClosureCall<R>(
   sourceLocation: SourceLocation
 ) async -> Result<Void, any Error> {
   var expectationContext = __ExpectationContext()
-  expectationContext.sourceCode[""] = sourceCode
+  expectationContext.sourceCode = sourceCode
 
   var errorMatches = false
   var mismatchExplanationValue: String? = nil

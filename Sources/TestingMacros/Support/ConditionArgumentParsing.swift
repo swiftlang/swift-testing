@@ -323,8 +323,8 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   }
 
   override func visit(_ node: InfixOperatorExprSyntax) -> ExprSyntax {
-    if let op = node.operator.as(BinaryOperatorExprSyntax.self)?.operator.tokenKind,
-       op == .binaryOperator("==") || op == .binaryOperator("!=") {
+    if let op = node.operator.as(BinaryOperatorExprSyntax.self)?.operator.textWithoutBackticks,
+       op == "==" || op == "!=" {
 
       rewrittenNodes.insert(Syntax(node))
       rewrittenNodes.insert(Syntax(node.leftOperand))
@@ -346,7 +346,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
               leftOperand: DeclReferenceExprSyntax(
                 baseName: .dollarIdentifier("$0")
               ).with(\.trailingTrivia, .space),
-              operator: BinaryOperatorExprSyntax(operator: TokenSyntax(op, presence: .present)),
+              operator: BinaryOperatorExprSyntax(text: op),
               rightOperand: DeclReferenceExprSyntax(
                 baseName: .dollarIdentifier("$1")
               ).with(\.leadingTrivia, .space)

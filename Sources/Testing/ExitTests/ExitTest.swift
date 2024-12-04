@@ -294,7 +294,8 @@ func callExitTest(
 
   // Plumb the exit test's result through the general expectation machinery.
   var expectationContext = __ExpectationContext()
-  expectationContext.sourceCode[""] = sourceCode
+  expectationContext.sourceCode = sourceCode
+  expectationContext.sourceCodeRanges[""] = 0 ..< sourceCode.utf8.count
   expectationContext.runtimeValues[""] = { Expression.Value(reflecting: actualExitCondition) }
   return check(
     expectedExitCondition == actualExitCondition,

@@ -200,15 +200,30 @@ extension ConditionMacro {
 
           // Sort the rewritten nodes. This isn't strictly necessary for
           // correctness but it does make the produced code more consistent.
+          let sourceCode = firstArgument.expression.trimmedDescription
+          let sourceCodeExpr = StringLiteralExprSyntax(content: sourceCode)
+          checkArguments.append(Argument(label: "sourceCode", expression: sourceCodeExpr))
+
+          let sourceCodeStartIndex = firstArgument.expression.positionAfterSkippingLeadingTrivia.utf8Offset
           let sortedRewrittenNodes = rewrittenNodes.sorted { $0.id < $1.id }
-          let sourceCodeNodeIDs = sortedRewrittenNodes.compactMap { $0.expressionID(rootedAt: originalArgumentExpr) }
-          let sourceCodeExprs = sortedRewrittenNodes.map { StringLiteralExprSyntax(content: $0.trimmedDescription) }
-          let sourceCodeExpr = DictionaryExprSyntax {
-            for (nodeID, sourceCodeExpr) in zip(sourceCodeNodeIDs, sourceCodeExprs) {
-              DictionaryElementSyntax(key: nodeID, value: sourceCodeExpr)
+          let sourceCodeRangesExpr = DictionaryExprSyntax {
+            for rewrittenNode in sortedRewrittenNodes {
+              DictionaryElementSyntax(
+                key: rewrittenNode.expressionID(rootedAt: originalArgumentExpr),
+                value: InfixOperatorExprSyntax(
+                  leftOperand: IntegerLiteralExprSyntax(
+                    rewrittenNode.positionAfterSkippingLeadingTrivia.utf8Offset - sourceCodeStartIndex
+                  ).with(\.trailingTrivia, .space),
+                  operator: BinaryOperatorExprSyntax(text: "..<"),
+                  rightOperand: IntegerLiteralExprSyntax(
+                    rewrittenNode.endPositionBeforeTrailingTrivia.utf8Offset - sourceCodeStartIndex
+                  ).with(\.leadingTrivia, .space)
+                )
+              )
+
             }
           }
-          checkArguments.append(Argument(label: "sourceCode", expression: sourceCodeExpr))
+          checkArguments.append(Argument(expression: sourceCodeRangesExpr))
         }
 
         // Include all arguments other than the "condition", "comment", and
