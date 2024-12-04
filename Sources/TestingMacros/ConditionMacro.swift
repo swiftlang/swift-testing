@@ -198,8 +198,11 @@ extension ConditionMacro {
 
           checkArguments.append(Argument(expression: argumentExpr))
 
-          let sourceCodeNodeIDs = rewrittenNodes.compactMap { $0.expressionID(rootedAt: originalArgumentExpr) }
-          let sourceCodeExprs = rewrittenNodes.map { StringLiteralExprSyntax(content: $0.trimmedDescription) }
+          // Sort the rewritten nodes. This isn't strictly necessary for
+          // correctness but it does make the produced code more consistent.
+          let sortedRewrittenNodes = rewrittenNodes.sorted { $0.id < $1.id }
+          let sourceCodeNodeIDs = sortedRewrittenNodes.compactMap { $0.expressionID(rootedAt: originalArgumentExpr) }
+          let sourceCodeExprs = sortedRewrittenNodes.map { StringLiteralExprSyntax(content: $0.trimmedDescription) }
           let sourceCodeExpr = DictionaryExprSyntax {
             for (nodeID, sourceCodeExpr) in zip(sourceCodeNodeIDs, sourceCodeExprs) {
               DictionaryElementSyntax(key: nodeID, value: sourceCodeExpr)

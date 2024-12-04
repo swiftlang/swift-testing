@@ -1075,16 +1075,13 @@ final class IssueTests: XCTestCase {
   }
 
   func testCollectionDifference() async throws {
-    try XCTSkipIf(true, "Collecting diffing not implemented yet")
-
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
         return
       }
       guard case let .expectationFailed(expectation) = issue.kind else {
-        XCTFail("Unexpected issue kind \(issue.kind)")
-        return
+        return XCTFail("Unexpected issue kind \(issue.kind)")
       }
       guard let differenceDescription = expectation.differenceDescription else {
         return XCTFail("Unexpected nil differenceDescription")
@@ -1100,9 +1097,29 @@ final class IssueTests: XCTestCase {
     }.run(configuration: configuration)
   }
 
-  func testCollectionDifferenceSkippedForStrings() async throws {
-    try XCTSkipIf(true, "Collecting diffing not implemented yet")
+  func testCollectionDifferenceForStrings() async throws {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      guard case let .expectationFailed(expectation) = issue.kind else {
+        return XCTFail("Unexpected issue kind \(issue.kind)")
+      }
+      guard let differenceDescription = expectation.differenceDescription else {
+        return XCTFail("Unexpected nil differenceDescription")
+      }
+      print(differenceDescription)
+      XCTAssertTrue(differenceDescription.contains(#"inserted ["hello""#))
+      XCTAssertTrue(differenceDescription.contains(#"removed ["helbo""#))
+    }
 
+    await Test {
+      #expect("hello\nworld" == "helbo\nworld")
+    }.run(configuration: configuration)
+  }
+
+  func testCollectionDifferenceSkippedForStringsWithoutNewlines() async throws {
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
@@ -1120,9 +1137,25 @@ final class IssueTests: XCTestCase {
     }.run(configuration: configuration)
   }
 
-  func testCollectionDifferenceSkippedForRanges() async throws {
-    try XCTSkipIf(true, "Collecting diffing not implemented yet")
+  func testCollectionDifferenceSkippedForStringsWithCharacterDifferencesOnly() async throws {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      guard case let .expectationFailed(expectation) = issue.kind else {
+        XCTFail("Unexpected issue kind \(issue.kind)")
+        return
+      }
+      XCTAssertNil(expectation.differenceDescription)
+    }
 
+    await Test {
+      #expect("hello\n" == "hello\r")
+    }.run(configuration: configuration)
+  }
+
+  func testCollectionDifferenceSkippedForRanges() async throws {
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       guard case let .issueRecorded(issue) = event.kind else {
