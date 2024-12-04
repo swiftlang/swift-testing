@@ -123,13 +123,20 @@ Once the header is included, we can call `GetDateTime()` from `Clock.swift`:
 ## Runtime test discovery
 
 When porting to a new platform, you may need to provide a new implementation for
-`enumerateTypeMetadataSections()` in `Discovery.cpp`. Test discovery is
-dependent on Swift metadata discovery which is an inherently platform-specific
-operation.
+`enumerateTestContentSections()` in `Discovery.cpp`. Test discovery is dependent
+on Swift metadata discovery which is an inherently platform-specific operation.
 
-_Most_ platforms will be able to reuse the implementation used by Linux and
-Windows that calls an internal Swift runtime function to enumerate available
-metadata. If you are porting Swift Testing to Classic, this function won't be
+> [!NOTE]
+> You do not need to proviate an implementation for the similarly-named function
+> `enumerateTypeMetadataSections()` in Discovery+Old.cpp: it is present for
+> backwards compatibility with Swift 6.0 toolchains and will be removed in a
+> future release.
+
+_Most_ platforms in use today use the ELF image format and will be able to reuse
+the implementation used by Linux. That implementation calls `dl_iterate_phdr()`
+in the GNU C Library to enumerate available metadata.
+
+If you are porting Swift Testing to Classic, `dl_iterate_phdr()` won't be
 available, so you'll need to write a custom implementation instead. Assuming
 that the Swift compiler emits section information into the resource fork on
 Classic, you could use the [Resource Manager](https://developer.apple.com/library/archive/documentation/mac/pdf/MoreMacintoshToolbox.pdf)
@@ -142,13 +149,13 @@ to load that information:
  // ...
 +#elif defined(macintosh)
 +template <typename SectionEnumerator>
-+static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
++static void enumerateTestContentSections(const SectionEnumerator& body) {
 +  ResFileRefNum refNum;
 +  if (noErr == GetTopResourceFile(&refNum)) {
 +    ResFileRefNum oldRefNum = refNum;
 +    do {
 +      UseResFile(refNum);
-+      Handle handle = Get1NamedResource('swft', "\p__swift5_types");
++      Handle handle = Get1NamedResource('swft', "\p__swift5_tests");
 +      if (handle && *handle) {
 +        auto imageAddress = reinterpret_cast<const void *>(static_cast<uintptr_t>(refNum));
 +        SWTSectionBounds sb = { imageAddress, *handle, GetHandleSize(handle) };
@@ -165,9 +172,29 @@ to load that information:
  #else
  #warning Platform-specific implementation missing: Runtime test discovery unavailable (dynamic)
  template <typename SectionEnumerator>
- static void enumerateTypeMetadataSections(const SectionEnumerator& body) {}
+ static void enumerateTestContentSections(const SectionEnumerator& body) {}
  #endif
 ```
+
+You will also need to update the `makeTestContentRecordDecl()` function in the
+`TestingMacros` target to emit the correct `@_section` attribute for your
+platform. If your platform uses the ELF image format and supports the
+`dl_iterate_phdr()` function, add it to the existing `#elseif os(Linux) || ...`
+case. Otherwise, add a new case for your platform:
+
+```diff
+--- a/Sources/TestingMacros/Support/TestContentGeneration.swift
++++ b/Sources/TestingMacros/Support/TestContentGeneration.swift
+   // ...
++  #elseif os(Classic)
++  @_section(".rsrc,swft,__swift5_tests")
+   #endif
+```
+
+Keep in mind that this code is emitted by the `@Test` and `@Suite` macros
+directly into test authors' test targets, so you will not be able to use
+compiler conditionals defined in the Swift Testing package (including those that
+start with `"SWT_"`).
 
 ## Runtime test discovery with static linkage
 
