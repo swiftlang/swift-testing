@@ -11,6 +11,9 @@
 /// A type providing unique identifiers for expressions captured during
 /// expansion of the `#expect()` and `#require()` macros.
 ///
+/// In the future, this type may use [`StaticBigInt`](https://developer.apple.com/documentation/swift/staticbigint)
+/// as its source representation rather than a string literal.
+///
 /// - Warning: This type is used to implement the `#expect()` and `#require()`
 ///   macros. Do not use it directly.
 public struct __ExpressionID: Sendable {
