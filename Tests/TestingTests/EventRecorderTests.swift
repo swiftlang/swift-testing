@@ -86,9 +86,7 @@ struct EventRecorderTests {
       #expect(!buffer.contains("●"))
     }
 
-    withKnownIssue("Collection diffing unsupported with new expression-capturing model") {
-      #expect(buffer.contains("inserted ["))
-    }
+    #expect(buffer.contains("inserted ["))
 
     if testsWithSignificantIOAreEnabled {
       print(buffer, terminator: "")

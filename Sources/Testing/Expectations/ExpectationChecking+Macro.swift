@@ -111,7 +111,7 @@ public func __checkCondition(
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) rethrows -> Result<Void, any Error> {
-  var expectationContext = __ExpectationContext(sourceCode: sourceCode)
+  var expectationContext = __ExpectationContext.init(sourceCode: sourceCode)
   let condition = try condition(&expectationContext)
 
   return check(
