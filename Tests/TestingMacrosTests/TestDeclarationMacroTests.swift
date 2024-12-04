@@ -374,7 +374,8 @@ struct TestDeclarationMacroTests {
 
   @Test("Self. in @Test attribute is removed")
   func removeSelfKeyword() throws {
-    let (output, _) = try parse("@Test(arguments: Self.nested.uniqueArgsName, NoTouching.thisOne) func f() {}")
+    let (output, diagnostics) = try parse("@Test(arguments: Self.nested.uniqueArgsName, NoTouching.thisOne) func f(a: A, b: B) {}")
+    try #require(diagnostics.isEmpty)
     #expect(output.contains("nested.uniqueArgsName"))
     #expect(!output.contains("Self.nested.uniqueArgsName"))
     #expect(output.contains("NoTouching.thisOne"))
@@ -473,6 +474,33 @@ struct TestDeclarationMacroTests {
     for diagnostic in diagnostics {
       #expect(diagnostic.diagMessage.severity == .warning)
       #expect(diagnostic.message == #"URL "\#(id)" is invalid and cannot be used with trait 'bug' in attribute 'Test'"#)
+    }
+  }
+
+  @Suite("Test function arguments")
+  struct Arguments {
+    @Test("A heterogeneous array literal ([...]) without an explicit type")
+    func heterogeneousArrayLiteral() throws {
+      let input = """
+        @Test(arguments: [
+          (String.self, "1"),
+          (Int.self, "2"),
+        ])
+        func example(type: Any.Type, label: String) {}
+        """
+      let (output, _) = try parse(input)
+      #expect(output.contains("as [(Any.Type, String)]"))
+    }
+
+    @Test("A heterogeneous array literal ([...]) with explicit 'as ...' type")
+    func heterogeneousArrayLiteralWithExplicitAs() throws {
+      let input = """
+        @Test(arguments: [Child.self, Child.self] as [Parent])
+        func example(type: Grandparent.Type) {}
+        """
+      let (output, _) = try parse(input)
+      #expect(output.contains("as [Parent]"))
+      #expect(!output.contains("as [Grandparent.Type]"))
     }
   }
 }

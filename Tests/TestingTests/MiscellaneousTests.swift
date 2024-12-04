@@ -570,3 +570,23 @@ struct MiscellaneousTests {
     #expect(duration < .seconds(1))
   }
 }
+
+@Test(.hidden, arguments: [String.self, Int.self])
+func heterogeneousArray(type: Any.Type) {}
+
+@Test(.hidden, arguments: [
+  (String.self, "1"),
+  (Int.self, "2"),
+])
+func heterogeneousTupleArray(type: Any.Type, label: String) {}
+
+@Test(.hidden, arguments:
+        [(String.self, 1), (Int.self, 2)],
+        ["A", "B", "C"])
+func heterogeneousCombinatoric(tuple: (Any.Type, Int), letter: Character) {}
+
+@Test(.hidden, arguments: [
+  "1": ["one", 1],
+  "2": ["two", 2],
+])
+func heterogeneousDictionary(label: String, type: [any Sendable]) {}

@@ -66,16 +66,18 @@ struct AttributeInfo {
   /// The traits applied to the attribute, if any.
   var traits = [ExprSyntax]()
 
+  /// Test arguments passed to a parameterized test function, if any.
+  ///
+  /// When non-`nil`, the value of this property is an array beginning with the
+  /// argument passed to this attribute for the parameter labeled `arguments:`
+  /// followed by all of the remaining, unlabeled arguments.
+  var testFunctionArguments: [Argument]?
+
   /// Whether or not this attribute specifies arguments to the associated test
   /// function.
   var hasFunctionArguments: Bool {
-    otherArguments.lazy
-      .compactMap(\.label?.tokenKind)
-      .contains(.identifier("arguments"))
+    testFunctionArguments != nil
   }
-
-  /// Additional arguments passed to the attribute, if any.
-  var otherArguments = [Argument]()
 
   /// The source location of the attribute.
   ///
@@ -98,6 +100,7 @@ struct AttributeInfo {
   init(byParsing attribute: AttributeSyntax, on declaration: some SyntaxProtocol, in context: some MacroExpansionContext) {
     self.attribute = attribute
 
+    var nonDisplayNameArguments: [Argument] = []
     if let arguments = attribute.arguments, case let .argumentList(argumentList) = arguments {
       // If the first argument is an unlabelled string literal, it's the display
       // name of the test or suite. If it's anything else, including a nil
@@ -106,11 +109,11 @@ struct AttributeInfo {
         let firstArgumentHasLabel = (firstArgument.label != nil)
         if !firstArgumentHasLabel, let stringLiteral = firstArgument.expression.as(StringLiteralExprSyntax.self) {
           displayName = stringLiteral
-          otherArguments = argumentList.dropFirst().map(Argument.init)
+          nonDisplayNameArguments = argumentList.dropFirst().map(Argument.init)
         } else if !firstArgumentHasLabel, firstArgument.expression.is(NilLiteralExprSyntax.self) {
-          otherArguments = argumentList.dropFirst().map(Argument.init)
+          nonDisplayNameArguments = argumentList.dropFirst().map(Argument.init)
         } else {
-          otherArguments = argumentList.map(Argument.init)
+          nonDisplayNameArguments = argumentList.map(Argument.init)
         }
       }
     }
@@ -119,7 +122,7 @@ struct AttributeInfo {
     // See _SelfRemover for more information. Rewriting a syntax tree discards
     // location information from the copy, so only invoke the rewriter if the
     // `Self` keyword is present somewhere.
-    otherArguments = otherArguments.map { argument in
+    nonDisplayNameArguments = nonDisplayNameArguments.map { argument in
       var expr = argument.expression
       if argument.expression.tokens(viewMode: .sourceAccurate).map(\.tokenKind).contains(.keyword(.Self)) {
         let selfRemover = _SelfRemover(in: context)
@@ -131,16 +134,23 @@ struct AttributeInfo {
     // Look for any traits in the remaining arguments and slice them off. Traits
     // are the remaining unlabelled arguments. The first labelled argument (if
     // present) is the start of subsequent context-specific arguments.
-    if !otherArguments.isEmpty {
-      if let labelledArgumentIndex = otherArguments.firstIndex(where: { $0.label != nil }) {
+    if !nonDisplayNameArguments.isEmpty {
+      if let labelledArgumentIndex = nonDisplayNameArguments.firstIndex(where: { $0.label != nil }) {
         // There is an argument with a label, so splice there.
-        traits = otherArguments[otherArguments.startIndex ..< labelledArgumentIndex].map(\.expression)
-        otherArguments = Array(otherArguments[labelledArgumentIndex...])
+        traits = nonDisplayNameArguments[nonDisplayNameArguments.startIndex ..< labelledArgumentIndex].map(\.expression)
+        testFunctionArguments = Array(nonDisplayNameArguments[labelledArgumentIndex...])
       } else {
         // No argument has a label, so all the remaining arguments are traits.
-        traits = otherArguments.map(\.expression)
-        otherArguments.removeAll(keepingCapacity: false)
+        traits = nonDisplayNameArguments.map(\.expression)
       }
+    }
+
+    // If this attribute is attached to a parameterized test function, augment
+    // the argument expressions with explicit type information based on the
+    // parameters of the function signature to help the type checker infer the
+    // types of passed-in collections correctly.
+    if let testFunctionArguments, let functionDecl = declaration.as(FunctionDeclSyntax.self) {
+      self.testFunctionArguments = testFunctionArguments.testArguments(typedUsingParameters: functionDecl.signature.parameterClause.parameters)
     }
 
     // Combine traits from other sources (leading comments and availability
@@ -178,23 +188,63 @@ struct AttributeInfo {
       }
     }))
 
-    // Any arguments of the test declaration macro which specify test arguments
-    // need to be wrapped a closure so they may be evaluated lazily by the
-    // testing library at runtime. If any such arguments are present, they will
-    // begin with a labeled argument named `arguments:` and include all
-    // subsequent unlabeled arguments.
-    var otherArguments = self.otherArguments
-    if let argumentsIndex = otherArguments.firstIndex(where: { $0.label?.tokenKind == .identifier("arguments") }) {
-      for index in argumentsIndex ..< otherArguments.endIndex {
-        var argument = otherArguments[index]
-        argument.expression = .init(ClosureExprSyntax { argument.expression.trimmed })
-        otherArguments[index] = argument
+    // If there are any parameterized test function arguments, wrap each in a
+    // closure so they may be evaluated lazily at runtime.
+    if let testFunctionArguments {
+      arguments += testFunctionArguments.map { argument in
+        var copy = argument
+        copy.expression = .init(ClosureExprSyntax { argument.expression.trimmed })
+        return copy
       }
     }
 
-    arguments += otherArguments
     arguments.append(Argument(label: "sourceLocation", expression: sourceLocation))
 
     return LabeledExprListSyntax(arguments)
+  }
+}
+
+extension Collection<Argument> {
+  /// This collection of test function arguments augmented with explicit type
+  /// information based on the specified function parameters, if appropriate.
+  ///
+  /// - Parameters:
+  ///   - parameters: The parameters of the function to which this collection of
+  ///     test arguments was passed.
+  ///
+  /// - Returns: An array containing this collection of test arguments with
+  ///   any array literal expressions given explicit type information via an
+  ///   `as ...` cast.
+  fileprivate func testArguments(typedUsingParameters parameters: FunctionParameterListSyntax) -> [Argument] {
+    if count == 1 {
+      let tupleTypes = parameters.lazy
+        .map(\.type)
+        .map(String.init(describing:))
+        .joined(separator: ",")
+
+      return map { argument in
+        // Only add explicit types below if this is an Array literal expression.
+        guard argument.expression.is(ArrayExprSyntax.self) else {
+          return argument
+        }
+
+        var argument = argument
+        argument.expression = "\(argument.expression) as [(\(raw: tupleTypes))]"
+        return argument
+      }
+    } else {
+      return zip(self, parameters)
+        .map { argument, parameter in
+          // Only add explicit types below if this is an Array literal
+          // expression.
+          guard argument.expression.is(ArrayExprSyntax.self) else {
+            return argument
+          }
+
+          var argument = argument
+          argument.expression = .init(AsExprSyntax(expression: argument.expression, type: ArrayTypeSyntax(element: parameter.type)))
+          return argument
+        }
+    }
   }
 }

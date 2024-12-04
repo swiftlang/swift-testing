@@ -199,13 +199,33 @@ extension [Test.__Parameter] {
 ///
 /// ## See Also
 ///
-/// - ``Test(_:arguments:)-35dat``
+/// - ``Test(_:_:arguments:)-8kn7a``
 @attached(peer)
 @_documentation(visibility: private)
 public macro Test<C>(
   _ traits: any TestTrait...,
   arguments collection: C
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where C: Collection & Sendable, C.Element: Sendable
+
+/// This macro declaration is necessary to allow non-`Sendable` collections to
+/// be passed as test arguments.
+///
+/// This macro declaration is similar to the above overload, but with all
+/// `Sendable` constraints removed, so it does not need to be documented
+/// separately. This macro's expansion code still calls APIs from the testing
+/// library which require `Sendable`, however, so despite its relaxed generic
+/// constraints, callers must still pass sendable collections to avoid compiler
+/// diagnostics.
+///
+/// ## See Also
+///
+/// - ``Test(_:_:arguments:)-8kn7a``
+@attached(peer)
+@_documentation(visibility: private)
+public macro Test<C>(
+  _ traits: any TestTrait...,
+  arguments collection: C
+) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where C: Collection
 
 /// Declare a test parameterized over a collection of values.
 ///
@@ -233,6 +253,27 @@ public macro Test<C>(
   _ traits: any TestTrait...,
   arguments collection: C
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where C: Collection & Sendable, C.Element: Sendable
+
+/// This macro declaration is necessary to allow non-`Sendable` collections to
+/// be passed as test arguments.
+///
+/// This macro declaration is similar to the above overload, but with all
+/// `Sendable` constraints removed, so it does not need to be documented
+/// separately. This macro's expansion code still calls APIs from the testing
+/// library which require `Sendable`, however, so despite its relaxed generic
+/// constraints, callers must still pass sendable collections to avoid compiler
+/// diagnostics.
+///
+/// ## See Also
+///
+/// - ``Test(_:_:arguments:)-8kn7a``
+@attached(peer)
+@_documentation(visibility: private)
+public macro Test<C>(
+  _ displayName: _const String? = nil,
+  _ traits: any TestTrait...,
+  arguments collection: C
+) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where C: Collection
 
 extension Test {
   /// Create an instance of ``Test`` for a parameterized function.
@@ -280,6 +321,7 @@ extension Test {
 ///
 /// ## See Also
 ///
+/// - ``Test(_:_:arguments:_:)-40xp7``
 /// - <doc:DefiningTests>
 @attached(peer)
 @_documentation(visibility: private)
@@ -287,6 +329,26 @@ public macro Test<C1, C2>(
   _ traits: any TestTrait...,
   arguments collection1: C1, _ collection2: C2
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable
+
+/// This macro declaration is necessary to allow non-`Sendable` collections to
+/// be passed as test arguments.
+///
+/// This macro declaration is similar to the above overload, but with all
+/// `Sendable` constraints removed, so it does not need to be documented
+/// separately. This macro's expansion code still calls APIs from the testing
+/// library which require `Sendable`, however, so despite its relaxed generic
+/// constraints, callers must still pass sendable collections to avoid compiler
+/// diagnostics.
+///
+/// ## See Also
+///
+/// - ``Test(_:_:arguments:_:)-40xp7``
+@attached(peer)
+@_documentation(visibility: private)
+public macro Test<C1, C2>(
+  _ traits: any TestTrait...,
+  arguments collection1: C1, _ collection2: C2
+) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where C1: Collection, C2: Collection
 
 /// Declare a test parameterized over two collections of values.
 ///
@@ -314,6 +376,27 @@ public macro Test<C1, C2>(
   _ traits: any TestTrait...,
   arguments collection1: C1, _ collection2: C2
 ) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable
+
+/// This macro declaration is necessary to allow non-`Sendable` collections to
+/// be passed as test arguments.
+///
+/// This macro declaration is similar to the above overload, but with all
+/// `Sendable` constraints removed, so it does not need to be documented
+/// separately. This macro's expansion code still calls APIs from the testing
+/// library which require `Sendable`, however, so despite its relaxed generic
+/// constraints, callers must still pass sendable collections to avoid compiler
+/// diagnostics.
+///
+/// ## See Also
+///
+/// - ``Test(_:_:arguments:_:)-40xp7``
+@attached(peer)
+@_documentation(visibility: private)
+public macro Test<C1, C2>(
+  _ displayName: _const String? = nil,
+  _ traits: any TestTrait...,
+  arguments collection1: C1, _ collection2: C2
+) = #externalMacro(module: "TestingMacros", type: "TestDeclarationMacro") where C1: Collection, C2: Collection
 
 // MARK: - @Test(arguments: zip(...))
 
