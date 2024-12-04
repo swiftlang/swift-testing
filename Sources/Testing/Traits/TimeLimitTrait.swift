@@ -12,7 +12,7 @@
 ///
 /// To add this trait to a test, use one of the following functions:
 ///
-/// - ``Trait/timeLimit(_:)``
+/// - ``Trait/timeLimit(_:)-4kzjp``
 @available(_clockAPI, *)
 public struct TimeLimitTrait: TestTrait, SuiteTrait {
   /// A type representing the duration of a time limit applied to a test.
@@ -189,7 +189,7 @@ extension Test {
   ///
   /// Time limits are associated with tests using this trait:
   ///
-  /// - ``Trait/timeLimit(_:)``
+  /// - ``Trait/timeLimit(_:)-4kzjp``
   ///
   /// If a test has more than one time limit associated with it, the value of
   /// this property is the shortest one. If a test has no time limits associated

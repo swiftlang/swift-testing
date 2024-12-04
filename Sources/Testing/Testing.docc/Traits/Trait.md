@@ -22,7 +22,7 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 ### Limiting the running time of tests
 
-- ``Trait/timeLimit(_:)``
+- ``Trait/timeLimit(_:)-4kzjp``
  
 ### Running tests serially or in parallel
 

@@ -53,8 +53,8 @@ public struct ExitTest: Sendable, ~Copyable {
   /// this property to determine what information you need to preserve from your
   /// child process.
   ///
-  /// The value of this property always includes ``Result/exitCondition`` even
-  /// if the test author does not specify it.
+  /// The value of this property always includes ``ExitTestArtifacts/exitCondition``
+  /// even if the test author does not specify it.
   ///
   /// Within a child process running an exit test, the value of this property is
   /// otherwise unspecified.

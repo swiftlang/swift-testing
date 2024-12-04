@@ -30,7 +30,7 @@ behavior of test functions.
 - ``Trait/disabled(_:sourceLocation:)``
 - ``Trait/disabled(if:_:sourceLocation:)``
 - ``Trait/disabled(_:sourceLocation:_:)``
-- ``Trait/timeLimit(_:)``
+- ``Trait/timeLimit(_:)-4kzjp``
 
 ### Running tests serially or in parallel
 

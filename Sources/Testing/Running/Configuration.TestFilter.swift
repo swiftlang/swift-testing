@@ -116,7 +116,7 @@ extension Configuration.TestFilter {
   /// of test IDs.
   ///
   /// - Parameters:
-  ///   - selection: A set of test IDs to be excluded.
+  ///   - testIDs: A set of test IDs to be excluded.
   public init(excluding testIDs: some Collection<Test.ID>) {
     self.init(_kind: .testIDs(Set(testIDs), membership: .excluding))
   }
