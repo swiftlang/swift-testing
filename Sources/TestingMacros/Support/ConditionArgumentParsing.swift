@@ -123,6 +123,8 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   /// (or rather, its `callAsFunction(_:_:)` member).
   ///
   /// - Parameters:
+  ///   - functionNameExpr: If not `nil`, the name of the function to call (as a
+  ///     member of the expression context.)
   ///   - node: The node to rewrite.
   ///   - originalNode: The original node in the original syntax tree, if `node`
   ///     has already been partially rewritten or substituted. If `node` has not
@@ -130,19 +132,26 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   ///
   /// - Returns: A rewritten copy of `node` that calls into the expression
   ///   context when it is evaluated at runtime.
-  private func _rewrite<E>(_ node: E, originalWas originalNode: some SyntaxProtocol) -> ExprSyntax where E: ExprSyntaxProtocol {
-    if rewrittenNodes.contains(Syntax(originalNode)) {
+  private func _rewrite<E>(_ node: E, originalWas originalNode: some SyntaxProtocol, calling functionName: TokenSyntax? = nil, passing additionalArguments: [Argument] = []) -> ExprSyntax where E: ExprSyntaxProtocol {
+    guard rewrittenNodes.insert(Syntax(originalNode)).inserted else {
       // If this node has already been rewritten, we don't need to rewrite it
       // again. (Currently, this can only happen when expanding binary operators
       // which need a bit of extra help.)
       return ExprSyntax(node)
     }
 
-    rewrittenNodes.insert(Syntax(originalNode))
+    let calledExpr: ExprSyntax = if let functionName {
+      ExprSyntax(MemberAccessExprSyntax(base: expressionContextNameExpr, name: functionName))
+    } else {
+      ExprSyntax(expressionContextNameExpr)
+    }
 
-    var result = FunctionCallExprSyntax(calledExpression: expressionContextNameExpr) {
+    var result = FunctionCallExprSyntax(calledExpression: calledExpr) {
       LabeledExprSyntax(expression: node.trimmed)
       LabeledExprSyntax(expression: originalNode.expressionID(rootedAt: effectiveRootNode))
+      for argument in additionalArguments {
+        LabeledExprSyntax(argument)
+      }
     }
 
     result.leftParen = .leftParenToken()
@@ -331,41 +340,27 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
     if let op = node.operator.as(BinaryOperatorExprSyntax.self)?.operator.textWithoutBackticks,
        op == "==" || op == "!=" || op == "===" || op == "!==" {
 
-      rewrittenNodes.insert(Syntax(node))
-      rewrittenNodes.insert(Syntax(node.leftOperand))
-      rewrittenNodes.insert(Syntax(node.rightOperand))
-
-      var result = FunctionCallExprSyntax(
-        calledExpression: MemberAccessExprSyntax(
-          base: expressionContextNameExpr,
-          name: .identifier("__cmp")
-        )
-      ) {
-        LabeledExprSyntax(expression: visit(node.leftOperand))
-        LabeledExprSyntax(expression: node.leftOperand.expressionID(rootedAt: effectiveRootNode))
-        LabeledExprSyntax(expression: visit(node.rightOperand))
-        LabeledExprSyntax(expression: node.rightOperand.expressionID(rootedAt: effectiveRootNode))
-        LabeledExprSyntax(
-          expression: ClosureExprSyntax {
-            InfixOperatorExprSyntax(
-              leftOperand: DeclReferenceExprSyntax(
-                baseName: .dollarIdentifier("$0")
-              ).with(\.trailingTrivia, .space),
-              operator: BinaryOperatorExprSyntax(text: op),
-              rightOperand: DeclReferenceExprSyntax(
-                baseName: .dollarIdentifier("$1")
-              ).with(\.leadingTrivia, .space)
-            )
-          }
-        )
-        LabeledExprSyntax(expression: node.expressionID(rootedAt: effectiveRootNode))
-      }
-      result.leftParen = .leftParenToken()
-      result.rightParen = .rightParenToken()
-      result.leadingTrivia = node.leadingTrivia
-      result.trailingTrivia = node.trailingTrivia
-
-      return ExprSyntax(result)
+      return _rewrite(
+        ClosureExprSyntax {
+          InfixOperatorExprSyntax(
+            leftOperand: DeclReferenceExprSyntax(
+              baseName: .dollarIdentifier("$0")
+            ).with(\.trailingTrivia, .space),
+            operator: BinaryOperatorExprSyntax(text: op),
+            rightOperand: DeclReferenceExprSyntax(
+              baseName: .dollarIdentifier("$1")
+            ).with(\.leadingTrivia, .space)
+          )
+        },
+        originalWas: node,
+        calling: .identifier("__cmp"),
+        passing: [
+          Argument(expression: visit(node.leftOperand)),
+          Argument(expression: node.leftOperand.expressionID(rootedAt: effectiveRootNode)),
+          Argument(expression: visit(node.rightOperand)),
+          Argument(expression: node.rightOperand.expressionID(rootedAt: effectiveRootNode))
+        ]
+      )
     }
 
     return _rewrite(
@@ -384,48 +379,41 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
 
   // MARK: - Casts
 
-  /// Create a function call that represents an `is` or `as?` cast.
+  /// Rewrite an `is` or `as?` cast.
   ///
   /// - Parameters:
   ///   - valueExpr: The expression to cast.
   ///   - isAsKeyword: The casting keyword (either `.is` or `.as`).
   ///   - type: The type to cast `valueExpr` to.
+  ///   - originalNode: The original `IsExprSyntax` or `AsExprSyntax` node in
+  ///     the original syntax tree.
   ///
   /// - Returns: A function call expression equivalent to the described cast.
-  private func _makeCastCall(_ valueExpr: ExprSyntax, _ isAsKeyword: Keyword, _ type: TypeSyntax) -> FunctionCallExprSyntax {
-    var result = FunctionCallExprSyntax(
-      calledExpression: MemberAccessExprSyntax(
-        base: expressionContextNameExpr,
-        name: .identifier("__\(isAsKeyword)")
-      )
-    ) {
-      LabeledExprSyntax(expression: visit(valueExpr).trimmed)
-      LabeledExprSyntax(
-        expression: _rewrite(
-          MemberAccessExprSyntax(
+  private func _rewriteAsCast(_ valueExpr: ExprSyntax, _ isAsKeyword: Keyword, _ type: TypeSyntax, originalWas originalNode: some SyntaxProtocol) -> ExprSyntax {
+    rewrittenNodes.insert(Syntax(type))
+
+    return _rewrite(
+      visit(valueExpr).trimmed,
+      originalWas: originalNode,
+      calling: .identifier("__\(isAsKeyword)"),
+      passing: [
+        Argument(
+          expression: MemberAccessExprSyntax(
             base: TupleExprSyntax {
               LabeledExprSyntax(expression: TypeExprSyntax(type: type.trimmed))
             },
             declName: DeclReferenceExprSyntax(baseName: .keyword(.self))
-          ),
-          originalWas: type
-        )
-      )
-      LabeledExprSyntax(expression: type.expressionID(rootedAt: effectiveRootNode))
-    }
-    result.leftParen = .leftParenToken()
-    result.rightParen = .rightParenToken()
-
-    return result
+          )
+        ),
+        Argument(expression: type.expressionID(rootedAt: effectiveRootNode))
+      ]
+    )
   }
 
   override func visit(_ node: AsExprSyntax) -> ExprSyntax {
     switch node.questionOrExclamationMark?.tokenKind {
     case .postfixQuestionMark:
-      return _rewrite(
-        _makeCastCall(node.expression, .as, node.type),
-        originalWas: node
-      )
+      return _rewriteAsCast(node.expression, .as, node.type, originalWas: node)
 
     case .exclamationMark where !node.type.isNamed("Bool", inModuleNamed: "Swift") && !node.type.isOptional:
       // Warn that as! will be evaluated before #expect() or #require(), which is
@@ -436,21 +424,19 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
       context.diagnose(.asExclamationMarkIsEvaluatedEarly(node, in: macro))
       return _rewrite(node)
 
-    default:
+    case .exclamationMark:
       // Only diagnose for `x as! T`. `x as T` is perfectly fine if it otherwise
       // compiles. For example, `#require(x as Int?)` should compile.
-      //
-      // If the token after "as" is something else entirely and got through the
-      // type checker, just leave it alone as we don't recognize it.
       return _rewrite(node)
+
+    default:
+      // This is an "escape hatch" cast. Do not attempt to process the cast.
+      return ExprSyntax(node)
     }
   }
 
   override func visit(_ node: IsExprSyntax) -> ExprSyntax {
-    _rewrite(
-      _makeCastCall(node.expression, .is, node.type),
-      originalWas: node
-    )
+    _rewriteAsCast(node.expression, .is, node.type, originalWas: node)
   }
 
   // MARK: - Literals

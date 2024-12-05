@@ -269,12 +269,12 @@ extension __ExpectationContext {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   public mutating func __cmp<T, U, R>(
+    _ op: (T, U) throws -> R,
+    _ opID: __ExpressionID,
     _ lhs: T,
     _ lhsID: __ExpressionID,
     _ rhs: U,
-    _ rhsID: __ExpressionID,
-    _ op: (T, U) throws -> R,
-    _ opID: __ExpressionID
+    _ rhsID: __ExpressionID
   ) rethrows -> R {
     try self(op(self(lhs, lhsID), self(rhs, rhsID)), opID)
   }
@@ -287,12 +287,12 @@ extension __ExpectationContext {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   public mutating func __cmp<C>(
+    _ op: (C, C) -> Bool,
+    _ opID: __ExpressionID,
     _ lhs: C,
     _ lhsID: __ExpressionID,
     _ rhs: C,
-    _ rhsID: __ExpressionID,
-    _ op: (C, C) -> Bool,
-    _ opID: __ExpressionID
+    _ rhsID: __ExpressionID
   ) -> Bool where C: BidirectionalCollection, C.Element: Equatable {
     let result = self(op(self(lhs, lhsID), self(rhs, rhsID)), opID)
 
@@ -309,17 +309,17 @@ extension __ExpectationContext {
   ///
   /// This overload of `__cmp()` does _not_ perform a diffing operation on `lhs`
   /// and `rhs`. Range expressions are not usefully diffable the way other kinds
-  /// of collections are. ([139222774](rdar://139222774))
+  /// of collections are. ([#639](https://github.com/swiftlang/swift-testing/issues/639))
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   public mutating func __cmp<R>(
+    _ op: (R, R) -> Bool,
+    _ opID: __ExpressionID,
     _ lhs: R,
     _ lhsID: __ExpressionID,
     _ rhs: R,
-    _ rhsID: __ExpressionID,
-    _ op: (R, R) -> Bool,
-    _ opID: __ExpressionID
+    _ rhsID: __ExpressionID
   ) -> Bool where R: RangeExpression & BidirectionalCollection, R.Element: Equatable {
     self(op(self(lhs, lhsID), self(rhs, rhsID)), opID)
   }
@@ -333,12 +333,12 @@ extension __ExpectationContext {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   public mutating func __cmp<S>(
+    _ op: (S, S) -> Bool,
+    _ opID: __ExpressionID,
     _ lhs: S,
     _ lhsID: __ExpressionID,
     _ rhs: S,
-    _ rhsID: __ExpressionID,
-    _ op: (S, S) -> Bool,
-    _ opID: __ExpressionID
+    _ rhsID: __ExpressionID
   ) -> Bool where S: StringProtocol {
     let result = self(op(self(lhs, lhsID), self(rhs, rhsID)), opID)
 
@@ -376,9 +376,11 @@ extension __ExpectationContext {
   ///
   /// - Parameters:
   ///   - value: The value to cast.
+  ///   - valueID: A value that uniquely identifies the expression represented
+  ///     by `value` in the context of the expectation being evaluated.
   ///   - type: The type to cast `value` to.
-  ///   - typeID: The ID chain of the `type` expression as emitted during
-  ///     expansion of the `#expect()` or `#require()` macro.
+  ///   - valueID: A value that uniquely identifies the expression represented
+  ///     by `type` in the context of the expectation being evaluated.
   ///
   /// - Returns: The result of the expression `value as? type`.
   ///
@@ -388,12 +390,12 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public mutating func __as<T, U>(_ value: T, _ type: U.Type, _ typeID: __ExpressionID) -> U? {
-    let result = value as? U
+  public mutating func __as<T, U>(_ value: T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> U? {
+    let result = self(value, valueID) as? U
 
     if result == nil {
       let correctType = Swift.type(of: value as Any)
-      runtimeValues[typeID] = { Expression.Value(reflecting: correctType) }
+      _ = self(correctType, typeID)
     }
 
     return result
@@ -403,9 +405,11 @@ extension __ExpectationContext {
   ///
   /// - Parameters:
   ///   - value: The value to cast.
+  ///   - valueID: A value that uniquely identifies the expression represented
+  ///     by `value` in the context of the expectation being evaluated.
   ///   - type: The type `value` is expected to be.
-  ///   - typeID: The ID chain of the `type` expression as emitted during
-  ///     expansion of the `#expect()` or `#require()` macro.
+  ///   - valueID: A value that uniquely identifies the expression represented
+  ///     by `type` in the context of the expectation being evaluated.
   ///
   /// - Returns: The result of the expression `value as? type`.
   ///
@@ -415,12 +419,12 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public mutating func __is<T, U>(_ value: T, _ type: U.Type, _ typeID: __ExpressionID) -> Bool {
-    let result = value is U
+  public mutating func __is<T, U>(_ value: T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> Bool {
+    let result = self(value, valueID) is U
 
     if !result {
       let correctType = Swift.type(of: value as Any)
-      runtimeValues[typeID] = { Expression.Value(reflecting: correctType) }
+      _ = self(correctType, typeID)
     }
 
     return result
@@ -445,8 +449,9 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public mutating func callAsFunction<P, T>(_ value: P, _ id: __ExpressionID) -> UnsafePointer<T> where P: _Pointer {
-    self(value as P?, id)!
+  @_disfavoredOverload
+  public mutating func callAsFunction<PFrom, PTo>(_ value: PFrom, _ id: __ExpressionID) -> PTo where PFrom: _Pointer, PTo: _Pointer {
+    self(value as PFrom?, id) as! PTo
   }
 
   /// Convert some pointer to an immutable one and capture information about it
@@ -464,46 +469,11 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public mutating func callAsFunction<P, T>(_ value: P?, _ id: __ExpressionID) -> UnsafePointer<T>? where P: _Pointer {
-    UnsafePointer(bitPattern: Int(bitPattern: self(value, id) as P?))
-  }
-
-  /// Convert some pointer to an immutable one and capture information about it
-  /// for use if the expectation currently being evaluated fails.
-  ///
-  /// - Parameters:
-  ///   - value: The pointer to make immutable.
-  ///   - id: A value that uniquely identifies the represented expression in the
-  ///     context of the expectation currently being evaluated.
-  ///
-  /// - Returns: `value`, cast to an immutable pointer.
-  ///
-  /// This overload of `callAsFunction(_:_:)` handles the implicit conversions
-  /// between various pointer types that are normally provided by the compiler.
-  ///
-  /// - Warning: This function is used to implement the `#expect()` and
-  ///   `#require()` macros. Do not call it directly.
-  public mutating func callAsFunction<P>(_ value: P, _ id: __ExpressionID) -> UnsafeRawPointer where P: _Pointer {
-    self(value as P?, id)!
-  }
-
-  /// Convert some pointer to an immutable one and capture information about it
-  /// for use if the expectation currently being evaluated fails.
-  ///
-  /// - Parameters:
-  ///   - value: The pointer to make immutable.
-  ///   - id: A value that uniquely identifies the represented expression in the
-  ///     context of the expectation currently being evaluated.
-  ///
-  /// - Returns: `value`, cast to an immutable pointer.
-  ///
-  /// This overload of `callAsFunction(_:_:)` handles the implicit conversions
-  /// between various pointer types that are normally provided by the compiler.
-  ///
-  /// - Warning: This function is used to implement the `#expect()` and
-  ///   `#require()` macros. Do not call it directly.
-  public mutating func callAsFunction<P>(_ value: P?, _ id: __ExpressionID) -> UnsafeRawPointer? where P: _Pointer {
-    UnsafeRawPointer(bitPattern: Int(bitPattern: self(value, id) as P?))
+  @_disfavoredOverload
+  public mutating func callAsFunction<PFrom, PTo>(_ value: PFrom?, _ id: __ExpressionID) -> PTo? where PFrom: _Pointer, PTo: _Pointer {
+    value.flatMap { value in
+      PTo(bitPattern: Int(bitPattern: self(value, id) as PFrom))
+    }
   }
 }
 

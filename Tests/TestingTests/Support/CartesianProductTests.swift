@@ -30,9 +30,10 @@ struct CartesianProductTests {
   func count() {
     // Test the size of the product is correct.
     let (c1, c2, product) = computeCartesianProduct()
-    #expect((product.underestimatedCount == c1.underestimatedCount * c2.underestimatedCount) as Bool)
-    #expect((Array(product).count == c1.count * c2.count) as Bool)
-    #expect((Array(product).count == 26 * 100) as Bool)
+    #expect(product.underestimatedCount == c1.underestimatedCount * c2.underestimatedCount)
+    let productCount = Array(product).count
+    #expect(productCount == c1.count * c2.count)
+    #expect(productCount == (26 * 100) as Int)
   }
 
   @Test("First element is correct")

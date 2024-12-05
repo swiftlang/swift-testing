@@ -468,6 +468,7 @@ final class IssueTests: XCTestCase {
         XCTFail("Unexpected issue kind \(issue.kind)")
         return
       }
+      print(expectation.evaluatedExpression.expandedDescription())
       assert(expectation.evaluatedExpression, contains: #"someString() → "abc123""#)
       assert(expectation.evaluatedExpression, contains: "Int → String")
 
