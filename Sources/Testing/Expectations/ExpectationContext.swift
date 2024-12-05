@@ -430,8 +430,8 @@ extension __ExpectationContext {
 // MARK: - Implicit pointer conversion
 
 extension __ExpectationContext {
-  /// Convert a mutable pointer to an immutable one and capture information
-  /// about it for use if the expectation currently being evaluated fails.
+  /// Convert some pointer to an immutable one and capture information about it
+  /// for use if the expectation currently being evaluated fails.
   ///
   /// - Parameters:
   ///   - value: The pointer to make immutable.
@@ -440,76 +440,70 @@ extension __ExpectationContext {
   ///
   /// - Returns: `value`, cast to an immutable pointer.
   ///
-  /// This overload of `callAsFunction(_:_:)` handles the implicit conversion
-  /// from a mutable to an immutable pointer that is normally provided by the
-  /// compiler.
+  /// This overload of `callAsFunction(_:_:)` handles the implicit conversions
+  /// between various pointer types that are normally provided by the compiler.
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public mutating func callAsFunction<T>(_ value: UnsafeMutablePointer<T>, _ id: __ExpressionID) -> UnsafePointer<T> {
-    UnsafePointer(self(value, id) as UnsafeMutablePointer<T>)
+  public mutating func callAsFunction<P, T>(_ value: P, _ id: __ExpressionID) -> UnsafePointer<T> where P: _Pointer {
+    self(value as P?, id)!
   }
 
-  /// Convert an optional mutable pointer to an immutable one and capture
-  /// information about it for use if the expectation currently being evaluated
-  /// fails.
-  ///
-  /// - Parameters:
-  ///   - value: The pointer to make immutable, or `nil`.
-  ///   - id: A value that uniquely identifies the represented expression in the
-  ///     context of the expectation currently being evaluated.
-  ///
-  /// - Returns: `value`, cast to an immutable pointer.
-  ///
-  /// This overload of `callAsFunction(_:_:)` handles the implicit conversion
-  /// from a mutable to an immutable pointer that is normally provided by the
-  /// compiler.
-  ///
-  /// - Warning: This function is used to implement the `#expect()` and
-  ///   `#require()` macros. Do not call it directly.
-  public mutating func callAsFunction<T>(_ value: UnsafeMutablePointer<T>?, _ id: __ExpressionID) -> UnsafePointer<T>? {
-    UnsafePointer(self(value, id) as UnsafeMutablePointer<T>?)
-  }
-
-  /// Convert a mutable raw pointer to an immutable one and capture information
-  /// about it for use if the expectation currently being evaluated fails.
+  /// Convert some pointer to an immutable one and capture information about it
+  /// for use if the expectation currently being evaluated fails.
   ///
   /// - Parameters:
   ///   - value: The pointer to make immutable.
   ///   - id: A value that uniquely identifies the represented expression in the
   ///     context of the expectation currently being evaluated.
   ///
-  /// - Returns: `value`, cast to an immutable raw pointer.
+  /// - Returns: `value`, cast to an immutable pointer.
   ///
-  /// This overload of `callAsFunction(_:_:)` handles the implicit conversion
-  /// from a mutable to an immutable pointer that is normally provided by the
-  /// compiler.
+  /// This overload of `callAsFunction(_:_:)` handles the implicit conversions
+  /// between various pointer types that are normally provided by the compiler.
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public mutating func callAsFunction(_ value: UnsafeMutableRawPointer, _ id: __ExpressionID) -> UnsafeRawPointer {
-    UnsafeRawPointer(self(value, id) as UnsafeMutableRawPointer)
+  public mutating func callAsFunction<P, T>(_ value: P?, _ id: __ExpressionID) -> UnsafePointer<T>? where P: _Pointer {
+    UnsafePointer(bitPattern: Int(bitPattern: self(value, id) as P?))
   }
 
-  /// Convert an optional mutable raw pointer to an immutable one and capture
-  /// information about it for use if the expectation currently being evaluated
-  /// fails.
+  /// Convert some pointer to an immutable one and capture information about it
+  /// for use if the expectation currently being evaluated fails.
   ///
   /// - Parameters:
-  ///   - value: The pointer to make immutable, or `nil`.
+  ///   - value: The pointer to make immutable.
   ///   - id: A value that uniquely identifies the represented expression in the
   ///     context of the expectation currently being evaluated.
   ///
-  /// - Returns: `value`, cast to an immutable raw pointer.
+  /// - Returns: `value`, cast to an immutable pointer.
   ///
-  /// This overload of `callAsFunction(_:_:)` handles the implicit conversion
-  /// from a mutable to an immutable pointer that is normally provided by the
-  /// compiler.
+  /// This overload of `callAsFunction(_:_:)` handles the implicit conversions
+  /// between various pointer types that are normally provided by the compiler.
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public mutating func callAsFunction(_ value: UnsafeMutableRawPointer?, _ id: __ExpressionID) -> UnsafeRawPointer? {
-    UnsafeRawPointer(self(value, id) as UnsafeMutableRawPointer?)
+  public mutating func callAsFunction<P>(_ value: P, _ id: __ExpressionID) -> UnsafeRawPointer where P: _Pointer {
+    self(value as P?, id)!
+  }
+
+  /// Convert some pointer to an immutable one and capture information about it
+  /// for use if the expectation currently being evaluated fails.
+  ///
+  /// - Parameters:
+  ///   - value: The pointer to make immutable.
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  ///
+  /// - Returns: `value`, cast to an immutable pointer.
+  ///
+  /// This overload of `callAsFunction(_:_:)` handles the implicit conversions
+  /// between various pointer types that are normally provided by the compiler.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  public mutating func callAsFunction<P>(_ value: P?, _ id: __ExpressionID) -> UnsafeRawPointer? where P: _Pointer {
+    UnsafeRawPointer(bitPattern: Int(bitPattern: self(value, id) as P?))
   }
 }
 
@@ -539,9 +533,9 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public mutating func callAsFunction<P>(_ value: String, _ id: __ExpressionID) -> P where P: _Pointer {
+  public mutating func callAsFunction<P>(_ value: String, _ id: __ExpressionID) -> P where P: _Pointer, P.Pointee == CChar {
     // Perform the normal value capture.
-    let result = self(value, id)
+    let result = self(value, id) as String
 
     // Create a C string copy of `value`.
 #if os(Windows)

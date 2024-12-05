@@ -300,6 +300,11 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
     ExprSyntax(node)
   }
 
+  override func visit(_ node: MacroExpansionExprSyntax) -> ExprSyntax {
+    // We do not attempt to descent into freestanding macros.
+    ExprSyntax(node)
+  }
+
   override func visit(_ node: FunctionDeclSyntax) -> DeclSyntax {
     // We do not (currently) attempt to descent into functions.
     DeclSyntax(node)
@@ -502,6 +507,14 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
       ),
       originalWas: node
     )
+  }
+#else
+  override func visit(_ node: ArrayExprSyntax) -> ExprSyntax {
+    return ExprSyntax(node)
+  }
+
+  override func visit(_ node: DictionaryExprSyntax) -> ExprSyntax {
+    return ExprSyntax(node)
   }
 #endif
 }
