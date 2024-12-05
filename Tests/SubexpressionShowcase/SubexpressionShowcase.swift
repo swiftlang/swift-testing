@@ -37,6 +37,7 @@ struct T {
 }
 
 func subexpressionShowcase() async throws {
+  #expect(f(f(f(f(f(f(f(f(f(f(f(0, 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0) != f(f(f(f(f(f(f(f(f(f(f(0, 0), 0), 0), 0), 0), 0), 0), 0), 0), 0), 0))
   #expect(false || true)
   #expect((Int)(123) == 124)
   #expect((Int, Double)(123, 456.0) == (124, 457.0))

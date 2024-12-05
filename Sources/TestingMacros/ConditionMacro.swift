@@ -160,6 +160,8 @@ extension ConditionMacro {
           expandedFunctionName = .identifier("__checkEscapedCondition")
 
         } else {
+          var expressionIDBuilder = ExpressionIDBuilder(rootedAt: originalArgumentExpr, in: context)
+
           var expressionContextName = TokenSyntax.identifier("__ec")
           let isNameUsed = originalArgumentExpr.tokens(viewMode: .sourceAccurate).lazy
             .map(\.tokenKind)
@@ -173,7 +175,7 @@ extension ConditionMacro {
             toExpressionContextNamed: expressionContextName,
             into: originalArgumentExpr,
             for: macro,
-            rootedAt: originalArgumentExpr,
+            buildingExpressionIDsWith: &expressionIDBuilder,
             in: context
           )
           var argumentExpr = rewrittenArgumentExpr.cast(ExprSyntax.self)
@@ -258,7 +260,7 @@ extension ConditionMacro {
           // Sort the rewritten nodes. This isn't strictly necessary for
           // correctness but it does make the produced code more consistent.
           let sortedRewrittenNodes = rewrittenNodes.sorted { $0.id < $1.id }
-          let sourceCodeNodeIDs = sortedRewrittenNodes.compactMap { $0.expressionID(rootedAt: originalArgumentExpr) }
+          let sourceCodeNodeIDs = sortedRewrittenNodes.compactMap { expressionIDBuilder.idExpression(for: $0) }
           let sourceCodeExprs = sortedRewrittenNodes.map { StringLiteralExprSyntax(content: $0.trimmedDescription) }
           let sourceCodeExpr = DictionaryExprSyntax {
             for (nodeID, sourceCodeExpr) in zip(sourceCodeNodeIDs, sourceCodeExprs) {
