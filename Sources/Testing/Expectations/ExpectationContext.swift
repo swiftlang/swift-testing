@@ -427,6 +427,92 @@ extension __ExpectationContext {
   }
 }
 
+// MARK: - Implicit pointer conversion
+
+extension __ExpectationContext {
+  /// Convert a mutable pointer to an immutable one and capture information
+  /// about it for use if the expectation currently being evaluated fails.
+  ///
+  /// - Parameters:
+  ///   - value: The pointer to make immutable.
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  ///
+  /// - Returns: `value`, cast to an immutable pointer.
+  ///
+  /// This overload of `callAsFunction(_:_:)` handles the implicit conversion
+  /// from a mutable to an immutable pointer that is normally provided by the
+  /// compiler.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  public mutating func callAsFunction<T>(_ value: UnsafeMutablePointer<T>, _ id: __ExpressionID) -> UnsafePointer<T> {
+    UnsafePointer(self(value, id) as UnsafeMutablePointer<T>)
+  }
+
+  /// Convert an optional mutable pointer to an immutable one and capture
+  /// information about it for use if the expectation currently being evaluated
+  /// fails.
+  ///
+  /// - Parameters:
+  ///   - value: The pointer to make immutable, or `nil`.
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  ///
+  /// - Returns: `value`, cast to an immutable pointer.
+  ///
+  /// This overload of `callAsFunction(_:_:)` handles the implicit conversion
+  /// from a mutable to an immutable pointer that is normally provided by the
+  /// compiler.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  public mutating func callAsFunction<T>(_ value: UnsafeMutablePointer<T>?, _ id: __ExpressionID) -> UnsafePointer<T>? {
+    UnsafePointer(self(value, id) as UnsafeMutablePointer<T>?)
+  }
+
+  /// Convert a mutable raw pointer to an immutable one and capture information
+  /// about it for use if the expectation currently being evaluated fails.
+  ///
+  /// - Parameters:
+  ///   - value: The pointer to make immutable.
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  ///
+  /// - Returns: `value`, cast to an immutable raw pointer.
+  ///
+  /// This overload of `callAsFunction(_:_:)` handles the implicit conversion
+  /// from a mutable to an immutable pointer that is normally provided by the
+  /// compiler.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  public mutating func callAsFunction(_ value: UnsafeMutableRawPointer, _ id: __ExpressionID) -> UnsafeRawPointer {
+    UnsafeRawPointer(self(value, id) as UnsafeMutableRawPointer)
+  }
+
+  /// Convert an optional mutable raw pointer to an immutable one and capture
+  /// information about it for use if the expectation currently being evaluated
+  /// fails.
+  ///
+  /// - Parameters:
+  ///   - value: The pointer to make immutable, or `nil`.
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  ///
+  /// - Returns: `value`, cast to an immutable raw pointer.
+  ///
+  /// This overload of `callAsFunction(_:_:)` handles the implicit conversion
+  /// from a mutable to an immutable pointer that is normally provided by the
+  /// compiler.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  public mutating func callAsFunction(_ value: UnsafeMutableRawPointer?, _ id: __ExpressionID) -> UnsafeRawPointer? {
+    UnsafeRawPointer(self(value, id) as UnsafeMutableRawPointer?)
+  }
+}
+
 #if !SWT_FIXED_122011759
 // MARK: - String-to-C-string handling
 
