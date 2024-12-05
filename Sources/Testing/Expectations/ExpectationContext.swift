@@ -450,8 +450,8 @@ extension __ExpectationContext {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   @_disfavoredOverload
-  public mutating func callAsFunction<PFrom, PTo>(_ value: PFrom, _ id: __ExpressionID) -> PTo where PFrom: _Pointer, PTo: _Pointer {
-    self(value as PFrom?, id) as! PTo
+  public mutating func callAsFunction<P, T>(_ value: P, _ id: __ExpressionID) -> UnsafePointer<T> where P: _Pointer, P.Pointee == T {
+    self(value as P?, id)!
   }
 
   /// Convert some pointer to an immutable one and capture information about it
@@ -470,9 +470,51 @@ extension __ExpectationContext {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   @_disfavoredOverload
-  public mutating func callAsFunction<PFrom, PTo>(_ value: PFrom?, _ id: __ExpressionID) -> PTo? where PFrom: _Pointer, PTo: _Pointer {
+  public mutating func callAsFunction<P, T>(_ value: P?, _ id: __ExpressionID) -> UnsafePointer<T>? where P: _Pointer, P.Pointee == T {
     value.flatMap { value in
-      PTo(bitPattern: Int(bitPattern: self(value, id) as PFrom))
+      UnsafePointer<T>(bitPattern: Int(bitPattern: self(value, id) as P))
+    }
+  }
+
+  /// Convert some pointer to an immutable one and capture information about it
+  /// for use if the expectation currently being evaluated fails.
+  ///
+  /// - Parameters:
+  ///   - value: The pointer to make immutable.
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  ///
+  /// - Returns: `value`, cast to an immutable pointer.
+  ///
+  /// This overload of `callAsFunction(_:_:)` handles the implicit conversions
+  /// between various pointer types that are normally provided by the compiler.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  @_disfavoredOverload
+  public mutating func callAsFunction<P>(_ value: P, _ id: __ExpressionID) -> UnsafeRawPointer where P: _Pointer {
+    self(value as P?, id)!
+  }
+
+  /// Convert some pointer to an immutable one and capture information about it
+  /// for use if the expectation currently being evaluated fails.
+  ///
+  /// - Parameters:
+  ///   - value: The pointer to make immutable.
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  ///
+  /// - Returns: `value`, cast to an immutable pointer.
+  ///
+  /// This overload of `callAsFunction(_:_:)` handles the implicit conversions
+  /// between various pointer types that are normally provided by the compiler.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  @_disfavoredOverload
+  public mutating func callAsFunction<P>(_ value: P?, _ id: __ExpressionID) -> UnsafeRawPointer? where P: _Pointer {
+    value.flatMap { value in
+      UnsafeRawPointer(bitPattern: Int(bitPattern: self(value, id) as P))
     }
   }
 }
