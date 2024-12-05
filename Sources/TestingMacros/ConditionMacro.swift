@@ -160,8 +160,15 @@ extension ConditionMacro {
           expandedFunctionName = .identifier("__checkEscapedCondition")
 
         } else {
-          // BUG: We should use a unique name here. SEE: swift-syntax-#2256
-          let expressionContextName = TokenSyntax.identifier("__ec")
+          var expressionContextName = TokenSyntax.identifier("__ec")
+          let isNameUsed = originalArgumentExpr.tokens(viewMode: .sourceAccurate).lazy
+            .map(\.tokenKind)
+            .contains(expressionContextName.tokenKind)
+          if isNameUsed {
+            // BUG: We should use the unique name directly. SEE: swift-syntax-#2256
+            let uniqueName = context.makeUniqueName("")
+            expressionContextName = .identifier("\(expressionContextName)\(uniqueName)")
+          }
           let (rewrittenArgumentExpr, rewrittenNodes) = insertCalls(
             toExpressionContextNamed: expressionContextName,
             into: originalArgumentExpr,
