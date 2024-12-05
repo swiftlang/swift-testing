@@ -106,7 +106,7 @@ extension Attachment where AttachableValue == Data {
     }
 #else
     let data = if isDirectory {
-      try await compressContentsOfDirectory(at: url)
+      try await _compressContentsOfDirectory(at: url)
     } else {
       // Load the file.
       try Data(contentsOf: url, options: [.mappedIfSafe])
@@ -170,7 +170,7 @@ private let _archiverPath: String? = {
 ///
 /// This function asynchronously compresses the contents of `directoryURL` into
 /// an archive (currently of `.zip` format, although this is subject to change.)
-private func compressContentsOfDirectory(at directoryURL: URL) async throws -> Data {
+private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> Data {
 #if !SWT_NO_PROCESS_SPAWNING
   let temporaryName = "\(UUID().uuidString).zip"
   let temporaryURL = FileManager.default.temporaryDirectory.appendingPathComponent(temporaryName)
