@@ -10,7 +10,8 @@
 
 #if SWT_TARGET_OS_APPLE && canImport(CoreGraphics)
 /// A type representing an error that can occur when attaching an image.
-package enum ImageAttachmentError: Error, CustomStringConvertible {
+@_spi(ForSwiftTestingOnly)
+public enum ImageAttachmentError: Error, CustomStringConvertible {
   /// The specified content type did not conform to `.image`.
   case contentTypeDoesNotConformToImage
 
@@ -23,7 +24,8 @@ package enum ImageAttachmentError: Error, CustomStringConvertible {
   /// The image could not be converted.
   case couldNotConvertImage
 
-  package var description: String {
+  @_spi(ForSwiftTestingOnly)
+  public var description: String {
     switch self {
     case .contentTypeDoesNotConformToImage:
       "The specified type does not represent an image format."
