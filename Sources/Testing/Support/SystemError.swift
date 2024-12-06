@@ -21,3 +21,16 @@
 struct SystemError: Error, CustomStringConvertible {
   var description: String
 }
+
+/// A type representing misuse of testing library API.
+///
+/// When an error of this type is thrown and caught by the testing library, it
+/// is recorded as an issue of kind ``Issue/Kind/apiMisused`` rather than
+/// ``Issue/Kind/errorCaught(_:)``.
+///
+/// This type is not part of the public interface of the testing library.
+/// External callers should generally record issues by throwing their own errors
+/// or by calling ``Issue/record(_:sourceLocation:)``.
+struct APIMisuseError: Error, CustomStringConvertible {
+  var description: String
+}

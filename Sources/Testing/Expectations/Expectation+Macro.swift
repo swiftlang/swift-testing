@@ -142,6 +142,9 @@ public macro require<T>(
 ///     issues should be attributed.
 ///   - expression: The expression to be evaluated.
 ///
+/// - Returns: If the expectation passes, the instance of `errorType` that was
+///   thrown by `expression`. If the expectation fails, the result is `nil`.
+///
 /// Use this overload of `#expect()` when the expression `expression` _should_
 /// throw an error of a given type:
 ///
@@ -158,7 +161,7 @@ public macro require<T>(
 /// discarded.
 ///
 /// If the thrown error need only equal another instance of [`Error`](https://developer.apple.com/documentation/swift/error),
-/// use ``expect(throws:_:sourceLocation:performing:)-1xr34`` instead.
+/// use ``expect(throws:_:sourceLocation:performing:)-7du1h`` instead.
 ///
 /// ## Expressions that should never throw
 ///
@@ -181,12 +184,13 @@ public macro require<T>(
 /// fail when an error is thrown by `expression`, rather than to explicitly
 /// check that an error is _not_ thrown by it, do not use this macro. Instead,
 /// simply call the code in question and allow it to throw an error naturally.
+@discardableResult
 @freestanding(expression) public macro expect<E, R>(
   throws errorType: E.Type,
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: () async throws -> R
-) = #externalMacro(module: "TestingMacros", type: "ExpectMacro") where E: Error
+) -> E? = #externalMacro(module: "TestingMacros", type: "ExpectMacro") where E: Error
 
 /// Check that an expression always throws an error of a given type, and throw
 /// an error if it does not.
@@ -199,6 +203,8 @@ public macro require<T>(
 ///   - sourceLocation: The source location to which recorded expectations and
 ///     issues should be attributed.
 ///   - expression: The expression to be evaluated.
+///
+/// - Returns: The instance of `errorType` that was thrown by `expression`.
 ///
 /// - Throws: An instance of ``ExpectationFailedError`` if `expression` does not
 ///   throw a matching error. The error thrown by `expression` is not rethrown.
@@ -219,16 +225,17 @@ public macro require<T>(
 /// is thrown. Any value returned by `expression` is discarded.
 ///
 /// If the thrown error need only equal another instance of [`Error`](https://developer.apple.com/documentation/swift/error),
-/// use ``require(throws:_:sourceLocation:performing:)-7v83e`` instead.
+/// use ``require(throws:_:sourceLocation:performing:)-4djuw`` instead.
 ///
 /// If `expression` should _never_ throw, simply invoke the code without using
 /// this macro. The test will then fail if an error is thrown.
+@discardableResult
 @freestanding(expression) public macro require<E, R>(
   throws errorType: E.Type,
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: () async throws -> R
-) = #externalMacro(module: "TestingMacros", type: "RequireMacro") where E: Error
+) -> E = #externalMacro(module: "TestingMacros", type: "RequireThrowsMacro") where E: Error
 
 /// Check that an expression never throws an error, and throw an error if it
 /// does.
@@ -261,6 +268,10 @@ public macro require<R>(
 ///     issues should be attributed.
 ///   - expression: The expression to be evaluated.
 ///
+/// - Returns: If the expectation passes, the instance of `E` that was thrown by
+///   `expression` and is equal to `error`. If the expectation fails, the result
+///   is `nil`.
+///
 /// Use this overload of `#expect()` when the expression `expression` _should_
 /// throw a specific error:
 ///
@@ -276,13 +287,14 @@ public macro require<R>(
 /// in the current task. Any value returned by `expression` is discarded.
 ///
 /// If the thrown error need only be an instance of a particular type, use
-/// ``expect(throws:_:sourceLocation:performing:)-79piu`` instead.
+/// ``expect(throws:_:sourceLocation:performing:)-1hfms`` instead.
+@discardableResult
 @freestanding(expression) public macro expect<E, R>(
   throws error: E,
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: () async throws -> R
-) = #externalMacro(module: "TestingMacros", type: "ExpectMacro") where E: Error & Equatable
+) -> E? = #externalMacro(module: "TestingMacros", type: "ExpectMacro") where E: Error & Equatable
 
 /// Check that an expression always throws a specific error, and throw an error
 /// if it does not.
@@ -293,6 +305,9 @@ public macro require<R>(
 ///   - sourceLocation: The source location to which recorded expectations and
 ///     issues should be attributed.
 ///   - expression: The expression to be evaluated.
+
+/// - Returns: The instance of `E` that was thrown by `expression` and is equal
+///   to `error`.
 ///
 /// - Throws: An instance of ``ExpectationFailedError`` if `expression` does not
 ///   throw a matching error. The error thrown by `expression` is not rethrown.
@@ -313,13 +328,14 @@ public macro require<R>(
 /// Any value returned by `expression` is discarded.
 ///
 /// If the thrown error need only be an instance of a particular type, use
-/// ``require(throws:_:sourceLocation:performing:)-76bjn`` instead.
+/// ``require(throws:_:sourceLocation:performing:)-7n34r`` instead.
+@discardableResult
 @freestanding(expression) public macro require<E, R>(
   throws error: E,
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: () async throws -> R
-) = #externalMacro(module: "TestingMacros", type: "RequireMacro") where E: Error & Equatable
+) -> E = #externalMacro(module: "TestingMacros", type: "RequireMacro") where E: Error & Equatable
 
 // MARK: - Arbitrary error matching
 
@@ -332,6 +348,9 @@ public macro require<R>(
 ///   - expression: The expression to be evaluated.
 ///   - errorMatcher: A closure to invoke when `expression` throws an error that
 ///     indicates if it matched or not.
+///
+/// - Returns: If the expectation passes, the error that was thrown by
+///   `expression`. If the expectation fails, the result is `nil`.
 ///
 /// Use this overload of `#expect()` when the expression `expression` _should_
 /// throw an error, but the logic to determine if the error matches is complex:
@@ -353,15 +372,17 @@ public macro require<R>(
 /// discarded.
 ///
 /// If the thrown error need only be an instance of a particular type, use
-/// ``expect(throws:_:sourceLocation:performing:)-79piu`` instead. If the thrown
+/// ``expect(throws:_:sourceLocation:performing:)-1hfms`` instead. If the thrown
 /// error need only equal another instance of [`Error`](https://developer.apple.com/documentation/swift/error),
-/// use ``expect(throws:_:sourceLocation:performing:)-1xr34`` instead.
+/// use ``expect(throws:_:sourceLocation:performing:)-7du1h`` instead.
+@available(*, deprecated, message: "Examine the result of '#expect(throws:)' instead.")
+@discardableResult
 @freestanding(expression) public macro expect<R>(
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: () async throws -> R,
   throws errorMatcher: (any Error) async throws -> Bool
-) = #externalMacro(module: "TestingMacros", type: "ExpectMacro")
+) -> (any Error)? = #externalMacro(module: "TestingMacros", type: "ExpectMacro")
 
 /// Check that an expression always throws an error matching some condition, and
 /// throw an error if it does not.
@@ -373,6 +394,8 @@ public macro require<R>(
 ///   - expression: The expression to be evaluated.
 ///   - errorMatcher: A closure to invoke when `expression` throws an error that
 ///     indicates if it matched or not.
+///
+/// - Returns: The error that was thrown by `expression`.
 ///
 /// - Throws: An instance of ``ExpectationFailedError`` if `expression` does not
 ///   throw a matching error. The error thrown by `expression` is not rethrown.
@@ -398,18 +421,20 @@ public macro require<R>(
 /// discarded.
 ///
 /// If the thrown error need only be an instance of a particular type, use
-/// ``require(throws:_:sourceLocation:performing:)-76bjn`` instead. If the thrown error need
+/// ``require(throws:_:sourceLocation:performing:)-7n34r`` instead. If the thrown error need
 /// only equal another instance of [`Error`](https://developer.apple.com/documentation/swift/error),
-/// use ``require(throws:_:sourceLocation:performing:)-7v83e`` instead.
+/// use ``require(throws:_:sourceLocation:performing:)-4djuw`` instead.
 ///
 /// If `expression` should _never_ throw, simply invoke the code without using
 /// this macro. The test will then fail if an error is thrown.
+@available(*, deprecated, message: "Examine the result of '#require(throws:)' instead.")
+@discardableResult
 @freestanding(expression) public macro require<R>(
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: () async throws -> R,
   throws errorMatcher: (any Error) async throws -> Bool
-) = #externalMacro(module: "TestingMacros", type: "RequireMacro")
+) -> any Error = #externalMacro(module: "TestingMacros", type: "RequireMacro")
 
 // MARK: - Exit tests
 
@@ -425,7 +450,7 @@ public macro require<R>(
 ///     issues should be attributed.
 ///   - expression: The expression to be evaluated.
 ///
-/// - Returns: If the exit test passed, an instance of ``ExitTestArtifacts``
+/// - Returns: If the exit test passes, an instance of ``ExitTestArtifacts``
 ///   describing the state of the exit test when it exited. If the exit test
 ///   fails, the result is `nil`.
 ///
