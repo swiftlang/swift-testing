@@ -39,7 +39,7 @@ extension Attachment {
   fileprivate init<T>(
     attachableValue: T,
     named preferredName: String?,
-    as contentType: (any Sendable)?,
+    contentType: (any Sendable)?,
     encodingQuality: Float,
     sourceLocation: SourceLocation
   ) where AttachableValue == _AttachableImageContainer<T> {
@@ -111,7 +111,7 @@ extension Attachment {
     encodingQuality: Float = 1.0,
     sourceLocation: SourceLocation = #_sourceLocation
   ) where AttachableValue == _AttachableImageContainer<T> {
-    self.init(attachableValue: attachableValue, named: preferredName, as: contentType, encodingQuality: encodingQuality, sourceLocation: sourceLocation)
+    self.init(attachableValue: attachableValue, named: preferredName, contentType: contentType, encodingQuality: encodingQuality, sourceLocation: sourceLocation)
   }
 
   /// Initialize an instance of this type that encloses the given image.
@@ -141,7 +141,7 @@ extension Attachment {
     encodingQuality: Float = 1.0,
     sourceLocation: SourceLocation = #_sourceLocation
   ) where AttachableValue == _AttachableImageContainer<T> {
-    self.init(attachableValue: attachableValue, named: preferredName, as: nil, encodingQuality: encodingQuality, sourceLocation: sourceLocation)
+    self.init(attachableValue: attachableValue, named: preferredName, contentType: nil, encodingQuality: encodingQuality, sourceLocation: sourceLocation)
   }
 }
 #endif

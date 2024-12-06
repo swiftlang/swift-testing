@@ -25,7 +25,7 @@ import UniformTypeIdentifiers
 ///    to eagerly serialize them, which is unnecessarily expensive if we know
 ///    they're actually concurrency-safe.
 /// 2. We would have no place to store metadata such as the encoding quality
-/// 	 (although in the future we may introduce a "metadata" associated type to
+///    (although in the future we may introduce a "metadata" associated type to
 ///    `Attachable` that could store that info.)
 /// 3. `Attachable` has a requirement with `Self` in non-parameter, non-return
 ///    position. As far as Swift is concerned, a non-final class cannot satisfy
@@ -48,14 +48,14 @@ import UniformTypeIdentifiers
 ///
 /// - [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage)
 @_spi(Experimental)
-public struct _AttachableImageContainer<ImageClass>: Sendable where ImageClass: AttachableAsCGImage {
+public struct _AttachableImageContainer<Image>: Sendable where Image: AttachableAsCGImage {
   /// The underlying image.
   ///
   /// `CGImage` and `UIImage` are sendable, but `NSImage` is not. `NSImage`
   /// instances can be created from closures that are run at rendering time.
   /// The AppKit cross-import overlay is responsible for ensuring that any
   /// instances of this type it creates hold "safe" `NSImage` instances.
-  nonisolated(unsafe) var image: ImageClass
+  nonisolated(unsafe) var image: Image
 
   /// The encoding quality to use when encoding the represented image.
   public var encodingQuality: Float
@@ -77,7 +77,7 @@ public struct _AttachableImageContainer<ImageClass>: Sendable where ImageClass: 
     }
   }
 
-  init(image: ImageClass, encodingQuality: Float) {
+  init(image: Image, encodingQuality: Float) {
     self.image = image._makeCopyForAttachment()
     self.encodingQuality = encodingQuality
   }
@@ -106,7 +106,7 @@ extension UTType {
 }
 
 extension _AttachableImageContainer: AttachableContainer {
-  public var attachableValue: ImageClass {
+  public var attachableValue: Image {
     image
   }
 

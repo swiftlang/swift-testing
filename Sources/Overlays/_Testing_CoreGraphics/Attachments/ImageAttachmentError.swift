@@ -9,7 +9,7 @@
 //
 
 #if SWT_TARGET_OS_APPLE && canImport(CoreGraphics)
-/// A type representing errors that can occur when attaching an image.
+/// A type representing an error that can occur when attaching an image.
 package enum ImageAttachmentError: Error, CustomStringConvertible {
   /// The specified content type did not conform to `.image`.
   case contentTypeDoesNotConformToImage
