@@ -26,7 +26,7 @@ private import _TestingInternals
 ///
 /// Instances of this type describe an exit test defined by the test author and
 /// discovered or called at runtime.
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+@_spi(ForToolsIntegrationOnly)
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
@@ -173,7 +173,6 @@ extension ExitTest {
 /// - Warning: This protocol is used to implement the `#expect(exitsWith:)`
 ///   macro. Do not use it directly.
 @_alwaysEmitConformanceMetadata
-@_spi(Experimental)
 public protocol __ExitTestContainer {
   /// The expected exit condition of the exit test.
   static var __expectedExitCondition: ExitCondition { get }

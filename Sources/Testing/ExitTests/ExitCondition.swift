@@ -17,12 +17,34 @@ private import _TestingInternals
 /// test is expected to pass or fail by passing them to
 /// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or
 /// ``require(exitsWith:observing:_:sourceLocation:performing:)``.
-@_spi(Experimental)
+///
+/// ## Topics
+///
+/// ### Successful exit conditions
+///
+/// - ``success``
+///
+/// ### Failing exit conditions
+///
+/// - ``failure``
+/// - ``exitCode(_:)``
+/// - ``signal(_:)``
+///
+/// ### Comparing exit conditions
+///
+/// - ``/Swift/Optional/==(_:_:)``
+/// - ``/Swift/Optional/!=(_:_:)``
+/// - ``/Swift/Optional/===(_:_:)``
+/// - ``/Swift/Optional/!==(_:_:)``
 #if SWT_NO_PROCESS_SPAWNING
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 public enum ExitCondition: Sendable {
   /// The process terminated successfully with status `EXIT_SUCCESS`.
+  ///
+  /// The C programming language defines two [standard exit codes](https://en.cppreference.com/w/c/program/EXIT_status),
+  /// `EXIT_SUCCESS` and `EXIT_FAILURE` as well as `0` (as a synonym for
+  /// `EXIT_SUCCESS`.)
   public static var success: Self {
     // Strictly speaking, the C standard treats 0 as a successful exit code and
     // potentially distinct from EXIT_SUCCESS. To my knowledge, no modern
@@ -76,7 +98,6 @@ public enum ExitCondition: Sendable {
 
 // MARK: - Equatable
 
-@_spi(Experimental)
 #if SWT_NO_PROCESS_SPAWNING
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
@@ -107,7 +128,7 @@ extension Optional<ExitCondition> {
   /// or [`Hashable`](https://developer.apple.com/documentation/swift/hashable).
   ///
   /// For any values `a` and `b`, `a == b` implies that `a != b` is `false`.
-  public static func ==(lhs: Self, rhs: Self) -> Bool {
+  public static func ==(lhs: ExitCondition?, rhs: ExitCondition?) -> Bool {
 #if !SWT_NO_PROCESS_SPAWNING
     return switch (lhs, rhs) {
     case let (.failure, .exitCode(exitCode)), let (.exitCode(exitCode), .failure):
@@ -149,7 +170,7 @@ extension Optional<ExitCondition> {
   /// or [`Hashable`](https://developer.apple.com/documentation/swift/hashable).
   ///
   /// For any values `a` and `b`, `a == b` implies that `a != b` is `false`.
-  public static func !=(lhs: Self, rhs: Self) -> Bool {
+  public static func !=(lhs: ExitCondition?, rhs: ExitCondition?) -> Bool {
 #if !SWT_NO_PROCESS_SPAWNING
     !(lhs == rhs)
 #else
@@ -183,7 +204,7 @@ extension Optional<ExitCondition> {
   /// or [`Hashable`](https://developer.apple.com/documentation/swift/hashable).
   ///
   /// For any values `a` and `b`, `a === b` implies that `a !== b` is `false`.
-  public static func ===(lhs: Self, rhs: Self) -> Bool {
+  public static func ===(lhs: ExitCondition?, rhs: ExitCondition?) -> Bool {
     return switch (lhs, rhs) {
     case (.none, .none):
       true
@@ -224,7 +245,7 @@ extension Optional<ExitCondition> {
   /// or [`Hashable`](https://developer.apple.com/documentation/swift/hashable).
   ///
   /// For any values `a` and `b`, `a === b` implies that `a !== b` is `false`.
-  public static func !==(lhs: Self, rhs: Self) -> Bool {
+  public static func !==(lhs: ExitCondition?, rhs: ExitCondition?) -> Bool {
 #if !SWT_NO_PROCESS_SPAWNING
     !(lhs === rhs)
 #else
