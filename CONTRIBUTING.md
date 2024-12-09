@@ -32,11 +32,11 @@ and clone the fork which will make opening PRs easier.
 
 1. Install Xcode 16 or newer from the [Apple Developer](https://developer.apple.com/xcode/)
    website.
-1. Open the `Package.swift` file from the cloned Swift Testing repository in
+2. Open the `Package.swift` file from the cloned Swift Testing repository in
    Xcode.
-1. Select the `swift-testing-Package` scheme (if not already selected) and the
+3. Select the `swift-testing-Package` scheme (if not already selected) and the
    "My Mac" run destination.
-1. Use Xcode to inspect, edit, build, or test the code.
+4. Use Xcode to inspect, edit, build, or test the code.
 
 ### Using the command line
 
@@ -56,7 +56,7 @@ and install a toolchain.
 
    Be aware that development snapshot toolchains aren't intended for day-to-day
    development and may contain defects that affect the programs built with them.
-1. Install the toolchain and confirm it can be located successfully:
+2. Install the toolchain and confirm it can be located successfully:
 
    **macOS with Xcode installed**:
    
@@ -105,14 +105,14 @@ test --help` to view the usage documentation.
      section of the Swift [Getting Started](https://github.com/swiftlang/swift/blob/main/docs/HowToGuides/GettingStarted.md)
      guide for instructions.
 
-1. Run the following command from the root of this repository to configure the
+2. Run the following command from the root of this repository to configure the
    project to build using CMake (using the Ninja generator):
 
    ```bash
    cmake -G Ninja -B build
    ```
 
-1. Run the following command to perform the build:
+3. Run the following command to perform the build:
 
    ```bash
    cmake --build build
@@ -131,9 +131,9 @@ a Swift toolchain.
    cmake -G Ninja --install-prefix "$(pwd)/build/install" -B build
    ```
 
-1. Perform the CMake build step as described in the previous section.
+2. Perform the CMake build step as described in the previous section.
 
-1. Run the following command to install the built content into the
+3. Run the following command to install the built content into the
    `build/install/` subdirectory:
 
    ```bash
@@ -144,20 +144,20 @@ a Swift toolchain.
 
 1. Install [Docker Desktop for Mac](https://www.docker.com/products/docker-desktop).
 
-1. Run the following command from the root of this repository to build the
+2. Run the following command from the root of this repository to build the
    Docker image:
 
     ```bash
     $> docker build -t swift-testing:latest .
     ```
 
-1. Run the following command to run the test suite:
+3. Run the following command to run the test suite:
 
     ```bash
     $> docker run -v "$(pwd)":/swift-testing -w /swift-testing swift-testing swift test --skip-update
     ```
 
-1. To interactively run the test suite or do other development, first log into
+4. To interactively run the test suite or do other development, first log into
    the container with:
 
     ```bash
@@ -174,15 +174,15 @@ a Swift toolchain.
 ## Creating Pull Requests (PRs)
 
 1. Fork [https://github.com/swiftlang/swift-testing](https://github.com/swiftlang/swift-testing).
-1. Clone a working copy of your fork.
-1. Create a new branch.
-1. Make your code changes.
-1. Commit your changes. Include a description of the changes in the commit
+2. Clone a working copy of your fork.
+3. Create a new branch.
+4. Make your code changes.
+5. Commit your changes. Include a description of the changes in the commit
    message, followed by the GitHub Issue ID or Apple Radar link if there is one.
-1. Push your changes to your fork.
-1. Create a PR from the branch on your fork targeting the `main` branch of the
+6. Push your changes to your fork.
+7. Create a PR from the branch on your fork targeting the `main` branch of the
    original repository.
-1. Follow the PR template to provide information about the motivation and
+8. Follow the PR template to provide information about the motivation and
    details of the changes.
 
 Reviewers will be automatically added to the PR once it is created. The PR will
