@@ -22,3 +22,14 @@ private import _TestingInternals
   let rhs = "123"
   #expect(0 != strcmp(lhs, rhs))
 }
+
+@Test func inoutAsPointerPassedToCFunction() {
+  let num = CLong.random(in: 0 ..< 100)
+  let str = String(describing: num)
+  str.withCString { str in
+    var endptr: UnsafeMutablePointer<CChar>?
+    #expect(num == strtol(str, &endptr, 10))
+    #expect(endptr != nil)
+    #expect(endptr?.pointee == 0)
+  }
+}

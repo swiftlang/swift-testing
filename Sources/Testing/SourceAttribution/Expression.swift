@@ -69,6 +69,21 @@ public struct __Expression: Sendable {
     /// Information about the type of this value.
     public var typeInfo: TypeInfo
 
+    /// The timing when a runtime value was captured.
+    @_spi(Experimental)
+    public enum Timing: String, Sendable {
+      /// The value was captured after the containing expression was evaluated.
+      case after
+    }
+
+    /// When the value represented by this instance was captured.
+    ///
+    /// The value of this property is typically `nil`. It may be set to a
+    /// non-`nil` value if this instance represents some `inout` argument passed
+    /// to a function with the `&` operator.
+    @_spi(Experimental)
+    public var timing: Timing?
+
     /// The label associated with this value, if any.
     ///
     /// For non-child instances, or for child instances of members who do not
@@ -92,9 +107,10 @@ public struct __Expression: Sendable {
     ///
     /// - Parameters:
     ///   - subject: The subject this instance should describe.
-    init(reflecting subject: Any) {
+    ///   - timing: When the value represented by this instance was captured.
+    init(reflecting subject: Any, timing: Timing? = nil) {
       var seenObjects: [ObjectIdentifier: AnyObject] = [:]
-      self.init(_reflecting: subject, label: nil, seenObjects: &seenObjects)
+      self.init(_reflecting: subject, label: nil, timing: timing, seenObjects: &seenObjects)
     }
 
     /// Initialize an instance of this type describing the specified subject and
@@ -105,6 +121,7 @@ public struct __Expression: Sendable {
     ///   - label: An optional label for this value. This should be a non-`nil`
     ///     value when creating instances of this type which describe
     ///     substructural values.
+    ///   - timing: When the value represented by this instance was captured.
     ///   - seenObjects: The objects which have been seen so far while calling
     ///     this initializer recursively, keyed by their object identifiers.
     ///     This is used to halt further recursion if a previously-seen object
@@ -112,6 +129,7 @@ public struct __Expression: Sendable {
     private init(
       _reflecting subject: Any,
       label: String?,
+      timing: Timing?,
       seenObjects: inout [ObjectIdentifier: AnyObject]
     ) {
       let mirror = Mirror(reflecting: subject)
@@ -160,6 +178,7 @@ public struct __Expression: Sendable {
       debugDescription = String(reflecting: subject)
       typeInfo = TypeInfo(describingTypeOf: subject)
       self.label = label
+      self.timing = timing
 
       isCollection = switch mirror.displayStyle {
       case .some(.collection),
@@ -172,7 +191,7 @@ public struct __Expression: Sendable {
 
       if shouldIncludeChildren && (!mirror.children.isEmpty || isCollection) {
         self.children = mirror.children.map { child in
-          Self(_reflecting: child.value, label: child.label, seenObjects: &seenObjects)
+          Self(_reflecting: child.value, label: child.label, timing: timing, seenObjects: &seenObjects)
         }
       }
     }
@@ -227,11 +246,18 @@ public struct __Expression: Sendable {
       let runtimeValueDescription = String(describingForTest: runtimeValue)
       // Hack: don't print string representations of function calls.
       if runtimeValueDescription != "(Function)" && runtimeValueDescription != result {
+        switch runtimeValue.timing {
+        case .after:
+          result = "\(result) (after)"
+        default:
+          break
+        }
         result = "\(result) → \(runtimeValueDescription)"
       }
     } else {
       result = "\(result) → <not evaluated>"
     }
+
 
     return result
   }
@@ -264,6 +290,7 @@ public struct __Expression: Sendable {
 extension __Expression: Codable {}
 extension __Expression.Kind: Codable {}
 extension __Expression.Value: Codable {}
+extension __Expression.Value.Timing: Codable {}
 
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible
 

@@ -169,7 +169,7 @@ extension ConditionMacro {
             let uniqueName = context.makeUniqueName("")
             expressionContextName = .identifier("\(expressionContextName)\(uniqueName)")
           }
-          let (rewrittenArgumentExpr, rewrittenNodes) = insertCalls(
+          let (rewrittenArgumentExpr, rewrittenNodes, prefixCodeBlockItems) = insertCalls(
             toExpressionContextNamed: expressionContextName,
             into: originalArgumentExpr,
             for: macro,
@@ -195,11 +195,20 @@ extension ConditionMacro {
             argumentExpr = closureArguments.rewrittenNode.cast(ExprSyntax.self)
           }
 
+          // If we're inserting any additional code into the closure before the
+          // rewritten argument, we can't elide the return keyword for brevity.
+          var returnKeyword: TokenSyntax?
+          if !prefixCodeBlockItems.isEmpty {
+            returnKeyword = .keyword(.return)
+              .with(\.leadingTrivia, argumentExpr.leadingTrivia)
+            argumentExpr.leadingTrivia = .space
+          }
+
           // Enclose the expression in a closure into which we pass our local
           // context object.
           argumentExpr = """
           { \(closureArguments?.captureList) (\(expressionContextName): inout Testing.__ExpectationContext) in
-            \(argumentExpr)
+            \(prefixCodeBlockItems)\(returnKeyword)\(argumentExpr)
           }
           """
 

@@ -31,7 +31,7 @@ struct ConditionMacroTests {
       ##"#expect(2 > 1)"##:
         ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in __ec(2 > 1, "") }, sourceCode: ["": "2 > 1"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect(((true || false) && true) || Bool.random())"##:
-        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in __ec(__ec(((true || false) && true), "2") || __ec(__ec(Bool.self, "e000000").random(), "2000000"), "") }, sourceCode: ["": "((true || false) && true) || Bool.random()", "2": "((true || false) && true)", "2000000": "Bool.random()", "e000000": "Bool"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
+        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in __ec(__ec((__ec(__ec((__ec(__ec(true, "f7a") || __ec(false, "877a"), "77a")), "7a") && __ec(true, "10003a"), "3a")), "2") || __ec(__ec(Bool.self, "e000000").random(), "2000000"), "") }, sourceCode: ["": "((true || false) && true) || Bool.random()", "2": "((true || false) && true)", "3a": "(true || false) && true", "7a": "(true || false)", "77a": "true || false", "f7a": "true", "877a": "false", "10003a": "true", "2000000": "Bool.random()", "e000000": "Bool"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect(9 > 8 && 7 > 6, "Some comment")"##:
         ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in __ec(__ec(9 > 8, "2") && __ec(7 > 6, "400"), "") }, sourceCode: ["": "9 > 8 && 7 > 6", "2": "9 > 8", "400": "7 > 6"], comments: ["Some comment"], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect("a" == "b")"##:
@@ -39,7 +39,7 @@ struct ConditionMacroTests {
       ##"#expect(!Bool.random())"##:
         ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in __ec(!__ec(__ec(Bool.self, "1c").random(), "4"), "") }, sourceCode: ["": "!Bool.random()", "4": "Bool.random()", "1c": "Bool"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect((true && false))"##:
-        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in __ec((true && false), "") }, sourceCode: ["": "(true && false)"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
+        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in __ec((__ec(__ec(true, "3c") && __ec(false, "21c"), "1c")), "") }, sourceCode: ["": "(true && false)", "1c": "true && false", "3c": "true", "21c": "false"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect(try x())"##:
         ##"try Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(try __ec(x(), "4")) }, sourceCode: ["4": "x()"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect(1 is Int)"##:
@@ -61,11 +61,11 @@ struct ConditionMacroTests {
       ##"#expect(a.b(c, d: e))"##:
         ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in __ec(__ec(a.self, "6").b(__ec(c, "700"), d: __ec(e, "12100")), "") }, sourceCode: ["": "a.b(c, d: e)", "6": "a", "700": "c", "12100": "e"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect(a.b(&c))"##:
-        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in __ec(__ec(a.self, "6").b(&c), "") }, sourceCode: ["": "a.b(&c)", "6": "a"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
+        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in defer { __ec.__inoutAfter(c, "700") } return __ec(__ec(a.self, "6").b(&c), "") }, sourceCode: ["": "a.b(&c)", "6": "a", "700": "&c"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect(a.b(&c, &d.e))"##:
-        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in __ec(__ec(a.self, "6").b(&c, &d.e), "") }, sourceCode: ["": "a.b(&c, &d.e)", "6": "a"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
+        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in defer { __ec.__inoutAfter(c, "700") __ec.__inoutAfter(d.e, "18100") } return __ec(__ec(a.self, "6").b(&c, &d.e), "") }, sourceCode: ["": "a.b(&c, &d.e)", "6": "a", "700": "&c", "18100": "&d.e"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect(a.b(&c, d))"##:
-        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in __ec(__ec(a.self, "6").b(&c, __ec(d, "18100")), "") }, sourceCode: ["": "a.b(&c, d)", "6": "a", "18100": "d"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
+        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in defer { __ec.__inoutAfter(c, "700") } return  __ec(__ec(a.self, "6").b(&c, __ec(d, "18100")), "") }, sourceCode: ["": "a.b(&c, d)", "6": "a", "700": "&c", "18100": "d"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect(a.b(try c()))"##:
         ##"try Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec(__ec(a.self, "6").b(try __ec(c(), "1700")), "")) }, sourceCode: ["": "a.b(try c())", "6": "a", "1700": "c()"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect(a?.b(c))"##:
@@ -112,7 +112,7 @@ struct ConditionMacroTests {
       ##"#require(2 > 1)"##:
         ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec(2 > 1, "")) }, sourceCode: ["": "2 > 1"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(((true || false) && true) || Bool.random())"##:
-        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec(__ec(((true || false) && true), "2") || __ec(__ec(Bool.self, "e000000").random(), "2000000"), "")) }, sourceCode: ["": "((true || false) && true) || Bool.random()", "2": "((true || false) && true)", "2000000": "Bool.random()", "e000000": "Bool"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec(__ec((__ec(__ec((__ec(__ec(true, "f7a") || __ec(false, "877a"), "77a")), "7a") && __ec(true, "10003a"), "3a")), "2") || __ec(__ec(Bool.self, "e000000").random(), "2000000"), "")) }, sourceCode: ["": "((true || false) && true) || Bool.random()", "2": "((true || false) && true)", "3a": "(true || false) && true", "7a": "(true || false)", "77a": "true || false", "f7a": "true", "877a": "false", "10003a": "true", "2000000": "Bool.random()", "e000000": "Bool"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(9 > 8 && 7 > 6, "Some comment")"##:
         ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec(__ec(9 > 8, "2") && __ec(7 > 6, "400"), "")) }, sourceCode: ["": "9 > 8 && 7 > 6", "2": "9 > 8", "400": "7 > 6"], comments: ["Some comment"], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require("a" == "b")"##:
@@ -120,7 +120,7 @@ struct ConditionMacroTests {
       ##"#require(!Bool.random())"##:
         ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec(!__ec(__ec(Bool.self, "1c").random(), "4"), "")) }, sourceCode: ["": "!Bool.random()", "4": "Bool.random()", "1c": "Bool"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require((true && false))"##:
-        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec((true && false), "")) }, sourceCode: ["": "(true && false)"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec((__ec(__ec(true, "3c") && __ec(false, "21c"), "1c")), "")) }, sourceCode: ["": "(true && false)", "1c": "true && false", "3c": "true", "21c": "false"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(try x())"##:
         ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(try __ec(x(), "4")) }, sourceCode: ["4": "x()"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(1 is Int)"##:
@@ -142,11 +142,11 @@ struct ConditionMacroTests {
       ##"#require(a.b(c, d: e))"##:
         ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec(__ec(a.self, "6").b(__ec(c, "700"), d: __ec(e, "12100")), "")) }, sourceCode: ["": "a.b(c, d: e)", "6": "a", "700": "c", "12100": "e"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(a.b(&c))"##:
-        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec(__ec(a.self, "6").b(&c), "")) }, sourceCode: ["": "a.b(&c)", "6": "a"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in defer { __ec.__inoutAfter(c, "700") } return try Testing.__requiringTry(__ec(__ec(a.self, "6").b(&c), "")) }, sourceCode: ["": "a.b(&c)", "6": "a", "700": "&c"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(a.b(&c, &d.e))"##:
-        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec(__ec(a.self, "6").b(&c, &d.e), "")) }, sourceCode: ["": "a.b(&c, &d.e)", "6": "a"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in defer { __ec.__inoutAfter(c, "700") __ec.__inoutAfter(d.e, "18100") } return try Testing.__requiringTry(__ec(__ec(a.self, "6").b(&c, &d.e), "")) }, sourceCode: ["": "a.b(&c, &d.e)", "6": "a", "700": "&c", "18100": "&d.e"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(a.b(&c, d))"##:
-        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec(__ec(a.self, "6").b(&c, __ec(d, "18100")), "")) }, sourceCode: ["": "a.b(&c, d)", "6": "a", "18100": "d"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in defer { __ec.__inoutAfter(c, "700") } return try Testing.__requiringTry(__ec(__ec(a.self, "6").b(&c, __ec(d, "18100")), "")) }, sourceCode: ["": "a.b(&c, d)", "6": "a", "700": "&c", "18100": "d"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(a.b(try c()))"##:
         ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) in try Testing.__requiringTry(__ec(__ec(a.self, "6").b(try __ec(c(), "1700")), "")) }, sourceCode: ["": "a.b(try c())", "6": "a", "1700": "c()"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(a?.b(c))"##:

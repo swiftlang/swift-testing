@@ -468,7 +468,6 @@ final class IssueTests: XCTestCase {
         XCTFail("Unexpected issue kind \(issue.kind)")
         return
       }
-      print(expectation.evaluatedExpression.expandedDescription())
       assert(expectation.evaluatedExpression, contains: #"someString() → "abc123""#)
       assert(expectation.evaluatedExpression, contains: "Int → String")
 
@@ -1110,7 +1109,6 @@ final class IssueTests: XCTestCase {
       guard let differenceDescription = expectation.differenceDescription else {
         return XCTFail("Unexpected nil differenceDescription")
       }
-      print(differenceDescription)
       XCTAssertTrue(differenceDescription.contains(#"inserted ["hello""#))
       XCTAssertTrue(differenceDescription.contains(#"removed ["helbo""#))
     }
