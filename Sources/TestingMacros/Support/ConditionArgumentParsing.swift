@@ -261,7 +261,14 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
     // tuple _types_ rather than _values_ (e.g. `(Int, Double)`) but those
     // cannot be distinguished with syntax alone.
     if _isParentOfDeclReferenceExprValidForRewriting(node) {
-      return _rewrite(node)
+      return _rewrite(
+        TupleExprSyntax {
+          for element in node.elements {
+            visit(element).trimmed
+          }
+        },
+        originalWas: node
+      )
     }
 
     return ExprSyntax(node)
