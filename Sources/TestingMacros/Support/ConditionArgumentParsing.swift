@@ -188,13 +188,16 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   ///
   /// - Parameters:
   ///   - node: The node to rewrite.
+  ///   - functionName: If not `nil`, the name of the function to call (as a
+  ///     member function of the expression context.)
+  ///   - additionalArguments: Any additional arguments to pass to the function.
   ///
   /// - Returns: A rewritten copy of `node` that calls into the expression
   ///   context when it is evaluated at runtime.
   ///
   /// This function is equivalent to `_rewrite(node, originalWas: node)`.
-  private func _rewrite<E>(_ node: E) -> ExprSyntax where E: ExprSyntaxProtocol {
-    _rewrite(node, originalWas: node)
+  private func _rewrite<E>(_ node: E, calling functionName: TokenSyntax? = nil, passing additionalArguments: [Argument] = []) -> ExprSyntax where E: ExprSyntaxProtocol {
+    _rewrite(node, originalWas: node, calling: functionName, passing: additionalArguments)
   }
 
   /// Whether or not the parent node of the given node is capable of containing
@@ -355,13 +358,11 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
       return _rewrite(
         ClosureExprSyntax {
           InfixOperatorExprSyntax(
-            leftOperand: DeclReferenceExprSyntax(
-              baseName: .dollarIdentifier("$0")
-            ).with(\.trailingTrivia, .space),
+            leftOperand: DeclReferenceExprSyntax(baseName: .dollarIdentifier("$0"))
+              .with(\.trailingTrivia, .space),
             operator: BinaryOperatorExprSyntax(text: op),
-            rightOperand: DeclReferenceExprSyntax(
-              baseName: .dollarIdentifier("$1")
-            ).with(\.leadingTrivia, .space)
+            rightOperand: DeclReferenceExprSyntax(baseName: .dollarIdentifier("$1"))
+              .with(\.leadingTrivia, .space)
           )
         },
         originalWas: node,
@@ -391,11 +392,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
 
     let teardownItem = CodeBlockItemSyntax(
       item: .expr(
-        _rewrite(
-          node.expression,
-          originalWas: node,
-          calling: .identifier("__inoutAfter")
-        )
+        _rewrite(node.expression, calling: .identifier("__inoutAfter"))
       )
     )
     teardownItems.append(teardownItem)
@@ -571,9 +568,7 @@ func insertCalls(
         item: .stmt(
           StmtSyntax(
             DeferStmtSyntax {
-              for teardownItem in contextInserter.teardownItems {
-                teardownItem
-              }
+              contextInserter.teardownItems
             }
           )
         )
@@ -667,6 +662,24 @@ private final class _DollarIdentifierReplacer: SyntaxRewriter {
   /// The dollar identifier tokens that have been rewritten.
   var dollarIdentifierTokens = Set<TokenSyntax>()
 
+  /// The node to treat as the root node when expanding expressions.
+  var effectiveRootNode: Syntax
+
+  init(rootedAt effectiveRootNode: Syntax) {
+    self.effectiveRootNode = effectiveRootNode
+  }
+
+  override func visitAny(_ node: Syntax) -> Syntax? {
+    // Do not recurse into closure expressions (except the root node) because
+    // they will have their own argument/capture lists that won't conflict with
+    // the enclosing scope's.
+    if node.is(ClosureExprSyntax.self) && node != effectiveRootNode {
+      return Syntax(node)
+    }
+
+    return nil
+  }
+
   override func visit(_ node: TokenSyntax) -> TokenSyntax {
     if case let .dollarIdentifier(id) = node.tokenKind, id.dropFirst().allSatisfy(\.isWholeNumber) {
       // This dollar identifier is numeric, so it's a closure argument.
@@ -675,12 +688,6 @@ private final class _DollarIdentifierReplacer: SyntaxRewriter {
     }
 
     return node
-  }
-
-  override func visit(_ node: ClosureExprSyntax) -> ExprSyntax {
-    // Do not recurse into closure expressions because they will have their own
-    // argument lists that won't conflict with the enclosing scope's.
-    return ExprSyntax(node)
   }
 }
 
@@ -694,7 +701,7 @@ private final class _DollarIdentifierReplacer: SyntaxRewriter {
 ///   can be used to transform the original dollar identifiers to their
 ///   rewritten counterparts in a nested closure invocation.
 func rewriteClosureArguments(in node: some SyntaxProtocol) -> (rewrittenNode: Syntax, captureList: ClosureCaptureClauseSyntax)? {
-  let replacer = _DollarIdentifierReplacer()
+  let replacer = _DollarIdentifierReplacer(rootedAt: Syntax(node))
   let result = replacer.rewrite(node)
   if replacer.dollarIdentifierTokens.isEmpty {
     return nil
