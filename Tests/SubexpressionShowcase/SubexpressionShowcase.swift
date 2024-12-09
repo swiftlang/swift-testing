@@ -20,6 +20,11 @@ func g() throws -> Int {
   22
 }
 
+func io(_ x: inout Int) -> Int {
+  x += 1
+  return x + 1
+}
+
 struct T {
   func h(_ i: Int) -> Bool { false }
   static func j(_ d: Double) -> Bool { false }
@@ -38,6 +43,12 @@ func subexpressionShowcase() async throws {
   #expect((Int, Double)(123, 456.0) == (124, 457.0))
   #expect((123, 456) == (789, 0x12))
   #expect((try g() > 500) && true)
+
+  do {
+    let n = Int.random(in: 0 ..< 100)
+    var m = n
+    #expect(io(&m) == n)
+  }
 
   let closure: (Int) -> Void = {
     #expect($0 == 0x10)
