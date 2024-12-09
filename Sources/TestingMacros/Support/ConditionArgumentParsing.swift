@@ -111,6 +111,11 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   /// The nodes in this array are the _original_ nodes, not the rewritten nodes.
   var rewrittenNodes = Set<Syntax>()
 
+  /// The set of expanded tokens (primarily from instances of
+  /// `DeclReferenceExprSyntax`) that may represent module names instead of type
+  /// or variable names.
+  var possibleModuleNames = Set<TokenSyntax>()
+
   /// Any postflight code the caller should insert into the closure containing
   /// the rewritten syntax tree.
   var teardownItems = [CodeBlockItemSyntax]()
@@ -261,6 +266,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
        ExprSyntax(node) == memberAccessExpr.base,
        let functionCallExpr = memberAccessExpr.parent?.as(FunctionCallExprSyntax.self),
        ExprSyntax(memberAccessExpr) == functionCallExpr.calledExpression {
+      possibleModuleNames.insert(node.baseName)
       return _rewrite(
         MemberAccessExprSyntax(
           base: node.trimmed,
@@ -556,19 +562,69 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
 ///   the nodes within `node` (possibly including `node` itself) that were
 ///   rewritten, and a code block containing code that should be inserted into
 ///   the lexical scope of `node` _before_ its rewritten equivalent.
+///
+/// The resulting copy of `node` may not be of the same type as `node`. In
+/// particular, it may not be an expression. Calling code should not assume its
+/// type beyond conformance to `Syntax` and should check its type with `is()` or
+/// `as()` before operating over it.
 func insertCalls(
   toExpressionContextNamed expressionContextName: TokenSyntax,
-  into node: some SyntaxProtocol,
+  into node: some ExprSyntaxProtocol,
   for macro: some FreestandingMacroExpansionSyntax,
   rootedAt effectiveRootNode: some SyntaxProtocol,
   in context: some MacroExpansionContext
 ) -> (Syntax, rewrittenNodes: Set<Syntax>, prefixCodeBlockItems: CodeBlockItemListSyntax) {
-  if let node = node.as(ExprSyntax.self) {
-    _diagnoseTrivialBooleanValue(from: node, for: macro, in: context)
-  }
+  _diagnoseTrivialBooleanValue(from: ExprSyntax(node), for: macro, in: context)
 
   let contextInserter = _ContextInserter(in: context, for: macro, rootedAt: Syntax(effectiveRootNode), expressionContextName: expressionContextName)
-  let result = contextInserter.rewrite(node)
+
+  var result = contextInserter.rewrite(ExprSyntax(node))
+  if !contextInserter.possibleModuleNames.isEmpty {
+    let canImportNameExpr = DeclReferenceExprSyntax(baseName: .identifier("canImport"))
+    let canImportExprs = contextInserter.possibleModuleNames.map { moduleName in
+      FunctionCallExprSyntax(calledExpression: canImportNameExpr) {
+        LabeledExprSyntax(expression: DeclReferenceExprSyntax(baseName: moduleName.trimmed))
+      }
+    }
+    // FIXME: do better
+    let anyCanImportExpr: ExprSyntax = """
+    \(
+      raw: canImportExprs
+        .map(\.description)
+        .joined(separator: " || ")
+    )
+    """
+
+    guard let resultExpr = result.as(ExprSyntax.self) else {
+      fatalError("Result was of kind \(result.kind), expected some expression")
+    }
+
+    result = Syntax(
+      IfConfigDeclSyntax(
+        clauses: IfConfigClauseListSyntax {
+          IfConfigClauseSyntax(
+            poundKeyword: .poundIfKeyword(),
+            condition: anyCanImportExpr,
+            elements: .statements(
+              CodeBlockItemListSyntax {
+                CodeBlockItemSyntax(item: CodeBlockItemSyntax.Item(node))
+              }
+            )
+          )
+          IfConfigClauseSyntax(
+            poundKeyword: .poundElseKeyword(),
+            condition: anyCanImportExpr,
+            elements: .statements(
+              CodeBlockItemListSyntax {
+                CodeBlockItemSyntax(item: CodeBlockItemSyntax.Item(resultExpr))
+              }
+            )
+          )
+        }
+      )
+    )
+  }
+
   let rewrittenNodes = contextInserter.rewrittenNodes
 
   let prefixCodeBlockItems = CodeBlockItemListSyntax {
