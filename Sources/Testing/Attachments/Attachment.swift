@@ -23,6 +23,12 @@ public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: Atta
   /// Storage for ``attachableValue-7dyjv``.
   fileprivate var _attachableValue: AttachableValue
 
+  /// Metadata associated with this attachment.
+  ///
+  /// The value of this property is `nil` if you passed `nil` when initializing
+  /// this instance, or if you set it to `nil` at a later time.
+  public var metadata: AttachableValue.AttachmentMetadata?
+
   /// The path to which the this attachment was written, if any.
   ///
   /// If a developer sets the ``Configuration/attachmentsPath`` property of the
@@ -78,12 +84,19 @@ extension Attachment where AttachableValue: ~Copyable {
   ///   - preferredName: The preferred name of the attachment when writing it to
   ///     a test report or to disk. If `nil`, the testing library attempts to
   ///     derive a reasonable filename for the attached value.
+  ///   - metadata: Optional metadata to include with `attachableValue`.
   ///   - sourceLocation: The source location of the call to this initializer.
   ///     This value is used when recording issues associated with the
   ///     attachment.
-  public init(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
+  public init(
+    _ attachableValue: consuming AttachableValue,
+    named preferredName: String? = nil,
+    metadata: AttachableValue.AttachmentMetadata? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) {
     self._attachableValue = attachableValue
     self.preferredName = preferredName ?? Self.defaultPreferredName
+    self.metadata = metadata
     self.sourceLocation = sourceLocation
   }
 }
@@ -97,6 +110,7 @@ extension Attachment where AttachableValue == AnyAttachable {
   fileprivate init(_ attachment: Attachment<some Attachable & Sendable & Copyable>) {
     self.init(
       _attachableValue: AnyAttachable(attachableValue: attachment.attachableValue),
+      metadata: attachment.metadata,
       fileSystemPath: attachment.fileSystemPath,
       preferredName: attachment.preferredName,
       sourceLocation: attachment.sourceLocation
@@ -118,6 +132,8 @@ extension Attachment where AttachableValue == AnyAttachable {
 /// }
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 public struct AnyAttachable: AttachableContainer, Copyable, Sendable {
+  public typealias AttachmentMetadata = any Sendable /* & Copyable rdar://137614425 */
+
 #if !SWT_NO_LAZY_ATTACHMENTS
   public typealias AttachableValue = any Attachable & Sendable /* & Copyable rdar://137614425 */
 #else
@@ -138,6 +154,7 @@ public struct AnyAttachable: AttachableContainer, Copyable, Sendable {
     func open<T>(_ attachableValue: T, for attachment: borrowing Attachment<Self>) throws -> R where T: Attachable & Sendable & Copyable {
       let temporaryAttachment = Attachment<T>(
         _attachableValue: attachableValue,
+        metadata: attachment.metadata as? T.AttachmentMetadata,
         fileSystemPath: attachment.fileSystemPath,
         preferredName: attachment.preferredName,
         sourceLocation: attachment.sourceLocation
