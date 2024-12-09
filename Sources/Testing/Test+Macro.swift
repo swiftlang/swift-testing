@@ -224,8 +224,10 @@ public macro Test<C>(
 ///
 /// - <doc:DefiningTests>
 //
-// - Bug: The testing library should support variadic generics.
-//   ([103416861](rdar://103416861))
+// @Comment {
+//   - Bug: The testing library should support variadic generics.
+//     ([103416861](rdar://103416861))
+// }
 @attached(peer) public macro Test<C>(
   _ displayName: _const String? = nil,
   _ traits: any TestTrait...,
@@ -271,14 +273,14 @@ extension Test {
 /// During testing, the associated test function is called once for each pair of
 /// elements in `collection1` and `collection2`.
 ///
-/// @Comment {
-///   - Bug: The testing library should support variadic generics.
-///     ([103416861](rdar://103416861))
-/// }
-///
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
+//
+// @Comment {
+//   - Bug: The testing library should support variadic generics.
+//     ([103416861](rdar://103416861))
+// }
 @attached(peer)
 @_documentation(visibility: private)
 public macro Test<C1, C2>(
@@ -303,8 +305,10 @@ public macro Test<C1, C2>(
 ///
 /// - <doc:DefiningTests>
 //
-// - Bug: The testing library should support variadic generics.
-//   ([103416861](rdar://103416861))
+// @Comment {
+//   - Bug: The testing library should support variadic generics.
+//     ([103416861](rdar://103416861))
+// }
 @attached(peer) public macro Test<C1, C2>(
   _ displayName: _const String? = nil,
   _ traits: any TestTrait...,
@@ -323,14 +327,14 @@ public macro Test<C1, C2>(
 /// During testing, the associated test function is called once for each element
 /// in `zippedCollections`.
 ///
-/// @Comment {
-///   - Bug: The testing library should support variadic generics.
-///     ([103416861](rdar://103416861))
-/// }
-///
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
+//
+// @Comment {
+//   - Bug: The testing library should support variadic generics.
+//     ([103416861](rdar://103416861))
+// }
 @attached(peer)
 @_documentation(visibility: private)
 public macro Test<C1, C2>(
@@ -355,8 +359,10 @@ public macro Test<C1, C2>(
 ///
 /// - <doc:DefiningTests>
 //
-// - Bug: The testing library should support variadic generics.
-//   ([103416861](rdar://103416861))
+// @Comment {
+//   - Bug: The testing library should support variadic generics.
+//     ([103416861](rdar://103416861))
+// }
 @attached(peer) public macro Test<C1, C2>(
   _ displayName: _const String? = nil,
   _ traits: any TestTrait...,

@@ -50,9 +50,11 @@ public struct Issue: Sendable {
     /// - Parameters:
     ///   - timeLimitComponents: The time limit reached by the test.
     //
-    // - Bug: The associated value of this enumeration case should be an
-    //   instance of `Duration`, but the testing library's deployment target
-    //   predates the introduction of that type.
+    // @Comment {
+    //   - Bug: The associated value of this enumeration case should be an
+    //     instance of `Duration`, but the testing library's deployment target
+    //     predates the introduction of that type.
+    // }
     indirect case timeLimitExceeded(timeLimitComponents: (seconds: Int64, attoseconds: Int64))
 
     /// A known issue was expected, but was not recorded.
@@ -336,9 +338,11 @@ extension Issue.Kind {
     /// - Parameters:
     ///   - timeLimitComponents: The time limit reached by the test.
     //
-    // - Bug: The associated value of this enumeration case should be an
-    //   instance of `Duration`, but the testing library's deployment target
-    //   predates the introduction of that type.
+    // @Comment {
+    //   - Bug: The associated value of this enumeration case should be an
+    //     instance of `Duration`, but the testing library's deployment target
+    //     predates the introduction of that type.
+    // }
     indirect case timeLimitExceeded(timeLimitComponents: (seconds: Int64, attoseconds: Int64))
 
     /// A known issue was expected, but was not recorded.

@@ -123,9 +123,11 @@ extension Trait where Self == ConditionTrait {
   /// - Returns: An instance of ``ConditionTrait`` that will evaluate the
   ///   specified closure.
   //
-  // - Bug: `condition` cannot be `async` without making this function
-  //   `async` even though `condition` is not evaluated locally.
-  //   ([103037177](rdar://103037177))
+  // @Comment {
+  //   - Bug: `condition` cannot be `async` without making this function
+  //      `async` even though `condition` is not evaluated locally.
+  //      ([103037177](rdar://103037177))
+  // }
   public static func enabled(
     if condition: @autoclosure @escaping @Sendable () throws -> Bool,
     _ comment: Comment? = nil,
@@ -182,9 +184,11 @@ extension Trait where Self == ConditionTrait {
   /// - Returns: An instance of ``ConditionTrait`` that will evaluate the
   ///   specified closure.
   //
-  // - Bug: `condition` cannot be `async` without making this function
-  //   `async` even though `condition` is not evaluated locally.
-  //   ([103037177](rdar://103037177))
+  // @Comment {
+  //   - Bug: `condition` cannot be `async` without making this function
+  //      `async` even though `condition` is not evaluated locally.
+  //      ([103037177](rdar://103037177))
+  // }
   public static func disabled(
     if condition: @autoclosure @escaping @Sendable () throws -> Bool,
     _ comment: Comment? = nil,

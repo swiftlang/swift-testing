@@ -112,8 +112,10 @@ extension Attachment where AttachableValue == AnyAttachable {
 /// `@_spi(ForToolsIntegrationOnly)` will see instances of this type when
 /// handling those events.
 //
-// Swift's type system requires that this type be at least as visible as
-// `Event.Kind.valueAttached(_:)`, otherwise it would be declared private.
+// @Comment {
+//   Swift's type system requires that this type be at least as visible as
+//   `Event.Kind.valueAttached(_:)`, otherwise it would be declared private.
+// }
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 public struct AnyAttachable: AttachableContainer, Copyable, Sendable {
 #if !SWT_NO_LAZY_ATTACHMENTS
