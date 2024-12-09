@@ -189,30 +189,71 @@ extension ConditionMacro {
             argumentExpr = "try Testing.__requiringTry(\(argumentExpr))"
           }
 
+          // Construct the body of the closure that we'll pass to the expanded
+          // function.
+          var codeBlockItems = CodeBlockItemListSyntax {
+            if prefixCodeBlockItems.isEmpty {
+              CodeBlockItemSyntax(item: .expr(argumentExpr))
+                .with(\.trailingTrivia, .newline)
+            } else {
+              prefixCodeBlockItems
+
+              // If we're inserting any additional code into the closure before
+              // the rewritten argument, we can't elide the return keyword.
+              CodeBlockItemSyntax(
+                item: .stmt(
+                  StmtSyntax(
+                    ReturnStmtSyntax(
+                      expression: argumentExpr
+                        .with(\.leadingTrivia, .space)
+                    )
+                  )
+                )
+              ).with(\.trailingTrivia, .newline)
+            }
+          }
+
           // Replace any dollar identifiers we find.
-          let closureArguments = rewriteClosureArguments(in: argumentExpr)
+          let closureArguments = rewriteClosureArguments(in: codeBlockItems)
           if let closureArguments {
-            argumentExpr = closureArguments.rewrittenNode.cast(ExprSyntax.self)
+            codeBlockItems = closureArguments.rewrittenNode.cast(CodeBlockItemListSyntax.self)
           }
 
-          // If we're inserting any additional code into the closure before the
-          // rewritten argument, we can't elide the return keyword for brevity.
-          var returnKeyword: TokenSyntax?
-          if !prefixCodeBlockItems.isEmpty {
-            returnKeyword = .keyword(.return)
-              .with(\.leadingTrivia, argumentExpr.leadingTrivia)
-            argumentExpr.leadingTrivia = .space
-          }
-
-          // Enclose the expression in a closure into which we pass our local
-          // context object.
-          argumentExpr = """
-          { \(closureArguments?.captureList) (\(expressionContextName): inout Testing.__ExpectationContext) in
-            \(prefixCodeBlockItems)\(returnKeyword)\(argumentExpr)
-          }
-          """
-
-          checkArguments.append(Argument(expression: argumentExpr))
+          // Enclose the code block in the final closure.
+          let closureExpr = ClosureExprSyntax(
+            signature: ClosureSignatureSyntax(
+              capture: closureArguments?.captureList,
+              parameterClause: .parameterClause(
+                ClosureParameterClauseSyntax(
+                  parameters: ClosureParameterListSyntax {
+                    ClosureParameterSyntax(
+                      firstName: expressionContextName,
+                      colon: .colonToken().with(\.trailingTrivia, .space),
+                      type: TypeSyntax(
+                        AttributedTypeSyntax(
+                          specifiers: [
+                            .init(
+                              SimpleTypeSpecifierSyntax(specifier: .keyword(.inout))
+                                .with(\.trailingTrivia, .space)
+                            )
+                          ],
+                          baseType: MemberTypeSyntax(
+                            baseType: IdentifierTypeSyntax(name: .identifier("Testing")),
+                            name: .identifier("__ExpectationContext")
+                          )
+                        )
+                      )
+                    )
+                  }
+                )
+              ),
+              inKeyword: .keyword(.in)
+                .with(\.leadingTrivia, .space)
+                .with(\.trailingTrivia, .newline)
+            ),
+            statements: codeBlockItems
+          )
+          checkArguments.append(Argument(expression: closureExpr))
 
           // Sort the rewritten nodes. This isn't strictly necessary for
           // correctness but it does make the produced code more consistent.
