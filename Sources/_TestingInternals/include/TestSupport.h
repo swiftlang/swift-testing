@@ -21,9 +21,9 @@ SWT_ASSUME_NONNULL_BEGIN
 
 /// A type used by the testing library's own tests to validate how C
 /// enumerations are presented in test output.
-enum __attribute__((enum_extensibility(open))) SWTTestEnumeration {
+SWT_ENUM(SWTTestEnumeration, uint32_t,
   SWTTestEnumerationA, SWTTestEnumerationB
-};
+);
 
 static inline bool swt_pointersNotEqual2(const char *a, const char *b) {
   return a != b;
