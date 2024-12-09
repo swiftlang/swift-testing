@@ -111,6 +111,10 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   /// The nodes in this array are the _original_ nodes, not the rewritten nodes.
   var rewrittenNodes = Set<Syntax>()
 
+  /// Any postflight code the caller should insert into the closure containing
+  /// the rewritten syntax tree.
+  var teardownItems = [CodeBlockItemSyntax]()
+
   init(in context: C, for macro: M, rootedAt effectiveRootNode: Syntax, expressionContextName: TokenSyntax) {
     self.context = context
     self.macro = macro
@@ -123,12 +127,13 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   /// (or rather, its `callAsFunction(_:_:)` member).
   ///
   /// - Parameters:
-  ///   - functionNameExpr: If not `nil`, the name of the function to call (as a
-  ///     member of the expression context.)
   ///   - node: The node to rewrite.
   ///   - originalNode: The original node in the original syntax tree, if `node`
   ///     has already been partially rewritten or substituted. If `node` has not
   ///     been rewritten, this argument should equal it.
+  ///   - functionName: If not `nil`, the name of the function to call (as a
+  ///     member function of the expression context.)
+  ///   - additionalArguments: Any additional arguments to pass to the function.
   ///
   /// - Returns: A rewritten copy of `node` that calls into the expression
   ///   context when it is evaluated at runtime.
@@ -379,8 +384,24 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   }
 
   override func visit(_ node: InOutExprSyntax) -> ExprSyntax {
-    // inout arguments cannot be forwarded through functions. In the future, we
-    // could experiment with unsafe mutable pointers?
+    // Swift's Law of Exclusivity means that only one subexpression in the
+    // expectation ought to be interacting with `value` when it is passed
+    // `inout`, so it should be sufficient to capture it in a `defer` statement
+    // that runs after the expression is evaluated.
+
+    let teardownItem = CodeBlockItemSyntax(
+      item: .expr(
+        _rewrite(
+          node.expression,
+          originalWas: node,
+          calling: .identifier("__inoutAfter")
+        )
+      )
+    )
+    teardownItems.append(teardownItem)
+
+    // The argument should not be expanded in-place as we can't return an
+    // argument passed `inout` and expect it to remain semantically correct.
     return ExprSyntax(node)
   }
 
@@ -525,23 +546,42 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
 ///     the purposes of generating expression ID values.
 ///   - context: The macro context in which the expression is being parsed.
 ///
-/// - Returns: A tuple containing the rewritten copy of `node` as well as a list
-///   of all the nodes within `node` (possibly including `node` itself) that
-///   were rewritten.
+/// - Returns: A tuple containing the rewritten copy of `node`, a list of all
+///   the nodes within `node` (possibly including `node` itself) that were
+///   rewritten, and a code block containing code that should be inserted into
+///   the lexical scope of `node` _before_ its rewritten equivalent.
 func insertCalls(
   toExpressionContextNamed expressionContextName: TokenSyntax,
   into node: some SyntaxProtocol,
   for macro: some FreestandingMacroExpansionSyntax,
   rootedAt effectiveRootNode: some SyntaxProtocol,
   in context: some MacroExpansionContext
-) -> (Syntax, rewrittenNodes: Set<Syntax>) {
+) -> (Syntax, rewrittenNodes: Set<Syntax>, prefixCodeBlockItems: CodeBlockItemListSyntax) {
   if let node = node.as(ExprSyntax.self) {
     _diagnoseTrivialBooleanValue(from: node, for: macro, in: context)
   }
 
   let contextInserter = _ContextInserter(in: context, for: macro, rootedAt: Syntax(effectiveRootNode), expressionContextName: expressionContextName)
   let result = contextInserter.rewrite(node)
-  return (result, contextInserter.rewrittenNodes)
+  let rewrittenNodes = contextInserter.rewrittenNodes
+
+  let prefixCodeBlockItems = CodeBlockItemListSyntax {
+    if !contextInserter.teardownItems.isEmpty {
+      CodeBlockItemSyntax(
+        item: .stmt(
+          StmtSyntax(
+            DeferStmtSyntax {
+              for teardownItem in contextInserter.teardownItems {
+                teardownItem
+              }
+            }
+          )
+        )
+      )
+    }
+  }.formatted().with(\.trailingTrivia, .newline).cast(CodeBlockItemListSyntax.self)
+
+  return (result, rewrittenNodes, prefixCodeBlockItems)
 }
 
 // MARK: - Finding optional chains

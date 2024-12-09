@@ -198,6 +198,20 @@ extension __ExpectationContext {
     return value
   }
 #endif
+
+  /// Capture information about a value passed `inout` to a function call after
+  /// the function has returned.
+  ///
+  /// - Parameters:
+  ///   - value: The value that was passed `inout` (i.e. with the `&` operator.)
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  public mutating func __inoutAfter<T>(_ value: T, _ id: __ExpressionID) {
+    runtimeValues[id] = { Expression.Value(reflecting: value, timing: .after) }
+  }
 }
 
 // MARK: - Collection comparison and diffing
