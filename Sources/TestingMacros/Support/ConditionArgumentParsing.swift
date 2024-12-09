@@ -248,6 +248,15 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
     // expression, and that member access expression is the called expression of
     // a function, it is generally safe to extract out (but may need `.self`
     // added to the end.)
+    //
+    // Module names are an exception to this rule as they cannot be referred to
+    // directly in source. So for instance, the following expression will be
+    // expanded incorrectly:
+    //
+    //   #expect(Testing.foo(bar))
+    //
+    // These sorts of expressions are relatively rare, so we'll allow the bug
+    // for the sake of better diagnostics in the common case.
     if let memberAccessExpr = node.parent?.as(MemberAccessExprSyntax.self),
        ExprSyntax(node) == memberAccessExpr.base,
        let functionCallExpr = memberAccessExpr.parent?.as(FunctionCallExprSyntax.self),
