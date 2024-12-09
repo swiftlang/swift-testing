@@ -30,7 +30,6 @@ struct T {
   static func j(_ d: Double) -> Bool { false }
 }
 
-
 @Test func runSubexpressionShowcase() async {
   await withKnownIssue {
     try await subexpressionShowcase()
