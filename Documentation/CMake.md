@@ -59,18 +59,24 @@ endif()
 ## Add an entry point
 
 You must include a source file in your test executable target with a
-`@main` entry point.
+`@main` entry point. The example main below requires the experimental
+`Extern` feature. The declaration of `swt_abiv0_getEntryPoint` could
+also be written in a C header file with its own `module.modulemap`.
 
 ```swift
-import Foundation
-@_spi(ForToolsIntegrationOnly) import Testing
+typealias EntryPoint = @convention(thin) @Sendable (_ configurationJSON: UnsafeRawBufferPointer?, _ recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void) async throws -> Bool
+
+@_extern(c, "swt_abiv0_getEntryPoint")
+func swt_abiv0_getEntryPoint() -> UnsafeRawPointer
 
 @main struct Runner {
     static func main() async throws {
-        let configurationJSON: UnsafeRawBufferPointer? = nil
+        nonisolated(unsafe) let configurationJSON: UnsafeRawBufferPointer? = nil
         let recordHandler: @Sendable (UnsafeRawBufferPointer) -> Void = { _ in }
 
-        if try await ABIv0.entryPoint(configurationJSON, recordHandler) {
+        let entryPoint = unsafeBitCast(swt_abiv0_getEntryPoint(), to: EntryPoint.self)
+
+        if try await entryPoint(configurationJSON, recordHandler) {
             exit(EXIT_SUCCESS)
         } else {
             exit(EXIT_FAILURE)
