@@ -143,17 +143,6 @@ public struct __ExpectationContext: ~Copyable {
 
     return expression
   }
-
-#if !SWT_FIXED_122011759
-  /// Storage for any locally-created C strings.
-  private var _transformedCStrings = [UnsafeMutablePointer<CChar>]()
-
-  deinit {
-    for cString in _transformedCStrings {
-      free(cString)
-    }
-  }
-#endif
 }
 
 @available(*, unavailable)
@@ -464,15 +453,15 @@ extension __ExpectationContext {
 // MARK: - Implicit pointer conversion
 
 extension __ExpectationContext {
-  /// Convert some pointer to an immutable one and capture information about it
-  /// for use if the expectation currently being evaluated fails.
+  /// Convert some pointer to another pointer type and capture information about
+  /// it for use if the expectation currently being evaluated fails.
   ///
   /// - Parameters:
-  ///   - value: The pointer to make immutable.
+  ///   - value: The pointer to cast.
   ///   - id: A value that uniquely identifies the represented expression in the
   ///     context of the expectation currently being evaluated.
   ///
-  /// - Returns: `value`, cast to an immutable pointer.
+  /// - Returns: `value`, cast to another type of pointer.
   ///
   /// This overload of `callAsFunction(_:_:)` handles the implicit conversions
   /// between various pointer types that are normally provided by the compiler.
@@ -486,67 +475,63 @@ extension __ExpectationContext {
   }
 }
 
-#if !SWT_FIXED_122011759
 // MARK: - String-to-C-string handling
 
 extension __ExpectationContext {
-  /// Convert a string to a C string and capture information about it for use if
-  /// the expectation currently being evaluated fails.
+  /// Capture information about a value for use if the expectation currently
+  /// being evaluated fails.
   ///
   /// - Parameters:
-  ///   - value: The string value that should be transformed into a C string.
+  ///   - value: The value to pass through.
   ///   - id: A value that uniquely identifies the represented expression in the
   ///     context of the expectation currently being evaluated.
   ///
-  /// - Returns: `value`, transformed into a pointer to a C string. The caller
-  ///   should _not_ free this string; it will be freed when the expectation
-  ///   context is destroyed.
+  /// - Returns: `value`, verbatim.
   ///
-  /// This overload of `callAsFunction(_:_:)` is necessary because Swift allows
-  /// passing string literals directly to functions that take C strings. The
-  /// default overload of `callAsFunction(_:_:)` does not trigger this implicit
-  /// cast and causes a compile-time error. ([122011759](rdar://122011759))
+  /// This overload of `callAsFunction(_:_:)` helps the compiler disambiguate
+  /// string values when they need to be implicitly cast to C strings.
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public mutating func callAsFunction<P>(_ value: String, _ id: __ExpressionID) -> P where P: _Pointer {
-    // Perform the normal value capture.
-    let value = _captureValue(value, id)
-
-    // Create a C string copy of `value`.
-    let valueCString = value.withCString { value in
-#if os(Windows)
-      _strdup(value)
-#else
-      strdup(value)
-#endif
-    }
-
-    let result = valueCString.flatMap { valueCString in
-      // Store the C string pointer so we can free it later when this context is
-      // torn down.
-      if _transformedCStrings.capacity == 0 {
-        _transformedCStrings.reserveCapacity(2)
-      }
-      _transformedCStrings.append(valueCString)
-
-      // Return the C string as whatever pointer type the caller wants.
-      return P(bitPattern: Int(bitPattern: valueCString))
-    }
-
-    return result!
+  public mutating func callAsFunction(_ value: String, _ id: __ExpressionID) -> String {
+    _captureValue(value, id)
   }
 
   /// Capture information about a value for use if the expectation currently
   /// being evaluated fails.
   ///
+  /// - Parameters:
+  ///   - value: The value to pass through.
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  ///
+  /// - Returns: An optional value containing a copy of `value`.
+  ///
   /// This overload of `callAsFunction(_:_:)` helps the compiler disambiguate
-  /// optional string values.
+  /// string values when they need to be implicitly cast to C strings.
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public mutating func callAsFunction(_ value: String?, _ id: __ExpressionID) -> String! {
+  public mutating func callAsFunction(_ value: String, _ id: __ExpressionID) -> String? {
+    _captureValue(value, id)
+  }
+
+  /// Capture information about a value for use if the expectation currently
+  /// being evaluated fails.
+  ///
+  /// - Parameters:
+  ///   - value: The value to pass through.
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  ///
+  /// - Returns: An optional value containing a copy of `value`.
+  ///
+  /// This overload of `callAsFunction(_:_:)` helps the compiler disambiguate
+  /// string values when they need to be implicitly cast to C strings.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  public mutating func callAsFunction(_ value: String?, _ id: __ExpressionID) -> String? {
     _captureValue(value, id)
   }
 }
-#endif
