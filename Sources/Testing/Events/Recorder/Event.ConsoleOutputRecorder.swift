@@ -304,18 +304,40 @@ extension Event.ConsoleOutputRecorder {
   ///   destination.
   @discardableResult public func record(_ event: borrowing Event, in context: borrowing Event.Context) -> Bool {
     let messages = _humanReadableOutputRecorder.record(event, in: context)
-    for message in messages {
-      let symbol = message.symbol?.stringValue(options: options) ?? " "
 
-      if case .details = message.symbol, options.useANSIEscapeCodes, options.ansiColorBitDepth > 1 {
+    // Padding to use in place of a symbol for messages that don't have one.
+    var padding = " "
+#if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
+    if options.useSFSymbols {
+      padding = "  "
+    }
+#endif
+
+    let lines = messages.lazy.map { [test = context.test] message in
+      let symbol = message.symbol?.stringValue(options: options) ?? padding
+
+      if case .details = message.symbol {
         // Special-case the detail symbol to apply grey to the entire line of
-        // text instead of just the symbol.
-        write("\(_ansiEscapeCodePrefix)90m\(symbol) \(message.stringValue)\(_resetANSIEscapeCode)\n")
+        // text instead of just the symbol. Details may be multi-line messages,
+        // so split the message on newlines and indent all lines to align them
+        // to the indentation provided by the symbol.
+        var lines = message.stringValue.split(whereSeparator: \.isNewline)
+        lines = CollectionOfOne(lines[0]) + lines.dropFirst().map { line in
+          "\(padding) \(line)"
+        }
+        let stringValue = lines.joined(separator: "\n")
+        if options.useANSIEscapeCodes, options.ansiColorBitDepth > 1 {
+          return "\(_ansiEscapeCodePrefix)90m\(symbol) \(stringValue)\(_resetANSIEscapeCode)\n"
+        } else {
+          return "\(symbol) \(stringValue)\n"
+        }
       } else {
-        let colorDots = context.test.map(\.tags).map { self.colorDots(for: $0) } ?? ""
-        write("\(symbol) \(colorDots)\(message.stringValue)\n")
+        let colorDots = test.map { self.colorDots(for: $0.tags) } ?? ""
+        return "\(symbol) \(colorDots)\(message.stringValue)\n"
       }
     }
+
+    write(lines.joined())
     return !messages.isEmpty
   }
 
