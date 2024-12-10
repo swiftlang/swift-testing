@@ -52,6 +52,17 @@ static int swt_errno(void) {
 }
 
 #if !SWT_NO_FILE_IO
+#if __has_include(<sys/stat.h>) && defined(S_ISDIR)
+/// Check if a given `mode_t` value indicates that a file is a directory.
+///
+/// This function is exactly equivalent to the `S_ISDIR()` macro. It is
+/// necessary because the mode flag macros are not imported into Swift
+/// consistently across platforms.
+static bool swt_S_ISDIR(mode_t mode) {
+  return S_ISDIR(mode);
+}
+#endif
+
 #if __has_include(<sys/stat.h>) && defined(S_ISFIFO)
 /// Check if a given `mode_t` value indicates that a file is a pipe (FIFO.)
 ///

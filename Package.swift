@@ -104,7 +104,6 @@ let package = Package(
       name: "_Testing_Foundation",
       dependencies: [
         "Testing",
-        "_TestingInternals"
       ],
       path: "Sources/Overlays/_Testing_Foundation",
       swiftSettings: .packageSettings
