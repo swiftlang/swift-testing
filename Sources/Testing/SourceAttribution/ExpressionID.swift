@@ -17,29 +17,17 @@
 /// - Warning: This type is used to implement the `#expect()` and `#require()`
 ///   macros. Do not use it directly.
 public struct __ExpressionID: Sendable {
+  /// The ID of the root node in an expression graph.
+  static var root: Self {
+    ""
+  }
+
   /// The string produced at compile time that encodes the unique identifier of
   /// the represented expression.
   var stringValue: String
 
   /// The number of bits in a nybble.
   private static var _bitsPerNybble: Int { 4 }
-
-  /// The ID of the syntax node represented by this instance.
-  var nodeID: UInt32 {
-    // The ID is encoded as the highest non-zero bit in the string, so that's
-    // nybbles.first.highestBit + ((nybbles.count - 1) * bitsPerNybble)
-    if stringValue.isEmpty {
-      return 0
-    }
-
-    let stringNybble = stringValue[stringValue.startIndex ... stringValue.startIndex]
-    guard let nybble = UInt8(stringNybble, radix: 16) else {
-      return 0
-    }
-
-    let highestBit = UInt8.bitWidth - nybble.leadingZeroBitCount
-    return UInt32(highestBit) + UInt32((stringValue.count - 1) * Self._bitsPerNybble)
-  }
 
   /// A representation of this instance suitable for use as a key path in an
   /// instance of `Graph` where the key type is `UInt32`.

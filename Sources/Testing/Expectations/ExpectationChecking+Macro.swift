@@ -237,7 +237,7 @@ public func __checkEscapedCondition(
   sourceLocation: SourceLocation
 ) -> Result<Void, any Error> {
   var expectationContext = __ExpectationContext()
-  expectationContext.sourceCode[""] = sourceCode
+  expectationContext.sourceCode[.root] = sourceCode
 
   return check(
     condition,
@@ -266,7 +266,7 @@ public func __checkEscapedCondition<T>(
   sourceLocation: SourceLocation
 ) -> Result<T, any Error> where T: ~Copyable {
   var expectationContext = __ExpectationContext()
-  expectationContext.sourceCode[""] = sourceCode
+  expectationContext.sourceCode[.root] = sourceCode
 
   let result = check(
     optionalValue != nil,
@@ -393,7 +393,7 @@ public func __checkClosureCall(
   }
 
   var expectationContext = __ExpectationContext()
-  expectationContext.sourceCode[""] = sourceCode
+  expectationContext.sourceCode[.root] = sourceCode
   return check(
     success,
     expectationContext: expectationContext,
@@ -433,7 +433,7 @@ public func __checkClosureCall(
   }
 
   var expectationContext = __ExpectationContext()
-  expectationContext.sourceCode[""] = sourceCode
+  expectationContext.sourceCode[.root] = sourceCode
   return check(
     success,
     expectationContext: expectationContext,
@@ -519,7 +519,7 @@ public func __checkClosureCall<R>(
   sourceLocation: SourceLocation
 ) -> Result<Void, any Error> {
   var expectationContext = __ExpectationContext()
-  expectationContext.sourceCode[""] = sourceCode
+  expectationContext.sourceCode[.root] = sourceCode
 
   var errorMatches = false
   var mismatchExplanationValue: String? = nil
@@ -532,7 +532,7 @@ public func __checkClosureCall<R>(
     }
     mismatchExplanationValue = explanation
   } catch {
-    expectationContext.runtimeValues[""] = { Expression.Value(reflecting: error) }
+    expectationContext.runtimeValues[.root] = { Expression.Value(reflecting: error) }
     let secondError = Issue.withErrorRecording(at: sourceLocation) {
       errorMatches = try errorMatcher(error)
     }
@@ -571,7 +571,7 @@ public func __checkClosureCall<R>(
   sourceLocation: SourceLocation
 ) async -> Result<Void, any Error> {
   var expectationContext = __ExpectationContext()
-  expectationContext.sourceCode[""] = sourceCode
+  expectationContext.sourceCode[.root] = sourceCode
 
   var errorMatches = false
   var mismatchExplanationValue: String? = nil
@@ -584,7 +584,7 @@ public func __checkClosureCall<R>(
     }
     mismatchExplanationValue = explanation
   } catch {
-    expectationContext.runtimeValues[""] = { Expression.Value(reflecting: error) }
+    expectationContext.runtimeValues[.root] = { Expression.Value(reflecting: error) }
     let secondError = await Issue.withErrorRecording(at: sourceLocation) {
       errorMatches = try await errorMatcher(error)
     }
