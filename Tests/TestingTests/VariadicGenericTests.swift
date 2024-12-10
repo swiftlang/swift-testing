@@ -25,8 +25,8 @@ private import _TestingInternals
   let nilString: String? = nil
   #expect(swt_nullableCString(nilString) == false)
 
-  let lhs: String? = "abc"
-  let rhs: String? = "123"
+  let lhs = "abc"
+  let rhs = "123"
   #expect(0 != strcmp(lhs, rhs))
 }
 
