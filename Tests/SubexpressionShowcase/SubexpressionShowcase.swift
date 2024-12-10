@@ -50,7 +50,7 @@ func subexpressionShowcase() async throws {
   }
 
   let closure: (Int) -> Void = {
-    #expect(($0 + $0 + $0) == 0x10)
+    #expect((($0 + $0 + $0) as Int) == 0x10)
   }
   closure(11)
 
@@ -114,9 +114,4 @@ func subexpressionShowcase() async throws {
 
   let n = 1 as Any
   _ = try #require(n as? String)
-
-  let utf16 = [UTF16.CodeUnit](repeating: 0, count: 16)
-  _ = try utf16.withUnsafeBufferPointer { utf16 in
-    try #require(String.decodeCString(utf16.baseAddress, as: UTF16.self)?.result)
-  }
 }

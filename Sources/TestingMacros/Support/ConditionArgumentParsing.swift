@@ -735,7 +735,12 @@ func findEffectKeywords(in node: some SyntaxProtocol) -> Set<Keyword> {
 ///
 /// - Returns: A copy of `token` as an identifier token.
 private func _rewriteDollarIdentifier(_ token: TokenSyntax) -> TokenSyntax {
-  .identifier("__renamedCapture__\(token.trimmedDescription)")
+  var result = TokenSyntax.identifier("__renamedCapture__\(token.trimmedDescription)")
+
+  result.leadingTrivia = token.leadingTrivia
+  result.trailingTrivia = token.trailingTrivia
+
+  return result
 }
 
 /// A syntax rewriter that replaces _numeric_ dollar identifiers (e.g. `$0`)

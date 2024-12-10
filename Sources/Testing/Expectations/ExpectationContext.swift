@@ -463,72 +463,9 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @_disfavoredOverload
-  public mutating func callAsFunction<P, T>(_ value: P, _ id: __ExpressionID) -> UnsafePointer<T> where P: _Pointer, P.Pointee == T {
-    self(value as P?, id)!
-  }
-
-  /// Convert some pointer to an immutable one and capture information about it
-  /// for use if the expectation currently being evaluated fails.
-  ///
-  /// - Parameters:
-  ///   - value: The pointer to make immutable.
-  ///   - id: A value that uniquely identifies the represented expression in the
-  ///     context of the expectation currently being evaluated.
-  ///
-  /// - Returns: `value`, cast to an immutable pointer.
-  ///
-  /// This overload of `callAsFunction(_:_:)` handles the implicit conversions
-  /// between various pointer types that are normally provided by the compiler.
-  ///
-  /// - Warning: This function is used to implement the `#expect()` and
-  ///   `#require()` macros. Do not call it directly.
-  @_disfavoredOverload
-  public mutating func callAsFunction<P, T>(_ value: P?, _ id: __ExpressionID) -> UnsafePointer<T>? where P: _Pointer, P.Pointee == T {
-    value.flatMap { value in
-      UnsafePointer<T>(bitPattern: Int(bitPattern: self(value, id) as P))
-    }
-  }
-
-  /// Convert some pointer to an immutable one and capture information about it
-  /// for use if the expectation currently being evaluated fails.
-  ///
-  /// - Parameters:
-  ///   - value: The pointer to make immutable.
-  ///   - id: A value that uniquely identifies the represented expression in the
-  ///     context of the expectation currently being evaluated.
-  ///
-  /// - Returns: `value`, cast to an immutable pointer.
-  ///
-  /// This overload of `callAsFunction(_:_:)` handles the implicit conversions
-  /// between various pointer types that are normally provided by the compiler.
-  ///
-  /// - Warning: This function is used to implement the `#expect()` and
-  ///   `#require()` macros. Do not call it directly.
-  @_disfavoredOverload
-  public mutating func callAsFunction<P>(_ value: P, _ id: __ExpressionID) -> UnsafeRawPointer where P: _Pointer {
-    self(value as P?, id)!
-  }
-
-  /// Convert some pointer to an immutable one and capture information about it
-  /// for use if the expectation currently being evaluated fails.
-  ///
-  /// - Parameters:
-  ///   - value: The pointer to make immutable.
-  ///   - id: A value that uniquely identifies the represented expression in the
-  ///     context of the expectation currently being evaluated.
-  ///
-  /// - Returns: `value`, cast to an immutable pointer.
-  ///
-  /// This overload of `callAsFunction(_:_:)` handles the implicit conversions
-  /// between various pointer types that are normally provided by the compiler.
-  ///
-  /// - Warning: This function is used to implement the `#expect()` and
-  ///   `#require()` macros. Do not call it directly.
-  @_disfavoredOverload
-  public mutating func callAsFunction<P>(_ value: P?, _ id: __ExpressionID) -> UnsafeRawPointer? where P: _Pointer {
-    value.flatMap { value in
-      UnsafeRawPointer(bitPattern: Int(bitPattern: self(value, id) as P))
+  public mutating func callAsFunction<P1, P2>(_ value: P1?, _ id: __ExpressionID) -> P2! where P1: _Pointer, P2: _Pointer {
+    self(value as P1?, id).flatMap { value in
+      P2(bitPattern: Int(bitPattern: value))
     }
   }
 }
@@ -550,35 +487,50 @@ extension __ExpectationContext {
   ///   context is destroyed.
   ///
   /// This overload of `callAsFunction(_:_:)` is necessary because Swift allows
-  /// passing string literals directly to functions that take C strings. At
-  /// compile time, the compiler generates code that makes a temporary UTF-8
-  /// copy of the string, then frees that copy on return. That logic does not
-  /// work correctly when strings are passed to intermediate functions such as
-  /// this one, and the compiler will fail to extend the lifetime of the C
-  /// strings to the appropriate point. ([122011759](rdar://122011759))
+  /// passing string literals directly to functions that take C strings. The
+  /// default overload of `callAsFunction(_:_:)` does not trigger this implicit
+  /// cast and causes a compile-time error. ([122011759](rdar://122011759))
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public mutating func callAsFunction<P>(_ value: String, _ id: __ExpressionID) -> P where P: _Pointer, P.Pointee == CChar {
+  public mutating func callAsFunction<P>(_ value: String, _ id: __ExpressionID) -> P where P: _Pointer {
     // Perform the normal value capture.
-    let result = self(value, id) as String
+    let value = self(value as String, id)
 
     // Create a C string copy of `value`.
+    let valueCString = value.withCString { value in
 #if os(Windows)
-    let resultCString = _strdup(result)!
+      _strdup(value)
 #else
-    let resultCString = strdup(result)!
+      strdup(value)
 #endif
-
-    // Store the C string pointer so we can free it later when this context is
-    // torn down.
-    if _transformedCStrings.capacity == 0 {
-      _transformedCStrings.reserveCapacity(2)
     }
-    _transformedCStrings.append(resultCString)
 
-    // Return the C string as whatever pointer type the caller wants.
-    return P(bitPattern: Int(bitPattern: resultCString)).unsafelyUnwrapped
+    let result = valueCString.flatMap { valueCString in
+      // Store the C string pointer so we can free it later when this context is
+      // torn down.
+      if _transformedCStrings.capacity == 0 {
+        _transformedCStrings.reserveCapacity(2)
+      }
+      _transformedCStrings.append(valueCString)
+
+      // Return the C string as whatever pointer type the caller wants.
+      return P(bitPattern: Int(bitPattern: valueCString))
+    }
+
+    return result!
+  }
+
+  /// Capture information about a value for use if the expectation currently
+  /// being evaluated fails.
+  ///
+  /// This overload of `callAsFunction(_:_:)` helps the compiler disambiguate
+  /// optional string values.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  public mutating func callAsFunction(_ value: String?, _ id: __ExpressionID) -> String! {
+    self(value as String?, id)
   }
 }
 #endif

@@ -59,8 +59,9 @@ struct CartesianProductTests {
 
     // NOTE: we need to break out the tuple elements because tuples aren't
     // directly equatable.
-    #expect(Array(product).map(\.0) == possibleValues.map(\.0))
-    #expect(Array(product).map(\.1) == possibleValues.map(\.1))
+    let productArray = Array(product)
+    #expect(productArray.map(\.0) == possibleValues.map(\.0))
+    #expect(productArray.map(\.1) == possibleValues.map(\.1))
   }
 
   @Test("Cartesian product with empty first input is empty")
