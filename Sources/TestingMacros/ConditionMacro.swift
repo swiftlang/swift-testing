@@ -169,14 +169,14 @@ extension ConditionMacro {
             let uniqueName = context.makeUniqueName("")
             expressionContextName = .identifier("\(expressionContextName)\(uniqueName)")
           }
-          let (rewrittenArgumentExpr, rewrittenNodes, prefixCodeBlockItems) = insertCalls(
-            toExpressionContextNamed: expressionContextName,
-            into: originalArgumentExpr,
+          let rewrittenNodeInfo = rewrite(
+            originalArgumentExpr,
+            usingExpressionContextNamed: expressionContextName,
             for: macro,
             rootedAt: originalArgumentExpr,
             in: context
           )
-          var argumentExpr = rewrittenArgumentExpr.cast(ExprSyntax.self)
+          var argumentExpr = rewrittenNodeInfo.rewrittenNode.cast(ExprSyntax.self)
 
           // Insert additional effect keywords as needed. Use the helper
           // functions so we don't need to worry about the precise structure of
@@ -192,11 +192,11 @@ extension ConditionMacro {
           // Construct the body of the closure that we'll pass to the expanded
           // function.
           var codeBlockItems = CodeBlockItemListSyntax {
-            if prefixCodeBlockItems.isEmpty {
+            if rewrittenNodeInfo.prefixCodeBlockItems.isEmpty {
               CodeBlockItemSyntax(item: .expr(argumentExpr))
                 .with(\.trailingTrivia, .newline)
             } else {
-              prefixCodeBlockItems
+              rewrittenNodeInfo.prefixCodeBlockItems
 
               // If we're inserting any additional code into the closure before
               // the rewritten argument, we can't elide the return keyword.
@@ -211,6 +211,14 @@ extension ConditionMacro {
                 )
               ).with(\.trailingTrivia, .newline)
             }
+          }
+
+          if !rewrittenNodeInfo.possibleModuleNames.isEmpty {
+            codeBlockItems = disableExpansion(
+              of: originalArgumentExpr,
+              into: codeBlockItems,
+              ifCanImportAnyOf: rewrittenNodeInfo.possibleModuleNames
+            )
           }
 
           // Replace any dollar identifiers we find.
@@ -257,7 +265,7 @@ extension ConditionMacro {
 
           // Sort the rewritten nodes. This isn't strictly necessary for
           // correctness but it does make the produced code more consistent.
-          let sortedRewrittenNodes = rewrittenNodes.sorted { $0.id < $1.id }
+          let sortedRewrittenNodes = rewrittenNodeInfo.rewrittenChildNodes.sorted { $0.id < $1.id }
           let sourceCodeNodeIDs = sortedRewrittenNodes.compactMap { $0.expressionID(rootedAt: originalArgumentExpr) }
           let sourceCodeExprs = sortedRewrittenNodes.map { StringLiteralExprSyntax(content: $0.trimmedDescription) }
           let sourceCodeExpr = DictionaryExprSyntax {

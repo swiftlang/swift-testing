@@ -114,7 +114,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   /// The set of expanded tokens (primarily from instances of
   /// `DeclReferenceExprSyntax`) that may represent module names instead of type
   /// or variable names.
-  var possibleModuleNames = Set<TokenSyntax>()
+  var possibleModuleNames = Set<TokenKind>()
 
   /// Any postflight code the caller should insert into the closure containing
   /// the rewritten syntax tree.
@@ -245,6 +245,35 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
       return ExprSyntax(node)
     }
 
+    // A decl reference expression with argument names is generally a valid
+    // expression that could be rewritten, but it's going to be a function name
+    // and we aren't generally interested in those.
+    if node.argumentNames != nil {
+      return ExprSyntax(node)
+    }
+
+    // The base name *might* be a module name, so track it for further expansion
+    // later. For the sake of optimization, we make some (possibly technically
+    // invalid) assumptions:
+    //
+    // 1. The first character of a module name is always uppercase;
+    // 2. A module name is always at least three characters long;
+    // 3. A module name is always a valid Swift identifier; and
+    // 4. A module name, when present in source, is always the innermost
+    //    (leftmost) in a member access expression chain.
+    //
+    // See disableExpansion(of:into:ifCanImportAnyOf:) below to see how we avoid
+    // expanding module names.
+    let baseName = node.baseName.textWithoutBackticks
+    if let firstCharacter = baseName.first, firstCharacter.isUppercase, // 1
+       baseName.count >= 3, // 2
+       baseName.isValidSwiftIdentifier(for: .memberAccess), // 3
+       let memberAccessExpr = node.parent?.as(MemberAccessExprSyntax.self), // 4
+       let baseExpr = memberAccessExpr.base,
+       ExprSyntax(node) == (removeParentheses(from: baseExpr) ?? baseExpr) {
+      possibleModuleNames.insert(node.baseName.tokenKind)
+    }
+
     if _isParentOfDeclReferenceExprValidForRewriting(node) {
       return _rewrite(node)
     }
@@ -253,20 +282,10 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
     // expression, and that member access expression is the called expression of
     // a function, it is generally safe to extract out (but may need `.self`
     // added to the end.)
-    //
-    // Module names are an exception to this rule as they cannot be referred to
-    // directly in source. So for instance, the following expression will be
-    // expanded incorrectly:
-    //
-    //   #expect(Testing.foo(bar))
-    //
-    // These sorts of expressions are relatively rare, so we'll allow the bug
-    // for the sake of better diagnostics in the common case.
     if let memberAccessExpr = node.parent?.as(MemberAccessExprSyntax.self),
        ExprSyntax(node) == memberAccessExpr.base,
        let functionCallExpr = memberAccessExpr.parent?.as(FunctionCallExprSyntax.self),
        ExprSyntax(memberAccessExpr) == functionCallExpr.calledExpression {
-      possibleModuleNames.insert(node.baseName)
       return _rewrite(
         MemberAccessExprSyntax(
           base: node.trimmed,
@@ -545,6 +564,16 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
 #endif
 }
 
+struct RewrittenNodeInfo<S> where S: SyntaxProtocol {
+  var originalNode: S
+  var rewrittenNode: Syntax
+
+  var rewrittenChildNodes: Set<Syntax>
+  var prefixCodeBlockItems: CodeBlockItemListSyntax
+
+  var possibleModuleNames: Set<TokenKind>
+}
+
 /// Insert calls to an expression context into a syntax tree.
 ///
 /// - Parameters:
@@ -562,86 +591,39 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
 ///   the nodes within `node` (possibly including `node` itself) that were
 ///   rewritten, and a code block containing code that should be inserted into
 ///   the lexical scope of `node` _before_ its rewritten equivalent.
-///
-/// The resulting copy of `node` may not be of the same type as `node`. In
-/// particular, it may not be an expression. Calling code should not assume its
-/// type beyond conformance to `Syntax` and should check its type with `is()` or
-/// `as()` before operating over it.
-func insertCalls(
-  toExpressionContextNamed expressionContextName: TokenSyntax,
-  into node: some ExprSyntaxProtocol,
+func rewrite<S>(
+  _ node: S,
+  usingExpressionContextNamed expressionContextName: TokenSyntax,
   for macro: some FreestandingMacroExpansionSyntax,
   rootedAt effectiveRootNode: some SyntaxProtocol,
   in context: some MacroExpansionContext
-) -> (Syntax, rewrittenNodes: Set<Syntax>, prefixCodeBlockItems: CodeBlockItemListSyntax) {
-  _diagnoseTrivialBooleanValue(from: ExprSyntax(node), for: macro, in: context)
-
-  let contextInserter = _ContextInserter(in: context, for: macro, rootedAt: Syntax(effectiveRootNode), expressionContextName: expressionContextName)
-
-  var result = contextInserter.rewrite(ExprSyntax(node))
-  if !contextInserter.possibleModuleNames.isEmpty {
-    let canImportNameExpr = DeclReferenceExprSyntax(baseName: .identifier("canImport"))
-    let canImportExprs = contextInserter.possibleModuleNames.map { moduleName in
-      FunctionCallExprSyntax(calledExpression: canImportNameExpr) {
-        LabeledExprSyntax(expression: DeclReferenceExprSyntax(baseName: moduleName.trimmed))
-      }
-    }
-    // FIXME: do better
-    let anyCanImportExpr: ExprSyntax = """
-    \(
-      raw: canImportExprs
-        .map(\.description)
-        .joined(separator: " || ")
-    )
-    """
-
-    guard let resultExpr = result.as(ExprSyntax.self) else {
-      fatalError("Result was of kind \(result.kind), expected some expression")
-    }
-
-    result = Syntax(
-      IfConfigDeclSyntax(
-        clauses: IfConfigClauseListSyntax {
-          IfConfigClauseSyntax(
-            poundKeyword: .poundIfKeyword(),
-            condition: anyCanImportExpr,
-            elements: .statements(
-              CodeBlockItemListSyntax {
-                CodeBlockItemSyntax(item: CodeBlockItemSyntax.Item(node))
-              }
-            )
-          )
-          IfConfigClauseSyntax(
-            poundKeyword: .poundElseKeyword(),
-            condition: anyCanImportExpr,
-            elements: .statements(
-              CodeBlockItemListSyntax {
-                CodeBlockItemSyntax(item: CodeBlockItemSyntax.Item(resultExpr))
-              }
-            )
-          )
-        }
-      )
-    )
+) -> RewrittenNodeInfo<S> where S: SyntaxProtocol {
+  if let node = node.as(ExprSyntax.self) {
+    _diagnoseTrivialBooleanValue(from: node, for: macro, in: context)
   }
 
-  let rewrittenNodes = contextInserter.rewrittenNodes
+  let contextInserter = _ContextInserter(in: context, for: macro, rootedAt: Syntax(effectiveRootNode), expressionContextName: expressionContextName)
+  let result = contextInserter.rewrite(node)
 
-  let prefixCodeBlockItems = CodeBlockItemListSyntax {
-    if !contextInserter.teardownItems.isEmpty {
-      CodeBlockItemSyntax(
-        item: .stmt(
-          StmtSyntax(
-            DeferStmtSyntax {
-              contextInserter.teardownItems
-            }
+  return RewrittenNodeInfo(
+    originalNode: node,
+    rewrittenNode: result,
+    rewrittenChildNodes: contextInserter.rewrittenNodes,
+    prefixCodeBlockItems: CodeBlockItemListSyntax {
+      if !contextInserter.teardownItems.isEmpty {
+        CodeBlockItemSyntax(
+          item: .stmt(
+            StmtSyntax(
+              DeferStmtSyntax {
+                contextInserter.teardownItems
+              }
+            )
           )
         )
-      )
-    }
-  }.formatted().with(\.trailingTrivia, .newline).cast(CodeBlockItemListSyntax.self)
-
-  return (result, rewrittenNodes, prefixCodeBlockItems)
+      }
+    }.formatted().with(\.trailingTrivia, .newline).cast(CodeBlockItemListSyntax.self),
+    possibleModuleNames: contextInserter.possibleModuleNames
+  )
 }
 
 // MARK: - Finding optional chains
@@ -709,6 +691,85 @@ func findEffectKeywords(in node: some SyntaxProtocol) -> Set<Keyword> {
   return effectFinder.effectKeywords
 }
 
+// MARK: - Avoiding expansion of module names
+
+/// Rewrite a previously-expanded expression as a `#if`/`#else`/`#endif`
+/// declaration in order to avoid trying to expand module names as if they were
+/// type or variable names.
+///
+/// - Parameters:
+///   - node: The original node that was expanded into `codeBlockItems`.
+///   - codeBlockItems: The expanded form of `node`.
+///   - possibleModuleNames: A set of possible module names detected during the
+///     expansion of `node`.
+///
+/// - Returns: A new code block item list that checks if any module names in
+///   `possibleModuleNames` can be imported and falls back to a trivial
+///   expansion if one can be.
+func disableExpansion(
+  of node: some ExprSyntaxProtocol,
+  into codeBlockItems: CodeBlockItemListSyntax,
+  ifCanImportAnyOf possibleModuleNames: Set<TokenKind>
+) -> CodeBlockItemListSyntax {
+  // Generate canImport() expressions for each of the possible module names we
+  // have been given.
+  let canImportNameExpr = DeclReferenceExprSyntax(baseName: .identifier("canImport"))
+  let canImportExprs = possibleModuleNames
+    .map { TokenSyntax($0, presence: .present) }
+    .map { moduleName in
+      var result = FunctionCallExprSyntax(calledExpression: canImportNameExpr) {
+        LabeledExprSyntax(expression: DeclReferenceExprSyntax(baseName: moduleName))
+      }
+      result.leftParen = .leftParenToken()
+      result.rightParen = .rightParenToken()
+      return ExprSyntax(result)
+    }
+
+  // Generate an OR (||) operator to place between the canImport expressions.
+  let orOperatorExpr = ExprSyntax(
+    BinaryOperatorExprSyntax(operator: .binaryOperator("||"))
+      .with(\.leadingTrivia, .space)
+      .with(\.trailingTrivia, .space)
+  )
+
+  // Combine the canImport and || subexpressions into a single expression.
+  let conditionExpr = SequenceExprSyntax(
+    elements: ExprListSyntax {
+      canImportExprs
+        .map(CollectionOfOne.init)
+        .joined(separator: CollectionOfOne(orOperatorExpr))
+    }
+  ).with(\.trailingTrivia, .newline)
+
+  return CodeBlockItemListSyntax {
+    CodeBlockItemSyntax(
+      item: CodeBlockItemSyntax.Item(
+        DeclSyntax(
+          IfConfigDeclSyntax(
+            clauses: IfConfigClauseListSyntax {
+              IfConfigClauseSyntax(
+                poundKeyword: .poundIfToken().with(\.trailingTrivia, .space),
+                condition: conditionExpr,
+                elements: .statements(
+                  CodeBlockItemListSyntax {
+                    CodeBlockItemSyntax(item: CodeBlockItemSyntax.Item(node))
+                  }
+                )
+              )
+              IfConfigClauseSyntax(
+                poundKeyword: .poundElseToken()
+                  .with(\.leadingTrivia, .newline)
+                  .with(\.trailingTrivia, .newline),
+                elements: .statements(codeBlockItems)
+              )
+            }
+          ).with(\.trailingTrivia, .newline)
+        )
+      )
+    )
+  }
+}
+
 // MARK: - Replacing dollar identifiers
 
 /// Rewrite a dollar identifier as a normal (non-dollar) identifier.
@@ -725,7 +786,7 @@ private func _rewriteDollarIdentifier(_ token: TokenSyntax) -> TokenSyntax {
 /// with normal (non-dollar) identifiers.
 private final class _DollarIdentifierReplacer: SyntaxRewriter {
   /// The dollar identifier tokens that have been rewritten.
-  var dollarIdentifierTokens = Set<TokenSyntax>()
+  var dollarIdentifierTokenKinds = Set<TokenKind>()
 
   /// The node to treat as the root node when expanding expressions.
   var effectiveRootNode: Syntax
@@ -748,8 +809,12 @@ private final class _DollarIdentifierReplacer: SyntaxRewriter {
   override func visit(_ node: TokenSyntax) -> TokenSyntax {
     if case let .dollarIdentifier(id) = node.tokenKind, id.dropFirst().allSatisfy(\.isWholeNumber) {
       // This dollar identifier is numeric, so it's a closure argument.
-      dollarIdentifierTokens.insert(node)
-      return _rewriteDollarIdentifier(node)
+      dollarIdentifierTokenKinds.insert(node.tokenKind)
+
+      var result = _rewriteDollarIdentifier(node)
+      result.leadingTrivia = node.leadingTrivia
+      result.trailingTrivia = node.trailingTrivia
+      return result
     }
 
     return node
@@ -768,12 +833,18 @@ private final class _DollarIdentifierReplacer: SyntaxRewriter {
 func rewriteClosureArguments(in node: some SyntaxProtocol) -> (rewrittenNode: Syntax, captureList: ClosureCaptureClauseSyntax)? {
   let replacer = _DollarIdentifierReplacer(rootedAt: Syntax(node))
   let result = replacer.rewrite(node)
-  if replacer.dollarIdentifierTokens.isEmpty {
+  if replacer.dollarIdentifierTokenKinds.isEmpty {
     return nil
   }
   let captureList = ClosureCaptureClauseSyntax {
-    for token in replacer.dollarIdentifierTokens {
-      ClosureCaptureSyntax(name: _rewriteDollarIdentifier(token), expression: DeclReferenceExprSyntax(baseName: token))
+    let tokens = replacer.dollarIdentifierTokenKinds.map { tokenKind in
+      TokenSyntax(tokenKind, presence: .present)
+    }
+    for token in tokens {
+      ClosureCaptureSyntax(
+        name: _rewriteDollarIdentifier(token),
+        expression: DeclReferenceExprSyntax(baseName: token)
+      )
     }
   }
   return (result, captureList)

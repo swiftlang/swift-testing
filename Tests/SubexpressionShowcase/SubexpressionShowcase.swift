@@ -43,6 +43,12 @@ func subexpressionShowcase() async throws {
   #expect((123, 456) == (789, 0x12))
   #expect((try g() > 500) && true)
 
+  struct Foo {
+    static func bar(_ x: Any) -> Bool { false }
+  }
+  let baz = 123
+  #expect(Foo.bar(baz))
+
   do {
     let n = Int.random(in: 0 ..< 100)
     var m = n
