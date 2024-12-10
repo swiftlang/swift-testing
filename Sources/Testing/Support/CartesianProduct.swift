@@ -17,11 +17,11 @@
 /// `[(1, "a"), (1, "b"), (1, "c"), (2, "a"), (2, "b"), ... (3, "c")]`.
 ///
 /// This type is not part of the public interface of the testing library.
-///
-/// @Comment {
-///   - Bug: The testing library should support variadic generics.
-///     ([103416861](rdar://103416861))
-/// }
+//
+// @Comment {
+//   - Bug: The testing library should support variadic generics.
+//     ([103416861](rdar://103416861))
+// }
 struct CartesianProduct<C1, C2>: LazySequenceProtocol where C1: Collection, C2: Collection {
   fileprivate var collection1: C1
   fileprivate var collection2: C2
@@ -63,11 +63,11 @@ extension CartesianProduct: Sendable where C1: Sendable, C2: Sendable {}
 /// while `collection2` is iterated `collection1.count` times.
 ///
 /// For more information on Cartesian products, see ``CartesianProduct``.
-///
-/// @Comment {
-///   - Bug: The testing library should support variadic generics.
-///     ([103416861](rdar://103416861))
-/// }
+//
+// @Comment {
+//   - Bug: The testing library should support variadic generics.
+//     ([103416861](rdar://103416861))
+// }
 func cartesianProduct<C1, C2>(_ collection1: C1, _ collection2: C2) -> CartesianProduct<C1, C2> where C1: Collection, C2: Collection {
   CartesianProduct(collection1: collection1, collection2: collection2)
 }

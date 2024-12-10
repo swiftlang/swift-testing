@@ -74,9 +74,9 @@ extension Event {
     /// Initialize a new human-readable event recorder.
     ///
     /// Output from the testing library is converted to "messages" using the
-    /// ``Event/HumanReadableOutputRecorder/record(_:)`` function. The format of
-    /// those messages is, as the type's name suggests, not meant to be
-    /// machine-readable and is subject to change.
+    /// ``Event/HumanReadableOutputRecorder/record(_:in:verbosity:)`` function.
+    /// The format of those messages is, as the type's name suggests, not meant
+    /// to be machine-readable and is subject to change.
     public init() {}
   }
 }

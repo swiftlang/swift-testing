@@ -13,11 +13,11 @@ extension Test.Case {
   /// a known collection of argument values.
   ///
   /// Instances of this type can be iterated over multiple times.
-  ///
-  /// @Comment {
-  ///   - Bug: The testing library should support variadic generics.
-  ///     ([103416861](rdar://103416861))
-  /// }
+  //
+  // @Comment {
+  //   - Bug: The testing library should support variadic generics.
+  //     ([103416861](rdar://103416861))
+  // }
   struct Generator<S>: Sendable where S: Sequence & Sendable, S.Element: Sendable {
     /// The underlying sequence of argument values.
     ///
@@ -146,11 +146,11 @@ extension Test.Case {
     ///
     /// This initializer overload is specialized for sequences of 2-tuples to
     /// efficiently de-structure their elements when appropriate.
-    ///
-    /// @Comment {
-    ///   - Bug: The testing library should support variadic generics.
-    ///     ([103416861](rdar://103416861))
-    /// }
+    //
+    // @Comment {
+    //   - Bug: The testing library should support variadic generics.
+    //     ([103416861](rdar://103416861))
+    // }
     private init<E1, E2>(
       sequence: S,
       parameters: [Test.Parameter],
@@ -184,11 +184,11 @@ extension Test.Case {
     ///
     /// This initializer overload is specialized for collections of 2-tuples to
     /// efficiently de-structure their elements when appropriate.
-    ///
-    /// @Comment {
-    ///   - Bug: The testing library should support variadic generics.
-    ///     ([103416861](rdar://103416861))
-    /// }
+    //
+    // @Comment {
+    //   - Bug: The testing library should support variadic generics.
+    //     ([103416861](rdar://103416861))
+    // }
     init<E1, E2>(
       arguments collection: S,
       parameters: [Test.Parameter],
