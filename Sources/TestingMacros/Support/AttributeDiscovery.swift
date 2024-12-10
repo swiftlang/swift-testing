@@ -137,7 +137,7 @@ struct AttributeInfo {
     if !nonDisplayNameArguments.isEmpty {
       if let labelledArgumentIndex = nonDisplayNameArguments.firstIndex(where: { $0.label != nil }) {
         // There is an argument with a label, so splice there.
-        traits = nonDisplayNameArguments[nonDisplayNameArguments.startIndex ..< labelledArgumentIndex].map(\.expression)
+        traits = nonDisplayNameArguments[..<labelledArgumentIndex].map(\.expression)
         testFunctionArguments = Array(nonDisplayNameArguments[labelledArgumentIndex...])
       } else {
         // No argument has a label, so all the remaining arguments are traits.
