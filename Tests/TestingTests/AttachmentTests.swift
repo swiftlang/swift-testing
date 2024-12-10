@@ -30,6 +30,20 @@ struct AttachmentTests {
     attachment.attach()
   }
 
+  @Test func description() {
+    let attachableValue = MySendableAttachable(string: "<!doctype html>")
+    let attachment = Attachment(attachableValue, named: "AttachmentTests.saveValue.html")
+    #expect(String(describing: attachment).contains(#""\#(attachment.preferredName)""#))
+    #expect(attachment.description.contains("MySendableAttachable("))
+  }
+
+  @Test func moveOnlyDescription() {
+    let attachableValue = MyAttachable(string: "<!doctype html>")
+    let attachment = Attachment(attachableValue, named: "AttachmentTests.saveValue.html")
+    #expect(attachment.description.contains(#""\#(attachment.preferredName)""#))
+    #expect(attachment.description.contains("'MyAttachable'"))
+  }
+
 #if !SWT_NO_FILE_IO
   func compare(_ attachableValue: borrowing MySendableAttachable, toContentsOfFileAtPath filePath: String) throws {
     let file = try FileHandle(forReadingAtPath: filePath)

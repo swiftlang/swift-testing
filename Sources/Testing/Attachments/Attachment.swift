@@ -148,6 +148,21 @@ public struct AnyAttachable: AttachableContainer, Copyable, Sendable {
   }
 }
 
+// MARK: - Describing an attachment
+
+extension Attachment where AttachableValue: ~Copyable {
+  public var description: String {
+    let typeInfo = TypeInfo(describing: AttachableValue.self)
+    return #""\#(preferredName)": instance of '\#(typeInfo.unqualifiedName)'"#
+  }
+}
+
+extension Attachment: CustomStringConvertible {
+  public var description: String {
+    #""\#(preferredName)": \#(String(describingForTest: attachableValue))"#
+  }
+}
+
 // MARK: - Getting an attachable value from an attachment
 
 @_spi(Experimental)
