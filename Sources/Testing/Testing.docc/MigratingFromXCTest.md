@@ -326,7 +326,7 @@ their equivalents in the testing library:
 | `XCTAssertLessThanOrEqual(x, y)` | `#expect(x <= y)` |
 | `XCTAssertLessThan(x, y)` | `#expect(x < y)` |
 | `XCTAssertThrowsError(try f())` | `#expect(throws: (any Error).self) { try f() }` |
-| `XCTAssertThrowsError(try f()) { error in … }` | `#expect { try f() } throws: { error in return … }` |
+| `XCTAssertThrowsError(try f()) { error in … }` | `let error = #expect(throws: (any Error).self) { try f() }` |
 | `XCTAssertNoThrow(try f())` | `#expect(throws: Never.self) { try f() }` |
 | `try XCTUnwrap(x)` | `try #require(x)` |
 | `XCTFail("…")` | `Issue.record("…")` |

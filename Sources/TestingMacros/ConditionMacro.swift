@@ -332,6 +332,35 @@ public struct NonOptionalRequireMacro: RefinedConditionMacro {
   }
 }
 
+/// A type describing the expansion of the `#require(throws:)` macro.
+///
+/// This macro makes a best effort to check if the type argument is `Never.self`
+/// (as we only have the syntax tree here) and diagnoses it as redundant if so.
+/// See also ``RequireThrowsNeverMacro`` which is used when full type checking
+/// is contextually available.
+///
+/// This type is otherwise exactly equivalent to ``RequireMacro``.
+public struct RequireThrowsMacro: RefinedConditionMacro {
+  public typealias Base = RequireMacro
+
+  public static func expansion(
+    of macro: some FreestandingMacroExpansionSyntax,
+    in context: some MacroExpansionContext
+  ) throws -> ExprSyntax {
+    if let argument = macro.arguments.first {
+      let argumentTokens: [String] = argument.expression.tokens(viewMode: .fixedUp).lazy
+        .filter { $0.tokenKind != .period }
+        .map(\.textWithoutBackticks)
+      if argumentTokens == ["Swift", "Never", "self"] || argumentTokens == ["Never", "self"] {
+        context.diagnose(.requireThrowsNeverIsRedundant(argument.expression, in: macro))
+      }
+    }
+
+    // Perform the normal macro expansion for #require().
+    return try RequireMacro.expansion(of: macro, in: context)
+  }
+}
+
 /// A type describing the expansion of the `#require(throws:)` macro when it is
 /// passed `Never.self`, which is redundant.
 ///
