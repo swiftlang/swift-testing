@@ -25,6 +25,14 @@ extension Event {
       /// The symbol associated with this message, if any.
       var symbol: Symbol?
 
+      /// The amount of extra padding to insert between the symbol and string
+      /// value when presenting this message.
+      ///
+      /// The nature of this additional padding depends on how the message is
+      /// presented; typically, the greater the value of this property, the more
+      /// whitespace characters are inserted.
+      var padding = 0
+
       /// The human-readable message.
       var stringValue: String
 
@@ -427,20 +435,22 @@ extension Event.HumanReadableOutputRecorder {
       }
       additionalMessages += _formattedComments(issue.comments)
 
-      if verbosity > 0, case let .expectationFailed(expectation) = issue.kind {
+      if verbosity >= 0, case let .expectationFailed(expectation) = issue.kind {
         let expression = expectation.evaluatedExpression
-        func addMessage(about expression: __Expression) {
-          let description = expression.expandedDebugDescription()
-          additionalMessages.append(Message(symbol: .details, stringValue: description))
-        }
-        let subexpressions = expression.subexpressions
-        if subexpressions.isEmpty {
-          addMessage(about: expression)
-        } else {
-          for subexpression in subexpressions {
-            addMessage(about: subexpression)
+        func addMessage(about expression: __Expression, depth: Int) {
+          let description = if verbosity <= 0 {
+            expression.expandedDescription()
+          } else {
+            expression.expandedDebugDescription()
+          }
+          if description != expression.sourceCode {
+            additionalMessages.append(Message(symbol: .details, padding: depth, stringValue: description))
+          }
+          for subexpression in expression.subexpressions {
+            addMessage(about: subexpression, depth: depth + 1)
           }
         }
+        addMessage(about: expression, depth: 0)
       }
 
       let atSourceLocation = issue.sourceLocation.map { " at \($0)" } ?? ""
