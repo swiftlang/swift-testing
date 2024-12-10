@@ -50,7 +50,7 @@ func subexpressionShowcase() async throws {
   }
 
   let closure: (Int) -> Void = {
-    #expect($0 == 0x10)
+    #expect(($0 + $0 + $0) == 0x10)
   }
   closure(11)
 

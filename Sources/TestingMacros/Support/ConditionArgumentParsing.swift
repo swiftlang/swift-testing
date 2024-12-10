@@ -539,53 +539,126 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
 #endif
 }
 
-/// Insert calls to an expression context into a syntax tree.
-///
-/// - Parameters:
-///   - expressionContextName: The name of the instance of
-///     `__ExpectationContext` to call.
-///   - node: The root of a syntax tree to rewrite. This node may not itself be
-///     the root of the overall syntax tree—it's just the root of the subtree
-///     that we're rewriting.
-///   - macro: The macro expression.
-///   - effectiveRootNode: The node to treat as the root of the syntax tree for
-///     the purposes of generating expression ID values.
-///   - context: The macro context in which the expression is being parsed.
-///
-/// - Returns: A tuple containing the rewritten copy of `node`, a list of all
-///   the nodes within `node` (possibly including `node` itself) that were
-///   rewritten, and a code block containing code that should be inserted into
-///   the lexical scope of `node` _before_ its rewritten equivalent.
-func insertCalls(
-  toExpressionContextNamed expressionContextName: TokenSyntax,
-  into node: some SyntaxProtocol,
-  for macro: some FreestandingMacroExpansionSyntax,
-  rootedAt effectiveRootNode: some SyntaxProtocol,
-  in context: some MacroExpansionContext
-) -> (Syntax, rewrittenNodes: Set<Syntax>, prefixCodeBlockItems: CodeBlockItemListSyntax) {
-  if let node = node.as(ExprSyntax.self) {
-    _diagnoseTrivialBooleanValue(from: node, for: macro, in: context)
-  }
+extension ConditionMacro {
+  /// Rewrite and expand upon an expression node.
+  ///
+  /// - Parameters:
+  ///   - node: The root of a syntax tree to rewrite. This node may not itself
+  ///     be the root of the overall syntax tree—it's just the root of the
+  ///     subtree that we're rewriting.
+  ///   - expressionContextName: The name of the instance of
+  ///     `__ExpectationContext` to call at runtime.
+  ///   - macro: The macro expression.
+  ///   - effectiveRootNode: The node to treat as the root of the syntax tree
+  ///     for the purposes of generating expression ID values.
+  ///   - effectKeywordsToApply: The set of effect keywords in the expanded
+  ///     expression or its lexical context that may apply to `node`.
+  ///   - context: The macro context in which the expression is being parsed.
+  ///
+  /// - Returns: A tuple containing the rewritten copy of `node`, a list of all
+  ///   the nodes within `node` (possibly including `node` itself) that were
+  ///   rewritten, and a code block containing code that should be inserted into
+  ///   the lexical scope of `node` _before_ its rewritten equivalent.
+  static func rewrite(
+    _ node: some ExprSyntaxProtocol,
+    usingExpressionContextNamed expressionContextName: TokenSyntax,
+    for macro: some FreestandingMacroExpansionSyntax,
+    rootedAt effectiveRootNode: some SyntaxProtocol,
+    effectKeywordsToApply: Set<Keyword>,
+    in context: some MacroExpansionContext
+  ) -> (ClosureExprSyntax, rewrittenNodes: Set<Syntax>) {
+    _diagnoseTrivialBooleanValue(from: ExprSyntax(node), for: macro, in: context)
 
-  let contextInserter = _ContextInserter(in: context, for: macro, rootedAt: Syntax(effectiveRootNode), expressionContextName: expressionContextName)
-  let result = contextInserter.rewrite(node)
-  let rewrittenNodes = contextInserter.rewrittenNodes
+    let contextInserter = _ContextInserter(in: context, for: macro, rootedAt: Syntax(effectiveRootNode), expressionContextName: expressionContextName)
+    var expandedExpr = contextInserter.rewrite(node).cast(ExprSyntax.self)
+    let rewrittenNodes = contextInserter.rewrittenNodes
 
-  let prefixCodeBlockItems = CodeBlockItemListSyntax {
-    if !contextInserter.teardownItems.isEmpty {
-      CodeBlockItemSyntax(
-        item: .stmt(
-          StmtSyntax(
-            DeferStmtSyntax {
-              contextInserter.teardownItems
+    // Insert additional effect keywords as needed. Use the helper functions so
+    // we don't need to worry about the precise structure of the expression
+    // being rewritten.
+    if effectKeywordsToApply.contains(.await) {
+      expandedExpr = "await Testing.__requiringAwait(\(expandedExpr))"
+    }
+    if isThrowing || effectKeywordsToApply.contains(.try) {
+      expandedExpr = "try Testing.__requiringTry(\(expandedExpr))"
+    }
+
+    // Construct the body of the closure that we'll pass to the expanded
+    // function.
+    var codeBlockItems = CodeBlockItemListSyntax {
+      if contextInserter.teardownItems.isEmpty {
+        expandedExpr.with(\.trailingTrivia, .newline)
+      } else {
+        // Insert a defer statement that runs any teardown items.
+        DeferStmtSyntax {
+          for teardownItem in contextInserter.teardownItems {
+            teardownItem.with(\.trailingTrivia, .newline)
+          }
+        }.with(\.trailingTrivia, .newline)
+
+        // If we're inserting any additional code into the closure before
+        // the rewritten argument, we can't elide the return keyword.
+        ReturnStmtSyntax(
+          expression: expandedExpr.with(\.leadingTrivia, .space)
+        ).with(\.trailingTrivia, .newline)
+      }
+    }
+
+    // Replace any dollar identifiers in the code block, then construct a
+    // capture list for the closure (if needed.)
+    var captureList: ClosureCaptureClauseSyntax?
+    do {
+      let dollarIDReplacer = _DollarIdentifierReplacer()
+      codeBlockItems = dollarIDReplacer.rewrite(codeBlockItems).cast(CodeBlockItemListSyntax.self)
+      if !dollarIDReplacer.dollarIdentifierTokenKinds.isEmpty {
+        let dollarIdentifierTokens = dollarIDReplacer.dollarIdentifierTokenKinds.map { tokenKind in
+          TokenSyntax(tokenKind, presence: .present)
+        }
+        captureList = ClosureCaptureClauseSyntax {
+          for token in dollarIdentifierTokens {
+            ClosureCaptureSyntax(name: _rewriteDollarIdentifier(token), expression: DeclReferenceExprSyntax(baseName: token))
+          }
+        }
+      }
+    }
+
+    // Enclose the code block in the final closure.
+    let closureExpr = ClosureExprSyntax(
+      signature: ClosureSignatureSyntax(
+        capture: captureList,
+        parameterClause: .parameterClause(
+          ClosureParameterClauseSyntax(
+            parameters: ClosureParameterListSyntax {
+              ClosureParameterSyntax(
+                firstName: expressionContextName,
+                colon: .colonToken().with(\.trailingTrivia, .space),
+                type: TypeSyntax(
+                  AttributedTypeSyntax(
+                    specifiers: [
+                      TypeSpecifierListSyntax.Element(
+                        SimpleTypeSpecifierSyntax(specifier: .keyword(.inout))
+                          .with(\.trailingTrivia, .space)
+                      )
+                    ],
+                    baseType: MemberTypeSyntax(
+                      baseType: IdentifierTypeSyntax(name: .identifier("Testing")),
+                      name: .identifier("__ExpectationContext")
+                    )
+                  )
+                )
+              )
             }
           )
-        )
-      )
-    }
-  }.formatted().with(\.trailingTrivia, .newline).cast(CodeBlockItemListSyntax.self)
+        ),
+        inKeyword: .keyword(.in)
+          .with(\.leadingTrivia, .space)
+          .with(\.trailingTrivia, .newline)
+      ),
+      statements: codeBlockItems
+    )
 
-  return (result, rewrittenNodes, prefixCodeBlockItems)
+    return (closureExpr, rewrittenNodes)
+  }
 }
 
 // MARK: - Finding optional chains
@@ -668,57 +741,23 @@ private func _rewriteDollarIdentifier(_ token: TokenSyntax) -> TokenSyntax {
 /// A syntax rewriter that replaces _numeric_ dollar identifiers (e.g. `$0`)
 /// with normal (non-dollar) identifiers.
 private final class _DollarIdentifierReplacer: SyntaxRewriter {
-  /// The dollar identifier tokens that have been rewritten.
-  var dollarIdentifierTokens = Set<TokenSyntax>()
-
-  /// The node to treat as the root node when expanding expressions.
-  var effectiveRootNode: Syntax
-
-  init(rootedAt effectiveRootNode: Syntax) {
-    self.effectiveRootNode = effectiveRootNode
-  }
-
-  override func visitAny(_ node: Syntax) -> Syntax? {
-    // Do not recurse into closure expressions (except the root node) because
-    // they will have their own argument/capture lists that won't conflict with
-    // the enclosing scope's.
-    if node.is(ClosureExprSyntax.self) && node != effectiveRootNode {
-      return Syntax(node)
-    }
-
-    return nil
-  }
+  /// The `tokenKind` properties of any dollar identifier tokens that have been
+  /// rewritten.
+  var dollarIdentifierTokenKinds = Set<TokenKind>()
 
   override func visit(_ node: TokenSyntax) -> TokenSyntax {
     if case let .dollarIdentifier(id) = node.tokenKind, id.dropFirst().allSatisfy(\.isWholeNumber) {
       // This dollar identifier is numeric, so it's a closure argument.
-      dollarIdentifierTokens.insert(node)
+      dollarIdentifierTokenKinds.insert(node.tokenKind)
       return _rewriteDollarIdentifier(node)
     }
 
     return node
   }
-}
 
-/// Rewrite any implicit closure arguments (dollar identifiers such as `$0`) in
-/// the given node as normal (non-dollar) identifiers.
-///
-/// - Parameters:
-///   - node: The syntax node to rewrite.
-///
-/// - Returns: A rewritten copy of `node` as well as a closure capture list that
-///   can be used to transform the original dollar identifiers to their
-///   rewritten counterparts in a nested closure invocation.
-func rewriteClosureArguments(in node: some SyntaxProtocol) -> (rewrittenNode: Syntax, captureList: ClosureCaptureClauseSyntax)? {
-  let replacer = _DollarIdentifierReplacer(rootedAt: Syntax(node))
-  let result = replacer.rewrite(node)
-  if replacer.dollarIdentifierTokens.isEmpty {
-    return nil
+  override func visit(_ node: ClosureExprSyntax) -> ExprSyntax {
+    // Do not recurse into closure expressions because they will have their own
+    // argument lists that won't conflict with the enclosing scope's.
+    return ExprSyntax(node)
   }
-  let captureList = ClosureCaptureClauseSyntax {
-    for token in replacer.dollarIdentifierTokens {
-      ClosureCaptureSyntax(name: _rewriteDollarIdentifier(token), expression: DeclReferenceExprSyntax(baseName: token))
-    }
-  }
-  return (result, captureList)
 }

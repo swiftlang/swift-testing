@@ -160,6 +160,10 @@ extension ConditionMacro {
           expandedFunctionName = .identifier("__checkEscapedCondition")
 
         } else {
+          if effectKeywordsToApply.contains(.await) {
+            expandedFunctionName = .identifier("__checkConditionAsync")
+          }
+
           var expressionContextName = TokenSyntax.identifier("__ec")
           let isNameUsed = originalArgumentExpr.tokens(viewMode: .sourceAccurate).lazy
             .map(\.tokenKind)
@@ -169,89 +173,13 @@ extension ConditionMacro {
             let uniqueName = context.makeUniqueName("")
             expressionContextName = .identifier("\(expressionContextName)\(uniqueName)")
           }
-          let (rewrittenArgumentExpr, rewrittenNodes, prefixCodeBlockItems) = insertCalls(
-            toExpressionContextNamed: expressionContextName,
-            into: originalArgumentExpr,
+          let (closureExpr, rewrittenNodes) = rewrite(
+            originalArgumentExpr,
+            usingExpressionContextNamed: expressionContextName,
             for: macro,
             rootedAt: originalArgumentExpr,
+            effectKeywordsToApply: effectKeywordsToApply,
             in: context
-          )
-          var argumentExpr = rewrittenArgumentExpr.cast(ExprSyntax.self)
-
-          // Insert additional effect keywords as needed. Use the helper
-          // functions so we don't need to worry about the precise structure of
-          // the expression being tested.
-          if effectKeywordsToApply.contains(.await) {
-            argumentExpr = "await Testing.__requiringAwait(\(argumentExpr))"
-            expandedFunctionName = .identifier("__checkConditionAsync")
-          }
-          if isThrowing || effectKeywordsToApply.contains(.try) {
-            argumentExpr = "try Testing.__requiringTry(\(argumentExpr))"
-          }
-
-          // Construct the body of the closure that we'll pass to the expanded
-          // function.
-          var codeBlockItems = CodeBlockItemListSyntax {
-            if prefixCodeBlockItems.isEmpty {
-              CodeBlockItemSyntax(item: .expr(argumentExpr))
-                .with(\.trailingTrivia, .newline)
-            } else {
-              prefixCodeBlockItems
-
-              // If we're inserting any additional code into the closure before
-              // the rewritten argument, we can't elide the return keyword.
-              CodeBlockItemSyntax(
-                item: .stmt(
-                  StmtSyntax(
-                    ReturnStmtSyntax(
-                      expression: argumentExpr
-                        .with(\.leadingTrivia, .space)
-                    )
-                  )
-                )
-              ).with(\.trailingTrivia, .newline)
-            }
-          }
-
-          // Replace any dollar identifiers we find.
-          let closureArguments = rewriteClosureArguments(in: codeBlockItems)
-          if let closureArguments {
-            codeBlockItems = closureArguments.rewrittenNode.cast(CodeBlockItemListSyntax.self)
-          }
-
-          // Enclose the code block in the final closure.
-          let closureExpr = ClosureExprSyntax(
-            signature: ClosureSignatureSyntax(
-              capture: closureArguments?.captureList,
-              parameterClause: .parameterClause(
-                ClosureParameterClauseSyntax(
-                  parameters: ClosureParameterListSyntax {
-                    ClosureParameterSyntax(
-                      firstName: expressionContextName,
-                      colon: .colonToken().with(\.trailingTrivia, .space),
-                      type: TypeSyntax(
-                        AttributedTypeSyntax(
-                          specifiers: [
-                            .init(
-                              SimpleTypeSpecifierSyntax(specifier: .keyword(.inout))
-                                .with(\.trailingTrivia, .space)
-                            )
-                          ],
-                          baseType: MemberTypeSyntax(
-                            baseType: IdentifierTypeSyntax(name: .identifier("Testing")),
-                            name: .identifier("__ExpectationContext")
-                          )
-                        )
-                      )
-                    )
-                  }
-                )
-              ),
-              inKeyword: .keyword(.in)
-                .with(\.leadingTrivia, .space)
-                .with(\.trailingTrivia, .newline)
-            ),
-            statements: codeBlockItems
           )
           checkArguments.append(Argument(expression: closureExpr))
 
@@ -556,8 +484,7 @@ extension ExitTestConditionMacro {
     arguments[trailingClosureIndex].expression = ExprSyntax(
       ClosureExprSyntax {
         for decl in decls {
-          CodeBlockItemSyntax(item: .decl(decl))
-            .with(\.trailingTrivia, .newline)
+          decl.with(\.trailingTrivia, .newline)
         }
       }
     )
