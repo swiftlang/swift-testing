@@ -92,19 +92,7 @@ extension Event.HumanReadableOutputRecorder {
   /// - Returns: A formatted string representing `comments`, or `nil` if there
   ///   are none.
   private func _formattedComments(_ comments: [Comment]) -> [Message] {
-    // Insert an arrow character at the start of each comment, then indent any
-    // additional lines in the comment to align them with the arrow.
-    comments.lazy
-      .flatMap { comment in
-        let lines = comment.rawValue.split(whereSeparator: \.isNewline)
-        if let firstLine = lines.first {
-          let remainingLines = lines.dropFirst()
-          return CollectionOfOne(Message(symbol: .details, stringValue: String(firstLine))) + remainingLines.lazy
-            .map(String.init)
-            .map { Message(stringValue: $0) }
-        }
-        return []
-      }
+    comments.map { Message(symbol: .details, stringValue: $0.rawValue) }
   }
 
   /// Get a string representing the comments attached to a test, formatted for
