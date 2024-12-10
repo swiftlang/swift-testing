@@ -39,8 +39,15 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 - ``Trait/bug(_:id:_:)-3vtpl``
 
 ### Adding information to tests
+
 - ``Trait/comments``
 
 ### Preparing internal state
 
 - ``Trait/prepare(for:)-3s3zo``
+
+### Providing custom execution scope for tests
+
+- ``TestScoping``
+- ``Trait/scopeProvider(for:testCase:)-cjmg``
+- ``Trait/TestScopeProvider``
