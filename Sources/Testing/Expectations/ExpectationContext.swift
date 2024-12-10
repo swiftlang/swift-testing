@@ -172,6 +172,22 @@ extension __ExpectationContext {
   ///
   /// - Returns: `value`, verbatim.
   ///
+  /// This function helps overloads of `callAsFunction(_:_:)` disambiguate
+  /// themselves and avoid accidental recursion.
+  private mutating func _captureValue<T>(_ value: T, _ id: __ExpressionID) -> T {
+    self(value, id)
+  }
+
+  /// Capture information about a value for use if the expectation currently
+  /// being evaluated fails.
+  ///
+  /// - Parameters:
+  ///   - value: The value to pass through.
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  ///
+  /// - Returns: `value`, verbatim.
+  ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   public mutating func callAsFunction<T>(_ value: T, _ id: __ExpressionID) -> T {
@@ -464,7 +480,7 @@ extension __ExpectationContext {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   public mutating func callAsFunction<P1, P2>(_ value: P1?, _ id: __ExpressionID) -> P2! where P1: _Pointer, P2: _Pointer {
-    self(value as P1?, id).flatMap { value in
+    _captureValue(value, id).flatMap { value in
       P2(bitPattern: Int(bitPattern: value))
     }
   }
@@ -495,7 +511,7 @@ extension __ExpectationContext {
   ///   `#require()` macros. Do not call it directly.
   public mutating func callAsFunction<P>(_ value: String, _ id: __ExpressionID) -> P where P: _Pointer {
     // Perform the normal value capture.
-    let value = self(value as String, id)
+    let value = _captureValue(value, id)
 
     // Create a C string copy of `value`.
     let valueCString = value.withCString { value in
@@ -530,7 +546,7 @@ extension __ExpectationContext {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   public mutating func callAsFunction(_ value: String?, _ id: __ExpressionID) -> String! {
-    self(value as String?, id)
+    _captureValue(value, id)
   }
 }
 #endif
