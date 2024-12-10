@@ -42,10 +42,10 @@ public struct __ExpressionID: Sendable {
     return nybbles
       .enumerated()
       .flatMap { i, nybble in
-        (0 ..< Self._bitsPerNybble).lazy
+        let nybbleOffset = i * Self._bitsPerNybble
+        return (0 ..< Self._bitsPerNybble).lazy
           .filter { (nybble & (1 << $0)) != 0 }
-          .map { (i * Self._bitsPerNybble) + $0 }
-          .map(UInt32.init)
+          .map { UInt32(nybbleOffset + $0) }
       }
   }
 }
