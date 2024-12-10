@@ -43,6 +43,37 @@ extension Test {
       }
     }
   }
+
+#if SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING && !SWT_NO_FILE_IO
+  @_spi(ForSwiftTestingOnly)
+  public static var testBundlePath: String? {
+    // If the calling environment sets "XCTestBundlePath" (as Xcode does), then
+    // we can rely on that variable rather than walking loaded images looking
+    // for test content.
+    if let envBundlePath = Environment.variable(named: "XCTestBundlePath") {
+      var s = stat()
+      if 0 == stat(envBundlePath, &s) && swt_S_ISDIR(s.st_mode) {
+        return envBundlePath
+      }
+    }
+
+    // Find the first image loaded into the current process that contains any
+    // test content.
+    var imageAddress: UnsafeRawPointer?
+    enumerateTypes(withNamesContaining: _testContainerTypeNameMagic) { thisImageAddress, _, stop in
+      imageAddress = thisImageAddress
+      stop = true
+    }
+
+    // Get the path to the image we found.
+    var info = Dl_info()
+    guard let imageAddress, 0 != dladdr(imageAddress, &info), let imageName = info.dli_fname else {
+      return nil
+    }
+
+    return String(validatingCString: imageName)
+  }
+#endif
 }
 
 // MARK: -
