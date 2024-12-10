@@ -107,8 +107,9 @@ extension ConditionMacro {
       .firstIndex { $0.tokenKind == _sourceLocationLabel.tokenKind }
 
     // Construct the argument list to __check().
-    let expandedFunctionName: TokenSyntax
+    var expandedFunctionName = TokenSyntax.identifier("__checkCondition")
     var checkArguments = [Argument]()
+    var effectKeywordsToApply: Set<Keyword> = []
     do {
       if let trailingClosureIndex {
 
@@ -122,17 +123,78 @@ extension ConditionMacro {
 
         // The trailing closure should be the focus of the source code capture.
         let primaryExpression = primaryExpression ?? macroArguments[trailingClosureIndex].expression
-        let sourceCode = parseCondition(from: primaryExpression, for: macro, in: context).expression
-        checkArguments.append(Argument(label: "expression", expression: sourceCode))
+        let sourceCode: String = if let closureExpr = primaryExpression.as(ClosureExprSyntax.self),
+                                        closureExpr.signature == nil && closureExpr.statements.count == 1,
+                                        let item = closureExpr.statements.first?.item {
+          // TODO: capture closures as a different kind of Testing.Expression
+          // with a separate subexpression per code item.
+
+          // If a closure contains a single statement or declaration, we can't
+          // meaningfully break it down as an expression, but we can still
+          // capture its source representation.
+          item.trimmedDescription
+        } else {
+          primaryExpression.trimmedDescription
+        }
+        checkArguments.append(Argument(label: "sourceCode", expression: StringLiteralExprSyntax(content: sourceCode)))
 
         expandedFunctionName = .identifier("__checkClosureCall")
 
-      } else {
-        // Get the condition expression and extract its parsed form and source
-        // code. The first argument is always the condition argument if there is
-        // no trailing closure argument.
-        let conditionArgument = parseCondition(from: macroArguments.first!.expression, for: macro, in: context)
-        checkArguments += conditionArgument.arguments
+      } else if let firstArgument = macroArguments.first {
+        let originalArgumentExpr = firstArgument.expression
+        effectKeywordsToApply = findEffectKeywords(in: originalArgumentExpr)
+
+        var useEscapeHatch = false
+        if let asExpr = originalArgumentExpr.as(AsExprSyntax.self), asExpr.questionOrExclamationMark == nil {
+          // "Escape hatch" for x as Bool to avoid the full recursive expansion.
+          useEscapeHatch = true
+        } else if effectKeywordsToApply.contains(.consume) {
+          // `consume` expressions imply non-copyable values which cannot yet be
+          // safely used with the closure we generate below.
+          useEscapeHatch = true
+        }
+
+        if useEscapeHatch {
+          checkArguments.append(firstArgument)
+          checkArguments.append(Argument(label: "sourceCode", expression: StringLiteralExprSyntax(content: originalArgumentExpr.trimmedDescription)))
+          expandedFunctionName = .identifier("__checkEscapedCondition")
+
+        } else {
+          if effectKeywordsToApply.contains(.await) {
+            expandedFunctionName = .identifier("__checkConditionAsync")
+          }
+
+          var expressionContextName = TokenSyntax.identifier("__ec")
+          let isNameUsed = originalArgumentExpr.tokens(viewMode: .sourceAccurate).lazy
+            .map(\.tokenKind)
+            .contains(expressionContextName.tokenKind)
+          if isNameUsed {
+            // BUG: We should use the unique name directly. SEE: swift-syntax-#2256
+            let uniqueName = context.makeUniqueName("")
+            expressionContextName = .identifier("\(expressionContextName)\(uniqueName)")
+          }
+          let (closureExpr, rewrittenNodes) = rewrite(
+            originalArgumentExpr,
+            usingExpressionContextNamed: expressionContextName,
+            for: macro,
+            rootedAt: originalArgumentExpr,
+            effectKeywordsToApply: effectKeywordsToApply,
+            in: context
+          )
+          checkArguments.append(Argument(expression: closureExpr))
+
+          // Sort the rewritten nodes. This isn't strictly necessary for
+          // correctness but it does make the produced code more consistent.
+          let sortedRewrittenNodes = rewrittenNodes.sorted { $0.id < $1.id }
+          let sourceCodeNodeIDs = sortedRewrittenNodes.compactMap { $0.expressionID(rootedAt: originalArgumentExpr) }
+          let sourceCodeExprs = sortedRewrittenNodes.map { StringLiteralExprSyntax(content: $0.trimmedDescription) }
+          let sourceCodeExpr = DictionaryExprSyntax {
+            for (nodeID, sourceCodeExpr) in zip(sourceCodeNodeIDs, sourceCodeExprs) {
+              DictionaryElementSyntax(key: nodeID, value: sourceCodeExpr)
+            }
+          }
+          checkArguments.append(Argument(label: "sourceCode", expression: sourceCodeExpr))
+        }
 
         // Include all arguments other than the "condition", "comment", and
         // "sourceLocation" arguments here.
@@ -141,15 +203,6 @@ extension ConditionMacro {
           .filter { $0 != isolationArgumentIndex }
           .filter { $0 != sourceLocationArgumentIndex }
           .map { macroArguments[$0] }
-
-        if let primaryExpression {
-          let sourceCode = parseCondition(from: primaryExpression, for: macro, in: context).expression
-          checkArguments.append(Argument(label: "expression", expression: sourceCode))
-        } else {
-          checkArguments.append(Argument(label: "expression", expression: conditionArgument.expression))
-        }
-
-        expandedFunctionName = conditionArgument.expandedFunctionName
       }
 
       // Capture any comments as well (either in source or as a macro argument.)
@@ -187,11 +240,19 @@ extension ConditionMacro {
     }
 
     // Construct and return the call to __check().
-    let call: ExprSyntax = "Testing.\(expandedFunctionName)(\(LabeledExprListSyntax(checkArguments)))"
-    if isThrowing {
-      return "\(call).__required()"
+    var call: ExprSyntax = "Testing.\(expandedFunctionName)(\(LabeledExprListSyntax(checkArguments)))"
+    call = if isThrowing {
+      "\(call).__required()"
+    } else {
+      "\(call).__expected()"
     }
-    return "\(call).__expected()"
+    if effectKeywordsToApply.contains(.await) {
+      call = "await \(call)"
+    }
+    if !isThrowing && effectKeywordsToApply.contains(.try) {
+      call = "try \(call)"
+    }
+    return call
   }
 
   /// Get the complete argument list for a given macro, including any trailing
@@ -395,7 +456,7 @@ extension ExitTestConditionMacro {
     decls.append(
       """
       @Sendable func \(bodyThunkName)() async throws -> Void {
-        return try await Testing.__requiringTry(Testing.__requiringAwait(\(bodyArgumentExpr.trimmed)))()
+        return \(applyEffectfulKeywords([.try, .await], to: bodyArgumentExpr))()
       }
       """
     )
@@ -423,8 +484,7 @@ extension ExitTestConditionMacro {
     arguments[trailingClosureIndex].expression = ExprSyntax(
       ClosureExprSyntax {
         for decl in decls {
-          CodeBlockItemSyntax(item: .decl(decl))
-            .with(\.trailingTrivia, .newline)
+          decl.with(\.trailingTrivia, .newline)
         }
       }
     )
