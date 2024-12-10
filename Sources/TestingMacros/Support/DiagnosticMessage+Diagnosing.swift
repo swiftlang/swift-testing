@@ -142,10 +142,7 @@ private func _diagnoseIssuesWithParallelizationTrait(_ traitExpr: MemberAccessEx
     return
   }
 
-  let hasArguments = attributeInfo.otherArguments.lazy
-    .compactMap(\.label?.textWithoutBackticks)
-    .contains("arguments")
-  if !hasArguments {
+  if !attributeInfo.hasFunctionArguments {
     // Serializing a non-parameterized test function has no effect.
     context.diagnose(.traitHasNoEffect(traitExpr, in: attributeInfo.attribute))
   }
