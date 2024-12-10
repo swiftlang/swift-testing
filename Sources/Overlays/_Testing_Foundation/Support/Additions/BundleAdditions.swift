@@ -14,10 +14,6 @@ public import Foundation
 
 extension Bundle {
 #if SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING && !SWT_NO_FILE_IO
-  /// A string that appears within all auto-generated types conforming to the
-  /// `__TestContainer` protocol.
-  private static let _testContainerTypeNameMagic = "__🟠$test_container__"
-
   /// Storage for ``testTarget``.
   ///
   /// On Apple platforms, the bundle containing test content is a loadable
