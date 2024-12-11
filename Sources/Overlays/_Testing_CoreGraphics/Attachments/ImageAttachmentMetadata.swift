@@ -48,9 +48,10 @@ public struct ImageAttachmentMetadata: Sendable {
       }
     }
     set {
+      lazy var newValueDescription = newValue.localizedDescription ?? newValue.identifier
       precondition(
         newValue.conforms(to: .image),
-        "An image cannot be attached as an instance of type '\(newValue.identifier)'. Use a type that conforms to 'public.image' instead."
+        "An image cannot be attached as an instance of type '\(newValueDescription)'. Use a type that conforms to 'public.image' instead."
       )
       _contentType = newValue
     }

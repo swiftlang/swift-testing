@@ -13,7 +13,11 @@ public import Testing
 private import CoreGraphics
 
 private import ImageIO
-import UniformTypeIdentifiers
+private import UniformTypeIdentifiers
+
+#if canImport(CoreServices_Private)
+private import CoreServices_Private
+#endif
 
 /// ## Why can't images directly conform to Attachable?
 ///
@@ -75,7 +79,8 @@ extension _AttachableImageWrapper: AttachableWrapper {
     let attachableCGImage = try image.attachableCGImage
 
     // Create the image destination.
-    guard let dest = CGImageDestinationCreateWithData(data as CFMutableData, attachment.metadata.typeIdentifier, 1, nil) else {
+    let typeIdentifier = attachment.metadata.typeIdentifier
+    guard let dest = CGImageDestinationCreateWithData(data as CFMutableData, typeIdentifier, 1, nil) else {
       throw ImageAttachmentError.couldNotCreateImageDestination
     }
 

@@ -42,9 +42,10 @@ extension Attachable where Self: NSSecureCoding, AttachmentMetadata == Encodable
   ///   creation of the buffer.
   ///
   /// The testing library uses this function when writing an attachment to a
-  /// test report or to a file on disk. The encoding used depends on the path
-  /// extension specified by the value of `attachment`'s ``Testing/Attachment/preferredName``
-  /// property:
+  /// test report or to a file on disk. If you do not provide any metadata when
+  /// you attach this object to a test, the testing library infers the encoding
+  /// format from the path extension on the `attachment`'s
+  /// ``Testing/Attachment/preferredName`` property:
   ///
   /// | Extension | Encoding Used | Encoder Used |
   /// |-|-|-|
@@ -61,7 +62,11 @@ extension Attachable where Self: NSSecureCoding, AttachmentMetadata == Encodable
   ///   @Available(Swift, introduced: 6.2)
   /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    let format = try EncodableAttachmentMetadata.Format(for: attachment)
+    let format: EncodableAttachmentMetadata.Format = if let metadata = attachment.metadata {
+      metadata.format
+    } else {
+      try .infer(fromFileName: attachment.preferredName)
+    }
 
     var data = try NSKeyedArchiver.archivedData(withRootObject: self, requiringSecureCoding: true)
     switch format {
@@ -83,6 +88,10 @@ extension Attachable where Self: NSSecureCoding, AttachmentMetadata == Encodable
     }
 
     return try data.withUnsafeBytes(body)
+  }
+
+  public func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
+    makePreferredName(from: suggestedName, for: attachment, defaultFormat: .propertyListFormat(.binary))
   }
 }
 #endif

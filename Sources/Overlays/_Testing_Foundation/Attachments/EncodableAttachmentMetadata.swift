@@ -128,20 +128,16 @@ extension EncodableAttachmentMetadata.JSONEncodingOptions {
 // MARK: -
 
 extension EncodableAttachmentMetadata.Format {
-  /// Initialize an instance of this type representing the content type or media
-  /// type of the specified attachment.
+  /// Initialize an instance by inferring it from the given file name.
   ///
   /// - Parameters:
-  ///   - attachment: The attachment that will be encoded.
+  ///   - fileName: The file name to infer the format from.
+  ///
+  /// - Returns: The encoding format inferred from `fileName`.
   ///
   /// - Throws: If the attachment's content type or media type is unsupported.
-  init<A>(for attachment: borrowing Attachment<A>) throws where A: Attachable, A.AttachmentMetadata == EncodableAttachmentMetadata? {
-    if let metadata = attachment.metadata {
-      self = metadata.format
-      return
-    }
-
-    let ext = (attachment.preferredName as NSString).pathExtension
+  static func infer(fromFileName fileName: String) throws -> Self {
+    let ext = (fileName as NSString).pathExtension
 
 #if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
     // If the caller explicitly wants to encode their data as either XML or as a
@@ -149,32 +145,31 @@ extension EncodableAttachmentMetadata.Format {
     // JSONEncoder below.
     if #available(_uttypesAPI, *), let contentType = UTType(filenameExtension: ext) {
       if contentType == .data {
-        self = .default
+        return .default
       } else if contentType.conforms(to: .json) {
-        self = .json
+        return .json
       } else if contentType.conforms(to: .xml) {
-        self = .propertyListFormat(.xml)
+        return .propertyListFormat(.xml)
       } else if contentType.conforms(to: .binaryPropertyList) || contentType == .propertyList {
-        self = .propertyListFormat(.binary)
+        return .propertyListFormat(.binary)
       } else if contentType.conforms(to: .propertyList) {
-        self = .propertyListFormat(.openStep)
+        return .propertyListFormat(.openStep)
       } else {
         let contentTypeDescription = contentType.localizedDescription ?? contentType.identifier
         throw CocoaError(.propertyListWriteInvalid, userInfo: [NSLocalizedDescriptionKey: "The content type '\(contentTypeDescription)' cannot be used to attach an instance of \(type(of: self)) to a test."])
       }
-      return
     }
 #endif
 
     if ext.isEmpty {
       // No path extension? No problem! Default data.
-      self = .default
+      return .default
     } else if ext.caseInsensitiveCompare("plist") == .orderedSame {
-      self = .propertyListFormat(.binary)
+      return .propertyListFormat(.binary)
     } else if ext.caseInsensitiveCompare("xml") == .orderedSame {
-      self = .propertyListFormat(.xml)
+      return .propertyListFormat(.xml)
     } else if ext.caseInsensitiveCompare("json") == .orderedSame {
-      self = .json
+      return .json
     } else {
       throw CocoaError(.propertyListWriteInvalid, userInfo: [NSLocalizedDescriptionKey: "The path extension '.\(ext)' cannot be used to attach an instance of \(type(of: self)) to a test."])
     }

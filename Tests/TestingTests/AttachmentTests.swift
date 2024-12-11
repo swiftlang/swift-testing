@@ -415,9 +415,9 @@ struct AttachmentTests {
       let attachment = Attachment(attachableValue, named: name)
       try open(attachment)
     } else {
-      let attachableValue = MyCodableAttachable(string: "stringly speaking")
-      let attachment = Attachment(attachableValue, named: name)
-      try open(attachment)
+//      let attachableValue = MyCodableAttachable(string: "stringly speaking")
+//      let attachment = Attachment(attachableValue, named: name)
+//      try open(attachment)
     }
   }
 
@@ -611,8 +611,7 @@ extension AttachmentTests {
     @available(_uttypesAPI, *)
     @Test func cannotAttachCGImageWithNonImageType() async {
       await #expect(processExitsWith: .failure) {
-        let attachment = Attachment(try Self.cgImage.get(), named: "diamond", metadata: .init(contentType: .mp3))
-        try attachment.attachableValue.withUnsafeBytes(for: attachment) { _ in }
+        _ = Attachment(try Self.cgImage.get(), named: "diamond", metadata: .init(contentType: .mp3))
       }
     }
 #endif

@@ -30,7 +30,7 @@ public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: Atta
   ///
   /// The type of this property depends on the type of the attachment's
   /// ``attachableValue-7dyjv`` property.
-  public var metadata: AttachableValue.AttachmentMetadata
+  public internal(set) var metadata: AttachableValue.AttachmentMetadata
 
   /// The path to which the this attachment was written, if any.
   ///
@@ -110,7 +110,7 @@ extension Attachment where AttachableValue: ~Copyable {
     sourceLocation: SourceLocation = #_sourceLocation
   ) {
     self._attachableValue = attachableValue
-    self._preferredName = preferredName ?? Self.defaultPreferredName
+    self._preferredName = preferredName
     self.metadata = metadata
     self.sourceLocation = sourceLocation
   }
@@ -138,7 +138,7 @@ extension Attachment where AttachableValue: ~Copyable {
     sourceLocation: SourceLocation = #_sourceLocation
   ) where AttachableValue.AttachmentMetadata == M? {
     self._attachableValue = attachableValue
-    self._preferredName = preferredName ?? Self.defaultPreferredName
+    self._preferredName = preferredName
     self.metadata = nil
     self.sourceLocation = sourceLocation
   }
@@ -580,7 +580,7 @@ extension Attachment where AttachableValue: ~Copyable {
   borrowing func write(toFileInDirectoryAtPath directoryPath: String, usingPreferredName: Bool = true, appending suffix: @autoclosure () -> String) throws -> String {
     let result: String
 
-    let preferredName = usingPreferredName ? preferredName : Self.defaultPreferredName
+    let preferredName = try usingPreferredName ? preferredName : Self.defaultPreferredName
 
     var file: FileHandle?
     do {

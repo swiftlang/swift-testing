@@ -11,12 +11,6 @@
 #if SWT_TARGET_OS_APPLE && canImport(CoreGraphics)
 @_spi(Experimental) public import Testing
 
-public import UniformTypeIdentifiers
-
-#if canImport(CoreServices_Private)
-private import CoreServices_Private
-#endif
-
 extension Attachment {
   /// Initialize an instance of this type that encloses the given image.
   ///
@@ -41,25 +35,9 @@ extension Attachment {
   public init<T>(
     _ attachableValue: T,
     named preferredName: String?,
-    metadata: ImageAttachmentMetadata? = nil,
+    metadata: ImageAttachmentMetadata = .init(),
     sourceLocation: SourceLocation = #_sourceLocation
   ) where AttachableValue == _AttachableImageWrapper<T> {
-    var preferredName = preferredName ?? Self.defaultPreferredName
-    var metadata = metadata ?? ImageAttachmentMetadata()
-
-    // Update the preferred name to include an extension appropriate for the
-    // given content type. (Note the `else` branch duplicates the logic in
-    // `preferredContentType(forEncodingQuality:)` but will go away once our
-    // minimum deployment targets include the UniformTypeIdentifiers framework.)
-    if #available(_uttypesAPI, *) {
-      preferredName = (preferredName as NSString).appendingPathExtension(for: metadata.contentType)
-    } else {
-#if canImport(CoreServices_Private)
-      // The caller can't provide a content type, so we'll pick one for them.
-      preferredName = _UTTypeCreateSuggestedFilename(preferredName as CFString, metadata.typeIdentifier)?.takeRetainedValue() ?? preferredName
-#endif
-    }
-
     let imageContainer = _AttachableImageWrapper(attachableValue)
     self.init(imageContainer, named: preferredName, metadata: metadata, sourceLocation: sourceLocation)
   }
