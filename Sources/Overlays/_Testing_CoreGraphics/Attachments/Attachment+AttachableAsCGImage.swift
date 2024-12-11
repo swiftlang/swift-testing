@@ -13,6 +13,10 @@
 
 public import UniformTypeIdentifiers
 
+#if canImport(CoreServices_Private)
+private import CoreServices_Private
+#endif
+
 extension Attachment {
   /// Initialize an instance of this type that encloses the given image.
   ///
@@ -22,95 +26,42 @@ extension Attachment {
   ///   - preferredName: The preferred name of the attachment when writing it
   ///     to a test report or to disk. If `nil`, the testing library attempts
   ///     to derive a reasonable filename for the attached value.
-  ///   - contentType: The image format with which to encode `attachableValue`.
-  ///     If this type does not conform to [`UTType.image`](https://developer.apple.com/documentation/uniformtypeidentifiers/uttype-swift.struct/image),
-  ///     the result is undefined. Pass `nil` to let the testing library decide
-  ///     which image format to use.
-  ///   - encodingQuality: The encoding quality to use when encoding the image.
-  ///     If the image format used for encoding (specified by the `contentType`
-  ///     argument) does not support variable-quality encoding, the value of
-  ///     this argument is ignored.
+  ///   - metadata: Optional metadata such as the image format to use when
+  ///     encoding `image`. If `nil`, the testing library will infer the format
+  ///     and other metadata.
   ///   - sourceLocation: The source location of the call to this initializer.
   ///     This value is used when recording issues associated with the
   ///     attachment.
   ///
-  /// This is the designated initializer for this type when attaching an image
-  /// that conforms to ``AttachableAsCGImage``.
-  fileprivate init<T>(
-    attachableValue: T,
+  /// The following system-provided image types conform to the
+  /// ``AttachableAsCGImage`` protocol and can be attached to a test:
+  ///
+  /// - [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage)
+  @_spi(Experimental)
+  public init<T>(
+    _ attachableValue: T,
     named preferredName: String?,
-    contentType: (any Sendable)?,
-    encodingQuality: Float,
-    sourceLocation: SourceLocation
-  ) where AttachableValue == _AttachableImageWrapper<T> {
-    let imageWrapper = _AttachableImageWrapper(image: attachableValue, encodingQuality: encodingQuality, contentType: contentType)
-    self.init(imageWrapper, named: preferredName, sourceLocation: sourceLocation)
-  }
-
-  /// Initialize an instance of this type that encloses the given image.
-  ///
-  /// - Parameters:
-  ///   - attachableValue: The value that will be attached to the output of
-  ///     the test run.
-  ///   - preferredName: The preferred name of the attachment when writing it
-  ///     to a test report or to disk. If `nil`, the testing library attempts
-  ///     to derive a reasonable filename for the attached value.
-  ///   - contentType: The image format with which to encode `attachableValue`.
-  ///     If this type does not conform to [`UTType.image`](https://developer.apple.com/documentation/uniformtypeidentifiers/uttype-swift.struct/image),
-  ///     the result is undefined. Pass `nil` to let the testing library decide
-  ///     which image format to use.
-  ///   - encodingQuality: The encoding quality to use when encoding the image.
-  ///     If the image format used for encoding (specified by the `contentType`
-  ///     argument) does not support variable-quality encoding, the value of
-  ///     this argument is ignored.
-  ///   - sourceLocation: The source location of the call to this initializer.
-  ///     This value is used when recording issues associated with the
-  ///     attachment.
-  ///
-  /// The following system-provided image types conform to the
-  /// ``AttachableAsCGImage`` protocol and can be attached to a test:
-  ///
-  /// - [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage)
-  @_spi(Experimental)
-  @available(_uttypesAPI, *)
-  public init<T>(
-    _ attachableValue: T,
-    named preferredName: String? = nil,
-    as contentType: UTType?,
-    encodingQuality: Float = 1.0,
+    metadata: ImageAttachmentMetadata? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) where AttachableValue == _AttachableImageWrapper<T> {
-    self.init(attachableValue: attachableValue, named: preferredName, contentType: contentType, encodingQuality: encodingQuality, sourceLocation: sourceLocation)
-  }
+    var preferredName = preferredName ?? Self.defaultPreferredName
+    var metadata = metadata ?? ImageAttachmentMetadata()
 
-  /// Initialize an instance of this type that encloses the given image.
-  ///
-  /// - Parameters:
-  ///   - attachableValue: The value that will be attached to the output of
-  ///     the test run.
-  ///   - preferredName: The preferred name of the attachment when writing it
-  ///     to a test report or to disk. If `nil`, the testing library attempts
-  ///     to derive a reasonable filename for the attached value.
-  ///   - encodingQuality: The encoding quality to use when encoding the image.
-  ///     If the image format used for encoding (specified by the `contentType`
-  ///     argument) does not support variable-quality encoding, the value of
-  ///     this argument is ignored.
-  ///   - sourceLocation: The source location of the call to this initializer.
-  ///     This value is used when recording issues associated with the
-  ///     attachment.
-  ///
-  /// The following system-provided image types conform to the
-  /// ``AttachableAsCGImage`` protocol and can be attached to a test:
-  ///
-  /// - [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage)
-  @_spi(Experimental)
-  public init<T>(
-    _ attachableValue: T,
-    named preferredName: String? = nil,
-    encodingQuality: Float = 1.0,
-    sourceLocation: SourceLocation = #_sourceLocation
-  ) where AttachableValue == _AttachableImageWrapper<T> {
-    self.init(attachableValue: attachableValue, named: preferredName, contentType: nil, encodingQuality: encodingQuality, sourceLocation: sourceLocation)
+    // Update the preferred name to include an extension appropriate for the
+    // given content type. (Note the `else` branch duplicates the logic in
+    // `preferredContentType(forEncodingQuality:)` but will go away once our
+    // minimum deployment targets include the UniformTypeIdentifiers framework.)
+    if #available(_uttypesAPI, *) {
+      preferredName = (preferredName as NSString).appendingPathExtension(for: metadata.contentType)
+    } else {
+#if canImport(CoreServices_Private)
+      // The caller can't provide a content type, so we'll pick one for them.
+      preferredName = _UTTypeCreateSuggestedFilename(preferredName as CFString, metadata.typeIdentifier)?.takeRetainedValue() ?? preferredName
+#endif
+    }
+
+    let imageContainer = _AttachableImageWrapper(attachableValue)
+    self.init(imageContainer, named: preferredName, metadata: metadata, sourceLocation: sourceLocation)
   }
 }
 #endif

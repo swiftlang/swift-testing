@@ -135,18 +135,10 @@ extension EncodableAttachmentMetadata.Format {
   ///   - attachment: The attachment that will be encoded.
   ///
   /// - Throws: If the attachment's content type or media type is unsupported.
-  init(for attachment: borrowing Attachment<some Attachable>) throws {
+  init<A>(for attachment: borrowing Attachment<A>) throws where A: Attachable, A.AttachmentMetadata == EncodableAttachmentMetadata? {
     if let metadata = attachment.metadata {
-      if let format = metadata as? Self {
-        self = format
-        return
-      } else if let metadata = metadata as? EncodableAttachmentMetadata {
-        self = metadata.format
-        return
-      } else if let propertyListFormat = metadata as? PropertyListSerialization.PropertyListFormat {
-        self = .propertyListFormat(propertyListFormat)
-        return
-      }
+      self = metadata.format
+      return
     }
 
     let ext = (attachment.preferredName as NSString).pathExtension

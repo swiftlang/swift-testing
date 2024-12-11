@@ -19,6 +19,11 @@ extension Data: Attachable {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
   /// }
+  public typealias AttachmentMetadata = Never?
+
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }

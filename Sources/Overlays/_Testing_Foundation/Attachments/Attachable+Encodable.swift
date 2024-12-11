@@ -27,7 +27,11 @@ private import Foundation
 ///
 /// - Throws: Whatever is thrown by `body`, or any error that prevented the
 ///   creation of the buffer.
-func withUnsafeBytes<E, R>(encoding attachableValue: borrowing E, for attachment: borrowing Attachment<E>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R where E: Attachable & Encodable {
+func withUnsafeBytes<E, R>(
+  encoding attachableValue: borrowing E,
+  for attachment: borrowing Attachment<E>,
+  _ body: (UnsafeRawBufferPointer) throws -> R
+) throws -> R where E: Attachable & Encodable, E.AttachmentMetadata == EncodableAttachmentMetadata? {
   let format = try EncodableAttachmentMetadata.Format(for: attachment)
 
   let data: Data
@@ -35,7 +39,7 @@ func withUnsafeBytes<E, R>(encoding attachableValue: borrowing E, for attachment
   case let .propertyListFormat(propertyListFormat):
     let plistEncoder = PropertyListEncoder()
     plistEncoder.outputFormat = propertyListFormat
-    if let metadata = attachment.metadata as? EncodableAttachmentMetadata {
+    if let metadata = attachment.metadata {
       plistEncoder.userInfo = metadata.userInfo
     }
     data = try plistEncoder.encode(attachableValue)
@@ -48,7 +52,7 @@ func withUnsafeBytes<E, R>(encoding attachableValue: borrowing E, for attachment
     // create a visible external dependency on Foundation in the main testing
     // library target.
     let jsonEncoder = JSONEncoder()
-    if let metadata = attachment.metadata as? EncodableAttachmentMetadata {
+    if let metadata = attachment.metadata {
       jsonEncoder.userInfo = metadata.userInfo
 
       if let options = metadata.jsonEncodingOptions {
@@ -73,8 +77,13 @@ func withUnsafeBytes<E, R>(encoding attachableValue: borrowing E, for attachment
 ///   @Available(Swift, introduced: 6.2)
 /// }
 extension Attachable where Self: Encodable {
-  public typealias AttachmentMetadata = EncodableAttachmentMetadata
+  public typealias AttachmentMetadata = EncodableAttachmentMetadata?
+}
 
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+/// }
+extension Attachable where Self: Encodable, AttachmentMetadata == EncodableAttachmentMetadata? {
   /// Encode this value into a buffer using either [`PropertyListEncoder`](https://developer.apple.com/documentation/foundation/propertylistencoder)
   /// or [`JSONEncoder`](https://developer.apple.com/documentation/foundation/jsonencoder),
   /// then call a function and pass that buffer to it.

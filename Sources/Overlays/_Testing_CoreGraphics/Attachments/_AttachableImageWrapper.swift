@@ -24,10 +24,7 @@ import UniformTypeIdentifiers
 ///    event handler (primarily because `Event` is `Sendable`.) So we would have
 ///    to eagerly serialize them, which is unnecessarily expensive if we know
 ///    they're actually concurrency-safe.
-/// 2. We would have no place to store metadata such as the encoding quality
-///    (although in the future we may introduce a "metadata" associated type to
-///    `Attachable` that could store that info.)
-/// 3. `Attachable` has a requirement with `Self` in non-parameter, non-return
+/// 2. `Attachable` has a requirement with `Self` in non-parameter, non-return
 ///    position. As far as Swift is concerned, a non-final class cannot satisfy
 ///    such a requirement, and all image types we care about are non-final
 ///    classes. Thus, the compiler will steadfastly refuse to allow non-final
@@ -57,71 +54,8 @@ public struct _AttachableImageWrapper<Image>: Sendable where Image: AttachableAs
   /// instances of this type it creates hold "safe" `NSImage` instances.
   nonisolated(unsafe) var image: Image
 
-  /// The encoding quality to use when encoding the represented image.
-  var encodingQuality: Float
-
-  /// Storage for ``contentType``.
-  private var _contentType: (any Sendable)?
-
-  /// The content type to use when encoding the image.
-  ///
-  /// The testing library uses this property to determine which image format to
-  /// encode the associated image as when it is attached to a test.
-  ///
-  /// If the value of this property does not conform to [`UTType.image`](https://developer.apple.com/documentation/uniformtypeidentifiers/uttype-swift.struct/image),
-  /// the result is undefined.
-  @available(_uttypesAPI, *)
-  var contentType: UTType {
-    get {
-      if let contentType = _contentType as? UTType {
-        return contentType
-      } else {
-        return encodingQuality < 1.0 ? .jpeg : .png
-      }
-    }
-    set {
-      precondition(
-        newValue.conforms(to: .image),
-        "An image cannot be attached as an instance of type '\(newValue.identifier)'. Use a type that conforms to 'public.image' instead."
-      )
-      _contentType = newValue
-    }
-  }
-
-  /// The content type to use when encoding the image, substituting a concrete
-  /// type for `UTType.image`.
-  ///
-  /// This property is not part of the public interface of the testing library.
-  @available(_uttypesAPI, *)
-  var computedContentType: UTType {
-    if let contentType = _contentType as? UTType, contentType != .image {
-      contentType
-    } else {
-      encodingQuality < 1.0 ? .jpeg : .png
-    }
-  }
-
-  /// The type identifier (as a `CFString`) corresponding to this instance's
-  /// ``computedContentType`` property.
-  ///
-  /// The value of this property is used by ImageIO when serializing an image.
-  ///
-  /// This property is not part of the public interface of the testing library.
-  /// It is used by ImageIO below.
-  var typeIdentifier: CFString {
-    if #available(_uttypesAPI, *) {
-      computedContentType.identifier as CFString
-    } else {
-      encodingQuality < 1.0 ? kUTTypeJPEG : kUTTypePNG
-    }
-  }
-
-  init(image: Image, encodingQuality: Float, contentType: (any Sendable)?) {
+  init(_ image: borrowing Image) {
     self.image = image._makeCopyForAttachment()
-    self.encodingQuality = encodingQuality
-    if #available(_uttypesAPI, *), let contentType = contentType as? UTType {
-      self.contentType = contentType
-    }
   }
 }
 
@@ -132,6 +66,8 @@ extension _AttachableImageWrapper: AttachableWrapper {
     image
   }
 
+  public typealias AttachmentMetadata = ImageAttachmentMetadata
+
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     let data = NSMutableData()
 
@@ -139,7 +75,7 @@ extension _AttachableImageWrapper: AttachableWrapper {
     let attachableCGImage = try image.attachableCGImage
 
     // Create the image destination.
-    guard let dest = CGImageDestinationCreateWithData(data as CFMutableData, typeIdentifier, 1, nil) else {
+    guard let dest = CGImageDestinationCreateWithData(data as CFMutableData, attachment.metadata.typeIdentifier, 1, nil) else {
       throw ImageAttachmentError.couldNotCreateImageDestination
     }
 
@@ -147,7 +83,7 @@ extension _AttachableImageWrapper: AttachableWrapper {
     let orientation = image._attachmentOrientation
     let scaleFactor = image._attachmentScaleFactor
     let properties: [CFString: Any] = [
-      kCGImageDestinationLossyCompressionQuality: CGFloat(encodingQuality),
+      kCGImageDestinationLossyCompressionQuality: CGFloat(attachment.metadata.encodingQuality),
       kCGImagePropertyOrientation: orientation,
       kCGImagePropertyDPIWidth: 72.0 * scaleFactor,
       kCGImagePropertyDPIHeight: 72.0 * scaleFactor,
@@ -169,7 +105,7 @@ extension _AttachableImageWrapper: AttachableWrapper {
 
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
     if #available(_uttypesAPI, *) {
-      return (suggestedName as NSString).appendingPathExtension(for: computedContentType)
+      return (suggestedName as NSString).appendingPathExtension(for: attachment.metadata.computedContentType)
     }
 
     return suggestedName
