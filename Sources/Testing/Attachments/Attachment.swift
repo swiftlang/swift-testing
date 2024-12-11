@@ -42,6 +42,9 @@ public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: Atta
     "untitled"
   }
 
+  /// Storage for ``preferredName``.
+  fileprivate var _preferredName: String?
+
   /// A filename to use when writing this attachment to a test report or to a
   /// file on disk.
   ///
@@ -49,7 +52,14 @@ public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: Atta
   /// testing library may substitute a different filename as needed. If the
   /// value of this property has not been explicitly set, the testing library
   /// will attempt to generate its own value.
-  public var preferredName: String
+  public var preferredName: String {
+    let suggestedName = if let _preferredName, !_preferredName.isEmpty {
+      _preferredName
+    } else {
+      Self.defaultPreferredName
+    }
+    return attachableValue.preferredName(for: self, basedOn: suggestedName)
+  }
 
   /// The source location of this instance.
   ///
@@ -83,7 +93,7 @@ extension Attachment where AttachableValue: ~Copyable {
   ///     attachment.
   public init(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
     self._attachableValue = attachableValue
-    self.preferredName = preferredName ?? Self.defaultPreferredName
+    self._preferredName = preferredName
     self.sourceLocation = sourceLocation
   }
 }
@@ -98,7 +108,7 @@ extension Attachment where AttachableValue == AnyAttachable {
     self.init(
       _attachableValue: AnyAttachable(attachableValue: attachment.attachableValue),
       fileSystemPath: attachment.fileSystemPath,
-      preferredName: attachment.preferredName,
+      _preferredName: attachment._preferredName,
       sourceLocation: attachment.sourceLocation
     )
   }
@@ -139,12 +149,25 @@ public struct AnyAttachable: AttachableContainer, Copyable, Sendable {
       let temporaryAttachment = Attachment<T>(
         _attachableValue: attachableValue,
         fileSystemPath: attachment.fileSystemPath,
-        preferredName: attachment.preferredName,
+        _preferredName: attachment._preferredName,
         sourceLocation: attachment.sourceLocation
       )
       return try temporaryAttachment.withUnsafeBufferPointer(body)
     }
     return try open(attachableValue, for: attachment)
+  }
+
+  public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
+    func open<T>(_ attachableValue: T, for attachment: borrowing Attachment<Self>) -> String where T: Attachable & Sendable & Copyable {
+      let temporaryAttachment = Attachment<T>(
+        _attachableValue: attachableValue,
+        fileSystemPath: attachment.fileSystemPath,
+        _preferredName: attachment._preferredName,
+        sourceLocation: attachment.sourceLocation
+      )
+      return temporaryAttachment.preferredName
+    }
+    return open(attachableValue, for: attachment)
   }
 }
 
@@ -232,7 +255,12 @@ extension Attachment where AttachableValue: ~Copyable {
     do {
       let attachmentCopy = try withUnsafeBufferPointer { buffer in
         let attachableContainer = AnyAttachable(attachableValue: Array(buffer))
-        return Attachment<AnyAttachable>(_attachableValue: attachableContainer, fileSystemPath: fileSystemPath, preferredName: preferredName, sourceLocation: sourceLocation)
+        return Attachment<AnyAttachable>(
+          _attachableValue: attachableContainer,
+          fileSystemPath: fileSystemPath,
+          _preferredName: preferredName, // invokes preferredName(for:basedOn:)
+          sourceLocation: sourceLocation
+        )
       }
       Event.post(.valueAttached(attachmentCopy))
     } catch {

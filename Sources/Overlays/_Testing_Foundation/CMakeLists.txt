@@ -7,6 +7,7 @@
 # See http://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 add_library(_Testing_Foundation
+  Attachments/_AttachableURLContainer.swift
   Attachments/EncodingFormat.swift
   Attachments/Attachment+URL.swift
   Attachments/Attachable+NSSecureCoding.swift

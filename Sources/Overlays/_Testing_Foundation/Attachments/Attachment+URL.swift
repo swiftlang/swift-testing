@@ -37,7 +37,7 @@ extension URL {
 }
 
 @_spi(Experimental)
-extension Attachment where AttachableValue == Data {
+extension Attachment where AttachableValue == _AttachableURLContainer {
 #if SWT_TARGET_OS_APPLE
   /// An operation queue to use for asynchronously reading data from disk.
   private static let _operationQueue = OperationQueue()
@@ -65,29 +65,11 @@ extension Attachment where AttachableValue == Data {
       throw CocoaError(.featureUnsupported, userInfo: [NSLocalizedDescriptionKey: "Attaching downloaded files is not supported"])
     }
 
+    // If the user did not provide a preferred name, derive it from the URL.
+    let preferredName = preferredName ?? url.lastPathComponent
+
     let url = url.resolvingSymlinksInPath()
     let isDirectory = try url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory!
-
-    // Determine the preferred name of the attachment if one was not provided.
-    var preferredName = if let preferredName {
-      preferredName
-    } else if case let lastPathComponent = url.lastPathComponent, !lastPathComponent.isEmpty {
-      lastPathComponent
-    } else {
-      Self.defaultPreferredName
-    }
-
-    if isDirectory {
-      // Ensure the preferred name of the archive has an appropriate extension.
-      preferredName = {
-#if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
-        if #available(_uttypesAPI, *) {
-          return (preferredName as NSString).appendingPathExtension(for: .zip)
-        }
-#endif
-        return (preferredName as NSString).appendingPathExtension("zip") ?? preferredName
-      }()
-    }
 
 #if SWT_TARGET_OS_APPLE
     let data: Data = try await withCheckedThrowingContinuation { continuation in
@@ -113,7 +95,8 @@ extension Attachment where AttachableValue == Data {
     }
 #endif
 
-    self.init(data, named: preferredName, sourceLocation: sourceLocation)
+    let urlContainer = _AttachableURLContainer(url: url, data: data, isCompressedDirectory: isDirectory)
+    self.init(urlContainer, named: preferredName, sourceLocation: sourceLocation)
   }
 }
 
