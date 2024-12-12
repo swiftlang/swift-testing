@@ -175,8 +175,9 @@ func spawnExecutable(
       }
 
       var pid = pid_t()
-      guard 0 == posix_spawn(&pid, executablePath, fileActions, attrs, argv, environ) else {
-        throw CError(rawValue: swt_errno())
+      let processSpawned = posix_spawn(&pid, executablePath, fileActions, attrs, argv, environ)
+      guard 0 == processSpawned else {
+        throw CError(rawValue: processSpawned)
       }
       return pid
     }
