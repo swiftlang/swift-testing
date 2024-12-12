@@ -13,7 +13,11 @@
 private import CoreGraphics
 
 private import ImageIO
-import UniformTypeIdentifiers
+private import UniformTypeIdentifiers
+
+#if canImport(CoreServices_Private)
+private import CoreServices_Private
+#endif
 
 /// ## Why can't images directly conform to Attachable?
 ///
@@ -24,10 +28,7 @@ import UniformTypeIdentifiers
 ///    event handler (primarily because `Event` is `Sendable`.) So we would have
 ///    to eagerly serialize them, which is unnecessarily expensive if we know
 ///    they're actually concurrency-safe.
-/// 2. We would have no place to store metadata such as the encoding quality
-///    (although in the future we may introduce a "metadata" associated type to
-///    `Attachable` that could store that info.)
-/// 3. `Attachable` has a requirement with `Self` in non-parameter, non-return
+/// 2. `Attachable` has a requirement with `Self` in non-parameter, non-return
 ///    position. As far as Swift is concerned, a non-final class cannot satisfy
 ///    such a requirement, and all image types we care about are non-final
 ///    classes. Thus, the compiler will steadfastly refuse to allow non-final
@@ -57,58 +58,19 @@ public struct _AttachableImageContainer<Image>: Sendable where Image: Attachable
   /// instances of this type it creates hold "safe" `NSImage` instances.
   nonisolated(unsafe) var image: Image
 
-  /// The encoding quality to use when encoding the represented image.
-  public var encodingQuality: Float
-
-  /// Storage for ``contentType``.
-  private var _contentType: (any Sendable)?
-
-  /// The content type to use when encoding the image.
-  ///
-  /// This property should eventually move up to ``Attachment``. It is not part
-  /// of the public interface of the testing library.
-  @available(_uttypesAPI, *)
-  var contentType: UTType? {
-    get {
-      _contentType as? UTType
-    }
-    set {
-      _contentType = newValue
-    }
-  }
-
-  init(image: Image, encodingQuality: Float) {
+  init(_ image: borrowing Image) {
     self.image = image._makeCopyForAttachment()
-    self.encodingQuality = encodingQuality
   }
 }
 
 // MARK: -
 
-@available(_uttypesAPI, *)
-extension UTType {
-  /// Determine the preferred content type to encode this image as for a given
-  /// encoding quality.
-  ///
-  /// - Parameters:
-  ///   - encodingQuality: The encoding quality to use when encoding the image.
-  ///
-  /// - Returns: The type to encode this image as.
-  static func preferred(forEncodingQuality encodingQuality: Float) -> Self {
-    // If the caller wants lossy encoding, use JPEG.
-    if encodingQuality < 1.0 {
-      return .jpeg
-    }
-
-    // Lossless encoding implies PNG.
-    return .png
-  }
-}
-
 extension _AttachableImageContainer: AttachableContainer {
   public var attachableValue: Image {
     image
   }
+
+  public typealias AttachmentMetadata = ImageAttachmentMetadata
 
   public func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     let data = NSMutableData()
@@ -116,22 +78,8 @@ extension _AttachableImageContainer: AttachableContainer {
     // Convert the image to a CGImage.
     let attachableCGImage = try image.attachableCGImage
 
-    // Get the type to encode as. (Note the `else` branches duplicate the logic
-    // in `preferredContentType(forEncodingQuality:)` but will go away once our
-    // minimum deployment targets include the UniformTypeIdentifiers framework.)
-    let typeIdentifier: CFString
-    if #available(_uttypesAPI, *), let contentType {
-      guard contentType.conforms(to: .image) else {
-        throw ImageAttachmentError.contentTypeDoesNotConformToImage
-      }
-      typeIdentifier = contentType.identifier as CFString
-    } else if encodingQuality < 1.0 {
-      typeIdentifier = kUTTypeJPEG
-    } else {
-      typeIdentifier = kUTTypePNG
-    }
-
     // Create the image destination.
+    let typeIdentifier = attachment.metadata.typeIdentifier
     guard let dest = CGImageDestinationCreateWithData(data as CFMutableData, typeIdentifier, 1, nil) else {
       throw ImageAttachmentError.couldNotCreateImageDestination
     }
@@ -140,7 +88,7 @@ extension _AttachableImageContainer: AttachableContainer {
     let orientation = image._attachmentOrientation
     let scaleFactor = image._attachmentScaleFactor
     let properties: [CFString: Any] = [
-      kCGImageDestinationLossyCompressionQuality: CGFloat(encodingQuality),
+      kCGImageDestinationLossyCompressionQuality: CGFloat(attachment.metadata.encodingQuality),
       kCGImagePropertyOrientation: orientation,
       kCGImagePropertyDPIWidth: 72.0 * scaleFactor,
       kCGImagePropertyDPIHeight: 72.0 * scaleFactor,
@@ -158,6 +106,24 @@ extension _AttachableImageContainer: AttachableContainer {
     return try withExtendedLifetime(data) {
       try body(UnsafeRawBufferPointer(start: data.bytes, count: data.length))
     }
+  }
+
+  public borrowing func makePreferredName(from suggestedName: String, for attachment: borrowing Attachment<Self>) -> String {
+    let preferredName = attachment.preferredName
+
+    if #available(_uttypesAPI, *) {
+      let metadata = attachment.metadata
+      let contentType = metadata.contentType
+      if contentType != .image {
+        return (preferredName as NSString).appendingPathExtension(for: metadata.contentType)
+      } else if metadata.encodingQuality < 1.0 {
+        return (preferredName as NSString).appendingPathExtension(for: .jpeg)
+      } else {
+        return (preferredName as NSString).appendingPathExtension(for: .png)
+      }
+    }
+
+    return preferredName
   }
 }
 #endif

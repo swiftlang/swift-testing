@@ -14,6 +14,8 @@ public import Foundation
 
 @_spi(Experimental)
 extension Data: Attachable {
+  public typealias AttachmentMetadata = Never?
+
   public func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }

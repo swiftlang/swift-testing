@@ -23,6 +23,12 @@ public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: Atta
   /// Storage for ``attachableValue-7dyjv``.
   fileprivate var _attachableValue: AttachableValue
 
+  /// Metadata associated with this attachment.
+  ///
+  /// The type of this property depends on the type of the attachment's
+  /// ``attachableValue-7dyjv`` property.
+  public internal(set) var metadata: AttachableValue.AttachmentMetadata
+
   /// The path to which the this attachment was written, if any.
   ///
   /// If a developer sets the ``Configuration/attachmentsPath`` property of the
@@ -35,6 +41,9 @@ public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: Atta
   /// attachment to disk, the value of this property is `nil`.
   @_spi(ForToolsIntegrationOnly)
   public var fileSystemPath: String?
+
+  /// The preferred name provided when this instance was created.
+  fileprivate var _preferredName: String?
 
   /// The default preferred name to use if the developer does not supply one.
   @_spi(ForSwiftTestingOnly)
@@ -49,7 +58,9 @@ public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: Atta
   /// testing library may substitute a different filename as needed. If the
   /// value of this property has not been explicitly set, the testing library
   /// will attempt to generate its own value.
-  public var preferredName: String
+  public var preferredName: String {
+    attachableValue.makePreferredName(from: _preferredName ?? Self.defaultPreferredName, for: self)
+  }
 
   /// The source location of this instance.
   ///
@@ -67,7 +78,6 @@ extension Attachment: Sendable where AttachableValue: Sendable {}
 
 // MARK: - Initializing an attachment
 
-#if !SWT_NO_LAZY_ATTACHMENTS
 extension Attachment where AttachableValue: ~Copyable {
   /// Initialize an instance of this type that encloses the given attachable
   /// value.
@@ -78,16 +88,48 @@ extension Attachment where AttachableValue: ~Copyable {
   ///   - preferredName: The preferred name of the attachment when writing it to
   ///     a test report or to disk. If `nil`, the testing library attempts to
   ///     derive a reasonable filename for the attached value.
+  ///   - metadata: Metadata to include with `attachableValue`.
   ///   - sourceLocation: The source location of the call to this initializer.
   ///     This value is used when recording issues associated with the
   ///     attachment.
-  public init(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
+  public init(
+    _ attachableValue: consuming AttachableValue,
+    named preferredName: String? = nil,
+    metadata: AttachableValue.AttachmentMetadata,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) {
     self._attachableValue = attachableValue
-    self.preferredName = preferredName ?? Self.defaultPreferredName
+    self._preferredName = preferredName
+    self.metadata = metadata
+    self.sourceLocation = sourceLocation
+  }
+
+  /// Initialize an instance of this type that encloses the given attachable
+  /// value.
+  ///
+  /// - Parameters:
+  ///   - attachableValue: The value that will be attached to the output of the
+  ///     test run.
+  ///   - preferredName: The preferred name of the attachment when writing it to
+  ///     a test report or to disk. If `nil`, the testing library attempts to
+  ///     derive a reasonable filename for the attached value.
+  ///   - metadata: Optional metadata to include with `attachableValue`.
+  ///   - sourceLocation: The source location of the call to this initializer.
+  ///     This value is used when recording issues associated with the
+  ///     attachment.
+  public init<M>(
+    _ attachableValue: consuming AttachableValue,
+    named preferredName: String? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) where AttachableValue.AttachmentMetadata == M? {
+    self._attachableValue = attachableValue
+    self._preferredName = preferredName
+    self.metadata = nil
     self.sourceLocation = sourceLocation
   }
 }
 
+#if !SWT_NO_LAZY_ATTACHMENTS
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 extension Attachment where AttachableValue == AnyAttachable {
   /// Create a type-erased attachment from an instance of ``Attachment``.
@@ -97,8 +139,9 @@ extension Attachment where AttachableValue == AnyAttachable {
   fileprivate init(_ attachment: Attachment<some Attachable & Sendable & Copyable>) {
     self.init(
       _attachableValue: AnyAttachable(attachableValue: attachment.attachableValue),
+      metadata: attachment.metadata,
       fileSystemPath: attachment.fileSystemPath,
-      preferredName: attachment.preferredName,
+      _preferredName: attachment._preferredName,
       sourceLocation: attachment.sourceLocation
     )
   }
@@ -118,6 +161,8 @@ extension Attachment where AttachableValue == AnyAttachable {
 // }
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 public struct AnyAttachable: AttachableContainer, Copyable, Sendable {
+  public typealias AttachmentMetadata = any Sendable /* & Copyable rdar://137614425 */
+
 #if !SWT_NO_LAZY_ATTACHMENTS
   public typealias AttachableValue = any Attachable & Sendable /* & Copyable rdar://137614425 */
 #else
@@ -135,16 +180,29 @@ public struct AnyAttachable: AttachableContainer, Copyable, Sendable {
   }
 
   public func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+#if !SWT_NO_LAZY_ATTACHMENTS
     func open<T>(_ attachableValue: T, for attachment: borrowing Attachment<Self>) throws -> R where T: Attachable & Sendable & Copyable {
+      guard let metadata = attachment.metadata as? T.AttachmentMetadata else {
+        // If the types don't match, it's because somebody assigned a bad value
+        // to the type-erased attachment's metadata property after-the-fact.
+        // This should *probably* be represented as an "API misuse" error, not a
+        // system error.
+        throw SystemError(description: "The metadata associated with \(attachableValue) was not of expected type '\(T.AttachmentMetadata.self)' (was '\(type(of: attachment.metadata))' instead).")
+      }
+
       let temporaryAttachment = Attachment<T>(
         _attachableValue: attachableValue,
+        metadata: metadata,
         fileSystemPath: attachment.fileSystemPath,
-        preferredName: attachment.preferredName,
+        _preferredName: attachment._preferredName,
         sourceLocation: attachment.sourceLocation
       )
       return try temporaryAttachment.withUnsafeBufferPointer(body)
     }
     return try open(attachableValue, for: attachment)
+#else
+    return try attachableValue.withUnsafeBytes(body)
+#endif
   }
 }
 
@@ -232,7 +290,12 @@ extension Attachment where AttachableValue: ~Copyable {
     do {
       let attachmentCopy = try withUnsafeBufferPointer { buffer in
         let attachableContainer = AnyAttachable(attachableValue: Array(buffer))
-        return Attachment<AnyAttachable>(_attachableValue: attachableContainer, fileSystemPath: fileSystemPath, preferredName: preferredName, sourceLocation: sourceLocation)
+#if !SWT_NO_LAZY_ATTACHMENTS
+        let metadata = metadata
+#else
+        let metadata: Never? = nil
+#endif
+        return Attachment<AnyAttachable>(_attachableValue: attachableContainer, metadata: metadata, fileSystemPath: fileSystemPath, _preferredName: _preferredName, sourceLocation: sourceLocation)
       }
       Event.post(.valueAttached(attachmentCopy))
     } catch {
@@ -325,7 +388,7 @@ extension Attachment where AttachableValue: ~Copyable {
   borrowing func write(toFileInDirectoryAtPath directoryPath: String, usingPreferredName: Bool = true, appending suffix: @autoclosure () -> String) throws -> String {
     let result: String
 
-    let preferredName = usingPreferredName ? preferredName : Self.defaultPreferredName
+    let preferredName = try usingPreferredName ? preferredName : Self.defaultPreferredName
 
     var file: FileHandle?
     do {

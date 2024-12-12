@@ -17,6 +17,11 @@ public import Foundation
 // NSKeyedArchiver for encoding.
 @_spi(Experimental)
 extension Attachable where Self: NSSecureCoding {
+  public typealias AttachmentMetadata = EncodableAttachmentMetadata?
+}
+
+@_spi(Experimental)
+extension Attachable where Self: NSSecureCoding, AttachmentMetadata == EncodableAttachmentMetadata? {
   /// Encode this object using [`NSKeyedArchiver`](https://developer.apple.com/documentation/foundation/nskeyedarchiver)
   /// into a buffer, then call a function and pass that buffer to it.
   ///
@@ -32,9 +37,10 @@ extension Attachable where Self: NSSecureCoding {
   ///   creation of the buffer.
   ///
   /// The testing library uses this function when writing an attachment to a
-  /// test report or to a file on disk. The encoding used depends on the path
-  /// extension specified by the value of `attachment`'s ``Testing/Attachment/preferredName``
-  /// property:
+  /// test report or to a file on disk. If you do not provide any metadata when
+  /// you attach this object to a test, the testing library infers the encoding
+  /// format from the path extension on the `attachment`'s
+  /// ``Testing/Attachment/preferredName`` property:
   ///
   /// | Extension | Encoding Used | Encoder Used |
   /// |-|-|-|
@@ -51,7 +57,11 @@ extension Attachable where Self: NSSecureCoding {
   ///   some other path extension, that path extension must represent a type
   ///   that conforms to [`UTType.propertyList`](https://developer.apple.com/documentation/uniformtypeidentifiers/uttype-swift.struct/propertylist).
   public func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    let format = try EncodingFormat(for: attachment)
+    let format: EncodableAttachmentMetadata.Format = if let metadata = attachment.metadata {
+      metadata.format
+    } else {
+      try .infer(fromFileName: attachment.preferredName)
+    }
 
     var data = try NSKeyedArchiver.archivedData(withRootObject: self, requiringSecureCoding: true)
     switch format {
@@ -73,6 +83,10 @@ extension Attachable where Self: NSSecureCoding {
     }
 
     return try data.withUnsafeBytes(body)
+  }
+
+  public func makePreferredName(from suggestedName: String, for attachment: borrowing Attachment<Self>) -> String {
+    _Testing_Foundation.makePreferredName(from: suggestedName, for: attachment, defaultFormat: .propertyListFormat(.binary))
   }
 }
 #endif

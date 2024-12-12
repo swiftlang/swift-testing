@@ -44,6 +44,15 @@ struct AttachmentTests {
     #expect(attachment.description.contains("'MyAttachable'"))
   }
 
+  @Test func metadata() throws {
+    let metadataValue = Int.random(in: 0 ..< .max)
+    let attachableValue = MyAttachable(string: "<!doctype html>", expectedMetadata: metadataValue)
+    let attachment = Attachment(attachableValue, named: "AttachmentTests.saveValue.html", metadata: metadataValue)
+    #expect(attachment.metadata == metadataValue)
+
+    #expect(String.AttachmentMetadata.self == Never?.self)
+  }
+
 #if !SWT_NO_FILE_IO
   func compare(_ attachableValue: borrowing MySendableAttachable, toContentsOfFileAtPath filePath: String) throws {
     let file = try FileHandle(forReadingAtPath: filePath)
@@ -424,13 +433,60 @@ struct AttachmentTests {
       try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { _ in }
     }
   }
+
+  @Test("Attach Codable-conformant type with metadata")
+  func codableWithMetadata() async throws {
+    let attachableValue = MyCodableAttachable(string: "abc123")
+    let attachment = Attachment(
+      attachableValue,
+      metadata: .init(
+        format: .propertyListFormat(.xml)
+      )
+    )
+    try attachment.withUnsafeBufferPointer { bytes in
+      var format = PropertyListSerialization.PropertyListFormat.binary
+      let object = try PropertyListSerialization.propertyList(from: Data(bytes), format: &format)
+      #expect(format == .xml)
+      let dict = try #require(object as? [String: Any])
+      let string = try #require(dict["string"] as? String)
+      #expect(string == "abc123")
+    }
+  }
+
+  @Test("Attach NSSecureCoding-conformant type with metadata")
+  func secureCodingWithMetadata() async throws {
+    let attachableValue = MySecureCodingAttachable(string: "abc123")
+    let attachment = Attachment(
+      attachableValue,
+      metadata: .init(
+        format: .propertyListFormat(.xml)
+      )
+    )
+    try attachment.withUnsafeBufferPointer { bytes in
+      var format = PropertyListSerialization.PropertyListFormat.binary
+      _ = try PropertyListSerialization.propertyList(from: Data(bytes), format: &format)
+      #expect(format == .xml)
+
+      let object = try #require(try NSKeyedUnarchiver.unarchivedObject(ofClass: MySecureCodingAttachable.self, from: Data(bytes)))
+      #expect(object.string == "abc123")
+    }
+
+    #expect(throws: CocoaError.self) {
+      let attachableValue = MySecureCodingAttachable(string: "abc123")
+      let attachment = Attachment(
+        attachableValue,
+        metadata: .init(format: .json)
+      )
+      try attachment.withUnsafeBufferPointer { _ in }
+    }
+  }
 #endif
 }
 
 extension AttachmentTests {
   @Suite("Built-in conformances")
   struct BuiltInConformances {
-    func test(_ value: some Attachable) throws {
+    func test<A>(_ value: A) throws where A: Attachable, A.AttachmentMetadata == Never? {
       #expect(value.estimatedAttachmentByteCount == 6)
       let attachment = Attachment(value)
       try attachment.withUnsafeBufferPointer { buffer in
@@ -533,23 +589,24 @@ extension AttachmentTests {
     }
 
     @available(_uttypesAPI, *)
-    @Test(arguments: [Float(0.0).nextUp, 0.25, 0.5, 0.75, 1.0], [.png as UTType?, .jpeg, .gif, .image, .data, nil])
-    func attachCGImage(quality: Float, type: UTType?) throws {
+    @Test(arguments: [Float(0.0).nextUp, 0.25, 0.5, 0.75, 1.0], [UTType.png, .jpeg, .gif, .image])
+    func attachCGImage(quality: Float, type: UTType) throws {
       let image = try Self.cgImage.get()
-      let attachment = Attachment(image, named: "diamond", as: type, encodingQuality: quality)
+      let attachment = Attachment(image, named: "diamond", metadata: .init(encodingQuality: quality, contentType: type))
       #expect(attachment.attachableValue === image)
       try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { buffer in
         #expect(buffer.count > 32)
       }
     }
 
+#if !SWT_NO_EXIT_TESTS
     @available(_uttypesAPI, *)
     @Test func cannotAttachCGImageWithNonImageType() async {
-      #expect(throws: ImageAttachmentError.contentTypeDoesNotConformToImage) {
-        let attachment = Attachment(try Self.cgImage.get(), named: "diamond", as: .mp3)
-        try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { _ in }
+      await #expect(exitsWith: .failure) {
+        _ = Attachment(try Self.cgImage.get(), named: "diamond", metadata: .init(contentType: .mp3))
       }
     }
+#endif
 #endif
   }
 }
@@ -557,10 +614,16 @@ extension AttachmentTests {
 // MARK: - Fixtures
 
 struct MyAttachable: Attachable, ~Copyable {
+  typealias AttachmentMetadata = Int?
+
   var string: String
   var errorToThrow: (any Error)?
+  var expectedMetadata: Int?
 
   func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    if let expectedMetadata {
+      #expect(expectedMetadata == attachment.metadata)
+    }
     if let errorToThrow {
       throw errorToThrow
     }
