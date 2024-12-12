@@ -15,10 +15,6 @@ private import CoreGraphics
 private import ImageIO
 import UniformTypeIdentifiers
 
-#if canImport(CoreServices_Private)
-private import CoreServices_Private
-#endif
-
 /// ## Why can't images directly conform to Attachable?
 ///
 /// Three reasons:
@@ -174,12 +170,6 @@ extension _AttachableImageContainer: AttachableContainer {
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
     if #available(_uttypesAPI, *) {
       return (suggestedName as NSString).appendingPathExtension(for: computedContentType)
-    } else {
-#if canImport(CoreServices_Private)
-      if let result = _UTTypeCreateSuggestedFilename(suggestedName as CFString, typeIdentifier)?.takeRetainedValue() {
-        return result as String
-      }
-#endif
     }
 
     return suggestedName

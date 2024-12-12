@@ -46,6 +46,23 @@ Symbols marked `private` should be given a leading underscore to emphasize that
 they are private. Symbols marked `fileprivate`, `internal`, etc. should not have
 a leading underscore (except for those `public` symbols mentioned above.)
 
+Symbols that provide storage for higher-visibility symbols can be underscored if
+their preferred names would otherwise conflict. For example:
+
+```swift
+private var _errorCount: Int
+
+public var errorCount: Int {
+  get {
+    _errorCount
+  }
+  set {
+    precondition(newValue >= 0, "Error count cannot be negative")
+    _errorCount = newValue
+  }
+}
+```
+
 Exported C and C++ symbols that are exported should be given the prefix `swt_`
 and should otherwise be named using the same lowerCamelCase naming rules as in
 Swift. Use the `SWT_EXTERN` macro to ensure that symbols are consistently

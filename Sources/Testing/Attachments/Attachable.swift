@@ -68,10 +68,10 @@ public protocol Attachable: ~Copyable {
   /// Generate a preferred name for the given attachment.
   ///
   /// - Parameters:
+  ///   - attachment: The attachment that needs to be named.
   ///   - suggestedName: A suggested name to use as the basis of the preferred
   ///     name. This string was provided by the developer when they initialized
   ///     `attachment`.
-  ///   - attachment: The attachment that needs to be named.
   ///
   /// - Returns: The preferred name for `attachment`.
   ///
