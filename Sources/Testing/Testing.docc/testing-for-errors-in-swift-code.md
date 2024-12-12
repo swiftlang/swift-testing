@@ -46,10 +46,10 @@ running your test if the code doesn't throw the expected error.
 
 ### Validate that your code throws any error
 
-To check that the code under test throws any error, or to continue a
-longer test function after the code throws an error, pass that `(any Error).self` as the
-first argument of ``expect(throws:_:sourceLocation:performing:)-1xr34``, and
-pass a closure that calls the code under test:
+To check that the code under test throws an error of any type, pass
+`(any Error).self` as the first argument to either
+``expect(throws:_:sourceLocation:performing:)-1xr34`` or
+``require(_:_:sourceLocation:)-5l63q``:
 
 ```swift
 @Test func cannotAddToppingToPizzaBeforeStartOfList() {
