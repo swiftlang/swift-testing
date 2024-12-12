@@ -64,8 +64,6 @@ You must include a source file in your test executable target with a
 also be written in a C header file with its own `module.modulemap`.
 
 ```swift
-import Foundation
-
 typealias EntryPoint = @convention(thin) @Sendable (_ configurationJSON: UnsafeRawBufferPointer?, _ recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void) async throws -> Bool
 
 @_extern(c, "swt_abiv0_getEntryPoint")
