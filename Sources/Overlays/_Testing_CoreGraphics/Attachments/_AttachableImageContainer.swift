@@ -58,52 +58,74 @@ public struct _AttachableImageContainer<Image>: Sendable where Image: Attachable
   nonisolated(unsafe) var image: Image
 
   /// The encoding quality to use when encoding the represented image.
-  public var encodingQuality: Float
+  var encodingQuality: Float
 
   /// Storage for ``contentType``.
   private var _contentType: (any Sendable)?
 
   /// The content type to use when encoding the image.
   ///
-  /// This property should eventually move up to ``Attachment``. It is not part
-  /// of the public interface of the testing library.
+  /// The testing library uses this property to determine which image format to
+  /// encode the associated image as when it is attached to a test.
+  ///
+  /// If the value of this property does not conform to [`UTType.image`](https://developer.apple.com/documentation/uniformtypeidentifiers/uttype-swift.struct/image),
+  /// the result is undefined.
   @available(_uttypesAPI, *)
-  var contentType: UTType? {
+  var contentType: UTType {
     get {
-      _contentType as? UTType
+      if let contentType = _contentType as? UTType {
+        return contentType
+      } else {
+        return encodingQuality < 1.0 ? .jpeg : .png
+      }
     }
     set {
+      precondition(
+        newValue.conforms(to: .image),
+        "An image cannot be attached as an instance of type '\(newValue.identifier)'. Use a type that conforms to 'public.image' instead."
+      )
       _contentType = newValue
     }
   }
 
-  init(image: Image, encodingQuality: Float) {
+  /// The content type to use when encoding the image, substituting a concrete
+  /// type for `UTType.image`.
+  ///
+  /// This property is not part of the public interface of the testing library.
+  @available(_uttypesAPI, *)
+  var computedContentType: UTType {
+    if let contentType = _contentType as? UTType, contentType != .image {
+      contentType
+    } else {
+      encodingQuality < 1.0 ? .jpeg : .png
+    }
+  }
+
+  /// The type identifier (as a `CFString`) corresponding to this instance's
+  /// ``computedContentType`` property.
+  ///
+  /// The value of this property is used by ImageIO when serializing an image.
+  ///
+  /// This property is not part of the public interface of the testing library.
+  /// It is used by ImageIO below.
+  var typeIdentifier: CFString {
+    if #available(_uttypesAPI, *) {
+      computedContentType.identifier as CFString
+    } else {
+      encodingQuality < 1.0 ? kUTTypeJPEG : kUTTypePNG
+    }
+  }
+
+  init(image: Image, encodingQuality: Float, contentType: (any Sendable)?) {
     self.image = image._makeCopyForAttachment()
     self.encodingQuality = encodingQuality
+    if #available(_uttypesAPI, *), let contentType = contentType as? UTType {
+      self.contentType = contentType
+    }
   }
 }
 
 // MARK: -
-
-@available(_uttypesAPI, *)
-extension UTType {
-  /// Determine the preferred content type to encode this image as for a given
-  /// encoding quality.
-  ///
-  /// - Parameters:
-  ///   - encodingQuality: The encoding quality to use when encoding the image.
-  ///
-  /// - Returns: The type to encode this image as.
-  static func preferred(forEncodingQuality encodingQuality: Float) -> Self {
-    // If the caller wants lossy encoding, use JPEG.
-    if encodingQuality < 1.0 {
-      return .jpeg
-    }
-
-    // Lossless encoding implies PNG.
-    return .png
-  }
-}
 
 extension _AttachableImageContainer: AttachableContainer {
   public var attachableValue: Image {
@@ -115,21 +137,6 @@ extension _AttachableImageContainer: AttachableContainer {
 
     // Convert the image to a CGImage.
     let attachableCGImage = try image.attachableCGImage
-
-    // Get the type to encode as. (Note the `else` branches duplicate the logic
-    // in `preferredContentType(forEncodingQuality:)` but will go away once our
-    // minimum deployment targets include the UniformTypeIdentifiers framework.)
-    let typeIdentifier: CFString
-    if #available(_uttypesAPI, *), let contentType {
-      guard contentType.conforms(to: .image) else {
-        throw ImageAttachmentError.contentTypeDoesNotConformToImage
-      }
-      typeIdentifier = contentType.identifier as CFString
-    } else if encodingQuality < 1.0 {
-      typeIdentifier = kUTTypeJPEG
-    } else {
-      typeIdentifier = kUTTypePNG
-    }
 
     // Create the image destination.
     guard let dest = CGImageDestinationCreateWithData(data as CFMutableData, typeIdentifier, 1, nil) else {
@@ -158,6 +165,14 @@ extension _AttachableImageContainer: AttachableContainer {
     return try withExtendedLifetime(data) {
       try body(UnsafeRawBufferPointer(start: data.bytes, count: data.length))
     }
+  }
+
+  public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
+    if #available(_uttypesAPI, *) {
+      return (suggestedName as NSString).appendingPathExtension(for: computedContentType)
+    }
+
+    return suggestedName
   }
 }
 #endif

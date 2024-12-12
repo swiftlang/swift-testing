@@ -64,6 +64,22 @@ public protocol Attachable: ~Copyable {
   /// would not be idiomatic for the buffer to contain a textual description of
   /// the image.
   borrowing func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
+
+  /// Generate a preferred name for the given attachment.
+  ///
+  /// - Parameters:
+  ///   - attachment: The attachment that needs to be named.
+  ///   - suggestedName: A suggested name to use as the basis of the preferred
+  ///     name. This string was provided by the developer when they initialized
+  ///     `attachment`.
+  ///
+  /// - Returns: The preferred name for `attachment`.
+  ///
+  /// The testing library uses this function to determine the best name to use
+  /// when adding `attachment` to a test report or persisting it to storage. The
+  /// default implementation of this function returns `suggestedName` without
+  /// any changes.
+  borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String
 }
 
 // MARK: - Default implementations
@@ -71,6 +87,10 @@ public protocol Attachable: ~Copyable {
 extension Attachable where Self: ~Copyable {
   public var estimatedAttachmentByteCount: Int? {
     nil
+  }
+
+  public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
+    suggestedName
   }
 }
 

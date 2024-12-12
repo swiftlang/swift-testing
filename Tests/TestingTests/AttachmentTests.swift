@@ -533,7 +533,7 @@ extension AttachmentTests {
     }
 
     @available(_uttypesAPI, *)
-    @Test(arguments: [Float(0.0).nextUp, 0.25, 0.5, 0.75, 1.0], [.png as UTType?, .jpeg, .gif, .image, .data, nil])
+    @Test(arguments: [Float(0.0).nextUp, 0.25, 0.5, 0.75, 1.0], [.png as UTType?, .jpeg, .gif, .image, nil])
     func attachCGImage(quality: Float, type: UTType?) throws {
       let image = try Self.cgImage.get()
       let attachment = Attachment(image, named: "diamond", as: type, encodingQuality: quality)
@@ -541,15 +541,20 @@ extension AttachmentTests {
       try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { buffer in
         #expect(buffer.count > 32)
       }
+      if let ext = type?.preferredFilenameExtension {
+        #expect(attachment.preferredName == ("diamond" as NSString).appendingPathExtension(ext))
+      }
     }
 
+#if !SWT_NO_EXIT_TESTS
     @available(_uttypesAPI, *)
     @Test func cannotAttachCGImageWithNonImageType() async {
-      #expect(throws: ImageAttachmentError.contentTypeDoesNotConformToImage) {
+      await #expect(exitsWith: .failure) {
         let attachment = Attachment(try Self.cgImage.get(), named: "diamond", as: .mp3)
         try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { _ in }
       }
     }
+#endif
 #endif
   }
 }

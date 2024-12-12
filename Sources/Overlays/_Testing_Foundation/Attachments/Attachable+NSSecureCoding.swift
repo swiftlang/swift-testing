@@ -46,10 +46,6 @@ extension Attachable where Self: NSSecureCoding {
   /// _and_ [`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding),
   /// the default implementation of this function uses the value's conformance
   /// to `Encodable`.
-  ///
-  /// - Note: On Apple platforms, if the attachment's preferred name includes
-  ///   some other path extension, that path extension must represent a type
-  ///   that conforms to [`UTType.propertyList`](https://developer.apple.com/documentation/uniformtypeidentifiers/uttype-swift.struct/propertylist).
   public func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     let format = try EncodingFormat(for: attachment)
 

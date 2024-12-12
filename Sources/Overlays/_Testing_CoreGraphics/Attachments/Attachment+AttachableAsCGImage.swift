@@ -43,38 +43,7 @@ extension Attachment {
     encodingQuality: Float,
     sourceLocation: SourceLocation
   ) where AttachableValue == _AttachableImageContainer<T> {
-    var imageContainer = _AttachableImageContainer(image: attachableValue, encodingQuality: encodingQuality)
-
-    // Update the preferred name to include an extension appropriate for the
-    // given content type. (Note the `else` branch duplicates the logic in
-    // `preferredContentType(forEncodingQuality:)` but will go away once our
-    // minimum deployment targets include the UniformTypeIdentifiers framework.)
-    var preferredName = preferredName ?? Self.defaultPreferredName
-    if #available(_uttypesAPI, *) {
-      let contentType: UTType = contentType
-        .map { $0 as! UTType }
-        .flatMap { contentType in
-          if UTType.image.conforms(to: contentType) {
-            // This type is an abstract base type of .image (or .image itself.)
-            // We'll infer the concrete type based on other arguments.
-            return nil
-          }
-          return contentType
-        } ?? .preferred(forEncodingQuality: encodingQuality)
-      preferredName = (preferredName as NSString).appendingPathExtension(for: contentType)
-      imageContainer.contentType = contentType
-    } else {
-      // The caller can't provide a content type, so we'll pick one for them.
-      let ext = if encodingQuality < 1.0 {
-        "jpg"
-      } else {
-        "png"
-      }
-      if (preferredName as NSString).pathExtension.caseInsensitiveCompare(ext) != .orderedSame {
-        preferredName = (preferredName as NSString).appendingPathExtension(ext) ?? preferredName
-      }
-    }
-
+    let imageContainer = _AttachableImageContainer(image: attachableValue, encodingQuality: encodingQuality, contentType: contentType)
     self.init(imageContainer, named: preferredName, sourceLocation: sourceLocation)
   }
 

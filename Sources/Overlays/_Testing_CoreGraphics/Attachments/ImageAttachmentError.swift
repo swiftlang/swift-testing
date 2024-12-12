@@ -12,9 +12,6 @@
 /// A type representing an error that can occur when attaching an image.
 @_spi(ForSwiftTestingOnly)
 public enum ImageAttachmentError: Error, CustomStringConvertible {
-  /// The specified content type did not conform to `.image`.
-  case contentTypeDoesNotConformToImage
-
   /// The image could not be converted to an instance of `CGImage`.
   case couldNotCreateCGImage
 
@@ -24,11 +21,8 @@ public enum ImageAttachmentError: Error, CustomStringConvertible {
   /// The image could not be converted.
   case couldNotConvertImage
 
-  @_spi(ForSwiftTestingOnly)
   public var description: String {
     switch self {
-    case .contentTypeDoesNotConformToImage:
-      "The specified type does not represent an image format."
     case .couldNotCreateCGImage:
       "Could not create the corresponding Core Graphics image."
     case .couldNotCreateImageDestination:
