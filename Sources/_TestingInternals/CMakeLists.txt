@@ -17,8 +17,14 @@ add_library(_TestingInternals STATIC
   WillThrow.cpp)
 target_include_directories(_TestingInternals PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_compile_options(_TestingInternals PRIVATE
-  -fno-exceptions)
+if("${CMAKE_CXX_COMPILER_FRONTEND_VARIANT}" STREQUAL "MSVC" OR
+   "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+  target_compile_options(_TestingInternals PRIVATE
+    /EHa-c)
+else()
+  target_compile_options(_TestingInternals PRIVATE
+    -fno-exceptions)
+endif()
 
 if(NOT BUILD_SHARED_LIBS)
   # When building a static library, install the internal library archive
