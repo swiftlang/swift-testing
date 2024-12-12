@@ -41,27 +41,28 @@ extension _AttachableURLContainer: AttachableContainer {
   }
 
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
-    // Reconstruct this instance's URL with the suggested name. This is done as
-    // a convenience so that we can use URL's API for manipulating paths. We
-    // could also do this by repeatedly casting to NSString, but that code is
-    // harder to read.
-    var url = url
-    url.deleteLastPathComponent()
-    url.appendPathComponent(suggestedName, isDirectory: false)
-
-    // Ensure the path extension on the URL matches the original file's (or in
-    // the case of a compressed directory, is ".zip".)
-    let suggestedPathExtension = if isCompressedDirectory {
+    // What extension should we have on the filename so that it has the same
+    // type as the original file (or, in the case of a compressed directory, is
+    // a zip file?)
+    let preferredPathExtension = if isCompressedDirectory {
       "zip"
     } else {
-      (suggestedName as NSString).pathExtension
-    }
-    let urlPathExtension = url.pathExtension
-    if !suggestedPathExtension.isEmpty, suggestedPathExtension.caseInsensitiveCompare(urlPathExtension) != .orderedSame {
-      url.appendPathExtension(suggestedPathExtension)
+      url.pathExtension
     }
 
-    return url.lastPathComponent
+    // What path extension is on the suggested name already?
+    let nsSuggestedName = suggestedName as NSString
+    let suggestedPathExtension = nsSuggestedName.pathExtension
+
+    // If the suggested name's extension isn't what we would prefer, append the
+    // preferred extension.
+    if !preferredPathExtension.isEmpty,
+       suggestedPathExtension.caseInsensitiveCompare(preferredPathExtension) != .orderedSame,
+       let result = nsSuggestedName.appendingPathExtension(preferredPathExtension) {
+      return result
+    }
+
+    return suggestedName
   }
 }
 #endif
