@@ -158,11 +158,9 @@ extension ExitTest {
       _errorInMain(error)
     }
 
-    // Run some glue code that terminates the process with an exit condition
-    // that does not match the expected one. If the exit test's body doesn't
-    // terminate, we'll manually call exit() and cause the test to fail.
-    let expectingFailure = expectedExitCondition == .failure
-    exit(expectingFailure ? EXIT_SUCCESS : EXIT_FAILURE)
+    // If we get to this point without terminating, then we simulate main()'s
+    // behavior which is to exit with EXIT_SUCCESS.
+    exit(EXIT_SUCCESS)
   }
 }
 
