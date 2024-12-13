@@ -29,11 +29,19 @@ extension Issue {
   func record(configuration: Configuration? = nil) -> Self {
     // If this issue is a caught error of kind SystemError, reinterpret it as a
     // testing system issue instead (per the documentation for SystemError.)
-    if case let .errorCaught(error) = kind, let error = error as? SystemError {
-      var selfCopy = self
-      selfCopy.kind = .system
-      selfCopy.comments.append(Comment(rawValue: String(describingForTest: error)))
-      return selfCopy.record(configuration: configuration)
+    if case let .errorCaught(error) = kind {
+      // TODO: consider factoring this logic out into a protocol
+      if let error = error as? SystemError {
+        var selfCopy = self
+        selfCopy.kind = .system
+        selfCopy.comments.append(Comment(rawValue: String(describingForTest: error)))
+        return selfCopy.record(configuration: configuration)
+      } else if let error = error as? APIMisuseError {
+        var selfCopy = self
+        selfCopy.kind = .apiMisused
+        selfCopy.comments.append(Comment(rawValue: String(describingForTest: error)))
+        return selfCopy.record(configuration: configuration)
+      }
     }
 
     // If this issue matches via the known issue matcher, set a copy of it to be
