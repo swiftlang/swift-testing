@@ -65,11 +65,11 @@ the test when the code doesn't satisfy a requirement, use
 ### Checking that errors are thrown
 
 - <doc:testing-for-errors-in-swift-code>
-- ``expect(throws:_:sourceLocation:performing:)-79piu``
-- ``expect(throws:_:sourceLocation:performing:)-1xr34``
+- ``expect(throws:_:sourceLocation:performing:)-1hfms``
+- ``expect(throws:_:sourceLocation:performing:)-7du1h``
 - ``expect(_:sourceLocation:performing:throws:)``
-- ``require(throws:_:sourceLocation:performing:)-76bjn``
-- ``require(throws:_:sourceLocation:performing:)-7v83e``
+- ``require(throws:_:sourceLocation:performing:)-7n34r``
+- ``require(throws:_:sourceLocation:performing:)-4djuw``
 - ``require(_:sourceLocation:performing:throws:)``
 
 ### Confirming that asynchronous events occur

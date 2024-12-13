@@ -171,7 +171,7 @@ struct TagListTests {
   func noTagColorsReadFromBadPath(tagColorJSON: String) throws {
     var tagColorJSON = tagColorJSON
     tagColorJSON.withUTF8 { tagColorJSON in
-      #expect(throws: (any Error).self) {
+      _ = #expect(throws: (any Error).self) {
         _ = try JSON.decode(Tag.Color.self, from: .init(tagColorJSON))
       }
     }
