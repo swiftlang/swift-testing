@@ -44,6 +44,22 @@ test that the code throws an error of a given type, or matches an arbitrary
 Boolean test. Similar overloads of ``require(_:_:sourceLocation:)-5l63q`` stop
 running your test if the code doesn't throw the expected error.
 
+### Validate that your code throws any error
+
+To check that the code under test throws an error of any type, pass
+`(any Error).self` as the first argument to either
+``expect(throws:_:sourceLocation:performing:)-1xr34`` or
+``require(_:_:sourceLocation:)-5l63q``:
+
+```swift
+@Test func cannotAddToppingToPizzaBeforeStartOfList() {
+  var order = PizzaToppings(bases: [.calzone, .deepCrust])
+  #expect(throws: (any Error).self) {
+    try order.add(topping: .mozarella, toPizzasIn: -1..<0)
+  }
+}
+```
+
 ### Validate that your code doesn't throw an error
 
 A test function that throws an error fails, which is usually sufficient for
