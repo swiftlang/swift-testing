@@ -1,6 +1,6 @@
 # Return errors from `#expect(throws:)`
 
-* Proposal: [SWT-NNNN](NNNN-filename.md)
+* Proposal: [SWT-0006](0006-filename.md)
 * Authors: [Jonathan Grynspan](https://github.com/grynspan)
 * Status: **Awaiting review**
 * Bug: rdar://138235250
