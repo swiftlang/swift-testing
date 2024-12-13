@@ -25,7 +25,7 @@ We offer three variants of `#expect(throws:)`:
   error that compares equal to it; and
 - One that takes a trailing closure and allows test authors to write arbitrary
   validation logic.
-  
+
 The third overload has proven to be somewhat problematic. First, it yields the
 error to its closure as an instance of `any Error`, which typically forces the
 developer to cast it before doing any useful comparisons. Second, the test
@@ -61,7 +61,7 @@ that were thrown.
 
 ## Detailed design
 
-All overloads of `#expect(throws:)` and` #require(throws:)` will be updated to
+All overloads of `#expect(throws:)` and `#require(throws:)` will be updated to
 return an instance of the error type specified by their arguments, with the
 problematic overloads returning `any Error` since more precise type information
 is not statically available. The problematic overloads will also be deprecated:
@@ -151,7 +151,7 @@ let error = try #require(throws: PotatoError.self) {
 
 The new code is more concise than the old code and avoids boilerplate casting
 from `any Error`.
-  
+
 ## Source compatibility
 
 In most cases, this change does not affect source compatibility. Swift does not
@@ -217,31 +217,10 @@ N/A
 
 ## Future directions
 
-No specific future directions are indicated.
-
-## Alternatives considered
-
-- Leaving the existing implementation and signatures in place. We've had
-  sufficient feedback about the ergonomics of this API that we want to address
-  the problem.
-  
-- Having the return type of the macros be `any Error` and returning _any_ error
-  that was thrown even on mismatch. This would make the ergonomics of the
-  subsequent test code less optimal because the test author would need to cast
-  the error to the appropriate type before inspecting it.
-  
-  There's a philosophical argument to be made here that if a mismatched error is
-  thrown, then the test has already failed and is in an inconsistent state, so
-  we should allow the test to fail rather than return what amounts to "bad
-  output".
-  
-  If the test author wants to inspect any arbitrary thrown error, they can
-  specify `(any Error).self` instead of a concrete error type.
-  
 - Adopting [typed throws](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0413-typed-throws.md)
   to statically require that the error thrown from test code is of the correct
   type.
-  
+
   If we adopted typed throws in the signatures of these macros, it would force
   adoption of typed throws in the code under test even when it may not be
   appropriate. For example, if we adopted typed throws, the following code would
@@ -258,7 +237,31 @@ No specific future directions are indicated.
   }
   ```
 
+  We believe it may be possible to overload these macros or their expansions so
+  that the code sample above _does_ compile and behave as intended. We intend to
+  experiment further with this idea and potentially revisit typed throws support
+  in a future proposal.
+
+## Alternatives considered
+
+- Leaving the existing implementation and signatures in place. We've had
+  sufficient feedback about the ergonomics of this API that we want to address
+  the problem.
+
+- Having the return type of the macros be `any Error` and returning _any_ error
+  that was thrown even on mismatch. This would make the ergonomics of the
+  subsequent test code less optimal because the test author would need to cast
+  the error to the appropriate type before inspecting it.
+
+  There's a philosophical argument to be made here that if a mismatched error is
+  thrown, then the test has already failed and is in an inconsistent state, so
+  we should allow the test to fail rather than return what amounts to "bad
+  output".
+
+  If the test author wants to inspect any arbitrary thrown error, they can
+  specify `(any Error).self` instead of a concrete error type.
+
 ## Acknowledgments
 
-Thanks to the team and to @jakepetroules for starting the discussion that
-ultimately led to this proposal.
+Thanks to the team and to [@jakepetroules](https://github.com/jakepetroules) for
+starting the discussion that ultimately led to this proposal.
