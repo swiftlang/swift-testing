@@ -22,6 +22,7 @@ private import _TestingInternals
         exit(EXIT_FAILURE + 1)
       }
     }
+    await #expect(exitsWith: .success) {}
     await #expect(exitsWith: .success) {
       exit(EXIT_SUCCESS)
     }
@@ -63,7 +64,7 @@ private import _TestingInternals
   }
 
   @Test("Exit tests (failing)") func failing() async {
-    await confirmation("Exit tests failed", expectedCount: 10) { failed in
+    await confirmation("Exit tests failed", expectedCount: 9) { failed in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
         if case .issueRecorded = event.kind {
@@ -410,7 +411,6 @@ private import _TestingInternals
 
 @Suite(.hidden) struct FailingExitTests {
   @Test(.hidden) func failingExitTests() async {
-    await #expect(exitsWith: .success) {}
     await #expect(exitsWith: .failure) {}
     await #expect(exitsWith: .exitCode(123)) {}
     await #expect(exitsWith: .failure) {
