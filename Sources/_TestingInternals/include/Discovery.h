@@ -16,32 +16,53 @@
 
 SWT_ASSUME_NONNULL_BEGIN
 
-/// The type of callback called by `swt_enumerateTypes()`.
+/// A redeclaration of `ElfW(Nhdr)` for platforms that do not use ELF binaries.
 ///
-/// - Parameters:
-///   - imageAddress: A pointer to the start of the image. This value is _not_
-///     equal to the value returned from `dlopen()`. On platforms that do not
-///     support dynamic loading (and so do not have loadable images), this
-///     argument is unspecified.
-///   - typeMetadata: A type metadata pointer that can be bitcast to `Any.Type`.
-///   - stop: A pointer to a boolean variable indicating whether type
-///     enumeration should stop after the function returns. Set `*stop` to
-///     `true` to stop type enumeration.
-///   - context: An arbitrary pointer passed by the caller to
-///     `swt_enumerateTypes()`.
-typedef void (* SWTTypeEnumerator)(const void *_Null_unspecified imageAddress, void *typeMetadata, bool *stop, void *_Null_unspecified context);
+/// The layout of this type is equivalent to that of an ELF Note header
+/// (`ElfW(Nhdr)`). On platforms that use the ELF binary format, instances of
+/// this type can be found in program headers of type `PT_NOTE`. On other
+/// platforms, instances of this type can be found in dedicated
+/// platform-specific locations (for Mach-O and COFF/PE, the
+/// `"__DATA_CONST,__swift5_tests"` and `".sw5test"` sections, respectively.)
+///
+/// For more information about the ELF binary format and ELF Notes specifically,
+/// review the documentation for the ELF binary format. Multiple vendors
+/// including the [Linux Kernel project](https://man7.org/linux/man-pages/man5/elf.5.html)
+/// and [FreeBSD](https://man.freebsd.org/cgi/man.cgi?elf(5)) provide
+/// substantively identical documentation.
+#if defined(__ELF__)
+typedef ElfW(Nhdr) SWTTestContentHeader;
+#else
+typedef struct SWTTestContentHeader {
+  int32_t n_namesz;
+  int32_t n_descsz;
+  int32_t n_type;
+} SWTTestContentHeader;
+#endif
 
-/// Enumerate all types known to Swift found in the current process.
+/// The type of callback called by `swt_enumerateTestContent()`.
 ///
 /// - Parameters:
-///   - nameSubstring: A string which the names of matching classes all contain.
+///   - imageAddress: The base address of the image containing the test content,
+///     if available.
+///   - header: A pointer to the start of a structure containing information
+///     about the enumerated test content.
+///   - stop: A pointer to a boolean variable indicating whether test content
+///     enumeration should stop after the function returns. Set `*stop` to
+///     `true` to stop test content enumeration.
+///   - context: An arbitrary pointer passed by the caller to
+///     `swt_enumerateTestContent()`.
+typedef void (* SWTTestContentEnumerator)(const void *_Null_unspecified imageAddress, const SWTTestContentHeader *header, bool *stop, void *_Null_unspecified context);
+
+/// Enumerate all test content known to Swift and found in the current process.
+///
+/// - Parameters:
 ///   - context: An arbitrary pointer to pass to `body`.
 ///   - body: A function to invoke, once per matching type.
-SWT_EXTERN void swt_enumerateTypesWithNamesContaining(
-  const char *nameSubstring,
+SWT_EXTERN void swt_enumerateTestContent(
   void *_Null_unspecified context,
-  SWTTypeEnumerator body
-) SWT_SWIFT_NAME(swt_enumerateTypes(withNamesContaining:_:_:));
+  SWTTestContentEnumerator body
+) SWT_SWIFT_NAME(swt_enumerateTestContent(_:_:));
 
 SWT_ASSUME_NONNULL_END
 

@@ -92,6 +92,10 @@
 #include <limits.h>
 #endif
 
+#if __has_include(<link.h>)
+#include <link.h>
+#endif
+
 #if __has_include(<spawn.h>)
 #include <spawn.h>
 #endif
