@@ -12,10 +12,6 @@
 @_spi(Experimental) @_spi(ForSwiftTestingOnly) public import Testing
 public import Foundation
 
-#if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
-private import UniformTypeIdentifiers
-#endif
-
 #if !SWT_NO_PROCESS_SPAWNING && os(Windows)
 private import WinSDK
 #endif
