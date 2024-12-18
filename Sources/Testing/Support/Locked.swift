@@ -37,21 +37,21 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   /// `pthread_mutex_t` is used on Apple platforms instead of `os_unfair_lock`
   /// or `OSAllocatedUnfairLock`.
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
-  private typealias _Lock = pthread_mutex_t
+  typealias PlatformLock = pthread_mutex_t
 #elseif os(FreeBSD)
-  private typealias _Lock = pthread_mutex_t?
+  typealias PlatformLock = pthread_mutex_t?
 #elseif os(Windows)
-  private typealias _Lock = SRWLOCK
+  typealias PlatformLock = SRWLOCK
 #elseif os(WASI)
   // No locks on WASI without multithreaded runtime.
-  private typealias _Lock = Void
+  typealias PlatformLock = Void
 #else
 #warning("Platform-specific implementation missing: locking unavailable")
-  private typealias _Lock = Void
+  typealias PlatformLock = Void
 #endif
 
   /// A type providing heap-allocated storage for an instance of ``Locked``.
-  private final class _Storage: ManagedBuffer<T, _Lock> {
+  private final class _Storage: ManagedBuffer<T, PlatformLock> {
     deinit {
       withUnsafeMutablePointerToElements { lock in
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
@@ -68,7 +68,7 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   }
 
   /// Storage for the underlying lock and wrapped value.
-  private nonisolated(unsafe) var _storage: ManagedBuffer<T, _Lock>
+  private nonisolated(unsafe) var _storage: ManagedBuffer<T, PlatformLock>
 
   init(rawValue: T) {
     _storage = _Storage.create(minimumCapacity: 1, makingHeaderWith: { _ in rawValue })
@@ -123,7 +123,7 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
     }
   }
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
   /// Acquire the lock and invoke a function while it is held, yielding both the
   /// protected value and a reference to the lock itself.
   ///
@@ -144,35 +144,7 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   /// - Warning: Callers that unlock the lock _must_ lock it again before the
   ///   closure returns. If the lock is not acquired when `body` returns, the
   ///   effect is undefined.
-  nonmutating func withUnsafeUnderlyingLock<R>(_ body: (UnsafeMutablePointer<pthread_mutex_t>, T) throws -> R) rethrows -> R {
-    try withLock { value in
-      try _storage.withUnsafeMutablePointerToElements { lock in
-        try body(lock, value)
-      }
-    }
-  }
-#elseif os(FreeBSD)
-  /// Acquire the lock and invoke a function while it is held, yielding both the
-  /// protected value and a reference to the lock itself.
-  ///
-  /// - Parameters:
-  ///   - body: A closure to invoke while the lock is held.
-  ///
-  /// - Returns: Whatever is returned by `body`.
-  ///
-  /// - Throws: Whatever is thrown by `body`.
-  ///
-  /// This function is equivalent to ``withLock(_:)`` except that the closure
-  /// passed to it also takes a reference to the underlying platform lock. This
-  /// function can be used when platform-specific functionality such as a
-  /// `pthread_cond_t` is needed. Because the caller has direct access to the
-  /// lock and is able to unlock and re-lock it, it is unsafe to modify the
-  /// protected value.
-  ///
-  /// - Warning: Callers that unlock the lock _must_ lock it again before the
-  ///   closure returns. If the lock is not acquired when `body` returns, the
-  ///   effect is undefined.
-  nonmutating func withUnsafeUnderlyingLock<R>(_ body: (UnsafeMutablePointer<pthread_mutex_t?>, T) throws -> R) rethrows -> R {
+  nonmutating func withUnsafeUnderlyingLock<R>(_ body: (UnsafeMutablePointer<PlatformLock>, T) throws -> R) rethrows -> R {
     try withLock { value in
       try _storage.withUnsafeMutablePointerToElements { lock in
         try body(lock, value)
