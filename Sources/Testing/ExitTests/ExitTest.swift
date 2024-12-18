@@ -114,7 +114,7 @@ extension ExitTest {
     // As with Linux, disable the generation core files. FreeBSD does not, as
     // far as I can tell, special-case RLIMIT_CORE=1.
     var rl = rlimit(rlim_cur: 0, rlim_max: 0)
-    _ = setrlimit(CInt(RLIMIT_CORE.rawValue), &rl)
+    _ = setrlimit(RLIMIT_CORE, &rl)
 #elseif os(Windows)
     // On Windows, similarly disable Windows Error Reporting and the Windows
     // Error Reporting UI. Note we expect to be the first component to call

@@ -85,7 +85,11 @@ private let _childProcessContinuations = Locked<[pid_t: CheckedContinuation<Exit
 /// A condition variable used to suspend the waiter thread created by
 /// `_createWaitThread()` when there are no child processes to await.
 private nonisolated(unsafe) let _waitThreadNoChildrenCondition = {
+  #if os(FreeBSD)
+  let result = UnsafeMutablePointer<pthread_cond_t?>.allocate(capacity: 1)
+  #else
   let result = UnsafeMutablePointer<pthread_cond_t>.allocate(capacity: 1)
+  #endif
   _ = pthread_cond_init(result, nil)
   return result
 }()
@@ -132,7 +136,7 @@ private let _createWaitThread: Void = {
 
   // Create the thread. It will run immediately; because it runs in an infinite
   // loop, we aren't worried about detaching or joining it.
-#if SWT_TARGET_OS_APPLE
+#if SWT_TARGET_OS_APPLE || os(FreeBSD)
   var thread: pthread_t?
 #else
   var thread = pthread_t()

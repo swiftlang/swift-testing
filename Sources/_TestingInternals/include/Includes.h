@@ -80,6 +80,10 @@
 #include <pthread.h>
 #endif
 
+#if __has_include(<pthread_np.h>)
+#include <pthread_np.h>
+#endif
+
 #if __has_include(<pty.h>)
 #include <pty.h>
 #endif
@@ -123,6 +127,10 @@
 #if !SWT_NO_LIBDISPATCH
 #include <dispatch/dispatch.h>
 #endif
+#endif
+
+#if defined(__FreeBSD__)
+#include <libutil.h>
 #endif
 
 #if defined(_WIN32)

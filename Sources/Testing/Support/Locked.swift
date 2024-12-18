@@ -36,20 +36,22 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   /// To keep the implementation of this type as simple as possible,
   /// `pthread_mutex_t` is used on Apple platforms instead of `os_unfair_lock`
   /// or `OSAllocatedUnfairLock`.
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
-  private typealias _Lock = pthread_mutex_t
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
+  typealias PlatformLock = pthread_mutex_t
+#elseif os(FreeBSD)
+  typealias PlatformLock = pthread_mutex_t?
 #elseif os(Windows)
-  private typealias _Lock = SRWLOCK
+  typealias PlatformLock = SRWLOCK
 #elseif os(WASI)
   // No locks on WASI without multithreaded runtime.
-  private typealias _Lock = Void
+  typealias PlatformLock = Void
 #else
 #warning("Platform-specific implementation missing: locking unavailable")
-  private typealias _Lock = Void
+  typealias PlatformLock = Void
 #endif
 
   /// A type providing heap-allocated storage for an instance of ``Locked``.
-  private final class _Storage: ManagedBuffer<T, _Lock> {
+  private final class _Storage: ManagedBuffer<T, PlatformLock> {
     deinit {
       withUnsafeMutablePointerToElements { lock in
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
@@ -66,7 +68,7 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   }
 
   /// Storage for the underlying lock and wrapped value.
-  private nonisolated(unsafe) var _storage: ManagedBuffer<T, _Lock>
+  private nonisolated(unsafe) var _storage: ManagedBuffer<T, PlatformLock>
 
   init(rawValue: T) {
     _storage = _Storage.create(minimumCapacity: 1, makingHeaderWith: { _ in rawValue })
@@ -142,7 +144,7 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   /// - Warning: Callers that unlock the lock _must_ lock it again before the
   ///   closure returns. If the lock is not acquired when `body` returns, the
   ///   effect is undefined.
-  nonmutating func withUnsafeUnderlyingLock<R>(_ body: (UnsafeMutablePointer<pthread_mutex_t>, T) throws -> R) rethrows -> R {
+  nonmutating func withUnsafeUnderlyingLock<R>(_ body: (UnsafeMutablePointer<PlatformLock>, T) throws -> R) rethrows -> R {
     try withLock { value in
       try _storage.withUnsafeMutablePointerToElements { lock in
         try body(lock, value)
