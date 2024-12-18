@@ -129,6 +129,10 @@
 #endif
 #endif
 
+#if defined(__FreeBSD__)
+#include <libutil.h>
+#endif
+
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
