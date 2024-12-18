@@ -80,6 +80,10 @@
 #include <pthread.h>
 #endif
 
+#if __has_include(<pthread_np.h>)
+#include <pthread_np.h>
+#endif
+
 #if __has_include(<pty.h>)
 #include <pty.h>
 #endif

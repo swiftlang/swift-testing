@@ -143,12 +143,19 @@ func spawnExecutable(
 #if SWT_TARGET_OS_APPLE
       // Close all other file descriptors open in the parent.
       flags |= CShort(POSIX_SPAWN_CLOEXEC_DEFAULT)
-#elseif os(Linux) || os(FreeBSD)
+#elseif os(Linux)
       // This platform doesn't have POSIX_SPAWN_CLOEXEC_DEFAULT, but we can at
       // least close all file descriptors higher than the highest inherited one.
       // We are assuming here that the caller didn't set FD_CLOEXEC on any of
       // these file descriptors.
       _ = swt_posix_spawn_file_actions_addclosefrom_np(fileActions, highestFD + 1)
+#elseif os(FreeBSD)
+      // Like Linux, this platfrom doesn't have POSIX_SPAWN_CLOEXEC_DEFAULT;
+      // However; unlike Linux, all non-EOL FreeBSD (>= 13.1) supports
+      // `posix_spawn_file_actions_addclosefrom_np` and therefore we don't need
+      // need `swt_posix_spawn_file_actions_addclosefrom_np` to guard the availability
+      // of this api.
+      _ = posix_spawn_file_actions_addclosefrom_np(fileActions, highestFD + 1)
 #else
 #warning("Platform-specific implementation missing: cannot close unused file descriptors")
 #endif
