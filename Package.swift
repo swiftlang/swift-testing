@@ -114,7 +114,7 @@ let package = Package(
 )
 
 // BUG: swift-package-manager-#6367
-#if !os(Windows)
+#if !os(Windows) && !os(FreeBSD)
 package.targets.append(contentsOf: [
   .testTarget(
     name: "TestingMacrosTests",

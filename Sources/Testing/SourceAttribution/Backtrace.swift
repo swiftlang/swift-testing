@@ -181,7 +181,7 @@ extension Backtrace {
     ///   crash. To avoid said crash, we'll keep a strong reference to the
     ///   object (abandoning memory until the process exits.)
     ///   ([swift-#62985](https://github.com/swiftlang/swift/issues/62985))
-#if os(Windows)
+#if os(Windows) || os(FreeBSD)
     nonisolated(unsafe) var errorObject: AnyObject?
 #else
     nonisolated(unsafe) weak var errorObject: AnyObject?
