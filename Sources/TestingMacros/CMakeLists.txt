@@ -86,6 +86,7 @@ target_sources(TestingMacros PRIVATE
   Support/Additions/DeclGroupSyntaxAdditions.swift
   Support/Additions/EditorPlaceholderExprSyntaxAdditions.swift
   Support/Additions/FunctionDeclSyntaxAdditions.swift
+  Support/Additions/IntegerLiteralExprSyntaxAdditions.swift
   Support/Additions/MacroExpansionContextAdditions.swift
   Support/Additions/SyntaxProtocolAdditions.swift
   Support/Additions/TokenSyntaxAdditions.swift
