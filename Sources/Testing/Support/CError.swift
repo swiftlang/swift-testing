@@ -47,6 +47,12 @@ func strerror(_ errorCode: CInt) -> String {
     _ = strerror_s(buffer.baseAddress!, buffer.count, errorCode)
     return strnlen(buffer.baseAddress!, buffer.count)
   }
+#elseif os(FreeBSD)
+  // FreeBSD's implementation of strerror() is not thread-safe.
+  String(unsafeUninitializedCapacity: 1024) { buffer in
+    _ = strerror_r(errorCode, buffer.baseAddress!, buffer.count)
+    return strnlen(buffer.baseAddress!, buffer.count)
+  }
 #else
   String(cString: _TestingInternals.strerror(errorCode))
 #endif
