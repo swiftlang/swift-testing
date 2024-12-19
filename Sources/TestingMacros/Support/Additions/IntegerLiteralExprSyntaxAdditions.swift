@@ -9,7 +9,6 @@
 //
 
 import SwiftSyntax
-import SwiftSyntaxBuilder
 
 extension IntegerLiteralExprSyntax {
   init(_ value: some BinaryInteger, radix: IntegerLiteralExprSyntax.Radix = .decimal) {
