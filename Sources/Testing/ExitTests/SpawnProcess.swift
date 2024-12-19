@@ -150,11 +150,11 @@ func spawnExecutable(
       // these file descriptors.
       _ = swt_posix_spawn_file_actions_addclosefrom_np(fileActions, highestFD + 1)
 #elseif os(FreeBSD)
-      // Like Linux, this platfrom doesn't have POSIX_SPAWN_CLOEXEC_DEFAULT;
-      // However; unlike Linux, all non-EOL FreeBSD (>= 13.1) supports
-      // `posix_spawn_file_actions_addclosefrom_np` and therefore we don't need
-      // need `swt_posix_spawn_file_actions_addclosefrom_np` to guard the availability
-      // of this api.
+      // Like Linux, this platform doesn't have POSIX_SPAWN_CLOEXEC_DEFAULT.
+      // Unlike Linux, all non-EOL FreeBSD versions (≥13.1) support
+      // `posix_spawn_file_actions_addclosefrom_np`. Therefore, we don't need
+      // `swt_posix_spawn_file_actions_addclosefrom_np` to guard the
+      // availability of this function.
       _ = posix_spawn_file_actions_addclosefrom_np(fileActions, highestFD + 1)
 #else
 #warning("Platform-specific implementation missing: cannot close unused file descriptors")

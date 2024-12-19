@@ -123,7 +123,6 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
     }
   }
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
   /// Acquire the lock and invoke a function while it is held, yielding both the
   /// protected value and a reference to the lock itself.
   ///
@@ -144,14 +143,13 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   /// - Warning: Callers that unlock the lock _must_ lock it again before the
   ///   closure returns. If the lock is not acquired when `body` returns, the
   ///   effect is undefined.
-  nonmutating func withUnsafeUnderlyingLock<R>(_ body: (UnsafeMutablePointer<PlatformLock>, T) throws -> R) rethrows -> R {
+  nonmutating func withUnsafePlatformLock<R>(_ body: (UnsafeMutablePointer<PlatformLock>, T) throws -> R) rethrows -> R {
     try withLock { value in
       try _storage.withUnsafeMutablePointerToElements { lock in
         try body(lock, value)
       }
     }
   }
-#endif
 }
 
 extension Locked where T: AdditiveArithmetic {

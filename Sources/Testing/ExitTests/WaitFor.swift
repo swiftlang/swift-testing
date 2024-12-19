@@ -85,11 +85,11 @@ private let _childProcessContinuations = Locked<[pid_t: CheckedContinuation<Exit
 /// A condition variable used to suspend the waiter thread created by
 /// `_createWaitThread()` when there are no child processes to await.
 private nonisolated(unsafe) let _waitThreadNoChildrenCondition = {
-  #if os(FreeBSD)
+#if os(FreeBSD)
   let result = UnsafeMutablePointer<pthread_cond_t?>.allocate(capacity: 1)
-  #else
+#else
   let result = UnsafeMutablePointer<pthread_cond_t>.allocate(capacity: 1)
-  #endif
+#endif
   _ = pthread_cond_init(result, nil)
   return result
 }()
@@ -126,7 +126,7 @@ private let _createWaitThread: Void = {
       // newly-scheduled waiter process. (If this condition is spuriously
       // woken, we'll just loop again, which is fine.) Note that we read errno
       // outside the lock in case acquiring the lock perturbs it.
-      _childProcessContinuations.withUnsafeUnderlyingLock { lock, childProcessContinuations in
+      _childProcessContinuations.withUnsafePlatformLock { lock, childProcessContinuations in
         if childProcessContinuations.isEmpty {
           _ = pthread_cond_wait(_waitThreadNoChildrenCondition, lock)
         }
