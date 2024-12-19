@@ -56,15 +56,11 @@ extension SyntaxProtocol {
       let word = ancestralNodeIDs.reduce(into: UInt64(0)) { word, id in
         word |= (1 << id)
       }
-      let hexWord = "0x\(String(word, radix: 16))"
-      return ExprSyntax(IntegerLiteralExprSyntax(literal: .integerLiteral(hexWord)))
+      return ExprSyntax(IntegerLiteralExprSyntax(word, radix: .hex))
 
     } else {
       // Some ID exceeds what we can fit in a single literal, so just produce an
       // array of node IDs instead.
-      let idExprs = ancestralNodeIDs.map { id in
-        IntegerLiteralExprSyntax(literal: .integerLiteral("\(id)"))
-      }
       return ExprSyntax(
         FunctionCallExprSyntax(
           calledExpression: TypeExprSyntax(
@@ -76,8 +72,8 @@ extension SyntaxProtocol {
           leftParen: .leftParenToken(),
           rightParen: .rightParenToken()
         ) {
-          for idExpr in idExprs {
-            LabeledExprSyntax(expression: idExpr)
+          for nodeID in ancestralNodeIDs {
+            LabeledExprSyntax(expression: IntegerLiteralExprSyntax(nodeID))
           }
         }
       )
