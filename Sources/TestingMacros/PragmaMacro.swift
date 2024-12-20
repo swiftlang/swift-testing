@@ -51,7 +51,7 @@ func pragmas(on node: some WithAttributesSyntax) -> [AttributeSyntax] {
       }
       return nil
     }.filter { attribute in
-      attribute.attributeNameText == "__testing"
+      attribute.attributeName.isNamed("__testing", inModuleNamed: "Testing")
     }
 }
 

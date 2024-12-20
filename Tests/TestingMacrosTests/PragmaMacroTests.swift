@@ -18,7 +18,7 @@ import SwiftSyntax
 struct PragmaMacroTests {
   @Test func findSemantics() throws {
     let node = """
-      @__testing(semantics: "abc123")
+      @Testing.__testing(semantics: "abc123")
       @__testing(semantics: "def456")
       let x = 0
     """ as DeclSyntax
