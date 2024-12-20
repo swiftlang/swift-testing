@@ -30,6 +30,7 @@ struct TestingMacrosMain: CompilerPlugin {
       ExitTestRequireMacro.self,
       TagMacro.self,
       SourceLocationMacro.self,
+      PragmaMacro.self,
     ]
   }
 }

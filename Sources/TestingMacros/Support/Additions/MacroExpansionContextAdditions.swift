@@ -84,8 +84,8 @@ extension MacroExpansionContext {
   /// lexical context.
   ///
   /// The value of this property is `true` if the current lexical context
-  /// contains a node with the `@_semantics("testing.macros.nowarnings")`
-  /// attribute applied to it.
+  /// contains a node with the `@__testing(semantics: "nowarnings")` attribute
+  /// applied to it.
   ///
   /// - Warning: This functionality is not part of the public interface of the
   ///   testing library. It may be modified or removed in a future update.
@@ -97,10 +97,14 @@ extension MacroExpansionContext {
       }
       for attribute in lexicalContext.attributes {
         if case let .attribute(attribute) = attribute,
-           attribute.attributeNameText == "_semantics",
-           case let .string(argument) = attribute.arguments,
-           argument.representedLiteralValue == "testing.macros.nowarnings" {
-          return true
+           attribute.attributeNameText == "__testing",
+           case let .argumentList(arguments) = attribute.arguments {
+          return arguments.contains { argument in
+            guard let argument = arguments.first?.expression.as(StringLiteralExprSyntax.self) else {
+              return false
+            }
+            return argument.representedLiteralValue == "nomacrowarnings"
+          }
         }
       }
     }

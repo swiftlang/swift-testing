@@ -992,7 +992,7 @@ final class IssueTests: XCTestCase {
     await fulfillment(of: [errorCaught, apiMisused, expectationFailed], timeout: 0.0)
   }
 
-  @_semantics("testing.macros.nowarnings")
+  @__testing(semantics: "nomacrowarnings")
   func testErrorCheckingWithRequire_ResultValueIsNever_VariousSyntaxes() throws {
     // Basic expressions succeed and don't diagnose.
     #expect(throws: Never.self) {}
@@ -1004,7 +1004,7 @@ final class IssueTests: XCTestCase {
 
     // Casting to any Error throws an API misuse error because Never cannot be
     // instantiated. NOTE: inner function needed for lexical context.
-    @_semantics("testing.macros.nowarnings")
+    @__testing(semantics: "nomacrowarnings")
     func castToAnyError() throws {
       let _: any Error = try #require(throws: Never.self) {}
     }
