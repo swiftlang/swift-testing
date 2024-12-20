@@ -81,6 +81,7 @@ endif()
 
 target_sources(TestingMacros PRIVATE
   ConditionMacro.swift
+  PragmaMacro.swift
   SourceLocationMacro.swift
   SuiteDeclarationMacro.swift
   Support/Additions/DeclGroupSyntaxAdditions.swift
