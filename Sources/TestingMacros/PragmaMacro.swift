@@ -34,3 +34,46 @@ public struct PragmaMacro: PeerMacro, Sendable {
     .disabled
   }
 }
+
+/// Get all pragma attributes (`@__testing`) associated with a syntax node.
+///
+/// - Parameters:
+///   - node: The syntax node to inspect.
+///
+/// - Returns: The set of pragma attributes strings associated with `node`.
+///
+/// Attributes conditionally applied with `#if` are ignored.
+func pragmas(on node: some WithAttributesSyntax) -> [AttributeSyntax] {
+  node.attributes
+    .compactMap { attribute in
+      if case let .attribute(attribute) = attribute {
+        return attribute
+      }
+      return nil
+    }.filter { attribute in
+      attribute.attributeNameText == "__testing"
+    }
+}
+
+/// Get all "semantics" attributed to a syntax node using the
+/// `@__testing(semantics:)` attribute.
+///
+/// - Parameters:
+///   - node: The syntax node to inspect.
+///
+/// - Returns: The set of "semantics" strings associated with `node`.
+///
+/// Attributes conditionally applied with `#if` are ignored.
+func semantics(of node: some WithAttributesSyntax) -> [String] {
+  pragmas(on: node)
+    .compactMap { attribute in
+      if case let .argumentList(arguments) = attribute.arguments {
+        return arguments
+      }
+      return nil
+    }.filter { arguments in
+      arguments.first?.label?.textWithoutBackticks == "semantics"
+    }.flatMap { argument in
+      argument.compactMap { $0.expression.as(StringLiteralExprSyntax.self)?.representedLiteralValue }
+    }
+}

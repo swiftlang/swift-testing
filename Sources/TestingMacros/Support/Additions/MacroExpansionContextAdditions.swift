@@ -91,25 +91,13 @@ extension MacroExpansionContext {
   ///   testing library. It may be modified or removed in a future update.
   var areWarningsSuppressed: Bool {
 #if DEBUG
-    for lexicalContext in self.lexicalContext {
-      guard let lexicalContext = lexicalContext.asProtocol((any WithAttributesSyntax).self) else {
-        continue
-      }
-      for attribute in lexicalContext.attributes {
-        if case let .attribute(attribute) = attribute,
-           attribute.attributeNameText == "__testing",
-           case let .argumentList(arguments) = attribute.arguments {
-          return arguments.contains { argument in
-            guard let argument = arguments.first?.expression.as(StringLiteralExprSyntax.self) else {
-              return false
-            }
-            return argument.representedLiteralValue == "nomacrowarnings"
-          }
-        }
-      }
-    }
-#endif
+    return lexicalContext
+      .compactMap { $0.asProtocol((any WithAttributesSyntax).self) }
+      .flatMap { semantics(of: $0) }
+      .contains("nomacrowarnings")
+#else
     return false
+#endif
   }
 
   /// Emit a diagnostic message.
