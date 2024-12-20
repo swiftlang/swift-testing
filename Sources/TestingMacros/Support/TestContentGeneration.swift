@@ -104,6 +104,8 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
   @_section("swift5_tests")
   #elseif os(Windows)
   @_section(".sw5test$B")
+  #else
+  @__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
   #endif
   @_used
   @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
@@ -116,12 +118,12 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
     flags: UInt32,
     reserved: UInt32
   ) = (
-    \(raw: elfNoteName.type.elements.count),
+    \(literal: elfNoteName.type.elements.count),
     Int32(MemoryLayout<UnsafeRawPointer>.stride + MemoryLayout<UInt32>.stride + MemoryLayout<UInt32>.stride),
-    \(raw: kind.rawValue),
+    \(literal: kind.rawValue),
     \(elfNoteName.expression), /* \(literal: _swiftTestingELFNoteName) */
     \(accessorName),
-    \(raw: flags),
+    \(literal: flags),
     0
   )
   #endif
