@@ -26,11 +26,20 @@ let package = Package(
   ],
 
   products: [
-    .library(
-      name: "Testing",
-      type: .dynamic, // needed so Windows exports ABI entry point symbols
-      targets: ["Testing"]
-    ),
+    {
+#if os(Windows)
+      .library(
+        name: "Testing",
+        type: .dynamic, // needed so Windows exports ABI entry point symbols
+        targets: ["Testing"]
+      )
+#else
+      .library(
+        name: "Testing",
+        targets: ["Testing"]
+      )
+#endif
+    }()
   ],
 
   dependencies: [
