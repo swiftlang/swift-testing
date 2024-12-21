@@ -261,6 +261,11 @@ struct MultiLineSuite {
   _ = try #require(x?[...].last)
 }
 
+@Test(.hidden) func canHaveVariableNamed__ec() throws {
+  let __ec = 1
+  #expect(__ec == 1)
+}
+
 @Suite("Miscellaneous tests")
 struct MiscellaneousTests {
   @Test("Free function's name")
