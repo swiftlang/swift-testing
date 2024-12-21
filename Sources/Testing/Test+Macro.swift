@@ -499,8 +499,8 @@ extension Test {
 /// - Note: This macro has compile-time effects _only_ and should not affect a
 ///   compiled test target.
 ///
-/// - Warning: This macro is used to implement the `@Test` macro. Do not use it
-///   directly.
+/// - Warning: This macro is used to implement other macros declared by the testing
+///   library. Do not use it directly.
 @attached(peer) public macro __testing(
   semantics arguments: _const String...
 ) = #externalMacro(module: "TestingMacros", type: "PragmaMacro")
