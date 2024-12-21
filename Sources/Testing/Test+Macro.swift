@@ -484,6 +484,27 @@ extension Test {
   }
 }
 
+// MARK: - Test pragmas
+
+/// A macro used similarly to `#pragma` in C or `@_semantics` in the standard
+/// library.
+///
+/// - Parameters:
+///   - arguments: Zero or more context-specific arguments.
+///
+/// The use cases for this macro are subject to change over time as the needs of
+/// the testing library change. The implementation of this macro in the
+/// TestingMacros target determines how different arguments are handled.
+///
+/// - Note: This macro has compile-time effects _only_ and should not affect a
+///   compiled test target.
+///
+/// - Warning: This macro is used to implement other macros declared by the testing
+///   library. Do not use it directly.
+@attached(peer) public macro __testing(
+  semantics arguments: _const String...
+) = #externalMacro(module: "TestingMacros", type: "PragmaMacro")
+
 // MARK: - Helper functions
 
 /// A function that abstracts away whether or not the `try` keyword is needed on
