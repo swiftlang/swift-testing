@@ -30,6 +30,7 @@ fileprivate let allMacros: [String: any Macro.Type] = [
   "Suite": SuiteDeclarationMacro.self,
   "Test": TestDeclarationMacro.self,
   "Tag": TagMacro.self,
+  "__testing": PragmaMacro.self,
 ]
 
 func parse(_ sourceCode: String, activeMacros activeMacroNames: [String] = [], removeWhitespace: Bool = false) throws -> (sourceCode: String, diagnostics: [Diagnostic]) {
