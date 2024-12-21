@@ -375,7 +375,7 @@ public macro require<R>(
 /// ``expect(throws:_:sourceLocation:performing:)-1hfms`` instead. If the thrown
 /// error need only equal another instance of [`Error`](https://developer.apple.com/documentation/swift/error),
 /// use ``expect(throws:_:sourceLocation:performing:)-7du1h`` instead.
-@available(*, deprecated, message: "Examine the result of '#expect(throws:)' instead.")
+@available(swift, introduced: 6.0, deprecated: 100000.0, message: "Examine the result of '#expect(throws:)' instead.")
 @discardableResult
 @freestanding(expression) public macro expect<R>(
   _ comment: @autoclosure () -> Comment? = nil,
@@ -427,7 +427,7 @@ public macro require<R>(
 ///
 /// If `expression` should _never_ throw, simply invoke the code without using
 /// this macro. The test will then fail if an error is thrown.
-@available(*, deprecated, message: "Examine the result of '#require(throws:)' instead.")
+@available(swift, introduced: 6.0, deprecated: 100000.0, message: "Examine the result of '#require(throws:)' instead.")
 @discardableResult
 @freestanding(expression) public macro require<R>(
   _ comment: @autoclosure () -> Comment? = nil,

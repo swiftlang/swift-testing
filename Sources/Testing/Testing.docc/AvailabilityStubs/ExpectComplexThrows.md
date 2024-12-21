@@ -11,11 +11,11 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 -->
 
 @Metadata {
-  @Available(Swift, introduced: 6.0, deprecated: 999.0)
-  @Available(Xcode, introduced: 16.0, deprecated: 999.0)
+  @Available(Swift, introduced: 6.0)
+  @Available(Xcode, introduced: 16.0)
 }
 
-@DeprecationSummary {
+@DeprecationSummary { <!-- Warning when compiling DocC: rdar://141785948 -->
   Examine the result of ``expect(throws:_:sourceLocation:performing:)-7du1h`` or
   ``expect(throws:_:sourceLocation:performing:)-1hfms`` instead:
   

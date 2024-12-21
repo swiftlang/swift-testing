@@ -48,8 +48,8 @@ running your test if the code doesn't throw the expected error.
 
 To check that the code under test throws an error of any type, pass
 `(any Error).self` as the first argument to either
-``expect(throws:_:sourceLocation:performing:)-1xr34`` or
-``require(_:_:sourceLocation:)-5l63q``:
+``expect(throws:_:sourceLocation:performing:)-1hfms`` or
+``require(throws:_:sourceLocation:performing:)-7n34r``:
 
 ```swift
 @Test func cannotAddToppingToPizzaBeforeStartOfList() {
