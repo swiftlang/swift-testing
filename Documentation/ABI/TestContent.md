@@ -120,6 +120,14 @@ field to determine if there are additional fields present. Do not assume that
 the size of this structure will remain fixed over time or that all discovered
 test content records are the same size.
 
+> [!WARNING]
+> Do not assume that the fields of `SWTTestContent` are well-aligned. Although
+> the ELF Note format is designed to ensure 32-bit alignment, it does _not_
+> ensure 64-bit alignment on 64-bit systems. If your code (or the system it will
+> run on) is sensitive to the alignment of the fields in this structure, use
+> [unaligned loads](https://developer.apple.com/documentation/swift/unsaferawpointer/loadunaligned(frombyteoffset:as:)-5wi7f)
+> to read test content records.
+
 #### The accessor field
 
 The function `accessor` is a C function. When called, it initializes the memory
@@ -151,7 +159,7 @@ type of record:
 | Type Value | Hint Type | Notes |
 |-:|-|-|
 | `100` | Reserved | Always pass `nil`/`nullptr`. |
-| `101` | `SourceLocation` | Pass the source location of the exit test. |
+| `101` | `UnsafePointer<SourceLocation>` | Pass a pointer to the source location of the exit test. |
 
 If the caller passes `nil` as the `hint` argument, the accessor behaves as if it
 matched (that is, no additional filtering is performed.)
@@ -165,7 +173,8 @@ matched (that is, no additional filtering is performed.)
   | `1 << 0` | This record contains a suite declaration |
   | `1 << 1` | This record contains a parameterized test function declaration |
 
-- For exit test declarations (type `101`), no flags are currently defined.
+- For exit test declarations (type `101`), no flags are currently defined and
+  the field should be set to `0`.
 
 #### The reserved field
 
