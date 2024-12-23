@@ -209,6 +209,15 @@ extension ExitTest {
 // MARK: - Discovery
 
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+extension ExitTest: Discoverable {
+  public static var _discoverableKind: Int32 {
+    101
+  }
+
+  public typealias DiscoverableHint = SourceLocation
+}
+
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 extension ExitTest {
   /// Find the exit test function at the given source location.
   ///
@@ -217,19 +226,17 @@ extension ExitTest {
   ///
   /// - Returns: The specified exit test function, or `nil` if no such exit test
   ///   could be found.
-  public static func find(at sourceLocation: SourceLocation) -> Self? {
+  public static func find(at sourceLocation: SourceLocation) async -> Self? {
     var result: Self?
 
-    withUnsafePointer(to: sourceLocation) { hint in
-      enumerateTestContent(ofKind: .exitTest, as: ExitTest.self, hint: hint) { _, exitTest, _, stop in
-        if exitTest.sourceLocation == sourceLocation {
-          result = ExitTest(
-            __expectedExitCondition: exitTest.expectedExitCondition,
-            sourceLocation: exitTest.sourceLocation,
-            body: exitTest.body
-          )
-          stop = true
-        }
+    await discover(withHint: sourceLocation) { _, exitTest, _, stop in
+      if exitTest.sourceLocation == sourceLocation {
+        result = ExitTest(
+          __expectedExitCondition: exitTest.expectedExitCondition,
+          sourceLocation: exitTest.sourceLocation,
+          body: exitTest.body
+        )
+        stop = true
       }
     }
 
@@ -413,7 +420,7 @@ extension ExitTest {
   /// This function should only be used when the process was started via the
   /// `__swiftPMEntryPoint()` function. The effect of using it under other
   /// configurations is undefined.
-  static func findInEnvironmentForEntryPoint() -> Self? {
+  static func findInEnvironmentForEntryPoint() async -> Self? {
     // Find the source location of the exit test to run, if any, in the
     // environment block.
     var sourceLocation: SourceLocation?
@@ -430,7 +437,7 @@ extension ExitTest {
     // If an exit test was found, inject back channel handling into its body.
     // External tools authors should set up their own back channel mechanisms
     // and ensure they're installed before calling ExitTest.callAsFunction().
-    guard var result = find(at: sourceLocation) else {
+    guard var result = await find(at: sourceLocation) else {
       fatalError("Could not find an exit test that should have been located at \(sourceLocation).")
     }
 

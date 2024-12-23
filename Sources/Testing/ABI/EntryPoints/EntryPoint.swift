@@ -29,7 +29,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
   do {
 #if !SWT_NO_EXIT_TESTS
       // If an exit test was specified, run it. `exitTest` returns `Never`.
-      if let exitTest = ExitTest.findInEnvironmentForEntryPoint() {
+      if let exitTest = await ExitTest.findInEnvironmentForEntryPoint() {
         await exitTest()
       }
 #endif

@@ -81,6 +81,7 @@ add_library(Testing
   Support/Locked.swift
   Support/SystemError.swift
   Support/Versions.swift
+  Discovery.swift
   Test.ID.Selection.swift
   Test.ID.swift
   Test.swift
