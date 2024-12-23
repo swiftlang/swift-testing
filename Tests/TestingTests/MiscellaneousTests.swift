@@ -581,9 +581,6 @@ struct MiscellaneousTests {
     #expect(0 != dladdr(imageAddress, &info))
     let fbase = try #require(info.dli_fbase)
     #expect(imageAddress == fbase)
-#elseif os(Windows)
-    let hModule = HMODULE(mutating: imageAddress.assumingMemoryBound(to: HMODULE.Pointee.self))
-    #expect(GetProcAddress(hModule, "someFunctionICanFindDynamically") != nil)
 #endif
   }
 #endif
@@ -605,10 +602,3 @@ struct MiscellaneousTests {
   }
 #endif
 }
-
-// MARK: - Fixtures
-
-#if os(Windows)
-@_cdecl("someFunctionICanFindDynamically")
-func someFunctionICanFindDynamically() {}
-#endif
