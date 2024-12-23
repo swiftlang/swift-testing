@@ -75,13 +75,16 @@ extension Test {
 #endif
 
       // *Now* we call all the generators and return their results.
+      // Reduce into a set rather than an array to deduplicate tests that were
+      // generated multiple times (e.g. from multiple discovery modes or from
+      // defective test records.)
       return await withTaskGroup(of: [Self].self) { taskGroup in
         for generator in generators {
           taskGroup.addTask {
             await generator()
           }
         }
-        return await taskGroup.reduce(into: [], +=)
+        return await taskGroup.reduce(into: Set()) { $0.formUnion($1) }
       }
     }
   }
@@ -129,7 +132,7 @@ extension UnsafePointer<SWTTestContentHeader> {
 ///     the kind of test content this instance represents.
 ///   - reserved: This field is reserved for future use.
 private typealias _TestContent = (
-  accessor: (@convention(c) (_ outValue: UnsafeMutableRawPointer, _ hint: UnsafeRawPointer?) -> Bool)?,
+  accessor: SWTTestContentAccessor?,
   flags: UInt32,
   reserved: UInt32
 )
@@ -188,7 +191,8 @@ func enumerateTestContent<T>(ofKind kind: TestContentKind, as type: T.Type, hint
       // because the underlying C structure only guarantees 4-byte alignment
       // even on 64-bit systems.
       guard let content = header.n_desc?.loadUnaligned(as: _TestContent.self),
-            content.accessor?(buffer.baseAddress!, hint) == true else {
+            let accessor = content.accessor.map(swt_resign),
+            accessor(buffer.baseAddress!, hint) == true else {
         return
       }
       defer {

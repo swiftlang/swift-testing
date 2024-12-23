@@ -64,6 +64,23 @@ SWT_EXTERN void swt_enumerateTestContent(
   SWTTestContentEnumerator body
 ) SWT_SWIFT_NAME(swt_enumerateTestContent(_:_:));
 
+/// The type of a test content accessor.
+///
+/// - Parameters:
+/// 	- outValue: On successful return, initialized to the value of the
+///   	represented test content record.
+///   - hint: A hint value whose type and meaning depend on the type of test
+///   	record being accessed.
+///
+/// - Returns: Whether or not the test record was initialized at `outValue`.
+typedef bool (* SWT_SENDABLE SWTTestContentAccessor)(void *outValue, const void *_Null_unspecified hint);
+
+/// Resign an accessor function from a test content record.
+///
+/// This function is provided because Apple's pointer authentication intrinsics
+/// are not available in Swift.
+SWT_EXTERN SWTTestContentAccessor swt_resignTestContentAccessor(SWTTestContentAccessor accessor) SWT_SWIFT_NAME(swt_resign(_:));
+
 SWT_ASSUME_NONNULL_END
 
 #endif

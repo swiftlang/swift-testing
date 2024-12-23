@@ -27,6 +27,10 @@
 #include <os/lock.h>
 #endif
 
+#if __has_include(<ptrauth.h>)
+#include <ptrauth.h>
+#endif
+
 /// Enumerate over all Swift test content sections in the current process.
 ///
 /// - Parameters:
@@ -324,4 +328,12 @@ void swt_enumerateTestContent(void *context, SWTTestContentEnumerator body) {
       body(sb.imageAddress, header, stop, context);
     }
   });
+}
+
+SWTTestContentAccessor swt_resignTestContentAccessor(SWTTestContentAccessor accessor) {
+#if __has_include(<ptrauth.h>)
+  accessor = ptrauth_strip(accessor, ptrauth_key_function_pointer);
+  accessor = ptrauth_sign_unauthenticated(accessor, ptrauth_key_function_pointer, 0);
+#endif
+  return accessor;
 }
