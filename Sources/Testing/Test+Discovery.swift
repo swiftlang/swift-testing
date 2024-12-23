@@ -93,12 +93,16 @@ extension Test {
 // MARK: - Test content enumeration
 
 extension UnsafePointer<SWTTestContentHeader> {
+  /// The size of the implied `n_name` field, in bytes.
+  var n_namesz: Int {
+    Int(pointee.n_namesz)
+  }
+
   /// Get the implied `n_name` field.
   ///
   /// If this test content header has no name, or if the name is not
   /// null-terminated, the value of this property is `nil`.
   fileprivate var n_name: UnsafePointer<CChar>? {
-    let n_namesz = Int(pointee.n_namesz)
     return (self + 1).withMemoryRebound(to: CChar.self, capacity: n_namesz) { name in
       if strnlen(name, n_namesz) >= n_namesz {
         // There is no trailing null byte within the provided length.
@@ -108,34 +112,22 @@ extension UnsafePointer<SWTTestContentHeader> {
     }
   }
 
+  /// The size of the implied `n_name` field, in bytes.
+  var n_descsz: Int {
+    Int(pointee.n_descsz)
+  }
+
   /// The implied `n_desc` field.
   ///
   /// If this test content header has no description (payload), the value of
   /// this property is `nil`.
   fileprivate var n_desc: UnsafeRawPointer? {
-    let n_descsz = Int(pointee.n_descsz)
     if n_descsz <= 0 {
       return nil
     }
-    let n_namesz = Int(pointee.n_namesz)
     return UnsafeRawPointer(self + 1) + swt_alignup(n_namesz, MemoryLayout<UInt32>.alignment)
   }
 }
-
-/// The content of a test content record.
-///
-/// - Parameters:
-///   - accessor: A function which, when called, produces the test content as a
-///     retained Swift object. If this function returns `true`, the caller is
-///     responsible for deinitializing the memory at `outValue` when done.
-///   - flags: Flags for this record. The meaning of this value is dependent on
-///     the kind of test content this instance represents.
-///   - reserved: This field is reserved for future use.
-private typealias _TestContent = (
-  accessor: SWTTestContentAccessor?,
-  flags: UInt32,
-  reserved: UInt32
-)
 
 /// An enumeration representing the different kinds of test content known to the
 /// testing library.
@@ -176,40 +168,58 @@ typealias TestContentEnumerator<T> = (_ imageAddress: UnsafeRawPointer?, _ conte
 ///     before initializing its out-result.
 ///   - body: A function to invoke, once per matching test content record.
 func enumerateTestContent<T>(ofKind kind: TestContentKind, as type: T.Type, hint: UnsafeRawPointer? = nil, _ body: TestContentEnumerator<T>) where T: ~Copyable {
-  // Wrap the `body` closure in a non-generic closure that we can load from
-  // within the C callback below.
-  typealias RawTestContentEnumerator = (_ imageAddress: UnsafeRawPointer?, _ header: UnsafePointer<SWTTestContentHeader>, _ stop: UnsafeMutablePointer<Bool>) -> Void
-  let body: RawTestContentEnumerator = { imageAddress, header, stop in
+  // Get all the test content sections in the process.
+  var sectionBoundsCount = 0
+  let sectionBounds = swt_copyTestContentSectionBounds(&sectionBoundsCount)
+  defer {
+    free(sectionBounds)
+  }
+
+  // Create a sequence of all the headers across all sections.
+  let headers = UnsafeBufferPointer(start: sectionBounds, count: sectionBoundsCount).lazy
+    .filter { $0.size > (MemoryLayout<SWTTestContentHeader>.stride + MemoryLayout<SWTTestContent>.stride) }
+    .flatMap { sectionBounds in
+      let first = (sectionBounds.imageAddress, sectionBounds.start.assumingMemoryBound(to: SWTTestContentHeader.self))
+      return sequence(first: first) { imageAddress, header in
+        let size = swt_alignup(
+          MemoryLayout<SWTTestContentHeader>.stride + swt_alignup(header.n_namesz, MemoryLayout<UInt32>.stride) + header.n_descsz,
+          MemoryLayout<Int>.alignment
+        );
+        let next = (UnsafeRawPointer(header) + size).assumingMemoryBound(to: SWTTestContentHeader.self)
+        guard next < sectionBounds.start + sectionBounds.size else {
+          return nil
+        }
+        return (imageAddress, next)
+      }
+    }
+
+  var stop = false
+  for (imageAddress, header) in headers {
     // We only care about test content records with the specified kind and the
     // "Swift Testing" name.
     guard header.pointee.n_type == kind.rawValue,
           let n_name = header.n_name, 0 == strcmp(n_name, "Swift Testing") else {
-      return
+      continue
     }
     withUnsafeTemporaryAllocation(of: type, capacity: 1) { buffer in
       // Load the content from the record via its accessor function. Unaligned
       // because the underlying C structure only guarantees 4-byte alignment
       // even on 64-bit systems.
-      guard let content = header.n_desc?.loadUnaligned(as: _TestContent.self),
+      guard let content = header.n_desc?.loadUnaligned(as: SWTTestContent.self),
             let accessor = content.accessor.map(swt_resign),
-            accessor(buffer.baseAddress!, hint) == true else {
-        return
+            accessor(buffer.baseAddress!, hint) else {
+        return // loop-continue
       }
       defer {
         buffer.deinitialize()
       }
 
       // Call the callback.
-      body(imageAddress, buffer.baseAddress!.pointee, content.flags, &stop.pointee)
+      body(imageAddress, buffer.baseAddress!.pointee, content.flags, &stop)
     }
-  }
 
-  withoutActuallyEscaping(body) { body in
-    withUnsafePointer(to: body) { context in
-      swt_enumerateTestContent(.init(mutating: context)) { imageAddress, header, stop, context in
-        let body = context!.load(as: RawTestContentEnumerator.self)
-        body(imageAddress, header, stop)
-      }
+    if stop {
+      break
     }
   }
 }

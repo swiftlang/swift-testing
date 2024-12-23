@@ -31,15 +31,6 @@
 #include <ptrauth.h>
 #endif
 
-/// Enumerate over all Swift test content sections in the current process.
-///
-/// - Parameters:
-///   - body: A function to call once for every section in the current process
-///     that contains test content. A pointer to the first test content record
-///     and the size, in bytes, of the section are passed to this function.
-template <typename SectionEnumerator>
-static void enumerateTestContentSections(const SectionEnumerator& body);
-
 /// A type that acts as a C++ [Allocator](https://en.cppreference.com/w/cpp/named_req/Allocator)
 /// without using global `operator new` or `operator delete`.
 ///
@@ -61,21 +52,16 @@ struct SWTHeapAllocator {
   }
 };
 
-/// A structure describing the bounds of a Swift metadata section.
-struct SWTSectionBounds {
-  /// The base address of the image containing the section, if known.
-  const void *imageAddress;
-
-  /// The base address of the section.
-  const void *start;
-
-  /// The size of the section in bytes.
-  size_t size;
-};
-
 /// A type that acts as a C++ [Container](https://en.cppreference.com/w/cpp/named_req/Container)
 /// and which contains a sequence of instances of `SWTSectionBounds`.
 using SWTSectionBoundsList = std::vector<SWTSectionBounds, SWTHeapAllocator<SWTSectionBounds>>;
+
+/// Get all test content sections known to Swift and found in the current
+/// process.
+///
+/// - Returns: A vector containing zero or more structures describing the bounds
+///   of test content sections known to Swift and found in the current process.
+static SWTSectionBoundsList getTestContentSections(void);
 
 #if !defined(SWT_NO_DYNAMIC_LINKING)
 #if defined(__APPLE__)
@@ -136,17 +122,6 @@ static SWTSectionBoundsList getTestContentSections(void) {
   } os_unfair_lock_unlock(&lock);
   result.shrink_to_fit();
   return result;
-}
-
-template <typename SectionEnumerator>
-static void enumerateTestContentSections(const SectionEnumerator& body) {
-  bool stop = false;
-  for (const auto& sb : getTestContentSections()) {
-    body(sb, &stop);
-    if (stop) {
-      break;
-    }
-  }
 }
 
 #elif defined(_WIN32)
@@ -215,8 +190,7 @@ static std::optional<SWTSectionBounds> findSection(HMODULE hModule, const char *
   return std::nullopt;
 }
 
-template <typename SectionEnumerator>
-static void enumerateTestContentSections(const SectionEnumerator& body) {
+static SWTSectionBoundsList getTestContentSections(void) {
   // Find all the modules loaded in the current process. We assume there aren't
   // more than 1024 loaded modules (as does Microsoft sample code.)
   std::array<HMODULE, 1024> hModules;
@@ -241,44 +215,39 @@ static void enumerateTestContentSections(const SectionEnumerator& body) {
     }
   }
 
-  // Pass each discovered section back to the body callback.
-  bool stop = false;
-  for (const auto& sb : sectionBounds) {
-    body(sb, &stop);
-    if (stop) {
-      break;
-    }
-  }
+  return sectionBounds;
 }
 
 #elif defined(__linux__) || defined(__FreeBSD__) || defined(__ANDROID__)
 #pragma mark - ELF implementation
 
-template <typename SectionEnumerator>
-static void enumerateTestContentSections(const SectionEnumerator& body) {
-  dl_iterate_phdr([] (struct dl_phdr_info *info, size_t size, void *context) -> int {
-    const auto& body = *reinterpret_cast<SectionEnumerator *>(context);
+static SWTSectionBoundsList getTestContentSections(void) {
+  SWTSectionBoundsList sectionBounds;
 
-    bool stop = false;
-    for (size_t i = 0; !stop && i < info->dlpi_phnum; i++) {
+  dl_iterate_phdr([] (struct dl_phdr_info *info, size_t size, void *context) -> int {
+    auto& sectionBounds = *reinterpret_cast<SWTSectionBoundsList *>(context);
+
+    for (size_t i = 0; = i < info->dlpi_phnum; i++) {
       const auto& phdr = info->dlpi_phdr[i];
       if (phdr.p_type == PT_NOTE) {
-        SWTSectionBounds sb = {
+        sectionBounds.emplace_back(
           reinterpret_cast<const void *>(info->dlpi_addr),
           reinterpret_cast<const void *>(info->dlpi_addr + phdr.p_vaddr),
           static_cast<size_t>(phdr.p_memsz)
-        };
-        body(sb, &stop);
+        );
       }
     }
 
-    return stop;
-  }, const_cast<SectionEnumerator *>(&body));
+    return 0;
+  }, &sectionBounds);
+
+  return sectionBounds;
 }
 #else
 #warning Platform-specific implementation missing: Runtime test discovery unavailable (dynamic)
-template <typename SectionEnumerator>
-static void enumerateTestContentSections(const SectionEnumerator& body) {}
+static SWTSectionBoundsList getTestContentSections(void) {
+  return {};
+}
 #endif
 
 #else
@@ -296,38 +265,24 @@ static const char sectionBegin = 0;
 static const char& sectionEnd = sectionBegin;
 #endif
 
-template <typename SectionEnumerator>
-static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
-  SWTSectionBounds<SWTTypeMetadataRecord> sb = {
+static SWTSectionBoundsList getTestContentSections(void) {
+  SWTSectionBounds sb = {
     nullptr,
     &sectionBegin,
     static_cast<size_t>(std::distance(&sectionBegin, &sectionEnd))
   };
-  bool stop = false;
-  body(sb, &stop);
+  return { sb };
 }
 #endif
 
 #pragma mark -
 
-void swt_enumerateTestContent(void *context, SWTTestContentEnumerator body) {
-  enumerateTestContentSections([=] (const SWTSectionBounds& sb, bool *stop) {
-    auto next = [] (const SWTTestContentHeader *header) -> const SWTTestContentHeader * {
-      auto size = __builtin_align_up(
-        sizeof(*header) + __builtin_align_up(header->n_namesz, alignof(uint32_t)) + header->n_descsz,
-        alignof(uintptr_t)
-      );
-      return reinterpret_cast<const SWTTestContentHeader *>(reinterpret_cast<uintptr_t>(header) + size);
-    };
-
-    // Because the size of a test content record is not fixed, walking a test
-    // content section isn't particularly elegant. (Sorry!)
-    auto header = reinterpret_cast<const SWTTestContentHeader *>(sb.start);
-    auto end = reinterpret_cast<uintptr_t>(sb.start) + sb.size;
-    for (; reinterpret_cast<uintptr_t>(header) < end; header = next(header)) {
-      body(sb.imageAddress, header, stop, context);
-    }
-  });
+SWTSectionBounds *swt_copyTestContentSectionBounds(size_t *outCount) {
+  auto sectionBounds = getTestContentSections();
+  auto result = reinterpret_cast<SWTSectionBounds *>(std::calloc(sectionBounds.size(), sizeof(SWTSectionBounds)));
+  std::uninitialized_move(sectionBounds.begin(), sectionBounds.end(), result);
+  *outCount = sectionBounds.size();
+  return result;
 }
 
 SWTTestContentAccessor swt_resignTestContentAccessor(SWTTestContentAccessor accessor) {
