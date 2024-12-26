@@ -61,3 +61,9 @@ private import _TestingInternals
   func f(_ p: UnsafePointer<UTF16.CodeUnit>?) -> Bool { true }
   #expect(f(array))
 }
+
+@Test func arrayAsNonBitwiseCopyablePointer() {
+  let array: [String] = ["a", "b", "c"]
+  func f(_ p: UnsafePointer<String>?) -> Bool { true }
+  #expect(f(array))
+}

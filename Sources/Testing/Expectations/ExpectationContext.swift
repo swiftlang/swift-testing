@@ -49,7 +49,7 @@ public struct __ExpectationContext: ~Copyable {
   /// Storage for any locally-created C strings and pointers.
   ///
   /// For more information, see `__ImplicitlyPointerConvertible` below.
-  fileprivate var temporaryPointers = [UnsafeMutableRawPointer]()
+  fileprivate var temporaryPointerCleanup = [() -> ()]()
 #endif
 
   init(
@@ -64,8 +64,8 @@ public struct __ExpectationContext: ~Copyable {
 
   deinit {
 #if !SWT_NO_IMPLICIT_POINTER_CASTING
-    for pointer in temporaryPointers {
-      free(pointer)
+    for temporaryPointerCleanup in temporaryPointerCleanup {
+      temporaryPointerCleanup()
     }
 #endif
   }
@@ -551,18 +551,25 @@ extension __ExpectationContext {
 
 extension __ExpectationContext.__ImplicitlyPointerConvertible where Self: Collection {
   public func __implicitlyCast(for expectationContext: inout __ExpectationContext) -> UnsafeMutablePointer<Element> {
+    // If `count` is 0, Swift may opt not to allocate any storage, and we'll
+    // crash dereferencing the base address.
+    let count = Swift.max(1, count)
+
     // Create a copy of this collection. Note we don't automatically add a null
     // character at the end (for C strings) because that could mask bugs in test
     // code that should automatically be adding them.
-    let resultCString = UnsafeMutableBufferPointer<Element>.allocate(capacity: count)
-    _ = resultCString.initialize(fromContentsOf: self)
+    let resultPointer = UnsafeMutableBufferPointer<Element>.allocate(capacity: count)
+    let initializedEnd = resultPointer.initialize(fromContentsOf: self)
 
-    if expectationContext.temporaryPointers.capacity == 0 {
-      expectationContext.temporaryPointers.reserveCapacity(4)
+    if expectationContext.temporaryPointerCleanup.capacity == 0 {
+      expectationContext.temporaryPointerCleanup.reserveCapacity(4)
     }
-    expectationContext.temporaryPointers.append(resultCString.baseAddress!)
+    expectationContext.temporaryPointerCleanup.append {
+      resultPointer[..<initializedEnd].deinitialize()
+      resultPointer.deallocate()
+    }
 
-    return resultCString.baseAddress!
+    return resultPointer.baseAddress!
   }
 }
 
