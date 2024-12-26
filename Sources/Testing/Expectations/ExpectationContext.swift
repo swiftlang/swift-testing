@@ -561,9 +561,6 @@ extension __ExpectationContext.__ImplicitlyPointerConvertible where Self: Collec
     let resultPointer = UnsafeMutableBufferPointer<Element>.allocate(capacity: count)
     let initializedEnd = resultPointer.initialize(fromContentsOf: self)
 
-    if expectationContext.temporaryPointerCleanup.capacity == 0 {
-      expectationContext.temporaryPointerCleanup.reserveCapacity(4)
-    }
     expectationContext.temporaryPointerCleanup.append {
       resultPointer[..<initializedEnd].deinitialize()
       resultPointer.deallocate()
