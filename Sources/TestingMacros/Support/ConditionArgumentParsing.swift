@@ -429,15 +429,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
        op == "==" || op == "!=" || op == "===" || op == "!==" {
 
       return _rewrite(
-        ClosureExprSyntax {
-          InfixOperatorExprSyntax(
-            leftOperand: DeclReferenceExprSyntax(baseName: .dollarIdentifier("$0"))
-              .with(\.trailingTrivia, .space),
-            operator: BinaryOperatorExprSyntax(text: op),
-            rightOperand: DeclReferenceExprSyntax(baseName: .dollarIdentifier("$1"))
-              .with(\.leadingTrivia, .space)
-          )
-        },
+        DeclReferenceExprSyntax(baseName: .binaryOperator(op)),
         originalWas: node,
         calling: .identifier("__cmp"),
         passing: [

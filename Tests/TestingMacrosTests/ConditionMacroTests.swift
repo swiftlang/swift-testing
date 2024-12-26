@@ -35,7 +35,7 @@ struct ConditionMacroTests {
       ##"#expect(9 > 8 && 7 > 6, "Some comment")"##:
         ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) -> Swift.Bool in __ec(__ec(9 > 8, 0x2) && __ec(7 > 6, 0x400), 0x0) }, sourceCode: [0x0: "9 > 8 && 7 > 6", 0x2: "9 > 8", 0x400: "7 > 6"], comments: ["Some comment"], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect("a" == "b")"##:
-        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) -> Swift.Bool in __ec.__cmp({ $0 == $1 }, 0x0, "a", 0x2, "b", 0x200) }, sourceCode: [0x0: #""a" == "b""#], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
+        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) -> Swift.Bool in __ec.__cmp(==, 0x0, "a", 0x2, "b", 0x200) }, sourceCode: [0x0: #""a" == "b""#], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect(!Bool.random())"##:
         ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) -> Swift.Bool in __ec(!__ec(__ec(Bool.self, 0x1c).random(), 0x4), 0x0) }, sourceCode: [0x0: "!Bool.random()", 0x4: "Bool.random()", 0x1c: "Bool"], comments: [], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()"##,
       ##"#expect((true && false))"##:
@@ -116,7 +116,7 @@ struct ConditionMacroTests {
       ##"#require(9 > 8 && 7 > 6, "Some comment")"##:
         ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(9 > 8, 0x2) && __ec(7 > 6, 0x400), 0x0)) }, sourceCode: [0x0: "9 > 8 && 7 > 6", 0x2: "9 > 8", 0x400: "7 > 6"], comments: ["Some comment"], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require("a" == "b")"##:
-        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec.__cmp({ $0 == $1 }, 0x0, "a", 0x2, "b", 0x200)) }, sourceCode: [0x0: #""a" == "b""#], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+        ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec.__cmp(==, 0x0, "a", 0x2, "b", 0x200)) }, sourceCode: [0x0: #""a" == "b""#], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require(!Bool.random())"##:
         ##"Testing.__checkCondition({ (__ec: inout Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(!__ec(__ec(Bool.self, 0x1c).random(), 0x4), 0x0)) }, sourceCode: [0x0: "!Bool.random()", 0x4: "Bool.random()", 0x1c: "Bool"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
       ##"#require((true && false))"##:

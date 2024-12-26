@@ -11,7 +11,7 @@
 import Testing
 private import _TestingInternals
 
-@Test func variadicCStringArguments() async throws {
+@Test func stringsAsCStringArguments() {
   let abc = "abc"
   let _123 = "123"
   let def = "def"
@@ -21,13 +21,11 @@ private import _TestingInternals
   #expect(swt_pointersNotEqual2(abc, _123))
   #expect(swt_pointersNotEqual3(abc, _123, def))
   #expect(swt_pointersNotEqual4(abc, _123, def, _456))
+}
 
+@Test func nilStringToCString() {
   let nilString: String? = nil
   #expect(swt_nullableCString(nilString) == false)
-
-  let lhs = "abc"
-  let rhs = "123"
-  #expect(0 != strcmp(lhs, rhs))
 }
 
 @Test func inoutAsPointerPassedToCFunction() {
@@ -51,4 +49,15 @@ private import _TestingInternals
     #expect(h(buffer.baseAddress))
     return try #require(String.decodeCString(buffer.baseAddress, as: UTF16.self)?.result)
   }
+}
+
+@Test func arrayAsCString() {
+  let array: [CChar] = Array("abc123".utf8.map(CChar.init(bitPattern:)))
+  #expect(0 == strcmp(array, "abc123"))
+}
+
+@Test func arrayAsUTF16Pointer() {
+  let array: [UTF16.CodeUnit] = [1, 2, 3]
+  func f(_ p: UnsafePointer<UTF16.CodeUnit>?) -> Bool { true }
+  #expect(f(array))
 }
