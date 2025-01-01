@@ -241,7 +241,7 @@ private func _testContentSectionBounds() -> CollectionOfOne<SectionBounds> {
   let sb = SectionBounds(
     imageAddress: nil,
     start: sectionBegin,
-    size: sectionEnd - sectionBegin
+    size: max(0, sectionEnd - sectionBegin)
   )
   return CollectionOfOne(sb)
 }
