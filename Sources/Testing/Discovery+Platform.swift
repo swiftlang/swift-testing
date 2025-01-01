@@ -99,20 +99,17 @@ private func _testContentSectionBounds() -> [SectionBounds] {
   withUnsafeMutablePointer(to: &result) { result in
     _ = swt_dl_iterate_phdr(result) { dlpi_addr, dlpi_phdr, dlpi_phnum, context in
       let sectionBounds = context!.assumingMemoryBound(to: [SectionBounds].self)
+      let phdrs = UnsafeBufferPointer(start: dlpi_phdr, count: Int(clamping: dlpi_phnum))
 
-      for i in 0 ..< dlpi_phnum {
-        let phdr = dlpi_phdr + Int(i)
-        guard phdr.pointee.p_type == PT_NOTE else {
-          continue
+      sectionBounds.pointee += phdrs.lazy
+        .filter { $0.p_type == PT_NOTE }
+        .compactMap { phdr in
+          SectionBounds(
+            imageAddress: dlpi_addr,
+            start: dlpi_addr + Int(bitPattern: UInt(phdr.p_vaddr)),
+            size: Int(phdr.p_memsz)
+          )
         }
-
-        let sb = SectionBounds(
-          imageAddress: dlpi_addr,
-          start: dlpi_addr + Int(bitPattern: UInt(phdr.pointee.p_vaddr)),
-          size: Int(phdr.pointee.p_memsz)
-        )
-        sectionBounds.pointee.append(sb)
-      }
 
       return 0
     }
