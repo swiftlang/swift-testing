@@ -183,7 +183,7 @@ private func _findSection(named sectionName: String, in hModule: HMODULE) -> Sec
 /// - Returns: An array of structures describing the bounds of all known test
 ///   content sections in the current process.
 private func _testContentSectionBounds() -> [SectionBounds] {
-  HMODULE.all.lazy.compactMap { _findSection(named: ".sw5test", in: $0) }
+  HMODULE.all.compactMap { _findSection(named: ".sw5test", in: $0) }
 }
 #else
 /// The fallback implementation of ``SectionBounds/all`` for platforms that
