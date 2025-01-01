@@ -54,7 +54,6 @@ private let _swiftTestingELFNoteNameCChars: [CChar] = {
 /// corresponding type.
 private var _swiftTestingELFNoteNameTuple: (expression: TupleExprSyntax, type: TupleTypeSyntax) {
   let name = _swiftTestingELFNoteNameCChars
-  let ccharType = TupleTypeElementSyntax(type: IdentifierTypeSyntax(name: .identifier("CChar")))
 
   return (
     TupleExprSyntax {
@@ -64,9 +63,15 @@ private var _swiftTestingELFNoteNameTuple: (expression: TupleExprSyntax, type: T
     },
     TupleTypeSyntax(
       elements: TupleTypeElementListSyntax {
-        for _ in name {
-          ccharType
-        }
+        repeatElement(
+          TupleTypeElementSyntax(
+            type: MemberTypeSyntax(
+              baseType: IdentifierTypeSyntax(name: .identifier("Swift")),
+              name: .identifier("CChar")
+            )
+          ),
+          count: name.count
+        )
       }
     )
   )
@@ -111,16 +116,16 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
   @_used
   @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
   private \(staticKeyword(for: typeName)) let \(name): (
-    namesz: Int32,
-    descsz: Int32,
-    type: Int32,
+    namesz: Swift.Int32,
+    descsz: Swift.Int32,
+    type: Swift.Int32,
     name: \(elfNoteName.type),
-    accessor: @convention(c) (UnsafeMutableRawPointer, UnsafeRawPointer?) -> Bool,
-    flags: UInt32,
-    reserved: UInt32
+    accessor: @convention(c) (Swift.UnsafeMutableRawPointer, Swift.UnsafeRawPointer?) -> Swift.Bool,
+    flags: Swift.UInt32,
+    reserved: Swift.UInt32
   ) = (
     \(literal: elfNoteName.type.elements.count),
-    Int32(MemoryLayout<UnsafeRawPointer>.stride + MemoryLayout<UInt32>.stride + MemoryLayout<UInt32>.stride),
+    Swift.Int32(MemoryLayout<Swift.UnsafeRawPointer>.stride + MemoryLayout<Swift.UInt32>.stride + MemoryLayout<Swift.UInt32>.stride),
     \(literal: kind.rawValue),
     \(elfNoteName.expression), /* \(literal: _swiftTestingELFNoteName) */
     \(accessorName),
