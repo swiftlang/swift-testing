@@ -166,7 +166,7 @@ extension TestContent where Self: ~Copyable {
   ///   containing that header. Only test content headers matching this
   ///   ``TestContent`` type's requirements are included in the sequence.
   private static func _testContentHeaders() -> some Sequence<(imageAddress: UnsafeRawPointer?, header: UnsafePointer<SWTTestContentHeader>)> {
-    SectionBounds.all.lazy.flatMap { sectionBounds in
+    SectionBounds.allTestContent.lazy.flatMap { sectionBounds in
       Self._testContentHeaders(in: sectionBounds).lazy
         .map { (sectionBounds.imageAddress, $0) }
     }

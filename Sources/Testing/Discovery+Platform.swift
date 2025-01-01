@@ -22,7 +22,7 @@ struct SectionBounds: Sendable {
   var size: Int
 
   /// All test content section bounds found in the current process.
-  static var all: some RandomAccessCollection<SectionBounds> {
+  static var allTestContent: some RandomAccessCollection<SectionBounds> {
     _testContentSectionBounds()
   }
 }
