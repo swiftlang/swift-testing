@@ -67,8 +67,8 @@ typedef bool (* SWTTestContentAccessor)(void *outValue, const void *_Null_unspec
 /// - Returns: A resigned copy of `accessor` on platforms that use pointer
 ///   authentication, and an exact copy of `accessor` elsewhere.
 ///
-/// This function is provided because Apple's pointer authentication intrinsics
-/// are not available in Swift.
+/// - Bug: This C function is needed because Apple's pointer authentication
+///   intrinsics are not available in Swift. ([141465242](rdar://141465242))
 SWT_SWIFT_NAME(swt_resign(_:))
 static SWTTestContentAccessor swt_resignTestContentAccessor(SWTTestContentAccessor accessor) {
 #if defined(__APPLE__) && __has_include(<ptrauth.h>)

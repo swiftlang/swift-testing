@@ -25,7 +25,7 @@ internal import _TestingInternals
 /// - Bug: The state protected by this type should instead be protected using
 ///     actor isolation, but actor-isolated functions cannot be called from
 ///     synchronous functions. ([83888717](rdar://83888717))
-struct Locked<T>: RawRepresentable {
+struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   /// The platform-specific type to use for locking.
   ///
   /// It would be preferable to implement this lock in Swift, however there is
@@ -151,8 +151,6 @@ struct Locked<T>: RawRepresentable {
     }
   }
 }
-
-extension Locked: Sendable where T: Sendable {}
 
 extension Locked where T: AdditiveArithmetic {
   /// Add something to the current wrapped value of this instance.

@@ -11,12 +11,12 @@
 internal import _TestingInternals
 
 /// A structure describing the bounds of a Swift metadata section.
-struct SectionBounds {
+struct SectionBounds: Sendable {
   /// The base address of the image containing the section, if known.
-  var imageAddress: UnsafeRawPointer?
+  nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
 
   /// The base address of the section.
-  var start: UnsafeRawPointer
+  nonisolated(unsafe) var start: UnsafeRawPointer
 
   /// The size of the section in bytes.
   var size: Int
@@ -33,7 +33,7 @@ struct SectionBounds {
 
 /// An array containing all of the test content section bounds known to the
 /// testing library.
-private nonisolated(unsafe) let _sectionBounds = Locked<[SectionBounds]>(rawValue: [])
+private let _sectionBounds = Locked<[SectionBounds]>(rawValue: [])
 
 /// A call-once function that initializes `_sectionBounds` and starts listening
 /// for loaded Mach headers.
