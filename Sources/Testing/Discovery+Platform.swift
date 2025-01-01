@@ -183,23 +183,7 @@ private func _findSection(named sectionName: String, in hModule: HMODULE) -> Sec
 /// - Returns: An array of structures describing the bounds of all known test
 ///   content sections in the current process.
 private func _testContentSectionBounds() -> [SectionBounds] {
-  withUnsafeTemporaryAllocation(of: HMODULE?.self, capacity: 1024) { hModules in
-    // Find all the modules loaded in the current process. We assume there
-    // aren't more than 1024 loaded modules (as does Microsoft sample code.)
-    let byteCount = DWORD(hModules.count * MemoryLayout<HMODULE?>.stride)
-    var byteCountNeeded: DWORD = 0
-    guard K32EnumProcessModules(GetCurrentProcess(), hModules.baseAddress!, byteCount, &byteCountNeeded) else {
-      return []
-    }
-    let hModuleCount = min(hModules.count, Int(byteCountNeeded) / MemoryLayout<HMODULE?>.stride)
-
-    // Look in all the loaded modules for Swift type metadata sections. Most
-    // modules won't have Swift content, so we don't call sectionBounds.reserve().
-    let hModulesEnd = hModules.index(hModules.startIndex, offsetBy: hModuleCount)
-    return hModules[..<hModulesEnd].lazy
-      .compactMap(\.self)
-      .compactMap { _findSection(named: ".sw5test", in: $0) }
-  }
+  HMODULE.all.lazy.compactMap { _findSection(named: ".sw5test", in: $0) }
 }
 #else
 /// The fallback implementation of ``SectionBounds/all`` for platforms that
