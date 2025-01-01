@@ -250,17 +250,17 @@ private:
 public:
   const SWTTypeContextDescriptor *_Nullable getContextDescriptor(void) const {
     switch (_pointer.getInt()) {
-      case 0: // Direct pointer.
-        return reinterpret_cast<const SWTTypeContextDescriptor *>(_pointer.get());
-      case 1: // Indirect pointer (pointer to a pointer.)
-        // The inner pointer is signed when pointer authentication
-        // instructions are available.
-        if (auto contextDescriptor = reinterpret_cast<SWTTypeContextDescriptor *const SWT_PTRAUTH_SWIFT_TYPE_DESCRIPTOR *>(_pointer.get())) {
-          return *contextDescriptor;
-        }
-        [[fallthrough]];
-      default: // Unsupported or invalid.
-        return nullptr;
+    case 0: // Direct pointer.
+      return reinterpret_cast<const SWTTypeContextDescriptor *>(_pointer.get());
+    case 1: // Indirect pointer (pointer to a pointer.)
+            // The inner pointer is signed when pointer authentication
+            // instructions are available.
+      if (auto contextDescriptor = reinterpret_cast<SWTTypeContextDescriptor *const SWT_PTRAUTH_SWIFT_TYPE_DESCRIPTOR *>(_pointer.get())) {
+        return *contextDescriptor;
+      }
+      [[fallthrough]];
+    default: // Unsupported or invalid.
+      return nullptr;
     }
   }
 };
@@ -474,9 +474,9 @@ struct MetadataSections {
 /// A function exported by the Swift runtime that enumerates all metadata
 /// sections loaded into the current process.
 SWT_IMPORT_FROM_STDLIB void swift_enumerateAllMetadataSections(
-                                                               bool (* body)(const MetadataSections *sections, void *context),
-                                                               void *context
-                                                               );
+  bool (* body)(const MetadataSections *sections, void *context),
+  void *context
+);
 
 template <typename SectionEnumerator>
 static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
