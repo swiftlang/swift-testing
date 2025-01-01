@@ -180,21 +180,23 @@ extension TestContent where Self: ~Copyable {
   ///   content record. Only test content records matching this ``TestContent``
   ///   type's requirements are included in the sequence.
   private static func _testContentRecords() -> some Sequence<(imageAddress: UnsafeRawPointer?, testContent: SWTTestContent)> {
-    _testContentHeaders().lazy.compactMap { imageAddress, header in
-      // Load the content from the record via its accessor function. Unaligned
-      // because the underlying C structure only guarantees 4-byte alignment
-      // even on 64-bit systems.
-      let result = header.n_desc?.loadUnaligned(as: SWTTestContent.self)
+    _testContentHeaders().lazy
+      .filter { $0.header.n_descsz >= MemoryLayout<SWTTestContent>.stride }
+      .compactMap { imageAddress, header in
+        // Load the content from the record via its accessor function. Unaligned
+        // because the underlying C structure only guarantees 4-byte alignment
+        // even on 64-bit systems.
+        let result = header.n_desc?.loadUnaligned(as: SWTTestContent.self)
 
-      // Resign the accessor function (on architectures/platforms with pointer
-      // authentication.)
-      if var result, let accessor = result.accessor.map(swt_resign) {
-        result.accessor = accessor
-        return (imageAddress, result)
+        // Resign the accessor function (on architectures/platforms with pointer
+        // authentication.)
+        if var result, let accessor = result.accessor.map(swt_resign) {
+          result.accessor = accessor
+          return (imageAddress, result)
+        }
+
+        return nil
       }
-
-      return nil
-    }
   }
 
   /// Call the given accessor function.
