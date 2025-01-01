@@ -105,7 +105,7 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
   #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
   @_section("__DATA_CONST,__swift5_tests")
   #elseif os(Linux) || os(FreeBSD) || os(Android)
-  @_section(".note.swift.test")
+  @_section(".note.swift5.test")
   #elseif os(WASI)
   @_section("swift5_tests")
   #elseif os(Windows)
