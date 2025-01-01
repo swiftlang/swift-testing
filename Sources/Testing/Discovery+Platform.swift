@@ -134,58 +134,47 @@ private func _testContentSectionBounds() -> [SectionBounds] {
 /// - Returns: A structure describing the given section, or `nil` if the section
 ///   could not be found.
 private func _findSection(named sectionName: String, in hModule: HMODULE) -> SectionBounds? {
-  // Get the DOS header (to which the HMODULE directly points, conveniently!)
-  // and check it's sufficiently valid for us to walk.
-  hModule.withMemoryRebound(to: IMAGE_DOS_HEADER.self, capacity: 1) { dosHeader -> SectionBounds? in
-    guard dosHeader.pointee.e_magic == IMAGE_DOS_SIGNATURE,
-          let e_lfanew = Int(exactly: dosHeader.pointee.e_lfanew), e_lfanew > 0 else {
+  hModule.withNTHeader { ntHeader in
+    guard let ntHeader else {
       return nil
     }
 
-    // Check the NT header. Since we don't use the optional header, skip it.
-    let ntHeader = (UnsafeRawPointer(dosHeader) + e_lfanew).assumingMemoryBound(to: IMAGE_NT_HEADERS.self)
-    guard ntHeader.pointee.Signature == IMAGE_NT_SIGNATURE else {
-      return nil
-    }
-
-    let sections = UnsafeBufferPointer(
+    let sectionHeaders = UnsafeBufferPointer(
       start: swt_IMAGE_FIRST_SECTION(ntHeader),
       count: Int(clamping: max(0, ntHeader.pointee.FileHeader.NumberOfSections))
     )
-    for section in sections {
-      guard let virtualAddress = Int(exactly: section.VirtualAddress), virtualAddress > 0 else {
-        continue
-      }
-
-      let start = UnsafeRawPointer(dosHeader) + virtualAddress
-      let size = Int(clamping: min(max(0, section.Misc.VirtualSize), max(0, section.SizeOfRawData)))
-
-      // Skip over the leading and trailing zeroed uintptr_t values. These
-      // values are always emitted by SwiftRT-COFF.cpp into all Swift images.
-      if size > 2 * MemoryLayout<UInt>.stride {
+    return sectionHeaders.lazy
+      .filter { sectionHeader in
         // FIXME: Handle longer names ("/%u") from string table
-        let nameMatched = withUnsafeBytes(of: section.Name) { thisSectionName in
+        withUnsafeBytes(of: sectionHeader.Name) { thisSectionName in
           0 == strncmp(sectionName, thisSectionName.baseAddress!, Int(IMAGE_SIZEOF_SHORT_NAME))
         }
-        guard nameMatched else {
-          continue
+      }.compactMap { sectionHeader in
+        guard let virtualAddress = Int(exactly: sectionHeader.VirtualAddress), virtualAddress > 0 else {
+          return nil
         }
-
-#if DEBUG
-        let firstPointerValue = start.loadUnaligned(as: UInt.self)
-        assert(firstPointerValue == 0, "First pointer-width value in section '\(sectionName)' was expected to equal 0 (found \(firstPointerValue) instead)")
-        let lastPointerValue = ((start + size) - MemoryLayout<UInt>.stride).loadUnaligned(as: UInt.self)
-        assert(lastPointerValue == 0, "Last pointer-width value in section '\(sectionName)' was expected to equal 0 (found \(lastPointerValue) instead)")
-#endif
-        return SectionBounds(
+        var sb = SectionBounds(
           imageAddress: hModule,
-          start: start + MemoryLayout<UInt>.stride,
-          size: size - (2 * MemoryLayout<UInt>.stride)
+          start: UnsafeRawPointer(hModule) + virtualAddress,
+          size: Int(clamping: min(max(0, sectionHeader.Misc.VirtualSize), max(0, sectionHeader.SizeOfRawData)))
         )
-      }
-    }
 
-    return nil
+        // Skip over the leading and trailing zeroed uintptr_t values. These
+        // values are always emitted by SwiftRT-COFF.cpp into all Swift images.
+        guard sb.size > 2 * MemoryLayout<UInt>.stride else {
+          return nil
+        }
+#if DEBUG
+        let firstPointerValue = sb.start.loadUnaligned(as: UInt.self)
+        assert(firstPointerValue == 0, "First pointer-width value in section '\(sectionName)' at \(sb.start) was expected to equal 0 (found \(firstPointerValue) instead)")
+        let lastPointerValue = ((sb.start + sb.size) - MemoryLayout<UInt>.stride).loadUnaligned(as: UInt.self)
+        assert(lastPointerValue == 0, "Last pointer-width value in section '\(sectionName)' at \(sb.start) was expected to equal 0 (found \(lastPointerValue) instead)")
+#endif
+        sb.start += MemoryLayout<UInt>.stride
+        sb.size -= (2 * MemoryLayout<UInt>.stride)
+
+        return sb
+      }.first
   }
 }
 
@@ -194,29 +183,23 @@ private func _findSection(named sectionName: String, in hModule: HMODULE) -> Sec
 /// - Returns: An array of structures describing the bounds of all known test
 ///   content sections in the current process.
 private func _testContentSectionBounds() -> [SectionBounds] {
-  var result = [SectionBounds]()
-
   withUnsafeTemporaryAllocation(of: HMODULE?.self, capacity: 1024) { hModules in
     // Find all the modules loaded in the current process. We assume there
     // aren't more than 1024 loaded modules (as does Microsoft sample code.)
     let byteCount = DWORD(hModules.count * MemoryLayout<HMODULE?>.stride)
     var byteCountNeeded: DWORD = 0
     guard K32EnumProcessModules(GetCurrentProcess(), hModules.baseAddress!, byteCount, &byteCountNeeded) else {
-      return
+      return []
     }
     let hModuleCount = min(hModules.count, Int(byteCountNeeded) / MemoryLayout<HMODULE?>.stride)
 
     // Look in all the loaded modules for Swift type metadata sections. Most
     // modules won't have Swift content, so we don't call sectionBounds.reserve().
     let hModulesEnd = hModules.index(hModules.startIndex, offsetBy: hModuleCount)
-    for hModule in hModules[..<hModulesEnd] {
-      if let hModule, let sb = _findSection(named: ".sw5test", in: hModule) {
-        result.append(sb)
-      }
-    }
+    return hModules[..<hModulesEnd].lazy
+      .compactMap(\.self)
+      .compactMap { _findSection(named: ".sw5test", in: $0) }
   }
-
-  return result
 }
 #else
 /// The fallback implementation of ``SectionBounds/all`` for platforms that
