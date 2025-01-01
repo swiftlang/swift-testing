@@ -159,6 +159,8 @@ to load that information:
 +  guard noErr == GetTopResourceFile(&refNum) else {
 +    return []
 +  }
++
++  var result = [SectionBounds]()
 +  repeat {
 +    UseResFile(refNum)
 +    guard let handle = Get1NamedResource(ResType("swft"), Str255("__swift5_tests")) else {
@@ -169,8 +171,9 @@ to load that information:
 +      start: handle.pointee!,
 +      size: GetHandleSize(handle)
 +    )
-+    return [sb]
++    result.append(sb)
 +  } while noErr == GetNextResourceFile(refNum, &refNum))
++  return result
 +}
  #else
  private func _testContentSectionBounds() -> [SectionBounds] {
