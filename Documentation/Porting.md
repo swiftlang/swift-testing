@@ -195,6 +195,8 @@ case. Otherwise, add a new case for your platform:
    // ...
 +  #elseif os(Classic)
 +  @_section(".rsrc,swft,__swift5_tests")
+   #else
+   @__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
    #endif
 ```
 
