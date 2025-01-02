@@ -98,6 +98,7 @@ private func _testContentSectionBounds() -> [SectionBounds] {
 
   withUnsafeMutablePointer(to: &result) { result in
     _ = swt_dl_iterate_phdr(result) { dlpi_addr, dlpi_phdr, dlpi_phnum, context in
+      print("PHDR IMAGE ADDRESS:", dlpi_addr)
       let sectionBounds = context!.assumingMemoryBound(to: [SectionBounds].self)
       let phdrs = UnsafeBufferPointer(start: dlpi_phdr, count: Int(clamping: dlpi_phnum))
 
