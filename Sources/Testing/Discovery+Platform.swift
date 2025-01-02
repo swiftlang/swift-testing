@@ -103,7 +103,7 @@ private func _testContentSectionBounds() -> [SectionBounds] {
 
       sectionBounds.pointee += phdrs.lazy
         .filter { $0.p_type == PT_NOTE }
-        .compactMap { phdr in
+        .map { phdr in
           SectionBounds(
             imageAddress: dlpi_addr,
             start: dlpi_addr + Int(bitPattern: UInt(phdr.p_vaddr)),
