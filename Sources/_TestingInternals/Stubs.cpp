@@ -54,12 +54,18 @@ int swt_dl_iterate_phdr(void *context, int (*callback)(const void *dlpi_addr, co
 
   return dl_iterate_phdr([] (struct dl_phdr_info *info, size_t size, void *ctx) -> int {
     auto [context, callback] = *reinterpret_cast<const Context *>(ctx);
-    return callback(
-      reinterpret_cast<const void *>(info->dlpi_addr),
-      info->dlpi_phdr,
-      info->dlpi_phnum,
-      context
-    );
+
+    // The base address is nil for executable images (i.e. the main binary) on
+    // some platforms. If it's nil, try to recover it with dladdr().
+    auto dlpi_addr = reinterpret_cast<const void *>(info->dlpi_addr);
+    if (!dlpi_addr) {
+      Dl_info info;
+      if (dladdr(info->dlpi_phdr, &info)) {
+        dlpi_addr = info.dli_fbase;
+      }
+    }
+
+    return callback(dlpi_addr, info->dlpi_phdr, info->dlpi_phnum, context);
   }, &ctx);
 }
 #endif
