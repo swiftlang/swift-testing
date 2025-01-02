@@ -59,9 +59,9 @@ int swt_dl_iterate_phdr(void *context, int (*callback)(const void *dlpi_addr, co
     // some platforms. If it's nil, try to recover it with dladdr().
     auto dlpi_addr = reinterpret_cast<const void *>(info->dlpi_addr);
     if (!dlpi_addr) {
-      Dl_info info;
-      if (dladdr(info->dlpi_phdr, &info)) {
-        dlpi_addr = info.dli_fbase;
+      Dl_info dlinfo;
+      if (dladdr(info->dlpi_phdr, &dlinfo)) {
+        dlpi_addr = dlinfo.dli_fbase;
       }
     }
 
