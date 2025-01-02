@@ -105,7 +105,7 @@ is not statically available. The problematic overloads will also be deprecated:
 -) where E: Error & Equatable
 +) -> E where E: Error & Equatable
 
-+@available(*, deprecated, message: "Examine the result of '#expect(throws:)' instead.")
++@available(swift, introduced: 6.0, deprecated: 100000.0, message: "Examine the result of '#expect(throws:)' instead.")
 +@discardableResult
  @freestanding(expression) public macro expect<R>(
    _ comment: @autoclosure () -> Comment? = nil,
@@ -115,7 +115,7 @@ is not statically available. The problematic overloads will also be deprecated:
 -)
 +) -> (any Error)?
 
-+@available(*, deprecated, message: "Examine the result of '#require(throws:)' instead.")
++@available(swift, introduced: 6.0, deprecated: 100000.0, message: "Examine the result of '#require(throws:)' instead.")
 +@discardableResult
  @freestanding(expression) public macro require<R>(
    _ comment: @autoclosure () -> Comment? = nil,
