@@ -12,7 +12,10 @@ private import _TestingInternals
 
 /// The value of the implicit `n_name` field of ``SWTTestContentHeader`` for
 /// all recognized test content records.
-let testContentHeaderName = Array("Swift Testing".utf8CString)
+///
+/// This value must match the value of `_testContentHeaderName` in
+/// TestContentGeneration.swift.
+private let _testContentHeaderName = Array("Swift Testing".utf8CString)
 
 extension UnsafePointer<SWTTestContentHeader> {
   /// The size of the implied `n_name` field, in bytes.
@@ -78,8 +81,7 @@ extension SectionBounds {
     let end = start + size
 
     // Generate an infinite sequence of (possible) header addresses, then prefix
-    // it to those that are actually contained within the section. This way we can
-    // bounds-check even the first header while maintaining an opaque return type.
+    // it to those that are actually contained within the section.
     return sequence(first: firstHeader) { header in
       (UnsafeRawPointer(header) + header.byteCount).assumingMemoryBound(to: SWTTestContentHeader.self)
     }.lazy.prefix { header in
@@ -131,14 +133,14 @@ extension TestContent where Self: ~Copyable {
   /// - Parameters:
   ///   - imageAddress: A pointer to the start of the image. This value is _not_
   ///     equal to the value returned from `dlopen()`. On platforms that do not
-  ///     support dynamic loading (and so do not have loadable images), the value
-  ///     of this argument is unspecified.
+  ///     support dynamic loading (and so do not have loadable images), the
+  ///     value of this argument is unspecified.
   ///   - content: The value produced by the test content record's accessor.
   ///   - flags: Flags associated with `content`. The value of this argument is
   ///     dependent on the type of test content being enumerated.
   ///   - stop: An `inout` boolean variable indicating whether test content
-  ///     enumeration should stop after the function returns. Set `stop` to `true`
-  ///     to stop test content enumeration.
+  ///     enumeration should stop after the function returns. Set `stop` to
+  ///     `true` to stop test content enumeration.
   typealias TestContentEnumerator = (_ imageAddress: UnsafeRawPointer?, _ content: borrowing TestContentAccessorResult, _ flags: UInt32, _ stop: inout Bool) -> Void
 
   /// Enumerate all test content headers found in the test content section
@@ -155,7 +157,7 @@ extension TestContent where Self: ~Copyable {
   private static func _testContentHeaders(in sectionBounds: SectionBounds) -> some Sequence<UnsafePointer<SWTTestContentHeader>> {
     sectionBounds.testContentHeaders.lazy
       .filter { $0.pointee.n_type == testContentKind }
-      .filter { 0 == $0.n_name.map { strcmp($0, testContentHeaderName) } }
+      .filter { 0 == $0.n_name.map { strcmp($0, _testContentHeaderName) } }
   }
 
   /// Enumerate all test content headers found in all test content sections
