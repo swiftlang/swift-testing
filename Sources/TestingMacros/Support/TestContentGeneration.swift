@@ -125,7 +125,7 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
     reserved: Swift.UInt32
   ) = (
     \(literal: elfNoteName.type.elements.count),
-    Swift.Int32(MemoryLayout<Swift.UnsafeRawPointer>.stride + MemoryLayout<Swift.UInt32>.stride + MemoryLayout<Swift.UInt32>.stride),
+    Swift.Int32(Swift.MemoryLayout<Swift.UnsafeRawPointer>.stride + Swift.MemoryLayout<Swift.UInt32>.stride + Swift.MemoryLayout<Swift.UInt32>.stride),
     \(literal: kind.rawValue),
     \(elfNoteName.expression), /* \(literal: _swiftTestingELFNoteName) */
     \(accessorName),
