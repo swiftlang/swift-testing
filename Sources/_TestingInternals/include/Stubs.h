@@ -136,6 +136,18 @@ SWT_EXTERN int swt_pthread_setname_np(pthread_t thread, const char *name);
 SWT_EXTERN int swt_posix_spawn_file_actions_addclosefrom_np(posix_spawn_file_actions_t *fileActions, int from);
 #endif
 
+#if defined(__ELF__)
+/// Enumerate loaded ELF images and their program headers.
+///
+/// This function is provided because `dl_iterate_phdr()` is only declared if
+/// `_GNU_SOURCE` is set, but setting it causes build errors due to conflicts
+/// with Swift's Glibc module.
+///
+/// ELF-based platforms that do not use glibc (such as FreeBSD) also use this
+/// function for the sake of simplicity.
+SWT_EXTERN int swt_dl_iterate_phdr(void *_Null_unspecified context, int (*callback)(const void *dlpi_addr, const ElfW(Phdr) *dlpi_phdr, size_t dlpi_phnum, void *_Null_unspecified context));
+#endif
+
 #if !defined(__ANDROID__)
 #if __has_include(<signal.h>) && defined(si_pid)
 /// Get the value of the `si_pid` field of a `siginfo_t` structure.

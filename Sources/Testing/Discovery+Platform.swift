@@ -89,6 +89,79 @@ private func _testContentSectionBounds() -> [SectionBounds] {
 #elseif os(Linux) || os(FreeBSD) || os(Android)
 // MARK: - ELF implementation
 
+extension UnsafePointer<SWTElfWNhdr> {
+  /// The size of the implied `n_name` field, in bytes.
+  ///
+  /// This value is rounded up to ensure 32-bit alignment of the fields in the
+  /// test content header and record.
+  fileprivate var n_namesz: Int {
+    Int(max(0, pointee.n_namesz)).alignedUp(for: UInt32.self)
+  }
+
+  /// Get the implied `n_name` field.
+  ///
+  /// If this test content header has no name, or if the name is not
+  /// null-terminated, the value of this property is `nil`.
+  fileprivate var n_name: UnsafePointer<CChar>? {
+    if n_namesz <= 0 {
+      return nil
+    }
+    return (self + 1).withMemoryRebound(to: CChar.self, capacity: n_namesz) { name in
+      if strnlen(name, n_namesz) >= n_namesz {
+        // There is no trailing null byte within the provided length.
+        return nil
+      }
+      return name
+    }
+  }
+
+  /// The size of the implied `n_name` field, in bytes.
+  ///
+  /// This value is rounded up to ensure 32-bit alignment of the fields in the
+  /// test content header and record.
+  fileprivate var n_descsz: Int {
+    Int(max(0, pointee.n_descsz)).alignedUp(for: UInt32.self)
+  }
+
+  /// The implied `n_desc` field.
+  ///
+  /// If this test content header has no description (payload), the value of
+  /// this property is `nil`.
+  fileprivate var n_desc: UnsafeRawPointer? {
+    if n_descsz <= 0 {
+      return nil
+    }
+    return UnsafeRawPointer(self + 1) + n_namesz
+  }
+
+  /// The number of bytes in this test content header, including all fields and
+  /// padding.
+  ///
+  /// The address at `UnsafeRawPointer(self) + self.byteCount` is the start of
+  /// the next test content header in the same section (if there is one.)
+  fileprivate var byteCount: Int {
+    MemoryLayout<Pointee>.stride + n_namesz + n_descsz
+  }
+}
+
+/// All test content headers found in this test content section.
+func _noteHeaders(in buffer: UnsafeRawBufferPointer) -> some Sequence<UnsafePointer<SWTElfWNhdr>> {
+  let start = buffer.baseAddress!
+  let end: UnsafeRawPointer = start + buffer.count
+  let firstHeader = start.assumingMemoryBound(to: SWTElfWNhdr.self)
+
+  // Generate an infinite sequence of (possible) header addresses, then prefix
+  // it to those that are actually contained within the section. This way we can
+  // bounds-check even the first header while maintaining an opaque return type.
+  return sequence(first: firstHeader) { header in
+    (UnsafeRawPointer(header) + header.byteCount).assumingMemoryBound(to: SWTElfWNhdr.self)
+  }.lazy.prefix { header in
+    header >= start && header < end
+      && (header + 1) <= end
+      && UnsafeRawPointer(header) + header.byteCount <= end
+  }
+}
+
 /// The ELF-specific implementation of ``SectionBounds/all``.
 ///
 /// - Returns: An array of structures describing the bounds of all known test
@@ -97,20 +170,28 @@ private func _testContentSectionBounds() -> [SectionBounds] {
   var result = [SectionBounds]()
 
   withUnsafeMutablePointer(to: &result) { result in
-    swift_enumerateAllMetadataSections({ sections, context in
-      let sections = sections.load(as: MetadataSections.self)
-      let result = context.assumingMemoryBound(to: [SectionBounds].self)
+    _ = swt_dl_iterate_phdr(result) { dlpi_addr, dlpi_phdr, dlpi_phnum, context in
+      let result = context!.assumingMemoryBound(to: [SectionBounds].self)
 
-      let start = UnsafeRawPointer(bitPattern: sections.swift5_tests.start)
-      let size = Int(clamping: sections.swift5_tests.length)
-      if let start, size > 0 {
-        let buffer = UnsafeRawBufferPointer(start: start, count: size)
-        let sb = SectionBounds(imageAddress: sections.baseAddress, buffer: buffer)
-        result.pointee.append(sb)
-      }
+      let buffer = UnsafeBufferPointer(start: dlpi_phdr, count: dlpi_phnum)
+      let sectionBoundsNotes: some Sequence<UnsafePointer<SWTElfWNhdr>> = buffer.lazy
+        .filter { $0.p_type == PT_NOTE }
+        .map { phdr in
+          UnsafeRawBufferPointer(
+            start: dlpi_addr + Int(clamping: UInt(clamping: phdr.p_vaddr)),
+            count: Int(clamping: phdr.p_memsz)
+          )
+        }.flatMap(_noteHeaders(in:))
+        .filter { $0.pointee.n_type == 0 }
+        .filter { 0 == $0.n_name.map { strcmp($0, "swift5_tests") } }
 
-      return true
-    }, result)
+      result.pointee += sectionBoundsNotes.lazy
+        .compactMap { $0.n_desc?.assumingMemoryBound(to: UnsafePointer<UnsafeRawPointer>.self) }
+        .map { UnsafeRawBufferPointer(start: $0[0], count: $0[1] - $0[0]) }
+        .map { SectionBounds(imageAddress: dlpi_addr, buffer: $0) }
+
+      return 0
+    }
   }
 
   return result

@@ -50,16 +50,9 @@ static SWTTestContentAccessor swt_resignTestContentAccessor(SWTTestContentAccess
   return accessor;
 }
 
-#if defined(__ELF__) && defined(__swift__)
-/// A function exported by the Swift runtime that enumerates all metadata
-/// sections loaded into the current process.
-///
-/// This function is needed on ELF-based platforms because they do not preserve
-/// section information that we can discover at runtime.
-SWT_IMPORT_FROM_STDLIB void swift_enumerateAllMetadataSections(
-  bool (* body)(const void *sections, void *context),
-  void *context
-);
+#if defined(__ELF__)
+/// An ELF note header.
+typedef ElfW(Nhdr) SWTElfWNhdr;
 #endif
 
 #if defined(SWT_NO_DYNAMIC_LINKING)

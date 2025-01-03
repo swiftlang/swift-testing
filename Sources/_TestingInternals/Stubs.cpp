@@ -43,3 +43,22 @@ int swt_posix_spawn_file_actions_addclosefrom_np(posix_spawn_file_actions_t *fil
   return result;
 }
 #endif
+
+#if defined(__ELF__)
+int swt_dl_iterate_phdr(void *context, int (*callback)(const void *dlpi_addr, const ElfW(Phdr) *dlpi_phdr, size_t dlpi_phnum, void *context)) {
+  struct Context {
+    void *context;
+    decltype(callback) callback;
+  };
+  Context ctx = { context, callback };
+  return dl_iterate_phdr([] (struct dl_phdr_info *info, size_t size, void *ctx) -> int {
+    auto [context, callback] = *reinterpret_cast<const Context *>(ctx);
+    return callback(
+      reinterpret_cast<const void *>(info->dlpi_addr),
+      info->dlpi_phdr,
+      info->dlpi_phnum,
+      context
+    );
+  }, &ctx);
+}
+#endif
