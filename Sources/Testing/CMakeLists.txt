@@ -39,6 +39,8 @@ add_library(Testing
   Expectations/Expectation.swift
   Expectations/Expectation+Macro.swift
   Expectations/ExpectationChecking+Macro.swift
+  Expectations/ExpectationContext.swift
+  Expectations/ExpectationContext+Pointers.swift
   Issues/Confirmation.swift
   Issues/ErrorSnapshot.swift
   Issues/Issue.swift
@@ -61,7 +63,7 @@ add_library(Testing
   SourceAttribution/Backtrace+Symbolication.swift
   SourceAttribution/CustomTestStringConvertible.swift
   SourceAttribution/Expression.swift
-  SourceAttribution/Expression+Macro.swift
+  SourceAttribution/ExpressionID.swift
   SourceAttribution/SourceContext.swift
   SourceAttribution/SourceLocation.swift
   SourceAttribution/SourceLocation+Macro.swift
