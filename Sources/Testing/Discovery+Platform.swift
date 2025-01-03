@@ -9,7 +9,6 @@
 //
 
 internal import _TestingInternals
-private import SwiftShims
 
 /// A structure describing the bounds of a Swift metadata section.
 struct SectionBounds: Sendable {
@@ -88,6 +87,8 @@ private func _testContentSectionBounds() -> [SectionBounds] {
 
 #elseif os(Linux) || os(FreeBSD) || os(Android)
 // MARK: - ELF implementation
+
+private import SwiftShims // For MetadataSections
 
 /// The ELF-specific implementation of ``SectionBounds/all``.
 ///
