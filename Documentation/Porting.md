@@ -148,7 +148,7 @@ to load that information:
 +++ b/Sources/Testing/Discovery+Platform.swift
 
  // ...
-+#elseif os(macintosh)
++#elseif os(Classic)
 +private func _testContentSectionBounds() -> [SectionBounds] {
 +  let oldRefNum = CurResFile()
 +  defer {
