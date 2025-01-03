@@ -98,6 +98,12 @@ private func _testContentSectionBounds() -> [SectionBounds] {
 
   withUnsafeMutablePointer(to: &result) { result in
     swift_enumerateAllMetadataSections({ sections, context in
+      let version = sections.load(as: UInt.self)
+      guard version >= 4 else {
+        // This structure is too old to contain the swift5_tests field.
+        return true
+      }
+
       let sections = sections.load(as: MetadataSections.self)
       let result = context.assumingMemoryBound(to: [SectionBounds].self)
 
