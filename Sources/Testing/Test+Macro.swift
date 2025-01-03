@@ -8,10 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-/// This file provides support for the `@Test` macro. Other than the macro
-/// itself, the symbols in this file should not be used directly and are subject
-/// to change as the testing library evolves.
-
 #if _runtime(_ObjC)
 public import ObjectiveC
 
@@ -45,6 +41,10 @@ public typealias __XCTestCompatibleSelector = Never
   nil
 #endif
 }
+
+/// This file provides support for the `@Test` macro. Other than the macro
+/// itself, the symbols in this file should not be used directly and are subject
+/// to change as the testing library evolves.
 
 // MARK: - @Suite
 
@@ -499,8 +499,8 @@ extension Test {
 /// - Note: This macro has compile-time effects _only_ and should not affect a
 ///   compiled test target.
 ///
-/// - Warning: This macro is used to implement other macros declared by the
-///   testing library. Do not use it directly.
+/// - Warning: This macro is used to implement other macros declared by the testing
+///   library. Do not use it directly.
 @attached(peer) public macro __testing(
   semantics arguments: _const String...
 ) = #externalMacro(module: "TestingMacros", type: "PragmaMacro")

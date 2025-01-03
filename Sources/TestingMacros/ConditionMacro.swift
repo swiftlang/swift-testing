@@ -478,7 +478,6 @@ extension ExitTestConditionMacro {
 
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
     // Emit a legacy type declaration if SymbolLinkageMarkers is off.
-    // TODO: remove this decl when we drop support for emitting legacy metadata
     let legacyEnumName = context.makeUniqueName("__🟠$exit_test_body__")
     decls.append(
       """

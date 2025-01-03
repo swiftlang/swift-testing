@@ -484,7 +484,6 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // by the testing library at runtime. The compiler does not allow combining
     // 'unavailable' and 'deprecated' into a single availability attribute:
     // rdar://111329796
-    // TODO: remove this decl when we drop support for emitting legacy metadata
     let enumName = context.makeUniqueName(thunking: functionDecl, withPrefix: "__🟠$test_container__function__")
     result.append(
       """

@@ -169,7 +169,6 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
     // also annotated unavailable, since it's meant only for use by the testing
     // library at runtime. The compiler does not allow combining 'unavailable'
     // and 'deprecated' into a single availability attribute: rdar://111329796
-    // TODO: remove this decl when we drop support for emitting legacy metadata
     let typeName = declaration.type.tokens(viewMode: .fixedUp).map(\.textWithoutBackticks).joined()
     let enumName = context.makeUniqueName("__🟠$test_container__suite__\(typeName)")
     result.append(

@@ -438,7 +438,7 @@ extension ExitTest {
     // External tools authors should set up their own back channel mechanisms
     // and ensure they're installed before calling ExitTest.callAsFunction().
     guard var result = find(at: sourceLocation) else {
-      fatalError("Could not find an exit test that should have been located at \(sourceLocation).")
+      return nil
     }
 
     // We can't say guard let here because it counts as a consume.
