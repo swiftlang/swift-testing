@@ -69,7 +69,7 @@ public struct TypeInfo: Sendable {
   ///   - mangled: The mangled name of the type, if available.
   init(fullyQualifiedName: String, unqualifiedName: String, mangledName: String?) {
     self.init(
-      fullyQualifiedNameComponents: fullyQualifiedName.split(separator: ".").map(String.init),
+      fullyQualifiedNameComponents: Self.fullyQualifiedNameComponents(ofTypeWithName: fullyQualifiedName),
       unqualifiedName: unqualifiedName,
       mangledName: mangledName
     )
@@ -99,6 +99,48 @@ extension TypeInfo {
   /// An in-memory cache of fully-qualified type name components.
   private static let _fullyQualifiedNameComponentsCache = Locked<[ObjectIdentifier: [String]]>()
 
+  /// Split the given fully-qualified type name into its components.
+  ///
+  /// - Parameters:
+  ///   - fullyQualifiedName: The string to split.
+  ///
+  /// - Returns: The components of `fullyQualifiedName` as substrings thereof.
+  static func fullyQualifiedNameComponents(ofTypeWithName fullyQualifiedName: String) -> [String] {
+    var components = [Substring]()
+
+    var inRawIdentifier = false
+    var componentStartIndex = fullyQualifiedName.startIndex
+    for i in fullyQualifiedName.indices {
+      let c = fullyQualifiedName[i]
+      if c == "`" {
+        inRawIdentifier.toggle()
+      } else if c == "." && !inRawIdentifier {
+        components.append(fullyQualifiedName[componentStartIndex ..< i])
+        componentStartIndex = fullyQualifiedName.index(after: i)
+      }
+    }
+    components.append(fullyQualifiedName[componentStartIndex...])
+
+    // If a type is extended in another module and then referenced by name,
+    // its name according to the String(reflecting:) API will be prefixed with
+    // "(extension in MODULE_NAME):". For our purposes, we never want to
+    // preserve that prefix.
+    if let firstComponent = components.first, firstComponent.starts(with: "(extension in "),
+       let moduleName = firstComponent.split(separator: ":", maxSplits: 1).last {
+      // NOTE: even if the module name is a raw identifier, it comprises a
+      // single identifier (no splitting required) so we don't need to process
+      // it any further.
+      components[0] = moduleName
+    }
+
+    // If a type is private or embedded in a function, its fully qualified
+    // name may include "(unknown context at $xxxxxxxx)" as a component. Strip
+    // those out as they're uninteresting to us.
+    components = components.filter { !$0.starts(with: "(unknown context at") }
+
+    return components.map(String.init)
+  }
+
   /// The complete name of this type, with the names of all referenced types
   /// fully-qualified by their module names when possible.
   ///
@@ -121,22 +163,7 @@ extension TypeInfo {
         return cachedResult
       }
 
-      var result = String(reflecting: type)
-        .split(separator: ".")
-        .map(String.init)
-
-      // If a type is extended in another module and then referenced by name,
-      // its name according to the String(reflecting:) API will be prefixed with
-      // "(extension in MODULE_NAME):". For our purposes, we never want to
-      // preserve that prefix.
-      if let firstComponent = result.first, firstComponent.starts(with: "(extension in ") {
-        result[0] = String(firstComponent.split(separator: ":", maxSplits: 1).last!)
-      }
-
-      // If a type is private or embedded in a function, its fully qualified
-      // name may include "(unknown context at $xxxxxxxx)" as a component. Strip
-      // those out as they're uninteresting to us.
-      result = result.filter { !$0.starts(with: "(unknown context at") }
+      let result = Self.fullyQualifiedNameComponents(ofTypeWithName: String(reflecting: type))
 
       Self._fullyQualifiedNameComponentsCache.withLock { fullyQualifiedNameComponentsCache in
         fullyQualifiedNameComponentsCache[ObjectIdentifier(type)] = result

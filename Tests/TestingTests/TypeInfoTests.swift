@@ -50,6 +50,56 @@ struct TypeInfoTests {
     #expect(TypeInfo(describing: T.self).fullyQualifiedName == "(Swift.Int, Swift.String) -> Swift.Bool")
   }
 
+  @Test("Splitting raw identifiers",
+    arguments: [
+      ("Foo.Bar", ["Foo", "Bar"]),
+      ("`Foo`.Bar", ["`Foo`", "Bar"]),
+      ("`Foo`.`Bar`", ["`Foo`", "`Bar`"]),
+      ("Foo.`Bar`", ["Foo", "`Bar`"]),
+      ("Foo.`Bar`.Quux", ["Foo", "`Bar`", "Quux"]),
+      ("Foo.`B.ar`.Quux", ["Foo", "`B.ar`", "Quux"]),
+
+      // These have substrings we intentionally strip out.
+      ("Foo.`B.ar`.(unknown context at $0).Quux", ["Foo", "`B.ar`", "Quux"]),
+      ("(extension in Module):Foo.`B.ar`.(unknown context at $0).Quux", ["Foo", "`B.ar`", "Quux"]),
+      ("(extension in `Module`):Foo.`B.ar`.(unknown context at $0).Quux", ["Foo", "`B.ar`", "Quux"]),
+      ("(extension in `Module`):`Foo`.`B.ar`.(unknown context at $0).Quux", ["`Foo`", "`B.ar`", "Quux"]),
+
+      // These aren't syntactically valid, but we should at least not crash.
+      ("Foo.`B.ar`.Quux.`Alpha`..Beta", ["Foo", "`B.ar`", "Quux", "`Alpha`", "", "Beta"]),
+      ("Foo.`B.ar`.Quux.`Alpha", ["Foo", "`B.ar`", "Quux", "`Alpha"]),
+      ("Foo.`B.ar`.Quux.`Alpha``", ["Foo", "`B.ar`", "Quux", "`Alpha``"]),
+      ("Foo.`B.ar`.Quux.`Alpha...", ["Foo", "`B.ar`", "Quux", "`Alpha..."]),
+    ]
+  )
+  func rawIdentifiers(fqn: String, expectedComponents: [String]) throws {
+    let actualComponents = TypeInfo.fullyQualifiedNameComponents(ofTypeWithName: fqn)
+    #expect(expectedComponents == actualComponents)
+  }
+
+  // As above, but round-tripping through .fullyQualifiedName.
+  @Test("Round-tripping raw identifiers",
+    arguments: [
+      ("Foo.Bar", ["Foo", "Bar"]),
+      ("`Foo`.Bar", ["`Foo`", "Bar"]),
+      ("`Foo`.`Bar`", ["`Foo`", "`Bar`"]),
+      ("Foo.`Bar`", ["Foo", "`Bar`"]),
+      ("Foo.`Bar`.Quux", ["Foo", "`Bar`", "Quux"]),
+      ("Foo.`B.ar`.Quux", ["Foo", "`B.ar`", "Quux"]),
+
+      // These aren't syntactically valid, but we should at least not crash.
+      ("Foo.`B.ar`.Quux.`Alpha`..Beta", ["Foo", "`B.ar`", "Quux", "`Alpha`", "", "Beta"]),
+      ("Foo.`B.ar`.Quux.`Alpha", ["Foo", "`B.ar`", "Quux", "`Alpha"]),
+      ("Foo.`B.ar`.Quux.`Alpha``", ["Foo", "`B.ar`", "Quux", "`Alpha``"]),
+      ("Foo.`B.ar`.Quux.`Alpha...", ["Foo", "`B.ar`", "Quux", "`Alpha..."]),
+    ]
+  )
+  func roundTrippedRawIdentifiers(fqn: String, expectedComponents: [String]) throws {
+    let typeInfo = TypeInfo(fullyQualifiedName: fqn, unqualifiedName: "", mangledName: "")
+    #expect(typeInfo.fullyQualifiedName == fqn)
+    #expect(typeInfo.fullyQualifiedNameComponents == expectedComponents)
+  }
+
   @available(_mangledTypeNameAPI, *)
   @Test func mangledTypeName() {
     #expect(_mangledTypeName(String.self) == TypeInfo(describing: String.self).mangledName)
