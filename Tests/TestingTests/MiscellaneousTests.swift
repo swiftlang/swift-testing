@@ -9,6 +9,7 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+private import _TestingInternals
 
 @Test(/* name unspecified */ .hidden)
 @Sendable func freeSyncFunction() {}
@@ -569,4 +570,35 @@ struct MiscellaneousTests {
     }
     #expect(duration < .seconds(1))
   }
+
+#if !SWT_NO_DYNAMIC_LINKING
+  @Test("Can get the image address of a test function") func imageAddress() throws {
+    let test = try #require(Test.current)
+    let imageAddress = try #require(test.imageAddress)
+#if SWT_TARGET_OS_APPLE
+    // NOTE: Dl_info and dladdr() are guarded behind __USE_GNU in glibc.
+    var info = Dl_info()
+    #expect(0 != dladdr(imageAddress, &info))
+    let fbase = try #require(info.dli_fbase)
+    #expect(imageAddress == fbase)
+#endif
+  }
+#endif
+
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+  @Test("Legacy test discovery finds the same number of tests") func discoveredTestCount() async {
+    let oldFlag = Environment.variable(named: "SWT_USE_LEGACY_TEST_DISCOVERY")
+    defer {
+      Environment.setVariable(oldFlag, named: "SWT_USE_LEGACY_TEST_DISCOVERY")
+    }
+
+    Environment.setVariable("1", named: "SWT_USE_LEGACY_TEST_DISCOVERY")
+    let testsWithOldCode = await Array(Test.all).count
+
+    Environment.setVariable("0", named: "SWT_USE_LEGACY_TEST_DISCOVERY")
+    let testsWithNewCode = await Array(Test.all).count
+
+    #expect(testsWithOldCode == testsWithNewCode)
+  }
+#endif
 }
