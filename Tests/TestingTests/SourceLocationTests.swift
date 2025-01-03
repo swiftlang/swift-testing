@@ -44,6 +44,20 @@ struct SourceLocationTests {
     #expect(sourceLocation.moduleName == "FakeModule")
   }
 
+  @Test("SourceLocation.moduleName property with raw identifier",
+    arguments: [
+      ("Foo/Bar.swift", "Foo", "Bar.swift"),
+      ("`Foo`/Bar.swift", "`Foo`", "Bar.swift"),
+      ("`Foo.Bar`/Quux.swift", "`Foo.Bar`", "Quux.swift"),
+      ("`Foo./.Bar`/Quux.swift", "`Foo./.Bar`", "Quux.swift"),
+    ]
+  )
+  func sourceLocationModuleNameWithRawIdentifier(fileID: String, expectedModuleName: String, expectedFileName: String) throws {
+    let sourceLocation = SourceLocation(fileID: fileID, filePath: "", line: 1, column: 1)
+    #expect(sourceLocation.moduleName == expectedModuleName)
+    #expect(sourceLocation.fileName == expectedFileName)
+  }
+
   @Test("SourceLocation.fileID property ignores middle components")
   func sourceLocationFileIDMiddleIgnored() {
     let sourceLocation = SourceLocation(fileID: "A/B/C/D.swift", filePath: "", line: 1, column: 1)
