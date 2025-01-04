@@ -67,18 +67,7 @@ public struct SourceLocation: Sendable {
   /// - ``fileName``
   /// - [`#fileID`](https://developer.apple.com/documentation/swift/fileID())
   public var moduleName: String {
-    var inRawIdentifier = false
-    for i in fileID.indices {
-      let c = fileID[i]
-      if c == "`" {
-        inRawIdentifier.toggle()
-      } else if c == "/" && !inRawIdentifier {
-        return String(fileID[..<i])
-      }
-    }
-
-    // Normally unreachable.
-    fatalError("Could not find the end of the module name of Swift file ID '\(fileID)'.")
+    rawIdentifierAwareSplit(fileID, separator: "/", maxSplits: 1).first.map(String.init)!
   }
 
   /// The path to the source file.

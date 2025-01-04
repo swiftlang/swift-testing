@@ -95,6 +95,52 @@ public struct TypeInfo: Sendable {
 
 // MARK: - Name
 
+/// Split a string with a separator while respecting raw identifiers and their
+/// enclosing backtick characters.
+///
+/// - Parameters:
+///   - string: The string to split.
+///   - separator: The character that separates components of `string`.
+///   - maxSplits: The maximum number of splits to perform on `string`. The
+///     resulting array contains up to `maxSplits + 1` elements.
+///
+/// - Returns: An array of substrings of `string`.
+///
+/// Unlike `String.split(separator:maxSplits:omittingEmptySubsequences:)`, this
+/// function does not split the string on separator characters that occur
+/// between pairs of backtick characters. This is useful when splitting strings
+/// containing raw identifiers.
+///
+/// - Complexity: O(_n_), where _n_ is the length of `string`.
+func rawIdentifierAwareSplit<S>(_ string: S, separator: Character, maxSplits: Int = .max) -> [S.SubSequence] where S: StringProtocol {
+  var result = [S.SubSequence]()
+
+  var inRawIdentifier = false
+  var componentStartIndex = string.startIndex
+  for i in string.indices {
+    let c = string[i]
+    if c == "`" {
+      // We are either entering or exiting a raw identifier. While inside a raw
+      // identifier, separator characters are ignored.
+      inRawIdentifier.toggle()
+    } else if c == separator && !inRawIdentifier {
+      // Add everything up to this separator as the next component, then start
+      // a new component after the separator.
+      result.append(string[componentStartIndex ..< i])
+      componentStartIndex = string.index(after: i)
+
+      if result.count == maxSplits {
+        // We don't need to find more separators. We'll add the remainder of the
+        // string outside the loop as the last component, then return.
+        break
+      }
+    }
+  }
+  result.append(string[componentStartIndex...])
+
+  return result
+}
+
 extension TypeInfo {
   /// An in-memory cache of fully-qualified type name components.
   private static let _fullyQualifiedNameComponentsCache = Locked<[ObjectIdentifier: [String]]>()
@@ -106,27 +152,14 @@ extension TypeInfo {
   ///
   /// - Returns: The components of `fullyQualifiedName` as substrings thereof.
   static func fullyQualifiedNameComponents(ofTypeWithName fullyQualifiedName: String) -> [String] {
-    var components = [Substring]()
-
-    var inRawIdentifier = false
-    var componentStartIndex = fullyQualifiedName.startIndex
-    for i in fullyQualifiedName.indices {
-      let c = fullyQualifiedName[i]
-      if c == "`" {
-        inRawIdentifier.toggle()
-      } else if c == "." && !inRawIdentifier {
-        components.append(fullyQualifiedName[componentStartIndex ..< i])
-        componentStartIndex = fullyQualifiedName.index(after: i)
-      }
-    }
-    components.append(fullyQualifiedName[componentStartIndex...])
+    var components = rawIdentifierAwareSplit(fullyQualifiedName, separator: ".")
 
     // If a type is extended in another module and then referenced by name,
     // its name according to the String(reflecting:) API will be prefixed with
     // "(extension in MODULE_NAME):". For our purposes, we never want to
     // preserve that prefix.
     if let firstComponent = components.first, firstComponent.starts(with: "(extension in "),
-       let moduleName = firstComponent.split(separator: ":", maxSplits: 1).last {
+       let moduleName = rawIdentifierAwareSplit(firstComponent, separator: ":", maxSplits: 1).last {
       // NOTE: even if the module name is a raw identifier, it comprises a
       // single identifier (no splitting required) so we don't need to process
       // it any further.

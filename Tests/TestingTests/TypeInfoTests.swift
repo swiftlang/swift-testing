@@ -64,6 +64,8 @@ struct TypeInfoTests {
       ("(extension in Module):Foo.`B.ar`.(unknown context at $0).Quux", ["Foo", "`B.ar`", "Quux"]),
       ("(extension in `Module`):Foo.`B.ar`.(unknown context at $0).Quux", ["Foo", "`B.ar`", "Quux"]),
       ("(extension in `Module`):`Foo`.`B.ar`.(unknown context at $0).Quux", ["`Foo`", "`B.ar`", "Quux"]),
+      ("(extension in `Mo:dule`):`Foo`.`B.ar`.(unknown context at $0).Quux", ["`Foo`", "`B.ar`", "Quux"]),
+      ("(extension in `Module`):`F:oo`.`B.ar`.(unknown context at $0).Quux", ["`F:oo`", "`B.ar`", "Quux"]),
 
       // These aren't syntactically valid, but we should at least not crash.
       ("Foo.`B.ar`.Quux.`Alpha`..Beta", ["Foo", "`B.ar`", "Quux", "`Alpha`", "", "Beta"]),
