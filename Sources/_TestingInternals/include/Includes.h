@@ -133,6 +133,10 @@
 #include <libutil.h>
 #endif
 
+#if defined(__OpenBSD__)
+#include <util.h>
+#endif
+
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX

@@ -38,7 +38,7 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   /// or `OSAllocatedUnfairLock`.
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
   typealias PlatformLock = pthread_mutex_t
-#elseif os(FreeBSD)
+#elseif os(FreeBSD) || os(OpenBSD)
   typealias PlatformLock = pthread_mutex_t?
 #elseif os(Windows)
   typealias PlatformLock = SRWLOCK
@@ -54,7 +54,7 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   private final class _Storage: ManagedBuffer<T, PlatformLock> {
     deinit {
       withUnsafeMutablePointerToElements { lock in
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
         _ = pthread_mutex_destroy(lock)
 #elseif os(Windows)
         // No deinitialization needed.
@@ -73,7 +73,7 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   init(rawValue: T) {
     _storage = _Storage.create(minimumCapacity: 1, makingHeaderWith: { _ in rawValue })
     _storage.withUnsafeMutablePointerToElements { lock in
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
       _ = pthread_mutex_init(lock, nil)
 #elseif os(Windows)
       InitializeSRWLock(lock)
@@ -103,7 +103,7 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   /// concurrency tools.
   nonmutating func withLock<R>(_ body: (inout T) throws -> R) rethrows -> R {
     try _storage.withUnsafeMutablePointers { rawValue, lock in
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded))
       _ = pthread_mutex_lock(lock)
       defer {
         _ = pthread_mutex_unlock(lock)

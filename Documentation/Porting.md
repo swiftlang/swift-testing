@@ -256,7 +256,7 @@ platform conditional and provide a stub implementation:
 +++ b/Sources/Testing/Support/FileHandle.swift
 
  var isTTY: Bool {
- #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || os(WASI)
+ #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
    // ...
 +#elseif os(Classic)
 +  return false

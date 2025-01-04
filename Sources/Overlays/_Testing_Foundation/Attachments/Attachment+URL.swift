@@ -164,10 +164,23 @@ private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> 
   //
   // On Linux (which does not have FreeBSD's version of tar(1)), we can use
   // zip(1) instead.
+  //
+  // OpenBSD's tar(1) does not support writing PKZIP archives, and /usr/bin/zip
+  // tool is an optional install, so we check if it's present before trying to
+  // execute it.
 #if os(Linux)
   let archiverPath = "/usr/bin/zip"
 #elseif SWT_TARGET_OS_APPLE || os(FreeBSD)
   let archiverPath = "/usr/bin/tar"
+#elseif os(OpenBSD)
+  let archiverPath = "/usr/bin/zip"
+  var isDirectory = false
+  if !FileManager.default.fileExists(atPath: archiverPath, isDirectory: &isDirectory) || isDirectory {
+    throw CocoaError(.fileNoSuchFile, userInfo: [
+      NSLocalizedDescriptionKey: "The 'zip' package is not installed.",
+      NSFilePathErrorKey: archiverPath
+    ])
+  }
 #elseif os(Windows)
   guard let archiverPath = _archiverPath else {
     throw CocoaError(.fileWriteUnknown, userInfo: [
@@ -187,7 +200,7 @@ private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> 
 
     let sourcePath = directoryURL.fileSystemPath
     let destinationPath = temporaryURL.fileSystemPath
-#if os(Linux)
+#if os(Linux) || os(OpenBSD)
     // The zip command constructs relative paths from the current working
     // directory rather than from command-line arguments.
     process.arguments = [destinationPath, "--recurse-paths", "."]

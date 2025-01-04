@@ -93,7 +93,7 @@ static DWORD_PTR swt_PROC_THREAD_ATTRIBUTE_HANDLE_LIST(void) {
 }
 #endif
 
-#if defined(__linux__) || defined(__FreeBSD__) || defined(__ANDROID__)
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__ANDROID__)
 /// The environment block.
 ///
 /// By POSIX convention, the environment block variable is declared in client

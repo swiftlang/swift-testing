@@ -412,7 +412,7 @@ static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
   }
 }
 
-#elif defined(__linux__) || defined(__FreeBSD__) || defined(__ANDROID__)
+#elif defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__ANDROID__)
 #pragma mark - ELF implementation
 
 /// Specifies the address range corresponding to a section.

@@ -31,7 +31,7 @@ let operatingSystemVersion: String = {
   default:
     return "\(productVersion) (\(buildNumber))"
   }
-#elseif !SWT_NO_UNAME && (SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD))
+#elseif !SWT_NO_UNAME && (SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD))
   var name = utsname()
   if 0 == uname(&name) {
     let release = withUnsafeBytes(of: name.release) { release in
