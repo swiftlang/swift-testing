@@ -152,6 +152,14 @@ extension ExitTest {
     }
 #endif
 
+#if os(OpenBSD)
+    // OpenBSD does not have posix_spawn_file_actions_addclosefrom_np().
+    // However, it does have closefrom(2), which we call here as a best effort.
+    if let from = Environment.variable(named: "SWT_CLOSEFROM").flatMap(CInt.init) {
+      _ = closefrom(from)
+    }
+#endif
+
     do {
       try await body()
     } catch {
