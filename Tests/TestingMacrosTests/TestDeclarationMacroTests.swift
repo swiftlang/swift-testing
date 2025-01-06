@@ -256,6 +256,21 @@ struct TestDeclarationMacroTests {
     }
   }
 
+  @Test("Raw identifier is detected")
+  func rawIdentifier() {
+    #expect(TokenSyntax.identifier("`hello`").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("`helloworld`").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("`hélloworld`").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("`hello_world`").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("`hello world`").rawIdentifier != nil)
+    #expect(TokenSyntax.identifier("`hello/world`").rawIdentifier != nil)
+    #expect(TokenSyntax.identifier("`hello\tworld`").rawIdentifier != nil)
+
+    #expect(TokenSyntax.identifier("`class`").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("`struct`").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("`class struct`").rawIdentifier != nil)
+  }
+
   @Test("Warning diagnostics emitted on API misuse",
     arguments: [
       // return types
