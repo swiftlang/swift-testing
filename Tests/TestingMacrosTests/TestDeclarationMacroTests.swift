@@ -271,6 +271,15 @@ struct TestDeclarationMacroTests {
     #expect(TokenSyntax.identifier("`class struct`").rawIdentifier != nil)
   }
 
+  @Test("Raw function name components")
+  func rawFunctionNameComponents() throws {
+    let decl = """
+    func `__raw__$hello`(`__raw__$world`: T, etc: U, `blah`: V) {}
+    """ as DeclSyntax
+    let functionDecl = try #require(decl.as(FunctionDeclSyntax.self))
+    #expect(functionDecl.completeName.trimmedDescription == "`hello`(`world`:etc:blah:)")
+  }
+
   @Test("Warning diagnostics emitted on API misuse",
     arguments: [
       // return types
