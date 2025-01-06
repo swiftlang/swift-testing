@@ -173,7 +173,7 @@ private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> 
 #elseif SWT_TARGET_OS_APPLE || os(FreeBSD)
   let archiverPath = "/usr/bin/tar"
 #elseif os(OpenBSD)
-  let archiverPath = "/usr/bin/zip"
+  let archiverPath = "/usr/local/bin/zip"
   var isDirectory = false
   if !FileManager.default.fileExists(atPath: archiverPath, isDirectory: &isDirectory) || isDirectory {
     throw CocoaError(.fileNoSuchFile, userInfo: [
