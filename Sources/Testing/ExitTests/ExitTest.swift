@@ -110,9 +110,9 @@ extension ExitTest {
     // SEE: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/fs/coredump.c#n610
     var rl = rlimit(rlim_cur: 1, rlim_max: 1)
     _ = setrlimit(CInt(RLIMIT_CORE.rawValue), &rl)
-#elseif os(FreeBSD)
-    // As with Linux, disable the generation core files. FreeBSD does not, as
-    // far as I can tell, special-case RLIMIT_CORE=1.
+#elseif os(FreeBSD) || os(OpenBSD)
+    // As with Linux, disable the generation core files. The BSDs do not, as far
+    // as I can tell, special-case RLIMIT_CORE=1.
     var rl = rlimit(rlim_cur: 0, rlim_max: 0)
     _ = setrlimit(RLIMIT_CORE, &rl)
 #elseif os(Windows)
@@ -149,6 +149,14 @@ extension ExitTest {
       _ = signal(sig) { sig in
         _Exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
       }
+    }
+#endif
+
+#if os(OpenBSD)
+    // OpenBSD does not have posix_spawn_file_actions_addclosefrom_np().
+    // However, it does have closefrom(2), which we call here as a best effort.
+    if let from = Environment.variable(named: "SWT_CLOSEFROM").flatMap(CInt.init) {
+      _ = closefrom(from)
     }
 #endif
 
@@ -344,7 +352,7 @@ extension ExitTest {
     }
 
     var fd: CInt?
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
     fd = CInt(backChannelEnvironmentVariable)
 #elseif os(Windows)
     if let handle = UInt(backChannelEnvironmentVariable).flatMap(HANDLE.init(bitPattern:)) {
@@ -541,7 +549,7 @@ extension ExitTest {
         // known environment variable to the corresponding file descriptor
         // (HANDLE on Windows.)
         var backChannelEnvironmentVariable: String?
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
         backChannelEnvironmentVariable = backChannelWriteEnd.withUnsafePOSIXFileDescriptor { fd in
           fd.map(String.init(describing:))
         }

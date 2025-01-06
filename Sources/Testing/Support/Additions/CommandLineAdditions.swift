@@ -55,6 +55,14 @@ extension CommandLine {
           return String(cString: buffer.baseAddress!)
         }
       }
+#elseif os(OpenBSD)
+      // OpenBSD does not have API to get a path to the running executable. Use
+      // arguments[0]. We do a basic sniff test for a path-like string, but
+      // otherwise return argv[0] verbatim.
+      guard let argv0 = arguments.first, argv0.contains("/") else {
+        throw CError(rawValue: ENOEXEC)
+      }
+      return argv0
 #elseif os(Windows)
       var result: String?
 #if DEBUG
@@ -87,7 +95,7 @@ extension CommandLine {
       return arguments[0]
 #else
 #warning("Platform-specific implementation missing: executable path unavailable")
-      return ""
+      throw SystemError(description: "The executable path of the current process could not be determined.")
 #endif
     }
   }

@@ -14,7 +14,7 @@ private import _TestingInternals
 #if !SWT_NO_FILE_IO
 // NOTE: we don't run these tests on iOS (etc.) because processes on those
 // platforms are sandboxed and do not have arbitrary filesystem access.
-#if os(macOS) || os(Linux) || os(FreeBSD) || os(Android) || os(Windows)
+#if os(macOS) || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(Windows)
 @Suite("FileHandle Tests")
 struct FileHandleTests {
   // FileHandle is non-copyable, so it cannot yet be used as a test parameter.
@@ -255,7 +255,7 @@ func temporaryDirectory() throws -> String {
     }
     return try #require(Environment.variable(named: "TMPDIR"))
   }
-#elseif os(Linux) || os(FreeBSD)
+#elseif os(Linux) || os(FreeBSD) || os(OpenBSD)
   "/tmp"
 #elseif os(Android)
   Environment.variable(named: "TMPDIR") ?? "/data/local/tmp"

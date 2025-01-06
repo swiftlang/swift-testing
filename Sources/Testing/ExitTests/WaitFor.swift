@@ -11,7 +11,7 @@
 #if !SWT_NO_PROCESS_SPAWNING
 internal import _TestingInternals
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
 /// Block the calling thread, wait for the target process to exit, and return
 /// a value describing the conditions under which it exited.
 ///
@@ -78,14 +78,14 @@ func wait(for pid: consuming pid_t) async throws -> ExitCondition {
 
   return try _blockAndWait(for: pid)
 }
-#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
+#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
 /// A mapping of awaited child PIDs to their corresponding Swift continuations.
 private let _childProcessContinuations = Locked<[pid_t: CheckedContinuation<ExitCondition, any Error>]>()
 
 /// A condition variable used to suspend the waiter thread created by
 /// `_createWaitThread()` when there are no child processes to await.
 private nonisolated(unsafe) let _waitThreadNoChildrenCondition = {
-#if os(FreeBSD)
+#if os(FreeBSD) || os(OpenBSD)
   let result = UnsafeMutablePointer<pthread_cond_t?>.allocate(capacity: 1)
 #else
   let result = UnsafeMutablePointer<pthread_cond_t>.allocate(capacity: 1)
@@ -136,7 +136,7 @@ private let _createWaitThread: Void = {
 
   // Create the thread. It will run immediately; because it runs in an infinite
   // loop, we aren't worried about detaching or joining it.
-#if SWT_TARGET_OS_APPLE || os(FreeBSD)
+#if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD)
   var thread: pthread_t?
 #else
   var thread = pthread_t()
@@ -147,14 +147,16 @@ private let _createWaitThread: Void = {
     { _ in
       // Set the thread name to help with diagnostics. Note that different
       // platforms support different thread name lengths. See MAXTHREADNAMESIZE
-      // on Darwin, TASK_COMM_LEN on Linux, and MAXCOMLEN on FreeBSD. We try to
-      // maximize legibility in the available space.
+      // on Darwin, TASK_COMM_LEN on Linux, MAXCOMLEN on FreeBSD, and _MAXCOMLEN
+      // on OpenBSD. We try to maximize legibility in the available space.
 #if SWT_TARGET_OS_APPLE
       _ = pthread_setname_np("Swift Testing exit test monitor")
 #elseif os(Linux)
       _ = swt_pthread_setname_np(pthread_self(), "SWT ExT monitor")
 #elseif os(FreeBSD)
       _ = pthread_set_name_np(pthread_self(), "SWT ex test monitor")
+#elseif os(OpenBSD)
+      _ = pthread_set_name_np(pthread_self(), "SWT exit test monitor")
 #else
 #warning("Platform-specific implementation missing: thread naming unavailable")
 #endif

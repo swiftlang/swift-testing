@@ -71,7 +71,7 @@ extension Backtrace {
         result[i] = SymbolicatedAddress(address: address, offset: offset, symbolName: symbolName)
       }
     }
-#elseif os(Linux) || os(FreeBSD) || os(Android)
+#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
     // Although these platforms have dladdr(), they do not have symbol names
     // from DWARF binaries by default, only from shared libraries. The standard
     // library's backtracing functionality has implemented sufficient ELF/DWARF

@@ -69,7 +69,7 @@ public struct Backtrace: Sendable {
       initializedCount = addresses.withMemoryRebound(to: UnsafeMutableRawPointer.self) { addresses in
         .init(clamping: backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
       }
-#elseif os(Linux) || os(FreeBSD)
+#elseif os(Linux) || os(FreeBSD) || os(OpenBSD)
       initializedCount = .init(clamping: backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
 #elseif os(Windows)
       initializedCount = Int(clamping: RtlCaptureStackBackTrace(0, ULONG(clamping: addresses.count), addresses.baseAddress!, nil))
@@ -181,7 +181,7 @@ extension Backtrace {
     ///   crash. To avoid said crash, we'll keep a strong reference to the
     ///   object (abandoning memory until the process exits.)
     ///   ([swift-#62985](https://github.com/swiftlang/swift/issues/62985))
-#if os(Windows) || os(FreeBSD)
+#if os(Windows) || os(FreeBSD) || os(OpenBSD)
     nonisolated(unsafe) var errorObject: AnyObject?
 #else
     nonisolated(unsafe) weak var errorObject: AnyObject?

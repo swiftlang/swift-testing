@@ -17,7 +17,7 @@ internal import _TestingInternals
 
 /// A platform-specific value identifying a process running on the current
 /// system.
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
 typealias ProcessID = pid_t
 #elseif os(Windows)
 typealias ProcessID = HANDLE
@@ -62,13 +62,13 @@ func spawnExecutable(
 ) throws -> ProcessID {
   // Darwin and Linux differ in their optionality for the posix_spawn types we
   // use, so use this typealias to paper over the differences.
-#if SWT_TARGET_OS_APPLE || os(FreeBSD)
+#if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD)
   typealias P<T> = T?
 #elseif os(Linux)
   typealias P<T> = T
 #endif
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
   return try withUnsafeTemporaryAllocation(of: P<posix_spawn_file_actions_t>.self, capacity: 1) { fileActions in
     let fileActions = fileActions.baseAddress!
     guard 0 == posix_spawn_file_actions_init(fileActions) else {
@@ -105,9 +105,7 @@ func spawnExecutable(
       }
 
       // Forward standard I/O streams and any explicitly added file handles.
-#if os(Linux) || os(FreeBSD)
-      var highestFD = CInt(-1)
-#endif
+      var highestFD = max(STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO)
       func inherit(_ fileHandle: borrowing FileHandle, as standardFD: CInt? = nil) throws {
         try fileHandle.withUnsafePOSIXFileDescriptor { fd in
           guard let fd else {
@@ -118,9 +116,8 @@ func spawnExecutable(
           } else {
 #if SWT_TARGET_OS_APPLE
             _ = posix_spawn_file_actions_addinherit_np(fileActions, fd)
-#elseif os(Linux) || os(FreeBSD)
-            highestFD = max(highestFD, fd)
 #endif
+            highestFD = max(highestFD, fd)
           }
         }
       }
@@ -156,6 +153,12 @@ func spawnExecutable(
       // `swt_posix_spawn_file_actions_addclosefrom_np` to guard the
       // availability of this function.
       _ = posix_spawn_file_actions_addclosefrom_np(fileActions, highestFD + 1)
+#elseif os(OpenBSD)
+      // OpenBSD does not have posix_spawn_file_actions_addclosefrom_np().
+      // However, it does have closefrom(2), which we can call from within the
+      // spawned child process if we control its execution.
+      var environment = environment
+      environment["SWT_CLOSEFROM"] = String(describing: highestFD + 1)
 #else
 #warning("Platform-specific implementation missing: cannot close unused file descriptors")
 #endif
