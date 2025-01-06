@@ -9,6 +9,7 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+private import _TestingInternals
 
 @Test(/* name unspecified */ .hidden)
 @Sendable func freeSyncFunction() {}
