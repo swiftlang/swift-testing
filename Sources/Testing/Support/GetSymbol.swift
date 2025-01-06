@@ -70,25 +70,10 @@ func symbol(in handle: ImageAddress? = nil, named symbolName: String) -> UnsafeR
       }
     }
 
-    // Find all the modules loaded in the current process. We assume there
-    // aren't more than 1024 loaded modules (as does Microsoft sample code.)
-    return withUnsafeTemporaryAllocation(of: HMODULE?.self, capacity: 1024) { hModules in
-      let byteCount = DWORD(hModules.count * MemoryLayout<HMODULE?>.stride)
-      var byteCountNeeded: DWORD = 0
-      guard K32EnumProcessModules(GetCurrentProcess(), hModules.baseAddress!, byteCount, &byteCountNeeded) else {
-        return nil
-      }
-
-      // Enumerate all modules looking for one containing the given symbol.
-      let hModuleCount = min(hModules.count, Int(byteCountNeeded) / MemoryLayout<HMODULE?>.stride)
-      let hModulesEnd = hModules.index(hModules.startIndex, offsetBy: hModuleCount)
-      for hModule in hModules[..<hModulesEnd] {
-        if let hModule, let result = GetProcAddress(hModule, symbolName) {
-          return unsafeBitCast(result, to: UnsafeRawPointer.self)
-        }
-      }
-      return nil
-    }
+    return HMODULE.all.lazy
+      .compactMap { GetProcAddress($0, symbolName) }
+      .map { unsafeBitCast($0, to: UnsafeRawPointer.self) }
+      .first
   }
 #else
 #warning("Platform-specific implementation missing: Dynamic loading unavailable")

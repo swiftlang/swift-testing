@@ -50,4 +50,56 @@ let STATUS_SIGNAL_CAUGHT_BITS = {
 
   return result
 }()
+
+// MARK: - HMODULE members
+
+extension HMODULE {
+  /// A helper type that manages state for ``HMODULE/all``.
+  private final class _AllState {
+    /// The toolhelp snapshot.
+    var snapshot: HANDLE?
+
+    /// The module iterator.
+    var me = MODULEENTRY32W()
+
+    deinit {
+      if let snapshot {
+        CloseHandle(snapshot)
+      }
+    }
+  }
+
+  /// All modules loaded in the current process.
+  ///
+  /// - Warning: It is possible for one or more modules in this sequence to be
+  ///   unloaded while you are iterating over it. To minimize the risk, do not
+  ///   discard the sequence until iteration is complete. Modules containing
+  ///   Swift code can never be safely unloaded.
+  static var all: some Sequence<Self> {
+    sequence(state: _AllState()) { state in
+      if let snapshot = state.snapshot {
+        // We have already iterated over the first module. Return the next one.
+        if Module32NextW(snapshot, &state.me) {
+          return state.me.hModule
+        }
+      } else {
+        // Create a toolhelp snapshot that lists modules.
+        guard let snapshot = CreateToolhelp32Snapshot(DWORD(TH32CS_SNAPMODULE), 0) else {
+          return nil
+        }
+        state.snapshot = snapshot
+
+        // Initialize the iterator for use by the resulting sequence and return
+        // the first module.
+        state.me.dwSize = DWORD(MemoryLayout.stride(ofValue: state.me))
+        if Module32FirstW(snapshot, &state.me) {
+          return state.me.hModule
+        }
+      }
+
+      // Reached the end of the iteration.
+      return nil
+    }
+  }
+}
 #endif
