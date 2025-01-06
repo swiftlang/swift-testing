@@ -16,7 +16,6 @@
 /// instances of this type.
 ///
 /// - Warning: The name of this type is still unstable and subject to change.
-@_spi(Experimental)
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
