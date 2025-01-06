@@ -209,6 +209,21 @@ struct TestDeclarationMacroTests {
             ),
           ]
         ),
+
+      #"@Test("Goodbye world") func `__raw__$helloWorld`()"#:
+        (
+          message: "Attribute 'Test' specifies display name 'Goodbye world' for function with implicit display name 'helloWorld'",
+          fixIts: [
+            ExpectedFixIt(
+              message: "Remove 'Goodbye world'",
+              changes: [.replace(oldSourceCode: #""Goodbye world""#, newSourceCode: "")]
+            ),
+            ExpectedFixIt(
+              message: "Rename '__raw__$helloWorld'",
+              changes: [.replace(oldSourceCode: "`__raw__$helloWorld`", newSourceCode: "\(EditorPlaceholderExprSyntax("name"))")]
+            ),
+          ]
+        ),
     ]
   }
 

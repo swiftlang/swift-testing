@@ -100,6 +100,7 @@ struct AttributeInfo {
   init(byParsing attribute: AttributeSyntax, on declaration: some SyntaxProtocol, in context: some MacroExpansionContext) {
     self.attribute = attribute
 
+    var displayNameArgument: LabeledExprListSyntax.Element?
     var nonDisplayNameArguments: [Argument] = []
     if let arguments = attribute.arguments, case let .argumentList(argumentList) = arguments {
       // If the first argument is an unlabelled string literal, it's the display
@@ -109,13 +110,25 @@ struct AttributeInfo {
         let firstArgumentHasLabel = (firstArgument.label != nil)
         if !firstArgumentHasLabel, let stringLiteral = firstArgument.expression.as(StringLiteralExprSyntax.self) {
           displayName = stringLiteral
+          displayNameArgument = firstArgument
           nonDisplayNameArguments = argumentList.dropFirst().map(Argument.init)
         } else if !firstArgumentHasLabel, firstArgument.expression.is(NilLiteralExprSyntax.self) {
+          displayNameArgument = firstArgument
           nonDisplayNameArguments = argumentList.dropFirst().map(Argument.init)
         } else {
           nonDisplayNameArguments = argumentList.map(Argument.init)
         }
       }
+    }
+
+    // Disallow an explicit display name for tests and suites with raw
+    // identifier names as it's redundant and potentially confusing.
+    if let namedDecl = declaration.asProtocol((any NamedDeclSyntax).self),
+       let rawIdentifier = namedDecl.name.rawIdentifier {
+      if let displayName, let displayNameArgument {
+        context.diagnose(.declaration(namedDecl, hasExtraneousDisplayName: displayName, fromArgument: displayNameArgument, using: attribute))
+      }
+      displayName = StringLiteralExprSyntax(content: rawIdentifier)
     }
 
     // Remove leading "Self." expressions from the arguments of the attribute.

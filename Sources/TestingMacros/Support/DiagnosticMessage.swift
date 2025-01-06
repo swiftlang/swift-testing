@@ -645,6 +645,34 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
+  /// Create a diagnostic message stating that a declaration has two display
+  /// names.
+  ///
+  /// - Returns: A diagnostic message.
+  static func declaration(
+    _ decl: some NamedDeclSyntax,
+    hasExtraneousDisplayName displayNameFromAttribute: StringLiteralExprSyntax,
+    fromArgument argumentContainingDisplayName: LabeledExprListSyntax.Element,
+    using attribute: AttributeSyntax
+  ) -> Self {
+    // FIXME: implement fixits
+    Self(
+      syntax: Syntax(decl),
+      message: "Attribute \(_macroName(attribute)) specifies display name '\(displayNameFromAttribute.representedLiteralValue!)' for \(_kindString(for: decl)) with implicit display name '\(decl.name.rawIdentifier!)'",
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Remove '\(displayNameFromAttribute.representedLiteralValue!)'"),
+          changes: [.replace(oldNode: Syntax(argumentContainingDisplayName), newNode: Syntax("" as ExprSyntax))]
+        ),
+        FixIt(
+          message: MacroExpansionFixItMessage("Rename '\(decl.name.textWithoutBackticks)'"),
+          changes: [.replace(oldNode: Syntax(decl.name), newNode: Syntax(EditorPlaceholderExprSyntax("name")))]
+        ),
+      ]
+    )
+  }
+
   /// Create a diagnostic messages stating that the expression passed to
   /// `#require()` is ambiguous.
   ///
