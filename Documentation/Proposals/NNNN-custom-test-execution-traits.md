@@ -422,6 +422,8 @@ supporting tools.
 
 ## Future directions
 
+### Access to suite type instances
+
 Some test authors have expressed interest in allowing custom traits to access
 the instance of a suite type for `@Test` instance methods, so the trait could
 inspect or mutate the instance. Currently, only instance-level members of a
@@ -429,6 +431,15 @@ suite type (including `init`, `deinit`, and the test function itself) can access
 `self`, so this would grant traits applied to an instance test method access to
 the instance as well. This is certainly interesting, but poses several technical
 challenges that puts it out of scope of this proposal.
+
+### Convenience trait for setting task locals
+
+Some reviewers of this proposal pointed out that the hypothetical usage example
+shown earlier involving setting a task local value while a test is executing
+will likely become a common use of these APIs. To streamline that pattern, it
+would be very natural to add a built-in trait type which facilitates this. I
+have prototyped this idea and plan to add it once this new trait functionality
+lands.
 
 ## Alternatives considered
 

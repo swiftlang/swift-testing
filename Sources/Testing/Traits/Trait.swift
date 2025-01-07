@@ -144,12 +144,36 @@ public protocol TestScoping: Sendable {
 }
 
 extension Trait where Self: TestScoping {
+  /// Get this trait's scope provider for the specified test and/or test case,
+  /// if any.
+  ///
+  /// - Parameters:
+  ///   - test: The test for which a scope provider is being requested.
+  ///   - testCase: The test case for which a scope provider is being requested,
+  ///     if any. When `test` represents a suite, the value of this argument is
+  ///     `nil`.
+  ///
+  /// This default implementation is used when this trait type conforms to
+  /// ``TestScoping`` and its return value is discussed in
+  /// ``Trait/scopeProvider(for:testCase:)-cjmg``.
   public func scopeProvider(for test: Test, testCase: Test.Case?) -> Self? {
     testCase == nil ? nil : self
   }
 }
 
 extension SuiteTrait where Self: TestScoping {
+  /// Get this trait's scope provider for the specified test and/or test case,
+  /// if any.
+  ///
+  /// - Parameters:
+  ///   - test: The test for which a scope provider is being requested.
+  ///   - testCase: The test case for which a scope provider is being requested,
+  ///     if any. When `test` represents a suite, the value of this argument is
+  ///     `nil`.
+  ///
+  /// This default implementation is used when this trait type conforms to
+  /// ``TestScoping`` and its return value is discussed in
+  /// ``Trait/scopeProvider(for:testCase:)-cjmg``.
   public func scopeProvider(for test: Test, testCase: Test.Case?) -> Self? {
     if test.isSuite {
       isRecursive ? nil : self
@@ -193,6 +217,18 @@ extension Trait {
 }
 
 extension Trait where TestScopeProvider == Never {
+  /// Get this trait's scope provider for the specified test and/or test case,
+  /// if any.
+  ///
+  /// - Parameters:
+  ///   - test: The test for which a scope provider is being requested.
+  ///   - testCase: The test case for which a scope provider is being requested,
+  ///     if any. When `test` represents a suite, the value of this argument is
+  ///     `nil`.
+  ///
+  /// This default implementation is used when this trait type's associated
+  /// ``Trait/TestScopeProvider`` type is the default value of `Never`, and its
+  /// return value is discussed in ``Trait/scopeProvider(for:testCase:)-cjmg``.
   public func scopeProvider(for test: Test, testCase: Test.Case?) -> Never? {
     nil
   }
