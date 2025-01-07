@@ -210,7 +210,7 @@ private func _testContentSectionBounds() -> [SectionBounds] {
 ///   contained in the same image as the testing library itself.
 private func _testContentSectionBounds() -> CollectionOfOne<SectionBounds> {
   let (sectionBegin, sectionEnd) = SWTTestContentSectionBounds
-  let buffer = UnsafeRawBufferPointer(start: n, count: max(0, sectionEnd - sectionBegin))
+  let buffer = UnsafeRawBufferPointer(start: sectionBegin, count: max(0, sectionEnd - sectionBegin))
   let sb = SectionBounds(imageAddress: nil, buffer: buffer)
   return CollectionOfOne(sb)
 }
