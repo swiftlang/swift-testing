@@ -9,6 +9,7 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+private import _TestingInternals
 
 @Test(/* name unspecified */ .hidden)
 @Sendable func freeSyncFunction() {}
@@ -569,4 +570,77 @@ struct MiscellaneousTests {
     }
     #expect(duration < .seconds(1))
   }
+
+#if !SWT_NO_DYNAMIC_LINKING && hasFeature(SymbolLinkageMarkers)
+  struct DiscoverableTestContent: TestContent {
+    typealias TestContentAccessorHint = UInt32
+    typealias TestContentAccessorResult = UInt32
+
+    static var testContentKind: UInt32 {
+      record.kind
+    }
+
+    static var expectedHint: TestContentAccessorHint {
+      0x01020304
+    }
+
+    static var expectedResult: TestContentAccessorResult {
+      0xCAFEF00D
+    }
+
+    static var expectedContext: UInt {
+      record.context
+    }
+
+#if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
+    @_section("__DATA_CONST,__swift5_tests")
+#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+    @_section("swift5_tests")
+#elseif os(Windows)
+    @_section(".sw5test$B")
+#endif
+    @_used
+    private static let record: __TestContentRecord = (
+      0xABCD1234,
+      0,
+      { outValue, hint in
+        if let hint, hint.loadUnaligned(as: TestContentAccessorHint.self) != expectedHint {
+          return false
+        }
+        _ = outValue.initializeMemory(as: TestContentAccessorResult.self, to: expectedResult)
+        return true
+      },
+      UInt(UInt64(0x0204060801030507) & UInt64(UInt.max)),
+      0
+    )
+  }
+
+  @Test func testDiscovery() async {
+    await confirmation("Can find a single test record") { found in
+      DiscoverableTestContent.enumerateTestContent { _, value, context, _ in
+        if value == DiscoverableTestContent.expectedResult && context == DiscoverableTestContent.expectedContext {
+          found()
+        }
+      }
+    }
+
+    await confirmation("Can find a test record with matching hint") { found in
+      let hint = DiscoverableTestContent.expectedHint
+      DiscoverableTestContent.enumerateTestContent(withHint: hint) { _, value, context, _ in
+        if value == DiscoverableTestContent.expectedResult && context == DiscoverableTestContent.expectedContext {
+          found()
+        }
+      }
+    }
+
+    await confirmation("Doesn't find a test record with a mismatched hint", expectedCount: 0) { found in
+      let hint = ~DiscoverableTestContent.expectedHint
+      DiscoverableTestContent.enumerateTestContent(withHint: hint) { _, value, context, _ in
+        if value == DiscoverableTestContent.expectedResult && context == DiscoverableTestContent.expectedContext {
+          found()
+        }
+      }
+    }
+  }
+#endif
 }

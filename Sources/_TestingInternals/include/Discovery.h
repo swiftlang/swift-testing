@@ -16,6 +16,62 @@
 
 SWT_ASSUME_NONNULL_BEGIN
 
+#pragma mark - Test content records
+
+/// The type of a test content accessor.
+///
+/// - Parameters:
+///   - outValue: On successful return, initialized to the value of the
+///     represented test content record.
+///   - hint: A hint value whose type and meaning depend on the type of test
+///     record being accessed.
+///
+/// - Returns: Whether or not the test record was initialized at `outValue`. If
+///   this function returns `true`, the caller is responsible for deinitializing
+///   the memory at `outValue` when done.
+typedef bool (* SWTTestContentAccessor)(void *outValue, const void *_Null_unspecified hint);
+
+/// Resign an accessor function from a test content record.
+///
+/// - Parameters:
+///   - accessor: The accessor function to resign.
+///
+/// - Returns: A resigned copy of `accessor` on platforms that use pointer
+///   authentication, and an exact copy of `accessor` elsewhere.
+///
+/// - Bug: This C function is needed because Apple's pointer authentication
+///   intrinsics are not available in Swift. ([141465242](rdar://141465242))
+SWT_SWIFT_NAME(swt_resign(_:))
+static SWTTestContentAccessor swt_resignTestContentAccessor(SWTTestContentAccessor accessor) {
+#if defined(__APPLE__) && __has_include(<ptrauth.h>)
+  accessor = ptrauth_strip(accessor, ptrauth_key_function_pointer);
+  accessor = ptrauth_sign_unauthenticated(accessor, ptrauth_key_function_pointer, 0);
+#endif
+  return accessor;
+}
+
+#if defined(__ELF__) && defined(__swift__)
+/// A function exported by the Swift runtime that enumerates all metadata
+/// sections loaded into the current process.
+///
+/// This function is needed on ELF-based platforms because they do not preserve
+/// section information that we can discover at runtime.
+SWT_IMPORT_FROM_STDLIB void swift_enumerateAllMetadataSections(
+  bool (* body)(const void *sections, void *context),
+  void *context
+);
+#endif
+
+#if defined(SWT_NO_DYNAMIC_LINKING)
+#pragma mark - Statically-linked section bounds
+
+/// The bounds of the test content section statically linked into the image
+/// containing Swift Testing.
+SWT_EXTERN const void *_Nonnull const SWTTestContentSectionBounds[2];
+#endif
+
+#pragma mark - Legacy test discovery
+
 /// The type of callback called by `swt_enumerateTypes()`.
 ///
 /// - Parameters:

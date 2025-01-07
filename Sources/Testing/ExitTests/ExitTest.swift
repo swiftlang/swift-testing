@@ -25,17 +25,50 @@ private import _TestingInternals
 /// A type describing an exit test.
 ///
 /// Instances of this type describe an exit test defined by the test author and
-/// discovered or called at runtime.
+/// discovered or called at runtime. Tools that implement custom exit test
+/// handling will encounter instances of this type in two contexts:
+///
+/// - When the current configuration's exit test handler, set with
+///   ``Configuration/exitTestHandler``, is called; and
+/// - When, in a child process, they need to look up the exit test to call.
+///
+/// If you are writing tests, you don't usually need to interact directly with
+/// an instance of this type. To create an exit test, use the
+/// ``expect(exitsWith:_:sourceLocation:performing:)`` or
+/// ``require(exitsWith:_:sourceLocation:performing:)`` macro.
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
-public struct ExitTest: Sendable, ~Copyable {
+public typealias ExitTest = __ExitTest
+
+/// A type describing an exit test.
+///
+/// - Warning: This type is used to implement the `#expect(exitsWith:)` macro.
+///   Do not use it directly. Tools can use the SPI ``ExitTest`` typealias if
+///   needed.
+@_spi(Experimental)
+#if SWT_NO_EXIT_TESTS
+@available(*, unavailable, message: "Exit tests are not available on this platform.")
+#endif
+public struct __ExitTest: Sendable, ~Copyable {
   /// The expected exit condition of the exit test.
+  @_spi(ForToolsIntegrationOnly)
   public var expectedExitCondition: ExitCondition
 
+  /// The source location of the exit test.
+  ///
+  /// The source location is unique to each exit test and is consistent between
+  /// processes, so it can be used to uniquely identify an exit test at runtime.
+  @_spi(ForToolsIntegrationOnly)
+  public var sourceLocation: SourceLocation
+
   /// The body closure of the exit test.
-  fileprivate var body: @Sendable () async throws -> Void = {}
+  ///
+  /// Do not invoke this closure directly. Instead, invoke ``callAsFunction()``
+  /// to run the exit test. Running the exit test will always terminate the
+  /// current process.
+  fileprivate var body: @Sendable () async throws -> Void
 
   /// Storage for ``observedValues``.
   ///
@@ -72,16 +105,25 @@ public struct ExitTest: Sendable, ~Copyable {
     }
   }
 
-  /// The source location of the exit test.
+  /// Initialize an exit test at runtime.
   ///
-  /// The source location is unique to each exit test and is consistent between
-  /// processes, so it can be used to uniquely identify an exit test at runtime.
-  public var sourceLocation: SourceLocation
+  /// - Warning: This initializer is used to implement the `#expect(exitsWith:)`
+  ///   macro. Do not use it directly.
+  public init(
+    __expectedExitCondition expectedExitCondition: ExitCondition,
+    sourceLocation: SourceLocation,
+    body: @escaping @Sendable () async throws -> Void = {}
+  ) {
+    self.expectedExitCondition = expectedExitCondition
+    self.sourceLocation = sourceLocation
+    self.body = body
+  }
 }
 
 #if !SWT_NO_EXIT_TESTS
 // MARK: - Invocation
 
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 extension ExitTest {
   /// Disable crash reporting, crash logging, or core dumps for the current
   /// process.
@@ -174,28 +216,17 @@ extension ExitTest {
 
 // MARK: - Discovery
 
-/// A protocol describing a type that contains an exit test.
-///
-/// - Warning: This protocol is used to implement the `#expect(exitsWith:)`
-///   macro. Do not use it directly.
-@_alwaysEmitConformanceMetadata
-@_spi(Experimental)
-public protocol __ExitTestContainer {
-  /// The expected exit condition of the exit test.
-  static var __expectedExitCondition: ExitCondition { get }
+extension ExitTest: TestContent {
+  static var testContentKind: UInt32 {
+    0x65786974
+  }
 
-  /// The source location of the exit test.
-  static var __sourceLocation: SourceLocation { get }
-
-  /// The body function of the exit test.
-  static var __body: @Sendable () async throws -> Void { get }
+  typealias TestContentAccessorResult = Self
+  typealias TestContentAccessorHint = SourceLocation
 }
 
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 extension ExitTest {
-  /// A string that appears within all auto-generated types conforming to the
-  /// `__ExitTestContainer` protocol.
-  private static let _exitTestContainerTypeNameMagic = "__🟠$exit_test_body__"
-
   /// Find the exit test function at the given source location.
   ///
   /// - Parameters:
@@ -206,14 +237,31 @@ extension ExitTest {
   public static func find(at sourceLocation: SourceLocation) -> Self? {
     var result: Self?
 
-    enumerateTypes(withNamesContaining: _exitTestContainerTypeNameMagic) { _, type, stop in
-      if let type = type as? any __ExitTestContainer.Type, type.__sourceLocation == sourceLocation {
+    enumerateTestContent(withHint: sourceLocation) { _, exitTest, _, stop in
+      if exitTest.sourceLocation == sourceLocation {
         result = ExitTest(
-          expectedExitCondition: type.__expectedExitCondition,
-          body: type.__body,
-          sourceLocation: type.__sourceLocation
+          __expectedExitCondition: exitTest.expectedExitCondition,
+          sourceLocation: exitTest.sourceLocation,
+          body: exitTest.body
         )
         stop = true
+      }
+    }
+
+    if result == nil {
+      // Call the legacy lookup function that discovers tests embedded in types.
+      enumerateTypes(withNamesContaining: exitTestContainerTypeNameMagic) { _, type, stop in
+        guard let type = type as? any __ExitTestContainer.Type else {
+          return
+        }
+        if type.__sourceLocation == sourceLocation {
+          result = ExitTest(
+            __expectedExitCondition: type.__expectedExitCondition,
+            sourceLocation: type.__sourceLocation,
+            body: type.__body
+          )
+          stop = true
+        }
       }
     }
 
@@ -259,7 +307,7 @@ func callExitTest(
 
   var result: ExitTestArtifacts
   do {
-    var exitTest = ExitTest(expectedExitCondition: expectedExitCondition, sourceLocation: sourceLocation)
+    var exitTest = ExitTest(__expectedExitCondition: expectedExitCondition, sourceLocation: sourceLocation)
     exitTest.observedValues = observedValues
     result = try await configuration.exitTestHandler(exitTest)
 
@@ -312,6 +360,7 @@ func callExitTest(
 
 // MARK: - SwiftPM/tools integration
 
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 extension ExitTest {
   /// A handler that is invoked when an exit test starts.
   ///

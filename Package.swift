@@ -67,7 +67,10 @@ let package = Package(
         "_Testing_CoreGraphics",
         "_Testing_Foundation",
       ],
-      swiftSettings: .packageSettings
+      swiftSettings: .packageSettings + [
+        // For testing test content section discovery only
+        .enableExperimentalFeature("SymbolLinkageMarkers"),
+      ]
     ),
 
     .macro(

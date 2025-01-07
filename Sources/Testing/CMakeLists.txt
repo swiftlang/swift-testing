@@ -81,10 +81,13 @@ add_library(Testing
   Support/Locked.swift
   Support/SystemError.swift
   Support/Versions.swift
+  Discovery.swift
+  Discovery+Platform.swift
   Test.ID.Selection.swift
   Test.ID.swift
   Test.swift
   Test+Discovery.swift
+  Test+Discovery+Legacy.swift
   Test+Macro.swift
   Traits/Bug.swift
   Traits/Comment.swift
