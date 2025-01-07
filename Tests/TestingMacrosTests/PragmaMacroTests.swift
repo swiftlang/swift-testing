@@ -37,5 +37,6 @@ struct PragmaMacroTests {
     #expect(diagnostics.count == 1)
     #expect(diagnostics[0].message == "abc123")
     #expect(diagnostics[0].diagMessage.severity == .warning)
+    #expect(diagnostics[0].node.is(VariableDeclSyntax.self))
   }
 }
