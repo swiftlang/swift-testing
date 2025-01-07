@@ -18,12 +18,24 @@ import SwiftSyntax
 struct PragmaMacroTests {
   @Test func findSemantics() throws {
     let node = """
-      @Testing.__testing(semantics: "abc123")
-      @__testing(semantics: "def456")
-      let x = 0
+    @Testing.__testing(semantics: "abc123")
+    @__testing(semantics: "def456")
+    let x = 0
     """ as DeclSyntax
     let nodeWithAttributes = try #require(node.asProtocol((any WithAttributesSyntax).self))
     let semantics = semantics(of: nodeWithAttributes)
     #expect(semantics == ["abc123", "def456"])
+  }
+
+  @Test func warningGenerated() throws {
+    let sourceCode = """
+    @__testing(warning: "abc123")
+    let x = 0
+    """
+
+    let (_, diagnostics) = try parse(sourceCode)
+    #expect(diagnostics.count == 1)
+    #expect(diagnostics[0].message == "abc123")
+    #expect(diagnostics[0].diagMessage.severity == .warning)
   }
 }

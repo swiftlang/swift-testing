@@ -598,6 +598,8 @@ struct MiscellaneousTests {
     @_section("swift5_tests")
 #elseif os(Windows)
     @_section(".sw5test$B")
+#else
+    @__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
 #endif
     @_used
     private static let record: __TestContentRecord = (
