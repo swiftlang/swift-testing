@@ -28,7 +28,7 @@ section in built test products:
 | macOS, iOS, watchOS, tvOS, visionOS | Mach-O | `__DATA_CONST,__swift5_tests` |
 | Linux, FreeBSD, OpenBSD, Android | ELF | `swift5_tests` |
 | WASI | WebAssembly | `swift5_tests` |
-| Windows | PE/COFF | `.sw5test`[^windowsPadding] |
+| Windows | PE/COFF | `.sw5test$B`[^windowsPadding] |
 
 [^windowsPadding]: On Windows, the Swift compiler [emits](https://github.com/swiftlang/swift/blob/main/stdlib/public/runtime/SwiftRT-COFF.cpp)
   leading and trailing padding into this section, both zeroed and of size

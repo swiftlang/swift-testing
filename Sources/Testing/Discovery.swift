@@ -148,12 +148,9 @@ extension TestContent where Self: ~Copyable {
   /// current process.
   ///
   /// - Parameters:
-  ///   - kind: The kind of test content to look for.
-  ///   - type: The Swift type of test content to look for.
-  ///   - hint: A pointer to a kind-specific hint value. If not `nil`, this
-  ///     value is passed to each test content record's accessor function,
-  ///     allowing that function to determine if its record matches before
-  ///     initializing its out-result.
+  ///   - hint: An optional hint value. If not `nil`, this value is passed to
+  ///     the accessor function of each test content record whose `kind` field
+  ///     matches this type's ``testContentKind`` property.
   ///   - body: A function to invoke, once per matching test content record.
   ///
   /// This function uses a callback instead of producing a sequence because it
