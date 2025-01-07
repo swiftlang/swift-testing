@@ -24,6 +24,7 @@ public protocol __TestContainer {
 /// `__TestContainer` protocol.
 let testContainerTypeNameMagic = "__🟠$test_container__"
 
+#if !SWT_NO_EXIT_TESTS
 /// A protocol describing a type that contains an exit test.
 ///
 /// - Warning: This protocol is used to implement the `#expect(exitsWith:)`
@@ -44,6 +45,7 @@ public protocol __ExitTestContainer {
 /// A string that appears within all auto-generated types conforming to the
 /// `__ExitTestContainer` protocol.
 let exitTestContainerTypeNameMagic = "__🟠$exit_test_body__"
+#endif
 
 // MARK: -
 
