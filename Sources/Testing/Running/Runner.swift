@@ -56,31 +56,28 @@ public struct Runner: Sendable {
 // MARK: - Running tests
 
 extension Runner {
-  /// Execute the ``CustomExecutionTrait/execute(_:for:testCase:)`` functions
-  /// associated with the test in a plan step.
+  /// Apply the custom scope for any test scope providers of the traits
+  /// associated with a specified test by calling their
+  /// ``TestScoping/provideScope(for:testCase:performing:)`` function.
   ///
   /// - Parameters:
-  ///   - step: The step being performed.
-  ///   - testCase: The test case, if applicable, for which to execute the
-  ///     custom trait.
+  ///   - test: The test being run, for which to provide custom scope.
+  ///   - testCase: The test case, if applicable, for which to provide custom
+  ///     scope.
   ///   - body: A function to execute from within the
-  ///     ``CustomExecutionTrait/execute(_:for:testCase:)`` functions of each
-  ///     trait applied to `step.test`.
+  ///     ``TestScoping/provideScope(for:testCase:performing:)`` function of
+  ///     each non-`nil` scope provider of the traits applied to `test`.
   ///
   /// - Throws: Whatever is thrown by `body` or by any of the
-  ///   ``CustomExecutionTrait/execute(_:for:testCase:)`` functions.
-  private func _executeTraits(
-    for step: Plan.Step,
+  ///   ``TestScoping/provideScope(for:testCase:performing:)`` function calls.
+  private func _applyScopingTraits(
+    for test: Test,
     testCase: Test.Case?,
     _ body: @escaping @Sendable () async throws -> Void
   ) async throws {
     // If the test does not have any traits, exit early to avoid unnecessary
     // heap allocations below.
-    if step.test.traits.isEmpty {
-      return try await body()
-    }
-
-    if case .skip = step.action {
+    if test.traits.isEmpty {
       return try await body()
     }
 
@@ -88,13 +85,13 @@ extension Runner {
     // function. The order of the sequence is reversed so that the last trait is
     // the one that invokes body, then the second-to-last invokes the last, etc.
     // and ultimately the first trait is the first one to be invoked.
-    let executeAllTraits = step.test.traits.lazy
+    let executeAllTraits = test.traits.lazy
       .reversed()
-      .compactMap { $0 as? any CustomExecutionTrait }
-      .compactMap { $0.execute(_:for:testCase:) }
-      .reduce(body) { executeAllTraits, traitExecutor in
+      .compactMap { $0.scopeProvider(for: test, testCase: testCase) }
+      .map { $0.provideScope(for:testCase:performing:) }
+      .reduce(body) { executeAllTraits, provideScope in
         {
-          try await traitExecutor(executeAllTraits, step.test, testCase)
+          try await provideScope(test, testCase, executeAllTraits)
         }
       }
 
@@ -200,7 +197,7 @@ extension Runner {
     if let step = stepGraph.value, case .run = step.action {
       await Test.withCurrent(step.test) {
         _ = await Issue.withErrorRecording(at: step.test.sourceLocation, configuration: configuration) {
-          try await _executeTraits(for: step, testCase: nil) {
+          try await _applyScopingTraits(for: step.test, testCase: nil) {
             // Run the test function at this step (if one is present.)
             if let testCases = step.test.testCases {
               try await _runTestCases(testCases, within: step)
@@ -336,7 +333,7 @@ extension Runner {
       let sourceLocation = step.test.sourceLocation
       await Issue.withErrorRecording(at: sourceLocation, configuration: configuration) {
         try await withTimeLimit(for: step.test, configuration: configuration) {
-          try await _executeTraits(for: step, testCase: testCase) {
+          try await _applyScopingTraits(for: step.test, testCase: testCase) {
             try await testCase.body()
           }
         } timeoutHandler: { timeLimit in
