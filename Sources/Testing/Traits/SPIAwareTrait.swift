@@ -14,7 +14,8 @@
 /// This protocol refines ``Trait`` in various ways that require the use of SPI.
 /// Ideally, such requirements will be promoted to API when their design
 /// stabilizes.
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+@available(*, deprecated, message: "The SPIAwareTrait protocol is deprecated and no longer used.")
+@_spi(ForToolsIntegrationOnly)
 public protocol SPIAwareTrait: Trait {
   /// Prepare to run the test to which this trait was added.
   ///

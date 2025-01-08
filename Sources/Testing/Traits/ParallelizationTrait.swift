@@ -16,9 +16,9 @@
 /// test suite, this trait causes that suite to run its contained test functions
 /// and sub-suites serially instead of in parallel.
 ///
-/// This trait is recursively applied: if it is applied to a suite, any
-/// parameterized tests or test suites contained in that suite are also
-/// serialized (as are any tests contained in those suites, and so on.)
+/// If this trait is applied to a suite, any test functions or test suites
+/// contained in that suite are also serialized (as are any tests contained in
+/// those suites, and so on.)
 ///
 /// This trait does not affect the execution of a test relative to its peers or
 /// to unrelated tests. This trait has no effect if test parallelization is
@@ -26,21 +26,18 @@
 /// `swift test` command.)
 ///
 /// To add this trait to a test, use ``Trait/serialized``.
-public struct ParallelizationTrait: TestTrait, SuiteTrait {
-  public var isRecursive: Bool {
-    true
-  }
-}
+public struct ParallelizationTrait: TestTrait, SuiteTrait {}
 
-// MARK: - SPIAwareTrait
+// MARK: - TestScoping
 
-@_spi(ForToolsIntegrationOnly)
-extension ParallelizationTrait: SPIAwareTrait {
-  public func prepare(for test: Test, action: inout Runner.Plan.Action) async throws {
-    if case var .run(options) = action {
-      options.isParallelizationEnabled = false
-      action = .run(options: options)
+extension ParallelizationTrait: TestScoping {
+  public func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
+    guard var configuration = Configuration.current else {
+      throw SystemError(description: "There is no current Configuration when attempting to provide scope for test '\(test.name)'")
     }
+
+    configuration.isParallelizationEnabled = false
+    try await Configuration.withCurrent(configuration, perform: function)
   }
 }
 
