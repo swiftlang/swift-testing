@@ -162,20 +162,22 @@ extension Runner {
     // example, a skip event only sends `.testSkipped`.
     let shouldSendTestEnded: Bool
 
+    let configuration = _configuration
+
     // Determine what action to take for this step.
     if let step = stepGraph.value {
-      Event.post(.planStepStarted(step), for: (step.test, nil), configuration: _configuration)
+      Event.post(.planStepStarted(step), for: (step.test, nil), configuration: configuration)
 
       // Determine what kind of event to send for this step based on its action.
       switch step.action {
       case .run:
-        Event.post(.testStarted, for: (step.test, nil), configuration: _configuration)
+        Event.post(.testStarted, for: (step.test, nil), configuration: configuration)
         shouldSendTestEnded = true
       case let .skip(skipInfo):
-        Event.post(.testSkipped(skipInfo), for: (step.test, nil), configuration: _configuration)
+        Event.post(.testSkipped(skipInfo), for: (step.test, nil), configuration: configuration)
         shouldSendTestEnded = false
       case let .recordIssue(issue):
-        Event.post(.issueRecorded(issue), for: (step.test, nil), configuration: _configuration)
+        Event.post(.issueRecorded(issue), for: (step.test, nil), configuration: configuration)
         shouldSendTestEnded = false
       }
     } else {
@@ -184,15 +186,15 @@ extension Runner {
     defer {
       if let step = stepGraph.value {
         if shouldSendTestEnded {
-          Event.post(.testEnded, for: (step.test, nil), configuration: _configuration)
+          Event.post(.testEnded, for: (step.test, nil), configuration: configuration)
         }
-        Event.post(.planStepEnded(step), for: (step.test, nil), configuration: _configuration)
+        Event.post(.planStepEnded(step), for: (step.test, nil), configuration: configuration)
       }
     }
 
     if let step = stepGraph.value, case .run = step.action {
       await Test.withCurrent(step.test) {
-        _ = await Issue.withErrorRecording(at: step.test.sourceLocation, configuration: _configuration) {
+        _ = await Issue.withErrorRecording(at: step.test.sourceLocation, configuration: configuration) {
           try await _applyScopingTraits(for: step.test, testCase: nil) {
             // Run the test function at this step (if one is present.)
             if let testCases = step.test.testCases {
@@ -283,8 +285,9 @@ extension Runner {
   /// be run in parallel using a task group.
   private static func _runTestCases(_ testCases: some Sequence<Test.Case>, within step: Plan.Step) async throws {
     // Apply the configuration's test case filter.
+    let testCaseFilter = _configuration.testCaseFilter
     let testCases = testCases.lazy.filter { testCase in
-      _configuration.testCaseFilter(testCase, step.test)
+      testCaseFilter(testCase, step.test)
     }
 
     try await _forEach(in: testCases) { testCase in
@@ -307,15 +310,17 @@ extension Runner {
     // Exit early if the task has already been cancelled.
     try Task.checkCancellation()
 
-    Event.post(.testCaseStarted, for: (step.test, testCase), configuration: _configuration)
+    let configuration = _configuration
+
+    Event.post(.testCaseStarted, for: (step.test, testCase), configuration: configuration)
     defer {
-      Event.post(.testCaseEnded, for: (step.test, testCase), configuration: _configuration)
+      Event.post(.testCaseEnded, for: (step.test, testCase), configuration: configuration)
     }
 
     await Test.Case.withCurrent(testCase) {
       let sourceLocation = step.test.sourceLocation
-      await Issue.withErrorRecording(at: sourceLocation, configuration: _configuration) {
-        try await withTimeLimit(for: step.test, configuration: _configuration) {
+      await Issue.withErrorRecording(at: sourceLocation, configuration: configuration) {
+        try await withTimeLimit(for: step.test, configuration: configuration) {
           try await _applyScopingTraits(for: step.test, testCase: testCase) {
             try await testCase.body()
           }
@@ -325,7 +330,7 @@ extension Runner {
             comments: [],
             sourceContext: .init(backtrace: .current(), sourceLocation: sourceLocation)
           )
-          issue.record(configuration: _configuration)
+          issue.record(configuration: configuration)
         }
       }
     }
@@ -340,9 +345,6 @@ extension Runner {
   ///
   /// - Parameters:
   ///   - runner: The runner to run.
-  ///   - configuration: The configuration to use for running. The value of this
-  ///     argument temporarily replaces the value of `runner`'s
-  ///     ``Runner/configuration`` property.
   ///
   /// This function is `static` so that it cannot accidentally reference `self`
   /// or `self.configuration` when it should use a modified copy of either.
