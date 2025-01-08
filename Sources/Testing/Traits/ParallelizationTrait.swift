@@ -11,14 +11,13 @@
 /// A type that affects whether or not a test or suite is parallelized.
 ///
 /// When added to a parameterized test function, this trait causes that test to
-/// run its cases serially instead of in parallel. When applied to a
-/// non-parameterized test function, this trait has no effect. When applied to a
-/// test suite, this trait causes that suite to run its contained test functions
-/// and sub-suites serially instead of in parallel.
+/// run its cases serially instead of in parallel. When added to a
+/// non-parameterized test function, this trait has no effect.
 ///
-/// If this trait is applied to a suite, any test functions or test suites
-/// contained in that suite are also serialized (as are any tests contained in
-/// those suites, and so on.)
+/// When added to a test suite, this trait causes that suite to run its
+/// contained test functions (including their cases, when parameterized) and
+/// sub-suites serially instead of in parallel. Any children of sub-suites are
+/// also run serially.
 ///
 /// This trait does not affect the execution of a test relative to its peers or
 /// to unrelated tests. This trait has no effect if test parallelization is
