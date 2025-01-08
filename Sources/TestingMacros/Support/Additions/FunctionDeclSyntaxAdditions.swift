@@ -9,6 +9,7 @@
 //
 
 import SwiftSyntax
+import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
 extension FunctionDeclSyntax {
@@ -35,16 +36,24 @@ extension FunctionDeclSyntax {
 
   /// The name of this function including parentheses, parameter labels, and
   /// colons.
-  var completeName: String {
-    var result = [name.textWithoutBackticks, "(",]
-
-    for parameter in signature.parameterClause.parameters {
-      result.append(parameter.firstName.textWithoutBackticks)
-      result.append(":")
+  var completeName: DeclReferenceExprSyntax {
+    func possiblyRaw(_ token: TokenSyntax) -> TokenSyntax {
+      if let rawIdentifier = token.rawIdentifier {
+        return .identifier("`\(rawIdentifier)`")
+      }
+      return .identifier(token.textWithoutBackticks)
     }
-    result.append(")")
 
-    return result.joined()
+    return DeclReferenceExprSyntax(
+      baseName: possiblyRaw(name),
+      argumentNames: DeclNameArgumentsSyntax(
+        arguments: DeclNameArgumentListSyntax {
+          for parameter in signature.parameterClause.parameters {
+            DeclNameArgumentSyntax(name: possiblyRaw(parameter.firstName))
+          }
+        }
+      )
+    )
   }
 
   /// An array of tuples representing this function's parameters.

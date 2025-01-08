@@ -209,6 +209,21 @@ struct TestDeclarationMacroTests {
             ),
           ]
         ),
+
+      #"@Test("Goodbye world") func `__raw__$helloWorld`()"#:
+        (
+          message: "Attribute 'Test' specifies display name 'Goodbye world' for function with implicit display name 'helloWorld'",
+          fixIts: [
+            ExpectedFixIt(
+              message: "Remove 'Goodbye world'",
+              changes: [.replace(oldSourceCode: #""Goodbye world""#, newSourceCode: "")]
+            ),
+            ExpectedFixIt(
+              message: "Rename '__raw__$helloWorld'",
+              changes: [.replace(oldSourceCode: "`__raw__$helloWorld`", newSourceCode: "\(EditorPlaceholderExprSyntax("name"))")]
+            ),
+          ]
+        ),
     ]
   }
 
@@ -239,6 +254,30 @@ struct TestDeclarationMacroTests {
         }
       }
     }
+  }
+
+  @Test("Raw identifier is detected")
+  func rawIdentifier() {
+    #expect(TokenSyntax.identifier("`hello`").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("`helloworld`").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("`hélloworld`").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("`hello_world`").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("`hello world`").rawIdentifier != nil)
+    #expect(TokenSyntax.identifier("`hello/world`").rawIdentifier != nil)
+    #expect(TokenSyntax.identifier("`hello\tworld`").rawIdentifier != nil)
+
+    #expect(TokenSyntax.identifier("`class`").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("`struct`").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("`class struct`").rawIdentifier != nil)
+  }
+
+  @Test("Raw function name components")
+  func rawFunctionNameComponents() throws {
+    let decl = """
+    func `__raw__$hello`(`__raw__$world`: T, etc: U, `blah`: V) {}
+    """ as DeclSyntax
+    let functionDecl = try #require(decl.as(FunctionDeclSyntax.self))
+    #expect(functionDecl.completeName.trimmedDescription == "`hello`(`world`:etc:blah:)")
   }
 
   @Test("Warning diagnostics emitted on API misuse",

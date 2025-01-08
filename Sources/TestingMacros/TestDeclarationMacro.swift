@@ -407,7 +407,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     var testsBody: CodeBlockItemListSyntax = """
     return [
       .__function(
-        named: \(literal: functionDecl.completeName),
+        named: \(literal: functionDecl.completeName.trimmedDescription),
         in: \(typeNameExpr),
         xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
         \(raw: attributeInfo.functionArgumentList(in: context)),
@@ -433,7 +433,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
         private \(_staticKeyword(for: typeName)) nonisolated func \(unavailableTestName)() async -> [Testing.Test] {
           [
             .__function(
-              named: \(literal: functionDecl.completeName),
+              named: \(literal: functionDecl.completeName.trimmedDescription),
               in: \(typeNameExpr),
               xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
               \(raw: attributeInfo.functionArgumentList(in: context)),
