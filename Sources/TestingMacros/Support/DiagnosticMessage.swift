@@ -648,6 +648,14 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   /// Create a diagnostic message stating that a declaration has two display
   /// names.
   ///
+  /// - Parameters:
+  ///   - decl: The declaration that has two display names.
+  ///   - displayNameFromAttribute: The display name provided by the `@Test` or
+  ///     `@Suite` attribute.
+  ///   - argumentContainingDisplayName: The argument node containing the node
+  ///     `displayNameFromAttribute`.
+  ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///
   /// - Returns: A diagnostic message.
   static func declaration(
     _ decl: some NamedDeclSyntax,
