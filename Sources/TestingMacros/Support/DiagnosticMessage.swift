@@ -655,7 +655,6 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     fromArgument argumentContainingDisplayName: LabeledExprListSyntax.Element,
     using attribute: AttributeSyntax
   ) -> Self {
-    // FIXME: implement fixits
     Self(
       syntax: Syntax(decl),
       message: "Attribute \(_macroName(attribute)) specifies display name '\(displayNameFromAttribute.representedLiteralValue!)' for \(_kindString(for: decl)) with implicit display name '\(decl.name.rawIdentifier!)'",

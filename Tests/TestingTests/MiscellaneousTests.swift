@@ -290,6 +290,10 @@ struct MiscellaneousTests {
   @Test func `__raw__$raw_identifier_provides_a_display_name`() throws {
     let test = try #require(Test.current)
     #expect(test.displayName == "raw_identifier_provides_a_display_name")
+    #expect(test.name == "`raw_identifier_provides_a_display_name`()")
+    let id = test.id
+    #expect(id.moduleName == "TestingTests")
+    #expect(id.nameComponents == ["MiscellaneousTests", "`raw_identifier_provides_a_display_name`()"])
   }
 
   @Test("Free functions are runnable")
