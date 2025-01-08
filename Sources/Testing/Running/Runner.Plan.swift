@@ -15,27 +15,7 @@ extension Runner {
     public enum Action: Sendable {
       /// A type describing options to apply to actions of case
       /// ``Runner/Plan/Action/run(options:)`` when they are run.
-      public struct RunOptions: Sendable, Codable {
-        /// Whether or not this step should be run in parallel with other tests.
-        ///
-        /// By default, all steps in a runner plan are run in parallel if the
-        /// ``Configuration/isParallelizationEnabled`` property of the
-        /// configuration passed during initialization has a value of `true`.
-        ///
-        /// Traits such as ``Trait/serialized`` applied to individual tests may
-        /// affect whether or not that test is parallelized.
-        ///
-        /// ## See Also
-        ///
-        /// - ``ParallelizationTrait``
-        @available(*, deprecated, message: "The 'isParallelizationEnabled' property is deprecated and no longer used. Its value is always false.")
-        public var isParallelizationEnabled: Bool {
-          get {
-            false
-          }
-          set {}
-        }
-      }
+      public struct RunOptions: Sendable, Codable {}
 
       /// The test should be run.
       ///

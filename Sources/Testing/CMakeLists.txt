@@ -96,7 +96,6 @@ add_library(Testing
   Traits/ConditionTrait+Macro.swift
   Traits/HiddenTrait.swift
   Traits/ParallelizationTrait.swift
-  Traits/SPIAwareTrait.swift
   Traits/Tags/Tag.Color.swift
   Traits/Tags/Tag.Color+Loading.swift
   Traits/Tags/Tag.List.swift
