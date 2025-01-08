@@ -203,13 +203,12 @@ struct TimeLimitTraitTests {
         guard case let .issueRecorded(issue) = event.kind,
               case .timeLimitExceeded = issue.kind,
               let test = context.test,
-              let testCase = context.testCase
+              context.testCase != nil
         else {
           return
         }
         issueRecorded()
         #expect(test.timeLimit == .milliseconds(10))
-        #expect(testCase != nil)
       }
 
       await Test(.timeLimit(.milliseconds(10))) {

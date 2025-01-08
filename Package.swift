@@ -53,7 +53,7 @@ let package = Package(
         "_TestingInternals",
         "TestingMacros",
       ],
-      exclude: ["CMakeLists.txt"],
+      exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
       cxxSettings: .packageSettings,
       swiftSettings: .packageSettings,
       linkerSettings: [
@@ -122,6 +122,7 @@ let package = Package(
         "Testing",
       ],
       path: "Sources/Overlays/_Testing_Foundation",
+      exclude: ["CMakeLists.txt"],
       swiftSettings: .packageSettings
     ),
   ],
