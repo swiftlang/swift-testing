@@ -44,10 +44,10 @@ struct Locked<T>: RawRepresentable, Sendable where T: Sendable {
   typealias PlatformLock = SRWLOCK
 #elseif os(WASI)
   // No locks on WASI without multithreaded runtime.
-  typealias PlatformLock = Void
+  typealias PlatformLock = Never
 #else
 #warning("Platform-specific implementation missing: locking unavailable")
-  typealias PlatformLock = Void
+  typealias PlatformLock = Never
 #endif
 
   /// A type providing heap-allocated storage for an instance of ``Locked``.
