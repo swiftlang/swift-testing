@@ -1,6 +1,6 @@
 # Test Scoping Traits
 
-* Proposal: [SWT-NNNN](NNNN-filename.md)
+* Proposal: [SWT-0007](0007-test-scoping-traits.md)
 * Authors: [Stuart Montgomery](https://github.com/stmontgomery)
 * Status: **Awaiting review**
 * Implementation: [swiftlang/swift-testing#733](https://github.com/swiftlang/swift-testing/pull/733), [swiftlang/swift-testing#86](https://github.com/swiftlang/swift-testing/pull/86)
