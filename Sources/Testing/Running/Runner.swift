@@ -56,6 +56,16 @@ public struct Runner: Sendable {
 // MARK: - Running tests
 
 extension Runner {
+  /// The current configuration _while_ running.
+  ///
+  /// This should be used from the functions in this extension which access the
+  /// current configuration. This is important since individual tests or suites
+  /// may have traits which customize the execution scope of their children,
+  /// including potentially modifying the current configuration.
+  private static var _configuration: Configuration {
+    .current ?? .init()
+  }
+
   /// Apply the custom scope for any test scope providers of the traits
   /// associated with a specified test by calling their
   /// ``TestScoping/provideScope(for:testCase:performing:)`` function.
@@ -103,16 +113,11 @@ extension Runner {
   ///
   /// - Parameters:
   ///   - sequence: The sequence to enumerate.
-  ///   - configuration: The configuration with which the elements of `sequence`
-  ///     should be enumerated. This function uses the configuration to
-  ///     determine whether parallelization is enabled. The default value is the
-  ///     current configuration, if any, or else the default configuration.
   ///   - body: The function to invoke.
   ///
   /// - Throws: Whatever is thrown by `body`.
   private static func _forEach<E>(
     in sequence: some Sequence<E>,
-    configuration: Configuration = .current ?? .init(),
     _ body: @Sendable @escaping (E) async throws -> Void
   ) async throws where E: Sendable {
     try await withThrowingTaskGroup(of: Void.self) { taskGroup in
@@ -123,7 +128,7 @@ extension Runner {
         }
 
         // If not parallelizing, wait after each task.
-        if !configuration.isParallelizationEnabled {
+        if !_configuration.isParallelizationEnabled {
           try await taskGroup.waitForAll()
         }
       }
@@ -134,9 +139,6 @@ extension Runner {
   ///
   /// - Parameters:
   ///   - stepGraph: The subgraph whose root value, a step, is to be run.
-  ///   - configuration: The configuration with which the step should run. The
-  ///     default value is the current configuration, if any, or else the
-  ///     default configuration.
   ///
   /// - Throws: Whatever is thrown from the test body. Thrown errors are
   ///   normally reported as test failures.
@@ -151,10 +153,7 @@ extension Runner {
   /// ## See Also
   ///
   /// - ``Runner/run()``
-  private static func _runStep(
-    atRootOf stepGraph: Graph<String, Plan.Step?>,
-    configuration: Configuration = .current ?? .init()
-  ) async throws {
+  private static func _runStep(atRootOf stepGraph: Graph<String, Plan.Step?>) async throws {
     // Exit early if the task has already been cancelled.
     try Task.checkCancellation()
 
@@ -165,18 +164,18 @@ extension Runner {
 
     // Determine what action to take for this step.
     if let step = stepGraph.value {
-      Event.post(.planStepStarted(step), for: (step.test, nil), configuration: configuration)
+      Event.post(.planStepStarted(step), for: (step.test, nil), configuration: _configuration)
 
       // Determine what kind of event to send for this step based on its action.
       switch step.action {
       case .run:
-        Event.post(.testStarted, for: (step.test, nil), configuration: configuration)
+        Event.post(.testStarted, for: (step.test, nil), configuration: _configuration)
         shouldSendTestEnded = true
       case let .skip(skipInfo):
-        Event.post(.testSkipped(skipInfo), for: (step.test, nil), configuration: configuration)
+        Event.post(.testSkipped(skipInfo), for: (step.test, nil), configuration: _configuration)
         shouldSendTestEnded = false
       case let .recordIssue(issue):
-        Event.post(.issueRecorded(issue), for: (step.test, nil), configuration: configuration)
+        Event.post(.issueRecorded(issue), for: (step.test, nil), configuration: _configuration)
         shouldSendTestEnded = false
       }
     } else {
@@ -185,15 +184,15 @@ extension Runner {
     defer {
       if let step = stepGraph.value {
         if shouldSendTestEnded {
-          Event.post(.testEnded, for: (step.test, nil), configuration: configuration)
+          Event.post(.testEnded, for: (step.test, nil), configuration: _configuration)
         }
-        Event.post(.planStepEnded(step), for: (step.test, nil), configuration: configuration)
+        Event.post(.planStepEnded(step), for: (step.test, nil), configuration: _configuration)
       }
     }
 
     if let step = stepGraph.value, case .run = step.action {
       await Test.withCurrent(step.test) {
-        _ = await Issue.withErrorRecording(at: step.test.sourceLocation, configuration: configuration) {
+        _ = await Issue.withErrorRecording(at: step.test.sourceLocation, configuration: _configuration) {
           try await _applyScopingTraits(for: step.test, testCase: nil) {
             // Run the test function at this step (if one is present.)
             if let testCases = step.test.testCases {
@@ -233,17 +232,11 @@ extension Runner {
   /// - Parameters:
   ///   - stepGraph: The subgraph whose root value, a step, will be used to
   ///     find children to run.
-  ///   - configuration: The configuration with which the children of `stepGraph`
-  ///     will be run. The default value is the current configuration, if any,
-  ///     or else the default configuration.
   ///
   /// - Throws: Whatever is thrown from the test body. Thrown errors are
   ///   normally reported as test failures.
-  private static func _runChildren(
-    of stepGraph: Graph<String, Plan.Step?>,
-    configuration: Configuration = .current ?? .init()
-  ) async throws {
-    let childGraphs = if configuration.isParallelizationEnabled {
+  private static func _runChildren(of stepGraph: Graph<String, Plan.Step?>) async throws {
+    let childGraphs = if _configuration.isParallelizationEnabled {
       // Explicitly shuffle the steps to help detect accidental dependencies
       // between tests due to their ordering.
       Array(stepGraph.children)
@@ -282,23 +275,16 @@ extension Runner {
   /// - Parameters:
   ///   - testCases: The test cases to be run.
   ///   - step: The runner plan step associated with this test case.
-  ///   - configuration: The configuration with which the test cases should run.
-  ///     The default value is the current configuration, if any, or else the
-  ///     default configuration.
   ///
   /// - Throws: Whatever is thrown from a test case's body. Thrown errors are
   ///   normally reported as test failures.
   ///
   /// If parallelization is supported and enabled, the generated test cases will
   /// be run in parallel using a task group.
-  private static func _runTestCases(
-    _ testCases: some Sequence<Test.Case>,
-    within step: Plan.Step,
-    configuration: Configuration = .current ?? .init()
-  ) async throws {
+  private static func _runTestCases(_ testCases: some Sequence<Test.Case>, within step: Plan.Step) async throws {
     // Apply the configuration's test case filter.
     let testCases = testCases.lazy.filter { testCase in
-      configuration.testCaseFilter(testCase, step.test)
+      _configuration.testCaseFilter(testCase, step.test)
     }
 
     try await _forEach(in: testCases) { testCase in
@@ -311,32 +297,25 @@ extension Runner {
   /// - Parameters:
   ///   - testCase: The test case to run.
   ///   - step: The runner plan step associated with this test case.
-  ///   - configuration: The configuration with which the test case should run.
-  ///     The default value is the current configuration, if any, or else the
-  ///     default configuration.
   ///
   /// - Throws: Whatever is thrown from the test case's body. Thrown errors
   ///   are normally reported as test failures.
   ///
   /// This function sets ``Test/Case/current``, then invokes the test case's
   /// body closure.
-  private static func _runTestCase(
-    _ testCase: Test.Case,
-    within step: Plan.Step,
-    configuration: Configuration = .current ?? .init()
-  ) async throws {
+  private static func _runTestCase(_ testCase: Test.Case, within step: Plan.Step) async throws {
     // Exit early if the task has already been cancelled.
     try Task.checkCancellation()
 
-    Event.post(.testCaseStarted, for: (step.test, testCase), configuration: configuration)
+    Event.post(.testCaseStarted, for: (step.test, testCase), configuration: _configuration)
     defer {
-      Event.post(.testCaseEnded, for: (step.test, testCase), configuration: configuration)
+      Event.post(.testCaseEnded, for: (step.test, testCase), configuration: _configuration)
     }
 
     await Test.Case.withCurrent(testCase) {
       let sourceLocation = step.test.sourceLocation
-      await Issue.withErrorRecording(at: sourceLocation, configuration: configuration) {
-        try await withTimeLimit(for: step.test, configuration: configuration) {
+      await Issue.withErrorRecording(at: sourceLocation, configuration: _configuration) {
+        try await withTimeLimit(for: step.test, configuration: _configuration) {
           try await _applyScopingTraits(for: step.test, testCase: testCase) {
             try await testCase.body()
           }
@@ -346,7 +325,7 @@ extension Runner {
             comments: [],
             sourceContext: .init(backtrace: .current(), sourceLocation: sourceLocation)
           )
-          issue.record(configuration: configuration)
+          issue.record(configuration: _configuration)
         }
       }
     }
