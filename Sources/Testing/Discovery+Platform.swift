@@ -155,7 +155,7 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
   }
   var context = Context(kind: kind)
 
-  withUnsafeMutablePointer(to: &context) { result in
+  withUnsafeMutablePointer(to: &context) { context in
     swift_enumerateAllMetadataSections({ sections, context in
       let context = context.assumingMemoryBound(to: Context.self)
 
