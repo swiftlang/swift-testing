@@ -53,7 +53,7 @@ private let _sectionBounds = Locked<[SectionBounds.Kind: [SectionBounds]]>()
 private let _startCollectingSectionBounds: Void = {
   // Ensure _sectionBounds is initialized before we touch libobjc or dyld.
   _sectionBounds.withLock { sectionBounds in
-    let imageCount = Int(_dyld_image_count())
+    let imageCount = Int(clamping: _dyld_image_count())
     for kind in SectionBounds.Kind.allCases {
       sectionBounds[kind, default: []].reserveCapacity(imageCount)
     }
