@@ -154,8 +154,9 @@ private func _sectionBounds(for sectionRangeKeyPath: KeyPath<MetadataSections, M
         // This structure is too old to contain the swift5_tests field.
         return true
       }
+      let sections = sections.load(as: MetadataSections.self)
 
-      let range = sections.load(as: MetadataSections.self)[keyPath: sectionRangeKeyPath]
+      let range = sections[keyPath: sectionRangeKeyPath]
       let start = UnsafeRawPointer(bitPattern: range.start)
       let size = Int(clamping: range.length)
       if let start, size > 0 {
