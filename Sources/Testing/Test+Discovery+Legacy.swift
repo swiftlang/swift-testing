@@ -49,35 +49,23 @@ let exitTestContainerTypeNameMagic = "__🟠$exit_test_body__"
 
 // MARK: -
 
-/// The type of callback called by ``enumerateTypes(withNamesContaining:_:)``.
-///
-/// - Parameters:
-///   - imageAddress: A pointer to the start of the image. This value is _not_
-///     equal to the value returned from `dlopen()`. On platforms that do not
-///     support dynamic loading (and so do not have loadable images), this
-///     argument is unspecified.
-///   - type: A Swift type.
-///   - stop: An `inout` boolean variable indicating whether type enumeration
-///     should stop after the function returns. Set `stop` to `true` to stop
-///     type enumeration.
-typealias TypeEnumerator = (_ imageAddress: UnsafeRawPointer?, _ type: Any.Type, _ stop: inout Bool) -> Void
-
-/// Enumerate all types known to Swift found in the current process whose names
+/// Get all types known to Swift found in the current process whose names
 /// contain a given substring.
 ///
 /// - Parameters:
 ///   - nameSubstring: A string which the names of matching classes all contain.
-///   - body: A function to invoke, once per matching type.
-func enumerateTypes(withNamesContaining nameSubstring: String, _ typeEnumerator: TypeEnumerator) {
-  withoutActuallyEscaping(typeEnumerator) { typeEnumerator in
-    withUnsafePointer(to: typeEnumerator) { context in
-      swt_enumerateTypes(withNamesContaining: nameSubstring, .init(mutating: context)) { imageAddress, type, stop, context in
-        let typeEnumerator = context!.load(as: TypeEnumerator.self)
-        let type = unsafeBitCast(type, to: Any.Type.self)
-        var stop2 = false
-        typeEnumerator(imageAddress, type, &stop2)
-        stop.pointee = stop2
+///
+/// - Returns: A sequence of Swift types whose names contain `nameSubstring`.
+func types(withNamesContaining nameSubstring: String) -> some Sequence<Any.Type> {
+  SectionBounds.allTypeMetadata.lazy
+    .map { sb in
+      var count = 0
+      let start = swt_copyTypes(in: sb.buffer.baseAddress!, sb.buffer.count, withNamesContaining: nameSubstring, count: &count)
+      defer {
+        free(start)
       }
-    }
-  }
+      return start.withMemoryRebound(to: Any.Type.self, capacity: count) { start in
+        Array(UnsafeBufferPointer(start: start, count: count))
+      }
+    }.joined()
 }

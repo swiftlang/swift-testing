@@ -22,22 +22,38 @@ struct SectionBounds: Sendable {
   static var allTestContent: some RandomAccessCollection<SectionBounds> {
     _testContentSectionBounds()
   }
+
+  /// All type metadata section bounds found in the current process.
+  static var allTypeMetadata: some RandomAccessCollection<SectionBounds> {
+    _typeMetadataSectionBounds()
+  }
 }
 
 #if !SWT_NO_DYNAMIC_LINKING
 #if SWT_TARGET_OS_APPLE
 // MARK: - Apple implementation
 
+/// A type describing the different sections that we collect.
+private struct _AllSectionBounds: Sendable {
+  /// Test content section bounds.
+  var testContent = [SectionBounds]()
+
+  /// Type metadata section bounds.
+  var typeMetadata = [SectionBounds]()
+}
+
 /// An array containing all of the test content section bounds known to the
 /// testing library.
-private let _sectionBounds = Locked<[SectionBounds]>(rawValue: [])
+private let _sectionBounds = Locked(rawValue: _AllSectionBounds())
 
 /// A call-once function that initializes `_sectionBounds` and starts listening
 /// for loaded Mach headers.
 private let _startCollectingSectionBounds: Void = {
   // Ensure _sectionBounds is initialized before we touch libobjc or dyld.
   _sectionBounds.withLock { sectionBounds in
-    sectionBounds.reserveCapacity(Int(_dyld_image_count()))
+    let imageCount = Int(_dyld_image_count())
+    sectionBounds.testContent.reserveCapacity(imageCount)
+    sectionBounds.typeMetadata.reserveCapacity(imageCount)
   }
 
   func addSectionBounds(from mh: UnsafePointer<mach_header>) {
@@ -55,12 +71,32 @@ private let _startCollectingSectionBounds: Void = {
 
     // If this image contains the Swift section we need, acquire the lock and
     // store the section's bounds.
-    var size = CUnsignedLong(0)
-    if let start = getsectiondata(mh, "__DATA_CONST", "__swift5_tests", &size), size > 0 {
-      _sectionBounds.withLock { sectionBounds in
+    let testContentSectionBounds: SectionBounds? = {
+      var size = CUnsignedLong(0)
+      if let start = getsectiondata(mh, "__DATA_CONST", "__swift5_tests", &size), size > 0 {
         let buffer = UnsafeRawBufferPointer(start: start, count: Int(clamping: size))
-        let sb = SectionBounds(imageAddress: mh, buffer: buffer)
-        sectionBounds.append(sb)
+        return SectionBounds(imageAddress: mh, buffer: buffer)
+      }
+      return nil
+    }()
+
+    let typeMetadataSectionBounds: SectionBounds? = {
+      var size = CUnsignedLong(0)
+      if let start = getsectiondata(mh, "__TEXT", "__swift5_types", &size), size > 0 {
+        let buffer = UnsafeRawBufferPointer(start: start, count: Int(clamping: size))
+        return SectionBounds(imageAddress: mh, buffer: buffer)
+      }
+      return nil
+    }()
+
+    if testContentSectionBounds != nil || typeMetadataSectionBounds != nil {
+      _sectionBounds.withLock { sectionBounds in
+        if let testContentSectionBounds {
+          sectionBounds.testContent.append(testContentSectionBounds)
+        }
+        if let typeMetadataSectionBounds {
+          sectionBounds.typeMetadata.append(typeMetadataSectionBounds)
+        }
       }
     }
   }
@@ -76,13 +112,22 @@ private let _startCollectingSectionBounds: Void = {
 #endif
 }()
 
-/// The Apple-specific implementation of ``SectionBounds/all``.
+/// The Apple-specific implementation of ``SectionBounds/allTestContent``.
 ///
 /// - Returns: An array of structures describing the bounds of all known test
 ///   content sections in the current process.
 private func _testContentSectionBounds() -> [SectionBounds] {
   _startCollectingSectionBounds
-  return _sectionBounds.rawValue
+  return _sectionBounds.rawValue.testContent
+}
+
+/// The Apple-specific implementation of ``SectionBounds/allTypeMetadata``.
+///
+/// - Returns: An array of structures describing the bounds of all known type
+///   metadata sections in the current process.
+private func _typeMetadataSectionBounds() -> [SectionBounds] {
+  _startCollectingSectionBounds
+  return _sectionBounds.rawValue.typeMetadata
 }
 
 #elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
@@ -90,29 +135,34 @@ private func _testContentSectionBounds() -> [SectionBounds] {
 
 private import SwiftShims // For MetadataSections
 
-/// The ELF-specific implementation of ``SectionBounds/all``.
+/// Get all Swift metadata sections of a given name that have been loaded into
+/// the current process.
 ///
-/// - Returns: An array of structures describing the bounds of all known test
-///   content sections in the current process.
-private func _testContentSectionBounds() -> [SectionBounds] {
+/// - Parameters:
+///   - sectionRangeKeyPath: A key path to the field of ``MetadataSections``
+///     containing the bounds of the section of interest.
+///
+/// - Returns: An array of structures describing the bounds of all known
+///   sections in the current process matching `sectionRangeKeyPath`.
+private func _sectionBounds(for sectionRangeKeyPath: KeyPath<MetadataSections, MetadataSectionRange>) -> [SectionBounds] {
   var result = [SectionBounds]()
 
   withUnsafeMutablePointer(to: &result) { result in
     swift_enumerateAllMetadataSections({ sections, context in
       let version = sections.load(as: UInt.self)
-      guard version >= 4 else {
+      guard sectionRangeKeyPath != \.swift5_tests || version >= 4 else {
         // This structure is too old to contain the swift5_tests field.
         return true
       }
 
-      let sections = sections.load(as: MetadataSections.self)
-      let result = context.assumingMemoryBound(to: [SectionBounds].self)
-
-      let start = UnsafeRawPointer(bitPattern: sections.swift5_tests.start)
-      let size = Int(clamping: sections.swift5_tests.length)
+      let range = sections.load(as: MetadataSections.self)[keyPath: sectionRangeKeyPath]
+      let start = UnsafeRawPointer(bitPattern: range.start)
+      let size = Int(clamping: range.length)
       if let start, size > 0 {
         let buffer = UnsafeRawBufferPointer(start: start, count: size)
         let sb = SectionBounds(imageAddress: sections.baseAddress, buffer: buffer)
+
+        let result = context.assumingMemoryBound(to: [SectionBounds].self)
         result.pointee.append(sb)
       }
 
@@ -121,6 +171,22 @@ private func _testContentSectionBounds() -> [SectionBounds] {
   }
 
   return result
+}
+
+/// The ELF-specific implementation of ``SectionBounds/allTestContent``.
+///
+/// - Returns: An array of structures describing the bounds of all known test
+///   content sections in the current process.
+private func _testContentSectionBounds() -> [SectionBounds] {
+  _sectionBounds(for: \.swift5_tests)
+}
+
+/// The ELF-specific implementation of ``SectionBounds/allTypeMetadata``.
+///
+/// - Returns: An array of structures describing the bounds of all known type
+///   metadata sections in the current process.
+private func _typeMetadataSectionBounds() -> [SectionBounds] {
+  _sectionBounds(for: \.swift5_type_metadata)
 }
 
 #elseif os(Windows)
@@ -183,33 +249,62 @@ private func _findSection(named sectionName: String, in hModule: HMODULE) -> Sec
   }
 }
 
-/// The Windows-specific implementation of ``SectionBounds/all``.
+/// The Windows-specific implementation of ``SectionBounds/allTestContent``.
 ///
 /// - Returns: An array of structures describing the bounds of all known test
 ///   content sections in the current process.
 private func _testContentSectionBounds() -> [SectionBounds] {
   HMODULE.all.compactMap { _findSection(named: ".sw5test", in: $0) }
 }
+
+/// The Windows-specific implementation of ``SectionBounds/allTypeMetadata``.
+///
+/// - Returns: An array of structures describing the bounds of all known type
+///   metadata sections in the current process.
+private func _typeMetadataSectionBounds() -> [SectionBounds] {
+  HMODULE.all.compactMap { _findSection(named: ".sw5tymd", in: $0) }
+}
 #else
-/// The fallback implementation of ``SectionBounds/all`` for platforms that
-/// support dynamic linking.
+/// The fallback implementation of ``SectionBounds/allTestContent`` for
+/// platforms that support dynamic linking.
 ///
 /// - Returns: The empty array.
 private func _testContentSectionBounds() -> [SectionBounds] {
   #warning("Platform-specific implementation missing: Runtime test discovery unavailable (dynamic)")
   return []
 }
+
+/// The fallback implementation of ``SectionBounds/allTypeMetadata`` for
+/// platforms that support dynamic linking.
+///
+/// - Returns: The empty array.
+private func _typeMetadataSectionBounds() -> [SectionBounds] {
+#warning("Platform-specific implementation missing: Runtime test discovery unavailable (dynamic)")
+  return []
+}
 #endif
 #else
 // MARK: - Statically-linked implementation
 
-/// The common implementation of ``SectionBounds/all`` for platforms that do not
-/// support dynamic linking.
+/// The common implementation of ``SectionBounds/allTestContent`` for platforms
+/// that do not support dynamic linking.
 ///
 /// - Returns: A structure describing the bounds of the test content section
 ///   contained in the same image as the testing library itself.
 private func _testContentSectionBounds() -> CollectionOfOne<SectionBounds> {
   let (sectionBegin, sectionEnd) = SWTTestContentSectionBounds
+  let buffer = UnsafeRawBufferPointer(start: sectionBegin, count: max(0, sectionEnd - sectionBegin))
+  let sb = SectionBounds(imageAddress: nil, buffer: buffer)
+  return CollectionOfOne(sb)
+}
+
+/// The common implementation of ``SectionBounds/allTypeMetadata`` for platforms
+/// that do not support dynamic linking.
+///
+/// - Returns: A structure describing the bounds of the type metadata section
+///   contained in the same image as the testing library itself.
+private func _typeMetadataSectionBounds() -> CollectionOfOne<SectionBounds> {
+  let (sectionBegin, sectionEnd) = SWTTypeMetadataSectionBounds
   let buffer = UnsafeRawBufferPointer(start: sectionBegin, count: max(0, sectionEnd - sectionBegin))
   let sb = SectionBounds(imageAddress: nil, buffer: buffer)
   return CollectionOfOne(sb)

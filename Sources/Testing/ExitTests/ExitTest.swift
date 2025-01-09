@@ -250,19 +250,16 @@ extension ExitTest {
 
     if result == nil {
       // Call the legacy lookup function that discovers tests embedded in types.
-      enumerateTypes(withNamesContaining: exitTestContainerTypeNameMagic) { _, type, stop in
-        guard let type = type as? any __ExitTestContainer.Type else {
-          return
-        }
-        if type.__sourceLocation == sourceLocation {
-          result = ExitTest(
+      result = types(withNamesContaining: exitTestContainerTypeNameMagic).lazy
+        .compactMap { $0 as? any __ExitTestContainer.Type }
+        .first { $0.__sourceLocation == sourceLocation }
+        .map { type in
+          ExitTest(
             __expectedExitCondition: type.__expectedExitCondition,
             sourceLocation: type.__sourceLocation,
             body: type.__body
           )
-          stop = true
         }
-      }
     }
 
     return result
