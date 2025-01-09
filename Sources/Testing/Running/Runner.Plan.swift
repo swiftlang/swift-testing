@@ -28,7 +28,13 @@ extension Runner {
         /// ## See Also
         ///
         /// - ``ParallelizationTrait``
-        public var isParallelizationEnabled: Bool
+        @available(*, deprecated, message: "The 'isParallelizationEnabled' property is deprecated and no longer used. Its value is always false.")
+        public var isParallelizationEnabled: Bool {
+          get {
+            false
+          }
+          set {}
+        }
       }
 
       /// The test should be run.
@@ -64,19 +70,6 @@ extension Runner {
           // case.
           return true
         }
-      }
-
-      /// Whether or not this action enables parallelization.
-      ///
-      /// If this action is of case ``run(options:)``, the value of this
-      /// property equals the value of its associated
-      /// ``RunOptions/isParallelizationEnabled`` property. Otherwise, the value
-      /// of this property is `nil`.
-      var isParallelizationEnabled: Bool? {
-        if case let .run(options) = self {
-          return options.isParallelizationEnabled
-        }
-        return nil
       }
     }
 
@@ -218,7 +211,7 @@ extension Runner.Plan {
     // Convert the list of test into a graph of steps. The actions for these
     // steps will all be .run() *unless* an error was thrown while examining
     // them, in which case it will be .recordIssue().
-    let runAction = Action.run(options: .init(isParallelizationEnabled: configuration.isParallelizationEnabled))
+    let runAction = Action.run(options: .init())
     var testGraph = Graph<String, Test?>()
     var actionGraph = Graph<String, Action>(value: runAction)
     for test in tests {
@@ -278,11 +271,7 @@ extension Runner.Plan {
       // `SkipInfo`, the error should not be recorded.
       for trait in test.traits {
         do {
-          if let trait = trait as? any SPIAwareTrait {
-            try await trait.prepare(for: test, action: &action)
-          } else {
-            try await trait.prepare(for: test)
-          }
+          try await trait.prepare(for: test)
         } catch let error as SkipInfo {
           action = .skip(error)
           break
