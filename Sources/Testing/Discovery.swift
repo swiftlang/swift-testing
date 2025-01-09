@@ -157,7 +157,7 @@ extension TestContent where Self: ~Copyable {
   /// is used with move-only types (specifically ``ExitTest``) and
   /// `Sequence.Element` must be copyable.
   static func enumerateTestContent(withHint hint: TestContentAccessorHint? = nil, _ body: TestContentEnumerator) {
-    let testContentRecords = SectionBounds.allTestContent.lazy.flatMap(_testContentRecords(in:))
+    let testContentRecords = SectionBounds.all(.testContent).lazy.flatMap(_testContentRecords(in:))
 
     var stop = false
     for (imageAddress, record) in testContentRecords {
