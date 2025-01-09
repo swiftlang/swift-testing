@@ -95,10 +95,10 @@ private let _startCollectingSectionBounds: Void = {
     if testContentSectionBounds != nil || typeMetadataSectionBounds != nil {
       _sectionBounds.withLock { sectionBounds in
         if let testContentSectionBounds {
-          sectionBounds[.testContent, default: []].append(testContentSectionBounds)
+          sectionBounds[.testContent]!.append(testContentSectionBounds)
         }
         if let typeMetadataSectionBounds {
-          sectionBounds[.typeMetadata, default: []].append(typeMetadataSectionBounds)
+          sectionBounds[.typeMetadata]!.append(typeMetadataSectionBounds)
         }
       }
     }
