@@ -44,15 +44,6 @@ struct SectionBounds: Sendable {
 #if SWT_TARGET_OS_APPLE
 // MARK: - Apple implementation
 
-/// A type describing the different sections that we collect.
-private struct _AllSectionBounds: Sendable {
-  /// Test content section bounds.
-  var testContent = [SectionBounds]()
-
-  /// Type metadata section bounds.
-  var typeMetadata = [SectionBounds]()
-}
-
 /// An array containing all of the test content section bounds known to the
 /// testing library.
 private let _sectionBounds = Locked<[SectionBounds.Kind: [SectionBounds]]>()
