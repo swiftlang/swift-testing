@@ -133,7 +133,7 @@ private let _startCollectingSectionBounds: Void = {
 ///   content sections in the current process.
 private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
   _startCollectingSectionBounds
-  return _sectionBounds.rawValue[kind, default: []]
+  return _sectionBounds.rawValue[kind]!
 }
 
 #elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
@@ -172,8 +172,9 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
       case .typeMetadata:
         sections.swift5_type_metadata
       }
-      if let start = UnsafeRawPointer(bitPattern: range.start),
-         let size = Int(clamping: range.length), size > 0 {
+      let start = UnsafeRawPointer(bitPattern: range.start)
+      let size = Int(clamping: range.length)
+      if let start, size > 0 {
         let buffer = UnsafeRawBufferPointer(start: start, count: size)
         let sb = SectionBounds(imageAddress: sections.baseAddress, buffer: buffer)
 
