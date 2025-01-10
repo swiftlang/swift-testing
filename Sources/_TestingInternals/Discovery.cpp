@@ -28,7 +28,7 @@ extern "C" const char typeMetadataSectionEnd __asm__("__stop_swift5_type_metadat
 static const char testContentSectionBegin = 0;
 static const char& testContentSectionEnd = testContentSectionBegin;
 static const char typeMetadataSectionBegin = 0;
-static const char& typeMetadataSectionEnd = testContentSectionBegin;
+static const char& typeMetadataSectionEnd = typeMetadataSectionBegin;
 #endif
 
 /// The bounds of the test content section statically linked into the image
