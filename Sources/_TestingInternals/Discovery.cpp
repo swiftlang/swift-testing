@@ -16,13 +16,19 @@
 #if defined(__APPLE__)
 extern "C" const char testContentSectionBegin __asm("section$start$__DATA_CONST$__swift5_tests");
 extern "C" const char testContentSectionEnd __asm("section$end$__DATA_CONST$__swift5_tests");
+extern "C" const char typeMetadataSectionBegin __asm__("section$start$__TEXT$__swift5_types");
+extern "C" const char typeMetadataSectionEnd __asm__("section$end$__TEXT$__swift5_types");
 #elif defined(__wasi__)
 extern "C" const char testContentSectionBegin __asm__("__start_swift5_tests");
 extern "C" const char testContentSectionEnd __asm__("__stop_swift5_tests");
+extern "C" const char typeMetadataSectionBegin __asm__("__start_swift5_type_metadata");
+extern "C" const char typeMetadataSectionEnd __asm__("__stop_swift5_type_metadata");
 #else
 #warning Platform-specific implementation missing: Runtime test discovery unavailable (static)
 static const char testContentSectionBegin = 0;
 static const char& testContentSectionEnd = testContentSectionBegin;
+static const char typeMetadataSectionBegin = 0;
+static const char& typeMetadataSectionEnd = typeMetadataSectionBegin;
 #endif
 
 /// The bounds of the test content section statically linked into the image
@@ -30,6 +36,13 @@ static const char& testContentSectionEnd = testContentSectionBegin;
 const void *_Nonnull const SWTTestContentSectionBounds[2] = {
   &testContentSectionBegin,
   &testContentSectionEnd
+};
+
+/// The bounds of the type metadata section statically linked into the image
+/// containing Swift Testing.
+const void *_Nonnull const SWTTypeMetadataSectionBounds[2] = {
+  &typeMetadataSectionBegin,
+  &typeMetadataSectionEnd
 };
 #endif
 
@@ -40,18 +53,11 @@ const void *_Nonnull const SWTTestContentSectionBounds[2] = {
 #include <atomic>
 #include <cstring>
 #include <iterator>
+#include <memory>
 #include <tuple>
 #include <type_traits>
 #include <vector>
 #include <optional>
-
-#if defined(__APPLE__) && !defined(SWT_NO_DYNAMIC_LINKING)
-#include <dispatch/dispatch.h>
-#include <mach-o/dyld.h>
-#include <mach-o/getsect.h>
-#include <objc/runtime.h>
-#include <os/lock.h>
-#endif
 
 /// Enumerate over all Swift type metadata sections in the current process.
 ///
@@ -264,298 +270,41 @@ public:
   }
 };
 
-#if !defined(SWT_NO_DYNAMIC_LINKING)
-#if defined(__APPLE__)
-#pragma mark - Apple implementation
+#pragma mark -
 
-/// Get a copy of the currently-loaded type metadata sections list.
-///
-/// - Returns: A list of type metadata sections in images loaded into the
-///   current process. The order of the resulting list is unspecified.
-///
-/// On ELF-based platforms, the `swift_enumerateAllMetadataSections()` function
-/// exported by the runtime serves the same purpose as this function.
-static SWTSectionBoundsList<SWTTypeMetadataRecord> getSectionBounds(void) {
-  /// This list is necessarily mutated while a global libobjc- or dyld-owned
-  /// lock is held. Hence, code using this list must avoid potentially
-  /// re-entering either library (otherwise it could potentially deadlock.)
-  ///
-  /// To see how the Swift runtime accomplishes the above goal, see
-  /// `ConcurrentReadableArray` in that project's Concurrent.h header. Since the
-  /// testing library is not tasked with the same performance constraints as
-  /// Swift's runtime library, we just use a `std::vector` guarded by an unfair
-  /// lock.
-  static constinit SWTSectionBoundsList<SWTTypeMetadataRecord> *sectionBounds = nullptr;
-  static constinit os_unfair_lock lock = OS_UNFAIR_LOCK_INIT;
+void **swt_copyTypesWithNamesContaining(const void *sectionBegin, size_t sectionSize, const char *nameSubstring, size_t *outCount) {
+  SWTSectionBounds<SWTTypeMetadataRecord> sb = { nullptr, sectionBegin, sectionSize };
+  std::vector<void *, SWTHeapAllocator<void *>> result;
 
-  static constinit dispatch_once_t once = 0;
-  dispatch_once_f(&once, nullptr, [] (void *) {
-    sectionBounds = reinterpret_cast<SWTSectionBoundsList<SWTTypeMetadataRecord> *>(std::malloc(sizeof(SWTSectionBoundsList<SWTTypeMetadataRecord>)));
-    ::new (sectionBounds) SWTSectionBoundsList<SWTTypeMetadataRecord>();
-    sectionBounds->reserve(_dyld_image_count());
-
-    objc_addLoadImageFunc([] (const mach_header *mh) {
-#if __LP64__
-      auto mhn = reinterpret_cast<const mach_header_64 *>(mh);
-#else
-      auto mhn = mh;
-#endif
-
-      // Ignore this Mach header if it is in the shared cache. On platforms that
-      // support it (Darwin), most system images are contained in this range.
-      // System images can be expected not to contain test declarations, so we
-      // don't need to walk them.
-      if (mhn->flags & MH_DYLIB_IN_CACHE) {
-        return;
-      }
-
-      // If this image contains the Swift section we need, acquire the lock and
-      // store the section's bounds.
-      unsigned long size = 0;
-      auto start = getsectiondata(mhn, SEG_TEXT, "__swift5_types", &size);
-      if (start && size > 0) {
-        os_unfair_lock_lock(&lock); {
-          sectionBounds->emplace_back(mhn, start, size);
-        } os_unfair_lock_unlock(&lock);
-      }
-    });
-  });
-
-  // After the first call sets up the loader hook, all calls take the lock and
-  // make a copy of whatever has been loaded so far.
-  SWTSectionBoundsList<SWTTypeMetadataRecord> result;
-  result.reserve(_dyld_image_count());
-  os_unfair_lock_lock(&lock); {
-    result = *sectionBounds;
-  } os_unfair_lock_unlock(&lock);
-  result.shrink_to_fit();
-  return result;
-}
-
-template <typename SectionEnumerator>
-static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
-  bool stop = false;
-  for (const auto& sb : getSectionBounds()) {
-    body(sb, &stop);
-    if (stop) {
-      break;
-    }
-  }
-}
-
-#elif defined(_WIN32)
-#pragma mark - Windows implementation
-
-/// Find the section with the given name in the given module.
-///
-/// - Parameters:
-///   - hModule: The module to inspect.
-///   - sectionName: The name of the section to look for. Long section names are
-///     not supported.
-///
-/// - Returns: A pointer to the start of the given section along with its size
-///   in bytes, or `std::nullopt` if the section could not be found. If the
-///   section was emitted by the Swift toolchain, be aware it will have leading
-///   and trailing bytes (`sizeof(uintptr_t)` each.)
-static std::optional<SWTSectionBounds<SWTTypeMetadataRecord>> findSection(HMODULE hModule, const char *sectionName) {
-  if (!hModule) {
-    return std::nullopt;
-  }
-
-  // Get the DOS header (to which the HMODULE directly points, conveniently!)
-  // and check it's sufficiently valid for us to walk.
-  auto dosHeader = reinterpret_cast<const PIMAGE_DOS_HEADER>(hModule);
-  if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE || dosHeader->e_lfanew <= 0) {
-    return std::nullopt;
-  }
-
-  // Check the NT header. Since we don't use the optional header, skip it.
-  auto ntHeader = reinterpret_cast<const PIMAGE_NT_HEADERS>(reinterpret_cast<uintptr_t>(dosHeader) + dosHeader->e_lfanew);
-  if (!ntHeader || ntHeader->Signature != IMAGE_NT_SIGNATURE) {
-    return std::nullopt;
-  }
-
-  auto sectionCount = ntHeader->FileHeader.NumberOfSections;
-  auto section = IMAGE_FIRST_SECTION(ntHeader);
-  for (size_t i = 0; i < sectionCount; i++, section += 1) {
-    if (section->VirtualAddress == 0) {
+  for (const auto& record : sb) {
+    auto contextDescriptor = record.getContextDescriptor();
+    if (!contextDescriptor) {
+      // This type metadata record is invalid (or we don't understand how to
+      // get its context descriptor), so skip it.
+      continue;
+    } else if (contextDescriptor->isGeneric()) {
+      // Generic types cannot be fully instantiated without generic
+      // parameters, which is not something we can know abstractly.
       continue;
     }
 
-    auto start = reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(dosHeader) + section->VirtualAddress);
-    size_t size = std::min(section->Misc.VirtualSize, section->SizeOfRawData);
-    if (start && size > 0) {
-      // FIXME: Handle longer names ("/%u") from string table
-      auto thisSectionName = reinterpret_cast<const char *>(section->Name);
-      if (0 == std::strncmp(sectionName, thisSectionName, IMAGE_SIZEOF_SHORT_NAME)) {
-        return SWTSectionBounds<SWTTypeMetadataRecord> { hModule, start, size };
-      }
+    // Check that the type's name passes. This will be more expensive than the
+    // checks above, but should be cheaper than realizing the metadata.
+    const char *typeName = contextDescriptor->getName();
+    bool nameOK = typeName && nullptr != std::strstr(typeName, nameSubstring);
+    if (!nameOK) {
+      continue;
+    }
+
+    if (void *typeMetadata = contextDescriptor->getMetadata()) {
+      result.push_back(typeMetadata);
     }
   }
 
-  return std::nullopt;
-}
-
-template <typename SectionEnumerator>
-static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
-  // Find all the modules loaded in the current process. We assume there aren't
-  // more than 1024 loaded modules (as does Microsoft sample code.)
-  std::array<HMODULE, 1024> hModules;
-  DWORD byteCountNeeded = 0;
-  if (!EnumProcessModules(GetCurrentProcess(), &hModules[0], hModules.size() * sizeof(HMODULE), &byteCountNeeded)) {
-    return;
+  auto resultCopy = reinterpret_cast<void **>(std::calloc(sizeof(void *), result.size()));
+  if (resultCopy) {
+    std::uninitialized_move(result.begin(), result.end(), resultCopy);
+    *outCount = result.size();
   }
-  size_t hModuleCount = std::min(hModules.size(), static_cast<size_t>(byteCountNeeded) / sizeof(HMODULE));
-
-  // Look in all the loaded modules for Swift type metadata sections and store
-  // them in a side table.
-  //
-  // This two-step process is more complicated to read than a single loop would
-  // be but it is safer: the callback will eventually invoke developer code that
-  // could theoretically unload a module from the list we're enumerating. (Swift
-  // modules do not support unloading, so we'll just not worry about them.)
-  SWTSectionBoundsList<SWTTypeMetadataRecord> sectionBounds;
-  sectionBounds.reserve(hModuleCount);
-  for (size_t i = 0; i < hModuleCount; i++) {
-    if (auto sb = findSection(hModules[i], ".sw5tymd")) {
-      sectionBounds.push_back(*sb);
-    }
-  }
-
-  // Pass each discovered section back to the body callback.
-  //
-  // NOTE: we ignore the leading and trailing uintptr_t values: they're both
-  // always set to zero so we'll skip them in the callback, and in the future
-  // the toolchain might not emit them at all in which case we don't want to
-  // skip over real section data.
-  bool stop = false;
-  for (const auto& sb : sectionBounds) {
-    body(sb, &stop);
-    if (stop) {
-      break;
-    }
-  }
-}
-
-#elif defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__ANDROID__)
-#pragma mark - ELF implementation
-
-/// Specifies the address range corresponding to a section.
-struct MetadataSectionRange {
-  uintptr_t start;
-  size_t length;
-};
-
-/// Identifies the address space ranges for the Swift metadata required by the
-/// Swift runtime.
-struct MetadataSections {
-  uintptr_t version;
-  std::atomic<const void *> baseAddress;
-
-  void *unused0;
-  void *unused1;
-
-  MetadataSectionRange swift5_protocols;
-  MetadataSectionRange swift5_protocol_conformances;
-  MetadataSectionRange swift5_type_metadata;
-  MetadataSectionRange swift5_typeref;
-  MetadataSectionRange swift5_reflstr;
-  MetadataSectionRange swift5_fieldmd;
-  MetadataSectionRange swift5_assocty;
-  MetadataSectionRange swift5_replace;
-  MetadataSectionRange swift5_replac2;
-  MetadataSectionRange swift5_builtin;
-  MetadataSectionRange swift5_capture;
-  MetadataSectionRange swift5_mpenum;
-  MetadataSectionRange swift5_accessible_functions;
-};
-
-/// A function exported by the Swift runtime that enumerates all metadata
-/// sections loaded into the current process.
-SWT_IMPORT_FROM_STDLIB void swift_enumerateAllMetadataSections(
-  bool (* body)(const MetadataSections *sections, void *context),
-  void *context
-);
-
-template <typename SectionEnumerator>
-static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
-  swift_enumerateAllMetadataSections([] (const MetadataSections *sections, void *context) {
-    bool stop = false;
-
-    const auto& body = *reinterpret_cast<const SectionEnumerator *>(context);
-    MetadataSectionRange section = sections->swift5_type_metadata;
-    if (section.start && section.length > 0) {
-      SWTSectionBounds<SWTTypeMetadataRecord> sb = {
-        sections->baseAddress.load(),
-        reinterpret_cast<const void *>(section.start),
-        section.length
-      };
-      body(sb, &stop);
-    }
-
-    return !stop;
-  }, const_cast<SectionEnumerator *>(&body));
-}
-#else
-#warning Platform-specific implementation missing: Runtime test discovery unavailable (dynamic)
-template <typename SectionEnumerator>
-static void enumerateTypeMetadataSections(const SectionEnumerator& body) {}
-#endif
-
-#else
-#pragma mark - Statically-linked implementation
-
-#if defined(__APPLE__)
-extern "C" const char sectionBegin __asm__("section$start$__TEXT$__swift5_types");
-extern "C" const char sectionEnd __asm__("section$end$__TEXT$__swift5_types");
-#elif defined(__wasi__)
-extern "C" const char sectionBegin __asm__("__start_swift5_type_metadata");
-extern "C" const char sectionEnd __asm__("__stop_swift5_type_metadata");
-#else
-#warning Platform-specific implementation missing: Runtime test discovery unavailable (static)
-static const char sectionBegin = 0;
-static const char& sectionEnd = sectionBegin;
-#endif
-
-template <typename SectionEnumerator>
-static void enumerateTypeMetadataSections(const SectionEnumerator& body) {
-  SWTSectionBounds<SWTTypeMetadataRecord> sb = {
-    nullptr,
-    &sectionBegin,
-    static_cast<size_t>(std::distance(&sectionBegin, &sectionEnd))
-  };
-  bool stop = false;
-  body(sb, &stop);
-}
-#endif
-
-#pragma mark -
-
-void swt_enumerateTypesWithNamesContaining(const char *nameSubstring, void *context, SWTTypeEnumerator body) {
-  enumerateTypeMetadataSections([=] (const SWTSectionBounds<SWTTypeMetadataRecord>& sectionBounds, bool *stop) {
-    for (const auto& record : sectionBounds) {
-      auto contextDescriptor = record.getContextDescriptor();
-      if (!contextDescriptor) {
-        // This type metadata record is invalid (or we don't understand how to
-        // get its context descriptor), so skip it.
-        continue;
-      } else if (contextDescriptor->isGeneric()) {
-        // Generic types cannot be fully instantiated without generic
-        // parameters, which is not something we can know abstractly.
-        continue;
-      }
-
-      // Check that the type's name passes. This will be more expensive than the
-      // checks above, but should be cheaper than realizing the metadata.
-      const char *typeName = contextDescriptor->getName();
-      bool nameOK = typeName && nullptr != std::strstr(typeName, nameSubstring);
-      if (!nameOK) {
-        continue;
-      }
-
-      if (void *typeMetadata = contextDescriptor->getMetadata()) {
-        body(sectionBounds.imageAddress, typeMetadata, stop, context);
-      }
-    }
-  });
+  return resultCopy;
 }

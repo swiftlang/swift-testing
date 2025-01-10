@@ -56,14 +56,11 @@ extension Test: TestContent {
       }
 
       if discoveryMode != .newOnly && generators.isEmpty {
-        enumerateTypes(withNamesContaining: testContainerTypeNameMagic) { imageAddress, type, _ in
-          guard let type = type as? any __TestContainer.Type else {
-            return
+        generators += types(withNamesContaining: testContainerTypeNameMagic).lazy
+          .compactMap { $0 as? any __TestContainer.Type }
+          .map { type in
+            { @Sendable in await type.__tests }
           }
-          generators.append { @Sendable in
-            await type.__tests
-          }
-        }
       }
 
       // *Now* we call all the generators and return their results.

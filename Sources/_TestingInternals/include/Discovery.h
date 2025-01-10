@@ -73,34 +73,35 @@ SWT_IMPORT_FROM_STDLIB void swift_enumerateAllMetadataSections(
 ///   when Swift files import the `_TestingInternals` C++ module.
 SWT_EXTERN const void *_Nonnull const SWTTestContentSectionBounds[2];
 
+/// The bounds of the type metadata section statically linked into the image
+/// containing Swift Testing.
+///
+/// - Note: This symbol is _declared_, but not _defined_, on platforms with
+///   dynamic linking because the `SWT_NO_DYNAMIC_LINKING` C++ macro (not the
+///   Swift compiler conditional of the same name) is not consistently declared
+///   when Swift files import the `_TestingInternals` C++ module.
+SWT_EXTERN const void *_Nonnull const SWTTypeMetadataSectionBounds[2];
+
 #pragma mark - Legacy test discovery
 
-/// The type of callback called by `swt_enumerateTypes()`.
+/// Copy all types known to Swift found in the given type metadata section with
+/// a name containing the given substring.
 ///
 /// - Parameters:
-///   - imageAddress: A pointer to the start of the image. This value is _not_
-///     equal to the value returned from `dlopen()`. On platforms that do not
-///     support dynamic loading (and so do not have loadable images), this
-///     argument is unspecified.
-///   - typeMetadata: A type metadata pointer that can be bitcast to `Any.Type`.
-///   - stop: A pointer to a boolean variable indicating whether type
-///     enumeration should stop after the function returns. Set `*stop` to
-///     `true` to stop type enumeration.
-///   - context: An arbitrary pointer passed by the caller to
-///     `swt_enumerateTypes()`.
-typedef void (* SWTTypeEnumerator)(const void *_Null_unspecified imageAddress, void *typeMetadata, bool *stop, void *_Null_unspecified context);
-
-/// Enumerate all types known to Swift found in the current process.
-///
-/// - Parameters:
+///   - sectionBegin: The address of the first byte of the Swift type metadata
+///     section.
+///   - sectionSize: The size, in bytes, of the Swift type metadata section.
 ///   - nameSubstring: A string which the names of matching classes all contain.
-///   - context: An arbitrary pointer to pass to `body`.
-///   - body: A function to invoke, once per matching type.
-SWT_EXTERN void swt_enumerateTypesWithNamesContaining(
+///   - outCount: On return, the number of type metadata pointers returned.
+///
+/// - Returns: A pointer to an array of type metadata pointers. The caller is
+///   responsible for freeing this memory with `free()` when done.
+SWT_EXTERN void *_Nonnull *_Nonnull swt_copyTypesWithNamesContaining(
+  const void *sectionBegin,
+  size_t sectionSize,
   const char *nameSubstring,
-  void *_Null_unspecified context,
-  SWTTypeEnumerator body
-) SWT_SWIFT_NAME(swt_enumerateTypes(withNamesContaining:_:_:));
+  size_t *outCount
+) SWT_SWIFT_NAME(swt_copyTypes(in:_:withNamesContaining:count:));
 
 SWT_ASSUME_NONNULL_END
 
