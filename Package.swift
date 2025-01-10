@@ -54,6 +54,7 @@ let package = Package(
         "TestingMacros",
       ],
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
+      cSettings: .packageSettings,
       cxxSettings: .packageSettings,
       swiftSettings: .packageSettings,
       linkerSettings: [
@@ -67,6 +68,8 @@ let package = Package(
         "_Testing_CoreGraphics",
         "_Testing_Foundation",
       ],
+      cSettings: .packageSettings,
+      cxxSettings: .packageSettings,
       swiftSettings: .packageSettings + [
         // For testing test content section discovery only
         .enableExperimentalFeature("SymbolLinkageMarkers"),
@@ -104,7 +107,9 @@ let package = Package(
     .target(
       name: "_TestingInternals",
       exclude: ["CMakeLists.txt"],
-      cxxSettings: .packageSettings
+      cSettings: .packageSettings,
+      cxxSettings: .packageSettings,
+      swiftSettings: .packageSettings
     ),
 
     // Cross-import overlays (not supported by Swift Package Manager)
@@ -114,6 +119,8 @@ let package = Package(
         "Testing",
       ],
       path: "Sources/Overlays/_Testing_CoreGraphics",
+      cSettings: .packageSettings,
+      cxxSettings: .packageSettings,
       swiftSettings: .packageSettings
     ),
     .target(
@@ -123,6 +130,8 @@ let package = Package(
       ],
       path: "Sources/Overlays/_Testing_Foundation",
       exclude: ["CMakeLists.txt"],
+      cSettings: .packageSettings,
+      cxxSettings: .packageSettings,
       swiftSettings: .packageSettings
     ),
   ],
@@ -139,16 +148,54 @@ package.targets.append(contentsOf: [
       "Testing",
       "TestingMacros",
     ],
+    cSettings: .packageSettings,
+    cxxSettings: .packageSettings,
     swiftSettings: .packageSettings
   )
 ])
 #endif
 
+// MARK: - Settings common among languages
+
+protocol LanguageSetting {
+  static func define(_ name: String, _ condition: PackageDescription.BuildSettingCondition?) -> Self
+}
+
+protocol CFamilyLanguageSetting: LanguageSetting {
+  static func define(_ name: String, to value: String?, _ condition: PackageDescription.BuildSettingCondition?) -> Self
+}
+
+extension CFamilyLanguageSetting {
+  static func define(_ name: String, _ condition: PackageDescription.BuildSettingCondition?) -> Self {
+    .define(name, to: nil, condition)
+  }
+}
+
+extension PackageDescription.SwiftSetting: LanguageSetting {}
+extension PackageDescription.CSetting: CFamilyLanguageSetting {}
+extension PackageDescription.CXXSetting: CFamilyLanguageSetting {}
+
+// MARK: - Package-wide settings (to be applied to all targets)
+
+extension Array where Element: LanguageSetting {
+  /// Settings applied across the different languages that determine if certain
+  /// features of the testing library are enabled or not.
+  static var compilerConditionals: Self {
+    [
+      .define("SWT_NO_EXIT_TESTS", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
+      .define("SWT_NO_PROCESS_SPAWNING", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
+      .define("SWT_NO_SNAPSHOT_TYPES", .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi])),
+      .define("SWT_NO_DYNAMIC_LINKING", nil),
+      .define("SWT_NO_PIPES", .when(platforms: [.wasi])),
+    ]
+  }
+}
+
 extension Array where Element == PackageDescription.SwiftSetting {
   /// Settings intended to be applied to every Swift target in this package.
   /// Analogous to project-level build settings in an Xcode project.
   static var packageSettings: Self {
-    availabilityMacroSettings + [
+    [
       .unsafeFlags(["-require-explicit-sendable"]),
       .enableUpcomingFeature("ExistentialAny"),
       .enableExperimentalFeature("SuppressedAssociatedTypes"),
@@ -157,13 +204,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .enableUpcomingFeature("InternalImportsByDefault"),
 
       .define("SWT_TARGET_OS_APPLE", .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])),
-
-      .define("SWT_NO_EXIT_TESTS", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
-      .define("SWT_NO_PROCESS_SPAWNING", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
-      .define("SWT_NO_SNAPSHOT_TYPES", .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi])),
-      .define("SWT_NO_DYNAMIC_LINKING", .when(platforms: [.wasi])),
-      .define("SWT_NO_PIPES", .when(platforms: [.wasi])),
-    ]
+    ] + availabilityMacroSettings + compilerConditionals
   }
 
   /// Settings which define commonly-used OS availability macros.
@@ -186,30 +227,32 @@ extension Array where Element == PackageDescription.SwiftSetting {
   }
 }
 
-extension Array where Element == PackageDescription.CXXSetting {
-  /// Settings intended to be applied to every C++ target in this package.
+/// The testing library's version as determined by the git repository state.
+let testingLibraryVersion: String? = if let git = Context.gitInformation {
+  if let tag = git.currentTag {
+    tag
+  } else if git.hasUncommittedChanges {
+    "\(git.currentCommit) (modified)"
+  } else {
+    git.currentCommit
+  }
+} else {
+  nil
+}
+
+extension Array where Element: CFamilyLanguageSetting {
+  /// Settings intended to be applied to every C or C++ target in this package.
   /// Analogous to project-level build settings in an Xcode project.
+  ///
+  /// The Swift compiler uses C settings (not C++ settings) when importing a C
+  /// or C++ header.
   static var packageSettings: Self {
     var result = Self()
 
-    result += [
-      .define("SWT_NO_EXIT_TESTS", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
-      .define("SWT_NO_PROCESS_SPAWNING", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
-      .define("SWT_NO_SNAPSHOT_TYPES", .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi])),
-      .define("SWT_NO_DYNAMIC_LINKING", .when(platforms: [.wasi])),
-      .define("SWT_NO_PIPES", .when(platforms: [.wasi])),
-    ]
+    result += compilerConditionals
 
-    // Capture the testing library's version as a C++ string constant.
-    if let git = Context.gitInformation {
-      let testingLibraryVersion = if let tag = git.currentTag {
-        tag
-      } else if git.hasUncommittedChanges {
-        "\(git.currentCommit) (modified)"
-      } else {
-        git.currentCommit
-      }
-      result.append(.define("SWT_TESTING_LIBRARY_VERSION", to: #""\#(testingLibraryVersion)""#))
+    if let testingLibraryVersion {
+      result.append(.define("SWT_TESTING_LIBRARY_VERSION", to: #""\#(testingLibraryVersion)""#, nil))
     }
 
     return result
