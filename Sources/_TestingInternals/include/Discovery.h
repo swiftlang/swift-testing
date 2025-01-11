@@ -96,7 +96,7 @@ SWT_EXTERN const void *_Nonnull const SWTTypeMetadataSectionBounds[2];
 ///
 /// - Returns: A pointer to an array of type metadata pointers. The caller is
 ///   responsible for freeing this memory with `free()` when done.
-SWT_EXTERN void *_Nonnull *_Nonnull swt_copyTypesWithNamesContaining(
+SWT_EXTERN void *_Nonnull *_Nullable swt_copyTypesWithNamesContaining(
   const void *sectionBegin,
   size_t sectionSize,
   const char *nameSubstring,

@@ -48,86 +48,20 @@ const void *_Nonnull const SWTTypeMetadataSectionBounds[2] = {
 
 #pragma mark - Legacy test discovery
 
-#include <algorithm>
-#include <array>
-#include <atomic>
-#include <cstring>
-#include <iterator>
+#include <cstdlib>
+#include <cstdint>
 #include <memory>
-#include <tuple>
 #include <type_traits>
 #include <vector>
-#include <optional>
-
-/// Enumerate over all Swift type metadata sections in the current process.
-///
-/// - Parameters:
-///   - body: A function to call once for every section in the current process.
-///     A pointer to the first type metadata record and the number of records
-///     are passed to this function.
-template <typename SectionEnumerator>
-static void enumerateTypeMetadataSections(const SectionEnumerator& body);
-
-/// A type that acts as a C++ [Allocator](https://en.cppreference.com/w/cpp/named_req/Allocator)
-/// without using global `operator new` or `operator delete`.
-///
-/// This type is necessary because global `operator new` and `operator delete`
-/// can be overridden in developer-supplied code and cause deadlocks or crashes
-/// when subsequently used while holding a dyld- or libobjc-owned lock. Using
-/// `std::malloc()` and `std::free()` allows the use of C++ container types
-/// without this risk.
-template<typename T>
-struct SWTHeapAllocator {
-  using value_type = T;
-
-  T *allocate(size_t count) {
-    return reinterpret_cast<T *>(std::calloc(count, sizeof(T)));
-  }
-
-  void deallocate(T *ptr, size_t count) {
-    std::free(ptr);
-  }
-};
-
-/// A structure describing the bounds of a Swift metadata section.
-///
-/// The template argument `T` is the element type of the metadata section.
-/// Instances of this type can be used with a range-based `for`-loop to iterate
-/// the contents of the section.
-template <typename T>
-struct SWTSectionBounds {
-  /// The base address of the image containing the section, if known.
-  const void *imageAddress;
-
-  /// The base address of the section.
-  const void *start;
-
-  /// The size of the section in bytes.
-  size_t size;
-
-  const struct SWTTypeMetadataRecord *begin(void) const {
-    return reinterpret_cast<const T *>(start);
-  }
-
-  const struct SWTTypeMetadataRecord *end(void) const {
-    return reinterpret_cast<const T *>(reinterpret_cast<uintptr_t>(start) + size);
-  }
-};
-
-/// A type that acts as a C++ [Container](https://en.cppreference.com/w/cpp/named_req/Container)
-/// and which contains a sequence of instances of `SWTSectionBounds<T>`.
-template <typename T>
-using SWTSectionBoundsList = std::vector<SWTSectionBounds<T>, SWTHeapAllocator<SWTSectionBounds<T>>>;
 
 #pragma mark - Swift ABI
 
 #if defined(__PTRAUTH_INTRINSICS__)
 #include <ptrauth.h>
-#define SWT_PTRAUTH __ptrauth
+#define SWT_PTRAUTH_SWIFT_TYPE_DESCRIPTOR __ptrauth(ptrauth_key_process_independent_data, 1, 0xae86)
 #else
-#define SWT_PTRAUTH(...)
+#define SWT_PTRAUTH_SWIFT_TYPE_DESCRIPTOR
 #endif
-#define SWT_PTRAUTH_SWIFT_TYPE_DESCRIPTOR SWT_PTRAUTH(ptrauth_key_process_independent_data, 1, 0xae86)
 
 /// A type representing a pointer relative to itself.
 ///
@@ -273,10 +207,16 @@ public:
 #pragma mark -
 
 void **swt_copyTypesWithNamesContaining(const void *sectionBegin, size_t sectionSize, const char *nameSubstring, size_t *outCount) {
-  SWTSectionBounds<SWTTypeMetadataRecord> sb = { nullptr, sectionBegin, sectionSize };
-  std::vector<void *, SWTHeapAllocator<void *>> result;
+  auto records = reinterpret_cast<const SWTTypeMetadataRecord *>(sectionBegin);
+  size_t recordCount = sectionSize / sizeof(SWTTypeMetadataRecord);
 
-  for (const auto& record : sb) {
+  // The buffer we'll return and how many types we've placed in it. (We only
+  // allocate the buffer if at least one type in the section matches.)
+  void **result = nullptr;
+  auto resultCount = 0;
+
+  for (size_t i = 0; i < recordCount; i++) {
+    const auto& record = records[i];
     auto contextDescriptor = record.getContextDescriptor();
     if (!contextDescriptor) {
       // This type metadata record is invalid (or we don't understand how to
@@ -297,14 +237,19 @@ void **swt_copyTypesWithNamesContaining(const void *sectionBegin, size_t section
     }
 
     if (void *typeMetadata = contextDescriptor->getMetadata()) {
-      result.push_back(typeMetadata);
+      if (!result) {
+        // This is the first matching type we've found. That presumably means
+        // we'll find more, so allocate enough space for all remaining types in
+        // the section. Is this necessarily space-efficient? No, but this
+        // allocation is short-lived and is immediately copied and freed in the
+        // Swift caller.
+        result = reinterpret_cast<void **>(std::calloc(recordCount - i, sizeof(void *)));
+      }
+      result[resultCount] = typeMetadata;
+      resultCount += 1;
     }
   }
 
-  auto resultCopy = reinterpret_cast<void **>(std::calloc(sizeof(void *), result.size()));
-  if (resultCopy) {
-    std::uninitialized_move(result.begin(), result.end(), resultCopy);
-    *outCount = result.size();
-  }
-  return resultCopy;
+  *outCount = resultCount;
+  return result;
 }
