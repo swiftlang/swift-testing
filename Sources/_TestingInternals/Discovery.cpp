@@ -98,10 +98,6 @@ public:
 #endif
     return reinterpret_cast<const T *>(result);
   }
-
-  const T *_Nullable operator ->(void) const& {
-    return get();
-  }
 };
 
 /// A type representing a 32-bit absolute function pointer, usually used on platforms
@@ -117,10 +113,6 @@ private:
 public:
   const T *_Nullable get(void) const & {
     return _pointer;
-  }
-
-  const T *_Nullable operator ->(void) const & {
-    return get();
   }
 };
 
