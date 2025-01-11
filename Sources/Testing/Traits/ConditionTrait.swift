@@ -19,6 +19,14 @@
 /// - ``Trait/disabled(if:_:sourceLocation:)``
 /// - ``Trait/disabled(_:sourceLocation:_:)``
 public struct ConditionTrait: TestTrait, SuiteTrait {
+  /// An enumeration identifying the result of evaluating the condition.
+  public enum Evaluation: Sendable {
+    /// The condition succeeded.
+    case success
+    /// The condition failed, potentially returning a `Comment`.
+    case failure(Comment?)
+  }
+  
   /// An enumeration describing the kinds of conditions that can be represented
   /// by an instance of this type.
   enum Kind: Sendable {
@@ -79,19 +87,26 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
 
   /// The source location where this trait was specified.
   public var sourceLocation: SourceLocation
-
-  public func prepare(for test: Test) async throws {
-    let result: Bool
-    var commentOverride: Comment?
-
+  
+  /// Returns the result of evaluating the condition.
+  public func evaluate() async throws -> Evaluation {
     switch kind {
     case let .conditional(condition):
-      (result, commentOverride) = try await condition()
+      switch try await condition() {
+      case (true, _):
+        .success
+      case (false, let comment):
+        .failure(comment)
+      }
     case let .unconditional(unconditionalValue):
-      result = unconditionalValue
+      unconditionalValue ? .success : .failure(nil)
     }
+  }
 
-    if !result {
+  public func prepare(for test: Test) async throws {
+    let result = try await evaluate()
+
+    if case let .failure(commentOverride) = result {
       // We don't need to consider including a backtrace here because it will
       // primarily contain frames in the testing library, not user code. If an
       // error was thrown by a condition evaluated above, the caller _should_
