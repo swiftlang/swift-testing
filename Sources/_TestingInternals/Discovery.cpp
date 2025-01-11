@@ -50,6 +50,7 @@ const void *_Nonnull const SWTTypeMetadataSectionBounds[2] = {
 
 #include <cstdlib>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 #include <type_traits>
 #include <vector>
