@@ -10,6 +10,12 @@
 
 #include "Discovery.h"
 
+#include <cstdlib>
+#include <cstdint>
+#include <cstring>
+#include <type_traits>
+#include <vector>
+
 #if defined(SWT_NO_DYNAMIC_LINKING)
 #pragma mark - Statically-linked section bounds
 
@@ -45,15 +51,6 @@ const void *_Nonnull const SWTTypeMetadataSectionBounds[2] = {
   &typeMetadataSectionEnd
 };
 #endif
-
-#pragma mark - Legacy test discovery
-
-#include <cstdlib>
-#include <cstdint>
-#include <cstring>
-#include <memory>
-#include <type_traits>
-#include <vector>
 
 #pragma mark - Swift ABI
 
@@ -197,7 +194,7 @@ public:
   }
 };
 
-#pragma mark -
+#pragma mark - Legacy test discovery
 
 void **swt_copyTypesWithNamesContaining(const void *sectionBegin, size_t sectionSize, const char *nameSubstring, size_t *outCount) {
   auto records = reinterpret_cast<const SWTTypeMetadataRecord *>(sectionBegin);
@@ -206,7 +203,7 @@ void **swt_copyTypesWithNamesContaining(const void *sectionBegin, size_t section
   // The buffer we'll return and how many types we've placed in it. (We only
   // allocate the buffer if at least one type in the section matches.)
   void **result = nullptr;
-  auto resultCount = 0;
+  size_t resultCount = 0;
 
   for (size_t i = 0; i < recordCount; i++) {
     const auto& record = records[i];
