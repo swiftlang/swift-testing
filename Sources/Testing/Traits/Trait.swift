@@ -41,6 +41,150 @@ public protocol Trait: Sendable {
   ///
   /// By default, the value of this property is an empty array.
   var comments: [Comment] { get }
+
+  /// The type of the test scope provider for this trait.
+  ///
+  /// The default type is `Never`, which cannot be instantiated. The
+  /// ``scopeProvider(for:testCase:)-cjmg`` method for any trait with this
+  /// default type must return `nil`, meaning that trait will not provide a
+  /// custom scope for the tests it's applied to.
+  associatedtype TestScopeProvider: TestScoping = Never
+
+  /// Get this trait's scope provider for the specified test and/or test case,
+  /// if any.
+  ///
+  /// - Parameters:
+  ///   - test: The test for which a scope provider is being requested.
+  ///   - testCase: The test case for which a scope provider is being requested,
+  ///     if any. When `test` represents a suite, the value of this argument is
+  ///     `nil`.
+  ///
+  /// - Returns: A value conforming to ``Trait/TestScopeProvider`` which may be
+  ///   used to provide custom scoping for `test` and/or `testCase`, or `nil` if
+  ///   they should not have any custom scope.
+  ///
+  /// If this trait's type conforms to ``TestScoping``, the default value
+  /// returned by this method depends on `test` and/or `testCase`:
+  ///
+  /// - If `test` represents a suite, this trait must conform to ``SuiteTrait``.
+  ///   If the value of this suite trait's ``SuiteTrait/isRecursive`` property
+  ///   is `true`, then this method returns `nil`; otherwise, it returns `self`.
+  ///   This means that by default, a suite trait will _either_ provide its
+  ///   custom scope once for the entire suite, or once per-test function it
+  ///   contains.
+  /// - Otherwise `test` represents a test function. If `testCase` is `nil`,
+  ///   this method returns `nil`; otherwise, it returns `self`. This means that
+  ///   by default, a trait which is applied to or inherited by a test function
+  ///   will provide its custom scope once for each of that function's cases.
+  ///
+  /// A trait may explicitly implement this method to further customize the
+  /// default behaviors above. For example, if a trait should provide custom
+  /// test scope both once per-suite and once per-test function in that suite,
+  /// it may implement the method and return a non-`nil` scope provider under
+  /// those conditions.
+  ///
+  /// A trait may also implement this method and return `nil` if it determines
+  /// that it does not need to provide a custom scope for a particular test at
+  /// runtime, even if the test has the trait applied. This can improve
+  /// performance and make diagnostics clearer by avoiding an unnecessary call
+  /// to ``TestScoping/provideScope(for:testCase:performing:)``.
+  ///
+  /// If this trait's type does not conform to ``TestScoping`` and its
+  /// associated ``Trait/TestScopeProvider`` type is the default `Never`, then
+  /// this method returns `nil` by default. This means that instances of this
+  /// trait will not provide a custom scope for tests to which they're applied.
+  func scopeProvider(for test: Test, testCase: Test.Case?) -> TestScopeProvider?
+}
+
+/// A protocol that allows providing a custom execution scope for a test
+/// function (and each of its cases) or a test suite by performing custom code
+/// before or after it runs.
+///
+/// Types conforming to this protocol may be used in conjunction with a
+/// ``Trait``-conforming type by implementing the
+/// ``Trait/scopeProvider(for:testCase:)-cjmg`` method, allowing custom traits
+/// to provide custom scope for tests. Consolidating common set-up and tear-down
+/// logic for tests which have similar needs allows each test function to be
+/// more succinct with less repetitive boilerplate so it can focus on what makes
+/// it unique.
+public protocol TestScoping: Sendable {
+  /// Provide custom execution scope for a function call which is related to the
+  /// specified test and/or test case.
+  ///
+  /// - Parameters:
+  ///   - test: The test under which `function` is being performed.
+  ///   - testCase: The test case, if any, under which `function` is being
+  ///     performed. When invoked on a suite, the value of this argument is
+  ///     `nil`.
+  ///   - function: The function to perform. If `test` represents a test suite,
+  ///     this function encapsulates running all the tests in that suite. If
+  ///     `test` represents a test function, this function is the body of that
+  ///     test function (including all cases if it is parameterized.)
+  ///
+  /// - Throws: Whatever is thrown by `function`, or an error preventing this
+  ///   type from providing a custom scope correctly. An error thrown from this
+  ///   method is recorded as an issue associated with `test`. If an error is
+  ///   thrown before `function` is called, the corresponding test will not run.
+  ///
+  /// When the testing library is preparing to run a test, it starts by finding
+  /// all traits applied to that test, including those inherited from containing
+  /// suites. It begins with inherited suite traits, sorting them
+  /// outermost-to-innermost, and if the test is a function, it then adds all
+  /// traits applied directly to that functions in the order they were applied
+  /// (left-to-right). It then asks each trait for its scope provider (if any)
+  /// by calling ``Trait/scopeProvider(for:testCase:)-cjmg``. Finally, it calls
+  /// this method on all non-`nil` scope providers, giving each an opportunity
+  /// to perform arbitrary work before or after invoking `function`.
+  ///
+  /// This method should either invoke `function` once before returning or throw
+  /// an error if it is unable to provide a custom scope.
+  ///
+  /// Issues recorded by this method are associated with `test`.
+  func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws
+}
+
+extension Trait where Self: TestScoping {
+  /// Get this trait's scope provider for the specified test and/or test case,
+  /// if any.
+  ///
+  /// - Parameters:
+  ///   - test: The test for which a scope provider is being requested.
+  ///   - testCase: The test case for which a scope provider is being requested,
+  ///     if any. When `test` represents a suite, the value of this argument is
+  ///     `nil`.
+  ///
+  /// This default implementation is used when this trait type conforms to
+  /// ``TestScoping`` and its return value is discussed in
+  /// ``Trait/scopeProvider(for:testCase:)-cjmg``.
+  public func scopeProvider(for test: Test, testCase: Test.Case?) -> Self? {
+    testCase == nil ? nil : self
+  }
+}
+
+extension SuiteTrait where Self: TestScoping {
+  /// Get this trait's scope provider for the specified test and/or test case,
+  /// if any.
+  ///
+  /// - Parameters:
+  ///   - test: The test for which a scope provider is being requested.
+  ///   - testCase: The test case for which a scope provider is being requested,
+  ///     if any. When `test` represents a suite, the value of this argument is
+  ///     `nil`.
+  ///
+  /// This default implementation is used when this trait type conforms to
+  /// ``TestScoping`` and its return value is discussed in
+  /// ``Trait/scopeProvider(for:testCase:)-cjmg``.
+  public func scopeProvider(for test: Test, testCase: Test.Case?) -> Self? {
+    if test.isSuite {
+      isRecursive ? nil : self
+    } else {
+      testCase == nil ? nil : self
+    }
+  }
+}
+
+extension Never: TestScoping {
+  public func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {}
 }
 
 /// A protocol describing traits that can be added to a test function.
@@ -72,43 +216,26 @@ extension Trait {
   }
 }
 
+extension Trait where TestScopeProvider == Never {
+  /// Get this trait's scope provider for the specified test and/or test case,
+  /// if any.
+  ///
+  /// - Parameters:
+  ///   - test: The test for which a scope provider is being requested.
+  ///   - testCase: The test case for which a scope provider is being requested,
+  ///     if any. When `test` represents a suite, the value of this argument is
+  ///     `nil`.
+  ///
+  /// This default implementation is used when this trait type's associated
+  /// ``Trait/TestScopeProvider`` type is the default value of `Never`, and its
+  /// return value is discussed in ``Trait/scopeProvider(for:testCase:)-cjmg``.
+  public func scopeProvider(for test: Test, testCase: Test.Case?) -> Never? {
+    nil
+  }
+}
+
 extension SuiteTrait {
   public var isRecursive: Bool {
     false
   }
-}
-
-/// A protocol extending ``Trait`` that offers an additional customization point
-/// for trait authors to execute code before and after each test function (if
-/// added to the traits of a test function), or before and after each test suite
-/// (if added to the traits of a test suite).
-@_spi(Experimental)
-public protocol CustomExecutionTrait: Trait {
-
-  /// Execute a function with the effects of this trait applied.
-  ///
-  /// - Parameters:
-  ///   - function: The function to perform. If `test` represents a test suite,
-  ///     this function encapsulates running all the tests in that suite. If
-  ///     `test` represents a test function, this function is the body of that
-  ///     test function (including all cases if it is parameterized.)
-  ///   - test: The test under which `function` is being performed.
-  ///   - testCase: The test case, if any, under which `function` is being
-  ///     performed. This is `nil` when invoked on a suite.
-  ///
-  /// - Throws: Whatever is thrown by `function`, or an error preventing the
-  ///   trait from running correctly.
-  ///
-  /// This function is called for each ``CustomExecutionTrait`` on a test suite
-  /// or test function and allows additional work to be performed before and
-  /// after the test runs.
-  ///
-  /// This function is invoked once for the test it is applied to, and then once
-  /// for each test case in that test, if applicable.
-  ///
-  /// Issues recorded by this function are recorded against `test`.
-  ///
-  /// - Note: If a test function or test suite is skipped, this function does
-  ///   not get invoked by the runner.
-  func execute(_ function: @Sendable () async throws -> Void, for test: Test, testCase: Test.Case?) async throws
 }
