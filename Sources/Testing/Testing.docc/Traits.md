@@ -53,6 +53,7 @@ behavior of test functions.
 - ``Trait``
 - ``TestTrait``
 - ``SuiteTrait``
+- ``TestScoping``
 
 ### Supporting types
 
