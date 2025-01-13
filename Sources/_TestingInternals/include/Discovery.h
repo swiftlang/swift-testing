@@ -94,8 +94,9 @@ SWT_EXTERN const void *_Nonnull const SWTTypeMetadataSectionBounds[2];
 ///   - nameSubstring: A string which the names of matching classes all contain.
 ///   - outCount: On return, the number of type metadata pointers returned.
 ///
-/// - Returns: A pointer to an array of type metadata pointers. The caller is
-///   responsible for freeing this memory with `free()` when done.
+/// - Returns: A pointer to an array of type metadata pointers, or `nil` if no
+///   matching types were found. The caller is responsible for freeing this
+///   memory with `free()` when done.
 SWT_EXTERN void *_Nonnull *_Nullable swt_copyTypesWithNamesContaining(
   const void *sectionBegin,
   size_t sectionSize,
