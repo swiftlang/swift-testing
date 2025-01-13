@@ -37,25 +37,18 @@ static const char typeMetadataSectionBegin = 0;
 static const char& typeMetadataSectionEnd = typeMetadataSectionBegin;
 #endif
 
-/// The bounds of the test content section statically linked into the image
-/// containing Swift Testing.
 const void *_Nonnull const SWTTestContentSectionBounds[2] = {
-  &testContentSectionBegin,
-  &testContentSectionEnd
+  &testContentSectionBegin, &testContentSectionEnd
 };
 
-/// The bounds of the type metadata section statically linked into the image
-/// containing Swift Testing.
 const void *_Nonnull const SWTTypeMetadataSectionBounds[2] = {
-  &typeMetadataSectionBegin,
-  &typeMetadataSectionEnd
+  &typeMetadataSectionBegin, &typeMetadataSectionEnd
 };
 #endif
 
 #pragma mark - Swift ABI
 
 #if defined(__PTRAUTH_INTRINSICS__)
-#include <ptrauth.h>
 #define SWT_PTRAUTH_SWIFT_TYPE_DESCRIPTOR __ptrauth(ptrauth_key_process_independent_data, 1, 0xae86)
 #else
 #define SWT_PTRAUTH_SWIFT_TYPE_DESCRIPTOR
@@ -197,17 +190,13 @@ public:
 #pragma mark - Legacy test discovery
 
 void **swt_copyTypesWithNamesContaining(const void *sectionBegin, size_t sectionSize, const char *nameSubstring, size_t *outCount) {
-  auto records = reinterpret_cast<const SWTTypeMetadataRecord *>(sectionBegin);
-  size_t recordCount = sectionSize / sizeof(SWTTypeMetadataRecord);
-
-  // The buffer we'll return and how many types we've placed in it. (We only
-  // allocate the buffer if at least one type in the section matches.)
   void **result = nullptr;
   size_t resultCount = 0;
 
+  auto records = reinterpret_cast<const SWTTypeMetadataRecord *>(sectionBegin);
+  size_t recordCount = sectionSize / sizeof(SWTTypeMetadataRecord);
   for (size_t i = 0; i < recordCount; i++) {
-    const auto& record = records[i];
-    auto contextDescriptor = record.getContextDescriptor();
+    auto contextDescriptor = records[i].getContextDescriptor();
     if (!contextDescriptor) {
       // This type metadata record is invalid (or we don't understand how to
       // get its context descriptor), so skip it.
