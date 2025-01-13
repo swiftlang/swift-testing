@@ -57,15 +57,13 @@ let exitTestContainerTypeNameMagic = "__🟠$exit_test_body__"
 ///
 /// - Returns: A sequence of Swift types whose names contain `nameSubstring`.
 func types(withNamesContaining nameSubstring: String) -> some Sequence<Any.Type> {
-  SectionBounds.all(.typeMetadata).lazy
-    .map { sb in
-      var count = 0
-      let start = swt_copyTypes(in: sb.buffer.baseAddress!, sb.buffer.count, withNamesContaining: nameSubstring, count: &count)
-      defer {
-        free(start)
-      }
-      return start.withMemoryRebound(to: Any.Type.self, capacity: count) { start in
-        Array(UnsafeBufferPointer(start: start, count: count))
-      }
-    }.joined()
+  SectionBounds.all(.typeMetadata).lazy.flatMap { sb in
+    var count = 0
+    let start = swt_copyTypes(in: sb.buffer.baseAddress!, sb.buffer.count, withNamesContaining: nameSubstring, count: &count)
+    defer {
+      free(start)
+    }
+    return UnsafeBufferPointer(start: start, count: count)
+      .withMemoryRebound(to: Any.Type.self) { Array($0) }
+  }
 }
