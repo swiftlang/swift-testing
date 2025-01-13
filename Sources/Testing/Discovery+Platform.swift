@@ -72,36 +72,20 @@ private let _startCollectingSectionBounds: Void = {
       return
     }
 
-    // If this image contains the Swift section we need, acquire the lock and
+    // If this image contains the Swift section(s) we need, acquire the lock and
     // store the section's bounds.
-    let testContentSectionBounds: SectionBounds? = {
+    func findSectionBounds(forSectionNamed segmentName: String, _ sectionName: String, ofKind kind: SectionBounds.Kind) {
       var size = CUnsignedLong(0)
-      if let start = getsectiondata(mh, "__DATA_CONST", "__swift5_tests", &size), size > 0 {
+      if let start = getsectiondata(mh, segmentName, sectionName, &size), size > 0 {
         let buffer = UnsafeRawBufferPointer(start: start, count: Int(clamping: size))
-        return SectionBounds(imageAddress: mh, buffer: buffer)
-      }
-      return nil
-    }()
-
-    let typeMetadataSectionBounds: SectionBounds? = {
-      var size = CUnsignedLong(0)
-      if let start = getsectiondata(mh, "__TEXT", "__swift5_types", &size), size > 0 {
-        let buffer = UnsafeRawBufferPointer(start: start, count: Int(clamping: size))
-        return SectionBounds(imageAddress: mh, buffer: buffer)
-      }
-      return nil
-    }()
-
-    if testContentSectionBounds != nil || typeMetadataSectionBounds != nil {
-      _sectionBounds.withLock { sectionBounds in
-        if let testContentSectionBounds {
-          sectionBounds[.testContent]!.append(testContentSectionBounds)
-        }
-        if let typeMetadataSectionBounds {
-          sectionBounds[.typeMetadata]!.append(typeMetadataSectionBounds)
+        let sb = SectionBounds(imageAddress: mh, buffer: buffer)
+        _sectionBounds.withLock { sectionBounds in
+          sectionBounds[kind]!.append(sb)
         }
       }
     }
+    findSectionBounds(forSectionNamed: "__DATA_CONST", "__swift5_tests", ofKind: .testContent)
+    findSectionBounds(forSectionNamed: "__TEXT", "__swift5_types", ofKind: .typeMetadata)
   }
 
 #if _runtime(_ObjC)
