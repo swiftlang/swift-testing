@@ -19,13 +19,8 @@
 /// - ``Trait/disabled(if:_:sourceLocation:)``
 /// - ``Trait/disabled(_:sourceLocation:_:)``
 public struct ConditionTrait: TestTrait, SuiteTrait {
-  /// An enumeration identifying the result of evaluating the condition.
-  public enum Evaluation: Sendable {
-    /// The condition succeeded.
-    case success
-    /// The condition failed, potentially returning a `Comment`.
-    case failure(Comment?)
-  }
+  /// The result of evaluating the condition.
+  public typealias Evaluation = (Bool, comment: Comment?)
   
   /// An enumeration describing the kinds of conditions that can be represented
   /// by an instance of this type.
@@ -38,7 +33,7 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
     ///     `false` and a comment is also returned, it is used in place of the
     ///     value of the associated trait's ``ConditionTrait/comment`` property.
     ///     If this function returns `true`, the returned comment is ignored.
-    case conditional(_ body: @Sendable () async throws -> (Bool, comment: Comment?))
+    case conditional(_ body: @Sendable () async throws -> Evaluation)
 
     /// Create an instance of this type associated with a trait that is
     /// conditional on the result of calling a function.
@@ -49,7 +44,7 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
     ///
     /// - Returns: An instance of this type.
     static func conditional(_ body: @escaping @Sendable () async throws -> Bool) -> Self {
-      conditional { () -> (Bool, comment: Comment?) in
+      conditional { () -> Evaluation in
         return (try await body(), nil)
       }
     }
@@ -89,24 +84,20 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
   public var sourceLocation: SourceLocation
   
   /// Returns the result of evaluating the condition.
+  @_spi(Experimental)
   public func evaluate() async throws -> Evaluation {
     switch kind {
     case let .conditional(condition):
-      switch try await condition() {
-      case (true, _):
-        .success
-      case (false, let comment):
-        .failure(comment)
-      }
+      try await condition()
     case let .unconditional(unconditionalValue):
-      unconditionalValue ? .success : .failure(nil)
+      (unconditionalValue, nil)
     }
   }
 
   public func prepare(for test: Test) async throws {
-    let result = try await evaluate()
+    let (isEnabled, commentOverride) = try await evaluate()
 
-    if case let .failure(commentOverride) = result {
+    if !isEnabled {
       // We don't need to consider including a backtrace here because it will
       // primarily contain frames in the testing library, not user code. If an
       // error was thrown by a condition evaluated above, the caller _should_
