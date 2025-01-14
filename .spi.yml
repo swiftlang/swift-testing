@@ -3,6 +3,5 @@ metadata:
   authors: Apple Inc.
 builder:
   configs:
-    - swift_version: 6.0
-      documentation_targets: [Testing]
+    - documentation_targets: [Testing]
       scheme: Testing
