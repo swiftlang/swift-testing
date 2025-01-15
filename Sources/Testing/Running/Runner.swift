@@ -163,7 +163,7 @@ extension Runner {
     let configuration = _configuration
 
     // Determine what action to take for this step.
-    if let step = stepGraph.value, step.starts(in: stage) {
+    if let step = stepGraph.value, step.stages.lowerBound == stage {
       Event.post(.planStepStarted(step), for: (step.test, nil), configuration: configuration)
 
       // Determine what kind of event to send for this step based on its action.
@@ -177,7 +177,7 @@ extension Runner {
       }
     }
     defer {
-      if let step = stepGraph.value, step.ends(in: stage) {
+      if let step = stepGraph.value, step.stages.upperBound == stage {
         if case .run = step.action {
           Event.post(.testEnded, for: (step.test, nil), configuration: configuration)
         }
@@ -185,7 +185,7 @@ extension Runner {
       }
     }
 
-    if let step = stepGraph.value, case .run = step.action, step.stage == stage {
+    if let step = stepGraph.value, case .run = step.action, step.stages.lowerBound == stage {
       await Test.withCurrent(step.test) {
         _ = await Issue.withErrorRecording(at: step.test.sourceLocation, configuration: configuration) {
           try await _applyScopingTraits(for: step.test, testCase: nil) {
@@ -200,8 +200,8 @@ extension Runner {
         }
       }
     } else {
-      // There is no test at this node in the graph, so just skip down to the
-      // child nodes.
+      // There is no test at this node in the graph, or the test at this node
+      // runs in another stage, so just skip down to the child nodes.
       try await _runChildren(of: stepGraph, stage: stage)
     }
   }
@@ -232,7 +232,7 @@ extension Runner {
   /// - Throws: Whatever is thrown from the test body. Thrown errors are
   ///   normally reported as test failures.
   private static func _runChildren(of stepGraph: Graph<String, Plan.Step?>, stage: Plan.Stage) async throws {
-    let childGraphs = if _configuration.isParallelizationEnabled {
+    let childGraphs = if stage != .globallySerialized && _configuration.isParallelizationEnabled {
       // Explicitly shuffle the steps to help detect accidental dependencies
       // between tests due to their ordering.
       Array(stepGraph.children)

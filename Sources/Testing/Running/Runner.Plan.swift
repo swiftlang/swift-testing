@@ -78,7 +78,12 @@ extension Runner {
     /// This enumeration conforms to `CaseIterable`, so callers can iterate over
     /// all stages by looping over `Stage.allCases`. `Stage.allCases.first` and
     /// `Stage.allCases.last` are respectively the first and last stages to run.
-    enum Stage: Sendable, CaseIterable {
+    ///
+    /// The names of cases are meant to describe what happens during them (so as
+    /// to aid debugging.) Most code that uses test run stages doesn't need to
+    /// care about them in isolation, but rather looks at `Stage.allCases`,
+    /// ranges of stages, etc.
+    enum Stage: Sendable, Comparable, CaseIterable {
       /// Tests that might run in parallel (globally or locally) are being run.
       case parallelizationAllowed
 
@@ -102,48 +107,8 @@ extension Runner {
       /// The action to perform with ``test``.
       public var action: Action
 
-      /// The stage at which this step should be performed.
-      var stage: Stage = .default
-
-      /// Whether or not this step may perform work over multiple stages of a
-      /// test run.
-      var isMultistaged: Bool {
-        test.isSuite
-      }
-
-      /// Whether or not this step performs its first work in the given test
-      /// run stage.
-      ///
-      /// - Parameters:
-      ///   - stage: The stage of interest.
-      ///
-      /// - Returns: Whether or not `stage` is the first stage in which this
-      ///   step performs some work.
-      func starts(in stage: Stage) -> Bool {
-        let firstStage = if isMultistaged {
-          Stage.allCases.first
-        } else {
-          self.stage
-        }
-        return stage == firstStage
-      }
-
-      /// Whether or not this step performs its final work in the given test
-      /// run stage.
-      ///
-      /// - Parameters:
-      ///   - stage: The stage of interest.
-      ///
-      /// - Returns: Whether or not `stage` is the last stage in which this
-      ///   step performs some work.
-      func ends(in stage: Stage) -> Bool {
-        let lastStage = if isMultistaged {
-          Stage.allCases.last
-        } else {
-          self.stage
-        }
-        return stage == lastStage
-      }
+      /// The stages at which this step operates.
+      var stages: ClosedRange<Stage> = .default ... .default
     }
 
     /// The graph of the steps in the runner plan.
@@ -252,6 +217,23 @@ extension Runner.Plan {
 
     var sourceLocation: SourceLocation?
     synthesizeSuites(in: &graph, sourceLocation: &sourceLocation)
+  }
+
+  /// Recursively widen the range of test run stages each (yet-to-be-created)
+  /// step in the specified graph will operate in.
+  ///
+  /// - Parameters:
+  ///   - graph: The graph in which test run stage ranges should be computed.
+  private static func _recursivelyComputeStageRanges(in graph: inout Graph<String, ClosedRange<Stage>>) {
+    var minStage = graph.value.lowerBound
+    var maxStage = graph.value.upperBound
+    for (key, var childGraph) in graph.children {
+      _recursivelyComputeStageRanges(in: &childGraph)
+      graph.children[key] = childGraph
+      minStage = min(minStage, childGraph.value.lowerBound)
+      maxStage = max(maxStage, childGraph.value.upperBound)
+    }
+    graph.value = minStage ... maxStage
   }
 
   /// Construct a graph of runner plan steps for the specified tests.
@@ -379,9 +361,9 @@ extension Runner.Plan {
       (action, recursivelyApply: action.isRecursive)
     }
 
-    // Figure out what stage each test should operate in.
-    let stageGraph: Graph<String, Runner.Plan.Stage> = testGraph.mapValues { _, test in
-      switch test?.isGloballySerialized {
+    // Figure out what stages each step should operate in.
+    var stageGraph: Graph<String, ClosedRange<Stage>> = testGraph.mapValues { _, test in
+      let bound: Stage = switch test?.isGloballySerialized {
       case nil:
         .default
       case .some(false):
@@ -389,15 +371,17 @@ extension Runner.Plan {
       case .some(true):
         .globallySerialized
       }
+      return bound ... bound
     }
+    _recursivelyComputeStageRanges(in: &stageGraph)
 
     // Zip the tests, actions, and stages together and return them.
     return zip(zip(testGraph, actionGraph), stageGraph).mapValues { _, tuple in
       let test = tuple.0.0
       let action = tuple.0.1
-      let stage = tuple.1
+      let stages = tuple.1
       return test.map { test in
-        Step(test: test, action: action, stage: stage)
+        Step(test: test, action: action, stages: stages)
       }
     }
   }
