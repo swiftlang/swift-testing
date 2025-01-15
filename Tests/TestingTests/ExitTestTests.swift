@@ -405,6 +405,17 @@ private import _TestingInternals
     #expect(result.standardOutputContent.isEmpty)
     #expect(result.standardErrorContent.contains("STANDARD ERROR".utf8.reversed()))
   }
+
+  @Test("Arguments to the macro are not captured during expansion (do not need to be literals/const)")
+  func argumentsAreNotCapturedDuringMacroExpansion() async throws {
+    let unrelatedSourceLocation = #_sourceLocation
+    func nonConstExitCondition() async throws -> ExitCondition {
+      .failure
+    }
+    await #expect(exitsWith: try await nonConstExitCondition(), sourceLocation: unrelatedSourceLocation) {
+      fatalError()
+    }
+  }
 }
 
 // MARK: - Fixtures

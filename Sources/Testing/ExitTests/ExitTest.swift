@@ -52,16 +52,24 @@ public typealias ExitTest = __ExitTest
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 public struct __ExitTest: Sendable, ~Copyable {
-  /// The expected exit condition of the exit test.
-  @_spi(ForToolsIntegrationOnly)
-  public var expectedExitCondition: ExitCondition
+  /// A type whose instances uniquely identify instances of `__ExitTest`.
+  public struct ID: Sendable, Equatable, Codable {
+    /// An underlying UUID (stored as two `UInt64` values to avoid relying on
+    /// `UUID` from Foundation or any platform-specific interfaces.)
+    private var _lo: UInt64
+    private var _hi: UInt64
 
-  /// The source location of the exit test.
-  ///
-  /// The source location is unique to each exit test and is consistent between
-  /// processes, so it can be used to uniquely identify an exit test at runtime.
-  @_spi(ForToolsIntegrationOnly)
-  public var sourceLocation: SourceLocation
+    /// Initialize an instance of this type.
+    ///
+    /// - Warning: This member is used to implement the `#expect(exitsWith:)`
+    ///   macro. Do not use it directly.
+    public init(__uuid uuid: (UInt64, UInt64)) {
+      self._lo = uuid.0
+      self._hi = uuid.1
+    }
+  }
+
+  public var id: ID
 
   /// The body closure of the exit test.
   ///
@@ -110,12 +118,10 @@ public struct __ExitTest: Sendable, ~Copyable {
   /// - Warning: This initializer is used to implement the `#expect(exitsWith:)`
   ///   macro. Do not use it directly.
   public init(
-    __expectedExitCondition expectedExitCondition: ExitCondition,
-    sourceLocation: SourceLocation,
+    __identifiedBy id: ID,
     body: @escaping @Sendable () async throws -> Void = {}
   ) {
-    self.expectedExitCondition = expectedExitCondition
-    self.sourceLocation = sourceLocation
+    self.id = id
     self.body = body
   }
 }
@@ -222,7 +228,7 @@ extension ExitTest: TestContent {
   }
 
   typealias TestContentAccessorResult = Self
-  typealias TestContentAccessorHint = SourceLocation
+  typealias TestContentAccessorHint = ID
 }
 
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
@@ -230,20 +236,16 @@ extension ExitTest {
   /// Find the exit test function at the given source location.
   ///
   /// - Parameters:
-  ///   - sourceLocation: The source location of the exit test to find.
+  ///   - id: The unique identifier of the exit test to find.
   ///
   /// - Returns: The specified exit test function, or `nil` if no such exit test
   ///   could be found.
-  public static func find(at sourceLocation: SourceLocation) -> Self? {
+  public static func find(identifiedBy id: ExitTest.ID) -> Self? {
     var result: Self?
 
-    enumerateTestContent(withHint: sourceLocation) { _, exitTest, _, stop in
-      if exitTest.sourceLocation == sourceLocation {
-        result = ExitTest(
-          __expectedExitCondition: exitTest.expectedExitCondition,
-          sourceLocation: exitTest.sourceLocation,
-          body: exitTest.body
-        )
+    enumerateTestContent(withHint: id) { _, exitTest, _, stop in
+      if exitTest.id == id {
+        result = ExitTest(__identifiedBy: id, body: exitTest.body)
         stop = true
       }
     }
@@ -252,14 +254,8 @@ extension ExitTest {
       // Call the legacy lookup function that discovers tests embedded in types.
       result = types(withNamesContaining: exitTestContainerTypeNameMagic).lazy
         .compactMap { $0 as? any __ExitTestContainer.Type }
-        .first { $0.__sourceLocation == sourceLocation }
-        .map { type in
-          ExitTest(
-            __expectedExitCondition: type.__expectedExitCondition,
-            sourceLocation: type.__sourceLocation,
-            body: type.__body
-          )
-        }
+        .first { $0.__id == id }
+        .map { ExitTest(__identifiedBy: $0.__id, body: $0.__body) }
     }
 
     return result
@@ -272,6 +268,7 @@ extension ExitTest {
 /// a given status.
 ///
 /// - Parameters:
+///   - exitTestID: The unique identifier of the exit test.
 ///   - expectedExitCondition: The expected exit condition.
 ///   - observedValues: An array of key paths representing results from within
 ///     the exit test that should be observed and returned by this macro. The
@@ -290,6 +287,7 @@ extension ExitTest {
 /// `await #expect(exitsWith:) { }` invocations regardless of calling
 /// convention.
 func callExitTest(
+  identifiedBy exitTestID: ExitTest.ID,
   exitsWith expectedExitCondition: ExitCondition,
   observing observedValues: [any PartialKeyPath<ExitTestArtifacts> & Sendable],
   expression: __Expression,
@@ -304,7 +302,7 @@ func callExitTest(
 
   var result: ExitTestArtifacts
   do {
-    var exitTest = ExitTest(__expectedExitCondition: expectedExitCondition, sourceLocation: sourceLocation)
+    var exitTest = ExitTest(__identifiedBy: exitTestID)
     exitTest.observedValues = observedValues
     result = try await configuration.exitTestHandler(exitTest)
 
@@ -424,23 +422,21 @@ extension ExitTest {
   /// `__swiftPMEntryPoint()` function. The effect of using it under other
   /// configurations is undefined.
   static func findInEnvironmentForEntryPoint() -> Self? {
-    // Find the source location of the exit test to run, if any, in the
-    // environment block.
-    var sourceLocation: SourceLocation?
-    if var sourceLocationString = Environment.variable(named: "SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION") {
-       sourceLocation = try? sourceLocationString.withUTF8 { sourceLocationBuffer in
-        let sourceLocationBuffer = UnsafeRawBufferPointer(sourceLocationBuffer)
-        return try JSON.decode(SourceLocation.self, from: sourceLocationBuffer)
+    // Find the ID of the exit test to run, if any, in the environment block.
+    var id: __ExitTest.ID?
+    if var idString = Environment.variable(named: "SWT_EXPERIMENTAL_EXIT_TEST_ID") {
+      id = try? idString.withUTF8 { idBuffer in
+        try JSON.decode(__ExitTest.ID.self, from: UnsafeRawBufferPointer(idBuffer))
       }
     }
-    guard let sourceLocation else {
+    guard let id else {
       return nil
     }
 
     // If an exit test was found, inject back channel handling into its body.
     // External tools authors should set up their own back channel mechanisms
     // and ensure they're installed before calling ExitTest.callAsFunction().
-    guard var result = find(at: sourceLocation) else {
+    guard var result = find(identifiedBy: id) else {
       return nil
     }
 
@@ -560,8 +556,8 @@ extension ExitTest {
 
       // Insert a specific variable that tells the child process which exit test
       // to run.
-      try JSON.withEncoding(of: exitTest.sourceLocation) { json in
-        childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_SOURCE_LOCATION"] = String(decoding: json, as: UTF8.self)
+      try JSON.withEncoding(of: exitTest.id) { json in
+        childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_ID"] = String(decoding: json, as: UTF8.self)
       }
 
       typealias ResultUpdater = @Sendable (inout ExitTestArtifacts) -> Void

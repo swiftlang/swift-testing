@@ -416,6 +416,10 @@ extension ExitTestConditionMacro {
 
     let bodyArgumentExpr = arguments[trailingClosureIndex].expression
 
+    // TODO: use UUID() here if we can link to Foundation
+    let exitTestID = (UInt64.random(in: 0 ... .max), UInt64.random(in: 0 ... .max))
+    let exitTestIDExpr: ExprSyntax = "Testing.__ExitTest.ID(__uuid: (\(literal: exitTestID.0), \(literal: exitTestID.1)))"
+
     var decls = [DeclSyntax]()
 
     // Implement the body of the exit test outside the enum we're declaring so
@@ -436,14 +440,11 @@ extension ExitTestConditionMacro {
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
       enum \(enumName): Testing.__ExitTestContainer, Sendable {
-        static var __sourceLocation: Testing.SourceLocation {
-          \(createSourceLocationExpr(of: macro, context: context))
+        static var __id: Testing.__ExitTest.ID {
+          \(exitTestIDExpr)
         }
         static var __body: @Sendable () async throws -> Void {
           \(bodyThunkName)
-        }
-        static var __expectedExitCondition: Testing.ExitCondition {
-          \(arguments[expectedExitConditionIndex].expression.trimmed)
         }
       }
       """
@@ -456,6 +457,16 @@ extension ExitTestConditionMacro {
             .with(\.trailingTrivia, .newline)
         }
       }
+    )
+
+    // Insert the exit test's ID as the first argument. Note that this will
+    // invalidate all indices into `arguments`!
+    arguments.insert(
+      Argument(
+        label: "identifiedBy",
+        expression: exitTestIDExpr
+      ),
+      at: arguments.startIndex
     )
 
     // Replace the exit test body (as an argument to the macro) with a stub

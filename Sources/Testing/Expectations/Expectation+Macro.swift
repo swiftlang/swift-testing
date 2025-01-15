@@ -546,7 +546,7 @@ public macro require<R>(
   observing observedValues: [any PartialKeyPath<ExitTestArtifacts> & Sendable] = [],
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
-  performing expression: @convention(thin) () async throws -> Void
+  performing expression: @escaping @Sendable @convention(thin) () async throws -> Void
 ) -> ExitTestArtifacts? = #externalMacro(module: "TestingMacros", type: "ExitTestExpectMacro")
 
 /// Check that an expression causes the process to terminate in a given fashion
@@ -658,5 +658,5 @@ public macro require<R>(
   observing observedValues: [any PartialKeyPath<ExitTestArtifacts> & Sendable] = [],
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
-  performing expression: @convention(thin) () async throws -> Void
+  performing expression: @escaping @Sendable @convention(thin) () async throws -> Void
 ) -> ExitTestArtifacts = #externalMacro(module: "TestingMacros", type: "ExitTestRequireMacro")
