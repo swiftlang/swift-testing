@@ -73,6 +73,24 @@ extension Runner {
       }
     }
 
+    /// Stages of a test run.
+    ///
+    /// This enumeration conforms to `CaseIterable`, so callers can iterate over
+    /// all stages by looping over `Stage.allCases`. `Stage.allCases.first` and
+    /// `Stage.allCases.last` are respectively the first and last stages to run.
+    enum Stage: Sendable, CaseIterable {
+      /// Tests that might run in parallel (globally or locally) are being run.
+      case parallelizationAllowed
+
+      /// Tests that are globally serialized are being run.
+      case globallySerialized
+
+      /// The default stage to run tests in.
+      static var `default`: Self {
+        .parallelizationAllowed
+      }
+    }
+
     /// A type describing a step in a runner plan.
     ///
     /// An instance of this type contains a test and the corresponding action an
@@ -83,6 +101,49 @@ extension Runner {
 
       /// The action to perform with ``test``.
       public var action: Action
+
+      /// The stage at which this step should be performed.
+      var stage: Stage = .default
+
+      /// Whether or not this step may perform work over multiple stages of a
+      /// test run.
+      var isMultistaged: Bool {
+        test.isSuite
+      }
+
+      /// Whether or not this step performs its first work in the given test
+      /// run stage.
+      ///
+      /// - Parameters:
+      ///   - stage: The stage of interest.
+      ///
+      /// - Returns: Whether or not `stage` is the first stage in which this
+      ///   step performs some work.
+      func starts(in stage: Stage) -> Bool {
+        let firstStage = if isMultistaged {
+          Stage.allCases.first
+        } else {
+          self.stage
+        }
+        return stage == firstStage
+      }
+
+      /// Whether or not this step performs its final work in the given test
+      /// run stage.
+      ///
+      /// - Parameters:
+      ///   - stage: The stage of interest.
+      ///
+      /// - Returns: Whether or not `stage` is the last stage in which this
+      ///   step performs some work.
+      func ends(in stage: Stage) -> Bool {
+        let lastStage = if isMultistaged {
+          Stage.allCases.last
+        } else {
+          self.stage
+        }
+        return stage == lastStage
+      }
     }
 
     /// The graph of the steps in the runner plan.
@@ -318,9 +379,26 @@ extension Runner.Plan {
       (action, recursivelyApply: action.isRecursive)
     }
 
-    // Zip the tests and actions together and return them.
-    return zip(testGraph, actionGraph).mapValues { _, pair in
-      pair.0.map { Step(test: $0, action: pair.1) }
+    // Figure out what stage each test should operate in.
+    let stageGraph: Graph<String, Runner.Plan.Stage> = testGraph.mapValues { _, test in
+      switch test?.isGloballySerialized {
+      case nil:
+        .default
+      case .some(false):
+        .parallelizationAllowed
+      case .some(true):
+        .globallySerialized
+      }
+    }
+
+    // Zip the tests, actions, and stages together and return them.
+    return zip(zip(testGraph, actionGraph), stageGraph).mapValues { _, tuple in
+      let test = tuple.0.0
+      let action = tuple.0.1
+      let stage = tuple.1
+      return test.map { test in
+        Step(test: test, action: action, stage: stage)
+      }
     }
   }
 

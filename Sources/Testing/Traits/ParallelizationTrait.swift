@@ -24,8 +24,30 @@
 /// globally disabled (by, for example, passing `--no-parallel` to the
 /// `swift test` command.)
 ///
-/// To add this trait to a test, use ``Trait/serialized``.
-public struct ParallelizationTrait: TestTrait, SuiteTrait {}
+/// To add this trait to a test, use ``Trait/serialized`` or
+/// ``Trait/serialized(_:)``.
+public struct ParallelizationTrait: TestTrait, SuiteTrait {
+  /// Scopes in which suites and test functions can be serialized using the
+  /// ``serialized(_:)`` trait.
+  @_spi(Experimental)
+  public enum Scope: Sendable {
+    /// Parallelization is applied locally.
+    ///
+    /// TODO: More blurb.
+    case locally
+
+    /// Parallelization is applied globally.
+    ///
+    /// TODO: More blurb.
+    case globally
+  }
+
+  var scope: Scope
+
+  public var isRecursive: Bool {
+    scope == .globally
+  }
+}
 
 // MARK: - TestScoping
 
@@ -45,10 +67,38 @@ extension ParallelizationTrait: TestScoping {
 extension Trait where Self == ParallelizationTrait {
   /// A trait that serializes the test to which it is applied.
   ///
+  /// This value is equivalent to ``serialized(_:)`` with the argument
+  /// ``ParallelizationTrait/Scope/locally``.
+  ///
   /// ## See Also
   ///
   /// - ``ParallelizationTrait``
   public static var serialized: Self {
-    Self()
+    Self(scope: .locally)
+  }
+
+  /// A trait that serializes the test to which it is applied.
+  ///
+  /// - Parameters:
+  ///   - scope: The scope in which parallelization is enforced.
+  ///
+  /// ## See Also
+  ///
+  /// - ``ParallelizationTrait``
+  @_spi(Experimental)
+  public static func serialized(_ scope: ParallelizationTrait.Scope) -> Self {
+    Self(scope: scope)
+  }
+}
+
+// MARK: -
+
+extension Test {
+  /// Whether or not this test has been globally serialized.
+  var isGloballySerialized: Bool {
+    traits.lazy
+      .compactMap { $0 as? ParallelizationTrait }
+      .map(\.scope)
+      .contains(.globally)
   }
 }

@@ -27,6 +27,7 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 ### Running tests serially or in parallel
 
 - ``Trait/serialized``
+<!-- - ``Trait/serialized(_:)`` -->
 
 ### Categorizing tests
 

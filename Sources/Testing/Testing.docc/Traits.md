@@ -36,6 +36,7 @@ behavior of test functions.
 
 - <doc:Parallelization>
 - ``Trait/serialized``
+<!-- - ``Trait/serialized(_:)`` -->
 
 ### Annotating tests
 
