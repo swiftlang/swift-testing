@@ -69,6 +69,7 @@ public struct __ExitTest: Sendable, ~Copyable {
     }
   }
 
+  /// A value that uniquely identifies this instance.
   public var id: ID
 
   /// The body closure of the exit test.
