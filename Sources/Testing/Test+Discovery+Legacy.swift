@@ -32,11 +32,8 @@ let testContainerTypeNameMagic = "__🟠$test_container__"
 @_alwaysEmitConformanceMetadata
 @_spi(Experimental)
 public protocol __ExitTestContainer {
-  /// The expected exit condition of the exit test.
-  static var __expectedExitCondition: ExitCondition { get }
-
-  /// The source location of the exit test.
-  static var __sourceLocation: SourceLocation { get }
+  /// The unique identifier of the exit test.
+  static var __id: __ExitTest.ID { get }
 
   /// The body function of the exit test.
   static var __body: @Sendable () async throws -> Void { get }

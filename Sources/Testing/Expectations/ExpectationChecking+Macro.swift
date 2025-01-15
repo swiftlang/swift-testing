@@ -1147,6 +1147,7 @@ public func __checkClosureCall<R>(
 ///   `#require()` macros. Do not call it directly.
 @_spi(Experimental)
 public func __checkClosureCall(
+  identifiedBy exitTestID: __ExitTest.ID,
   exitsWith expectedExitCondition: ExitCondition,
   observing observedValues: [any PartialKeyPath<ExitTestArtifacts> & Sendable],
   performing body: @convention(thin) () -> Void,
@@ -1157,6 +1158,7 @@ public func __checkClosureCall(
   sourceLocation: SourceLocation
 ) async -> Result<ExitTestArtifacts?, any Error> {
   await callExitTest(
+    identifiedBy: exitTestID,
     exitsWith: expectedExitCondition,
     observing: observedValues,
     expression: expression,

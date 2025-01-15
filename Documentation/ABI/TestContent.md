@@ -118,9 +118,17 @@ to by `hint` depend on the kind of record:
 - For exit test declarations (kind `0x65786974`), the accessor produces a
   structure describing the exit test (of type `__ExitTest`.)
 
-  Test content records of this kind accept a `hint` of type `SourceLocation`.
-  They only produce a result if they represent an exit test declared at the same
-  source location (or if the hint is `nil`.)
+  Test content records of this kind accept a `hint` of type `__ExitTest.ID`.
+  They only produce a result if they represent an exit test declared with the
+  same ID (or if `hint` is `nil`.)
+
+> [!WARNING]
+> Calling code should use [`withUnsafeTemporaryAllocation(of:capacity:_:)`](https://developer.apple.com/documentation/swift/withunsafetemporaryallocation(of:capacity:_:))
+> and [`withUnsafePointer(to:_:)`](https://developer.apple.com/documentation/swift/withunsafepointer(to:_:)-35wrn),
+> respectively, to ensure the pointers passed to `accessor` are large enough and
+> are well-aligned. If they are not large enough to contain values of the
+> appropriate types (per above), or if `hint` points to uninitialized or
+> incorrectly-typed memory, the result is undefined.
 
 #### The context field
 
