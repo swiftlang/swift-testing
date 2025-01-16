@@ -215,7 +215,7 @@ struct Expression_ValueTests {
   @Test("Value reflection can be disabled via Configuration")
   func valueReflectionDisabled() {
     var configuration = Configuration.current ?? .init()
-    configuration.isValueReflectionEnabled = false
+    configuration.valueReflectionOptions = nil
     Configuration.withCurrent(configuration) {
       #expect(Expression.Value(reflecting: "hello") == nil)
     }
@@ -229,8 +229,11 @@ struct Expression_ValueTests {
     }
 
     var configuration = Configuration.current ?? .init()
-    configuration.maximumValueReflectionCollectionCount = 2
-    configuration.maximumValueReflectionChildDepth = 2
+    var options = configuration.valueReflectionOptions ?? .init()
+    options.maximumCollectionCount = 2
+    options.maximumChildDepth = 2
+    configuration.valueReflectionOptions = options
+
     try Configuration.withCurrent(configuration) {
       let large = Large(foo: 123, bar: [4, 5, 6, 7])
       let value = try #require(Expression.Value(reflecting: large))
@@ -250,7 +253,7 @@ struct Expression_ValueTests {
         #expect(barValue.isTruncated)
         #expect(barValue.children?.count == 3)
         let lastBarChild = try #require(barValue.children?.last)
-        #expect(String(describing: lastBarChild) == "(2 elements (out of 4 total) omitted for brevity.)")
+        #expect(String(describing: lastBarChild) == "(2 out of 4 elements omitted for brevity)")
       }
     }
   }
@@ -265,7 +268,10 @@ struct Expression_ValueTests {
     }
 
     var configuration = Configuration.current ?? .init()
-    configuration.maximumValueReflectionCollectionCount = 2
+    var options = configuration.valueReflectionOptions ?? .init()
+    options.maximumCollectionCount = 2
+    configuration.valueReflectionOptions = options
+
     try Configuration.withCurrent(configuration) {
       let x = X()
       let value = try #require(Expression.Value(reflecting: x))

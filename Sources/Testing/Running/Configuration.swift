@@ -259,43 +259,52 @@ public struct Configuration: Sendable {
   /// The test case filter to which test cases should be filtered when run.
   public var testCaseFilter: TestCaseFilter = { _, _ in true }
 
-  // MARK: - Expectation checking
+  // MARK: - Expectation value reflection
 
-  /// Whether or not reflection of values in expressions checked by expectations
-  /// is enabled.
+  /// The options to use when reflecting values in expressions checked by
+  /// expectations, or `nil` if reflection is disabled.
   ///
-  /// When the value of this property is `false`, value reflection is disabled
-  /// and values will only be represented using `String(describing:)` instead of
-  /// using `Mirror` to recursively reflect their substructure.
-  public var isValueReflectionEnabled: Bool = true
+  /// When the value of this property is a non-`nil` instance, values checked by
+  /// expressions will be reflected using `Mirror` and the specified options
+  /// will influence how that reflection is formed. Otherwise, when its value is
+  /// `nil`, value reflection will not use `Mirror` and instead will use
+  /// `String(describing:)`.
+  ///
+  /// The default value of this property is an instance of ``ValueReflectionOptions-swift.struct``
+  /// with its properties initialized to their default values.
+  public var valueReflectionOptions: ValueReflectionOptions? = .init()
 
-  /// The maximum number of elements that can included in a single child
-  /// collection when reflecting a value checked by an expectation.
-  ///
-  /// When ``Expression/Value/init(reflecting:)`` is reflecting a value and it
-  /// encounters a child value which is a collection, it consults the value of
-  /// this property and only includes the children of that collection up to this
-  /// maximum count. After this maximum is reached, all subsequent elements are
-  /// omitted and a single placeholder child is added indicating the number of
-  /// elements which have been truncated.
-  public var maximumValueReflectionCollectionCount: Int = 10
+  /// A type describing options to use when forming a reflection of a value
+  /// checked by an expectation.
+  public struct ValueReflectionOptions: Sendable {
+    /// The maximum number of elements that can included in a single child
+    /// collection when reflecting a value checked by an expectation.
+    ///
+    /// When ``Expression/Value/init(reflecting:)`` is reflecting a value and it
+    /// encounters a child value which is a collection, it consults the value of
+    /// this property and only includes the children of that collection up to
+    /// this maximum count. After this maximum is reached, all subsequent
+    /// elements are omitted and a single placeholder child is added indicating
+    /// the number of elements which have been truncated.
+    public var maximumCollectionCount: Int = 10
 
-  /// The maximum depth of children that can be included in the reflection of a
-  /// checked expectation value.
-  ///
-  /// When ``Expression/Value/init(reflecting:)`` is reflecting a value, it
-  /// recursively reflects that value's children. Before doing so, it consults
-  /// the value of this property to determine the maximum depth of the children
-  /// to include. After this maximum depth is reached, all children at deeper
-  /// levels are omitted and the ``Expression/Value/isTruncated`` property is
-  /// set to `true` to reflect that the reflection is incomplete.
-  ///
-  /// - Note: `Optional` values contribute twice towards this maximum, since
-  ///   their mirror represents the wrapped value as a child of the optional.
-  ///   Since optionals are common, the default value of this property is
-  ///   somewhat larger than it otherwise would be in an attempt to make the
-  ///   defaults useful for real-world tests.
-  public var maximumValueReflectionChildDepth: Int = 10
+    /// The maximum depth of children that can be included in the reflection of
+    /// a checked expectation value.
+    ///
+    /// When ``Expression/Value/init(reflecting:)`` is reflecting a value, it
+    /// recursively reflects that value's children. Before doing so, it consults
+    /// the value of this property to determine the maximum depth of the
+    /// children to include. After this maximum depth is reached, all children
+    /// at deeper levels are omitted and the ``Expression/Value/isTruncated``
+    /// property is set to `true` to reflect that the reflection is incomplete.
+    ///
+    /// - Note: `Optional` values contribute twice towards this maximum, since
+    ///   their mirror represents the wrapped value as a child of the optional.
+    ///   Since optionals are common, the default value of this property is
+    ///   somewhat larger than it otherwise would be in an attempt to make the
+    ///   defaults useful for real-world tests.
+    public var maximumChildDepth: Int = 10
+  }
 }
 
 // MARK: - Deprecated

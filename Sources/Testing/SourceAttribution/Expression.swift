@@ -190,6 +190,21 @@ public struct __Expression: Sendable {
       isCollection = mirror.displayStyle?.isCollection ?? false
     }
 
+    /// Initialize an instance of this type with the specified description.
+    ///
+    /// - Parameters:
+    ///   - description: The value to use for this instance's `description`
+    ///     property.
+    ///
+    /// Unlike ``init(describing:)``, this initializer does not use
+    /// ``String/init(describingForTest:)`` to form a description.
+    private init(_description description: String) {
+      self.description = description
+      self.debugDescription = description
+      typeInfo = TypeInfo(describing: String.self)
+      isCollection = false
+    }
+
     /// Initialize an instance of this type describing the specified subject and
     /// its children (if any).
     ///
@@ -197,12 +212,12 @@ public struct __Expression: Sendable {
     ///   - subject: The subject this instance should reflect.
     init?(reflecting subject: Any) {
       let configuration = Configuration.current ?? .init()
-      guard configuration.isValueReflectionEnabled else {
+      guard let options = configuration.valueReflectionOptions else {
         return nil
       }
 
       var seenObjects: [ObjectIdentifier: AnyObject] = [:]
-      self.init(_reflecting: subject, label: nil, seenObjects: &seenObjects, depth: 0)
+      self.init(_reflecting: subject, label: nil, seenObjects: &seenObjects, depth: 0, options: options)
     }
 
     /// Initialize an instance of this type describing the specified subject and
@@ -218,18 +233,19 @@ public struct __Expression: Sendable {
     ///     This is used to halt further recursion if a previously-seen object
     ///     is encountered again.
     ///   - depth: The depth of this recursive call.
+    ///   - options: The configuration options to use when deciding how to
+    ///     reflect `subject`.
     private init(
       _reflecting subject: Any,
       label: String?,
       seenObjects: inout [ObjectIdentifier: AnyObject],
-      depth: Int
+      depth: Int,
+      options: Configuration.ValueReflectionOptions
     ) {
-      let configuration = Configuration.current ?? .init()
-
       // Stop recursing if we've reached the maximum allowed depth for
       // reflection. Instead, return a node describing this value instead and
       // set `isTruncated` to `true`.
-      if depth >= configuration.maximumValueReflectionChildDepth {
+      if depth >= options.maximumChildDepth {
         self = Self(describing: subject)
         isTruncated = true
         return
@@ -283,14 +299,14 @@ public struct __Expression: Sendable {
       if shouldIncludeChildren && (!mirror.children.isEmpty || isCollection) {
         var children: [Self] = []
         for (index, child) in mirror.children.enumerated() {
-          if isCollection && index >= configuration.maximumValueReflectionCollectionCount {
+          if isCollection && index >= options.maximumCollectionCount {
             isTruncated = true
-            let message = "(\(mirror.children.count - index) elements (out of \(mirror.children.count) total) omitted for brevity.)"
-            children.append(Self(describing: message))
+            let message = "(\(mirror.children.count - index) out of \(mirror.children.count) elements omitted for brevity)"
+            children.append(Self(_description: message))
             break
           }
 
-          children.append(Self(_reflecting: child.value, label: child.label, seenObjects: &seenObjects, depth: depth + 1))
+          children.append(Self(_reflecting: child.value, label: child.label, seenObjects: &seenObjects, depth: depth + 1, options: options))
         }
         self.children = children
       }
