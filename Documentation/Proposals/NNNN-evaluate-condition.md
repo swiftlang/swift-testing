@@ -26,9 +26,26 @@ result of the evaluation. The existing `prepare(for:)` method is updated to call
 
 ## Detailed design
 
-The signature is `evaluate() async throws -> Evaluation`, where `Evaluation` is
-a `typealias` for the tuple already used for the callback in `Kind.conditional`,
-containing a boolean result and an optional comment.
+The `evaluate()` method is as follows, containing essentially the same logic
+as was in `prepare(for:)`:
+
+```swift
+public func evaluate() async throws -> EvaluationResult {
+  switch kind {
+  case let .conditional(condition):
+    try await condition()
+  case let .unconditional(unconditionalValue):
+    (unconditionalValue, nil)
+  }
+}
+```
+
+`EvaluationResult` is a `typealias` for the tuple already used as the result
+of the callback in `Kind.conditional`:
+
+```swift
+public typealias EvaluationResult = (wasMet: Bool, comment: Comment?)
+```
 
 ## Source compatibility
 
@@ -51,7 +68,7 @@ Exposing `ConditionTrait.Kind` and `.kind` was also considered, but it seemed
 unnecessary to go that far, and it would encourage duplicating the logic that
 already exists in `prepare(for:)`.
 
-In the first draft implementation, the `Evaluation` type was an enum that only
-contained the comment in the failure case. It was changed to match the existing
-tuple to allow for potentially including comments for the success case without
-requiring a change to the API.
+In the first draft implementation, the `EvaluationResult` type was an enum that
+only contained the comment in the failure case. It was changed to match the
+existing tuple to allow for potentially including comments for the success case
+without requiring a change to the API.
