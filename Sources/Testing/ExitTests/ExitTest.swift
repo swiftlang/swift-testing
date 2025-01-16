@@ -51,7 +51,7 @@ public typealias ExitTest = __ExitTest
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
-public struct __ExitTest: Sendable {
+public struct __ExitTest: Sendable, ~Copyable {
   /// A type whose instances uniquely identify instances of `__ExitTest`.
   public struct ID: Sendable, Equatable, Codable {
     /// An underlying UUID (stored as two `UInt64` values to avoid relying on
