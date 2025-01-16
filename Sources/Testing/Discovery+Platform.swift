@@ -35,7 +35,7 @@ struct SectionBounds: Sendable {
   ///
   /// - Returns: A sequence of structures describing the bounds of metadata
   ///   sections of the given kind found in the current process.
-  static func all(_ kind: Kind) -> some RandomAccessCollection<SectionBounds> {
+  static func all(_ kind: Kind) -> some Sequence<SectionBounds> {
     _sectionBounds(kind)
   }
 }
@@ -237,7 +237,7 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
   case .typeMetadata:
     ".sw5tymd"
   }
-  return HMODULE.all.compactMap { _findSection(named: sectionName, in: $0) }
+  return HMODULE.all.lazy.compactMap { _findSection(named: sectionName, in: $0) }
 }
 #else
 /// The fallback implementation of ``SectionBounds/all(_:)`` for platforms that

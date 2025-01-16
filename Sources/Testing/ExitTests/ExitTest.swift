@@ -51,7 +51,7 @@ public typealias ExitTest = __ExitTest
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
-public struct __ExitTest: Sendable, ~Copyable {
+public struct __ExitTest: Sendable {
   /// A type whose instances uniquely identify instances of `__ExitTest`.
   public struct ID: Sendable, Equatable, Codable {
     /// An underlying UUID (stored as two `UInt64` values to avoid relying on
@@ -242,24 +242,17 @@ extension ExitTest {
   /// - Returns: The specified exit test function, or `nil` if no such exit test
   ///   could be found.
   public static func find(identifiedBy id: ExitTest.ID) -> Self? {
-    var result: Self?
-
-    enumerateTestContent(withHint: id) { _, exitTest, _, stop in
-      if exitTest.id == id {
-        result = ExitTest(__identifiedBy: id, body: exitTest.body)
-        stop = true
+    for record in Self.discover() {
+      if let exitTest = record.load(withHint: id) {
+        return exitTest
       }
     }
 
-    if result == nil {
-      // Call the legacy lookup function that discovers tests embedded in types.
-      result = types(withNamesContaining: exitTestContainerTypeNameMagic).lazy
-        .compactMap { $0 as? any __ExitTestContainer.Type }
-        .first { $0.__id == id }
-        .map { ExitTest(__identifiedBy: $0.__id, body: $0.__body) }
-    }
-
-    return result
+    // Call the legacy lookup function that discovers tests embedded in types.
+    return types(withNamesContaining: exitTestContainerTypeNameMagic).lazy
+      .compactMap { $0 as? any __ExitTestContainer.Type }
+      .first { $0.__id == id }
+      .map { ExitTest(__identifiedBy: $0.__id, body: $0.__body) }
   }
 }
 

@@ -615,43 +615,45 @@ struct MiscellaneousTests {
       0xABCD1234,
       0,
       { outValue, hint in
-        if let hint, hint.loadUnaligned(as: TestContentAccessorHint.self) != expectedHint {
+        if let hint, hint.load(as: TestContentAccessorHint.self) != expectedHint {
           return false
         }
         _ = outValue.initializeMemory(as: TestContentAccessorResult.self, to: expectedResult)
         return true
       },
-      UInt(UInt64(0x0204060801030507) & UInt64(UInt.max)),
+      UInt(truncatingIfNeeded: UInt64(0x0204060801030507)),
       0
     )
   }
 
   @Test func testDiscovery() async {
-    await confirmation("Can find a single test record") { found in
-      DiscoverableTestContent.enumerateTestContent { _, value, context, _ in
-        if value == DiscoverableTestContent.expectedResult && context == DiscoverableTestContent.expectedContext {
-          found()
-        }
-      }
-    }
+    // Check the type of the test record sequence (it should be lazy.)
+    let allRecords = DiscoverableTestContent.discover()
+    #expect(allRecords is any LazySequenceProtocol)
+    #expect(!(allRecords is [TestContentRecord<DiscoverableTestContent>]))
 
-    await confirmation("Can find a test record with matching hint") { found in
+    // It should have exactly one matching record (because we only emitted one.)
+    #expect(Array(allRecords).count == 1)
+
+    // Can find a single test record
+    #expect(allRecords.contains { record in
+      record.load() == DiscoverableTestContent.expectedResult
+        && record.context == DiscoverableTestContent.expectedContext
+    })
+
+    // Can find a test record with matching hint
+    #expect(allRecords.contains { record in
       let hint = DiscoverableTestContent.expectedHint
-      DiscoverableTestContent.enumerateTestContent(withHint: hint) { _, value, context, _ in
-        if value == DiscoverableTestContent.expectedResult && context == DiscoverableTestContent.expectedContext {
-          found()
-        }
-      }
-    }
+      return record.load(withHint: hint) == DiscoverableTestContent.expectedResult
+        && record.context == DiscoverableTestContent.expectedContext
+    })
 
-    await confirmation("Doesn't find a test record with a mismatched hint", expectedCount: 0) { found in
+    // Doesn't find a test record with a mismatched hint
+    #expect(!allRecords.contains { record in
       let hint = ~DiscoverableTestContent.expectedHint
-      DiscoverableTestContent.enumerateTestContent(withHint: hint) { _, value, context, _ in
-        if value == DiscoverableTestContent.expectedResult && context == DiscoverableTestContent.expectedContext {
-          found()
-        }
-      }
-    }
+      return record.load(withHint: hint) == DiscoverableTestContent.expectedResult
+        && record.context == DiscoverableTestContent.expectedContext
+    })
   }
 #endif
 }

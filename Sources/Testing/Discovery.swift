@@ -29,21 +29,6 @@ public typealias __TestContentRecord = (
   reserved2: UInt
 )
 
-/// Resign any pointers in a test content record.
-///
-/// - Parameters:
-///   - record: The test content record to resign.
-///
-/// - Returns: A copy of `record` with its pointers resigned.
-///
-/// On platforms/architectures without pointer authentication, this function has
-/// no effect.
-private func _resign(_ record: __TestContentRecord) -> __TestContentRecord {
-  var record = record
-  record.accessor = record.accessor.map(swt_resign)
-  return record
-}
-
 // MARK: -
 
 /// A protocol describing a type that can be stored as test content at compile
@@ -79,42 +64,67 @@ protocol TestContent: ~Copyable {
   associatedtype TestContentAccessorHint: Sendable = Never
 }
 
-extension TestContent where Self: ~Copyable {
-  /// Enumerate all test content records found in the given test content section
-  /// in the current process that match this ``TestContent`` type.
+// MARK: - Individual test content records
+
+/// A type describing a test content record of a particular (known) type.
+///
+/// Instances of this type can be created by calling ``TestContent/discover()``
+/// on a type that conforms to ``TestContent``.
+///
+/// This type is not part of the public interface of the testing library. In the
+/// future, we could make it public if we want to support runtime discovery of
+/// test content by second- or third-party code.
+struct TestContentRecord<T>: Sendable where T: ~Copyable {
+  /// The base address of the image containing this instance, if known.
   ///
-  /// - Parameters:
-  ///   - sectionBounds: The bounds of the section to inspect.
+  /// This property is not available on platforms such as WASI that statically
+  /// link to the testing library.
   ///
-  /// - Returns: A sequence of tuples. Each tuple contains an instance of
-  ///   `__TestContentRecord` and the base address of the image containing that
-  ///   test content record. Only test content records matching this
-  ///   ``TestContent`` type's requirements are included in the sequence.
-  private static func _testContentRecords(in sectionBounds: SectionBounds) -> some Sequence<(imageAddress: UnsafeRawPointer?, record: __TestContentRecord)> {
-    sectionBounds.buffer.withMemoryRebound(to: __TestContentRecord.self) { records in
-      records.lazy
-        .filter { $0.kind == testContentKind }
-        .map(_resign)
-        .map { (sectionBounds.imageAddress, $0) }
-    }
+  /// - Note: The value of this property is distinct from the pointer returned
+  ///   by `dlopen()` (on platforms that have that function) and cannot be used
+  ///   with interfaces such as `dlsym()` that expect such a pointer.
+#if SWT_NO_DYNAMIC_LINKING
+  @available(*, unavailable, message: "Image addresses are not available on this platform.")
+#endif
+  nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
+
+  /// The underlying test content record loaded from a metadata section.
+  private var _record: __TestContentRecord
+
+  fileprivate init(imageAddress: UnsafeRawPointer?, record: __TestContentRecord) {
+#if !SWT_NO_DYNAMIC_LINKING
+    self.imageAddress = imageAddress
+#endif
+    self._record = record
+  }
+}
+
+// This `T: TestContent` constraint is in an extension in order to work around a
+// compiler crash. SEE: rdar://143049814
+extension TestContentRecord where T: TestContent & ~Copyable {
+  /// The context value for this test content record.
+  var context: UInt {
+    _record.context
   }
 
-  /// Call the given accessor function.
+  /// Load the value represented by this record.
   ///
   /// - Parameters:
-  ///   - accessor: The C accessor function of a test content record matching
-  ///     this type.
-  ///   - hint: A pointer to a kind-specific hint value. If not `nil`, this
-  ///     value is passed to `accessor`, allowing that function to determine if
-  ///     its record matches before initializing its out-result.
+  ///   - hint: An optional hint value. If not `nil`, this value is passed to
+  ///     the accessor function of the underlying test content record.
   ///
-  /// - Returns: An instance of this type's accessor result or `nil` if an
-  ///   instance could not be created (or if `hint` did not match.)
+  /// - Returns: An instance of the associated ``TestContentAccessorResult``
+  ///   type, or `nil` if the underlying test content record did not match
+  ///   `hint` or otherwise did not produce a value.
   ///
-  /// The caller is responsible for ensuring that `accessor` corresponds to a
-  /// test content record of this type.
-  private static func _callAccessor(_ accessor: SWTTestContentAccessor, withHint hint: TestContentAccessorHint?) -> TestContentAccessorResult? {
-    withUnsafeTemporaryAllocation(of: TestContentAccessorResult.self, capacity: 1) { buffer in
+  /// If this function is called more than once on the same instance, a new
+  /// value is created on each call.
+  func load(withHint hint: T.TestContentAccessorHint? = nil) -> T.TestContentAccessorResult? {
+    guard let accessor = _record.accessor.map(swt_resign) else {
+      return nil
+    }
+
+    return withUnsafeTemporaryAllocation(of: T.TestContentAccessorResult.self, capacity: 1) { buffer in
       let initialized = if let hint {
         withUnsafePointer(to: hint) { hint in
           accessor(buffer.baseAddress!, hint)
@@ -128,45 +138,23 @@ extension TestContent where Self: ~Copyable {
       return buffer.baseAddress!.move()
     }
   }
+}
 
-  /// The type of callback called by ``enumerateTestContent(withHint:_:)``.
-  ///
-  /// - Parameters:
-  ///   - imageAddress: A pointer to the start of the image. This value is _not_
-  ///     equal to the value returned from `dlopen()`. On platforms that do not
-  ///     support dynamic loading (and so do not have loadable images), the
-  ///     value of this argument is unspecified.
-  ///   - content: The value produced by the test content record's accessor.
-  ///   - context: Context associated with `content`. The value of this argument
-  ///     is dependent on the type of test content being enumerated.
-  ///   - stop: An `inout` boolean variable indicating whether test content
-  ///     enumeration should stop after the function returns. Set `stop` to
-  ///     `true` to stop test content enumeration.
-  typealias TestContentEnumerator = (_ imageAddress: UnsafeRawPointer?, _ content: borrowing TestContentAccessorResult, _ context: UInt, _ stop: inout Bool) -> Void
+// MARK: - Enumeration of test content records
 
-  /// Enumerate all test content of this type known to Swift and found in the
-  /// current process.
+extension TestContent where Self: ~Copyable {
+  /// Get all test content of this type known to Swift and found in the current
+  /// process.
   ///
-  /// - Parameters:
-  ///   - hint: An optional hint value. If not `nil`, this value is passed to
-  ///     the accessor function of each test content record whose `kind` field
-  ///     matches this type's ``testContentKind`` property.
-  ///   - body: A function to invoke, once per matching test content record.
-  ///
-  /// This function uses a callback instead of producing a sequence because it
-  /// is used with move-only types (specifically ``ExitTest``) and
-  /// `Sequence.Element` must be copyable.
-  static func enumerateTestContent(withHint hint: TestContentAccessorHint? = nil, _ body: TestContentEnumerator) {
-    let testContentRecords = SectionBounds.all(.testContent).lazy.flatMap(_testContentRecords(in:))
-
-    var stop = false
-    for (imageAddress, record) in testContentRecords {
-      if let accessor = record.accessor, let result = _callAccessor(accessor, withHint: hint) {
-        // Call the callback.
-        body(imageAddress, result, record.context, &stop)
-        if stop {
-          break
-        }
+  /// - Returns: A sequence of instances of ``TestContentRecord``. Only test
+  ///   content records matching this ``TestContent`` type's requirements are
+  ///   included in the sequence.
+  static func discover() -> some Sequence<TestContentRecord<Self>> {
+    SectionBounds.all(.testContent).lazy.flatMap { sb in
+      sb.buffer.withMemoryRebound(to: __TestContentRecord.self) { records in
+        records.lazy
+          .filter { $0.kind == testContentKind }
+          .map { TestContentRecord<Self>(imageAddress: sb.imageAddress, record: $0) }
       }
     }
   }
