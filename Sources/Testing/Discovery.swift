@@ -150,13 +150,17 @@ extension TestContent where Self: ~Copyable {
   /// - Returns: A sequence of instances of ``TestContentRecord``. Only test
   ///   content records matching this ``TestContent`` type's requirements are
   ///   included in the sequence.
-  static func allTestContentRecords() -> LazySequence<some Sequence<TestContentRecord<Self>>> {
-    SectionBounds.all(.testContent).lazy.flatMap { sb in
+  ///
+  /// - Bug: This function returns an instance of `AnySequence` instead of an
+  ///   opaque type due to a compiler crash. ([143080508](rdar://143080508))
+  static func allTestContentRecords() -> AnySequence<TestContentRecord<Self>> {
+    let result = SectionBounds.all(.testContent).lazy.flatMap { sb in
       sb.buffer.withMemoryRebound(to: __TestContentRecord.self) { records in
         records.lazy
           .filter { $0.kind == testContentKind }
           .map { TestContentRecord<Self>(imageAddress: sb.imageAddress, record: $0) }
       }
     }
+    return AnySequence(result)
   }
 }
