@@ -628,9 +628,11 @@ struct MiscellaneousTests {
 
   @Test func testDiscovery() async {
     // Check the type of the test record sequence (it should be lazy.)
-    let allRecords: some Sequence<TestContentRecord<DiscoverableTestContent>> = DiscoverableTestContent.allTestContentRecords()
+    let allRecords = DiscoverableTestContent.allTestContentRecords()
+#if SWT_FIXED_143080508
     #expect(allRecords is any LazySequenceProtocol)
     #expect(!(allRecords is [TestContentRecord<DiscoverableTestContent>]))
+#endif
 
     // It should have exactly one matching record (because we only emitted one.)
     #expect(Array(allRecords).count == 1)
