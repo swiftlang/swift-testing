@@ -72,6 +72,27 @@ extension Configuration {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
+  static func withCurrent<R>(_ configuration: Self, perform body: () throws -> R) rethrows -> R {
+    let id = configuration._addToAll()
+    defer {
+      configuration._removeFromAll(identifiedBy: id)
+    }
+
+    var runtimeState = Runner.RuntimeState.current ?? .init()
+    runtimeState.configuration = configuration
+    return try Runner.RuntimeState.$current.withValue(runtimeState, operation: body)
+  }
+
+  /// Call an asynchronous function while the value of ``Configuration/current``
+  /// is set.
+  ///
+  /// - Parameters:
+  ///   - configuration: The new value to set for ``Configuration/current``.
+  ///   - body: A function to call.
+  ///
+  /// - Returns: Whatever is returned by `body`.
+  ///
+  /// - Throws: Whatever is thrown by `body`.
   static func withCurrent<R>(_ configuration: Self, perform body: () async throws -> R) async rethrows -> R {
     let id = configuration._addToAll()
     defer {
