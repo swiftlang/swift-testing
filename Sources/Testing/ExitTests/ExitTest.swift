@@ -242,7 +242,7 @@ extension ExitTest {
   /// - Returns: The specified exit test function, or `nil` if no such exit test
   ///   could be found.
   public static func find(identifiedBy id: ExitTest.ID) -> Self? {
-    for record in Self.discover() {
+    for record in Self.allTestContentRecords() {
       if let exitTest = record.load(withHint: id) {
         return exitTest
       }

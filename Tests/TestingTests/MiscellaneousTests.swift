@@ -628,7 +628,7 @@ struct MiscellaneousTests {
 
   @Test func testDiscovery() async {
     // Check the type of the test record sequence (it should be lazy.)
-    let allRecords = DiscoverableTestContent.discover()
+    let allRecords = DiscoverableTestContent.allTestContentRecords()
     #expect(allRecords is any LazySequenceProtocol)
     #expect(!(allRecords is [TestContentRecord<DiscoverableTestContent>]))
 

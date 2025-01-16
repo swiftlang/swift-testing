@@ -68,8 +68,9 @@ protocol TestContent: ~Copyable {
 
 /// A type describing a test content record of a particular (known) type.
 ///
-/// Instances of this type can be created by calling ``TestContent/discover()``
-/// on a type that conforms to ``TestContent``.
+/// Instances of this type can be created by calling
+/// ``TestContent/allTestContentRecords()`` on a type that conforms to
+/// ``TestContent``.
 ///
 /// This type is not part of the public interface of the testing library. In the
 /// future, we could make it public if we want to support runtime discovery of
@@ -119,7 +120,7 @@ extension TestContentRecord where T: TestContent & ~Copyable {
   ///
   /// If this function is called more than once on the same instance, a new
   /// value is created on each call.
-  func load(withHint hint: T.TestContentAccessorHint? = nil) -> T.TestContentAccessorResult? {
+  func load<R>(withHint hint: T.TestContentAccessorHint? = nil) -> R? where R == T.TestContentAccessorResult, R: ~Copyable {
     guard let accessor = _record.accessor.map(swt_resign) else {
       return nil
     }
@@ -149,7 +150,7 @@ extension TestContent where Self: ~Copyable {
   /// - Returns: A sequence of instances of ``TestContentRecord``. Only test
   ///   content records matching this ``TestContent`` type's requirements are
   ///   included in the sequence.
-  static func discover() -> some Sequence<TestContentRecord<Self>> {
+  static func allTestContentRecords() -> some Sequence<TestContentRecord<Self>> {
     SectionBounds.all(.testContent).lazy.flatMap { sb in
       sb.buffer.withMemoryRebound(to: __TestContentRecord.self) { records in
         records.lazy

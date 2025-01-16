@@ -43,7 +43,7 @@ extension Test: TestContent {
       // Walk all test content and gather generator functions, then call them in
       // a task group and collate their results.
       if useNewMode {
-        let generators = Self.discover().lazy.compactMap { $0.load() }
+        let generators = Self.allTestContentRecords().lazy.compactMap { $0.load() }
         await withTaskGroup(of: Self.self) { taskGroup in
           for generator in generators {
             taskGroup.addTask(operation: generator)
