@@ -22,59 +22,51 @@ extension Test: TestContent {
   /// The order of values in this sequence is unspecified.
   static var all: some Sequence<Self> {
     get async {
-      var generators = [@Sendable () async -> [Self]]()
+      // The result is a set rather than an array to deduplicate tests that were
+      // generated multiple times (e.g. from multiple discovery modes or from
+      // defective test records.)
+      var result = Set<Self>()
 
       // Figure out which discovery mechanism to use. By default, we'll use both
       // the legacy and new mechanisms, but we can set an environment variable
       // to explicitly select one or the other. When we remove legacy support,
       // we can also remove this enumeration and environment variable check.
-      enum DiscoveryMode {
-        case tryBoth
-        case newOnly
-        case legacyOnly
-      }
-      let discoveryMode: DiscoveryMode = switch Environment.flag(named: "SWT_USE_LEGACY_TEST_DISCOVERY") {
+      let (useNewMode, useLegacyMode) = switch Environment.flag(named: "SWT_USE_LEGACY_TEST_DISCOVERY") {
       case .none:
-        .tryBoth
+        (true, true)
       case .some(true):
-        .legacyOnly
+        (false, true)
       case .some(false):
-        .newOnly
+        (true, false)
       }
 
-      // Walk all test content and gather generator functions. Note we don't
-      // actually call the generators yet because enumerating test content may
-      // involve holding some internal lock such as the ones in libobjc or
-      // dl_iterate_phdr(), and we don't want to accidentally deadlock if the
-      // user code we call ends up loading another image.
-      if discoveryMode != .legacyOnly {
-        enumerateTestContent { imageAddress, generator, _, _ in
-          generators.append { @Sendable in
-            await [generator()]
+      // Walk all test content and gather generator functions, then call them in
+      // a task group and collate their results.
+      if useNewMode {
+        let generators = Self.allTestContentRecords().lazy.compactMap { $0.load() }
+        await withTaskGroup(of: Self.self) { taskGroup in
+          for generator in generators {
+            taskGroup.addTask(operation: generator)
           }
+          result = await taskGroup.reduce(into: result) { $0.insert($1) }
         }
       }
 
-      if discoveryMode != .newOnly && generators.isEmpty {
-        generators += types(withNamesContaining: testContainerTypeNameMagic).lazy
+      // Perform legacy test discovery if needed.
+      if useLegacyMode && result.isEmpty {
+        let types = types(withNamesContaining: testContainerTypeNameMagic).lazy
           .compactMap { $0 as? any __TestContainer.Type }
-          .map { type in
-            { @Sendable in await type.__tests }
+        await withTaskGroup(of: [Self].self) { taskGroup in
+          for type in types {
+            taskGroup.addTask {
+              await type.__tests
+            }
           }
+          result = await taskGroup.reduce(into: result) { $0.formUnion($1) }
+        }
       }
 
-      // *Now* we call all the generators and return their results.
-      // Reduce into a set rather than an array to deduplicate tests that were
-      // generated multiple times (e.g. from multiple discovery modes or from
-      // defective test records.)
-      return await withTaskGroup(of: [Self].self) { taskGroup in
-        for generator in generators {
-          taskGroup.addTask {
-            await generator()
-          }
-        }
-        return await taskGroup.reduce(into: Set()) { $0.formUnion($1) }
-      }
+      return result
     }
   }
 }
