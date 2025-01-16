@@ -120,7 +120,7 @@ extension TestContentRecord where T: TestContent & ~Copyable {
   ///
   /// If this function is called more than once on the same instance, a new
   /// value is created on each call.
-  func load<R>(withHint hint: T.TestContentAccessorHint? = nil) -> R? where R == T.TestContentAccessorResult, R: ~Copyable {
+  func load(withHint hint: T.TestContentAccessorHint? = nil) -> T.TestContentAccessorResult? {
     guard let accessor = _record.accessor.map(swt_resign) else {
       return nil
     }
@@ -150,7 +150,7 @@ extension TestContent where Self: ~Copyable {
   /// - Returns: A sequence of instances of ``TestContentRecord``. Only test
   ///   content records matching this ``TestContent`` type's requirements are
   ///   included in the sequence.
-  static func allTestContentRecords() -> some Sequence<TestContentRecord<Self>> {
+  static func allTestContentRecords() -> LazySequence<some Sequence<TestContentRecord<Self>>> {
     SectionBounds.all(.testContent).lazy.flatMap { sb in
       sb.buffer.withMemoryRebound(to: __TestContentRecord.self) { records in
         records.lazy
