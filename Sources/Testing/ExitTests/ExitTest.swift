@@ -51,7 +51,7 @@ public typealias ExitTest = __ExitTest
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
-public struct __ExitTest: Sendable, ~Copyable {
+public struct __ExitTest: Sendable {
   /// A type whose instances uniquely identify instances of `__ExitTest`.
   public struct ID: Sendable, Equatable, Codable {
     /// An underlying UUID (stored as two `UInt64` values to avoid relying on
@@ -244,10 +244,10 @@ extension ExitTest {
   public static func find(identifiedBy id: ExitTest.ID) -> Self? {
     var result: Self?
 
-    enumerateTestContent(withHint: id) { _, exitTest, _, stop in
-      if exitTest.id == id {
-        result = ExitTest(__identifiedBy: id, body: exitTest.body)
-        stop = true
+    for record in Self.discover() {
+      if let exitTest = record.load(withHint: id) {
+        result = consume exitTest
+        break
       }
     }
 

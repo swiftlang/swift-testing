@@ -22,7 +22,7 @@ extension Test: TestContent {
   /// The order of values in this sequence is unspecified.
   static var all: some Sequence<Self> {
     get async {
-      var generators = [@Sendable () async -> [Self]]()
+      var generators = [@Sendable () async -> Self]()
 
       // Figure out which discovery mechanism to use. By default, we'll use both
       // the legacy and new mechanisms, but we can set an environment variable
@@ -48,18 +48,14 @@ extension Test: TestContent {
       // dl_iterate_phdr(), and we don't want to accidentally deadlock if the
       // user code we call ends up loading another image.
       if discoveryMode != .legacyOnly {
-        enumerateTestContent { imageAddress, generator, _, _ in
-          generators.append { @Sendable in
-            await [generator()]
-          }
-        }
+        generators += Self.discover().lazy.compactMap { $0.load() }
       }
 
       if discoveryMode != .newOnly && generators.isEmpty {
         generators += types(withNamesContaining: testContainerTypeNameMagic).lazy
           .compactMap { $0 as? any __TestContainer.Type }
           .map { type in
-            { @Sendable in await type.__tests }
+            { @Sendable in await type.__tests.first! }
           }
       }
 
@@ -67,13 +63,11 @@ extension Test: TestContent {
       // Reduce into a set rather than an array to deduplicate tests that were
       // generated multiple times (e.g. from multiple discovery modes or from
       // defective test records.)
-      return await withTaskGroup(of: [Self].self) { taskGroup in
+      return await withTaskGroup(of: Self.self) { taskGroup in
         for generator in generators {
-          taskGroup.addTask {
-            await generator()
-          }
+          taskGroup.addTask(operation: generator)
         }
-        return await taskGroup.reduce(into: Set()) { $0.formUnion($1) }
+        return await taskGroup.reduce(into: Set()) { $0.insert($1) }
       }
     }
   }

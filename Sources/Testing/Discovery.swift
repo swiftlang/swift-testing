@@ -79,6 +79,56 @@ protocol TestContent: ~Copyable {
   associatedtype TestContentAccessorHint: Sendable = Never
 }
 
+// MARK: - Individual test content records
+
+/// A type describing a test content record of a particular (known) type.
+struct TestContentRecord<T>: Sendable where T: ~Copyable, T: TestContent {
+  /// The base address of the image containing this test content record.
+  nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
+
+  /// The underlying test content record loaded from a metadata section.
+  fileprivate var record: __TestContentRecord
+
+  /// The context value for this test content record.
+  var context: UInt {
+    record.context
+  }
+
+  /// Load the value represented by this record.
+  ///
+  /// - Parameters:
+  ///   - hint: An optional hint value. If not `nil`, this value is passed to
+  ///     the accessor function of the underlying test content record.
+  ///
+  /// - Returns: An instance of the associated ``TestContentAccessorResult``
+  ///   type, or `nil` if the underlying test content record did not match
+  ///   `hint` or otherwise did not produce a value.
+  ///
+  /// If this function is called more than once on the same instance, a new
+  /// value is created on each call.
+  func load(withHint hint: T.TestContentAccessorHint? = nil) -> T.TestContentAccessorResult? {
+    guard let accessor = record.accessor else {
+      return nil
+    }
+
+    return withUnsafeTemporaryAllocation(of: T.TestContentAccessorResult.self, capacity: 1) { buffer in
+      let initialized = if let hint {
+        withUnsafePointer(to: hint) { hint in
+          accessor(buffer.baseAddress!, hint)
+        }
+      } else {
+        accessor(buffer.baseAddress!, nil)
+      }
+      guard initialized else {
+        return nil
+      }
+      return buffer.baseAddress!.move()
+    }
+  }
+}
+
+// MARK: - Enumeration of test content records
+
 extension TestContent where Self: ~Copyable {
   /// Enumerate all test content records found in the given test content section
   /// in the current process that match this ``TestContent`` type.
@@ -99,75 +149,14 @@ extension TestContent where Self: ~Copyable {
     }
   }
 
-  /// Call the given accessor function.
+  /// Get all test content of this type known to Swift and found in the current
+  /// process.
   ///
-  /// - Parameters:
-  ///   - accessor: The C accessor function of a test content record matching
-  ///     this type.
-  ///   - hint: A pointer to a kind-specific hint value. If not `nil`, this
-  ///     value is passed to `accessor`, allowing that function to determine if
-  ///     its record matches before initializing its out-result.
-  ///
-  /// - Returns: An instance of this type's accessor result or `nil` if an
-  ///   instance could not be created (or if `hint` did not match.)
-  ///
-  /// The caller is responsible for ensuring that `accessor` corresponds to a
-  /// test content record of this type.
-  private static func _callAccessor(_ accessor: SWTTestContentAccessor, withHint hint: TestContentAccessorHint?) -> TestContentAccessorResult? {
-    withUnsafeTemporaryAllocation(of: TestContentAccessorResult.self, capacity: 1) { buffer in
-      let initialized = if let hint {
-        withUnsafePointer(to: hint) { hint in
-          accessor(buffer.baseAddress!, hint)
-        }
-      } else {
-        accessor(buffer.baseAddress!, nil)
-      }
-      guard initialized else {
-        return nil
-      }
-      return buffer.baseAddress!.move()
-    }
-  }
-
-  /// The type of callback called by ``enumerateTestContent(withHint:_:)``.
-  ///
-  /// - Parameters:
-  ///   - imageAddress: A pointer to the start of the image. This value is _not_
-  ///     equal to the value returned from `dlopen()`. On platforms that do not
-  ///     support dynamic loading (and so do not have loadable images), the
-  ///     value of this argument is unspecified.
-  ///   - content: The value produced by the test content record's accessor.
-  ///   - context: Context associated with `content`. The value of this argument
-  ///     is dependent on the type of test content being enumerated.
-  ///   - stop: An `inout` boolean variable indicating whether test content
-  ///     enumeration should stop after the function returns. Set `stop` to
-  ///     `true` to stop test content enumeration.
-  typealias TestContentEnumerator = (_ imageAddress: UnsafeRawPointer?, _ content: borrowing TestContentAccessorResult, _ context: UInt, _ stop: inout Bool) -> Void
-
-  /// Enumerate all test content of this type known to Swift and found in the
-  /// current process.
-  ///
-  /// - Parameters:
-  ///   - hint: An optional hint value. If not `nil`, this value is passed to
-  ///     the accessor function of each test content record whose `kind` field
-  ///     matches this type's ``testContentKind`` property.
-  ///   - body: A function to invoke, once per matching test content record.
-  ///
-  /// This function uses a callback instead of producing a sequence because it
-  /// is used with move-only types (specifically ``ExitTest``) and
-  /// `Sequence.Element` must be copyable.
-  static func enumerateTestContent(withHint hint: TestContentAccessorHint? = nil, _ body: TestContentEnumerator) {
-    let testContentRecords = SectionBounds.all(.testContent).lazy.flatMap(_testContentRecords(in:))
-
-    var stop = false
-    for (imageAddress, record) in testContentRecords {
-      if let accessor = record.accessor, let result = _callAccessor(accessor, withHint: hint) {
-        // Call the callback.
-        body(imageAddress, result, record.context, &stop)
-        if stop {
-          break
-        }
-      }
-    }
+  /// - Returns: A sequence of instances of ``TestContentRecord`` that represent
+  ///   instances of this type.
+  static func discover() -> some Sequence<TestContentRecord<Self>> {
+    SectionBounds.all(.testContent).lazy
+      .flatMap(_testContentRecords(in:))
+      .map(TestContentRecord<Self>.init(imageAddress:record:))
   }
 }
