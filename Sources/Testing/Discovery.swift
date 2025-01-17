@@ -116,7 +116,7 @@ extension TestContentRecord where T: TestContent & ~Copyable {
   /// If this function is called more than once on the same instance, a new
   /// value is created on each call.
   func load(withHint hint: T.TestContentAccessorHint? = nil) -> T.TestContentAccessorResult? {
-    guard let accessor = _record.accessor.map(swt_resign) else {
+    guard let accessor = _record.accessor else {
       return nil
     }
 

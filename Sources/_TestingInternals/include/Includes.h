@@ -127,10 +127,6 @@
 #if !SWT_NO_LIBDISPATCH
 #include <dispatch/dispatch.h>
 #endif
-
-#if __has_include(<ptrauth.h>)
-#include <ptrauth.h>
-#endif
 #endif
 
 #if defined(__FreeBSD__)
