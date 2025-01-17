@@ -286,7 +286,7 @@ public struct Configuration: Sendable {
     /// this maximum count. After this maximum is reached, all subsequent
     /// elements are omitted and a single placeholder child is added indicating
     /// the number of elements which have been truncated.
-    public var maximumCollectionCount: Int = 10
+    public var maximumCollectionCount = 10
 
     /// The maximum depth of children that can be included in the reflection of
     /// a checked expectation value.
@@ -303,7 +303,7 @@ public struct Configuration: Sendable {
     ///   Since optionals are common, the default value of this property is
     ///   somewhat larger than it otherwise would be in an attempt to make the
     ///   defaults useful for real-world tests.
-    public var maximumChildDepth: Int = 10
+    public var maximumChildDepth = 10
   }
 }
 
