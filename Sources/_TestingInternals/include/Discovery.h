@@ -31,25 +31,6 @@ SWT_ASSUME_NONNULL_BEGIN
 ///   the memory at `outValue` when done.
 typedef bool (* SWTTestContentAccessor)(void *outValue, const void *_Null_unspecified hint);
 
-/// Resign an accessor function from a test content record.
-///
-/// - Parameters:
-///   - accessor: The accessor function to resign.
-///
-/// - Returns: A resigned copy of `accessor` on platforms that use pointer
-///   authentication, and an exact copy of `accessor` elsewhere.
-///
-/// - Bug: This C function is needed because Apple's pointer authentication
-///   intrinsics are not available in Swift. ([141465242](rdar://141465242))
-SWT_SWIFT_NAME(swt_resign(_:))
-static SWTTestContentAccessor swt_resignTestContentAccessor(SWTTestContentAccessor accessor) {
-#if defined(__APPLE__) && __has_include(<ptrauth.h>)
-  accessor = ptrauth_strip(accessor, ptrauth_key_function_pointer);
-  accessor = ptrauth_sign_unauthenticated(accessor, ptrauth_key_function_pointer, 0);
-#endif
-  return accessor;
-}
-
 #if defined(__ELF__) && defined(__swift__)
 /// A function exported by the Swift runtime that enumerates all metadata
 /// sections loaded into the current process.
