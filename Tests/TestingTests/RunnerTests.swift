@@ -335,12 +335,12 @@ final class RunnerTests: XCTestCase {
   
   func testEvaluateConditionTrait() async throws {
     let comment: Comment = "comment"
-    let trueUnconditional = ConditionTrait(kind: .unconditional(true), comments: [], sourceLocation: .__here())
+    let trueUnconditional = ConditionTrait(kind: .unconditional(true), comments: [], sourceLocation: #_sourceLocation)
     let falseUnconditional = ConditionTrait.disabled()
     let enabledTrue = ConditionTrait.enabled(if: true)
     let enabledFalse = ConditionTrait.enabled(if: false)
-    let enabledTrueComment = ConditionTrait(kind: .conditional { (true, comment) }, comments: [], sourceLocation: .__here())
-    let enabledFalseComment = ConditionTrait(kind: .conditional { (false, comment) }, comments: [], sourceLocation: .__here())
+    let enabledTrueComment = ConditionTrait(kind: .conditional { (true, comment) }, comments: [], sourceLocation: #_sourceLocation)
+    let enabledFalseComment = ConditionTrait(kind: .conditional { (false, comment) }, comments: [], sourceLocation: #_sourceLocation)
     var result: ConditionTrait.EvaluationResult
     
     result = try await trueUnconditional.evaluate()
