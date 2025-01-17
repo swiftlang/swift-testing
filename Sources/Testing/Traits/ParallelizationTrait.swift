@@ -30,7 +30,7 @@ public struct ParallelizationTrait: TestTrait, SuiteTrait {
   /// Scopes in which suites and test functions can be serialized using the
   /// ``serialized(_:)`` trait.
   @_spi(Experimental)
-  public enum Scope: Sendable, Equatable {
+  public enum Scope: Sendable, Equatable, Hashable, Comparable {
     /// Parallelization is applied locally.
     ///
     /// TODO: More blurb.
@@ -40,7 +40,6 @@ public struct ParallelizationTrait: TestTrait, SuiteTrait {
     /// given group.
     ///
     /// TODO: More blurb.
-    @available(*, unavailable, message: "Unimplemented")
     case withinGroup(_ groupName: String)
 
     /// Parallelization is applied globally.
@@ -52,20 +51,31 @@ public struct ParallelizationTrait: TestTrait, SuiteTrait {
   var scope: Scope
 
   public var isRecursive: Bool {
-    scope == .globally
+    true
   }
 }
 
 // MARK: - TestScoping
 
 extension ParallelizationTrait: TestScoping {
-  public func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
-    guard var configuration = Configuration.current else {
-      throw SystemError(description: "There is no current Configuration when attempting to provide scope for test '\(test.name)'. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
-    }
+  /// Storage for ``scheduler(for:)``.
+  private static let _workGroups = Locked<[ParallelizationTrait.Scope: WorkGroup]>()
 
-    configuration.isParallelizationEnabled = false
-    try await Configuration.withCurrent(configuration, perform: function)
+  static func workGroup(for scope: Scope) -> WorkGroup {
+    _workGroups.withLock { workGroups in
+      var result = workGroups[scope]
+      if result == nil {
+        result = WorkGroup()
+        workGroups[scope] = result
+      }
+      return result!
+    }
+  }
+
+  public func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
+    try await Self.workGroup(for: scope).run(isBarrier: true) {
+      try await function()
+    }
   }
 }
 
@@ -101,11 +111,8 @@ extension Trait where Self == ParallelizationTrait {
 // MARK: -
 
 extension Test {
-  /// Whether or not this test has been globally serialized.
-  var isGloballySerialized: Bool {
-    traits.lazy
-      .compactMap { $0 as? ParallelizationTrait }
-      .map(\.scope)
-      .contains(.globally)
+  /// Whether or not this test has been serialized.
+  var isSerialized: Bool {
+    traits.lazy.contains { $0 is ParallelizationTrait }
   }
 }

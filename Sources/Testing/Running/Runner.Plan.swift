@@ -73,29 +73,6 @@ extension Runner {
       }
     }
 
-    /// Stages of a test run.
-    ///
-    /// This enumeration conforms to `CaseIterable`, so callers can iterate over
-    /// all stages by looping over `Stage.allCases`. `Stage.allCases.first` and
-    /// `Stage.allCases.last` are respectively the first and last stages to run.
-    ///
-    /// The names of cases are meant to describe what happens during them (so as
-    /// to aid debugging.) Most code that uses test run stages doesn't need to
-    /// care about them in isolation, but rather looks at `Stage.allCases`,
-    /// ranges of stages, etc.
-    enum Stage: Sendable, Comparable, CaseIterable {
-      /// Tests that might run in parallel (globally or locally) are being run.
-      case parallelizationAllowed
-
-      /// Tests that are globally serialized are being run.
-      case globallySerialized
-
-      /// The default stage to run tests in.
-      static var `default`: Self {
-        .parallelizationAllowed
-      }
-    }
-
     /// A type describing a step in a runner plan.
     ///
     /// An instance of this type contains a test and the corresponding action an
@@ -106,9 +83,6 @@ extension Runner {
 
       /// The action to perform with ``test``.
       public var action: Action
-
-      /// The stages at which this step operates.
-      var stages: ClosedRange<Stage> = .default ... .default
     }
 
     /// The graph of the steps in the runner plan.
@@ -217,23 +191,6 @@ extension Runner.Plan {
 
     var sourceLocation: SourceLocation?
     synthesizeSuites(in: &graph, sourceLocation: &sourceLocation)
-  }
-
-  /// Recursively widen the range of test run stages each (yet-to-be-created)
-  /// step in the specified graph will operate in.
-  ///
-  /// - Parameters:
-  ///   - graph: The graph in which test run stage ranges should be computed.
-  private static func _recursivelyComputeStageRanges(in graph: inout Graph<String, ClosedRange<Stage>>) {
-    var minStage = graph.value.lowerBound
-    var maxStage = graph.value.upperBound
-    for (key, var childGraph) in graph.children {
-      _recursivelyComputeStageRanges(in: &childGraph)
-      graph.children[key] = childGraph
-      minStage = min(minStage, childGraph.value.lowerBound)
-      maxStage = max(maxStage, childGraph.value.upperBound)
-    }
-    graph.value = minStage ... maxStage
   }
 
   /// Construct a graph of runner plan steps for the specified tests.
@@ -361,28 +318,9 @@ extension Runner.Plan {
       (action, recursivelyApply: action.isRecursive)
     }
 
-    // Figure out what stages each step should operate in.
-    var stageGraph: Graph<String, ClosedRange<Stage>> = testGraph.mapValues { _, test in
-      let bound: Stage = switch test?.isGloballySerialized {
-      case nil:
-        .default
-      case .some(false):
-        .parallelizationAllowed
-      case .some(true):
-        .globallySerialized
-      }
-      return bound ... bound
-    }
-    _recursivelyComputeStageRanges(in: &stageGraph)
-
-    // Zip the tests, actions, and stages together and return them.
-    return zip(zip(testGraph, actionGraph), stageGraph).mapValues { _, tuple in
-      let test = tuple.0.0
-      let action = tuple.0.1
-      let stages = tuple.1
-      return test.map { test in
-        Step(test: test, action: action, stages: stages)
-      }
+    // Zip the tests and actions together and return them.
+    return zip(testGraph, actionGraph).mapValues { _, pair in
+      pair.0.map { Step(test: $0, action: pair.1) }
     }
   }
 
