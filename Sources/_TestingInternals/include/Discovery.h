@@ -16,22 +16,9 @@
 
 SWT_ASSUME_NONNULL_BEGIN
 
-#pragma mark - Test content records
-
-/// The type of a test content accessor.
-///
-/// - Parameters:
-///   - outValue: On successful return, initialized to the value of the
-///     represented test content record.
-///   - hint: A hint value whose type and meaning depend on the type of test
-///     record being accessed.
-///
-/// - Returns: Whether or not the test record was initialized at `outValue`. If
-///   this function returns `true`, the caller is responsible for deinitializing
-///   the memory at `outValue` when done.
-typedef bool (* SWTTestContentAccessor)(void *outValue, const void *_Null_unspecified hint);
-
 #if defined(__ELF__) && defined(__swift__)
+#pragma mark - ELF image enumeration
+
 /// A function exported by the Swift runtime that enumerates all metadata
 /// sections loaded into the current process.
 ///
