@@ -332,6 +332,32 @@ final class RunnerTests: XCTestCase {
     let test2 = Test(.disabled(if: Bool.random())) { }
     XCTAssertTrue(test2.traits.compactMap { $0 as? ConditionTrait }.allSatisfy { !$0.isConstant })
   }
+  
+  func testEvaluateConditionTrait() async throws {
+    let comment: Comment = "comment"
+    let trueUnconditional = ConditionTrait(kind: .unconditional(true), comments: [], sourceLocation: .__here())
+    let falseUnconditional = ConditionTrait.disabled()
+    let enabledTrue = ConditionTrait.enabled(if: true)
+    let enabledFalse = ConditionTrait.enabled(if: false)
+    let enabledTrueComment = ConditionTrait(kind: .conditional { (true, comment) }, comments: [], sourceLocation: .__here())
+    let enabledFalseComment = ConditionTrait(kind: .conditional { (false, comment) }, comments: [], sourceLocation: .__here())
+    var result: ConditionTrait.EvaluationResult
+    
+    result = try await trueUnconditional.evaluate()
+    XCTAssertTrue(result.wasMet)
+    result = try await falseUnconditional.evaluate()
+    XCTAssertFalse(result.wasMet)
+    result = try await enabledTrue.evaluate()
+    XCTAssertTrue(result.wasMet)
+    result = try await enabledFalse.evaluate()
+    XCTAssertFalse(result.wasMet)
+    result = try await enabledTrueComment.evaluate()
+    XCTAssertTrue(result.wasMet)
+    XCTAssertEqual(result.comment, comment)
+    result = try await enabledFalseComment.evaluate()
+    XCTAssertFalse(result.wasMet)
+    XCTAssertEqual(result.comment, comment)
+  }
 
   func testGeneratedPlan() async throws {
     let tests: [(Any.Type, String)] = [
