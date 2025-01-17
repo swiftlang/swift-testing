@@ -10,11 +10,9 @@
 
 #include "Discovery.h"
 
-#include <cstdlib>
 #include <cstdint>
 #include <cstring>
 #include <type_traits>
-#include <vector>
 
 #if defined(SWT_NO_DYNAMIC_LINKING)
 #pragma mark - Statically-linked section bounds
@@ -189,46 +187,32 @@ public:
 
 #pragma mark - Legacy test discovery
 
-void **swt_copyTypesWithNamesContaining(const void *sectionBegin, size_t sectionSize, const char *nameSubstring, size_t *outCount) {
-  void **result = nullptr;
-  size_t resultCount = 0;
+const size_t SWTTypeMetadataRecordByteCount = sizeof(SWTTypeMetadataRecord);
 
-  auto records = reinterpret_cast<const SWTTypeMetadataRecord *>(sectionBegin);
-  size_t recordCount = sectionSize / sizeof(SWTTypeMetadataRecord);
-  for (size_t i = 0; i < recordCount; i++) {
-    auto contextDescriptor = records[i].getContextDescriptor();
-    if (!contextDescriptor) {
-      // This type metadata record is invalid (or we don't understand how to
-      // get its context descriptor), so skip it.
-      continue;
-    } else if (contextDescriptor->isGeneric()) {
-      // Generic types cannot be fully instantiated without generic
-      // parameters, which is not something we can know abstractly.
-      continue;
-    }
-
-    // Check that the type's name passes. This will be more expensive than the
-    // checks above, but should be cheaper than realizing the metadata.
-    const char *typeName = contextDescriptor->getName();
-    bool nameOK = typeName && nullptr != std::strstr(typeName, nameSubstring);
-    if (!nameOK) {
-      continue;
-    }
-
-    if (void *typeMetadata = contextDescriptor->getMetadata()) {
-      if (!result) {
-        // This is the first matching type we've found. That presumably means
-        // we'll find more, so allocate enough space for all remaining types in
-        // the section. Is this necessarily space-efficient? No, but this
-        // allocation is short-lived and is immediately copied and freed in the
-        // Swift caller.
-        result = reinterpret_cast<void **>(std::calloc(recordCount - i, sizeof(void *)));
-      }
-      result[resultCount] = typeMetadata;
-      resultCount += 1;
-    }
+const void *swt_getTypeFromTypeMetadataRecord(const void *recordAddress, const char *nameSubstring) {
+  auto record = reinterpret_cast<const SWTTypeMetadataRecord *>(recordAddress);
+  auto contextDescriptor = record->getContextDescriptor();
+  if (!contextDescriptor) {
+    // This type metadata record is invalid (or we don't understand how to
+    // get its context descriptor), so skip it.
+    return nullptr;
+  } else if (contextDescriptor->isGeneric()) {
+    // Generic types cannot be fully instantiated without generic
+    // parameters, which is not something we can know abstractly.
+    return nullptr;
   }
 
-  *outCount = resultCount;
-  return result;
+  // Check that the type's name passes. This will be more expensive than the
+  // checks above, but should be cheaper than realizing the metadata.
+  const char *typeName = contextDescriptor->getName();
+  bool nameOK = typeName && nullptr != std::strstr(typeName, nameSubstring);
+  if (!nameOK) {
+    return nullptr;
+  }
+
+  if (void *typeMetadata = contextDescriptor->getMetadata()) {
+    return typeMetadata;
+  }
+
+  return nullptr;
 }

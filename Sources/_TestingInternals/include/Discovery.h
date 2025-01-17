@@ -84,25 +84,22 @@ SWT_EXTERN const void *_Nonnull const SWTTypeMetadataSectionBounds[2];
 
 #pragma mark - Legacy test discovery
 
-/// Copy all types known to Swift found in the given type metadata section with
-/// a name containing the given substring.
+/// The size, in bytes, of a Swift type metadata record.
+SWT_EXTERN const size_t SWTTypeMetadataRecordByteCount;
+
+/// Get the type represented by the type metadata record at the given address if
+/// its name contains the given string.
 ///
 /// - Parameters:
-///   - sectionBegin: The address of the first byte of the Swift type metadata
-///     section.
-///   - sectionSize: The size, in bytes, of the Swift type metadata section.
-///   - nameSubstring: A string which the names of matching classes all contain.
-///   - outCount: On return, the number of type metadata pointers returned.
+///   - recordAddress: The address of the Swift type metadata record.
+///   - nameSubstring: A string which the names of matching types contain.
 ///
-/// - Returns: A pointer to an array of type metadata pointers, or `nil` if no
-///   matching types were found. The caller is responsible for freeing this
-///   memory with `free()` when done.
-SWT_EXTERN void *_Nonnull *_Nullable swt_copyTypesWithNamesContaining(
-  const void *sectionBegin,
-  size_t sectionSize,
-  const char *nameSubstring,
-  size_t *outCount
-) SWT_SWIFT_NAME(swt_copyTypes(in:_:withNamesContaining:count:));
+/// - Returns: A Swift metatype (as `const void *`) or `nullptr` if it wasn't a
+///   usable type metadata record or its name did not contain `nameSubstring`.
+SWT_EXTERN const void *_Nullable swt_getTypeFromTypeMetadataRecord(
+  const void *recordAddress,
+  const char *nameSubstring
+) SWT_SWIFT_NAME(swt_getType(fromTypeMetadataRecord:ifNameContains:));
 
 SWT_ASSUME_NONNULL_END
 
