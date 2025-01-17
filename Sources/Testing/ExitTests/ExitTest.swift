@@ -284,7 +284,7 @@ func callExitTest(
   identifiedBy exitTestID: ExitTest.ID,
   exitsWith expectedExitCondition: ExitCondition,
   observing observedValues: [any PartialKeyPath<ExitTestArtifacts> & Sendable],
-  expression: __Expression,
+  sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
@@ -336,10 +336,14 @@ func callExitTest(
   let actualExitCondition = result.exitCondition
 
   // Plumb the exit test's result through the general expectation machinery.
-  return __checkValue(
+  let expectationContext = __ExpectationContext(
+    sourceCode: sourceCode(),
+    runtimeValues: [.root: { Expression.Value(reflecting: actualExitCondition) }]
+  )
+  return check(
     expectedExitCondition == actualExitCondition,
-    expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(actualExitCondition),
+    expectationContext: expectationContext,
+    mismatchedErrorDescription: nil,
     mismatchedExitConditionDescription: String(describingForTest: expectedExitCondition),
     comments: comments(),
     isRequired: isRequired,

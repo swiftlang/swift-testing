@@ -72,6 +72,13 @@ let package = Package(
         .enableExperimentalFeature("SymbolLinkageMarkers"),
       ]
     ),
+    .testTarget(
+      name: "SubexpressionShowcase",
+      dependencies: [
+        "Testing",
+      ],
+      swiftSettings: .packageSettings
+    ),
 
     .macro(
       name: "TestingMacros",
