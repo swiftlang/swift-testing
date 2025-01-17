@@ -78,24 +78,19 @@ protocol TestContent: ~Copyable {
 struct TestContentRecord<T>: Sendable where T: ~Copyable {
   /// The base address of the image containing this instance, if known.
   ///
-  /// This property is not available on platforms such as WASI that statically
-  /// link to the testing library.
+  /// On platforms such as WASI that statically link to the testing library, the
+  /// value of this property is always `nil`.
   ///
   /// - Note: The value of this property is distinct from the pointer returned
   ///   by `dlopen()` (on platforms that have that function) and cannot be used
   ///   with interfaces such as `dlsym()` that expect such a pointer.
-#if SWT_NO_DYNAMIC_LINKING
-  @available(*, unavailable, message: "Image addresses are not available on this platform.")
-#endif
   nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
 
   /// The underlying test content record loaded from a metadata section.
   private var _record: __TestContentRecord
 
   fileprivate init(imageAddress: UnsafeRawPointer?, record: __TestContentRecord) {
-#if !SWT_NO_DYNAMIC_LINKING
     self.imageAddress = imageAddress
-#endif
     self._record = record
   }
 }
