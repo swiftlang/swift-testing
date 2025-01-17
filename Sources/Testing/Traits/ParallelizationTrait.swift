@@ -30,11 +30,18 @@ public struct ParallelizationTrait: TestTrait, SuiteTrait {
   /// Scopes in which suites and test functions can be serialized using the
   /// ``serialized(_:)`` trait.
   @_spi(Experimental)
-  public enum Scope: Sendable {
+  public enum Scope: Sendable, Equatable {
     /// Parallelization is applied locally.
     ///
     /// TODO: More blurb.
     case locally
+
+    /// Parallelization is applied across all suites and test functions in the
+    /// given group.
+    ///
+    /// TODO: More blurb.
+    @available(*, unavailable, message: "Unimplemented")
+    case withinGroup(_ groupName: String)
 
     /// Parallelization is applied globally.
     ///
