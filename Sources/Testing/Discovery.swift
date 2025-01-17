@@ -86,8 +86,13 @@ struct TestContentRecord<T>: Sendable where T: ~Copyable {
   ///   with interfaces such as `dlsym()` that expect such a pointer.
 #if SWT_NO_DYNAMIC_LINKING
   @available(*, unavailable, message: "Image addresses are not available on this platform.")
-#endif
+  nonisolated(unsafe) var imageAddress: UnsafeRawPointer? {
+    get { fatalError() }
+    set { fatalError() }
+  }
+#else
   nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
+#endif
 
   /// The underlying test content record loaded from a metadata section.
   private var _record: __TestContentRecord
