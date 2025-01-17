@@ -214,7 +214,7 @@ extension Test.Case.Argument {
     ///   - argument: The original test case argument to snapshot.
     public init(snapshotting argument: Test.Case.Argument) {
       id = argument.id
-      value = Expression.Value(reflecting: argument.value)
+      value = Expression.Value(reflecting: argument.value) ?? .init(describing: argument.value)
       parameter = argument.parameter
     }
   }

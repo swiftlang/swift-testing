@@ -21,7 +21,7 @@ struct Expression_ValueTests {
 
     let foo = Foo()
 
-    let value = Expression.Value(reflecting: foo)
+    let value = try #require(Expression.Value(reflecting: foo))
     let children = try #require(value.children)
     try #require(children.count == 1)
 
@@ -49,7 +49,7 @@ struct Expression_ValueTests {
     x.one = y
     x.two = y
 
-    let value = Expression.Value(reflecting: x)
+    let value = try #require(Expression.Value(reflecting: x))
     let children = try #require(value.children)
     try #require(children.count == 3)
 
@@ -78,7 +78,7 @@ struct Expression_ValueTests {
     x.two = y
     y.two = x
 
-    let value = Expression.Value(reflecting: x)
+    let value = try #require(Expression.Value(reflecting: x))
     let children = try #require(value.children)
     try #require(children.count == 3)
 
@@ -116,7 +116,7 @@ struct Expression_ValueTests {
     let recursiveItem = RecursiveItem()
     recursiveItem.anotherItem = recursiveItem
 
-    let value = Expression.Value(reflecting: recursiveItem)
+    let value = try #require(Expression.Value(reflecting: recursiveItem))
     let children = try #require(value.children)
     try #require(children.count == 2)
 
@@ -142,7 +142,7 @@ struct Expression_ValueTests {
     one.two = two
     two.one = one
 
-    let value = Expression.Value(reflecting: one)
+    let value = try #require(Expression.Value(reflecting: one))
     let children = try #require(value.children)
     try #require(children.count == 1)
 
@@ -168,7 +168,7 @@ struct Expression_ValueTests {
 
   @Test("Value reflecting an object with two back-references to itself",
         .bug("https://github.com/swiftlang/swift-testing/issues/785#issuecomment-2440222995"))
-  func multipleSelfReferences() {
+  func multipleSelfReferences() throws {
     class A {
       weak var one: A?
       weak var two: A?
@@ -178,7 +178,7 @@ struct Expression_ValueTests {
     a.one = a
     a.two = a
 
-    let value = Expression.Value(reflecting: a)
+    let value = try #require(Expression.Value(reflecting: a))
     #expect(value.children?.count == 2)
   }
 
@@ -208,8 +208,88 @@ struct Expression_ValueTests {
     b.c = c
     c.a = a
 
-    let value = Expression.Value(reflecting: a)
+    let value = try #require(Expression.Value(reflecting: a))
     #expect(value.children?.count == 3)
+  }
+
+  @Test("Value reflection can be disabled via Configuration")
+  func valueReflectionDisabled() {
+    var configuration = Configuration.current ?? .init()
+    configuration.valueReflectionOptions = nil
+    Configuration.withCurrent(configuration) {
+      #expect(Expression.Value(reflecting: "hello") == nil)
+    }
+  }
+
+  @Test("Value reflection truncates large values")
+  func reflectionOfLargeValues() throws {
+    struct Large {
+      var foo: Int?
+      var bar: [Int]
+    }
+
+    var configuration = Configuration.current ?? .init()
+    var options = configuration.valueReflectionOptions ?? .init()
+    options.maximumCollectionCount = 2
+    options.maximumChildDepth = 2
+    configuration.valueReflectionOptions = options
+
+    try Configuration.withCurrent(configuration) {
+      let large = Large(foo: 123, bar: [4, 5, 6, 7])
+      let value = try #require(Expression.Value(reflecting: large))
+
+      #expect(!value.isTruncated)
+      do {
+        let fooValue = try #require(value.children?.first)
+        #expect(!fooValue.isTruncated)
+        let fooChildren = try #require(fooValue.children)
+        try #require(fooChildren.count == 1)
+        let fooChild = try #require(fooChildren.first)
+        #expect(fooChild.isTruncated)
+        #expect(fooChild.children == nil)
+      }
+      do {
+        let barValue = try #require(value.children?.last)
+        #expect(barValue.isTruncated)
+        #expect(barValue.children?.count == 3)
+        let lastBarChild = try #require(barValue.children?.last)
+        #expect(String(describing: lastBarChild) == "(2 out of 4 elements omitted for brevity)")
+      }
+    }
+  }
+
+  @Test("Value reflection max collection count only applies to collections")
+  func reflectionMaximumCollectionCount() throws {
+    struct X {
+      var a = 1
+      var b = 2
+      var c = 3
+      var d = 4
+    }
+
+    var configuration = Configuration.current ?? .init()
+    var options = configuration.valueReflectionOptions ?? .init()
+    options.maximumCollectionCount = 2
+    configuration.valueReflectionOptions = options
+
+    try Configuration.withCurrent(configuration) {
+      let x = X()
+      let value = try #require(Expression.Value(reflecting: x))
+      #expect(!value.isTruncated)
+      #expect(value.children?.count == 4)
+    }
+  }
+
+  @Test("Value describing a simple struct")
+  func describeSimpleStruct() {
+    struct Foo {
+      var x: Int = 123
+    }
+
+    let foo = Foo()
+    let value = Expression.Value(describing: foo)
+    #expect(String(describing: value) == "Foo(x: 123)")
+    #expect(value.children == nil)
   }
 
 }
