@@ -19,6 +19,14 @@
 /// - ``Trait/disabled(if:_:sourceLocation:)``
 /// - ``Trait/disabled(_:sourceLocation:_:)``
 public struct ConditionTrait: TestTrait, SuiteTrait {
+  /// The result of evaluating the condition.
+  ///
+  /// - Parameters:
+  ///   - wasMet: Whether or not the condition was met.
+  ///   - comment: Optionally, a comment describing the result of evaluating the condition.
+  @_spi(Experimental)
+  public typealias EvaluationResult = (wasMet: Bool, comment: Comment?)
+
   /// An enumeration describing the kinds of conditions that can be represented
   /// by an instance of this type.
   enum Kind: Sendable {
@@ -30,7 +38,7 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
     ///     `false` and a comment is also returned, it is used in place of the
     ///     value of the associated trait's ``ConditionTrait/comment`` property.
     ///     If this function returns `true`, the returned comment is ignored.
-    case conditional(_ body: @Sendable () async throws -> (Bool, comment: Comment?))
+    case conditional(_ body: @Sendable () async throws -> EvaluationResult)
 
     /// Create an instance of this type associated with a trait that is
     /// conditional on the result of calling a function.
@@ -41,7 +49,7 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
     ///
     /// - Returns: An instance of this type.
     static func conditional(_ body: @escaping @Sendable () async throws -> Bool) -> Self {
-      conditional { () -> (Bool, comment: Comment?) in
+      conditional { () -> EvaluationResult in
         return (try await body(), nil)
       }
     }
@@ -79,19 +87,27 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
 
   /// The source location where this trait was specified.
   public var sourceLocation: SourceLocation
-
-  public func prepare(for test: Test) async throws {
-    let result: Bool
-    var commentOverride: Comment?
-
+  
+  /// Evaluate this instance's underlying condition.
+  ///
+  /// - Returns: The result of evaluating this instance's underlying condition.
+  ///
+  /// The evaluation is performed each time this function is called, and is not
+  /// cached.
+  @_spi(Experimental)
+  public func evaluate() async throws -> EvaluationResult {
     switch kind {
     case let .conditional(condition):
-      (result, commentOverride) = try await condition()
+      try await condition()
     case let .unconditional(unconditionalValue):
-      result = unconditionalValue
+      (unconditionalValue, nil)
     }
+  }
 
-    if !result {
+  public func prepare(for test: Test) async throws {
+    let (isEnabled, commentOverride) = try await evaluate()
+
+    if !isEnabled {
       // We don't need to consider including a backtrace here because it will
       // primarily contain frames in the testing library, not user code. If an
       // error was thrown by a condition evaluated above, the caller _should_
