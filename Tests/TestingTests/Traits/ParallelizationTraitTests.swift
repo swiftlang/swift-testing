@@ -9,6 +9,9 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+#if canImport(XCTest)
+import XCTest
+#endif
 
 @Suite("Parallelization Trait Tests", .tags(.traitRelated))
 struct ParallelizationTraitTests {
@@ -43,6 +46,43 @@ struct ParallelizationTraitTests {
     #expect(isSorted)
   }
 }
+
+#if canImport(XCTest)
+final class ParallelizationTraitXCTests: XCTestCase {
+  // Implemented in XCTest so we can use enforceOrder (see #297)
+  func testSerializedGlobally() async {
+    var expectations = [XCTestExpectation]()
+
+    var sourceLocation = #_sourceLocation
+    let parallelizedRanFirst = expectation(description: "Parallelized tests ran first")
+    var tests: [Test] = [
+      Test(sourceLocation: sourceLocation) {
+        if #available(_clockAPI, *) {
+          try await Test.Clock.sleep(for: .nanoseconds(50_000_000))
+        }
+        parallelizedRanFirst.fulfill()
+      },
+    ]
+    expectations.append(parallelizedRanFirst)
+
+    for i in 0 ..< 100 {
+      sourceLocation.line += 1
+      let serializedTestRan = expectation(description: "Globally serialized test #\(i) ran")
+      tests.append(
+        Test(.serialized(.globally), sourceLocation: sourceLocation) {
+          serializedTestRan.fulfill()
+        }
+      )
+      expectations.append(serializedTestRan)
+    }
+    let plan = await Runner.Plan(tests: tests, configuration: .init())
+    let runner = Runner(plan: plan, configuration: .init())
+    await runner.run()
+    await fulfillment(of: expectations, enforceOrder: true)
+  }
+
+}
+#endif
 
 // MARK: - Fixtures
 
