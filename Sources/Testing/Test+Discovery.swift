@@ -10,13 +10,27 @@
 
 private import _TestingInternals
 
-extension Test: TestContent {
-  static var testContentKind: UInt32 {
+/// A type that encapsulates test content records that produce instances of
+/// ``Test``.
+///
+/// This type is necessary because such test content records produce an indirect
+/// `async` accessor function rather than directly producing instances of
+/// ``Test``, but functions are non-nominal types and cannot directly conform to
+/// protocols.
+///
+/// - Note: This helper type must have the exact in-memory layout of the `async`
+///   accessor function. Do not add any additional stored properties.
+private struct _TestRecord: UnsafeDiscoverable {
+  static var discoverableKind: UInt32 {
     0x74657374
   }
 
-  typealias TestContentAccessorResult = @Sendable () async -> Self
+  var asyncAccessor: @Sendable () async -> Test
+}
 
+// MARK: -
+
+extension Test {
   /// All available ``Test`` instances in the process, according to the runtime.
   ///
   /// The order of values in this sequence is unspecified.
@@ -47,7 +61,7 @@ extension Test: TestContent {
       // Walk all test content and gather generator functions, then call them in
       // a task group and collate their results.
       if useNewMode {
-        let generators = Self.allTestContentRecords().lazy.compactMap { $0.load() }
+        let generators = _TestRecord.discoverAllRecords().lazy.compactMap { $0.load()?.asyncAccessor }
         await withTaskGroup(of: Self.self) { taskGroup in
           for generator in generators {
             taskGroup.addTask(operation: generator)
