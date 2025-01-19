@@ -223,12 +223,15 @@ extension ExitTest {
 
 // MARK: - Discovery
 
-extension ExitTest: TestContent {
-  static var testContentKind: UInt32 {
+@_spi(Experimental)
+extension ExitTest: UnsafeDiscoverable {
+  @_spi(Experimental)
+  public static var discoverableKind: UInt32 {
     0x65786974
   }
 
-  typealias TestContentAccessorHint = ID
+  @_spi(Experimental)
+  public typealias DiscoverableHint = ID
 }
 
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
@@ -241,7 +244,7 @@ extension ExitTest {
   /// - Returns: The specified exit test function, or `nil` if no such exit test
   ///   could be found.
   public static func find(identifiedBy id: ExitTest.ID) -> Self? {
-    for record in Self.allTestContentRecords() {
+    for record in Self.discoverAllRecords() {
       if let exitTest = record.load(withHint: id) {
         return exitTest
       }

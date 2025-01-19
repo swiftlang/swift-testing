@@ -23,8 +23,8 @@ extension Test {
   ///   `async` accessor function. Do not add any additional cases or associated
   ///   values. The layout of this type is [guaranteed](https://github.com/swiftlang/swift/blob/main/docs/ABI/TypeLayout.rst#fragile-enum-layout)
   ///   by the Swift ABI.
-  /* @frozen */ private enum _Record: TestContent {
-    static var testContentKind: UInt32 {
+  /* @frozen */ private enum _Record: UnsafeDiscoverable {
+    static var discoverableKind: UInt32 {
       0x74657374
     }
 
@@ -62,7 +62,7 @@ extension Test {
       // Walk all test content and gather generator functions, then call them in
       // a task group and collate their results.
       if useNewMode {
-        let generators = _Record.allTestContentRecords().lazy.compactMap { record in
+        let generators = _Record.discoverAllRecords().lazy.compactMap { record in
           if case let .generator(generator) = record.load() {
             return generator
           }

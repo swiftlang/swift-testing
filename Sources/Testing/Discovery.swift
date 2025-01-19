@@ -41,33 +41,38 @@ public typealias __TestContentRecord = (
 /// This protocol is not part of the public interface of the testing library. In
 /// the future, we could make it public if we want to support runtime discovery
 /// of test content by second- or third-party code.
-protocol TestContent: ~Copyable {
+@_spi(Experimental)
+public protocol UnsafeDiscoverable: Sendable, ~Copyable {
   /// The unique "kind" value associated with this type.
   ///
-  /// The value of this property is reserved for each test content type. See
-  /// `ABI/TestContent.md` for a list of values and corresponding types.
-  static var testContentKind: UInt32 { get }
+  /// The value of this property is globally reserved by each discoverable type.
+  /// To reserve a "kind" value, open a [new GitHub issue](...) against the testing library.
+  static var discoverableKind: UInt32 { get }
 
-  /// A type of "hint" passed to ``allTestContentRecords()`` to help the testing
-  /// library find the correct result.
+  /// The type of context associated with a test content record of this type.
+  ///
+  /// Test content records include a field with the same alignment, size, and
+  /// stride as `UInt`, of this type. By default, the testing library assumes
+  /// that type type of this field is `UInt` and is otherwise unspecialized, but
+  /// discoverable types may specify another type such as `Int`  or a pointer
+  /// type.
+  associatedtype DiscoverableContext = UInt
+
+  /// A type of "hint" passed to ``load(withHint:)`` to help the testing library
+  /// find the correct result.
   ///
   /// By default, this type equals `Never`, indicating that this type of test
   /// content does not support hinting during discovery.
-  associatedtype TestContentAccessorHint: Sendable = Never
+  associatedtype DiscoverableHint: Sendable = Never
 }
 
-// MARK: - Individual test content records
-
-/// A type describing a test content record of a particular (known) type.
+/// A type representing test content records of a given type that have been
+/// discovered at runtime.
 ///
-/// Instances of this type can be created by calling
-/// ``TestContent/allTestContentRecords()`` on a type that conforms to
-/// ``TestContent``.
-///
-/// This type is not part of the public interface of the testing library. In the
-/// future, we could make it public if we want to support runtime discovery of
-/// test content by second- or third-party code.
-struct TestContentRecord<T>: Sendable where T: TestContent & ~Copyable {
+/// To get an instance of the discoverable type `D`, call this type's
+/// ``load(withHint:)`` function.
+@_spi(Experimental)
+public struct DiscoverableRecord<D>: Sendable where D: UnsafeDiscoverable & ~Copyable {
   /// The base address of the image containing this instance, if known.
   ///
   /// On platforms such as WASI that statically link to the testing library, the
@@ -76,19 +81,22 @@ struct TestContentRecord<T>: Sendable where T: TestContent & ~Copyable {
   /// - Note: The value of this property is distinct from the pointer returned
   ///   by `dlopen()` (on platforms that have that function) and cannot be used
   ///   with interfaces such as `dlsym()` that expect such a pointer.
-  nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
+  private nonisolated(unsafe) var _imageAddress: UnsafeRawPointer?
 
   /// The underlying test content record loaded from a metadata section.
   private var _record: __TestContentRecord
 
   fileprivate init(imageAddress: UnsafeRawPointer?, record: __TestContentRecord) {
-    self.imageAddress = imageAddress
-    self._record = record
+    _imageAddress = imageAddress
+    _record = record
   }
 
-  /// The context value for this test content record.
-  var context: UInt {
-    _record.context
+  /// The unique "kind" value associated with the discoverable type `D`.
+  ///
+  /// The value of this property is globally reserved by each discoverable type.
+  /// To reserve a "kind" value, open a [new GitHub issue](...) against the testing library.
+  public var kind: UInt32 {
+    _record.kind
   }
 
   /// Load the value represented by this record.
@@ -103,12 +111,12 @@ struct TestContentRecord<T>: Sendable where T: TestContent & ~Copyable {
   ///
   /// If this function is called more than once on the same instance, a new
   /// value is created on each call.
-  func load(withHint hint: T.TestContentAccessorHint? = nil) -> T? {
+  public func load(withHint hint: D.DiscoverableHint? = nil) -> D? {
     guard let accessor = _record.accessor else {
       return nil
     }
 
-    return withUnsafeTemporaryAllocation(of: T.self, capacity: 1) { buffer in
+    return withUnsafeTemporaryAllocation(of: D.self, capacity: 1) { buffer in
       let initialized = if let hint {
         withUnsafePointer(to: hint) { hint in
           accessor(buffer.baseAddress!, hint)
@@ -124,24 +132,48 @@ struct TestContentRecord<T>: Sendable where T: TestContent & ~Copyable {
   }
 }
 
+extension DiscoverableRecord where D.DiscoverableContext: BinaryInteger, D.DiscoverableContext.Magnitude == UInt {
+  /// The context value for this test content record.
+  public var context: D.DiscoverableContext {
+    D.DiscoverableContext(truncatingIfNeeded: _record.context)
+  }
+}
+
+extension DiscoverableRecord where D.DiscoverableContext: RawRepresentable, D.DiscoverableContext.RawValue: BinaryInteger, D.DiscoverableContext.RawValue.Magnitude == UInt {
+  /// The context value for this test content record.
+  public var context: D.DiscoverableContext? {
+    D.DiscoverableContext(rawValue: .init(truncatingIfNeeded: _record.context))
+  }
+}
+
+extension DiscoverableRecord where D.DiscoverableContext: _Pointer {
+  /// The context value for this test content record.
+  public var context: D.DiscoverableContext? {
+    D.DiscoverableContext(bitPattern: _record.context)
+  }
+}
+
 // MARK: - Enumeration of test content records
 
-extension TestContent where Self: ~Copyable {
+extension UnsafeDiscoverable where Self: ~Copyable {
   /// Get all test content of this type known to Swift and found in the current
   /// process.
   ///
-  /// - Returns: A sequence of instances of ``TestContentRecord``. Only test
-  ///   content records matching this ``TestContent`` type's requirements are
-  ///   included in the sequence.
+  /// - Returns: A sequence of instances of ``DiscoverableRecord``. Only records
+  ///   matching this ``UnsafeDiscoverable`` type's requirements are included in
+  ///   the sequence.
   ///
-  /// - Bug: This function returns an instance of `AnySequence` instead of an
-  ///   opaque type due to a compiler crash. ([143080508](rdar://143080508))
-  static func allTestContentRecords() -> AnySequence<TestContentRecord<Self>> {
+  // @Comment {
+  //   - Bug: This function returns an instance of `AnySequence` instead of an
+  //     opaque type due to a compiler crash. ([143080508](rdar://143080508))
+  // }
+  @_spi(Experimental)
+  public static func discoverAllRecords() -> AnySequence<DiscoverableRecord<Self>> {
     let result = SectionBounds.all(.testContent).lazy.flatMap { sb in
       sb.buffer.withMemoryRebound(to: __TestContentRecord.self) { records in
         records.lazy
-          .filter { $0.kind == testContentKind }
-          .map { TestContentRecord<Self>(imageAddress: sb.imageAddress, record: $0) }
+          .filter { $0.kind == discoverableKind }
+          .map { DiscoverableRecord<Self>(imageAddress: sb.imageAddress, record: $0) }
       }
     }
     return AnySequence(result)

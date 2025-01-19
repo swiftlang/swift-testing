@@ -581,16 +581,16 @@ struct MiscellaneousTests {
   }
 
 #if !SWT_NO_DYNAMIC_LINKING && hasFeature(SymbolLinkageMarkers)
-  struct DiscoverableTestContent: TestContent {
-    typealias TestContentAccessorHint = UInt32
+  struct DiscoverableTestContent: UnsafeDiscoverable {
+    typealias DiscoverableHint = UInt32
 
     var value: UInt32
 
-    static var testContentKind: UInt32 {
+    static var discoverableKind: UInt32 {
       record.kind
     }
 
-    static var expectedHint: TestContentAccessorHint {
+    static var expectedHint: DiscoverableHint {
       0x01020304
     }
 
@@ -616,7 +616,7 @@ struct MiscellaneousTests {
       0xABCD1234,
       0,
       { outValue, hint in
-        if let hint, hint.load(as: TestContentAccessorHint.self) != expectedHint {
+        if let hint, hint.load(as: DiscoverableHint.self) != expectedHint {
           return false
         }
         _ = outValue.initializeMemory(as: Self.self, to: .init(value: expectedValue))
@@ -629,7 +629,7 @@ struct MiscellaneousTests {
 
   @Test func testDiscovery() async {
     // Check the type of the test record sequence (it should be lazy.)
-    let allRecordsSeq = DiscoverableTestContent.allTestContentRecords()
+    let allRecordsSeq = DiscoverableTestContent.discoverAllRecords()
 #if SWT_FIXED_143080508
     #expect(allRecordsSeq is any LazySequenceProtocol)
     #expect(!(allRecordsSeq is [TestContentRecord<DiscoverableTestContent>]))
