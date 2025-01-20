@@ -48,7 +48,7 @@ protocol TestContent: ~Copyable {
   /// `ABI/TestContent.md` for a list of values and corresponding types.
   static var testContentKind: UInt32 { get }
 
-  /// A type of "hint" passed to ``discover(withHint:)`` to help the testing
+  /// A type of "hint" passed to ``allTestContentRecords()`` to help the testing
   /// library find the correct result.
   ///
   /// By default, this type equals `Never`, indicating that this type of test
