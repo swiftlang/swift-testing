@@ -48,14 +48,6 @@ protocol TestContent: ~Copyable {
   /// `ABI/TestContent.md` for a list of values and corresponding types.
   static var testContentKind: UInt32 { get }
 
-  /// The type of value returned by the test content accessor for this type.
-  ///
-  /// This type may or may not equal `Self` depending on the type's compile-time
-  /// and runtime requirements. If it does not equal `Self`, it should equal a
-  /// type whose instances can be converted to instances of `Self` (e.g. by
-  /// calling them if they are functions.)
-  associatedtype TestContentAccessorResult: ~Copyable
-
   /// A type of "hint" passed to ``discover(withHint:)`` to help the testing
   /// library find the correct result.
   ///
@@ -75,7 +67,7 @@ protocol TestContent: ~Copyable {
 /// This type is not part of the public interface of the testing library. In the
 /// future, we could make it public if we want to support runtime discovery of
 /// test content by second- or third-party code.
-struct TestContentRecord<T>: Sendable where T: ~Copyable {
+struct TestContentRecord<T>: Sendable where T: TestContent & ~Copyable {
   /// The base address of the image containing this instance, if known.
   ///
   /// On platforms such as WASI that statically link to the testing library, the
@@ -93,11 +85,7 @@ struct TestContentRecord<T>: Sendable where T: ~Copyable {
     self.imageAddress = imageAddress
     self._record = record
   }
-}
 
-// This `T: TestContent` constraint is in an extension in order to work around a
-// compiler crash. SEE: rdar://143049814
-extension TestContentRecord where T: TestContent & ~Copyable {
   /// The context value for this test content record.
   var context: UInt {
     _record.context
@@ -109,18 +97,18 @@ extension TestContentRecord where T: TestContent & ~Copyable {
   ///   - hint: An optional hint value. If not `nil`, this value is passed to
   ///     the accessor function of the underlying test content record.
   ///
-  /// - Returns: An instance of the associated ``TestContentAccessorResult``
-  ///   type, or `nil` if the underlying test content record did not match
-  ///   `hint` or otherwise did not produce a value.
+  /// - Returns: An instance of the test content type `T`, or `nil` if the
+  ///   underlying test content record did not match `hint` or otherwise did not
+  ///   produce a value.
   ///
   /// If this function is called more than once on the same instance, a new
   /// value is created on each call.
-  func load(withHint hint: T.TestContentAccessorHint? = nil) -> T.TestContentAccessorResult? {
+  func load(withHint hint: T.TestContentAccessorHint? = nil) -> T? {
     guard let accessor = _record.accessor else {
       return nil
     }
 
-    return withUnsafeTemporaryAllocation(of: T.TestContentAccessorResult.self, capacity: 1) { buffer in
+    return withUnsafeTemporaryAllocation(of: T.self, capacity: 1) { buffer in
       let initialized = if let hint {
         withUnsafePointer(to: hint) { hint in
           accessor(buffer.baseAddress!, hint)
