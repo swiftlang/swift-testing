@@ -86,6 +86,7 @@ record's kind is a 32-bit unsigned value. The following kinds are defined:
 | `0x00000000` | &ndash; | Reserved (**do not use**) |
 | `0x74657374` | `'test'` | Test or suite declaration |
 | `0x65786974` | `'exit'` | Exit test |
+| `0x746C6962` | `'tlib'` | Testing library definition |
 
 <!-- When adding cases to this enumeration, be sure to also update the
 corresponding enumeration in TestContentGeneration.swift. -->
@@ -136,6 +137,25 @@ to by `hint` depend on the kind of record:
   They only produce a result if they represent an exit test declared with the
   same ID (or if `hint` is `nil`.)
 
+- For testing library definitions ( kind `0x746C6962`), the accessor produces a
+  structure of type `TestingLibrary` that contains information about the
+  corresponding testing library as well as an entry point function.
+
+  At startup, the testing library enumerates all such records discovered in the
+  current process and runs their entry point functions _serially_. Each testing
+  library entry point is responsible for running that testing library's test
+  content and reporting events via `recordHandler` according to the schema
+  defined in [JSON.md](JSON.md).
+
+  Swift Testing itself defines an entry point function of this form, but it is
+  given no special significance over other entry points.
+
+  <!-- TODO: Define the order in which the entrypoints are run. -->
+  <!-- TODO: Define what happens when a library has multiple records. -->
+
+  Test content records of this kind do not specify a type for `hint`. Always
+  pass `nil`.
+
 > [!WARNING]
 > Calling code should use [`withUnsafeTemporaryAllocation(of:capacity:_:)`](https://developer.apple.com/documentation/swift/withunsafetemporaryallocation(of:capacity:_:))
 > and [`withUnsafePointer(to:_:)`](https://developer.apple.com/documentation/swift/withunsafepointer(to:_:)-35wrn),
@@ -161,6 +181,9 @@ content record that needs to be made available before the accessor is called:
 
 - For exit test declarations (kind `0x65786974`), this field is reserved for
   future use and must be set to `0`.
+
+- For testing library definitions (kind `0x746C6962`), this field is reserved
+  for future use and must be set to `0`.
 
 #### The reserved1 and reserved2 fields
 

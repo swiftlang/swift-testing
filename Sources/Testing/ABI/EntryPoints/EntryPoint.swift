@@ -70,6 +70,23 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
       }
     }
 
+    // TODO: call TestingLibrary.discoverAllRecords(), enumerate each library, emit a .libraryEntered event, then call its entry point
+#if !SWT_NO_FILE_IO
+    for record in TestingLibrary.discoverAllRecords() {
+      guard let testingLibrary = record.load() else {
+        continue
+      }
+      if testingLibrary.displayName != "Swift Testing" {
+        let message = Event.ConsoleOutputRecorder.warning("Hosting for third-party testing library '\(testingLibrary.displayName)' is not yet supported.", options: .for(.stderr))
+#if SWT_TARGET_OS_APPLE
+        try? FileHandle.stderr.write(message)
+#else
+        print(message)
+#endif
+      }
+    }
+#endif
+
     // The set of matching tests (or, in the case of `swift test list`, the set
     // of all tests.)
     let tests: [Test]

@@ -56,6 +56,9 @@ public protocol UnsafeDiscoverable: Sendable, ~Copyable {
   /// that type type of this field is `UInt` and is otherwise unspecialized, but
   /// discoverable types may specify another type such as `Int`  or a pointer
   /// type.
+  ///
+  /// Customizing this type does not affect the in-memory or on-disk layout of a
+  /// test content record.
   associatedtype DiscoverableContext = UInt
 
   /// A type of "hint" passed to ``load(withHint:)`` to help the testing library
@@ -112,34 +115,32 @@ public struct DiscoverableRecord<D>: Sendable where D: UnsafeDiscoverable & ~Cop
   /// If this function is called more than once on the same instance, a new
   /// value is created on each call.
   public func load(withHint hint: D.DiscoverableHint? = nil) -> D? {
-    guard let accessor = _record.accessor else {
-      return nil
-    }
-
-    return withUnsafeTemporaryAllocation(of: D.self, capacity: 1) { buffer in
-      let initialized = if let hint {
-        withUnsafePointer(to: hint) { hint in
-          accessor(buffer.baseAddress!, hint)
+    _record.accessor.flatMap { accessor in
+      withUnsafeTemporaryAllocation(of: D.self, capacity: 1) { buffer in
+        let initialized = if let hint {
+          withUnsafePointer(to: hint) { hint in
+            accessor(buffer.baseAddress!, hint)
+          }
+        } else {
+          accessor(buffer.baseAddress!, nil)
         }
-      } else {
-        accessor(buffer.baseAddress!, nil)
+        guard initialized else {
+          return nil
+        }
+        return buffer.baseAddress!.move()
       }
-      guard initialized else {
-        return nil
-      }
-      return buffer.baseAddress!.move()
     }
   }
 }
 
-extension DiscoverableRecord where D.DiscoverableContext: BinaryInteger, D.DiscoverableContext.Magnitude == UInt {
+extension DiscoverableRecord where D.DiscoverableContext: BinaryInteger {
   /// The context value for this test content record.
   public var context: D.DiscoverableContext {
     D.DiscoverableContext(truncatingIfNeeded: _record.context)
   }
 }
 
-extension DiscoverableRecord where D.DiscoverableContext: RawRepresentable, D.DiscoverableContext.RawValue: BinaryInteger, D.DiscoverableContext.RawValue.Magnitude == UInt {
+extension DiscoverableRecord where D.DiscoverableContext: RawRepresentable, D.DiscoverableContext.RawValue: BinaryInteger {
   /// The context value for this test content record.
   public var context: D.DiscoverableContext? {
     D.DiscoverableContext(rawValue: .init(truncatingIfNeeded: _record.context))
