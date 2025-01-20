@@ -25,6 +25,7 @@ private struct _TestRecord: UnsafeDiscoverable {
     0x74657374
   }
 
+  /// The actual (asynchronous) accessor function for this test content record.
   var asyncAccessor: @Sendable () async -> Test
 }
 
