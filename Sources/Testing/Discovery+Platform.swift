@@ -230,7 +230,7 @@ private func _findSection(named sectionName: String, in hModule: HMODULE) -> Sec
 ///
 /// - Returns: An array of structures describing the bounds of all known test
 ///   content sections in the current process.
-private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
+private func _sectionBounds(_ kind: SectionBounds.Kind) -> some Sequence<SectionBounds> {
   let sectionName = switch kind {
   case .testContent:
     ".sw5test"
