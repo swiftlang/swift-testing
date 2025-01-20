@@ -26,10 +26,7 @@ extension ABIv0 {
   ///
   /// - Throws: Any error that occurred prior to running tests. Errors that are
   ///   thrown while tests are running are handled by the testing library.
-  public typealias EntryPoint = @convention(thin) @Sendable (
-    _ configurationJSON: UnsafeRawBufferPointer?,
-    _ recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
-  ) async throws -> Bool
+  public typealias EntryPoint = TestingLibrary.EntryPoint
 
   /// The entry point to the testing library used by tools that want to remain
   /// version-agnostic regarding the testing library.

@@ -75,6 +75,7 @@ record's kind is a 32-bit unsigned value. The following kinds are defined:
 | `0x00000000` | &ndash; | Reserved (**do not use**) |
 | `0x74657374` | `'test'` | Test or suite declaration |
 | `0x65786974` | `'exit'` | Exit test |
+| `0x746C6962` | `'tlib'` | Testing library definition |
 
 <!-- When adding cases to this enumeration, be sure to also update the
 corresponding enumeration in TestContentGeneration.swift. -->
@@ -122,6 +123,70 @@ to by `hint` depend on the kind of record:
   They only produce a result if they represent an exit test declared with the
   same ID (or if `hint` is `nil`.)
 
+- For testing library definitions ( kind `0x746C6962`), the accessor produces a
+  structure containing information about the corresponding testing library as
+  well as an entry point function:
+
+  ```swift
+  /// A type describing a testing library whose test content can be hosted by
+  /// Swift Testing.
+  @_spi(ForToolsIntegrationOnly)
+  @frozen public struct TestingLibrary: Sendable {
+    /// The human-readable name of this testing library.
+    public var displayName: String
+
+    /// The version of this testing library.
+    ///
+    /// It is recommended that a testing library's version be specified as a
+    /// [semantic version](https://semver.org), but it is not required.
+    public var version: String
+
+    /// The type of testing library entry point functions.
+    ///
+    /// - Parameters:
+    ///   - configurationJSON: A buffer to memory representing the test
+    ///     configuration and options. If `nil`, a new instance is synthesized
+    ///     from the command-line arguments to the current process.
+    ///   - recordHandler: A JSON record handler to which is passed a buffer to
+    ///     memory representing each record as described in `ABI/JSON.md`.
+    ///
+    /// - Returns: Whether or not the test run finished successfully.
+    ///
+    /// - Throws: Any error that occurred prior to running tests. Errors that
+    ///   are thrown while tests are running are handled by the testing library.
+    public typealias EntryPoint = @convention(thin) @Sendable (
+      _ configurationJSON: UnsafeRawBufferPointer,
+      _ recordHandler: @escaping @Sendable (
+        _ recordJSON: UnsafeRawBufferPointer
+      ) -> Void
+    ) async throws -> Bool
+
+    /// The entry point function of this testing library.
+    public var entryPoint: EntryPoint
+
+    public init(
+      displayName: String,
+      version: String,
+      entryPoint: @escaping EntryPoint
+    )
+  }
+  ```
+
+  At startup, the testing library enumerates all such records discovered in the
+  current process and runs their entry point functions _serially_. Each testing
+  library entry point is responsible for running that testing library's test
+  content and reporting events via `recordHandler` according to the schema
+  defined in [JSON.md](JSON.md).
+
+  Swift Testing itself defines an entry point function of this form, but it is
+  given no special significance over other entry points.
+
+  <!-- TODO: Define the order in which the entrypoints are run. -->
+  <!-- TODO: Define what happens when a library has multiple records. -->
+
+  Test content records of this kind do not specify a type for `hint`. Always
+  pass `nil`.
+
 > [!WARNING]
 > Calling code should use [`withUnsafeTemporaryAllocation(of:capacity:_:)`](https://developer.apple.com/documentation/swift/withunsafetemporaryallocation(of:capacity:_:))
 > and [`withUnsafePointer(to:_:)`](https://developer.apple.com/documentation/swift/withunsafepointer(to:_:)-35wrn),
@@ -147,6 +212,9 @@ content record that needs to be made available before the accessor is called:
 
 - For exit test declarations (kind `0x65786974`), this field is reserved for
   future use and must be set to `0`.
+
+- For testing library definitions (kind `0x746C6962`), this field is reserved
+  for future use and must be set to `0`.
 
 #### The reserved1 and reserved2 fields
 
