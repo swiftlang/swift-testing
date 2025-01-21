@@ -108,8 +108,7 @@ target_sources(TestingMacros PRIVATE
   TestingMacrosMain.swift)
 
 target_compile_options(TestingMacros PRIVATE
-  "SHELL:-Xfrontend -disable-implicit-string-processing-module-import"
-  "SHELL:-Xfrontend -disable-implicit-backtracing-module-import")
+  "SHELL:-Xfrontend -disable-implicit-string-processing-module-import")
 
 target_link_libraries(TestingMacros PRIVATE
   SwiftSyntax::SwiftSyntax
