@@ -63,6 +63,17 @@ struct SWTTestContentRecord {
 };
 ```
 
+Do not use the `__TestContentRecord` typealias defined in the testing library.
+This type exists to support the testing library's macros and may change in the
+future (e.g. to accomodate a generic argument or to make use of one of the
+reserved fields.)
+
+Instead, define your own copy of this type where needed&mdash;you can copy the
+definition above _verbatim_. If your test record type's `context` field (as
+described below) is a pointer type, make sure to change its type in your version
+of `TestContentRecord` accordingly so that, on systems with pointer
+authentication enabled, the pointer is correctly resigned at load time.
+
 ### Record content
 
 #### The kind field
@@ -78,6 +89,9 @@ record's kind is a 32-bit unsigned value. The following kinds are defined:
 
 <!-- When adding cases to this enumeration, be sure to also update the
 corresponding enumeration in TestContentGeneration.swift. -->
+
+If a test content record's `kind` field equals `0x00000000`, the values of all
+other fields in that record are undefined.
 
 #### The accessor field
 

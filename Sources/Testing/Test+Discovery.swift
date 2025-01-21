@@ -10,28 +10,28 @@
 
 private import _TestingInternals
 
-/// A type that encapsulates test content records that produce instances of
-/// ``Test``.
-///
-/// This type is necessary because such test content records produce an indirect
-/// `async` accessor function rather than directly producing instances of
-/// ``Test``, but functions are non-nominal types and cannot directly conform to
-/// protocols.
-///
-/// - Note: This helper type must have the exact in-memory layout of the `async`
-///   accessor function. Do not add any additional stored properties. The layout
-///   of this type is _de facto_ [guaranteed](https://github.com/swiftlang/swift/blob/main/docs/ABI/TypeLayout.rst)
-///   by the Swift ABI.
-/* @frozen */ private struct _TestRecord: TestContent {
-  static var testContentKind: UInt32 {
-    0x74657374
+extension Test {
+  /// A type that encapsulates test content records that produce instances of
+  /// ``Test``.
+  ///
+  /// This type is necessary because such test content records produce an
+  /// indirect `async` accessor function rather than directly producing
+  /// instances of ``Test``, but functions are non-nominal types and cannot
+  /// directly conform to protocols.
+  ///
+  /// - Note: This helper type must have the exact in-memory layout of the
+  ///   `async` accessor function. Do not add any additional cases or associated
+  ///   values. The layout of this type is [guaranteed](https://github.com/swiftlang/swift/blob/main/docs/ABI/TypeLayout.rst#fragile-enum-layout)
+  ///   by the Swift ABI.
+  /* @frozen */ private enum _Record: TestContent {
+    static var testContentKind: UInt32 {
+      0x74657374
+    }
+
+    /// The actual (asynchronous) accessor function.
+    case generator(@Sendable () async -> Test)
   }
 
-  /// This instance's actual (asynchronous) accessor function.
-  var asyncAccessor: @Sendable () async -> Test
-}
-
-extension Test {
   /// All available ``Test`` instances in the process, according to the runtime.
   ///
   /// The order of values in this sequence is unspecified.
@@ -58,7 +58,12 @@ extension Test {
       // Walk all test content and gather generator functions, then call them in
       // a task group and collate their results.
       if useNewMode {
-        let generators = _TestRecord.allTestContentRecords().lazy.compactMap { $0.load()?.asyncAccessor }
+        let generators = _Record.allTestContentRecords().lazy.compactMap { record in
+          if case let .generator(generator) = record.load() {
+            return generator
+          }
+          return nil // currently unreachable, but not provably so
+        }
         await withTaskGroup(of: Self.self) { taskGroup in
           for generator in generators {
             taskGroup.addTask(operation: generator)
