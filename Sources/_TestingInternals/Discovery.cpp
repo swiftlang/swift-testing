@@ -47,6 +47,7 @@ const void *_Nonnull const SWTTypeMetadataSectionBounds[2] = {
 #pragma mark - Swift ABI
 
 #if defined(__PTRAUTH_INTRINSICS__)
+#include <ptrauth.h>
 #define SWT_PTRAUTH_SWIFT_TYPE_DESCRIPTOR __ptrauth(ptrauth_key_process_independent_data, 1, 0xae86)
 #else
 #define SWT_PTRAUTH_SWIFT_TYPE_DESCRIPTOR
