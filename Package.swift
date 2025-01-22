@@ -161,7 +161,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .define("SWT_NO_EXIT_TESTS", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
       .define("SWT_NO_PROCESS_SPAWNING", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
       .define("SWT_NO_SNAPSHOT_TYPES", .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi])),
-      .define("SWT_NO_DYNAMIC_LINKING", .when(platforms: [.wasi])),
+      .define("SWT_NO_DYNAMIC_LINKING"),
       .define("SWT_NO_PIPES", .when(platforms: [.wasi])),
     ]
   }
@@ -196,7 +196,7 @@ extension Array where Element == PackageDescription.CXXSetting {
       .define("SWT_NO_EXIT_TESTS", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
       .define("SWT_NO_PROCESS_SPAWNING", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
       .define("SWT_NO_SNAPSHOT_TYPES", .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi])),
-      .define("SWT_NO_DYNAMIC_LINKING", .when(platforms: [.wasi])),
+      .define("SWT_NO_DYNAMIC_LINKING"),
       .define("SWT_NO_PIPES", .when(platforms: [.wasi])),
     ]
 

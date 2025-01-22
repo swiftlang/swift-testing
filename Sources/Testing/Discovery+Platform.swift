@@ -116,6 +116,17 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
 
 private import SwiftShims // For MetadataSections
 
+/// A function exported by the Swift runtime that enumerates all metadata
+/// sections loaded into the current process.
+///
+/// This function is needed on ELF-based platforms because they do not preserve
+/// section information that we can discover at runtime.
+@_silgen_name("swift_enumerateAllMetadataSections")
+private func swift_enumerateAllMetadataSections(
+  _ body: @convention(c) (_ sections: UnsafePointer<MetadataSections>, _ context: UnsafeMutableRawPointer) -> CBool,
+  _ context: UnsafeMutableRawPointer
+)
+
 /// The ELF-specific implementation of ``SectionBounds/all(_:)``.
 ///
 /// - Parameters:
@@ -134,24 +145,22 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
     swift_enumerateAllMetadataSections({ sections, context in
       let context = context.assumingMemoryBound(to: Context.self)
 
-      let version = sections.load(as: UInt.self)
-      guard context.pointee.kind != .testContent || version >= 4 else {
+      guard context.pointee.kind != .testContent || sections.pointee.version >= 4 else {
         // This structure is too old to contain the swift5_tests field.
         return true
       }
-      let sections = sections.load(as: MetadataSections.self)
 
       let range = switch context.pointee.kind {
       case .testContent:
-        sections.swift5_tests
+        sections.pointee.swift5_tests
       case .typeMetadata:
-        sections.swift5_type_metadata
+        sections.pointee.swift5_type_metadata
       }
       let start = UnsafeRawPointer(bitPattern: range.start)
       let size = Int(clamping: range.length)
       if let start, size > 0 {
         let buffer = UnsafeRawBufferPointer(start: start, count: size)
-        let sb = SectionBounds(imageAddress: sections.baseAddress, buffer: buffer)
+        let sb = SectionBounds(imageAddress: sections.pointee.baseAddress, buffer: buffer)
 
         context.pointee.result.append(sb)
       }
@@ -255,6 +264,68 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
 #else
 // MARK: - Statically-linked implementation
 
+/// A type that represents a section boundary symbol created at link-time.
+private struct _SectionBound: ~Copyable {
+  /// An "unreal" stored property that ensures the layout of this type is
+  /// at least naturally aligned and has a non-zero size/stride.
+  ///
+  /// This property does not actually exist, but it is necessary to convince the
+  /// Swift compiler that an instance of this type has an in-memory presence.
+  ///
+  /// - Warning: The value of this property is undefined.
+  private var _ensureLayout: Int = 0
+
+  /// Get the address of this instance.
+  ///
+  /// - Returns: The address of `self`.
+  ///
+  /// This function does not actually mutate `self`, but it is necessary to
+  /// declare it as mutating to avoid temporarily copying `self` and getting the
+  /// address of the copy (which can happen even to move-only types so long as
+  /// the pointer does not escape.)
+  ///
+  /// - Warning: The implementation of this function is inherently unsafe, and
+  ///   only works as intended under very narrow conditions.
+  mutating func unsafeAddress() -> UnsafeRawPointer {
+    withUnsafeMutablePointer(to: &self) { UnsafeRawPointer($0) }
+  }
+}
+
+#if SWT_TARGET_OS_APPLE
+@_silgen_name(raw: "section$start$__DATA_CONST$__swift5_tests")
+private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
+@_silgen_name(raw: "section$end$__DATA_CONST$__swift5_tests")
+private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
+
+@_silgen_name(raw: "section$start$__TEXT$__swift5_types")
+private nonisolated(unsafe) var _typeMetadataSectionBegin: _SectionBound
+@_silgen_name(raw: "section$end$__TEXT$__swift5_types")
+private nonisolated(unsafe) var _typeMetadataSectionEnd: _SectionBound
+#elseif os(WASI)
+@_silgen_name(raw: "__start_swift5_tests")
+private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
+@_silgen_name(raw: "__stop_swift5_tests")
+private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
+
+@_silgen_name(raw: "__start_swift5_type_metadata")
+private nonisolated(unsafe) var _typeMetadataSectionBegin: _SectionBound
+@_silgen_name(raw: "__stop_swift5_type_metadata")
+private nonisolated(unsafe) var _typeMetadataSectionEnd: _SectionBound
+#else
+#warning("Platform-specific implementation missing: Runtime test discovery unavailable (static)")
+private nonisolated(unsafe) var _testContentSectionBegin = _SectionBound()
+private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound {
+  _read { yield _testContentSectionBegin }
+  _modify { yield &_testContentSectionBegin }
+}
+
+private nonisolated(unsafe) var _typeMetadataSectionBegin = _SectionBound()
+private nonisolated(unsafe) var _typeMetadataSectionEnd: _SectionBound {
+  _read { yield _testContentSectionBegin }
+  _modify { yield &_testContentSectionBegin }
+}
+#endif
+
 /// The common implementation of ``SectionBounds/all(_:)`` for platforms that do
 /// not support dynamic linking.
 ///
@@ -266,9 +337,9 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
 private func _sectionBounds(_ kind: SectionBounds.Kind) -> CollectionOfOne<SectionBounds> {
   let (sectionBegin, sectionEnd) = switch kind {
   case .testContent:
-    SWTTestContentSectionBounds
+    (_testContentSectionBegin.unsafeAddress(), _testContentSectionEnd.unsafeAddress())
   case .typeMetadata:
-    SWTTypeMetadataSectionBounds
+    (_typeMetadataSectionBegin.unsafeAddress(), _typeMetadataSectionEnd.unsafeAddress())
   }
   let buffer = UnsafeRawBufferPointer(start: sectionBegin, count: max(0, sectionEnd - sectionBegin))
   let sb = SectionBounds(imageAddress: nil, buffer: buffer)

@@ -209,24 +209,37 @@ start with `"SWT_"`).
 If your platform does not support dynamic linking and loading, you will need to
 use static linkage instead. Define the `"SWT_NO_DYNAMIC_LINKING"` compiler
 conditional for your platform in both `Package.swift` and
-`CompilerSettings.cmake`, then define the symbols `testContentSectionBegin`,
-`testContentSectionEnd`, `typeMetadataSectionBegin`, and
-`typeMetadataSectionEnd` in `Discovery.cpp`.
+`CompilerSettings.cmake`, then define the symbols `_testContentSectionBegin`,
+`_testContentSectionEnd`, `_typeMetadataSectionBegin`, and
+`_typeMetadataSectionEnd` in the section of `Discovery+Platform.swift` that
+deals with static linkage.
 
 ```diff
 diff --git a/Sources/_TestingInternals/Discovery.cpp b/Sources/_TestingInternals/Discovery.cpp
  // ...
-+#elif defined(macintosh)
-+extern "C" const char testContentSectionBegin __asm__("...");
-+extern "C" const char testContentSectionEnd __asm__("...");
-+extern "C" const char typeMetadataSectionBegin __asm__("...");
-+extern "C" const char typeMetadataSectionEnd __asm__("...");
++#elseif os(Classic)
++@_silgen_name(raw: "...")
++private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
++@_silgen_name(raw: "...")
++private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
++
++@_silgen_name(raw: "...")
++private nonisolated(unsafe) var _typeMetadataSectionBegin: _SectionBound
++@_silgen_name(raw: "...")
++private nonisolated(unsafe) var _typeMetadataSectionEnd: _SectionBound
  #else
- #warning Platform-specific implementation missing: Runtime test discovery unavailable (static)
- static const char testContentSectionBegin = 0;
- static const char& testContentSectionEnd = testContentSectionBegin;
- static const char typeMetadataSectionBegin = 0;
- static const char& typeMetadataSectionEnd = testContentSectionBegin;
+ #warning("Platform-specific implementation missing: Runtime test discovery unavailable (static)")
+ private nonisolated(unsafe) var _testContentSectionBegin = _SectionBound()
+ private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound {
+   _read { yield _testContentSectionBegin }
+   _modify { yield &_testContentSectionBegin }
+ }
+
+ private nonisolated(unsafe) var _typeMetadataSectionBegin = _SectionBound()
+ private nonisolated(unsafe) var _typeMetadataSectionEnd: _SectionBound {
+   _read { yield _testContentSectionBegin }
+   _modify { yield &_testContentSectionBegin }
+ }
  #endif
 ```
 

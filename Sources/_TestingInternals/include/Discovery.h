@@ -16,40 +16,6 @@
 
 SWT_ASSUME_NONNULL_BEGIN
 
-#if defined(__ELF__) && defined(__swift__)
-#pragma mark - ELF image enumeration
-
-/// A function exported by the Swift runtime that enumerates all metadata
-/// sections loaded into the current process.
-///
-/// This function is needed on ELF-based platforms because they do not preserve
-/// section information that we can discover at runtime.
-SWT_IMPORT_FROM_STDLIB void swift_enumerateAllMetadataSections(
-  bool (* body)(const void *sections, void *context),
-  void *context
-);
-#endif
-
-#pragma mark - Statically-linked section bounds
-
-/// The bounds of the test content section statically linked into the image
-/// containing Swift Testing.
-///
-/// - Note: This symbol is _declared_, but not _defined_, on platforms with
-///   dynamic linking because the `SWT_NO_DYNAMIC_LINKING` C++ macro (not the
-///   Swift compiler conditional of the same name) is not consistently declared
-///   when Swift files import the `_TestingInternals` C++ module.
-SWT_EXTERN const void *_Nonnull const SWTTestContentSectionBounds[2];
-
-/// The bounds of the type metadata section statically linked into the image
-/// containing Swift Testing.
-///
-/// - Note: This symbol is _declared_, but not _defined_, on platforms with
-///   dynamic linking because the `SWT_NO_DYNAMIC_LINKING` C++ macro (not the
-///   Swift compiler conditional of the same name) is not consistently declared
-///   when Swift files import the `_TestingInternals` C++ module.
-SWT_EXTERN const void *_Nonnull const SWTTypeMetadataSectionBounds[2];
-
 #pragma mark - Legacy test discovery
 
 /// The size, in bytes, of a Swift type metadata record.
