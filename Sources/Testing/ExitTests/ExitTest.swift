@@ -228,7 +228,6 @@ extension ExitTest: TestContent {
     0x65786974
   }
 
-  typealias TestContentAccessorResult = Self
   typealias TestContentAccessorHint = ID
 }
 
