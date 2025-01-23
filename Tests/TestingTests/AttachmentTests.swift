@@ -8,11 +8,11 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+@testable @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 #if canImport(Foundation)
 import Foundation
-@_spi(Experimental) import _Testing_Foundation
+import _Testing_Foundation
 #endif
 #if canImport(CoreGraphics)
 import CoreGraphics
@@ -265,7 +265,7 @@ struct AttachmentTests {
 
         #expect(attachment.preferredName == temporaryFileName)
         #expect(throws: Never.self) {
-          try attachment.withUnsafeBufferPointer { buffer in
+          try attachment.withUnsafeBytes { buffer in
             #expect(buffer.count == data.count)
           }
         }
@@ -297,7 +297,7 @@ struct AttachmentTests {
         }
 
         #expect(attachment.preferredName == "\(temporaryDirectoryName).zip")
-        try! attachment.withUnsafeBufferPointer { buffer in
+        try! attachment.withUnsafeBytes { buffer in
           #expect(buffer.count > 32)
           #expect(buffer[0] == UInt8(ascii: "P"))
           #expect(buffer[1] == UInt8(ascii: "K"))
@@ -391,7 +391,7 @@ struct AttachmentTests {
     }
 
     func open<T>(_ attachment: borrowing Attachment<T>) throws where T: Attachable {
-      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { bytes in
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { bytes in
         #expect(bytes.first == args.firstCharacter.asciiValue)
         let decodedStringValue = try args.decode(Data(bytes))
         #expect(decodedStringValue == "stringly speaking")
@@ -414,7 +414,7 @@ struct AttachmentTests {
     let attachableValue = MySecureCodingAttachable(string: "stringly speaking")
     let attachment = Attachment(attachableValue, named: "loremipsum.json")
     #expect(throws: CocoaError.self) {
-      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { _ in }
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { _ in }
     }
   }
 
@@ -423,7 +423,7 @@ struct AttachmentTests {
     let attachableValue = MySecureCodingAttachable(string: "stringly speaking")
     let attachment = Attachment(attachableValue, named: "loremipsum.gif")
     #expect(throws: CocoaError.self) {
-      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { _ in }
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { _ in }
     }
   }
 #endif
@@ -435,7 +435,7 @@ extension AttachmentTests {
     func test(_ value: some Attachable) throws {
       #expect(value.estimatedAttachmentByteCount == 6)
       let attachment = Attachment(value)
-      try attachment.withUnsafeBufferPointer { buffer in
+      try attachment.withUnsafeBytes { buffer in
         #expect(buffer.elementsEqual("abc123".utf8))
         #expect(buffer.count == 6)
       }
@@ -528,7 +528,7 @@ extension AttachmentTests {
       let image = try Self.cgImage.get()
       let attachment = Attachment(image, named: "diamond")
       #expect(attachment.attachableValue === image)
-      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { buffer in
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { buffer in
         #expect(buffer.count > 32)
       }
       attachment.attach()
@@ -540,7 +540,7 @@ extension AttachmentTests {
       let image = try Self.cgImage.get()
       let attachment = Attachment(image, named: "diamond", as: type, encodingQuality: quality)
       #expect(attachment.attachableValue === image)
-      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { buffer in
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { buffer in
         #expect(buffer.count > 32)
       }
       if let ext = type?.preferredFilenameExtension {
@@ -553,7 +553,7 @@ extension AttachmentTests {
     @Test func cannotAttachCGImageWithNonImageType() async {
       await #expect(exitsWith: .failure) {
         let attachment = Attachment(try Self.cgImage.get(), named: "diamond", as: .mp3)
-        try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { _ in }
+        try attachment.attachableValue.withUnsafeBytes(for: attachment) { _ in }
       }
     }
 #endif
@@ -567,7 +567,7 @@ struct MyAttachable: Attachable, ~Copyable {
   var string: String
   var errorToThrow: (any Error)?
 
-  func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     if let errorToThrow {
       throw errorToThrow
     }
@@ -585,7 +585,7 @@ extension MyAttachable: Sendable {}
 struct MySendableAttachable: Attachable, Sendable {
   var string: String
 
-  func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     #expect(attachment.attachableValue.string == string)
     var string = string
     return try string.withUTF8 { buffer in
@@ -597,7 +597,7 @@ struct MySendableAttachable: Attachable, Sendable {
 struct MySendableAttachableWithDefaultByteCount: Attachable, Sendable {
   var string: String
 
-  func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var string = string
     return try string.withUTF8 { buffer in
       try body(.init(buffer))
