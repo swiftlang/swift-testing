@@ -69,3 +69,10 @@ their problems.
 ### Test customization
 
 - <doc:Traits>
+
+### Data collection
+
+<!-- TODO: doc:Attachments -->
+- ``Attachment``
+- ``Attachable``
+- ``AttachableContainer``

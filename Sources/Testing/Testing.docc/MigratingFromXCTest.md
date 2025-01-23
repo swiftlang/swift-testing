@@ -692,6 +692,69 @@ of issues:
   }
 }
 
+### Attach values
+
+In XCTest, you can create an instance of [`XCTAttachment`](https://developer.apple.com/documentation/xctest/xctattachment)
+representing arbitrary data, files, property lists, encodable objects, images,
+and other types of information that would be useful to have available if a test
+fails. Swift Testing has an ``Attachment`` type that serves much the same
+purpose.
+
+To attach a value from a test to the output of a test run, that value must
+conform to the ``Attachable`` protocol. The testing library provides default
+conformances for various standard library and Foundation types:
+
+@Row {
+  @Column {
+    ```swift
+    // Before
+    class Tortilla: NSSecureCoding { /* ... */ }
+
+    func testTortillaIntegrity() async {
+      let tortilla = Tortilla(diameter: .large)
+      ...
+      let attachment = XCTAttachment(
+        archivableObject: tortilla
+      )
+      self.add(attachment)
+    }
+    ```
+  }
+  @Column {
+    ```swift
+    // After
+    struct Tortilla: Codable { /* ... */ }
+
+    @Test func tortillaIntegrity() async {
+      let tortilla = Tortilla(diameter: .large)
+      ...
+      let attachment = Attachment(tortilla)
+      attachment.attach()
+    }
+    ```
+  }
+}
+
+If you want to attach a value of another type, and that type already conforms to
+[`Encodable`](https://developer.apple.com/documentation/swift/encodable) or to
+[`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding),
+simply import Foundation before adding your conformance, and the testing library
+will automatically provide a default implementation:
+
+```swift
+import Foundation
+
+extension Tortilla: Attachable {}
+```
+
+If you have a type that does not (or cannot) conform to `Encodable` or
+`NSSecureCoding`, or if you want fine-grained control over how it is serialized
+when attaching it to a test, you can provide your own implementation of
+``Attachable/withUnsafeBytes(for:_:)``.
+
+<!-- NOTE: not discussing attaching to activities here since there is not yet an
+equivalent interface in Swift Testing. -->
+
 ## See Also
 
 - <doc:DefiningTests>

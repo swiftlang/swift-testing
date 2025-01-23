@@ -9,7 +9,7 @@
 //
 
 #if canImport(Foundation)
-@_spi(Experimental) @_spi(ForSwiftTestingOnly) public import Testing
+@_spi(ForSwiftTestingOnly) public import Testing
 public import Foundation
 
 #if !SWT_NO_PROCESS_SPAWNING && os(Windows)
@@ -32,7 +32,6 @@ extension URL {
   }
 }
 
-@_spi(Experimental)
 extension Attachment where AttachableValue == _AttachableURLContainer {
 #if SWT_TARGET_OS_APPLE
   /// An operation queue to use for asynchronously reading data from disk.

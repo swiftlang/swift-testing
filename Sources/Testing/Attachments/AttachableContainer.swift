@@ -20,15 +20,9 @@
 /// A type can conform to this protocol if it represents another type that
 /// cannot directly conform to ``Attachable``, such as a non-final class or a
 /// type declared in a third-party module.
-@_spi(Experimental)
 public protocol AttachableContainer<AttachableValue>: Attachable, ~Copyable {
-#if hasFeature(SuppressedAssociatedTypes)
-  /// The type of the attachable value represented by this type.
-  associatedtype AttachableValue: ~Copyable
-#else
   /// The type of the attachable value represented by this type.
   associatedtype AttachableValue
-#endif
 
   /// The attachable value represented by this instance.
   var attachableValue: AttachableValue { get }

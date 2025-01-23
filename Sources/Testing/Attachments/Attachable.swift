@@ -25,7 +25,6 @@
 /// type cannot conform directly to this protocol (such as a non-final class or
 /// a type declared in a third-party module), you can create a container type
 /// that conforms to ``AttachableContainer`` to act as a proxy.
-@_spi(Experimental)
 public protocol Attachable: ~Copyable {
   /// An estimate of the number of bytes of memory needed to store this value as
   /// an attachment.
@@ -63,7 +62,7 @@ public protocol Attachable: ~Copyable {
   /// the buffer to contain an image in PNG format, JPEG format, etc., but it
   /// would not be idiomatic for the buffer to contain a textual description of
   /// the image.
-  borrowing func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
+  borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
 
   /// Generate a preferred name for the given attachment.
   ///
@@ -99,7 +98,7 @@ extension Attachable where Self: Collection, Element == UInt8 {
     count
   }
 
-  // We do not provide an implementation of withUnsafeBufferPointer(for:_:) here
+  // We do not provide an implementation of withUnsafeBytes(for:_:) here
   // because there is no way in the standard library to statically detect if a
   // collection can provide contiguous storage (_HasContiguousBytes is not API.)
   // If withContiguousStorageIfAvailable(_:) fails, we don't want to make a
@@ -118,30 +117,26 @@ extension Attachable where Self: StringProtocol {
 
 // Implement the protocol requirements for byte arrays and buffers so that
 // developers can attach raw data when needed.
-@_spi(Experimental)
 extension Array<UInt8>: Attachable {
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }
 }
 
-@_spi(Experimental)
 extension ContiguousArray<UInt8>: Attachable {
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }
 }
 
-@_spi(Experimental)
 extension ArraySlice<UInt8>: Attachable {
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }
 }
 
-@_spi(Experimental)
 extension String: Attachable {
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var selfCopy = self
     return try selfCopy.withUTF8 { utf8 in
       try body(UnsafeRawBufferPointer(utf8))
@@ -149,9 +144,8 @@ extension String: Attachable {
   }
 }
 
-@_spi(Experimental)
 extension Substring: Attachable {
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var selfCopy = self
     return try selfCopy.withUTF8 { utf8 in
       try body(UnsafeRawBufferPointer(utf8))

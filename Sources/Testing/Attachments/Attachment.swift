@@ -18,7 +18,6 @@ private import _TestingInternals
 /// of some type that conforms to ``Attachable``. Initialize an instance of
 /// ``Attachment`` with that value and, optionally, a preferred filename to use
 /// when writing to disk.
-@_spi(Experimental)
 public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: Attachable & ~Copyable {
   /// Storage for ``attachableValue-7dyjv``.
   fileprivate var _attachableValue: AttachableValue
@@ -98,7 +97,7 @@ extension Attachment where AttachableValue: ~Copyable {
   }
 }
 
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+@_spi(ForToolsIntegrationOnly)
 extension Attachment where AttachableValue == AnyAttachable {
   /// Create a type-erased attachment from an instance of ``Attachment``.
   ///
@@ -126,7 +125,7 @@ extension Attachment where AttachableValue == AnyAttachable {
 //   Swift's type system requires that this type be at least as visible as
 //   `Event.Kind.valueAttached(_:)`, otherwise it would be declared private.
 // }
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+@_spi(ForToolsIntegrationOnly)
 public struct AnyAttachable: AttachableContainer, Copyable, Sendable {
 #if !SWT_NO_LAZY_ATTACHMENTS
   public typealias AttachableValue = any Attachable & Sendable /* & Copyable rdar://137614425 */
@@ -144,7 +143,7 @@ public struct AnyAttachable: AttachableContainer, Copyable, Sendable {
     attachableValue.estimatedAttachmentByteCount
   }
 
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     func open<T>(_ attachableValue: T, for attachment: borrowing Attachment<Self>) throws -> R where T: Attachable & Sendable & Copyable {
       let temporaryAttachment = Attachment<T>(
         _attachableValue: attachableValue,
@@ -152,7 +151,7 @@ public struct AnyAttachable: AttachableContainer, Copyable, Sendable {
         _preferredName: attachment._preferredName,
         sourceLocation: attachment.sourceLocation
       )
-      return try temporaryAttachment.withUnsafeBufferPointer(body)
+      return try temporaryAttachment.withUnsafeBytes(body)
     }
     return try open(attachableValue, for: attachment)
   }
@@ -188,7 +187,6 @@ extension Attachment: CustomStringConvertible {
 
 // MARK: - Getting an attachable value from an attachment
 
-@_spi(Experimental)
 extension Attachment where AttachableValue: ~Copyable {
   /// The value of this attachment.
   @_disfavoredOverload public var attachableValue: AttachableValue {
@@ -198,7 +196,6 @@ extension Attachment where AttachableValue: ~Copyable {
   }
 }
 
-@_spi(Experimental)
 extension Attachment where AttachableValue: AttachableContainer & ~Copyable {
   /// The value of this attachment.
   ///
@@ -253,7 +250,7 @@ extension Attachment where AttachableValue: ~Copyable {
   /// An attachment can only be attached once.
   public consuming func attach(sourceLocation: SourceLocation = #_sourceLocation) {
     do {
-      let attachmentCopy = try withUnsafeBufferPointer { buffer in
+      let attachmentCopy = try withUnsafeBytes { buffer in
         let attachableContainer = AnyAttachable(attachableValue: Array(buffer))
         return Attachment<AnyAttachable>(
           _attachableValue: attachableContainer,
@@ -287,10 +284,10 @@ extension Attachment where AttachableValue: ~Copyable {
   ///
   /// The testing library uses this function when writing an attachment to a
   /// test report or to a file on disk. This function calls the
-  /// ``Attachable/withUnsafeBufferPointer(for:_:)`` function on this
-  /// attachment's ``attachableValue-2tnj5`` property.
-  @inlinable public borrowing func withUnsafeBufferPointer<R>(_ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try attachableValue.withUnsafeBufferPointer(for: self, body)
+  /// ``Attachable/withUnsafeBytes(for:_:)`` function on this attachment's
+  /// ``attachableValue-2tnj5`` property.
+  @inlinable public borrowing func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try attachableValue.withUnsafeBytes(for: self, body)
   }
 }
 
@@ -322,7 +319,7 @@ extension Attachment where AttachableValue: ~Copyable {
   /// This function is provided as a convenience to allow tools authors to write
   /// attachments to persistent storage the same way that Swift Package Manager
   /// does. You are not required to use this function.
-  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+  @_spi(ForToolsIntegrationOnly)
   public borrowing func write(toFileInDirectoryAtPath directoryPath: String) throws -> String {
     try write(
       toFileInDirectoryAtPath: directoryPath,
@@ -392,7 +389,7 @@ extension Attachment where AttachableValue: ~Copyable {
 
     // There should be no code path that leads to this call where the attachable
     // value is nil.
-    try withUnsafeBufferPointer { buffer in
+    try withUnsafeBytes { buffer in
       try file!.write(buffer)
     }
 
