@@ -10,14 +10,14 @@ See https://swift.org/LICENSE.txt for license information
 See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 -->
 
-Add traits to tests to annotate them or customize their behavior.
+Annotate tests and suites, and customize their behavior.
 
 ## Overview
 
 Pass built-in traits to test functions or suite types to comment, categorize, 
-classify, and modify runtime behaviors. You can also use the ``Trait``, ``TestTrait``, 
-and ``SuiteTrait`` protocols to create your own types that customize the 
-behavior of test functions.
+classify, and modify the runtime behavior of test functions. Implement the
+``Trait``, ``TestTrait``, and ``SuiteTrait`` protocols to create your own
+types that customize the behavior of test functions.
 
 ## Topics
 
