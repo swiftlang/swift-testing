@@ -9,7 +9,7 @@
 //
 
 #if canImport(Foundation)
-@_spi(Experimental) public import Testing
+public import Testing
 public import Foundation
 
 /// A wrapper type representing file system objects and URLs that can be
@@ -17,7 +17,6 @@ public import Foundation
 ///
 /// You do not need to use this type directly. Instead, initialize an instance
 /// of ``Attachment`` using a file URL.
-@_spi(Experimental)
 public struct _AttachableURLContainer: Sendable {
   /// The underlying URL.
   var url: URL

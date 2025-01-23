@@ -21,11 +21,22 @@
 /// A type can conform to this protocol if it represents another type that
 /// cannot directly conform to ``Attachable``, such as a non-final class or a
 /// type declared in a third-party module.
-@_spi(Experimental)
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+/// }
 public protocol AttachableContainer<AttachableValue>: Attachable, ~Copyable {
   /// The type of the attachable value represented by this type.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   associatedtype AttachableValue
 
   /// The attachable value represented by this instance.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   var attachableValue: AttachableValue { get }
 }
