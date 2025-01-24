@@ -35,8 +35,8 @@ extension Trait where Self == ConditionTrait {
     return "\(platformName) \(version.major).\(minorVersion).\(patchVersion)"
   }
 
-  /// Create a trait controlling availability of a test based on an
-  /// `@available()` attribute applied to it.
+  /// Create a trait that controls a test's availability based on a
+  /// platform availability attribute.
   ///
   /// - Parameters:
   ///   - platformName: The name of the platform specified in the `@available()`
@@ -45,10 +45,12 @@ extension Trait where Self == ConditionTrait {
   ///     attribute, if any.
   ///   - message: The `message` parameter of the availability attribute.
   ///   - sourceLocation: The source location of the test.
-  ///   - condition: A closure containing the actual `if #available()`
+  ///   - condition: A closure that contains the actual `if #available()`
   ///     expression.
   ///
-  /// - Returns: A trait.
+  /// - Returns: A trait that enables a test when the platform name matches the
+  ///            supplied value, and if a version is given, the platform version
+  ///            is at least the supplied value.
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
@@ -67,8 +69,8 @@ extension Trait where Self == ConditionTrait {
     )
   }
 
-  /// Create a trait controlling availability of a test based on an
-  /// `@available()` attribute applied to it.
+  /// Create a trait that controls availability of a test based on an
+  /// platform availability attribute.
   ///
   /// - Parameters:
   ///   - platformName: The name of the platform specified in the `@available()`
@@ -77,10 +79,12 @@ extension Trait where Self == ConditionTrait {
   ///     attribute, if any.
   ///   - message: The `message` parameter of the availability attribute.
   ///   - sourceLocation: The source location of the test.
-  ///   - condition: A closure containing the actual `if #available()`
+  ///   - condition: A closure that contains the actual `if #available()`
   ///     expression.
   ///
-  /// - Returns: A trait.
+  /// - Returns: A trait that enables a test when the platform name matches the
+  ///            supplied value, and if a version is given, the platform version
+  ///            is at least the supplied value.
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
@@ -106,14 +110,14 @@ extension Trait where Self == ConditionTrait {
     )
   }
 
-  /// Create a trait controlling availability of a test based on an
+  /// Create a trait that controls availability of a test based on an
   /// `@available(*, unavailable)` attribute applied to it.
   ///
   /// - Parameters:
   ///   - message: The `message` parameter of the availability attribute.
   ///   - sourceLocation: The source location of the test.
   ///
-  /// - Returns: A trait.
+  /// - Returns: A trait that marks a test as unavailable.
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
