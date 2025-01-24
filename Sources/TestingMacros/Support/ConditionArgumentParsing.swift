@@ -321,10 +321,20 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
     //
     // These sorts of expressions are relatively rare, so we'll allow the bug
     // for the sake of better diagnostics in the common case.
-    if let memberAccessExpr = node.parent?.as(MemberAccessExprSyntax.self),
+    if node.argumentNames == nil,
+       let memberAccessExpr = node.parent?.as(MemberAccessExprSyntax.self),
        ExprSyntax(node) == memberAccessExpr.base,
        let functionCallExpr = memberAccessExpr.parent?.as(FunctionCallExprSyntax.self),
        ExprSyntax(memberAccessExpr) == functionCallExpr.calledExpression {
+      // If the base name is an identifier and its first character is uppercase,
+      // it is presumably a type name or module name, so don't expand it. (This
+      // isn't a great heuristic, but it hopefully minimizes the module name
+      // problem above.)
+      if case .identifier = node.baseName.tokenKind,
+         let firstCharacter = node.baseName.textWithoutBackticks.first, firstCharacter.isUppercase {
+        return ExprSyntax(node)
+      }
+
       return _rewrite(
         MemberAccessExprSyntax(
           base: node.trimmed,
