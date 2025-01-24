@@ -427,6 +427,12 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
       }
     }
 
+    if node.operator.tokenKind == .prefixOperator("!") {
+      // Do not break apart the boolean negation operator from its expression
+      // (it adds visual noise but is really just flipping a bit.)
+      return _rewrite(node)
+    }
+
     return _rewrite(
       node
         .with(\.expression, _visitChild(node.expression)),

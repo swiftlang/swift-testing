@@ -43,6 +43,8 @@ func subexpressionShowcase() async throws {
   #expect((123, 456) == (789, 0x12))
   #expect((try g() > 500) && true)
 
+  #expect(!Bool(true))
+
   do {
     let n = Int.random(in: 0 ..< 100)
     var m = n
