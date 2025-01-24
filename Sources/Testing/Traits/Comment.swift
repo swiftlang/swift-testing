@@ -8,22 +8,21 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-/// A type representing a comment related to a test.
+/// A type that represents a comment related to a test.
 ///
-/// This type may be used to provide context or background information about a
+/// Use this type to provide context or background information about a
 /// test's purpose, explain how a complex test operates, or include details
 /// which may be helpful when diagnosing issues recorded by a test.
 ///
 /// To add a comment to a test or suite, add a code comment before its `@Test`
 /// or `@Suite` attribute. See <doc:AddingComments> for more details.
 ///
-/// - Note: This type is not intended to reference bugs related to a test.
-///   Instead, use ``Trait/bug(_:_:)``, ``Trait/bug(_:id:_:)-10yf5``, or
-///   ``Trait/bug(_:id:_:)-3vtpl``.
+/// - Note: To reference bugs related to a test, use ``Trait/bug(_:_:)``,
+///   ``Trait/bug(_:id:_:)-10yf5``, or ``Trait/bug(_:id:_:)-3vtpl``.
 public struct Comment: RawRepresentable, Sendable {
-  /// The single comment string contained in this instance.
+  /// The single comment string that this comment contains.
   ///
-  /// To obtain the complete set of comments applied to a test, see
+  /// To get the complete set of comments applied to a test, see
   /// ``Test/comments``.
   public var rawValue: String
 
@@ -31,42 +30,41 @@ public struct Comment: RawRepresentable, Sendable {
     self.rawValue = rawValue
   }
 
-  /// An enumeration describing the possible kind of a comment.
+  /// An enumeration that describes a comment's kind.
   @_spi(ForToolsIntegrationOnly)
   public enum Kind: Sendable {
-    /// This comment came from a single-line comment in the test's source code
-    /// starting with `//`.
+    /// This comment is in a single-line comment in the test's source code
+    /// that starts with `//`.
     case line
 
-    /// This comment came from a block comment in the test's source code
-    /// starting with `/*` and ending with `*/`.
+    /// This comment is in a block comment in the test's source code
+    /// that starts with `/*` and ends with `*/`.
     case block
 
-    /// This comment came from a single-line [Markup](https://github.com/swiftlang/swift/blob/main/docs/DocumentationComments.md)
-    /// comment in the test's source code starting with `///`.
+    /// This comment is in a single-line [Markup](https://github.com/swiftlang/swift/blob/main/docs/DocumentationComments.md)
+    /// comment in the test's source code that starts with `///`.
     case documentationLine
 
-    /// This comment came from a block [Markup](https://github.com/swiftlang/swift/blob/main/docs/DocumentationComments.md)
-    /// comment in the test's source code starting with `/**` and ending with
+    /// This comment is in a block [Markup](https://github.com/swiftlang/swift/blob/main/docs/DocumentationComments.md)
+    /// comment in the test's source code that starts with `/**` and ends with
     /// `*/`.
     case documentationBlock
 
-    /// This comment came from an explicit call to ``Trait/comment(_:)``.
+    /// This comment comes from an explicit call to ``Trait/comment(_:)``.
     case trait
 
-    /// This comment was initialized from a string literal.
+    /// This comment is initialized from a string literal.
     case stringLiteral
   }
 
-  /// The kind of this comment, if known.
+  /// This comment's kind.
   ///
-  /// If this instance was created with a call to ``init(rawValue:)``, the value
-  /// of this property is `nil`. Otherwise, it can be used to determine which
-  /// kind of comment is represented.
+  /// For comments you create by calling ``init(rawValue:)``, the value
+  /// of this property is `nil`. Otherwise, it represents the comment's kind.
   @_spi(ForToolsIntegrationOnly)
   public var kind: Kind?
 
-  /// Initialize an instance of this type.
+  /// Initialize a comment from a string value.
   ///
   /// - Parameters:
   ///   - rawValue: The string value of the comment.
@@ -137,13 +135,13 @@ extension Test {
     traits.flatMap(\.comments)
   }
 
-  /// The complete set of comments about this test from all traits of a certain
+  /// The complete set of comments about this test from all traits of the given
   /// type.
   ///
   /// - Parameters:
-  ///   - traitType: The type of ``Trait`` whose comments should be returned.
+  ///   - traitType: The type of ``Trait`` for which comments should be returned.
   ///
-  /// - Returns: The comments found for the specified test trait type.
+  /// - Returns: The comments about this test for the specified test trait type.
   @_spi(Experimental)
   public func comments<T>(from traitType: T.Type) -> [Comment] where T: Trait {
     traits.lazy

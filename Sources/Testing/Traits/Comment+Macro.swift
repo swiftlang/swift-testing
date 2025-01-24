@@ -9,13 +9,13 @@
 //
 
 extension Trait where Self == Comment {
-  /// Construct a comment related to a test from a single-line source code
+  /// Constructs a comment related to a test from a single-line source code
   /// comment near it.
   ///
   /// - Parameters:
   ///   - comment: The comment about the test.
   ///
-  /// - Returns: An instance of ``Comment`` containing the specified comment.
+  /// - Returns: An instance of ``Comment`` that contains the specified comment.
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
@@ -23,13 +23,13 @@ extension Trait where Self == Comment {
     Self(rawValue: comment, kind: .line)
   }
 
-  /// Construct a comment related to a test from a source code block comment
+  /// Constructs a comment related to a test from a source code block comment
   /// near it.
   ///
   /// - Parameters:
   ///   - comment: The comment about the test.
   ///
-  /// - Returns: An instance of ``Comment`` containing the specified comment.
+  /// - Returns: An instance of ``Comment`` that contains the specified comment.
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
@@ -37,14 +37,13 @@ extension Trait where Self == Comment {
     Self(rawValue: comment, kind: .block)
   }
 
-  /// Construct a comment related to a test from a single-line
-  /// [Markup](https://github.com/swiftlang/swift/blob/main/docs/DocumentationComments.md)
+  /// Constructs a comment related to a test from a single-line markup
   /// comment near it.
   ///
   /// - Parameters:
   ///   - comment: The comment about the test.
   ///
-  /// - Returns: An instance of ``Comment`` containing the specified comment.
+  /// - Returns: An instance of ``Comment`` that contains the specified comment.
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
@@ -52,14 +51,13 @@ extension Trait where Self == Comment {
     Self(rawValue: comment, kind: .documentationLine)
   }
 
-  /// Construct a comment related to a test from a
-  /// [Markup](https://github.com/swiftlang/swift/blob/main/docs/DocumentationComments.md)
+  /// Constructs a comment related to a test from a markup
   /// block comment near it.
   ///
   /// - Parameters:
   ///   - comment: The comment about the test.
   ///
-  /// - Returns: An instance of ``Comment`` containing the specified comment.
+  /// - Returns: An instance of ``Comment`` that contains the specified comment.
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
