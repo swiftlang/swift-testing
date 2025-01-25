@@ -159,6 +159,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .unsafeFlags(["-require-explicit-sendable"]),
       .enableUpcomingFeature("ExistentialAny"),
       .enableExperimentalFeature("SuppressedAssociatedTypes"),
+      .enableExperimentalFeature("NonescapableTypes"),
 
       .enableExperimentalFeature("AccessLevelOnImport"),
       .enableUpcomingFeature("InternalImportsByDefault"),

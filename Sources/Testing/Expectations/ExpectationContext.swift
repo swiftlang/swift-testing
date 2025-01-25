@@ -18,7 +18,7 @@
 ///
 /// - Warning: This type is used to implement the `#expect()` and `#require()`
 ///   macros. Do not use it directly.
-public struct __ExpectationContext: ~Copyable {
+public final class __ExpectationContext {
   /// The source code representations of any captured expressions.
   ///
   /// Unlike the rest of the state in this type, the source code dictionary is
@@ -167,7 +167,7 @@ extension __ExpectationContext {
   ///
   /// This function helps overloads of `callAsFunction(_:_:)` disambiguate
   /// themselves and avoid accidental recursion.
-  @usableFromInline mutating func captureValue<T>(_ value: T, _ id: __ExpressionID) -> T {
+  @usableFromInline func captureValue<T>(_ value: T, _ id: __ExpressionID) -> T {
     runtimeValues[id] = { Expression.Value(reflecting: value) }
     return value
   }
@@ -185,7 +185,7 @@ extension __ExpectationContext {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   @_disfavoredOverload
-  @inlinable public mutating func callAsFunction<T>(_ value: T, _ id: __ExpressionID) -> T {
+  @inlinable public func callAsFunction<T>(_ value: T, _ id: __ExpressionID) -> T {
     captureValue(value, id)
   }
 
@@ -203,7 +203,7 @@ extension __ExpectationContext {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   @_disfavoredOverload
-  public mutating func callAsFunction<T>(_ value: consuming T, _ id: __ExpressionID) -> T where T: ~Copyable {
+  public func callAsFunction<T>(_ value: consuming T, _ id: __ExpressionID) -> T where T: ~Copyable {
     // TODO: add support for borrowing non-copyable expressions (need @lifetime)
     return value
   }
@@ -219,7 +219,7 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public mutating func __inoutAfter<T>(_ value: T, _ id: __ExpressionID) {
+  public func __inoutAfter<T>(_ value: T, _ id: __ExpressionID) {
     runtimeValues[id] = { Expression.Value(reflecting: value, timing: .after) }
   }
 }
@@ -272,14 +272,14 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public mutating func __cmp<T, U, R>(
-    _ op: (T, U) throws -> R,
+  @inlinable public func __cmp<T, U>(
+    _ op: (T, U) throws -> Bool,
     _ opID: __ExpressionID,
     _ lhs: T,
     _ lhsID: __ExpressionID,
     _ rhs: U,
     _ rhsID: __ExpressionID
-  ) rethrows -> R {
+  ) rethrows -> Bool {
     try captureValue(op(captureValue(lhs, lhsID), captureValue(rhs, rhsID)), opID)
   }
 
@@ -290,7 +290,7 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public mutating func __cmp<C>(
+  public func __cmp<C>(
     _ op: (C, C) -> Bool,
     _ opID: __ExpressionID,
     _ lhs: C,
@@ -315,7 +315,7 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public mutating func __cmp<R>(
+  @inlinable public func __cmp<R>(
     _ op: (R, R) -> Bool,
     _ opID: __ExpressionID,
     _ lhs: R,
@@ -334,7 +334,7 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public mutating func __cmp<S>(
+  public func __cmp<S>(
     _ op: (S, S) -> Bool,
     _ opID: __ExpressionID,
     _ lhs: S,
@@ -392,7 +392,7 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public mutating func __as<T, U>(_ value: T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> U? {
+  @inlinable public func __as<T, U>(_ value: T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> U? {
     let result = captureValue(value, valueID) as? U
 
     if result == nil {
@@ -421,7 +421,7 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public mutating func __is<T, U>(_ value: T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> Bool {
+  @inlinable public func __is<T, U>(_ value: T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> Bool {
     let result = captureValue(value, valueID) is U
 
     if !result {

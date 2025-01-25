@@ -678,8 +678,10 @@ extension ConditionMacro {
         // If we're inserting any additional code into the closure before
         // the rewritten argument, we can't elide the return keyword.
         ReturnStmtSyntax(
-          expression: expandedExpr.with(\.leadingTrivia, .space)
-        ).with(\.trailingTrivia, .newline)
+          returnKeyword: .keyword(.return, trailingTrivia: .space),
+          expression: expandedExpr,
+          trailingTrivia: .space
+        )
       }
     }
 
@@ -715,19 +717,11 @@ extension ConditionMacro {
             parameters: ClosureParameterListSyntax {
               ClosureParameterSyntax(
                 firstName: expressionContextName,
-                colon: .colonToken().with(\.trailingTrivia, .space),
+                colon: .colonToken(trailingTrivia: .space),
                 type: TypeSyntax(
-                  AttributedTypeSyntax(
-                    specifiers: [
-                      TypeSpecifierListSyntax.Element(
-                        SimpleTypeSpecifierSyntax(specifier: .keyword(.inout))
-                          .with(\.trailingTrivia, .space)
-                      )
-                    ],
-                    baseType: MemberTypeSyntax(
-                      baseType: IdentifierTypeSyntax(name: .identifier("Testing")),
-                      name: .identifier("__ExpectationContext")
-                    )
+                  MemberTypeSyntax(
+                    baseType: IdentifierTypeSyntax(name: .identifier("Testing")),
+                    name: .identifier("__ExpectationContext")
                   )
                 )
               )
@@ -736,12 +730,11 @@ extension ConditionMacro {
         ),
         returnClause: returnType.map { returnType in
           ReturnClauseSyntax(
-            type: returnType.with(\.leadingTrivia, .space)
-          ).with(\.leadingTrivia, .space)
+            arrow: .arrowToken(leadingTrivia: .space, trailingTrivia: .space),
+            type: returnType
+          )
         },
-        inKeyword: .keyword(.in)
-          .with(\.leadingTrivia, .space)
-          .with(\.trailingTrivia, .newline)
+        inKeyword: .keyword(.in, leadingTrivia: .space, trailingTrivia: .space)
       ),
       statements: codeBlockItems
     )

@@ -37,7 +37,15 @@ struct T {
 }
 
 func subexpressionShowcase() async throws {
+  let fff = false
+  let ttt = true
   #expect(false || true)
+
+  #expect((fff == ttt) == ttt)
+  Testing.__checkCondition({(__ec: Testing.__ExpectationContext) -> Swift.Bool in
+    __ec.__cmp(==,0x0,__ec((__ec.__cmp(==,0x3a,__ec(fff,0x7a),0x7a,__ec(ttt,0x43a),0x43a)),0x2),0x2,__ec(ttt,0x8000),0x8000)
+  },sourceCode: [0x0:"(fff == ttt) == ttt",0x2:"(fff == ttt)",0x3a:"fff == ttt",0x7a:"fff",0x43a:"ttt",0x8000:"ttt"],comments: [],isRequired: false,sourceLocation: Testing.SourceLocation.__here()).__expected()
+
   #expect((Int)(123) == 124)
   #expect((Int, Double)(123, 456.0) == (124, 457.0))
   #expect((123, 456) == (789, 0x12))
@@ -101,11 +109,21 @@ func subexpressionShowcase() async throws {
   }
   #expect(await k(true))
 
+  func k2(_ x: @escaping @autoclosure () -> Bool) async -> Bool {
+    x()
+  }
+  #expect(await k2(true))
+
 #if false
-  // Unsupported: __ec is necessarily inout and captures non-sendable state, so
-  // this will fail to compile. Making __ec a class instead is possible, but
-  // adds a very large amount of code and locking overhead for what we can
-  // assume is an edge case.
+  // Unsupported: __ec necessarily captures non-sendable state, so this will
+  // fail to compile because it is capturing __ec in a sendable closure. We
+  // could add locks guarding __ec's mutable state and eagerly capture state,
+  // but that would slow down tests significantly. The type checker cannot
+  // handle the number of `where T: Sendable` overloads of various functions
+  // that we would need in order to provide eager capture only for non-sendable
+  // values. However, this is a relatively narrow case, so for now we'll just
+  // accept it as unsupported and tell affected test authors to refactor their
+  // expectations so as to call m(_:) _before_ #expect().
   func m(_ x: @autoclosure @Sendable () -> Bool) -> Bool {
     x()
   }
