@@ -23,7 +23,7 @@ if("${CMAKE_CXX_COMPILER_FRONTEND_VARIANT}" STREQUAL "MSVC" OR
     /EHa-c)
 else()
   target_compile_options(_TestingInternals PRIVATE
-    -fno-exceptions)
+    -fno-exceptions -fPIC)
 endif()
 
 if(NOT BUILD_SHARED_LIBS)
