@@ -48,6 +48,10 @@ public protocol Trait: Sendable {
   /// ``scopeProvider(for:testCase:)-cjmg`` method for any trait with this
   /// default type must return `nil`, meaning that trait will not provide a
   /// custom scope for the tests it's applied to.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.1)
+  /// }
   associatedtype TestScopeProvider: TestScoping = Never
 
   /// Get this trait's scope provider for the specified test and/or test case,
@@ -93,6 +97,10 @@ public protocol Trait: Sendable {
   /// associated ``Trait/TestScopeProvider`` type is the default `Never`, then
   /// this method returns `nil` by default. This means that instances of this
   /// trait will not provide a custom scope for tests to which they're applied.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.1)
+  /// }
   func scopeProvider(for test: Test, testCase: Test.Case?) -> TestScopeProvider?
 }
 
@@ -107,6 +115,10 @@ public protocol Trait: Sendable {
 /// logic for tests which have similar needs allows each test function to be
 /// more succinct with less repetitive boilerplate so it can focus on what makes
 /// it unique.
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.1)
+/// }
 public protocol TestScoping: Sendable {
   /// Provide custom execution scope for a function call which is related to the
   /// specified test and/or test case.
@@ -140,6 +152,10 @@ public protocol TestScoping: Sendable {
   /// an error if it is unable to provide a custom scope.
   ///
   /// Issues recorded by this method are associated with `test`.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.1)
+  /// }
   func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws
 }
 
@@ -156,6 +172,10 @@ extension Trait where Self: TestScoping {
   /// This default implementation is used when this trait type conforms to
   /// ``TestScoping`` and its return value is discussed in
   /// ``Trait/scopeProvider(for:testCase:)-cjmg``.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.1)
+  /// }
   public func scopeProvider(for test: Test, testCase: Test.Case?) -> Self? {
     testCase == nil ? nil : self
   }
@@ -174,6 +194,10 @@ extension SuiteTrait where Self: TestScoping {
   /// This default implementation is used when this trait type conforms to
   /// ``TestScoping`` and its return value is discussed in
   /// ``Trait/scopeProvider(for:testCase:)-cjmg``.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.1)
+  /// }
   public func scopeProvider(for test: Test, testCase: Test.Case?) -> Self? {
     if test.isSuite {
       isRecursive ? nil : self
@@ -229,6 +253,10 @@ extension Trait where TestScopeProvider == Never {
   /// This default implementation is used when this trait type's associated
   /// ``Trait/TestScopeProvider`` type is the default value of `Never`, and its
   /// return value is discussed in ``Trait/scopeProvider(for:testCase:)-cjmg``.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.1)
+  /// }
   public func scopeProvider(for test: Test, testCase: Test.Case?) -> Never? {
     nil
   }
