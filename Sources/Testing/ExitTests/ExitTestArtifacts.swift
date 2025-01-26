@@ -55,7 +55,7 @@ public struct ExitTestArtifacts: Sendable {
   ///
   /// If you did not request standard output content when running an exit test,
   /// the value of this property is the empty array.
-  public var standardOutputContent: [UInt] = []
+  public var standardOutputContent: [UInt8] = []
 
   /// All bytes written to the standard error stream of the exit test before
   /// it exited.
