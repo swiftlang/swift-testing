@@ -21,9 +21,12 @@ if("${CMAKE_CXX_COMPILER_FRONTEND_VARIANT}" STREQUAL "MSVC" OR
    "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   target_compile_options(_TestingInternals PRIVATE
     /EHa-c)
-else()
+elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
   target_compile_options(_TestingInternals PRIVATE
     -fno-exceptions -fPIC)
+else()
+  target_compile_options(_TestingInternals PRIVATE
+    -fno-exceptions)
 endif()
 
 if(NOT BUILD_SHARED_LIBS)
