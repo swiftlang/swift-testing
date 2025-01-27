@@ -26,6 +26,18 @@ typealias ProcessID = HANDLE
 typealias ProcessID = Never
 #endif
 
+#if os(Linux) && !SWT_NO_DYNAMIC_LINKING
+/// Close file descriptors above a given value when spawing a new process.
+///
+/// This symbol is provided because the underlying function was added to glibc
+/// relatively recently and may not be available on all targets. Checking
+/// `__GLIBC_PREREQ()` is insufficient because `_DEFAULT_SOURCE` may not be
+/// defined at the point spawn.h is first included.
+private let _posix_spawn_file_actions_addclosefrom_np = symbol(named: "posix_spawn_file_actions_addclosefrom_np").map {
+  unsafeBitCast($0, to: (@convention(c) (UnsafeMutablePointer<posix_spawn_file_actions_t>, CInt) -> CInt).self)
+}
+#endif
+
 /// Spawn a process and wait for it to terminate.
 ///
 /// - Parameters:
@@ -141,17 +153,18 @@ func spawnExecutable(
       // Close all other file descriptors open in the parent.
       flags |= CShort(POSIX_SPAWN_CLOEXEC_DEFAULT)
 #elseif os(Linux)
+#if !SWT_NO_DYNAMIC_LINKING
       // This platform doesn't have POSIX_SPAWN_CLOEXEC_DEFAULT, but we can at
       // least close all file descriptors higher than the highest inherited one.
       // We are assuming here that the caller didn't set FD_CLOEXEC on any of
       // these file descriptors.
-      _ = swt_posix_spawn_file_actions_addclosefrom_np(fileActions, highestFD + 1)
+      _ = _posix_spawn_file_actions_addclosefrom_np?(fileActions, highestFD + 1)
+#endif
 #elseif os(FreeBSD)
       // Like Linux, this platform doesn't have POSIX_SPAWN_CLOEXEC_DEFAULT.
       // Unlike Linux, all non-EOL FreeBSD versions (≥13.1) support
-      // `posix_spawn_file_actions_addclosefrom_np`. Therefore, we don't need
-      // `swt_posix_spawn_file_actions_addclosefrom_np` to guard the
-      // availability of this function.
+      // `posix_spawn_file_actions_addclosefrom_np`, and FreeBSD does not use
+      // glibc nor guard symbols behind `_DEFAULT_SOURCE`.
       _ = posix_spawn_file_actions_addclosefrom_np(fileActions, highestFD + 1)
 #elseif os(OpenBSD)
       // OpenBSD does not have posix_spawn_file_actions_addclosefrom_np().
