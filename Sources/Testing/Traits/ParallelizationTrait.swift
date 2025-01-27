@@ -13,12 +13,12 @@
 ///
 /// When you add this trait to a parameterized test function, that test runs its
 /// cases serially instead of in parallel. This trait has no effect when you
-/// apply it to a non-parallelized test function.
+/// apply it to a non-parameterized test function.
 ///
 /// When you add this trait to a test suite, that suite runs its
 /// contained test functions (including their cases, when parameterized) and
 /// sub-suites serially instead of in parallel. If the sub-suites have children,
-/// those also run serially.
+/// they also run serially.
 ///
 /// This trait does not affect the execution of a test relative to its peers or
 /// to unrelated tests. This trait has no effect if you disable test

@@ -36,7 +36,7 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 - ``Trait/bug(_:id:_:)-10yf5``
 - ``Trait/bug(_:id:_:)-3vtpl``
 
-### Run code before and after test functions
+### Running code before and after a test or suite
 
 - ``TestScoping``
 - ``Trait/scopeProvider(for:testCase:)-cjmg``

@@ -57,7 +57,7 @@ public struct Comment: RawRepresentable, Sendable {
     case stringLiteral
   }
 
-  /// This comment's kind.
+  /// The kind of this comment, if known.
   ///
   /// For comments you create by calling ``init(rawValue:)``, the value
   /// of this property is `nil`. Otherwise, it represents the comment's kind.

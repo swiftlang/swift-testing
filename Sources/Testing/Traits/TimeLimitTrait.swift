@@ -16,10 +16,10 @@ public struct TimeLimitTrait: TestTrait, SuiteTrait {
   /// A type representing the duration of a time limit applied to a test.
   ///
   /// Use this type to specify a test timeout with ``TimeLimitTrait``.
-  /// Use this type instead of Swift's built-in `Duration`
+  /// `TimeLimitTrait` uses this type instead of Swift's built-in `Duration`
   /// type because the testing library doesn't support high-precision,
-  /// arbitrarily short durations for test timeouts.
-  /// The smallest allowed unit of time is minutes.
+  /// arbitrarily short durations for test timeouts. The smallest unit of time
+  /// you can specify in a `Duration` is minutes.
   public struct Duration: Sendable {
     /// The underlying Swift `Duration` which this time limit duration
     /// represents.
@@ -71,11 +71,11 @@ extension Trait where Self == TimeLimitTrait {
   /// treats as a test failure.
   ///
   /// The testing library can use a shorter time limit than that specified by
-  /// `timeLimit` may be reduced if it's configured to enforce a maximum
-  /// per-test limit. When you configure a maximum per-test limit, the time
-  /// limit of the test this trait is applied to is the shorter of `timeLimit`
-  /// and that maximum. For information on configuring maximum per-test limits,
-  /// consult the documentation for the tool you use to run your tests.
+  /// `timeLimit` if you configure it to enforce a maximum per-test limit. When
+  /// you configure a maximum per-test limit, the time limit of the test this
+  /// trait is applied to is the shorter of `timeLimit` and the maximum per-test
+  /// limit. For information on configuring maximum per-test limits, consult the
+  /// documentation for the tool you use to run your tests.
   ///
   /// If a test is parameterized, this time limit is applied to each of its
   /// test cases individually. If a test has more than one time limit associated
@@ -104,11 +104,11 @@ extension Trait where Self == TimeLimitTrait {
   /// treats as a test failure.
   ///
   /// The testing library can use a shorter time limit than that specified by
-  /// `timeLimit` may be reduced if it's configured to enforce a maximum
-  /// per-test limit. When you configure a maximum per-test limit, the time
-  /// limit of the test this trait is applied to is the shorter of `timeLimit`
-  /// and that maximum. For information on configuring maximum per-test limits,
-  /// consult the documentation for the tool you use to run your tests.
+  /// `timeLimit` if you configure it to enforce a maximum per-test limit. When
+  /// you configure a maximum per-test limit, the time limit of the test this
+  /// trait is applied to is the shorter of `timeLimit` and the maximum per-test
+  /// limit. For information on configuring maximum per-test limits, consult the
+  /// documentation for the tool you use to run your tests.
   ///
   /// If a test is parameterized, this time limit is applied to each of its
   /// test cases individually. If a test has more than one time limit associated
@@ -183,8 +183,7 @@ extension TimeLimitTrait.Duration {
 extension Test {
   /// The maximum amount of time this test's cases may run for.
   ///
-  /// Associate time limit with tests by using the ``Trait/timeLimit(_:)-4kzjp``
-  /// trait.
+  /// Associate a time limit with tests by using ``Trait/timeLimit(_:)-4kzjp``.
   ///
   /// If a test has more than one time limit associated with it, the value of
   /// this property is the shortest one. If a test has no time limits associated

@@ -53,7 +53,8 @@ public protocol Trait: Sendable {
   /// the trait doesn't provide a custom scope for tests it's applied to.
   associatedtype TestScopeProvider: TestScoping = Never
 
-  /// Get this trait's scope provider for the specified test or test case.
+  /// Get this trait's scope provider for the specified test, and optional test
+  /// case.
   ///
   /// - Parameters:
   ///   - test: The test for which a scope provider is being requested.
@@ -68,14 +69,14 @@ public protocol Trait: Sendable {
   /// If this trait's type conforms to ``TestScoping``, the default value
   /// returned by this method depends on `test` and/or `testCase`:
   ///
-  /// - If `test` represents a suite, this trait needs to conform to
-  /// ``SuiteTrait``.
+  /// - If `test` represents a suite, this trait also conforms to
+  ///   ``SuiteTrait``.
   ///   If the value of this suite trait's ``SuiteTrait/isRecursive`` property
   ///   is `true`, then this method returns `nil`, and the suite trait
-  ///   provides its custom scope once for the entire suite.
-  ///   If the value of ``SuiteTrait/isRecursive`` is `false`, this method
-  ///   returns `self`, and the suite trait provides its custom scope once for
-  ///   each test function the test suite contains.
+  ///   provides its custom scope once for each test function the test suite
+  ///   contains. If the value of ``SuiteTrait/isRecursive`` is `false`, this
+  ///   method returns `self`, and the suite trait provides its custom scope
+  ///   once for the entire test suite.
   /// - Otherwise `test` represents a test function. If `testCase` is `nil`,
   ///   this method returns `nil`; otherwise, it returns `self`. This means that
   ///   by default, a trait which is applied to or inherited by a test function
@@ -166,7 +167,8 @@ extension Trait where Self: TestScoping {
 }
 
 extension SuiteTrait where Self: TestScoping {
-  /// Get this trait's scope provider for the specified test and/or test case.
+  /// Get this trait's scope provider for the specified test, and optional test
+  /// case.
   ///
   /// - Parameters:
   ///   - test: The test for which the testing library requests a scope

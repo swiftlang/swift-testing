@@ -76,7 +76,6 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
     }
   }
 
-  /// The comments that the testing library associates with this trait.
   public var comments: [Comment]
 
   /// The source location where this trait is specified.

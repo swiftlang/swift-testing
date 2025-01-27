@@ -35,8 +35,8 @@ extension Trait where Self == ConditionTrait {
     return "\(platformName) \(version.major).\(minorVersion).\(patchVersion)"
   }
 
-  /// Create a trait that controls a test's availability based on a
-  /// platform availability attribute.
+  /// Create a trait controlling availability of a test based on an
+  /// `@available()` attribute applied to it.
   ///
   /// - Parameters:
   ///   - platformName: The name of the platform specified in the `@available()`
