@@ -38,8 +38,6 @@ private let _posix_spawn_file_actions_addclosefrom_np = symbol(named: "posix_spa
 }
 #endif
 
-#endif
-
 /// Spawn a process and wait for it to terminate.
 ///
 /// - Parameters:
@@ -165,9 +163,8 @@ func spawnExecutable(
 #elseif os(FreeBSD)
       // Like Linux, this platform doesn't have POSIX_SPAWN_CLOEXEC_DEFAULT.
       // Unlike Linux, all non-EOL FreeBSD versions (≥13.1) support
-      // `posix_spawn_file_actions_addclosefrom_np`. Therefore, we don't need
-      // `swt_posix_spawn_file_actions_addclosefrom_np` to guard the
-      // availability of this function.
+      // `posix_spawn_file_actions_addclosefrom_np`, and FreeBSD does not use
+      // glibc nor guard symbols behind `_DEFAULT_SOURCE`.
       _ = posix_spawn_file_actions_addclosefrom_np(fileActions, highestFD + 1)
 #elseif os(OpenBSD)
       // OpenBSD does not have posix_spawn_file_actions_addclosefrom_np().
