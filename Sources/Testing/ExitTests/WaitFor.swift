@@ -94,6 +94,17 @@ private nonisolated(unsafe) let _waitThreadNoChildrenCondition = {
   return result
 }()
 
+#if os(Linux) && !SWT_NO_DYNAMIC_LINKING
+/// Set the name of the current thread.
+///
+/// This function declaration is provided because `pthread_setname_np()` is
+/// only declared if `_GNU_SOURCE` is set, but setting it causes build errors
+/// due to conflicts with Swift's Glibc module.
+private let _pthread_setname_np = symbol(named: "pthread_setname_np").map {
+  unsafeBitCast($0, to: (@convention(c) (pthread_t, UnsafePointer<CChar>) -> CInt).self)
+}
+#endif
+
 /// Create a waiter thread that is responsible for waiting for child processes
 /// to exit.
 private let _createWaitThread: Void = {
@@ -152,7 +163,9 @@ private let _createWaitThread: Void = {
 #if SWT_TARGET_OS_APPLE
       _ = pthread_setname_np("Swift Testing exit test monitor")
 #elseif os(Linux)
-      _ = swt_pthread_setname_np(pthread_self(), "SWT ExT monitor")
+#if !SWT_NO_DYNAMIC_LINKING
+      _ = _pthread_setname_np?(pthread_self(), "SWT ExT monitor")
+#endif
 #elseif os(FreeBSD)
       _ = pthread_set_name_np(pthread_self(), "SWT ex test monitor")
 #elseif os(OpenBSD)
