@@ -42,9 +42,6 @@ func subexpressionShowcase() async throws {
   #expect(false || true)
 
   #expect((fff == ttt) == ttt)
-  Testing.__checkCondition({(__ec: Testing.__ExpectationContext) -> Swift.Bool in
-    __ec.__cmp(==,0x0,__ec((__ec.__cmp(==,0x3a,__ec(fff,0x7a),0x7a,__ec(ttt,0x43a),0x43a)),0x2),0x2,__ec(ttt,0x8000),0x8000)
-  },sourceCode: [0x0:"(fff == ttt) == ttt",0x2:"(fff == ttt)",0x3a:"fff == ttt",0x7a:"fff",0x43a:"ttt",0x8000:"ttt"],comments: [],isRequired: false,sourceLocation: Testing.SourceLocation.__here()).__expected()
 
   #expect((Int)(123) == 124)
   #expect((Int, Double)(123, 456.0) == (124, 457.0))

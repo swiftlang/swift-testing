@@ -444,14 +444,35 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
     if let op = node.operator.as(BinaryOperatorExprSyntax.self)?.operator.textWithoutBackticks,
        op == "==" || op == "!=" || op == "===" || op == "!==" {
 
+      let lhsName = context.makeUniqueClosureParameterName("lhs", in: effectiveRootNode)
+      let rhsName = context.makeUniqueClosureParameterName("rhs", in: effectiveRootNode)
       return _rewrite(
-        ClosureExprSyntax {
+        ClosureExprSyntax(
+          signature: ClosureSignatureSyntax(
+            leadingTrivia: .space,
+            parameterClause: .simpleInput(
+              ClosureShorthandParameterListSyntax {
+                ClosureShorthandParameterSyntax(name: lhsName)
+                ClosureShorthandParameterSyntax(name: rhsName)
+              }
+            ),
+            returnClause: ReturnClauseSyntax(
+              leadingTrivia: .space,
+              type: MemberTypeSyntax(
+                leadingTrivia: .space,
+                baseType: IdentifierTypeSyntax(name: .identifier("Swift")),
+                name: .identifier("Bool")
+              ),
+              trailingTrivia: .space
+            ),
+            inKeyword: .keyword(.in),
+            trailingTrivia: .space
+          )
+        ) {
           InfixOperatorExprSyntax(
-            leftOperand: DeclReferenceExprSyntax(baseName: .dollarIdentifier("$0"))
-              .with(\.trailingTrivia, .space),
+            leftOperand: DeclReferenceExprSyntax(baseName: lhsName, trailingTrivia: .space),
             operator: BinaryOperatorExprSyntax(text: op),
-            rightOperand: DeclReferenceExprSyntax(baseName: .dollarIdentifier("$1"))
-              .with(\.leadingTrivia, .space)
+            rightOperand: DeclReferenceExprSyntax(leadingTrivia: .space, baseName: rhsName, trailingTrivia: .space)
           )
         },
         originalWas: node,

@@ -190,15 +190,7 @@ extension ConditionMacro {
             expandedFunctionName = .identifier("__checkConditionAsync")
           }
 
-          var expressionContextName = TokenSyntax.identifier("__ec")
-          let isNameUsed = originalArgumentExpr.tokens(viewMode: .sourceAccurate).lazy
-            .map(\.tokenKind)
-            .contains(expressionContextName.tokenKind)
-          if isNameUsed {
-            // BUG: We should use the unique name directly. SEE: swift-syntax-#2256
-            let uniqueName = context.makeUniqueName("")
-            expressionContextName = .identifier("\(expressionContextName)\(uniqueName)")
-          }
+          let expressionContextName = context.makeUniqueClosureParameterName("__ec", in: originalArgumentExpr)
           let (closureExpr, rewrittenNodes) = rewrite(
             originalArgumentExpr,
             usingExpressionContextNamed: expressionContextName,
