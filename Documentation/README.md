@@ -65,9 +65,3 @@ be used without needing to write any code in Swift:
   the Swift compiler into test products that contains test definitions and other
   metadata used by Swift Testing (and extensible by third-party testing
   libraries.)
-
-## Project maintenance
-
-- The [Releases](https://github.com/swiftlang/swift-testing/blob/main/Documentation/Releases.md)
-  document describes the process of creating and publishing a new release of
-  Swift Testing — a task which may be performed by project administrators.
