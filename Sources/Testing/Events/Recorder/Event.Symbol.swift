@@ -22,8 +22,8 @@ extension Event {
     /// The symbol to use when a test passes.
     ///
     /// - Parameters:
-    ///   - knownIssueCount: The number of known issues encountered by the end
-    ///     of the test.
+    ///   - knownIssueCount: The number of known issues recorded for the test.
+    ///     The default value is `0`.
     case pass(knownIssueCount: Int = 0)
 
     /// The symbol to use when a test fails.
@@ -34,7 +34,11 @@ extension Event {
 
     /// A warning or caution symbol to use when the developer should be aware of
     /// some condition.
-    case warning
+    ///
+    /// - Parameters:
+    ///   - warningIssueCount: The number of issues with warning severity
+    ///     recorded for the test. The default value is `0`.
+    case warning(warningIssueCount: Int = 0)
 
     /// The symbol to use when presenting details about an event to the user.
     case details

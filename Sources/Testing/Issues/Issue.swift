@@ -79,6 +79,35 @@ public struct Issue: Sendable {
   /// The kind of issue this value represents.
   public var kind: Kind
 
+  /// An enumeration representing the level of severity of a recorded issue.
+  ///
+  /// The supported levels, in decreasing order of severity, are:
+  ///
+  /// - ``error``
+  /// - ``warning``
+  @_spi(Experimental)
+  public enum Severity: Sendable {
+    /// The severity level representing an issue which may be a concern but is
+    /// not an error.
+    ///
+    /// An issue with warning severity does not cause the test it's associated
+    /// with to be marked as a failure, but is noted in the results.
+    case warning
+
+    /// The severity level representing an issue which represents an error in a
+    /// test.
+    ///
+    /// An issue with error severity causes the test it's associated with to be
+    /// marked as a failure.
+    case error
+  }
+
+  /// The severity of this issue.
+  ///
+  /// The default value of this property is ``Severity-swift.enum/error``.
+  @_spi(Experimental)
+  public var severity: Severity = .error
+
   /// Any comments provided by the developer and associated with this issue.
   ///
   /// If no comment was supplied when the issue occurred, the value of this
@@ -97,12 +126,15 @@ public struct Issue: Sendable {
   ///
   /// - Parameters:
   ///   - kind: The kind of issue this value represents.
+  ///   - severity: The severity of this issue. The default value is
+  ///     ``Severity-swift.enum/error``.
   ///   - comments: An array of comments describing the issue. This array may be
   ///     empty.
   ///   - sourceContext: A ``SourceContext`` indicating where and how this issue
   ///     occurred.
   init(
     kind: Kind,
+    severity: Severity = .error,
     comments: [Comment],
     sourceContext: SourceContext
   ) {
@@ -154,6 +186,8 @@ public struct Issue: Sendable {
   }
 }
 
+extension Issue.Severity: Comparable {}
+
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible
 
 extension Issue: CustomStringConvertible, CustomDebugStringConvertible {
@@ -164,7 +198,7 @@ extension Issue: CustomStringConvertible, CustomDebugStringConvertible {
     let joinedComments = comments.lazy
       .map(\.rawValue)
       .joined(separator: "\n")
-    return "\(kind): \(joinedComments)"
+    return "\(severity): \(kind): \(joinedComments)"
   }
 
   public var debugDescription: String {
@@ -174,7 +208,7 @@ extension Issue: CustomStringConvertible, CustomDebugStringConvertible {
     let joinedComments: String = comments.lazy
       .map(\.rawValue)
       .joined(separator: "\n")
-    return "\(kind)\(sourceLocation.map { " at \($0)" } ?? ""): \(joinedComments)"
+    return "\(severity): \(kind)\(sourceLocation.map { " at \($0)" } ?? ""): \(joinedComments)"
   }
 }
 
@@ -234,6 +268,17 @@ extension Issue.Kind: CustomStringConvertible {
   }
 }
 
+extension Issue.Severity: CustomStringConvertible {
+  public var description: String {
+    switch self {
+    case .warning:
+      "warning"
+    case .error:
+      "error"
+    }
+  }
+}
+
 #if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting
 
@@ -243,6 +288,9 @@ extension Issue {
   public struct Snapshot: Sendable, Codable {
     /// The kind of issue this value represents.
     public var kind: Kind.Snapshot
+
+    @_spi(Experimental)
+    public var severity: Severity
 
     /// Any comments provided by the developer and associated with this issue.
     ///
@@ -268,6 +316,7 @@ extension Issue {
         self.kind = Issue.Kind.Snapshot(snapshotting: issue.kind)
         self.comments = issue.comments
       }
+      self.severity = issue.severity
       self.sourceContext = issue.sourceContext
       self.isKnown = issue.isKnown
     }
@@ -294,6 +343,8 @@ extension Issue {
     }
   }
 }
+
+extension Issue.Severity: Codable {}
 
 extension Issue.Kind {
   /// Serializable kinds of issues which may be recorded.
@@ -484,7 +535,7 @@ extension Issue.Snapshot: CustomStringConvertible, CustomDebugStringConvertible 
     let joinedComments = comments.lazy
       .map(\.rawValue)
       .joined(separator: "\n")
-    return "\(kind): \(joinedComments)"
+    return "\(severity): \(kind): \(joinedComments)"
   }
 
   public var debugDescription: String {
@@ -494,7 +545,7 @@ extension Issue.Snapshot: CustomStringConvertible, CustomDebugStringConvertible 
     let joinedComments: String = comments.lazy
       .map(\.rawValue)
       .joined(separator: "\n")
-    return "\(kind)\(sourceLocation.map { " at \($0)" } ?? ""): \(joinedComments)"
+    return "\(severity): \(kind)\(sourceLocation.map { " at \($0)" } ?? ""): \(joinedComments)"
   }
 }
 

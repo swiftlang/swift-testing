@@ -56,8 +56,11 @@ extension Event {
         /// The instant at which the test started.
         var startInstant: Test.Clock.Instant
 
-        /// The number of issues recorded for the test.
-        var issueCount = 0
+        /// The number of issues with error severity recorded for the test.
+        var errorIssueCount = 0
+
+        /// The number of issues with warning severity recorded for the test.
+        var warningIssueCount = 0
 
         /// The number of known issues recorded for the test.
         var knownIssueCount = 0
@@ -114,27 +117,36 @@ extension Event.HumanReadableOutputRecorder {
   ///   - graph: The graph to walk while counting issues.
   ///
   /// - Returns: A tuple containing the number of issues recorded in `graph`.
-  private func _issueCounts(in graph: Graph<String, Event.HumanReadableOutputRecorder._Context.TestData?>?) -> (issueCount: Int, knownIssueCount: Int, totalIssueCount: Int, description: String) {
+  private func _issueCounts(in graph: Graph<String, Event.HumanReadableOutputRecorder._Context.TestData?>?) -> (errorIssueCount: Int, warningIssueCount: Int, knownIssueCount: Int, totalIssueCount: Int, description: String) {
     guard let graph else {
-      return (0, 0, 0, "")
+      return (0, 0, 0, 0, "")
     }
-    let issueCount = graph.compactMap(\.value?.issueCount).reduce(into: 0, +=)
+    let errorIssueCount = graph.compactMap(\.value?.errorIssueCount).reduce(into: 0, +=)
+    let warningIssueCount = graph.compactMap(\.value?.warningIssueCount).reduce(into: 0, +=)
     let knownIssueCount = graph.compactMap(\.value?.knownIssueCount).reduce(into: 0, +=)
-    let totalIssueCount = issueCount + knownIssueCount
+    let totalIssueCount = errorIssueCount + warningIssueCount + knownIssueCount
 
     // Construct a string describing the issue counts.
-    let description = switch (issueCount > 0, knownIssueCount > 0) {
-    case (true, true):
+    let description = switch (errorIssueCount > 0, warningIssueCount > 0, knownIssueCount > 0) {
+    case (true, true, true):
+      " with \(totalIssueCount.counting("issue")) (including \(warningIssueCount.counting("warning")) and \(knownIssueCount.counting("known issue")))"
+    case (true, false, true):
       " with \(totalIssueCount.counting("issue")) (including \(knownIssueCount.counting("known issue")))"
-    case (false, true):
+    case (false, true, true):
+      " with \(warningIssueCount.counting("warning")) and \(knownIssueCount.counting("known issue"))"
+    case (false, false, true):
       " with \(knownIssueCount.counting("known issue"))"
-    case (true, false):
+    case (true, true, false):
+      " with \(totalIssueCount.counting("issue")) (including \(warningIssueCount.counting("warning")))"
+    case (true, false, false):
       " with \(totalIssueCount.counting("issue"))"
-    case(false, false):
+    case(false, true, false):
+      " with \(warningIssueCount.counting("warning"))"
+    case(false, false, false):
       ""
     }
 
-    return (issueCount, knownIssueCount, totalIssueCount,  description)
+    return (errorIssueCount, warningIssueCount, knownIssueCount, totalIssueCount,  description)
   }
 }
 
@@ -267,7 +279,12 @@ extension Event.HumanReadableOutputRecorder {
         if issue.isKnown {
           testData.knownIssueCount += 1
         } else {
-          testData.issueCount += 1
+          switch issue.severity {
+          case .warning:
+            testData.warningIssueCount += 1
+          case .error:
+            testData.errorIssueCount += 1
+          }
         }
         context.testData[id] = testData
 
@@ -355,15 +372,22 @@ extension Event.HumanReadableOutputRecorder {
       let testData = testDataGraph?.value ?? .init(startInstant: instant)
       let issues = _issueCounts(in: testDataGraph)
       let duration = testData.startInstant.descriptionOfDuration(to: instant)
-      return if issues.issueCount > 0 {
+      return if issues.errorIssueCount > 0 {
         CollectionOfOne(
           Message(
             symbol: .fail,
             stringValue: "\(_capitalizedTitle(for: test)) \(testName) failed after \(duration)\(issues.description)."
           )
         ) + _formattedComments(for: test)
+      } else if issues.warningIssueCount > 0 {
+        [
+          Message(
+           symbol: .warning(warningIssueCount: issues.warningIssueCount),
+           stringValue: "\(_capitalizedTitle(for: test)) \(testName) passed after \(duration)\(issues.description)."
+         )
+       ]
       } else {
-         [
+        [
           Message(
             symbol: .pass(knownIssueCount: issues.knownIssueCount),
             stringValue: "\(_capitalizedTitle(for: test)) \(testName) passed after \(duration)\(issues.description)."
@@ -400,13 +424,19 @@ extension Event.HumanReadableOutputRecorder {
         ""
       }
       let symbol: Event.Symbol
-      let known: String
+      let introducer: String
       if issue.isKnown {
         symbol = .pass(knownIssueCount: 1)
-        known = " known"
+        introducer = "a known"
       } else {
-        symbol = .fail
-        known = "n"
+        switch issue.severity {
+        case .warning:
+          symbol = .warning(warningIssueCount: 1)
+          introducer = "a warning"
+        case .error:
+          symbol = .fail
+          introducer = "an"
+        }
       }
 
       var additionalMessages = [Message]()
@@ -435,13 +465,13 @@ extension Event.HumanReadableOutputRecorder {
       let primaryMessage: Message = if parameterCount == 0 {
         Message(
           symbol: symbol,
-          stringValue: "\(_capitalizedTitle(for: test)) \(testName) recorded a\(known) issue\(atSourceLocation): \(issue.kind)",
+          stringValue: "\(_capitalizedTitle(for: test)) \(testName) recorded \(introducer) issue\(atSourceLocation): \(issue.kind)",
           conciseStringValue: String(describing: issue.kind)
         )
       } else {
         Message(
           symbol: symbol,
-          stringValue: "\(_capitalizedTitle(for: test)) \(testName) recorded a\(known) issue with \(parameterCount.counting("argument")) \(labeledArguments)\(atSourceLocation): \(issue.kind)",
+          stringValue: "\(_capitalizedTitle(for: test)) \(testName) recorded \(introducer) issue with \(parameterCount.counting("argument")) \(labeledArguments)\(atSourceLocation): \(issue.kind)",
           conciseStringValue: String(describing: issue.kind)
         )
       }
@@ -498,11 +528,18 @@ extension Event.HumanReadableOutputRecorder {
       let runStartInstant = context.runStartInstant ?? instant
       let duration = runStartInstant.descriptionOfDuration(to: instant)
 
-      return if issues.issueCount > 0 {
+      return if issues.errorIssueCount > 0 {
         [
           Message(
             symbol: .fail,
             stringValue: "Test run with \(testCount.counting("test")) failed after \(duration)\(issues.description)."
+          )
+        ]
+      } else if issues.warningIssueCount > 0 {
+        [
+          Message(
+            symbol: .warning(warningIssueCount: issues.warningIssueCount),
+            stringValue: "Test run with \(testCount.counting("test")) passed after \(duration)\(issues.description)."
           )
         ]
       } else {
