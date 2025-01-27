@@ -87,15 +87,14 @@ public struct Issue: Sendable {
   /// - ``warning``
   @_spi(Experimental)
   public enum Severity: Sendable {
-    /// The severity level representing an issue which may be a concern but is
-    /// not an error.
+    /// The severity level for an issue which should be noted but is not
+    /// necessarily an error.
     ///
     /// An issue with warning severity does not cause the test it's associated
     /// with to be marked as a failure, but is noted in the results.
     case warning
 
-    /// The severity level representing an issue which represents an error in a
-    /// test.
+    /// The severity level for an issue which represents an error in a test.
     ///
     /// An issue with error severity causes the test it's associated with to be
     /// marked as a failure.
