@@ -127,6 +127,10 @@
 #if !SWT_NO_LIBDISPATCH
 #include <dispatch/dispatch.h>
 #endif
+
+#if !SWT_NO_DYNAMIC_LINKING
+#include <mach-o/dyld.h>
+#endif
 #endif
 
 #if defined(__FreeBSD__)
