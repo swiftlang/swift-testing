@@ -382,7 +382,7 @@ extension Event.HumanReadableOutputRecorder {
       } else if issues.warningIssueCount > 0 {
         [
           Message(
-           symbol: .warning(warningIssueCount: issues.warningIssueCount),
+           symbol: .warning,
            stringValue: "\(_capitalizedTitle(for: test)) \(testName) passed after \(duration)\(issues.description)."
          )
        ]
@@ -431,7 +431,7 @@ extension Event.HumanReadableOutputRecorder {
       } else {
         switch issue.severity {
         case .warning:
-          symbol = .warning(warningIssueCount: 1)
+          symbol = .warning
           introducer = "a warning"
         case .error:
           symbol = .fail
@@ -538,7 +538,7 @@ extension Event.HumanReadableOutputRecorder {
       } else if issues.warningIssueCount > 0 {
         [
           Message(
-            symbol: .warning(warningIssueCount: issues.warningIssueCount),
+            symbol: .warning,
             stringValue: "Test run with \(testCount.counting("test")) passed after \(duration)\(issues.description)."
           )
         ]

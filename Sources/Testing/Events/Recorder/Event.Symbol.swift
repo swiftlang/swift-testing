@@ -34,11 +34,7 @@ extension Event {
 
     /// A warning or caution symbol to use when the developer should be aware of
     /// some condition.
-    ///
-    /// - Parameters:
-    ///   - warningIssueCount: The number of issues with warning severity
-    ///     recorded for the test. The default value is `0`.
-    case warning(warningIssueCount: Int = 0)
+    case warning
 
     /// The symbol to use when presenting details about an event to the user.
     case details
