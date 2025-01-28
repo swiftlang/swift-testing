@@ -16,6 +16,19 @@ extension ABIv0 {
   /// assists in converting values to JSON; clients that consume this JSON are
   /// expected to write their own decoders.
   struct EncodedIssue: Sendable {
+    /// An enumeration representing the level of severity of a recorded issue.
+    ///
+    /// For descriptions of individual cases, see ``Issue/Severity-swift.enum``.
+    enum Severity: String {
+      case warning
+      case error
+    }
+
+    /// The severity of this issue.
+    ///
+    /// - Warning: Severity is not yet part of the JSON schema.
+    var _severity: Severity
+
     /// Whether or not this issue is known to occur.
     var isKnown: Bool
 
@@ -33,6 +46,11 @@ extension ABIv0 {
     var _error: EncodedError?
 
     init(encoding issue: borrowing Issue, in eventContext: borrowing Event.Context) {
+      _severity = switch issue.severity {
+      case .warning: .warning
+      case .error: .error
+      }
+
       isKnown = issue.isKnown
       sourceLocation = issue.sourceLocation
       if let backtrace = issue.sourceContext.backtrace {
@@ -48,3 +66,4 @@ extension ABIv0 {
 // MARK: - Codable
 
 extension ABIv0.EncodedIssue: Codable {}
+extension ABIv0.EncodedIssue.Severity: Codable {}

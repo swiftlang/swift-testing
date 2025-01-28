@@ -197,9 +197,19 @@ sufficient information to display the event in a human-readable format.
   "runEnded" ; additional event kinds may be added in the future
 
 <issue> ::= {
+<!--
+  TODO: Publicize the severity field.
+  "severity" ::= <issue-severity>, ; the severity of the issue
+-->
   "isKnown": <bool>, ; is this a known issue or not?
   ["sourceLocation": <source-location>,] ; where the issue occurred, if known
 }
+
+<!--
+  TODO: Publicize the severity field.
+<issue-severity> ::= "warning" | "error" ; additional severity levels may be
+                                         ; added in the future
+-->
 
 <message> ::= {
   "symbol": <message-symbol>,
