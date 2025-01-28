@@ -56,11 +56,9 @@ extension Event {
         /// The instant at which the test started.
         var startInstant: Test.Clock.Instant
 
-        /// The number of issues with error severity recorded for the test.
-        var errorIssueCount = 0
-
-        /// The number of issues with warning severity recorded for the test.
-        var warningIssueCount = 0
+        /// The number of issues recorded for the test, grouped by their
+        /// level of severity.
+        var issueCount: [Issue.Severity: Int] = [:]
 
         /// The number of known issues recorded for the test.
         var knownIssueCount = 0
@@ -121,8 +119,8 @@ extension Event.HumanReadableOutputRecorder {
     guard let graph else {
       return (0, 0, 0, 0, "")
     }
-    let errorIssueCount = graph.compactMap(\.value?.errorIssueCount).reduce(into: 0, +=)
-    let warningIssueCount = graph.compactMap(\.value?.warningIssueCount).reduce(into: 0, +=)
+    let errorIssueCount = graph.compactMap { $0.value?.issueCount[.error] }.reduce(into: 0, +=)
+    let warningIssueCount = graph.compactMap { $0.value?.issueCount[.warning] }.reduce(into: 0, +=)
     let knownIssueCount = graph.compactMap(\.value?.knownIssueCount).reduce(into: 0, +=)
     let totalIssueCount = errorIssueCount + warningIssueCount + knownIssueCount
 
@@ -279,12 +277,7 @@ extension Event.HumanReadableOutputRecorder {
         if issue.isKnown {
           testData.knownIssueCount += 1
         } else {
-          switch issue.severity {
-          case .warning:
-            testData.warningIssueCount += 1
-          case .error:
-            testData.errorIssueCount += 1
-          }
+          testData.issueCount[issue.severity, default: 0] += 1
         }
         context.testData[id] = testData
 
