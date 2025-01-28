@@ -417,18 +417,18 @@ extension Event.HumanReadableOutputRecorder {
         ""
       }
       let symbol: Event.Symbol
-      let introducer: String
+      let subject: String
       if issue.isKnown {
         symbol = .pass(knownIssueCount: 1)
-        introducer = "a known"
+        subject = "a known issue"
       } else {
         switch issue.severity {
         case .warning:
           symbol = .warning
-          introducer = "a warning"
+          subject = "a warning"
         case .error:
           symbol = .fail
-          introducer = "an"
+          subject = "an issue"
         }
       }
 
@@ -458,13 +458,13 @@ extension Event.HumanReadableOutputRecorder {
       let primaryMessage: Message = if parameterCount == 0 {
         Message(
           symbol: symbol,
-          stringValue: "\(_capitalizedTitle(for: test)) \(testName) recorded \(introducer) issue\(atSourceLocation): \(issue.kind)",
+          stringValue: "\(_capitalizedTitle(for: test)) \(testName) recorded \(subject) \(atSourceLocation): \(issue.kind)",
           conciseStringValue: String(describing: issue.kind)
         )
       } else {
         Message(
           symbol: symbol,
-          stringValue: "\(_capitalizedTitle(for: test)) \(testName) recorded \(introducer) issue with \(parameterCount.counting("argument")) \(labeledArguments)\(atSourceLocation): \(issue.kind)",
+          stringValue: "\(_capitalizedTitle(for: test)) \(testName) recorded \(subject) with \(parameterCount.counting("argument")) \(labeledArguments)\(atSourceLocation): \(issue.kind)",
           conciseStringValue: String(describing: issue.kind)
         )
       }
