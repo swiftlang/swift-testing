@@ -9,6 +9,9 @@
 //
 
 internal import _TestingInternals
+#if _runtime(_ObjC)
+private import ObjectiveC
+#endif
 
 /// A structure describing the bounds of a Swift metadata section.
 struct SectionBounds: Sendable {
