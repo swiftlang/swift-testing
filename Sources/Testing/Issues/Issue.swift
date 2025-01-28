@@ -288,6 +288,7 @@ extension Issue {
     /// The kind of issue this value represents.
     public var kind: Kind.Snapshot
 
+    /// The severity of this issue.
     @_spi(Experimental)
     public var severity: Severity
 
