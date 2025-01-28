@@ -81,10 +81,10 @@ public struct Issue: Sendable {
 
   /// An enumeration representing the level of severity of a recorded issue.
   ///
-  /// The supported levels, in decreasing order of severity, are:
+  /// The supported levels, in increasing order of severity, are:
   ///
-  /// - ``error``
   /// - ``warning``
+  /// - ``error``
   @_spi(Experimental)
   public enum Severity: Sendable {
     /// The severity level for an issue which should be noted but is not
