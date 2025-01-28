@@ -113,6 +113,9 @@ if(NOT APPLE)
   endif()
   target_link_libraries(Testing PUBLIC
     Foundation)
+  if (CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+    target_link_libraries(Testing PUBLIC execinfo)
+  endif()
 endif()
 if(NOT BUILD_SHARED_LIBS)
   # When building a static library, tell clients to autolink the internal
