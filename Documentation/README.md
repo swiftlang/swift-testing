@@ -23,11 +23,14 @@ as supplemental content located in the
 [`Sources/Testing/Testing.docc/`](https://github.com/swiftlang/swift-testing/tree/main/Sources/Testing/Testing.docc)
 directory.
 
-## Vision document
+## Vision document and API proposals
 
 The [Vision document](https://github.com/swiftlang/swift-evolution/blob/main/visions/swift-testing.md)
 for Swift Testing offers a comprehensive discussion of the project's design
 principles and goals.
+
+The [`Proposals`](Proposals/) directory contains API proposals that have been
+accepted and merged into Swift Testing.
 
 ## Development and contribution
 
@@ -49,8 +52,16 @@ principles and goals.
 - Instructions are provided for running tests against a
   [WASI/WebAssembly target](https://github.com/swiftlang/swift-testing/blob/main/Documentation/WASI.md).
 
-## Project maintenance
+## Testing library ABI
 
-- The [Releases](https://github.com/swiftlang/swift-testing/blob/main/Documentation/Releases.md)
-  document describes the process of creating and publishing a new release of
-  Swift Testing — a task which may be performed by project administrators.
+The [`ABI`](ABI/) directory contains documents related to Swift Testing's ABI:
+that is, parts of its interface that are intended to be stable over time and can
+be used without needing to write any code in Swift:
+
+- [`ABI/JSON.md`](ABI/JSON.md) contains Swift Testing's JSON specification that
+  can be used by tools to interact with Swift Testing either directly or via the
+  `swift test` command-line tool.
+- [`ABI/TestContent.md`](ABI/TestContent.md) documents the section emitted by
+  the Swift compiler into test products that contains test definitions and other
+  metadata used by Swift Testing (and extensible by third-party testing
+  libraries.)
