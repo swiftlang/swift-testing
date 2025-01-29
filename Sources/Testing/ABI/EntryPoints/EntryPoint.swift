@@ -547,6 +547,15 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
 #endif
 
+  switch args.eventStreamVersion {
+  case .some(...0):
+    // If the event stream version was specified explicitly to a value < 1,
+    // disable delivery of warning issue events to maintain legacy behavior.
+    configuration.eventHandlingOptions.isWarningIssueEventDeliveryEnabled = false
+  default:
+    break
+  }
+
   return configuration
 }
 

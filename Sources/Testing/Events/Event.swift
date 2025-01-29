@@ -290,10 +290,7 @@ extension Event {
     if let configuration = configuration ?? Configuration.current {
       // The caller specified a configuration, or the current task has an
       // associated configuration. Post to either configuration's event handler.
-      switch kind {
-      case .expectationChecked where !configuration.deliverExpectationCheckedEvents:
-        break
-      default:
+      if configuration.eventHandlingOptions.shouldHandleEvent(self) {
         configuration.handleEvent(self, in: context)
       }
     } else {
@@ -302,6 +299,26 @@ extension Event {
       for configuration in Configuration.all {
         _post(in: context, configuration: configuration)
       }
+    }
+  }
+}
+
+extension Configuration.EventHandlingOptions {
+  /// Determine whether the specified event should be handled according to the
+  /// options in this instance.
+  ///
+  /// - Parameters:
+  ///   - event: The event to consider handling.
+  ///
+  /// - Returns: Whether or not the event should be handled or suppressed.
+  fileprivate func shouldHandleEvent(_ event: borrowing Event) -> Bool {
+    switch event.kind {
+    case let .issueRecorded(issue):
+      issue.severity > .warning || isWarningIssueEventDeliveryEnabled
+    case .expectationChecked:
+      isExpectationCheckedEventDeliveryEnabled
+    default:
+      true
     }
   }
 }
