@@ -10,7 +10,7 @@ See https://swift.org/LICENSE.txt for license information
 See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 -->
 
-Annotate tests and suites, and customize their behavior.
+Annotate test functions and suites, and customize their behavior.
 
 ## Overview
 

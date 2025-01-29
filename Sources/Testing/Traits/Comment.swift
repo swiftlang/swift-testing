@@ -30,7 +30,7 @@ public struct Comment: RawRepresentable, Sendable {
     self.rawValue = rawValue
   }
 
-  /// An enumeration that describes a comment's kind.
+  /// An enumeration describing the possible kind of a comment.
   @_spi(ForToolsIntegrationOnly)
   public enum Kind: Sendable {
     /// This comment is in a single-line comment in the test's source code
