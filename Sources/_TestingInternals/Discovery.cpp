@@ -35,12 +35,9 @@ static const char typeMetadataSectionBegin = 0;
 static const char& typeMetadataSectionEnd = typeMetadataSectionBegin;
 #endif
 
-const void *_Nonnull const SWTTestContentSectionBounds[2] = {
-  &testContentSectionBegin, &testContentSectionEnd
-};
-
-const void *_Nonnull const SWTTypeMetadataSectionBounds[2] = {
-  &typeMetadataSectionBegin, &typeMetadataSectionEnd
+constinit auto *const SWTAllStaticallyLinkedSectionBounds = (const SWTStaticallyLinkedSectionBounds[]) {
+  { &testContentSectionBegin, &testContentSectionEnd },
+  { &typeMetadataSectionBegin, &typeMetadataSectionEnd },
 };
 #endif
 
