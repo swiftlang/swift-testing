@@ -314,9 +314,9 @@ extension Configuration.EventHandlingOptions {
   fileprivate func shouldHandleEvent(_ event: borrowing Event) -> Bool {
     switch event.kind {
     case let .issueRecorded(issue):
-      issue.severity > .warning || isWarningIssueEventDeliveryEnabled
+      issue.severity > .warning || isWarningIssueRecordedEventEnabled
     case .expectationChecked:
-      isExpectationCheckedEventDeliveryEnabled
+      isExpectationCheckedEventEnabled
     default:
       true
     }

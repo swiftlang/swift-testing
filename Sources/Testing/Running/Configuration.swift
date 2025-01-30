@@ -185,11 +185,11 @@ public struct Configuration: Sendable {
     /// containing issues with warning (or lower) severity should be delivered
     /// to the event handler of the configuration these options are applied to.
     ///
-    /// By default, events matching this criteria are delivered to event
-    /// handlers unless the entry point specifies an event stream version which
-    /// predates the introduction of warning issues, in which case this is
-    /// disabled to maintain legacy behavior.
-    public var isWarningIssueEventDeliveryEnabled: Bool = true
+    /// By default, events matching this criteria are not delivered to event
+    /// handlers since this is an experimental feature.
+    ///
+    /// - Warning: Warning issues are not yet an approved feature.
+    public var isWarningIssueRecordedEventEnabled: Bool = false
 
     /// Whether or not events of the kind
     /// ``Event/Kind-swift.enum/expectationChecked(_:)`` should be delivered to
@@ -198,7 +198,7 @@ public struct Configuration: Sendable {
     /// By default, events of this kind are not delivered to event handlers
     /// because they occur frequently in a typical test run and can generate
     /// significant back-pressure on the event handler.
-    public var isExpectationCheckedEventDeliveryEnabled: Bool = false
+    public var isExpectationCheckedEventEnabled: Bool = false
   }
 
   /// The options to use when delivering events to this configuration's event
@@ -347,13 +347,13 @@ extension Configuration {
   }
 #endif
 
-  @available(*, deprecated, message: "Set eventHandlingOptions.isExpectationCheckedEventDeliveryEnabled instead.")
+  @available(*, deprecated, message: "Set eventHandlingOptions.isExpectationCheckedEventEnabled instead.")
   public var deliverExpectationCheckedEvents: Bool {
     get {
-      eventHandlingOptions.isExpectationCheckedEventDeliveryEnabled
+      eventHandlingOptions.isExpectationCheckedEventEnabled
     }
     set {
-      eventHandlingOptions.isExpectationCheckedEventDeliveryEnabled = newValue
+      eventHandlingOptions.isExpectationCheckedEventEnabled = newValue
     }
   }
 }

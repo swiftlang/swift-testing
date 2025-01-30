@@ -551,7 +551,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   case .some(...0):
     // If the event stream version was specified explicitly to a value < 1,
     // disable delivery of warning issue events to maintain legacy behavior.
-    configuration.eventHandlingOptions.isWarningIssueEventDeliveryEnabled = false
+    configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled = false
   default:
     break
   }
