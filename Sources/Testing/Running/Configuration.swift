@@ -18,7 +18,7 @@ public struct Configuration: Sendable {
   // MARK: - Parallelization
 
   /// Whether or not to parallelize the execution of tests and test cases.
-  public var isParallelizationEnabled = true
+  public var isParallelizationEnabled: Bool = true
 
   /// How to symbolicate backtraces captured during a test run.
   ///
@@ -185,7 +185,7 @@ public struct Configuration: Sendable {
   /// By default, events of this kind are not delivered to event handlers
   /// because they occur frequently in a typical test run and can generate
   /// significant backpressure on the event handler.
-  public var deliverExpectationCheckedEvents = false
+  public var deliverExpectationCheckedEvents: Bool = false
 
   /// The event handler to which events should be passed when they occur.
   public var eventHandler: Event.Handler = { _, _ in }
@@ -237,7 +237,7 @@ public struct Configuration: Sendable {
   /// is provided. When the value of this property is less than `0`, some
   /// output is suppressed. The exact effects of this property are determined by
   /// the instance's event handler.
-  public var verbosity = 0
+  public var verbosity: Int = 0
 
   // MARK: - Test selection
 
@@ -286,7 +286,7 @@ public struct Configuration: Sendable {
     /// this maximum count. After this maximum is reached, all subsequent
     /// elements are omitted and a single placeholder child is added indicating
     /// the number of elements which have been truncated.
-    public var maximumCollectionCount = 10
+    public var maximumCollectionCount: Int = 10
 
     /// The maximum depth of children that can be included in the reflection of
     /// a checked expectation value.
@@ -303,7 +303,7 @@ public struct Configuration: Sendable {
     ///   Since optionals are common, the default value of this property is
     ///   somewhat larger than it otherwise would be in an attempt to make the
     ///   defaults useful for real-world tests.
-    public var maximumChildDepth = 10
+    public var maximumChildDepth: Int = 10
   }
 }
 

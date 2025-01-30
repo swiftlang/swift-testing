@@ -199,7 +199,7 @@ public struct Test: Sendable {
   /// being added to the plan. For such suites, the value of this property is
   /// `true`.
   @_spi(ForToolsIntegrationOnly)
-  public var isSynthesized = false
+  public var isSynthesized: Bool = false
 
   /// Initialize an instance of this type representing a test suite type.
   init(
