@@ -277,7 +277,8 @@ extension Event.HumanReadableOutputRecorder {
         if issue.isKnown {
           testData.knownIssueCount += 1
         } else {
-          testData.issueCount[issue.severity, default: 0] += 1
+          let issueCount = testData.issueCount[issue.severity] ?? 0
+          testData.issueCount[issue.severity] = issueCount + 1
         }
         context.testData[id] = testData
 
