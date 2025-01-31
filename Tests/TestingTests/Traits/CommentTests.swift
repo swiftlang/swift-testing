@@ -57,6 +57,15 @@ struct CommentTests {
   func explicitlyNilComment() {
     #expect(true as Bool, nil as Comment?)
   }
+
+  @Test("String interpolation")
+  func stringInterpolation() {
+    let value1: Int? = 123
+    let value2: Int? = nil
+    let value3: Any.Type = Int.self
+    let comment: Comment = "abc\(value1)def\(value2)ghi\(value3)"
+    #expect(comment.rawValue == "abc123defnilghiInt")
+  }
 }
 
 // MARK: - Fixtures

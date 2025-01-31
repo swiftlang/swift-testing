@@ -77,15 +77,50 @@ public struct Comment: RawRepresentable, Sendable {
   }
 }
 
-// MARK: - ExpressibleByStringLiteral, ExpressibleByStringInterpolation, CustomStringConvertible
+// MARK: - ExpressibleByStringLiteral, CustomStringConvertible
 
-extension Comment: ExpressibleByStringLiteral, ExpressibleByStringInterpolation, CustomStringConvertible {
+extension Comment: ExpressibleByStringLiteral, CustomStringConvertible {
   public init(stringLiteral: String) {
     self.init(rawValue: stringLiteral, kind: .stringLiteral)
   }
 
   public var description: String {
     rawValue
+  }
+}
+
+// MARK: - ExpressibleByStringInterpolation
+
+extension Comment: ExpressibleByStringInterpolation {
+  public init(stringInterpolation: StringInterpolation) {
+    self.init(rawValue: stringInterpolation.rawValue)
+  }
+
+  /// The string interpolation handler type for ``Comment``.
+  @_documentation(visibility: private)
+  public struct StringInterpolation: StringInterpolationProtocol, Sendable {
+    /// Storage for the string constructed by this instance.
+    ///
+    /// `DefaultStringInterpolation` in the Swift standard library also simply
+    /// accumulates its result in a string.
+    @usableFromInline var rawValue: String = ""
+
+    @inlinable public init(literalCapacity: Int, interpolationCount: Int) {}
+
+    @inlinable public mutating func appendLiteral(_ literal: String) {
+      rawValue += literal
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: some Any) {
+      rawValue += String(describingForTest: value)
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: (some Any)?) {
+      // This overload is provided so that the compiler does not emit warnings
+      // about optional values in string interpolations (which we are fine with
+      // when constructing Comment instances.)
+      rawValue += String(describingForTest: value)
+    }
   }
 }
 
