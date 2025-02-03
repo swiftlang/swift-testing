@@ -77,15 +77,54 @@ public struct Comment: RawRepresentable, Sendable {
   }
 }
 
-// MARK: - ExpressibleByStringLiteral, ExpressibleByStringInterpolation, CustomStringConvertible
+// MARK: - ExpressibleByStringLiteral, CustomStringConvertible
 
-extension Comment: ExpressibleByStringLiteral, ExpressibleByStringInterpolation, CustomStringConvertible {
+extension Comment: ExpressibleByStringLiteral, CustomStringConvertible {
   public init(stringLiteral: String) {
     self.init(rawValue: stringLiteral, kind: .stringLiteral)
   }
 
   public var description: String {
     rawValue
+  }
+}
+
+// MARK: - ExpressibleByStringInterpolation
+
+extension Comment: ExpressibleByStringInterpolation {
+  public init(stringInterpolation: StringInterpolation) {
+    self.init(rawValue: stringInterpolation.rawValue)
+  }
+
+  /// The string interpolation handler type for ``Comment``.
+  @_documentation(visibility: private)
+  public struct StringInterpolation: StringInterpolationProtocol, Sendable {
+    /// Storage for the string constructed by this instance.
+    ///
+    /// `DefaultStringInterpolation` in the Swift standard library also simply
+    /// accumulates its result in a string.
+    @usableFromInline var rawValue: String = ""
+
+    public init(literalCapacity: Int, interpolationCount: Int) {}
+
+    @inlinable public mutating func appendLiteral(_ literal: String) {
+      rawValue += literal
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: (some Any)?) {
+      rawValue += String(describingForTest: value)
+    }
+
+    @inlinable public mutating func appendInterpolation(_ value: (some StringProtocol)?) {
+      // Special-case strings to not include the quotation marks added by
+      // CustomTestStringConvertible (which in the context of interpolation
+      // probably violate the Principle of Least Surprise).
+      if let value {
+        rawValue += value
+      } else {
+        rawValue += String(describingForTest: value)
+      }
+    }
   }
 }
 
