@@ -47,6 +47,25 @@ struct SectionBounds: Sendable {
 #if SWT_TARGET_OS_APPLE
 // MARK: - Apple implementation
 
+extension SectionBounds.Kind {
+  /// The Mach-O segment and section name for this instance as a pair of
+  /// null-terminated UTF-8 C strings and pass them to a function.
+  ///
+  /// The values of this property within this function are instances of
+  /// `StaticString` rather than `String` because the latter's inner storage is
+  /// sometimes Objective-C-backed and touching it here can cause a recursive
+  /// access to an internal libobjc lock, whereas `StaticString`'s internal
+  /// storage is immediately available.
+  fileprivate var segmentAndSectionName: (segmentName: StaticString, sectionName: StaticString) {
+    switch self {
+    case .testContent:
+      ("__DATA_CONST", "__swift5_tests")
+    case .typeMetadata:
+      ("__TEXT", "__swift5_types")
+    }
+  }
+}
+
 /// An array containing all of the test content section bounds known to the
 /// testing library.
 private let _sectionBounds = Locked<[SectionBounds.Kind: [SectionBounds]]>()
@@ -77,9 +96,10 @@ private let _startCollectingSectionBounds: Void = {
 
     // If this image contains the Swift section(s) we need, acquire the lock and
     // store the section's bounds.
-    func findSectionBounds(forSectionNamed segmentName: String, _ sectionName: String, ofKind kind: SectionBounds.Kind) {
+    for kind in SectionBounds.Kind.allCases {
+      let (segmentName, sectionName) = kind.segmentAndSectionName
       var size = CUnsignedLong(0)
-      if let start = getsectiondata(mh, segmentName, sectionName, &size), size > 0 {
+      if let start = getsectiondata(mh, segmentName.utf8Start, sectionName.utf8Start, &size), size > 0 {
         let buffer = UnsafeRawBufferPointer(start: start, count: Int(clamping: size))
         let sb = SectionBounds(imageAddress: mh, buffer: buffer)
         _sectionBounds.withLock { sectionBounds in
@@ -87,8 +107,6 @@ private let _startCollectingSectionBounds: Void = {
         }
       }
     }
-    findSectionBounds(forSectionNamed: "__DATA_CONST", "__swift5_tests", ofKind: .testContent)
-    findSectionBounds(forSectionNamed: "__TEXT", "__swift5_types", ofKind: .typeMetadata)
   }
 
 #if _runtime(_ObjC)
@@ -97,7 +115,7 @@ private let _startCollectingSectionBounds: Void = {
   }
 #else
   _dyld_register_func_for_add_image { mh, _ in
-    addSectionBounds(from: mh)
+    addSectionBounds(from: mh!)
   }
 #endif
 }()
