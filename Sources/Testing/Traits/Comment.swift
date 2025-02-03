@@ -111,15 +111,19 @@ extension Comment: ExpressibleByStringInterpolation {
       rawValue += literal
     }
 
-    @inlinable public mutating func appendInterpolation(_ value: some Any) {
+    @inlinable public mutating func appendInterpolation(_ value: (some Any)?) {
       rawValue += String(describingForTest: value)
     }
 
-    @inlinable public mutating func appendInterpolation(_ value: (some Any)?) {
-      // This overload is provided so that the compiler does not emit warnings
-      // about optional values in string interpolations (which we are fine with
-      // when constructing Comment instances.)
-      rawValue += String(describingForTest: value)
+    @inlinable public mutating func appendInterpolation(_ value: (some StringProtocol)?) {
+      // Special-case strings to not include the quotation marks added by
+      // CustomTestStringConvertible (which in the context of interpolation
+      // probably violate the Principle of Least Surprise).
+      if let value {
+        rawValue += value
+      } else {
+        rawValue += String(describingForTest: value)
+      }
     }
   }
 }

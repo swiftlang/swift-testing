@@ -60,11 +60,27 @@ struct CommentTests {
 
   @Test("String interpolation")
   func stringInterpolation() {
-    let value1: Int? = 123
+    let value1: Int = 123
     let value2: Int? = nil
     let value3: Any.Type = Int.self
     let comment: Comment = "abc\(value1)def\(value2)ghi\(value3)"
     #expect(comment.rawValue == "abc123defnilghiInt")
+  }
+
+  @Test("String interpolation with a custom type")
+  func stringInterpolationWithCustomType() {
+    struct S: CustomStringConvertible, CustomTestStringConvertible {
+      var description: String {
+        "wrong!"
+      }
+
+      var testDescription: String {
+        "right!"
+      }
+    }
+
+    let comment: Comment = "abc\(S())def\(S() as S?)ghi\(S.self)jkl\("string")"
+    #expect(comment.rawValue == "abcright!defright!ghiSjklstring")
   }
 }
 
