@@ -105,7 +105,7 @@ extension Comment: ExpressibleByStringInterpolation {
     /// accumulates its result in a string.
     @usableFromInline var rawValue: String = ""
 
-    @inlinable public init(literalCapacity: Int, interpolationCount: Int) {}
+    public init(literalCapacity: Int, interpolationCount: Int) {}
 
     @inlinable public mutating func appendLiteral(_ literal: String) {
       rawValue += literal
