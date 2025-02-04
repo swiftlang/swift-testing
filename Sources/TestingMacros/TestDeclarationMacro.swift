@@ -452,8 +452,12 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     let accessorName = context.makeUniqueName(thunking: functionDecl, withPrefix: "accessor")
     let accessorDecl: DeclSyntax = """
     @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-    private \(staticKeyword(for: typeName)) let \(accessorName): Testing.__TestContentRecordAccessor = { outValue, _ in
-      let outValue = outValue.assumingMemoryBound(to: (@Sendable () async -> Testing.Test).self)
+    private \(staticKeyword(for: typeName)) let \(accessorName): Testing.__TestContentRecordAccessor = { outValue, type, _ in
+      typealias Generator = @Sendable () async -> Testing.Test
+      guard type.load(as: Any.Type.self) == Generator.self else {
+        return false
+      }
+      let outValue = outValue.assumingMemoryBound(to: Generator.self)
       outValue.initialize(to: \(generatorName))
       return true
     }

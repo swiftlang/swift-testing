@@ -143,8 +143,12 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
     let accessorName = context.makeUniqueName("accessor")
     let accessorDecl: DeclSyntax = """
     @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-    private static let \(accessorName): Testing.__TestContentRecordAccessor = { outValue, _ in
-      let outValue = outValue.assumingMemoryBound(to: (@Sendable () async -> Testing.Test).self)
+    private static let \(accessorName): Testing.__TestContentRecordAccessor = { outValue, type, _ in
+      typealias Generator = @Sendable () async -> Testing.Test
+      guard type.load(as: Any.Type.self) == Generator.self else {
+        return false
+      }
+      let outValue = outValue.assumingMemoryBound(to: Generator.self)
       outValue.initialize(to: \(generatorName))
       return true
     }

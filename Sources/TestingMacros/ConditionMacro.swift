@@ -447,7 +447,10 @@ extension ExitTestConditionMacro {
       #if hasFeature(SymbolLinkageMarkers)
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
       enum \(enumName) {
-        private static let accessor: Testing.__TestContentRecordAccessor = { outValue, hint in
+        private static let accessor: Testing.__TestContentRecordAccessor = { outValue, type, hint in
+          guard type.load(as: (any ~Swift.Copyable.Type).self) == Testing.__ExitTest.self else {
+            return false
+          }
           let id = \(exitTestIDExpr)
           if let hintedID = hint?.load(as: Testing.__ExitTest.ID.self), hintedID != id {
             return false

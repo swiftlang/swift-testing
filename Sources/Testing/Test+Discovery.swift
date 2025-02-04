@@ -28,8 +28,15 @@ extension Test {
       0x74657374
     }
 
+    static var testContentAccessorTypeArgument: any ~Copyable.Type {
+      Generator.self
+    }
+
+    /// The type of the actual (asynchronous) generator function.
+    typealias Generator = @Sendable () async -> Test
+
     /// The actual (asynchronous) accessor function.
-    case generator(@Sendable () async -> Test)
+    case generator(Generator)
   }
 
   /// All available ``Test`` instances in the process, according to the runtime.

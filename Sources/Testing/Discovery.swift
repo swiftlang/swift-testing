@@ -15,6 +15,8 @@ private import _TestingInternals
 /// - Parameters:
 ///   - outValue: A pointer to uninitialized memory large enough to contain the
 ///     corresponding test content record's value.
+///   - type: A pointer to the expected type of `outValue`. Use `load(as:)` to
+///     get the Swift type, not `unsafeBitCast(_:to:)`.
 ///   - hint: An optional pointer to a hint value.
 ///
 /// - Returns: Whether or not `outValue` was initialized. The caller is
@@ -24,6 +26,7 @@ private import _TestingInternals
 ///   directly.
 public typealias __TestContentRecordAccessor = @convention(c) (
   _ outValue: UnsafeMutableRawPointer,
+  _ type: UnsafeRawPointer,
   _ hint: UnsafeRawPointer?
 ) -> CBool
 
@@ -45,6 +48,17 @@ public typealias __TestContentRecord = (
   context: UInt,
   reserved2: UInt
 )
+
+/// Compare two move-only types.
+///
+/// This operator is provided because the Swift standard library does not yet
+/// provide a `==` operator for move-only types. ([134276458](rdar://134276458))
+///
+/// - Warning: This operator is used to implement the `#expect(exitsWith:)`
+///   macro. Do not use it directly. It will be removed in a future update.
+public func ==(__lhs: (some ~Copyable).Type, rhs: (some ~Copyable).Type) -> Bool {
+  TypeInfo(describing: __lhs) == TypeInfo(describing: rhs)
+}
 
 // MARK: -
 
@@ -71,6 +85,20 @@ protocol TestContent: ~Copyable {
   /// By default, this type equals `Never`, indicating that this type of test
   /// content does not support hinting during discovery.
   associatedtype TestContentAccessorHint: Sendable = Never
+
+  /// The type to pass (by address) as the accessor function's `type` argument.
+  ///
+  /// The default value of this property is `Self.self`. A conforming type can
+  /// override the default implementation to substitute another type (e.g. if
+  /// the conforming type is not public but records are created during macro
+  /// expansion and can only reference public types.)
+  static var testContentAccessorTypeArgument: any ~Copyable.Type { get }
+}
+
+extension TestContent where Self: ~Copyable {
+  static var testContentAccessorTypeArgument: any ~Copyable.Type {
+    self
+  }
 }
 
 // MARK: - Individual test content records
@@ -125,18 +153,20 @@ struct TestContentRecord<T>: Sendable where T: TestContent & ~Copyable {
       return nil
     }
 
-    return withUnsafeTemporaryAllocation(of: T.self, capacity: 1) { buffer in
-      let initialized = if let hint {
-        withUnsafePointer(to: hint) { hint in
-          accessor(buffer.baseAddress!, hint)
+    return withUnsafePointer(to: T.testContentAccessorTypeArgument) { type in
+      withUnsafeTemporaryAllocation(of: T.self, capacity: 1) { buffer in
+        let initialized = if let hint {
+          withUnsafePointer(to: hint) { hint in
+            accessor(buffer.baseAddress!, type, hint)
+          }
+        } else {
+          accessor(buffer.baseAddress!, type, nil)
         }
-      } else {
-        accessor(buffer.baseAddress!, nil)
+        guard initialized else {
+          return nil
+        }
+        return buffer.baseAddress!.move()
       }
-      guard initialized else {
-        return nil
-      }
-      return buffer.baseAddress!.move()
     }
   }
 }
