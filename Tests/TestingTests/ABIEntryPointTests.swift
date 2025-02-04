@@ -127,6 +127,50 @@ struct ABIEntryPointTests {
     }
   }
 
+  @Test("v0 entry point with WarningIssues feature enabled exits with success if all issues have severity < .error")
+  func v0_warningIssues() async throws {
+    var arguments = __CommandLineArguments_v0()
+    arguments.filter = ["_recordWarningIssue"]
+    arguments.eventStreamVersion = 0
+    arguments.verbosity = .min
+
+    let result = try await confirmation("Test matched", expectedCount: 1) { testMatched in
+      try await _invokeEntryPointV0(passing: arguments) { recordJSON in
+        let record = try! JSON.decode(ABIv0.Record.self, from: recordJSON)
+        if case let .event(event) = record.kind {
+          if case .testStarted = event.kind {
+            testMatched()
+          } else if case .issueRecorded = event.kind, let issue = event.issue {
+            Issue.record("Unexpected issue \(issue) was recorded to the event handler of a v0 entry point.")
+          }
+        }
+      }
+    }
+    #expect(result)
+  }
+
+  @Test("v0 entry point with WarningIssues feature enabled propagates warning issues and exits with success if all issues have severity < .error")
+  func v0_warningIssuesEnabled() async throws {
+    var arguments = __CommandLineArguments_v0()
+    arguments.filter = ["_recordWarningIssue"]
+    arguments.eventStreamVersion = 0
+    arguments.experimentalFeatures = ["WarningIssues"]
+    arguments.verbosity = .min
+
+    let result = try await confirmation("Warning issue recorded", expectedCount: 1) { issueRecorded in
+      try await _invokeEntryPointV0(passing: arguments) { recordJSON in
+        let record = try! JSON.decode(ABIv0.Record.self, from: recordJSON)
+        if case let .event(event) = record.kind {
+          if case .issueRecorded = event.kind, let issue = event.issue {
+            #expect(issue._severity == .warning)
+            issueRecorded()
+          }
+        }
+      }
+    }
+    #expect(result)
+  }
+
   private func _invokeEntryPointV0(
     passing arguments: __CommandLineArguments_v0,
     recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void = { _ in }
@@ -202,3 +246,10 @@ private func _withTestingLibraryImageAddress<R>(_ body: (ImageAddress?) throws -
 }
 #endif
 #endif
+
+// MARK: - Fixtures
+
+@Test private func _recordWarningIssue() {
+  // Intentionally _only_ record issues with warning (or lower) severity.
+  Issue(kind: .unconditional, severity: .warning, comments: [], sourceContext: .init()).record()
+}

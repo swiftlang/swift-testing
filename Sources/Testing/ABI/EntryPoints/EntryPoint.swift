@@ -278,6 +278,13 @@ public struct __CommandLineArguments_v0: Sendable {
 
   /// The value of the `--experimental-attachments-path` argument.
   public var experimentalAttachmentsPath: String?
+
+  /// The value(s) of the `--enable-experimental-feature` argument(s),
+  /// indicating the name(s) of experimental features to enable.
+  ///
+  /// The value of this property is not yet populated by parsing command-line
+  /// arguments, but may be in the future.
+  public var experimentalFeatures: [String]?
 }
 
 extension __CommandLineArguments_v0: Codable {
@@ -299,6 +306,7 @@ extension __CommandLineArguments_v0: Codable {
     case repetitions
     case repeatUntil
     case experimentalAttachmentsPath
+    case experimentalFeatures
   }
 }
 
@@ -547,13 +555,19 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
 #endif
 
-  switch args.eventStreamVersion {
-  case .some(...0):
-    // If the event stream version was specified explicitly to a value < 1,
-    // disable delivery of warning issue events to maintain legacy behavior.
-    configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled = false
-  default:
-    break
+  configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled = if (args.experimentalFeatures ?? []).contains("WarningIssues") {
+    true
+  } else {
+    switch args.eventStreamVersion {
+    case .some(...0):
+      // If the event stream version was explicitly specified to a value < 1,
+      // disable the warning issue event to maintain legacy behavior.
+      false
+    default:
+      // Otherwise the requested event stream version is ≥ 1, so don't change
+      // the warning issue event setting.
+      configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled
+    }
   }
 
   return configuration
