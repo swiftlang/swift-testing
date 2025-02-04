@@ -59,7 +59,7 @@ struct EventRecorderTests {
     }
 
     var configuration = Configuration()
-    configuration.deliverExpectationCheckedEvents = true
+    configuration.eventHandlingOptions.isExpectationCheckedEventEnabled = true
     let eventRecorder = Event.ConsoleOutputRecorder(options: options, writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
@@ -98,7 +98,7 @@ struct EventRecorderTests {
     let stream = Stream()
 
     var configuration = Configuration()
-    configuration.deliverExpectationCheckedEvents = true
+    configuration.eventHandlingOptions.isExpectationCheckedEventEnabled = true
     let eventRecorder = Event.ConsoleOutputRecorder(writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
@@ -123,7 +123,7 @@ struct EventRecorderTests {
     let stream = Stream()
 
     var configuration = Configuration()
-    configuration.deliverExpectationCheckedEvents = true
+    configuration.eventHandlingOptions.isExpectationCheckedEventEnabled = true
     let eventRecorder = Event.ConsoleOutputRecorder(writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
@@ -308,7 +308,7 @@ struct EventRecorderTests {
     let stream = Stream()
 
     var configuration = Configuration()
-    configuration.deliverExpectationCheckedEvents = true
+    configuration.eventHandlingOptions.isExpectationCheckedEventEnabled = true
     let eventRecorder = Event.JUnitXMLRecorder(writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)

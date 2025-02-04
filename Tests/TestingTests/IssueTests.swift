@@ -301,7 +301,7 @@ final class IssueTests: XCTestCase {
     let expectationChecked = expectation(description: "expectation checked")
 
     var configuration = Configuration()
-    configuration.deliverExpectationCheckedEvents = true
+    configuration.eventHandlingOptions.isExpectationCheckedEventEnabled = true
     configuration.eventHandler = { event, _ in
       guard case let .expectationChecked(expectation) = event.kind else {
         return
