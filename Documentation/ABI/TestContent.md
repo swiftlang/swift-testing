@@ -41,10 +41,16 @@ Regardless of platform, all test content records created and discoverable by the
 testing library have the following layout:
 
 ```swift
+typealias Accessor = @convention(c) (
+  _ outValue: UnsafeMutableRawPointer,
+  _ type: UnsafeRawPointer,
+  _ hint: UnsafeRawPointer?
+) -> CBool
+
 typealias TestContentRecord = (
   kind: UInt32,
   reserved1: UInt32,
-  accessor: (@convention(c) (_ outValue: UnsafeMutableRawPointer, _ hint: UnsafeRawPointer?) -> CBool)?,
+  accessor: Accessor?,
   context: UInt,
   reserved2: UInt
 )
@@ -54,10 +60,16 @@ This type has natural size, stride, and alignment. Its fields are native-endian.
 If needed, this type can be represented in C as a structure:
 
 ```c
+typedef bool (* SWTAccessor)(
+  void *outValue,
+  const void *type,
+  const void *_Nullable hint
+);
+
 struct SWTTestContentRecord {
   uint32_t kind;
   uint32_t reserved1;
-  bool (* _Nullable accessor)(void *outValue, const void *_Null_unspecified hint);
+  SWTAccessor _Nullable accessor;
   uintptr_t context;
   uintptr_t reserved2;
 };
@@ -105,42 +117,59 @@ If `accessor` is `nil`, the test content record is ignored. The testing library
 may, in the future, define record kinds that do not provide an accessor function
 (that is, they represent pure compile-time information only.)
 
-The second argument to this function, `hint`, is an optional input that can be
+The second argument to this function, `type`, is a pointer to the type[^mightNotBeSwift]
+(not a bitcast Swift type) of the value expected to be written to `outValue`.
+This argument helps to prevent memory corruption if two copies of Swift Testing
+or a third-party library are inadvertently loaded into the same process. If the
+value at `type` does not match the test content record's expected type, the
+accessor function must return `false` and must not modify `outValue`.
+
+<!-- TODO: discuss this argument's value in Embedded Swift (no metatypes) -->
+
+[^mightNotBeSwift]: Although this document primarily deals with Swift, the test
+  content record section is generally language-agnostic. The use of languages
+  other than Swift is beyond the scope of this document. With that in mind, it
+  is _technically_ feasible for a test content accessor to be written in (for
+  example) C++, expect the `type` argument to point to a C++ value of type
+  `std::type_info`, and write a C++ class instance to `outValue`.
+
+The third argument to this function, `hint`, is an optional input that can be
 passed to help the accessor function determine if its corresponding test content
 record matches what the caller is looking for. If the caller passes `nil` as the
 `hint` argument, the accessor behaves as if it matched (that is, no additional
 filtering is performed.)
 
-The concrete Swift type of the value written to `outValue` and the value pointed
-to by `hint` depend on the kind of record:
+The concrete Swift type of the value written to `outValue`, the type pointed to
+by `type`, and the value pointed to by `hint` depend on the kind of record:
 
 - For test or suite declarations (kind `0x74657374`), the accessor produces an
-  asynchronous Swift function that returns an instance of `Test`:
+  asynchronous Swift function[^notAccessorSignature] that returns an instance of
+  `Testing.Test`:
 
   ```swift
   @Sendable () async -> Test
   ```
 
-  This signature is not the signature of `accessor`, but of the Swift function
-  reference it writes to `outValue`. This level of indirection is necessary
-  because loading a test or suite declaration is an asynchronous operation, but
-  C functions cannot be `async`.
+  [^notAccessorSignature]: This signature is not the signature of `accessor`,
+    but of the Swift function reference it writes to `outValue`. This level of
+    indirection is necessary because loading a test or suite declaration is an
+    asynchronous operation, but C functions cannot be `async`.
 
   Test content records of this kind do not specify a type for `hint`. Always
   pass `nil`.
 
 - For exit test declarations (kind `0x65786974`), the accessor produces a
-  structure describing the exit test (of type `__ExitTest`.)
+  structure describing the exit test (of type `Testing.__ExitTest`.)
 
-  Test content records of this kind accept a `hint` of type `__ExitTest.ID`.
+  Test content records of this kind accept a `hint` of type `Testing.__ExitTest.ID`.
   They only produce a result if they represent an exit test declared with the
   same ID (or if `hint` is `nil`.)
 
 > [!WARNING]
 > Calling code should use [`withUnsafeTemporaryAllocation(of:capacity:_:)`](https://developer.apple.com/documentation/swift/withunsafetemporaryallocation(of:capacity:_:))
-> and [`withUnsafePointer(to:_:)`](https://developer.apple.com/documentation/swift/withunsafepointer(to:_:)-35wrn),
-> respectively, to ensure the pointers passed to `accessor` are large enough and
-> are well-aligned. If they are not large enough to contain values of the
+> and/or [`withUnsafePointer(to:_:)`](https://developer.apple.com/documentation/swift/withunsafepointer(to:_:)-35wrn)
+> to ensure the pointers passed to `accessor` are large enough and are
+> well-aligned. If they are not large enough to contain values of the
 > appropriate types (per above), or if `hint` points to uninitialized or
 > incorrectly-typed memory, the result is undefined.
 

@@ -615,7 +615,10 @@ struct MiscellaneousTests {
     private static let record: __TestContentRecord = (
       0xABCD1234,
       0,
-      { outValue, hint in
+      { outValue, type, hint in
+        guard type.load(as: Any.Type.self) == DiscoverableTestContent.self else {
+          return false
+        }
         if let hint, hint.load(as: TestContentAccessorHint.self) != expectedHint {
           return false
         }
