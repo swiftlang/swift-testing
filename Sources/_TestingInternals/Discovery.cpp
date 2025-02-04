@@ -10,6 +10,7 @@
 
 #include "Discovery.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <type_traits>
@@ -35,13 +36,16 @@ static const char typeMetadataSectionBegin = 0;
 static const char& typeMetadataSectionEnd = typeMetadataSectionBegin;
 #endif
 
-const void *_Nonnull const SWTTestContentSectionBounds[2] = {
-  &testContentSectionBegin, &testContentSectionEnd
+static constexpr const char *const staticallyLinkedSectionBounds[][2] = {
+  { &testContentSectionBegin, &testContentSectionEnd },
+  { &typeMetadataSectionBegin, &typeMetadataSectionEnd },
 };
 
-const void *_Nonnull const SWTTypeMetadataSectionBounds[2] = {
-  &typeMetadataSectionBegin, &typeMetadataSectionEnd
-};
+void swt_getStaticallyLinkedSectionBounds(size_t kind, const void **outSectionBegin, size_t *outByteCount) {
+  auto [sectionBegin, sectionEnd] = staticallyLinkedSectionBounds[kind];
+  *outSectionBegin = sectionBegin;
+  *outByteCount = std::distance(sectionBegin, sectionEnd);
+}
 #endif
 
 #pragma mark - Swift ABI
