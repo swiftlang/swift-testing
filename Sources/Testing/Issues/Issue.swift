@@ -190,23 +190,25 @@ extension Issue.Severity: Comparable {}
 
 extension Issue: CustomStringConvertible, CustomDebugStringConvertible {
   public var description: String {
-    if comments.isEmpty {
-      return String(describing: kind)
+    let joinedComments = if comments.isEmpty {
+      ""
+    } else {
+      ": " + comments.lazy
+        .map(\.rawValue)
+        .joined(separator: "\n")
     }
-    let joinedComments = comments.lazy
-      .map(\.rawValue)
-      .joined(separator: "\n")
-    return "\(severity): \(kind): \(joinedComments)"
+    return "\(kind) (\(severity))\(joinedComments)"
   }
 
   public var debugDescription: String {
-    if comments.isEmpty {
-      return "\(kind)\(sourceLocation.map { " at \($0)" } ?? "")"
+    let joinedComments = if comments.isEmpty {
+      ""
+    } else {
+      ": " + comments.lazy
+        .map(\.rawValue)
+        .joined(separator: "\n")
     }
-    let joinedComments: String = comments.lazy
-      .map(\.rawValue)
-      .joined(separator: "\n")
-    return "\(severity): \(kind)\(sourceLocation.map { " at \($0)" } ?? ""): \(joinedComments)"
+    return "\(kind)\(sourceLocation.map { " at \($0)" } ?? "") (\(severity))\(joinedComments)"
   }
 }
 
@@ -528,23 +530,25 @@ extension Issue.Kind {
 
 extension Issue.Snapshot: CustomStringConvertible, CustomDebugStringConvertible {
   public var description: String {
-    if comments.isEmpty {
-      return String(describing: kind)
+    let joinedComments = if comments.isEmpty {
+      ""
+    } else {
+      ": " + comments.lazy
+        .map(\.rawValue)
+        .joined(separator: "\n")
     }
-    let joinedComments = comments.lazy
-      .map(\.rawValue)
-      .joined(separator: "\n")
-    return "\(severity): \(kind): \(joinedComments)"
+    return "\(kind) (\(severity))\(joinedComments)"
   }
 
   public var debugDescription: String {
-    if comments.isEmpty {
-      return "\(kind)\(sourceLocation.map { " at \($0)" } ?? "")"
+    let joinedComments = if comments.isEmpty {
+      ""
+    } else {
+      ": " + comments.lazy
+        .map(\.rawValue)
+        .joined(separator: "\n")
     }
-    let joinedComments: String = comments.lazy
-      .map(\.rawValue)
-      .joined(separator: "\n")
-    return "\(severity): \(kind)\(sourceLocation.map { " at \($0)" } ?? ""): \(joinedComments)"
+    return "\(kind)\(sourceLocation.map { " at \($0)" } ?? "") (\(severity))\(joinedComments)"
   }
 }
 

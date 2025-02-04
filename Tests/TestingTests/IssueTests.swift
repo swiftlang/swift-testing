@@ -1124,12 +1124,12 @@ final class IssueTests: XCTestCase {
     do {
       let sourceLocation = SourceLocation.init(fileID: "FakeModule/FakeFile.swift", filePath: "", line: 9999, column: 1)
       let issue = Issue(kind: .system, comments: ["Some issue"], sourceContext: SourceContext(sourceLocation: sourceLocation))
-      XCTAssertEqual(issue.description, "error: A system failure occurred: Some issue")
-      XCTAssertEqual(issue.debugDescription, "error: A system failure occurred at FakeFile.swift:9999:1: Some issue")
+      XCTAssertEqual(issue.description, "A system failure occurred (error): Some issue")
+      XCTAssertEqual(issue.debugDescription, "A system failure occurred at FakeFile.swift:9999:1 (error): Some issue")
     }
     do {
       let issue = Issue(kind: .system, comments: ["Some issue"], sourceContext: SourceContext(sourceLocation: nil))
-      XCTAssertEqual(issue.debugDescription, "error: A system failure occurred: Some issue")
+      XCTAssertEqual(issue.debugDescription, "A system failure occurred (error): Some issue")
     }
   }
 
