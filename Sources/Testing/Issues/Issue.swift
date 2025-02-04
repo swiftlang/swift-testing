@@ -102,10 +102,8 @@ public struct Issue: Sendable {
   }
 
   /// The severity of this issue.
-  ///
-  /// The default value of this property is ``Severity-swift.enum/error``.
   @_spi(Experimental)
-  public var severity: Severity = .error
+  public var severity: Severity
 
   /// Any comments provided by the developer and associated with this issue.
   ///
@@ -138,6 +136,7 @@ public struct Issue: Sendable {
     sourceContext: SourceContext
   ) {
     self.kind = kind
+    self.severity = severity
     self.comments = comments
     self.sourceContext = sourceContext
   }
