@@ -174,7 +174,7 @@ struct ABIEntryPointTests {
     arguments.filter = ["_recordWarningIssue"]
     arguments.includeHiddenTests = true
     arguments.eventStreamVersion = 0
-    arguments.experimentalFeatures = ["WarningIssues"]
+    arguments.enableFeatures(.warningIssues)
     arguments.verbosity = .min
 
     let result = try await confirmation("Warning issue recorded", expectedCount: 1) { issueRecorded in

@@ -50,6 +50,7 @@ add_library(Testing
   Parameterization/Test.Case.swift
   Parameterization/TypeInfo.swift
   Running/Configuration.swift
+  Running/Configuration.Feature.swift
   Running/Configuration.TestFilter.swift
   Running/Configuration+EventHandling.swift
   Running/Runner.Plan.swift

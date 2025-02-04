@@ -386,3 +386,15 @@ extension SourceContext {
     self.init(backtrace: .current(), sourceLocation: sourceLocation)
   }
 }
+
+extension __CommandLineArguments_v0 {
+  /// Enable the specified feature(s) in this command line arguments instance.
+  ///
+  /// - Parameters:
+  ///   - features: The feature(s) to enable.
+  mutating func enableFeatures(_ features: Configuration.Feature...) {
+    var experimentalFeatures = self.experimentalFeatures ?? []
+    experimentalFeatures.append(contentsOf: features.map(\.id))
+    self.experimentalFeatures = experimentalFeatures
+  }
+}

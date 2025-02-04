@@ -454,7 +454,9 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 /// - Throws: If an argument is invalid, such as a malformed regular expression.
 @_spi(ForToolsIntegrationOnly)
 public func configurationForEntryPoint(from args: __CommandLineArguments_v0) throws -> Configuration {
-  var configuration = Configuration()
+  // Pass the event stream version when initializing a configuration so it can
+  // be used to gate feature enablement.
+  var configuration = Configuration(version: args.eventStreamVersion)
 
   // Parallelization (on by default)
   configuration.isParallelizationEnabled = args.parallel ?? true
@@ -566,19 +568,19 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
 #endif
 
-  configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled = if (args.experimentalFeatures ?? []).contains("WarningIssues") {
-    true
-  } else {
-    switch args.eventStreamVersion {
-    case .some(...0):
-      // If the event stream version was explicitly specified to a value < 1,
-      // disable the warning issue event to maintain legacy behavior.
-      false
-    default:
-      // Otherwise the requested event stream version is ≥ 1, so don't change
-      // the warning issue event setting.
-      configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled
+  // Apply explicitly-enabled experimental features.
+  if let experimentalFeatures = args.experimentalFeatures {
+    // Validate the requested feature IDs and report an error if any are
+    // unrecognized.
+    let features = try experimentalFeatures.map { featureID in
+      guard let feature = Configuration.Feature.allCases.first(where: { $0.id == featureID }) else {
+        throw _EntryPointError.invalidArgument("--enable-experimental-feature", value: featureID)
+      }
+      return feature
     }
+
+    // Enable the requested features.
+    configuration.enableFeatures(features)
   }
 
   return configuration
