@@ -270,6 +270,13 @@ public struct __CommandLineArguments_v0: Sendable {
   /// The value(s) of the `--skip` argument.
   public var skip: [String]?
 
+  /// Whether or not to include tests with the `.hidden` trait when constructing
+  /// a test filter based on these arguments.
+  ///
+  /// This property is intended for use in testing the testing library itself.
+  /// It is not parsed as a command-line argument.
+  public var includeHiddenTests: Bool?
+
   /// The value of the `--repetitions` argument.
   public var repetitions: Int?
 
@@ -303,6 +310,7 @@ extension __CommandLineArguments_v0: Codable {
     case eventStreamVersion
     case filter
     case skip
+    case includeHiddenTests
     case repetitions
     case repeatUntil
     case experimentalAttachmentsPath
@@ -525,6 +533,9 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   filters.append(try testFilter(forRegularExpressions: args.skip, label: "--skip", membership: .excluding))
 
   configuration.testFilter = filters.reduce(.unfiltered) { $0.combining(with: $1) }
+  if args.includeHiddenTests == true {
+    configuration.testFilter.includeHiddenTests = true
+  }
 
   // Set up the iteration policy for the test run.
   var repetitionPolicy: Configuration.RepetitionPolicy = .once

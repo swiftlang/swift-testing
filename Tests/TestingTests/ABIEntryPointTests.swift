@@ -127,10 +127,29 @@ struct ABIEntryPointTests {
     }
   }
 
+  @Test("v0 entry point filter with filtering of hidden tests enabled")
+  func v0_hiddenTests() async throws {
+    var arguments = __CommandLineArguments_v0()
+    arguments.filter = ["_someHiddenTest"]
+    arguments.includeHiddenTests = true
+    arguments.eventStreamVersion = 0
+    arguments.verbosity = .min
+
+    try await confirmation("Test event started", expectedCount: 1) { testMatched in
+      _ = try await _invokeEntryPointV0(passing: arguments) { recordJSON in
+        let record = try! JSON.decode(ABIv0.Record.self, from: recordJSON)
+        if case let .event(event) = record.kind, case .testStarted = event.kind {
+          testMatched()
+        }
+      }
+    }
+  }
+
   @Test("v0 entry point with WarningIssues feature enabled exits with success if all issues have severity < .error")
   func v0_warningIssues() async throws {
     var arguments = __CommandLineArguments_v0()
     arguments.filter = ["_recordWarningIssue"]
+    arguments.includeHiddenTests = true
     arguments.eventStreamVersion = 0
     arguments.verbosity = .min
 
@@ -153,6 +172,7 @@ struct ABIEntryPointTests {
   func v0_warningIssuesEnabled() async throws {
     var arguments = __CommandLineArguments_v0()
     arguments.filter = ["_recordWarningIssue"]
+    arguments.includeHiddenTests = true
     arguments.eventStreamVersion = 0
     arguments.experimentalFeatures = ["WarningIssues"]
     arguments.verbosity = .min
@@ -249,7 +269,9 @@ private func _withTestingLibraryImageAddress<R>(_ body: (ImageAddress?) throws -
 
 // MARK: - Fixtures
 
-@Test private func _recordWarningIssue() {
+@Test(.hidden) private func _someHiddenTest() {}
+
+@Test(.hidden) private func _recordWarningIssue() {
   // Intentionally _only_ record issues with warning (or lower) severity.
   Issue(kind: .unconditional, severity: .warning, comments: [], sourceContext: .init()).record()
 }
