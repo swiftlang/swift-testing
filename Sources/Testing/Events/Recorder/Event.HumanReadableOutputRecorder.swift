@@ -459,7 +459,7 @@ extension Event.HumanReadableOutputRecorder {
       let primaryMessage: Message = if parameterCount == 0 {
         Message(
           symbol: symbol,
-          stringValue: "\(_capitalizedTitle(for: test)) \(testName) recorded \(subject) \(atSourceLocation): \(issue.kind)",
+          stringValue: "\(_capitalizedTitle(for: test)) \(testName) recorded \(subject)\(atSourceLocation): \(issue.kind)",
           conciseStringValue: String(describing: issue.kind)
         )
       } else {
