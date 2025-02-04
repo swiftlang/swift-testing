@@ -616,7 +616,7 @@ struct MiscellaneousTests {
       0xABCD1234,
       0,
       { outValue, type, hint in
-        guard __type(at: type, is: DiscoverableTestContent.self) else {
+        guard type.load(as: Any.Type.self) == DiscoverableTestContent.self else {
           return false
         }
         if let hint, hint.load(as: TestContentAccessorHint.self) != expectedHint {

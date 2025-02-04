@@ -49,22 +49,6 @@ public typealias __TestContentRecord = (
   reserved2: UInt
 )
 
-/// Check that two Swift types are equivalent.
-///
-/// - Parameters:
-///   - lhsAddress: A pointer to (not a bitcast) a Swift type.
-///   - rhs: Another Swift type.
-///
-/// - Returns: Whether or not the type at `lhsAddress` and `rhs` are equivalent.
-///
-/// - Warning: This function is used to implement the `@Test` macro. Do not use
-///   it directly.
-public func __type(at lhsAddress: UnsafeRawPointer, is rhs: (some ~Copyable).Type) -> Bool {
-  let lhs = TypeInfo(describing: lhsAddress.load(as: (any ~Copyable.Type).self))
-  let rhs = TypeInfo(describing: rhs)
-  return lhs == rhs
-}
-
 // MARK: -
 
 /// A protocol describing a type that can be stored as test content at compile
