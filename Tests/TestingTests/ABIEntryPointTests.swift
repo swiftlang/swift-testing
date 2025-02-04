@@ -54,7 +54,7 @@ struct ABIEntryPointTests {
   ) async throws -> CInt {
 #if !SWT_NO_DYNAMIC_LINKING
     // Get the ABI entry point by dynamically looking it up at runtime.
-    let copyABIEntryPoint_v0 = try withTestingLibraryImageAddress { testingLibrary in
+    let copyABIEntryPoint_v0 = try _withTestingLibraryImageAddress { testingLibrary in
       try #require(
         symbol(in: testingLibrary, named: "swt_copyABIEntryPoint_v0").map {
           unsafeBitCast($0, to: (@convention(c) () -> UnsafeMutableRawPointer).self)
@@ -137,7 +137,7 @@ struct ABIEntryPointTests {
     // NOTE: The standard Linux linker does not allow exporting symbols from
     // executables, so dlsym() does not let us find this function on that
     // platform when built as an executable rather than a dynamic library.
-    let abiv0_getEntryPoint = try withTestingLibraryImageAddress { testingLibrary in
+    let abiv0_getEntryPoint = try _withTestingLibraryImageAddress { testingLibrary in
       try #require(
         symbol(in: testingLibrary, named: "swt_abiv0_getEntryPoint").map {
           unsafeBitCast($0, to: (@convention(c) () -> UnsafeRawPointer).self)
@@ -171,7 +171,7 @@ struct ABIEntryPointTests {
 }
 
 #if !SWT_NO_DYNAMIC_LINKING
-private func withTestingLibraryImageAddress<R>(_ body: (ImageAddress?) throws -> R) throws -> R {
+private func _withTestingLibraryImageAddress<R>(_ body: (ImageAddress?) throws -> R) throws -> R {
   let addressInTestingLibrary = unsafeBitCast(ABIv0.entryPoint, to: UnsafeRawPointer.self)
 
   var testingLibraryAddress: ImageAddress?
