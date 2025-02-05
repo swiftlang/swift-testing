@@ -54,7 +54,7 @@ struct ABIEntryPointTests {
   ) async throws -> CInt {
 #if !SWT_NO_DYNAMIC_LINKING
     // Get the ABI entry point by dynamically looking it up at runtime.
-    let copyABIEntryPoint_v0 = try _withTestingLibraryImageAddress { testingLibrary in
+    let copyABIEntryPoint_v0 = try withTestingLibraryImageAddress { testingLibrary in
       try #require(
         symbol(in: testingLibrary, named: "swt_copyABIEntryPoint_v0").map {
           unsafeBitCast($0, to: (@convention(c) () -> UnsafeMutableRawPointer).self)
@@ -127,70 +127,6 @@ struct ABIEntryPointTests {
     }
   }
 
-  @Test("v0 entry point filter with filtering of hidden tests enabled")
-  func v0_hiddenTests() async throws {
-    var arguments = __CommandLineArguments_v0()
-    arguments.filter = ["_someHiddenTest"]
-    arguments.includeHiddenTests = true
-    arguments.eventStreamVersion = 0
-    arguments.verbosity = .min
-
-    try await confirmation("Test event started", expectedCount: 1) { testMatched in
-      _ = try await _invokeEntryPointV0(passing: arguments) { recordJSON in
-        let record = try! JSON.decode(ABIv0.Record.self, from: recordJSON)
-        if case let .event(event) = record.kind, case .testStarted = event.kind {
-          testMatched()
-        }
-      }
-    }
-  }
-
-  @Test("v0 entry point with WarningIssues feature enabled exits with success if all issues have severity < .error")
-  func v0_warningIssues() async throws {
-    var arguments = __CommandLineArguments_v0()
-    arguments.filter = ["_recordWarningIssue"]
-    arguments.includeHiddenTests = true
-    arguments.eventStreamVersion = 0
-    arguments.verbosity = .min
-
-    let result = try await confirmation("Test matched", expectedCount: 1) { testMatched in
-      try await _invokeEntryPointV0(passing: arguments) { recordJSON in
-        let record = try! JSON.decode(ABIv0.Record.self, from: recordJSON)
-        if case let .event(event) = record.kind {
-          if case .testStarted = event.kind {
-            testMatched()
-          } else if case .issueRecorded = event.kind, let issue = event.issue {
-            Issue.record("Unexpected issue \(issue) was recorded to the event handler of a v0 entry point.")
-          }
-        }
-      }
-    }
-    #expect(result)
-  }
-
-  @Test("v0 entry point with WarningIssues feature enabled propagates warning issues and exits with success if all issues have severity < .error")
-  func v0_warningIssuesEnabled() async throws {
-    var arguments = __CommandLineArguments_v0()
-    arguments.filter = ["_recordWarningIssue"]
-    arguments.includeHiddenTests = true
-    arguments.eventStreamVersion = 0
-    arguments.isWarningIssueRecordedEventEnabled = true
-    arguments.verbosity = .min
-
-    let result = try await confirmation("Warning issue recorded", expectedCount: 1) { issueRecorded in
-      try await _invokeEntryPointV0(passing: arguments) { recordJSON in
-        let record = try! JSON.decode(ABIv0.Record.self, from: recordJSON)
-        if case let .event(event) = record.kind {
-          if case .issueRecorded = event.kind, let issue = event.issue {
-            #expect(issue._severity == .warning)
-            issueRecorded()
-          }
-        }
-      }
-    }
-    #expect(result)
-  }
-
   private func _invokeEntryPointV0(
     passing arguments: __CommandLineArguments_v0,
     recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void = { _ in }
@@ -201,7 +137,7 @@ struct ABIEntryPointTests {
     // NOTE: The standard Linux linker does not allow exporting symbols from
     // executables, so dlsym() does not let us find this function on that
     // platform when built as an executable rather than a dynamic library.
-    let abiv0_getEntryPoint = try _withTestingLibraryImageAddress { testingLibrary in
+    let abiv0_getEntryPoint = try withTestingLibraryImageAddress { testingLibrary in
       try #require(
         symbol(in: testingLibrary, named: "swt_abiv0_getEntryPoint").map {
           unsafeBitCast($0, to: (@convention(c) () -> UnsafeRawPointer).self)
@@ -235,7 +171,7 @@ struct ABIEntryPointTests {
 }
 
 #if !SWT_NO_DYNAMIC_LINKING
-private func _withTestingLibraryImageAddress<R>(_ body: (ImageAddress?) throws -> R) throws -> R {
+private func withTestingLibraryImageAddress<R>(_ body: (ImageAddress?) throws -> R) throws -> R {
   let addressInTestingLibrary = unsafeBitCast(ABIv0.entryPoint, to: UnsafeRawPointer.self)
 
   var testingLibraryAddress: ImageAddress?
@@ -266,12 +202,3 @@ private func _withTestingLibraryImageAddress<R>(_ body: (ImageAddress?) throws -
 }
 #endif
 #endif
-
-// MARK: - Fixtures
-
-@Test(.hidden) private func _someHiddenTest() {}
-
-@Test(.hidden) private func _recordWarningIssue() {
-  // Intentionally _only_ record issues with warning (or lower) severity.
-  Issue(kind: .unconditional, severity: .warning, comments: [], sourceContext: .init()).record()
-}

@@ -20,6 +20,8 @@ private import _TestingInternals
 ///     writes events to the standard error stream in addition to passing them
 ///     to this function.
 ///
+/// - Returns: An exit code representing the result of running tests.
+///
 /// External callers cannot call this function directly. The can use
 /// ``ABIv0/entryPoint-swift.type.property`` to get a reference to an ABI-stable
 /// version of this function.
@@ -310,11 +312,9 @@ extension __CommandLineArguments_v0: Codable {
     case eventStreamVersion
     case filter
     case skip
-    case includeHiddenTests
     case repetitions
     case repeatUntil
     case experimentalAttachmentsPath
-    case isWarningIssueRecordedEventEnabled
   }
 }
 
