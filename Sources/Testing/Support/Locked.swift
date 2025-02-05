@@ -53,9 +53,6 @@ protocol Lockable {
 ///
 /// This type is not part of the public interface of the testing library.
 struct LockedWith<L, T>: RawRepresentable where L: Lockable {
-  /// The type of the underlying lock that guards instances of this type.
-  typealias UnderlyingLock = L
-
   /// A type providing heap-allocated storage for an instance of ``Locked``.
   private final class _Storage: ManagedBuffer<T, L> {
     deinit {
