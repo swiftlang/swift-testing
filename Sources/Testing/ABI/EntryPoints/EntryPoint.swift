@@ -275,7 +275,7 @@ public struct __CommandLineArguments_v0: Sendable {
   ///
   /// This property is intended for use in testing the testing library itself.
   /// It is not parsed as a command-line argument.
-  public var includeHiddenTests: Bool?
+  var includeHiddenTests: Bool?
 
   /// The value of the `--repetitions` argument.
   public var repetitions: Int?
