@@ -17,7 +17,7 @@ extension Never: Lockable {
   static func unsafelyRelinquishLock(at lock: UnsafeMutablePointer<Self>) {}
 }
 
-#if SWT_TARGET_OS_APPLE && canImport(os)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK
 extension os_unfair_lock_s: Lockable {
   static func initializeLock(at lock: UnsafeMutablePointer<Self>) {
     lock.initialize(to: .init())
@@ -81,7 +81,7 @@ extension SRWLOCK: Lockable {
 }
 #endif
 
-#if SWT_TARGET_OS_APPLE && canImport(os)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK
 typealias DefaultLock = os_unfair_lock
 #elseif SWT_TARGET_OS_APPLE || os(Linux) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded)) || os(FreeBSD) || os(OpenBSD)
 typealias DefaultLock = pthread_mutex_t

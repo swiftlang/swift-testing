@@ -26,7 +26,7 @@ struct LockTests {
     testLock(Locked(rawValue: 0))
   }
 
-#if SWT_TARGET_OS_APPLE && canImport(os)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK
   @Test("pthread_mutex_t (Darwin alternate)")
   func lockingWith_pthread_mutex_t() {
     testLock(LockedWith<pthread_mutex_t, Int>(rawValue: 0))
