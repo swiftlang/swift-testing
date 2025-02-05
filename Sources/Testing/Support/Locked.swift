@@ -186,7 +186,7 @@ extension LockedWith {
     self.init(rawValue: [:])
   }
 
-  /// Initialize an instance of this type with a raw value of `nil`.
+  /// Initialize an instance of this type with a raw value of `[]`.
   init<V>() where T == [V] {
     self.init(rawValue: [])
   }
