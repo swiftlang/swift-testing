@@ -132,7 +132,7 @@
 #include <mach-o/dyld.h>
 #endif
 
-#if __has_include(<os/lock.h>)
+#if !SWT_NO_OS_UNFAIR_LOCK
 #include <os/lock.h>
 #endif
 #endif
