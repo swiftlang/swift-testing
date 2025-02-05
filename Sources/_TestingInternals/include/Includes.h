@@ -131,6 +131,10 @@
 #if !SWT_NO_DYNAMIC_LINKING
 #include <mach-o/dyld.h>
 #endif
+
+#if __has_include(<os/lock.h>)
+#include <os/lock.h>
+#endif
 #endif
 
 #if defined(__FreeBSD__)

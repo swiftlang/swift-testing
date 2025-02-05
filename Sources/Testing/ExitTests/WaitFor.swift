@@ -80,7 +80,7 @@ func wait(for pid: consuming pid_t) async throws -> ExitCondition {
 }
 #elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
 /// A mapping of awaited child PIDs to their corresponding Swift continuations.
-private let _childProcessContinuations = Locked<[pid_t: CheckedContinuation<ExitCondition, any Error>]>()
+private let _childProcessContinuations = LockedWith<pthread_mutex_t, [pid_t: CheckedContinuation<ExitCondition, any Error>]>()
 
 /// A condition variable used to suspend the waiter thread created by
 /// `_createWaitThread()` when there are no child processes to await.
@@ -137,7 +137,7 @@ private let _createWaitThread: Void = {
       // newly-scheduled waiter process. (If this condition is spuriously
       // woken, we'll just loop again, which is fine.) Note that we read errno
       // outside the lock in case acquiring the lock perturbs it.
-      _childProcessContinuations.withUnsafePlatformLock { lock, childProcessContinuations in
+      _childProcessContinuations.withUnsafeUnderlyingLock { lock, childProcessContinuations in
         if childProcessContinuations.isEmpty {
           _ = pthread_cond_wait(_waitThreadNoChildrenCondition, lock)
         }
