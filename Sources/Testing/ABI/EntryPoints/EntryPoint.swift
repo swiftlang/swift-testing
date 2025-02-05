@@ -286,12 +286,12 @@ public struct __CommandLineArguments_v0: Sendable {
   /// The value of the `--experimental-attachments-path` argument.
   public var experimentalAttachmentsPath: String?
 
-  /// The value(s) of the `--enable-experimental-feature` argument(s),
-  /// indicating the name(s) of experimental features to enable.
+  /// Whether or not the experimental warning issue severity feature should be
+  /// enabled.
   ///
-  /// The value of this property is not yet populated by parsing command-line
-  /// arguments, but may be in the future.
-  public var experimentalFeatures: [String]?
+  /// This property is intended for use in testing the testing library itself.
+  /// It is not parsed as a command-line argument.
+  var isWarningIssueRecordedEventEnabled: Bool?
 }
 
 extension __CommandLineArguments_v0: Codable {
@@ -314,7 +314,7 @@ extension __CommandLineArguments_v0: Codable {
     case repetitions
     case repeatUntil
     case experimentalAttachmentsPath
-    case experimentalFeatures
+    case isWarningIssueRecordedEventEnabled
   }
 }
 
@@ -454,9 +454,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 /// - Throws: If an argument is invalid, such as a malformed regular expression.
 @_spi(ForToolsIntegrationOnly)
 public func configurationForEntryPoint(from args: __CommandLineArguments_v0) throws -> Configuration {
-  // Pass the event stream version when initializing a configuration so it can
-  // be used to gate feature enablement.
-  var configuration = Configuration(version: args.eventStreamVersion)
+  var configuration = Configuration()
 
   // Parallelization (on by default)
   configuration.isParallelizationEnabled = args.parallel ?? true
@@ -568,19 +566,20 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
 #endif
 
-  // Apply explicitly-enabled experimental features.
-  if let experimentalFeatures = args.experimentalFeatures {
-    // Validate the requested feature IDs and report an error if any are
-    // unrecognized.
-    let features = try experimentalFeatures.map { featureID in
-      guard let feature = Configuration.Feature.allCases.first(where: { $0.id == featureID }) else {
-        throw _EntryPointError.invalidArgument("--enable-experimental-feature", value: featureID)
-      }
-      return feature
+  // Warning issues (experimental).
+  if args.isWarningIssueRecordedEventEnabled == true {
+    configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled = true
+  } else {
+    switch args.eventStreamVersion {
+    case .some(...0):
+      // If the event stream version was explicitly specified to a value < 1,
+      // disable the warning issue event to maintain legacy behavior.
+      configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled = false
+    default:
+      // Otherwise the requested event stream version is ≥ 1, so don't change
+      // the warning issue event setting.
+      break
     }
-
-    // Enable the requested features.
-    configuration.enableFeatures(features)
   }
 
   return configuration

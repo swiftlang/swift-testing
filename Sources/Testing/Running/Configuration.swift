@@ -13,61 +13,7 @@
 public struct Configuration: Sendable {
   /// Initialize an instance of this type representing the default
   /// configuration.
-  public init() {
-    self.init(version: nil)
-  }
-
-  /// Initialize an instance of this type representing the default configuration,
-  /// gating features based on the specified version (if any) or their default
-  /// enablement status.
-  ///
-  /// - Parameters:
-  ///   - version: The event stream/ABI version to use when determining features
-  ///     to enable, if any. Passing `nil` causes this initialized to fall back
-  ///     to ``Feature/isEnabledByDefault`` to determine whether each feature
-  ///     should be enabled.
-  init(version: Int?) {
-    for feature in features {
-      self[keyPath: feature.configurationKeyPath] = if let version, version < feature.versionIntroduced {
-        false
-      } else {
-        feature.isEnabledByDefault
-      }
-    }
-  }
-
-  // MARK: - Features
-
-  /// The set of features applied to this configuration.
-  ///
-  /// The features of a configuration may affect its settings, depending on the
-  /// enablement status of each feature or the version in which is was first
-  /// introduced compared with the event stream/ABI version the configuration
-  /// will be configured to run with.
-  ///
-  /// To enable additional features, use ``enableFeatures(_:)``.
-  private(set) var features: Set<Feature> = Feature.allCases
-
-  /// Enable the specified features.
-  ///
-  /// - Parameters:
-  ///   - features: The features to enable.
-  mutating func enableFeatures(_ featuresToEnable: some Sequence<Feature>) {
-    let featuresToEnable = Set(featuresToEnable)
-
-    for var feature in features {
-      guard featuresToEnable.contains(feature) else {
-        continue
-      }
-
-      // Note that this feature was enabled explicitly, for tracking purposes.
-      feature.isEnabledExplicitly = true
-      features.update(with: feature)
-
-      // Enable the configuration setting for this feature.
-      self[keyPath: feature.configurationKeyPath] = true
-    }
-  }
+  public init() {}
 
   // MARK: - Parallelization
 
