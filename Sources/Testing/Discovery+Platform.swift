@@ -23,7 +23,7 @@ struct SectionBounds: Sendable {
 
   /// An enumeration describing the different sections discoverable by the
   /// testing library.
-  enum Kind: Equatable, Hashable, CaseIterable {
+  enum Kind: Int, Equatable, Hashable, CaseIterable {
     /// The test content metadata section.
     case testContent
 
@@ -285,13 +285,9 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
 /// - Returns: A structure describing the bounds of the type metadata section
 ///   contained in the same image as the testing library itself.
 private func _sectionBounds(_ kind: SectionBounds.Kind) -> CollectionOfOne<SectionBounds> {
-  let (sectionBegin, sectionEnd) = switch kind {
-  case .testContent:
-    SWTTestContentSectionBounds
-  case .typeMetadata:
-    SWTTypeMetadataSectionBounds
-  }
-  let buffer = UnsafeRawBufferPointer(start: sectionBegin, count: max(0, sectionEnd - sectionBegin))
+  var (baseAddress, count): (UnsafeRawPointer?, Int) = (nil, 0)
+  swt_getStaticallyLinkedSectionBounds(kind.rawValue, &baseAddress, &count)
+  let buffer = UnsafeRawBufferPointer(start: baseAddress, count: count)
   let sb = SectionBounds(imageAddress: nil, buffer: buffer)
   return CollectionOfOne(sb)
 }
