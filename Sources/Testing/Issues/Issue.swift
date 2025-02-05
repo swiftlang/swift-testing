@@ -322,6 +322,17 @@ extension Issue {
       self.isKnown = issue.isKnown
     }
 
+    public init(from decoder: any Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      self.kind = try container.decode(Issue.Kind.Snapshot.self, forKey: .kind)
+      self.comments = try container.decode([Comment].self, forKey: .comments)
+      self.sourceContext = try container.decode(SourceContext.self, forKey: .sourceContext)
+      self.isKnown = try container.decode(Bool.self, forKey: .isKnown)
+
+      // Severity is a new field, so fall back to .error if it's not present.
+      self.severity = try container.decodeIfPresent(Issue.Severity.self, forKey: .severity) ?? .error
+    }
+
     /// The error which was associated with this issue, if any.
     ///
     /// The value of this property is non-`nil` when ``kind-swift.property`` is
