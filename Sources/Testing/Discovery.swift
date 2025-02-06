@@ -49,6 +49,17 @@ public typealias __TestContentRecord = (
   reserved2: UInt
 )
 
+/// Compare two move-only types.
+///
+/// This operator is provided because the Swift standard library does not yet
+/// provide a `==` operator for move-only types. ([134276458](rdar://134276458))
+///
+/// - Warning: This operator is used to implement the `#expect(exitsWith:)`
+///   macro. Do not use it directly. It will be removed in a future update.
+public func ==(__lhs: (some ~Copyable).Type, rhs: (some ~Copyable).Type) -> Bool {
+  TypeInfo(describing: __lhs) == TypeInfo(describing: rhs)
+}
+
 // MARK: -
 
 /// A protocol describing a type that can be stored as test content at compile

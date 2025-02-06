@@ -10,6 +10,7 @@
 
 private import _TestingInternals
 
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
 /// A protocol describing a type that contains tests.
 ///
 /// - Warning: This protocol is used to implement the `@Test` macro. Do not use
@@ -60,3 +61,4 @@ func types(withNamesContaining nameSubstring: String) -> some Sequence<Any.Type>
       .map { unsafeBitCast($0, to: Any.Type.self) }
   }
 }
+#endif
