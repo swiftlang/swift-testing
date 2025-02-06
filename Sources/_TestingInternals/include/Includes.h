@@ -131,6 +131,10 @@
 #if !SWT_NO_DYNAMIC_LINKING
 #include <mach-o/dyld.h>
 #endif
+
+#if !SWT_NO_OS_UNFAIR_LOCK
+#include <os/lock.h>
+#endif
 #endif
 
 #if defined(__FreeBSD__)

@@ -17,7 +17,7 @@ struct ParallelizationTraitTests {
     var configuration = Configuration()
     configuration.isParallelizationEnabled = true
 
-    let indicesRecorded = Locked<[Int]>(rawValue: [])
+    let indicesRecorded = Locked<[Int]>()
     configuration.eventHandler = { event, _ in
       if case let .issueRecorded(issue) = event.kind,
          let comment = issue.comments.first,
