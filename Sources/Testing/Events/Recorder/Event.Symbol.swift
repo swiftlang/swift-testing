@@ -22,9 +22,11 @@ extension Event {
     /// The symbol to use when a test passes.
     ///
     /// - Parameters:
+    ///   - warningIssueCount: The number of warnings recorded for the test.
+    ///     The default value is `0`.
     ///   - knownIssueCount: The number of known issues recorded for the test.
     ///     The default value is `0`.
-    case pass(knownIssueCount: Int = 0)
+    case pass(warningIssueCount: Int = 0, knownIssueCount: Int = 0)
 
     /// The symbol to use when a test fails.
     case fail
@@ -56,8 +58,10 @@ extension Event.Symbol {
       ("\u{1007C8}", "diamond")
     case .skip:
       ("\u{10065F}", "arrow.triangle.turn.up.right.diamond.fill")
-    case let .pass(knownIssueCount):
-      if knownIssueCount > 0 {
+    case let .pass(warningIssueCount, knownIssueCount):
+      if warningIssueCount > 0 {
+        ("\u{100123}", "questionmark.diamond.fill")
+      } else if knownIssueCount > 0 {
         ("\u{100884}", "xmark.diamond.fill")
       } else {
         ("\u{10105B}", "checkmark.diamond.fill")
@@ -114,8 +118,11 @@ extension Event.Symbol {
     case .skip:
       // Unicode: HEAVY BALLOT X
       return "\u{2718}"
-    case let .pass(knownIssueCount):
-      if knownIssueCount > 0 {
+    case let .pass(warningIssueCount, knownIssueCount):
+      if warningIssueCount > 0 {
+        // Unicode: QUESTION MARK
+        return "\u{003F}"
+      } else if knownIssueCount > 0 {
         // Unicode: HEAVY BALLOT X
         return "\u{2718}"
       } else {
@@ -149,8 +156,11 @@ extension Event.Symbol {
     case .skip:
       // Unicode: MULTIPLICATION SIGN
       return "\u{00D7}"
-    case let .pass(knownIssueCount):
-      if knownIssueCount > 0 {
+    case let .pass(warningIssueCount, knownIssueCount):
+      if warningIssueCount > 0 {
+        // Unicode: QUESTION MARK
+        return "\u{003F}"
+      } else if knownIssueCount > 0 {
         // Unicode: MULTIPLICATION SIGN
         return "\u{00D7}"
       } else {

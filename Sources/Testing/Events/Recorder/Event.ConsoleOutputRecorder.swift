@@ -157,8 +157,10 @@ extension Event.Symbol {
       switch self {
       case .default, .skip, .difference:
         return "\(_ansiEscapeCodePrefix)90m\(symbolCharacter)\(_resetANSIEscapeCode)"
-      case let .pass(knownIssueCount):
-        if knownIssueCount > 0 {
+      case let .pass(warningIssueCount, knownIssueCount):
+        if warningIssueCount > 0 {
+          return "\(_ansiEscapeCodePrefix)93m\(symbolCharacter)\(_resetANSIEscapeCode)"
+        } else if knownIssueCount > 0 {
           return "\(_ansiEscapeCodePrefix)90m\(symbolCharacter)\(_resetANSIEscapeCode)"
         }
         return "\(_ansiEscapeCodePrefix)92m\(symbolCharacter)\(_resetANSIEscapeCode)"

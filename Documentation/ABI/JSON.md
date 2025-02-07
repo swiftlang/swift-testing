@@ -211,12 +211,6 @@ sufficient information to display the event in a human-readable format.
 ```
 
 <!--
-  TODO: Publicize issue severity.
-<issue-severity> ::= "warning" | "error" ; additional severity levels may be
-                                         ; added in the future
--->
-
-<!--
   ["testID": <test-id>,
     ["testCase": <test-case>]]
 -->
