@@ -69,7 +69,6 @@ struct EntryPointTests {
     }
     #expect(exitCode == EXIT_SUCCESS)
   }
-
 }
 
 // MARK: - Fixtures

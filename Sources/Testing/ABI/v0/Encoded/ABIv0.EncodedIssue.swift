@@ -19,7 +19,7 @@ extension ABIv0 {
     /// An enumeration representing the level of severity of a recorded issue.
     ///
     /// For descriptions of individual cases, see ``Issue/Severity-swift.enum``.
-    enum Severity: String {
+    enum Severity: String, Sendable {
       case warning
       case error
     }

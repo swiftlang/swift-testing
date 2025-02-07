@@ -203,9 +203,6 @@ public struct Configuration: Sendable {
 
   /// The options to use when delivering events to this configuration's event
   /// handler.
-  ///
-  /// The default value of this property is an instance of ``EventHandlingOptions-swift.struct``
-  /// with its properties initialized to their default values.
   public var eventHandlingOptions: EventHandlingOptions = .init()
 
   /// The event handler to which events should be passed when they occur.

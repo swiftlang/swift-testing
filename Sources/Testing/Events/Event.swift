@@ -303,26 +303,6 @@ extension Event {
   }
 }
 
-extension Configuration.EventHandlingOptions {
-  /// Determine whether the specified event should be handled according to the
-  /// options in this instance.
-  ///
-  /// - Parameters:
-  ///   - event: The event to consider handling.
-  ///
-  /// - Returns: Whether or not the event should be handled or suppressed.
-  fileprivate func shouldHandleEvent(_ event: borrowing Event) -> Bool {
-    switch event.kind {
-    case let .issueRecorded(issue):
-      issue.severity > .warning || isWarningIssueRecordedEventEnabled
-    case .expectationChecked:
-      isExpectationCheckedEventEnabled
-    default:
-      true
-    }
-  }
-}
-
 #if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting
 

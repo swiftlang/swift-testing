@@ -220,3 +220,12 @@ sufficient information to display the event in a human-readable format.
   ["testID": <test-id>,
     ["testCase": <test-case>]]
 -->
+
+## Version history
+
+- Version 1 (unreleased)
+  - Introduced issue severity, with a new "warning" severity level which is
+    lower than the default "error" level. Clients upgrading from v0 should
+    begin consulting the severity of recorded issues to determine whether the
+    associated test should be marked as failing.
+- Version 0 (Initial ABI version)
