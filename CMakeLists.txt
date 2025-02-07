@@ -9,7 +9,7 @@
 cmake_minimum_required(VERSION 3.19.6...3.29)
 
 if(POLICY CMP0157)
-  cmake_policy(SET CMP0157 NEW)
+  cmake_policy(SET CMP0157 OLD)
 endif()
 
 project(SwiftTesting
