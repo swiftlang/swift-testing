@@ -73,6 +73,7 @@ add_library(Testing
   Support/Additions/WinSDKAdditions.swift
   Support/CartesianProduct.swift
   Support/CError.swift
+  Support/CustomIssueRepresentable.swift
   Support/Environment.swift
   Support/FileHandle.swift
   Support/GetSymbol.swift
@@ -80,7 +81,6 @@ add_library(Testing
   Support/JSON.swift
   Support/Locked.swift
   Support/Locked+Platform.swift
-  Support/SystemError.swift
   Support/Versions.swift
   Discovery.swift
   Discovery+Platform.swift

@@ -27,19 +27,11 @@ extension Issue {
   /// - Returns: The issue that was recorded (`self` or a modified copy of it.)
   @discardableResult
   func record(configuration: Configuration? = nil) -> Self {
-    // If this issue is a caught error of kind SystemError, reinterpret it as a
-    // testing system issue instead (per the documentation for SystemError.)
+    // If this issue is a caught error that has a custom issue representation,
+    // perform that customization now.
     if case let .errorCaught(error) = kind {
-      // TODO: consider factoring this logic out into a protocol
-      if let error = error as? SystemError {
-        var selfCopy = self
-        selfCopy.kind = .system
-        selfCopy.comments.append(Comment(rawValue: String(describingForTest: error)))
-        return selfCopy.record(configuration: configuration)
-      } else if let error = error as? APIMisuseError {
-        var selfCopy = self
-        selfCopy.kind = .apiMisused
-        selfCopy.comments.append(Comment(rawValue: String(describingForTest: error)))
+      if let error = error as? any CustomIssueRepresentable {
+        let selfCopy = error.customize(self)
         return selfCopy.record(configuration: configuration)
       }
     }
