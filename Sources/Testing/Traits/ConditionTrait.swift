@@ -195,7 +195,7 @@ extension Trait where Self == ConditionTrait {
     Self(kind: .conditional { !(try condition()) }, comments: Array(comment), sourceLocation: sourceLocation)
   }
 
-  /// Construct a condition trait that disables a test if its value is true.
+  /// Constructs a condition trait that disables a test if its value is true.
   ///
   /// - Parameters:
   ///   - comment: An optional comment that describes this trait.
