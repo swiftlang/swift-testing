@@ -373,13 +373,6 @@ extension Event.HumanReadableOutputRecorder {
             stringValue: "\(_capitalizedTitle(for: test)) \(testName) failed after \(duration)\(issues.description)."
           )
         ) + _formattedComments(for: test)
-      } else if issues.warningIssueCount > 0 {
-        [
-          Message(
-           symbol: .warning,
-           stringValue: "\(_capitalizedTitle(for: test)) \(testName) passed after \(duration)\(issues.description)."
-         )
-       ]
       } else {
         [
           Message(
@@ -527,13 +520,6 @@ extension Event.HumanReadableOutputRecorder {
           Message(
             symbol: .fail,
             stringValue: "Test run with \(testCount.counting("test")) failed after \(duration)\(issues.description)."
-          )
-        ]
-      } else if issues.warningIssueCount > 0 {
-        [
-          Message(
-            symbol: .warning,
-            stringValue: "Test run with \(testCount.counting("test")) passed after \(duration)\(issues.description)."
           )
         ]
       } else {
