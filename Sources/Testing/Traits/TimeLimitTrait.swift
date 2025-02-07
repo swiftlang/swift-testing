@@ -52,8 +52,8 @@ public struct TimeLimitTrait: TestTrait, SuiteTrait {
 
 @available(_clockAPI, *)
 extension Trait where Self == TimeLimitTrait {
-  /// Constructs a time limit trait that causes a test to time out if it runs
-  /// for too long.
+  /// Construct a time limit trait that causes a test to time out if it runs for
+  /// too long.
   ///
   /// - Parameters:
   ///   - timeLimit: The maximum amount of time the test may run for.
@@ -61,25 +61,26 @@ extension Trait where Self == TimeLimitTrait {
   /// - Returns: An instance of ``TimeLimitTrait``.
   ///
   /// Test timeouts do not support high-precision, arbitrarily short durations
-  /// due to variability in testing environments. You express the duration in
-  /// minutes, with a minimum duration of one minute.
+  /// due to variability in testing environments. The time limit must be at
+  /// least one minute, and can only be expressed in increments of one minute.
   ///
-  /// When you associate this trait with a test, that test must complete within
-  /// a time limit of, at most, `timeLimit`. If the test runs longer, the
-  /// testing library records a
-  /// ``Issue/Kind/timeLimitExceeded(timeLimitComponents:)`` issue, which it
-  /// treats as a test failure.
+  /// When this trait is associated with a test, that test must complete within
+  /// a time limit of, at most, `timeLimit`. If the test runs longer, an issue
+  /// of kind ``Issue/Kind/timeLimitExceeded(timeLimitComponents:)`` is
+  /// recorded. This timeout is treated as a test failure.
   ///
-  /// The testing library can use a shorter time limit than that specified by
-  /// `timeLimit` if you configure it to enforce a maximum per-test limit. When
-  /// you configure a maximum per-test limit, the time limit of the test this
-  /// trait is applied to is the shorter of `timeLimit` and the maximum per-test
-  /// limit. For information on configuring maximum per-test limits, consult the
-  /// documentation for the tool you use to run your tests.
+  /// The time limit amount specified by `timeLimit` may be reduced if the
+  /// testing library is configured to enforce a maximum per-test limit. When
+  /// such a maximum is set, the effective time limit of the test this trait is
+  /// applied to will be the lesser of `timeLimit` and that maximum. This is a
+  /// policy which may be configured on a global basis by the tool responsible
+  /// for launching the test process. Refer to that tool's documentation for
+  /// more details.
   ///
   /// If a test is parameterized, this time limit is applied to each of its
   /// test cases individually. If a test has more than one time limit associated
-  /// with it, the testing library uses the shortest time limit.
+  /// with it, the shortest one is used. A test run may also be configured with
+  /// a maximum time limit per test case.
   @_spi(Experimental)
   public static func timeLimit(_ timeLimit: Duration) -> Self {
     return Self(timeLimit: timeLimit)
@@ -195,10 +196,8 @@ extension Test {
       .min()
   }
 
-  /// Get the maximum amount of time this test's cases may run for.
-  ///
-  /// This method uses the current configuration and any library-imposed rules,
-  /// as well as time limit traits, to calculate the time limit.
+  /// Get the maximum amount of time the cases of this test may run for, taking
+  /// the current configuration and any library-imposed rules into account.
   ///
   /// - Parameters:
   ///   - configuration: The current configuration.
@@ -232,7 +231,7 @@ extension Test {
 
 // MARK: -
 
-/// An error that the testing library reports when a test times out.
+/// An error that is reported when a test times out.
 ///
 /// This type is not part of the public interface of the testing library.
 struct TimeoutError: Error, CustomStringConvertible {
@@ -255,8 +254,8 @@ struct TimeoutError: Error, CustomStringConvertible {
 /// - Throws: Any error thrown by `body`.
 ///
 /// If `body` does not return or throw before `timeLimit` is reached,
-/// the function calls `timeoutHandler` and gives it the opportunity to handle
-/// the timeout, and it cancels `body`.
+/// `timeoutHandler` is called and given the opportunity to handle the timeout
+/// and `body` is cancelled.
 ///
 /// This function is not part of the public interface of the testing library.
 @available(_clockAPI, *)

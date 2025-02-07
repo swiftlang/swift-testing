@@ -33,38 +33,39 @@ public struct Comment: RawRepresentable, Sendable {
   /// An enumeration describing the possible kind of a comment.
   @_spi(ForToolsIntegrationOnly)
   public enum Kind: Sendable {
-    /// This comment is in a single-line comment in the test's source code
-    /// that starts with `//`.
+    /// This comment came from a single-line comment in the test's source code
+    /// starting with `//`.
     case line
 
-    /// This comment is in a block comment in the test's source code
-    /// that starts with `/*` and ends with `*/`.
+    /// This comment came from a block comment in the test's source code
+    /// starting with `/*` and ending with `*/`.
     case block
 
-    /// This comment is in a single-line [Markup](https://github.com/swiftlang/swift/blob/main/docs/DocumentationComments.md)
-    /// comment in the test's source code that starts with `///`.
+    /// This comment came from a single-line [Markup](https://github.com/swiftlang/swift/blob/main/docs/DocumentationComments.md)
+    /// comment in the test's source code starting with `///`.
     case documentationLine
 
-    /// This comment is in a block [Markup](https://github.com/swiftlang/swift/blob/main/docs/DocumentationComments.md)
-    /// comment in the test's source code that starts with `/**` and ends with
+    /// This comment came from a block [Markup](https://github.com/swiftlang/swift/blob/main/docs/DocumentationComments.md)
+    /// comment in the test's source code starting with `/**` and ending with
     /// `*/`.
     case documentationBlock
 
-    /// This comment comes from an explicit call to ``Trait/comment(_:)``.
+    /// This comment came from an explicit call to ``Trait/comment(_:)``.
     case trait
 
-    /// This comment is initialized from a string literal.
+    /// This comment was initialized from a string literal.
     case stringLiteral
   }
 
   /// The kind of this comment, if known.
   ///
-  /// For comments you create by calling ``init(rawValue:)``, the value
-  /// of this property is `nil`. Otherwise, it represents the comment's kind.
+  /// If this instance was created with a call to ``init(rawValue:)``, the value
+  /// of this property is `nil`. Otherwise, it can be used to determine which
+  /// kind of comment is represented.
   @_spi(ForToolsIntegrationOnly)
   public var kind: Kind?
 
-  /// Initialize a comment from a string value.
+  /// Initialize an instance of this type.
   ///
   /// - Parameters:
   ///   - rawValue: The string value of the comment.
@@ -135,13 +136,13 @@ extension Test {
     traits.flatMap(\.comments)
   }
 
-  /// The complete set of comments about this test from all traits of the given
+  /// The complete set of comments about this test from all traits of a certain
   /// type.
   ///
   /// - Parameters:
-  ///   - traitType: The type of ``Trait`` for which comments should be returned.
+  ///   - traitType: The type of ``Trait`` whose comments should be returned.
   ///
-  /// - Returns: The comments about this test for the specified test trait type.
+  /// - Returns: The comments found for the specified test trait type.
   @_spi(Experimental)
   public func comments<T>(from traitType: T.Type) -> [Comment] where T: Trait {
     traits.lazy
