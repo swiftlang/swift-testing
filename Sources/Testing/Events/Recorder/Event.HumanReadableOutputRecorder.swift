@@ -418,7 +418,7 @@ extension Event.HumanReadableOutputRecorder {
       } else {
         switch issue.severity {
         case .warning:
-          symbol = .pass(warningIssueCount: 1)
+          symbol = .passWithWarnings
           subject = "a warning"
         case .error:
           symbol = .fail

@@ -25,8 +25,8 @@ extension ABIv0 {
       case `default`
       case skip
       case pass
-      case passWithWarning
-      case passWithKnownIssue = "_passWithKnownIssue"
+      case passWithWarnings = "_passWithWarnings"
+      case passWithKnownIssue
       case fail
       case difference
       case warning
@@ -39,14 +39,14 @@ extension ABIv0 {
           .default
         case .skip:
           .skip
-        case let .pass(warningIssueCount, knownIssueCount):
-          if warningIssueCount > 0 {
-            .passWithWarning
-          } else if knownIssueCount > 0 {
+        case let .pass(knownIssueCount):
+          if knownIssueCount > 0 {
             .passWithKnownIssue
           } else {
             .pass
           }
+        case .passWithWarnings:
+          .passWithWarnings
         case .fail:
           .fail
         case .difference:
