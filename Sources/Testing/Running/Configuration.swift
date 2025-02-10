@@ -189,6 +189,7 @@ public struct Configuration: Sendable {
     /// handlers since this is an experimental feature.
     ///
     /// - Warning: Warning issues are not yet an approved feature.
+    @_spi(Experimental)
     public var isWarningIssueRecordedEventEnabled: Bool = false
 
     /// Whether or not events of the kind

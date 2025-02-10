@@ -160,9 +160,6 @@ extension Configuration {
   /// An atomic counter that tracks the number of "current" configurations that
   /// have set ``EventHandlingOptions/isExpectationCheckedEventEnabled`` to
   /// `true`.
-  ///
-  /// On older Apple platforms, this property is not available and ``all`` is
-  /// directly consulted instead (which is less efficient.)
   private static let _deliverExpectationCheckedEventsCount = Locked(rawValue: 0)
 
   /// Whether or not events of the kind
