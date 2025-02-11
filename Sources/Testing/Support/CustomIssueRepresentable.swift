@@ -32,7 +32,7 @@ protocol CustomIssueRepresentable: Error {
   func customize(_ issue: consuming Issue) -> Issue
 }
 
-// MARK: -
+// MARK: - Internal error types
 
 /// A type representing an error in the testing library or its underlying
 /// infrastructure.
