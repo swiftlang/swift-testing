@@ -352,6 +352,22 @@ struct ConditionMacroTests {
     #expect(diagnostic.message.contains("is redundant"))
   }
 
+#if !SWT_FIXED_137943258
+  @Test(
+    "#require(optional value mistyped as non-optional) diagnostic is suppressed",
+    .bug("https://github.com/swiftlang/swift/issues/79202"),
+    arguments: [
+      "#requireNonOptional(expression as? T)",
+      "#requireNonOptional(expression as Optional<T>)",
+      "#requireNonOptional(expression ?? nil)",
+    ]
+  )
+  func requireNonOptionalDiagnosticSuppressed(input: String) throws {
+    let (_, diagnostics) = try parse(input)
+    #expect(diagnostics.isEmpty)
+  }
+#endif
+
   @Test("#require(throws: Never.self) produces a diagnostic",
     arguments: [
       "#requireThrows(throws: Swift.Never.self)",
