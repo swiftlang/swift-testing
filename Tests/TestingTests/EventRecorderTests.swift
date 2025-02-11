@@ -183,13 +183,13 @@ struct EventRecorderTests {
   @Test(
     "Issue counts are summed correctly on test end",
     arguments: [
-      ("f()", ".* Test f\\(\\) failed after .+ seconds with 5 issues \\(including 3 known issues\\)\\."),
-      ("g()", ".* Test g\\(\\) failed after .+ seconds with 2 issues \\(including 1 known issue\\)\\."),
-      ("h()", ".* Test h\\(\\) passed after .+ seconds with 1 warning\\."),
-      ("i()", ".* Test i\\(\\) failed after .+ seconds with 2 issues \\(including 1 warning\\)\\."),
-      ("j()", ".* Test j\\(\\) passed after .+ seconds with 1 warning and 1 known issue\\."),
-      ("k()", ".* Test k\\(\\) passed after .+ seconds with 1 known issue\\."),
-      ("PredictablyFailingTests", ".* Suite PredictablyFailingTests failed after .+ seconds with 13 issues \\(including 3 warnings and 6 known issues\\)\\."),
+      ("f()", #".* Test f\(\) failed after .+ seconds with 5 issues \(including 3 known issues\)\."#),
+      ("g()", #".* Test g\(\) failed after .+ seconds with 2 issues \(including 1 known issue\)\."#),
+      ("h()", #".* Test h\(\) passed after .+ seconds with 1 warning\."#),
+      ("i()", #".* Test i\(\) failed after .+ seconds with 2 issues \(including 1 warning\)\."#),
+      ("j()", #".* Test j\(\) passed after .+ seconds with 1 warning and 1 known issue\."#),
+      ("k()", #".* Test k\(\) passed after .+ seconds with 1 known issue\."#),
+      ("PredictablyFailingTests", #".* Suite PredictablyFailingTests failed after .+ seconds with 13 issues \(including 3 warnings and 6 known issues\)\."#),
     ]
   )
   func issueCountSummingAtTestEnd(testName: String, expectedPattern: String) async throws {
@@ -210,10 +210,10 @@ struct EventRecorderTests {
     }
 
     let expectedSuffixRegex = try Regex(expectedPattern)
-    _ = try #require(buffer
+    #expect(try buffer
       .split(whereSeparator: \.isNewline)
       .compactMap(expectedSuffixRegex.wholeMatch(in:))
-      .first,
+      .first != nil,
       "buffer: \(buffer)"
     )
   }
