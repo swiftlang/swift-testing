@@ -13,7 +13,7 @@
 ///
 /// When a type conforms to this protocol, values of that type can be passed to
 /// ``Issue/record(_:_:)``. The testing library then calls the
-/// ``represent(as:)`` function and passes it an instance of ``Issue`` that will
+/// ``customize(_:)`` function and passes it an instance of ``Issue`` that will
 /// be used to represent the value. The function can then reconfigure or replace
 /// the issue as needed.
 ///
