@@ -75,13 +75,13 @@ struct SWTTestContentRecord {
 };
 ```
 
-Do not use the `__TestContentRecord` typealias defined in the testing library.
-This type exists to support the testing library's macros and may change in the
-future (e.g. to accomodate a generic argument or to make use of one of the
-reserved fields.)
+Do not use the `__TestContentRecord` or `__TestContentRecordAccessor` typealias
+defined in the testing library. These types exist to support the testing
+library's macros and may change in the future (e.g. to accomodate a generic
+argument or to make use of a reserved field.)
 
-Instead, define your own copy of this type where needed&mdash;you can copy the
-definition above _verbatim_. If your test record type's `context` field (as
+Instead, define your own copy of these types where needed&mdash;you can copy the
+definitions above _verbatim_. If your test record type's `context` field (as
 described below) is a pointer type, make sure to change its type in your version
 of `TestContentRecord` accordingly so that, on systems with pointer
 authentication enabled, the pointer is correctly resigned at load time.
@@ -108,16 +108,16 @@ other fields in that record are undefined.
 #### The accessor field
 
 The function `accessor` is a C function. When called, it initializes the memory
-at its argument `outValue` to an instance of some Swift type and returns `true`,
-or returns `false` if it could not generate the relevant content. On successful
-return, the caller is responsible for deinitializing the memory at `outValue`
-when done with it.
+at `outValue` to an instance of the appropriate type and returns `true`; or, if
+it could not generate the relevant content, leaves the memory uninitialized and
+returns `false`. On successful return, the caller is responsible for
+deinitializing the memory at `outValue` when done with it.
 
 If `accessor` is `nil`, the test content record is ignored. The testing library
 may, in the future, define record kinds that do not provide an accessor function
 (that is, they represent pure compile-time information only.)
 
-The second argument to this function, `type`, is a pointer to the type[^mightNotBeSwift]
+The third argument to this function, `type`, is a pointer to the type[^mightNotBeSwift]
 (not a bitcast Swift type) of the value expected to be written to `outValue`.
 This argument helps to prevent memory corruption if two copies of Swift Testing
 or a third-party library are inadvertently loaded into the same process. If the
@@ -131,9 +131,10 @@ accessor function must return `false` and must not modify `outValue`.
   other than Swift is beyond the scope of this document. With that in mind, it
   is _technically_ feasible for a test content accessor to be written in (for
   example) C++, expect the `type` argument to point to a C++ value of type
-  `std::type_info`, and write a C++ class instance to `outValue`.
+  [`std::type_info`](https://en.cppreference.com/w/cpp/types/type_info), and
+  write a C++ class instance to `outValue` using [placement `new`](https://en.cppreference.com/w/cpp/language/new#Placement_new).
 
-The third argument to this function, `hint`, is an optional input that can be
+The fourth argument to this function, `hint`, is an optional input that can be
 passed to help the accessor function determine if its corresponding test content
 record matches what the caller is looking for. If the caller passes `nil` as the
 `hint` argument, the accessor behaves as if it matched (that is, no additional
@@ -170,8 +171,8 @@ by `type`, and the value pointed to by `hint` depend on the kind of record:
 > and/or [`withUnsafePointer(to:_:)`](https://developer.apple.com/documentation/swift/withunsafepointer(to:_:)-35wrn)
 > to ensure the pointers passed to `accessor` are large enough and are
 > well-aligned. If they are not large enough to contain values of the
-> appropriate types (per above), or if `hint` points to uninitialized or
-> incorrectly-typed memory, the result is undefined.
+> appropriate types (per above), or if `type` or `hint` points to uninitialized
+> or incorrectly-typed memory, the result is undefined.
 
 #### The context field
 
