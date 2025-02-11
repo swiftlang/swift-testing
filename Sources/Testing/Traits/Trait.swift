@@ -13,7 +13,7 @@
 ///
 /// The testing library defines a number of traits that can be added to test
 /// functions and to test suites. Define your own traits by
-/// creating types that conform to ``TestTrait`` and/or ``SuiteTrait``:
+/// creating types that conform to ``TestTrait`` or ``SuiteTrait``:
 ///
 /// - term ``TestTrait``: Conform to this type in traits that you add to test
 ///   functions.
@@ -53,7 +53,7 @@ public protocol Trait: Sendable {
   /// the trait doesn't provide a custom scope for tests it's applied to.
   associatedtype TestScopeProvider: TestScoping = Never
 
-  /// Get this trait's scope provider for the specified test, and optional test
+  /// Get this trait's scope provider for the specified test and optional test
   /// case.
   ///
   /// - Parameters:
@@ -63,11 +63,11 @@ public protocol Trait: Sendable {
   ///     `nil`.
   ///
   /// - Returns: A value conforming to ``Trait/TestScopeProvider`` which you
-  ///   use to provide custom scoping for `test` and/or `testCase`, or `nil` if
+  ///   use to provide custom scoping for `test` or `testCase`. Returns `nil` if
   ///   the trait doesn't provide any custom scope for the test or test case.
   ///
   /// If this trait's type conforms to ``TestScoping``, the default value
-  /// returned by this method depends on `test` and/or `testCase`:
+  /// returned by this method depends on the values of`test` and `testCase`:
   ///
   /// - If `test` represents a suite, this trait also conforms to
   ///   ``SuiteTrait``.
@@ -77,10 +77,11 @@ public protocol Trait: Sendable {
   ///   contains. If the value of ``SuiteTrait/isRecursive`` is `false`, this
   ///   method returns `self`, and the suite trait provides its custom scope
   ///   once for the entire test suite.
-  /// - Otherwise `test` represents a test function. If `testCase` is `nil`,
-  ///   this method returns `nil`; otherwise, it returns `self`. This means that
-  ///   by default, a trait which is applied to or inherited by a test function
-  ///   provides its custom scope once for each of that function's cases.
+  /// - If `test` represents a test function, this trait also conforms to
+  ///   ``TestTrait``. If `testCase` is `nil`, this method returns `nil`;
+  ///   otherwise, it returns `self`. This means that by default, a trait which
+  ///   is applied to or inherited by a test function provides its custom scope
+  ///   once for each of that function's cases.
   ///
   /// A trait may override this method to further customize the
   /// default behaviors above. For example, if a trait needs to provide custom
@@ -101,15 +102,14 @@ public protocol Trait: Sendable {
   func scopeProvider(for test: Test, testCase: Test.Case?) -> TestScopeProvider?
 }
 
-/// A protocol that tells the test runner to run custom code
-/// before or after it runs a test suite or test function.
+/// A protocol that tells the test runner to run custom code before or after it
+/// runs a test suite or test function.
 ///
-/// Use types that conform to this protocol in conjunction with a
-/// ``Trait``-conforming type by implementing the
-/// ``Trait/scopeProvider(for:testCase:)-cjmg`` method, so your custom traits
-/// provide custom scope for tests. Do this to consolidate common set-up and
-/// tear-down logic for tests which have similar needs, which allows each test
-/// function to focus on the unique aspects of its test.
+/// Provide custom scope for tests by implementing the
+/// ``Trait/scopeProvider(for:testCase:)-cjmg`` method, returning a type that
+/// conforms to this protocol. Create a custom scope to consolidate common
+/// set-up and tear-down logic for tests which have similar needs, which allows
+/// each test function to focus on the unique aspects of its test.
 public protocol TestScoping: Sendable {
   /// Provide custom execution scope for a function call which is related to the
   /// specified test or test case.
@@ -157,17 +157,16 @@ extension Trait where Self: TestScoping {
   ///     provider, if any. When `test` represents a suite, the value of this argument is
   ///     `nil`.
   ///
-  /// The testing library uses the default implementation of this method when
-  /// the trait type conforms to ``TestScoping``.
-  /// For information on this method's return type, see
-  /// ``Trait/scopeProvider(for:testCase:)-cjmg``.
+  /// The testing library uses this implementation of
+  /// ``Trait/scopeProvider(for:testCase:)-cjmg`` when the trait type conforms
+  /// to ``TestScoping``.
   public func scopeProvider(for test: Test, testCase: Test.Case?) -> Self? {
     testCase == nil ? nil : self
   }
 }
 
 extension SuiteTrait where Self: TestScoping {
-  /// Get this trait's scope provider for the specified test, and optional test
+  /// Get this trait's scope provider for the specified test and optional test
   /// case.
   ///
   /// - Parameters:
@@ -177,10 +176,9 @@ extension SuiteTrait where Self: TestScoping {
   ///     provider, if any. When `test` represents a suite, the value of this
   ///     argument is `nil`.
   ///
-  /// The testing library uses the default implementation of this method when
-  /// the trait type conforms to ``TestScoping``.
-  /// For information on this method's return type, see
-  /// ``Trait/scopeProvider(for:testCase:)-cjmg``.
+  /// The testing library uses this implementation of
+  /// ``Trait/scopeProvider(for:testCase:)-cjmg`` when the trait type conforms
+  /// to both ``SuiteTrait`` and ``TestScoping``.
   public func scopeProvider(for test: Test, testCase: Test.Case?) -> Self? {
     if test.isSuite {
       isRecursive ? nil : self
@@ -236,10 +234,9 @@ extension Trait where TestScopeProvider == Never {
   ///     provider, if any. When `test` represents a suite, the value of this argument is
   ///     `nil`.
   ///
-  /// The testing library uses the default implementation when this trait type's
-  /// associated ``Trait/TestScopeProvider`` type is the default value of
-  /// `Never`. For information on this method's return type, see
-  /// ``Trait/scopeProvider(for:testCase:)-cjmg``.
+  /// The testing library uses this implementation of
+  /// ``Trait/scopeProvider(for:testCase:)-cjmg`` when the trait type's
+  /// associated ``Trait/TestScopeProvider`` type is `Never`.
   public func scopeProvider(for test: Test, testCase: Test.Case?) -> Never? {
     nil
   }
