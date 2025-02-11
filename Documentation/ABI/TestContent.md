@@ -109,8 +109,8 @@ other fields in that record are undefined.
 
 The function `accessor` is a C function. When called, it initializes the memory
 at `outValue` to an instance of the appropriate type and returns `true`; or, if
-it could not generate the relevant content, leaves the memory uninitialized and
-returns `false`. On successful return, the caller is responsible for
+it could not generate the relevant content, it leaves the memory uninitialized
+and returns `false`. On successful return, the caller is responsible for
 deinitializing the memory at `outValue` when done with it.
 
 If `accessor` is `nil`, the test content record is ignored. The testing library
