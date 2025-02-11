@@ -1515,6 +1515,84 @@ final class IssueTests: XCTestCase {
 
     await fulfillment(of: [expectationFailed], timeout: 0.0)
   }
+
+  func testThrowing(_ error: some Error, producesIssueMatching issueMatcher: @escaping @Sendable (Issue) -> Bool) async {
+    let issueRecorded = expectation(description: "Issue recorded")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      if issueMatcher(issue) {
+        issueRecorded.fulfill()
+        let description = String(describing: error)
+        #expect(issue.comments.map(String.init(describing:)).contains(description))
+      } else {
+        Issue.record("Unexpected issue \(issue)")
+      }
+    }
+
+    await Test {
+      throw error
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [issueRecorded], timeout: 0.0)
+  }
+
+  func testThrowingSystemErrorProducesSystemIssue() async {
+    await testThrowing(
+      SystemError(description: "flinging excuses"),
+      producesIssueMatching: { issue in
+        if case .system = issue.kind {
+          return true
+        }
+        return false
+      }
+    )
+  }
+
+  func testThrowingAPIMisuseErrorProducesAPIMisuseIssue() async {
+    await testThrowing(
+      APIMisuseError(description: "you did it wrong"),
+      producesIssueMatching: { issue in
+        if case .apiMisused = issue.kind {
+          return true
+        }
+        return false
+      }
+    )
+  }
+
+  func testRethrowingExpectationFailedErrorCausesAPIMisuseError() async {
+    let expectationFailed = expectation(description: "Expectation failed (issue recorded)")
+    let apiMisused = expectation(description: "API misused (issue recorded)")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      switch issue.kind {
+      case .expectationFailed:
+        expectationFailed.fulfill()
+      case .apiMisused:
+        apiMisused.fulfill()
+      default:
+        Issue.record("Unexpected issue \(issue)")
+      }
+    }
+
+    await Test {
+      do {
+        try #require(Bool(false))
+      } catch {
+        Issue.record(error)
+      }
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [expectationFailed, apiMisused], timeout: 0.0)
+  }
 }
 #endif
 
