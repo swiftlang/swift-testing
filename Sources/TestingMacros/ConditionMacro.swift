@@ -324,7 +324,24 @@ public struct NonOptionalRequireMacro: RefinedConditionMacro {
     in context: some MacroExpansionContext
   ) throws -> ExprSyntax {
     if let argument = macro.arguments.first {
+#if !SWT_FIXED_137943258
+      // Silence this warning if we see a token (`?`, `nil`, or "Optional") that
+      // might indicate the test author expects the expression is optional.
+      let tokenKindsIndicatingOptionality: [TokenKind] = [
+        .infixQuestionMark,
+        .postfixQuestionMark,
+        .keyword(.nil),
+        .identifier("Optional")
+      ]
+      let looksOptional = argument.tokens(viewMode: .sourceAccurate).lazy
+        .map(\.tokenKind)
+        .contains(where: tokenKindsIndicatingOptionality.contains)
+      if !looksOptional {
+        context.diagnose(.nonOptionalRequireIsRedundant(argument.expression, in: macro))
+      }
+#else
       context.diagnose(.nonOptionalRequireIsRedundant(argument.expression, in: macro))
+#endif
     }
 
     // Perform the normal macro expansion for #require().
