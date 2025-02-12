@@ -79,32 +79,6 @@ public struct Issue: Sendable {
   /// The kind of issue this value represents.
   public var kind: Kind
 
-  /// An enumeration representing the level of severity of a recorded issue.
-  ///
-  /// The supported levels, in increasing order of severity, are:
-  ///
-  /// - ``warning``
-  /// - ``error``
-  @_spi(Experimental)
-  public enum Severity: Sendable {
-    /// The severity level for an issue which should be noted but is not
-    /// necessarily an error.
-    ///
-    /// An issue with warning severity does not cause the test it's associated
-    /// with to be marked as a failure, but is noted in the results.
-    case warning
-
-    /// The severity level for an issue which represents an error in a test.
-    ///
-    /// An issue with error severity causes the test it's associated with to be
-    /// marked as a failure.
-    case error
-  }
-
-  /// The severity of this issue.
-  @_spi(Experimental)
-  public var severity: Severity
-
   /// Any comments provided by the developer and associated with this issue.
   ///
   /// If no comment was supplied when the issue occurred, the value of this
@@ -123,20 +97,16 @@ public struct Issue: Sendable {
   ///
   /// - Parameters:
   ///   - kind: The kind of issue this value represents.
-  ///   - severity: The severity of this issue. The default value is
-  ///     ``Severity-swift.enum/error``.
   ///   - comments: An array of comments describing the issue. This array may be
   ///     empty.
   ///   - sourceContext: A ``SourceContext`` indicating where and how this issue
   ///     occurred.
   init(
     kind: Kind,
-    severity: Severity = .error,
     comments: [Comment],
     sourceContext: SourceContext
   ) {
     self.kind = kind
-    self.severity = severity
     self.comments = comments
     self.sourceContext = sourceContext
   }
@@ -184,31 +154,27 @@ public struct Issue: Sendable {
   }
 }
 
-extension Issue.Severity: Comparable {}
-
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible
 
 extension Issue: CustomStringConvertible, CustomDebugStringConvertible {
   public var description: String {
-    let joinedComments = if comments.isEmpty {
-      ""
-    } else {
-      ": " + comments.lazy
-        .map(\.rawValue)
-        .joined(separator: "\n")
+    if comments.isEmpty {
+      return String(describing: kind)
     }
-    return "\(kind) (\(severity))\(joinedComments)"
+    let joinedComments = comments.lazy
+      .map(\.rawValue)
+      .joined(separator: "\n")
+    return "\(kind): \(joinedComments)"
   }
 
   public var debugDescription: String {
-    let joinedComments = if comments.isEmpty {
-      ""
-    } else {
-      ": " + comments.lazy
-        .map(\.rawValue)
-        .joined(separator: "\n")
+    if comments.isEmpty {
+      return "\(kind)\(sourceLocation.map { " at \($0)" } ?? "")"
     }
-    return "\(kind)\(sourceLocation.map { " at \($0)" } ?? "") (\(severity))\(joinedComments)"
+    let joinedComments: String = comments.lazy
+      .map(\.rawValue)
+      .joined(separator: "\n")
+    return "\(kind)\(sourceLocation.map { " at \($0)" } ?? ""): \(joinedComments)"
   }
 }
 
@@ -268,17 +234,6 @@ extension Issue.Kind: CustomStringConvertible {
   }
 }
 
-extension Issue.Severity: CustomStringConvertible {
-  public var description: String {
-    switch self {
-    case .warning:
-      "warning"
-    case .error:
-      "error"
-    }
-  }
-}
-
 #if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting
 
@@ -288,10 +243,6 @@ extension Issue {
   public struct Snapshot: Sendable, Codable {
     /// The kind of issue this value represents.
     public var kind: Kind.Snapshot
-
-    /// The severity of this issue.
-    @_spi(Experimental)
-    public var severity: Severity
 
     /// Any comments provided by the developer and associated with this issue.
     ///
@@ -317,20 +268,8 @@ extension Issue {
         self.kind = Issue.Kind.Snapshot(snapshotting: issue.kind)
         self.comments = issue.comments
       }
-      self.severity = issue.severity
       self.sourceContext = issue.sourceContext
       self.isKnown = issue.isKnown
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try decoder.container(keyedBy: CodingKeys.self)
-      self.kind = try container.decode(Issue.Kind.Snapshot.self, forKey: .kind)
-      self.comments = try container.decode([Comment].self, forKey: .comments)
-      self.sourceContext = try container.decode(SourceContext.self, forKey: .sourceContext)
-      self.isKnown = try container.decode(Bool.self, forKey: .isKnown)
-
-      // Severity is a new field, so fall back to .error if it's not present.
-      self.severity = try container.decodeIfPresent(Issue.Severity.self, forKey: .severity) ?? .error
     }
 
     /// The error which was associated with this issue, if any.
@@ -355,8 +294,6 @@ extension Issue {
     }
   }
 }
-
-extension Issue.Severity: Codable {}
 
 extension Issue.Kind {
   /// Serializable kinds of issues which may be recorded.
@@ -541,25 +478,23 @@ extension Issue.Kind {
 
 extension Issue.Snapshot: CustomStringConvertible, CustomDebugStringConvertible {
   public var description: String {
-    let joinedComments = if comments.isEmpty {
-      ""
-    } else {
-      ": " + comments.lazy
-        .map(\.rawValue)
-        .joined(separator: "\n")
+    if comments.isEmpty {
+      return String(describing: kind)
     }
-    return "\(kind) (\(severity))\(joinedComments)"
+    let joinedComments = comments.lazy
+      .map(\.rawValue)
+      .joined(separator: "\n")
+    return "\(kind): \(joinedComments)"
   }
 
   public var debugDescription: String {
-    let joinedComments = if comments.isEmpty {
-      ""
-    } else {
-      ": " + comments.lazy
-        .map(\.rawValue)
-        .joined(separator: "\n")
+    if comments.isEmpty {
+      return "\(kind)\(sourceLocation.map { " at \($0)" } ?? "")"
     }
-    return "\(kind)\(sourceLocation.map { " at \($0)" } ?? "") (\(severity))\(joinedComments)"
+    let joinedComments: String = comments.lazy
+      .map(\.rawValue)
+      .joined(separator: "\n")
+    return "\(kind)\(sourceLocation.map { " at \($0)" } ?? ""): \(joinedComments)"
   }
 }
 

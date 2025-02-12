@@ -34,7 +34,7 @@ struct Runner_RuntimeStateTests {
     // an event to be posted during the test below without causing any real
     // issues to be recorded or otherwise confuse the testing harness.
     var configuration = Configuration.current ?? .init()
-    configuration.eventHandlingOptions.isExpectationCheckedEventEnabled = true
+    configuration.deliverExpectationCheckedEvents = true
 
     await Configuration.withCurrent(configuration) {
       await withTaskGroup(of: Void.self) { group in

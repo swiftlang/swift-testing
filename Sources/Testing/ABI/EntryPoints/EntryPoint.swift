@@ -20,8 +20,6 @@ private import _TestingInternals
 ///     writes events to the standard error stream in addition to passing them
 ///     to this function.
 ///
-/// - Returns: An exit code representing the result of running tests.
-///
 /// External callers cannot call this function directly. The can use
 /// ``ABIv0/entryPoint-swift.type.property`` to get a reference to an ABI-stable
 /// version of this function.
@@ -42,7 +40,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
 
     // Set up the event handler.
     configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-      if case let .issueRecorded(issue) = event.kind, !issue.isKnown, issue.severity >= .error {
+      if case let .issueRecorded(issue) = event.kind, !issue.isKnown {
         exitCode.withLock { exitCode in
           exitCode = EXIT_FAILURE
         }
@@ -272,13 +270,6 @@ public struct __CommandLineArguments_v0: Sendable {
   /// The value(s) of the `--skip` argument.
   public var skip: [String]?
 
-  /// Whether or not to include tests with the `.hidden` trait when constructing
-  /// a test filter based on these arguments.
-  ///
-  /// This property is intended for use in testing the testing library itself.
-  /// It is not parsed as a command-line argument.
-  var includeHiddenTests: Bool?
-
   /// The value of the `--repetitions` argument.
   public var repetitions: Int?
 
@@ -287,13 +278,6 @@ public struct __CommandLineArguments_v0: Sendable {
 
   /// The value of the `--experimental-attachments-path` argument.
   public var experimentalAttachmentsPath: String?
-
-  /// Whether or not the experimental warning issue severity feature should be
-  /// enabled.
-  ///
-  /// This property is intended for use in testing the testing library itself.
-  /// It is not parsed as a command-line argument.
-  var isWarningIssueRecordedEventEnabled: Bool?
 }
 
 extension __CommandLineArguments_v0: Codable {
@@ -533,9 +517,6 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   filters.append(try testFilter(forRegularExpressions: args.skip, label: "--skip", membership: .excluding))
 
   configuration.testFilter = filters.reduce(.unfiltered) { $0.combining(with: $1) }
-  if args.includeHiddenTests == true {
-    configuration.testFilter.includeHiddenTests = true
-  }
 
   // Set up the iteration policy for the test run.
   var repetitionPolicy: Configuration.RepetitionPolicy = .once
@@ -565,22 +546,6 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   // Enable exit test handling via __swiftPMEntryPoint().
   configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
 #endif
-
-  // Warning issues (experimental).
-  if args.isWarningIssueRecordedEventEnabled == true {
-    configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled = true
-  } else {
-    switch args.eventStreamVersion {
-    case .some(...0):
-      // If the event stream version was explicitly specified to a value < 1,
-      // disable the warning issue event to maintain legacy behavior.
-      configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled = false
-    default:
-      // Otherwise the requested event stream version is ≥ 1, so don't change
-      // the warning issue event setting.
-      break
-    }
-  }
 
   return configuration
 }
