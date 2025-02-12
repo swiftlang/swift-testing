@@ -47,7 +47,7 @@ extension ABIv0 {
   /// callback.
   public static var entryPoint: EntryPoint {
     return { configurationJSON, recordHandler in
-      try await _entryPoint(
+      try await Testing.entryPoint(
         configurationJSON: configurationJSON,
         recordHandler: recordHandler
       ) == EXIT_SUCCESS
@@ -87,7 +87,7 @@ typealias ABIEntryPoint_v0 = @Sendable (
 @usableFromInline func copyABIEntryPoint_v0() -> UnsafeMutableRawPointer {
   let result = UnsafeMutablePointer<ABIEntryPoint_v0>.allocate(capacity: 1)
   result.initialize { configurationJSON, recordHandler in
-    try await _entryPoint(
+    try await entryPoint(
       configurationJSON: configurationJSON,
       eventStreamVersionIfNil: -1,
       recordHandler: recordHandler
@@ -104,7 +104,7 @@ typealias ABIEntryPoint_v0 = @Sendable (
 ///
 /// This function will be removed (with its logic incorporated into
 /// ``ABIv0/entryPoint-swift.type.property``) in a future update.
-private func _entryPoint(
+private func entryPoint(
   configurationJSON: UnsafeRawBufferPointer?,
   eventStreamVersionIfNil: Int? = nil,
   recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void

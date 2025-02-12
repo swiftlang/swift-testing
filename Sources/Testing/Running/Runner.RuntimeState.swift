@@ -132,7 +132,7 @@ extension Configuration {
   /// - Returns: A unique number identifying `self` that can be
   ///   passed to `_removeFromAll(identifiedBy:)`` to unregister it.
   private func _addToAll() -> UInt64 {
-    if eventHandlingOptions.isExpectationCheckedEventEnabled {
+    if deliverExpectationCheckedEvents {
       Self._deliverExpectationCheckedEventsCount.increment()
     }
     return Self._all.withLock { all in
@@ -152,14 +152,16 @@ extension Configuration {
     let configuration = Self._all.withLock { all in
       all.instances.removeValue(forKey: id)
     }
-    if let configuration, configuration.eventHandlingOptions.isExpectationCheckedEventEnabled {
+    if let configuration, configuration.deliverExpectationCheckedEvents {
       Self._deliverExpectationCheckedEventsCount.decrement()
     }
   }
 
   /// An atomic counter that tracks the number of "current" configurations that
-  /// have set ``EventHandlingOptions/isExpectationCheckedEventEnabled`` to
-  /// `true`.
+  /// have set ``deliverExpectationCheckedEvents`` to `true`.
+  ///
+  /// On older Apple platforms, this property is not available and ``all`` is
+  /// directly consulted instead (which is less efficient.)
   private static let _deliverExpectationCheckedEventsCount = Locked(rawValue: 0)
 
   /// Whether or not events of the kind
@@ -169,8 +171,7 @@ extension Configuration {
   ///
   /// To determine if an individual instance of ``Configuration`` is listening
   /// for these events, consult the per-instance
-  /// ``Configuration/EventHandlingOptions/isExpectationCheckedEventEnabled``
-  /// property.
+  /// ``Configuration/deliverExpectationCheckedEvents`` property.
   static var deliverExpectationCheckedEvents: Bool {
     _deliverExpectationCheckedEventsCount.rawValue > 0
   }

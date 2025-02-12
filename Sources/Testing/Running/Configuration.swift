@@ -178,33 +178,14 @@ public struct Configuration: Sendable {
 
   // MARK: - Event handling
 
-  /// A type describing options to use when delivering events to this
-  /// configuration's event handler
-  public struct EventHandlingOptions: Sendable {
-    /// Whether or not events of the kind ``Event/Kind-swift.enum/issueRecorded(_:)``
-    /// containing issues with warning (or lower) severity should be delivered
-    /// to the event handler of the configuration these options are applied to.
-    ///
-    /// By default, events matching this criteria are not delivered to event
-    /// handlers since this is an experimental feature.
-    ///
-    /// - Warning: Warning issues are not yet an approved feature.
-    @_spi(Experimental)
-    public var isWarningIssueRecordedEventEnabled: Bool = false
-
-    /// Whether or not events of the kind
-    /// ``Event/Kind-swift.enum/expectationChecked(_:)`` should be delivered to
-    /// the event handler of the configuration these options are applied to.
-    ///
-    /// By default, events of this kind are not delivered to event handlers
-    /// because they occur frequently in a typical test run and can generate
-    /// significant back-pressure on the event handler.
-    public var isExpectationCheckedEventEnabled: Bool = false
-  }
-
-  /// The options to use when delivering events to this configuration's event
-  /// handler.
-  public var eventHandlingOptions: EventHandlingOptions = .init()
+  /// Whether or not events of the kind
+  /// ``Event/Kind-swift.enum/expectationChecked(_:)`` should be delivered to
+  /// this configuration's ``eventHandler`` closure.
+  ///
+  /// By default, events of this kind are not delivered to event handlers
+  /// because they occur frequently in a typical test run and can generate
+  /// significant backpressure on the event handler.
+  public var deliverExpectationCheckedEvents: Bool = false
 
   /// The event handler to which events should be passed when they occur.
   public var eventHandler: Event.Handler = { _, _ in }
@@ -344,14 +325,4 @@ extension Configuration {
     }
   }
 #endif
-
-  @available(*, deprecated, message: "Set eventHandlingOptions.isExpectationCheckedEventEnabled instead.")
-  public var deliverExpectationCheckedEvents: Bool {
-    get {
-      eventHandlingOptions.isExpectationCheckedEventEnabled
-    }
-    set {
-      eventHandlingOptions.isExpectationCheckedEventEnabled = newValue
-    }
-  }
 }
