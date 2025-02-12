@@ -17,11 +17,11 @@ extension ABI {
   /// expected to write their own decoders.
   ///
   /// - Warning: Backtraces are not yet part of the JSON schema.
-  struct EncodedBacktrace: Sendable {
+  struct EncodedBacktrace<V>: Sendable where V: ABI.Version {
     /// The frames in the backtrace.
     var symbolicatedAddresses: [Backtrace.SymbolicatedAddress]
 
-    init(encoding backtrace: borrowing Backtrace, in eventContext: borrowing Event.Context, version: Int) {
+    init(encoding backtrace: borrowing Backtrace, in eventContext: borrowing Event.Context) {
       if let symbolicationMode = eventContext.configuration?.backtraceSymbolicationMode {
         symbolicatedAddresses = backtrace.symbolicate(symbolicationMode)
       } else {

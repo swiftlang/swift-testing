@@ -446,7 +446,7 @@ extension ExitTest {
     // events in the future, we can forward them too.) Always use the latest
     // version (even if experimental) since both the producer and consumer are
     // this exact version of the testing library.
-    let eventHandler = ABI.Record.eventHandler(encodeAsJSONLines: true, version: 1) { json in
+    let eventHandler = ABI.v1.eventHandler(encodeAsJSONLines: true) { json in
       _ = try? _backChannelForEntryPoint?.withLock {
         try _backChannelForEntryPoint?.write(json)
         try _backChannelForEntryPoint?.write("\n")
@@ -694,7 +694,7 @@ extension ExitTest {
   ///
   /// - Throws: Any error encountered attempting to decode or process the JSON.
   private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
-    let record = try JSON.decode(ABI.Record.self, from: recordJSON)
+    let record = try JSON.decode(ABI.Record<ABI.v1>.self, from: recordJSON)
 
     if case let .event(event) = record.kind, let issue = event.issue {
       // Translate the issue back into a "real" issue and record it

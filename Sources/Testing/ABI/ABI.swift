@@ -12,16 +12,68 @@
 @_spi(ForToolsIntegrationOnly)
 public enum ABI: Sendable {}
 
-// MARK: -
+// MARK: - ABI version abstraction
 
-@_spi(ForToolsIntegrationOnly)
 extension ABI {
-  /// A namespace for ABI version 0 symbols.
-  public enum v0: Sendable {}
+  /// A protocol describing the types that represent different ABI versions.
+  protocol Version: Sendable {
+    /// The numeric representation of this ABI version.
+    static var versionNumber: Int { get }
 
-  /// A namespace for ABI version 1 symbols.
+    /// Create an event handler that encodes events as JSON and forwards them to
+    /// an ABI-friendly event handler.
+    ///
+    /// - Parameters:
+    ///   - encodeAsJSONLines: Whether or not to ensure JSON passed to
+    ///     `eventHandler` is encoded as JSON Lines (i.e. that it does not
+    ///     contain extra newlines.)
+    ///   - eventHandler: The event handler to forward events to.
+    ///
+    /// - Returns: An event handler.
+    ///
+    /// The resulting event handler outputs data as JSON. For each event handled
+    /// by the resulting event handler, a JSON object representing it and its
+    /// associated context is created and is passed to `eventHandler`.
+    static func eventHandler(
+      encodeAsJSONLines: Bool,
+      forwardingTo eventHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
+    ) -> Event.Handler
+  }
+
+  /// The current supported ABI version (ignoring any experimental versions.)
+  static var currentVersion: (some Version).Type {
+    v0.self
+  }
+}
+
+// MARK: - Concrete ABI versions
+
+extension ABI {
+#if !SWT_NO_SNAPSHOT_TYPES
+  /// A namespace and version type for Xcode 16 Beta 1 compatibility.
+  ///
+  /// This type will be removed in a future update.
+  enum Xcode16Beta1: Sendable, Version {
+    static var versionNumber: Int {
+      -1
+    }
+  }
+#endif
+
+  /// A namespace and type for ABI version 0 symbols.
+  public enum v0: Sendable, Version {
+    static var versionNumber: Int {
+      0
+    }
+  }
+
+  /// A namespace and type for ABI version 1 symbols.
   @_spi(Experimental)
-  public enum v1: Sendable {}
+  public enum v1: Sendable, Version {
+    static var versionNumber: Int {
+      1
+    }
+  }
 }
 
 /// A namespace for ABI version 0 symbols.

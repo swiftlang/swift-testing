@@ -15,7 +15,7 @@ extension ABI {
   /// This type is not part of the public interface of the testing library. It
   /// assists in converting values to JSON; clients that consume this JSON are
   /// expected to write their own decoders.
-  struct EncodedInstant: Sendable {
+  struct EncodedInstant<V>: Sendable where V: ABI.Version {
     /// The number of seconds since the system-defined suspending epoch.
     ///
     /// For more information, see [`SuspendingClock`](https://developer.apple.com/documentation/swift/suspendingclock).
@@ -24,7 +24,7 @@ extension ABI {
     /// The number of seconds since the UNIX epoch (1970-01-01 00:00:00 UT).
     var since1970: Double
 
-    init(encoding instant: borrowing Test.Clock.Instant, version: Int) {
+    init(encoding instant: borrowing Test.Clock.Instant) {
       absolute = Double(instant.suspending)
 #if !SWT_NO_UTC_CLOCK
       since1970 = Double(instant.wall)

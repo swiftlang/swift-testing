@@ -68,15 +68,17 @@ extension ABI.v0 {
 #if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Xcode 16 Beta 1 compatibility
 
-/// An older signature for ``ABIv0/EntryPoint-swift.typealias`` used by Xcode 16
-/// Beta 1.
-///
-/// This type will be removed in a future update.
-@available(*, deprecated, message: "Use ABI.v0.EntryPoint instead.")
-typealias ABIEntryPoint_v0 = @Sendable (
-  _ argumentsJSON: UnsafeRawBufferPointer?,
-  _ recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
-) async throws -> CInt
+extension ABI.Xcode16Beta1 {
+  /// An older signature for ``ABIv0/EntryPoint-swift.typealias`` used by Xcode
+  /// 16 Beta 1.
+  ///
+  /// This type will be removed in a future update.
+  @available(*, deprecated, message: "Use ABI.v0.EntryPoint instead.")
+  typealias EntryPoint = @Sendable (
+    _ argumentsJSON: UnsafeRawBufferPointer?,
+    _ recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
+  ) async throws -> CInt
+}
 
 /// An older signature for ``ABIv0/entryPoint-swift.type.property`` used by
 /// Xcode 16 Beta 1.
@@ -85,7 +87,7 @@ typealias ABIEntryPoint_v0 = @Sendable (
 @available(*, deprecated, message: "Use ABI.v0.entryPoint (swt_abiv0_getEntryPoint()) instead.")
 @_cdecl("swt_copyABIEntryPoint_v0")
 @usableFromInline func copyABIEntryPoint_v0() -> UnsafeMutableRawPointer {
-  let result = UnsafeMutablePointer<ABIEntryPoint_v0>.allocate(capacity: 1)
+  let result = UnsafeMutablePointer<ABI.Xcode16Beta1.EntryPoint>.allocate(capacity: 1)
   result.initialize { configurationJSON, recordHandler in
     try await _entryPoint(
       configurationJSON: configurationJSON,

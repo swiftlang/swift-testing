@@ -590,34 +590,41 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 /// specified ABI version.
 ///
 /// - Parameters:
-///   - version: The ABI version to use.
+///   - version: The numeric value of the ABI version to use.
 ///   - encodeAsJSONLines: Whether or not to ensure JSON passed to
 ///     `eventHandler` is encoded as JSON Lines (i.e. that it does not contain
 ///     extra newlines.)
-///   - eventHandler: The event handler to forward encoded events to. The
+///   - targetEventHandler: The event handler to forward encoded events to. The
 ///     encoding of events depends on `version`.
 ///
 /// - Returns: An event handler.
 ///
 /// - Throws: If `version` is not a supported ABI version.
 func eventHandlerForStreamingEvents(
-  version: Int?,
+  version versionNumber: Int?,
   encodeAsJSONLines: Bool,
-  forwardingTo eventHandler: @escaping @Sendable (UnsafeRawBufferPointer) -> Void
+  forwardingTo targetEventHandler: @escaping @Sendable (UnsafeRawBufferPointer) -> Void
 ) throws -> Event.Handler {
+  func eventHandler(for version: (some ABI.Version).Type) -> Event.Handler {
+    return version.eventHandler(encodeAsJSONLines: encodeAsJSONLines, forwardingTo: targetEventHandler)
+  }
+
+  return switch versionNumber {
+  case nil:
+    eventHandler(for: ABI.currentVersion)
 #if !SWT_NO_SNAPSHOT_TYPES
-  if version == -1 {
+  case -1:
     // Legacy support for Xcode 16 betas. Support for this undocumented version
     // will be removed in a future update. Do not use it.
-    return eventHandlerForStreamingEventSnapshots(to: eventHandler)
-  }
+    eventHandler(for: ABI.Xcode16Beta1.self)
 #endif
-
-  let version = version ?? 0
-  if version >= 0 && version <= 1 {
-    return ABI.Record.eventHandler(encodeAsJSONLines: encodeAsJSONLines, version: version, forwardingTo: eventHandler)
+  case 0:
+    eventHandler(for: ABI.v0.self)
+  case 1:
+    eventHandler(for: ABI.v1.self)
+  case let .some(unsupportedVersionNumber):
+    throw _EntryPointError.invalidArgument("--event-stream-version", value: "\(unsupportedVersionNumber)")
   }
-  throw _EntryPointError.invalidArgument("--event-stream-version", value: "\(version)")
 }
 #endif
 

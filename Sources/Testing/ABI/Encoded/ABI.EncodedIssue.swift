@@ -15,7 +15,7 @@ extension ABI {
   /// This type is not part of the public interface of the testing library. It
   /// assists in converting values to JSON; clients that consume this JSON are
   /// expected to write their own decoders.
-  struct EncodedIssue: Sendable {
+  struct EncodedIssue<V>: Sendable where V: ABI.Version {
     /// An enumeration representing the level of severity of a recorded issue.
     ///
     /// For descriptions of individual cases, see ``Issue/Severity-swift.enum``.
@@ -38,14 +38,14 @@ extension ABI {
     /// The backtrace where this issue occurred, if available.
     ///
     /// - Warning: Backtraces are not yet part of the JSON schema.
-    var _backtrace: EncodedBacktrace?
+    var _backtrace: EncodedBacktrace<V>?
 
     /// The error associated with this issue, if applicable.
     ///
     /// - Warning: Errors are not yet part of the JSON schema.
-    var _error: EncodedError?
+    var _error: EncodedError<V>?
 
-    init(encoding issue: borrowing Issue, in eventContext: borrowing Event.Context, version: Int) {
+    init(encoding issue: borrowing Issue, in eventContext: borrowing Event.Context) {
       _severity = switch issue.severity {
       case .warning: .warning
       case .error: .error
@@ -53,10 +53,10 @@ extension ABI {
       isKnown = issue.isKnown
       sourceLocation = issue.sourceLocation
       if let backtrace = issue.sourceContext.backtrace {
-        _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext, version: version)
+        _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)
       }
       if let error = issue.error {
-        _error = EncodedError(encoding: error, in: eventContext, version: version)
+        _error = EncodedError(encoding: error, in: eventContext)
       }
     }
   }

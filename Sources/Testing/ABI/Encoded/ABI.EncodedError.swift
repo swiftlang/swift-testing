@@ -17,7 +17,7 @@ extension ABI {
   /// expected to write their own decoders.
   ///
   /// - Warning: Errors are not yet part of the JSON schema.
-  struct EncodedError: Sendable {
+  struct EncodedError<V>: Sendable where V: ABI.Version {
     /// The error's description
     var description: String
 
@@ -29,7 +29,7 @@ extension ABI {
 
     // TODO: userInfo (partial) encoding
 
-    init(encoding error: some Error, in eventContext: borrowing Event.Context, version: Int) {
+    init(encoding error: some Error, in eventContext: borrowing Event.Context) {
       description = String(describingForTest: error)
       domain = error._domain
       code = error._code

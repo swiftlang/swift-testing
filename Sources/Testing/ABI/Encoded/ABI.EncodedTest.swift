@@ -17,7 +17,7 @@ extension ABI {
   /// This type is not part of the public interface of the testing library. It
   /// assists in converting values to JSON; clients that consume this JSON are
   /// expected to write their own decoders.
-  struct EncodedTest: Sendable {
+  struct EncodedTest<V>: Sendable where V: ABI.Version {
     /// An enumeration describing the various kinds of test.
     enum Kind: String, Sendable {
       /// A test suite.
@@ -46,7 +46,7 @@ extension ABI {
       /// The string value representing the corresponding test ID.
       var stringValue: String
 
-      init(encoding testID: borrowing Test.ID, version: Int) {
+      init(encoding testID: borrowing Test.ID) {
         stringValue = String(describing: copy testID)
       }
 
@@ -65,7 +65,7 @@ extension ABI {
     /// The test cases in this test, if it is a parameterized test function.
     ///
     /// - Warning: Test cases are not yet part of the JSON schema.
-    var _testCases: [EncodedTestCase]?
+    var _testCases: [EncodedTestCase<V>]?
 
     /// Whether or not the test is parameterized.
     ///
@@ -82,7 +82,7 @@ extension ABI {
     /// }
     var _tags: [String]?
 
-    init(encoding test: borrowing Test, version: Int) {
+    init(encoding test: borrowing Test) {
       if test.isSuite {
         kind = .suite
       } else {
@@ -90,15 +90,15 @@ extension ABI {
         let testIsParameterized = test.isParameterized
         isParameterized = testIsParameterized
         if testIsParameterized {
-          _testCases = test.uncheckedTestCases?.map { EncodedTestCase(encoding: $0, version: version) }
+          _testCases = test.uncheckedTestCases?.map(EncodedTestCase.init(encoding:))
         }
       }
       name = test.name
       displayName = test.displayName
       sourceLocation = test.sourceLocation
-      id = ID(encoding: test.id, version: version)
+      id = ID(encoding: test.id)
 
-      if version >= 1 {
+      if V.versionNumber >= 1 {
         let tags = test.tags
         if !tags.isEmpty {
           _tags = tags.map(String.init(describing:))
@@ -119,11 +119,11 @@ extension ABI {
   /// expected to write their own decoders.
   ///
   /// - Warning: Test cases are not yet part of the JSON schema.
-  struct EncodedTestCase: Sendable {
+  struct EncodedTestCase<V>: Sendable where V: ABI.Version {
     var id: String
     var displayName: String
 
-    init(encoding testCase: borrowing Test.Case, version: Int) {
+    init(encoding testCase: borrowing Test.Case) {
       // TODO: define an encodable form of Test.Case.ID
       id = String(describing: testCase.id)
       displayName = testCase.arguments.lazy

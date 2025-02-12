@@ -16,7 +16,7 @@ extension ABI {
   /// This type is not part of the public interface of the testing library. It
   /// assists in converting values to JSON; clients that consume this JSON are
   /// expected to write their own decoders.
-  struct EncodedMessage: Sendable {
+  struct EncodedMessage<V>: Sendable where V: ABI.Version {
     /// A type implementing the JSON encoding of ``Event/Symbol`` for the ABI
     /// entry point and event stream output.
     ///
@@ -33,7 +33,7 @@ extension ABI {
       case details
       case attachment = "_attachment"
 
-      init(encoding symbol: Event.Symbol, version: Int) {
+      init(encoding symbol: Event.Symbol) {
         self = switch symbol {
         case .default:
           .default
@@ -67,8 +67,8 @@ extension ABI {
     /// The human-readable, unformatted text associated with this message.
     var text: String
 
-    init(encoding message: borrowing Event.HumanReadableOutputRecorder.Message, version: Int) {
-      symbol = Symbol(encoding: message.symbol ?? .default, version: version)
+    init(encoding message: borrowing Event.HumanReadableOutputRecorder.Message) {
+      symbol = Symbol(encoding: message.symbol ?? .default)
       text = message.conciseStringValue ?? message.stringValue
     }
   }

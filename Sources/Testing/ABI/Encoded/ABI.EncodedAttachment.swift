@@ -17,11 +17,11 @@ extension ABI {
   /// expected to write their own decoders.
   ///
   /// - Warning: Attachments are not yet part of the JSON schema.
-  struct EncodedAttachment: Sendable {
+  struct EncodedAttachment<V>: Sendable where V: ABI.Version {
     /// The path where the attachment was written.
     var path: String?
 
-    init(encoding attachment: borrowing Attachment<AnyAttachable>, in eventContext: borrowing Event.Context, version: Int) {
+    init(encoding attachment: borrowing Attachment<AnyAttachable>, in eventContext: borrowing Event.Context) {
       path = attachment.fileSystemPath
     }
   }
