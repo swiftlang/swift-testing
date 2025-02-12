@@ -10,25 +10,7 @@
 
 /// A namespace for ABI symbols.
 @_spi(ForToolsIntegrationOnly)
-public enum ABI: Sendable {
-  /// The current supported ABI version.
-  public static var currentVersion: Int {
-    0
-  }
-
-  /// The current experimental ABI version, if any.
-  ///
-  /// If there is no experimental ABI version under development at the time this
-  /// version of the testing library was released, the value of this property is
-  /// `nil`.
-  ///
-  /// This symbol is permanently marked `@_spi(Experimental)` because it always
-  /// refers to an experimental interface.
-  @_spi(Experimental)
-  public static var currentExperimentalVersion: Int? {
-    1
-  }
-}
+public enum ABI: Sendable {}
 
 // MARK: -
 
