@@ -72,6 +72,13 @@ let package = Package(
         .enableExperimentalFeature("SymbolLinkageMarkers"),
       ]
     ),
+    .testTarget(
+      name: "SubexpressionShowcase",
+      dependencies: [
+        "Testing",
+      ],
+      swiftSettings: .packageSettings
+    ),
 
     .macro(
       name: "TestingMacros",
@@ -152,6 +159,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .unsafeFlags(["-require-explicit-sendable"]),
       .enableUpcomingFeature("ExistentialAny"),
       .enableExperimentalFeature("SuppressedAssociatedTypes"),
+      .enableExperimentalFeature("NonescapableTypes"),
 
       .enableExperimentalFeature("AccessLevelOnImport"),
       .enableUpcomingFeature("InternalImportsByDefault"),

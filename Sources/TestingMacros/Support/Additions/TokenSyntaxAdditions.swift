@@ -46,4 +46,14 @@ extension TokenSyntax {
 
     return nil
   }
+
+  /// Whether this instance represents some kind of operator.
+  var isOperator: Bool {
+    switch tokenKind {
+    case .binaryOperator, .prefixOperator, .postfixOperator:
+      return true
+    default:
+      return false
+    }
+  }
 }

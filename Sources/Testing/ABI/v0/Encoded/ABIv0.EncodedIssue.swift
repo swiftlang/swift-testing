@@ -45,6 +45,11 @@ extension ABIv0 {
     /// - Warning: Errors are not yet part of the JSON schema.
     var _error: EncodedError?
 
+    /// The expectation associated with this issue, if applicable.
+    ///
+    /// - Warning: Expectations are not yet part of the JSON schema.
+    var _expectation: EncodedExpectation?
+
     init(encoding issue: borrowing Issue, in eventContext: borrowing Event.Context) {
       _severity = switch issue.severity {
       case .warning: .warning
@@ -58,6 +63,9 @@ extension ABIv0 {
       }
       if let error = issue.error {
         _error = EncodedError(encoding: error, in: eventContext)
+      }
+      if case let .expectationFailed(expectation) = issue.kind {
+        _expectation = EncodedExpectation(encoding: expectation, in: eventContext)
       }
     }
   }
