@@ -22,9 +22,13 @@ extension Event {
     /// The symbol to use when a test passes.
     ///
     /// - Parameters:
-    ///   - knownIssueCount: The number of known issues encountered by the end
-    ///     of the test.
+    ///   - knownIssueCount: The number of known issues recorded for the test.
+    ///     The default value is `0`.
     case pass(knownIssueCount: Int = 0)
+
+    /// The symbol to use when a test passes with one or more warnings.
+    @_spi(Experimental)
+    case passWithWarnings
 
     /// The symbol to use when a test fails.
     case fail
@@ -62,6 +66,8 @@ extension Event.Symbol {
       } else {
         ("\u{10105B}", "checkmark.diamond.fill")
       }
+    case .passWithWarnings:
+      ("\u{100123}", "questionmark.diamond.fill")
     case .fail:
       ("\u{100884}", "xmark.diamond.fill")
     case .difference:
@@ -122,6 +128,9 @@ extension Event.Symbol {
         // Unicode: HEAVY CHECK MARK
         return "\u{2714}"
       }
+    case .passWithWarnings:
+      // Unicode: QUESTION MARK
+      return "\u{003F}"
     case .fail:
       // Unicode: HEAVY BALLOT X
       return "\u{2718}"
@@ -157,6 +166,9 @@ extension Event.Symbol {
         // Unicode: SQUARE ROOT
         return "\u{221A}"
       }
+    case .passWithWarnings:
+      // Unicode: QUESTION MARK
+      return "\u{003F}"
     case .fail:
       // Unicode: MULTIPLICATION SIGN
       return "\u{00D7}"

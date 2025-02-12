@@ -59,7 +59,7 @@ struct EventRecorderTests {
     }
 
     var configuration = Configuration()
-    configuration.deliverExpectationCheckedEvents = true
+    configuration.eventHandlingOptions.isExpectationCheckedEventEnabled = true
     let eventRecorder = Event.ConsoleOutputRecorder(options: options, writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
@@ -98,7 +98,7 @@ struct EventRecorderTests {
     let stream = Stream()
 
     var configuration = Configuration()
-    configuration.deliverExpectationCheckedEvents = true
+    configuration.eventHandlingOptions.isExpectationCheckedEventEnabled = true
     let eventRecorder = Event.ConsoleOutputRecorder(writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
@@ -123,7 +123,7 @@ struct EventRecorderTests {
     let stream = Stream()
 
     var configuration = Configuration()
-    configuration.deliverExpectationCheckedEvents = true
+    configuration.eventHandlingOptions.isExpectationCheckedEventEnabled = true
     let eventRecorder = Event.ConsoleOutputRecorder(writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
@@ -183,15 +183,20 @@ struct EventRecorderTests {
   @Test(
     "Issue counts are summed correctly on test end",
     arguments: [
-      ("f()", false, (total: 5, expected: 3)),
-      ("g()", false, (total: 2, expected: 1)),
-      ("PredictablyFailingTests", true, (total: 7, expected: 4)),
+      ("f()", #".* Test f\(\) failed after .+ seconds with 5 issues \(including 3 known issues\)\."#),
+      ("g()", #".* Test g\(\) failed after .+ seconds with 2 issues \(including 1 known issue\)\."#),
+      ("h()", #".* Test h\(\) passed after .+ seconds with 1 warning\."#),
+      ("i()", #".* Test i\(\) failed after .+ seconds with 2 issues \(including 1 warning\)\."#),
+      ("j()", #".* Test j\(\) passed after .+ seconds with 1 warning and 1 known issue\."#),
+      ("k()", #".* Test k\(\) passed after .+ seconds with 1 known issue\."#),
+      ("PredictablyFailingTests", #".* Suite PredictablyFailingTests failed after .+ seconds with 13 issues \(including 3 warnings and 6 known issues\)\."#),
     ]
   )
-  func issueCountSummingAtTestEnd(testName: String, isSuite: Bool, issueCount: (total: Int, expected: Int)) async throws {
+  func issueCountSummingAtTestEnd(testName: String, expectedPattern: String) async throws {
     let stream = Stream()
 
     var configuration = Configuration()
+    configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled = true
     let eventRecorder = Event.ConsoleOutputRecorder(writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
@@ -204,28 +209,13 @@ struct EventRecorderTests {
       print(buffer, terminator: "")
     }
 
-    let testFailureRegex = Regex {
-      One(.anyGraphemeCluster)
-      " \(isSuite ? "Suite" : "Test") \(testName) failed "
-      ZeroOrMore(.any)
-      " with "
-      Capture { OneOrMore(.digit) } transform: { Int($0) }
-      " issue"
-      Optionally("s")
-      " (including "
-      Capture { OneOrMore(.digit) } transform: { Int($0) }
-      " known issue"
-      Optionally("s")
-      ")."
-    }
-    let match = try #require(
-      buffer
-        .split(whereSeparator: \.isNewline)
-        .compactMap(testFailureRegex.wholeMatch(in:))
-        .first
+    let expectedSuffixRegex = try Regex(expectedPattern)
+    #expect(try buffer
+      .split(whereSeparator: \.isNewline)
+      .compactMap(expectedSuffixRegex.wholeMatch(in:))
+      .first != nil,
+      "buffer: \(buffer)"
     )
-    #expect(issueCount.total == match.output.1)
-    #expect(issueCount.expected == match.output.2)
   }
 #endif
 
@@ -294,8 +284,51 @@ struct EventRecorderTests {
         .compactMap(runFailureRegex.wholeMatch(in:))
         .first
     )
-    #expect(match.output.1 == 7)
-    #expect(match.output.2 == 4)
+    #expect(match.output.1 == 9)
+    #expect(match.output.2 == 5)
+  }
+
+  @Test("Issue counts are summed correctly on run end for a test with only warning issues")
+  @available(_regexAPI, *)
+  func warningIssueCountSummingAtRunEnd() async throws {
+    let stream = Stream()
+
+    var configuration = Configuration()
+    configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled = true
+    let eventRecorder = Event.ConsoleOutputRecorder(writingUsing: stream.write)
+    configuration.eventHandler = { event, context in
+      eventRecorder.record(event, in: context)
+    }
+
+    await runTestFunction(named: "h()", in: PredictablyFailingTests.self, configuration: configuration)
+
+    let buffer = stream.buffer.rawValue
+    if testsWithSignificantIOAreEnabled {
+      print(buffer, terminator: "")
+    }
+
+    let runFailureRegex = Regex {
+      One(.anyGraphemeCluster)
+      " Test run with "
+      OneOrMore(.digit)
+      " test"
+      Optionally("s")
+      " passed "
+      ZeroOrMore(.any)
+      " with "
+      Capture { OneOrMore(.digit) } transform: { Int($0) }
+      " warning"
+      Optionally("s")
+      "."
+    }
+    let match = try #require(
+      buffer
+        .split(whereSeparator: \.isNewline)
+        .compactMap(runFailureRegex.wholeMatch(in:))
+        .first,
+      "buffer: \(buffer)"
+    )
+    #expect(match.output.1 == 1)
   }
 #endif
 
@@ -308,7 +341,7 @@ struct EventRecorderTests {
     let stream = Stream()
 
     var configuration = Configuration()
-    configuration.deliverExpectationCheckedEvents = true
+    configuration.eventHandlingOptions.isExpectationCheckedEventEnabled = true
     let eventRecorder = Event.JUnitXMLRecorder(writingUsing: stream.write)
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
@@ -508,6 +541,28 @@ struct EventRecorderTests {
     #expect(Bool(false))
     withKnownIssue {
       #expect(Bool(false))
+    }
+  }
+
+  @Test(.hidden) func h() {
+    Issue(kind: .unconditional, severity: .warning, comments: [], sourceContext: .init()).record()
+  }
+
+  @Test(.hidden) func i() {
+    Issue(kind: .unconditional, severity: .warning, comments: [], sourceContext: .init()).record()
+    #expect(Bool(false))
+  }
+
+  @Test(.hidden) func j() {
+    Issue(kind: .unconditional, severity: .warning, comments: [], sourceContext: .init()).record()
+    withKnownIssue {
+      #expect(Bool(false))
+    }
+  }
+
+  @Test(.hidden) func k() {
+    withKnownIssue {
+      Issue(kind: .unconditional, severity: .warning, comments: [], sourceContext: .init()).record()
     }
   }
 }
