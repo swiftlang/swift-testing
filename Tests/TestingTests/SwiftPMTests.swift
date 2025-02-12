@@ -226,7 +226,7 @@ struct SwiftPMTests {
     #expect(args.parallel == false)
   }
 
-  func decodeABIv0RecordStream(fromFileAtPath path: String) throws -> [ABI.Record] {
+  func decodeABIRecordStream(fromFileAtPath path: String) throws -> [ABI.Record] {
     try FileHandle(forReadingAtPath: path).readToEnd()
       .split(whereSeparator: \.isASCIINewline)
       .map { line in
@@ -238,10 +238,12 @@ struct SwiftPMTests {
 
   @Test("--event-stream-output-path argument (writes to a stream and can be read back)",
         arguments: [
-          ("--event-stream-output-path", "--event-stream-version", "0"),
-          ("--experimental-event-stream-output", "--experimental-event-stream-version", "0"),
+          ("--event-stream-output-path", "--event-stream-version", 0),
+          ("--experimental-event-stream-output", "--experimental-event-stream-version", 0),
+          ("--event-stream-output-path", "--event-stream-version", 1),
+          ("--experimental-event-stream-output", "--experimental-event-stream-version", 1),
         ])
-  func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: String) async throws {
+  func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: Int) async throws {
     // Test that JSON records are successfully streamed to a file and can be
     // read back into memory and decoded.
     let tempDirPath = try temporaryDirectory()
@@ -250,8 +252,8 @@ struct SwiftPMTests {
       _ = remove(temporaryFilePath)
     }
     do {
-      let configuration = try configurationForEntryPoint(withArguments: ["PATH", outputArgumentName, temporaryFilePath, versionArgumentName, version])
-      let test = Test {}
+      let configuration = try configurationForEntryPoint(withArguments: ["PATH", outputArgumentName, temporaryFilePath, versionArgumentName, "\(version)"])
+      let test = Test(.tags(.blue)) {}
       let eventContext = Event.Context(test: test, testCase: nil, configuration: nil)
 
       configuration.handleEvent(Event(.testDiscovered, testID: test.id, testCaseID: nil), in: eventContext)
@@ -264,7 +266,7 @@ struct SwiftPMTests {
       configuration.handleEvent(Event(.runEnded, testID: nil, testCaseID: nil), in: eventContext)
     }
 
-    let decodedRecords = try decodeABIv0RecordStream(fromFileAtPath: temporaryFilePath)
+    let decodedRecords = try decodeABIRecordStream(fromFileAtPath: temporaryFilePath)
     let testRecords = decodedRecords.compactMap { record in
       if case let .test(test) = record.kind {
         return test
@@ -272,6 +274,13 @@ struct SwiftPMTests {
       return nil
     }
     #expect(testRecords.count == 1)
+    for testRecord in testRecords {
+      if version >= 1 {
+        #expect(testRecord._tags != nil)
+      } else {
+        #expect(testRecord._tags == nil)
+      }
+    }
     let eventRecords = decodedRecords.compactMap { record in
       if case let .event(event) = record.kind {
         return event

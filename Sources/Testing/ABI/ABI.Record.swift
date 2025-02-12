@@ -18,8 +18,9 @@ extension ABI {
   struct Record: Sendable {
     /// The version of this record.
     ///
-    /// The value of this property corresponds to the ABI version i.e. `0`.
-    var version = 0
+    /// The value of this property corresponds to the JSON schema version this
+    /// record is compatible with.
+    var version: Int
 
     /// An enumeration describing the various kinds of record.
     enum Kind: Sendable {
@@ -33,14 +34,16 @@ extension ABI {
     /// The kind of record.
     var kind: Kind
 
-    init(encoding test: borrowing Test) {
-      kind = .test(EncodedTest(encoding: test))
+    init(encoding test: borrowing Test, version: Int) {
+      self.version = version
+      kind = .test(EncodedTest(encoding: test, version: version))
     }
 
-    init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message]) {
-      guard let event = EncodedEvent(encoding: event, in: eventContext, messages: messages) else {
+    init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message], version: Int) {
+      guard let event = EncodedEvent(encoding: event, in: eventContext, messages: messages, version: version) else {
         return nil
       }
+      self.version = version
       kind = .event(event)
     }
   }

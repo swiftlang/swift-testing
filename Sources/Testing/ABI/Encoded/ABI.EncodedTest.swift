@@ -46,7 +46,7 @@ extension ABI {
       /// The string value representing the corresponding test ID.
       var stringValue: String
 
-      init(encoding testID: borrowing Test.ID) {
+      init(encoding testID: borrowing Test.ID, version: Int) {
         stringValue = String(describing: copy testID)
       }
 
@@ -73,7 +73,16 @@ extension ABI {
     /// is `nil`.
     var isParameterized: Bool?
 
-    init(encoding test: borrowing Test) {
+    /// The tags associated with the test.
+    ///
+    /// - Warning: Tags are not yet part of the JSON schema.
+    ///
+    /// @Metadata {
+    ///   @Available("Swift Testing ABI", introduced: 1)
+    /// }
+    var _tags: [String]?
+
+    init(encoding test: borrowing Test, version: Int) {
       if test.isSuite {
         kind = .suite
       } else {
@@ -81,13 +90,20 @@ extension ABI {
         let testIsParameterized = test.isParameterized
         isParameterized = testIsParameterized
         if testIsParameterized {
-          _testCases = test.uncheckedTestCases?.map(EncodedTestCase.init(encoding:))
+          _testCases = test.uncheckedTestCases?.map { EncodedTestCase(encoding: $0, version: version) }
         }
       }
       name = test.name
       displayName = test.displayName
       sourceLocation = test.sourceLocation
-      id = ID(encoding: test.id)
+      id = ID(encoding: test.id, version: version)
+
+      if version >= 1 {
+        let tags = test.tags
+        if !tags.isEmpty {
+          _tags = tags.map(String.init(describing:))
+        }
+      }
     }
   }
 }
@@ -107,7 +123,7 @@ extension ABI {
     var id: String
     var displayName: String
 
-    init(encoding testCase: borrowing Test.Case) {
+    init(encoding testCase: borrowing Test.Case, version: Int) {
       // TODO: define an encodable form of Test.Case.ID
       id = String(describing: testCase.id)
       displayName = testCase.arguments.lazy

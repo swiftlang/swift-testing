@@ -24,7 +24,7 @@ extension ABI {
     /// The number of seconds since the UNIX epoch (1970-01-01 00:00:00 UT).
     var since1970: Double
 
-    init(encoding instant: borrowing Test.Clock.Instant) {
+    init(encoding instant: borrowing Test.Clock.Instant, version: Int) {
       absolute = Double(instant.suspending)
 #if !SWT_NO_UTC_CLOCK
       since1970 = Double(instant.wall)

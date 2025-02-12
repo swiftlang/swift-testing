@@ -605,18 +605,19 @@ func eventHandlerForStreamingEvents(
   encodeAsJSONLines: Bool,
   forwardingTo eventHandler: @escaping @Sendable (UnsafeRawBufferPointer) -> Void
 ) throws -> Event.Handler {
-  switch version {
 #if !SWT_NO_SNAPSHOT_TYPES
-  case -1:
+  if version == -1 {
     // Legacy support for Xcode 16 betas. Support for this undocumented version
     // will be removed in a future update. Do not use it.
-    eventHandlerForStreamingEventSnapshots(to: eventHandler)
-#endif
-  case nil, 0, 1:
-    ABI.Record.eventHandler(encodeAsJSONLines: encodeAsJSONLines, forwardingTo: eventHandler)
-  case let .some(unsupportedVersion):
-    throw _EntryPointError.invalidArgument("--event-stream-version", value: "\(unsupportedVersion)")
+    return eventHandlerForStreamingEventSnapshots(to: eventHandler)
   }
+#endif
+
+  let version = version ?? 0
+  if version >= 0 && version <= 1 {
+    return ABI.Record.eventHandler(encodeAsJSONLines: encodeAsJSONLines, version: version, forwardingTo: eventHandler)
+  }
+  throw _EntryPointError.invalidArgument("--event-stream-version", value: "\(version)")
 }
 #endif
 

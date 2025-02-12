@@ -21,7 +21,7 @@ extension ABI {
     /// The frames in the backtrace.
     var symbolicatedAddresses: [Backtrace.SymbolicatedAddress]
 
-    init(encoding backtrace: borrowing Backtrace, in eventContext: borrowing Event.Context) {
+    init(encoding backtrace: borrowing Backtrace, in eventContext: borrowing Event.Context, version: Int) {
       if let symbolicationMode = eventContext.configuration?.backtraceSymbolicationMode {
         symbolicatedAddresses = backtrace.symbolicate(symbolicationMode)
       } else {

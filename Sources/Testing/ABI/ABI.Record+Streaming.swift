@@ -50,6 +50,7 @@ extension ABI.Record {
   ///   - encodeAsJSONLines: Whether or not to ensure JSON passed to
   ///     `eventHandler` is encoded as JSON Lines (i.e. that it does not contain
   ///     extra newlines.)
+  ///   - version: The JSON schema version to use.
   ///   - eventHandler: The event handler to forward events to. See
   ///     ``ABIv0/EntryPoint-swift.typealias`` for more information.
   ///
@@ -64,6 +65,7 @@ extension ABI.Record {
   /// does not contain any newline characters.
   static func eventHandler(
     encodeAsJSONLines: Bool,
+    version: Int,
     forwardingTo eventHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
   ) -> Event.Handler {
     // Encode as JSON Lines if requested.
@@ -75,12 +77,12 @@ extension ABI.Record {
     let humanReadableOutputRecorder = Event.HumanReadableOutputRecorder()
     return { [eventHandler = eventHandlerCopy] event, context in
       if case .testDiscovered = event.kind, let test = context.test {
-        try? JSON.withEncoding(of: Self(encoding: test)) { testJSON in
+        try? JSON.withEncoding(of: Self(encoding: test, version: version)) { testJSON in
           eventHandler(testJSON)
         }
       } else {
         let messages = humanReadableOutputRecorder.record(event, in: context, verbosity: 0)
-        if let eventRecord = Self(encoding: event, in: context, messages: messages) {
+        if let eventRecord = Self(encoding: event, in: context, messages: messages, version: version) {
           try? JSON.withEncoding(of: eventRecord, eventHandler)
         }
       }

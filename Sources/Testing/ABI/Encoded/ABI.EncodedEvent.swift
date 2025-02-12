@@ -66,7 +66,7 @@ extension ABI {
     /// - Warning: Test cases are not yet part of the JSON schema.
     var _testCase: EncodedTestCase?
 
-    init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message]) {
+    init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message], version: Int) {
       switch event.kind {
       case .runStarted:
         kind = .runStarted
@@ -79,10 +79,10 @@ extension ABI {
         kind = .testCaseStarted
       case let .issueRecorded(recordedIssue):
         kind = .issueRecorded
-        issue = EncodedIssue(encoding: recordedIssue, in: eventContext)
+        issue = EncodedIssue(encoding: recordedIssue, in: eventContext, version: version)
       case let .valueAttached(attachment):
         kind = .valueAttached
-        _attachment = EncodedAttachment(encoding: attachment, in: eventContext)
+        _attachment = EncodedAttachment(encoding: attachment, in: eventContext, version: version)
       case .testCaseEnded:
         if eventContext.test?.isParameterized == false {
           return nil
@@ -97,11 +97,11 @@ extension ABI {
       default:
         return nil
       }
-      instant = EncodedInstant(encoding: event.instant)
-      self.messages = messages.map(EncodedMessage.init)
-      testID = event.testID.map(EncodedTest.ID.init)
+      instant = EncodedInstant(encoding: event.instant, version: version)
+      self.messages = messages.map { EncodedMessage(encoding: $0, version: version) }
+      testID = event.testID.map { EncodedTest.ID(encoding: $0, version: version) }
       if eventContext.test?.isParameterized == true {
-        _testCase = eventContext.testCase.map(EncodedTestCase.init)
+        _testCase = eventContext.testCase.map { EncodedTestCase(encoding: $0, version: version) }
       }
     }
   }

@@ -443,8 +443,10 @@ extension ExitTest {
 
     // Encode events as JSON and write them to the back channel file handle.
     // Only forward issue-recorded events. (If we start handling other kinds of
-    // events in the future, we can forward them too.)
-    let eventHandler = ABI.Record.eventHandler(encodeAsJSONLines: true) { json in
+    // events in the future, we can forward them too.) Always use the latest
+    // version (even if experimental) since both the producer and consumer are
+    // this exact version of the testing library.
+    let eventHandler = ABI.Record.eventHandler(encodeAsJSONLines: true, version: 1) { json in
       _ = try? _backChannelForEntryPoint?.withLock {
         try _backChannelForEntryPoint?.write(json)
         try _backChannelForEntryPoint?.write("\n")

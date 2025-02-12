@@ -33,7 +33,7 @@ extension ABI {
       case details
       case attachment = "_attachment"
 
-      init(encoding symbol: Event.Symbol) {
+      init(encoding symbol: Event.Symbol, version: Int) {
         self = switch symbol {
         case .default:
           .default
@@ -67,8 +67,8 @@ extension ABI {
     /// The human-readable, unformatted text associated with this message.
     var text: String
 
-    init(encoding message: borrowing Event.HumanReadableOutputRecorder.Message) {
-      symbol = Symbol(encoding: message.symbol ?? .default)
+    init(encoding message: borrowing Event.HumanReadableOutputRecorder.Message, version: Int) {
+      symbol = Symbol(encoding: message.symbol ?? .default, version: version)
       text = message.conciseStringValue ?? message.stringValue
     }
   }

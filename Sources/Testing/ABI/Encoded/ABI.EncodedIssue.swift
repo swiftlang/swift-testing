@@ -45,19 +45,18 @@ extension ABI {
     /// - Warning: Errors are not yet part of the JSON schema.
     var _error: EncodedError?
 
-    init(encoding issue: borrowing Issue, in eventContext: borrowing Event.Context) {
+    init(encoding issue: borrowing Issue, in eventContext: borrowing Event.Context, version: Int) {
       _severity = switch issue.severity {
       case .warning: .warning
       case .error: .error
       }
-
       isKnown = issue.isKnown
       sourceLocation = issue.sourceLocation
       if let backtrace = issue.sourceContext.backtrace {
-        _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)
+        _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext, version: version)
       }
       if let error = issue.error {
-        _error = EncodedError(encoding: error, in: eventContext)
+        _error = EncodedError(encoding: error, in: eventContext, version: version)
       }
     }
   }
