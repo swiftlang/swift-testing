@@ -119,8 +119,8 @@ extension Event.HumanReadableOutputRecorder {
     guard let graph else {
       return (0, 0, 0, 0, "")
     }
-    let errorIssueCount = graph.compactMap(\.value?.issueCount[.error]).reduce(into: 0, +=)
-    let warningIssueCount = graph.compactMap(\.value?.issueCount[.warning]).reduce(into: 0, +=)
+    let errorIssueCount = graph.compactMap { $0.value?.issueCount[.error] }.reduce(into: 0, +=)
+    let warningIssueCount = graph.compactMap { $0.value?.issueCount[.warning] }.reduce(into: 0, +=)
     let knownIssueCount = graph.compactMap(\.value?.knownIssueCount).reduce(into: 0, +=)
     let totalIssueCount = errorIssueCount + warningIssueCount + knownIssueCount
 
