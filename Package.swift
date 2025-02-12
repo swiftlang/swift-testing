@@ -55,7 +55,7 @@ let package = Package(
       ],
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
       cxxSettings: .packageSettings,
-      swiftSettings: .packageSettings,
+      swiftSettings: .publicLibraryTargetSettings,
       linkerSettings: [
         .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd]))
       ]
@@ -114,7 +114,7 @@ let package = Package(
         "Testing",
       ],
       path: "Sources/Overlays/_Testing_CoreGraphics",
-      swiftSettings: .packageSettings
+      swiftSettings: .publicLibraryTargetSettings
     ),
     .target(
       name: "_Testing_Foundation",
@@ -123,7 +123,7 @@ let package = Package(
       ],
       path: "Sources/Overlays/_Testing_Foundation",
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .packageSettings
+      swiftSettings: .publicLibraryTargetSettings
     ),
   ],
 
@@ -163,6 +163,16 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .define("SWT_NO_SNAPSHOT_TYPES", .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi])),
       .define("SWT_NO_DYNAMIC_LINKING", .when(platforms: [.wasi])),
       .define("SWT_NO_PIPES", .when(platforms: [.wasi])),
+    ]
+  }
+
+  /// Settings intended to be applied to every public Swift library target in
+  /// this package.
+  static var publicLibraryTargetSettings: Self {
+    packageSettings + [
+      // Enable Library Evolution to match the way this library is built for
+      // distribution.
+      .unsafeFlags(["-enable-library-evolution"]),
     ]
   }
 
