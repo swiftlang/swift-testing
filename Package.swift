@@ -55,7 +55,9 @@ let package = Package(
       ],
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
       cxxSettings: .packageSettings,
-      swiftSettings: .publicLibraryTargetSettings,
+      swiftSettings: .packageSettings + [
+        .enableLibraryEvolution(),
+      ],
       linkerSettings: [
         .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd]))
       ]
@@ -114,7 +116,9 @@ let package = Package(
         "Testing",
       ],
       path: "Sources/Overlays/_Testing_CoreGraphics",
-      swiftSettings: .publicLibraryTargetSettings
+      swiftSettings: .packageSettings + [
+        .enableLibraryEvolution(),
+      ]
     ),
     .target(
       name: "_Testing_Foundation",
@@ -123,7 +127,9 @@ let package = Package(
       ],
       path: "Sources/Overlays/_Testing_Foundation",
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .publicLibraryTargetSettings
+      swiftSettings: .packageSettings + [
+        .enableLibraryEvolution(applePlatformsOnly: true),
+      ]
     ),
   ],
 
@@ -166,16 +172,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
     ]
   }
 
-  /// Settings intended to be applied to every public Swift library target in
-  /// this package.
-  static var publicLibraryTargetSettings: Self {
-    packageSettings + [
-      // Enable Library Evolution to match the way this library is built for
-      // distribution.
-      .unsafeFlags(["-enable-library-evolution"]),
-    ]
-  }
-
   /// Settings which define commonly-used OS availability macros.
   ///
   /// These leverage a pseudo-experimental feature in the Swift compiler for
@@ -193,6 +189,18 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
       .enableExperimentalFeature("AvailabilityMacro=_distantFuture:macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0, visionOS 99.0"),
     ]
+  }
+}
+
+extension PackageDescription.SwiftSetting {
+  /// Create a Swift setting which enables Library Evolution, optionally
+  /// constraining it to only Apple platforms.
+  ///
+  /// - Parameters:
+  ///   - applePlatformsOnly: Whether to constrain this setting to only Apple
+  ///     platforms.
+  static func enableLibraryEvolution(applePlatformsOnly: Bool = false) -> Self {
+    unsafeFlags(["-enable-library-evolution"], .when(platforms: applePlatformsOnly ? [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS] : []))
   }
 }
 
