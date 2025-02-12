@@ -612,8 +612,8 @@ func eventHandlerForStreamingEvents(
     // will be removed in a future update. Do not use it.
     eventHandlerForStreamingEventSnapshots(to: eventHandler)
 #endif
-  case nil, 0:
-    ABIv0.Record.eventHandler(encodeAsJSONLines: encodeAsJSONLines, forwardingTo: eventHandler)
+  case nil, 0, 1:
+    ABI.Record.eventHandler(encodeAsJSONLines: encodeAsJSONLines, forwardingTo: eventHandler)
   case let .some(unsupportedVersion):
     throw _EntryPointError.invalidArgument("--event-stream-version", value: "\(unsupportedVersion)")
   }

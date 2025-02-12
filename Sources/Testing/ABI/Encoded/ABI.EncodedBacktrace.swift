@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-extension ABIv0 {
+extension ABI {
   /// A type implementing the JSON encoding of ``Backtrace`` for the ABI entry
   /// point and event stream output.
   ///
@@ -33,7 +33,7 @@ extension ABIv0 {
 
 // MARK: - Codable
 
-extension ABIv0.EncodedBacktrace: Codable {
+extension ABI.EncodedBacktrace: Codable {
   func encode(to encoder: any Encoder) throws {
     try symbolicatedAddresses.encode(to: encoder)
   }

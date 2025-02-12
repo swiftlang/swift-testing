@@ -11,7 +11,7 @@
 #if canImport(Foundation) && !SWT_NO_ABI_ENTRY_POINT
 private import _TestingInternals
 
-extension ABIv0 {
+extension ABI.v0 {
   /// The type of the entry point to the testing library used by tools that want
   /// to remain version-agnostic regarding the testing library.
   ///
@@ -62,7 +62,7 @@ extension ABIv0 {
 ///   untyped pointer.
 @_cdecl("swt_abiv0_getEntryPoint")
 @usableFromInline func abiv0_getEntryPoint() -> UnsafeRawPointer {
-  unsafeBitCast(ABIv0.entryPoint, to: UnsafeRawPointer.self)
+  unsafeBitCast(ABI.v0.entryPoint, to: UnsafeRawPointer.self)
 }
 
 #if !SWT_NO_SNAPSHOT_TYPES
@@ -72,7 +72,7 @@ extension ABIv0 {
 /// Beta 1.
 ///
 /// This type will be removed in a future update.
-@available(*, deprecated, message: "Use ABIv0.EntryPoint instead.")
+@available(*, deprecated, message: "Use ABI.v0.EntryPoint instead.")
 typealias ABIEntryPoint_v0 = @Sendable (
   _ argumentsJSON: UnsafeRawBufferPointer?,
   _ recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
@@ -82,7 +82,7 @@ typealias ABIEntryPoint_v0 = @Sendable (
 /// Xcode 16 Beta 1.
 ///
 /// This function will be removed in a future update.
-@available(*, deprecated, message: "Use ABIv0.entryPoint (swt_abiv0_getEntryPoint()) instead.")
+@available(*, deprecated, message: "Use ABI.v0.entryPoint (swt_abiv0_getEntryPoint()) instead.")
 @_cdecl("swt_copyABIEntryPoint_v0")
 @usableFromInline func copyABIEntryPoint_v0() -> UnsafeMutableRawPointer {
   let result = UnsafeMutablePointer<ABIEntryPoint_v0>.allocate(capacity: 1)
@@ -124,8 +124,8 @@ private func _entryPoint(
   let exitCode = await entryPoint(passing: args, eventHandler: eventHandler)
 
   // To maintain compatibility with Xcode 16 Beta 1, suppress custom exit codes.
-  // (This is also needed by ABIv0.entryPoint to correctly treat the no-tests as
-  // a successful run.)
+  // (This is also needed by ABI.v0.entryPoint to correctly treat the no-tests
+  // as a successful run.)
   if exitCode == EXIT_NO_TESTS_FOUND {
     return EXIT_SUCCESS
   }

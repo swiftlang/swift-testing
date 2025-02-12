@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-extension ABIv0 {
+extension ABI {
   /// A type implementing the JSON encoding of ``Test`` for the ABI entry point
   /// and event stream output.
   ///
@@ -92,7 +92,7 @@ extension ABIv0 {
   }
 }
 
-extension ABIv0 {
+extension ABI {
   /// A type implementing the JSON encoding of ``Test/Case`` for the ABI entry
   /// point and event stream output.
   ///
@@ -120,6 +120,6 @@ extension ABIv0 {
 
 // MARK: - Codable
 
-extension ABIv0.EncodedTest: Codable {}
-extension ABIv0.EncodedTest.Kind: Codable {}
-extension ABIv0.EncodedTestCase: Codable {}
+extension ABI.EncodedTest: Codable {}
+extension ABI.EncodedTest.Kind: Codable {}
+extension ABI.EncodedTestCase: Codable {}
