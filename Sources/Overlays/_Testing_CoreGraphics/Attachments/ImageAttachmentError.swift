@@ -10,7 +10,7 @@
 
 #if SWT_TARGET_OS_APPLE && canImport(CoreGraphics)
 /// A type representing an error that can occur when attaching an image.
-enum ImageAttachmentError: Error, CustomStringConvertible {
+package enum ImageAttachmentError: Error, CustomStringConvertible {
   /// The image could not be converted to an instance of `CGImage`.
   case couldNotCreateCGImage
 
