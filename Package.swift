@@ -128,6 +128,9 @@ let package = Package(
       path: "Sources/Overlays/_Testing_Foundation",
       exclude: ["CMakeLists.txt"],
       swiftSettings: .packageSettings + [
+        // The Foundation module only has Library Evolution enabled on Apple
+        // platforms, and since this target's module publicly imports Foundation,
+        // it can only enable Library Evolution itself on those platforms.
         .enableLibraryEvolution(applePlatformsOnly: true),
       ]
     ),
