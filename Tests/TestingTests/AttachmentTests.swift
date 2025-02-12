@@ -16,7 +16,7 @@ import Foundation
 #endif
 #if canImport(CoreGraphics)
 import CoreGraphics
-@_spi(Experimental) @_spi(ForSwiftTestingOnly) import _Testing_CoreGraphics
+@_spi(Experimental) import _Testing_CoreGraphics
 #endif
 #if canImport(UniformTypeIdentifiers)
 import UniformTypeIdentifiers

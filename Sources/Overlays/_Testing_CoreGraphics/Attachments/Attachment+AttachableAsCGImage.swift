@@ -9,7 +9,7 @@
 //
 
 #if SWT_TARGET_OS_APPLE && canImport(CoreGraphics)
-@_spi(ForSwiftTestingOnly) @_spi(Experimental) public import Testing
+@_spi(Experimental) public import Testing
 
 public import UniformTypeIdentifiers
 
