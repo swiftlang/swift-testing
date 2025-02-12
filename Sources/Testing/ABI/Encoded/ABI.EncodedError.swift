@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-extension ABIv0 {
+extension ABI {
   /// A type implementing the JSON encoding of ``Error`` for the ABI entry point
   /// and event stream output.
   ///
@@ -39,7 +39,7 @@ extension ABIv0 {
 
 // MARK: - Error
 
-extension ABIv0.EncodedError: Error {
+extension ABI.EncodedError: Error {
   var _domain: String {
     domain
   }
@@ -56,11 +56,11 @@ extension ABIv0.EncodedError: Error {
 
 // MARK: - Codable
 
-extension ABIv0.EncodedError: Codable {}
+extension ABI.EncodedError: Codable {}
 
 // MARK: - CustomTestStringConvertible
 
-extension ABIv0.EncodedError: CustomTestStringConvertible {
+extension ABI.EncodedError: CustomTestStringConvertible {
   var testDescription: String {
     description
   }

@@ -226,12 +226,12 @@ struct SwiftPMTests {
     #expect(args.parallel == false)
   }
 
-  func decodeABIv0RecordStream(fromFileAtPath path: String) throws -> [ABIv0.Record] {
+  func decodeABIv0RecordStream(fromFileAtPath path: String) throws -> [ABI.Record] {
     try FileHandle(forReadingAtPath: path).readToEnd()
       .split(whereSeparator: \.isASCIINewline)
       .map { line in
         try line.withUnsafeBytes { line in
-          try JSON.decode(ABIv0.Record.self, from: line)
+          try JSON.decode(ABI.Record.self, from: line)
         }
       }
   }

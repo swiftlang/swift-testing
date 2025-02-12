@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-extension ABIv0 {
+extension ABI {
   /// A type implementing the JSON encoding of
   /// ``Event/HumanReadableOutputRecorder/Message`` for the ABI entry point and
   /// event stream output.
@@ -76,5 +76,5 @@ extension ABIv0 {
 
 // MARK: - Codable
 
-extension ABIv0.EncodedMessage: Codable {}
-extension ABIv0.EncodedMessage.Symbol: Codable {}
+extension ABI.EncodedMessage: Codable {}
+extension ABI.EncodedMessage.Symbol: Codable {}

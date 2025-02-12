@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-extension ABIv0 {
+extension ABI {
   /// A type implementing the JSON encoding of records for the ABI entry point
   /// and event stream output.
   ///
@@ -48,7 +48,7 @@ extension ABIv0 {
 
 // MARK: - Codable
 
-extension ABIv0.Record: Codable {
+extension ABI.Record: Codable {
   private enum CodingKeys: String, CodingKey {
     case version
     case kind
@@ -73,10 +73,10 @@ extension ABIv0.Record: Codable {
     version = try container.decode(Int.self, forKey: .version)
     switch try container.decode(String.self, forKey: .kind) {
     case "test":
-      let test = try container.decode(ABIv0.EncodedTest.self, forKey: .payload)
+      let test = try container.decode(ABI.EncodedTest.self, forKey: .payload)
       kind = .test(test)
     case "event":
-      let event = try container.decode(ABIv0.EncodedEvent.self, forKey: .payload)
+      let event = try container.decode(ABI.EncodedEvent.self, forKey: .payload)
       kind = .event(event)
     case let kind:
       throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unrecognized record kind '\(kind)'"))

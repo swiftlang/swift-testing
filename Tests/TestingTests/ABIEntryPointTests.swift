@@ -27,7 +27,7 @@ struct ABIEntryPointTests {
     arguments.verbosity = .min
 
     let result = try await _invokeEntryPointV0Experimental(passing: arguments) { recordJSON in
-      let record = try! JSON.decode(ABIv0.Record.self, from: recordJSON)
+      let record = try! JSON.decode(ABI.Record.self, from: recordJSON)
       _ = record.version
     }
 
@@ -89,7 +89,7 @@ struct ABIEntryPointTests {
     arguments.verbosity = .min
 
     let result = try await _invokeEntryPointV0(passing: arguments) { recordJSON in
-      let record = try! JSON.decode(ABIv0.Record.self, from: recordJSON)
+      let record = try! JSON.decode(ABI.Record.self, from: recordJSON)
       _ = record.version
     }
 
@@ -117,7 +117,7 @@ struct ABIEntryPointTests {
 
     try await confirmation("Test matched", expectedCount: 1...) { testMatched in
       _ = try await _invokeEntryPointV0(passing: arguments) { recordJSON in
-        let record = try! JSON.decode(ABIv0.Record.self, from: recordJSON)
+        let record = try! JSON.decode(ABI.Record.self, from: recordJSON)
         if case .test = record.kind {
           testMatched()
         } else {
@@ -145,7 +145,7 @@ struct ABIEntryPointTests {
       )
     }
 #endif
-    let abiEntryPoint = unsafeBitCast(abiv0_getEntryPoint(), to: ABIv0.EntryPoint.self)
+    let abiEntryPoint = unsafeBitCast(abiv0_getEntryPoint(), to: ABI.v0.EntryPoint.self)
 
     let argumentsJSON = try JSON.withEncoding(of: arguments) { argumentsJSON in
       let result = UnsafeMutableRawBufferPointer.allocate(byteCount: argumentsJSON.count, alignment: 1)
@@ -172,7 +172,7 @@ struct ABIEntryPointTests {
 
 #if !SWT_NO_DYNAMIC_LINKING
 private func withTestingLibraryImageAddress<R>(_ body: (ImageAddress?) throws -> R) throws -> R {
-  let addressInTestingLibrary = unsafeBitCast(ABIv0.entryPoint, to: UnsafeRawPointer.self)
+  let addressInTestingLibrary = unsafeBitCast(ABI.v0.entryPoint, to: UnsafeRawPointer.self)
 
   var testingLibraryAddress: ImageAddress?
 #if SWT_TARGET_OS_APPLE

@@ -10,17 +10,17 @@ add_library(Testing
   ABI/EntryPoints/ABIEntryPoint.swift
   ABI/EntryPoints/EntryPoint.swift
   ABI/EntryPoints/SwiftPMEntryPoint.swift
-  ABI/v0/ABIv0.Record.swift
-  ABI/v0/ABIv0.Record+Streaming.swift
-  ABI/v0/ABIv0.swift
-  ABI/v0/Encoded/ABIv0.EncodedAttachment.swift
-  ABI/v0/Encoded/ABIv0.EncodedBacktrace.swift
-  ABI/v0/Encoded/ABIv0.EncodedError.swift
-  ABI/v0/Encoded/ABIv0.EncodedEvent.swift
-  ABI/v0/Encoded/ABIv0.EncodedInstant.swift
-  ABI/v0/Encoded/ABIv0.EncodedIssue.swift
-  ABI/v0/Encoded/ABIv0.EncodedMessage.swift
-  ABI/v0/Encoded/ABIv0.EncodedTest.swift
+  ABI/ABI.Record.swift
+  ABI/ABI.Record+Streaming.swift
+  ABI/ABI.swift
+  ABI/Encoded/ABI.EncodedAttachment.swift
+  ABI/Encoded/ABI.EncodedBacktrace.swift
+  ABI/Encoded/ABI.EncodedError.swift
+  ABI/Encoded/ABI.EncodedEvent.swift
+  ABI/Encoded/ABI.EncodedInstant.swift
+  ABI/Encoded/ABI.EncodedIssue.swift
+  ABI/Encoded/ABI.EncodedMessage.swift
+  ABI/Encoded/ABI.EncodedTest.swift
   Attachments/Attachable.swift
   Attachments/AttachableContainer.swift
   Attachments/Attachment.swift

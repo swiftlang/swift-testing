@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-extension ABIv0 {
+extension ABI {
   /// A type implementing the JSON encoding of ``Event`` for the ABI entry point
   /// and event stream output.
   ///
@@ -109,5 +109,5 @@ extension ABIv0 {
 
 // MARK: - Codable
 
-extension ABIv0.EncodedEvent: Codable {}
-extension ABIv0.EncodedEvent.Kind: Codable {}
+extension ABI.EncodedEvent: Codable {}
+extension ABI.EncodedEvent.Kind: Codable {}

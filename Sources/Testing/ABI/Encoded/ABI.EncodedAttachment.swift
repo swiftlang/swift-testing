@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-extension ABIv0 {
+extension ABI {
   /// A type implementing the JSON encoding of ``Attachment`` for the ABI entry
   /// point and event stream output.
   ///
@@ -29,4 +29,4 @@ extension ABIv0 {
 
 // MARK: - Codable
 
-extension ABIv0.EncodedAttachment: Codable {}
+extension ABI.EncodedAttachment: Codable {}

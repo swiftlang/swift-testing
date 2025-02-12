@@ -444,7 +444,7 @@ extension ExitTest {
     // Encode events as JSON and write them to the back channel file handle.
     // Only forward issue-recorded events. (If we start handling other kinds of
     // events in the future, we can forward them too.)
-    let eventHandler = ABIv0.Record.eventHandler(encodeAsJSONLines: true) { json in
+    let eventHandler = ABI.Record.eventHandler(encodeAsJSONLines: true) { json in
       _ = try? _backChannelForEntryPoint?.withLock {
         try _backChannelForEntryPoint?.write(json)
         try _backChannelForEntryPoint?.write("\n")
@@ -692,7 +692,7 @@ extension ExitTest {
   ///
   /// - Throws: Any error encountered attempting to decode or process the JSON.
   private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
-    let record = try JSON.decode(ABIv0.Record.self, from: recordJSON)
+    let record = try JSON.decode(ABI.Record.self, from: recordJSON)
 
     if case let .event(event) = record.kind, let issue = event.issue {
       // Translate the issue back into a "real" issue and record it
