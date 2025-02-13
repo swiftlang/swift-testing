@@ -226,16 +226,6 @@ struct SwiftPMTests {
     #expect(args.parallel == false)
   }
 
-  func decodeABIRecordStream<V>(fromFileAtPath path: String, version: V.Type) throws -> [ABI.Record<V>] {
-    try FileHandle(forReadingAtPath: path).readToEnd()
-      .split(whereSeparator: \.isASCIINewline)
-      .map { line in
-        try line.withUnsafeBytes { line in
-          try JSON.decode(ABI.Record<V>.self, from: line)
-        }
-      }
-  }
-
   @Test("--event-stream-output-path argument (writes to a stream and can be read back)",
         arguments: [
           ("--event-stream-output-path", "--event-stream-version", 0),
@@ -254,7 +244,7 @@ struct SwiftPMTests {
     }
   }
 
-  func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: (some ABI.Version).Type) async throws {
+  func eventStreamOutput<V>(outputArgumentName: String, versionArgumentName: String, version: V.Type) async throws where V: ABI.Version {
     // Test that JSON records are successfully streamed to a file and can be
     // read back into memory and decoded.
     let tempDirPath = try temporaryDirectory()
@@ -277,7 +267,14 @@ struct SwiftPMTests {
       configuration.handleEvent(Event(.runEnded, testID: nil, testCaseID: nil), in: eventContext)
     }
 
-    let decodedRecords = try decodeABIRecordStream(fromFileAtPath: temporaryFilePath, version: version)
+    let decodedRecords = try FileHandle(forReadingAtPath: temporaryFilePath).readToEnd()
+      .split(whereSeparator: \.isASCIINewline)
+      .map { line in
+        try line.withUnsafeBytes { line in
+          try JSON.decode(ABI.Record<V>.self, from: line)
+        }
+      }
+
     let testRecords = decodedRecords.compactMap { record in
       if case let .test(test) = record.kind {
         return test
