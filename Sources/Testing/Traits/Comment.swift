@@ -8,22 +8,21 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-/// A type representing a comment related to a test.
+/// A type that represents a comment related to a test.
 ///
-/// This type may be used to provide context or background information about a
+/// Use this type to provide context or background information about a
 /// test's purpose, explain how a complex test operates, or include details
 /// which may be helpful when diagnosing issues recorded by a test.
 ///
 /// To add a comment to a test or suite, add a code comment before its `@Test`
 /// or `@Suite` attribute. See <doc:AddingComments> for more details.
 ///
-/// - Note: This type is not intended to reference bugs related to a test.
-///   Instead, use ``Trait/bug(_:_:)``, ``Trait/bug(_:id:_:)-10yf5``, or
-///   ``Trait/bug(_:id:_:)-3vtpl``.
+/// - Note: To reference bugs related to a test, use ``Trait/bug(_:_:)``,
+///   ``Trait/bug(_:id:_:)-10yf5``, or ``Trait/bug(_:id:_:)-3vtpl``.
 public struct Comment: RawRepresentable, Sendable {
-  /// The single comment string contained in this instance.
+  /// The single comment string that this comment contains.
   ///
-  /// To obtain the complete set of comments applied to a test, see
+  /// To get the complete set of comments applied to a test, see
   /// ``Test/comments``.
   public var rawValue: String
 
