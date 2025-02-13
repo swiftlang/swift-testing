@@ -69,8 +69,7 @@ public protocol Trait: Sendable {
   /// If this trait's type conforms to ``TestScoping``, the default value
   /// returned by this method depends on the values of`test` and `testCase`:
   ///
-  /// - If `test` represents a suite, this trait also conforms to
-  ///   ``SuiteTrait``.
+  /// - If `test` represents a suite, this trait must conform to ``SuiteTrait``.
   ///   If the value of this suite trait's ``SuiteTrait/isRecursive`` property
   ///   is `true`, then this method returns `nil`, and the suite trait
   ///   provides its custom scope once for each test function the test suite
