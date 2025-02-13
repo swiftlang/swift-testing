@@ -29,7 +29,7 @@ enum JSON {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body` or by the encoding process.
-  static func withEncoding<R>(of value: some Encodable, userInfo: [CodingUserInfoKey: any Sendable] = [:], _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  static func withEncoding<R>(of value: some Encodable, userInfo: [CodingUserInfoKey: Any] = [:], _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
 #if canImport(Foundation)
     let encoder = JSONEncoder()
 
