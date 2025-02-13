@@ -16,14 +16,6 @@ extension ABI {
   /// assists in converting values to JSON; clients that consume this JSON are
   /// expected to write their own decoders.
   struct Record<V>: Sendable where V: ABI.Version {
-    /// The version of this record.
-    ///
-    /// The value of this property corresponds to the JSON schema version this
-    /// record is compatible with.
-    var version: V.Type {
-      V.self
-    }
-
     /// An enumeration describing the various kinds of record.
     enum Kind: Sendable {
       /// A test record.

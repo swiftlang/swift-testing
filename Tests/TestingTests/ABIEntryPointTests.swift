@@ -28,7 +28,7 @@ struct ABIEntryPointTests {
 
     let result = try await _invokeEntryPointV0Experimental(passing: arguments) { recordJSON in
       let record = try! JSON.decode(ABI.Record<ABI.v0>.self, from: recordJSON)
-      _ = record.version
+      _ = record.kind
     }
 
     #expect(result == EXIT_SUCCESS)
@@ -90,7 +90,7 @@ struct ABIEntryPointTests {
 
     let result = try await _invokeEntryPointV0(passing: arguments) { recordJSON in
       let record = try! JSON.decode(ABI.Record<ABI.v0>.self, from: recordJSON)
-      _ = record.version
+      _ = record.kind
     }
 
     #expect(result)
