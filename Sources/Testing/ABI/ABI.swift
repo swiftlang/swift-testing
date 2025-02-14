@@ -41,9 +41,7 @@ extension ABI {
   }
 
   /// The current supported ABI version (ignoring any experimental versions.)
-  static var currentVersion: (some Version).Type {
-    v0.self
-  }
+  typealias CurrentVersion = v0
 }
 
 // MARK: - Concrete ABI versions

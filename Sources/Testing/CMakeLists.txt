@@ -15,7 +15,6 @@ add_library(Testing
   ABI/ABI.swift
   ABI/Encoded/ABI.EncodedAttachment.swift
   ABI/Encoded/ABI.EncodedBacktrace.swift
-  ABI/Encoded/ABI.EncodedBug.swift
   ABI/Encoded/ABI.EncodedError.swift
   ABI/Encoded/ABI.EncodedEvent.swift
   ABI/Encoded/ABI.EncodedInstant.swift

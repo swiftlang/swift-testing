@@ -611,7 +611,7 @@ func eventHandlerForStreamingEvents(
 
   return switch versionNumber {
   case nil:
-    eventHandler(for: ABI.currentVersion)
+    eventHandler(for: ABI.CurrentVersion.self)
 #if !SWT_NO_SNAPSHOT_TYPES
   case -1:
     // Legacy support for Xcode 16 betas. Support for this undocumented version
