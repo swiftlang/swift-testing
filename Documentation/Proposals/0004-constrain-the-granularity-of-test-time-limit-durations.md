@@ -3,7 +3,7 @@
 * Proposal: 
 [SWT-0004](0004-constrain-the-granularity-of-test-time-limit-durations.md)
 * Authors: [Dennis Weissmann](https://github.com/dennisweissmann)
-* Status: **Accepted**
+* Status: **Implemented (Swift 6.0)**
 * Implementation: 
 [swiftlang/swift-testing#534](https://github.com/swiftlang/swift-testing/pull/534)
 * Review: 

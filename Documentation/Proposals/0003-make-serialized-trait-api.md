@@ -2,7 +2,7 @@
 
 * Proposal: [SWT-0003](0003-make-serialized-trait-api.md)
 * Authors: [Dennis Weissmann](https://github.com/dennisweissmann)
-* Status: **Accepted**
+* Status: **Implemented (Swift 6.0)**
 * Implementation: 
 [swiftlang/swift-testing#535](https://github.com/swiftlang/swift-testing/pull/535)
 * Review: 
