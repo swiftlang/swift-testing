@@ -273,7 +273,7 @@ with optional expressions to unwrap them:
 
 ### Record issues
 
-Finally, XCTest has a function, [`XCTFail()`](https://developer.apple.com/documentation/xctest/1500970-xctfail),
+XCTest has a function, [`XCTFail()`](https://developer.apple.com/documentation/xctest/1500970-xctfail),
 that causes a test to fail immediately and unconditionally. This function is
 useful when the syntax of the language prevents the use of an `XCTAssert()`
 function. To record an unconditional issue using the testing library, use the
@@ -691,6 +691,56 @@ of issues:
     ```
   }
 }
+
+### Run tests sequentially
+
+By default, the testing library runs all tests in a suite in parallel. The
+default behavior of XCTest is to run each test in a suite sequentially. If your
+tests use shared state such as global variables, you may see unexpected
+behavior including unreliable test outcomes when you run tests in parallel.
+
+Annotate your test suite with ``Trait/serialized`` to run tests within that
+suite serially:
+
+@Row {
+  @Column {
+    ```swift
+    // Before
+    class RefrigeratorTests : XCTestCase {
+      func testLightComesOn() throws {
+        try FoodTruck.shared.refrigerator.openDoor()
+        XCTAssertEqual(FoodTruck.shared.refrigerator.lightState == .on)
+      }
+      
+      func testLightGoesOut() throws {
+        try FoodTruck.shared.refrigerator.openDoor()
+        try FoodTruck.shared.refrigerator.closeDoor()
+        XCTAssertEqual(FoodTruck.shared.refrigerator.lightState == .off)
+      }
+    }
+    ```
+  }
+  @Column {
+    ```swift
+    // After
+    @Suite(.serialized)
+    class RefrigeratorTests {
+      @Test func lightComesOn() throws {
+        try FoodTruck.shared.refrigerator.openDoor()
+        #expect(FoodTruck.shared.refrigerator.lightState == .on)
+      }
+      
+      @Test func lightGoesOut() throws {
+        try FoodTruck.shared.refrigerator.openDoor()
+        try FoodTruck.shared.refrigerator.closeDoor()
+        #expect(FoodTruck.shared.refrigerator.lightState == .off)
+      }
+    }
+    ```
+  }
+}
+
+For more information, see <doc:Parallelization>.
 
 ## See Also
 
