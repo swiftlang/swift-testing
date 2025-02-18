@@ -695,9 +695,9 @@ of issues:
 ### Run tests sequentially
 
 By default, the testing library runs all tests in a suite in parallel. The
-default behavior of XCTest is to run each test in a suite sequentially. If your tests use
-shared state, for example, global variables, you may see expected behavior
-including unreliable test outcomes when you run tests in parallel.
+default behavior of XCTest is to run each test in a suite sequentially. If your
+tests use shared state such as global variables, you may see unexpected
+behavior including unreliable test outcomes when you run tests in parallel.
 
 Annotate your test suite with ``Trait/serialized`` to run tests within that
 suite serially:
@@ -707,12 +707,12 @@ suite serially:
     ```swift
     // Before
     class RefrigeratorTests : XCTestCase
-      func testLightComesOn() async {
+      func testLightComesOn() throws {
         try FoodTruck.shared.refrigerator.openDoor()
         XCTAssertEqual(FoodTruck.shared.refrigerator.lightState == .on)
       }
       
-      func testLightGoesOut() async {
+      func testLightGoesOut() throws {
         try FoodTruck.shared.refrigerator.openDoor()
         try FoodTruck.shared.refrigerator.closeDoor()
         XCTAssertEqual(FoodTruck.shared.refrigerator.lightState == .off)
@@ -725,14 +725,12 @@ suite serially:
     // After
     @Suite(.serialized)
     class RefrigeratorTests {
-      @Test
-      func lightComesOn() async {
+      @Test func lightComesOn() throws {
         try FoodTruck.shared.refrigerator.openDoor()
         #expect(FoodTruck.shared.refrigerator.lightState == .on)
       }
       
-      @Test
-      func lightGoesOut() async {
+      @Test func lightGoesOut() throws {
         try FoodTruck.shared.refrigerator.openDoor()
         try FoodTruck.shared.refrigerator.closeDoor()
         #expect(FoodTruck.shared.refrigerator.lightState == .off)
