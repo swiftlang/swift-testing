@@ -17,7 +17,7 @@ extension ABI {
   /// expected to write their own decoders.
   ///
   /// - Warning: Errors are not yet part of the JSON schema.
-  struct EncodedError: Sendable {
+  struct EncodedError<V>: Sendable where V: ABI.Version {
     /// The error's description
     var description: String
 

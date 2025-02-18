@@ -15,7 +15,7 @@ extension ABI {
   /// This type is not part of the public interface of the testing library. It
   /// assists in converting values to JSON; clients that consume this JSON are
   /// expected to write their own decoders.
-  struct EncodedInstant: Sendable {
+  struct EncodedInstant<V>: Sendable where V: ABI.Version {
     /// The number of seconds since the system-defined suspending epoch.
     ///
     /// For more information, see [`SuspendingClock`](https://developer.apple.com/documentation/swift/suspendingclock).

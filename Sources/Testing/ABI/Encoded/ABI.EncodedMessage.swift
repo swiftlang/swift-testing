@@ -16,7 +16,7 @@ extension ABI {
   /// This type is not part of the public interface of the testing library. It
   /// assists in converting values to JSON; clients that consume this JSON are
   /// expected to write their own decoders.
-  struct EncodedMessage: Sendable {
+  struct EncodedMessage<V>: Sendable where V: ABI.Version {
     /// A type implementing the JSON encoding of ``Event/Symbol`` for the ABI
     /// entry point and event stream output.
     ///

@@ -15,19 +15,14 @@ extension ABI {
   /// This type is not part of the public interface of the testing library. It
   /// assists in converting values to JSON; clients that consume this JSON are
   /// expected to write their own decoders.
-  struct Record: Sendable {
-    /// The version of this record.
-    ///
-    /// The value of this property corresponds to the ABI version i.e. `0`.
-    var version = 0
-
+  struct Record<V>: Sendable where V: ABI.Version {
     /// An enumeration describing the various kinds of record.
     enum Kind: Sendable {
       /// A test record.
-      case test(EncodedTest)
+      case test(EncodedTest<V>)
 
       /// An event record.
-      case event(EncodedEvent)
+      case event(EncodedEvent<V>)
     }
 
     /// The kind of record.
@@ -38,7 +33,7 @@ extension ABI {
     }
 
     init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message]) {
-      guard let event = EncodedEvent(encoding: event, in: eventContext, messages: messages) else {
+      guard let event = EncodedEvent<V>(encoding: event, in: eventContext, messages: messages) else {
         return nil
       }
       kind = .event(event)
@@ -57,7 +52,7 @@ extension ABI.Record: Codable {
 
   func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(version, forKey: .version)
+    try container.encode(V.versionNumber, forKey: .version)
     switch kind {
     case let .test(test):
       try container.encode("test", forKey: .kind)
@@ -70,16 +65,31 @@ extension ABI.Record: Codable {
 
   init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    version = try container.decode(Int.self, forKey: .version)
+
+    let versionNumber = try container.decode(Int.self, forKey: .version)
+    if versionNumber != V.versionNumber {
+      throw DecodingError.dataCorrupted(
+        DecodingError.Context(
+          codingPath: decoder.codingPath + CollectionOfOne(CodingKeys.version as any CodingKey),
+          debugDescription: "Unexpected record version \(versionNumber) (expected \(V.versionNumber))."
+        )
+      )
+    }
+
     switch try container.decode(String.self, forKey: .kind) {
     case "test":
-      let test = try container.decode(ABI.EncodedTest.self, forKey: .payload)
+      let test = try container.decode(ABI.EncodedTest<V>.self, forKey: .payload)
       kind = .test(test)
     case "event":
-      let event = try container.decode(ABI.EncodedEvent.self, forKey: .payload)
+      let event = try container.decode(ABI.EncodedEvent<V>.self, forKey: .payload)
       kind = .event(event)
     case let kind:
-      throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unrecognized record kind '\(kind)'"))
+      throw DecodingError.dataCorrupted(
+        DecodingError.Context(
+          codingPath: decoder.codingPath + CollectionOfOne(CodingKeys.kind as any CodingKey),
+          debugDescription: "Unrecognized record kind '\(kind)'"
+        )
+      )
     }
   }
 }

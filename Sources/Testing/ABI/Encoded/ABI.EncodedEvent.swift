@@ -15,7 +15,7 @@ extension ABI {
   /// This type is not part of the public interface of the testing library. It
   /// assists in converting values to JSON; clients that consume this JSON are
   /// expected to write their own decoders.
-  struct EncodedEvent: Sendable {
+  struct EncodedEvent<V>: Sendable where V: ABI.Version {
     /// An enumeration describing the various kinds of event.
     ///
     /// Note that the set of encodable events is a subset of all events
@@ -38,13 +38,13 @@ extension ABI {
     var kind: Kind
 
     /// The instant at which the event occurred.
-    var instant: EncodedInstant
+    var instant: EncodedInstant<V>
 
     /// The issue that occurred, if any.
     ///
     /// The value of this property is `nil` unless the value of the
     /// ``kind-swift.property`` property is ``Kind-swift.enum/issueRecorded``.
-    var issue: EncodedIssue?
+    var issue: EncodedIssue<V>?
 
     /// The value that was attached, if any.
     ///
@@ -52,19 +52,19 @@ extension ABI {
     /// ``kind-swift.property`` property is ``Kind-swift.enum/valueAttached``.
     ///
     /// - Warning: Attachments are not yet part of the JSON schema.
-    var _attachment: EncodedAttachment?
+    var _attachment: EncodedAttachment<V>?
 
     /// Human-readable messages associated with this event that can be presented
     /// to the user.
-    var messages: [EncodedMessage]
+    var messages: [EncodedMessage<V>]
 
     /// The ID of the test associated with this event, if any.
-    var testID: EncodedTest.ID?
+    var testID: EncodedTest<V>.ID?
 
     /// The ID of the test case associated with this event, if any.
     ///
     /// - Warning: Test cases are not yet part of the JSON schema.
-    var _testCase: EncodedTestCase?
+    var _testCase: EncodedTestCase<V>?
 
     init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message]) {
       switch event.kind {
