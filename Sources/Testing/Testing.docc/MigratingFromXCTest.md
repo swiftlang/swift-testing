@@ -706,7 +706,7 @@ suite serially:
   @Column {
     ```swift
     // Before
-    class RefrigeratorTests : XCTestCase
+    class RefrigeratorTests : XCTestCase {
       func testLightComesOn() throws {
         try FoodTruck.shared.refrigerator.openDoor()
         XCTAssertEqual(FoodTruck.shared.refrigerator.lightState == .on)
