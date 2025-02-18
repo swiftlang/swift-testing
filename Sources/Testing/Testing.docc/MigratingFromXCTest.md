@@ -709,13 +709,13 @@ suite serially:
     class RefrigeratorTests : XCTestCase {
       func testLightComesOn() throws {
         try FoodTruck.shared.refrigerator.openDoor()
-        XCTAssertEqual(FoodTruck.shared.refrigerator.lightState == .on)
+        XCTAssertEqual(FoodTruck.shared.refrigerator.lightState, .on)
       }
       
       func testLightGoesOut() throws {
         try FoodTruck.shared.refrigerator.openDoor()
         try FoodTruck.shared.refrigerator.closeDoor()
-        XCTAssertEqual(FoodTruck.shared.refrigerator.lightState == .off)
+        XCTAssertEqual(FoodTruck.shared.refrigerator.lightState, .off)
       }
     }
     ```
