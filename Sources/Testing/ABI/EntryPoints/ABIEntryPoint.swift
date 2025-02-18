@@ -56,9 +56,9 @@ extension ABI.v0 {
 }
 
 /// An exported C function that is the equivalent of
-/// ``ABIv0/entryPoint-swift.type.property``.
+/// ``ABI/v0/entryPoint-swift.type.property``.
 ///
-/// - Returns: The value of ``ABIv0/entryPoint-swift.type.property`` cast to an
+/// - Returns: The value of ``ABI/v0/entryPoint-swift.type.property`` cast to an
 ///   untyped pointer.
 @_cdecl("swt_abiv0_getEntryPoint")
 @usableFromInline func abiv0_getEntryPoint() -> UnsafeRawPointer {
@@ -69,10 +69,10 @@ extension ABI.v0 {
 // MARK: - Xcode 16 Beta 1 compatibility
 
 extension ABI.Xcode16Beta1 {
-  /// An older signature for ``ABIv0/EntryPoint-swift.typealias`` used by Xcode
+  /// An older signature for ``ABI/v0/EntryPoint-swift.typealias`` used by Xcode
   /// 16 Beta 1.
   ///
-  /// This type will be removed in a future update.
+  /// - Warning: This type will be removed in a future update.
   @available(*, deprecated, message: "Use ABI.v0.EntryPoint instead.")
   typealias EntryPoint = @Sendable (
     _ argumentsJSON: UnsafeRawBufferPointer?,
@@ -80,10 +80,10 @@ extension ABI.Xcode16Beta1 {
   ) async throws -> CInt
 }
 
-/// An older signature for ``ABIv0/entryPoint-swift.type.property`` used by
+/// An older signature for ``ABI/v0/entryPoint-swift.type.property`` used by
 /// Xcode 16 Beta 1.
 ///
-/// This function will be removed in a future update.
+/// - Warning: This function will be removed in a future update.
 @available(*, deprecated, message: "Use ABI.v0.entryPoint (swt_abiv0_getEntryPoint()) instead.")
 @_cdecl("swt_copyABIEntryPoint_v0")
 @usableFromInline func copyABIEntryPoint_v0() -> UnsafeMutableRawPointer {
@@ -101,11 +101,11 @@ extension ABI.Xcode16Beta1 {
 
 // MARK: -
 
-/// A common implementation for ``ABIv0/entryPoint-swift.type.property`` and
+/// A common implementation for ``ABI/v0/entryPoint-swift.type.property`` and
 /// ``copyABIEntryPoint_v0()`` that provides Xcode 16 Beta 1 compatibility.
 ///
 /// This function will be removed (with its logic incorporated into
-/// ``ABIv0/entryPoint-swift.type.property``) in a future update.
+/// ``ABI/v0/entryPoint-swift.type.property``) in a future update.
 private func _entryPoint(
   configurationJSON: UnsafeRawBufferPointer?,
   eventStreamVersionIfNil: Int? = nil,

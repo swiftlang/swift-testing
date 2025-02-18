@@ -50,7 +50,7 @@ extension ABI {
 #if !SWT_NO_SNAPSHOT_TYPES
   /// A namespace and version type for Xcode 16 Beta 1 compatibility.
   ///
-  /// This type will be removed in a future update.
+  /// - Warning: This type will be removed in a future update.
   enum Xcode16Beta1: Sendable, Version {
     static var versionNumber: Int {
       -1
@@ -66,6 +66,10 @@ extension ABI {
   }
 
   /// A namespace and type for ABI version 1 symbols.
+  ///
+  /// @Metadata {
+  ///   @Available("Swift Testing ABI", introduced: 1)
+  /// }
   @_spi(Experimental)
   public enum v1: Sendable, Version {
     static var versionNumber: Int {

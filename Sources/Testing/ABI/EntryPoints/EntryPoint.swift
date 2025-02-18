@@ -23,8 +23,8 @@ private import _TestingInternals
 /// - Returns: An exit code representing the result of running tests.
 ///
 /// External callers cannot call this function directly. The can use
-/// ``ABIv0/entryPoint-swift.type.property`` to get a reference to an ABI-stable
-/// version of this function.
+/// ``ABI/v0/entryPoint-swift.type.property`` to get a reference to an
+/// ABI-stable version of this function.
 func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Handler?) async -> CInt {
   let exitCode = Locked(rawValue: EXIT_SUCCESS)
 
@@ -259,8 +259,8 @@ public struct __CommandLineArguments_v0: Sendable {
   /// ``eventStreamOutput``.
   ///
   /// The corresponding stable schema is used to encode events to the event
-  /// stream (for example, ``ABIv0/Record`` is used if the value of this
-  /// property is `0`.)
+  /// stream. ``ABI/Record`` is used if the value of this property is `0` or
+  /// higher.
   ///
   /// If the value of this property is `nil`, the testing library assumes that
   /// the newest available schema should be used.
