@@ -230,7 +230,6 @@ struct SwiftPMTests {
         arguments: [
           ("--event-stream-output-path", "--event-stream-version", 0),
           ("--experimental-event-stream-output", "--experimental-event-stream-version", 0),
-          ("--event-stream-output-path", "--event-stream-version", 1),
           ("--experimental-event-stream-output", "--experimental-event-stream-version", 1),
         ])
   func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: Int) async throws {
@@ -296,6 +295,14 @@ struct SwiftPMTests {
       return nil
     }
     #expect(eventRecords.count == 4)
+  }
+
+  @Test("Experimental ABI version requires --experimental-event-stream-version argument")
+  func experimentalABIVersionNeedsExperimentalFlag() {
+    #expect(throws: (any Error).self) {
+      let experimentalVersion = ABI.CurrentVersion.versionNumber + 1
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--event-stream-version", "\(experimentalVersion)"])
+    }
   }
 #endif
 #endif

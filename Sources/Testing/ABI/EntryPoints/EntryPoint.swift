@@ -359,15 +359,34 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     // respected (it should be the least "surprising" outcome of passing both.)
   }
 
-  // Event stream output (experimental)
+  // Event stream output
   if let eventOutputIndex = args.firstIndex(of: "--event-stream-output-path") ?? args.firstIndex(of: "--experimental-event-stream-output"),
      !isLastArgument(at: eventOutputIndex) {
     result.eventStreamOutputPath = args[args.index(after: eventOutputIndex)]
   }
-  // Event stream output (experimental)
-  if let eventOutputVersionIndex = args.firstIndex(of: "--event-stream-version") ?? args.firstIndex(of: "--experimental-event-stream-version"),
-     !isLastArgument(at: eventOutputVersionIndex) {
-    result.eventStreamVersion = Int(args[args.index(after: eventOutputVersionIndex)])
+  // Event stream version
+  do {
+    var eventOutputVersionIndex: Array<String>.Index?
+    var allowExperimental = false
+    eventOutputVersionIndex = args.firstIndex(of: "--event-stream-version")
+    if eventOutputVersionIndex == nil {
+      eventOutputVersionIndex = args.firstIndex(of: "--experimental-event-stream-version")
+      if eventOutputVersionIndex != nil {
+        allowExperimental = true
+      }
+    }
+    if let eventOutputVersionIndex, !isLastArgument(at: eventOutputVersionIndex) {
+      result.eventStreamVersion = Int(args[args.index(after: eventOutputVersionIndex)])
+
+      // If the caller specified an experimental ABI version, they must
+      // explicitly use --experimental-event-stream-version, otherwise it's
+      // treated as unsupported.
+      if let eventStreamVersion = result.eventStreamVersion,
+         eventStreamVersion > ABI.CurrentVersion.versionNumber,
+         !allowExperimental {
+        throw _EntryPointError.experimentalABIVersion(eventStreamVersion)
+      }
+    }
   }
 #endif
 
@@ -590,7 +609,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 /// specified ABI version.
 ///
 /// - Parameters:
-///   - version: The numeric value of the ABI version to use.
+///   - versionNumber: The numeric value of the ABI version to use.
 ///   - encodeAsJSONLines: Whether or not to ensure JSON passed to
 ///     `eventHandler` is encoded as JSON Lines (i.e. that it does not contain
 ///     extra newlines.)
@@ -780,6 +799,13 @@ private enum _EntryPointError: Error {
   ///   - name: The name of the argument.
   ///   - value: The invalid value.
   case invalidArgument(_ name: String, value: String)
+
+  /// The specified ABI version is experimental, but the caller did not
+  /// use `--experimental-event-stream-version` to specify it.
+  ///
+  /// - Parameters:
+  ///   - versionNumber: The experimental ABI version number.
+  case experimentalABIVersion(_ versionNumber: Int)
 }
 
 extension _EntryPointError: CustomStringConvertible {
@@ -789,6 +815,8 @@ extension _EntryPointError: CustomStringConvertible {
       explanation
     case let .invalidArgument(name, value):
       #"Invalid value "\#(value)" for argument \#(name)"#
+    case let .experimentalABIVersion(versionNumber):
+      "Event stream version \(versionNumber) is experimental. Use --experimental-event-stream-version to enable it."
     }
   }
 }
