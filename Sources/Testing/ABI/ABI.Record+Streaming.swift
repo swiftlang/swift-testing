@@ -70,9 +70,9 @@ extension ABI.Version {
 }
 
 #if !SWT_NO_SNAPSHOT_TYPES
-// MARK: - Xcode 16 Beta 1 compatibility
+// MARK: - Xcode 16 compatibility
 
-extension ABI.Xcode16Beta1 {
+extension ABI.Xcode16 {
   static func eventHandler(
     encodeAsJSONLines: Bool,
     forwardingTo eventHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
@@ -80,8 +80,8 @@ extension ABI.Xcode16Beta1 {
     return { event, context in
       if case .testDiscovered = event.kind {
         // Discard events of this kind rather than forwarding them to avoid a
-        // crash in Xcode 16 Beta 1 (which does not expect any events to occur
-        // before .runStarted.)
+        // crash in Xcode 16 (which does not expect any events to occur before
+        // .runStarted.)
         return
       }
 
