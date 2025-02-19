@@ -633,9 +633,9 @@ func eventHandlerForStreamingEvents(
     eventHandler(for: ABI.CurrentVersion.self)
 #if !SWT_NO_SNAPSHOT_TYPES
   case -1:
-    // Legacy support for Xcode 16 betas. Support for this undocumented version
-    // will be removed in a future update. Do not use it.
-    eventHandler(for: ABI.Xcode16Beta1.self)
+    // Legacy support for Xcode 16. Support for this undocumented version will
+    // be removed in a future update. Do not use it.
+    eventHandler(for: ABI.Xcode16.self)
 #endif
   case 0:
     eventHandler(for: ABI.v0.self)

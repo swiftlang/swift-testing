@@ -66,11 +66,11 @@ extension ABI.v0 {
 }
 
 #if !SWT_NO_SNAPSHOT_TYPES
-// MARK: - Xcode 16 Beta 1 compatibility
+// MARK: - Xcode 16 compatibility
 
-extension ABI.Xcode16Beta1 {
-  /// An older signature for ``ABI/v0/EntryPoint-swift.typealias`` used by Xcode
-  /// 16 Beta 1.
+extension ABI.Xcode16 {
+  /// An older signature for ``ABI/v0/EntryPoint-swift.typealias`` used by
+  /// Xcode&nbsp;16.
   ///
   /// - Warning: This type will be removed in a future update.
   @available(*, deprecated, message: "Use ABI.v0.EntryPoint instead.")
@@ -81,13 +81,13 @@ extension ABI.Xcode16Beta1 {
 }
 
 /// An older signature for ``ABI/v0/entryPoint-swift.type.property`` used by
-/// Xcode 16 Beta 1.
+/// Xcode&nbsp;16.
 ///
 /// - Warning: This function will be removed in a future update.
 @available(*, deprecated, message: "Use ABI.v0.entryPoint (swt_abiv0_getEntryPoint()) instead.")
 @_cdecl("swt_copyABIEntryPoint_v0")
 @usableFromInline func copyABIEntryPoint_v0() -> UnsafeMutableRawPointer {
-  let result = UnsafeMutablePointer<ABI.Xcode16Beta1.EntryPoint>.allocate(capacity: 1)
+  let result = UnsafeMutablePointer<ABI.Xcode16.EntryPoint>.allocate(capacity: 1)
   result.initialize { configurationJSON, recordHandler in
     try await _entryPoint(
       configurationJSON: configurationJSON,
@@ -102,7 +102,7 @@ extension ABI.Xcode16Beta1 {
 // MARK: -
 
 /// A common implementation for ``ABI/v0/entryPoint-swift.type.property`` and
-/// ``copyABIEntryPoint_v0()`` that provides Xcode 16 Beta 1 compatibility.
+/// ``copyABIEntryPoint_v0()`` that provides Xcode&nbsp;16 compatibility.
 ///
 /// This function will be removed (with its logic incorporated into
 /// ``ABI/v0/entryPoint-swift.type.property``) in a future update.
@@ -125,9 +125,9 @@ private func _entryPoint(
   let eventHandler = try eventHandlerForStreamingEvents(version: args?.eventStreamVersion, encodeAsJSONLines: false, forwardingTo: recordHandler)
   let exitCode = await entryPoint(passing: args, eventHandler: eventHandler)
 
-  // To maintain compatibility with Xcode 16 Beta 1, suppress custom exit codes.
-  // (This is also needed by ABI.v0.entryPoint to correctly treat the no-tests
-  // as a successful run.)
+  // To maintain compatibility with Xcode 16, suppress custom exit codes. (This
+  // is also needed by ABI.v0.entryPoint to correctly treat the no-tests as a
+  // successful run.)
   if exitCode == EXIT_NO_TESTS_FOUND {
     return EXIT_SUCCESS
   }

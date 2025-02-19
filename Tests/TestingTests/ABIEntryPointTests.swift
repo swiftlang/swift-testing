@@ -62,7 +62,7 @@ struct ABIEntryPointTests {
       )
     }
 #endif
-    let abiEntryPoint = copyABIEntryPoint_v0().assumingMemoryBound(to: ABI.Xcode16Beta1.EntryPoint.self)
+    let abiEntryPoint = copyABIEntryPoint_v0().assumingMemoryBound(to: ABI.Xcode16.EntryPoint.self)
     defer {
       abiEntryPoint.deinitialize(count: 1)
       abiEntryPoint.deallocate()
