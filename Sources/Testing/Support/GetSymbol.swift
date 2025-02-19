@@ -66,13 +66,13 @@ func symbol(in handle: ImageAddress? = nil, named symbolName: String) -> UnsafeR
     // If the caller supplied a module, use it.
     if let handle {
       return GetProcAddress(handle, symbolName).map {
-        unsafeBitCast($0, to: UnsafeRawPointer.self)
+        castCFunction($0, to: UnsafeRawPointer.self)
       }
     }
 
     return HMODULE.all.lazy
       .compactMap { GetProcAddress($0, symbolName) }
-      .map { unsafeBitCast($0, to: UnsafeRawPointer.self) }
+      .map { castCFunction($0, to: UnsafeRawPointer.self) }
       .first
   }
 #else
