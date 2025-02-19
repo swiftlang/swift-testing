@@ -17,7 +17,7 @@ extension ABI {
   /// This type is not part of the public interface of the testing library. It
   /// assists in converting values to JSON; clients that consume this JSON are
   /// expected to write their own decoders.
-  struct EncodedTest: Sendable {
+  struct EncodedTest<V>: Sendable where V: ABI.Version {
     /// An enumeration describing the various kinds of test.
     enum Kind: String, Sendable {
       /// A test suite.
@@ -65,13 +65,22 @@ extension ABI {
     /// The test cases in this test, if it is a parameterized test function.
     ///
     /// - Warning: Test cases are not yet part of the JSON schema.
-    var _testCases: [EncodedTestCase]?
+    var _testCases: [EncodedTestCase<V>]?
 
     /// Whether or not the test is parameterized.
     ///
     /// If this instance represents a test _suite_, the value of this property
     /// is `nil`.
     var isParameterized: Bool?
+
+    /// The tags associated with the test.
+    ///
+    /// - Warning: Tags are not yet part of the JSON schema.
+    ///
+    /// @Metadata {
+    ///   @Available("Swift Testing ABI", introduced: 1)
+    /// }
+    var _tags: [String]?
 
     init(encoding test: borrowing Test) {
       if test.isSuite {
@@ -88,6 +97,13 @@ extension ABI {
       displayName = test.displayName
       sourceLocation = test.sourceLocation
       id = ID(encoding: test.id)
+
+      if V.versionNumber >= 1 {
+        let tags = test.tags
+        if !tags.isEmpty {
+          _tags = tags.map(String.init(describing:))
+        }
+      }
     }
   }
 }
@@ -103,7 +119,7 @@ extension ABI {
   /// expected to write their own decoders.
   ///
   /// - Warning: Test cases are not yet part of the JSON schema.
-  struct EncodedTestCase: Sendable {
+  struct EncodedTestCase<V>: Sendable where V: ABI.Version {
     var id: String
     var displayName: String
 

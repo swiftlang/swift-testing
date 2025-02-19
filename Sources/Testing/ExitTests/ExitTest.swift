@@ -348,6 +348,16 @@ func callExitTest(
 
 // MARK: - SwiftPM/tools integration
 
+extension ABI {
+  /// The ABI version to use for encoding and decoding events sent over the back
+  /// channel.
+  ///
+  /// The back channel always uses the latest ABI version (even if experimental)
+  /// since both the producer and consumer use this exact version of the testing
+  /// library.
+  fileprivate typealias BackChannelVersion = v1
+}
+
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 extension ExitTest {
   /// A handler that is invoked when an exit test starts.
@@ -444,7 +454,7 @@ extension ExitTest {
     // Encode events as JSON and write them to the back channel file handle.
     // Only forward issue-recorded events. (If we start handling other kinds of
     // events in the future, we can forward them too.)
-    let eventHandler = ABI.Record.eventHandler(encodeAsJSONLines: true) { json in
+    let eventHandler = ABI.BackChannelVersion.eventHandler(encodeAsJSONLines: true) { json in
       _ = try? _backChannelForEntryPoint?.withLock {
         try _backChannelForEntryPoint?.write(json)
         try _backChannelForEntryPoint?.write("\n")
@@ -692,7 +702,7 @@ extension ExitTest {
   ///
   /// - Throws: Any error encountered attempting to decode or process the JSON.
   private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
-    let record = try JSON.decode(ABI.Record.self, from: recordJSON)
+    let record = try JSON.decode(ABI.Record<ABI.BackChannelVersion>.self, from: recordJSON)
 
     if case let .event(event) = record.kind, let issue = event.issue {
       // Translate the issue back into a "real" issue and record it

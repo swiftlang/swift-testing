@@ -27,8 +27,8 @@ struct ABIEntryPointTests {
     arguments.verbosity = .min
 
     let result = try await _invokeEntryPointV0Experimental(passing: arguments) { recordJSON in
-      let record = try! JSON.decode(ABI.Record.self, from: recordJSON)
-      _ = record.version
+      let record = try! JSON.decode(ABI.Record<ABI.v0>.self, from: recordJSON)
+      _ = record.kind
     }
 
     #expect(result == EXIT_SUCCESS)
@@ -62,7 +62,7 @@ struct ABIEntryPointTests {
       )
     }
 #endif
-    let abiEntryPoint = copyABIEntryPoint_v0().assumingMemoryBound(to: ABIEntryPoint_v0.self)
+    let abiEntryPoint = copyABIEntryPoint_v0().assumingMemoryBound(to: ABI.Xcode16Beta1.EntryPoint.self)
     defer {
       abiEntryPoint.deinitialize(count: 1)
       abiEntryPoint.deallocate()
@@ -89,8 +89,8 @@ struct ABIEntryPointTests {
     arguments.verbosity = .min
 
     let result = try await _invokeEntryPointV0(passing: arguments) { recordJSON in
-      let record = try! JSON.decode(ABI.Record.self, from: recordJSON)
-      _ = record.version
+      let record = try! JSON.decode(ABI.Record<ABI.v0>.self, from: recordJSON)
+      _ = record.kind
     }
 
     #expect(result)
@@ -117,7 +117,7 @@ struct ABIEntryPointTests {
 
     try await confirmation("Test matched", expectedCount: 1...) { testMatched in
       _ = try await _invokeEntryPointV0(passing: arguments) { recordJSON in
-        let record = try! JSON.decode(ABI.Record.self, from: recordJSON)
+        let record = try! JSON.decode(ABI.Record<ABI.v0>.self, from: recordJSON)
         if case .test = record.kind {
           testMatched()
         } else {
@@ -166,6 +166,19 @@ struct ABIEntryPointTests {
     #expect(throws: DecodingError.self) {
       _ = try JSON.decode(__CommandLineArguments_v0.self, from: emptyBuffer)
     }
+  }
+
+  @Test func decodeWrongRecordVersion() throws {
+    let record = ABI.Record<ABI.v1>(encoding: Test {})
+    let error = try JSON.withEncoding(of: record) { recordJSON in
+      try #require(throws: DecodingError.self) {
+        _ = try JSON.decode(ABI.Record<ABI.v0>.self, from: recordJSON)
+      }
+    }
+    guard case let .dataCorrupted(context) = error else {
+      throw error
+    }
+    #expect(context.debugDescription == "Unexpected record version 1 (expected 0).")
   }
 #endif
 }

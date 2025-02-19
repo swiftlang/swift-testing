@@ -17,7 +17,7 @@ extension ABI {
   /// expected to write their own decoders.
   ///
   /// - Warning: Backtraces are not yet part of the JSON schema.
-  struct EncodedBacktrace: Sendable {
+  struct EncodedBacktrace<V>: Sendable where V: ABI.Version {
     /// The frames in the backtrace.
     var symbolicatedAddresses: [Backtrace.SymbolicatedAddress]
 
