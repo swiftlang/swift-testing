@@ -355,7 +355,7 @@ extension ABI {
   /// The back channel always uses the latest ABI version (even if experimental)
   /// since both the producer and consumer use this exact version of the testing
   /// library.
-  fileprivate typealias BackChannelVersion = v1
+  fileprivate typealias BackChannelVersion = v6_2
 }
 
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)

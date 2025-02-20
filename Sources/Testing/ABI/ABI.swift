@@ -67,15 +67,15 @@ extension ABI {
     }
   }
 
-  /// A namespace and type for ABI version 1 symbols.
+  /// A namespace and type for ABI version 6.2 symbols.
   ///
   /// @Metadata {
-  ///   @Available("Swift Testing ABI", introduced: 1)
+  ///   @Available(Swift, introduced: 6.2)
   /// }
   @_spi(Experimental)
-  public enum v1: Sendable, Version {
+  public enum v6_2: Sendable, Version {
     static var versionNumber: Int {
-      1
+      60200
     }
   }
 }

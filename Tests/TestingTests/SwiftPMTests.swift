@@ -227,17 +227,17 @@ struct SwiftPMTests {
   }
 
   @Test("--event-stream-output-path argument (writes to a stream and can be read back)",
-        arguments: [
-          ("--event-stream-output-path", "--event-stream-version", 0),
-          ("--experimental-event-stream-output", "--experimental-event-stream-version", 0),
-          ("--experimental-event-stream-output", "--experimental-event-stream-version", 1),
-        ])
+    arguments: [
+      ("--event-stream-output-path", "--event-stream-version", ABI.v0.versionNumber),
+      ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v0.versionNumber),
+      ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v6_2.versionNumber),
+    ])
   func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: Int) async throws {
     switch version {
-    case 0:
+    case ABI.v0.versionNumber:
       try await eventStreamOutput(outputArgumentName: outputArgumentName, versionArgumentName: versionArgumentName, version: ABI.v0.self)
-    case 1:
-      try await eventStreamOutput(outputArgumentName: outputArgumentName, versionArgumentName: versionArgumentName, version: ABI.v1.self)
+    case ABI.v6_2.versionNumber:
+      try await eventStreamOutput(outputArgumentName: outputArgumentName, versionArgumentName: versionArgumentName, version: ABI.v6_2.self)
     default:
       Issue.record("Unreachable event stream version \(version)")
     }
@@ -282,7 +282,7 @@ struct SwiftPMTests {
     }
     #expect(testRecords.count == 1)
     for testRecord in testRecords {
-      if version.versionNumber >= 1 {
+      if version.versionNumber >= ABI.v6_2.versionNumber {
         #expect(testRecord._tags != nil)
       } else {
         #expect(testRecord._tags == nil)

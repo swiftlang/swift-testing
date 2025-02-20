@@ -169,7 +169,7 @@ struct ABIEntryPointTests {
   }
 
   @Test func decodeWrongRecordVersion() throws {
-    let record = ABI.Record<ABI.v1>(encoding: Test {})
+    let record = ABI.Record<ABI.v6_2>(encoding: Test {})
     let error = try JSON.withEncoding(of: record) { recordJSON in
       try #require(throws: DecodingError.self) {
         _ = try JSON.decode(ABI.Record<ABI.v0>.self, from: recordJSON)
@@ -178,7 +178,7 @@ struct ABIEntryPointTests {
     guard case let .dataCorrupted(context) = error else {
       throw error
     }
-    #expect(context.debugDescription == "Unexpected record version 1 (expected 0).")
+    #expect(context.debugDescription == "Unexpected record version \(ABI.v6_2.versionNumber) (expected \(ABI.v0.versionNumber)).")
   }
 #endif
 }

@@ -98,7 +98,7 @@ extension ABI {
       sourceLocation = test.sourceLocation
       id = ID(encoding: test.id)
 
-      if V.versionNumber >= 1 {
+      if V.versionNumber >= ABI.v6_2.versionNumber {
         let tags = test.tags
         if !tags.isEmpty {
           _tags = tags.map(String.init(describing:))
