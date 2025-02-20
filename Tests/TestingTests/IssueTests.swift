@@ -144,7 +144,7 @@ final class IssueTests: XCTestCase {
     static func f(_ x: Int) -> Bool { false }
     static func g(label x: Int) -> Bool { false }
     static func h(_ x: () -> Void) -> Bool { false }
-    static func j(_ x: Int) -> Never? { nil }
+    static func j(_ x: Int) -> Int? { nil }
     static func k(_ x: inout Int) -> Bool { false }
     static func m(_ x: Bool) -> Bool { false }
     static func n(_ x: Int) throws -> Bool { false }
