@@ -632,14 +632,14 @@ func eventHandlerForStreamingEvents(
   case nil:
     eventHandler(for: ABI.CurrentVersion.self)
 #if !SWT_NO_SNAPSHOT_TYPES
-  case -1:
+  case ABI.Xcode16.versionNumber:
     // Legacy support for Xcode 16. Support for this undocumented version will
     // be removed in a future update. Do not use it.
     eventHandler(for: ABI.Xcode16.self)
 #endif
-  case 0:
+  case ABI.v0.versionNumber:
     eventHandler(for: ABI.v0.self)
-  case 1:
+  case ABI.v1.versionNumber:
     eventHandler(for: ABI.v1.self)
   case let .some(unsupportedVersionNumber):
     throw _EntryPointError.invalidArgument("--event-stream-version", value: "\(unsupportedVersionNumber)")

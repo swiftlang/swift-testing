@@ -47,10 +47,17 @@ extension ABI.v0 {
   /// callback.
   public static var entryPoint: EntryPoint {
     return { configurationJSON, recordHandler in
-      try await _entryPoint(
-        configurationJSON: configurationJSON,
-        recordHandler: recordHandler
-      ) == EXIT_SUCCESS
+      let args = try configurationJSON.map { configurationJSON in
+        try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON)
+      }
+      let eventHandler = try eventHandlerForStreamingEvents(version: args?.eventStreamVersion, encodeAsJSONLines: false, forwardingTo: recordHandler)
+
+      switch await Testing.entryPoint(passing: args, eventHandler: eventHandler) {
+      case EXIT_SUCCESS, EXIT_NO_TESTS_FOUND:
+        return true
+      default:
+        return false
+      }
     }
   }
 }
@@ -89,48 +96,21 @@ extension ABI.Xcode16 {
 @usableFromInline func copyABIEntryPoint_v0() -> UnsafeMutableRawPointer {
   let result = UnsafeMutablePointer<ABI.Xcode16.EntryPoint>.allocate(capacity: 1)
   result.initialize { configurationJSON, recordHandler in
-    try await _entryPoint(
-      configurationJSON: configurationJSON,
-      eventStreamVersionIfNil: -1,
-      recordHandler: recordHandler
-    )
+    var args = try configurationJSON.map { configurationJSON in
+      try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON)
+    }
+    if args?.eventStreamVersion == nil {
+      args?.eventStreamVersion = ABI.Xcode16.versionNumber
+    }
+    let eventHandler = try eventHandlerForStreamingEvents(version: args?.eventStreamVersion, encodeAsJSONLines: false, forwardingTo: recordHandler)
+
+    var exitCode = await Testing.entryPoint(passing: args, eventHandler: eventHandler)
+    if exitCode == EXIT_NO_TESTS_FOUND {
+      exitCode = EXIT_SUCCESS
+    }
+    return exitCode
   }
   return .init(result)
 }
 #endif
-
-// MARK: -
-
-/// A common implementation for ``ABI/v0/entryPoint-swift.type.property`` and
-/// ``copyABIEntryPoint_v0()`` that provides Xcode&nbsp;16 compatibility.
-///
-/// This function will be removed (with its logic incorporated into
-/// ``ABI/v0/entryPoint-swift.type.property``) in a future update.
-private func _entryPoint(
-  configurationJSON: UnsafeRawBufferPointer?,
-  eventStreamVersionIfNil: Int? = nil,
-  recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
-) async throws -> CInt {
-  var args = try configurationJSON.map { configurationJSON in
-    try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON)
-  }
-
-  // If the caller needs a nil event stream version to default to a specific
-  // JSON schema, apply it here as if they'd specified it in the configuration
-  // JSON blob.
-  if let eventStreamVersionIfNil, args?.eventStreamVersion == nil {
-    args?.eventStreamVersion = eventStreamVersionIfNil
-  }
-
-  let eventHandler = try eventHandlerForStreamingEvents(version: args?.eventStreamVersion, encodeAsJSONLines: false, forwardingTo: recordHandler)
-  let exitCode = await entryPoint(passing: args, eventHandler: eventHandler)
-
-  // To maintain compatibility with Xcode 16, suppress custom exit codes. (This
-  // is also needed by ABI.v0.entryPoint to correctly treat the no-tests as a
-  // successful run.)
-  if exitCode == EXIT_NO_TESTS_FOUND {
-    return EXIT_SUCCESS
-  }
-  return exitCode
-}
 #endif
