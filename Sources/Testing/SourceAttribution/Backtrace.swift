@@ -339,7 +339,7 @@ extension Backtrace {
 #if _runtime(_ObjC) && !SWT_NO_DYNAMIC_LINKING
     if Environment.flag(named: "SWT_FOUNDATION_ERROR_BACKTRACING_ENABLED") == true {
       let _CFErrorSetCallStackCaptureEnabled = symbol(named: "_CFErrorSetCallStackCaptureEnabled").map {
-        unsafeBitCast($0, to: (@convention(c) (DarwinBoolean) -> DarwinBoolean).self)
+        castCFunction(at: $0, to: (@convention(c) (DarwinBoolean) -> DarwinBoolean).self)
       }
       _ = _CFErrorSetCallStackCaptureEnabled?(true)
       return _CFErrorSetCallStackCaptureEnabled != nil

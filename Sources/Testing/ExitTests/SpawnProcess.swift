@@ -34,7 +34,7 @@ typealias ProcessID = Never
 /// `__GLIBC_PREREQ()` is insufficient because `_DEFAULT_SOURCE` may not be
 /// defined at the point spawn.h is first included.
 private let _posix_spawn_file_actions_addclosefrom_np = symbol(named: "posix_spawn_file_actions_addclosefrom_np").map {
-  unsafeBitCast($0, to: (@convention(c) (UnsafeMutablePointer<posix_spawn_file_actions_t>, CInt) -> CInt).self)
+  castCFunction(at: $0, to: (@convention(c) (UnsafeMutablePointer<posix_spawn_file_actions_t>, CInt) -> CInt).self)
 }
 #endif
 

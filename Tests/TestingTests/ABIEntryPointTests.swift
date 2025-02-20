@@ -57,7 +57,7 @@ struct ABIEntryPointTests {
     let copyABIEntryPoint_v0 = try withTestingLibraryImageAddress { testingLibrary in
       try #require(
         symbol(in: testingLibrary, named: "swt_copyABIEntryPoint_v0").map {
-          unsafeBitCast($0, to: (@convention(c) () -> UnsafeMutableRawPointer).self)
+          castCFunction(at: $0, to: (@convention(c) () -> UnsafeMutableRawPointer).self)
         }
       )
     }
@@ -140,7 +140,7 @@ struct ABIEntryPointTests {
     let abiv0_getEntryPoint = try withTestingLibraryImageAddress { testingLibrary in
       try #require(
         symbol(in: testingLibrary, named: "swt_abiv0_getEntryPoint").map {
-          unsafeBitCast($0, to: (@convention(c) () -> UnsafeRawPointer).self)
+          castCFunction(at: $0, to: (@convention(c) () -> UnsafeRawPointer).self)
         }
       )
     }

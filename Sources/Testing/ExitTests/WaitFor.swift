@@ -101,7 +101,7 @@ private nonisolated(unsafe) let _waitThreadNoChildrenCondition = {
 /// only declared if `_GNU_SOURCE` is set, but setting it causes build errors
 /// due to conflicts with Swift's Glibc module.
 private let _pthread_setname_np = symbol(named: "pthread_setname_np").map {
-  unsafeBitCast($0, to: (@convention(c) (pthread_t, UnsafePointer<CChar>) -> CInt).self)
+  castCFunction(at: $0, to: (@convention(c) (pthread_t, UnsafePointer<CChar>) -> CInt).self)
 }
 #endif
 
