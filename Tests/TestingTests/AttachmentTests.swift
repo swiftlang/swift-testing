@@ -301,7 +301,9 @@ struct AttachmentTests {
           #expect(buffer.count > 32)
           #expect(buffer[0] == UInt8(ascii: "P"))
           #expect(buffer[1] == UInt8(ascii: "K"))
-          #expect(buffer.contains("loremipsum.txt".utf8))
+          if #available(_regexAPI, *) {
+            #expect(buffer.contains("loremipsum.txt".utf8))
+          }
         }
         valueAttached()
       }
