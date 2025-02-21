@@ -32,18 +32,21 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+set(CMAKE_INSTALL_RPATH $<IF:$<PLATFORM_ID:Darwin>,"@loader_path/..","$ORIGIN">)
+set(CMAKE_INSTALL_REMOVE_ENVIRONMENT_RPATH YES)
+
 set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_Swift_LANGUAGE_VERSION 6)
 set(CMAKE_Swift_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/swift)
 
-if(NOT SWIFT_SYSTEM_NAME)
-  if(CMAKE_SYSTEM_NAME STREQUAL Darwin)
-    set(SWIFT_SYSTEM_NAME macosx)
-  else()
-    set(SWIFT_SYSTEM_NAME "$<LOWER_CASE:${CMAKE_SYSTEM_NAME}>")
-  endif()
-endif()
-
+include(PlatformInfo)
 include(SwiftModuleInstallation)
+
+option(SwiftTesting_INSTALL_NESTED_SUBDIR "Install libraries under a platform and architecture subdirectory" NO)
+set(SwiftTesting_INSTALL_LIBDIR "${CMAKE_INSTALL_LIBDIR}/swift$<$<NOT:$<BOOL:${BUILD_SHARED_LIBS}>>:_static>/${SwiftTesting_PLATFORM_SUBDIR}$<$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<BOOL:${SwiftTesting_INSTALL_NESTED_SUBDIR}>>>:/testing>$<$<BOOL:${SwiftTesting_INSTALL_NESTED_SUBDIR}>:/${SwiftTesting_ARCH_SUBDIR}>")
+set(SwiftTesting_INSTALL_SWIFTMODULEDIR "${CMAKE_INSTALL_LIBDIR}/swift$<$<NOT:$<BOOL:${BUILD_SHARED_LIBS}>>:_static>/${SwiftTesting_PLATFORM_SUBDIR}$<$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<BOOL:${SwiftTesting_INSTALL_NESTED_SUBDIR}>>>:/testing>$<$<BOOL:${SwiftTesting_INSTALL_NESTED_SUBDIR}>:/${SwiftTesting_PLATFORM_SUBDIR}>")
+
+add_compile_options($<$<COMPILE_LANGUAGE:Swift>:-no-toolchain-stdlib-rpath>)
+
 add_subdirectory(Sources)
