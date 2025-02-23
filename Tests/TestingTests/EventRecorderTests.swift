@@ -178,6 +178,42 @@ struct EventRecorderTests {
         .first != nil
     )
   }
+  
+  @available(_regexAPI, *)
+  @Test(
+    "number of arguments based on verbosity level at the end of test run",
+    arguments: [
+      ("f()", #".*"# ,  0),
+      ("g()", #".* with .+ argument.*"# , 2),
+      ("PredictablyFailingTests", #".*"# , 1),
+    ]
+  )
+  func numberOfArgumentsAtTheEndOfTests(testName: String, expectedPattern: String, verbosity: Int) async throws {
+    let stream = Stream()
+
+    var configuration = Configuration()
+    let eventRecorder = Event.ConsoleOutputRecorder(writingUsing: stream.write)
+    configuration.eventHandler = { event, context in
+      eventRecorder.record(event, in: context)
+    }
+    configuration.verbosity = verbosity
+
+    await runTest(for: PredictablyFailingTests.self, configuration: configuration)
+
+    let buffer = stream.buffer.rawValue
+    if testsWithSignificantIOAreEnabled {
+      print(buffer, terminator: "")
+    }
+
+    let aurgmentRegex = try Regex(expectedPattern)
+    #expect(
+      (try? buffer
+        .split(whereSeparator: \.isNewline)
+        .compactMap(aurgmentRegex.wholeMatch(in:))
+        .first) != nil
+    )
+  }
+
 
   @available(_regexAPI, *)
   @Test(
