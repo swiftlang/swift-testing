@@ -147,18 +147,21 @@ extension Event.HumanReadableOutputRecorder {
     return (errorIssueCount, warningIssueCount, knownIssueCount, totalIssueCount,  description)
   }
   
-  /// Returns a formatted string describing the number of arguments in a test, based on verbosity level.
+  /// Returns a formatted string describing the number of arguments in a test,
+  /// based on verbosity level.
   ///
   /// - Parameters:
   ///   - test: to get the number of  `testCases` out of a ``Test``.
-  ///   - verbose: If the level is very verbose, a detailed description is returned.
+  ///   - verbose: If the level is very verbose, a detailed description
+  ///     is returned.
   ///
-  /// - Returns: A string describing the number of test cases in the test, or an empty string if it's not very verbose level.
+  /// - Returns: A string describing the number of test cases in the test,
+  ///   or an empty string if it's not very verbose level.
   ///
   private func _includeNumberOfTestCasesIfNeeded(for test: Test, verbose: Int) -> String {
-    if verbose == 2 && !test.isSuite { // very verbose
+    if verbose >= 2 && test.isParameterized { // very verbose
         let testCasesCount =  test.testCases?.count(where: { _ in true }) ?? 0
-        return" with \(testCasesCount) \(testCasesCount > 1 ? "test cases" : "test case")"
+      return" with \(testCasesCount.counting("test case"))"
       }
       return ""
   }
