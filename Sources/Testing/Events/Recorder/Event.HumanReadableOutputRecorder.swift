@@ -149,28 +149,6 @@ extension Event.HumanReadableOutputRecorder {
 
     return (errorIssueCount, warningIssueCount, knownIssueCount, totalIssueCount,  description)
   }
-  
-  /// Returns a formatted string describing the number of arguments in a test,
-  /// based on verbosity level.
-  ///
-  /// - Parameters:
-  ///   - isParameterized: To check test cases count should be included.
-  ///   - count: The number of test cases in the test.
-  ///   - verbosity: The verbosity level. If it's very verbose or higher,
-  ///     the test cases count might get included.
-  ///
-  ///
-  /// - Returns: A string describing the number of test cases in the test,
-  ///   or an empty string if it's not very verbose level.
-  ///
-  private func _includeNumberOfTestCasesIfNeeded(
-      _ isParameterized: Bool,
-      count testCasesCount: Int,
-      verbosity verbose: Int
-  ) -> String {
-    guard verbose >= 2, isParameterized else { return "" }
-    return " with \(testCasesCount.counting("test case"))"
-  }
 
 }
 
@@ -309,16 +287,8 @@ extension Event.HumanReadableOutputRecorder {
         context.testData[id] = testData
       
       case .testCaseStarted:
-        guard verbosity >= 2 else { break }
-        let id: [String] = if let test {
-          test.id.keyPathRepresentation
-        } else {
-          []
-        }
-        var testData = context.testData[id] ?? .init(startInstant: instant)
-        testData.testCasesCount += 1
-        context.testData[id] = testData
-
+        let test = test!
+        context.testData[test.id.keyPathRepresentation]?.testCasesCount += 1
 
       default:
         // These events do not manipulate the context structure.
@@ -404,21 +374,23 @@ extension Event.HumanReadableOutputRecorder {
       let testData = testDataGraph?.value ?? .init(startInstant: instant)
       let issues = _issueCounts(in: testDataGraph)
       let duration = testData.startInstant.descriptionOfDuration(to: instant)
-      let testCasesCountMessage = _includeNumberOfTestCasesIfNeeded(test.isParameterized,
-                                                                    count: testData.testCasesCount,
-                                                                    verbosity: verbosity)
+      let testCasesCount = if verbosity >= 2 && test.isParameterized {
+        " with \(testData.testCasesCount.counting("test case"))"
+      } else {
+        ""
+      }
       return if issues.errorIssueCount > 0 {
         CollectionOfOne(
           Message(
             symbol: .fail,
-            stringValue: "\(_capitalizedTitle(for: test)) \(testName)\(testCasesCountMessage) failed after \(duration)\(issues.description)."
+            stringValue: "\(_capitalizedTitle(for: test)) \(testName)\(testCasesCount) failed after \(duration)\(issues.description)."
           )
         ) + _formattedComments(for: test)
       } else {
         [
           Message(
             symbol: .pass(knownIssueCount: issues.knownIssueCount),
-            stringValue: "\(_capitalizedTitle(for: test)) \(testName)\(testCasesCountMessage) passed after \(duration)\(issues.description)."
+            stringValue: "\(_capitalizedTitle(for: test)) \(testName)\(testCasesCount) passed after \(duration)\(issues.description)."
           )
         ]
       }
