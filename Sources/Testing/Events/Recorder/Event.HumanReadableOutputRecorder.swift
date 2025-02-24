@@ -155,10 +155,10 @@ extension Event.HumanReadableOutputRecorder {
   ///
   /// - Returns: A string describing the number of test cases in the test, or an empty string if it's not very verbose level.
   ///
-  private func _includeNumberOfTestCasesIfNedded(for test: Test, verbose: Int) -> String {
+  private func _includeNumberOfTestCasesIfNeeded(for test: Test, verbose: Int) -> String {
     if verbose == 2 && !test.isSuite { // very verbose
         let testCasesCount =  test.testCases?.count(where: { _ in true }) ?? 0
-        return " with \(testCasesCount) " + (testCasesCount > 1 ? "test cases" : "test case")
+        return" with \(testCasesCount) \(testCasesCount > 1 ? "test cases" : "test case")"
       }
       return ""
   }
@@ -387,14 +387,14 @@ extension Event.HumanReadableOutputRecorder {
         CollectionOfOne(
           Message(
             symbol: .fail,
-            stringValue: "\(_capitalizedTitle(for: test)) \(testName)\(_includeNumberOfTestCasesIfNedded(for: test, verbose: verbosity)) failed after \(duration)\(issues.description)."
+            stringValue: "\(_capitalizedTitle(for: test)) \(testName)\(_includeNumberOfTestCasesIfNeeded(for: test, verbose: verbosity)) failed after \(duration)\(issues.description)."
           )
         ) + _formattedComments(for: test)
       } else {
         [
           Message(
             symbol: .pass(knownIssueCount: issues.knownIssueCount),
-            stringValue: "\(_capitalizedTitle(for: test)) \(testName)\(_includeNumberOfTestCasesIfNedded(for: test, verbose: verbosity)) passed after \(duration)\(issues.description)."
+            stringValue: "\(_capitalizedTitle(for: test)) \(testName)\(_includeNumberOfTestCasesIfNeeded(for: test, verbose: verbosity)) passed after \(duration)\(issues.description)."
           )
         ]
       }
