@@ -5,7 +5,7 @@
 * Status: **Awaiting review**
 * Bug: [apple/swift-testing#157](https://github.com/apple/swift-testing/issues/157)
 * Implementation: [apple/swift-testing#307](https://github.com/apple/swift-testing/pull/307)
-* Review: TBD <!-- ([pitch](https://forums.swift.org/...)) -->
+* Review: ([pitch](https://forums.swift.org/t/pitch-exit-tests/78071))
 
 ## Introduction
 
