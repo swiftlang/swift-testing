@@ -153,7 +153,7 @@ extension Event.HumanReadableOutputRecorder {
   ///   - test: to get the number of  `testCases` out of a ``Test``.
   ///   - verbose: If the level is very verbose, a detailed description is returned.
   ///
-  /// - Returns: A string describing the number of argument(s) in the test cases, or an empty string if it's not very verbose level.
+  /// - Returns: A string describing the number of test cases in the test, or an empty string if it's not very verbose level.
   ///
   private func _includeNumberOfTestCasesIfNedded(for test: Test, verbose: Int) -> String {
     if verbose == 2 && !test.isSuite { // very verbose
