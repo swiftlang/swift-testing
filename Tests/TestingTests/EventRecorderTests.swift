@@ -183,9 +183,11 @@ struct EventRecorderTests {
   @Test(
     "number of arguments based on verbosity level at the end of test run",
     arguments: [
-      ("f()", #".*"# ,  0),
-      ("g()", #".* with .+ argument.*"# , 2),
-      ("PredictablyFailingTests", #".*"# , 1),
+      ("f()", #".* Test f\(\) failed after .*"# ,  0),
+      ("f()", #".* Test f\(\) with 1 test case failed after .*"# ,  2),
+      ("d(_:)", #".* Test d\(_:\) with .+ test cases passed after.*"# , 2),
+      ("PredictablyFailingTests", #".* Suite PredictablyFailingTests failed after .*"# , 1),
+      ("PredictablyFailingTests", #".* Suite PredictablyFailingTests failed after .*"# , 2),
     ]
   )
   func numberOfArgumentsAtTheEndOfTests(testName: String, expectedPattern: String, verbosity: Int) async throws {
@@ -206,8 +208,9 @@ struct EventRecorderTests {
     }
 
     let aurgmentRegex = try Regex(expectedPattern)
+    
     #expect(
-      (try? buffer
+      (try buffer
         .split(whereSeparator: \.isNewline)
         .compactMap(aurgmentRegex.wholeMatch(in:))
         .first) != nil
@@ -572,6 +575,11 @@ struct EventRecorderTests {
       #expect(Bool(false))
     }
   }
+  
+  @Test(.hidden, arguments: [1, 2, 3])
+  func d(_ arg: Int) {
+    #expect(arg > 0)
+  }
 
   @Test(.hidden) func g() {
     #expect(Bool(false))
@@ -602,3 +610,4 @@ struct EventRecorderTests {
     }
   }
 }
+

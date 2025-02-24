@@ -147,31 +147,18 @@ extension Event.HumanReadableOutputRecorder {
     return (errorIssueCount, warningIssueCount, knownIssueCount, totalIssueCount,  description)
   }
   
-  /// Calculates the total number of arguments across all test cases in a sequence.
-  ///
-  /// - Parameters:
-  ///   - testCases: A sequence of `Test.Case` objects containing the test cases..
-  ///
-  /// - Returns: The total count of arguments across all test cases. If `testCases` is `nil` or empty, returns `0`.
-  ///
-  private func _numberOfArguments(for testCases: (any Sequence<Test.Case>)?) -> Int {
-      testCases?.reduce(into: 0) { result, testCase in
-          result += testCase.arguments.count
-      } ?? 0
-  }
-
   /// Returns a formatted string describing the number of arguments in a test, based on verbosity level.
   ///
   /// - Parameters:
-  ///   - test: The `Test` object that contains a sequence of `testCases`.
+  ///   - test: to get the number of  `testCases` out of a ``Test``.
   ///   - verbose: If the level is very verbose, a detailed description is returned.
   ///
-  /// - Returns: A string describing the number of arguments in the test cases, or an empty string if it's not very verbose level.
+  /// - Returns: A string describing the number of argument(s) in the test cases, or an empty string if it's not very verbose level.
   ///
-  private func _includeNumberOfArguments(_ test: Test, verbose: Int) -> String {
-      if verbose == 2 { // very verbose
-          let numberOfArguments = _numberOfArguments(for: test.testCases)
-          return " with \(numberOfArguments) " + (numberOfArguments > 1 ? "arguments" : "argument")
+  private func _includeNumberOfTestCases(for test: Test, verbose: Int) -> String {
+    if verbose == 2 && !test.isSuite { // very verbose
+        let testCasesCount =  test.testCases?.count(where: { _ in true }) ?? 0
+        return " with \(testCasesCount) " + (testCasesCount > 1 ? "test cases" : "test case")
       }
       return ""
   }
@@ -400,14 +387,14 @@ extension Event.HumanReadableOutputRecorder {
         CollectionOfOne(
           Message(
             symbol: .fail,
-            stringValue: "\(_capitalizedTitle(for: test)) \(testName)\(_includeNumberOfArguments(test, verbose: verbosity)) failed after \(duration)\(issues.description)."
+            stringValue: "\(_capitalizedTitle(for: test)) \(testName)\(_includeNumberOfTestCases(for: test, verbose: verbosity)) failed after \(duration)\(issues.description)."
           )
         ) + _formattedComments(for: test)
       } else {
         [
           Message(
             symbol: .pass(knownIssueCount: issues.knownIssueCount),
-            stringValue: "\(_capitalizedTitle(for: test)) \(testName)\(_includeNumberOfArguments(test, verbose: verbosity)) passed after \(duration)\(issues.description)."
+            stringValue: "\(_capitalizedTitle(for: test)) \(testName)\(_includeNumberOfTestCases(for: test, verbose: verbosity)) passed after \(duration)\(issues.description)."
           )
         ]
       }
