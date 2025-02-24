@@ -149,7 +149,6 @@ extension Event.HumanReadableOutputRecorder {
 
     return (errorIssueCount, warningIssueCount, knownIssueCount, totalIssueCount,  description)
   }
-
 }
 
 /// Generate a title for the specified test (either "Test" or "Suite"),

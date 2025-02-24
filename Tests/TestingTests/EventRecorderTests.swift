@@ -217,7 +217,6 @@ struct EventRecorderTests {
     )
   }
 
-
   @available(_regexAPI, *)
   @Test(
     "Issue counts are summed correctly on test end",
@@ -610,4 +609,3 @@ struct EventRecorderTests {
     }
   }
 }
-
