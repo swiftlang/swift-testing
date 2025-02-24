@@ -184,7 +184,7 @@ struct EventRecorderTests {
     "number of arguments based on verbosity level at the end of test run",
     arguments: [
       ("f()", #".* Test f\(\) failed after .*"# ,  0),
-      ("f()", #".* Test f\(\) with 1 test case failed after .*"# ,  2),
+      ("f()", #".* Test f\(\) failed after .*"# ,  2),
       ("d(_:)", #".* Test d\(_:\) with .+ test cases passed after.*"# , 2),
       ("PredictablyFailingTests", #".* Suite PredictablyFailingTests failed after .*"# , 1),
       ("PredictablyFailingTests", #".* Suite PredictablyFailingTests failed after .*"# , 2),

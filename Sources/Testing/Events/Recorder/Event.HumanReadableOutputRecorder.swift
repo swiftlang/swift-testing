@@ -62,6 +62,9 @@ extension Event {
 
         /// The number of known issues recorded for the test.
         var knownIssueCount = 0
+        
+        /// The number of test cases for the test.
+        var testCasesCount: Int = 0
       }
 
       /// Data tracked on a per-test basis.
@@ -151,19 +154,22 @@ extension Event.HumanReadableOutputRecorder {
   /// based on verbosity level.
   ///
   /// - Parameters:
-  ///   - test: to get the number of  `testCases` out of a ``Test``.
-  ///   - verbose: If the level is very verbose, a detailed description
-  ///     is returned.
+  ///   - isParameterized: To check test cases count should be included.
+  ///   - count: The number of test cases in the test.
+  ///   - verbosity: The verbosity level. If it's very verbose or higher,
+  ///     the test cases count might get included.
+  ///
   ///
   /// - Returns: A string describing the number of test cases in the test,
   ///   or an empty string if it's not very verbose level.
   ///
-  private func _includeNumberOfTestCasesIfNeeded(for test: Test, verbose: Int) -> String {
-    if verbose >= 2 && test.isParameterized { // very verbose
-        let testCasesCount =  test.testCases?.count(where: { _ in true }) ?? 0
-      return" with \(testCasesCount.counting("test case"))"
-      }
-      return ""
+  private func _includeNumberOfTestCasesIfNeeded(
+      _ isParameterized: Bool,
+      count testCasesCount: Int,
+      verbosity verbose: Int
+  ) -> String {
+    guard verbose >= 2, isParameterized else { return "" }
+    return " with \(testCasesCount.counting("test case"))"
   }
 
 }
@@ -301,6 +307,18 @@ extension Event.HumanReadableOutputRecorder {
           testData.issueCount[issue.severity] = issueCount + 1
         }
         context.testData[id] = testData
+      
+      case .testCaseStarted:
+        guard verbosity >= 2 else { break }
+        let id: [String] = if let test {
+          test.id.keyPathRepresentation
+        } else {
+          []
+        }
+        var testData = context.testData[id] ?? .init(startInstant: instant)
+        testData.testCasesCount += 1
+        context.testData[id] = testData
+
 
       default:
         // These events do not manipulate the context structure.
@@ -386,18 +404,21 @@ extension Event.HumanReadableOutputRecorder {
       let testData = testDataGraph?.value ?? .init(startInstant: instant)
       let issues = _issueCounts(in: testDataGraph)
       let duration = testData.startInstant.descriptionOfDuration(to: instant)
+      let testCasesCountMessage = _includeNumberOfTestCasesIfNeeded(test.isParameterized,
+                                                                    count: testData.testCasesCount,
+                                                                    verbosity: verbosity)
       return if issues.errorIssueCount > 0 {
         CollectionOfOne(
           Message(
             symbol: .fail,
-            stringValue: "\(_capitalizedTitle(for: test)) \(testName)\(_includeNumberOfTestCasesIfNeeded(for: test, verbose: verbosity)) failed after \(duration)\(issues.description)."
+            stringValue: "\(_capitalizedTitle(for: test)) \(testName)\(testCasesCountMessage) failed after \(duration)\(issues.description)."
           )
         ) + _formattedComments(for: test)
       } else {
         [
           Message(
             symbol: .pass(knownIssueCount: issues.knownIssueCount),
-            stringValue: "\(_capitalizedTitle(for: test)) \(testName)\(_includeNumberOfTestCasesIfNeeded(for: test, verbose: verbosity)) passed after \(duration)\(issues.description)."
+            stringValue: "\(_capitalizedTitle(for: test)) \(testName)\(testCasesCountMessage) passed after \(duration)\(issues.description)."
           )
         ]
       }
