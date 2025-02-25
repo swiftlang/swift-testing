@@ -18,21 +18,12 @@ extension Test {
   /// indirect `async` accessor function rather than directly producing
   /// instances of ``Test``, but functions are non-nominal types and cannot
   /// directly conform to protocols.
-  struct Generator: Sendable, TestContent {
+  fileprivate struct Generator: TestContent, RawRepresentable {
     static var testContentKind: UInt32 {
       0x74657374
     }
 
-    /// The actual (asynchronous) accessor function.
-    private var _generator: @Sendable () async -> Test
-
-    init(_ generator: @escaping @Sendable () async -> Test) {
-      _generator = generator
-    }
-
-    func callAsFunction() async -> Test {
-      await _generator()
-    }
+    var rawValue: @Sendable () async -> Test
   }
 
   /// All available ``Test`` instances in the process, according to the runtime.
@@ -64,7 +55,7 @@ extension Test {
         let generators = Generator.allTestContentRecords().lazy.compactMap { $0.load() }
         await withTaskGroup(of: Self.self) { taskGroup in
           for generator in generators {
-            taskGroup.addTask(operation: generator.callAsFunction)
+            taskGroup.addTask { await generator.rawValue() }
           }
           result = await taskGroup.reduce(into: result) { $0.insert($1) }
         }
