@@ -74,20 +74,6 @@ protocol TestContent: ~Copyable {
   /// By default, this type equals `Never`, indicating that this type of test
   /// content does not support hinting during discovery.
   associatedtype TestContentAccessorHint: Sendable = Never
-
-  /// The type to pass (by address) as the accessor function's `type` argument.
-  ///
-  /// The default value of this property is `Self.self`. A conforming type can
-  /// override the default implementation to substitute another type (e.g. if
-  /// the conforming type is not public but records are created during macro
-  /// expansion and can only reference public types.)
-  static var testContentAccessorTypeArgument: any ~Copyable.Type { get }
-}
-
-extension TestContent where Self: ~Copyable {
-  static var testContentAccessorTypeArgument: any ~Copyable.Type {
-    self
-  }
 }
 
 // MARK: - Individual test content records
@@ -142,7 +128,7 @@ struct TestContentRecord<T>: Sendable where T: TestContent & ~Copyable {
       return nil
     }
 
-    return withUnsafePointer(to: T.testContentAccessorTypeArgument) { type in
+    return withUnsafePointer(to: T.self) { type in
       withUnsafeTemporaryAllocation(of: T.self, capacity: 1) { buffer in
         let initialized = if let hint {
           withUnsafePointer(to: hint) { hint in
