@@ -181,7 +181,7 @@ struct EventRecorderTests {
   
   @available(_regexAPI, *)
   @Test(
-    "number of arguments based on verbosity level at the end of test run",
+    "Log the total number of test cases in parameterized tests at the end of the test run",
     arguments: [
       ("f()", #".* Test f\(\) failed after .*"#),
       ("h()", #".* Test h\(\) passed after .+"#),
@@ -191,7 +191,7 @@ struct EventRecorderTests {
       ("PredictablyFailingTests", #".* Suite PredictablyFailingTests failed after .*"#),
     ]
   )
-  func numberOfTestsCasesAtTestEnd(testName: String, expectedPattern: String) async throws {
+  func numberOfTestCasesAtTestEnd(testName: String, expectedPattern: String) async throws {
     let stream = Stream()
 
     var configuration = Configuration()
