@@ -217,8 +217,7 @@ public struct Configuration: Sendable {
   /// When using the `swift test` command from Swift Package Manager, this
   /// property is pre-configured. Otherwise, the default value of this property
   /// records an issue indicating that it has not been configured.
-  @_spi(Experimental)
-  public var exitTestHandler: ExitTest.Handler = { exitTest in
+  public var exitTestHandler: ExitTest.Handler = { _ in
     throw SystemError(description: "Exit test support has not been implemented by the current testing infrastructure.")
   }
 #endif
