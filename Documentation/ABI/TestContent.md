@@ -143,18 +143,13 @@ filtering is performed.)
 The concrete Swift type of the value written to `outValue`, the type pointed to
 by `type`, and the value pointed to by `hint` depend on the kind of record:
 
-- For test or suite declarations (kind `0x74657374`), the accessor produces an
-  asynchronous Swift function[^notAccessorSignature] that returns an instance of
-  `Testing.Test`:
+- For test or suite declarations (kind `0x74657374`), the accessor produces a
+  structure of type `Testing.Test.Generator` that the testing library can use
+  to generate the corresponding test[^notAccessorSignature].
 
-  ```swift
-  @Sendable () async -> Test
-  ```
-
-  [^notAccessorSignature]: This signature is not the signature of `accessor`,
-    but of the Swift function reference it writes to `outValue`. This level of
-    indirection is necessary because loading a test or suite declaration is an
-    asynchronous operation, but C functions cannot be `async`.
+  [^notAccessorSignature]: This level of indirection is necessary because
+    loading a test or suite declaration is an asynchronous operation, but C
+    functions cannot be `async`.
 
   Test content records of this kind do not specify a type for `hint`. Always
   pass `nil`.
