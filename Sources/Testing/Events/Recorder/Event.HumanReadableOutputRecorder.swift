@@ -62,6 +62,9 @@ extension Event {
 
         /// The number of known issues recorded for the test.
         var knownIssueCount = 0
+        
+        /// The number of test cases for the test.
+        var testCasesCount = 0
       }
 
       /// Data tracked on a per-test basis.
@@ -281,6 +284,10 @@ extension Event.HumanReadableOutputRecorder {
           testData.issueCount[issue.severity] = issueCount + 1
         }
         context.testData[id] = testData
+      
+      case .testCaseStarted:
+        let test = test!
+        context.testData[test.id.keyPathRepresentation]?.testCasesCount += 1
 
       default:
         // These events do not manipulate the context structure.
@@ -366,18 +373,23 @@ extension Event.HumanReadableOutputRecorder {
       let testData = testDataGraph?.value ?? .init(startInstant: instant)
       let issues = _issueCounts(in: testDataGraph)
       let duration = testData.startInstant.descriptionOfDuration(to: instant)
+      let testCasesCount = if test.isParameterized {
+        " with \(testData.testCasesCount.counting("test case"))"
+      } else {
+        ""
+      }
       return if issues.errorIssueCount > 0 {
         CollectionOfOne(
           Message(
             symbol: .fail,
-            stringValue: "\(_capitalizedTitle(for: test)) \(testName) failed after \(duration)\(issues.description)."
+            stringValue: "\(_capitalizedTitle(for: test)) \(testName)\(testCasesCount) failed after \(duration)\(issues.description)."
           )
         ) + _formattedComments(for: test)
       } else {
         [
           Message(
             symbol: .pass(knownIssueCount: issues.knownIssueCount),
-            stringValue: "\(_capitalizedTitle(for: test)) \(testName) passed after \(duration)\(issues.description)."
+            stringValue: "\(_capitalizedTitle(for: test)) \(testName)\(testCasesCount) passed after \(duration)\(issues.description)."
           )
         ]
       }
