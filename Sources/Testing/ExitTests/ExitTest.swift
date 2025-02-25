@@ -102,7 +102,7 @@ extension ExitTest {
   /// A container type to hold the current exit test.
   ///
   /// This class is temporarily necessary until `ManagedBuffer` is updated to
-  /// support storing move-only values.
+  /// support storing move-only values. For more information, see [SE-NNNN](https://github.com/swiftlang/swift-evolution/pull/2657).
   private final class _CurrentContainer: Sendable {
     /// The exit test represented by this container.
     ///
