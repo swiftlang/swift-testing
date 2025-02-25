@@ -31,10 +31,11 @@ add_library(Testing
   Events/Recorder/Event.JUnitXMLRecorder.swift
   Events/Recorder/Event.Symbol.swift
   Events/TimeValue.swift
-  ExitTests/ExitCondition.swift
   ExitTests/ExitTest.swift
-  ExitTests/ExitTestArtifacts.swift
+  ExitTests/ExitTest.Condition.swift
+  ExitTests/ExitTest.Result.swift
   ExitTests/SpawnProcess.swift
+  ExitTests/StatusAtExit.swift
   ExitTests/WaitFor.swift
   Expectations/Expectation.swift
   Expectations/Expectation+Macro.swift

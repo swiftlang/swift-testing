@@ -88,29 +88,15 @@ private import _TestingInternals
 
       // Mock an exit test where the process exits successfully.
       configuration.exitTestHandler = { _ in
-        return ExitTestArtifacts(exitCondition: .exitCode(EXIT_SUCCESS))
+        return ExitTest.Result(statusAtExit: .exitCode(EXIT_SUCCESS))
       }
       await Test {
         await #expect(exitsWith: .success) {}
       }.run(configuration: configuration)
 
-      // Mock an exit test where the process exits with a generic failure.
-      configuration.exitTestHandler = { _ in
-        return ExitTestArtifacts(exitCondition: .failure)
-      }
-      await Test {
-        await #expect(exitsWith: .failure) {}
-      }.run(configuration: configuration)
-      await Test {
-        await #expect(exitsWith: .exitCode(EXIT_FAILURE)) {}
-      }.run(configuration: configuration)
-      await Test {
-        await #expect(exitsWith: .signal(SIGABRT)) {}
-      }.run(configuration: configuration)
-
       // Mock an exit test where the process exits with a particular error code.
       configuration.exitTestHandler = { _ in
-        return ExitTestArtifacts(exitCondition: .exitCode(123))
+        return ExitTest.Result(statusAtExit: .exitCode(123))
       }
       await Test {
         await #expect(exitsWith: .failure) {}
@@ -118,7 +104,7 @@ private import _TestingInternals
 
       // Mock an exit test where the process exits with a signal.
       configuration.exitTestHandler = { _ in
-        return ExitTestArtifacts(exitCondition: .signal(SIGABRT))
+        return ExitTest.Result(statusAtExit: .signal(SIGABRT))
       }
       await Test {
         await #expect(exitsWith: .signal(SIGABRT)) {}
@@ -140,7 +126,7 @@ private import _TestingInternals
 
       // Mock exit tests that were expected to fail but passed.
       configuration.exitTestHandler = { _ in
-        return ExitTestArtifacts(exitCondition: .exitCode(EXIT_SUCCESS))
+        return ExitTest.Result(statusAtExit: .exitCode(EXIT_SUCCESS))
       }
       await Test {
         await #expect(exitsWith: .failure) {}
@@ -154,7 +140,7 @@ private import _TestingInternals
 
       // Mock exit tests that unexpectedly signalled.
       configuration.exitTestHandler = { _ in
-        return ExitTestArtifacts(exitCondition: .signal(SIGABRT))
+        return ExitTest.Result(statusAtExit: .signal(SIGABRT))
       }
       await Test {
         await #expect(exitsWith: .exitCode(EXIT_SUCCESS)) {}
@@ -239,36 +225,6 @@ private import _TestingInternals
   }
 #endif
 
-  @Test("Exit condition matching operators (==, !=, ===, !==)")
-  func exitConditionMatching() {
-    #expect(Optional<ExitCondition>.none == Optional<ExitCondition>.none)
-    #expect(Optional<ExitCondition>.none === Optional<ExitCondition>.none)
-    #expect(Optional<ExitCondition>.none !== .some(.success))
-    #expect(Optional<ExitCondition>.none !== .some(.failure))
-
-    #expect(ExitCondition.success == .success)
-    #expect(ExitCondition.success === .success)
-    #expect(ExitCondition.success == .exitCode(EXIT_SUCCESS))
-    #expect(ExitCondition.success === .exitCode(EXIT_SUCCESS))
-    #expect(ExitCondition.success != .exitCode(EXIT_FAILURE))
-    #expect(ExitCondition.success !== .exitCode(EXIT_FAILURE))
-
-    #expect(ExitCondition.failure == .failure)
-    #expect(ExitCondition.failure === .failure)
-
-    #expect(ExitCondition.exitCode(EXIT_FAILURE &+ 1) != .exitCode(EXIT_FAILURE))
-    #expect(ExitCondition.exitCode(EXIT_FAILURE &+ 1) !== .exitCode(EXIT_FAILURE))
-
-    #expect(ExitCondition.success != .exitCode(EXIT_FAILURE))
-    #expect(ExitCondition.success !== .exitCode(EXIT_FAILURE))
-    #expect(ExitCondition.success != .signal(SIGINT))
-    #expect(ExitCondition.success !== .signal(SIGINT))
-    #expect(ExitCondition.signal(SIGINT) == .signal(SIGINT))
-    #expect(ExitCondition.signal(SIGINT) === .signal(SIGINT))
-    #expect(ExitCondition.signal(SIGTERM) != .signal(SIGINT))
-    #expect(ExitCondition.signal(SIGTERM) !== .signal(SIGINT))
-  }
-
   @MainActor static func someMainActorFunction() {
     MainActor.assertIsolated()
   }
@@ -289,21 +245,21 @@ private import _TestingInternals
     var result = await #expect(exitsWith: .success) {
       exit(EXIT_SUCCESS)
     }
-    #expect(result?.exitCondition === .success)
+    #expect(result?.statusAtExit == .exitCode(EXIT_SUCCESS))
     result = await #expect(exitsWith: .exitCode(123)) {
       exit(123)
     }
-    #expect(result?.exitCondition === .exitCode(123))
+    #expect(result?.statusAtExit == .exitCode(123))
 
     // Test that basic passing exit tests produce the correct results (#require)
     result = try await #require(exitsWith: .success) {
       exit(EXIT_SUCCESS)
     }
-    #expect(result?.exitCondition === .success)
+    #expect(result?.statusAtExit == .exitCode(EXIT_SUCCESS))
     result = try await #require(exitsWith: .exitCode(123)) {
       exit(123)
     }
-    #expect(result?.exitCondition === .exitCode(123))
+    #expect(result?.statusAtExit == .exitCode(123))
   }
 
   @Test("Result is nil on failure")
@@ -322,7 +278,7 @@ private import _TestingInternals
         }
       }
       configuration.exitTestHandler = { _ in
-        ExitTestArtifacts(exitCondition: .exitCode(123))
+        ExitTest.Result(statusAtExit: .exitCode(123))
       }
 
       await Test {
@@ -345,7 +301,7 @@ private import _TestingInternals
         }
       }
       configuration.exitTestHandler = { _ in
-        ExitTestArtifacts(exitCondition: .failure)
+        ExitTest.Result(statusAtExit: .exitCode(EXIT_FAILURE))
       }
 
       await Test {
@@ -392,7 +348,7 @@ private import _TestingInternals
       try FileHandle.stderr.write(String("STANDARD ERROR".reversed()))
       exit(EXIT_SUCCESS)
     }
-    #expect(result.exitCondition === .success)
+    #expect(result.statusAtExit == .exitCode(EXIT_SUCCESS))
     #expect(result.standardOutputContent.contains("STANDARD OUTPUT".utf8))
     #expect(result.standardErrorContent.isEmpty)
 
@@ -401,7 +357,7 @@ private import _TestingInternals
       try FileHandle.stderr.write(String("STANDARD ERROR".reversed()))
       exit(EXIT_SUCCESS)
     }
-    #expect(result.exitCondition === .success)
+    #expect(result.statusAtExit == .exitCode(EXIT_SUCCESS))
     #expect(result.standardOutputContent.isEmpty)
     #expect(result.standardErrorContent.contains("STANDARD ERROR".utf8.reversed()))
   }
@@ -409,7 +365,7 @@ private import _TestingInternals
   @Test("Arguments to the macro are not captured during expansion (do not need to be literals/const)")
   func argumentsAreNotCapturedDuringMacroExpansion() async throws {
     let unrelatedSourceLocation = #_sourceLocation
-    func nonConstExitCondition() async throws -> ExitCondition {
+    func nonConstExitCondition() async throws -> ExitTest.Condition {
       .failure
     }
     await #expect(exitsWith: try await nonConstExitCondition(), sourceLocation: unrelatedSourceLocation) {
