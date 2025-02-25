@@ -33,7 +33,7 @@ let testContainerTypeNameMagic = "__🟠$test_container__"
 @_spi(Experimental)
 public protocol __ExitTestContainer {
   /// The unique identifier of the exit test.
-  static var __id: __ExitTest.ID { get }
+  static var __id: (UInt64, UInt64) { get }
 
   /// The body function of the exit test.
   static var __body: @Sendable () async throws -> Void { get }

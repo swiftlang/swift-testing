@@ -435,7 +435,7 @@ extension ExitTestConditionMacro {
 
     // TODO: use UUID() here if we can link to Foundation
     let exitTestID = (UInt64.random(in: 0 ... .max), UInt64.random(in: 0 ... .max))
-    let exitTestIDExpr: ExprSyntax = "Testing.__ExitTest.ID(__uuid: (\(literal: exitTestID.0), \(literal: exitTestID.1)))"
+    let exitTestIDExpr: ExprSyntax = "(\(literal: exitTestID.0), \(literal: exitTestID.1))"
 
     var decls = [DeclSyntax]()
 
@@ -444,7 +444,7 @@ extension ExitTestConditionMacro {
     let bodyThunkName = context.makeUniqueName("")
     decls.append(
       """
-      @Sendable func \(bodyThunkName)() async throws -> Void {
+      @Sendable func \(bodyThunkName)() async throws -> Swift.Void {
         return try await Testing.__requiringTry(Testing.__requiringAwait(\(bodyArgumentExpr.trimmed)))()
       }
       """
@@ -457,7 +457,7 @@ extension ExitTestConditionMacro {
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
       enum \(enumName): Testing.__ExitTestContainer, Sendable {
-        static var __id: Testing.__ExitTest.ID {
+        static var __id: (Swift.UInt64, Swift.UInt64) {
           \(exitTestIDExpr)
         }
         static var __body: @Sendable () async throws -> Void {

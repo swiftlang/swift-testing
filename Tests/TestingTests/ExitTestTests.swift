@@ -416,6 +416,14 @@ private import _TestingInternals
       fatalError()
     }
   }
+
+  @Test("ExitTest.current property")
+  func currentProperty() async {
+    #expect((ExitTest.current == nil) as Bool)
+    await #expect(exitsWith: .success) {
+      #expect((ExitTest.current != nil) as Bool)
+    }
+  }
 }
 
 // MARK: - Fixtures

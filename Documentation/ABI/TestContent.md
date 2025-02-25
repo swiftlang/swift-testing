@@ -160,9 +160,9 @@ by `type`, and the value pointed to by `hint` depend on the kind of record:
   pass `nil`.
 
 - For exit test declarations (kind `0x65786974`), the accessor produces a
-  structure describing the exit test (of type `Testing.__ExitTest`.)
+  structure describing the exit test (of type `Testing.ExitTest`.)
 
-  Test content records of this kind accept a `hint` of type `Testing.__ExitTest.ID`.
+  Test content records of this kind accept a `hint` of type `Testing.ExitTest.ID`.
   They only produce a result if they represent an exit test declared with the
   same ID (or if `hint` is `nil`.)
 
