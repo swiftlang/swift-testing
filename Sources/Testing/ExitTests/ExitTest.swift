@@ -24,52 +24,31 @@ private import _TestingInternals
 
 /// A type describing an exit test.
 ///
-/// Instances of this type describe an exit test defined by the test author and
-/// discovered or called at runtime. Tools that implement custom exit test
-/// handling will encounter instances of this type in two contexts:
-///
-/// - When the current configuration's exit test handler, set with
-///   ``Configuration/exitTestHandler``, is called; and
-/// - When, in a child process, they need to look up the exit test to call.
-///
-/// If you are writing tests, you don't usually need to interact directly with
-/// an instance of this type. To create an exit test, use the
+/// Instances of this type describe exit tests you create using the
 /// ``expect(exitsWith:_:sourceLocation:performing:)`` or
-/// ``require(exitsWith:_:sourceLocation:performing:)`` macro.
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-#if SWT_NO_EXIT_TESTS
-@available(*, unavailable, message: "Exit tests are not available on this platform.")
-#endif
-public typealias ExitTest = __ExitTest
-
-/// A type describing an exit test.
-///
-/// - Warning: This type is used to implement the `#expect(exitsWith:)` macro.
-///   Do not use it directly. Tools can use the SPI ``ExitTest`` typealias if
-///   needed.
+/// ``require(exitsWith:_:sourceLocation:performing:)`` macro. You don't usually
+/// need to interact directly with an instance of this type.
 @_spi(Experimental)
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
-public struct __ExitTest: Sendable, ~Copyable {
-  /// A type whose instances uniquely identify instances of `__ExitTest`.
+public struct ExitTest: Sendable, ~Copyable {
+  /// A type whose instances uniquely identify instances of ``ExitTest``.
+  @_spi(ForToolsIntegrationOnly)
   public struct ID: Sendable, Equatable, Codable {
     /// An underlying UUID (stored as two `UInt64` values to avoid relying on
     /// `UUID` from Foundation or any platform-specific interfaces.)
     private var _lo: UInt64
     private var _hi: UInt64
 
-    /// Initialize an instance of this type.
-    ///
-    /// - Warning: This member is used to implement the `#expect(exitsWith:)`
-    ///   macro. Do not use it directly.
-    public init(__uuid uuid: (UInt64, UInt64)) {
+    init(_ uuid: (UInt64, UInt64)) {
       self._lo = uuid.0
       self._hi = uuid.1
     }
   }
 
   /// A value that uniquely identifies this instance.
+  @_spi(ForToolsIntegrationOnly)
   public var id: ID
 
   /// The body closure of the exit test.
@@ -77,7 +56,7 @@ public struct __ExitTest: Sendable, ~Copyable {
   /// Do not invoke this closure directly. Instead, invoke ``callAsFunction()``
   /// to run the exit test. Running the exit test will always terminate the
   /// current process.
-  fileprivate var body: @Sendable () async throws -> Void
+  fileprivate var body: @Sendable () async throws -> Void = {}
 
   /// Storage for ``observedValues``.
   ///
@@ -113,21 +92,52 @@ public struct __ExitTest: Sendable, ~Copyable {
       _observedValues = newValue
     }
   }
-
-  /// Initialize an exit test at runtime.
-  ///
-  /// - Warning: This initializer is used to implement the `#expect(exitsWith:)`
-  ///   macro. Do not use it directly.
-  public init(
-    __identifiedBy id: ID,
-    body: @escaping @Sendable () async throws -> Void = {}
-  ) {
-    self.id = id
-    self.body = body
-  }
 }
 
 #if !SWT_NO_EXIT_TESTS
+// MARK: - Current
+
+@_spi(Experimental)
+extension ExitTest {
+  /// A container type to hold the current exit test.
+  ///
+  /// This class is temporarily necessary until `ManagedBuffer` is updated to
+  /// support storing move-only values. For more information, see [SE-NNNN](https://github.com/swiftlang/swift-evolution/pull/2657).
+  private final class _CurrentContainer: Sendable {
+    /// The exit test represented by this container.
+    ///
+    /// The value of this property must be optional to avoid a copy when reading
+    /// the value in ``ExitTest/current``.
+    let exitTest: ExitTest?
+
+    init(exitTest: borrowing ExitTest) {
+      self.exitTest = ExitTest(id: exitTest.id, body: exitTest.body, _observedValues: exitTest._observedValues)
+    }
+  }
+
+  /// Storage for ``current``.
+  private static let _current = Locked<_CurrentContainer?>()
+
+  /// The exit test that is running in the current process, if any.
+  ///
+  /// If the current process was created to run an exit test, the value of this
+  /// property describes that exit test. If this process is the parent process
+  /// of an exit test, or if no exit test is currently running, the value of
+  /// this property is `nil`.
+  ///
+  /// The value of this property is constant across all tasks in the current
+  /// process.
+  public static var current: ExitTest? {
+    _read {
+      if let current = _current.rawValue {
+        yield current.exitTest
+      } else {
+        yield nil
+      }
+    }
+  }
+}
+
 // MARK: - Invocation
 
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
@@ -180,8 +190,7 @@ extension ExitTest {
   /// This function invokes the closure originally passed to
   /// `#expect(exitsWith:)` _in the current process_. That closure is expected
   /// to terminate the process; if it does not, the testing library will
-  /// terminate the process in a way that causes the corresponding expectation
-  /// to fail.
+  /// terminate the process as if its `main()` function returned naturally.
   public consuming func callAsFunction() async -> Never {
     Self._disableCrashReporting()
 
@@ -208,6 +217,11 @@ extension ExitTest {
       _ = closefrom(from)
     }
 #endif
+
+    // Set ExitTest.current before the test body runs.
+    Self._current.withLock { current in
+      current = _CurrentContainer(exitTest: self)
+    }
 
     do {
       try await body()
@@ -247,11 +261,15 @@ extension ExitTest {
       }
     }
 
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
     // Call the legacy lookup function that discovers tests embedded in types.
     return types(withNamesContaining: exitTestContainerTypeNameMagic).lazy
       .compactMap { $0 as? any __ExitTestContainer.Type }
-      .first { $0.__id == id }
-      .map { ExitTest(__identifiedBy: $0.__id, body: $0.__body) }
+      .first { ID($0.__id) == id }
+      .map { ExitTest(id: ID($0.__id), body: $0.__body) }
+#else
+    return nil
+#endif
   }
 }
 
@@ -280,7 +298,7 @@ extension ExitTest {
 /// `await #expect(exitsWith:) { }` invocations regardless of calling
 /// convention.
 func callExitTest(
-  identifiedBy exitTestID: ExitTest.ID,
+  identifiedBy exitTestID: (UInt64, UInt64),
   exitsWith expectedExitCondition: ExitCondition,
   observing observedValues: [any PartialKeyPath<ExitTestArtifacts> & Sendable],
   expression: __Expression,
@@ -295,7 +313,7 @@ func callExitTest(
 
   var result: ExitTestArtifacts
   do {
-    var exitTest = ExitTest(__identifiedBy: exitTestID)
+    var exitTest = ExitTest(id: ExitTest.ID(exitTestID))
     exitTest.observedValues = observedValues
     result = try await configuration.exitTestHandler(exitTest)
 
@@ -426,10 +444,10 @@ extension ExitTest {
   /// configurations is undefined.
   static func findInEnvironmentForEntryPoint() -> Self? {
     // Find the ID of the exit test to run, if any, in the environment block.
-    var id: __ExitTest.ID?
+    var id: ExitTest.ID?
     if var idString = Environment.variable(named: "SWT_EXPERIMENTAL_EXIT_TEST_ID") {
       id = try? idString.withUTF8 { idBuffer in
-        try JSON.decode(__ExitTest.ID.self, from: UnsafeRawBufferPointer(idBuffer))
+        try JSON.decode(ExitTest.ID.self, from: UnsafeRawBufferPointer(idBuffer))
       }
     }
     guard let id else {
