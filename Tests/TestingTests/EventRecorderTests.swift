@@ -183,14 +183,14 @@ struct EventRecorderTests {
   @Test(
     "number of arguments based on verbosity level at the end of test run",
     arguments: [
-      ("f()", #".* Test f\(\) failed after .*"# ,  0),
-      ("f()", #".* Test f\(\) failed after .*"# ,  2),
-      ("d(_:)", #".* Test d\(_:\) with .+ test cases passed after.*"# , 2),
-      ("PredictablyFailingTests", #".* Suite PredictablyFailingTests failed after .*"# , 1),
-      ("PredictablyFailingTests", #".* Suite PredictablyFailingTests failed after .*"# , 2),
+      ("f()", #".* Test f\(\) failed after .*"#, 0),
+      ("f()", #".* Test f\(\) failed after .*"#, 2),
+      ("d(_:)", #".* Test d\(_:\) with .+ test cases passed after.*"#, 2),
+      ("PredictablyFailingTests", #".* Suite PredictablyFailingTests failed after .*"#, 1),
+      ("PredictablyFailingTests", #".* Suite PredictablyFailingTests failed after .*"#, 2),
     ]
   )
-  func numberOfArgumentsAtTheEndOfTests(testName: String, expectedPattern: String, verbosity: Int) async throws {
+  func numberOfTestsCasesAtTestEnd(testName: String, expectedPattern: String, verbosity: Int) async throws {
     let stream = Stream()
 
     var configuration = Configuration()
