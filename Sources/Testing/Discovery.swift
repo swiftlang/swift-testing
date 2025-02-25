@@ -73,21 +73,7 @@ protocol TestContent: ~Copyable {
   ///
   /// By default, this type equals `Never`, indicating that this type of test
   /// content does not support hinting during discovery.
-  associatedtype TestContentAccessorHint: Sendable = Never
-
-  /// The type to pass (by address) as the accessor function's `type` argument.
-  ///
-  /// The default value of this property is `Self.self`. A conforming type can
-  /// override the default implementation to substitute another type (e.g. if
-  /// the conforming type is not public but records are created during macro
-  /// expansion and can only reference public types.)
-  static var testContentAccessorTypeArgument: any ~Copyable.Type { get }
-}
-
-extension TestContent where Self: ~Copyable {
-  static var testContentAccessorTypeArgument: any ~Copyable.Type {
-    self
-  }
+  associatedtype TestContentAccessorHintArgument: Sendable = Never
 }
 
 // MARK: - Individual test content records
@@ -113,16 +99,16 @@ struct TestContentRecord<T>: Sendable where T: TestContent & ~Copyable {
   nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
 
   /// The underlying test content record loaded from a metadata section.
-  private var _record: __TestContentRecord
+  private nonisolated(unsafe) var _record: UnsafePointer<__TestContentRecord>
 
-  fileprivate init(imageAddress: UnsafeRawPointer?, record: __TestContentRecord) {
+  fileprivate init(imageAddress: UnsafeRawPointer?, record: UnsafePointer<__TestContentRecord>) {
     self.imageAddress = imageAddress
     self._record = record
   }
 
   /// The context value for this test content record.
   var context: UInt {
-    _record.context
+    _record.pointee.context
   }
 
   /// Load the value represented by this record.
@@ -137,12 +123,12 @@ struct TestContentRecord<T>: Sendable where T: TestContent & ~Copyable {
   ///
   /// If this function is called more than once on the same instance, a new
   /// value is created on each call.
-  func load(withHint hint: T.TestContentAccessorHint? = nil) -> T? {
-    guard let accessor = _record.accessor else {
+  func load(withHint hint: T.TestContentAccessorHintArgument? = nil) -> T? {
+    guard let accessor = _record.pointee.accessor else {
       return nil
     }
 
-    return withUnsafePointer(to: T.testContentAccessorTypeArgument) { type in
+    return withUnsafePointer(to: T.self) { type in
       withUnsafeTemporaryAllocation(of: T.self, capacity: 1) { buffer in
         let initialized = if let hint {
           withUnsafePointer(to: hint) { hint in
@@ -175,8 +161,9 @@ extension TestContent where Self: ~Copyable {
   static func allTestContentRecords() -> AnySequence<TestContentRecord<Self>> {
     let result = SectionBounds.all(.testContent).lazy.flatMap { sb in
       sb.buffer.withMemoryRebound(to: __TestContentRecord.self) { records in
-        records.lazy
-          .filter { $0.kind == testContentKind }
+        (0 ..< records.count).lazy
+          .map { records.baseAddress! + $0 }
+          .filter { $0.pointee.kind == testContentKind }
           .map { TestContentRecord<Self>(imageAddress: sb.imageAddress, record: $0) }
       }
     }

@@ -582,7 +582,7 @@ struct MiscellaneousTests {
 
 #if !SWT_NO_DYNAMIC_LINKING && hasFeature(SymbolLinkageMarkers)
   struct DiscoverableTestContent: TestContent {
-    typealias TestContentAccessorHint = UInt32
+    typealias TestContentAccessorHintArgument = UInt32
 
     var value: UInt32
 
@@ -590,7 +590,7 @@ struct MiscellaneousTests {
       record.kind
     }
 
-    static var expectedHint: TestContentAccessorHint {
+    static var expectedHint: TestContentAccessorHintArgument {
       0x01020304
     }
 
@@ -619,7 +619,7 @@ struct MiscellaneousTests {
         guard type.load(as: Any.Type.self) == DiscoverableTestContent.self else {
           return false
         }
-        if let hint, hint.load(as: TestContentAccessorHint.self) != expectedHint {
+        if let hint, hint.load(as: TestContentAccessorHintArgument.self) != expectedHint {
           return false
         }
         _ = outValue.initializeMemory(as: Self.self, to: .init(value: expectedValue))
@@ -661,6 +661,23 @@ struct MiscellaneousTests {
       return record.load(withHint: hint)?.value == DiscoverableTestContent.expectedValue
         && record.context == DiscoverableTestContent.expectedContext
     })
+  }
+#endif
+
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+  @Test("Legacy test discovery finds the same number of tests") func discoveredTestCount() async {
+    let oldFlag = Environment.variable(named: "SWT_USE_LEGACY_TEST_DISCOVERY")
+    defer {
+      Environment.setVariable(oldFlag, named: "SWT_USE_LEGACY_TEST_DISCOVERY")
+    }
+
+    Environment.setVariable("1", named: "SWT_USE_LEGACY_TEST_DISCOVERY")
+    let testsWithOldCode = await Array(Test.all).count
+
+    Environment.setVariable("0", named: "SWT_USE_LEGACY_TEST_DISCOVERY")
+    let testsWithNewCode = await Array(Test.all).count
+
+    #expect(testsWithOldCode == testsWithNewCode)
   }
 #endif
 }
