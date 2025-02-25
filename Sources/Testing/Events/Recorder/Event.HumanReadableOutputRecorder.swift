@@ -373,7 +373,7 @@ extension Event.HumanReadableOutputRecorder {
       let testData = testDataGraph?.value ?? .init(startInstant: instant)
       let issues = _issueCounts(in: testDataGraph)
       let duration = testData.startInstant.descriptionOfDuration(to: instant)
-      let testCasesCount = if verbosity >= 2 && test.isParameterized {
+      let testCasesCount = if test.isParameterized {
         " with \(testData.testCasesCount.counting("test case"))"
       } else {
         ""

@@ -183,14 +183,14 @@ struct EventRecorderTests {
   @Test(
     "number of arguments based on verbosity level at the end of test run",
     arguments: [
-      ("f()", #".* Test f\(\) failed after .*"#, 0),
-      ("f()", #".* Test f\(\) failed after .*"#, 2),
-      ("d(_:)", #".* Test d\(_:\) with .+ test cases passed after.*"#, 2),
-      ("PredictablyFailingTests", #".* Suite PredictablyFailingTests failed after .*"#, 1),
-      ("PredictablyFailingTests", #".* Suite PredictablyFailingTests failed after .*"#, 2),
+      ("f()", #".* Test f\(\) failed after .*"#),
+      ("l(_:)", #".* Test l\(_:\) with .+ test cases passed after.*"#),
+      ("m(_:)", #".* Test m\(_:\) with .+ test cases failed after.*"#),
+      ("n(_:)", #".* Test n\(_:\) with .+ test case passed after.*"#),
+      ("PredictablyFailingTests", #".* Suite PredictablyFailingTests failed after .*"#),
     ]
   )
-  func numberOfTestsCasesAtTestEnd(testName: String, expectedPattern: String, verbosity: Int) async throws {
+  func numberOfTestsCasesAtTestEnd(testName: String, expectedPattern: String) async throws {
     let stream = Stream()
 
     var configuration = Configuration()
@@ -198,7 +198,6 @@ struct EventRecorderTests {
     configuration.eventHandler = { event, context in
       eventRecorder.record(event, in: context)
     }
-    configuration.verbosity = verbosity
 
     await runTest(for: PredictablyFailingTests.self, configuration: configuration)
 
@@ -227,7 +226,7 @@ struct EventRecorderTests {
       ("i()", #".* Test i\(\) failed after .+ seconds with 2 issues \(including 1 warning\)\."#),
       ("j()", #".* Test j\(\) passed after .+ seconds with 1 warning and 1 known issue\."#),
       ("k()", #".* Test k\(\) passed after .+ seconds with 1 known issue\."#),
-      ("PredictablyFailingTests", #".* Suite PredictablyFailingTests failed after .+ seconds with 13 issues \(including 3 warnings and 6 known issues\)\."#),
+      ("PredictablyFailingTests", #".* Suite PredictablyFailingTests failed after .+ seconds with 16 issues \(including 3 warnings and 6 known issues\)\."#),
     ]
   )
   func issueCountSummingAtTestEnd(testName: String, expectedPattern: String) async throws {
@@ -322,7 +321,7 @@ struct EventRecorderTests {
         .compactMap(runFailureRegex.wholeMatch(in:))
         .first
     )
-    #expect(match.output.1 == 9)
+    #expect(match.output.1 == 12)
     #expect(match.output.2 == 5)
   }
 
@@ -574,11 +573,6 @@ struct EventRecorderTests {
       #expect(Bool(false))
     }
   }
-  
-  @Test(.hidden, arguments: [1, 2, 3])
-  func d(_ arg: Int) {
-    #expect(arg > 0)
-  }
 
   @Test(.hidden) func g() {
     #expect(Bool(false))
@@ -607,5 +601,20 @@ struct EventRecorderTests {
     withKnownIssue {
       Issue(kind: .unconditional, severity: .warning, comments: [], sourceContext: .init()).record()
     }
+  }
+  
+  @Test(.hidden, arguments: [1, 2, 3])
+  func l(_ arg: Int) {
+    #expect(arg > 0)
+  }
+  
+  @Test(.hidden, arguments: [1, 2, 3])
+  func m(_ arg: Int) {
+      #expect(arg < 0)
+  }
+  
+  @Test(.hidden, arguments: [1])
+  func n(_ arg: Int) {
+    #expect(arg > 0)
   }
 }
