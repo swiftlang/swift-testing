@@ -18,25 +18,21 @@ extension Test {
   /// indirect `async` accessor function rather than directly producing
   /// instances of ``Test``, but functions are non-nominal types and cannot
   /// directly conform to protocols.
-  ///
-  /// - Note: This helper type must have the exact in-memory layout of the
-  ///   `async` accessor function. Do not add any additional cases or associated
-  ///   values. The layout of this type is [guaranteed](https://github.com/swiftlang/swift/blob/main/docs/ABI/TypeLayout.rst#fragile-enum-layout)
-  ///   by the Swift ABI.
-  /* @frozen */ private enum _Record: TestContent {
+  struct Generator: Sendable, TestContent {
     static var testContentKind: UInt32 {
       0x74657374
     }
 
-    static var testContentAccessorTypeArgument: any ~Copyable.Type {
-      Generator.self
+    /// The actual (asynchronous) accessor function.
+    private var _generator: @Sendable () async -> Test
+
+    init(_ generator: @escaping @Sendable () async -> Test) {
+      _generator = generator
     }
 
-    /// The type of the actual (asynchronous) generator function.
-    typealias Generator = @Sendable () async -> Test
-
-    /// The actual (asynchronous) accessor function.
-    case generator(Generator)
+    func callAsFunction() async -> Test {
+      await _generator()
+    }
   }
 
   /// All available ``Test`` instances in the process, according to the runtime.
@@ -65,15 +61,10 @@ extension Test {
       // Walk all test content and gather generator functions, then call them in
       // a task group and collate their results.
       if useNewMode {
-        let generators = _Record.allTestContentRecords().lazy.compactMap { record in
-          if case let .generator(generator) = record.load() {
-            return generator
-          }
-          return nil // currently unreachable, but not provably so
-        }
+        let generators = Generator.allTestContentRecords().lazy.compactMap { $0.load() }
         await withTaskGroup(of: Self.self) { taskGroup in
           for generator in generators {
-            taskGroup.addTask(operation: generator)
+            taskGroup.addTask(operation: generator.callAsFunction)
           }
           result = await taskGroup.reduce(into: result) { $0.insert($1) }
         }
