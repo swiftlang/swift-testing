@@ -64,7 +64,7 @@ extension Event {
         var knownIssueCount = 0
         
         /// The number of test cases for the test.
-        var testCasesCount: Int = 0
+        var testCasesCount = 0
       }
 
       /// Data tracked on a per-test basis.
