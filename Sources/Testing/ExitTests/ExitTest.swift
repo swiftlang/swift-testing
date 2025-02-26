@@ -25,9 +25,9 @@ private import _TestingInternals
 /// A type describing an exit test.
 ///
 /// Instances of this type describe exit tests you create using the
-/// ``expect(exitsWith:_:sourceLocation:performing:)`` or
-/// ``require(exitsWith:_:sourceLocation:performing:)`` macro. You don't usually
-/// need to interact directly with an instance of this type.
+/// ``expect(exitsWith:observing:_:sourceLocation:performing:)``
+/// ``require(exitsWith:observing:_:sourceLocation:performing:)`` macro. You
+/// don't usually need to interact directly with an instance of this type.
 @_spi(Experimental)
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
