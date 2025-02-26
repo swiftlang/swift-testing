@@ -276,7 +276,7 @@ func wait(for processHandle: consuming HANDLE) async throws -> StatusAtExit {
   guard GetExitCodeProcess(processHandle, &status) else {
     // The child process terminated but we couldn't get its status back.
     // Assume generic failure.
-    return .failure
+    return .exitCode(EXIT_FAILURE)
   }
 
   return .exitCode(CInt(bitPattern: .init(status)))
