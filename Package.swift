@@ -48,7 +48,7 @@ let package = Package(
     result.append(
       .library(
         name: "_TestDiscovery",
-        type: .dynamic, // FIXME: build fails if this is statically linked
+        type: .static,
         targets: ["_TestDiscovery"]
       )
     )
@@ -128,9 +128,7 @@ let package = Package(
       dependencies: ["_TestingInternals",],
       exclude: ["CMakeLists.txt"],
       cxxSettings: .packageSettings,
-      swiftSettings: .packageSettings + [
-        .enableLibraryEvolution(),
-      ]
+      swiftSettings: .packageSettings
     ),
 
     // Cross-import overlays (not supported by Swift Package Manager)

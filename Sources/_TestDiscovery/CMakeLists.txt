@@ -6,7 +6,7 @@
 # See http://swift.org/LICENSE.txt for license information
 # See http://swift.org/CONTRIBUTORS.txt for Swift project authors
 
-add_library(_TestDiscovery
+add_library(_TestDiscovery STATIC
   Additions/WinSDKAdditions.swift
   DiscoverableAsTestContent.swift
   SectionBounds.swift
@@ -14,8 +14,5 @@ add_library(_TestDiscovery
 
 target_link_libraries(_TestDiscovery PRIVATE
   _TestingInternals)
-
-target_compile_options(_TestDiscovery PRIVATE
-  -enable-library-evolution)
 
 _swift_testing_install_target(_TestDiscovery)
