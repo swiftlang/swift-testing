@@ -8,9 +8,9 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-internal import _TestingInternals
-
 #if os(Windows)
+package import _TestingInternals
+
 extension HMODULE {
   /// A helper type that manages state for ``HMODULE/all``.
   private final class _AllState {
