@@ -66,6 +66,15 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
 public struct TestContentRecord<T>: Sendable where T: DiscoverableAsTestContent & ~Copyable {
   /// The base address of the image containing this instance, if known.
   ///
+  /// The type of this pointer is platform-dependent:
+  ///
+  /// | Platform | Pointer Type |
+  /// |-|-|
+  /// | macOS, iOS, watchOS, tvOS, visionOS | `UnsafePointer<mach_header64>` |
+  /// | Linux, FreeBSD, Android | `UnsafePointer<ElfW_Ehdr>` |
+  /// | OpenBSD | `UnsafePointer<Elf_Ehdr>` |
+  /// | Windows | `HMODULE` |
+  ///
   /// On platforms such as WASI that statically link to the testing library, the
   /// value of this property is always `nil`.
   ///
