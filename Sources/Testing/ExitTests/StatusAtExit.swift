@@ -12,7 +12,7 @@ private import _TestingInternals
 
 /// An enumeration describing possible status a process will yield on exit.
 ///
-/// You can cast an instance of this type to an instance of
+/// You can convert an instance of this type to an instance of
 /// ``ExitTest/Condition`` using ``ExitTest/Condition/init(_:)``. That value
 /// can then be used to describe the condition under which an exit test is
 /// expected to pass or fail by passing it to

@@ -22,7 +22,7 @@ extension ExitTest {
   /// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or
   /// ``require(exitsWith:observing:_:sourceLocation:performing:)``.
   public struct Condition: Sendable {
-    /// An enumeration describing the possible requirements for an exit test.
+    /// An enumeration describing the possible conditions for an exit test.
     private enum _Kind: Sendable, Equatable {
       /// The exit test must exit with a particular exit status.
       case statusAtExit(StatusAtExit)
@@ -31,7 +31,7 @@ extension ExitTest {
       case failure
     }
 
-    /// The kind of requirement.
+    /// The kind of condition.
     private var _kind: _Kind
   }
 }
@@ -43,7 +43,8 @@ extension ExitTest {
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 extension ExitTest.Condition {
-  /// The process terminated successfully with exit code `EXIT_SUCCESS`.
+  /// A condition that matches when a process terminates successfully with exit
+  /// code `EXIT_SUCCESS`.
   public static var success: Self {
     // Strictly speaking, the C standard treats 0 as a successful exit code and
     // potentially distinct from EXIT_SUCCESS. To my knowledge, no modern
@@ -56,8 +57,8 @@ extension ExitTest.Condition {
 #endif
   }
 
-  /// The process terminated abnormally with any exit code other than
-  /// `EXIT_SUCCESS` or with any signal.
+  /// A condition that matches when a process terminates abnormally with any
+  /// exit code other than `EXIT_SUCCESS` or with any signal.
   public static var failure: Self {
     Self(_kind: .failure)
   }
@@ -66,7 +67,8 @@ extension ExitTest.Condition {
     self.init(_kind: .statusAtExit(statusAtExit))
   }
 
-  /// The process terminated with the given exit code.
+  /// Creates a condition that matches when a process terminates with a given
+  /// exit code.
   ///
   /// - Parameters:
   ///   - exitCode: The exit code yielded by the process.
@@ -95,7 +97,8 @@ extension ExitTest.Condition {
 #endif
   }
 
-  /// The process terminated with the given signal.
+  /// Creates a condition that matches when a process terminates with a given
+  /// signal.
   ///
   /// - Parameters:
   ///   - signal: The signal that terminated the process.
@@ -128,11 +131,12 @@ extension ExitTest.Condition {
   /// Check whether or not an exit test condition matches a given exit status.
   ///
   /// - Parameters:
-  ///   - other: Another value to compare.
+  ///   - statusAtExit: An exit status to compare against.
   ///
-  /// - Returns: Whether or not `self` and `other` are equal.
+  /// - Returns: Whether or not `self` and `statusAtExit` represent the same
+  ///   exit condition.
   ///
-  /// Two exit test requirements can be compared; if either instance is equal to
+  /// Two exit test conditions can be compared; if either instance is equal to
   /// ``failure``, it will compare equal to any instance except ``success``.
   func isApproximatelyEqual(to statusAtExit: StatusAtExit) -> Bool {
     return switch (self._kind, statusAtExit) {

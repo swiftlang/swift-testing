@@ -62,7 +62,7 @@ extension ExitTest {
     /// instead.
     ///
     /// When checking the value of this property, keep in mind that the standard
-    /// output stream is globally accessible, and any code running in an exit
+    /// error stream is globally accessible, and any code running in an exit
     /// test may write to it including including the operating system and any
     /// third-party dependencies you have declared in your package. Rather than
     /// comparing the value of this property with [`==`](https://developer.apple.com/documentation/swift/array/==(_:_:)),
