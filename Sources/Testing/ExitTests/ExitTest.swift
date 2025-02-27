@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+@_spi(ForToolsIntegrationOnly) public import _TestDiscovery
 private import _TestingInternals
 
 #if !SWT_NO_EXIT_TESTS
@@ -237,12 +238,13 @@ extension ExitTest {
 
 // MARK: - Discovery
 
-extension ExitTest: TestContent {
-  static var testContentKind: UInt32 {
+@_spi(ForToolsIntegrationOnly)
+extension ExitTest: DiscoverableAsTestContent {
+  public static var testContentKind: UInt32 {
     0x65786974
   }
 
-  typealias TestContentAccessorHint = ID
+  public typealias TestContentAccessorHint = ID
 }
 
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)

@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _TestingInternals
+// MARK: Low-level structure
 
 /// The type of the accessor function used to access a test content record.
 ///
@@ -21,10 +21,7 @@ private import _TestingInternals
 ///
 /// - Returns: Whether or not `outValue` was initialized. The caller is
 ///   responsible for deinitializing `outValue` if it was initialized.
-///
-/// - Warning: This type is used to implement the `@Test` macro. Do not use it
-///   directly.
-public typealias __TestContentRecordAccessor = @convention(c) (
+private typealias _TestContentRecordAccessor = @convention(c) (
   _ outValue: UnsafeMutableRawPointer,
   _ type: UnsafeRawPointer,
   _ hint: UnsafeRawPointer?
@@ -38,42 +35,21 @@ public typealias __TestContentRecordAccessor = @convention(c) (
 ///   - accessor: A function which, when called, produces the test content.
 ///   - context: Kind-specific context for this record.
 ///   - reserved2: Reserved for future use.
-///
-/// - Warning: This type is used to implement the `@Test` macro. Do not use it
-///   directly.
-public typealias __TestContentRecord = (
+private typealias _TestContentRecord = (
   kind: UInt32,
   reserved1: UInt32,
-  accessor: __TestContentRecordAccessor?,
+  accessor: _TestContentRecordAccessor?,
   context: UInt,
   reserved2: UInt
 )
 
-// MARK: -
-
-/// A protocol describing a type that can be stored as test content at compile
-/// time and later discovered at runtime.
-///
-/// This protocol is used to bring some Swift type safety to the ABI described
-/// in `ABI/TestContent.md`. Refer to that document for more information about
-/// this protocol's requirements.
-///
-/// This protocol is not part of the public interface of the testing library. In
-/// the future, we could make it public if we want to support runtime discovery
-/// of test content by second- or third-party code.
-protocol TestContent: ~Copyable {
-  /// The unique "kind" value associated with this type.
-  ///
-  /// The value of this property is reserved for each test content type. See
-  /// `ABI/TestContent.md` for a list of values and corresponding types.
-  static var testContentKind: UInt32 { get }
-
-  /// A type of "hint" passed to ``allTestContentRecords()`` to help the testing
-  /// library find the correct result.
-  ///
-  /// By default, this type equals `Never`, indicating that this type of test
-  /// content does not support hinting during discovery.
-  associatedtype TestContentAccessorHint: Sendable = Never
+extension DiscoverableAsTestContent where Self: ~Copyable {
+  /// Check that the layout of this structure in memory matches its expected
+  /// layout in the test content section.
+  fileprivate static func validateMemoryLayout() {
+    precondition(MemoryLayout<TestContentContext>.stride == MemoryLayout<UInt>.stride, "\(self).TestContentContext aka '\(TestContentContext.self)' must have the same stride as Swift.UInt.")
+    precondition(MemoryLayout<TestContentContext>.alignment == MemoryLayout<UInt>.alignment, "\(self).TestContentContext aka '\(TestContentContext.self)' must have the same alignment as Swift.UInt.")
+  }
 }
 
 // MARK: - Individual test content records
@@ -81,13 +57,10 @@ protocol TestContent: ~Copyable {
 /// A type describing a test content record of a particular (known) type.
 ///
 /// Instances of this type can be created by calling
-/// ``TestContent/allTestContentRecords()`` on a type that conforms to
-/// ``TestContent``.
-///
-/// This type is not part of the public interface of the testing library. In the
-/// future, we could make it public if we want to support runtime discovery of
-/// test content by second- or third-party code.
-struct TestContentRecord<T>: Sendable where T: TestContent & ~Copyable {
+/// ``DiscoverableAsTestContent/allTestContentRecords()`` on a type that
+/// conforms to ``DiscoverableAsTestContent``.
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+public struct TestContentRecord<T>: Sendable where T: DiscoverableAsTestContent & ~Copyable {
   /// The base address of the image containing this instance, if known.
   ///
   /// On platforms such as WASI that statically link to the testing library, the
@@ -96,20 +69,31 @@ struct TestContentRecord<T>: Sendable where T: TestContent & ~Copyable {
   /// - Note: The value of this property is distinct from the pointer returned
   ///   by `dlopen()` (on platforms that have that function) and cannot be used
   ///   with interfaces such as `dlsym()` that expect such a pointer.
-  nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
+  public private(set) nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
 
   /// The underlying test content record loaded from a metadata section.
-  private var _record: __TestContentRecord
+  private nonisolated(unsafe) var _record: UnsafePointer<_TestContentRecord>
 
-  fileprivate init(imageAddress: UnsafeRawPointer?, record: __TestContentRecord) {
+  fileprivate init(imageAddress: UnsafeRawPointer?, record: UnsafePointer<_TestContentRecord>) {
     self.imageAddress = imageAddress
     self._record = record
   }
 
-  /// The context value for this test content record.
-  var context: UInt {
-    _record.context
+  /// The type of the ``context`` property.
+  public typealias Context = T.TestContentContext
+
+  /// The context of this test content record.
+  public var context: Context {
+    T.validateMemoryLayout()
+    return withUnsafePointer(to: _record.pointee.context) { context in
+      context.withMemoryRebound(to: Context.self, capacity: 1) { context in
+        context.pointee
+      }
+    }
   }
+
+  /// The type of the `hint` argument to ``load(withHint:)``.
+  public typealias Hint = T.TestContentAccessorHint
 
   /// Load the value represented by this record.
   ///
@@ -123,8 +107,8 @@ struct TestContentRecord<T>: Sendable where T: TestContent & ~Copyable {
   ///
   /// If this function is called more than once on the same instance, a new
   /// value is created on each call.
-  func load(withHint hint: T.TestContentAccessorHint? = nil) -> T? {
-    guard let accessor = _record.accessor else {
+  public func load(withHint hint: Hint? = nil) -> T? {
+    guard let accessor = _record.pointee.accessor else {
       return nil
     }
 
@@ -148,7 +132,8 @@ struct TestContentRecord<T>: Sendable where T: TestContent & ~Copyable {
 
 // MARK: - Enumeration of test content records
 
-extension TestContent where Self: ~Copyable {
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+extension DiscoverableAsTestContent where Self: ~Copyable {
   /// Get all test content of this type known to Swift and found in the current
   /// process.
   ///
@@ -156,16 +141,42 @@ extension TestContent where Self: ~Copyable {
   ///   content records matching this ``TestContent`` type's requirements are
   ///   included in the sequence.
   ///
-  /// - Bug: This function returns an instance of `AnySequence` instead of an
-  ///   opaque type due to a compiler crash. ([143080508](rdar://143080508))
-  static func allTestContentRecords() -> AnySequence<TestContentRecord<Self>> {
+  /// @Comment {
+  ///   - Bug: This function returns an instance of `AnySequence` instead of an
+  ///     opaque type due to a compiler crash. ([143080508](rdar://143080508))
+  /// }
+  public static func allTestContentRecords() -> AnySequence<TestContentRecord<Self>> {
+    validateMemoryLayout()
     let result = SectionBounds.all(.testContent).lazy.flatMap { sb in
-      sb.buffer.withMemoryRebound(to: __TestContentRecord.self) { records in
-        records.lazy
-          .filter { $0.kind == testContentKind }
+      sb.buffer.withMemoryRebound(to: _TestContentRecord.self) { records in
+        (0 ..< records.count).lazy
+          .map { (records.baseAddress! + $0) as UnsafePointer<_TestContentRecord> }
+          .filter { $0.pointee.kind == testContentKind }
           .map { TestContentRecord<Self>(imageAddress: sb.imageAddress, record: $0) }
       }
     }
     return AnySequence(result)
+  }
+}
+
+// MARK: - Legacy test content discovery
+
+private import _TestingInternals
+
+/// Get all types known to Swift found in the current process whose names
+/// contain a given substring.
+///
+/// - Parameters:
+///   - nameSubstring: A string which the names of matching classes all contain.
+///
+/// - Returns: A sequence of Swift types whose names contain `nameSubstring`.
+///
+/// - Warning: Do not adopt this functionality in new code. It is for use by
+///   Swift Testing along its legacy discovery codepath only.
+package func types(withNamesContaining nameSubstring: String) -> some Sequence<Any.Type> {
+  SectionBounds.all(.typeMetadata).lazy.flatMap { sb in
+    stride(from: sb.buffer.baseAddress!, to: sb.buffer.baseAddress! + sb.buffer.count, by: SWTTypeMetadataRecordByteCount).lazy
+      .compactMap { swt_getType(fromTypeMetadataRecord: $0, ifNameContains: nameSubstring) }
+      .map { unsafeBitCast($0, to: Any.Type.self) }
   }
 }

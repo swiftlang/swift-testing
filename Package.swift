@@ -25,22 +25,36 @@ let package = Package(
     .visionOS(.v1),
   ],
 
-  products: [
-    {
+  products: {
+    var result = [Product]()
+
 #if os(Windows)
+    result.append(
       .library(
         name: "Testing",
         type: .dynamic, // needed so Windows exports ABI entry point symbols
         targets: ["Testing"]
       )
+    )
 #else
+    result.append(
       .library(
         name: "Testing",
         targets: ["Testing"]
       )
+    )
 #endif
-    }()
-  ],
+
+    result.append(
+      .library(
+        name: "_TestDiscovery",
+        type: .dynamic, // FIXME: build fails if this is statically linked
+        targets: ["_TestDiscovery"]
+      )
+    )
+
+    return result
+  }(),
 
   dependencies: [
     .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "601.0.0-latest"),
@@ -50,6 +64,7 @@ let package = Package(
     .target(
       name: "Testing",
       dependencies: [
+        "_TestDiscovery",
         "_TestingInternals",
         "TestingMacros",
       ],
@@ -101,12 +116,21 @@ let package = Package(
       ]
     ),
 
-    // "Support" targets: These contain C family code and are used exclusively
-    // by other targets above, not directly included in product libraries.
+    // "Support" targets: These targets are used exclusively by other targets
+    // above, not directly included in product libraries.
     .target(
       name: "_TestingInternals",
       exclude: ["CMakeLists.txt"],
       cxxSettings: .packageSettings
+    ),
+    .target(
+      name: "_TestDiscovery",
+      dependencies: ["_TestingInternals",],
+      exclude: ["CMakeLists.txt"],
+      cxxSettings: .packageSettings,
+      swiftSettings: .packageSettings + [
+        .enableLibraryEvolution(),
+      ]
     ),
 
     // Cross-import overlays (not supported by Swift Package Manager)
