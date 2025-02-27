@@ -7,6 +7,7 @@
 # See http://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 add_library(_TestDiscovery
+  Additions/WinSDKAdditions.swift
   DiscoverableAsTestContent.swift
   SectionBounds.swift
   TestContentRecord.swift)
