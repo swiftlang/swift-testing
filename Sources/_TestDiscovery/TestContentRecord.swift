@@ -88,10 +88,8 @@ public struct TestContentRecord<T>: Sendable where T: DiscoverableAsTestContent 
   /// The context of this test content record.
   public var context: Context {
     T.validateMemoryLayout()
-    return withUnsafePointer(to: _record.pointee.context) { context in
-      context.withMemoryRebound(to: Context.self, capacity: 1) { context in
-        context.pointee
-      }
+    return withUnsafeBytes(of: _record.pointee.context) { context in
+      context.load(as: Context.self)
     }
   }
 
