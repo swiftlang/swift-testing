@@ -46,6 +46,9 @@ private typealias _TestContentRecord = (
 extension DiscoverableAsTestContent where Self: ~Copyable {
   /// Check that the layout of this structure in memory matches its expected
   /// layout in the test content section.
+  ///
+  /// It is not currently possible to perform this validation at compile time.
+  /// ([swift-#79667](https://github.com/swiftlang/swift/issues/79667))
   fileprivate static func validateMemoryLayout() {
     precondition(MemoryLayout<TestContentContext>.stride == MemoryLayout<UInt>.stride, "\(self).TestContentContext aka '\(TestContentContext.self)' must have the same stride as Swift.UInt.")
     precondition(MemoryLayout<TestContentContext>.alignment == MemoryLayout<UInt>.alignment, "\(self).TestContentContext aka '\(TestContentContext.self)' must have the same alignment as Swift.UInt.")
