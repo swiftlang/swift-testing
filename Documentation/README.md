@@ -29,8 +29,12 @@ The [Vision document](https://github.com/swiftlang/swift-evolution/blob/main/vis
 for Swift Testing offers a comprehensive discussion of the project's design
 principles and goals.
 
-The [`Proposals`](Proposals/) directory contains API proposals that have been
-accepted and merged into Swift Testing.
+Feature and API proposals for Swift Testing are stored in the
+[swift-evolution](https://github.com/swiftlang/swift-evolution) repository and
+new proposals should use the
+[testing template](https://github.com/swiftlang/swift-evolution/blob/main/proposal-templates/0000-swift-testing-template.md)
+there. Older proposals which were accepted prior to Swift Testing adopting the
+Swift evolution process are stored in the [`Proposals`](Proposals/) directory.
 
 ## Development and contribution
 
