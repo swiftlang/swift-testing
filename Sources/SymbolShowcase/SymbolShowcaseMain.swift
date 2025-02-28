@@ -55,12 +55,19 @@ import Foundation
 
   /// The styles to preview.
   fileprivate static var styles: [Style] {
-    [
-      Style(label: "Unicode", usesColor: false, usesSFSymbols: false),
-      Style(label: "w/color", usesColor: true, usesSFSymbols: false),
+    var styles: [Style] = [
+      Style(label: "Unicode", usesColor: false),
+      Style(label: "w/color", usesColor: true),
+    ]
+
+#if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
+    styles.append(contentsOf: [
       Style(label: "SF Symbols", usesColor: false, usesSFSymbols: true),
       Style(label: "w/color", usesColor: true, usesSFSymbols: true),
-    ]
+    ])
+#endif
+
+    return styles
   }
 }
 
@@ -72,8 +79,10 @@ fileprivate struct Style {
   /// Whether this style should render symbols using ANSI color.
   var usesColor: Bool
 
+#if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
   /// Whether this style should use SF Symbols.
-  var usesSFSymbols: Bool
+  var usesSFSymbols: Bool = false
+#endif
 
   /// Return a string for the specified symbol based on this style's options.
   ///
@@ -82,11 +91,13 @@ fileprivate struct Style {
   ///
   /// - Returns: A formatted string representing the specified symbol.
   func string(for symbol: Event.Symbol) -> String {
-    let options = Event.ConsoleOutputRecorder.Options(
-      useANSIEscapeCodes: usesColor,
-      ansiColorBitDepth: usesColor ? 8 : 1,
-      useSFSymbols: usesSFSymbols
-    )
+    var options = Event.ConsoleOutputRecorder.Options()
+    options.useANSIEscapeCodes = usesColor
+    options.ansiColorBitDepth = usesColor ? 8 : 1
+#if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
+    options.useSFSymbols = usesSFSymbols
+#endif
+
     return symbol.stringValue(options: options)
   }
 }
