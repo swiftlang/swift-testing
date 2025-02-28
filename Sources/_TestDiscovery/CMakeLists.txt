@@ -15,6 +15,10 @@ add_library(_TestDiscovery STATIC
 target_link_libraries(_TestDiscovery PRIVATE
   _TestingInternals)
 
+target_compile_options(_TestDiscovery PRIVATE
+  -enable-library-evolution
+  -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:_TestDiscovery,Swift_MODULE_DIRECTORY>/_TestDiscovery.swiftinterface)
+
 _swift_testing_install_target(_TestDiscovery)
 
 if(NOT BUILD_SHARED_LIBS)
