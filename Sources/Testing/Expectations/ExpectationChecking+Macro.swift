@@ -1148,15 +1148,15 @@ public func __checkClosureCall<R>(
 @_spi(Experimental)
 public func __checkClosureCall(
   identifiedBy exitTestID: (UInt64, UInt64),
-  exitsWith expectedExitCondition: ExitCondition,
-  observing observedValues: [any PartialKeyPath<ExitTestArtifacts> & Sendable],
+  exitsWith expectedExitCondition: ExitTest.Condition,
+  observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable],
   performing body: @convention(thin) () -> Void,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<ExitTestArtifacts?, any Error> {
+) async -> Result<ExitTest.Result?, any Error> {
   await callExitTest(
     identifiedBy: exitTestID,
     exitsWith: expectedExitCondition,
