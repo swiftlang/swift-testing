@@ -18,6 +18,7 @@ target_link_libraries(_TestDiscovery PRIVATE
 target_compile_options(_TestDiscovery PRIVATE
   -enable-library-evolution
   -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:_TestDiscovery,Swift_MODULE_DIRECTORY>/_TestDiscovery.swiftinterface)
+set(CMAKE_STATIC_LIBRARY_PREFIX_Swift "lib")
 
 _swift_testing_install_target(_TestDiscovery)
 
