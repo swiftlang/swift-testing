@@ -582,7 +582,10 @@ public macro require<R>(
 /// ```
 ///
 /// An exit test cannot run within another exit test.
-@_spi(Experimental)
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+/// }
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
@@ -694,7 +697,10 @@ public macro require<R>(
 /// ```
 ///
 /// An exit test cannot run within another exit test.
-@_spi(Experimental)
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+/// }
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
