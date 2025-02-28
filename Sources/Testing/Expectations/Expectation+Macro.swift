@@ -375,6 +375,23 @@ public macro require<R>(
 /// ``expect(throws:_:sourceLocation:performing:)-1hfms`` instead. If the thrown
 /// error need only equal another instance of [`Error`](https://developer.apple.com/documentation/swift/error),
 /// use ``expect(throws:_:sourceLocation:performing:)-7du1h`` instead.
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.0)
+///   @Available(Xcode, introduced: 16.0)
+/// }
+///
+/// @DeprecationSummary { <!-- Warning when compiling DocC: rdar://141785948 -->
+///   Examine the result of ``expect(throws:_:sourceLocation:performing:)-7du1h``
+///   or ``expect(throws:_:sourceLocation:performing:)-1hfms`` instead:
+///
+///   ```swift
+///   let error = #expect(throws: FoodTruckError.self) {
+///     ...
+///   }
+///   #expect(error?.napkinCount == 0)
+///   ```
+/// }
 @available(swift, deprecated: 100000.0, message: "Examine the result of '#expect(throws:)' instead.")
 @discardableResult
 @freestanding(expression) public macro expect<R>(
@@ -427,6 +444,23 @@ public macro require<R>(
 ///
 /// If `expression` should _never_ throw, simply invoke the code without using
 /// this macro. The test will then fail if an error is thrown.
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.0)
+///   @Available(Xcode, introduced: 16.0)
+/// }
+///
+/// @DeprecationSummary { <!-- Warning when compiling DocC: rdar://141785948 -->
+///   Examine the result of ``expect(throws:_:sourceLocation:performing:)-7du1h``
+///   or ``expect(throws:_:sourceLocation:performing:)-1hfms`` instead:
+///
+///   ```swift
+///   let error = try #require(throws: FoodTruckError.self) {
+///     ...
+///   }
+///   #expect(error.napkinCount == 0)
+///   ```
+/// }
 @available(swift, deprecated: 100000.0, message: "Examine the result of '#require(throws:)' instead.")
 @discardableResult
 @freestanding(expression) public macro require<R>(
