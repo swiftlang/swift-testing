@@ -62,7 +62,7 @@ extension Event.Symbol {
       ("\u{10065F}", "arrow.triangle.turn.up.right.diamond.fill")
     case let .pass(knownIssueCount):
       if knownIssueCount > 0 {
-        ("\u{100884}", "xmark.diamond.fill")
+        ("\u{100883}", "xmark.diamond")
       } else {
         ("\u{10105B}", "checkmark.diamond.fill")
       }
@@ -118,8 +118,8 @@ extension Event.Symbol {
       // Unicode: WHITE DIAMOND
       return "\u{25C7}"
     case .skip:
-      // Unicode: HEAVY BALLOT X
-      return "\u{2718}"
+      // Unicode: HEAVY ROUND-TIPPED RIGHTWARDS ARROW
+      return "\u{279C}"
     case let .pass(knownIssueCount):
       if knownIssueCount > 0 {
         // Unicode: HEAVY BALLOT X
@@ -156,8 +156,8 @@ extension Event.Symbol {
       // Unicode: LOZENGE
       return "\u{25CA}"
     case .skip:
-      // Unicode: MULTIPLICATION SIGN
-      return "\u{00D7}"
+      // Unicode: HEAVY ROUND-TIPPED RIGHTWARDS ARROW
+      return "\u{279C}"
     case let .pass(knownIssueCount):
       if knownIssueCount > 0 {
         // Unicode: MULTIPLICATION SIGN
