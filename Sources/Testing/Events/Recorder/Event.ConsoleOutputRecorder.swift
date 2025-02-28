@@ -61,6 +61,12 @@ extension Event {
       public var useSFSymbols: Bool = false
 #endif
 
+      package init(useANSIEscapeCodes: Bool, ansiColorBitDepth: Int8, useSFSymbols: Bool) {
+        self.useANSIEscapeCodes = useANSIEscapeCodes
+        self.ansiColorBitDepth = ansiColorBitDepth
+        self.useSFSymbols = useSFSymbols
+      }
+
       /// Storage for ``tagColors``.
       private var _tagColors = Tag.Color.predefined
 
@@ -136,7 +142,7 @@ extension Event.Symbol {
   ///
   /// - Returns: A string representation of `self` appropriate for writing to
   ///   a stream.
-  fileprivate func stringValue(options: Event.ConsoleOutputRecorder.Options) -> String {
+  package func stringValue(options: Event.ConsoleOutputRecorder.Options) -> String {
     let useColorANSIEscapeCodes = options.useANSIEscapeCodes && options.ansiColorBitDepth >= 4
 
     var symbolCharacter = String(unicodeCharacter)

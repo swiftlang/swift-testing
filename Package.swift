@@ -134,6 +134,16 @@ let package = Package(
         .enableLibraryEvolution(applePlatformsOnly: true),
       ]
     ),
+
+    // Utility targets: These are utilities intended for use when developing
+    // this package, not for distribution.
+    .executableTarget(
+      name: "SymbolShowcase",
+      dependencies: [
+        "Testing",
+      ],
+      swiftSettings: .packageSettings
+    ),
   ],
 
   cxxLanguageStandard: .cxx20
