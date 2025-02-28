@@ -477,6 +477,23 @@ struct EventRecorderTests {
     }
     _ = recorder.record(event, in: context)
   }
+
+  @Test("JUnitXMLRecorder ignores warning issues")
+  func junitRecorderIgnoresWarningIssues() async throws {
+    let issue = Issue(kind: .unconditional, severity: .warning)
+    let context = Event.Context(test: nil, testCase: nil, configuration: nil)
+
+    await confirmation { wroteTestSuite in
+      let recorder = Event.JUnitXMLRecorder { string in
+        if string.contains("<testsuite ") {
+          #expect(string.contains(#"failures="0""#))
+          wroteTestSuite()
+        }
+      }
+      recorder.record(Event(.issueRecorded(issue), testID: nil, testCaseID: nil), in: context)
+      recorder.record(Event(.runEnded, testID: nil, testCaseID: nil), in: context)
+    }
+  }
 }
 
 // MARK: - Fixtures

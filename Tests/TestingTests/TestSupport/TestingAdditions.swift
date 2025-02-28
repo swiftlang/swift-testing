@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ForToolsIntegrationOnly) import Testing
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 #if canImport(XCTest)
 import XCTest
 #endif
@@ -368,8 +368,8 @@ extension Trait where Self == TimeLimitTrait {
 }
 
 extension Issue {
-  init(kind: Kind, sourceContext: SourceContext = .init()) {
-    self.init(kind: kind, comments: [], sourceContext: sourceContext)
+  init(kind: Kind, severity: Severity = .error, sourceContext: SourceContext = .init()) {
+    self.init(kind: kind, severity: severity, comments: [], sourceContext: sourceContext)
   }
 }
 
