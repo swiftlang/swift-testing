@@ -33,7 +33,7 @@ extension HMODULE {
   ///   unloaded while you are iterating over it. To minimize the risk, do not
   ///   discard the sequence until iteration is complete. Modules containing
   ///   Swift code can never be safely unloaded.
-  package static var all: some Sequence<Self> {
+  package static var all: some Sequence<HMODULE> {
     sequence(state: _AllState()) { state in
       if let snapshot = state.snapshot {
         // We have already iterated over the first module. Return the next one.
