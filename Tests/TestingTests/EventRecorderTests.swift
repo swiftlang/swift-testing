@@ -467,15 +467,18 @@ struct EventRecorderTests {
   @Test("JUnitXMLRecorder counts issues without associated tests")
   func junitRecorderCountsIssuesWithoutTests() async throws {
     let issue = Issue(kind: .unconditional)
-    let event = Event(.issueRecorded(issue), testID: nil, testCaseID: nil)
     let context = Event.Context(test: nil, testCase: nil, configuration: nil)
 
-    let recorder = Event.JUnitXMLRecorder { string in
-      if string.contains("<testsuite") {
-        #expect(string.contains(#"failures=1"#))
+    await confirmation { wroteTestSuite in
+      let recorder = Event.JUnitXMLRecorder { string in
+        if string.contains("<testsuite ") {
+          #expect(string.contains(#"failures="1""#))
+          wroteTestSuite()
+        }
       }
+      recorder.record(Event(.issueRecorded(issue), testID: nil, testCaseID: nil), in: context)
+      recorder.record(Event(.runEnded, testID: nil, testCaseID: nil), in: context)
     }
-    _ = recorder.record(event, in: context)
   }
 
   @Test("JUnitXMLRecorder ignores warning issues")
