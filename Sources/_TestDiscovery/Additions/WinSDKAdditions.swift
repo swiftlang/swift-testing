@@ -9,7 +9,7 @@
 //
 
 #if os(Windows)
-import _TestingInternals
+package import _TestingInternals
 
 extension HMODULE {
   /// A helper type that manages state for ``HMODULE/all``.
