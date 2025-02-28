@@ -9,7 +9,7 @@
 //
 
 #if canImport(Foundation)
-@_spi(Experimental) public import Testing
+public import Testing
 public import Foundation
 
 // This implementation is necessary to let the compiler disambiguate when a type
@@ -18,11 +18,13 @@ public import Foundation
 // (which explicitly document what happens when a type conforms to both
 // protocols.)
 
-@_spi(Experimental)
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+/// }
 extension Attachable where Self: Encodable & NSSecureCoding {
   @_documentation(visibility: private)
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try _Testing_Foundation.withUnsafeBufferPointer(encoding: self, for: attachment, body)
+  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try _Testing_Foundation.withUnsafeBytes(encoding: self, for: attachment, body)
   }
 }
 #endif

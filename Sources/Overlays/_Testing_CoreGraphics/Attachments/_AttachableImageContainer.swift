@@ -32,11 +32,10 @@ import UniformTypeIdentifiers
 ///    such a requirement, and all image types we care about are non-final
 ///    classes. Thus, the compiler will steadfastly refuse to allow non-final
 ///    classes to conform to the `Attachable` protocol. We could get around this
-///    by changing the signature of `withUnsafeBufferPointer()` so that the
-///    generic parameter to `Attachment` is not `Self`, but that would defeat
-///    much of the purpose of making `Attachment` generic in the first place.
-///    (And no, the language does not let us write `where T: Self` anywhere
-///    useful.)
+///    by changing the signature of `withUnsafeBytes()` so that the generic
+///    parameter to `Attachment` is not `Self`, but that would defeat much of
+///    the purpose of making `Attachment` generic in the first place. (And no,
+///    the language does not let us write `where T: Self` anywhere useful.)
 
 /// A wrapper type for image types such as `CGImage` and `NSImage` that can be
 /// attached indirectly.
@@ -132,7 +131,7 @@ extension _AttachableImageContainer: AttachableContainer {
     image
   }
 
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     let data = NSMutableData()
 
     // Convert the image to a CGImage.

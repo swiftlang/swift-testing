@@ -9,7 +9,7 @@
 //
 
 #if canImport(Foundation)
-@_spi(Experimental) public import Testing
+public import Testing
 public import Foundation
 
 #if !SWT_NO_PROCESS_SPAWNING && os(Windows)
@@ -32,7 +32,6 @@ extension URL {
   }
 }
 
-@_spi(Experimental)
 extension Attachment where AttachableValue == _AttachableURLContainer {
 #if SWT_TARGET_OS_APPLE
   /// An operation queue to use for asynchronously reading data from disk.
@@ -51,6 +50,10 @@ extension Attachment where AttachableValue == _AttachableURLContainer {
   ///     attachment.
   ///
   /// - Throws: Any error that occurs attempting to read from `url`.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   public init(
     contentsOf url: URL,
     named preferredName: String? = nil,
