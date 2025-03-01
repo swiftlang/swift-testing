@@ -140,6 +140,39 @@ public struct TestContentRecord<T>: Sendable where T: DiscoverableAsTestContent 
   }
 }
 
+// MARK: - CustomStringConvertible
+
+extension TestContentRecord: CustomStringConvertible {
+  /// This kind value as an ASCII string (of the form `"abcd"`) if it looks like
+  /// it might be a [FourCC](https://en.wikipedia.org/wiki/FourCC) value, or
+  /// `nil` if not.
+  fileprivate static var asciiKind: String? {
+    return withUnsafeBytes(of: T.testContentKind.bigEndian) { bytes in
+      if bytes.allSatisfy(Unicode.ASCII.isASCII) {
+        let characters = String(decoding: bytes, as: Unicode.ASCII.self)
+        let allAlphanumeric = characters.allSatisfy { $0.isLetter || $0.isWholeNumber }
+        if allAlphanumeric {
+          return characters
+        }
+      }
+      return nil
+    }
+  }
+
+  public var description: String {
+    let typeName = String(describing: Self.self)
+    let hexKind = "0x" + String(T.testContentKind, radix: 16)
+    let kind = Self.asciiKind.map { asciiKind in
+      "'\(asciiKind)' (\(hexKind))"
+    } ?? hexKind
+    let recordAddress = imageAddress.map { imageAddress in
+      let recordAddressDelta = UnsafeRawPointer(_record) - imageAddress
+      return "\(imageAddress)+\(recordAddressDelta)"
+    } ?? "\(_record)"
+    return "<\(typeName) \(recordAddress)> { kind: \(kind), context: \(context) }"
+  }
+}
+
 // MARK: - Enumeration of test content records
 
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
