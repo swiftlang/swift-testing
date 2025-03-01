@@ -167,7 +167,7 @@ extension TestContentRecord: CustomStringConvertible {
     } ?? hexKind
     let recordAddress = imageAddress.map { imageAddress in
       let recordAddressDelta = UnsafeRawPointer(_record) - imageAddress
-      return "\(imageAddress)+\(recordAddressDelta)"
+      return "\(imageAddress)+0x\(String(recordAddressDelta, radix: 16))"
     } ?? "\(_record)"
     return "<\(typeName) \(recordAddress)> { kind: \(kind), context: \(context) }"
   }
