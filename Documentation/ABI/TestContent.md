@@ -213,3 +213,70 @@ TODO: elaborate further, give examples
 TODO: standardize a mechanism for third parties to produce `Test` instances
       since we don't have a public initializer for the `Test` type.
 -->
+
+## Discovering previously-emitted test content
+
+<!--
+TODO: add more detail here about how to set up a package 
+-->
+
+To add test content discovery support to your package, add a dependency on the
+`_TestDiscovery` module in the `swift-testing` package (not the copy included
+with the Swift toolchain or Xcode), then import the module with SPI:
+
+```swift
+@_spi(ForToolsIntegrationOnly) import _TestDiscovery 
+```
+
+> [!IMPORTANT]
+> Don't add a dependency on the `swift-testing` package's `Testing` module. If
+> you add a dependency on this module, it will cause you to build and link Swift
+> Testing every time you build your package. You only need the `_TestDiscovery`
+> module in order to discover your own test content types.
+
+After importing `_TestDiscovery`, find the type in your module that should be
+discoverable at runtime and add conformance to the `DiscoverableAsTestContent`
+protocol:
+
+```swift
+extension FoodTruckDiagnostic: DiscoverableAsTestContent {
+  static var testContentKind: UInt32 { /* Your `kind` value here. */ }
+}
+```
+
+If you have defined a custom `context` type other than `UInt`, you can specify
+it here by setting the associated `TestContentContext` type. If you have defined
+a custom `hint` type for your accessor functions, you can set
+`TestContentAccessorHint`:
+
+```swift
+extension FoodTruckDiagnostic: DiscoverableAsTestContent {
+  static var testContentKind: UInt32 { /* Your `kind` value here. */ }
+  
+  typealias TestContentContext = UnsafePointer<FoodTruck.Name>
+  typealias TestContentAccessorHint = String
+}
+```
+
+When you are done configuring your type's protocol conformance, you can then
+enumerate all test content records matching it as instances of
+`TestContentRecord`.
+
+You can use the `context` property to access the `context` field of the record
+(as emitted into the test content section). The testing library will
+automatically cast the value of the field to an instance of `TestContentContext`
+for you.
+
+If you find a record you wish to resolve to an instance of your conforming type,
+call its `load()` function. `load()` calls the record's accessor function and,
+if you have set a hint type, lets you pass an optional instance of that type: 
+
+```swift
+for diagnosticRecord in FoodTruckDiagnostic.allTestContentRecords() {
+  if diagnosticRecord.context == .briansBranMuffins {
+    if let diagnostic = diagnosticRecord.load(withHint: "...") {
+      diagnostic.run()
+    }
+  }
+}
+```

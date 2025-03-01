@@ -43,20 +43,3 @@ public protocol __ExitTestContainer {
 /// `__ExitTestContainer` protocol.
 let exitTestContainerTypeNameMagic = "__🟠$exit_test_body__"
 #endif
-
-// MARK: -
-
-/// Get all types known to Swift found in the current process whose names
-/// contain a given substring.
-///
-/// - Parameters:
-///   - nameSubstring: A string which the names of matching classes all contain.
-///
-/// - Returns: A sequence of Swift types whose names contain `nameSubstring`.
-func types(withNamesContaining nameSubstring: String) -> some Sequence<Any.Type> {
-  SectionBounds.all(.typeMetadata).lazy.flatMap { sb in
-    stride(from: sb.buffer.baseAddress!, to: sb.buffer.baseAddress! + sb.buffer.count, by: SWTTypeMetadataRecordByteCount).lazy
-      .compactMap { swt_getType(fromTypeMetadataRecord: $0, ifNameContains: nameSubstring) }
-      .map { unsafeBitCast($0, to: Any.Type.self) }
-  }
-}
