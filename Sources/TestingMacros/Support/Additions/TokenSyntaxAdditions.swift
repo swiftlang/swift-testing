@@ -47,3 +47,14 @@ extension TokenSyntax {
     return nil
   }
 }
+
+/// The `static` keyword, if `typeName` is not `nil`.
+///
+/// - Parameters:
+///   - typeName: The name of the type containing the macro being expanded.
+///
+/// - Returns: A token representing the `static` keyword, or one representing
+///   nothing if `typeName` is `nil`.
+func staticKeyword(for typeName: TypeSyntax?) -> TokenSyntax {
+  (typeName != nil) ? .keyword(.static) : .unknown("")
+}
