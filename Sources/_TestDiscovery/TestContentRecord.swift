@@ -83,12 +83,13 @@ public struct TestContentRecord<T>: Sendable where T: DiscoverableAsTestContent 
   ///   with interfaces such as `dlsym()` that expect such a pointer.
   public private(set) nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
 
-  /// The underlying test content record loaded from a metadata section.
-  private nonisolated(unsafe) var _record: UnsafePointer<_TestContentRecord>
+  /// The address of the underlying test content record loaded from a metadata
+  /// section.
+  private nonisolated(unsafe) var _recordAddress: UnsafePointer<_TestContentRecord>
 
-  fileprivate init(imageAddress: UnsafeRawPointer?, record: UnsafePointer<_TestContentRecord>) {
+  fileprivate init(imageAddress: UnsafeRawPointer?, recordAddress: UnsafePointer<_TestContentRecord>) {
     self.imageAddress = imageAddress
-    self._record = record
+    self._recordAddress = recordAddress
   }
 
   /// The type of the ``context`` property.
@@ -97,7 +98,7 @@ public struct TestContentRecord<T>: Sendable where T: DiscoverableAsTestContent 
   /// The context of this test content record.
   public var context: Context {
     T.validateMemoryLayout()
-    return withUnsafeBytes(of: _record.pointee.context) { context in
+    return withUnsafeBytes(of: _recordAddress.pointee.context) { context in
       context.load(as: Context.self)
     }
   }
@@ -118,7 +119,7 @@ public struct TestContentRecord<T>: Sendable where T: DiscoverableAsTestContent 
   /// If this function is called more than once on the same instance, a new
   /// value is created on each call.
   public func load(withHint hint: Hint? = nil) -> T? {
-    guard let accessor = _record.pointee.accessor else {
+    guard let accessor = _recordAddress.pointee.accessor else {
       return nil
     }
 
@@ -166,9 +167,9 @@ extension TestContentRecord: CustomStringConvertible {
       "'\(asciiKind)' (\(hexKind))"
     } ?? hexKind
     let recordAddress = imageAddress.map { imageAddress in
-      let recordAddressDelta = UnsafeRawPointer(_record) - imageAddress
+      let recordAddressDelta = UnsafeRawPointer(_recordAddress) - imageAddress
       return "\(imageAddress)+0x\(String(recordAddressDelta, radix: 16))"
-    } ?? "\(_record)"
+    } ?? "\(_recordAddress)"
     return "<\(typeName) \(recordAddress)> { kind: \(kind), context: \(context) }"
   }
 }
@@ -195,7 +196,7 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
         (0 ..< records.count).lazy
           .map { (records.baseAddress! + $0) as UnsafePointer<_TestContentRecord> }
           .filter { $0.pointee.kind == testContentKind }
-          .map { TestContentRecord<Self>(imageAddress: sb.imageAddress, record: $0) }
+          .map { TestContentRecord<Self>(imageAddress: sb.imageAddress, recordAddress: $0) }
       }
     }
     return AnySequence(result)
