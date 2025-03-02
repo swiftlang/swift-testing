@@ -50,8 +50,8 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
   /// It is not currently possible to perform this validation at compile time.
   /// ([swift-#79667](https://github.com/swiftlang/swift/issues/79667))
   fileprivate static func validateMemoryLayout() {
-    precondition(MemoryLayout<TestContentContext>.stride == MemoryLayout<UInt>.stride, "\(self).TestContentContext aka '\(TestContentContext.self)' must have the same stride as Swift.UInt.")
-    precondition(MemoryLayout<TestContentContext>.alignment == MemoryLayout<UInt>.alignment, "\(self).TestContentContext aka '\(TestContentContext.self)' must have the same alignment as Swift.UInt.")
+    precondition(MemoryLayout<TestContentContext>.stride == MemoryLayout<UInt>.stride, "'\(self).TestContentContext' aka '\(TestContentContext.self)' must have the same stride as 'UInt'.")
+    precondition(MemoryLayout<TestContentContext>.alignment == MemoryLayout<UInt>.alignment, "'\(self).TestContentContext' aka '\(TestContentContext.self)' must have the same alignment as 'UInt'.")
   }
 }
 

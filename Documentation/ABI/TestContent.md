@@ -258,6 +258,9 @@ extension FoodTruckDiagnostic: DiscoverableAsTestContent {
 }
 ```
 
+If you customize `TestContentContext`, be aware that the type you specify must
+have the same stride and alignment as `UInt`.
+
 When you are done configuring your type's protocol conformance, you can then
 enumerate all test content records matching it as instances of
 `TestContentRecord`.
@@ -273,7 +276,7 @@ if you have set a hint type, lets you pass an optional instance of that type:
 
 ```swift
 for diagnosticRecord in FoodTruckDiagnostic.allTestContentRecords() {
-  if diagnosticRecord.context == .briansBranMuffins {
+  if diagnosticRecord.context.pointee == .briansBranMuffins {
     if let diagnostic = diagnosticRecord.load(withHint: "...") {
       diagnostic.run()
     }
