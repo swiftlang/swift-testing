@@ -200,7 +200,9 @@ Third-party test content should set the `kind` field to a unique value only used
 by that tool, or used by that tool in collaboration with other compatible tools.
 At runtime, Swift Testing ignores test content records with unrecognized `kind`
 values. To reserve a new unique `kind` value, open a [GitHub issue](https://github.com/swiftlang/swift-testing/issues/new/choose)
-against Swift Testing.
+against Swift Testing. The value you reserve does not need to be representable
+as a [FourCC](https://en.wikipedia.org/wiki/FourCC) value, but it can be helpful
+for debugging purposes.
 
 The layout of third-party test content records must be compatible with that of
 `TestContentRecord` as specified above. Third-party tools are ultimately
