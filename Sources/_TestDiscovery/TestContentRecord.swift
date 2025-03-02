@@ -63,7 +63,7 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
 /// ``DiscoverableAsTestContent/allTestContentRecords()`` on a type that
 /// conforms to ``DiscoverableAsTestContent``.
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-public struct TestContentRecord<T>: Sendable where T: DiscoverableAsTestContent & ~Copyable {
+public struct TestContentRecord<T> where T: DiscoverableAsTestContent & ~Copyable {
   /// The base address of the image containing this instance, if known.
   ///
   /// The type of this pointer is platform-dependent:
@@ -140,6 +140,15 @@ public struct TestContentRecord<T>: Sendable where T: DiscoverableAsTestContent 
     }
   }
 }
+
+// Test content sections effectively exist outside any Swift isolation context.
+// We can only be (reasonably) sure that the data backing the test content
+// record is concurrency-safe if all fields in the test content record are. The
+// pointers stored in this structure are read-only and come from a loaded image,
+// and all fields of `_TestContentRecord` as we define it are sendable. However,
+// the custom `Context` type may or may not be sendable (it could validly be a
+// pointer to more data, for instance.)
+extension TestContentRecord: Sendable where Context: Sendable {}
 
 // MARK: - CustomStringConvertible
 

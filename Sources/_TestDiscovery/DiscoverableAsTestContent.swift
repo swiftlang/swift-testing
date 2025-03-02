@@ -11,8 +11,12 @@
 /// A protocol describing a type that can be represented by a test content
 /// record, stored in the test content section of a Swift binary at compile
 /// time, and dynamically discovered at runtime.
+///
+/// Types conforming to this protocol must also conform to [`Sendable`](https://developer.apple.com/documentation/swift/sendable)
+/// because they may be discovered within any isolation context or within
+/// multiple isolation contexts running concurrently.
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-public protocol DiscoverableAsTestContent: ~Copyable {
+public protocol DiscoverableAsTestContent: Sendable, ~Copyable {
   /// The value of the `kind` field in test content records associated with this
   /// type.
   ///
