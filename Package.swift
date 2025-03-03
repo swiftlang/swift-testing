@@ -116,8 +116,8 @@ let package = Package(
       ]
     ),
 
-    // "Support" targets: These targets are used exclusively by other targets
-    // above, not directly included in product libraries.
+    // "Support" targets: These targets are not meant to be used directly by
+    // test authors.
     .target(
       name: "_TestingInternals",
       exclude: ["CMakeLists.txt"],

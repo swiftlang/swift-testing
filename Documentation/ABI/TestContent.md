@@ -223,8 +223,9 @@ TODO: add more detail here about how to set up a package
 -->
 
 To add test content discovery support to your package, add a dependency on the
-`_TestDiscovery` module in the `swift-testing` package (not the copy included
-with the Swift toolchain or Xcode), then import the module with SPI:
+`_TestDiscovery` module in the `swift-testing` package (not the copy of Swift
+Testing included with the Swift toolchain or Xcode), then import the module with
+SPI enabled:
 
 ```swift
 @_spi(ForToolsIntegrationOnly) import _TestDiscovery 
