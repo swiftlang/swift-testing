@@ -160,6 +160,9 @@ public macro require<T>(
 /// is running in the current task. Any value returned by `expression` is
 /// discarded.
 ///
+/// - Note: If you use this macro with a Swift compiler version lower than 6.1,
+///   it doesn't return a value.
+///
 /// If the thrown error need only equal another instance of [`Error`](https://developer.apple.com/documentation/swift/error),
 /// use ``expect(throws:_:sourceLocation:performing:)-7du1h`` instead.
 ///
@@ -224,6 +227,9 @@ public macro require<T>(
 /// is running in the current task and an instance of ``ExpectationFailedError``
 /// is thrown. Any value returned by `expression` is discarded.
 ///
+/// - Note: If you use this macro with a Swift compiler version lower than 6.1,
+///   it doesn't return a value.
+///
 /// If the thrown error need only equal another instance of [`Error`](https://developer.apple.com/documentation/swift/error),
 /// use ``require(throws:_:sourceLocation:performing:)-4djuw`` instead.
 ///
@@ -286,6 +292,9 @@ public macro require<R>(
 /// not equal to `error`, an ``Issue`` is recorded for the test that is running
 /// in the current task. Any value returned by `expression` is discarded.
 ///
+/// - Note: If you use this macro with a Swift compiler version lower than 6.1,
+///   it doesn't return a value.
+///
 /// If the thrown error need only be an instance of a particular type, use
 /// ``expect(throws:_:sourceLocation:performing:)-1hfms`` instead.
 @discardableResult
@@ -326,6 +335,9 @@ public macro require<R>(
 /// not equal to `error`, an ``Issue`` is recorded for the test that is running
 /// in the current task and an instance of ``ExpectationFailedError`` is thrown.
 /// Any value returned by `expression` is discarded.
+///
+/// - Note: If you use this macro with a Swift compiler version lower than 6.1,
+///   it doesn't return a value.
 ///
 /// If the thrown error need only be an instance of a particular type, use
 /// ``require(throws:_:sourceLocation:performing:)-7n34r`` instead.
