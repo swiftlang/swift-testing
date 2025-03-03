@@ -30,11 +30,10 @@ for Swift Testing offers a comprehensive discussion of the project's design
 principles and goals.
 
 Feature and API proposals for Swift Testing are stored in the
-[swift-evolution](https://github.com/swiftlang/swift-evolution) repository and
-new proposals should use the
+[swift-evolution](https://github.com/swiftlang/swift-evolution) repository in
+the `proposals/testing/` subdirectory, and new proposals should use the
 [testing template](https://github.com/swiftlang/swift-evolution/blob/main/proposal-templates/0000-swift-testing-template.md)
-there. Older proposals which were accepted prior to Swift Testing adopting the
-Swift evolution process are stored in the [`Proposals`](Proposals/) directory.
+there.
 
 ## Development and contribution
 
