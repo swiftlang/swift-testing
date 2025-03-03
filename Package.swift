@@ -13,6 +13,13 @@
 import PackageDescription
 import CompilerPluginSupport
 
+/// Information about the current state of the package's git repository.
+let git = Context.gitInformation
+
+/// Whether or not this package is being built for development rather than
+/// distribution as a package dependency.
+let buildingForDevelopment = (git?.currentTag == nil)
+
 let package = Package(
   name: "swift-testing",
 
@@ -67,10 +74,8 @@ let package = Package(
         .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
       ],
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .packageSettings + [
-        // When building as a package, the macro plugin always builds as an
-        // executable rather than a library.
-        .define("SWT_NO_LIBRARY_MACRO_PLUGINS"),
+      swiftSettings: .packageSettings + {
+        var result = [PackageDescription.SwiftSetting]()
 
         // The only target which needs the ability to import this macro
         // implementation target's module is its unit test target. Users of the
@@ -78,8 +83,12 @@ let package = Package(
         // Testing module. This target's module is never distributed to users,
         // but as an additional guard against accidental misuse, this specifies
         // the unit test target as the only allowable client.
-        .unsafeFlags(["-Xfrontend", "-allowable-client", "-Xfrontend", "TestingMacrosTests"]),
-      ]
+        if buildingForDevelopment {
+          result.append(.unsafeFlags(["-Xfrontend", "-allowable-client", "-Xfrontend", "TestingMacrosTests"]))
+        }
+
+        return result
+      }()
     ),
 
     // "Support" targets: These contain C family code and are used exclusively
@@ -122,13 +131,22 @@ extension Array where Element == PackageDescription.SwiftSetting {
   /// Settings intended to be applied to every Swift target in this package.
   /// Analogous to project-level build settings in an Xcode project.
   static var packageSettings: Self {
-    availabilityMacroSettings + [
-      .unsafeFlags(["-require-explicit-sendable"]),
+    var result = availabilityMacroSettings
+
+    if buildingForDevelopment {
+      result.append(.unsafeFlags(["-require-explicit-sendable"]))
+    }
+
+    result += [
       .enableUpcomingFeature("ExistentialAny"),
       .enableExperimentalFeature("SuppressedAssociatedTypes"),
 
       .enableExperimentalFeature("AccessLevelOnImport"),
       .enableUpcomingFeature("InternalImportsByDefault"),
+
+      // When building as a package, the macro plugin always builds as an
+      // executable rather than a library.
+      .define("SWT_NO_LIBRARY_MACRO_PLUGINS"),
 
       .define("SWT_TARGET_OS_APPLE", .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])),
 
@@ -138,6 +156,8 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .define("SWT_NO_DYNAMIC_LINKING", .when(platforms: [.wasi])),
       .define("SWT_NO_PIPES", .when(platforms: [.wasi])),
     ]
+
+    return result
   }
 
   /// Settings which define commonly-used OS availability macros.
@@ -175,7 +195,7 @@ extension Array where Element == PackageDescription.CXXSetting {
     ]
 
     // Capture the testing library's version as a C++ string constant.
-    if let git = Context.gitInformation {
+    if let git {
       let testingLibraryVersion = if let tag = git.currentTag {
         tag
       } else if git.hasUncommittedChanges {
