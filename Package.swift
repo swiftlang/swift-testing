@@ -13,6 +13,13 @@
 import PackageDescription
 import CompilerPluginSupport
 
+/// Information about the current state of the package's git repository.
+let git = Context.gitInformation
+
+/// Whether or not this package is being built for development rather than
+/// distribution as a package dependency.
+let buildingForDevelopment = (git?.currentTag != nil)
+
 let package = Package(
   name: "swift-testing",
 
@@ -55,9 +62,7 @@ let package = Package(
       ],
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
       cxxSettings: .packageSettings,
-      swiftSettings: .packageSettings + [
-        .enableLibraryEvolution(),
-      ],
+      swiftSettings: .packageSettings + .enableLibraryEvolution(),
       linkerSettings: [
         .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd]))
       ]
@@ -86,10 +91,8 @@ let package = Package(
         .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
       ],
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .packageSettings + [
-        // When building as a package, the macro plugin always builds as an
-        // executable rather than a library.
-        .define("SWT_NO_LIBRARY_MACRO_PLUGINS"),
+      swiftSettings: .packageSettings + {
+        var result = [PackageDescription.SwiftSetting]()
 
         // The only target which needs the ability to import this macro
         // implementation target's module is its unit test target. Users of the
@@ -97,8 +100,12 @@ let package = Package(
         // Testing module. This target's module is never distributed to users,
         // but as an additional guard against accidental misuse, this specifies
         // the unit test target as the only allowable client.
-        .unsafeFlags(["-Xfrontend", "-allowable-client", "-Xfrontend", "TestingMacrosTests"]),
-      ]
+        if buildingForDevelopment {
+          result.append(.unsafeFlags(["-Xfrontend", "-allowable-client", "-Xfrontend", "TestingMacrosTests"]))
+        }
+
+        return result
+      }()
     ),
 
     // "Support" targets: These contain C family code and are used exclusively
@@ -116,9 +123,7 @@ let package = Package(
         "Testing",
       ],
       path: "Sources/Overlays/_Testing_CoreGraphics",
-      swiftSettings: .packageSettings + [
-        .enableLibraryEvolution(),
-      ]
+      swiftSettings: .packageSettings + .enableLibraryEvolution()
     ),
     .target(
       name: "_Testing_Foundation",
@@ -127,12 +132,10 @@ let package = Package(
       ],
       path: "Sources/Overlays/_Testing_Foundation",
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .packageSettings + [
-        // The Foundation module only has Library Evolution enabled on Apple
-        // platforms, and since this target's module publicly imports Foundation,
-        // it can only enable Library Evolution itself on those platforms.
-        .enableLibraryEvolution(applePlatformsOnly: true),
-      ]
+      // The Foundation module only has Library Evolution enabled on Apple
+      // platforms, and since this target's module publicly imports Foundation,
+      // it can only enable Library Evolution itself on those platforms.
+      swiftSettings: .packageSettings + .enableLibraryEvolution(applePlatformsOnly: true),
     ),
 
     // Utility targets: These are utilities intended for use when developing
@@ -167,13 +170,22 @@ extension Array where Element == PackageDescription.SwiftSetting {
   /// Settings intended to be applied to every Swift target in this package.
   /// Analogous to project-level build settings in an Xcode project.
   static var packageSettings: Self {
-    availabilityMacroSettings + [
-      .unsafeFlags(["-require-explicit-sendable"]),
+    var result = availabilityMacroSettings
+
+    if buildingForDevelopment {
+      result.append(.unsafeFlags(["-require-explicit-sendable"]))
+    }
+
+    result += [
       .enableUpcomingFeature("ExistentialAny"),
       .enableExperimentalFeature("SuppressedAssociatedTypes"),
 
       .enableExperimentalFeature("AccessLevelOnImport"),
       .enableUpcomingFeature("InternalImportsByDefault"),
+
+      // When building as a package, the macro plugin always builds as an
+      // executable rather than a library.
+      .define("SWT_NO_LIBRARY_MACRO_PLUGINS"),
 
       .define("SWT_TARGET_OS_APPLE", .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])),
 
@@ -183,6 +195,8 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .define("SWT_NO_DYNAMIC_LINKING", .when(platforms: [.wasi])),
       .define("SWT_NO_PIPES", .when(platforms: [.wasi])),
     ]
+
+    return result
   }
 
   /// Settings which define commonly-used OS availability macros.
@@ -203,9 +217,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .enableExperimentalFeature("AvailabilityMacro=_distantFuture:macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0, visionOS 99.0"),
     ]
   }
-}
 
-extension PackageDescription.SwiftSetting {
   /// Create a Swift setting which enables Library Evolution, optionally
   /// constraining it to only Apple platforms.
   ///
@@ -213,7 +225,17 @@ extension PackageDescription.SwiftSetting {
   ///   - applePlatformsOnly: Whether to constrain this setting to only Apple
   ///     platforms.
   static func enableLibraryEvolution(applePlatformsOnly: Bool = false) -> Self {
-    unsafeFlags(["-enable-library-evolution"], .when(platforms: applePlatformsOnly ? [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS] : []))
+    var result = [PackageDescription.SwiftSetting]()
+
+    if buildingForDevelopment {
+      var condition: BuildSettingCondition?
+      if applePlatformsOnly {
+        condition = .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])
+      }
+      result.append(.unsafeFlags(["-enable-library-evolution"], condition))
+    }
+
+    return result
   }
 }
 
@@ -232,7 +254,7 @@ extension Array where Element == PackageDescription.CXXSetting {
     ]
 
     // Capture the testing library's version as a C++ string constant.
-    if let git = Context.gitInformation {
+    if let git {
       let testingLibraryVersion = if let tag = git.currentTag {
         tag
       } else if git.hasUncommittedChanges {
