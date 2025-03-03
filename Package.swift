@@ -18,7 +18,7 @@ let git = Context.gitInformation
 
 /// Whether or not this package is being built for development rather than
 /// distribution as a package dependency.
-let buildingForDevelopment = (git?.currentTag != nil)
+let buildingForDevelopment = (git?.currentTag == nil)
 
 let package = Package(
   name: "swift-testing",
