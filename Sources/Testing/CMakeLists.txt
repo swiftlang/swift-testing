@@ -83,8 +83,7 @@ add_library(Testing
   Support/Locked.swift
   Support/Locked+Platform.swift
   Support/Versions.swift
-  Discovery.swift
-  Discovery+Platform.swift
+  Discovery+Macro.swift
   Test.ID.Selection.swift
   Test.ID.swift
   Test.swift
@@ -107,6 +106,7 @@ add_library(Testing
   Traits/TimeLimitTrait.swift
   Traits/Trait.swift)
 target_link_libraries(Testing PRIVATE
+  _TestDiscovery
   _TestingInternals)
 if(NOT APPLE)
   if(NOT CMAKE_SYSTEM_NAME STREQUAL WASI)
@@ -121,8 +121,9 @@ if(NOT APPLE)
 endif()
 if(NOT BUILD_SHARED_LIBS)
   # When building a static library, tell clients to autolink the internal
-  # library.
+  # libraries.
   target_compile_options(Testing PRIVATE
+    "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestDiscovery"
     "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInternals")
 endif()
 add_dependencies(Testing

@@ -9,6 +9,7 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+@_spi(ForToolsIntegrationOnly) import _TestDiscovery
 private import _TestingInternals
 
 @Test(/* name unspecified */ .hidden)
@@ -581,7 +582,7 @@ struct MiscellaneousTests {
   }
 
 #if !SWT_NO_DYNAMIC_LINKING && hasFeature(SymbolLinkageMarkers)
-  struct DiscoverableTestContent: TestContent {
+  struct MyTestContent: DiscoverableAsTestContent {
     typealias TestContentAccessorHint = UInt32
 
     var value: UInt32
@@ -616,7 +617,7 @@ struct MiscellaneousTests {
       0xABCD1234,
       0,
       { outValue, type, hint in
-        guard type.load(as: Any.Type.self) == DiscoverableTestContent.self else {
+        guard type.load(as: Any.Type.self) == MyTestContent.self else {
           return false
         }
         if let hint, hint.load(as: TestContentAccessorHint.self) != expectedHint {
@@ -632,10 +633,10 @@ struct MiscellaneousTests {
 
   @Test func testDiscovery() async {
     // Check the type of the test record sequence (it should be lazy.)
-    let allRecordsSeq = DiscoverableTestContent.allTestContentRecords()
+    let allRecordsSeq = MyTestContent.allTestContentRecords()
 #if SWT_FIXED_143080508
     #expect(allRecordsSeq is any LazySequenceProtocol)
-    #expect(!(allRecordsSeq is [TestContentRecord<DiscoverableTestContent>]))
+    #expect(!(allRecordsSeq is [TestContentRecord<MyTestContent>]))
 #endif
 
     // It should have exactly one matching record (because we only emitted one.)
@@ -644,22 +645,22 @@ struct MiscellaneousTests {
 
     // Can find a single test record
     #expect(allRecords.contains { record in
-      record.load()?.value == DiscoverableTestContent.expectedValue
-        && record.context == DiscoverableTestContent.expectedContext
+      record.load()?.value == MyTestContent.expectedValue
+        && record.context == MyTestContent.expectedContext
     })
 
     // Can find a test record with matching hint
     #expect(allRecords.contains { record in
-      let hint = DiscoverableTestContent.expectedHint
-      return record.load(withHint: hint)?.value == DiscoverableTestContent.expectedValue
-        && record.context == DiscoverableTestContent.expectedContext
+      let hint = MyTestContent.expectedHint
+      return record.load(withHint: hint)?.value == MyTestContent.expectedValue
+        && record.context == MyTestContent.expectedContext
     })
 
     // Doesn't find a test record with a mismatched hint
     #expect(!allRecords.contains { record in
-      let hint = ~DiscoverableTestContent.expectedHint
-      return record.load(withHint: hint)?.value == DiscoverableTestContent.expectedValue
-        && record.context == DiscoverableTestContent.expectedContext
+      let hint = ~MyTestContent.expectedHint
+      return record.load(withHint: hint)?.value == MyTestContent.expectedValue
+        && record.context == MyTestContent.expectedContext
     })
   }
 #endif

@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-internal import _TestingInternals
+private import _TestingInternals
 #if _runtime(_ObjC)
 private import ObjectiveC
 #endif
@@ -68,18 +68,29 @@ extension SectionBounds.Kind {
 
 /// An array containing all of the test content section bounds known to the
 /// testing library.
-private let _sectionBounds = Locked<[SectionBounds.Kind: [SectionBounds]]>()
+private nonisolated(unsafe) let _sectionBounds = {
+  let result = ManagedBuffer<[SectionBounds.Kind: [SectionBounds]], pthread_mutex_t>.create(
+    minimumCapacity: 1,
+    makingHeaderWith: { _ in [:] }
+  )
+
+  result.withUnsafeMutablePointers { sectionBounds, lock in
+    _ = pthread_mutex_init(lock, nil)
+
+    let imageCount = Int(clamping: _dyld_image_count())
+    for kind in SectionBounds.Kind.allCases {
+      sectionBounds.pointee[kind, default: []].reserveCapacity(imageCount)
+    }
+  }
+
+  return result
+}()
 
 /// A call-once function that initializes `_sectionBounds` and starts listening
 /// for loaded Mach headers.
 private let _startCollectingSectionBounds: Void = {
   // Ensure _sectionBounds is initialized before we touch libobjc or dyld.
-  _sectionBounds.withLock { sectionBounds in
-    let imageCount = Int(clamping: _dyld_image_count())
-    for kind in SectionBounds.Kind.allCases {
-      sectionBounds[kind, default: []].reserveCapacity(imageCount)
-    }
-  }
+  _ = _sectionBounds
 
   func addSectionBounds(from mh: UnsafePointer<mach_header>) {
 #if _pointerBitWidth(_64)
@@ -102,8 +113,12 @@ private let _startCollectingSectionBounds: Void = {
       if let start = getsectiondata(mh, segmentName.utf8Start, sectionName.utf8Start, &size), size > 0 {
         let buffer = UnsafeRawBufferPointer(start: start, count: Int(clamping: size))
         let sb = SectionBounds(imageAddress: mh, buffer: buffer)
-        _sectionBounds.withLock { sectionBounds in
-          sectionBounds[kind]!.append(sb)
+        _sectionBounds.withUnsafeMutablePointers { sectionBounds, lock in
+          pthread_mutex_lock(lock)
+          defer {
+            pthread_mutex_unlock(lock)
+          }
+          sectionBounds.pointee[kind]!.append(sb)
         }
       }
     }
@@ -129,7 +144,13 @@ private let _startCollectingSectionBounds: Void = {
 ///   content sections in the current process.
 private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
   _startCollectingSectionBounds
-  return _sectionBounds.rawValue[kind]!
+  return _sectionBounds.withUnsafeMutablePointers { sectionBounds, lock in
+    pthread_mutex_lock(lock)
+    defer {
+      pthread_mutex_unlock(lock)
+    }
+    return sectionBounds.pointee[kind]!
+  }
 }
 
 #elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
