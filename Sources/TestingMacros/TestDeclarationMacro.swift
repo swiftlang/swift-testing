@@ -61,14 +61,15 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     }
 
     // Check if the lexical context is appropriate for a suite or test.
-    diagnostics += diagnoseIssuesWithLexicalContext(context.lexicalContext, containing: declaration, attribute: testAttribute)
+    let lexicalContext = context.lexicalContext
+    diagnostics += diagnoseIssuesWithLexicalContext(lexicalContext, containing: declaration, attribute: testAttribute)
 
     // Suites inheriting from XCTestCase are not supported. We are a bit
     // conservative here in this check and only check the immediate context.
     // Presumably, if there's an intermediate lexical context that is *not* a
     // type declaration, then it must be a function or closure (disallowed
     // elsewhere) and thus the test function is not a member of any type.
-    if let containingTypeDecl = context.lexicalContext.first?.asProtocol((any DeclGroupSyntax).self),
+    if let containingTypeDecl = lexicalContext.first?.asProtocol((any DeclGroupSyntax).self),
        containingTypeDecl.inherits(fromTypeNamed: "XCTestCase", inModuleNamed: "XCTest") {
       diagnostics.append(.containingNodeUnsupported(containingTypeDecl, whenUsing: testAttribute, on: declaration))
     }
@@ -115,6 +116,21 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
         if parameter.type.isSome {
           diagnostics.append(.genericDeclarationNotSupported(function, whenUsing: testAttribute, becauseOf: parameter, on: function))
         }
+      }
+    }
+
+    // Disallow non-escapable types as suites. In order to support them, the
+    // compiler team needs to finish implementing the lifetime dependency
+    // feature so that `init()`, ``__requiringTry()`, and `__requiringAwait()`
+    // can be correctly expressed.
+    if let containingType = lexicalContext.first?.asProtocol((any DeclGroupSyntax).self),
+       let inheritedTypes = containingType.inheritanceClause?.inheritedTypes {
+      let escapableNonConformances = inheritedTypes
+        .map(\.type)
+        .compactMap { $0.as(SuppressedTypeSyntax.self) }
+        .filter { $0.type.isNamed("Escapable", inModuleNamed: "Swift") }
+      for escapableNonConformance in escapableNonConformances {
+        diagnostics.append(.containingNodeUnsupported(containingType, whenUsing: testAttribute, on: function, withSuppressedConformanceToEscapable: escapableNonConformance))
       }
     }
 
