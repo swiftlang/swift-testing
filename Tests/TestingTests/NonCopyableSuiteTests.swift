@@ -11,7 +11,7 @@
 @testable @_spi(ForToolsIntegrationOnly) import Testing
 
 @Suite("Non-Copyable Tests")
-struct NonCopyableTests: ~Copyable, ~Escapable {
+struct NonCopyableTests: ~Copyable {
   @Test static func staticMe() {}
   @Test borrowing func borrowMe() {}
   @Test consuming func consumeMe() {}

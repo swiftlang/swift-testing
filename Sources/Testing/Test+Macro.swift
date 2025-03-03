@@ -53,8 +53,9 @@ public typealias __XCTestCompatibleSelector = Never
 /// - Parameters:
 ///   - traits: Zero or more traits to apply to this test suite.
 ///
-/// A test suite is a type that contains one or more test functions. Any type
-/// may be a test suite.
+/// A test suite is a type that contains one or more test functions. Any
+/// copyable type (that is, any type that is not marked `~Copyable`) may be a
+/// test suite.
 ///
 /// The use of the `@Suite` attribute is optional; types are recognized as test
 /// suites even if they do not have the `@Suite` attribute applied to them.
@@ -80,8 +81,9 @@ public macro Suite(
 ///     from the associated type's name.
 ///   - traits: Zero or more traits to apply to this test suite.
 ///
-/// A test suite is a type that contains one or more test functions. Any type
-/// may be a test suite.
+/// A test suite is a type that contains one or more test functions. Any
+/// copyable type (that is, any type that is not marked `~Copyable`) may be a
+/// test suite.
 ///
 /// The use of the `@Suite` attribute is optional; types are recognized as test
 /// suites even if they do not have the `@Suite` attribute applied to them.
@@ -104,7 +106,7 @@ extension Test {
   /// - Warning: This function is used to implement the `@Suite` macro. Do not
   ///   call it directly.
   public static func __type(
-    _ containingType: any (~Copyable & ~Escapable).Type,
+    _ containingType: any ~Copyable.Type,
     displayName: String? = nil,
     traits: [any SuiteTrait],
     sourceLocation: SourceLocation
@@ -157,7 +159,7 @@ extension Test {
   ///   call it directly.
   public static func __function(
     named testFunctionName: String,
-    in containingType: (any (~Copyable & ~Escapable).Type)?,
+    in containingType: (any ~Copyable.Type)?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
@@ -239,7 +241,7 @@ extension Test {
   ///   call it directly.
   public static func __function<C>(
     named testFunctionName: String,
-    in containingType: (any (~Copyable & ~Escapable).Type)?,
+    in containingType: (any ~Copyable.Type)?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
@@ -374,7 +376,7 @@ extension Test {
   ///   call it directly.
   public static func __function<C1, C2>(
     named testFunctionName: String,
-    in containingType: (any (~Copyable & ~Escapable).Type)?,
+    in containingType: (any ~Copyable.Type)?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
@@ -402,7 +404,7 @@ extension Test {
   ///   call it directly.
   public static func __function<C, E1, E2>(
     named testFunctionName: String,
-    in containingType: (any (~Copyable & ~Escapable).Type)?,
+    in containingType: (any ~Copyable.Type)?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
@@ -433,7 +435,7 @@ extension Test {
   ///   call it directly.
   public static func __function<Key, Value>(
     named testFunctionName: String,
-    in containingType: (any (~Copyable & ~Escapable).Type)?,
+    in containingType: (any ~Copyable.Type)?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
@@ -458,7 +460,7 @@ extension Test {
   ///   call it directly.
   public static func __function<C1, C2>(
     named testFunctionName: String,
-    in containingType: (any (~Copyable & ~Escapable).Type)?,
+    in containingType: (any ~Copyable.Type)?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
@@ -522,7 +524,7 @@ extension Test {
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
-@inlinable public func __requiringTry<T>(_ value: consuming T) throws -> T where T: ~Copyable & ~Escapable {
+@inlinable public func __requiringTry<T>(_ value: consuming T) throws -> T where T: ~Copyable {
   value
 }
 
@@ -531,7 +533,7 @@ extension Test {
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
-@inlinable public func __requiringAwait<T>(_ value: consuming T, isolation: isolated (any Actor)? = #isolation) async -> T where T: ~Copyable & ~Escapable {
+@inlinable public func __requiringAwait<T>(_ value: consuming T, isolation: isolated (any Actor)? = #isolation) async -> T where T: ~Copyable {
   value
 }
 
@@ -554,7 +556,7 @@ public var __defaultSynchronousIsolationContext: (any Actor)? {
   _ selector: __XCTestCompatibleSelector?,
   onInstanceOf type: T.Type,
   sourceLocation: SourceLocation
-) async throws -> Bool where T: ~Copyable & ~Escapable {
+) async throws -> Bool where T: ~Copyable {
   false
 }
 

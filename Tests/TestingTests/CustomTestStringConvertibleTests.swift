@@ -54,7 +54,7 @@ struct CustomTestStringConvertibleTests {
 
 // MARK: - Fixtures
 
-private struct NonCopyableType: ~Copyable, ~Escapable {}
+private struct NonCopyableType: ~Copyable {}
 
 private struct CustomStringConvertibleType: CustomStringConvertible {
   var description: String {

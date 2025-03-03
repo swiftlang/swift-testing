@@ -18,7 +18,7 @@ public struct TypeInfo: Sendable {
     ///
     /// - Parameters:
     ///   - type: The concrete metatype.
-    case type(_ type: any (~Copyable & ~Escapable).Type)
+    case type(_ type: any ~Copyable.Type)
 
     /// The type info represents a metatype, but a reference to that metatype is
     /// not available at runtime.
@@ -38,7 +38,7 @@ public struct TypeInfo: Sendable {
   ///
   /// If this instance was created from a type name, or if it was previously
   /// encoded and decoded, the value of this property is `nil`.
-  public var type: (any (~Copyable & ~Escapable).Type)? {
+  public var type: (any ~Copyable.Type)? {
     if case let .type(type) = _kind {
       return type
     }
@@ -79,7 +79,7 @@ public struct TypeInfo: Sendable {
   ///
   /// - Parameters:
   ///   - type: The type which this instance should describe.
-  init(describing type: any (~Copyable & ~Escapable).Type) {
+  init(describing type: any ~Copyable.Type) {
     _kind = .type(type)
   }
 
@@ -265,9 +265,11 @@ extension TypeInfo {
     }
     switch _kind {
     case let .type(type):
-      // _mangledTypeName() works with non-escaping types, but its signature has
-      // not been updated yet. SEE: rdar://145945680
+#if compiler(>=6.1)
+      return _mangledTypeName(type)
+#else
       return _mangledTypeName(unsafeBitCast(type, to: Any.Type.self))
+#endif
     case let .nameOnly(_, _, mangledName):
       return mangledName
     }
@@ -377,7 +379,7 @@ extension ObjectIdentifier {
   ///
   /// - Bug: The standard library should support this conversion.
   ///   ([134276458](rdar://134276458), [134415960](rdar://134415960))
-  fileprivate init(_ type: any (~Copyable & ~Escapable).Type) {
+  fileprivate init(_ type: any ~Copyable.Type) {
     self.init(unsafeBitCast(type, to: Any.Type.self))
   }
 }
