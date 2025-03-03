@@ -116,8 +116,9 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent & ~Copyabl
   ///   underlying test content record did not match `hint` or otherwise did not
   ///   produce a value.
   ///
-  /// If this function is called more than once on the same instance, a new
-  /// value is created on each call.
+  /// The result of this function is not cached. If this function is called more
+  /// than once on the same instance, the testing library calls the underlying
+  /// test content record's accessor function each time.
   public func load(withHint hint: Hint? = nil) -> T? {
     guard let accessor = _recordAddress.pointee.accessor else {
       return nil
@@ -153,10 +154,10 @@ extension TestContentRecord: Sendable where Context: Sendable {}
 // MARK: - CustomStringConvertible
 
 extension TestContentRecord: CustomStringConvertible {
-  /// This kind value as an ASCII string (of the form `"abcd"`) if it looks like
-  /// it might be a [FourCC](https://en.wikipedia.org/wiki/FourCC) value, or
-  /// `nil` if not.
-  fileprivate static var asciiKind: String? {
+  /// This test content type's kind value as an ASCII string (of the form
+  /// `"abcd"`) if it looks like it might be a [FourCC](https://en.wikipedia.org/wiki/FourCC)
+  /// value, or `nil` if not.
+  private static var _asciiKind: String? {
     return withUnsafeBytes(of: T.testContentKind.bigEndian) { bytes in
       if bytes.allSatisfy(Unicode.ASCII.isASCII) {
         let characters = String(decoding: bytes, as: Unicode.ASCII.self)
@@ -172,7 +173,7 @@ extension TestContentRecord: CustomStringConvertible {
   public var description: String {
     let typeName = String(describing: Self.self)
     let hexKind = "0x" + String(T.testContentKind, radix: 16)
-    let kind = Self.asciiKind.map { asciiKind in
+    let kind = Self._asciiKind.map { asciiKind in
       "'\(asciiKind)' (\(hexKind))"
     } ?? hexKind
     let recordAddress = imageAddress.map { imageAddress in
@@ -185,7 +186,6 @@ extension TestContentRecord: CustomStringConvertible {
 
 // MARK: - Enumeration of test content records
 
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 extension DiscoverableAsTestContent where Self: ~Copyable {
   /// Get all test content of this type known to Swift and found in the current
   /// process.

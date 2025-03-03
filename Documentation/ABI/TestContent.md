@@ -246,6 +246,10 @@ extension FoodTruckDiagnostic: DiscoverableAsTestContent {
 }
 ```
 
+This type does not need to be publicly visible. However, if the values produced
+by your accessor functions are members of a public type, you may be able to
+simplify your code by using the same type.
+
 If you have defined a custom `context` type other than `UInt`, you can specify
 it here by setting the associated `TestContentContext` type. If you have defined
 a custom `hint` type for your accessor functions, you can set
