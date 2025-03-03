@@ -54,6 +54,7 @@ extension TypeSyntaxProtocol {
     let nameWithoutGenericParameters = tokens(viewMode: .fixedUp)
       .prefix { $0.tokenKind != .leftAngle }
       .filter { $0.tokenKind != .period }
+      .filter { $0.tokenKind != .leftParen && $0.tokenKind != .rightParen }
       .map(\.textWithoutBackticks)
       .joined(separator: ".")
 
