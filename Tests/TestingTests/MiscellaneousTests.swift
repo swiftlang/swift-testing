@@ -9,7 +9,7 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
-@_spi(ForToolsIntegrationOnly) import _TestDiscovery
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) import _TestDiscovery
 private import _TestingInternals
 
 @Test(/* name unspecified */ .hidden)

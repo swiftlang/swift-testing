@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@_spi(ForToolsIntegrationOnly) @_spiOnly import _TestDiscovery
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) @_spiOnly private import _TestDiscovery
 private import _TestingInternals
 
 #if !SWT_NO_EXIT_TESTS

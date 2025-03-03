@@ -8,6 +8,9 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if os(Windows)
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) private import _TestDiscovery
+#endif
 internal import _TestingInternals
 
 #if !SWT_NO_DYNAMIC_LINKING
