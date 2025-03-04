@@ -135,7 +135,7 @@ let package = Package(
       // The Foundation module only has Library Evolution enabled on Apple
       // platforms, and since this target's module publicly imports Foundation,
       // it can only enable Library Evolution itself on those platforms.
-      swiftSettings: .packageSettings + .enableLibraryEvolution(applePlatformsOnly: true),
+      swiftSettings: .packageSettings + .enableLibraryEvolution(applePlatformsOnly: true)
     ),
 
     // Utility targets: These are utilities intended for use when developing
