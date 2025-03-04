@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly) @_spiOnly internal import _TestDiscovery
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) internal import _TestDiscovery
 
 /// A shadow declaration of `_TestDiscovery.DiscoverableAsTestContent` that
 /// allows us to add public conformances to it without causing the

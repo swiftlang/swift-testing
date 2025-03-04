@@ -228,7 +228,7 @@ Testing included with the Swift toolchain or Xcode), then import the module with
 SPI enabled:
 
 ```swift
-@_spi(ForToolsIntegrationOnly) import _TestDiscovery 
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) import _TestDiscovery
 ```
 
 > [!IMPORTANT]
