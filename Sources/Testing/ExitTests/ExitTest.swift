@@ -238,13 +238,12 @@ extension ExitTest {
 
 // MARK: - Discovery
 
-@_spi(ForToolsIntegrationOnly)
 extension ExitTest: DiscoverableAsTestContent {
-  public static var testContentKind: UInt32 {
+  static var testContentKind: UInt32 {
     0x65786974
   }
 
-  public typealias TestContentAccessorHint = ID
+  typealias TestContentAccessorHint = ID
 }
 
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
