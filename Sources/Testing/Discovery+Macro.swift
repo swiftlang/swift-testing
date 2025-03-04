@@ -8,6 +8,15 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) @_spiOnly internal import _TestDiscovery
+
+/// A shadow declaration of `_TestDiscovery.DiscoverableAsTestContent` that
+/// allows us to add public conformances to it without causing the
+/// `_TestDiscovery` module to appear in `Testing.private.swiftinterface`.
+///
+/// This protocol is not part of the public interface of the testing library.
+protocol DiscoverableAsTestContent: _TestDiscovery.DiscoverableAsTestContent, ~Copyable {}
+
 /// The type of the accessor function used to access a test content record.
 ///
 /// The signature of this function type must match that of the corresponding

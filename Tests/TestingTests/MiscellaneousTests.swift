@@ -582,7 +582,7 @@ struct MiscellaneousTests {
   }
 
 #if !SWT_NO_DYNAMIC_LINKING && hasFeature(SymbolLinkageMarkers)
-  struct MyTestContent: DiscoverableAsTestContent {
+  struct MyTestContent: Testing.DiscoverableAsTestContent {
     typealias TestContentAccessorHint = UInt32
 
     var value: UInt32
