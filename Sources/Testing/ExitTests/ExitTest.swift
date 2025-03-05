@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) private import _TestDiscovery
 private import _TestingInternals
 
 #if !SWT_NO_EXIT_TESTS
@@ -237,7 +238,7 @@ extension ExitTest {
 
 // MARK: - Discovery
 
-extension ExitTest: TestContent {
+extension ExitTest: DiscoverableAsTestContent {
   static var testContentKind: UInt32 {
     0x65786974
   }

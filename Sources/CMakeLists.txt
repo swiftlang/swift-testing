@@ -103,6 +103,7 @@ endif()
 
 include(AvailabilityDefinitions)
 include(CompilerSettings)
+add_subdirectory(_TestDiscovery)
 add_subdirectory(_TestingInternals)
 add_subdirectory(Overlays)
 add_subdirectory(Testing)

@@ -200,7 +200,9 @@ Third-party test content should set the `kind` field to a unique value only used
 by that tool, or used by that tool in collaboration with other compatible tools.
 At runtime, Swift Testing ignores test content records with unrecognized `kind`
 values. To reserve a new unique `kind` value, open a [GitHub issue](https://github.com/swiftlang/swift-testing/issues/new/choose)
-against Swift Testing.
+against Swift Testing. The value you reserve does not need to be representable
+as a [FourCC](https://en.wikipedia.org/wiki/FourCC) value, but it can be helpful
+for debugging purposes.
 
 The layout of third-party test content records must be compatible with that of
 `TestContentRecord` as specified above. Third-party tools are ultimately
@@ -213,3 +215,78 @@ TODO: elaborate further, give examples
 TODO: standardize a mechanism for third parties to produce `Test` instances
       since we don't have a public initializer for the `Test` type.
 -->
+
+## Discovering previously-emitted test content
+
+<!--
+TODO: add more detail here about how to set up a package 
+-->
+
+To add test content discovery support to your package, add a dependency on the
+`_TestDiscovery` module in the `swift-testing` package (not the copy of Swift
+Testing included with the Swift toolchain or Xcode), then import the module with
+SPI enabled:
+
+```swift
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) import _TestDiscovery
+```
+
+> [!IMPORTANT]
+> Don't add a dependency on the `swift-testing` package's `Testing` module. If
+> you add a dependency on this module, it will cause you to build and link Swift
+> Testing every time you build your package. You only need the `_TestDiscovery`
+> module in order to discover your own test content types.
+
+After importing `_TestDiscovery`, find the type in your module that should be
+discoverable at runtime and add conformance to the `DiscoverableAsTestContent`
+protocol:
+
+```swift
+extension FoodTruckDiagnostic: DiscoverableAsTestContent {
+  static var testContentKind: UInt32 { /* Your `kind` value here. */ }
+}
+```
+
+This type does not need to be publicly visible. However, if the values produced
+by your accessor functions are members of a public type, you may be able to
+simplify your code by using the same type.
+
+If you have defined a custom `context` type other than `UInt`, you can specify
+it here by setting the associated `TestContentContext` type. If you have defined
+a custom `hint` type for your accessor functions, you can set
+`TestContentAccessorHint`:
+
+```swift
+extension FoodTruckDiagnostic: DiscoverableAsTestContent {
+  static var testContentKind: UInt32 { /* Your `kind` value here. */ }
+  
+  typealias TestContentContext = UnsafePointer<FoodTruck.Name>
+  typealias TestContentAccessorHint = String
+}
+```
+
+If you customize `TestContentContext`, be aware that the type you specify must
+have the same stride and alignment as `UInt`.
+
+When you are done configuring your type's protocol conformance, you can then
+enumerate all test content records matching it as instances of
+`TestContentRecord`.
+
+You can use the `context` property to access the `context` field of the record
+(as emitted into the test content section). The testing library will
+automatically cast the value of the field to an instance of `TestContentContext`
+for you.
+
+If you find a record you wish to resolve to an instance of your conforming type,
+call its `load()` function. `load()` calls the record's accessor function and,
+if you have set a hint type, lets you pass an optional instance of that type: 
+
+```swift
+for diagnosticRecord in FoodTruckDiagnostic.allTestContentRecords() {
+  if diagnosticRecord.context.pointee == .briansBranMuffins {
+    if let diagnostic = diagnosticRecord.load(withHint: "...") {
+      diagnostic.run()
+    }
+  }
+}
+```

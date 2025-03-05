@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) private import _TestDiscovery
 private import _TestingInternals
 
 extension Test {
@@ -18,7 +19,7 @@ extension Test {
   /// indirect `async` accessor function rather than directly producing
   /// instances of ``Test``, but functions are non-nominal types and cannot
   /// directly conform to protocols.
-  fileprivate struct Generator: TestContent, RawRepresentable {
+  fileprivate struct Generator: DiscoverableAsTestContent, RawRepresentable {
     static var testContentKind: UInt32 {
       0x74657374
     }
