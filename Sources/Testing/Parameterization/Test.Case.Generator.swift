@@ -62,7 +62,7 @@ extension Test.Case {
       // A beautiful hack to give us the right number of cases: iterate over a
       // collection containing a single Void value.
       self.init(sequence: CollectionOfOne(())) { _ in
-        Test.Case(arguments: [], body: testFunction)
+        Test.Case(body: testFunction)
       }
     }
 
@@ -257,7 +257,27 @@ extension Test.Case {
 
 extension Test.Case.Generator: Sequence {
   func makeIterator() -> some IteratorProtocol<Test.Case> {
-    _sequence.lazy.map(_mapElement).makeIterator()
+    sequence(state: (
+      iterator: _sequence.makeIterator(),
+      testCaseIDs: [Test.Case.ID: Int]()
+    )) { state in
+      guard let element = state.iterator.next() else {
+        return nil
+      }
+
+      var testCase = _mapElement(element)
+
+      // Store the original, unmodified test case ID. We're about to modify a
+      // property which affects it, and we want to update state based on the
+      // original one.
+      let testCaseID = testCase.id
+
+      // Ensure test cases with identical IDs each have a unique discriminator.
+      testCase.discriminator = state.testCaseIDs[testCaseID, default: 0]
+      state.testCaseIDs[testCaseID] = testCase.discriminator + 1
+
+      return testCase
+    }
   }
 
   var underestimatedCount: Int {

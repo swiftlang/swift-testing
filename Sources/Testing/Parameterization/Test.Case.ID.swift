@@ -15,27 +15,37 @@ extension Test.Case {
   /// parameterized test function. They are not necessarily unique across two
   /// different ``Test`` instances.
   @_spi(ForToolsIntegrationOnly)
-  public struct ID: Sendable, Equatable, Hashable {
+  public struct ID: Sendable {
     /// The IDs of the arguments of this instance's associated ``Test/Case``, in
     /// the order they appear in ``Test/Case/arguments``.
-    ///
-    /// The value of this property is `nil` if _any_ of the associated test
-    /// case's arguments has a `nil` ID.
-    public var argumentIDs: [Argument.ID]?
+    public var argumentIDs: [Argument.ID]
 
-    public init(argumentIDs: [Argument.ID]?) {
+    /// A number used to distinguish this test case from others associated with
+    /// the same test function whose arguments have the same ID.
+    ///
+    /// ## See Also
+    ///
+    /// - ``Test/Case/discriminator``
+    public var discriminator: Int
+
+    public init(argumentIDs: [Argument.ID], discriminator: Int) {
       self.argumentIDs = argumentIDs
+      self.discriminator = discriminator
+    }
+
+    /// Whether or not this test case ID is considered stable across successive
+    /// runs.
+    ///
+    /// The value of this property is `true` if all of the argument IDs for this
+    /// instance are stable, otherwise it is `false`.
+    public var isStable: Bool {
+      argumentIDs.allSatisfy(\.isStable)
     }
   }
 
   @_spi(ForToolsIntegrationOnly)
   public var id: ID {
-    let argumentIDs = arguments.compactMap(\.id)
-    guard argumentIDs.count == arguments.count else {
-      return ID(argumentIDs: nil)
-    }
-
-    return ID(argumentIDs: argumentIDs)
+    ID(argumentIDs: arguments.map(\.id), discriminator: discriminator)
   }
 }
 
@@ -43,22 +53,31 @@ extension Test.Case {
 
 extension Test.Case.ID: CustomStringConvertible {
   public var description: String {
-    "argumentIDs: \(String(describing: argumentIDs))"
+    "argumentIDs: \(argumentIDs), discriminator: \(discriminator)"
   }
 }
 
 // MARK: - Codable
 
-extension Test.Case.ID: Codable {}
+extension Test.Case.ID: Codable {
+  public init(from decoder: some Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
 
-// MARK: - Equatable
+    // The `argumentIDs` property was optional when this type was first
+    // introduced, and a `nil` value represented a non-stable test case ID.
+    // To maintain previous behavior, if this value is absent when decoding,
+    // default to a single argument ID marked as non-stable.
+    let argumentIDs = try container.decodeIfPresent([Test.Case.Argument.ID].self, forKey: .argumentIDs)
+      ?? [Test.Case.Argument.ID(bytes: [], isStable: false)]
 
-// We cannot safely implement Equatable for Test.Case because its values are
-// type-erased. It does conform to `Identifiable`, but its ID type is composed
-// of the IDs of its arguments, and those IDs are not always available (for
-// example, if the type of an argument is not Codable). Thus, we cannot check
-// for equality of test cases based on this, because if two test cases had
-// different arguments, but the type of those arguments is not Codable, they
-// both will have a `nil` ID and would incorrectly be considered equal.
-//
-// `Test.Case.ID` is Equatable, however.
+    // The `discriminator` property was added after this type was first
+    // introduced. It can safely default to zero when absent.
+    let discriminator = try container.decodeIfPresent(type(of: discriminator), forKey: .discriminator) ?? 0
+
+    self.init(argumentIDs: argumentIDs, discriminator: discriminator)
+  }
+}
+
+// MARK: - Equatable, Hashable
+
+extension Test.Case.ID: Hashable {}
