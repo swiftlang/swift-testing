@@ -6,13 +6,62 @@
 # See http://swift.org/LICENSE.txt for license information
 # See http://swift.org/CONTRIBUTORS.txt for Swift project authors
 
+# Returns the os name in a variable
+#
+# Usage:
+#   get_swift_host_os(result_var_name)
+#
+#
+# Sets ${result_var_name} with the converted OS name derived from
+# CMAKE_SYSTEM_NAME.
+function(get_swift_host_os result_var_name)
+  set(${result_var_name} ${SWIFT_SYSTEM_NAME} PARENT_SCOPE)
+endfunction()
+
+# Returns the path to the Swift Testing library installation directory
+#
+# Usage:
+#   get_swift_testing_install_lib_dir(type result_var_name)
+#
+# Arguments:
+#   type: The type of the library (STATIC_LIBRARY, SHARED_LIBRARY, or EXECUTABLE).
+#         Typically, the value of the TYPE target property.
+#   result_var_name: The name of the variable to set
+function(get_swift_testing_install_lib_dir type result_var_name)
+  get_swift_host_os(swift_os)
+  if(type STREQUAL STATIC_LIBRARY)
+    set(swift swift_static)
+  else()
+    set(swift swift)
+  endif()
+
+  if(APPLE)
+    set(${result_var_name} "lib/${swift}/${swift_os}/testing" PARENT_SCOPE)
+  else()
+    set(${result_var_name} "lib/${swift}/${swift_os}" PARENT_SCOPE)
+  endif()
+endfunction()
+
 function(_swift_testing_install_target module)
-  install(TARGETS ${module}
-    ARCHIVE DESTINATION "${SwiftTesting_INSTALL_LIBDIR}"
-    LIBRARY DESTINATION "${SwiftTesting_INSTALL_LIBDIR}"
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+  target_compile_options(${module} PRIVATE "-no-toolchain-stdlib-rpath")
+
+  if(APPLE)
+    set_target_properties(${module} PROPERTIES
+      INSTALL_RPATH "@loader_path/.."
+      INSTALL_REMOVE_ENVIRONMENT_RPATH ON)
+  else()
+    set_target_properties(${module} PROPERTIES
+      INSTALL_RPATH "$ORIGIN"
+      INSTALL_REMOVE_ENVIRONMENT_RPATH ON)
+  endif()
 
   get_target_property(type ${module} TYPE)
+  get_swift_testing_install_lib_dir(${type} lib_destination_dir)
+
+  install(TARGETS ${module}
+    ARCHIVE DESTINATION "${lib_destination_dir}"
+    LIBRARY DESTINATION "${lib_destination_dir}"
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
   if(type STREQUAL EXECUTABLE)
     return()
   endif()
@@ -22,7 +71,18 @@ function(_swift_testing_install_target module)
     set(module_name ${module})
   endif()
 
-  set(module_dir ${SwiftTesting_INSTALL_SWIFTMODULEDIR}/${module_name}.swiftmodule)
+  if(NOT SwiftTesting_MODULE_TRIPLE)
+    set(module_triple_command "${CMAKE_Swift_COMPILER}" -print-target-info)
+    if(CMAKE_Swift_COMPILER_TARGET)
+      list(APPEND module_triple_command -target ${CMAKE_Swift_COMPILER_TARGET})
+    endif()
+    execute_process(COMMAND ${module_triple_command} OUTPUT_VARIABLE target_info_json)
+    string(JSON module_triple GET "${target_info_json}" "target" "moduleTriple")
+    set(SwiftTesting_MODULE_TRIPLE "${module_triple}" CACHE STRING "swift module triple used for installed swiftmodule and swiftinterface files")
+    mark_as_advanced(SwiftTesting_MODULE_TRIPLE)
+  endif()
+
+  set(module_dir "${lib_destination_dir}/${module_name}.swiftmodule")
   install(FILES $<TARGET_PROPERTY:${module},Swift_MODULE_DIRECTORY>/${module_name}.swiftdoc
     DESTINATION "${module_dir}"
     RENAME ${SwiftTesting_MODULE_TRIPLE}.swiftdoc)
@@ -44,6 +104,9 @@ endfunction()
 #   swiftcrossimport_dir: The path to the source .swiftcrossimport directory
 #     which will be installed.
 function(_swift_testing_install_swiftcrossimport module swiftcrossimport_dir)
+  get_target_property(type ${module} TYPE)
+  get_swift_testing_install_lib_dir(${type} lib_destination_dir)
+
   install(DIRECTORY "${swiftcrossimport_dir}"
-    DESTINATION "${SwiftTesting_INSTALL_SWIFTMODULEDIR}")
+    DESTINATION "${lib_destination_dir}")
 endfunction()
