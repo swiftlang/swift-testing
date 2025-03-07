@@ -223,10 +223,9 @@ private import _TestingInternals
 ///   - nameSubstring: A string which the names of matching classes all contain.
 ///
 /// - Returns: A sequence of Swift types whose names contain `nameSubstring`.
-///
-/// - Warning: Do not adopt this functionality in new code. It is for use by
-///   Swift Testing along its legacy discovery codepath only.
-package func types(withNamesContaining nameSubstring: String) -> some Sequence<Any.Type> {
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+@available(swift, deprecated: 100000.0, message: "Do not adopt this functionality in new code. It will be removed in a future release.")
+public func types(withNamesContaining nameSubstring: String) -> some Sequence<Any.Type> {
   SectionBounds.all(.typeMetadata).lazy.flatMap { sb in
     stride(from: sb.buffer.baseAddress!, to: sb.buffer.baseAddress! + sb.buffer.count, by: SWTTypeMetadataRecordByteCount).lazy
       .compactMap { swt_getType(fromTypeMetadataRecord: $0, ifNameContains: nameSubstring) }
