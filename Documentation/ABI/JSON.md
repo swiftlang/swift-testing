@@ -13,7 +13,7 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 This document outlines the JSON schemas used by the testing library for its ABI
 entry point and for the `--event-stream-output-path` command-line argument. For
 more information about the ABI entry point, see the documentation for
-[ABI.v0.EntryPoint](https://github.com/search?q=repo%3Aapple%2Fswift-testing%EntryPoint&type=code).
+[ABI.v0.EntryPoint](https://github.com/search?q=repo%3Aswiftlang%2Fswift-testing%20EntryPoint&type=code).
 
 ## Modified Backus-Naur form
 
