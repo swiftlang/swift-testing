@@ -87,7 +87,7 @@ func mentionedContinents(videoName: String) async throws {
 Swift Testing works on all major platforms supported by Swift, including Apple
 platforms, Linux, and Windows, so your tests can behave more consistently when
 moving between platforms. It’s developed as open source and discussed on the
-[Swift Forums](https://forums.swift.org/c/related-projects/swift-testing) so the
+[Swift Forums](https://forums.swift.org/c/development/swift-testing/103) so the
 very best ideas, from anywhere, can help shape the future of testing in Swift.
 
 The table below describes the current level of support that Swift Testing has
