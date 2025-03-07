@@ -397,7 +397,7 @@ Wherever possible, prefer to use Swift concurrency to validate asynchronous
 conditions. For example, if it's necessary to determine the result of an
 asynchronous Swift function, it can be awaited with `await`. For a function that
 takes a completion handler but which doesn't use `await`, a Swift
-[continuation](https://developer.apple.com/documentation/swift/withcheckedcontinuation(function:_:))
+[continuation](https://developer.apple.com/documentation/swift/withcheckedcontinuation(isolation:function:_:))
 can be used to convert the call into an `async`-compatible one.
 
 Some tests, especially those that test asynchronously-delivered events, cannot
