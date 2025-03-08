@@ -43,50 +43,76 @@ public protocol CustomTestArgumentEncodable: Sendable {
   func encodeTestArgument(to encoder: some Encoder) throws
 }
 
+/// Get the best encodable representation of a test argument value, if any.
+///
+/// - Parameters:
+///   - value: The value for which an encodable representation is requested.
+///
+/// - Returns: The best encodable representation of `value`, if one is available,
+///   otherwise `nil`.
+///
+/// For a description of the heuristics used to obtain an encodable
+/// representation of an argument value, see <doc:ParameterizedTesting>.
+func encodableArgumentValue(for value: some Sendable) -> (any Encodable)? {
+#if canImport(Foundation)
+  // Helper for opening an existential.
+  func customArgumentWrapper(for value: some CustomTestArgumentEncodable) -> some Encodable {
+    _CustomArgumentWrapper(rawValue: value)
+  }
+
+  return if let customEncodable = value as? any CustomTestArgumentEncodable {
+    customArgumentWrapper(for: customEncodable)
+  } else if let rawRepresentable = value as? any RawRepresentable, let encodableRawValue = rawRepresentable.rawValue as? any Encodable {
+    encodableRawValue
+  } else if let encodable = value as? any Encodable {
+    encodable
+  } else if let identifiable = value as? any Identifiable, let encodableID = identifiable.id as? any Encodable {
+    encodableID
+  } else {
+    nil
+  }
+#else
+  return nil
+#endif
+}
+
 extension Test.Case.Argument.ID {
   /// Initialize this instance with an ID for the specified test argument.
   ///
   /// - Parameters:
   ///   - value: The value of a test argument for which to get an ID.
+  ///   - encodableValue: An encodable representation of `value`, if any, with
+  ///     which to attempt to encode a stable representation.
   ///   - parameter: The parameter of the test function to which this argument
   ///     value was passed.
   ///
-  /// - Returns: `nil` if an ID cannot be formed from the specified test
-  ///   argument value.
-  ///
-  /// - Throws: Any error encountered while attempting to encode `value`.
+  /// If a representation of `value` can be successfully encoded, the value of
+  /// this instance's `bytes` property will be the the bytes of that encoded
+  /// JSON representation and the value of its `isStable` property will be
+  /// `true`. Otherwise, the value of its `bytes` property will be the bytes of
+  /// a textual description of `value` and the value of `isStable` will be
+  /// `false` to reflect that the representation is not considered stable.
   ///
   /// This function is not part of the public interface of the testing library.
   ///
   /// ## See Also
   ///
   /// - ``CustomTestArgumentEncodable``
-  init?(identifying value: some Sendable, parameter: Test.Parameter) throws {
+  init(identifying value: some Sendable, encodableValue: (any Encodable)?, parameter: Test.Parameter) {
 #if canImport(Foundation)
-    func customArgumentWrapper(for value: some CustomTestArgumentEncodable) -> some Encodable {
-      _CustomArgumentWrapper(rawValue: value)
+    if let encodableValue {
+      do {
+        self = .init(bytes: try Self._encode(encodableValue, parameter: parameter), isStable: true)
+        return
+      } catch {
+        // FIXME: Capture the error and propagate to the user, not as a test
+        // failure but as an advisory warning. A missing argument ID will
+        // prevent re-running the test case, but is not a blocking issue.
+      }
     }
-
-    let encodableValue: (any Encodable)? = if let customEncodable = value as? any CustomTestArgumentEncodable {
-      customArgumentWrapper(for: customEncodable)
-    } else if let rawRepresentable = value as? any RawRepresentable, let encodableRawValue = rawRepresentable.rawValue as? any Encodable {
-      encodableRawValue
-    } else if let encodable = value as? any Encodable {
-      encodable
-    } else if let identifiable = value as? any Identifiable, let encodableID = identifiable.id as? any Encodable {
-      encodableID
-    } else {
-      nil
-    }
-
-    guard let encodableValue else {
-      return nil
-    }
-
-    self = .init(bytes: try Self._encode(encodableValue, parameter: parameter))
-#else
-    nil
 #endif
+
+    self = .init(bytes: String(describingForTest: value).utf8, isStable: false)
   }
 
 #if canImport(Foundation)
