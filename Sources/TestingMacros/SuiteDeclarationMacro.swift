@@ -11,6 +11,10 @@
 public import SwiftSyntax
 public import SwiftSyntaxMacros
 
+#if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY
+#error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand @Suite")
+#endif
+
 /// A type describing the expansion of the `@Suite` attribute macro.
 ///
 /// This type is used to implement the `@Suite` attribute macro. Do not use it
@@ -127,6 +131,50 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
     // Parse the @Suite attribute.
     let attributeInfo = AttributeInfo(byParsing: suiteAttribute, on: declaration, in: context)
 
+    let generatorName = context.makeUniqueName("generator")
+    result.append(
+      """
+      @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
+      @Sendable private static func \(generatorName)() async -> Testing.Test {
+        .__type(
+          \(declaration.type.trimmed).self,
+          \(raw: attributeInfo.functionArgumentList(in: context))
+        )
+      }
+      """
+    )
+
+#if hasFeature(SymbolLinkageMarkers)
+    let accessorName = context.makeUniqueName("accessor")
+    let accessorDecl: DeclSyntax = """
+    @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
+    private static let \(accessorName): Testing.__TestContentRecordAccessor = { outValue, type, _ in
+      Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
+    }
+    """
+
+    let testContentRecordDecl = makeTestContentRecordDecl(
+      named: context.makeUniqueName("testContentRecord"),
+      in: declaration.type,
+      ofKind: .testDeclaration,
+      accessingWith: accessorName,
+      context: attributeInfo.testContentRecordFlags
+    )
+
+    result.append(
+      """
+      #if hasFeature(SymbolLinkageMarkers)
+      \(accessorDecl)
+
+      \(testContentRecordDecl)
+      #endif
+      """
+    )
+#endif
+
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+    // Emit a legacy type declaration if SymbolLinkageMarkers is off.
+    //
     // The emitted type must be public or the compiler can optimize it away
     // (since it is not actually used anywhere that the compiler can see.)
     //
@@ -143,16 +191,14 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
       enum \(enumName): Testing.__TestContainer {
         static var __tests: [Testing.Test] {
-          get async {[
-            .__type(
-              \(declaration.type.trimmed).self,
-              \(raw: attributeInfo.functionArgumentList(in: context))
-            )
-          ]}
+          get async {
+            [await \(generatorName)()]
+          }
         }
       }
       """
     )
+#endif
 
     return result
   }

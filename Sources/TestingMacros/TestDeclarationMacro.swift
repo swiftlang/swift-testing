@@ -11,6 +11,10 @@
 public import SwiftSyntax
 public import SwiftSyntaxMacros
 
+#if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY
+#error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand @Test")
+#endif
+
 /// A type describing the expansion of the `@Test` attribute macro.
 ///
 /// This type is used to implement the `@Test` attribute macro. Do not use it
@@ -188,17 +192,6 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     return FunctionParameterClauseSyntax(parameters: parameterList)
   }
 
-  /// The `static` keyword, if `typeName` is not `nil`.
-  ///
-  /// - Parameters:
-  ///   - typeName: The name of the type containing the macro being expanded.
-  ///
-  /// - Returns: A token representing the `static` keyword, or one representing
-  ///   nothing if `typeName` is `nil`.
-  private static func _staticKeyword(for typeName: TypeSyntax?) -> TokenSyntax {
-    (typeName != nil) ? .keyword(.static) : .unknown("")
-  }
-
   /// Create a thunk function with a normalized signature that calls a
   /// developer-supplied test function.
   ///
@@ -356,7 +349,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     let thunkName = context.makeUniqueName(thunking: functionDecl)
     let thunkDecl: DeclSyntax = """
     @available(*, deprecated, message: "This function is an implementation detail of the testing library. Do not use it directly.")
-    @Sendable private \(_staticKeyword(for: typeName)) func \(thunkName)\(thunkParamsExpr) async throws -> Void {
+    @Sendable private \(staticKeyword(for: typeName)) func \(thunkName)\(thunkParamsExpr) async throws -> Void {
       \(thunkBody)
     }
     """
@@ -421,16 +414,14 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
 
     // Create the expression that returns the Test instance for the function.
     var testsBody: CodeBlockItemListSyntax = """
-    return [
-      .__function(
-        named: \(literal: functionDecl.completeName.trimmedDescription),
-        in: \(typeNameExpr),
-        xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
-        \(raw: attributeInfo.functionArgumentList(in: context)),
-        parameters: \(raw: functionDecl.testFunctionParameterList),
-        testFunction: \(thunkDecl.name)
-      )
-    ]
+    return .__function(
+      named: \(literal: functionDecl.completeName.trimmedDescription),
+      in: \(typeNameExpr),
+      xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
+      \(raw: attributeInfo.functionArgumentList(in: context)),
+      parameters: \(raw: functionDecl.testFunctionParameterList),
+      testFunction: \(thunkDecl.name)
+    )
     """
 
     // If this function has arguments, then it can only be referenced (let alone
@@ -446,16 +437,14 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       result.append(
         """
         @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-        private \(_staticKeyword(for: typeName)) nonisolated func \(unavailableTestName)() async -> [Testing.Test] {
-          [
-            .__function(
-              named: \(literal: functionDecl.completeName.trimmedDescription),
-              in: \(typeNameExpr),
-              xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
-              \(raw: attributeInfo.functionArgumentList(in: context)),
-              testFunction: {}
-            )
-          ]
+        private \(staticKeyword(for: typeName)) nonisolated func \(unavailableTestName)() async -> Testing.Test {
+          .__function(
+            named: \(literal: functionDecl.completeName.trimmedDescription),
+            in: \(typeNameExpr),
+            xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
+            \(raw: attributeInfo.functionArgumentList(in: context)),
+            testFunction: {}
+          )
         }
         """
       )
@@ -470,6 +459,47 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       )
     }
 
+    let generatorName = context.makeUniqueName(thunking: functionDecl, withPrefix: "generator")
+    result.append(
+      """
+      @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
+      @Sendable private \(staticKeyword(for: typeName)) func \(generatorName)() async -> Testing.Test {
+        \(raw: testsBody)
+      }
+      """
+    )
+
+#if hasFeature(SymbolLinkageMarkers)
+    let accessorName = context.makeUniqueName(thunking: functionDecl, withPrefix: "accessor")
+    let accessorDecl: DeclSyntax = """
+    @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
+    private \(staticKeyword(for: typeName)) let \(accessorName): Testing.__TestContentRecordAccessor = { outValue, type, _ in
+      Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
+    }
+    """
+
+    let testContentRecordDecl = makeTestContentRecordDecl(
+      named: context.makeUniqueName(thunking: functionDecl, withPrefix: "testContentRecord"),
+      in: typeName,
+      ofKind: .testDeclaration,
+      accessingWith: accessorName,
+      context: attributeInfo.testContentRecordFlags
+    )
+
+    result.append(
+      """
+      #if hasFeature(SymbolLinkageMarkers)
+      \(accessorDecl)
+
+      \(testContentRecordDecl)
+      #endif
+      """
+    )
+#endif
+
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+    // Emit a legacy type declaration if SymbolLinkageMarkers is off.
+    //
     // The emitted type must be public or the compiler can optimize it away
     // (since it is not actually used anywhere that the compiler can see.)
     //
@@ -487,12 +517,13 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       enum \(enumName): Testing.__TestContainer {
         static var __tests: [Testing.Test] {
           get async {
-            \(raw: testsBody)
+            [await \(generatorName)()]
           }
         }
       }
       """
     )
+#endif
 
     return result
   }

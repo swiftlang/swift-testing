@@ -212,6 +212,7 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
   }
 }
 
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
 // MARK: - Legacy test content discovery
 
 private import _TestingInternals
@@ -232,3 +233,4 @@ public func types(withNamesContaining nameSubstring: String) -> some Sequence<An
       .map { unsafeBitCast($0, to: Any.Type.self) }
   }
 }
+#endif

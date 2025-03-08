@@ -10,12 +10,13 @@
 
 private import _TestingInternals
 
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
 /// A protocol describing a type that contains tests.
 ///
 /// - Warning: This protocol is used to implement the `@Test` macro. Do not use
 ///   it directly.
 @_alwaysEmitConformanceMetadata
-public protocol __TestContainer {
+public protocol __TestContainer: Sendable {
   /// The set of tests contained by this type.
   static var __tests: [Test] { get async }
 }
@@ -31,7 +32,7 @@ let testContainerTypeNameMagic = "__🟠$test_container__"
 ///   macro. Do not use it directly.
 @_alwaysEmitConformanceMetadata
 @_spi(Experimental)
-public protocol __ExitTestContainer {
+public protocol __ExitTestContainer: Sendable {
   /// The unique identifier of the exit test.
   static var __id: (UInt64, UInt64) { get }
 
@@ -42,4 +43,5 @@ public protocol __ExitTestContainer {
 /// A string that appears within all auto-generated types conforming to the
 /// `__ExitTestContainer` protocol.
 let exitTestContainerTypeNameMagic = "__🟠$exit_test_body__"
+#endif
 #endif
