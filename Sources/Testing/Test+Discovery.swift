@@ -19,7 +19,7 @@ extension Test {
   /// indirect `async` accessor function rather than directly producing
   /// instances of ``Test``, but functions are non-nominal types and cannot
   /// directly conform to protocols.
-  fileprivate struct Generator: DiscoverableAsTestContent, RawRepresentable {
+  struct Generator: DiscoverableAsTestContent, RawRepresentable {
     static var testContentKind: UInt32 {
       0x74657374
     }
@@ -93,7 +93,21 @@ extension Test {
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
       // Perform legacy test discovery if needed.
       if useLegacyMode && result.isEmpty {
-        let types = types(withNamesContaining: testContainerTypeNameMagic).lazy
+        let generators = Generator.allTypeMetadataBasedTestContentRecords().lazy.compactMap { $0.load() }
+        await withTaskGroup(of: Self.self) { taskGroup in
+          for generator in generators {
+            taskGroup.addTask { await generator.rawValue() }
+          }
+          result = await taskGroup.reduce(into: result) { $0.insert($1) }
+        }
+      }
+
+#if SWT_TARGET_OS_APPLE
+      // If we still didn't find any tests, try checking for tests emitted using
+      // Xcode 16's mechanism (which differs from the generalized mechanism
+      // above based on test content records.)
+      if useLegacyMode && result.isEmpty {
+        let types = types(withNamesContaining: "__🟠$test_container__").lazy
           .compactMap { $0 as? any __TestContainer.Type }
         await withTaskGroup(of: [Self].self) { taskGroup in
           for type in types {
@@ -104,6 +118,7 @@ extension Test {
           result = await taskGroup.reduce(into: result) { $0.formUnion($1) }
         }
       }
+#endif
 #endif
 
       return result

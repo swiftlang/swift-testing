@@ -454,7 +454,6 @@ extension ExitTestConditionMacro {
       """
     )
 
-#if hasFeature(SymbolLinkageMarkers)
     // Create a local type that can be discovered at runtime and which contains
     // the exit test body.
     let enumName = context.makeUniqueName("")
@@ -466,10 +465,9 @@ extension ExitTestConditionMacro {
     )
     decls.append(
       """
-      #if hasFeature(SymbolLinkageMarkers)
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
       enum \(enumName) {
-        private static let accessor: Testing.__TestContentRecordAccessor = { outValue, type, hint in
+        private nonisolated static let accessor: Testing.__TestContentRecordAccessor = { outValue, type, hint in
           Testing.ExitTest.__store(
             \(exitTestIDExpr),
             \(bodyThunkName),
@@ -481,23 +479,18 @@ extension ExitTestConditionMacro {
 
         \(testContentRecordDecl)
       }
-      #endif
       """
     )
-#endif
 
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
-    // Emit a legacy type declaration if SymbolLinkageMarkers is off.
-    let legacyEnumName = context.makeUniqueName("__🟠$exit_test_body__")
+    // Emit a legacy type declaration.
+    let legacyClassName = context.makeUniqueName("__🟠$exit_test_body__")
     decls.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-      enum \(legacyEnumName): Testing.__ExitTestContainer {
-        static var __id: (Swift.UInt64, Swift.UInt64) {
-          \(exitTestIDExpr)
-        }
-        static var __body: @Sendable () async throws -> Swift.Void {
-          \(bodyThunkName)
+      final class \(legacyClassName): Testing.__TestContentRecordContainer {
+        override nonisolated class var __testContentRecord: Testing.__TestContentRecord {
+          \(enumName).testContentRecord
         }
       }
       """

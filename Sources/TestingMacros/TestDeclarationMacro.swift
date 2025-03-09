@@ -471,54 +471,36 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
 
 #if hasFeature(SymbolLinkageMarkers)
     let accessorName = context.makeUniqueName(thunking: functionDecl, withPrefix: "accessor")
-    let accessorDecl: DeclSyntax = """
-    @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-    private \(staticKeyword(for: typeName)) let \(accessorName): Testing.__TestContentRecordAccessor = { outValue, type, _ in
-      Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
-    }
-    """
-
-    let testContentRecordDecl = makeTestContentRecordDecl(
-      named: context.makeUniqueName(thunking: functionDecl, withPrefix: "testContentRecord"),
-      in: typeName,
-      ofKind: .testDeclaration,
-      accessingWith: accessorName,
-      context: attributeInfo.testContentRecordFlags
-    )
-
     result.append(
       """
-      #if hasFeature(SymbolLinkageMarkers)
-      \(accessorDecl)
-
-      \(testContentRecordDecl)
-      #endif
+      @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
+      private \(staticKeyword(for: typeName)) nonisolated let \(accessorName): Testing.__TestContentRecordAccessor = { outValue, type, _ in
+        Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
+      }
       """
+    )
+
+    let testContentRecordName = context.makeUniqueName(thunking: functionDecl, withPrefix: "testContentRecord")
+    result.append(
+      makeTestContentRecordDecl(
+        named: testContentRecordName,
+        in: typeName,
+        ofKind: .testDeclaration,
+        accessingWith: accessorName,
+        context: attributeInfo.testContentRecordFlags
+      )
     )
 #endif
 
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
-    // Emit a legacy type declaration if SymbolLinkageMarkers is off.
-    //
-    // The emitted type must be public or the compiler can optimize it away
-    // (since it is not actually used anywhere that the compiler can see.)
-    //
-    // The emitted type must be deprecated to avoid causing warnings in client
-    // code since it references the test function thunk, which is itself
-    // deprecated to allow test functions to validate deprecated APIs. The
-    // emitted type is also annotated unavailable, since it's meant only for use
-    // by the testing library at runtime. The compiler does not allow combining
-    // 'unavailable' and 'deprecated' into a single availability attribute:
-    // rdar://111329796
-    let enumName = context.makeUniqueName(thunking: functionDecl, withPrefix: "__🟠$test_container__function__")
+    // Emit a legacy type declaration.
+    let legacyClassName = context.makeUniqueName(thunking: functionDecl, withPrefix: "__🟠$test_container__function__")
     result.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-      enum \(enumName): Testing.__TestContainer {
-        static var __tests: [Testing.Test] {
-          get async {
-            [await \(generatorName)()]
-          }
+      private final class \(legacyClassName): Testing.__TestContentRecordContainer {
+        override nonisolated class var __testContentRecord: Testing.__TestContentRecord {
+          \(testContentRecordName)
         }
       }
       """

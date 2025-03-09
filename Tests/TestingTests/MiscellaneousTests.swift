@@ -665,7 +665,7 @@ struct MiscellaneousTests {
   }
 #endif
 
-#if !SWT_NO_LEGACY_TEST_DISCOVERY && hasFeature(SymbolLinkageMarkers)
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
   @Test("Legacy test discovery finds the same number of tests") func discoveredTestCount() async {
     let oldFlag = Environment.variable(named: "SWT_USE_LEGACY_TEST_DISCOVERY")
     defer {

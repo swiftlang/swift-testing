@@ -146,54 +146,36 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
 
 #if hasFeature(SymbolLinkageMarkers)
     let accessorName = context.makeUniqueName("accessor")
-    let accessorDecl: DeclSyntax = """
-    @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-    private static let \(accessorName): Testing.__TestContentRecordAccessor = { outValue, type, _ in
-      Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
-    }
-    """
-
-    let testContentRecordDecl = makeTestContentRecordDecl(
-      named: context.makeUniqueName("testContentRecord"),
-      in: declaration.type,
-      ofKind: .testDeclaration,
-      accessingWith: accessorName,
-      context: attributeInfo.testContentRecordFlags
-    )
-
     result.append(
       """
-      #if hasFeature(SymbolLinkageMarkers)
-      \(accessorDecl)
-
-      \(testContentRecordDecl)
-      #endif
+      @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
+      private nonisolated static let \(accessorName): Testing.__TestContentRecordAccessor = { outValue, type, _ in
+        Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
+      }
       """
+    )
+
+    let testContentRecordName = context.makeUniqueName("testContentRecord")
+    result.append(
+      makeTestContentRecordDecl(
+        named: testContentRecordName,
+        in: declaration.type,
+        ofKind: .testDeclaration,
+        accessingWith: accessorName,
+        context: attributeInfo.testContentRecordFlags
+      )
     )
 #endif
 
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
-    // Emit a legacy type declaration if SymbolLinkageMarkers is off.
-    //
-    // The emitted type must be public or the compiler can optimize it away
-    // (since it is not actually used anywhere that the compiler can see.)
-    //
-    // The emitted type must be deprecated to avoid causing warnings in client
-    // code since it references the suite metatype, which may be deprecated
-    // to allow test functions to validate deprecated APIs. The emitted type is
-    // also annotated unavailable, since it's meant only for use by the testing
-    // library at runtime. The compiler does not allow combining 'unavailable'
-    // and 'deprecated' into a single availability attribute: rdar://111329796
-    let typeName = declaration.type.tokens(viewMode: .fixedUp).map(\.textWithoutBackticks).joined()
-    let enumName = context.makeUniqueName("__🟠$test_container__suite__\(typeName)")
+    // Emit a legacy type declaration.
+    let legacyClassName = context.makeUniqueName("__🟠$test_container__suite__")
     result.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-      enum \(enumName): Testing.__TestContainer {
-        static var __tests: [Testing.Test] {
-          get async {
-            [await \(generatorName)()]
-          }
+      private final class \(legacyClassName): Testing.__TestContentRecordContainer {
+        override nonisolated class var __testContentRecord: Testing.__TestContentRecord {
+          \(testContentRecordName)
         }
       }
       """

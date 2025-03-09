@@ -8,40 +8,55 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _TestingInternals
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) internal import _TestDiscovery
 
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
+/// An abstract base class describing a type that contains tests.
+///
+/// - Warning: This class is used to implement the `@Test` macro. Do not use it
+///   directly.
+open class __TestContentRecordContainer {
+  /// The corresponding test content record.
+  ///
+  /// - Warning: This property is used to implement the `@Test` macro. Do not
+  ///   use it directly.
+  open nonisolated class var __testContentRecord: __TestContentRecord {
+    fatalError("Unimplemented")
+  }
+}
+
+@available(*, unavailable)
+extension __TestContentRecordContainer: Sendable {}
+
+// MARK: -
+
+extension DiscoverableAsTestContent where Self: ~Copyable {
+  /// Get all test content of this type known to Swift and found in the current
+  /// process using the legacy discovery mechanism.
+  ///
+  /// - Returns: A sequence of instances of ``TestContentRecord``. Only test
+  ///   content records matching this ``TestContent`` type's requirements are
+  ///   included in the sequence.
+  static func allTypeMetadataBasedTestContentRecords() -> AnySequence<TestContentRecord<Self>> {
+    allTestContentRecords(inSubclassesOf: __TestContentRecordContainer.self) { `class`, outRecord in
+      outRecord.withMemoryRebound(to: __TestContentRecord.self, capacity: 1) { outRecord in
+        outRecord.initialize(to: `class`.__testContentRecord)
+      }
+      return true
+    }
+  }
+}
+
+#if SWT_TARGET_OS_APPLE
+// MARK: - Xcode 16 compatibility
+
 /// A protocol describing a type that contains tests.
 ///
-/// - Warning: This protocol is used to implement the `@Test` macro. Do not use
-///   it directly.
+/// This protocol is used by tests emitted by Xcode 16.
 @_alwaysEmitConformanceMetadata
-public protocol __TestContainer: Sendable {
+@usableFromInline protocol __TestContainer {
   /// The set of tests contained by this type.
   static var __tests: [Test] { get async }
 }
-
-/// A string that appears within all auto-generated types conforming to the
-/// `__TestContainer` protocol.
-let testContainerTypeNameMagic = "__🟠$test_container__"
-
-#if !SWT_NO_EXIT_TESTS
-/// A protocol describing a type that contains an exit test.
-///
-/// - Warning: This protocol is used to implement the `#expect(exitsWith:)`
-///   macro. Do not use it directly.
-@_alwaysEmitConformanceMetadata
-@_spi(Experimental)
-public protocol __ExitTestContainer: Sendable {
-  /// The unique identifier of the exit test.
-  static var __id: (UInt64, UInt64) { get }
-
-  /// The body function of the exit test.
-  static var __body: @Sendable () async throws -> Void { get }
-}
-
-/// A string that appears within all auto-generated types conforming to the
-/// `__ExitTestContainer` protocol.
-let exitTestContainerTypeNameMagic = "__🟠$exit_test_body__"
 #endif
 #endif

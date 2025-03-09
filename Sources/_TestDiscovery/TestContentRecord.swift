@@ -83,13 +83,40 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent & ~Copyabl
   ///   with interfaces such as `dlsym()` that expect such a pointer.
   public private(set) nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
 
-  /// The address of the underlying test content record loaded from a metadata
-  /// section.
-  private nonisolated(unsafe) var _recordAddress: UnsafePointer<_TestContentRecord>
+  /// A type defining storage for the underlying test content record.
+  private enum _RecordStorage: @unchecked Sendable {
+    /// The test content record is stored by address.
+    case atAddress(UnsafePointer<_TestContentRecord>)
+
+    /// The test content record is stored in-place.
+    case inline(_TestContentRecord)
+  }
+
+  /// Storage for `_record`.
+  private var _recordStorage: _RecordStorage
+
+  /// The underlying test content record.
+  private var _record: _TestContentRecord {
+    _read {
+      switch _recordStorage {
+      case let .atAddress(recordAddress):
+        yield recordAddress.pointee
+      case let .inline(record):
+        yield record
+      }
+    }
+  }
 
   fileprivate init(imageAddress: UnsafeRawPointer?, recordAddress: UnsafePointer<_TestContentRecord>) {
+    precondition(recordAddress.pointee.kind == T.testContentKind)
     self.imageAddress = imageAddress
-    self._recordAddress = recordAddress
+    self._recordStorage = .atAddress(recordAddress)
+  }
+
+  fileprivate init(imageAddress: UnsafeRawPointer?, record: _TestContentRecord) {
+    precondition(record.kind == T.testContentKind)
+    self.imageAddress = imageAddress
+    self._recordStorage = .inline(record)
   }
 
   /// The type of the ``context`` property.
@@ -98,7 +125,7 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent & ~Copyabl
   /// The context of this test content record.
   public var context: Context {
     T.validateMemoryLayout()
-    return withUnsafeBytes(of: _recordAddress.pointee.context) { context in
+    return withUnsafeBytes(of: _record.context) { context in
       context.load(as: Context.self)
     }
   }
@@ -120,7 +147,7 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent & ~Copyabl
   /// than once on the same instance, the testing library calls the underlying
   /// test content record's accessor function each time.
   public func load(withHint hint: Hint? = nil) -> T? {
-    guard let accessor = _recordAddress.pointee.accessor else {
+    guard let accessor = _record.accessor else {
       return nil
     }
 
@@ -176,11 +203,16 @@ extension TestContentRecord: CustomStringConvertible {
     let kind = Self._asciiKind.map { asciiKind in
       "'\(asciiKind)' (\(hexKind))"
     } ?? hexKind
-    let recordAddress = imageAddress.map { imageAddress in
-      let recordAddressDelta = UnsafeRawPointer(_recordAddress) - imageAddress
-      return "\(imageAddress)+0x\(String(recordAddressDelta, radix: 16))"
-    } ?? "\(_recordAddress)"
-    return "<\(typeName) \(recordAddress)> { kind: \(kind), context: \(context) }"
+    switch _recordStorage {
+    case let .atAddress(recordAddress):
+      let recordAddress = imageAddress.map { imageAddress in
+        let recordAddressDelta = UnsafeRawPointer(recordAddress) - imageAddress
+        return "\(imageAddress)+0x\(String(recordAddressDelta, radix: 16))"
+      } ?? "\(recordAddress)"
+      return "<\(typeName) \(recordAddress)> { kind: \(kind), context: \(context) }"
+    case .inline:
+      return "<\(typeName)> { kind: \(kind), context: \(context) }"
+    }
   }
 }
 
@@ -217,6 +249,57 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
 
 private import _TestingInternals
 
+extension DiscoverableAsTestContent where Self: ~Copyable {
+  /// Get all test content of this type known to Swift and found in the current
+  /// process using the legacy discovery mechanism.
+  ///
+  /// - Parameters:
+  ///   - baseClass: A class to which discovered types must conform.
+  ///   - recordLoader: A function which is invoked once per discovered class to
+  ///     produce a test content record from it. The function should initialize
+  ///     the memory at the pointer passed to it to a test content record value.
+  ///
+  /// - Returns: A sequence of instances of ``TestContentRecord``. Only test
+  ///   content records matching this ``TestContent`` type's requirements are
+  ///   included in the sequence.
+  ///
+  /// @Comment {
+  ///   - Bug: This function returns an instance of `AnySequence` instead of an
+  ///     opaque type due to a compiler crash. ([143080508](rdar://143080508))
+  /// }
+  @available(swift, deprecated: 100000.0, message: "Do not adopt this functionality in new code. It will be removed in a future release.")
+  public static func allTestContentRecords<C>(
+    inSubclassesOf baseClass: C.Type,
+    loadingWith recordLoader: @escaping (_ class: C.Type, _ outTestContentRecord: UnsafeMutableRawPointer) -> Bool
+  ) -> AnySequence<TestContentRecord<Self>> where C: AnyObject {
+    validateMemoryLayout()
+
+    // Curry `recordLoader` into something more easily used with `compactMap()`.
+    let recordLoader: (C.Type) -> _TestContentRecord? = { `class` in
+      withUnsafeTemporaryAllocation(of: _TestContentRecord.self, capacity: 1) { record in
+        guard recordLoader(`class`, record.baseAddress!) else {
+          return nil
+        }
+        return record.baseAddress!.move()
+      }
+    }
+
+    let result = SectionBounds.all(.typeMetadata).lazy.flatMap { sb in
+      stride(from: sb.buffer.baseAddress!, to: sb.buffer.baseAddress! + sb.buffer.count, by: SWTTypeMetadataRecordByteCount).lazy
+        .compactMap { swt_getType(fromTypeMetadataRecord: $0, ifNameContains: "__🟠$") }
+        .map { unsafeBitCast($0, to: Any.Type.self) }
+        .compactMap { $0 as? C.Type }
+        .compactMap { recordLoader($0) }
+        .filter { $0.kind == testContentKind }
+        .map { TestContentRecord<Self>(imageAddress: sb.imageAddress, record: $0) }
+    }
+    return AnySequence(result)
+  }
+}
+
+#if SWT_TARGET_OS_APPLE
+// MARK: - Xcode 16 compatibility
+
 /// Get all types known to Swift found in the current process whose names
 /// contain a given substring.
 ///
@@ -234,4 +317,5 @@ package func types(withNamesContaining nameSubstring: String) -> some Sequence<A
       .map { unsafeBitCast($0, to: Any.Type.self) }
   }
 }
+#endif
 #endif
