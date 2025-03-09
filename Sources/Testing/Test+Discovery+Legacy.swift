@@ -8,38 +8,35 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _TestingInternals
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) internal import _TestDiscovery
 
-/// A protocol describing a type that contains tests.
+/// A shadow declaration of `_TestDiscovery.TestContentRecordContainer` that
+/// allows us to add public conformances to it without causing the
+/// `_TestDiscovery` module to appear in `Testing.private.swiftinterface`.
 ///
-/// - Warning: This protocol is used to implement the `@Test` macro. Do not use
-///   it directly.
-@_alwaysEmitConformanceMetadata
-public protocol __TestContainer {
-  /// The set of tests contained by this type.
-  static var __tests: [Test] { get async }
+/// This protocol is not part of the public interface of the testing library.
+protocol TestContentRecordContainer: _TestDiscovery.TestContentRecordContainer {}
+
+/// An abstract base class describing a type that contains tests.
+///
+/// - Warning: This class is used to implement the `@Test` macro. Do not use it
+///   directly.
+open class __TestContentRecordContainer: TestContentRecordContainer {
+  /// The corresponding test content record.
+  ///
+  /// - Warning: This property is used to implement the `@Test` macro. Do not
+  ///   use it directly.
+  open nonisolated class var __testContentRecord: __TestContentRecord {
+    (0, 0, nil, 0, 0)
+  }
+
+  static func storeTestContentRecord(to outTestContentRecord: UnsafeMutableRawPointer) -> Bool {
+    outTestContentRecord.withMemoryRebound(to: __TestContentRecord.self, capacity: 1) { outTestContentRecord in
+      outTestContentRecord.initialize(to: __testContentRecord)
+      return true
+    }
+  }
 }
 
-/// A string that appears within all auto-generated types conforming to the
-/// `__TestContainer` protocol.
-let testContainerTypeNameMagic = "__🟠$test_container__"
-
-#if !SWT_NO_EXIT_TESTS
-/// A protocol describing a type that contains an exit test.
-///
-/// - Warning: This protocol is used to implement the `#expect(exitsWith:)`
-///   macro. Do not use it directly.
-@_alwaysEmitConformanceMetadata
-@_spi(Experimental)
-public protocol __ExitTestContainer {
-  /// The unique identifier of the exit test.
-  static var __id: (UInt64, UInt64) { get }
-
-  /// The body function of the exit test.
-  static var __body: @Sendable () async throws -> Void { get }
-}
-
-/// A string that appears within all auto-generated types conforming to the
-/// `__ExitTestContainer` protocol.
-let exitTestContainerTypeNameMagic = "__🟠$exit_test_body__"
-#endif
+@available(*, unavailable)
+extension __TestContentRecordContainer: Sendable {}

@@ -244,6 +244,40 @@ extension ExitTest: DiscoverableAsTestContent {
   }
 
   typealias TestContentAccessorHint = ID
+
+  /// Store the exit test into the given memory.
+  ///
+  /// - Parameters:
+  ///   - outValue: The uninitialized memory to store the exit test into.
+  ///   - id: The unique identifier of the exit test to store.
+  ///   - body: The body closure of the exit test to store.
+  ///   - typeAddress: A pointer to the expected type of the exit test as passed
+  ///     to the test content record calling this function.
+  ///   - hintAddress: A pointer to an instance of ``ID`` to use as a hint.
+  ///
+  /// - Returns: Whether or not an exit test was stored into `outValue`.
+  ///
+  /// - Warning: This function is used to implement the `#expect(exitsWith:)`
+  ///   macro. Do not use it directly.
+  public static func __store(
+    _ id: (UInt64, UInt64),
+    _ body: @escaping @Sendable () async throws -> Void,
+    into outValue: UnsafeMutableRawPointer,
+    asTypeAt typeAddress: UnsafeRawPointer,
+    withHintAt hintAddress: UnsafeRawPointer? = nil
+  ) -> CBool {
+    let callerExpectedType = TypeInfo(describing: typeAddress.load(as: Any.Type.self))
+    let selfType = TypeInfo(describing: Self.self)
+    guard callerExpectedType == selfType else {
+      return false
+    }
+    let id = ID(id)
+    if let hintedID = hintAddress?.load(as: ID.self), hintedID != id {
+      return false
+    }
+    outValue.initializeMemory(as: Self.self, to: Self(id: id, body: body))
+    return true
+  }
 }
 
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
@@ -262,15 +296,14 @@ extension ExitTest {
       }
     }
 
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
     // Call the legacy lookup function that discovers tests embedded in types.
-    return types(withNamesContaining: exitTestContainerTypeNameMagic).lazy
-      .compactMap { $0 as? any __ExitTestContainer.Type }
-      .first { ID($0.__id) == id }
-      .map { ExitTest(id: ID($0.__id), body: $0.__body) }
-#else
+    for record in Self.allTypeMetadataBasedTestContentRecords() {
+      if let exitTest = record.load(withHint: id) {
+        return exitTest
+      }
+    }
+
     return nil
-#endif
   }
 }
 

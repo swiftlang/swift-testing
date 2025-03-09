@@ -19,12 +19,36 @@ extension Test {
   /// indirect `async` accessor function rather than directly producing
   /// instances of ``Test``, but functions are non-nominal types and cannot
   /// directly conform to protocols.
-  fileprivate struct Generator: DiscoverableAsTestContent, RawRepresentable {
+  struct Generator: DiscoverableAsTestContent, RawRepresentable {
     static var testContentKind: UInt32 {
       0x74657374
     }
 
     var rawValue: @Sendable () async -> Test
+  }
+
+  /// Store the test generator function into the given memory.
+  ///
+  /// - Parameters:
+  ///   - generator: The generator function to store.
+  ///   - outValue: The uninitialized memory to store `generator` into.
+  ///   - typeAddress: A pointer to the expected type of `generator` as passed
+  ///     to the test content record calling this function.
+  ///
+  /// - Returns: Whether or not `generator` was stored into `outValue`.
+  ///
+  /// - Warning: This function is used to implement the `@Test` macro. Do not
+  ///   use it directly.
+  public static func __store(
+    _ generator: @escaping @Sendable () async -> Test,
+    into outValue: UnsafeMutableRawPointer,
+    asTypeAt typeAddress: UnsafeRawPointer
+  ) -> CBool {
+    guard typeAddress.load(as: Any.Type.self) == Generator.self else {
+      return false
+    }
+    outValue.initializeMemory(as: Generator.self, to: .init(rawValue: generator))
+    return true
   }
 
   /// All available ``Test`` instances in the process, according to the runtime.
@@ -64,15 +88,12 @@ extension Test {
 
       // Perform legacy test discovery if needed.
       if useLegacyMode && result.isEmpty {
-        let types = types(withNamesContaining: testContainerTypeNameMagic).lazy
-          .compactMap { $0 as? any __TestContainer.Type }
-        await withTaskGroup(of: [Self].self) { taskGroup in
-          for type in types {
-            taskGroup.addTask {
-              await type.__tests
-            }
+        let generators = Generator.allTypeMetadataBasedTestContentRecords().lazy.compactMap { $0.load() }
+        await withTaskGroup(of: Self.self) { taskGroup in
+          for generator in generators {
+            taskGroup.addTask { await generator.rawValue() }
           }
-          result = await taskGroup.reduce(into: result) { $0.formUnion($1) }
+          result = await taskGroup.reduce(into: result) { $0.insert($1) }
         }
       }
 

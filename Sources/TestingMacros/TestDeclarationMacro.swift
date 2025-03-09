@@ -28,7 +28,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     let functionDecl = declaration.cast(FunctionDeclSyntax.self)
     let typeName = context.typeOfLexicalContext
 
-    return _createTestContainerDecls(for: functionDecl, on: typeName, testAttribute: node, in: context)
+    return _createTestDecls(for: functionDecl, on: typeName, testAttribute: node, in: context)
   }
 
   public static var formatMode: FormatMode {
@@ -364,8 +364,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     return thunkDecl.cast(FunctionDeclSyntax.self)
   }
 
-  /// Create a declaration for a type that conforms to the `__TestContainer`
-  /// protocol and which contains a test for the given function.
+  /// Create the declarations necessary to discover a test at runtime.
   ///
   /// - Parameters:
   ///   - functionDecl: The function declaration the result should encapsulate.
@@ -376,7 +375,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
   ///
   /// - Returns: An array of declarations providing runtime information about
   ///   the test function `functionDecl`.
-  private static func _createTestContainerDecls(
+  private static func _createTestDecls(
     for functionDecl: FunctionDeclSyntax,
     on typeName: TypeSyntax?,
     testAttribute: AttributeSyntax,
@@ -421,16 +420,14 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
 
     // Create the expression that returns the Test instance for the function.
     var testsBody: CodeBlockItemListSyntax = """
-    return [
-      .__function(
-        named: \(literal: functionDecl.completeName.trimmedDescription),
-        in: \(typeNameExpr),
-        xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
-        \(raw: attributeInfo.functionArgumentList(in: context)),
-        parameters: \(raw: functionDecl.testFunctionParameterList),
-        testFunction: \(thunkDecl.name)
-      )
-    ]
+    return .__function(
+      named: \(literal: functionDecl.completeName.trimmedDescription),
+      in: \(typeNameExpr),
+      xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
+      \(raw: attributeInfo.functionArgumentList(in: context)),
+      parameters: \(raw: functionDecl.testFunctionParameterList),
+      testFunction: \(thunkDecl.name)
+    )
     """
 
     // If this function has arguments, then it can only be referenced (let alone
@@ -446,16 +443,14 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       result.append(
         """
         @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-        private \(_staticKeyword(for: typeName)) nonisolated func \(unavailableTestName)() async -> [Testing.Test] {
-          [
-            .__function(
-              named: \(literal: functionDecl.completeName.trimmedDescription),
-              in: \(typeNameExpr),
-              xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
-              \(raw: attributeInfo.functionArgumentList(in: context)),
-              testFunction: {}
-            )
-          ]
+        private \(staticKeyword(for: typeName)) nonisolated func \(unavailableTestName)() async -> Testing.Test {
+          .__function(
+            named: \(literal: functionDecl.completeName.trimmedDescription),
+            in: \(typeNameExpr),
+            xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
+            \(raw: attributeInfo.functionArgumentList(in: context)),
+            testFunction: {}
+          )
         }
         """
       )
@@ -470,25 +465,45 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       )
     }
 
-    // The emitted type must be public or the compiler can optimize it away
-    // (since it is not actually used anywhere that the compiler can see.)
-    //
-    // The emitted type must be deprecated to avoid causing warnings in client
-    // code since it references the test function thunk, which is itself
-    // deprecated to allow test functions to validate deprecated APIs. The
-    // emitted type is also annotated unavailable, since it's meant only for use
-    // by the testing library at runtime. The compiler does not allow combining
-    // 'unavailable' and 'deprecated' into a single availability attribute:
-    // rdar://111329796
-    let enumName = context.makeUniqueName(thunking: functionDecl, withPrefix: "__🟠$test_container__function__")
+    let generatorName = context.makeUniqueName(thunking: functionDecl, withPrefix: "generator")
+    result.append(
+      """
+      @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
+      @Sendable private \(staticKeyword(for: typeName)) func \(generatorName)() async -> Testing.Test {
+        \(raw: testsBody)
+      }
+      """
+    )
+
+    let accessorName = context.makeUniqueName(thunking: functionDecl, withPrefix: "accessor")
+    result.append(
+      """
+      @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
+      private \(staticKeyword(for: typeName)) nonisolated let \(accessorName): Testing.__TestContentRecordAccessor = { outValue, type, _ in
+        Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
+      }
+      """
+    )
+
+    let testContentRecordName = context.makeUniqueName(thunking: functionDecl, withPrefix: "testContentRecord")
+    result.append(
+      makeTestContentRecordDecl(
+        named: testContentRecordName,
+        in: typeName,
+        ofKind: .testDeclaration,
+        accessingWith: accessorName,
+        context: attributeInfo.testContentRecordFlags
+      )
+    )
+
+    // Emit a type that contains a reference to the test content record.
+    let className = context.makeUniqueName(thunking: functionDecl, withPrefix: "__🟠$")
     result.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-      enum \(enumName): Testing.__TestContainer {
-        static var __tests: [Testing.Test] {
-          get async {
-            \(raw: testsBody)
-          }
+      private final class \(className): Testing.__TestContentRecordContainer {
+        override nonisolated class var __testContentRecord: Testing.__TestContentRecord {
+          \(testContentRecordName)
         }
       }
       """
