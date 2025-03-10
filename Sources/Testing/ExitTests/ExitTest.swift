@@ -248,9 +248,9 @@ extension ExitTest: DiscoverableAsTestContent {
   /// Store the exit test into the given memory.
   ///
   /// - Parameters:
-  ///   - outValue: The uninitialized memory to store the exit test into.
   ///   - id: The unique identifier of the exit test to store.
   ///   - body: The body closure of the exit test to store.
+  ///   - outValue: The uninitialized memory to store the exit test into.
   ///   - typeAddress: A pointer to the expected type of the exit test as passed
   ///     to the test content record calling this function.
   ///   - hintAddress: A pointer to an instance of ``ID`` to use as a hint.

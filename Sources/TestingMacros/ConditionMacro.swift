@@ -452,7 +452,7 @@ extension ExitTestConditionMacro {
 
     // Create a local type that can be discovered at runtime and which contains
     // the exit test body.
-    let className = context.makeUniqueName("__🟠$")
+    let className = context.makeUniqueName("__🟡$")
     let testContentRecordDecl = makeTestContentRecordDecl(
       named: .identifier("testContentRecord"),
       in: TypeSyntax(IdentifierTypeSyntax(name: className)),

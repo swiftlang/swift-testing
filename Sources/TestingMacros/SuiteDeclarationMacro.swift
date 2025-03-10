@@ -161,7 +161,7 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
     )
 
     // Emit a type that contains a reference to the test content record.
-    let className = context.makeUniqueName("__🟠$")
+    let className = context.makeUniqueName("__🟡$")
     result.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")

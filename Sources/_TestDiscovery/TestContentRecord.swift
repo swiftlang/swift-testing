@@ -336,7 +336,7 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
 
     let result = SectionBounds.all(.typeMetadata).lazy.flatMap { sb in
       stride(from: sb.buffer.baseAddress!, to: sb.buffer.baseAddress! + sb.buffer.count, by: SWTTypeMetadataRecordByteCount).lazy
-        .compactMap { swt_getType(fromTypeMetadataRecord: $0, ifNameContains: "__🟠$") }
+        .compactMap { swt_getType(fromTypeMetadataRecord: $0, ifNameContains: "__🟡$") }
         .map { unsafeBitCast($0, to: Any.Type.self) }
         .compactMap { $0 as? any TestContentRecordContainer.Type }
         .compactMap { _makeTestContentRecord(from: $0, in: sb) }

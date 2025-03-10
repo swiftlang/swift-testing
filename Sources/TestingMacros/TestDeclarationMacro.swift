@@ -497,7 +497,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     )
 
     // Emit a type that contains a reference to the test content record.
-    let className = context.makeUniqueName(thunking: functionDecl, withPrefix: "__🟠$")
+    let className = context.makeUniqueName(thunking: functionDecl, withPrefix: "__🟡$")
     result.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
