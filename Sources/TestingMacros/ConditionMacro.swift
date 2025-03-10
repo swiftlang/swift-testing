@@ -452,16 +452,32 @@ extension ExitTestConditionMacro {
 
     // Create a local type that can be discovered at runtime and which contains
     // the exit test body.
-    let enumName = context.makeUniqueName("__🟠$exit_test_body__")
+    let className = context.makeUniqueName("__🟡$")
+    let testContentRecordDecl = makeTestContentRecordDecl(
+      named: .identifier("testContentRecord"),
+      in: TypeSyntax(IdentifierTypeSyntax(name: className)),
+      ofKind: .exitTest,
+      accessingWith: .identifier("accessor")
+    )
+
     decls.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-      enum \(enumName): Testing.__ExitTestContainer, Sendable {
-        static var __id: (Swift.UInt64, Swift.UInt64) {
-          \(exitTestIDExpr)
+      final class \(className): Testing.__TestContentRecordContainer {
+        private nonisolated static let accessor: Testing.__TestContentRecordAccessor = { outValue, type, hint in
+          Testing.ExitTest.__store(
+            \(exitTestIDExpr),
+            \(bodyThunkName),
+            into: outValue,
+            asTypeAt: type,
+            withHintAt: hint
+          )
         }
-        static var __body: @Sendable () async throws -> Void {
-          \(bodyThunkName)
+
+        \(testContentRecordDecl)
+
+        override nonisolated class var __testContentRecord: Testing.__TestContentRecord {
+          testContentRecord
         }
       }
       """

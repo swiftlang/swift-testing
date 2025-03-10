@@ -87,6 +87,7 @@ target_sources(TestingMacros PRIVATE
   Support/Additions/DeclGroupSyntaxAdditions.swift
   Support/Additions/EditorPlaceholderExprSyntaxAdditions.swift
   Support/Additions/FunctionDeclSyntaxAdditions.swift
+  Support/Additions/IntegerLiteralExprSyntaxAdditions.swift
   Support/Additions/MacroExpansionContextAdditions.swift
   Support/Additions/TokenSyntaxAdditions.swift
   Support/Additions/TriviaPieceAdditions.swift
@@ -103,6 +104,7 @@ target_sources(TestingMacros PRIVATE
   Support/DiagnosticMessage+Diagnosing.swift
   Support/SourceCodeCapturing.swift
   Support/SourceLocationGeneration.swift
+  Support/TestContentGeneration.swift
   TagMacro.swift
   TestDeclarationMacro.swift
   TestingMacrosMain.swift)
