@@ -171,8 +171,12 @@ extension Test.Case {
   /// - Parameters:
   ///   - includeTypeNames: Whether the qualified type name of each argument's
   ///     runtime type should be included. Defaults to `false`.
+  ///
+  /// - Returns: A string containing the arguments of this test case formatted
+  ///   for presentation, or an empty string if this test cases is
+  ///   non-parameterized.
   fileprivate func labeledArguments(includingQualifiedTypeNames includeTypeNames: Bool = false) -> String {
-    arguments.lazy
+    (arguments ?? []).lazy
       .map { argument in
         let valueDescription = String(describingForTest: argument.value)
 
@@ -494,14 +498,14 @@ extension Event.HumanReadableOutputRecorder {
       return result
 
     case .testCaseStarted:
-      guard let testCase = eventContext.testCase, testCase.isParameterized else {
+      guard let testCase = eventContext.testCase, testCase.isParameterized, let arguments = testCase.arguments else {
         break
       }
 
       return [
         Message(
           symbol: .default,
-          stringValue: "Passing \(testCase.arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName)"
+          stringValue: "Passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName)"
         )
       ]
 

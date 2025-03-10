@@ -15,6 +15,29 @@ extension Test {
   /// Tests that are _not_ parameterized map to a single instance of
   /// ``Test/Case``.
   public struct Case: Sendable {
+    /// An enumeration describing the various kinds of test cases.
+    private enum _Kind: Sendable {
+      /// A test case associated with a non-parameterized test function.
+      ///
+      /// There is only one test case with this kind associated with each
+      /// non-parameterized test function.
+      case nonParameterized
+
+      /// A test case associated with a parameterized test function, including
+      /// the argument(s) it was passed and a discriminator.
+      ///
+      /// - Parameters:
+      ///   - arguments: The arguments passed to the parameterized test function
+      ///     this test case is associated with.
+      ///   - discriminator: A number used to distinguish this test case from
+      ///     others associated with the same parameterized test function whose
+      ///     arguments have the same ID.
+      case parameterized(arguments: [Argument], discriminator: Int)
+    }
+
+    /// The kind of this test case.
+    private var _kind: _Kind
+
     /// A type representing an argument passed to a parameter of a parameterized
     /// test function.
     @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
@@ -78,7 +101,7 @@ extension Test {
       }
     }
 
-    /// The arguments passed to this test case.
+    /// The arguments passed to this test case, if any.
     ///
     /// If the argument was a tuple but its elements were passed to distinct
     /// parameters of the test function, each element of the tuple will be
@@ -88,13 +111,19 @@ extension Test {
     /// represented as one ``Argument`` instance.
     ///
     /// Non-parameterized test functions will have a single test case instance,
-    /// and the value of this property will be an empty array for such test
-    /// cases.
+    /// and the value of this property will be `nil` for such test cases.
     @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-    public var arguments: [Argument]
+    public var arguments: [Argument]? {
+      switch _kind {
+      case .nonParameterized:
+        nil
+      case let .parameterized(arguments, _):
+        arguments
+      }
+    }
 
     /// A number used to distinguish this test case from others associated with
-    /// the same test function whose arguments have the same ID.
+    /// the same parameterized test function whose arguments have the same ID.
     ///
     /// As an example, imagine the same argument is passed more than once to a
     /// parameterized test:
@@ -111,9 +140,35 @@ extension Test {
     /// The value of this property for successive runs of the same test are not
     /// guaranteed to be the same. The value of this property may be equal for
     /// two test cases associated with the same test if the IDs of their
-    /// arguments are different.
+    /// arguments are different. The value of this property is `nil` for the
+    /// single test case associated with a non-parameterized test function.
     @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-    public var discriminator: Int = 0
+    public internal(set) var discriminator: Int? {
+      get {
+        switch _kind {
+        case .nonParameterized:
+          nil
+        case let .parameterized(_, discriminator):
+          discriminator
+        }
+      }
+      set {
+        switch _kind {
+        case .nonParameterized:
+          precondition(newValue == nil, "A non-nil discriminator may only be set for a test case which is parameterized.")
+        case let .parameterized(arguments, _):
+          guard let newValue else {
+            preconditionFailure("A nil discriminator may only be set for a test case which is not parameterized.")
+          }
+          _kind = .parameterized(arguments: arguments, discriminator: newValue)
+        }
+      }
+    }
+
+    private init(kind: _Kind, body: @escaping @Sendable () async throws -> Void) {
+      self._kind = kind
+      self.body = body
+    }
 
     /// Initialize a test case for a non-parameterized test function.
     ///
@@ -122,8 +177,7 @@ extension Test {
     ///
     /// The resulting test case will have zero arguments.
     init(body: @escaping @Sendable () async throws -> Void) {
-      self.arguments = []
-      self.body = body
+      self.init(kind: .nonParameterized, body: body)
     }
 
     /// Initialize a test case by pairing values with their corresponding
@@ -157,15 +211,20 @@ extension Test {
         nil
       }
 
-      self.arguments = zip(values.enumerated(), parameters).map { value, parameter in
+      let arguments = zip(values.enumerated(), parameters).map { value, parameter in
         Argument(value: value.1, encodableValue: encodableValues?[value.0], parameter: parameter)
       }
-      self.body = body
+      self.init(kind: .parameterized(arguments: arguments, discriminator: 0), body: body)
     }
 
     /// Whether or not this test case is from a parameterized test.
     public var isParameterized: Bool {
-      !arguments.isEmpty
+      switch _kind {
+      case .nonParameterized:
+        false
+      case .parameterized:
+        true
+      }
     }
 
     /// The body closure of this test case.
@@ -272,7 +331,7 @@ extension Test.Case {
     ///   - testCase: The original test case to snapshot.
     public init(snapshotting testCase: borrowing Test.Case) {
       id = testCase.id
-      arguments = testCase.arguments.map(Test.Case.Argument.Snapshot.init)
+      arguments = (testCase.arguments ?? []).map(Test.Case.Argument.Snapshot.init)
     }
   }
 }

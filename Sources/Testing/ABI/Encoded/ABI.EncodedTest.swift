@@ -124,9 +124,13 @@ extension ABI {
     var displayName: String
 
     init(encoding testCase: borrowing Test.Case) {
+      guard let arguments = testCase.arguments else {
+        preconditionFailure("Attempted to initialize an EncodedTestCase encoding a test case which is not parameterized: \(testCase)")
+      }
+
       // TODO: define an encodable form of Test.Case.ID
       id = String(describing: testCase.id)
-      displayName = testCase.arguments.lazy
+      displayName = arguments.lazy
         .map(\.value)
         .map(String.init(describingForTest:))
         .joined(separator: ", ")

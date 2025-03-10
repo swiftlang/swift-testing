@@ -267,14 +267,17 @@ extension Test.Case.Generator: Sequence {
 
       var testCase = _mapElement(element)
 
-      // Store the original, unmodified test case ID. We're about to modify a
-      // property which affects it, and we want to update state based on the
-      // original one.
-      let testCaseID = testCase.id
+      if testCase.isParameterized {
+        // Store the original, unmodified test case ID. We're about to modify a
+        // property which affects it, and we want to update state based on the
+        // original one.
+        let testCaseID = testCase.id
 
-      // Ensure test cases with identical IDs each have a unique discriminator.
-      testCase.discriminator = state.testCaseIDs[testCaseID, default: 0]
-      state.testCaseIDs[testCaseID] = testCase.discriminator + 1
+        // Ensure test cases with identical IDs each have a unique discriminator.
+        let discriminator = state.testCaseIDs[testCaseID, default: 0]
+        testCase.discriminator = discriminator
+        state.testCaseIDs[testCaseID] = discriminator + 1
+      }
 
       return testCase
     }

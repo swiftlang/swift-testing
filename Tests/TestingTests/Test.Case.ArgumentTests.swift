@@ -19,10 +19,10 @@ struct Test_Case_ArgumentTests {
       guard case .testCaseStarted = event.kind else {
         return
       }
-      let testCase = try #require(context.testCase)
-      try #require(testCase.arguments.count == 1)
+      let arguments = try #require(context.testCase?.arguments)
+      try #require(arguments.count == 1)
 
-      let argument = testCase.arguments[0]
+      let argument = arguments[0]
       #expect(argument.value as? String == "value")
       #expect(argument.parameter.index == 0)
       #expect(argument.parameter.firstName == "x")
@@ -38,17 +38,17 @@ struct Test_Case_ArgumentTests {
       guard case .testCaseStarted = event.kind else {
         return
       }
-      let testCase = try #require(context.testCase)
-      try #require(testCase.arguments.count == 2)
+      let arguments = try #require(context.testCase?.arguments)
+      try #require(arguments.count == 2)
 
       do {
-        let argument = testCase.arguments[0]
+        let argument = arguments[0]
         #expect(argument.value as? String == "value")
         #expect(argument.parameter.index == 0)
         #expect(argument.parameter.firstName == "x")
       }
       do {
-        let argument = testCase.arguments[1]
+        let argument = arguments[1]
         #expect(argument.value as? Int == 123)
         #expect(argument.parameter.index == 1)
         #expect(argument.parameter.firstName == "y")
@@ -65,10 +65,10 @@ struct Test_Case_ArgumentTests {
       guard case .testCaseStarted = event.kind else {
         return
       }
-      let testCase = try #require(context.testCase)
-      try #require(testCase.arguments.count == 1)
+      let arguments = try #require(context.testCase?.arguments)
+      try #require(arguments.count == 1)
 
-      let argument = testCase.arguments[0]
+      let argument = arguments[0]
       #expect(argument.value as? (String) == ("value"))
       #expect(argument.parameter.index == 0)
       #expect(argument.parameter.firstName == "x")
@@ -84,10 +84,10 @@ struct Test_Case_ArgumentTests {
       guard case .testCaseStarted = event.kind else {
         return
       }
-      let testCase = try #require(context.testCase)
-      try #require(testCase.arguments.count == 1)
+      let arguments = try #require(context.testCase?.arguments)
+      try #require(arguments.count == 1)
 
-      let argument = testCase.arguments[0]
+      let argument = arguments[0]
       let value = try #require(argument.value as? (String, Int))
       #expect(value.0 == "value")
       #expect(value.1 == 123)
@@ -105,17 +105,17 @@ struct Test_Case_ArgumentTests {
       guard case .testCaseStarted = event.kind else {
         return
       }
-      let testCase = try #require(context.testCase)
-      try #require(testCase.arguments.count == 2)
+      let arguments = try #require(context.testCase?.arguments)
+      try #require(arguments.count == 2)
 
       do {
-        let argument = testCase.arguments[0]
+        let argument = arguments[0]
         #expect(argument.value as? String == "value")
         #expect(argument.parameter.index == 0)
         #expect(argument.parameter.firstName == "x")
       }
       do {
-        let argument = testCase.arguments[1]
+        let argument = arguments[1]
         #expect(argument.value as? Int == 123)
         #expect(argument.parameter.index == 1)
         #expect(argument.parameter.firstName == "y")
@@ -132,10 +132,10 @@ struct Test_Case_ArgumentTests {
       guard case .testCaseStarted = event.kind else {
         return
       }
-      let testCase = try #require(context.testCase)
-      try #require(testCase.arguments.count == 1)
+      let arguments = try #require(context.testCase?.arguments)
+      try #require(arguments.count == 1)
 
-      let argument = testCase.arguments[0]
+      let argument = arguments[0]
       let value = try #require(argument.value as? (String, Int))
       #expect(value.0 == "value")
       #expect(value.1 == 123)

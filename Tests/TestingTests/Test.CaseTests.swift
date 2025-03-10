@@ -19,7 +19,8 @@ struct Test_CaseTests {
       body: {}
     )
     #expect(testCase.id.isStable)
-    #expect(testCase.arguments.allSatisfy { $0.id.isStable })
+    let arguments = try #require(testCase.arguments)
+    #expect(arguments.allSatisfy { $0.id.isStable })
   }
 
   @Test func twoStableArguments() throws {
@@ -32,7 +33,8 @@ struct Test_CaseTests {
       body: {}
     )
     #expect(testCase.id.isStable)
-    #expect(testCase.arguments.allSatisfy { $0.id.isStable })
+    let arguments = try #require(testCase.arguments)
+    #expect(arguments.allSatisfy { $0.id.isStable })
   }
 
   @Test("Two arguments: one non-stable, followed by one stable")
@@ -46,7 +48,8 @@ struct Test_CaseTests {
       body: {}
     )
     #expect(!testCase.id.isStable)
-    #expect(testCase.arguments.allSatisfy { !$0.id.isStable })
+    let arguments = try #require(testCase.arguments)
+    #expect(arguments.allSatisfy { !$0.id.isStable })
   }
 }
 
