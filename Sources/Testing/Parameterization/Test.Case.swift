@@ -26,38 +26,56 @@ extension Test {
         /// The raw bytes of this instance's identifier.
         public var bytes: [UInt8]
 
-        public init(bytes: [UInt8]) {
-          self.bytes = bytes
-        }
-      }
+        /// Whether or not this argument ID is considered stable across
+        /// successive runs.
+        ///
+        /// If the value of this property is `true`, the testing library can use
+        /// this ID to deterministically match against the original argument
+        /// it represents, and a user can selectively (re-)run that argument
+        /// of the associated parameterized test. If it is `false`, that
+        /// functionality is not supported for the argument this ID represents.
+        public var isStable: Bool
 
-      /// The ID of this parameterized test argument, if any.
-      ///
-      /// The uniqueness of this value is narrow: it is considered unique only
-      /// within the scope of the parameter of the test function this argument
-      /// was passed to.
-      ///
-      /// The value of this property is `nil` when an ID cannot be formed. This
-      /// may occur if the type of ``value`` does not conform to one of the
-      /// protocols used for encoding a stable and unique representation of the
-      /// value.
-      ///
-      /// ## See Also
-      ///
-      /// - ``CustomTestArgumentEncodable``
-      @_spi(ForToolsIntegrationOnly)
-      public var id: ID? {
-        // FIXME: Capture the error and propagate to the user, not as a test
-        // failure but as an advisory warning. A missing argument ID will
-        // prevent re-running the test case, but is not a blocking issue.
-        try? Argument.ID(identifying: value, parameter: parameter)
+        public init(bytes: some Sequence<UInt8>, isStable: Bool) {
+          self.bytes = Array(bytes)
+          self.isStable = isStable
+        }
       }
 
       /// The value of this parameterized test argument.
       public var value: any Sendable
 
+      /// The ID of this parameterized test argument.
+      ///
+      /// The uniqueness of this value is narrow: it is considered unique only
+      /// within the scope of the parameter of the test function this argument
+      /// was passed to.
+      ///
+      /// ## See Also
+      ///
+      /// - ``CustomTestArgumentEncodable``
+      public var id: ID
+
       /// The parameter of the test function to which this argument was passed.
       public var parameter: Parameter
+
+      /// Initialize an instance of this type representing the specified
+      /// argument value.
+      ///
+      /// - Parameters:
+      ///   - value: The value of this parameterized test argument.
+      ///   - encodableValue: An encodable representation of `value`, if one is
+      ///     available. When non-`nil`, this is used to attempt to form a
+      ///     stable identifier.
+      ///   - parameter: The parameter of the test function to which this
+      ///     argument was passed.
+      ///
+      /// This forms an ``ID`` identifying `value` using `encodableValue`.
+      init(value: any Sendable, encodableValue: (any Encodable)?, parameter: Parameter) {
+        self.value = value
+        self.id = .init(identifying: value, encodableValue: encodableValue, parameter: parameter)
+        self.parameter = parameter
+      }
     }
 
     /// The arguments passed to this test case.
@@ -75,11 +93,36 @@ extension Test {
     @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
     public var arguments: [Argument]
 
-    init(
-      arguments: [Argument],
-      body: @escaping @Sendable () async throws -> Void
-    ) {
-      self.arguments = arguments
+    /// A number used to distinguish this test case from others associated with
+    /// the same test function whose arguments have the same ID.
+    ///
+    /// As an example, imagine the same argument is passed more than once to a
+    /// parameterized test:
+    ///
+    /// ```swift
+    /// @Test(arguments: [1, 1])
+    /// func example(x: Int) { ... }
+    /// ```
+    ///
+    /// There will be two ``Test/Case`` instances associated with this test
+    /// function. Each will represent one instance of the repeated argument `1`,
+    /// and each will have a different value for this property.
+    ///
+    /// The value of this property for successive runs of the same test are not
+    /// guaranteed to be the same. The value of this property may be equal for
+    /// two test cases associated with the same test if the IDs of their
+    /// arguments are different.
+    @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+    public var discriminator: Int = 0
+
+    /// Initialize a test case for a non-parameterized test function.
+    ///
+    /// - Parameters:
+    ///   - body: The body closure of this test case.
+    ///
+    /// The resulting test case will have zero arguments.
+    init(body: @escaping @Sendable () async throws -> Void) {
+      self.arguments = []
       self.body = body
     }
 
@@ -95,10 +138,29 @@ extension Test {
       parameters: [Parameter],
       body: @escaping @Sendable () async throws -> Void
     ) {
-      let arguments = zip(values, parameters).map { value, parameter in
-        Argument(value: value, parameter: parameter)
+      // Attempt to obtain an encodable representation of each value in order
+      // to construct a stable ID.
+      let encodingResult = values.reduce(into: ([any Encodable](), hasFailure: false)) { result, value in
+        // If we couldn't get an encodable representation of one of the values,
+        // give up and mark the overall attempt as a failure. This allows
+        // skipping unnecessary encoding work later: if any individual argument
+        // doesn't have a stable ID, the Test.Case.ID can't be considered stable,
+        // so there's no point encoding the values which _are_ encodable.
+        guard !result.hasFailure, let encodableValue = encodableArgumentValue(for: value) else {
+          return result.hasFailure = true
+        }
+        result.0.append(encodableValue)
       }
-      self.init(arguments: arguments, body: body)
+      let encodableValues: [any Encodable]? = if !encodingResult.hasFailure {
+        encodingResult.0
+      } else {
+        nil
+      }
+
+      self.arguments = zip(values.enumerated(), parameters).map { value, parameter in
+        Argument(value: value.1, encodableValue: encodableValues?[value.0], parameter: parameter)
+      }
+      self.body = body
     }
 
     /// Whether or not this test case is from a parameterized test.
@@ -156,9 +218,31 @@ extension Test {
 // MARK: - Codable
 
 extension Test.Parameter: Codable {}
-extension Test.Case.Argument.ID: Codable {}
+extension Test.Case.Argument.ID: Codable {
+  public init(from decoder: some Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+
+    // The `isStable` property was added after this type was introduced.
+    // Previously, only stable argument IDs were ever encoded, so if we're
+    // attempting to decode one, we can safely assume it is stable.
+    let isStable = try container.decodeIfPresent(type(of: isStable), forKey: .isStable) ?? true
+
+    let bytes = try container.decode(type(of: bytes), forKey: .bytes)
+    self.init(bytes: bytes, isStable: isStable)
+  }
+}
 
 // MARK: - Equatable, Hashable
+
+extension Test.Case: Hashable {
+  public static func ==(lhs: Test.Case, rhs: Test.Case) -> Bool {
+    lhs.id == rhs.id
+  }
+
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(id)
+  }
+}
 
 extension Test.Parameter: Hashable {}
 extension Test.Case.Argument.ID: Hashable {}
@@ -197,8 +281,8 @@ extension Test.Case.Argument {
   /// A serializable snapshot of a ``Test/Case/Argument`` instance.
   @_spi(ForToolsIntegrationOnly)
   public struct Snapshot: Sendable, Codable {
-    /// The ID of this parameterized test argument, if any.
-    public var id: Test.Case.Argument.ID?
+    /// The ID of this parameterized test argument.
+    public var id: Test.Case.Argument.ID
 
     /// A representation of this parameterized test argument's
     /// ``Test/Case/Argument/value`` property.
@@ -216,6 +300,20 @@ extension Test.Case.Argument {
       id = argument.id
       value = Expression.Value(reflecting: argument.value) ?? .init(describing: argument.value)
       parameter = argument.parameter
+    }
+
+    public init(from decoder: some Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+
+      // The `id` property was optional when this type was first introduced,
+      // and a `nil` value represented an argument whose ID was non-stable.
+      // To maintain previous behavior, if this value is absent when decoding,
+      // default to an argument ID marked as non-stable.
+      id = try container.decodeIfPresent(Test.Case.Argument.ID.self, forKey: .id)
+        ?? ID(bytes: [], isStable: false)
+
+      value = try container.decode(type(of: value), forKey: .value)
+      parameter = try container.decode(type(of: parameter), forKey: .parameter)
     }
   }
 }
