@@ -9,13 +9,24 @@
 //
 
 extension Issue {
-  /// The known issue matcher, as set by `withKnownIssue()`, associated with the
+  /// The known issue context, as set by `withKnownIssue()`, associated with the
   /// current task.
   ///
   /// If there is no call to `withKnownIssue()` executing on the current task,
   /// the value of this property is `nil`.
   @TaskLocal
-  static var currentKnownIssueMatcher: KnownIssueMatcher?
+  static var currentKnownIssueContext: KnownIssueContext?
+
+  /// Mark that an issue is a known issue.
+  /// - Parameter comment: The comment passed to the invocation of
+  ///   ``withKnownIssue`` that caused this issue to be considered "known".
+  mutating func markAsKnown(comment: Comment?) {
+    precondition(!isKnown)
+    isKnown = true
+    if let comment {
+      comments.insert(comment, at: 0)
+    }
+  }
 
   /// Record this issue by wrapping it in an ``Event`` and passing it to the
   /// current event handler.
@@ -38,9 +49,9 @@ extension Issue {
 
     // If this issue matches via the known issue matcher, set a copy of it to be
     // known and record the copy instead.
-    if !isKnown, let issueMatcher = Self.currentKnownIssueMatcher, issueMatcher(self) {
+    if !isKnown, let context = Self.currentKnownIssueContext, let match = context.match(self) {
       var selfCopy = self
-      selfCopy.isKnown = true
+      selfCopy.markAsKnown(comment: match.comment)
       return selfCopy.record(configuration: configuration)
     }
 
