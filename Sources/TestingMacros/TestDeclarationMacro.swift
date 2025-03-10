@@ -501,7 +501,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     result.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-      private final class \(className): Testing.__TestContentRecordContainer {
+      final class \(className): Testing.__TestContentRecordContainer {
         override nonisolated class var __testContentRecord: Testing.__TestContentRecord {
           \(testContentRecordName)
         }
