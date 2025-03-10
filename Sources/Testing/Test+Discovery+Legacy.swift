@@ -15,6 +15,7 @@
 /// `_TestDiscovery` module to appear in `Testing.private.swiftinterface`.
 ///
 /// This protocol is not part of the public interface of the testing library.
+@_alwaysEmitConformanceMetadata
 protocol TestContentRecordContainer: _TestDiscovery.TestContentRecordContainer {}
 
 /// An abstract base class describing a type that contains tests.

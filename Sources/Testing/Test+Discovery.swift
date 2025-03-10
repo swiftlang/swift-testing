@@ -19,7 +19,7 @@ extension Test {
   /// indirect `async` accessor function rather than directly producing
   /// instances of ``Test``, but functions are non-nominal types and cannot
   /// directly conform to protocols.
-  struct Generator: DiscoverableAsTestContent, RawRepresentable {
+  fileprivate struct Generator: DiscoverableAsTestContent, RawRepresentable {
     static var testContentKind: UInt32 {
       0x74657374
     }
