@@ -454,56 +454,52 @@ extension ExitTestConditionMacro {
       """
     )
 
-    // Create the accessor function for the test content record.
-    let accessorDecl: DeclSyntax = """
-    private nonisolated static let accessor: Testing.__TestContentRecordAccessor = { outValue, type, hint in
-      Testing.ExitTest.__store(
-        \(exitTestIDExpr),
-        \(bodyThunkName),
-        into: outValue,
-        asTypeAt: type,
-        withHintAt: hint
-      )
-    }
-    """
-
     // Create a local type that can be discovered at runtime and which contains
     // the exit test body.
-    let className = context.makeUniqueName("__🟡$")
-    let testContentRecordDecl = makeTestContentRecordDecl(
-      named: .identifier("testContentRecord"),
-      in: TypeSyntax(IdentifierTypeSyntax(name: className)),
-      ofKind: .exitTest,
-      accessingWith: .identifier("accessor")
-    )
+    let enumName = context.makeUniqueName("")
+    do {
+      // Create the test content record.
+      let testContentRecordDecl = makeTestContentRecordDecl(
+        named: .identifier("testContentRecord"),
+        in: TypeSyntax(IdentifierTypeSyntax(name: enumName)),
+        ofKind: .exitTest,
+        accessingWith: .identifier("accessor")
+      )
 
+      // Create another local type for legacy test discovery.
+      var recordDecl: DeclSyntax?
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
-    decls.append(
-      """
-      @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-      final class \(className): Testing.__TestContentRecordContainer {
-        \(accessorDecl)
-
-        \(testContentRecordDecl)
-
+      let className = context.makeUniqueName("__🟡$")
+      recordDecl = """
+      private final class \(className): Testing.__TestContentRecordContainer {
         override nonisolated class var __testContentRecord: Testing.__TestContentRecord {
-          testContentRecord
+          \(enumName).testContentRecord
         }
       }
       """
-    )
-#else
-    decls.append(
-      """
-      @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-      final class \(className) {
-        \(accessorDecl)
-
-        \(testContentRecordDecl)
-      }
-      """
-    )
 #endif
+
+      decls.append(
+        """
+        @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
+        enum \(enumName) {
+          private nonisolated static let accessor: Testing.__TestContentRecordAccessor = { outValue, type, hint in
+            Testing.ExitTest.__store(
+              \(exitTestIDExpr),
+              \(bodyThunkName),
+              into: outValue,
+              asTypeAt: type,
+              withHintAt: hint
+            )
+          }
+
+          \(testContentRecordDecl)
+
+          \(recordDecl)
+        }
+        """
+      )
+    }
 
     arguments[trailingClosureIndex].expression = ExprSyntax(
       ClosureExprSyntax {
