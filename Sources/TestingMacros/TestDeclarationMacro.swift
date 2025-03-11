@@ -11,6 +11,10 @@
 public import SwiftSyntax
 public import SwiftSyntaxMacros
 
+#if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY
+#error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand @Test")
+#endif
+
 /// A type describing the expansion of the `@Test` attribute macro.
 ///
 /// This type is used to implement the `@Test` attribute macro. Do not use it
@@ -188,17 +192,6 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     return FunctionParameterClauseSyntax(parameters: parameterList)
   }
 
-  /// The `static` keyword, if `typeName` is not `nil`.
-  ///
-  /// - Parameters:
-  ///   - typeName: The name of the type containing the macro being expanded.
-  ///
-  /// - Returns: A token representing the `static` keyword, or one representing
-  ///   nothing if `typeName` is `nil`.
-  private static func _staticKeyword(for typeName: TypeSyntax?) -> TokenSyntax {
-    (typeName != nil) ? .keyword(.static) : .unknown("")
-  }
-
   /// Create a thunk function with a normalized signature that calls a
   /// developer-supplied test function.
   ///
@@ -356,7 +349,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     let thunkName = context.makeUniqueName(thunking: functionDecl)
     let thunkDecl: DeclSyntax = """
     @available(*, deprecated, message: "This function is an implementation detail of the testing library. Do not use it directly.")
-    @Sendable private \(_staticKeyword(for: typeName)) func \(thunkName)\(thunkParamsExpr) async throws -> Void {
+    @Sendable private \(staticKeyword(for: typeName)) func \(thunkName)\(thunkParamsExpr) async throws -> Void {
       \(thunkBody)
     }
     """
@@ -496,6 +489,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       )
     )
 
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
     // Emit a type that contains a reference to the test content record.
     let className = context.makeUniqueName(thunking: functionDecl, withPrefix: "__🟡$")
     result.append(
@@ -508,6 +502,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       }
       """
     )
+#endif
 
     return result
   }

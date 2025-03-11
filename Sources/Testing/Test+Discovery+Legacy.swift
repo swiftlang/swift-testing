@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly) internal import _TestDiscovery
 
 /// A shadow declaration of `_TestDiscovery.TestContentRecordContainer` that
@@ -41,3 +42,4 @@ open class __TestContentRecordContainer: TestContentRecordContainer {
 
 @available(*, unavailable)
 extension __TestContentRecordContainer: Sendable {}
+#endif

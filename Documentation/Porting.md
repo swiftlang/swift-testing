@@ -145,8 +145,10 @@ to load that information:
 +  let resourceName: Str255 = switch kind {
 +  case .testContent:
 +    "__swift5_tests"
++#if !SWT_NO_LEGACY_TEST_DISCOVERY
 +  case .typeMetadata:
 +    "__swift5_types"
++#endif
 +  }
 +
 +  let oldRefNum = CurResFile()
@@ -219,14 +221,18 @@ diff --git a/Sources/_TestingInternals/Discovery.cpp b/Sources/_TestingInternals
 +#elif defined(macintosh)
 +extern "C" const char testContentSectionBegin __asm__("...");
 +extern "C" const char testContentSectionEnd __asm__("...");
++#if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
 +extern "C" const char typeMetadataSectionBegin __asm__("...");
 +extern "C" const char typeMetadataSectionEnd __asm__("...");
++#endif
  #else
  #warning Platform-specific implementation missing: Runtime test discovery unavailable (static)
  static const char testContentSectionBegin = 0;
  static const char& testContentSectionEnd = testContentSectionBegin;
+ #if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
  static const char typeMetadataSectionBegin = 0;
- static const char& typeMetadataSectionEnd = testContentSectionBegin;
+ static const char& typeMetadataSectionEnd = typeMetadataSectionBegin;
+ #endif
  #endif
 ```
 

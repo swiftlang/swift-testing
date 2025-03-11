@@ -89,10 +89,7 @@ let package = Package(
         "_Testing_CoreGraphics",
         "_Testing_Foundation",
       ],
-      swiftSettings: .packageSettings + [
-        // For testing test content section discovery only
-        .enableExperimentalFeature("SymbolLinkageMarkers"),
-      ]
+      swiftSettings: .packageSettings
     ),
 
     .macro(
@@ -204,6 +201,11 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
       .enableExperimentalFeature("AccessLevelOnImport"),
       .enableUpcomingFeature("InternalImportsByDefault"),
+
+      // This setting is enabled in the package, but not in the toolchain build
+      // (via CMake). Enabling it is dependent on acceptance of the @section
+      // proposal via Swift Evolution.
+      .enableExperimentalFeature("SymbolLinkageMarkers"),
 
       // When building as a package, the macro plugin always builds as an
       // executable rather than a library.
