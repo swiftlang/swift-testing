@@ -293,7 +293,7 @@ extension Test.Case.Argument.ID: Codable {
 
 // MARK: - Equatable, Hashable
 
-extension Test.Case: Hashable {
+extension Test.Case: Equatable, Hashable {
   public static func ==(lhs: Test.Case, rhs: Test.Case) -> Bool {
     lhs.id == rhs.id
   }
@@ -331,7 +331,11 @@ extension Test.Case {
     ///   - testCase: The original test case to snapshot.
     public init(snapshotting testCase: borrowing Test.Case) {
       id = testCase.id
-      arguments = (testCase.arguments ?? []).map(Test.Case.Argument.Snapshot.init)
+      arguments = if let arguments = testCase.arguments {
+        arguments.map(Test.Case.Argument.Snapshot.init)
+      } else {
+        []
+      }
     }
   }
 }

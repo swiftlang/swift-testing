@@ -257,10 +257,12 @@ extension Test.Case {
 
 extension Test.Case.Generator: Sequence {
   func makeIterator() -> some IteratorProtocol<Test.Case> {
-    sequence(state: (
+    let state = (
       iterator: _sequence.makeIterator(),
-      testCaseIDs: [Test.Case.ID: Int]()
-    )) { state in
+      testCaseIDs: [Test.Case.ID: Int](minimumCapacity: underestimatedCount)
+    )
+
+    return sequence(state: state) { state in
       guard let element = state.iterator.next() else {
         return nil
       }

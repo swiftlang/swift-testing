@@ -176,7 +176,9 @@ extension Test.Case {
   ///   for presentation, or an empty string if this test cases is
   ///   non-parameterized.
   fileprivate func labeledArguments(includingQualifiedTypeNames includeTypeNames: Bool = false) -> String {
-    (arguments ?? []).lazy
+    guard let arguments else { return "" }
+
+    return arguments.lazy
       .map { argument in
         let valueDescription = String(describingForTest: argument.value)
 

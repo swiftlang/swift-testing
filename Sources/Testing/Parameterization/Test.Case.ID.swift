@@ -127,4 +127,4 @@ extension Test.Case.ID: Codable {
 
 // MARK: - Equatable, Hashable
 
-extension Test.Case.ID: Hashable {}
+extension Test.Case.ID: Equatable, Hashable {}
