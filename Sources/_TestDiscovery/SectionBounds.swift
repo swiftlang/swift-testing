@@ -26,11 +26,6 @@ struct SectionBounds: Sendable {
   enum Kind: Equatable, Hashable, CaseIterable {
     /// The test content metadata section.
     case testContent
-
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-    /// The type metadata section.
-    case typeMetadata
-#endif
   }
 
   /// All section bounds of the given kind found in the current process.
@@ -62,10 +57,6 @@ extension SectionBounds.Kind {
     switch self {
     case .testContent:
       ("__DATA_CONST", "__swift5_tests")
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-    case .typeMetadata:
-      ("__TEXT", "__swift5_types")
-#endif
     }
   }
 }
@@ -190,10 +181,6 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some Sequence<Section
       let range = switch context.pointee.kind {
       case .testContent:
         sections.swift5_tests
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-      case .typeMetadata:
-        sections.swift5_type_metadata
-#endif
       }
       let start = UnsafeRawPointer(bitPattern: range.start)
       let size = Int(clamping: range.length)
@@ -282,10 +269,6 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some Sequence<Section
   let sectionName = switch kind {
   case .testContent:
     ".sw5test"
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-  case .typeMetadata:
-    ".sw5tymd"
-#endif
   }
   return HMODULE.all.lazy.compactMap { _findSection(named: sectionName, in: $0) }
 }
@@ -315,25 +298,13 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some Sequence<Section
 #if SWT_TARGET_OS_APPLE
 @_silgen_name(raw: "section$start$__DATA_CONST$__swift5_tests") private nonisolated(unsafe) var _testContentSectionBegin: CChar
 @_silgen_name(raw: "section$end$__DATA_CONST$__swift5_tests") private nonisolated(unsafe) var _testContentSectionEnd: CChar
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-@_silgen_name(raw: "section$start$__TEXT$__swift5_types") private nonisolated(unsafe) var _typeMetadataSectionBegin: CChar
-@_silgen_name(raw: "section$end$__TEXT$__swift5_types") private nonisolated(unsafe) var _typeMetadataSectionEnd: CChar
-#endif
 #elseif os(WASI)
 @_silgen_name(raw: "__start_swift5_tests") private nonisolated(unsafe) var _testContentSectionBegin: CChar
 @_silgen_name(raw: "__stop_swift5_tests") private nonisolated(unsafe) var _testContentSectionEnd: CChar
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-@_silgen_name(raw: "__start_swift5_type_metadata") private nonisolated(unsafe) var _typeMetadataSectionBegin: CChar
-@_silgen_name(raw: "__stop_swift5_type_metadata") private nonisolated(unsafe) var _typeMetadataSectionEnd: CChar
-#endif
 #else
 #warning("Platform-specific implementation missing: Runtime test discovery unavailable (static)")
 private nonisolated(unsafe) var _testContentSectionBegin: Void
 private nonisolated(unsafe) var _testContentSectionEnd: Void
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-private nonisolated(unsafe) var _typeMetadataSectionBegin: Void
-private nonisolated(unsafe) var _typeMetadataSectionEnd: Void
-#endif
 
 extension UnsafeRawBufferPointer {
   /// Construct an empty buffer.
@@ -360,16 +331,12 @@ extension UnsafeRawBufferPointer {
 /// - Parameters:
 ///   - kind: Which kind of metadata section to return.
 ///
-/// - Returns: A structure describing the bounds of the type metadata section
-///   contained in the same image as the testing library itself.
+/// - Returns: A structure describing the bounds of the given section contained
+///   in the same image as the testing library itself.
 private func _sectionBounds(_ kind: SectionBounds.Kind) -> some Sequence<SectionBounds> {
   let buffer = switch kind {
   case .testContent:
     UnsafeRawBufferPointer(sectionBegin: &_testContentSectionBegin, sectionEnd: &_testContentSectionEnd)
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-  case .typeMetadata:
-    UnsafeRawBufferPointer(sectionBegin: &_typeMetadataSectionBegin, sectionEnd: &_typeMetadataSectionEnd)
-#endif
   }
   let sb = SectionBounds(imageAddress: nil, buffer: buffer)
   return CollectionOfOne(sb)
