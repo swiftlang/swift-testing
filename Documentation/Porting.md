@@ -231,7 +231,7 @@ diff --git a/Sources/_TestingInternals/Discovery.cpp b/Sources/_TestingInternals
  static const char& testContentSectionEnd = testContentSectionBegin;
  #if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
  static const char typeMetadataSectionBegin = 0;
- static const char& typeMetadataSectionEnd = testContentSectionBegin;
+ static const char& typeMetadataSectionEnd = typeMetadataSectionBegin;
  #endif
  #endif
 ```
