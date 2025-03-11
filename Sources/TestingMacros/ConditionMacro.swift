@@ -471,7 +471,7 @@ extension ExitTestConditionMacro {
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
       let className = context.makeUniqueName("__🟡$")
       recordDecl = """
-      private final class \(className): Testing.__TestContentRecordContainer {
+      final class \(className): Testing.__TestContentRecordContainer {
         override nonisolated class var __testContentRecord: Testing.__TestContentRecord {
           \(enumName).testContentRecord
         }
