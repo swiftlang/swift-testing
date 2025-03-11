@@ -99,7 +99,6 @@ add_library(Testing
   Test.swift
   Test+Cancellation.swift
   Test+Discovery.swift
-  Test+Discovery+Legacy.swift
   Test+Macro.swift
   Traits/AttachmentSavingTrait.swift
   Traits/Bug.swift

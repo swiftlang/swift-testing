@@ -88,6 +88,20 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
   @used
   \(result)
   """
+#else
+  result = """
+  #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
+  @_section("__DATA_CONST,__swift5_tests")
+  #elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+  @_section("swift5_tests")
+  #elseif os(Windows)
+  @_section(".sw5test$B")
+  #else
+  @Testing.__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
+  #endif
+  @_used
+  \(result)
+  """
 #endif
 
   return result

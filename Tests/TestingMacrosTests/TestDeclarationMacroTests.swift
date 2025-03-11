@@ -474,11 +474,10 @@ struct TestDeclarationMacroTests {
 
 #if compiler(>=6.3)
     #expect(output.contains("@section"))
-    #expect(!output.contains("__TestContentRecordContainer"))
 #else
-    #expect(!output.contains("@section"))
-    #expect(output.contains("__TestContentRecordContainer"))
+    #expect(output.contains("@_section"))
 #endif
+    #expect(!output.contains("__TestContentRecordContainer"))
     if let expectedTypeName {
       #expect(output.contains(expectedTypeName))
     }
