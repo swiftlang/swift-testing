@@ -454,6 +454,19 @@ extension ExitTestConditionMacro {
       """
     )
 
+    // Create the accessor function for the test content record.
+    let accessorDecl: DeclSyntax = """
+    private nonisolated static let accessor: Testing.__TestContentRecordAccessor = { outValue, type, hint in
+      Testing.ExitTest.__store(
+        \(exitTestIDExpr),
+        \(bodyThunkName),
+        into: outValue,
+        asTypeAt: type,
+        withHintAt: hint
+      )
+    }
+    """
+
     // Create a local type that can be discovered at runtime and which contains
     // the exit test body.
     let className = context.makeUniqueName("__🟡$")
@@ -467,16 +480,9 @@ extension ExitTestConditionMacro {
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
     decls.append(
       """
+      @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
       final class \(className): Testing.__TestContentRecordContainer {
-        private nonisolated static let accessor: Testing.__TestContentRecordAccessor = { outValue, type, hint in
-          Testing.ExitTest.__store(
-            \(exitTestIDExpr),
-            \(bodyThunkName),
-            into: outValue,
-            asTypeAt: type,
-            withHintAt: hint
-          )
-        }
+        \(accessorDecl)
 
         \(testContentRecordDecl)
 
@@ -489,16 +495,9 @@ extension ExitTestConditionMacro {
 #else
     decls.append(
       """
+      @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
       final class \(className) {
-        private nonisolated static let accessor: Testing.__TestContentRecordAccessor = { outValue, type, hint in
-          Testing.ExitTest.__store(
-            \(exitTestIDExpr),
-            \(bodyThunkName),
-            into: outValue,
-            asTypeAt: type,
-            withHintAt: hint
-          )
-        }
+        \(accessorDecl)
 
         \(testContentRecordDecl)
       }
