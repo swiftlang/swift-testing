@@ -148,10 +148,6 @@ to load that information:
 +  let resourceName: Str255 = switch kind {
 +  case .testContent:
 +    "__swift5_tests"
-+#if !SWT_NO_LEGACY_TEST_DISCOVERY
-+  case .typeMetadata:
-+    "__swift5_types"
-+#endif
 +  }
 +
 +  let oldRefNum = CurResFile()
@@ -224,9 +220,8 @@ start with `"SWT_"`).
 If your platform does not support dynamic linking and loading, you will need to
 use static linkage instead. Define the `"SWT_NO_DYNAMIC_LINKING"` compiler
 conditional for your platform in both `Package.swift` and
-`CompilerSettings.cmake`, then define the symbols `_testContentSectionBegin`,
-`_testContentSectionEnd`, `_typeMetadataSectionBegin`, and
-`_typeMetadataSectionEnd` in `SectionBounds.swift`:
+`CompilerSettings.cmake`, then define the symbols `_testContentSectionBegin` and
+`_testContentSectionEnd` in `SectionBounds.swift`:
 
 ```diff
 --- a/Sources/_TestDiscovery/SectionBounds.swift
@@ -235,18 +230,10 @@ conditional for your platform in both `Package.swift` and
 +#elseif os(Classic)
 +@_silgen_name(raw: "...") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
 +@_silgen_name(raw: "...") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
-+#if !SWT_NO_LEGACY_TEST_DISCOVERY
-+@_silgen_name(raw: "...") private nonisolated(unsafe) var _typeMetadataSectionBegin: _SectionBound
-+@_silgen_name(raw: "...") private nonisolated(unsafe) var _typeMetadataSectionEnd: _SectionBound
-+#endif
  #else
  #warning("Platform-specific implementation missing: Runtime test discovery unavailable (static)")
  private nonisolated(unsafe) let _testContentSectionBegin = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 16)
  private nonisolated(unsafe) let _testContentSectionEnd = _testContentSectionBegin
- #if !SWT_NO_LEGACY_TEST_DISCOVERY
- private nonisolated(unsafe) let _typeMetadataSectionBegin = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 16)
- private nonisolated(unsafe) let _typeMetadataSectionEnd = _typeMetadataSectionBegin
- #endif
  #endif
  // ...
 ```

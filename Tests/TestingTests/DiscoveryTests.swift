@@ -58,7 +58,7 @@ struct DiscoveryTests {
   }
 #endif
 
-#if compiler(>=6.3) && !SWT_NO_DYNAMIC_LINKING
+#if !SWT_NO_DYNAMIC_LINKING
   struct MyTestContent: DiscoverableAsTestContent {
     typealias TestContentAccessorHint = UInt32
 
@@ -80,6 +80,7 @@ struct DiscoveryTests {
       record.context
     }
 
+#if compiler(>=6.3)
 #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
     @section("__DATA_CONST,__swift5_tests")
 #elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
@@ -90,6 +91,18 @@ struct DiscoveryTests {
     @__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
 #endif
     @used
+#else
+#if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
+    @_section("__DATA_CONST,__swift5_tests")
+#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+    @_section("swift5_tests")
+#elseif os(Windows)
+    @_section(".sw5test$B")
+#else
+    @__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
+#endif
+    @_used
+#endif
     private static let record: __TestContentRecord = (
       0xABCD1234,
       0,
