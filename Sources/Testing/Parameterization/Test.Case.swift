@@ -340,8 +340,8 @@ extension Test.Case.Argument {
   /// A serializable snapshot of a ``Test/Case/Argument`` instance.
   @_spi(ForToolsIntegrationOnly)
   public struct Snapshot: Sendable, Codable {
-    /// The ID of this parameterized test argument.
-    public var id: Test.Case.Argument.ID
+    /// The ID of this parameterized test argument, if any.
+    public var id: Test.Case.Argument.ID?
 
     /// A representation of this parameterized test argument's
     /// ``Test/Case/Argument/value`` property.
@@ -359,20 +359,6 @@ extension Test.Case.Argument {
       id = argument.id
       value = Expression.Value(reflecting: argument.value) ?? .init(describing: argument.value)
       parameter = argument.parameter
-    }
-
-    public init(from decoder: some Decoder) throws {
-      let container = try decoder.container(keyedBy: CodingKeys.self)
-
-      // The `id` property was optional when this type was first introduced,
-      // and a `nil` value represented an argument whose ID was non-stable.
-      // To maintain previous behavior, if this value is absent when decoding,
-      // default to an argument ID marked as non-stable.
-      id = try container.decodeIfPresent(Test.Case.Argument.ID.self, forKey: .id)
-        ?? ID(bytes: [], isStable: false)
-
-      value = try container.decode(type(of: value), forKey: .value)
-      parameter = try container.decode(type(of: parameter), forKey: .parameter)
     }
   }
 }
