@@ -23,7 +23,7 @@ struct SectionBounds: Sendable {
 
   /// An enumeration describing the different sections discoverable by the
   /// testing library.
-  enum Kind: Int, Equatable, Hashable, CaseIterable {
+  enum Kind: Equatable, Hashable, CaseIterable {
     /// The test content metadata section.
     case testContent
 
@@ -146,7 +146,7 @@ private let _startCollectingSectionBounds: Void = {
 ///
 /// - Returns: An array of structures describing the bounds of all known test
 ///   content sections in the current process.
-private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
+private func _sectionBounds(_ kind: SectionBounds.Kind) -> some Sequence<SectionBounds> {
   _startCollectingSectionBounds
   return _sectionBounds.withUnsafeMutablePointers { sectionBounds, lock in
     pthread_mutex_lock(lock)
@@ -169,7 +169,7 @@ private import SwiftShims // For MetadataSections
 ///
 /// - Returns: An array of structures describing the bounds of all known test
 ///   content sections in the current process.
-private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
+private func _sectionBounds(_ kind: SectionBounds.Kind) -> some Sequence<SectionBounds> {
   struct Context {
     var kind: SectionBounds.Kind
     var result = [SectionBounds]()
@@ -297,13 +297,62 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some Sequence<Section
 ///   - kind: Ignored.
 ///
 /// - Returns: The empty array.
-private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
+private func _sectionBounds(_ kind: SectionBounds.Kind) -> some Sequence<SectionBounds> {
   #warning("Platform-specific implementation missing: Runtime test discovery unavailable (dynamic)")
-  return []
+  return EmptyCollection()
 }
 #endif
 #else
 // MARK: - Statically-linked implementation
+
+/// The bounds of the statically-linked sections of interest to the testing
+/// library.
+///
+/// We use `@_silgen_name(raw:)` to reference these linker-defined symbols.
+/// Then, to get their addresses, we must use `&` (`withPointer(to:)` is not
+/// guaranteed to avoid a copy in this context.) Hence, they must also be
+/// declared `var` rather than `let`, but they should be treated as read-only.
+#if SWT_TARGET_OS_APPLE
+@_silgen_name(raw: "section$start$__DATA_CONST$__swift5_tests") private nonisolated(unsafe) var _testContentSectionBegin: CChar
+@_silgen_name(raw: "section$end$__DATA_CONST$__swift5_tests") private nonisolated(unsafe) var _testContentSectionEnd: CChar
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+@_silgen_name(raw: "section$start$__TEXT$__swift5_types") private nonisolated(unsafe) var _typeMetadataSectionBegin: CChar
+@_silgen_name(raw: "section$end$__TEXT$__swift5_types") private nonisolated(unsafe) var _typeMetadataSectionEnd: CChar
+#endif
+#elseif os(WASI)
+@_silgen_name(raw: "__start_swift5_tests") private nonisolated(unsafe) var _testContentSectionBegin: CChar
+@_silgen_name(raw: "__stop_swift5_tests") private nonisolated(unsafe) var _testContentSectionEnd: CChar
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+@_silgen_name(raw: "__start_swift5_type_metadata") private nonisolated(unsafe) var _typeMetadataSectionBegin: CChar
+@_silgen_name(raw: "__stop_swift5_type_metadata") private nonisolated(unsafe) var _typeMetadataSectionEnd: CChar
+#endif
+#else
+#warning("Platform-specific implementation missing: Runtime test discovery unavailable (static)")
+private nonisolated(unsafe) var _testContentSectionBegin: Void
+private nonisolated(unsafe) var _testContentSectionEnd: Void
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+private nonisolated(unsafe) var _typeMetadataSectionBegin: Void
+private nonisolated(unsafe) var _typeMetadataSectionEnd: Void
+#endif
+
+extension UnsafeRawBufferPointer {
+  /// Construct an empty buffer.
+  fileprivate init(_: Void = (), sectionBegin _: UnsafeRawPointer, sectionEnd _: UnsafeRawPointer) {
+    self.init(start: nil, count: 0)
+  }
+}
+#endif
+
+extension UnsafeRawBufferPointer {
+  /// Construct a buffer representing a section's byte bounds.
+  ///
+  /// - Parameters:
+  ///   - sectionBegin: The address of the first byte of the section.
+  ///   - sectionEnd: The address of the first byte _after_ the section.
+  @_disfavoredOverload fileprivate init(sectionBegin: UnsafeRawPointer, sectionEnd: UnsafeRawPointer) {
+    self.init(start: sectionBegin, count: sectionEnd - sectionBegin)
+  }
+}
 
 /// The common implementation of ``SectionBounds/all(_:)`` for platforms that do
 /// not support dynamic linking.
@@ -313,10 +362,15 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
 ///
 /// - Returns: A structure describing the bounds of the type metadata section
 ///   contained in the same image as the testing library itself.
-private func _sectionBounds(_ kind: SectionBounds.Kind) -> CollectionOfOne<SectionBounds> {
-  var (baseAddress, count): (UnsafeRawPointer?, Int) = (nil, 0)
-  swt_getStaticallyLinkedSectionBounds(kind.rawValue, &baseAddress, &count)
-  let buffer = UnsafeRawBufferPointer(start: baseAddress, count: count)
+private func _sectionBounds(_ kind: SectionBounds.Kind) -> some Sequence<SectionBounds> {
+  let buffer = switch kind {
+  case .testContent:
+    UnsafeRawBufferPointer(sectionBegin: &_testContentSectionBegin, sectionEnd: &_testContentSectionEnd)
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+  case .typeMetadata:
+    UnsafeRawBufferPointer(sectionBegin: &_typeMetadataSectionBegin, sectionEnd: &_typeMetadataSectionEnd)
+#endif
+  }
   let sb = SectionBounds(imageAddress: nil, buffer: buffer)
   return CollectionOfOne(sb)
 }
