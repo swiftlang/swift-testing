@@ -8,10 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-/// A type that can be used to determine if an issue is a known issue.
+/// A type represents an active `withKnownIssue()` call and any parent calls.
 ///
-/// A stack of these is stored in `Issue.currentKnownIssueContext`. The stack
-/// is mutated by calls to `withKnownIssue()`.
+/// A stack of these is stored in `KnownIssueContext.current`. The stack is
+/// mutated by calls to `withKnownIssue()`.
 struct KnownIssueScope: Sendable {
   /// Determine if an issue is known to this scope or any of its ancestor
   /// scope.
