@@ -25,7 +25,7 @@ private typealias _TestContentRecordAccessor = @convention(c) (
   _ outValue: UnsafeMutableRawPointer,
   _ type: UnsafeRawPointer,
   _ hint: UnsafeRawPointer?,
-  _ reserved: UnsafeRawPointer?
+  _ reserved: UInt
 ) -> CBool
 
 /// The content of a test content record.
@@ -161,10 +161,10 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent & ~Copyabl
       withUnsafeTemporaryAllocation(of: T.self, capacity: 1) { buffer in
         let initialized = if let hint {
           withUnsafePointer(to: hint) { hint in
-            accessor(buffer.baseAddress!, type, hint, nil)
+            accessor(buffer.baseAddress!, type, hint, 0)
           }
         } else {
-          accessor(buffer.baseAddress!, type, nil, nil)
+          accessor(buffer.baseAddress!, type, nil, 0)
         }
         guard initialized else {
           return nil

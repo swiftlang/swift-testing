@@ -45,7 +45,7 @@ typealias Accessor = @convention(c) (
   _ outValue: UnsafeMutableRawPointer,
   _ type: UnsafeRawPointer,
   _ hint: UnsafeRawPointer?,
-  _ reserved: UnsafeRawPointer?
+  _ reserved: UInt
 ) -> CBool
 
 typealias TestContentRecord = (
@@ -65,7 +65,7 @@ typedef bool (* SWTAccessor)(
   void *outValue,
   const void *type,
   const void *_Nullable hint,
-  const void *_Nullable reserved
+  uintptr_t reserved
 );
 
 struct SWTTestContentRecord {
@@ -143,7 +143,7 @@ record matches what the caller is looking for. If the caller passes `nil` as the
 filtering is performed.)
 
 The fourth argument to this function, `reserved`, is reserved for future use.
-Accessor functions should assume it is `nil` and must not access it.
+Accessor functions should assume it is `0` and must not access it.
 
 The concrete Swift type of the value written to `outValue`, the type pointed to
 by `type`, and the value pointed to by `hint` depend on the kind of record:

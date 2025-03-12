@@ -29,7 +29,7 @@ public typealias __TestContentRecordAccessor = @convention(c) (
   _ outValue: UnsafeMutableRawPointer,
   _ type: UnsafeRawPointer,
   _ hint: UnsafeRawPointer?,
-  _ reserved: UnsafeRawPointer?
+  _ reserved: UInt
 ) -> CBool
 
 /// The content of a test content record.
