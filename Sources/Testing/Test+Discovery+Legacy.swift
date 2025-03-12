@@ -11,10 +11,10 @@
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly) internal import _TestDiscovery
 
-/// A protocol base class describing a type that contains tests.
+/// A protocol describing a type that contains tests.
 ///
-/// - Warning: This class is used to implement the `@Test` macro. Do not use it
-///   directly.
+/// - Warning: This protocol is used to implement the `@Test` macro. Do not use
+///   it directly.
 @_alwaysEmitConformanceMetadata
 public protocol __TestContentRecordContainer {
   /// The test content record associated with this container.
