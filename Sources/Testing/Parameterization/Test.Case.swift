@@ -194,25 +194,24 @@ extension Test {
     ) {
       // Attempt to obtain an encodable representation of each value in order
       // to construct a stable ID.
-      let encodingResult = values.reduce(into: ([any Encodable](), hasFailure: false)) { result, value in
+      var encodableValues = [any Encodable]()
+      var hadFailure = false
+      for value in values {
         // If we couldn't get an encodable representation of one of the values,
         // give up and mark the overall attempt as a failure. This allows
         // skipping unnecessary encoding work later: if any individual argument
         // doesn't have a stable ID, the Test.Case.ID can't be considered stable,
         // so there's no point encoding the values which _are_ encodable.
-        guard !result.hasFailure, let encodableValue = encodableArgumentValue(for: value) else {
-          return result.hasFailure = true
+        guard let encodableValue = encodableArgumentValue(for: value) else {
+          hadFailure = true
+          break
         }
-        result.0.append(encodableValue)
-      }
-      let encodableValues: [any Encodable]? = if !encodingResult.hasFailure {
-        encodingResult.0
-      } else {
-        nil
+        encodableValues.append(encodableValue)
       }
 
       let arguments = zip(values.enumerated(), parameters).map { value, parameter in
-        Argument(value: value.1, encodableValue: encodableValues?[value.0], parameter: parameter)
+        let encodableValue = hadFailure ? nil : encodableValues[value.0]
+        return Argument(value: value.1, encodableValue: encodableValue, parameter: parameter)
       }
       self.init(kind: .parameterized(arguments: arguments, discriminator: 0), body: body)
     }
