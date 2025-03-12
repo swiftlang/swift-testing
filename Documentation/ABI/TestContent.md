@@ -44,7 +44,8 @@ testing library have the following layout:
 typealias Accessor = @convention(c) (
   _ outValue: UnsafeMutableRawPointer,
   _ type: UnsafeRawPointer,
-  _ hint: UnsafeRawPointer?
+  _ hint: UnsafeRawPointer?,
+  _ reserved: UnsafeRawPointer?
 ) -> CBool
 
 typealias TestContentRecord = (
@@ -63,7 +64,8 @@ If needed, this type can be represented in C as a structure:
 typedef bool (* SWTAccessor)(
   void *outValue,
   const void *type,
-  const void *_Nullable hint
+  const void *_Nullable hint,
+  const void *_Nullable reserved
 );
 
 struct SWTTestContentRecord {
@@ -117,7 +119,7 @@ If `accessor` is `nil`, the test content record is ignored. The testing library
 may, in the future, define record kinds that do not provide an accessor function
 (that is, they represent pure compile-time information only.)
 
-The third argument to this function, `type`, is a pointer to the type[^mightNotBeSwift]
+The second argument to this function, `type`, is a pointer to the type[^mightNotBeSwift]
 (not a bitcast Swift type) of the value expected to be written to `outValue`.
 This argument helps to prevent memory corruption if two copies of Swift Testing
 or a third-party library are inadvertently loaded into the same process. If the
@@ -134,11 +136,14 @@ accessor function must return `false` and must not modify `outValue`.
   [`std::type_info`](https://en.cppreference.com/w/cpp/types/type_info), and
   write a C++ class instance to `outValue` using [placement `new`](https://en.cppreference.com/w/cpp/language/new#Placement_new).
 
-The fourth argument to this function, `hint`, is an optional input that can be
+The third argument to this function, `hint`, is an optional input that can be
 passed to help the accessor function determine if its corresponding test content
 record matches what the caller is looking for. If the caller passes `nil` as the
 `hint` argument, the accessor behaves as if it matched (that is, no additional
 filtering is performed.)
+
+The fourth argument to this function, `reserved`, is reserved for future use.
+Accessor functions should assume it is `nil` and must not access it.
 
 The concrete Swift type of the value written to `outValue`, the type pointed to
 by `type`, and the value pointed to by `hint` depend on the kind of record:

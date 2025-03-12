@@ -93,7 +93,7 @@ struct DiscoveryTests {
     private static let record: __TestContentRecord = (
       0xABCD1234,
       0,
-      { outValue, type, hint in
+      { outValue, type, hint, _ in
         guard type.load(as: Any.Type.self) == MyTestContent.self else {
           return false
         }
