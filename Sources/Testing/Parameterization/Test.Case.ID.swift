@@ -72,7 +72,7 @@ extension Test.Case.ID: CustomStringConvertible {
 // MARK: - Codable
 
 extension Test.Case.ID: Codable {
-  public init(from decoder: some Decoder) throws {
+  public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
 
     // The `argumentIDs` property is Optional but the meaning of `nil` has

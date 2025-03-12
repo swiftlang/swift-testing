@@ -276,8 +276,9 @@ extension Test {
 // MARK: - Codable
 
 extension Test.Parameter: Codable {}
+
 extension Test.Case.Argument.ID: Codable {
-  public init(from decoder: some Decoder) throws {
+  public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
 
     // The `isStable` property was added after this type was introduced.
