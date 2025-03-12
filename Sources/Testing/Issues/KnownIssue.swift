@@ -14,17 +14,12 @@
 /// mutated by calls to `withKnownIssue()`.
 struct KnownIssueScope: Sendable {
   /// Determine if an issue is known to this scope or any of its ancestor
-  /// scope.
+  /// scopes.
   ///
   /// Returns `nil` if the issue is not known.
   var match: @Sendable (Issue) -> Issue.KnownIssueContext?
   /// The number of issues this scope and its ancestors have matched.
   let matchCounter: Locked<Int>
-
-  struct Match {
-    /// The comment that was passed to the `withKnownIssue()` call that matched the issue.
-    var comment: Comment?
-  }
 
   /// Create a new ``KnownIssueScope`` by combining a new issue matcher with
   /// any already-active scope.
