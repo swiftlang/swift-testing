@@ -22,7 +22,7 @@ public protocol DiscoverableAsTestContent: Sendable, ~Copyable {
   ///
   /// The value of this property is reserved for each test content type. See
   /// `ABI/TestContent.md` for a list of values and corresponding types.
-  static var testContentKind: UInt32 { get }
+  static var testContentKind: TestContentKind { get }
 
   /// The type of the `context` field in test content records associated with
   /// this type.

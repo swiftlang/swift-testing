@@ -108,15 +108,20 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent & ~Copyabl
   }
 
   fileprivate init(imageAddress: UnsafeRawPointer?, recordAddress: UnsafePointer<_TestContentRecord>) {
-    precondition(recordAddress.pointee.kind == T.testContentKind)
+    precondition(recordAddress.pointee.kind == T.testContentKind.rawValue)
     self.imageAddress = imageAddress
     self._recordStorage = .atAddress(recordAddress)
   }
 
   fileprivate init(imageAddress: UnsafeRawPointer?, record: _TestContentRecord) {
-    precondition(record.kind == T.testContentKind)
+    precondition(record.kind == T.testContentKind.rawValue)
     self.imageAddress = imageAddress
     self._recordStorage = .inline(record)
+  }
+
+  /// The kind of this test content record.
+  public var kind: TestContentKind {
+    TestContentKind(rawValue: _record.kind)
   }
 
   /// The type of the ``context`` property.
@@ -181,28 +186,8 @@ extension TestContentRecord: Sendable where Context: Sendable {}
 // MARK: - CustomStringConvertible
 
 extension TestContentRecord: CustomStringConvertible {
-  /// This test content type's kind value as an ASCII string (of the form
-  /// `"abcd"`) if it looks like it might be a [FourCC](https://en.wikipedia.org/wiki/FourCC)
-  /// value, or `nil` if not.
-  private static var _asciiKind: String? {
-    return withUnsafeBytes(of: T.testContentKind.bigEndian) { bytes in
-      if bytes.allSatisfy(Unicode.ASCII.isASCII) {
-        let characters = String(decoding: bytes, as: Unicode.ASCII.self)
-        let allAlphanumeric = characters.allSatisfy { $0.isLetter || $0.isWholeNumber }
-        if allAlphanumeric {
-          return characters
-        }
-      }
-      return nil
-    }
-  }
-
   public var description: String {
     let typeName = String(describing: Self.self)
-    let hexKind = "0x" + String(T.testContentKind, radix: 16)
-    let kind = Self._asciiKind.map { asciiKind in
-      "'\(asciiKind)' (\(hexKind))"
-    } ?? hexKind
     switch _recordStorage {
     case let .atAddress(recordAddress):
       let recordAddress = imageAddress.map { imageAddress in
@@ -232,11 +217,14 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
   /// }
   public static func allTestContentRecords() -> AnySequence<TestContentRecord<Self>> {
     validateMemoryLayout()
+
+    let kind = testContentKind.rawValue
+
     let result = SectionBounds.all(.testContent).lazy.flatMap { sb in
       sb.buffer.withMemoryRebound(to: _TestContentRecord.self) { records in
         (0 ..< records.count).lazy
           .map { (records.baseAddress! + $0) as UnsafePointer<_TestContentRecord> }
-          .filter { $0.pointee.kind == testContentKind }
+          .filter { $0.pointee.kind == kind }
           .map { TestContentRecord<Self>(imageAddress: sb.imageAddress, recordAddress: $0) }
       }
     }
@@ -275,7 +263,7 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
     validateMemoryLayout()
 
     let typeNameHint = _testContentTypeNameHint
-    let kind = testContentKind
+    let kind = testContentKind.rawValue
     let loader: @Sendable (Any.Type) -> _TestContentRecord? = { type in
       withUnsafeTemporaryAllocation(of: _TestContentRecord.self, capacity: 1) { buffer in
         // Load the record from the container type.

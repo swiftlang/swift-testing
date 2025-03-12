@@ -10,6 +10,7 @@ add_library(_TestDiscovery STATIC
   Additions/WinSDKAdditions.swift
   DiscoverableAsTestContent.swift
   SectionBounds.swift
+  TestContentKind.swift
   TestContentRecord.swift)
 
 target_link_libraries(_TestDiscovery PRIVATE

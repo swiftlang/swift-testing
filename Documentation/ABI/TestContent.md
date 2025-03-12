@@ -243,7 +243,7 @@ protocol:
 
 ```swift
 extension FoodTruckDiagnostic: DiscoverableAsTestContent {
-  static var testContentKind: UInt32 { /* Your `kind` value here. */ }
+  static var testContentKind: TestContentKind { /* Your `kind` value here. */ }
 }
 ```
 
@@ -258,7 +258,7 @@ a custom `hint` type for your accessor functions, you can set
 
 ```swift
 extension FoodTruckDiagnostic: DiscoverableAsTestContent {
-  static var testContentKind: UInt32 { /* Your `kind` value here. */ }
+  static var testContentKind: TestContentKind { /* Your `kind` value here. */ }
   
   typealias TestContentContext = UnsafePointer<FoodTruck.Name>
   typealias TestContentAccessorHint = String
