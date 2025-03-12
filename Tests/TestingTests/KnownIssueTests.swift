@@ -64,6 +64,7 @@ final class KnownIssueTests: XCTestCase {
 
   func testKnownIssueRecordedWithComment() async {
     let issueRecorded = expectation(description: "Issue recorded")
+    let sourceLocation = SourceLocation(fileID: "FakeModule/FakeFile.swift", filePath: "", line: 9999, column: 1)
 
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
@@ -76,12 +77,14 @@ final class KnownIssueTests: XCTestCase {
         return
       }
 
-      XCTAssertEqual(issue.comments, ["With Known Issue Comment", "Issue Comment"])
+      XCTAssertEqual(issue.comments, ["Issue Comment"])
+      XCTAssertEqual(issue.knownIssueContext?.comment, "With Known Issue Comment")
+      XCTAssertEqual(issue.knownIssueContext?.sourceLocation, sourceLocation)
       XCTAssertTrue(issue.isKnown)
     }
 
     await Test {
-      withKnownIssue("With Known Issue Comment") {
+      withKnownIssue("With Known Issue Comment", sourceLocation: sourceLocation) {
         Issue.record("Issue Comment")
       }
     }.run(configuration: configuration)
@@ -147,6 +150,7 @@ final class KnownIssueTests: XCTestCase {
 
   func testKnownIssueRecordedWithInnermostMatchingComment() async {
     let issueRecorded = expectation(description: "Issue recorded")
+    let sourceLocation = SourceLocation(fileID: "FakeModule/FakeFile.swift", filePath: "", line: 9999, column: 1)
 
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
@@ -159,14 +163,16 @@ final class KnownIssueTests: XCTestCase {
         return
       }
 
-      XCTAssertEqual(issue.comments, ["Inner Contains B", "Issue B"])
+      XCTAssertEqual(issue.comments, ["Issue B"])
+      XCTAssertEqual(issue.knownIssueContext?.comment, "Inner Contains B")
+      XCTAssertEqual(issue.knownIssueContext?.sourceLocation, sourceLocation)
       XCTAssertTrue(issue.isKnown)
     }
 
     await Test {
       withKnownIssue("Contains A", isIntermittent: true) {
         withKnownIssue("Outer Contains B", isIntermittent: true) {
-          withKnownIssue("Inner Contains B") {
+          withKnownIssue("Inner Contains B", sourceLocation: sourceLocation) {
             withKnownIssue("Contains C", isIntermittent: true) {
               Issue.record("Issue B")
             } matching: { issue in
