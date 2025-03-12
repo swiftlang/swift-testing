@@ -491,12 +491,12 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
 
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
     // Emit a type that contains a reference to the test content record.
-    let className = context.makeUniqueName(thunking: functionDecl, withPrefix: "__🟡$")
+    let enumName = context.makeUniqueName(thunking: functionDecl, withPrefix: "__🟡$")
     result.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-      final class \(className): Testing.__TestContentRecordContainer {
-        override nonisolated class var __testContentRecord: Testing.__TestContentRecord {
+      enum \(enumName): Testing.__TestContentRecordContainer {
+        nonisolated static var __testContentRecord: Testing.__TestContentRecord {
           \(testContentRecordName)
         }
       }

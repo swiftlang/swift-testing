@@ -249,79 +249,16 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
 
 private import _TestingInternals
 
-/// A protocol describing a type, emitted at compile time or macro expansion
-/// time, that represents a single test content record.
-///
-/// Use this protocol to make discoverable any test content records contained in
-/// the type metadata section (the "legacy discovery mechanism"). For example,
-/// if you have creasted a test content record named `myRecord` and your test
-/// content record typealias is named `MyRecordType`:
-///
-/// ```swift
-/// private enum MyRecordContainer: TestContentRecordContainer {
-///   nonisolated static func storeTestContentRecord(to outTestContentRecord: UnsafeMutableRawPointer) -> Bool {
-///     outTestContentRecord.initializeMemory(as: MyRecordType.self, to: myRecord)
-///     return true
-///   }
-/// }
-/// ```
-///
-/// Then, at discovery time, call ``DiscoverableAsTestContent/allTypeMetadataBasedTestContentRecords()``
-/// to look up `myRecord`.
-///
-/// Types that represent test content and that should be discoverable at runtime
-/// should not conform to this protocol. Instead, they should conform to
-/// ``DiscoverableAsTestContent``.
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-@_alwaysEmitConformanceMetadata
-@available(swift, deprecated: 100000.0, message: "Do not adopt this functionality in new code. It will be removed in a future release.")
-public protocol TestContentRecordContainer {
-  /// Store this container's corresponding test content record to memory.
-  ///
-  /// - Parameters:
-  ///   - outTestContentRecord: A pointer to uninitialized memory large enough
-  ///     to hold a test content record. The memory is untyped so that client
-  ///     code can use a custom definition of the test content record tuple
-  ///     type.
-  ///
-  /// - Returns: Whether or not `outTestContentRecord` was initialized. If this
-  ///   function returns `true`, the caller is responsible for deinitializing
-  ///   said memory after it is done using it.
-  nonisolated static func storeTestContentRecord(to outTestContentRecord: UnsafeMutableRawPointer) -> Bool
-}
-
 extension DiscoverableAsTestContent where Self: ~Copyable {
-  /// Make a test content record of this type from the given test content record
-  /// container type if it matches this type's requirements.
-  ///
-  /// - Parameters:
-  ///   - containerType: The test content record container type.
-  ///   - sb: The section bounds containing `containerType` and, thus, the test
-  ///     content record.
-  ///
-  /// - Returns: A new test content record value, or `nil` if `containerType`
-  ///   failed to store a record or if the record's kind did not match this
-  ///   type's ``testContentKind`` property.
-  private static func _makeTestContentRecord(from containerType: (some TestContentRecordContainer).Type, in sb: SectionBounds) -> TestContentRecord<Self>? {
-    withUnsafeTemporaryAllocation(of: _TestContentRecord.self, capacity: 1) { buffer in
-      // Load the record from the container type.
-      guard containerType.storeTestContentRecord(to: buffer.baseAddress!) else {
-        return nil
-      }
-      let record = buffer.baseAddress!.move()
-
-      // Make sure that the record's kind matches.
-      guard record.kind == Self.testContentKind else {
-        return nil
-      }
-
-      // Construct the TestContentRecord instance from the record.
-      return TestContentRecord(imageAddress: sb.imageAddress, record: record)
-    }
-  }
-
   /// Get all test content of this type known to Swift and found in the current
   /// process using the legacy discovery mechanism.
+  ///
+  /// - Parameters:
+  ///   - baseType: The type which all discovered container types must
+  ///     conform to or subclass.
+  ///   - loader: A function that is called once per type conforming to or
+  ///     subclassing `baseType`. This function should load the corresponding
+  ///     test content record into the buffer passed to it.
   ///
   /// - Returns: A sequence of instances of ``TestContentRecord``. Only test
   ///   content records matching this ``TestContent`` type's requirements are
@@ -332,15 +269,30 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
   ///     opaque type due to a compiler crash. ([143080508](rdar://143080508))
   /// }
   @available(swift, deprecated: 100000.0, message: "Do not adopt this functionality in new code. It will be removed in a future release.")
-  public static func allTypeMetadataBasedTestContentRecords() -> AnySequence<TestContentRecord<Self>> {
+  public static func allTypeMetadataBasedTestContentRecords(
+    loadingWith loader: @escaping @Sendable (Any.Type, UnsafeMutableRawBufferPointer) -> Bool
+  ) -> AnySequence<TestContentRecord<Self>> {
     validateMemoryLayout()
+
+    let typeNameHint = _testContentTypeNameHint
+    let kind = testContentKind
+    let loader: @Sendable (Any.Type) -> _TestContentRecord? = { type in
+      withUnsafeTemporaryAllocation(of: _TestContentRecord.self, capacity: 1) { buffer in
+        // Load the record from the container type.
+        guard loader(type, .init(buffer)) else {
+          return nil
+        }
+        return buffer.baseAddress!.move()
+      }
+    }
 
     let result = SectionBounds.all(.typeMetadata).lazy.flatMap { sb in
       stride(from: sb.buffer.baseAddress!, to: sb.buffer.baseAddress! + sb.buffer.count, by: SWTTypeMetadataRecordByteCount).lazy
-        .compactMap { swt_getType(fromTypeMetadataRecord: $0, ifNameContains: "__🟡$") }
+        .compactMap { swt_getType(fromTypeMetadataRecord: $0, ifNameContains: typeNameHint) }
         .map { unsafeBitCast($0, to: Any.Type.self) }
-        .compactMap { $0 as? any TestContentRecordContainer.Type }
-        .compactMap { _makeTestContentRecord(from: $0, in: sb) }
+        .compactMap(loader)
+        .filter { $0.kind == kind }
+        .map { TestContentRecord<Self>(imageAddress: sb.imageAddress, record: $0) }
     }
     return AnySequence(result)
   }

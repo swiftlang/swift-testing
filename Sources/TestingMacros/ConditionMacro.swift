@@ -469,10 +469,10 @@ extension ExitTestConditionMacro {
       // Create another local type for legacy test discovery.
       var recordDecl: DeclSyntax?
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
-      let className = context.makeUniqueName("__🟡$")
+      let legacyEnumName = context.makeUniqueName("__🟡$")
       recordDecl = """
-      private final class \(className): Testing.__TestContentRecordContainer {
-        override nonisolated class var __testContentRecord: Testing.__TestContentRecord {
+      enum \(legacyEnumName): Testing.__TestContentRecordContainer {
+        nonisolated static var __testContentRecord: Testing.__TestContentRecord {
           \(enumName).testContentRecord
         }
       }

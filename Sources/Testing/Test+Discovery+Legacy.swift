@@ -11,35 +11,37 @@
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly) internal import _TestDiscovery
 
-/// A shadow declaration of `_TestDiscovery.TestContentRecordContainer` that
-/// allows us to add public conformances to it without causing the
-/// `_TestDiscovery` module to appear in `Testing.private.swiftinterface`.
-///
-/// This protocol is not part of the public interface of the testing library.
-@_alwaysEmitConformanceMetadata
-protocol TestContentRecordContainer: _TestDiscovery.TestContentRecordContainer {}
-
-/// An abstract base class describing a type that contains tests.
+/// A protocol base class describing a type that contains tests.
 ///
 /// - Warning: This class is used to implement the `@Test` macro. Do not use it
 ///   directly.
-open class __TestContentRecordContainer: TestContentRecordContainer {
-  /// The corresponding test content record.
+@_alwaysEmitConformanceMetadata
+public protocol __TestContentRecordContainer {
+  /// The test content record associated with this container.
   ///
   /// - Warning: This property is used to implement the `@Test` macro. Do not
   ///   use it directly.
-  open nonisolated class var __testContentRecord: __TestContentRecord {
-    (0, 0, nil, 0, 0)
-  }
+  nonisolated static var __testContentRecord: __TestContentRecord { get }
+}
 
-  static func storeTestContentRecord(to outTestContentRecord: UnsafeMutableRawPointer) -> Bool {
-    outTestContentRecord.withMemoryRebound(to: __TestContentRecord.self, capacity: 1) { outTestContentRecord in
-      outTestContentRecord.initialize(to: __testContentRecord)
+extension DiscoverableAsTestContent where Self: ~Copyable {
+  /// Get all test content of this type known to Swift and found in the current
+  /// process using the legacy discovery mechanism.
+  ///
+  /// - Returns: A sequence of instances of ``TestContentRecord``. Only test
+  ///   content records matching this ``TestContent`` type's requirements are
+  ///   included in the sequence.
+  static func allTypeMetadataBasedTestContentRecords() -> AnySequence<TestContentRecord<Self>> {
+    return allTypeMetadataBasedTestContentRecords { type, buffer in
+      guard let type = type as? any __TestContentRecordContainer.Type else {
+        return false
+      }
+
+      buffer.withMemoryRebound(to: __TestContentRecord.self) { buffer in
+        buffer.baseAddress!.initialize(to: type.__testContentRecord)
+      }
       return true
     }
   }
 }
-
-@available(*, unavailable)
-extension __TestContentRecordContainer: Sendable {}
 #endif
