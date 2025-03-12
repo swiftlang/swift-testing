@@ -41,7 +41,7 @@ extension Issue {
 
     // If this issue matches via the known issue matcher, set a copy of it to be
     // known and record the copy instead.
-    if !isKnown, let match = KnownIssueContext.current?.match(self) {
+    if !isKnown, let match = KnownIssueScope.current?.match(self) {
       var selfCopy = self
       selfCopy.markAsKnown(comment: match.comment)
       return selfCopy.record(configuration: configuration)
