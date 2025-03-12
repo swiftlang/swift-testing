@@ -36,15 +36,15 @@ struct KnownIssueScope: Sendable {
     let matchCounter = Locked(rawValue: 0)
     self.matchCounter = matchCounter
     match = { issue in
-      let match = if issueMatcher(issue) {
+      let matchedContext = if issueMatcher(issue) {
         context
       } else {
         parent?.match(issue)
       }
-      if match != nil {
+      if matchedContext != nil {
         matchCounter.increment()
       }
-      return match
+      return matchedContext
     }
   }
 
@@ -71,9 +71,9 @@ struct KnownIssueScope: Sendable {
 private func _matchError(_ error: any Error, using scope: KnownIssueScope, comment: Comment?, sourceLocation: SourceLocation) throws {
   let sourceContext = SourceContext(backtrace: Backtrace(forFirstThrowOf: error), sourceLocation: sourceLocation)
   var issue = Issue(kind: .errorCaught(error), comments: Array(comment), sourceContext: sourceContext)
-  if let match = scope.match(issue) {
+  if let context = scope.match(issue) {
     // It's a known issue, so mark it as such before recording it.
-    issue.knownIssueContext = match
+    issue.knownIssueContext = context
     issue.record()
   } else {
     // Rethrow the error, allowing the caller to catch it or for it to propagate
