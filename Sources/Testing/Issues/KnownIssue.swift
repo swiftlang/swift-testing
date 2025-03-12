@@ -52,6 +52,14 @@ struct KnownIssueContext: Sendable {
       return match
     }
   }
+
+  /// The known issue context, as set by `withKnownIssue()`, associated with the
+  /// current task.
+  ///
+  /// If there is no call to `withKnownIssue()` executing on the current task,
+  /// the value of this property is `nil`.
+  @TaskLocal
+  static var current: KnownIssueContext?
 }
 
 /// Check if an error matches using an issue-matching function, and throw it if
@@ -209,13 +217,13 @@ public func withKnownIssue(
   guard precondition() else {
     return try body()
   }
-  let issueContext = KnownIssueContext(parent: Issue.currentKnownIssueContext, issueMatcher: issueMatcher, comment: comment)
+  let issueContext = KnownIssueContext(parent: .current, issueMatcher: issueMatcher, comment: comment)
   defer {
     if !isIntermittent {
       _handleMiscount(by: issueContext.matchCounter, comment: comment, sourceLocation: sourceLocation)
     }
   }
-  try Issue.$currentKnownIssueContext.withValue(issueContext) {
+  try KnownIssueContext.$current.withValue(issueContext) {
     do {
       try body()
     } catch {
@@ -328,13 +336,13 @@ public func withKnownIssue(
   guard await precondition() else {
     return try await body()
   }
-  let issueContext = KnownIssueContext(parent: Issue.currentKnownIssueContext, issueMatcher: issueMatcher, comment: comment)
+  let issueContext = KnownIssueContext(parent: .current, issueMatcher: issueMatcher, comment: comment)
   defer {
     if !isIntermittent {
       _handleMiscount(by: issueContext.matchCounter, comment: comment, sourceLocation: sourceLocation)
     }
   }
-  try await Issue.$currentKnownIssueContext.withValue(issueContext) {
+  try await KnownIssueContext.$current.withValue(issueContext) {
     do {
       try await body()
     } catch {
