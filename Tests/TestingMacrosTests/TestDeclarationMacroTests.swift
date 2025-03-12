@@ -11,6 +11,7 @@
 import Testing
 @testable import TestingMacros
 
+import SwiftBasicFormat
 import SwiftDiagnostics
 import SwiftParser
 import SwiftSyntax
