@@ -28,7 +28,8 @@ protocol DiscoverableAsTestContent: _TestDiscovery.DiscoverableAsTestContent, ~C
 public typealias __TestContentRecordAccessor = @convention(c) (
   _ outValue: UnsafeMutableRawPointer,
   _ type: UnsafeRawPointer,
-  _ hint: UnsafeRawPointer?
+  _ hint: UnsafeRawPointer?,
+  _ reserved: UInt
 ) -> CBool
 
 /// The content of a test content record.
