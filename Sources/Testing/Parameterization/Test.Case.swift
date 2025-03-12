@@ -293,16 +293,6 @@ extension Test.Case.Argument.ID: Codable {
 
 // MARK: - Equatable, Hashable
 
-extension Test.Case: Equatable, Hashable {
-  public static func ==(lhs: Test.Case, rhs: Test.Case) -> Bool {
-    lhs.id == rhs.id
-  }
-
-  public func hash(into hasher: inout Hasher) {
-    hasher.combine(id)
-  }
-}
-
 extension Test.Parameter: Hashable {}
 extension Test.Case.Argument.ID: Hashable {}
 
