@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-/// A type represents an active `withKnownIssue()` call and any parent calls.
+/// A type that represents an active `withKnownIssue()` call and any parent calls.
 ///
 /// A stack of these is stored in `KnownIssueContext.current`. The stack is
 /// mutated by calls to `withKnownIssue()`.
