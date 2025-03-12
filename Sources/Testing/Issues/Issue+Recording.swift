@@ -9,17 +9,6 @@
 //
 
 extension Issue {
-  /// Mark that an issue is a known issue.
-  /// - Parameter comment: The comment passed to the invocation of
-  ///   ``withKnownIssue`` that caused this issue to be considered "known".
-  mutating func markAsKnown(comment: Comment?) {
-    precondition(!isKnown)
-    isKnown = true
-    if let comment {
-      comments.insert(comment, at: 0)
-    }
-  }
-
   /// Record this issue by wrapping it in an ``Event`` and passing it to the
   /// current event handler.
   ///
@@ -43,7 +32,7 @@ extension Issue {
     // known and record the copy instead.
     if !isKnown, let match = KnownIssueScope.current?.match(self) {
       var selfCopy = self
-      selfCopy.markAsKnown(comment: match.comment)
+      selfCopy.knownIssueContext = match
       return selfCopy.record(configuration: configuration)
     }
 

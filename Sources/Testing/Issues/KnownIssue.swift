@@ -17,7 +17,7 @@ struct KnownIssueScope: Sendable {
   /// scope.
   ///
   /// Returns `nil` if the issue is not known.
-  var match: @Sendable (Issue) -> Match?
+  var match: @Sendable (Issue) -> Issue.KnownIssueContext?
   /// The number of issues this scope and its ancestors have matched.
   let matchCounter: Locked<Int>
 
@@ -37,12 +37,12 @@ struct KnownIssueScope: Sendable {
   ///   - comment: Any comment to be associated with issues matched by
   ///     `issueMatcher`.
   /// - Returns: A new instance of ``KnownIssueScope``.
-  init(parent: KnownIssueScope?, issueMatcher: @escaping KnownIssueMatcher, comment: Comment?) {
+  init(parent: KnownIssueScope?, issueMatcher: @escaping KnownIssueMatcher, context: Issue.KnownIssueContext) {
     let matchCounter = Locked(rawValue: 0)
     self.matchCounter = matchCounter
     match = { issue in
       let match = if issueMatcher(issue) {
-        Match(comment: comment)
+        context
       } else {
         parent?.match(issue)
       }
@@ -78,7 +78,7 @@ private func _matchError(_ error: any Error, using scope: KnownIssueScope, comme
   var issue = Issue(kind: .errorCaught(error), comments: Array(comment), sourceContext: sourceContext)
   if let match = scope.match(issue) {
     // It's a known issue, so mark it as such before recording it.
-    issue.markAsKnown(comment: match.comment)
+    issue.knownIssueContext = match
     issue.record()
   } else {
     // Rethrow the error, allowing the caller to catch it or for it to propagate
@@ -217,7 +217,7 @@ public func withKnownIssue(
   guard precondition() else {
     return try body()
   }
-  let scope = KnownIssueScope(parent: .current, issueMatcher: issueMatcher, comment: comment)
+  let scope = KnownIssueScope(parent: .current, issueMatcher: issueMatcher, context: Issue.KnownIssueContext(comment: comment, sourceLocation: sourceLocation))
   defer {
     if !isIntermittent {
       _handleMiscount(by: scope.matchCounter, comment: comment, sourceLocation: sourceLocation)
@@ -336,7 +336,7 @@ public func withKnownIssue(
   guard await precondition() else {
     return try await body()
   }
-  let scope = KnownIssueScope(parent: .current, issueMatcher: issueMatcher, comment: comment)
+  let scope = KnownIssueScope(parent: .current, issueMatcher: issueMatcher, context: Issue.KnownIssueContext(comment: comment, sourceLocation: sourceLocation))
   defer {
     if !isIntermittent {
       _handleMiscount(by: scope.matchCounter, comment: comment, sourceLocation: sourceLocation)
