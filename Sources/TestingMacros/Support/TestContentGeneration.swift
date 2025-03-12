@@ -61,7 +61,19 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
     IntegerLiteralExprSyntax(context, radix: .binary)
   }
 
-  return """
+  var result: DeclSyntax = """
+  @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
+  private nonisolated \(staticKeyword(for: typeName)) let \(name): Testing.__TestContentRecord = (
+    \(kindExpr), \(kind.commentRepresentation)
+    0,
+    \(accessorName),
+    \(contextExpr),
+    0
+  )
+  """
+
+#if hasFeature(SymbolLinkageMarkers)
+  result = """
   #if hasFeature(SymbolLinkageMarkers)
   #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
   @_section("__DATA_CONST,__swift5_tests")
@@ -74,13 +86,9 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
   #endif
   @_used
   #endif
-  @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-  private nonisolated \(staticKeyword(for: typeName)) let \(name): Testing.__TestContentRecord = (
-    \(kindExpr), \(kind.commentRepresentation)
-    0,
-    \(accessorName),
-    \(contextExpr),
-    0
-  )
+  \(result)
   """
+#endif
+
+  return result
 }
