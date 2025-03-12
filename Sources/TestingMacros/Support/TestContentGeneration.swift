@@ -17,6 +17,9 @@ import SwiftSyntaxMacros
 ///
 /// When adding cases to this enumeration, be sure to also update the
 /// corresponding enumeration in TestContent.md.
+///
+/// - Bug: This type should be imported directly from `_TestDiscovery` instead
+///   of being redefined (differently) here.
 enum TestContentKind: UInt32 {
   /// A test or suite declaration.
   case testDeclaration = 0x74657374

@@ -239,11 +239,11 @@ extension ExitTest {
 // MARK: - Discovery
 
 extension ExitTest: DiscoverableAsTestContent {
-  static var testContentKind: UInt32 {
-    0x65786974
+  fileprivate static var testContentKind: TestContentKind {
+    "exit"
   }
 
-  typealias TestContentAccessorHint = ID
+  fileprivate typealias TestContentAccessorHint = ID
 
   /// Store the exit test into the given memory.
   ///
