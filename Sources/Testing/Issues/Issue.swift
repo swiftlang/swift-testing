@@ -115,9 +115,29 @@ public struct Issue: Sendable {
   @_spi(ForToolsIntegrationOnly)
   public var sourceContext: SourceContext
 
+  /// A type representing a
+  /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)`` call
+  /// that matched an issue.
+  @_spi(ForToolsIntegrationOnly)
+  public struct KnownIssueContext: Sendable, Codable {
+    /// The comment that was passed to `withKnownIssue()`.
+    var comment: Comment?
+    /// The source location that was passed to `withKnownIssue()`.
+    var sourceLocation: SourceLocation
+  }
+
+  /// A ``KnownIssueContext-swift.struct`` representing the
+  /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)`` call
+  /// that matched this issue, if any.
+  @_spi(ForToolsIntegrationOnly)
+  public var knownIssueContext: KnownIssueContext? = nil
+
   /// Whether or not this issue is known to occur.
   @_spi(ForToolsIntegrationOnly)
-  public var isKnown: Bool = false
+  public var isKnown: Bool {
+    get { knownIssueContext != nil }
+    set {}
+  }
 
   /// Initialize an issue instance with the specified details.
   ///
