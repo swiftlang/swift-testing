@@ -91,7 +91,8 @@ struct AttachmentTests {
       // Write the attachment to disk, then read it back.
       let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectory(), appending: suffixes.next()!)
       createdFilePaths.append(filePath)
-      let fileName = try #require(filePath.split { $0 == "/" || $0 == #"\"# }.last)
+      let filePathComponents = filePath.split { $0 == "/" || $0 == #"\"# }
+      let fileName = try #require(filePathComponents.last)
       if i == 0 {
         #expect(fileName == baseFileName)
       } else {
@@ -118,7 +119,8 @@ struct AttachmentTests {
     defer {
       remove(filePath)
     }
-    let fileName = try #require(filePath.split { $0 == "/" || $0 == #"\"# }.last)
+    let filePathComponents = filePath.split { $0 == "/" || $0 == #"\"# }
+    let fileName = try #require(filePathComponents.last)
     #expect(fileName == "loremipsum-\(suffix).tgz.gif.jpeg.html")
     try compare(attachableValue, toContentsOfFileAtPath: filePath)
   }

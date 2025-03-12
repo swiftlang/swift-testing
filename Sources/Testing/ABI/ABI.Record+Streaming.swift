@@ -9,6 +9,8 @@
 //
 
 #if canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
+private import Foundation
+
 extension ABI.Version {
   /// Post-process encoded JSON and write it to a file.
   ///

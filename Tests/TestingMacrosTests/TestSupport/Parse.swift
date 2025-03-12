@@ -10,6 +10,7 @@
 
 @testable import TestingMacros
 
+import SwiftBasicFormat
 import SwiftDiagnostics
 import SwiftOperators
 import SwiftParser

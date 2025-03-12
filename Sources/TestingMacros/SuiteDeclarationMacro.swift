@@ -8,7 +8,9 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+import SwiftDiagnostics
 public import SwiftSyntax
+import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
 
 #if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY

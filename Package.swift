@@ -202,6 +202,8 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .enableExperimentalFeature("AccessLevelOnImport"),
       .enableUpcomingFeature("InternalImportsByDefault"),
 
+      .enableUpcomingFeature("MemberImportVisibility"),
+
       // This setting is enabled in the package, but not in the toolchain build
       // (via CMake). Enabling it is dependent on acceptance of the @section
       // proposal via Swift Evolution.

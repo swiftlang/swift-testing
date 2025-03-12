@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+import SwiftParser
 import SwiftSyntax
 
 extension TokenSyntax {
