@@ -84,7 +84,7 @@ struct BugTests {
     #expect(traits.count == 3)
   }
 
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
   @Test("Encoding/decoding")
   func encodingAndDecoding() throws {
     let original = Bug.bug(id: 12345, "Lorem ipsum")

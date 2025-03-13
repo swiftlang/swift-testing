@@ -33,7 +33,7 @@ extension ABI {
     var isKnown: Bool
 
     /// The location in source where this issue occurred, if available.
-    var sourceLocation: SourceLocation?
+    var sourceLocation: EncodedSourceLocation<V>?
 
     /// The backtrace where this issue occurred, if available.
     ///
@@ -51,7 +51,9 @@ extension ABI {
       case .error: .error
       }
       isKnown = issue.isKnown
-      sourceLocation = issue.sourceLocation
+      if let sourceLocation = issue.sourceLocation {
+        self.sourceLocation = EncodedSourceLocation<V>(encoding: sourceLocation)
+      }
       if let backtrace = issue.sourceContext.backtrace {
         _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)
       }
@@ -62,7 +64,31 @@ extension ABI {
   }
 }
 
-// MARK: - Codable
+// MARK: - Decodable
 
-extension ABI.EncodedIssue: Codable {}
-extension ABI.EncodedIssue.Severity: Codable {}
+extension ABI.EncodedIssue: Decodable {}
+extension ABI.EncodedIssue.Severity: Decodable {}
+
+// MARK: - JSON.Serializable
+
+extension ABI.EncodedIssue: JSON.Serializable {
+  func makeJSON() throws -> some Collection<UInt8> {
+    var dict = JSON.HeterogenousDictionary()
+
+    try dict.updateValue(_severity, forKey: "_severity")
+    try dict.updateValue(isKnown, forKey: "isKnown")
+    if let sourceLocation {
+      try dict.updateValue(sourceLocation, forKey: "sourceLocation")
+    }
+    if let _backtrace {
+      try dict.updateValue(_backtrace, forKey: "_backtrace")
+    }
+    if let _error {
+      try dict.updateValue(_error, forKey: "_error")
+    }
+
+    return try dict.makeJSON()
+  }
+}
+
+extension ABI.EncodedIssue.Severity: JSON.Serializable {}

@@ -20,7 +20,6 @@ extension ABI {
     /// The numeric representation of this ABI version.
     static var versionNumber: Int { get }
 
-#if canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
     /// Create an event handler that encodes events as JSON and forwards them to
     /// an ABI-friendly event handler.
     ///
@@ -39,7 +38,6 @@ extension ABI {
       encodeAsJSONLines: Bool,
       forwardingTo eventHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
     ) -> Event.Handler
-#endif
   }
 
   /// The current supported ABI version (ignoring any experimental versions.)
@@ -50,6 +48,10 @@ extension ABI {
 
 extension ABI {
 #if !SWT_NO_SNAPSHOT_TYPES
+#if SWT_NO_FOUNDATION || !canImport(Foundation)
+#error("Platform-specific misconfiguration: Foundation is required for snapshot type support")
+#endif
+
   /// A namespace and version type for Xcode&nbsp;16 compatibility.
   ///
   /// - Warning: This type will be removed in a future update.

@@ -1596,7 +1596,7 @@ final class IssueTests: XCTestCase {
 }
 #endif
 
-#if canImport(Foundation) && !SWT_NO_SNAPSHOT_TYPES
+#if !SWT_NO_FOUNDATION && canImport(Foundation) && !SWT_NO_SNAPSHOT_TYPES
 import Foundation
 
 @Suite("Issue Codable Conformance Tests")

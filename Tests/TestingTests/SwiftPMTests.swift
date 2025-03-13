@@ -195,7 +195,7 @@ struct SwiftPMTests {
     #expect(fileContents.contains(UInt8(ascii: ">")))
   }
 
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
   @Test("--configuration-path argument", arguments: [
     "--configuration-path", "--experimental-configuration-path",
   ])

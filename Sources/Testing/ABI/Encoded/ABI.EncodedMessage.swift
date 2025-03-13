@@ -74,7 +74,21 @@ extension ABI {
   }
 }
 
-// MARK: - Codable
+// MARK: - Decodable
 
-extension ABI.EncodedMessage: Codable {}
-extension ABI.EncodedMessage.Symbol: Codable {}
+extension ABI.EncodedMessage: Decodable {}
+extension ABI.EncodedMessage.Symbol: Decodable {}
+
+// MARK: - JSON.Serializable
+
+extension ABI.EncodedMessage: JSON.Serializable {
+  func makeJSON() throws -> some Collection<UInt8> {
+    var dict = JSON.HeterogenousDictionary()
+
+    try dict.updateValue(symbol, forKey: "symbol")
+    try dict.updateValue(text, forKey: "text")
+
+    return try dict.makeJSON()
+  }
+}
+extension ABI.EncodedMessage.Symbol: JSON.Serializable {}

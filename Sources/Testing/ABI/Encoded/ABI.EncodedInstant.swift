@@ -35,6 +35,19 @@ extension ABI {
   }
 }
 
-// MARK: - Codable
+// MARK: - Decodable
 
-extension ABI.EncodedInstant: Codable {}
+extension ABI.EncodedInstant: Decodable {}
+
+// MARK: - JSON.Serializable
+
+extension ABI.EncodedInstant: JSON.Serializable {
+  func makeJSON() throws -> some Collection<UInt8> {
+    var dict = JSON.HeterogenousDictionary()
+
+    try dict.updateValue(absolute, forKey: "absolute")
+    try dict.updateValue(since1970, forKey: "since1970")
+
+    return try dict.makeJSON()
+  }
+}

@@ -31,14 +31,34 @@ extension ABI {
   }
 }
 
-// MARK: - Codable
+// MARK: - Decodable
 
-extension ABI.EncodedBacktrace: Codable {
-  func encode(to encoder: any Encoder) throws {
-    try symbolicatedAddresses.encode(to: encoder)
-  }
-
+extension ABI.EncodedBacktrace: Decodable {
   init(from decoder: any Decoder) throws {
     self.symbolicatedAddresses = try [Backtrace.SymbolicatedAddress](from: decoder)
+  }
+}
+
+// MARK: - JSON.Serializable
+
+extension ABI.EncodedBacktrace: JSON.Serializable {
+  func makeJSON() throws -> some Collection<UInt8> {
+    var dict = JSON.HeterogenousDictionary()
+    try dict.updateValue(symbolicatedAddresses, forKey: "symbolicatedAddresses")
+    return try dict.makeJSON()
+  }
+}
+
+extension Backtrace.SymbolicatedAddress: JSON.Serializable {
+  func makeJSON() throws -> some Collection<UInt8> {
+    var dict = JSON.HeterogenousDictionary()
+    try dict.updateValue(address, forKey: "address")
+    if let offset {
+      try dict.updateValue(offset, forKey: "offset")
+    }
+    if let symbolName {
+      try dict.updateValue(symbolName, forKey: "symbolName")
+    }
+    return try dict.makeJSON()
   }
 }

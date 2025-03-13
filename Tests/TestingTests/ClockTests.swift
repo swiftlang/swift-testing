@@ -121,7 +121,7 @@ struct ClockTests {
     #expect(duration == .nanoseconds(offsetNanoseconds))
   }
 
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
   @available(_clockAPI, *)
   @Test("Codable")
   func codable() async throws {

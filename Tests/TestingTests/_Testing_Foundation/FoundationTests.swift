@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation) && !SWT_NO_UTC_CLOCK
+#if !SWT_NO_FOUNDATION && canImport(Foundation) && !SWT_NO_UTC_CLOCK
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import _Testing_Foundation
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 import Foundation

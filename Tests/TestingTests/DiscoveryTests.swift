@@ -10,7 +10,7 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import _TestDiscovery
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
 private import Foundation
 #endif
 
@@ -30,7 +30,7 @@ struct DiscoveryTests {
     #expect(String(describing: kind3).lowercased() == "0xff123456")
   }
 
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
   @Test func testContentKindCodableConformance() throws {
     let kind1: TestContentKind = "moof"
     let data = try JSONEncoder().encode(kind1)

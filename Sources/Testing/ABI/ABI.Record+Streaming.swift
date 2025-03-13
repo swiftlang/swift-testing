@@ -8,9 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
-private import Foundation
-
 extension ABI.Version {
   /// Post-process encoded JSON and write it to a file.
   ///
@@ -96,12 +93,9 @@ extension ABI.Xcode16 {
         eventContext: Event.Context.Snapshot(snapshotting: context)
       )
       try? JSON.withEncoding(of: snapshot) { eventAndContextJSON in
-        eventAndContextJSON.withUnsafeBytes { eventAndContextJSON in
-          eventHandler(eventAndContextJSON)
-        }
+        eventHandler(eventAndContextJSON)
       }
     }
   }
 }
-#endif
 #endif

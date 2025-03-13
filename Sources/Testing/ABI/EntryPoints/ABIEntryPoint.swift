@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation) && !SWT_NO_ABI_ENTRY_POINT
+#if !SWT_NO_ABI_ENTRY_POINT
 private import _TestingInternals
 
 extension ABI.v0 {

@@ -37,7 +37,7 @@ struct Test_Case_Argument_IDTests {
     #expect(testCase.arguments.count == 1)
     let argument = try #require(testCase.arguments.first)
     let argumentID = try #require(argument.id)
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
     let decodedArgument = try argumentID.bytes.withUnsafeBufferPointer { argumentID in
       try JSON.decode(MyCustomTestArgument.self, from: .init(argumentID))
     }

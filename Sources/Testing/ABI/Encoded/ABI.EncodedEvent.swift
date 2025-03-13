@@ -107,7 +107,35 @@ extension ABI {
   }
 }
 
-// MARK: - Codable
+// MARK: - Decodable
 
-extension ABI.EncodedEvent: Codable {}
-extension ABI.EncodedEvent.Kind: Codable {}
+extension ABI.EncodedEvent: Decodable {}
+extension ABI.EncodedEvent.Kind: Decodable {}
+
+// MARK: - JSON.Serializable
+
+extension ABI.EncodedEvent: JSON.Serializable {
+  func makeJSON() throws -> some Collection<UInt8> {
+    var dict = JSON.HeterogenousDictionary()
+
+    try dict.updateValue(kind, forKey: "kind")
+    try dict.updateValue(instant, forKey: "instant")
+    if let issue {
+      try dict.updateValue(issue, forKey: "issue")
+    }
+    if let _attachment {
+      try dict.updateValue(_attachment, forKey: "_attachment")
+    }
+    try dict.updateValue(messages, forKey: "messages")
+    if let testID {
+      try dict.updateValue(testID, forKey: "testID")
+    }
+    if let _testCase {
+      try dict.updateValue(_testCase, forKey: "_testCase")
+    }
+
+    return try dict.makeJSON()
+  }
+}
+
+extension ABI.EncodedEvent.Kind: JSON.Serializable {}

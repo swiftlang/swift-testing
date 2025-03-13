@@ -337,7 +337,6 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   }
 
 #if !SWT_NO_FILE_IO
-#if canImport(Foundation)
   // Configuration for the test run passed in as a JSON file (experimental)
   //
   // This argument should always be the first one we parse.
@@ -388,7 +387,6 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
       }
     }
   }
-#endif
 
   // XML output
   if let xunitOutputIndex = args.firstIndex(of: "--xunit-output"), !isLastArgument(at: xunitOutputIndex) {
@@ -516,7 +514,6 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
     configuration.attachmentsPath = attachmentsPath
   }
 
-#if canImport(Foundation)
   // Event stream output (experimental)
   if let eventStreamOutputPath = args.eventStreamOutputPath {
     let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
@@ -531,7 +528,6 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
       oldEventHandler(event, context)
     }
   }
-#endif
 #endif
 
   // Filtering
@@ -604,7 +600,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   return configuration
 }
 
-#if canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
+#if !SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT
 /// Create an event handler that streams events to the given file using the
 /// specified ABI version.
 ///

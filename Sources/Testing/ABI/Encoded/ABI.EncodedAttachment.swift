@@ -27,6 +27,18 @@ extension ABI {
   }
 }
 
-// MARK: - Codable
+// MARK: - Decodable
 
-extension ABI.EncodedAttachment: Codable {}
+extension ABI.EncodedAttachment: Decodable {}
+
+// MARK: - JSON.Serializable
+
+extension ABI.EncodedAttachment: JSON.Serializable {
+  func makeJSON() throws -> some Collection<UInt8> {
+    var dict = JSON.HeterogenousDictionary()
+    if let path {
+      try dict.updateValue(path, forKey: "path")
+    }
+    return try dict.makeJSON()
+  }
+}
