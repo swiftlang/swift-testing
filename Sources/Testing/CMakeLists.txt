@@ -81,6 +81,8 @@ add_library(Testing
   Support/GetSymbol.swift
   Support/Graph.swift
   Support/JSON.swift
+  Support/JSON.Serializable.swift
+  Support/JSON.Value.swift
   Support/Locked.swift
   Support/Locked+Platform.swift
   Support/Versions.swift

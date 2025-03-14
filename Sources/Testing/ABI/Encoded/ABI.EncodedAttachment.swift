@@ -34,11 +34,11 @@ extension ABI.EncodedAttachment: Decodable {}
 // MARK: - JSON.Serializable
 
 extension ABI.EncodedAttachment: JSON.Serializable {
-  func makeJSON() throws -> some Collection<UInt8> {
-    var dict = JSON.HeterogenousDictionary()
+  func makeJSONValue() -> JSON.Value {
+    var dict = [String: JSON.Value]()
     if let path {
-      try dict.updateValue(path, forKey: "path")
+      dict["path"] = path.makeJSONValue()
     }
-    return try dict.makeJSON()
+    return .object(dict)
   }
 }

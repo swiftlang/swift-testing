@@ -42,23 +42,24 @@ extension ABI.EncodedBacktrace: Decodable {
 // MARK: - JSON.Serializable
 
 extension ABI.EncodedBacktrace: JSON.Serializable {
-  func makeJSON() throws -> some Collection<UInt8> {
-    var dict = JSON.HeterogenousDictionary()
-    try dict.updateValue(symbolicatedAddresses, forKey: "symbolicatedAddresses")
-    return try dict.makeJSON()
+  func makeJSONValue() -> JSON.Value {
+    symbolicatedAddresses.makeJSONValue()
   }
 }
 
 extension Backtrace.SymbolicatedAddress: JSON.Serializable {
-  func makeJSON() throws -> some Collection<UInt8> {
-    var dict = JSON.HeterogenousDictionary()
-    try dict.updateValue(address, forKey: "address")
+  func makeJSONValue() -> JSON.Value {
+    var dict = [
+      "address": address.makeJSONValue()
+    ]
+
     if let offset {
-      try dict.updateValue(offset, forKey: "offset")
+      dict["offset"] = offset.makeJSONValue()
     }
     if let symbolName {
-      try dict.updateValue(symbolName, forKey: "symbolName")
+      dict["symbolName"] = symbolName.makeJSONValue()
     }
-    return try dict.makeJSON()
+
+    return .object(dict)
   }
 }

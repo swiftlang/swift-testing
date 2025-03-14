@@ -115,26 +115,27 @@ extension ABI.EncodedEvent.Kind: Decodable {}
 // MARK: - JSON.Serializable
 
 extension ABI.EncodedEvent: JSON.Serializable {
-  func makeJSON() throws -> some Collection<UInt8> {
-    var dict = JSON.HeterogenousDictionary()
+  func makeJSONValue() -> JSON.Value {
+    var dict = [
+      "kind": kind.makeJSONValue(),
+      "instant": instant.makeJSONValue(),
+      "messages": messages.makeJSONValue(),
+    ]
 
-    try dict.updateValue(kind, forKey: "kind")
-    try dict.updateValue(instant, forKey: "instant")
     if let issue {
-      try dict.updateValue(issue, forKey: "issue")
+      dict["issue"] = issue.makeJSONValue()
     }
     if let _attachment {
-      try dict.updateValue(_attachment, forKey: "_attachment")
+      dict["_attachment"] = _attachment.makeJSONValue()
     }
-    try dict.updateValue(messages, forKey: "messages")
     if let testID {
-      try dict.updateValue(testID, forKey: "testID")
+      dict["testID"] = testID.makeJSONValue()
     }
     if let _testCase {
-      try dict.updateValue(_testCase, forKey: "_testCase")
+      dict["_testCase"] = _testCase.makeJSONValue()
     }
 
-    return try dict.makeJSON()
+    return .object(dict)
   }
 }
 

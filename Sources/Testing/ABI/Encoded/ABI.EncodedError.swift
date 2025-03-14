@@ -61,12 +61,13 @@ extension ABI.EncodedError: Decodable {}
 // MARK: - JSON.Serializable
 
 extension ABI.EncodedError: JSON.Serializable {
-  func makeJSON() throws -> some Collection<UInt8> {
-    var dict = JSON.HeterogenousDictionary()
-    try dict.updateValue(description, forKey: "description")
-    try dict.updateValue(domain, forKey: "domain")
-    try dict.updateValue(code, forKey: "code")
-    return try dict.makeJSON()
+  func makeJSONValue() -> JSON.Value {
+    let dict = [
+      "description": description.makeJSONValue(),
+      "domain": domain.makeJSONValue(),
+      "code": code.makeJSONValue()
+    ]
+    return .object(dict)
   }
 }
 

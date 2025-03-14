@@ -47,8 +47,12 @@ public struct ExitTest: Sendable, ~Copyable {
       self._hi = uuid.1
     }
 
-    func makeJSON() throws -> some Collection<UInt8> {
-      try [_lo.makeJSON(), _hi.makeJSON()].joined()
+    func makeJSONValue() -> JSON.Value {
+      let dict = [
+        "_lo": _lo.makeJSONValue(),
+        "_hi": _hi.makeJSONValue()
+      ]
+      return .object(dict)
     }
   }
 
@@ -751,6 +755,10 @@ extension ExitTest {
       } catch {
         // NOTE: an error caught here indicates a decoding problem.
         // TODO: should we record these issues as systemic instead?
+        FileHandle.stdout.withLock {
+          try! FileHandle.stdout.write(recordJSON)
+          try! FileHandle.stdout.write("\n")
+        }
         Issue(for: error).record()
       }
     }

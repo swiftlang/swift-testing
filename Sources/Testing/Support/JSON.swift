@@ -24,10 +24,7 @@ enum JSON {
   ///
   /// - Throws: Whatever is thrown by `body` or by the encoding process.
   static func withEncoding<J, R>(of value: J, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R where J: JSON.Serializable {
-    let json = try value.makeJSON()
-    return try json.withContiguousStorageIfAvailable { json in
-      try body(.init(json))
-    } ?? Array(json).withUnsafeBytes { json in
+    try value.makeJSONValue().withUnsafeBytes { json in
       try body(json)
     }
   }

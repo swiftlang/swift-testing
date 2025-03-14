@@ -35,14 +35,13 @@ extension ABI.EncodedSourceLocation: Decodable {
 // MARK: - JSON.Serializable
 
 extension ABI.EncodedSourceLocation: JSON.Serializable {
-  func makeJSON() throws -> some Collection<UInt8> {
-    var dict = JSON.HeterogenousDictionary()
-
-    try dict.updateValue(sourceLocation._filePath, forKey: "_filePath")
-    try dict.updateValue(sourceLocation.fileID, forKey: "fileID")
-    try dict.updateValue(sourceLocation.line, forKey: "line")
-    try dict.updateValue(sourceLocation.column, forKey: "column")
-
-    return try dict.makeJSON()
+  func makeJSONValue() -> JSON.Value {
+    let dict = [
+      "_filePath": sourceLocation._filePath.makeJSONValue(),
+      "fileID": sourceLocation.fileID.makeJSONValue(),
+      "line": sourceLocation.line.makeJSONValue(),
+      "column": sourceLocation.column.makeJSONValue(),
+    ]
+    return .object(dict)
   }
 }

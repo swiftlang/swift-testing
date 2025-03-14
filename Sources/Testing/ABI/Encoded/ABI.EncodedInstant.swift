@@ -42,12 +42,11 @@ extension ABI.EncodedInstant: Decodable {}
 // MARK: - JSON.Serializable
 
 extension ABI.EncodedInstant: JSON.Serializable {
-  func makeJSON() throws -> some Collection<UInt8> {
-    var dict = JSON.HeterogenousDictionary()
-
-    try dict.updateValue(absolute, forKey: "absolute")
-    try dict.updateValue(since1970, forKey: "since1970")
-
-    return try dict.makeJSON()
+  func makeJSONValue() -> JSON.Value {
+    let dict = [
+      "absolute": absolute.makeJSONValue(),
+      "since1970": since1970.makeJSONValue()
+    ]
+    return .object(dict)
   }
 }

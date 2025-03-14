@@ -72,22 +72,23 @@ extension ABI.EncodedIssue.Severity: Decodable {}
 // MARK: - JSON.Serializable
 
 extension ABI.EncodedIssue: JSON.Serializable {
-  func makeJSON() throws -> some Collection<UInt8> {
-    var dict = JSON.HeterogenousDictionary()
+  func makeJSONValue() -> JSON.Value {
+    var dict = [
+      "_severity": _severity.makeJSONValue(),
+      "isKnown": isKnown.makeJSONValue()
+    ]
 
-    try dict.updateValue(_severity, forKey: "_severity")
-    try dict.updateValue(isKnown, forKey: "isKnown")
     if let sourceLocation {
-      try dict.updateValue(sourceLocation, forKey: "sourceLocation")
+      dict["sourceLocation"] = sourceLocation.makeJSONValue()
     }
     if let _backtrace {
-      try dict.updateValue(_backtrace, forKey: "_backtrace")
+      dict["_backtrace"] = _backtrace.makeJSONValue()
     }
     if let _error {
-      try dict.updateValue(_error, forKey: "_error")
+      dict["_error"] = _error.makeJSONValue()
     }
 
-    return try dict.makeJSON()
+    return .object(dict)
   }
 }
 

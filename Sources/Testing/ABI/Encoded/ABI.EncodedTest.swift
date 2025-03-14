@@ -140,44 +140,44 @@ extension ABI.EncodedTestCase: Decodable {}
 // MARK: - JSON.Serializable
 
 extension ABI.EncodedTest: JSON.Serializable {
-  func makeJSON() throws -> some Collection<UInt8> {
-    var dict = JSON.HeterogenousDictionary()
+  func makeJSONValue() -> JSON.Value {
+    var dict = [
+      "kind": kind.makeJSONValue(),
+      "name": name.makeJSONValue(),
+      "sourceLocation": sourceLocation.makeJSONValue(),
+      "id": id.makeJSONValue(),
+    ]
 
-    try dict.updateValue(kind, forKey: "kind")
-    try dict.updateValue(name, forKey: "name")
     if let displayName {
-      try dict.updateValue(displayName, forKey: "displayName")
+      dict["displayName"] = displayName.makeJSONValue()
     }
-    try dict.updateValue(sourceLocation, forKey: "sourceLocation")
-    try dict.updateValue(id, forKey: "id")
     if let _testCases {
-      try dict.updateValue(_testCases, forKey: "_testCases")
+      dict["_testCases"] = _testCases.makeJSONValue()
     }
     if let isParameterized {
-      try dict.updateValue(isParameterized, forKey: "isParameterized")
+      dict["isParameterized"] = isParameterized.makeJSONValue()
     }
     if let _tags {
-      try dict.updateValue(_tags, forKey: "_tags")
+      dict["_tags"] = _tags.makeJSONValue()
     }
 
-    return try dict.makeJSON()
+    return .object(dict)
   }
 }
 extension ABI.EncodedTest.Kind: JSON.Serializable {}
 
 extension ABI.EncodedTest.ID: JSON.Serializable {
-  func makeJSON() throws -> some Collection<UInt8> {
-    try stringValue.makeJSON()
+  func makeJSONValue() -> JSON.Value {
+    stringValue.makeJSONValue()
   }
 }
 
 extension ABI.EncodedTestCase: JSON.Serializable {
-  func makeJSON() throws -> some Collection<UInt8> {
-    var dict = JSON.HeterogenousDictionary()
-
-    try dict.updateValue(id, forKey: "id")
-    try dict.updateValue(displayName, forKey: "displayName")
-
-    return try dict.makeJSON()
+  func makeJSONValue() -> JSON.Value {
+    let dict = [
+      "id": id.makeJSONValue(),
+      "displayName": displayName.makeJSONValue(),
+    ]
+    return .object(dict)
   }
 }

@@ -82,17 +82,20 @@ extension ABI.Record: Decodable {
 }
 
 extension ABI.Record: JSON.Serializable {
-  func makeJSON() throws -> some Collection<UInt8> {
-    var dict = JSON.HeterogenousDictionary()
-    try dict.updateValue(V.versionNumber, forKey: "version")
+  func makeJSONValue() -> JSON.Value {
+    var dict = [
+      "version": V.versionNumber.makeJSONValue()
+    ]
+
     switch kind {
     case let .test(test):
-      try dict.updateValue("test", forKey: "kind")
-      try dict.updateValue(test, forKey: "payload")
+      dict["kind"] = "test".makeJSONValue()
+      dict["payload"] = test.makeJSONValue()
     case let .event(event):
-      try dict.updateValue("event", forKey: "kind")
-      try dict.updateValue(event, forKey: "payload")
+      dict["kind"] = "event".makeJSONValue()
+      dict["payload"] = event.makeJSONValue()
     }
-    return try dict.makeJSON()
+
+    return .object(dict)
   }
 }

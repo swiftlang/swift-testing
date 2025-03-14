@@ -82,13 +82,12 @@ extension ABI.EncodedMessage.Symbol: Decodable {}
 // MARK: - JSON.Serializable
 
 extension ABI.EncodedMessage: JSON.Serializable {
-  func makeJSON() throws -> some Collection<UInt8> {
-    var dict = JSON.HeterogenousDictionary()
-
-    try dict.updateValue(symbol, forKey: "symbol")
-    try dict.updateValue(text, forKey: "text")
-
-    return try dict.makeJSON()
+  func makeJSONValue() -> JSON.Value {
+    let dict = [
+      "symbol": symbol.makeJSONValue(),
+      "text": text.makeJSONValue(),
+    ]
+    return .object(dict)
   }
 }
 extension ABI.EncodedMessage.Symbol: JSON.Serializable {}

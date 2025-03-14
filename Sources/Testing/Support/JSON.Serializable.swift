@@ -9,164 +9,100 @@
 //
 
 extension JSON {
+  /// A protocol describing a value that can be serialized as JSON.
   protocol Serializable {
-    /// A type representing the result of by ``makeJSON()``.
-    associatedtype JSONBytes: Collection where JSONBytes.Element == UInt8
-
-    /// Serialize this value as JSON.
+    /// Serialize this instance as a JSON value.
     ///
-    /// - Returns: The sequence of bytes representing this value as JSON.
-    ///
-    /// - Throws: Any error that prevented serializing this value.
-    func makeJSON() throws -> JSONBytes
+    /// - Returns: A JSON value representing this instance.
+    func makeJSONValue() -> Value
   }
 }
 
-extension JSON.Serializable {
-  /// Write the JSON representation of this value to the given file handle.
-  ///
-  /// - Parameters:
-  ///   - file: The file to write to. A trailing newline is not written.
-  ///   - flushAfterward: Whether or not to flush the file (with `fflush()`)
-  ///     after writing. If `true`, `fflush()` is called even if an error
-  ///     occurred while writing.
-  ///
-  /// - Throws: Any error that occurred while writing `bytes`. If an error
-  ///   occurs while flushing the file, it is not thrown.
-  func writeJSON(to file: borrowing FileHandle, flushAfterward: Bool = true) throws {
-    try file.write(makeJSON(), flushAfterward: flushAfterward)
-  }
-}
-
-// MARK: - Arbitrary bytes
-
-extension JSON {
-  struct Verbatim<S>: JSON.Serializable where S: Collection, S.Element == UInt8 {
-    private var _bytes: S
-
-    init(_ bytes: S) {
-      _bytes = bytes
-    }
-
-    func makeJSON() throws -> S {
-      _bytes
-    }
+extension JSON.Value: JSON.Serializable {
+  func makeJSONValue() -> JSON.Value {
+    self
   }
 }
 
 // MARK: - Scalars
 
 extension Bool: JSON.Serializable {
-  func makeJSON() throws -> UnsafeBufferPointer<UInt8> {
-    let stringValue: StaticString = self ? "true" : "false"
-    return UnsafeBufferPointer(start: stringValue.utf8Start, count: stringValue.utf8CodeUnitCount)
+  func makeJSONValue() -> JSON.Value {
+    .bool(self)
   }
 }
 
-extension Numeric where Self: CustomStringConvertible & JSON.Serializable {
-  func makeJSON() throws -> String.UTF8View {
-    String(describing: self).utf8
+extension SignedInteger where Self: JSON.Serializable {
+  func makeJSONValue() -> JSON.Value {
+    .int64(Int64(self))
   }
 }
 
+extension Int8: JSON.Serializable {}
+extension Int16: JSON.Serializable {}
+extension Int32: JSON.Serializable {}
+extension Int64: JSON.Serializable {}
+@available(*, unavailable)
+extension Int128: JSON.Serializable {}
 extension Int: JSON.Serializable {}
+
+extension UnsignedInteger where Self: JSON.Serializable {
+  func makeJSONValue() -> JSON.Value {
+    .uint64(UInt64(self))
+  }
+}
+
+extension UInt8: JSON.Serializable {}
+extension UInt16: JSON.Serializable {}
+extension UInt32: JSON.Serializable {}
 extension UInt64: JSON.Serializable {}
-extension Double: JSON.Serializable {}
+@available(*, unavailable)
+extension UInt128: JSON.Serializable {}
+extension UInt: JSON.Serializable {}
+
+extension Double: JSON.Serializable {
+  func makeJSONValue() -> JSON.Value {
+    .double(self)
+  }
+}
 
 extension String: JSON.Serializable {
-  func makeJSON() throws -> [UInt8] {
-    var result = [UInt8]()
-
-    let scalars = self.unicodeScalars
-    result.reserveCapacity(scalars.underestimatedCount + 2)
-
-    do {
-      result.append(UInt8(ascii: #"""#))
-      defer {
-        result.append(UInt8(ascii: #"""#))
-      }
-
-      for scalar in scalars {
-        switch scalar {
-        case Unicode.Scalar(0x0000) ..< Unicode.Scalar(0x0020):
-          let hexValue = String(scalar.value, radix: 16)
-          let leadingZeroes = repeatElement(UInt8(ascii: "0"), count: 4 - hexValue.count)
-          result += leadingZeroes
-          result += hexValue.utf8
-        case #"""#, #"\"#:
-          result += #"\\#(scalar)"#.utf8
-        default:
-          result += scalar.utf8
-        }
-      }
-    }
-
-    return result
+  func makeJSONValue() -> JSON.Value {
+    .string(self)
   }
 }
 
 // MARK: - Arrays
 
 extension Array: JSON.Serializable where Element: JSON.Serializable {
-  func makeJSON() throws -> [UInt8] {
-    var result = [UInt8]()
-
-    do {
-      result.append(UInt8(ascii: "["))
-      defer {
-        result.append(UInt8(ascii: "]"))
-      }
-
-      result += try self.lazy.map { element in
-        try element.makeJSON()
-      }.joined(separator: CollectionOfOne(UInt8(ascii: ",")))
-    }
-
-    return result
+  func makeJSONValue() -> JSON.Value {
+    let arrayCopy = self.map { $0.makeJSONValue() }
+    return .array(arrayCopy)
   }
 }
 
 // MARK: - Dictionaries
 
 extension Dictionary: JSON.Serializable where Key == String, Value: JSON.Serializable {
-  func makeJSON() throws -> [UInt8] {
-    var result = [UInt8]()
+  func makeJSONValue() -> JSON.Value {
+    let dictCopy = self.mapValues { $0.makeJSONValue() }
+    return .object(dictCopy)
+  }
+}
 
-    do {
-      result.append(UInt8(ascii: #"{"#))
-      defer {
-        result.append(UInt8(ascii: #"}"#))
-      }
+// MARK: - Optional and RawRepresentable
 
-      result += try self.sorted { lhs, rhs in
-        lhs.key < rhs.key
-      }.map { key, value in
-        let serializedKey = try key.makeJSON()
-        let serializedValue = try value.makeJSON()
-        return serializedKey + CollectionOfOne(UInt8(ascii: ":")) + serializedValue
-      }.joined(separator: CollectionOfOne(UInt8(ascii: #","#)))
+extension Optional: JSON.Serializable where Wrapped: JSON.Serializable {
+  func makeJSONValue() -> JSON.Value {
+    guard let value = self else {
+      return .null
     }
-
-    return result
+    return value.makeJSONValue()
   }
 }
-
-extension JSON {
-  typealias HeterogenousDictionary = Dictionary<String, JSON.Verbatim<[UInt8]>>
-}
-
-extension JSON.HeterogenousDictionary {
-  @discardableResult
-  mutating func updateValue(_ value: some JSON.Serializable, forKey key: String) throws -> Value? {
-    let serializedValue = try JSON.Verbatim(Array(value.makeJSON()))
-    return updateValue(serializedValue as Value, forKey: key)
-  }
-}
-
-// MARK: - RawRepresentable
 
 extension RawRepresentable where Self: JSON.Serializable, RawValue: JSON.Serializable {
-  func makeJSON() throws -> RawValue.JSONBytes {
-    try rawValue.makeJSON()
+  func makeJSONValue() -> JSON.Value {
+    rawValue.makeJSONValue()
   }
 }
