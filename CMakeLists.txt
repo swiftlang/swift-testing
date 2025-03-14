@@ -9,7 +9,15 @@
 cmake_minimum_required(VERSION 3.19.6...3.29)
 
 if(POLICY CMP0157)
-  cmake_policy(SET CMP0157 NEW)
+  if(CMAKE_HOST_SYSTEM_NAME STREQUAL Windows AND CMAKE_SYSTEM_NAME STREQUAL Android)
+    # CMP0157 causes swift-testing to fail to compile when targetting
+    # Android on Windows due to swift-driver not being present during the
+    # toolchain build. Disable it for now.
+    cmake_policy(SET CMP0157 OLD)
+  else()
+    # New Swift build model: improved incremental build performance and LSP support
+    cmake_policy(SET CMP0157 NEW)
+  endif()
 endif()
 
 project(SwiftTesting
