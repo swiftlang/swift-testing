@@ -13,7 +13,6 @@
 
 @Suite("Test.Snapshot tests")
 struct Test_SnapshotTests {
-#if canImport(Foundation)
   @Test("Codable")
   func codable() throws {
     let test = try #require(Test.current)
@@ -27,7 +26,6 @@ struct Test_SnapshotTests {
     // FIXME: Compare traits as well, once they are included.
     #expect(decoded.parameters == snapshot.parameters)
   }
-#endif
 
   @Test("isParameterized property")
   func isParameterized() async throws {

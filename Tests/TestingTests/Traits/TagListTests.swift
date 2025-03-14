@@ -98,7 +98,7 @@ struct TagListTests {
     #expect(Tag(userProvidedStringValue: ".red") == .red)
   }
 
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
   @Test("Encoding/decoding tags")
   func encodeAndDecodeTags() throws {
     let array: [Tag] = [.red, .orange, Tag("abc123"), Tag(".abc123")]

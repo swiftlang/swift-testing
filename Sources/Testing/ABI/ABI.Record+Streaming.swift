@@ -8,9 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation) && (!SWT_NO_FILE_IO || !SWT_NO_ABI_ENTRY_POINT)
-private import Foundation
-
 extension ABI.Version {
   /// Post-process encoded JSON and write it to a file.
   ///
@@ -58,13 +55,13 @@ extension ABI.Version {
     let humanReadableOutputRecorder = Event.HumanReadableOutputRecorder()
     return { [eventHandler = eventHandlerCopy] event, context in
       if case .testDiscovered = event.kind, let test = context.test {
-        try? JSON.withEncoding(of: ABI.Record<Self>(encoding: test)) { testJSON in
+        JSON.withEncoding(of: ABI.Record<Self>(encoding: test)) { testJSON in
           eventHandler(testJSON)
         }
       } else {
         let messages = humanReadableOutputRecorder.record(event, in: context, verbosity: 0)
         if let eventRecord = ABI.Record<Self>(encoding: event, in: context, messages: messages) {
-          try? JSON.withEncoding(of: eventRecord, eventHandler)
+          JSON.withEncoding(of: eventRecord, eventHandler)
         }
       }
     }
@@ -96,12 +93,9 @@ extension ABI.Xcode16 {
         eventContext: Event.Context.Snapshot(snapshotting: context)
       )
       try? JSON.withEncoding(of: snapshot) { eventAndContextJSON in
-        eventAndContextJSON.withUnsafeBytes { eventAndContextJSON in
-          eventHandler(eventAndContextJSON)
-        }
+        eventHandler(eventAndContextJSON)
       }
     }
   }
 }
-#endif
 #endif

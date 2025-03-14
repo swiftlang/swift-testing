@@ -38,24 +38,16 @@ extension ABI {
     var displayName: String?
 
     /// The source location of this test.
-    var sourceLocation: SourceLocation
+    var sourceLocation: EncodedSourceLocation<V>
 
     /// A type implementing the JSON encoding of ``Test/ID`` for the ABI entry
     /// point and event stream output.
-    struct ID: Codable {
+    struct ID: Sendable {
       /// The string value representing the corresponding test ID.
       var stringValue: String
 
       init(encoding testID: borrowing Test.ID) {
         stringValue = String(describing: copy testID)
-      }
-
-      func encode(to encoder: any Encoder) throws {
-        try stringValue.encode(to: encoder)
-      }
-
-      init(from decoder: any Decoder) throws {
-        stringValue = try String(from: decoder)
       }
     }
 
@@ -95,7 +87,7 @@ extension ABI {
       }
       name = test.name
       displayName = test.displayName
-      sourceLocation = test.sourceLocation
+      sourceLocation = EncodedSourceLocation(encoding: test.sourceLocation)
       id = ID(encoding: test.id)
 
       if V.versionNumber >= ABI.v1.versionNumber {
@@ -134,8 +126,58 @@ extension ABI {
   }
 }
 
-// MARK: - Codable
+// MARK: - Decodable
 
-extension ABI.EncodedTest: Codable {}
-extension ABI.EncodedTest.Kind: Codable {}
-extension ABI.EncodedTestCase: Codable {}
+extension ABI.EncodedTest: Decodable {}
+extension ABI.EncodedTest.Kind: Decodable {}
+extension ABI.EncodedTest.ID: Decodable {
+  init(from decoder: any Decoder) throws {
+    stringValue = try String(from: decoder)
+  }
+}
+extension ABI.EncodedTestCase: Decodable {}
+
+// MARK: - JSON.Serializable
+
+extension ABI.EncodedTest: JSON.Serializable {
+  func makeJSONValue() -> JSON.Value {
+    var dict = [
+      "kind": kind.makeJSONValue(),
+      "name": name.makeJSONValue(),
+      "sourceLocation": sourceLocation.makeJSONValue(),
+      "id": id.makeJSONValue(),
+    ]
+
+    if let displayName {
+      dict["displayName"] = displayName.makeJSONValue()
+    }
+    if let _testCases {
+      dict["_testCases"] = _testCases.makeJSONValue()
+    }
+    if let isParameterized {
+      dict["isParameterized"] = isParameterized.makeJSONValue()
+    }
+    if let _tags {
+      dict["_tags"] = _tags.makeJSONValue()
+    }
+
+    return dict.makeJSONValue()
+  }
+}
+extension ABI.EncodedTest.Kind: JSON.Serializable {}
+
+extension ABI.EncodedTest.ID: JSON.Serializable {
+  func makeJSONValue() -> JSON.Value {
+    stringValue.makeJSONValue()
+  }
+}
+
+extension ABI.EncodedTestCase: JSON.Serializable {
+  func makeJSONValue() -> JSON.Value {
+    let dict = [
+      "id": id.makeJSONValue(),
+      "displayName": displayName.makeJSONValue(),
+    ]
+    return dict.makeJSONValue()
+  }
+}

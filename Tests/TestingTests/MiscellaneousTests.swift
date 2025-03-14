@@ -580,4 +580,13 @@ struct MiscellaneousTests {
     }
     #expect(duration < .seconds(1))
   }
+
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
+  @Test("JSON string escaping")
+  func escapeJSONStrings() throws {
+    let value1 = "abc\t123äßç"
+    let value2 = try JSON.encodeAndDecode(value1)
+    #expect(value1 == value2)
+  }
+#endif
 }

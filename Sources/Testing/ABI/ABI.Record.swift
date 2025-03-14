@@ -41,26 +41,13 @@ extension ABI {
   }
 }
 
-// MARK: - Codable
+// MARK: - Decodable
 
-extension ABI.Record: Codable {
+extension ABI.Record: Decodable {
   private enum CodingKeys: String, CodingKey {
     case version
     case kind
     case payload
-  }
-
-  func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(V.versionNumber, forKey: .version)
-    switch kind {
-    case let .test(test):
-      try container.encode("test", forKey: .kind)
-      try container.encode(test, forKey: .payload)
-    case let .event(event):
-      try container.encode("event", forKey: .kind)
-      try container.encode(event, forKey: .payload)
-    }
   }
 
   init(from decoder: any Decoder) throws {
@@ -91,5 +78,24 @@ extension ABI.Record: Codable {
         )
       )
     }
+  }
+}
+
+extension ABI.Record: JSON.Serializable {
+  func makeJSONValue() -> JSON.Value {
+    var dict = [
+      "version": V.versionNumber.makeJSONValue()
+    ]
+
+    switch kind {
+    case let .test(test):
+      dict["kind"] = "test".makeJSONValue()
+      dict["payload"] = test.makeJSONValue()
+    case let .event(event):
+      dict["kind"] = "event".makeJSONValue()
+      dict["payload"] = event.makeJSONValue()
+    }
+
+    return dict.makeJSONValue()
   }
 }

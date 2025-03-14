@@ -14,7 +14,7 @@ private import _TestingInternals
 
 @Suite("Event Tests")
 struct EventTests {
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
   @Test("Event's and Event.Kinds's Codable Conformances",
         arguments: [
           Event.Kind.expectationChecked(

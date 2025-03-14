@@ -33,7 +33,7 @@ extension ABI {
     var isKnown: Bool
 
     /// The location in source where this issue occurred, if available.
-    var sourceLocation: SourceLocation?
+    var sourceLocation: EncodedSourceLocation<V>?
 
     /// The backtrace where this issue occurred, if available.
     ///
@@ -51,7 +51,9 @@ extension ABI {
       case .error: .error
       }
       isKnown = issue.isKnown
-      sourceLocation = issue.sourceLocation
+      if let sourceLocation = issue.sourceLocation {
+        self.sourceLocation = EncodedSourceLocation<V>(encoding: sourceLocation)
+      }
       if let backtrace = issue.sourceContext.backtrace {
         _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)
       }
@@ -62,7 +64,32 @@ extension ABI {
   }
 }
 
-// MARK: - Codable
+// MARK: - Decodable
 
-extension ABI.EncodedIssue: Codable {}
-extension ABI.EncodedIssue.Severity: Codable {}
+extension ABI.EncodedIssue: Decodable {}
+extension ABI.EncodedIssue.Severity: Decodable {}
+
+// MARK: - JSON.Serializable
+
+extension ABI.EncodedIssue: JSON.Serializable {
+  func makeJSONValue() -> JSON.Value {
+    var dict = [
+      "_severity": _severity.makeJSONValue(),
+      "isKnown": isKnown.makeJSONValue()
+    ]
+
+    if let sourceLocation {
+      dict["sourceLocation"] = sourceLocation.makeJSONValue()
+    }
+    if let _backtrace {
+      dict["_backtrace"] = _backtrace.makeJSONValue()
+    }
+    if let _error {
+      dict["_error"] = _error.makeJSONValue()
+    }
+
+    return dict.makeJSONValue()
+  }
+}
+
+extension ABI.EncodedIssue.Severity: JSON.Serializable {}

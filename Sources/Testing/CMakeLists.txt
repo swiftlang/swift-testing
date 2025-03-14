@@ -20,6 +20,7 @@ add_library(Testing
   ABI/Encoded/ABI.EncodedInstant.swift
   ABI/Encoded/ABI.EncodedIssue.swift
   ABI/Encoded/ABI.EncodedMessage.swift
+  ABI/Encoded/ABI.EncodedSourceLocation.swift
   ABI/Encoded/ABI.EncodedTest.swift
   Attachments/Attachable.swift
   Attachments/AttachableContainer.swift
@@ -80,6 +81,8 @@ add_library(Testing
   Support/GetSymbol.swift
   Support/Graph.swift
   Support/JSON.swift
+  Support/JSON.Serializable.swift
+  Support/JSON.Value.swift
   Support/Locked.swift
   Support/Locked+Platform.swift
   Support/Versions.swift

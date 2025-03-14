@@ -8,15 +8,38 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
 private import Foundation
 #endif
 
 enum JSON {
+  /// Encode a value as JSON.
+  ///
+  /// - Parameters:
+  ///   - value: The value to encode.
+  ///   - userInfo: Any user info to pass into the encoder during encoding.
+  ///   - body: A function to call.
+  ///
+  /// - Returns: Whatever is returned by `body`.
+  ///
+  /// - Throws: Whatever is thrown by `body` or by the encoding process.
+  static func withEncoding<J, E, R>(of value: J, _ body: (UnsafeRawBufferPointer) throws(E) -> R) throws(E) -> R where J: JSON.Serializable {
+    try value.makeJSONValue().withUnsafeBytes { json throws(E) in
+      try body(json)
+    }
+  }
+}
+
+// MARK: - Foundation-based JSON support
+
+extension JSON {
   /// Whether or not pretty-printed JSON is enabled for this process.
   ///
   /// This is a debugging tool that can be used by developers working on the
   /// testing library to improve the readability of JSON output.
+  ///
+  /// This property is only used by the Foundation-based overload of
+  /// `withEncoding()`. It is ignored when using ``JSON/Serializable``.
   private static let _prettyPrintingEnabled = Environment.flag(named: "SWT_PRETTY_PRINT_JSON") == true
 
   /// Encode a value as JSON.
@@ -29,8 +52,9 @@ enum JSON {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body` or by the encoding process.
+  @_disfavoredOverload
   static func withEncoding<R>(of value: some Encodable, userInfo: [CodingUserInfoKey: any Sendable] = [:], _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
     let encoder = JSONEncoder()
 
     // Keys must be sorted to ensure deterministic matching of encoded data.
@@ -60,7 +84,7 @@ enum JSON {
   ///
   /// - Throws: Whatever is thrown by the decoding process.
   static func decode<T>(_ type: T.Type, from jsonRepresentation: UnsafeRawBufferPointer) throws -> T where T: Decodable {
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
     try withExtendedLifetime(jsonRepresentation) {
       let byteCount = jsonRepresentation.count
       let data = if byteCount > 0 {

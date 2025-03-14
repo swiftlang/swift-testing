@@ -343,9 +343,26 @@ extension JSON {
   /// - Returns: A copy of `value` after encoding and decoding.
   ///
   /// - Throws: Any error encountered encoding or decoding `value`.
+  @_disfavoredOverload
   static func encodeAndDecode<T>(_ value: T) throws -> T where T: Codable {
     try JSON.withEncoding(of: value) { data in
-      try JSON.decode(T.self, from: data)
+      try FileHandle.stdout.write(data)
+      return try JSON.decode(T.self, from: data)
+    }
+  }
+
+  /// Round-trip a value through JSON encoding/decoding.
+  ///
+  /// - Parameters:
+  ///   - value: The value to round-trip.
+  ///
+  /// - Returns: A copy of `value` after encoding and decoding.
+  ///
+  /// - Throws: Any error encountered encoding or decoding `value`.
+  static func encodeAndDecode<T>(_ value: T) throws -> T where T: JSON.Serializable & Codable {
+    try JSON.withEncoding(of: value) { data in
+      try FileHandle.stdout.write(data)
+      return try JSON.decode(T.self, from: data)
     }
   }
 }

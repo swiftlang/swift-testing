@@ -107,7 +107,36 @@ extension ABI {
   }
 }
 
-// MARK: - Codable
+// MARK: - Decodable
 
-extension ABI.EncodedEvent: Codable {}
-extension ABI.EncodedEvent.Kind: Codable {}
+extension ABI.EncodedEvent: Decodable {}
+extension ABI.EncodedEvent.Kind: Decodable {}
+
+// MARK: - JSON.Serializable
+
+extension ABI.EncodedEvent: JSON.Serializable {
+  func makeJSONValue() -> JSON.Value {
+    var dict = [
+      "kind": kind.makeJSONValue(),
+      "instant": instant.makeJSONValue(),
+      "messages": messages.makeJSONValue(),
+    ]
+
+    if let issue {
+      dict["issue"] = issue.makeJSONValue()
+    }
+    if let _attachment {
+      dict["_attachment"] = _attachment.makeJSONValue()
+    }
+    if let testID {
+      dict["testID"] = testID.makeJSONValue()
+    }
+    if let _testCase {
+      dict["_testCase"] = _testCase.makeJSONValue()
+    }
+
+    return dict.makeJSONValue()
+  }
+}
+
+extension ABI.EncodedEvent.Kind: JSON.Serializable {}

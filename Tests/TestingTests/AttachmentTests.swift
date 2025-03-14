@@ -10,7 +10,7 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
 import Foundation
 @_spi(Experimental) import _Testing_Foundation
 #endif
@@ -246,7 +246,7 @@ struct AttachmentTests {
     }
   }
 
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
 #if !SWT_NO_FILE_IO
   @Test func attachContentsOfFileURL() async throws {
     let data = try #require("<!doctype html>".data(using: .utf8))
@@ -468,7 +468,7 @@ extension AttachmentTests {
       try test(value)
     }
 
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
     @Test func data() throws {
       let value = try #require("abc123".data(using: .utf8))
       try test(value)
@@ -607,7 +607,7 @@ struct MySendableAttachableWithDefaultByteCount: Attachable, Sendable {
   }
 }
 
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
 struct MyCodableAttachable: Codable, Attachable, Sendable {
   var string: String
 }

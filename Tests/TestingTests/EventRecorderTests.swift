@@ -12,10 +12,10 @@
 #if !os(Windows)
 import RegexBuilder
 #endif
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
 import Foundation
 #endif
-#if canImport(FoundationXML)
+#if !SWT_NO_FOUNDATION && canImport(FoundationXML)
 import FoundationXML
 #endif
 
@@ -370,7 +370,7 @@ struct EventRecorderTests {
   }
 #endif
 
-#if canImport(Foundation) || canImport(FoundationXML)
+#if !SWT_NO_FOUNDATION && (canImport(Foundation) || canImport(FoundationXML))
   @Test(
     "JUnitXMLRecorder outputs valid XML",
     .bug("https://github.com/swiftlang/swift-testing/issues/254")

@@ -36,7 +36,7 @@ private import _TestingInternals
 public struct ExitTest: Sendable, ~Copyable {
   /// A type whose instances uniquely identify instances of ``ExitTest``.
   @_spi(ForToolsIntegrationOnly)
-  public struct ID: Sendable, Equatable, Codable {
+  public struct ID: Sendable, Equatable, Codable, JSON.Serializable {
     /// An underlying UUID (stored as two `UInt64` values to avoid relying on
     /// `UUID` from Foundation or any platform-specific interfaces.)
     private var _lo: UInt64
@@ -45,6 +45,14 @@ public struct ExitTest: Sendable, ~Copyable {
     init(_ uuid: (UInt64, UInt64)) {
       self._lo = uuid.0
       self._hi = uuid.1
+    }
+
+    func makeJSONValue() -> JSON.Value {
+      let dict = [
+        "_lo": _lo.makeJSONValue(),
+        "_hi": _hi.makeJSONValue()
+      ]
+      return dict.makeJSONValue()
     }
   }
 
@@ -618,7 +626,7 @@ extension ExitTest {
 
       // Insert a specific variable that tells the child process which exit test
       // to run.
-      try JSON.withEncoding(of: exitTest.id) { json in
+      JSON.withEncoding(of: exitTest.id) { json in
         childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_ID"] = String(decoding: json, as: UTF8.self)
       }
 
@@ -747,6 +755,10 @@ extension ExitTest {
       } catch {
         // NOTE: an error caught here indicates a decoding problem.
         // TODO: should we record these issues as systemic instead?
+        FileHandle.stdout.withLock {
+          try! FileHandle.stdout.write(recordJSON)
+          try! FileHandle.stdout.write("\n")
+        }
         Issue(for: error).record()
       }
     }
@@ -778,7 +790,7 @@ extension ExitTest {
       }
       let sourceContext = SourceContext(
         backtrace: nil, // `issue._backtrace` will have the wrong address space.
-        sourceLocation: issue.sourceLocation
+        sourceLocation: issue.sourceLocation?.sourceLocation
       )
       var issueCopy = Issue(kind: issueKind, comments: comments, sourceContext: sourceContext)
       issueCopy.isKnown = issue.isKnown

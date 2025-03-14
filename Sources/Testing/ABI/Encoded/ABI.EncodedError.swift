@@ -54,9 +54,22 @@ extension ABI.EncodedError: Error {
   }
 }
 
-// MARK: - Codable
+// MARK: - Decodable
 
-extension ABI.EncodedError: Codable {}
+extension ABI.EncodedError: Decodable {}
+
+// MARK: - JSON.Serializable
+
+extension ABI.EncodedError: JSON.Serializable {
+  func makeJSONValue() -> JSON.Value {
+    let dict = [
+      "description": description.makeJSONValue(),
+      "domain": domain.makeJSONValue(),
+      "code": code.makeJSONValue()
+    ]
+    return dict.makeJSONValue()
+  }
+}
 
 // MARK: - CustomTestStringConvertible
 

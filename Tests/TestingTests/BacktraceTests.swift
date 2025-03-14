@@ -9,7 +9,7 @@
 //
 
 @testable @_spi(ForToolsIntegrationOnly) import Testing
-#if SWT_TARGET_OS_APPLE && canImport(Foundation)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_FOUNDATION && canImport(Foundation)
 import Foundation
 #endif
 
@@ -72,7 +72,7 @@ struct BacktraceTests {
     }
   }
 
-#if SWT_TARGET_OS_APPLE && canImport(Foundation)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_FOUNDATION && canImport(Foundation)
   @available(_typedThrowsAPI, *)
   @Test("Thrown NSError captures backtrace")
   func thrownNSErrorCapturesBacktrace() async throws {
@@ -141,7 +141,7 @@ struct BacktraceTests {
     #expect(Backtrace(forFirstThrowOf: BacktracedError()) == nil)
   }
 
-#if canImport(Foundation)
+#if !SWT_NO_FOUNDATION && canImport(Foundation)
   @Test("Encoding/decoding")
   func encodingAndDecoding() throws {
     let original = Backtrace.current()
