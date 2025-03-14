@@ -52,7 +52,7 @@ include(SwiftModuleInstallation)
 
 option(SwiftTesting_INSTALL_NESTED_SUBDIR "Install libraries under a platform and architecture subdirectory" NO)
 set(SwiftTesting_INSTALL_LIBDIR "${CMAKE_INSTALL_LIBDIR}/swift$<$<NOT:$<BOOL:${BUILD_SHARED_LIBS}>>:_static>/${SwiftTesting_PLATFORM_SUBDIR}$<$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<BOOL:${SwiftTesting_INSTALL_NESTED_SUBDIR}>>>:/testing>$<$<BOOL:${SwiftTesting_INSTALL_NESTED_SUBDIR}>:/${SwiftTesting_ARCH_SUBDIR}>")
-set(SwiftTesting_INSTALL_SWIFTMODULEDIR "${CMAKE_INSTALL_LIBDIR}/swift$<$<NOT:$<BOOL:${BUILD_SHARED_LIBS}>>:_static>/${SwiftTesting_PLATFORM_SUBDIR}$<$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<BOOL:${SwiftTesting_INSTALL_NESTED_SUBDIR}>>>:/testing>$<$<BOOL:${SwiftTesting_INSTALL_NESTED_SUBDIR}>:/${SwiftTesting_PLATFORM_SUBDIR}>")
+set(SwiftTesting_INSTALL_SWIFTMODULEDIR "${CMAKE_INSTALL_LIBDIR}/swift$<$<NOT:$<BOOL:${BUILD_SHARED_LIBS}>>:_static>/${SwiftTesting_PLATFORM_SUBDIR}$<$<AND:$<PLATFORM_ID:Darwin>,$<NOT:$<BOOL:${SwiftTesting_INSTALL_NESTED_SUBDIR}>>>:/testing>")
 
 add_compile_options($<$<COMPILE_LANGUAGE:Swift>:-no-toolchain-stdlib-rpath>)
 
