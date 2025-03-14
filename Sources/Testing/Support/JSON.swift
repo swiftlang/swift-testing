@@ -23,8 +23,8 @@ enum JSON {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body` or by the encoding process.
-  static func withEncoding<J, R>(of value: J, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R where J: JSON.Serializable {
-    try value.makeJSONValue().withUnsafeBytes { json in
+  static func withEncoding<J, E, R>(of value: J, _ body: (UnsafeRawBufferPointer) throws(E) -> R) throws(E) -> R where J: JSON.Serializable {
+    try value.makeJSONValue().withUnsafeBytes { json throws(E) in
       try body(json)
     }
   }

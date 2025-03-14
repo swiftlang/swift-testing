@@ -42,6 +42,6 @@ extension ABI.EncodedSourceLocation: JSON.Serializable {
       "line": sourceLocation.line.makeJSONValue(),
       "column": sourceLocation.column.makeJSONValue(),
     ]
-    return .object(dict)
+    return dict.makeJSONValue()
   }
 }

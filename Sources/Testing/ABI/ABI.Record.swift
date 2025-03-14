@@ -96,6 +96,6 @@ extension ABI.Record: JSON.Serializable {
       dict["payload"] = event.makeJSONValue()
     }
 
-    return .object(dict)
+    return dict.makeJSONValue()
   }
 }

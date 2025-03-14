@@ -87,7 +87,7 @@ extension ABI.EncodedMessage: JSON.Serializable {
       "symbol": symbol.makeJSONValue(),
       "text": text.makeJSONValue(),
     ]
-    return .object(dict)
+    return dict.makeJSONValue()
   }
 }
 extension ABI.EncodedMessage.Symbol: JSON.Serializable {}

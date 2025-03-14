@@ -12,8 +12,10 @@ extension JSON {
   /// An enumeration representing the different kinds of value that can be
   /// encoded directly as JSON.
   enum Value: Sendable {
+#if SWT_ENCODE_JSON_NULL_VALUES
     /// The `null` constant (`nil` in Swift.)
     case null
+#endif
 
     /// A boolean value.
     case bool(Bool)
@@ -50,9 +52,9 @@ extension JSON.Value {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  private static func _withUnsafeBytesForKeyword<R>(_ value: StaticString, _ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
+  private static func _withUnsafeBytesForKeyword<E, R>(_ value: StaticString, _ body: (UnsafeRawBufferPointer) throws(E) -> R) throws(E) -> R {
     // NOTE: StaticString.withUTF8Buffer does not rethrow.
-    try withExtendedLifetime(value) {
+    try withExtendedLifetime(value) { () throws(E) in
       let buffer = UnsafeBufferPointer(start: value.utf8Start, count: value.utf8CodeUnitCount)
       return try body(.init(buffer))
     }
@@ -68,11 +70,23 @@ extension JSON.Value {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  private static func _withUnsafeBytesForNumericValue<V, R>(_ value: V, _ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R where V: Numeric {
+  private static func _withUnsafeBytesForNumericValue<V, E, R>(_ value: V, _ body: (UnsafeRawBufferPointer) throws(E) -> R) throws(E) -> R where V: Numeric {
     var string = String(describing: value)
-    return try string.withUTF8 { utf8 in
-      try body(.init(utf8))
+#if hasFeature(Embedded)
+    // Embedded Swift requires typed throws, but withUTF8 is still rethrows, so
+    // copy to an array first.
+    try Array(string.utf8).withUnsafeBufferPointer { buffer throws(E) in
+      try body(.init(buffer))
     }
+#else
+    do {
+      return try string.withUTF8 { utf8 in
+        try body(.init(utf8))
+      }
+    } catch {
+      throw error as! E
+    }
+#endif
   }
 
   /// Call a function and pass it the JSON representation of a string.
@@ -85,8 +99,11 @@ extension JSON.Value {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  private static func _withUnsafeBytesForString<R>(_ value: String, _ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
+  private static func _withUnsafeBytesForString<E, R>(_ value: String, _ body: (UnsafeRawBufferPointer) throws(E) -> R) throws(E) -> R {
     var result = [UInt8]()
+
+    let scalars = value.unicodeScalars
+    result.reserveCapacity(scalars.underestimatedCount + 2)
 
     do {
       result.append(UInt8(ascii: #"""#))
@@ -94,14 +111,12 @@ extension JSON.Value {
         result.append(UInt8(ascii: #"""#))
       }
 
-      let scalars = value.unicodeScalars
-      result.reserveCapacity(scalars.underestimatedCount + 2)
-
       for scalar in scalars {
         switch scalar {
         case Unicode.Scalar(0x0000) ..< Unicode.Scalar(0x0020):
           let hexValue = String(scalar.value, radix: 16)
           let leadingZeroes = repeatElement(UInt8(ascii: "0"), count: 4 - hexValue.count)
+          result += #"\u"#.utf8
           result += leadingZeroes
           result += hexValue.utf8
         case #"""#, #"\"#:
@@ -112,7 +127,9 @@ extension JSON.Value {
       }
     }
 
-    return try result.withUnsafeBytes(body)
+    return try result.withUnsafeBufferPointer { buffer throws(E) in
+      try body(.init(buffer))
+    }
   }
 
   /// Call a function and pass it the JSON representation of an array.
@@ -125,7 +142,7 @@ extension JSON.Value {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  private static func _withUnsafeBytesForArray<R>(_ value: [JSON.Value], _ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
+  private static func _withUnsafeBytesForArray<E, R>(_ value: [JSON.Value], _ body: (UnsafeRawBufferPointer) throws(E) -> R) throws(E) -> R {
     var result = [UInt8]()
 
     do {
@@ -141,7 +158,9 @@ extension JSON.Value {
       }.joined(separator: CollectionOfOne(UInt8(ascii: ",")))
     }
 
-    return try result.withUnsafeBytes(body)
+    return try result.withUnsafeBufferPointer { buffer throws(E) in
+      try body(.init(buffer))
+    }
   }
 
   /// Call a function and pass it the JSON representation of an object (a
@@ -155,7 +174,7 @@ extension JSON.Value {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  private static func _withUnsafeBytesForObject<R>(_ value: [String: JSON.Value], _ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
+  private static func _withUnsafeBytesForObject<E, R>(_ value: [String: JSON.Value], _ body: (UnsafeRawBufferPointer) throws(E) -> R) throws(E) -> R {
     var result = [UInt8]()
 
     do {
@@ -178,7 +197,9 @@ extension JSON.Value {
       }.joined(separator: CollectionOfOne(UInt8(ascii: ",")))
     }
 
-    return try result.withUnsafeBytes(body)
+    return try result.withUnsafeBufferPointer { buffer throws(E) in
+      try body(.init(buffer))
+    }
   }
 
   /// Call a function and pass it the JSON representation of this JSON value.
@@ -190,10 +211,12 @@ extension JSON.Value {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
+  func withUnsafeBytes<E, R>(_ body: (UnsafeRawBufferPointer) throws(E) -> R) throws(E) -> R {
     switch self {
+#if SWT_ENCODE_JSON_NULL_VALUES
     case .null:
       return try Self._withUnsafeBytesForKeyword("null", body)
+#endif
     case let .bool(value):
       return try Self._withUnsafeBytesForKeyword(value ? "true" : "false", body)
     case let .int64(value):

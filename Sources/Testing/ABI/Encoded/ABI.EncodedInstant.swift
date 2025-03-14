@@ -47,6 +47,6 @@ extension ABI.EncodedInstant: JSON.Serializable {
       "absolute": absolute.makeJSONValue(),
       "since1970": since1970.makeJSONValue()
     ]
-    return .object(dict)
+    return dict.makeJSONValue()
   }
 }

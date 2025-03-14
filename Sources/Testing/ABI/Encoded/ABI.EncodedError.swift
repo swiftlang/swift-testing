@@ -67,7 +67,7 @@ extension ABI.EncodedError: JSON.Serializable {
       "domain": domain.makeJSONValue(),
       "code": code.makeJSONValue()
     ]
-    return .object(dict)
+    return dict.makeJSONValue()
   }
 }
 

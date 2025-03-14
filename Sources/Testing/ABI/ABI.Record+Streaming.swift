@@ -55,13 +55,13 @@ extension ABI.Version {
     let humanReadableOutputRecorder = Event.HumanReadableOutputRecorder()
     return { [eventHandler = eventHandlerCopy] event, context in
       if case .testDiscovered = event.kind, let test = context.test {
-        try? JSON.withEncoding(of: ABI.Record<Self>(encoding: test)) { testJSON in
+        JSON.withEncoding(of: ABI.Record<Self>(encoding: test)) { testJSON in
           eventHandler(testJSON)
         }
       } else {
         let messages = humanReadableOutputRecorder.record(event, in: context, verbosity: 0)
         if let eventRecord = ABI.Record<Self>(encoding: event, in: context, messages: messages) {
-          try? JSON.withEncoding(of: eventRecord, eventHandler)
+          JSON.withEncoding(of: eventRecord, eventHandler)
         }
       }
     }

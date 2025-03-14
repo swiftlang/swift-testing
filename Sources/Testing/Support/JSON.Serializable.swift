@@ -76,8 +76,8 @@ extension String: JSON.Serializable {
 
 extension Array: JSON.Serializable where Element: JSON.Serializable {
   func makeJSONValue() -> JSON.Value {
-    let arrayCopy = self.map { $0.makeJSONValue() }
-    return .array(arrayCopy)
+    let selfCopy = self.map { $0.makeJSONValue() }
+    return .array(selfCopy)
   }
 }
 
@@ -85,13 +85,14 @@ extension Array: JSON.Serializable where Element: JSON.Serializable {
 
 extension Dictionary: JSON.Serializable where Key == String, Value: JSON.Serializable {
   func makeJSONValue() -> JSON.Value {
-    let dictCopy = self.mapValues { $0.makeJSONValue() }
-    return .object(dictCopy)
+    let selfCopy = self.mapValues { $0.makeJSONValue() }
+    return .object(selfCopy)
   }
 }
 
 // MARK: - Optional and RawRepresentable
 
+#if SWT_ENCODE_JSON_NULL_VALUES
 extension Optional: JSON.Serializable where Wrapped: JSON.Serializable {
   func makeJSONValue() -> JSON.Value {
     guard let value = self else {
@@ -100,6 +101,7 @@ extension Optional: JSON.Serializable where Wrapped: JSON.Serializable {
     return value.makeJSONValue()
   }
 }
+#endif
 
 extension RawRepresentable where Self: JSON.Serializable, RawValue: JSON.Serializable {
   func makeJSONValue() -> JSON.Value {

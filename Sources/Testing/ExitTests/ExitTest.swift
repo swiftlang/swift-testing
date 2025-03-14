@@ -52,7 +52,7 @@ public struct ExitTest: Sendable, ~Copyable {
         "_lo": _lo.makeJSONValue(),
         "_hi": _hi.makeJSONValue()
       ]
-      return .object(dict)
+      return dict.makeJSONValue()
     }
   }
 
@@ -626,7 +626,7 @@ extension ExitTest {
 
       // Insert a specific variable that tells the child process which exit test
       // to run.
-      try JSON.withEncoding(of: exitTest.id) { json in
+      JSON.withEncoding(of: exitTest.id) { json in
         childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_ID"] = String(decoding: json, as: UTF8.self)
       }
 

@@ -60,6 +60,6 @@ extension Backtrace.SymbolicatedAddress: JSON.Serializable {
       dict["symbolName"] = symbolName.makeJSONValue()
     }
 
-    return .object(dict)
+    return dict.makeJSONValue()
   }
 }

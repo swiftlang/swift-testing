@@ -39,6 +39,6 @@ extension ABI.EncodedAttachment: JSON.Serializable {
     if let path {
       dict["path"] = path.makeJSONValue()
     }
-    return .object(dict)
+    return dict.makeJSONValue()
   }
 }

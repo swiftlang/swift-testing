@@ -88,7 +88,7 @@ extension ABI.EncodedIssue: JSON.Serializable {
       dict["_error"] = _error.makeJSONValue()
     }
 
-    return .object(dict)
+    return dict.makeJSONValue()
   }
 }
 

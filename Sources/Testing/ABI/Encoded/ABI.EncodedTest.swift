@@ -161,7 +161,7 @@ extension ABI.EncodedTest: JSON.Serializable {
       dict["_tags"] = _tags.makeJSONValue()
     }
 
-    return .object(dict)
+    return dict.makeJSONValue()
   }
 }
 extension ABI.EncodedTest.Kind: JSON.Serializable {}
@@ -178,6 +178,6 @@ extension ABI.EncodedTestCase: JSON.Serializable {
       "id": id.makeJSONValue(),
       "displayName": displayName.makeJSONValue(),
     ]
-    return .object(dict)
+    return dict.makeJSONValue()
   }
 }

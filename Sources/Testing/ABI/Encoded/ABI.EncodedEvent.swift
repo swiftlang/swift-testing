@@ -135,7 +135,7 @@ extension ABI.EncodedEvent: JSON.Serializable {
       dict["_testCase"] = _testCase.makeJSONValue()
     }
 
-    return .object(dict)
+    return dict.makeJSONValue()
   }
 }
 
