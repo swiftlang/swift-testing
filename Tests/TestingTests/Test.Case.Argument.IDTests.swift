@@ -20,10 +20,10 @@ struct Test_Case_Argument_IDTests {
     ) { _ in }
     let testCases = try #require(test.testCases)
     let testCase = try #require(testCases.first { _ in true })
-    #expect(testCase.arguments.count == 1)
-    let argument = try #require(testCase.arguments.first)
-    let argumentID = try #require(argument.id)
-    #expect(String(decoding: argumentID.bytes, as: UTF8.self) == "123")
+    let arguments = try #require(testCase.arguments)
+    #expect(arguments.count == 1)
+    let argument = try #require(arguments.first)
+    #expect(String(decoding: argument.id.bytes, as: UTF8.self) == "123")
   }
 
   @Test("One CustomTestArgumentEncodable parameter")
@@ -34,11 +34,11 @@ struct Test_Case_Argument_IDTests {
     ) { _ in }
     let testCases = try #require(test.testCases)
     let testCase = try #require(testCases.first { _ in true })
-    #expect(testCase.arguments.count == 1)
-    let argument = try #require(testCase.arguments.first)
-    let argumentID = try #require(argument.id)
+    let arguments = try #require(testCase.arguments)
+    #expect(arguments.count == 1)
+    let argument = try #require(arguments.first)
 #if canImport(Foundation)
-    let decodedArgument = try argumentID.bytes.withUnsafeBufferPointer { argumentID in
+    let decodedArgument = try argument.id.bytes.withUnsafeBufferPointer { argumentID in
       try JSON.decode(MyCustomTestArgument.self, from: .init(argumentID))
     }
     #expect(decodedArgument == MyCustomTestArgument(x: 123, y: "abc"))
@@ -53,10 +53,10 @@ struct Test_Case_Argument_IDTests {
     ) { _ in }
     let testCases = try #require(test.testCases)
     let testCase = try #require(testCases.first { _ in true })
-    #expect(testCase.arguments.count == 1)
-    let argument = try #require(testCase.arguments.first)
-    let argumentID = try #require(argument.id)
-    #expect(String(decoding: argumentID.bytes, as: UTF8.self) == #""abc""#)
+    let arguments = try #require(testCase.arguments)
+    #expect(arguments.count == 1)
+    let argument = try #require(arguments.first)
+    #expect(String(decoding: argument.id.bytes, as: UTF8.self) == #""abc""#)
   }
 
   @Test("One RawRepresentable parameter")
@@ -67,10 +67,10 @@ struct Test_Case_Argument_IDTests {
     ) { _ in }
     let testCases = try #require(test.testCases)
     let testCase = try #require(testCases.first { _ in true })
-    #expect(testCase.arguments.count == 1)
-    let argument = try #require(testCase.arguments.first)
-    let argumentID = try #require(argument.id)
-    #expect(String(decoding: argumentID.bytes, as: UTF8.self) == #""abc""#)
+    let arguments = try #require(testCase.arguments)
+    #expect(arguments.count == 1)
+    let argument = try #require(arguments.first)
+    #expect(String(decoding: argument.id.bytes, as: UTF8.self) == #""abc""#)
   }
 }
 
