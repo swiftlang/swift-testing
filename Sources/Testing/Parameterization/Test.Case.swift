@@ -23,8 +23,7 @@ extension Test {
       /// non-parameterized test function.
       case nonParameterized
 
-      /// A test case associated with a parameterized test function, including
-      /// the argument(s) it was passed and a discriminator.
+      /// A test case associated with a parameterized test function.
       ///
       /// - Parameters:
       ///   - arguments: The arguments passed to the parameterized test function
@@ -32,7 +31,9 @@ extension Test {
       ///   - discriminator: A number used to distinguish this test case from
       ///     others associated with the same parameterized test function whose
       ///     arguments have the same ID.
-      case parameterized(arguments: [Argument], discriminator: Int)
+      ///   - isStable: Whether or not this test case is considered stable
+      ///     across successive runs.
+      case parameterized(arguments: [Argument], discriminator: Int, isStable: Bool)
     }
 
     /// The kind of this test case.
@@ -49,19 +50,8 @@ extension Test {
         /// The raw bytes of this instance's identifier.
         public var bytes: [UInt8]
 
-        /// Whether or not this argument ID is considered stable across
-        /// successive runs.
-        ///
-        /// If the value of this property is `true`, the testing library can use
-        /// this ID to deterministically match against the original argument
-        /// it represents, and a user can selectively (re-)run that argument
-        /// of the associated parameterized test. If it is `false`, that
-        /// functionality is not supported for the argument this ID represents.
-        public var isStable: Bool
-
-        public init(bytes: some Sequence<UInt8>, isStable: Bool) {
+        init(bytes: some Sequence<UInt8>) {
           self.bytes = Array(bytes)
-          self.isStable = isStable
         }
       }
 
@@ -82,21 +72,9 @@ extension Test {
       /// The parameter of the test function to which this argument was passed.
       public var parameter: Parameter
 
-      /// Initialize an instance of this type representing the specified
-      /// argument value.
-      ///
-      /// - Parameters:
-      ///   - value: The value of this parameterized test argument.
-      ///   - encodableValue: An encodable representation of `value`, if one is
-      ///     available. When non-`nil`, this is used to attempt to form a
-      ///     stable identifier.
-      ///   - parameter: The parameter of the test function to which this
-      ///     argument was passed.
-      ///
-      /// This forms an ``ID`` identifying `value` using `encodableValue`.
-      init(value: any Sendable, encodableValue: (any Encodable)?, parameter: Parameter) {
+      init(id: ID, value: any Sendable, parameter: Parameter) {
+        self.id = id
         self.value = value
-        self.id = .init(identifying: value, encodableValue: encodableValue, parameter: parameter)
         self.parameter = parameter
       }
     }
@@ -117,7 +95,7 @@ extension Test {
       switch _kind {
       case .nonParameterized:
         nil
-      case let .parameterized(arguments, _):
+      case let .parameterized(arguments, _, _):
         arguments
       }
     }
@@ -148,7 +126,7 @@ extension Test {
         switch _kind {
         case .nonParameterized:
           nil
-        case let .parameterized(_, discriminator):
+        case let .parameterized(_, discriminator, _):
           discriminator
         }
       }
@@ -156,12 +134,24 @@ extension Test {
         switch _kind {
         case .nonParameterized:
           precondition(newValue == nil, "A non-nil discriminator may only be set for a test case which is parameterized.")
-        case let .parameterized(arguments, _):
+        case let .parameterized(arguments, _, isStable):
           guard let newValue else {
             preconditionFailure("A nil discriminator may only be set for a test case which is not parameterized.")
           }
-          _kind = .parameterized(arguments: arguments, discriminator: newValue)
+          _kind = .parameterized(arguments: arguments, discriminator: newValue, isStable: isStable)
         }
+      }
+    }
+
+    /// Whether or not this test case is considered stable across successive
+    /// runs.
+    @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+    public var isStable: Bool {
+      switch _kind {
+      case .nonParameterized:
+        true
+      case let .parameterized(_, _, isStable):
+        isStable
       }
     }
 
@@ -192,28 +182,40 @@ extension Test {
       parameters: [Parameter],
       body: @escaping @Sendable () async throws -> Void
     ) {
-      // Attempt to obtain an encodable representation of each value in order
-      // to construct a stable ID.
-      var encodableValues = [any Encodable]()
-      var hadFailure = false
-      for value in values {
-        // If we couldn't get an encodable representation of one of the values,
-        // give up and mark the overall attempt as a failure. This allows
-        // skipping unnecessary encoding work later: if any individual argument
-        // doesn't have a stable ID, the Test.Case.ID can't be considered stable,
-        // so there's no point encoding the values which _are_ encodable.
-        guard let encodableValue = encodableArgumentValue(for: value) else {
-          hadFailure = true
-          break
+      var isStable = true
+
+      let arguments = zip(values, parameters).map { value, parameter in
+        var stableArgumentID: Argument.ID?
+
+        // Attempt to get a stable, encoded representation of this value if no
+        // such attempts for previous values have failed.
+        if isStable {
+          do {
+            stableArgumentID = try .init(identifying: value, parameter: parameter)
+          } catch {
+            // FIXME: Capture the error and propagate to the user, not as a test
+            // failure but as an advisory warning. A missing stable argument ID
+            // will prevent re-running the test case, but isn't a blocking issue.
+          }
         }
-        encodableValues.append(encodableValue)
+
+        let argumentID: Argument.ID
+        if let stableArgumentID {
+          argumentID = stableArgumentID
+        } else {
+          // If we couldn't get a stable representation of at least one value,
+          // give up and consider the overall test case non-stable. This allows
+          // skipping unnecessary work later: if any individual argument doesn't
+          // have a stable ID, there's no point encoding the values which _are_
+          // encodable.
+          isStable = false
+          argumentID = .init(bytes: String(describingForTest: value).utf8)
+        }
+
+        return Argument(id: argumentID, value: value, parameter: parameter)
       }
 
-      let arguments = zip(values.enumerated(), parameters).map { value, parameter in
-        let encodableValue = hadFailure ? nil : encodableValues[value.0]
-        return Argument(value: value.1, encodableValue: encodableValue, parameter: parameter)
-      }
-      self.init(kind: .parameterized(arguments: arguments, discriminator: 0), body: body)
+      self.init(kind: .parameterized(arguments: arguments, discriminator: 0, isStable: isStable), body: body)
     }
 
     /// Whether or not this test case is from a parameterized test.
@@ -276,20 +278,7 @@ extension Test {
 // MARK: - Codable
 
 extension Test.Parameter: Codable {}
-
-extension Test.Case.Argument.ID: Codable {
-  public init(from decoder: any Decoder) throws {
-    let container = try decoder.container(keyedBy: CodingKeys.self)
-
-    // The `isStable` property was added after this type was introduced.
-    // Previously, only stable argument IDs were ever encoded, so if we're
-    // attempting to decode one, we can safely assume it is stable.
-    let isStable = try container.decodeIfPresent(type(of: isStable), forKey: .isStable) ?? true
-
-    let bytes = try container.decode(type(of: bytes), forKey: .bytes)
-    self.init(bytes: bytes, isStable: isStable)
-  }
-}
+extension Test.Case.Argument.ID: Codable {}
 
 // MARK: - Equatable, Hashable
 

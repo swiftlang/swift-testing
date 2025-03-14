@@ -34,26 +34,22 @@ extension Test.Case {
     /// - ``Test/Case/discriminator``
     public var discriminator: Int?
 
-    init(argumentIDs: [Argument.ID]?, discriminator: Int?) {
+    /// Whether or not this test case ID is considered stable across successive
+    /// runs.
+    public var isStable: Bool
+
+    init(argumentIDs: [Argument.ID]?, discriminator: Int?, isStable: Bool) {
       precondition((argumentIDs == nil) == (discriminator == nil))
 
       self.argumentIDs = argumentIDs
       self.discriminator = discriminator
-    }
-
-    /// Whether or not this test case ID is considered stable across successive
-    /// runs.
-    ///
-    /// The value of this property is `true` if all of the argument IDs for this
-    /// instance are stable, otherwise it is `false`.
-    public var isStable: Bool {
-      (argumentIDs ?? []).allSatisfy(\.isStable)
+      self.isStable = isStable
     }
   }
 
   @_spi(ForToolsIntegrationOnly)
   public var id: ID {
-    ID(argumentIDs: arguments.map { $0.map(\.id) }, discriminator: discriminator)
+    ID(argumentIDs: arguments.map { $0.map(\.id) }, discriminator: discriminator, isStable: isStable)
   }
 }
 
@@ -62,9 +58,9 @@ extension Test.Case {
 extension Test.Case.ID: CustomStringConvertible {
   public var description: String {
     if let argumentIDs, let discriminator {
-      "argumentIDs: \(argumentIDs), discriminator: \(discriminator)"
+      "Parameterized test case ID: argumentIDs: \(argumentIDs), discriminator: \(discriminator), isStable: \(isStable)"
     } else {
-      "non-parameterized"
+      "Non-parameterized test case ID"
     }
   }
 }
@@ -72,56 +68,40 @@ extension Test.Case.ID: CustomStringConvertible {
 // MARK: - Codable
 
 extension Test.Case.ID: Codable {
+  private enum CodingKeys: CodingKey {
+    case argumentIDs
+    case discriminator
+    case isStable
+  }
+
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
 
-    // The `argumentIDs` property is Optional but the meaning of `nil` has
-    // changed since this type was first introduced: it now identifies a
-    // non-parameterized test case, whereas it originally identified a
-    // parameterized test case for which one or more arguments could not be
-    // encoded. If it's present in the decoding container, accept whatever value
-    // is decoded (which may be `nil`). If it's absent, default to a single
-    // argument ID marked as non-stable to maintain previous behavior.
-    let argumentIDs: [Test.Case.Argument.ID]? = if container.contains(.argumentIDs) {
-      try container.decode(type(of: argumentIDs), forKey: .argumentIDs)
+    if container.contains(.isStable) {
+      // `isStable` is present, so we're decoding an instance encoded using the
+      // newest style: every property can be decoded straightforwardly.
+      try self.init(
+        argumentIDs: container.decodeIfPresent([Test.Case.Argument.ID].self, forKey: .argumentIDs),
+        discriminator: container.decodeIfPresent(Int.self, forKey: .discriminator),
+        isStable: container.decode(Bool.self, forKey: .isStable)
+      )
+    } else if container.contains(.argumentIDs) {
+      // `isStable` is absent, so we're decoding using the old style. Since
+      // `argumentIDs` is present, the representation should be considered
+      // stable.
+      let decodedArgumentIDs = try container.decode([Test.Case.Argument.ID].self, forKey: .argumentIDs)
+      let argumentIDs = decodedArgumentIDs.isEmpty ? nil : decodedArgumentIDs
+
+      // Discriminator should be `nil` for the ID of a non-parameterized test
+      // case, but can default to 0 for the ID of a parameterized test case.
+      let discriminator = argumentIDs == nil ? nil : 0
+
+      self.init(argumentIDs: argumentIDs, discriminator: discriminator, isStable: true)
     } else {
-      [Test.Case.Argument.ID(bytes: [], isStable: false)]
+      // This is the old style, and since `argumentIDs` is absent, we know this
+      // ID represents a parameterized test case which is non-stable.
+      self.init(argumentIDs: [.init(bytes: [])], discriminator: 0, isStable: false)
     }
-
-    // The `discriminator` property was added after this type was first
-    // introduced. If it's present in the decoding container, accept whatever
-    // value is decoded (which may be `nil`). If it's absent, default to `nil`
-    // if `argumentIDs` was interpreted as a non-parameterized test above, or
-    // else 0, to maintain previous behavior.
-    let discriminator: Int? = if container.contains(.discriminator) {
-      try container.decode(type(of: discriminator), forKey: .discriminator)
-    } else {
-      if let argumentIDs {
-        argumentIDs.isEmpty ? nil : 0
-      } else {
-        nil
-      }
-    }
-
-    self.init(argumentIDs: argumentIDs, discriminator: discriminator)
-  }
-
-  public func encode(to encoder: some Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-
-    // The `argumentIDs` property is Optional but the meaning of `nil` has
-    // changed since this type was first introduced: it now identifies a
-    // non-parameterized test case, whereas it originally identified a
-    // parameterized test case for which one or more arguments could not be
-    // encoded. Explicitly encode `nil` values here, rather than omitting them,
-    // so that when decoding we can distinguish these two scenarios.
-    try container.encode(argumentIDs, forKey: .argumentIDs)
-
-    // The `discriminator` property was added after this type was first
-    // introduced. Explicitly encode `nil` values here, rather than omitting
-    // them, so that when decoding we can distinguish the older vs. newer
-    // implementations.
-    try container.encode(discriminator, forKey: .discriminator)
   }
 }
 
