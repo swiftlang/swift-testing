@@ -10,11 +10,55 @@
 
 #include "Discovery.h"
 
+#include <algorithm>
 #if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
 #include <cstdint>
 #include <cstring>
 #include <type_traits>
+#endif
 
+#if defined(SWT_NO_DYNAMIC_LINKING)
+#pragma mark - Statically-linked section bounds
+
+#if defined(__APPLE__)
+extern "C" const char testContentSectionBegin __asm("section$start$__DATA_CONST$__swift5_tests");
+extern "C" const char testContentSectionEnd __asm("section$end$__DATA_CONST$__swift5_tests");
+#if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
+extern "C" const char typeMetadataSectionBegin __asm__("section$start$__TEXT$__swift5_types");
+extern "C" const char typeMetadataSectionEnd __asm__("section$end$__TEXT$__swift5_types");
+#endif
+#elif defined(__wasi__)
+extern "C" const char testContentSectionBegin __asm__("__start_swift5_tests");
+extern "C" const char testContentSectionEnd __asm__("__stop_swift5_tests");
+#if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
+extern "C" const char typeMetadataSectionBegin __asm__("__start_swift5_type_metadata");
+extern "C" const char typeMetadataSectionEnd __asm__("__stop_swift5_type_metadata");
+#endif
+#else
+#warning Platform-specific implementation missing: Runtime test discovery unavailable (static)
+static const char testContentSectionBegin = 0;
+static const char& testContentSectionEnd = testContentSectionBegin;
+#if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
+static const char typeMetadataSectionBegin = 0;
+static const char& typeMetadataSectionEnd = typeMetadataSectionBegin;
+#endif
+#endif
+
+static constexpr const char *const staticallyLinkedSectionBounds[][2] = {
+  { &testContentSectionBegin, &testContentSectionEnd },
+#if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
+  { &typeMetadataSectionBegin, &typeMetadataSectionEnd },
+#endif
+};
+
+void swt_getStaticallyLinkedSectionBounds(size_t kind, const void **outSectionBegin, size_t *outByteCount) {
+  auto [sectionBegin, sectionEnd] = staticallyLinkedSectionBounds[kind];
+  *outSectionBegin = sectionBegin;
+  *outByteCount = std::distance(sectionBegin, sectionEnd);
+}
+#endif
+
+#if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
 #pragma mark - Swift ABI
 
 #if defined(__PTRAUTH_INTRINSICS__)

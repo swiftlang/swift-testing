@@ -136,8 +136,8 @@ emits section information into the resource fork on Classic, you would use the
 to load that information:
 
 ```diff
---- a/Sources/_TestDiscovery/SectionBounds.swift
-+++ b/Sources/_TestDiscovery/SectionBounds.swift
+--- a/Sources/Testing/Discovery+Platform.swift
++++ b/Sources/Testing/Discovery+Platform.swift
 
  // ...
 +#elseif os(Classic)
@@ -211,30 +211,29 @@ start with `"SWT_"`).
 If your platform does not support dynamic linking and loading, you will need to
 use static linkage instead. Define the `"SWT_NO_DYNAMIC_LINKING"` compiler
 conditional for your platform in both `Package.swift` and
-`CompilerSettings.cmake`, then define the symbols `_testContentSectionBegin`,
-`_testContentSectionEnd`, `_typeMetadataSectionBegin`, and
-`_typeMetadataSectionEnd` in `SectionBounds.swift`:
+`CompilerSettings.cmake`, then define the symbols `testContentSectionBegin`,
+`testContentSectionEnd`, `typeMetadataSectionBegin`, and
+`typeMetadataSectionEnd` in `Discovery.cpp`.
 
 ```diff
---- a/Sources/_TestDiscovery/SectionBounds.swift
-+++ b/Sources/_TestDiscovery/SectionBounds.swift
+diff --git a/Sources/_TestingInternals/Discovery.cpp b/Sources/_TestingInternals/Discovery.cpp
  // ...
-+#elseif os(Classic)
-+@_silgen_name(raw: "...") private nonisolated(unsafe) var _testContentSectionBegin: CChar
-+@_silgen_name(raw: "...") private nonisolated(unsafe) var _testContentSectionEnd: CChar
-+#if !SWT_NO_LEGACY_TEST_DISCOVERY
-+@_silgen_name(raw: "...") private nonisolated(unsafe) var _typeMetadataSectionBegin: CChar
-+@_silgen_name(raw: "...") private nonisolated(unsafe) var _typeMetadataSectionEnd: CChar
++#elif defined(macintosh)
++extern "C" const char testContentSectionBegin __asm__("...");
++extern "C" const char testContentSectionEnd __asm__("...");
++#if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
++extern "C" const char typeMetadataSectionBegin __asm__("...");
++extern "C" const char typeMetadataSectionEnd __asm__("...");
 +#endif
  #else
- #warning("Platform-specific implementation missing: Runtime test discovery unavailable (static)")
- private nonisolated(unsafe) var _testContentSectionBegin: Void
- private nonisolated(unsafe) var _testContentSectionEnd: Void
- #if !SWT_NO_LEGACY_TEST_DISCOVERY
- private nonisolated(unsafe) var _typeMetadataSectionBegin: Void
- private nonisolated(unsafe) var _typeMetadataSectionEnd: Void
+ #warning Platform-specific implementation missing: Runtime test discovery unavailable (static)
+ static const char testContentSectionBegin = 0;
+ static const char& testContentSectionEnd = testContentSectionBegin;
+ #if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
+ static const char typeMetadataSectionBegin = 0;
+ static const char& typeMetadataSectionEnd = typeMetadataSectionBegin;
  #endif
- // ...
+ #endif
 ```
 
 These symbols must have unique addresses corresponding to the first byte of the

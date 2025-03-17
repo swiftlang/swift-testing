@@ -276,8 +276,7 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
     }
 
     let result = SectionBounds.all(.typeMetadata).lazy.flatMap { sb in
-      stride(from: 0, to: sb.buffer.count, by: SWTTypeMetadataRecordByteCount).lazy
-        .map { sb.buffer.baseAddress! + $0 }
+      stride(from: sb.buffer.baseAddress!, to: sb.buffer.baseAddress! + sb.buffer.count, by: SWTTypeMetadataRecordByteCount).lazy
         .compactMap { swt_getType(fromTypeMetadataRecord: $0, ifNameContains: typeNameHint) }
         .map { unsafeBitCast($0, to: Any.Type.self) }
         .compactMap(loader)
