@@ -23,7 +23,7 @@ struct SectionBounds: Sendable {
 
   /// An enumeration describing the different sections discoverable by the
   /// testing library.
-  enum Kind: Int, Equatable, Hashable, CaseIterable {
+  enum Kind: Equatable, Hashable, CaseIterable {
     /// The test content metadata section.
     case testContent
 
@@ -297,13 +297,56 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some Sequence<Section
 ///   - kind: Ignored.
 ///
 /// - Returns: The empty array.
-private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
+private func _sectionBounds(_ kind: SectionBounds.Kind) -> EmptyCollection<SectionBounds> {
   #warning("Platform-specific implementation missing: Runtime test discovery unavailable (dynamic)")
-  return []
+  return EmptyCollection()
 }
 #endif
 #else
 // MARK: - Statically-linked implementation
+
+/// A type representing the upper or lower bound of a metadata section.
+///
+/// This type uses the experimental `@_rawLayout` attribute to ensure that
+/// instances have fixed addresses. Use the `unsafeAddress` property to get the
+/// address of an instance of this type.
+///
+/// On platforms that use static linkage and have well-defined bounds symbols,
+/// those symbols are imported into Swift below using `@_silgen_name`, another
+/// experimental attribute.
+@_rawLayout(like: CChar) private struct _SectionBound: @unchecked Sendable, ~Copyable {
+  static func ..<(lhs: borrowing Self, rhs: borrowing Self) -> UnsafeRawBufferPointer {
+    withUnsafePointer(to: lhs) { lhs in
+      withUnsafePointer(to: rhs) { rhs in
+        UnsafeRawBufferPointer(start: lhs, count: UnsafeRawPointer(rhs) - UnsafeRawPointer(lhs))
+      }
+    }
+  }
+}
+
+#if SWT_TARGET_OS_APPLE
+@_silgen_name(raw: "section$start$__DATA_CONST$__swift5_tests") private let _testContentSectionBegin: _SectionBound
+@_silgen_name(raw: "section$end$__DATA_CONST$__swift5_tests") private let _testContentSectionEnd: _SectionBound
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+@_silgen_name(raw: "section$start$__TEXT$__swift5_types") private let _typeMetadataSectionBegin: _SectionBound
+@_silgen_name(raw: "section$end$__TEXT$__swift5_types") private let _typeMetadataSectionEnd: _SectionBound
+#endif
+#elseif os(WASI)
+@_silgen_name(raw: "__start_swift5_tests") private let _testContentSectionBegin: _SectionBound
+@_silgen_name(raw: "__stop_swift5_tests") private let _testContentSectionEnd: _SectionBound
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+@_silgen_name(raw: "__start_swift5_type_metadata") private let _typeMetadataSectionBegin: _SectionBound
+@_silgen_name(raw: "__stop_swift5_type_metadata") private let _typeMetadataSectionEnd: _SectionBound
+#endif
+#else
+#warning("Platform-specific implementation missing: Runtime test discovery unavailable (static)")
+private let _testContentSectionBegin = _SectionBound()
+private var _testContentSectionEnd: _SectionBound { _read { yield _testContentSectionBegin } }
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+private let _typeMetadataSectionBegin = _SectionBound()
+private var _typeMetadataSectionEnd: _SectionBound { _read { yield _typeMetadataSectionBegin } }
+#endif
+#endif
 
 /// The common implementation of ``SectionBounds/all(_:)`` for platforms that do
 /// not support dynamic linking.
@@ -314,9 +357,12 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
 /// - Returns: A structure describing the bounds of the type metadata section
 ///   contained in the same image as the testing library itself.
 private func _sectionBounds(_ kind: SectionBounds.Kind) -> CollectionOfOne<SectionBounds> {
-  var (baseAddress, count): (UnsafeRawPointer?, Int) = (nil, 0)
-  swt_getStaticallyLinkedSectionBounds(kind.rawValue, &baseAddress, &count)
-  let buffer = UnsafeRawBufferPointer(start: baseAddress, count: count)
+  let buffer = switch kind {
+  case .testContent:
+    _testContentSectionBegin ..< _testContentSectionEnd
+  case .typeMetadata:
+    _typeMetadataSectionBegin ..< _typeMetadataSectionEnd
+  }
   let sb = SectionBounds(imageAddress: nil, buffer: buffer)
   return CollectionOfOne(sb)
 }

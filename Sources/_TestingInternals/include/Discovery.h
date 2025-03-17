@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2025 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -29,21 +29,6 @@ SWT_IMPORT_FROM_STDLIB void swift_enumerateAllMetadataSections(
   void *context
 );
 #endif
-
-#pragma mark - Statically-linked section bounds
-
-/// Get the bounds of a statically linked section in this image.
-///
-/// - Parameters:
-///   - kind: The value of `SectionBounds.Kind.rawValue` for the given section.
-///   - outSectionBegin: On return, a pointer to the first byte of the section.
-///   - outByteCount: On return, the number of bytes in the section.
-///
-/// - Note: This symbol is _declared_, but not _defined_, on platforms with
-///   dynamic linking because the `SWT_NO_DYNAMIC_LINKING` C++ macro (not the
-///   Swift compiler conditional of the same name) is not consistently declared
-///   when Swift files import the `_TestingInternals` C++ module.
-SWT_EXTERN void swt_getStaticallyLinkedSectionBounds(size_t kind, const void *_Nullable *_Nonnull outSectionBegin, size_t *outByteCount);
 
 #pragma mark - Legacy test discovery
 
