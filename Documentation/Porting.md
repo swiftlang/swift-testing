@@ -245,8 +245,8 @@ linker documentation for your platform to determine what names to place in the
 `@_silgen_name` attribute applied to each.
 
 If your target platform statically links Swift Testing but the linker does not
-provide section bounds symbols for it, please reach out to us in the Swift
-forums for advice.
+define section bounds symbols, please reach out to us in the Swift forums for
+advice.
 
 ## C++ stub implementations
 
