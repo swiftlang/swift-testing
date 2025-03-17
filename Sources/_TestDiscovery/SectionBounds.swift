@@ -308,8 +308,8 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> EmptyCollection<Secti
 /// A type representing the upper or lower bound of a metadata section.
 ///
 /// This type uses the experimental `@_rawLayout` attribute to ensure that
-/// instances have fixed addresses. Use the `unsafeAddress` property to get the
-/// address of an instance of this type.
+/// instances have fixed addresses. Use the `..<` operator to get a buffer
+/// pointer from two instances of this type.
 ///
 /// On platforms that use static linkage and have well-defined bounds symbols,
 /// those symbols are imported into Swift below using `@_silgen_name`, another
