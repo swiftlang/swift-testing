@@ -26,3 +26,16 @@ struct ZipTests {
     #expect(i == j)
   }
 }
+
+enum SPIManifest: Equatable {
+  case valid(Int)
+  static func Manifest(yml: Int) throws -> Int {
+    yml
+  }
+}
+
+@Test func hootenanny() throws {
+  let yml = 123
+  let res = SPIManifest.valid(yml)
+  #expect(res == .valid(try SPIManifest.Manifest(yml: yml)))
+}
