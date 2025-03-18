@@ -36,12 +36,6 @@ if(NOT APPLE)
   add_compile_definitions("SWT_NO_SNAPSHOT_TYPES")
 endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "WASI")
-  add_compile_definitions("SWT_NO_PIPES")
-endif()
-
-set(SWT_STATICALLY_LINKED_LIST "WASI")
-if(CMAKE_SYSTEM_NAME IN_LIST SWT_STATICALLY_LINKED_LIST)
   add_compile_definitions("SWT_NO_DYNAMIC_LINKING")
-  add_compile_options(
-    "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-experimental-feature -Xfrontend RawLayout>")
+  add_compile_definitions("SWT_NO_PIPES")
 endif()

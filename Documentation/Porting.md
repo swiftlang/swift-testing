@@ -212,9 +212,8 @@ start with `"SWT_"`).
 ## Runtime test discovery with static linkage
 
 If your platform does not support dynamic linking and loading, you will need to
-use static linkage instead. To enable static linkage in Swift Testing, add your
-platform to the `BuildSettingCondition.whenStaticallyLinked` definition in
-`Package.swift` and to the `SWT_STATICALLY_LINKED_LIST` definition in
+use static linkage instead. Define the `"SWT_NO_DYNAMIC_LINKING"` compiler
+conditional for your platform in both `Package.swift` and
 `CompilerSettings.cmake`, then define the symbols `_testContentSectionBegin`,
 `_testContentSectionEnd`, `_typeMetadataSectionBegin`, and
 `_typeMetadataSectionEnd` in `SectionBounds.swift`:

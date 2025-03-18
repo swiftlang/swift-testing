@@ -185,18 +185,6 @@ package.targets.append(contentsOf: [
 ])
 #endif
 
-extension BuildSettingCondition {
-  /// A build setting condition matching all Apple platforms.
-  static var whenApple: Self {
-    .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])
-  }
-
-  /// A build setting condition matching platforms that use static linkage.
-  static var whenStaticallyLinked: Self {
-    .when(platforms: [.wasi])
-  }
-}
-
 extension Array where Element == PackageDescription.SwiftSetting {
   /// Settings intended to be applied to every Swift target in this package.
   /// Analogous to project-level build settings in an Xcode project.
@@ -220,18 +208,17 @@ extension Array where Element == PackageDescription.SwiftSetting {
       // (via CMake). Enabling it is dependent on acceptance of the @section
       // proposal via Swift Evolution.
       .enableExperimentalFeature("SymbolLinkageMarkers"),
-      .enableExperimentalFeature("RawLayout", .whenStaticallyLinked),
 
       // When building as a package, the macro plugin always builds as an
       // executable rather than a library.
       .define("SWT_NO_LIBRARY_MACRO_PLUGINS"),
 
-      .define("SWT_TARGET_OS_APPLE", .whenApple),
+      .define("SWT_TARGET_OS_APPLE", .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])),
 
       .define("SWT_NO_EXIT_TESTS", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
       .define("SWT_NO_PROCESS_SPAWNING", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
       .define("SWT_NO_SNAPSHOT_TYPES", .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi, .android])),
-      .define("SWT_NO_DYNAMIC_LINKING", .whenStaticallyLinked),
+      .define("SWT_NO_DYNAMIC_LINKING", .when(platforms: [.wasi])),
       .define("SWT_NO_PIPES", .when(platforms: [.wasi])),
     ]
 
@@ -269,7 +256,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
     if buildingForDevelopment {
       var condition: BuildSettingCondition?
       if applePlatformsOnly {
-        condition = .whenApple
+        condition = .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])
       }
       result.append(.unsafeFlags(["-enable-library-evolution"], condition))
     }
@@ -288,7 +275,7 @@ extension Array where Element == PackageDescription.CXXSetting {
       .define("SWT_NO_EXIT_TESTS", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
       .define("SWT_NO_PROCESS_SPAWNING", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
       .define("SWT_NO_SNAPSHOT_TYPES", .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi, .android])),
-      .define("SWT_NO_DYNAMIC_LINKING", .whenStaticallyLinked),
+      .define("SWT_NO_DYNAMIC_LINKING", .when(platforms: [.wasi])),
       .define("SWT_NO_PIPES", .when(platforms: [.wasi])),
     ]
 
