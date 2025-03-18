@@ -10,7 +10,7 @@
 
 /// A type that represents an active `withKnownIssue()` call and any parent calls.
 ///
-/// A stack of these is stored in `KnownIssueContext.current`. The stack is
+/// A stack of these is stored in `KnownIssueScope.current`. The stack is
 /// mutated by calls to `withKnownIssue()`.
 struct KnownIssueScope: Sendable {
   /// Determine if an issue is known to this scope or any of its ancestor
@@ -29,7 +29,7 @@ struct KnownIssueScope: Sendable {
   ///     fails to match an issue.
   ///   - issueMatcher: A function to invoke when an issue occurs that is used
   ///     to determine if the issue is known to occur.
-  ///   - comment: Any comment to be associated with issues matched by
+  ///   - context: The context to be associated with issues matched by
   ///     `issueMatcher`.
   /// - Returns: A new instance of ``KnownIssueScope``.
   init(parent: KnownIssueScope?, issueMatcher: @escaping KnownIssueMatcher, context: Issue.KnownIssueContext) {
