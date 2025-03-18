@@ -45,8 +45,7 @@ struct SectionBounds: Sendable {
   }
 }
 
-#if !SWT_NO_DYNAMIC_LINKING
-#if SWT_TARGET_OS_APPLE
+#if SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
 // MARK: - Apple implementation
 
 extension SectionBounds.Kind {
@@ -157,7 +156,7 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
   }
 }
 
-#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+#elseif (os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)) && !SWT_NO_DYNAMIC_LINKING
 // MARK: - ELF implementation
 
 private import SwiftShims // For MetadataSections
@@ -278,6 +277,9 @@ private func _findSection(named sectionName: String, in hModule: HMODULE) -> Sec
 ///
 /// - Returns: An array of structures describing the bounds of all known test
 ///   content sections in the current process.
+///
+/// This implementation is always used on Windows (even when the testing library
+/// is statically linked.)
 private func _sectionBounds(_ kind: SectionBounds.Kind) -> some Sequence<SectionBounds> {
   let sectionName = switch kind {
   case .testContent:
@@ -289,7 +291,10 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some Sequence<Section
   }
   return HMODULE.all.lazy.compactMap { _findSection(named: sectionName, in: $0) }
 }
-#else
+
+#elseif !SWT_NO_DYNAMIC_LINKING
+// MARK: - Missing dynamic implementation
+
 /// The fallback implementation of ``SectionBounds/all(_:)`` for platforms that
 /// support dynamic linking.
 ///
@@ -298,10 +303,10 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some Sequence<Section
 ///
 /// - Returns: The empty array.
 private func _sectionBounds(_ kind: SectionBounds.Kind) -> EmptyCollection<SectionBounds> {
-  #warning("Platform-specific implementation missing: Runtime test discovery unavailable (dynamic)")
+#warning("Platform-specific implementation missing: Runtime test discovery unavailable (dynamic)")
   return EmptyCollection()
 }
-#endif
+
 #else
 // MARK: - Statically-linked implementation
 
@@ -331,7 +336,7 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> EmptyCollection<Secti
 @_silgen_name(raw: "section$start$__TEXT$__swift5_types") private let _typeMetadataSectionBegin: _SectionBound
 @_silgen_name(raw: "section$end$__TEXT$__swift5_types") private let _typeMetadataSectionEnd: _SectionBound
 #endif
-#elseif os(WASI)
+#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
 @_silgen_name(raw: "__start_swift5_tests") private let _testContentSectionBegin: _SectionBound
 @_silgen_name(raw: "__stop_swift5_tests") private let _testContentSectionEnd: _SectionBound
 #if !SWT_NO_LEGACY_TEST_DISCOVERY

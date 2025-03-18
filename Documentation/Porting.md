@@ -176,10 +176,13 @@ to load that information:
 +  } while noErr == GetNextResourceFile(refNum, &refNum))
 +  return result
 +}
- #else
- private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
-   #warning("Platform-specific implementation missing: Runtime test discovery unavailable (dynamic)")
-   return []
++
+ #elseif !SWT_NO_DYNAMIC_LINKING
+ // MARK: - Missing dynamic implementation
+
+ private func _sectionBounds(_ kind: SectionBounds.Kind) -> EmptyCollection<SectionBounds> {
+ #warning("Platform-specific implementation missing: Runtime test discovery unavailable (dynamic)")
+   return EmptyCollection()
  }
  #endif
 ```
