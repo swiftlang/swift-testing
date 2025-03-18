@@ -312,44 +312,47 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> EmptyCollection<Secti
 
 /// A type representing the upper or lower bound of a metadata section.
 ///
-/// This type uses the experimental `@_rawLayout` attribute to ensure that
-/// instances have fixed addresses. Use the `..<` operator to get a buffer
-/// pointer from two instances of this type.
+/// This type is move-only and instances of it are declared as global mutable
+/// variables below to ensure that they have fixed addresses. Use the `..<`
+/// operator to get a range of addresses from two instances of this type.
 ///
 /// On platforms that use static linkage and have well-defined bounds symbols,
-/// those symbols are imported into Swift below using `@_silgen_name`, another
-/// experimental attribute.
-@_rawLayout(like: CChar) private struct _SectionBound: @unchecked Sendable, ~Copyable {
-  static func ..<(lhs: borrowing Self, rhs: borrowing Self) -> UnsafeRawBufferPointer {
-    withUnsafePointer(to: lhs) { lhs in
-      withUnsafePointer(to: rhs) { rhs in
-        UnsafeRawBufferPointer(start: lhs, count: UnsafeRawPointer(rhs) - UnsafeRawPointer(lhs))
+/// those symbols are imported into Swift below using the experimental
+/// `@_silgen_name` attribute.
+private struct _SectionBound: Sendable, ~Copyable {
+  /// A property that forces the structure to have an in-memory representation.
+  private var _storage: CChar = 0
+
+  static func ..<(lhs: inout Self, rhs: inout Self) -> Range<UnsafeRawPointer> {
+    withUnsafeMutablePointer(to: &lhs) { lhs in
+      withUnsafeMutablePointer(to: &rhs) { rhs in
+        UnsafeRawPointer(lhs) ..< UnsafeRawPointer(rhs)
       }
     }
   }
 }
 
 #if SWT_TARGET_OS_APPLE
-@_silgen_name(raw: "section$start$__DATA_CONST$__swift5_tests") private let _testContentSectionBegin: _SectionBound
-@_silgen_name(raw: "section$end$__DATA_CONST$__swift5_tests") private let _testContentSectionEnd: _SectionBound
+@_silgen_name(raw: "section$start$__DATA_CONST$__swift5_tests") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
+@_silgen_name(raw: "section$end$__DATA_CONST$__swift5_tests") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
-@_silgen_name(raw: "section$start$__TEXT$__swift5_types") private let _typeMetadataSectionBegin: _SectionBound
-@_silgen_name(raw: "section$end$__TEXT$__swift5_types") private let _typeMetadataSectionEnd: _SectionBound
+@_silgen_name(raw: "section$start$__TEXT$__swift5_types") private nonisolated(unsafe) var _typeMetadataSectionBegin: _SectionBound
+@_silgen_name(raw: "section$end$__TEXT$__swift5_types") private nonisolated(unsafe) var _typeMetadataSectionEnd: _SectionBound
 #endif
 #elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
-@_silgen_name(raw: "__start_swift5_tests") private let _testContentSectionBegin: _SectionBound
-@_silgen_name(raw: "__stop_swift5_tests") private let _testContentSectionEnd: _SectionBound
+@_silgen_name(raw: "__start_swift5_tests") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
+@_silgen_name(raw: "__stop_swift5_tests") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
-@_silgen_name(raw: "__start_swift5_type_metadata") private let _typeMetadataSectionBegin: _SectionBound
-@_silgen_name(raw: "__stop_swift5_type_metadata") private let _typeMetadataSectionEnd: _SectionBound
+@_silgen_name(raw: "__start_swift5_type_metadata") private nonisolated(unsafe) var _typeMetadataSectionBegin: _SectionBound
+@_silgen_name(raw: "__stop_swift5_type_metadata") private nonisolated(unsafe) var _typeMetadataSectionEnd: _SectionBound
 #endif
 #else
 #warning("Platform-specific implementation missing: Runtime test discovery unavailable (static)")
-private let _testContentSectionBegin = _SectionBound()
-private var _testContentSectionEnd: _SectionBound { _read { yield _testContentSectionBegin } }
+private nonisolated(unsafe) let _testContentSectionBegin = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 16)
+private nonisolated(unsafe) let _testContentSectionEnd = _testContentSectionBegin
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
-private let _typeMetadataSectionBegin = _SectionBound()
-private var _typeMetadataSectionEnd: _SectionBound { _read { yield _typeMetadataSectionBegin } }
+private nonisolated(unsafe) let _typeMetadataSectionBegin = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 16)
+private nonisolated(unsafe) let _typeMetadataSectionEnd = _typeMetadataSectionBegin
 #endif
 #endif
 
@@ -362,12 +365,13 @@ private var _typeMetadataSectionEnd: _SectionBound { _read { yield _typeMetadata
 /// - Returns: A structure describing the bounds of the type metadata section
 ///   contained in the same image as the testing library itself.
 private func _sectionBounds(_ kind: SectionBounds.Kind) -> CollectionOfOne<SectionBounds> {
-  let buffer = switch kind {
+  let range = switch kind {
   case .testContent:
     _testContentSectionBegin ..< _testContentSectionEnd
   case .typeMetadata:
     _typeMetadataSectionBegin ..< _typeMetadataSectionEnd
   }
+  let buffer = UnsafeRawBufferPointer(start: range.lowerBound, count: range.count)
   let sb = SectionBounds(imageAddress: nil, buffer: buffer)
   return CollectionOfOne(sb)
 }
