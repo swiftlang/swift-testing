@@ -29,10 +29,17 @@ extension ABI {
     /// - Warning: Severity is not yet part of the JSON schema.
     var _severity: Severity
 
+    /// Whether or not this issue is known to occur.
+    ///
+    /// This should perhaps be deprecated in favor of `_knownIssueContext`.
+    var isKnown: Bool
+
     /// An ``Issue/KnownIssueContext-swift.struct`` representing the
     /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)`` call
     /// that matched this issue, if any.
-    var knownIssueContext: Issue.KnownIssueContext?
+    ///
+    /// - Warning: Severity is not yet part of the JSON schema.
+    var _knownIssueContext: Issue.KnownIssueContext?
 
     /// The location in source where this issue occurred, if available.
     var sourceLocation: SourceLocation?
@@ -52,7 +59,8 @@ extension ABI {
       case .warning: .warning
       case .error: .error
       }
-      knownIssueContext = issue.knownIssueContext
+      isKnown = issue.isKnown
+      _knownIssueContext = issue.knownIssueContext
       sourceLocation = issue.sourceLocation
       if let backtrace = issue.sourceContext.backtrace {
         _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)

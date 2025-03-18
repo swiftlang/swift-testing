@@ -746,7 +746,7 @@ extension ExitTest {
         sourceLocation: issue.sourceLocation
       )
       var issueCopy = Issue(kind: issueKind, comments: comments, sourceContext: sourceContext)
-      issueCopy.knownIssueContext = issue.knownIssueContext
+      issueCopy.knownIssueContext = issue._knownIssueContext
       issueCopy.record()
     }
   }
