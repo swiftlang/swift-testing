@@ -224,19 +224,20 @@ platform to the `BuildSettingCondition.whenStaticallyLinked` definition in
 +++ b/Sources/_TestDiscovery/SectionBounds.swift
  // ...
 +#elseif os(Classic)
-+@_silgen_name(raw: "...") private let _testContentSectionBegin: _SectionBound
-+@_silgen_name(raw: "...") private let _testContentSectionEnd: _SectionBound
++@_silgen_name(raw: "...") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
++@_silgen_name(raw: "...") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
 +#if !SWT_NO_LEGACY_TEST_DISCOVERY
-+@_silgen_name(raw: "...") private let _typeMetadataSectionBegin: _SectionBound
-+@_silgen_name(raw: "...") private let _typeMetadataSectionEnd: _SectionBound
++@_silgen_name(raw: "...") private nonisolated(unsafe) var _typeMetadataSectionBegin: _SectionBound
++@_silgen_name(raw: "...") private nonisolated(unsafe) var _typeMetadataSectionEnd: _SectionBound
 +#endif
  #else
  #warning("Platform-specific implementation missing: Runtime test discovery unavailable (static)")
- private let _testContentSectionBegin = _SectionBound()
- private var _testContentSectionEnd: _SectionBound { ... }
+ private nonisolated(unsafe) let _testContentSectionBegin = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 16)
+ private nonisolated(unsafe) let _testContentSectionEnd = _testContentSectionBegin
  #if !SWT_NO_LEGACY_TEST_DISCOVERY
- private let _typeMetadataSectionBegin = _SectionBound()
- private var _typeMetadataSectionEnd: _SectionBound { ... }
+ private nonisolated(unsafe) let _typeMetadataSectionBegin = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 16)
+ private nonisolated(unsafe) let _typeMetadataSectionEnd = _typeMetadataSectionBegin
+ #endif
  #endif
  // ...
 ```
