@@ -14,9 +14,7 @@
 #include <cstdint>
 #include <cstring>
 #include <type_traits>
-#endif
 
-#if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
 #pragma mark - Swift ABI
 
 #if defined(__PTRAUTH_INTRINSICS__)
