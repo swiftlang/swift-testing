@@ -134,10 +134,7 @@ public struct Issue: Sendable {
 
   /// Whether or not this issue is known to occur.
   @_spi(ForToolsIntegrationOnly)
-  public var isKnown: Bool {
-    get { knownIssueContext != nil }
-    set {}
-  }
+  public var isKnown: Bool { knownIssueContext != nil }
 
   /// Initialize an issue instance with the specified details.
   ///
