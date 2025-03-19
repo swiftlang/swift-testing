@@ -368,8 +368,10 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> CollectionOfOne<Secti
   let range = switch kind {
   case .testContent:
     _testContentSectionBegin ..< _testContentSectionEnd
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
   case .typeMetadata:
     _typeMetadataSectionBegin ..< _typeMetadataSectionEnd
+#endif
   }
   let buffer = UnsafeRawBufferPointer(start: range.lowerBound, count: range.count)
   let sb = SectionBounds(imageAddress: nil, buffer: buffer)
