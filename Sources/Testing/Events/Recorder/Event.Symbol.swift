@@ -44,7 +44,6 @@ extension Event {
     case details
 
     /// The symbol to use when describing an instance of ``Attachment``.
-    @_spi(Experimental)
     case attachment
   }
 }
