@@ -412,9 +412,6 @@ struct TestDeclarationMacroTests {
 #if hasFeature(SymbolLinkageMarkers)
     #expect(output.contains("@_section"))
 #endif
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-    #expect(output.contains("__TestContentRecordContainer"))
-#endif
     if let expectedTypeName {
       #expect(output.contains(expectedTypeName))
     }
