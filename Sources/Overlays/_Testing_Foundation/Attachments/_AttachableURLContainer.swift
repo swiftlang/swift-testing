@@ -36,7 +36,7 @@ extension _AttachableURLContainer: AttachableContainer {
     url
   }
 
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try data.withUnsafeBytes(body)
   }
 

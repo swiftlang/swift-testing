@@ -143,7 +143,7 @@ public struct AnyAttachable: AttachableContainer, Copyable, Sendable {
     attachableValue.estimatedAttachmentByteCount
   }
 
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     func open<T>(_ attachableValue: T, for attachment: borrowing Attachment<Self>) throws -> R where T: Attachable & Sendable & Copyable {
       let temporaryAttachment = Attachment<T>(
         _attachableValue: attachableValue,
@@ -151,7 +151,7 @@ public struct AnyAttachable: AttachableContainer, Copyable, Sendable {
         _preferredName: attachment._preferredName,
         sourceLocation: attachment.sourceLocation
       )
-      return try temporaryAttachment.withUnsafeBufferPointer(body)
+      return try temporaryAttachment.withUnsafeBytes(body)
     }
     return try open(attachableValue, for: attachment)
   }
@@ -220,25 +220,10 @@ extension Attachment where AttachableValue: AttachableContainer & ~Copyable {
 
 #if !SWT_NO_LAZY_ATTACHMENTS
 extension Attachment where AttachableValue: Sendable & Copyable {
-  /// Attach this instance to the current test.
+  /// Attach an attachment to the current test.
   ///
   /// - Parameters:
-  ///   - sourceLocation: The source location of the call to this function.
-  ///
-  /// An attachment can only be attached once.
-  @_documentation(visibility: private)
-  public consuming func attach(sourceLocation: SourceLocation = #_sourceLocation) {
-    var attachmentCopy = Attachment<AnyAttachable>(self)
-    attachmentCopy.sourceLocation = sourceLocation
-    Event.post(.valueAttached(attachmentCopy))
-  }
-}
-#endif
-
-extension Attachment where AttachableValue: ~Copyable {
-  /// Attach this instance to the current test.
-  ///
-  /// - Parameters:
+  ///   - attachment: The attachment to attach.
   ///   - sourceLocation: The source location of the call to this function.
   ///
   /// When attaching a value of a type that does not conform to both
@@ -250,14 +235,65 @@ extension Attachment where AttachableValue: ~Copyable {
   /// disk.
   ///
   /// An attachment can only be attached once.
-  public consuming func attach(sourceLocation: SourceLocation = #_sourceLocation) {
+  @_documentation(visibility: private)
+  public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #_sourceLocation) {
+    var attachmentCopy = Attachment<AnyAttachable>(attachment)
+    attachmentCopy.sourceLocation = sourceLocation
+    Event.post(.valueAttached(attachmentCopy))
+  }
+
+  /// Attach a value to the current test.
+  ///
+  /// - Parameters:
+  ///   - attachableValue: The value to attach.
+  ///   - preferredName: The preferred name of the attachment when writing it to
+  ///     a test report or to disk. If `nil`, the testing library attempts to
+  ///     derive a reasonable filename for the attached value.
+  ///   - sourceLocation: The source location of the call to this function.
+  ///
+  /// When attaching a value of a type that does not conform to both
+  /// [`Sendable`](https://developer.apple.com/documentation/swift/sendable) and
+  /// [`Copyable`](https://developer.apple.com/documentation/swift/copyable),
+  /// the testing library encodes it as data immediately. If the value cannot be
+  /// encoded and an error is thrown, that error is recorded as an issue in the
+  /// current test and the attachment is not written to the test report or to
+  /// disk.
+  ///
+  /// This function creates a new instance of ``Attachment`` and immediately
+  /// attaches it to the current test.
+  ///
+  /// An attachment can only be attached once.
+  @_documentation(visibility: private)
+  public static func record(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
+    record(Self(attachableValue, named: preferredName), sourceLocation: sourceLocation)
+  }
+}
+#endif
+
+extension Attachment where AttachableValue: ~Copyable {
+  /// Attach an attachment to the current test.
+  ///
+  /// - Parameters:
+  ///   - attachment: The attachment to attach.
+  ///   - sourceLocation: The source location of the call to this function.
+  ///
+  /// When attaching a value of a type that does not conform to both
+  /// [`Sendable`](https://developer.apple.com/documentation/swift/sendable) and
+  /// [`Copyable`](https://developer.apple.com/documentation/swift/copyable),
+  /// the testing library encodes it as data immediately. If the value cannot be
+  /// encoded and an error is thrown, that error is recorded as an issue in the
+  /// current test and the attachment is not written to the test report or to
+  /// disk.
+  ///
+  /// An attachment can only be attached once.
+  public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #_sourceLocation) {
     do {
-      let attachmentCopy = try withUnsafeBufferPointer { buffer in
+      let attachmentCopy = try attachment.withUnsafeBytes { buffer in
         let attachableContainer = AnyAttachable(attachableValue: Array(buffer))
         return Attachment<AnyAttachable>(
           _attachableValue: attachableContainer,
-          fileSystemPath: fileSystemPath,
-          _preferredName: preferredName, // invokes preferredName(for:basedOn:)
+          fileSystemPath: attachment.fileSystemPath,
+          _preferredName: attachment.preferredName, // invokes preferredName(for:basedOn:)
           sourceLocation: sourceLocation
         )
       }
@@ -266,6 +302,31 @@ extension Attachment where AttachableValue: ~Copyable {
       let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
       Issue(kind: .valueAttachmentFailed(error), comments: [], sourceContext: sourceContext).record()
     }
+  }
+
+  /// Attach a value to the current test.
+  ///
+  /// - Parameters:
+  ///   - attachableValue: The value to attach.
+  ///   - preferredName: The preferred name of the attachment when writing it to
+  ///     a test report or to disk. If `nil`, the testing library attempts to
+  ///     derive a reasonable filename for the attached value.
+  ///   - sourceLocation: The source location of the call to this function.
+  ///
+  /// When attaching a value of a type that does not conform to both
+  /// [`Sendable`](https://developer.apple.com/documentation/swift/sendable) and
+  /// [`Copyable`](https://developer.apple.com/documentation/swift/copyable),
+  /// the testing library encodes it as data immediately. If the value cannot be
+  /// encoded and an error is thrown, that error is recorded as an issue in the
+  /// current test and the attachment is not written to the test report or to
+  /// disk.
+  ///
+  /// This function creates a new instance of ``Attachment`` and immediately
+  /// attaches it to the current test.
+  ///
+  /// An attachment can only be attached once.
+  public static func record(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
+    record(Self(attachableValue, named: preferredName), sourceLocation: sourceLocation)
   }
 }
 
@@ -286,10 +347,10 @@ extension Attachment where AttachableValue: ~Copyable {
   ///
   /// The testing library uses this function when writing an attachment to a
   /// test report or to a file on disk. This function calls the
-  /// ``Attachable/withUnsafeBufferPointer(for:_:)`` function on this
-  /// attachment's ``attachableValue-2tnj5`` property.
-  @inlinable public borrowing func withUnsafeBufferPointer<R>(_ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try attachableValue.withUnsafeBufferPointer(for: self, body)
+  /// ``Attachable/withUnsafeBytes(for:_:)`` function on this attachment's
+  /// ``attachableValue-2tnj5`` property.
+  @inlinable public borrowing func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try attachableValue.withUnsafeBytes(for: self, body)
   }
 }
 
@@ -391,7 +452,7 @@ extension Attachment where AttachableValue: ~Copyable {
 
     // There should be no code path that leads to this call where the attachable
     // value is nil.
-    try withUnsafeBufferPointer { buffer in
+    try withUnsafeBytes { buffer in
       try file!.write(buffer)
     }
 
