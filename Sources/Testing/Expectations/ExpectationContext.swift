@@ -167,7 +167,8 @@ extension __ExpectationContext {
   ///
   /// This function helps overloads of `callAsFunction(_:_:)` disambiguate
   /// themselves and avoid accidental recursion.
-  @usableFromInline func captureValue<T>(_ value: T, _ id: __ExpressionID) -> T {
+  @usableFromInline func captureValue<T>(_ value: consuming T, _ id: __ExpressionID) -> T {
+    let value = copy value
     runtimeValues[id] = { Expression.Value(reflecting: value) }
     return value
   }
@@ -185,7 +186,7 @@ extension __ExpectationContext {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   @_disfavoredOverload
-  @inlinable public func callAsFunction<T>(_ value: T, _ id: __ExpressionID) -> T {
+  @inlinable public func callAsFunction<T>(_ value: consuming T, _ id: __ExpressionID) -> T {
     captureValue(value, id)
   }
 
@@ -275,12 +276,14 @@ extension __ExpectationContext {
   @inlinable public func __cmp<T, U>(
     _ op: (T, U) throws -> Bool,
     _ opID: __ExpressionID,
-    _ lhs: T,
+    _ lhs: borrowing T,
     _ lhsID: __ExpressionID,
-    _ rhs: U,
+    _ rhs: borrowing U,
     _ rhsID: __ExpressionID
   ) rethrows -> Bool {
-    try captureValue(op(captureValue(lhs, lhsID), captureValue(rhs, rhsID)), opID)
+    let lhs = copy lhs
+    let rhs = copy rhs
+    return try captureValue(op(captureValue(lhs, lhsID), captureValue(rhs, rhsID)), opID)
   }
 
   /// Compare two bidirectional collections using `==` or `!=`.
@@ -293,11 +296,13 @@ extension __ExpectationContext {
   public func __cmp<C>(
     _ op: (C, C) -> Bool,
     _ opID: __ExpressionID,
-    _ lhs: C,
+    _ lhs: borrowing C,
     _ lhsID: __ExpressionID,
-    _ rhs: C,
+    _ rhs: borrowing C,
     _ rhsID: __ExpressionID
   ) -> Bool where C: BidirectionalCollection, C.Element: Equatable {
+    let lhs = copy lhs
+    let rhs = copy rhs
     let result = captureValue(op(captureValue(lhs, lhsID), captureValue(rhs, rhsID)), opID)
 
     if !result {
@@ -318,12 +323,14 @@ extension __ExpectationContext {
   @inlinable public func __cmp<R>(
     _ op: (R, R) -> Bool,
     _ opID: __ExpressionID,
-    _ lhs: R,
+    _ lhs: borrowing R,
     _ lhsID: __ExpressionID,
-    _ rhs: R,
+    _ rhs: borrowing R,
     _ rhsID: __ExpressionID
   ) -> Bool where R: RangeExpression & BidirectionalCollection, R.Element: Equatable {
-    captureValue(op(captureValue(lhs, lhsID), captureValue(rhs, rhsID)), opID)
+    let lhs = copy lhs
+    let rhs = copy rhs
+    return captureValue(op(captureValue(lhs, lhsID), captureValue(rhs, rhsID)), opID)
   }
 
   /// Compare two strings using `==` or `!=`.
@@ -337,11 +344,13 @@ extension __ExpectationContext {
   public func __cmp<S>(
     _ op: (S, S) -> Bool,
     _ opID: __ExpressionID,
-    _ lhs: S,
+    _ lhs: borrowing S,
     _ lhsID: __ExpressionID,
-    _ rhs: S,
+    _ rhs: borrowing S,
     _ rhsID: __ExpressionID
   ) -> Bool where S: StringProtocol {
+    let lhs = copy lhs
+    let rhs = copy rhs
     let result = captureValue(op(captureValue(lhs, lhsID), captureValue(rhs, rhsID)), opID)
 
     if !result {
@@ -392,7 +401,8 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __as<T, U>(_ value: T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> U? {
+  @inlinable public func __as<T, U>(_ value: consuming T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> U? {
+    let value = copy value
     let result = captureValue(value, valueID) as? U
 
     if result == nil {
@@ -421,7 +431,8 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __is<T, U>(_ value: T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> Bool {
+  @inlinable public func __is<T, U>(_ value: borrowing T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> Bool {
+    let value = copy value
     let result = captureValue(value, valueID) is U
 
     if !result {
