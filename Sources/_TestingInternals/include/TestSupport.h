@@ -37,6 +37,10 @@ static inline bool swt_pointersNotEqual4(const char *a, const char *b, const cha
   return a != b && b != c && c != d;
 }
 
+static inline bool swt_nullableCString(const char *_Nullable string) {
+  return string != 0;
+}
+
 SWT_ASSUME_NONNULL_END
 
 #endif
