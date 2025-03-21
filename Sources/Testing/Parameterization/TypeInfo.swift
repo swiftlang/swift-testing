@@ -265,9 +265,11 @@ extension TypeInfo {
     }
     switch _kind {
     case let .type(type):
-      // _mangledTypeName() works with move-only types, but its signature has
-      // not been updated yet. SEE: rdar://134278607
+#if compiler(>=6.1)
+      return _mangledTypeName(type)
+#else
       return _mangledTypeName(unsafeBitCast(type, to: Any.Type.self))
+#endif
     case let .nameOnly(_, _, mangledName):
       return mangledName
     }
@@ -412,3 +414,45 @@ extension TypeInfo: Codable {
 }
 
 extension TypeInfo.EncodedForm: Codable {}
+
+// MARK: - Custom casts
+
+/// Cast the given data pointer to a C function pointer.
+///
+/// - Parameters:
+///   - address: The C function pointer as an untyped data pointer.
+///   - type: The type of the C function. This type must be a function type with
+///     the "C" convention (i.e. `@convention (...) -> ...`).
+///
+/// - Returns: `address` cast to the given C function type.
+///
+/// This function serves to make code that casts C function pointers more
+/// self-documenting. In debug builds, it checks that `type` is a C function
+/// type. In release builds, it behaves the same as `unsafeBitCast(_:to:)`.
+func castCFunction<T>(at address: UnsafeRawPointer, to type: T.Type) -> T {
+#if DEBUG
+  if let mangledName = TypeInfo(describing: T.self).mangledName {
+    precondition(mangledName.last == "C", "\(#function) should only be used to cast a pointer to a C function type.")
+  }
+#endif
+  return unsafeBitCast(address, to: type)
+}
+
+/// Cast the given C function pointer to a data pointer.
+///
+/// - Parameters:
+///   - function: The C function pointer.
+///
+/// - Returns: `function` cast to an untyped data pointer.
+///
+/// This function serves to make code that casts C function pointers more
+/// self-documenting. In debug builds, it checks that `function` is a C function
+/// pointer. In release builds, it behaves the same as `unsafeBitCast(_:to:)`.
+func castCFunction<T>(_ function: T, to _: UnsafeRawPointer.Type) -> UnsafeRawPointer {
+#if DEBUG
+  if let mangledName = TypeInfo(describing: T.self).mangledName {
+    precondition(mangledName.last == "C", "\(#function) should only be used to cast a C function.")
+  }
+#endif
+  return unsafeBitCast(function, to: UnsafeRawPointer.self)
+}

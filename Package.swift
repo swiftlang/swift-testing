@@ -13,6 +13,13 @@
 import PackageDescription
 import CompilerPluginSupport
 
+/// Information about the current state of the package's git repository.
+let git = Context.gitInformation
+
+/// Whether or not this package is being built for development rather than
+/// distribution as a package dependency.
+let buildingForDevelopment = (git?.currentTag == nil)
+
 let package = Package(
   name: "swift-testing",
 
@@ -25,22 +32,36 @@ let package = Package(
     .visionOS(.v1),
   ],
 
-  products: [
-    {
+  products: {
+    var result = [Product]()
+
 #if os(Windows)
+    result.append(
       .library(
         name: "Testing",
         type: .dynamic, // needed so Windows exports ABI entry point symbols
         targets: ["Testing"]
       )
+    )
 #else
+    result.append(
       .library(
         name: "Testing",
         targets: ["Testing"]
       )
+    )
 #endif
-    }()
-  ],
+
+    result.append(
+      .library(
+        name: "_TestDiscovery",
+        type: .static,
+        targets: ["_TestDiscovery"]
+      )
+    )
+
+    return result
+  }(),
 
   dependencies: [
     .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "601.0.0-latest"),
@@ -50,12 +71,13 @@ let package = Package(
     .target(
       name: "Testing",
       dependencies: [
+        "_TestDiscovery",
         "_TestingInternals",
         "TestingMacros",
       ],
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
       cxxSettings: .packageSettings,
-      swiftSettings: .packageSettings,
+      swiftSettings: .packageSettings + .enableLibraryEvolution(),
       linkerSettings: [
         .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd]))
       ]
@@ -67,10 +89,7 @@ let package = Package(
         "_Testing_CoreGraphics",
         "_Testing_Foundation",
       ],
-      swiftSettings: .packageSettings + [
-        // For testing test content section discovery only
-        .enableExperimentalFeature("SymbolLinkageMarkers"),
-      ]
+      swiftSettings: .packageSettings
     ),
 
     .macro(
@@ -84,10 +103,8 @@ let package = Package(
         .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
       ],
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .packageSettings + [
-        // When building as a package, the macro plugin always builds as an
-        // executable rather than a library.
-        .define("SWT_NO_LIBRARY_MACRO_PLUGINS"),
+      swiftSettings: .packageSettings + {
+        var result = [PackageDescription.SwiftSetting]()
 
         // The only target which needs the ability to import this macro
         // implementation target's module is its unit test target. Users of the
@@ -95,16 +112,27 @@ let package = Package(
         // Testing module. This target's module is never distributed to users,
         // but as an additional guard against accidental misuse, this specifies
         // the unit test target as the only allowable client.
-        .unsafeFlags(["-Xfrontend", "-allowable-client", "-Xfrontend", "TestingMacrosTests"]),
-      ]
+        if buildingForDevelopment {
+          result.append(.unsafeFlags(["-Xfrontend", "-allowable-client", "-Xfrontend", "TestingMacrosTests"]))
+        }
+
+        return result
+      }()
     ),
 
-    // "Support" targets: These contain C family code and are used exclusively
-    // by other targets above, not directly included in product libraries.
+    // "Support" targets: These targets are not meant to be used directly by
+    // test authors.
     .target(
       name: "_TestingInternals",
       exclude: ["CMakeLists.txt"],
       cxxSettings: .packageSettings
+    ),
+    .target(
+      name: "_TestDiscovery",
+      dependencies: ["_TestingInternals",],
+      exclude: ["CMakeLists.txt"],
+      cxxSettings: .packageSettings,
+      swiftSettings: .packageSettings
     ),
 
     // Cross-import overlays (not supported by Swift Package Manager)
@@ -114,7 +142,7 @@ let package = Package(
         "Testing",
       ],
       path: "Sources/Overlays/_Testing_CoreGraphics",
-      swiftSettings: .packageSettings
+      swiftSettings: .packageSettings + .enableLibraryEvolution()
     ),
     .target(
       name: "_Testing_Foundation",
@@ -123,6 +151,19 @@ let package = Package(
       ],
       path: "Sources/Overlays/_Testing_Foundation",
       exclude: ["CMakeLists.txt"],
+      // The Foundation module only has Library Evolution enabled on Apple
+      // platforms, and since this target's module publicly imports Foundation,
+      // it can only enable Library Evolution itself on those platforms.
+      swiftSettings: .packageSettings + .enableLibraryEvolution(applePlatformsOnly: true)
+    ),
+
+    // Utility targets: These are utilities intended for use when developing
+    // this package, not for distribution.
+    .executableTarget(
+      name: "SymbolShowcase",
+      dependencies: [
+        "Testing",
+      ],
       swiftSettings: .packageSettings
     ),
   ],
@@ -148,22 +189,39 @@ extension Array where Element == PackageDescription.SwiftSetting {
   /// Settings intended to be applied to every Swift target in this package.
   /// Analogous to project-level build settings in an Xcode project.
   static var packageSettings: Self {
-    availabilityMacroSettings + [
-      .unsafeFlags(["-require-explicit-sendable"]),
+    var result = availabilityMacroSettings
+
+    if buildingForDevelopment {
+      result.append(.unsafeFlags(["-require-explicit-sendable"]))
+    }
+
+    result += [
       .enableUpcomingFeature("ExistentialAny"),
-      .enableExperimentalFeature("SuppressedAssociatedTypes"),
 
       .enableExperimentalFeature("AccessLevelOnImport"),
       .enableUpcomingFeature("InternalImportsByDefault"),
+
+      .enableUpcomingFeature("MemberImportVisibility"),
+
+      // This setting is enabled in the package, but not in the toolchain build
+      // (via CMake). Enabling it is dependent on acceptance of the @section
+      // proposal via Swift Evolution.
+      .enableExperimentalFeature("SymbolLinkageMarkers"),
+
+      // When building as a package, the macro plugin always builds as an
+      // executable rather than a library.
+      .define("SWT_NO_LIBRARY_MACRO_PLUGINS"),
 
       .define("SWT_TARGET_OS_APPLE", .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])),
 
       .define("SWT_NO_EXIT_TESTS", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
       .define("SWT_NO_PROCESS_SPAWNING", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
-      .define("SWT_NO_SNAPSHOT_TYPES", .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi])),
+      .define("SWT_NO_SNAPSHOT_TYPES", .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi, .android])),
       .define("SWT_NO_DYNAMIC_LINKING", .when(platforms: [.wasi])),
       .define("SWT_NO_PIPES", .when(platforms: [.wasi])),
     ]
+
+    return result
   }
 
   /// Settings which define commonly-used OS availability macros.
@@ -184,6 +242,26 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .enableExperimentalFeature("AvailabilityMacro=_distantFuture:macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0, visionOS 99.0"),
     ]
   }
+
+  /// Create a Swift setting which enables Library Evolution, optionally
+  /// constraining it to only Apple platforms.
+  ///
+  /// - Parameters:
+  ///   - applePlatformsOnly: Whether to constrain this setting to only Apple
+  ///     platforms.
+  static func enableLibraryEvolution(applePlatformsOnly: Bool = false) -> Self {
+    var result = [PackageDescription.SwiftSetting]()
+
+    if buildingForDevelopment {
+      var condition: BuildSettingCondition?
+      if applePlatformsOnly {
+        condition = .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])
+      }
+      result.append(.unsafeFlags(["-enable-library-evolution"], condition))
+    }
+
+    return result
+  }
 }
 
 extension Array where Element == PackageDescription.CXXSetting {
@@ -195,13 +273,13 @@ extension Array where Element == PackageDescription.CXXSetting {
     result += [
       .define("SWT_NO_EXIT_TESTS", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
       .define("SWT_NO_PROCESS_SPAWNING", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
-      .define("SWT_NO_SNAPSHOT_TYPES", .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi])),
+      .define("SWT_NO_SNAPSHOT_TYPES", .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi, .android])),
       .define("SWT_NO_DYNAMIC_LINKING", .when(platforms: [.wasi])),
       .define("SWT_NO_PIPES", .when(platforms: [.wasi])),
     ]
 
     // Capture the testing library's version as a C++ string constant.
-    if let git = Context.gitInformation {
+    if let git {
       let testingLibraryVersion = if let tag = git.currentTag {
         tag
       } else if git.hasUncommittedChanges {

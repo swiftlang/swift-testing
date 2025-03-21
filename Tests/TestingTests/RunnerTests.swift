@@ -452,7 +452,7 @@ final class RunnerTests: XCTestCase {
 
   func testExpectationCheckedEventHandlingWhenDisabled() async {
     var configuration = Configuration()
-    configuration.deliverExpectationCheckedEvents = false
+    configuration.eventHandlingOptions.isExpectationCheckedEventEnabled = false
     configuration.eventHandler = { event, _ in
       if case .expectationChecked = event.kind {
         XCTFail("Expectation checked event was posted unexpectedly")
@@ -485,7 +485,7 @@ final class RunnerTests: XCTestCase {
 #endif
 
     var configuration = Configuration()
-    configuration.deliverExpectationCheckedEvents = true
+    configuration.eventHandlingOptions.isExpectationCheckedEventEnabled = true
     configuration.eventHandler = { event, _ in
       guard case let .expectationChecked(expectation) = event.kind else {
         return

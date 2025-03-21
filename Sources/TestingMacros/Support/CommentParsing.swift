@@ -9,6 +9,7 @@
 //
 
 import SwiftSyntax
+import SwiftSyntaxBuilder
 
 /// Find a common whitespace prefix among all lines in a string and trim it.
 ///

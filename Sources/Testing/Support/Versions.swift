@@ -65,7 +65,7 @@ let operatingSystemVersion: String = {
   // basically always lies on Windows 10, so don't bother calling it on a
   // fallback path.
   let RtlGetVersion = symbol(in: GetModuleHandleA("ntdll.dll"), named: "RtlGetVersion").map {
-    unsafeBitCast($0, to: (@convention(c) (UnsafeMutablePointer<OSVERSIONINFOW>) -> NTSTATUS).self)
+    castCFunction(at: $0, to: (@convention(c) (UnsafeMutablePointer<OSVERSIONINFOW>) -> NTSTATUS).self)
   }
   if let RtlGetVersion {
     var versionInfo = OSVERSIONINFOW()

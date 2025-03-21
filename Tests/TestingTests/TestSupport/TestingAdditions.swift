@@ -8,9 +8,14 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ForToolsIntegrationOnly) import Testing
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+
 #if canImport(XCTest)
 import XCTest
+#endif
+
+#if canImport(Foundation)
+import Foundation
 #endif
 
 extension Tag {
@@ -348,6 +353,24 @@ extension JSON {
       try JSON.decode(T.self, from: data)
     }
   }
+
+#if canImport(Foundation)
+  /// Decode a value from JSON data.
+  ///
+  /// - Parameters:
+  ///   - type: The type of value to decode.
+  ///   - jsonRepresentation: Data of the JSON encoding of the value to decode.
+  ///
+  /// - Returns: An instance of `T` decoded from `jsonRepresentation`.
+  ///
+  /// - Throws: Whatever is thrown by the decoding process.
+  @_disfavoredOverload
+  static func decode<T>(_ type: T.Type, from jsonRepresentation: Data) throws -> T where T: Decodable {
+    try jsonRepresentation.withUnsafeBytes { bytes in
+      try JSON.decode(type, from: bytes)
+    }
+  }
+#endif
 }
 
 @available(_clockAPI, *)
@@ -368,8 +391,8 @@ extension Trait where Self == TimeLimitTrait {
 }
 
 extension Issue {
-  init(kind: Kind, sourceContext: SourceContext = .init()) {
-    self.init(kind: kind, comments: [], sourceContext: sourceContext)
+  init(kind: Kind, severity: Severity = .error, sourceContext: SourceContext = .init()) {
+    self.init(kind: kind, severity: severity, comments: [], sourceContext: sourceContext)
   }
 }
 

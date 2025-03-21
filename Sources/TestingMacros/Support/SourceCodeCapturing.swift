@@ -8,7 +8,9 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+import SwiftParser
 import SwiftSyntax
+import SwiftSyntaxBuilder
 
 /// Get a swift-syntax expression initializing an instance of `__Expression`
 /// from an arbitrary syntax node.

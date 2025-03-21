@@ -9,6 +9,7 @@
 //
 
 public import SwiftSyntax
+import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
 
 /// A type describing the expansion of the `@Tag` attribute macro.

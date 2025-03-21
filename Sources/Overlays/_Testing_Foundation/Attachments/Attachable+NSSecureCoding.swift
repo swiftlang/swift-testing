@@ -46,7 +46,7 @@ extension Attachable where Self: NSSecureCoding {
   /// _and_ [`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding),
   /// the default implementation of this function uses the value's conformance
   /// to `Encodable`.
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     let format = try EncodingFormat(for: attachment)
 
     var data = try NSKeyedArchiver.archivedData(withRootObject: self, requiringSecureCoding: true)

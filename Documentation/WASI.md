@@ -14,7 +14,7 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 because it provides instructions the reader must follow directly. -->
 
 To run tests for WebAssembly, install a Swift SDK for WebAssembly by following
-[these instructions](https://book.swiftwasm.org/getting-started/setup-snapshot.html).
+[these instructions](https://book.swiftwasm.org/getting-started/setup.html).
 
 Because `swift test` doesn't know what WebAssembly environment you'd like to use
 to run your tests, building tests and running them are two separate steps. To

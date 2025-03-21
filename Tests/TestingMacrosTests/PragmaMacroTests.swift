@@ -11,8 +11,10 @@
 import Testing
 @testable import TestingMacros
 
+import SwiftDiagnostics
 import SwiftParser
 import SwiftSyntax
+import SwiftSyntaxBuilder
 
 @Suite("PragmaMacro Tests")
 struct PragmaMacroTests {

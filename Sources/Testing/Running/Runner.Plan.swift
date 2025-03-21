@@ -15,7 +15,7 @@ extension Runner {
     public enum Action: Sendable {
       /// A type describing options to apply to actions of case
       /// ``Runner/Plan/Action/run(options:)`` when they are run.
-      public struct RunOptions: Sendable, Codable {
+      public struct RunOptions: Sendable {
         /// Whether or not this step should be run in parallel with other tests.
         ///
         /// By default, all steps in a runner plan are run in parallel if the
@@ -344,6 +344,29 @@ extension Runner.Plan {
   ///   - configuration: The configuration to use for planning.
   public init(configuration: Configuration) async {
     await self.init(tests: Test.all, configuration: configuration)
+  }
+}
+
+extension Runner.Plan.Action.RunOptions: Codable {
+  private enum CodingKeys: CodingKey {
+    case isParallelizationEnabled
+  }
+
+  public init(from decoder: any Decoder) throws {
+    // No-op. This initializer cannot be synthesized since `CodingKeys` includes
+    // a case representing a non-stored property. See comment about the
+    // `isParallelizationEnabled` property in `encode(to:)`.
+    self.init()
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+
+    // The `isParallelizationEnabled` property was removed after this type was
+    // first introduced. Its value was never actually used in a meaningful way
+    // by known clients, but its absence can cause decoding errors, so to avoid
+    // such problems, continue encoding a hardcoded value.
+    try container.encode(false, forKey: .isParallelizationEnabled)
   }
 }
 

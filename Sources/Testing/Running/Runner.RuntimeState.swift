@@ -72,6 +72,27 @@ extension Configuration {
   /// - Returns: Whatever is returned by `body`.
   ///
   /// - Throws: Whatever is thrown by `body`.
+  static func withCurrent<R>(_ configuration: Self, perform body: () throws -> R) rethrows -> R {
+    let id = configuration._addToAll()
+    defer {
+      configuration._removeFromAll(identifiedBy: id)
+    }
+
+    var runtimeState = Runner.RuntimeState.current ?? .init()
+    runtimeState.configuration = configuration
+    return try Runner.RuntimeState.$current.withValue(runtimeState, operation: body)
+  }
+
+  /// Call an asynchronous function while the value of ``Configuration/current``
+  /// is set.
+  ///
+  /// - Parameters:
+  ///   - configuration: The new value to set for ``Configuration/current``.
+  ///   - body: A function to call.
+  ///
+  /// - Returns: Whatever is returned by `body`.
+  ///
+  /// - Throws: Whatever is thrown by `body`.
   static func withCurrent<R>(_ configuration: Self, perform body: () async throws -> R) async rethrows -> R {
     let id = configuration._addToAll()
     defer {
@@ -111,7 +132,7 @@ extension Configuration {
   /// - Returns: A unique number identifying `self` that can be
   ///   passed to `_removeFromAll(identifiedBy:)`` to unregister it.
   private func _addToAll() -> UInt64 {
-    if deliverExpectationCheckedEvents {
+    if eventHandlingOptions.isExpectationCheckedEventEnabled {
       Self._deliverExpectationCheckedEventsCount.increment()
     }
     return Self._all.withLock { all in
@@ -131,16 +152,14 @@ extension Configuration {
     let configuration = Self._all.withLock { all in
       all.instances.removeValue(forKey: id)
     }
-    if let configuration, configuration.deliverExpectationCheckedEvents {
+    if let configuration, configuration.eventHandlingOptions.isExpectationCheckedEventEnabled {
       Self._deliverExpectationCheckedEventsCount.decrement()
     }
   }
 
   /// An atomic counter that tracks the number of "current" configurations that
-  /// have set ``deliverExpectationCheckedEvents`` to `true`.
-  ///
-  /// On older Apple platforms, this property is not available and ``all`` is
-  /// directly consulted instead (which is less efficient.)
+  /// have set ``EventHandlingOptions/isExpectationCheckedEventEnabled`` to
+  /// `true`.
   private static let _deliverExpectationCheckedEventsCount = Locked(rawValue: 0)
 
   /// Whether or not events of the kind
@@ -150,7 +169,8 @@ extension Configuration {
   ///
   /// To determine if an individual instance of ``Configuration`` is listening
   /// for these events, consult the per-instance
-  /// ``Configuration/deliverExpectationCheckedEvents`` property.
+  /// ``Configuration/EventHandlingOptions/isExpectationCheckedEventEnabled``
+  /// property.
   static var deliverExpectationCheckedEvents: Bool {
     _deliverExpectationCheckedEventsCount.rawValue > 0
   }

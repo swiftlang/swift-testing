@@ -10,12 +10,6 @@
 
 #include "Versions.h"
 
-#if defined(_SWT_TESTING_LIBRARY_VERSION) && !defined(SWT_TESTING_LIBRARY_VERSION)
-#warning _SWT_TESTING_LIBRARY_VERSION is deprecated
-#warning Define SWT_TESTING_LIBRARY_VERSION and optionally SWT_TARGET_TRIPLE instead
-#define SWT_TESTING_LIBRARY_VERSION _SWT_TESTING_LIBRARY_VERSION
-#endif
-
 const char *swt_getTestingLibraryVersion(void) {
 #if defined(SWT_TESTING_LIBRARY_VERSION)
   return SWT_TESTING_LIBRARY_VERSION;

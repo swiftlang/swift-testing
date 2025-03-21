@@ -44,17 +44,24 @@ public protocol CustomTestArgumentEncodable: Sendable {
 }
 
 extension Test.Case.Argument.ID {
-  /// Initialize this instance with an ID for the specified test argument.
+  /// Initialize an ID instance with the specified test argument value.
   ///
   /// - Parameters:
   ///   - value: The value of a test argument for which to get an ID.
   ///   - parameter: The parameter of the test function to which this argument
   ///     value was passed.
   ///
-  /// - Returns: `nil` if an ID cannot be formed from the specified test
+  /// - Returns: `nil` if a stable ID cannot be formed from the specified test
   ///   argument value.
   ///
   /// - Throws: Any error encountered while attempting to encode `value`.
+  ///
+  /// If a stable representation of `value` can be encoded successfully, the
+  /// value of this instance's `bytes` property will be the the bytes of that
+  /// encoded JSON representation and this instance may be considered stable. If
+  /// no stable representation of `value` can be obtained, `nil` is returned. If
+  /// a stable representation was obtained but failed to encode, the error
+  /// resulting from the encoding attempt is thrown.
   ///
   /// This function is not part of the public interface of the testing library.
   ///
@@ -83,7 +90,7 @@ extension Test.Case.Argument.ID {
       return nil
     }
 
-    self = .init(bytes: try Self._encode(encodableValue, parameter: parameter))
+    self.init(bytes: try Self._encode(encodableValue, parameter: parameter))
 #else
     nil
 #endif

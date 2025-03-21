@@ -87,7 +87,7 @@ func mentionedContinents(videoName: String) async throws {
 Swift Testing works on all major platforms supported by Swift, including Apple
 platforms, Linux, and Windows, so your tests can behave more consistently when
 moving between platforms. It’s developed as open source and discussed on the
-[Swift Forums](https://forums.swift.org/c/related-projects/swift-testing) so the
+[Swift Forums](https://forums.swift.org/c/development/swift-testing/103) so the
 very best ideas, from anywhere, can help shape the future of testing in Swift.
 
 The table below describes the current level of support that Swift Testing has
@@ -112,18 +112,17 @@ incrementally, at your own pace.
 
 ## Documentation
 
-> [!IMPORTANT]
-> This package is under active, ongoing development and requires a recent
-> **6.0 development snapshot** toolchain. Its contents and interfaces are still
-> considered experimental at this time and may change. See this
-> [Forum post](https://forums.swift.org/t/an-update-on-swift-testing-progress-and-stable-release-plans/71455)
-> for details about stable release plans.
-
 Detailed documentation for Swift Testing can be found on the
 [Swift Package Index](https://swiftpackageindex.com/swiftlang/swift-testing/main/documentation/testing).
 There, you can delve into comprehensive guides, tutorials, and API references to
 make the most out of this package. Swift Testing is included with the Swift 6
-toolchain and Xcode 16.
+toolchain and Xcode 16.  You do not need to add it as a package dependency to
+your Swift package or Xcode project.
+
+> [!IMPORTANT]
+> Swift Testing depends on upcoming language and compiler features. If you are
+> building Swift Testing from source, be aware that the main branch of this
+> repository requires a recent **main-branch development snapshot** toolchain.
 
 Other documentation resources for this project can be found in the
 [README](https://github.com/swiftlang/swift-testing/blob/main/Documentation/README.md) 

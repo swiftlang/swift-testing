@@ -71,8 +71,8 @@ typedef void (* SWT_SENDABLE SWTWillThrowTypedHandler)(void *error, const void *
 /// ``SWTWillThrowTypedHandler``
 SWT_EXTERN SWTWillThrowTypedHandler SWT_SENDABLE _Nullable swt_setWillThrowTypedHandler(SWTWillThrowTypedHandler SWT_SENDABLE _Nullable handler);
 
-#if !defined(__APPLE__)
-/// The result of `swift__getErrorValue()`.
+#if defined(__swift__) && !defined(__OBJC__)
+/// The result of `swift_getErrorValue()`.
 ///
 /// For more information, see this type's declaration
 /// [in the Swift repository](https://github.com/swiftlang/swift/blob/main/include/swift/Runtime/Error.h).

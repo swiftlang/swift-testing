@@ -39,14 +39,6 @@ external tools, _both_ groups are specified. Such SPI is not generally meant to
 be promoted to public API, but is still experimental until tools authors have a
 chance to evaluate it.
 
-For interfaces internal to Swift Testing that must be available across targets,
-the SPI group `@_spi(ForSwiftTestingOnly)` is used. They _should_ be marked
-`package` and may be in the future, but are currently exported due to technical
-constraints when Swift Testing is built using CMake.
-
-> [!WARNING]
-> Never use symbols marked `@_spi(ForSwiftTestingOnly)`.
-
 ## SPI stability
 
 The testing library does **not** guarantee SPI stability for either group of
@@ -58,12 +50,6 @@ to newer interfaces.
 
 SPI marked `@_spi(Experimental)` should be assumed to be unstable. It may be
 modified or removed at any time.
-
-SPI marked `@_spi(ForSwiftTestingOnly)` is unstable and subject to change at any
-time.
-
-> [!WARNING]
-> Never use symbols marked `@_spi(ForSwiftTestingOnly)`.
 
 ## API and ABI stability
 

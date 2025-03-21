@@ -136,8 +136,8 @@ emits section information into the resource fork on Classic, you would use the
 to load that information:
 
 ```diff
---- a/Sources/Testing/Discovery+Platform.swift
-+++ b/Sources/Testing/Discovery+Platform.swift
+--- a/Sources/_TestDiscovery/SectionBounds.swift
++++ b/Sources/_TestDiscovery/SectionBounds.swift
 
  // ...
 +#elseif os(Classic)
@@ -145,8 +145,10 @@ to load that information:
 +  let resourceName: Str255 = switch kind {
 +  case .testContent:
 +    "__swift5_tests"
++#if !SWT_NO_LEGACY_TEST_DISCOVERY
 +  case .typeMetadata:
 +    "__swift5_types"
++#endif
 +  }
 +
 +  let oldRefNum = CurResFile()
@@ -174,10 +176,13 @@ to load that information:
 +  } while noErr == GetNextResourceFile(refNum, &refNum))
 +  return result
 +}
- #else
- private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
-   #warning("Platform-specific implementation missing: Runtime test discovery unavailable (dynamic)")
-   return []
++
+ #elseif !SWT_NO_DYNAMIC_LINKING
+ // MARK: - Missing dynamic implementation
+
+ private func _sectionBounds(_ kind: SectionBounds.Kind) -> EmptyCollection<SectionBounds> {
+ #warning("Platform-specific implementation missing: Runtime test discovery unavailable (dynamic)")
+   return EmptyCollection()
  }
  #endif
 ```
@@ -209,32 +214,42 @@ start with `"SWT_"`).
 If your platform does not support dynamic linking and loading, you will need to
 use static linkage instead. Define the `"SWT_NO_DYNAMIC_LINKING"` compiler
 conditional for your platform in both `Package.swift` and
-`CompilerSettings.cmake`, then define the symbols `testContentSectionBegin`,
-`testContentSectionEnd`, `typeMetadataSectionBegin`, and
-`typeMetadataSectionEnd` in `Discovery.cpp`.
+`CompilerSettings.cmake`, then define the symbols `_testContentSectionBegin`,
+`_testContentSectionEnd`, `_typeMetadataSectionBegin`, and
+`_typeMetadataSectionEnd` in `SectionBounds.swift`:
 
 ```diff
-diff --git a/Sources/_TestingInternals/Discovery.cpp b/Sources/_TestingInternals/Discovery.cpp
+--- a/Sources/_TestDiscovery/SectionBounds.swift
++++ b/Sources/_TestDiscovery/SectionBounds.swift
  // ...
-+#elif defined(macintosh)
-+extern "C" const char testContentSectionBegin __asm__("...");
-+extern "C" const char testContentSectionEnd __asm__("...");
-+extern "C" const char typeMetadataSectionBegin __asm__("...");
-+extern "C" const char typeMetadataSectionEnd __asm__("...");
++#elseif os(Classic)
++@_silgen_name(raw: "...") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
++@_silgen_name(raw: "...") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
++#if !SWT_NO_LEGACY_TEST_DISCOVERY
++@_silgen_name(raw: "...") private nonisolated(unsafe) var _typeMetadataSectionBegin: _SectionBound
++@_silgen_name(raw: "...") private nonisolated(unsafe) var _typeMetadataSectionEnd: _SectionBound
++#endif
  #else
- #warning Platform-specific implementation missing: Runtime test discovery unavailable (static)
- static const char testContentSectionBegin = 0;
- static const char& testContentSectionEnd = testContentSectionBegin;
- static const char typeMetadataSectionBegin = 0;
- static const char& typeMetadataSectionEnd = testContentSectionBegin;
+ #warning("Platform-specific implementation missing: Runtime test discovery unavailable (static)")
+ private nonisolated(unsafe) let _testContentSectionBegin = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 16)
+ private nonisolated(unsafe) let _testContentSectionEnd = _testContentSectionBegin
+ #if !SWT_NO_LEGACY_TEST_DISCOVERY
+ private nonisolated(unsafe) let _typeMetadataSectionBegin = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 16)
+ private nonisolated(unsafe) let _typeMetadataSectionEnd = _typeMetadataSectionBegin
  #endif
+ #endif
+ // ...
 ```
 
 These symbols must have unique addresses corresponding to the first byte of the
 test content section and the first byte _after_ the test content section,
 respectively. Their linker-level names will be platform-dependent: refer to the
 linker documentation for your platform to determine what names to place in the
-`__asm__` attribute applied to each.
+`@_silgen_name` attribute applied to each.
+
+If your target platform statically links Swift Testing but the linker does not
+define section bounds symbols, please reach out to us in the Swift forums for
+advice.
 
 ## C++ stub implementations
 
@@ -326,7 +341,7 @@ to include the necessary linker flags.
 ## Adding CI jobs for the new platform
 
 The Swift project maintains a set of CI jobs that target various platforms. To
-add CI jobs for Swift Testing or the Swift toolchain, please contain the CI
+add CI jobs for Swift Testing or the Swift toolchain, please contact the CI
 maintainers on the Swift forums.
 
 If you wish to host your own CI jobs, let us know: we'd be happy to run them as

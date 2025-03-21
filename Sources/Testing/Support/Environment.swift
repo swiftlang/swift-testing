@@ -74,7 +74,7 @@ enum Environment {
   /// system, the value of this property is `nil`.
   private static let _environ_lock_np = {
     symbol(named: "environ_lock_np").map {
-      unsafeBitCast($0, to: (@convention(c) () -> Void).self)
+      castCFunction(at: $0, to: (@convention(c) () -> Void).self)
     }
   }()
 
@@ -84,7 +84,7 @@ enum Environment {
   /// system, the value of this property is `nil`.
   private static let _environ_unlock_np = {
     symbol(named: "environ_unlock_np").map {
-      unsafeBitCast($0, to: (@convention(c) () -> Void).self)
+      castCFunction(at: $0, to: (@convention(c) () -> Void).self)
     }
   }()
 #endif
