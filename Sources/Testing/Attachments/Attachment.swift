@@ -265,7 +265,7 @@ extension Attachment where AttachableValue: Sendable & Copyable {
   /// An attachment can only be attached once.
   @_documentation(visibility: private)
   public static func record(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
-    record(Self(attachableValue, named: preferredName), sourceLocation: sourceLocation)
+    record(Self(attachableValue, named: preferredName, sourceLocation: sourceLocation), sourceLocation: sourceLocation)
   }
 }
 #endif
@@ -326,7 +326,7 @@ extension Attachment where AttachableValue: ~Copyable {
   ///
   /// An attachment can only be attached once.
   public static func record(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
-    record(Self(attachableValue, named: preferredName), sourceLocation: sourceLocation)
+    record(Self(attachableValue, named: preferredName, sourceLocation: sourceLocation), sourceLocation: sourceLocation)
   }
 }
 
