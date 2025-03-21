@@ -12,9 +12,9 @@
 @_spi(Experimental) public import Testing
 private import Foundation
 
-/// A common implementation of ``withUnsafeBytes(for:_:)`` that is used when a
-/// type conforms to `Encodable`, whether or not it also conforms to
-/// `NSSecureCoding`.
+/// A common implementation of ``withUnsafeBufferPointer(for:_:)`` that is
+/// used when a type conforms to `Encodable`, whether or not it also conforms
+/// to `NSSecureCoding`.
 ///
 /// - Parameters:
 ///   - attachableValue: The value to encode.
@@ -27,7 +27,7 @@ private import Foundation
 ///
 /// - Throws: Whatever is thrown by `body`, or any error that prevented the
 ///   creation of the buffer.
-func withUnsafeBytes<E, R>(encoding attachableValue: borrowing E, for attachment: borrowing Attachment<E>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R where E: Attachable & Encodable {
+func withUnsafeBufferPointer<E, R>(encoding attachableValue: borrowing E, for attachment: borrowing Attachment<E>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R where E: Attachable & Encodable {
   let format = try EncodingFormat(for: attachment)
 
   let data: Data
@@ -86,8 +86,8 @@ extension Attachable where Self: Encodable {
   /// _and_ [`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding),
   /// the default implementation of this function uses the value's conformance
   /// to `Encodable`.
-  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try _Testing_Foundation.withUnsafeBytes(encoding: self, for: attachment, body)
+  public func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try _Testing_Foundation.withUnsafeBufferPointer(encoding: self, for: attachment, body)
   }
 }
 #endif

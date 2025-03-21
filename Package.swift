@@ -197,6 +197,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
     result += [
       .enableUpcomingFeature("ExistentialAny"),
+      .enableExperimentalFeature("SuppressedAssociatedTypes"),
 
       .enableExperimentalFeature("AccessLevelOnImport"),
       .enableUpcomingFeature("InternalImportsByDefault"),
