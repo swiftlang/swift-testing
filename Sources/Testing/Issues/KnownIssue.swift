@@ -8,25 +8,53 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-/// Combine an instance of ``KnownIssueMatcher`` with any previously-set one.
+/// A type that represents an active `withKnownIssue()` call and any parent calls.
 ///
-/// - Parameters:
-///   - issueMatcher: A function to invoke when an issue occurs that is used to
-///     determine if the issue is known to occur.
-///   - matchCounter: The counter responsible for tracking the number of matches
-///     found with `issueMatcher`.
-///
-/// - Returns: A new instance of ``Configuration`` or `nil` if there was no
-///   current configuration set.
-private func _combineIssueMatcher(_ issueMatcher: @escaping KnownIssueMatcher, matchesCountedBy matchCounter: Locked<Int>) -> KnownIssueMatcher {
-  let oldIssueMatcher = Issue.currentKnownIssueMatcher
-  return { issue in
-    if issueMatcher(issue) || true == oldIssueMatcher?(issue) {
-      matchCounter.increment()
-      return true
+/// A stack of these is stored in `KnownIssueScope.current`. The stack is
+/// mutated by calls to `withKnownIssue()`.
+struct KnownIssueScope: Sendable {
+  /// Determine if an issue is known to this scope or any of its ancestor
+  /// scopes.
+  ///
+  /// Returns `nil` if the issue is not known.
+  var match: @Sendable (Issue) -> Issue.KnownIssueContext?
+  /// The number of issues this scope and its ancestors have matched.
+  let matchCounter: Locked<Int>
+
+  /// Create a new ``KnownIssueScope`` by combining a new issue matcher with
+  /// any already-active scope.
+  ///
+  /// - Parameters:
+  ///   - parent: The context that should be checked next if `issueMatcher`
+  ///     fails to match an issue.
+  ///   - issueMatcher: A function to invoke when an issue occurs that is used
+  ///     to determine if the issue is known to occur.
+  ///   - context: The context to be associated with issues matched by
+  ///     `issueMatcher`.
+  /// - Returns: A new instance of ``KnownIssueScope``.
+  init(parent: KnownIssueScope?, issueMatcher: @escaping KnownIssueMatcher, context: Issue.KnownIssueContext) {
+    let matchCounter = Locked(rawValue: 0)
+    self.matchCounter = matchCounter
+    match = { issue in
+      let matchedContext = if issueMatcher(issue) {
+        context
+      } else {
+        parent?.match(issue)
+      }
+      if matchedContext != nil {
+        matchCounter.increment()
+      }
+      return matchedContext
     }
-    return false
   }
+
+  /// The known issue context, as set by `withKnownIssue()`, associated with the
+  /// current task.
+  ///
+  /// If there is no call to `withKnownIssue()` executing on the current task,
+  /// the value of this property is `nil`.
+  @TaskLocal
+  static var current: KnownIssueScope?
 }
 
 /// Check if an error matches using an issue-matching function, and throw it if
@@ -40,12 +68,12 @@ private func _combineIssueMatcher(_ issueMatcher: @escaping KnownIssueMatcher, m
 ///     function.
 ///   - sourceLocation: The source location to which the issue should be
 ///     attributed.
-private func _matchError(_ error: any Error, using issueMatcher: KnownIssueMatcher, comment: Comment?, sourceLocation: SourceLocation) throws {
+private func _matchError(_ error: any Error, using scope: KnownIssueScope, comment: Comment?, sourceLocation: SourceLocation) throws {
   let sourceContext = SourceContext(backtrace: Backtrace(forFirstThrowOf: error), sourceLocation: sourceLocation)
   var issue = Issue(kind: .errorCaught(error), comments: Array(comment), sourceContext: sourceContext)
-  if issueMatcher(issue) {
+  if let context = scope.match(issue) {
     // It's a known issue, so mark it as such before recording it.
-    issue.isKnown = true
+    issue.knownIssueContext = context
     issue.record()
   } else {
     // Rethrow the error, allowing the caller to catch it or for it to propagate
@@ -184,18 +212,17 @@ public func withKnownIssue(
   guard precondition() else {
     return try body()
   }
-  let matchCounter = Locked(rawValue: 0)
-  let issueMatcher = _combineIssueMatcher(issueMatcher, matchesCountedBy: matchCounter)
+  let scope = KnownIssueScope(parent: .current, issueMatcher: issueMatcher, context: Issue.KnownIssueContext(comment: comment, sourceLocation: sourceLocation))
   defer {
     if !isIntermittent {
-      _handleMiscount(by: matchCounter, comment: comment, sourceLocation: sourceLocation)
+      _handleMiscount(by: scope.matchCounter, comment: comment, sourceLocation: sourceLocation)
     }
   }
-  try Issue.$currentKnownIssueMatcher.withValue(issueMatcher) {
+  try KnownIssueScope.$current.withValue(scope) {
     do {
       try body()
     } catch {
-      try _matchError(error, using: issueMatcher, comment: comment, sourceLocation: sourceLocation)
+      try _matchError(error, using: scope, comment: comment, sourceLocation: sourceLocation)
     }
   }
 }
@@ -304,18 +331,17 @@ public func withKnownIssue(
   guard await precondition() else {
     return try await body()
   }
-  let matchCounter = Locked(rawValue: 0)
-  let issueMatcher = _combineIssueMatcher(issueMatcher, matchesCountedBy: matchCounter)
+  let scope = KnownIssueScope(parent: .current, issueMatcher: issueMatcher, context: Issue.KnownIssueContext(comment: comment, sourceLocation: sourceLocation))
   defer {
     if !isIntermittent {
-      _handleMiscount(by: matchCounter, comment: comment, sourceLocation: sourceLocation)
+      _handleMiscount(by: scope.matchCounter, comment: comment, sourceLocation: sourceLocation)
     }
   }
-  try await Issue.$currentKnownIssueMatcher.withValue(issueMatcher) {
+  try await KnownIssueScope.$current.withValue(scope) {
     do {
       try await body()
     } catch {
-      try _matchError(error, using: issueMatcher, comment: comment, sourceLocation: sourceLocation)
+      try _matchError(error, using: scope, comment: comment, sourceLocation: sourceLocation)
     }
   }
 }
