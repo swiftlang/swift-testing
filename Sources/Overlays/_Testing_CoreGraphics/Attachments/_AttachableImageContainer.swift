@@ -9,7 +9,7 @@
 //
 
 #if SWT_TARGET_OS_APPLE && canImport(CoreGraphics)
-@_spi(Experimental) public import Testing
+public import Testing
 private import CoreGraphics
 
 private import ImageIO
