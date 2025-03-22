@@ -66,6 +66,10 @@ struct LockedWith<L, T>: RawRepresentable where L: Lockable {
   private nonisolated(unsafe) var _storage: ManagedBuffer<T, L>
 
   init(rawValue: T) {
+#if SWT_NO_DYNAMIC_LINKING
+    linkLockImplementations()
+#endif
+
     _storage = _Storage.create(minimumCapacity: 1, makingHeaderWith: { _ in rawValue })
     _storage.withUnsafeMutablePointerToElements { lock in
       L.initializeLock(at: lock)

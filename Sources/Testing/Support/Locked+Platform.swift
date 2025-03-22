@@ -94,3 +94,14 @@ typealias DefaultLock = Never
 #warning("Platform-specific implementation missing: locking unavailable")
 typealias DefaultLock = Never
 #endif
+
+#if SWT_NO_DYNAMIC_LINKING
+/// A function which, when called by another file, ensures that the file in
+/// which ``DefaultLock`` is declared is linked.
+///
+/// When static linking is used, the linker may opt to strip some or all of the
+/// symbols (including protocol conformance metadata) declared in this file.
+/// ``LockedWith`` calls this function in ``LockedWith/init(rawValue:)`` to work
+/// around that issue.
+func linkLockImplementations() {}
+#endif
