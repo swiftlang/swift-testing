@@ -38,7 +38,7 @@ extension ABI {
     /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)`` call
     /// that matched this issue, if any.
     ///
-    /// - Warning: Severity is not yet part of the JSON schema.
+    /// - Warning: Known issues are not yet part of the JSON schema.
     var _knownIssueContext: EncodedKnownIssueContext<V>?
 
     /// The location in source where this issue occurred, if available.

@@ -120,8 +120,9 @@ public struct Issue: Sendable {
   /// that matched an issue.
   @_spi(ForToolsIntegrationOnly)
   public struct KnownIssueContext: Sendable {
-    /// The comment that was passed to `withKnownIssue()`.
+    /// The comment that was passed to `withKnownIssue()`, if any.
     var comment: Comment?
+
     /// The source location that was passed to `withKnownIssue()`.
     var sourceLocation: SourceLocation
   }
