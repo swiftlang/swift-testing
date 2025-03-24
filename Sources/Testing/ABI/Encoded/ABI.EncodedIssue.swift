@@ -39,7 +39,7 @@ extension ABI {
     /// that matched this issue, if any.
     ///
     /// - Warning: Severity is not yet part of the JSON schema.
-    var _knownIssueContext: Issue.KnownIssueContext?
+    var _knownIssueContext: EncodedKnownIssueContext<V>?
 
     /// The location in source where this issue occurred, if available.
     var sourceLocation: SourceLocation?
@@ -60,7 +60,9 @@ extension ABI {
       case .error: .error
       }
       isKnown = issue.isKnown
-      _knownIssueContext = issue.knownIssueContext
+      if let knownIssueContext = issue.knownIssueContext {
+        _knownIssueContext = EncodedKnownIssueContext(encoding: knownIssueContext, in: eventContext)
+      }
       sourceLocation = issue.sourceLocation
       if let backtrace = issue.sourceContext.backtrace {
         _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)
