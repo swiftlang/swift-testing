@@ -92,7 +92,8 @@ library records an issue.
 
 By default, the child process is configured without a standard output or
 standard error stream. If your test needs to review the content of either of
-these streams, you can pass its key path in the `observedValues` argument:
+these streams, you can pass its key path to ``expect(exitsWith:observing:_:sourceLocation:performing:)``
+or ``require(exitsWith:observing:_:sourceLocation:performing:)``:
 
 ```swift
 extension Customer {
@@ -126,8 +127,9 @@ extension Customer {
   running in an exit test may write to it including the operating system and any
   third-party dependencies you have declared in your package.
 
-The actual exit condition of the child process is always reported by the testing
-library even if you do not specify it in `observedValues`.
+The testing library always sets ``ExitTest/Result/statusAtExit`` to the actual
+exit status of the child process (as reported by the system) even if you do not
+pass it.
 
 ### Constraints on exit tests
 
