@@ -11,7 +11,6 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 -->
 
 @Metadata {
-  @Available(macOS, introduced: 10.15)
   @Available(Swift, introduced: 6.2)
 }
 
