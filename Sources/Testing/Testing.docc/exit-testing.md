@@ -10,6 +10,11 @@ See https://swift.org/LICENSE.txt for license information
 See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 -->
 
+@Metadata {
+  @Available(macOS, introduced: 10.15)
+  @Available(Swift, introduced: 6.2)
+}
+
 Use exit tests to test functionality that may cause a test process to exit.
 
 ## Overview
@@ -33,7 +38,9 @@ precondition will fail and Swift will force the process to exit. You can write
 an exit test to validate preconditions like the ones above and to make sure that
 your functions correctly catch invalid inputs.
 
-## Create an exit test
+- Note: Exit tests are available on macOS, Linux, FreeBSD, OpenBSD, and Windows.
+
+### Create an exit test
 
 To create an exit test, call either the ``expect(exitsWith:observing:_:sourceLocation:performing:)``
 or the ``require(exitsWith:observing:_:sourceLocation:performing:)`` macro:
@@ -63,7 +70,7 @@ If the body returns before the child process exits, it is allowed to return and
 the process exits naturally. If an error is thrown from the body, it is handled
 as if the error were thrown from `main()` and the process is forced to exit.
 
-## Specify an exit condition
+### Specify an exit condition
 
 When you create an exit test, you must specify how you expect the child process
 will exit by passing an instance of ``ExitTest/Condition``:
@@ -82,7 +89,7 @@ status of the child process against the expected exit condition you passed. If
 they match, the exit test has passed; otherwise, it has failed and the testing
 library records an issue.
 
-## Gather output from the child process
+### Gather output from the child process
 
 By default, the child process is configured without a standard output or
 standard error stream. If your test needs to review the content of either of
@@ -123,9 +130,9 @@ extension Customer {
 The actual exit condition of the child process is always reported by the testing
 library even if you do not specify it in `observedValues`.
 
-## Constraints on exit tests
+### Constraints on exit tests
 
-### State cannot be captured
+#### State cannot be captured
 
 Exit tests cannot capture any state originating in the parent process or from
 the enclosing lexical context. For example, the following exit test will fail to
@@ -142,6 +149,6 @@ compile because it captures a variable declared outside the exit test itself:
 }
 ```
 
-### Exit tests cannot be nested
+#### Exit tests cannot be nested
 
 An exit test cannot run within another exit test.
