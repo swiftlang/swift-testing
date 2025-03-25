@@ -86,7 +86,7 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
   #elseif os(Windows)
   @_section(".sw5test$B")
   #else
-  @__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
+  @Testing.__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
   #endif
   @_used
   #endif
