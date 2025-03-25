@@ -26,26 +26,8 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
     ///
     /// - Parameters:
     ///   - body: The function to call. The result of this function determines
-    ///     if the condition is satisfied or not. If this function returns
-    ///     `false` and a comment is also returned, it is used in place of the
-    ///     value of the associated trait's ``ConditionTrait/comment`` property.
-    ///     If this function returns `true`, the returned comment is ignored.
-    case conditional(_ body: @Sendable () async throws -> (Bool, comment: Comment?))
-
-    /// Create an instance of this type associated with a trait that is
-    /// conditional on the result of calling a function.
-    ///
-    /// - Parameters:
-    ///   - body: The function to call. The result of this function determines
-    ///     whether or not the condition was met.
-    ///
-    /// - Returns: A trait that marks a test's enabled status as the result of
-    ///            calling a function.
-    static func conditional(_ body: @escaping @Sendable () async throws -> Bool) -> Self {
-      conditional { () -> (Bool, comment: Comment?) in
-        return (try await body(), nil)
-      }
-    }
+    ///     if the condition is satisfied or not.
+    case conditional(_ body: @Sendable () async throws -> Bool)
 
     /// The trait is unconditional and always has the same result.
     ///
@@ -82,14 +64,11 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
   public var sourceLocation: SourceLocation
 
   public func prepare(for test: Test) async throws {
-    let result: Bool
-    var commentOverride: Comment?
-
-    switch kind {
+    let result = switch kind {
     case let .conditional(condition):
-      (result, commentOverride) = try await condition()
+      try await condition()
     case let .unconditional(unconditionalValue):
-      result = unconditionalValue
+      unconditionalValue
     }
 
     if !result {
@@ -99,7 +78,7 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
       // attempt to get the backtrace of the caught error when creating an issue
       // for it, however.
       let sourceContext = SourceContext(backtrace: nil, sourceLocation: sourceLocation)
-      throw SkipInfo(comment: commentOverride ?? comments.first, sourceContext: sourceContext)
+      throw SkipInfo(comment: comments.first, sourceContext: sourceContext)
     }
   }
 
