@@ -31,9 +31,9 @@ public enum StatusAtExit: Sendable {
   /// - Parameters:
   ///   - exitCode: The exit code yielded by the process.
   ///
-  /// The C programming language defines two [standard exit codes](https://en.cppreference.com/w/c/program/EXIT_status),
-  /// `EXIT_SUCCESS` and `EXIT_FAILURE`. Platforms may additionally define their
-  /// own non-standard exit codes:
+  /// The C programming language defines two standard exit codes, `EXIT_SUCCESS`
+  /// and `EXIT_FAILURE`. Platforms may additionally define their own
+  /// non-standard exit codes:
   ///
   /// | Platform | Header |
   /// |-|-|
@@ -42,6 +42,11 @@ public enum StatusAtExit: Sendable {
   /// | FreeBSD | [`<stdlib.h>`](https://man.freebsd.org/cgi/man.cgi?exit(3)), [`<sysexits.h>`](https://man.freebsd.org/cgi/man.cgi?sysexits(3)) |
   /// | OpenBSD | [`<stdlib.h>`](https://man.openbsd.org/exit.3), [`<sysexits.h>`](https://man.openbsd.org/sysexits.3) |
   /// | Windows | [`<stdlib.h>`](https://learn.microsoft.com/en-us/cpp/c-runtime-library/exit-success-exit-failure) |
+  ///
+  /// @Comment {
+  ///   See https://en.cppreference.com/w/c/program/EXIT_status for more
+  ///   information about exit codes defined by the C standard.
+  /// }
   ///
   /// On macOS, FreeBSD, OpenBSD, and Windows, the full exit code reported by
   /// the process is yielded to the parent process. Linux and other POSIX-like
@@ -58,8 +63,8 @@ public enum StatusAtExit: Sendable {
   /// - Parameters:
   ///   - signal: The signal that terminated the process.
   ///
-  /// The C programming language defines a number of [standard signals](https://en.cppreference.com/w/c/program/SIG_types).
-  /// Platforms may additionally define their own non-standard signal codes:
+  /// The C programming language defines a number of standard signals. Platforms
+  /// may additionally define their own non-standard signal codes:
   ///
   /// | Platform | Header |
   /// |-|-|
@@ -68,6 +73,11 @@ public enum StatusAtExit: Sendable {
   /// | FreeBSD | [`<signal.h>`](https://man.freebsd.org/cgi/man.cgi?signal(3)) |
   /// | OpenBSD | [`<signal.h>`](https://man.openbsd.org/signal.3) |
   /// | Windows | [`<signal.h>`](https://learn.microsoft.com/en-us/cpp/c-runtime-library/signal-constants) |
+  ///
+  /// @Comment {
+  ///   See https://en.cppreference.com/w/c/program/SIG_types for more
+  ///   information about signals defined by the C standard.
+  /// }
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
