@@ -188,17 +188,22 @@ sufficient information to display the event in a human-readable format.
   "kind": <event-kind>,
   "instant": <instant>, ; when the event occurred
   ["issue": <issue>,] ; the recorded issue (if "kind" is "issueRecorded")
+  ["attachment": <attachment>,] ; the attachment (if kind is "valueAttached")
   "messages": <array:message>,
   ["testID": <test-id>,]
 }
 
 <event-kind> ::= "runStarted" | "testStarted" | "testCaseStarted" |
   "issueRecorded" | "testCaseEnded" | "testEnded" | "testSkipped" |
-  "runEnded" ; additional event kinds may be added in the future
+  "runEnded" | "valueAttached"; additional event kinds may be added in the future
 
 <issue> ::= {
   "isKnown": <bool>, ; is this a known issue or not?
   ["sourceLocation": <source-location>,] ; where the issue occurred, if known
+}
+
+<attachment> ::= {
+  "path": <string>, ; the absolute path to the attachment on disk
 }
 
 <message> ::= {
