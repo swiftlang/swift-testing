@@ -10,13 +10,13 @@ See https://swift.org/LICENSE.txt for license information
 See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 -->
 
-Use exit tests to test functionality that may cause a test process to terminate.
+Use exit tests to test functionality that may cause a test process to exit.
 
 ## Overview
 
 Your code may contain calls to [`precondition()`](https://developer.apple.com/documentation/swift/precondition(_:_:file:line:)),
 [`fatalError()`](https://developer.apple.com/documentation/swift/fatalerror(_:file:line:)),
-or other functions that may cause the current process to terminate. For example:
+or other functions that may cause the current process to exit. For example:
 
 ```swift
 extension Customer {
@@ -29,17 +29,14 @@ extension Customer {
 ```
 
 In this function, if `food.isDelicious` or `food.isNutritious` is `false`, the
-precondition will fail and Swift will terminate the process. You can write an
-exit test to validate preconditions like the ones above and to make sure that
+precondition will fail and Swift will force the process to exit. You can write
+an exit test to validate preconditions like the ones above and to make sure that
 your functions correctly catch invalid inputs.
 
 ## Create an exit test
 
 To create an exit test, call either the ``expect(exitsWith:observing:_:sourceLocation:performing:)``
-or the ``require(exitsWith:observing:_:sourceLocation:performing:)`` macro and
-pass a closure containing the code that may terminate the process along with the
-expected result of calling that code (success, failure, or a specific exit code
-or signal):
+or the ``require(exitsWith:observing:_:sourceLocation:performing:)`` macro:
 
 ```swift
 @Test func `Customer won't eat food unless it's delicious`() async {
@@ -51,25 +48,39 @@ or signal):
 }
 ```
 
-When an exit test is performed at runtime, the testing library starts a new
-process with the same executable as the current process. The current task is
-then suspended (as with `await`) and waits for the child process to terminate.
-`expression` is not called in the parent process.
+The closure or function reference you pass to these macros is the body of the
+exit test. When an exit test is performed at runtime, the testing library starts
+a new process with the same executable as the current process. The current task
+is then suspended (as with `await`) and waits for the child process to
+exit. The exit test's body is not called in the parent process.
 
-Meanwhile, in the child process, the closure you passed to ``expect(exitsWith:observing:_:sourceLocation:performing:)``
-or to ``require(exitsWith:observing:_:sourceLocation:performing:)`` is called
-directly. To ensure a clean environment for execution, the closure is not called
-within the context of the original test. Instead, it is treated as if it were
-the `main()` function of the child process.
+Meanwhile, in the child process, the body is called directly. To ensure a clean
+environment for execution, the body is not called within the context of the
+original test. Instead, it is treated as if it were the `main()` function of the
+child process.
 
-If the closure returns before the child process terminates, it is terminated
-automatically (as if the main function of the child process were allowed to
-return naturally.) If an error is thrown from the closure, it is handed as if
-the error were thrown from `main()` and the process is terminated.
+If the body returns before the child process exits, it is allowed to return and
+the process exits naturally. If an error is thrown from the body, it is handled
+as if the error were thrown from `main()` and the process is forced to exit.
 
-Once the child process terminates, the parent process resumes and compares its
-exit status against the expected exit condition you passed. If they match, the
-exit test has passed; otherwise, it has failed and an issue is recorded.
+## Specify an exit condition
+
+When you create an exit test, you must specify how you expect the child process
+will exit by passing an instance of ``ExitTest/Condition``:
+
+- If the exit test's body should run to completion or exit normally (for
+  example, by calling `exit(EXIT_SUCCESS)` from the C standard library), pass
+  ``ExitTest/Condition/success``.
+- If the body will cause the child process to exit with some failure, but the
+  exact status reported by the system is not important, pass
+  ``ExitTest/Condition/failure``.
+- If you need to check for a specific exit code or signal, pass
+  ``ExitTest/Condition/exitCode(_:)`` or ``ExitTest/Condition/signal(_:)``.
+
+When the child process exits, the parent process resumes and compares the exit
+status of the child process against the expected exit condition you passed. If
+they match, the exit test has passed; otherwise, it has failed and the testing
+library records an issue.
 
 ## Gather output from the child process
 
