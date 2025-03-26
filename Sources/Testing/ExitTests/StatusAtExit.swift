@@ -10,7 +10,7 @@
 
 private import _TestingInternals
 
-/// An enumeration describing possible status a process will yield on exit.
+/// An enumeration describing possible status a process will report on exit.
 ///
 /// You can convert an instance of this type to an instance of
 /// ``ExitTest/Condition`` using ``ExitTest/Condition/init(_:)``. That value
@@ -26,10 +26,10 @@ private import _TestingInternals
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 public enum StatusAtExit: Sendable {
-  /// The process terminated with the given exit code.
+  /// The process exited with the given exit code.
   ///
   /// - Parameters:
-  ///   - exitCode: The exit code yielded by the process.
+  ///   - exitCode: The exit code reported by the process.
   ///
   /// The C programming language defines two standard exit codes, `EXIT_SUCCESS`
   /// and `EXIT_FAILURE`. Platforms may additionally define their own
@@ -49,7 +49,7 @@ public enum StatusAtExit: Sendable {
   /// }
   ///
   /// On macOS, FreeBSD, OpenBSD, and Windows, the full exit code reported by
-  /// the process is yielded to the parent process. Linux and other POSIX-like
+  /// the process is reported to the parent process. Linux and other POSIX-like
   /// systems may only reliably report the low unsigned 8 bits (0&ndash;255) of
   /// the exit code.
   ///
@@ -58,10 +58,10 @@ public enum StatusAtExit: Sendable {
   /// }
   case exitCode(_ exitCode: CInt)
 
-  /// The process terminated with the given signal.
+  /// The process exited with the given signal.
   ///
   /// - Parameters:
-  ///   - signal: The signal that terminated the process.
+  ///   - signal: The signal that caused the process to exit.
   ///
   /// The C programming language defines a number of standard signals. Platforms
   /// may additionally define their own non-standard signal codes:

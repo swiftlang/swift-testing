@@ -23,10 +23,7 @@ extension ExitTest {
   ///   @Available(Swift, introduced: 6.2)
   /// }
   public struct Result: Sendable {
-    /// The status of the process hosting the exit test at the time it exits.
-    ///
-    /// When the exit test passes, the value of this property is equal to the
-    /// exit status reported by the process that hosted the exit test.
+    /// The exit status reported by the process hosting the exit test.
     ///
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.2)
