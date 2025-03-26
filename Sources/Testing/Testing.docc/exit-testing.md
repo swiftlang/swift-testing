@@ -54,12 +54,12 @@ or the ``require(exitsWith:observing:_:sourceLocation:performing:)`` macro:
 }
 ```
 
-The closure or function reference you pass to the macro is the body of the exit
-test. When an exit test is performed at runtime, the testing library starts a
-new process with the same executable as the current process. The current task is
-then suspended (as with `await`) and waits for the child process to exit.
+The closure or function reference you pass to the macro is the _body_ of the
+exit test. When an exit test is performed at runtime, the testing library starts
+a new process with the same executable as the current process. The current task
+is then suspended (as with `await`) and waits for the child process to exit.
 
-The parent process never calls the body of the exit test. Instead, the child
+The parent process doesn't call the body of the exit test. Instead, the child
 process treats the body of the exit test as its `main()` function and calls it
 directly.
 
