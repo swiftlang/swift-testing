@@ -11,6 +11,7 @@
 import Testing
 @testable import TestingMacros
 
+import SwiftBasicFormat
 import SwiftDiagnostics
 import SwiftParser
 import SwiftSyntax
@@ -140,6 +141,12 @@ struct TestDeclarationMacroTests {
         "Attribute 'Test' cannot be applied to a function within a generic extension to type 'T!'",
       "extension T! { @Suite struct S {} }":
         "Attribute 'Suite' cannot be applied to a structure within a generic extension to type 'T!'",
+      "struct S: ~Escapable { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within structure 'S' because its conformance to 'Escapable' has been suppressed",
+      "struct S: ~Swift.Escapable { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within structure 'S' because its conformance to 'Escapable' has been suppressed",
+      "struct S: ~(Escapable) { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within structure 'S' because its conformance to 'Escapable' has been suppressed",
     ]
   )
   func apiMisuseErrors(input: String, expectedMessage: String) throws {
@@ -402,7 +409,12 @@ struct TestDeclarationMacroTests {
   func differentFunctionTypes(input: String, expectedTypeName: String?, otherCode: String?) throws {
     let (output, _) = try parse(input)
 
-    #expect(output.contains("__TestContainer"))
+#if hasFeature(SymbolLinkageMarkers)
+    #expect(output.contains("@_section"))
+#endif
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+    #expect(output.contains("__TestContentRecordContainer"))
+#endif
     if let expectedTypeName {
       #expect(output.contains(expectedTypeName))
     }

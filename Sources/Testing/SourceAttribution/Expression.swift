@@ -156,6 +156,16 @@ public struct __Expression: Sendable {
     /// property is `nil`.
     public var label: String?
 
+    /// Whether or not the values of certain properties of this instance have
+    /// been truncated for brevity.
+    ///
+    /// If the value of this property is `true`, this instance does not
+    /// represent its original value completely because doing so would exceed
+    /// the maximum allowed data collection settings of the ``Configuration`` in
+    /// effect. When this occurs, the value ``children`` is not guaranteed to be
+    /// accurate or complete.
+    public var isTruncated: Bool = false
+
     /// Whether or not this value represents a collection of values.
     public var isCollection: Bool
 
@@ -167,14 +177,47 @@ public struct __Expression: Sendable {
     /// the value it represents contains substructural values.
     public var children: [Self]?
 
+    /// Initialize an instance of this type describing the specified subject.
+    ///
+    /// - Parameters:
+    ///   - subject: The subject this instance should describe.
+    init(describing subject: Any) {
+      description = String(describingForTest: subject)
+      debugDescription = String(reflecting: subject)
+      typeInfo = TypeInfo(describingTypeOf: subject)
+
+      let mirror = Mirror(reflecting: subject)
+      isCollection = mirror.displayStyle?.isCollection ?? false
+    }
+
+    /// Initialize an instance of this type with the specified description.
+    ///
+    /// - Parameters:
+    ///   - description: The value to use for this instance's `description`
+    ///     property.
+    ///
+    /// Unlike ``init(describing:)``, this initializer does not use
+    /// ``String/init(describingForTest:)`` to form a description.
+    private init(_description description: String) {
+      self.description = description
+      self.debugDescription = description
+      typeInfo = TypeInfo(describing: String.self)
+      isCollection = false
+    }
+
     /// Initialize an instance of this type describing the specified subject and
     /// its children (if any).
     ///
     /// - Parameters:
-    ///   - subject: The subject this instance should describe.
-    init(reflecting subject: Any) {
+    ///   - subject: The subject this instance should reflect.
+    init?(reflecting subject: Any) {
+      let configuration = Configuration.current ?? .init()
+      guard let options = configuration.valueReflectionOptions else {
+        return nil
+      }
+
       var seenObjects: [ObjectIdentifier: AnyObject] = [:]
-      self.init(_reflecting: subject, label: nil, seenObjects: &seenObjects)
+      self.init(_reflecting: subject, label: nil, seenObjects: &seenObjects, depth: 0, options: options)
     }
 
     /// Initialize an instance of this type describing the specified subject and
@@ -189,11 +232,28 @@ public struct __Expression: Sendable {
     ///     this initializer recursively, keyed by their object identifiers.
     ///     This is used to halt further recursion if a previously-seen object
     ///     is encountered again.
+    ///   - depth: The depth of this recursive call.
+    ///   - options: The configuration options to use when deciding how to
+    ///     reflect `subject`.
     private init(
       _reflecting subject: Any,
       label: String?,
-      seenObjects: inout [ObjectIdentifier: AnyObject]
+      seenObjects: inout [ObjectIdentifier: AnyObject],
+      depth: Int,
+      options: Configuration.ValueReflectionOptions
     ) {
+      // Stop recursing if we've reached the maximum allowed depth for
+      // reflection. Instead, return a node describing this value instead and
+      // set `isTruncated` to `true`.
+      if depth >= options.maximumChildDepth {
+        self = Self(describing: subject)
+        isTruncated = true
+        return
+      }
+
+      self.init(describing: subject)
+      self.label = label
+
       let mirror = Mirror(reflecting: subject)
 
       // If the subject being reflected is an instance of a reference type (e.g.
@@ -236,24 +296,19 @@ public struct __Expression: Sendable {
         }
       }
 
-      description = String(describingForTest: subject)
-      debugDescription = String(reflecting: subject)
-      typeInfo = TypeInfo(describingTypeOf: subject)
-      self.label = label
-
-      isCollection = switch mirror.displayStyle {
-      case .some(.collection),
-           .some(.dictionary),
-           .some(.set):
-        true
-      default:
-        false
-      }
-
       if shouldIncludeChildren && (!mirror.children.isEmpty || isCollection) {
-        self.children = mirror.children.map { child in
-          Self(_reflecting: child.value, label: child.label, seenObjects: &seenObjects)
+        var children: [Self] = []
+        for (index, child) in mirror.children.enumerated() {
+          if isCollection && index >= options.maximumCollectionCount {
+            isTruncated = true
+            let message = "(\(mirror.children.count - index) out of \(mirror.children.count) elements omitted for brevity)"
+            children.append(Self(_description: message))
+            break
+          }
+
+          children.append(Self(_reflecting: child.value, label: child.label, seenObjects: &seenObjects, depth: depth + 1, options: options))
         }
+        self.children = children
       }
     }
   }
@@ -274,7 +329,7 @@ public struct __Expression: Sendable {
   ///   value captured for future use.
   func capturingRuntimeValue(_ value: (some Any)?) -> Self {
     var result = self
-    result.runtimeValue = value.map { Value(reflecting: $0) }
+    result.runtimeValue = value.flatMap(Value.init(reflecting:))
     if case let .negation(subexpression, isParenthetical) = kind, let value = value as? Bool {
       result.kind = .negation(subexpression.capturingRuntimeValue(!value), isParenthetical: isParenthetical)
     }
@@ -547,3 +602,17 @@ extension __Expression.Value: CustomStringConvertible, CustomDebugStringConverti
 /// ```
 @_spi(ForToolsIntegrationOnly)
 public typealias Expression = __Expression
+
+extension Mirror.DisplayStyle {
+  /// Whether or not this display style represents a collection of values.
+  fileprivate var isCollection: Bool {
+    switch self {
+    case .collection,
+         .dictionary,
+         .set:
+      true
+    default:
+      false
+    }
+  }
+}

@@ -11,7 +11,7 @@
 #if canImport(Foundation) && !SWT_NO_ABI_ENTRY_POINT
 private import _TestingInternals
 
-extension ABIv0 {
+extension ABI.v0 {
   /// The type of the entry point to the testing library used by tools that want
   /// to remain version-agnostic regarding the testing library.
   ///
@@ -47,88 +47,70 @@ extension ABIv0 {
   /// callback.
   public static var entryPoint: EntryPoint {
     return { configurationJSON, recordHandler in
-      try await Testing.entryPoint(
-        configurationJSON: configurationJSON,
-        recordHandler: recordHandler
-      ) == EXIT_SUCCESS
+      let args = try configurationJSON.map { configurationJSON in
+        try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON)
+      }
+      let eventHandler = try eventHandlerForStreamingEvents(version: args?.eventStreamVersion, encodeAsJSONLines: false, forwardingTo: recordHandler)
+
+      switch await Testing.entryPoint(passing: args, eventHandler: eventHandler) {
+      case EXIT_SUCCESS, EXIT_NO_TESTS_FOUND:
+        return true
+      default:
+        return false
+      }
     }
   }
 }
 
 /// An exported C function that is the equivalent of
-/// ``ABIv0/entryPoint-swift.type.property``.
+/// ``ABI/v0/entryPoint-swift.type.property``.
 ///
-/// - Returns: The value of ``ABIv0/entryPoint-swift.type.property`` cast to an
+/// - Returns: The value of ``ABI/v0/entryPoint-swift.type.property`` cast to an
 ///   untyped pointer.
 @_cdecl("swt_abiv0_getEntryPoint")
 @usableFromInline func abiv0_getEntryPoint() -> UnsafeRawPointer {
-  unsafeBitCast(ABIv0.entryPoint, to: UnsafeRawPointer.self)
+  unsafeBitCast(ABI.v0.entryPoint, to: UnsafeRawPointer.self)
 }
 
 #if !SWT_NO_SNAPSHOT_TYPES
-// MARK: - Xcode 16 Beta 1 compatibility
+// MARK: - Xcode 16 compatibility
 
-/// An older signature for ``ABIv0/EntryPoint-swift.typealias`` used by Xcode 16
-/// Beta 1.
-///
-/// This type will be removed in a future update.
-@available(*, deprecated, message: "Use ABIv0.EntryPoint instead.")
-typealias ABIEntryPoint_v0 = @Sendable (
-  _ argumentsJSON: UnsafeRawBufferPointer?,
-  _ recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
-) async throws -> CInt
+extension ABI.Xcode16 {
+  /// An older signature for ``ABI/v0/EntryPoint-swift.typealias`` used by
+  /// Xcode&nbsp;16.
+  ///
+  /// - Warning: This type will be removed in a future update.
+  @available(*, deprecated, message: "Use ABI.v0.EntryPoint instead.")
+  typealias EntryPoint = @Sendable (
+    _ argumentsJSON: UnsafeRawBufferPointer?,
+    _ recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
+  ) async throws -> CInt
+}
 
-/// An older signature for ``ABIv0/entryPoint-swift.type.property`` used by
-/// Xcode 16 Beta 1.
+/// An older signature for ``ABI/v0/entryPoint-swift.type.property`` used by
+/// Xcode&nbsp;16.
 ///
-/// This function will be removed in a future update.
-@available(*, deprecated, message: "Use ABIv0.entryPoint (swt_abiv0_getEntryPoint()) instead.")
+/// - Warning: This function will be removed in a future update.
+@available(*, deprecated, message: "Use ABI.v0.entryPoint (swt_abiv0_getEntryPoint()) instead.")
 @_cdecl("swt_copyABIEntryPoint_v0")
 @usableFromInline func copyABIEntryPoint_v0() -> UnsafeMutableRawPointer {
-  let result = UnsafeMutablePointer<ABIEntryPoint_v0>.allocate(capacity: 1)
+  let result = UnsafeMutablePointer<ABI.Xcode16.EntryPoint>.allocate(capacity: 1)
   result.initialize { configurationJSON, recordHandler in
-    try await entryPoint(
-      configurationJSON: configurationJSON,
-      eventStreamVersionIfNil: -1,
-      recordHandler: recordHandler
-    )
+    var args = try configurationJSON.map { configurationJSON in
+      try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON)
+    }
+    if args?.eventStreamVersion == nil {
+      args?.eventStreamVersion = ABI.Xcode16.versionNumber
+    }
+    let eventHandler = try eventHandlerForStreamingEvents(version: args?.eventStreamVersion, encodeAsJSONLines: false, forwardingTo: recordHandler)
+
+    var exitCode = await Testing.entryPoint(passing: args, eventHandler: eventHandler)
+    if exitCode == EXIT_NO_TESTS_FOUND {
+      exitCode = EXIT_SUCCESS
+    }
+    return exitCode
   }
   return .init(result)
 }
 #endif
-
-// MARK: -
-
-/// A common implementation for ``ABIv0/entryPoint-swift.type.property`` and
-/// ``copyABIEntryPoint_v0()`` that provides Xcode 16 Beta 1 compatibility.
-///
-/// This function will be removed (with its logic incorporated into
-/// ``ABIv0/entryPoint-swift.type.property``) in a future update.
-private func entryPoint(
-  configurationJSON: UnsafeRawBufferPointer?,
-  eventStreamVersionIfNil: Int? = nil,
-  recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
-) async throws -> CInt {
-  var args = try configurationJSON.map { configurationJSON in
-    try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON)
-  }
-
-  // If the caller needs a nil event stream version to default to a specific
-  // JSON schema, apply it here as if they'd specified it in the configuration
-  // JSON blob.
-  if let eventStreamVersionIfNil, args?.eventStreamVersion == nil {
-    args?.eventStreamVersion = eventStreamVersionIfNil
-  }
-
-  let eventHandler = try eventHandlerForStreamingEvents(version: args?.eventStreamVersion, encodeAsJSONLines: false, forwardingTo: recordHandler)
-  let exitCode = await entryPoint(passing: args, eventHandler: eventHandler)
-
-  // To maintain compatibility with Xcode 16 Beta 1, suppress custom exit codes.
-  // (This is also needed by ABIv0.entryPoint to correctly treat the no-tests as
-  // a successful run.)
-  if exitCode == EXIT_NO_TESTS_FOUND {
-    return EXIT_SUCCESS
-  }
-  return exitCode
-}
 #endif

@@ -290,10 +290,7 @@ extension Event {
     if let configuration = configuration ?? Configuration.current {
       // The caller specified a configuration, or the current task has an
       // associated configuration. Post to either configuration's event handler.
-      switch kind {
-      case .expectationChecked where !configuration.deliverExpectationCheckedEvents:
-        break
-      default:
+      if configuration.eventHandlingOptions.shouldHandleEvent(self) {
         configuration.handleEvent(self, in: context)
       }
     } else {

@@ -32,7 +32,7 @@ extension Event {
       /// On Windows, `GetFileType()` returns `FILE_TYPE_CHAR` for console file
       /// handles, and the [Console API](https://learn.microsoft.com/en-us/windows/console/)
       /// can be used to perform more complex console operations.
-      public var useANSIEscapeCodes = false
+      public var useANSIEscapeCodes: Bool = false
 
       /// The supported color bit depth when adding color to the output using
       /// [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code).
@@ -58,7 +58,7 @@ extension Event {
       /// If the SF&nbsp;Symbols app is not installed on the system where the
       /// output is being rendered, the effect of setting the value of this
       /// property to `true` is unspecified.
-      public var useSFSymbols = false
+      public var useSFSymbols: Bool = false
 #endif
 
       /// Storage for ``tagColors``.
@@ -136,7 +136,7 @@ extension Event.Symbol {
   ///
   /// - Returns: A string representation of `self` appropriate for writing to
   ///   a stream.
-  fileprivate func stringValue(options: Event.ConsoleOutputRecorder.Options) -> String {
+  package func stringValue(options: Event.ConsoleOutputRecorder.Options) -> String {
     let useColorANSIEscapeCodes = options.useANSIEscapeCodes && options.ansiColorBitDepth >= 4
 
     var symbolCharacter = String(unicodeCharacter)
@@ -162,6 +162,8 @@ extension Event.Symbol {
           return "\(_ansiEscapeCodePrefix)90m\(symbolCharacter)\(_resetANSIEscapeCode)"
         }
         return "\(_ansiEscapeCodePrefix)92m\(symbolCharacter)\(_resetANSIEscapeCode)"
+      case .passWithWarnings:
+        return "\(_ansiEscapeCodePrefix)93m\(symbolCharacter)\(_resetANSIEscapeCode)"
       case .fail:
         return "\(_ansiEscapeCodePrefix)91m\(symbolCharacter)\(_resetANSIEscapeCode)"
       case .warning:

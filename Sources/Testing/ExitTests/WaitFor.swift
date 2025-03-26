@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2024–2025 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -20,7 +20,7 @@ internal import _TestingInternals
 ///
 /// - Throws: If the exit status of the process with ID `pid` cannot be
 ///   determined (i.e. it does not represent an exit condition.)
-private func _blockAndWait(for pid: consuming pid_t) throws -> ExitCondition {
+private func _blockAndWait(for pid: consuming pid_t) throws -> StatusAtExit {
   let pid = consume pid
 
   // Get the exit status of the process or throw an error (other than EINTR.)
@@ -61,7 +61,7 @@ private func _blockAndWait(for pid: consuming pid_t) throws -> ExitCondition {
 /// - Note: The open-source implementation of libdispatch available on Linux
 ///   and other platforms does not support `DispatchSourceProcess`. Those
 ///   platforms use an alternate implementation below.
-func wait(for pid: consuming pid_t) async throws -> ExitCondition {
+func wait(for pid: consuming pid_t) async throws -> StatusAtExit {
   let pid = consume pid
 
   let source = DispatchSource.makeProcessSource(identifier: pid, eventMask: .exit)
@@ -80,7 +80,7 @@ func wait(for pid: consuming pid_t) async throws -> ExitCondition {
 }
 #elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
 /// A mapping of awaited child PIDs to their corresponding Swift continuations.
-private let _childProcessContinuations = Locked<[pid_t: CheckedContinuation<ExitCondition, any Error>]>()
+private let _childProcessContinuations = LockedWith<pthread_mutex_t, [pid_t: CheckedContinuation<StatusAtExit, any Error>]>()
 
 /// A condition variable used to suspend the waiter thread created by
 /// `_createWaitThread()` when there are no child processes to await.
@@ -93,6 +93,17 @@ private nonisolated(unsafe) let _waitThreadNoChildrenCondition = {
   _ = pthread_cond_init(result, nil)
   return result
 }()
+
+#if os(Linux) && !SWT_NO_DYNAMIC_LINKING
+/// Set the name of the current thread.
+///
+/// This function declaration is provided because `pthread_setname_np()` is
+/// only declared if `_GNU_SOURCE` is set, but setting it causes build errors
+/// due to conflicts with Swift's Glibc module.
+private let _pthread_setname_np = symbol(named: "pthread_setname_np").map {
+  castCFunction(at: $0, to: (@convention(c) (pthread_t, UnsafePointer<CChar>) -> CInt).self)
+}
+#endif
 
 /// Create a waiter thread that is responsible for waiting for child processes
 /// to exit.
@@ -126,7 +137,7 @@ private let _createWaitThread: Void = {
       // newly-scheduled waiter process. (If this condition is spuriously
       // woken, we'll just loop again, which is fine.) Note that we read errno
       // outside the lock in case acquiring the lock perturbs it.
-      _childProcessContinuations.withUnsafePlatformLock { lock, childProcessContinuations in
+      _childProcessContinuations.withUnsafeUnderlyingLock { lock, childProcessContinuations in
         if childProcessContinuations.isEmpty {
           _ = pthread_cond_wait(_waitThreadNoChildrenCondition, lock)
         }
@@ -152,7 +163,9 @@ private let _createWaitThread: Void = {
 #if SWT_TARGET_OS_APPLE
       _ = pthread_setname_np("Swift Testing exit test monitor")
 #elseif os(Linux)
-      _ = swt_pthread_setname_np(pthread_self(), "SWT ExT monitor")
+#if !SWT_NO_DYNAMIC_LINKING
+      _ = _pthread_setname_np?(pthread_self(), "SWT ExT monitor")
+#endif
 #elseif os(FreeBSD)
       _ = pthread_set_name_np(pthread_self(), "SWT ex test monitor")
 #elseif os(OpenBSD)
@@ -189,7 +202,7 @@ private let _createWaitThread: Void = {
 ///
 /// On Apple platforms, the libdispatch-based implementation above is more
 /// efficient because it does not need to permanently reserve a thread.
-func wait(for pid: consuming pid_t) async throws -> ExitCondition {
+func wait(for pid: consuming pid_t) async throws -> StatusAtExit {
   let pid = consume pid
 
   // Ensure the waiter thread is running.
@@ -226,7 +239,7 @@ func wait(for pid: consuming pid_t) async throws -> ExitCondition {
 /// This implementation of `wait(for:)` calls `RegisterWaitForSingleObject()` to
 /// wait for `processHandle`, suspends the calling task until the waiter's
 /// callback is called, then calls `GetExitCodeProcess()`.
-func wait(for processHandle: consuming HANDLE) async throws -> ExitCondition {
+func wait(for processHandle: consuming HANDLE) async throws -> StatusAtExit {
   let processHandle = consume processHandle
   defer {
     _ = CloseHandle(processHandle)
@@ -263,13 +276,13 @@ func wait(for processHandle: consuming HANDLE) async throws -> ExitCondition {
   guard GetExitCodeProcess(processHandle, &status) else {
     // The child process terminated but we couldn't get its status back.
     // Assume generic failure.
-    return .failure
+    return .exitCode(EXIT_FAILURE)
   }
 
   return .exitCode(CInt(bitPattern: .init(status)))
 }
 #else
 #warning("Platform-specific implementation missing: cannot wait for child processes to exit")
-func wait(for processID: consuming Never) async throws -> ExitCondition {}
+func wait(for processID: consuming Never) async throws -> StatusAtExit {}
 #endif
 #endif

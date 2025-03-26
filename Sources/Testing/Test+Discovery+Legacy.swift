@@ -8,64 +8,40 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _TestingInternals
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) internal import _TestDiscovery
 
 /// A protocol describing a type that contains tests.
 ///
 /// - Warning: This protocol is used to implement the `@Test` macro. Do not use
 ///   it directly.
 @_alwaysEmitConformanceMetadata
-public protocol __TestContainer {
-  /// The set of tests contained by this type.
-  static var __tests: [Test] { get async }
+public protocol __TestContentRecordContainer {
+  /// The test content record associated with this container.
+  ///
+  /// - Warning: This property is used to implement the `@Test` macro. Do not
+  ///   use it directly.
+  nonisolated static var __testContentRecord: __TestContentRecord { get }
 }
 
-/// A string that appears within all auto-generated types conforming to the
-/// `__TestContainer` protocol.
-let testContainerTypeNameMagic = "__🟠$test_container__"
+extension DiscoverableAsTestContent where Self: ~Copyable {
+  /// Get all test content of this type known to Swift and found in the current
+  /// process using the legacy discovery mechanism.
+  ///
+  /// - Returns: A sequence of instances of ``TestContentRecord``. Only test
+  ///   content records matching this ``TestContent`` type's requirements are
+  ///   included in the sequence.
+  static func allTypeMetadataBasedTestContentRecords() -> AnySequence<TestContentRecord<Self>> {
+    return allTypeMetadataBasedTestContentRecords { type, buffer in
+      guard let type = type as? any __TestContentRecordContainer.Type else {
+        return false
+      }
 
-#if !SWT_NO_EXIT_TESTS
-/// A protocol describing a type that contains an exit test.
-///
-/// - Warning: This protocol is used to implement the `#expect(exitsWith:)`
-///   macro. Do not use it directly.
-@_alwaysEmitConformanceMetadata
-@_spi(Experimental)
-public protocol __ExitTestContainer {
-  /// The expected exit condition of the exit test.
-  static var __expectedExitCondition: ExitCondition { get }
-
-  /// The source location of the exit test.
-  static var __sourceLocation: SourceLocation { get }
-
-  /// The body function of the exit test.
-  static var __body: @Sendable () async throws -> Void { get }
+      buffer.withMemoryRebound(to: __TestContentRecord.self) { buffer in
+        buffer.baseAddress!.initialize(to: type.__testContentRecord)
+      }
+      return true
+    }
+  }
 }
-
-/// A string that appears within all auto-generated types conforming to the
-/// `__ExitTestContainer` protocol.
-let exitTestContainerTypeNameMagic = "__🟠$exit_test_body__"
 #endif
-
-// MARK: -
-
-/// Get all types known to Swift found in the current process whose names
-/// contain a given substring.
-///
-/// - Parameters:
-///   - nameSubstring: A string which the names of matching classes all contain.
-///
-/// - Returns: A sequence of Swift types whose names contain `nameSubstring`.
-func types(withNamesContaining nameSubstring: String) -> some Sequence<Any.Type> {
-  SectionBounds.all(.typeMetadata).lazy
-    .map { sb in
-      var count = 0
-      let start = swt_copyTypes(in: sb.buffer.baseAddress!, sb.buffer.count, withNamesContaining: nameSubstring, count: &count)
-      defer {
-        free(start)
-      }
-      return start.withMemoryRebound(to: Any.Type.self, capacity: count) { start in
-        Array(UnsafeBufferPointer(start: start, count: count))
-      }
-    }.joined()
-}

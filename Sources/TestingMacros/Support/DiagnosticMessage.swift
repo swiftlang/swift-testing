@@ -9,7 +9,9 @@
 //
 
 import SwiftDiagnostics
+import SwiftParser
 import SwiftSyntax
+import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 import SwiftSyntaxMacroExpansion
 
@@ -321,65 +323,57 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///     generic.
   ///   - attribute: The `@Test` or `@Suite` attribute.
   ///   - decl: The declaration in question (contained in `node`.)
+  ///   - escapableNonConformance: The suppressed conformance to `Escapable` for
+  ///     `decl`, if present.
   ///
   /// - Returns: A diagnostic message.
-  static func containingNodeUnsupported(_ node: some SyntaxProtocol, genericBecauseOf genericClause: Syntax? = nil, whenUsing attribute: AttributeSyntax, on decl: some SyntaxProtocol) -> Self {
+  static func containingNodeUnsupported(_ node: some SyntaxProtocol, genericBecauseOf genericClause: Syntax? = nil, whenUsing attribute: AttributeSyntax, on decl: some SyntaxProtocol, withSuppressedConformanceToEscapable escapableNonConformance: SuppressedTypeSyntax? = nil) -> Self {
     // Avoid using a syntax node from a lexical context (it won't have source
     // location information.)
     let syntax: Syntax = if let genericClause, attribute.root == genericClause.root {
       // Prefer the generic clause if available as the root cause.
       genericClause
+    } else if let escapableNonConformance, attribute.root == escapableNonConformance.root {
+      // Then the ~Escapable conformance if present.
+      Syntax(escapableNonConformance)
     } else if attribute.root == node.root {
-      // Second choice is the unsupported containing node.
+      // Next best choice is the unsupported containing node.
       Syntax(node)
     } else {
       // Finally, fall back to the attribute, which we assume is not detached.
       Syntax(attribute)
     }
+
+    // Figure out the message to present.
+    var message = "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true))"
     let generic = if genericClause != nil {
       " generic"
     } else {
       ""
     }
     if let functionDecl = node.as(FunctionDeclSyntax.self) {
-      let functionName = functionDecl.completeName
-      return Self(
-        syntax: syntax,
-        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within\(generic) function '\(functionName)'",
-        severity: .error
-      )
+      message += " within\(generic) function '\(functionDecl.completeName)'"
     } else if let namedDecl = node.asProtocol((any NamedDeclSyntax).self) {
-      let declName = namedDecl.name.textWithoutBackticks
-      return Self(
-        syntax: syntax,
-        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within\(generic) \(_kindString(for: node)) '\(declName)'",
-        severity: .error
-      )
+      message += " within\(generic) \(_kindString(for: node)) '\(namedDecl.name.textWithoutBackticks)'"
     } else if let extensionDecl = node.as(ExtensionDeclSyntax.self) {
       // Subtly different phrasing from the NamedDeclSyntax case above.
-      let nodeKind = if genericClause != nil {
-        "a generic extension to type"
+      if genericClause != nil {
+        message += " within a generic extension to type '\(extensionDecl.extendedType.trimmedDescription)'"
       } else {
-        "an extension to type"
+        message += " within an extension to type '\(extensionDecl.extendedType.trimmedDescription)'"
       }
-      let declGroupName = extensionDecl.extendedType.trimmedDescription
-      return Self(
-        syntax: syntax,
-        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within \(nodeKind) '\(declGroupName)'",
-        severity: .error
-      )
     } else {
-      let nodeKind = if genericClause != nil {
-        "a generic \(_kindString(for: node))"
+      if genericClause != nil {
+        message += " within a generic \(_kindString(for: node))"
       } else {
-        _kindString(for: node, includeA: true)
+        message += " within \(_kindString(for: node, includeA: true))"
       }
-      return Self(
-        syntax: syntax,
-        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within \(nodeKind)",
-        severity: .error
-      )
     }
+    if escapableNonConformance != nil {
+      message += " because its conformance to 'Escapable' has been suppressed"
+    }
+
+    return Self(syntax: syntax, message: message, severity: .error)
   }
 
   /// Create a diagnostic message stating that the given attribute cannot be

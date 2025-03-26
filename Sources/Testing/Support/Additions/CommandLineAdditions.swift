@@ -14,7 +14,7 @@ extension CommandLine {
   /// The path to the current process' executable.
   static var executablePath: String {
     get throws {
-#if os(macOS)
+#if SWT_TARGET_OS_APPLE
       var result: String?
 #if DEBUG
       var bufferCount = UInt32(1) // force looping

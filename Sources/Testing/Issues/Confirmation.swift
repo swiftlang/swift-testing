@@ -161,6 +161,11 @@ public func confirmation<R>(
 ///
 /// If an exact count is expected, use
 /// ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-5mqz2`` instead.
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.1)
+///   @Available(Xcode, introduced: 16.3)
+/// }
 public func confirmation<R>(
   _ comment: Comment? = nil,
   expectedCount: some RangeExpression<Int> & Sequence<Int> & Sendable,

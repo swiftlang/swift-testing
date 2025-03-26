@@ -160,6 +160,9 @@ public macro require<T>(
 /// is running in the current task. Any value returned by `expression` is
 /// discarded.
 ///
+/// - Note: If you use this macro with a Swift compiler version lower than 6.1,
+///   it doesn't return a value.
+///
 /// If the thrown error need only equal another instance of [`Error`](https://developer.apple.com/documentation/swift/error),
 /// use ``expect(throws:_:sourceLocation:performing:)-7du1h`` instead.
 ///
@@ -224,6 +227,9 @@ public macro require<T>(
 /// is running in the current task and an instance of ``ExpectationFailedError``
 /// is thrown. Any value returned by `expression` is discarded.
 ///
+/// - Note: If you use this macro with a Swift compiler version lower than 6.1,
+///   it doesn't return a value.
+///
 /// If the thrown error need only equal another instance of [`Error`](https://developer.apple.com/documentation/swift/error),
 /// use ``require(throws:_:sourceLocation:performing:)-4djuw`` instead.
 ///
@@ -286,6 +292,9 @@ public macro require<R>(
 /// not equal to `error`, an ``Issue`` is recorded for the test that is running
 /// in the current task. Any value returned by `expression` is discarded.
 ///
+/// - Note: If you use this macro with a Swift compiler version lower than 6.1,
+///   it doesn't return a value.
+///
 /// If the thrown error need only be an instance of a particular type, use
 /// ``expect(throws:_:sourceLocation:performing:)-1hfms`` instead.
 @discardableResult
@@ -326,6 +335,9 @@ public macro require<R>(
 /// not equal to `error`, an ``Issue`` is recorded for the test that is running
 /// in the current task and an instance of ``ExpectationFailedError`` is thrown.
 /// Any value returned by `expression` is discarded.
+///
+/// - Note: If you use this macro with a Swift compiler version lower than 6.1,
+///   it doesn't return a value.
 ///
 /// If the thrown error need only be an instance of a particular type, use
 /// ``require(throws:_:sourceLocation:performing:)-7n34r`` instead.
@@ -375,6 +387,23 @@ public macro require<R>(
 /// ``expect(throws:_:sourceLocation:performing:)-1hfms`` instead. If the thrown
 /// error need only equal another instance of [`Error`](https://developer.apple.com/documentation/swift/error),
 /// use ``expect(throws:_:sourceLocation:performing:)-7du1h`` instead.
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.0)
+///   @Available(Xcode, introduced: 16.0)
+/// }
+///
+/// @DeprecationSummary { <!-- Warning when compiling DocC: rdar://141785948 -->
+///   Examine the result of ``expect(throws:_:sourceLocation:performing:)-7du1h``
+///   or ``expect(throws:_:sourceLocation:performing:)-1hfms`` instead:
+///
+///   ```swift
+///   let error = #expect(throws: FoodTruckError.self) {
+///     ...
+///   }
+///   #expect(error?.napkinCount == 0)
+///   ```
+/// }
 @available(swift, deprecated: 100000.0, message: "Examine the result of '#expect(throws:)' instead.")
 @discardableResult
 @freestanding(expression) public macro expect<R>(
@@ -427,6 +456,23 @@ public macro require<R>(
 ///
 /// If `expression` should _never_ throw, simply invoke the code without using
 /// this macro. The test will then fail if an error is thrown.
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.0)
+///   @Available(Xcode, introduced: 16.0)
+/// }
+///
+/// @DeprecationSummary { <!-- Warning when compiling DocC: rdar://141785948 -->
+///   Examine the result of ``expect(throws:_:sourceLocation:performing:)-7du1h``
+///   or ``expect(throws:_:sourceLocation:performing:)-1hfms`` instead:
+///
+///   ```swift
+///   let error = try #require(throws: FoodTruckError.self) {
+///     ...
+///   }
+///   #expect(error.napkinCount == 0)
+///   ```
+/// }
 @available(swift, deprecated: 100000.0, message: "Examine the result of '#require(throws:)' instead.")
 @discardableResult
 @freestanding(expression) public macro require<R>(
@@ -444,13 +490,13 @@ public macro require<R>(
 ///   - expectedExitCondition: The expected exit condition.
 ///   - observedValues: An array of key paths representing results from within
 ///     the exit test that should be observed and returned by this macro. The
-///     ``ExitTestArtifacts/exitCondition`` property is always returned.
+///     ``ExitTest/Result/statusAtExit`` property is always returned.
 ///   - comment: A comment describing the expectation.
 ///   - sourceLocation: The source location to which recorded expectations and
 ///     issues should be attributed.
 ///   - expression: The expression to be evaluated.
 ///
-/// - Returns: If the exit test passes, an instance of ``ExitTestArtifacts``
+/// - Returns: If the exit test passes, an instance of ``ExitTest/Result``
 ///   describing the state of the exit test when it exited. If the exit test
 ///   fails, the result is `nil`.
 ///
@@ -483,8 +529,8 @@ public macro require<R>(
 /// process is terminated.
 ///
 /// Once the child process terminates, the parent process resumes and compares
-/// its exit status against `exitCondition`. If they match, the exit test has
-/// passed; otherwise, it has failed and an issue is recorded.
+/// its exit status against `expectedExitCondition`. If they match, the exit
+/// test has passed; otherwise, it has failed and an issue is recorded.
 ///
 /// ## Child process output
 ///
@@ -542,12 +588,12 @@ public macro require<R>(
 #endif
 @discardableResult
 @freestanding(expression) public macro expect(
-  exitsWith expectedExitCondition: ExitCondition,
-  observing observedValues: [any PartialKeyPath<ExitTestArtifacts> & Sendable] = [],
+  exitsWith expectedExitCondition: ExitTest.Condition,
+  observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
-  performing expression: @convention(thin) () async throws -> Void
-) -> ExitTestArtifacts? = #externalMacro(module: "TestingMacros", type: "ExitTestExpectMacro")
+  performing expression: @escaping @Sendable @convention(thin) () async throws -> Void
+) -> ExitTest.Result? = #externalMacro(module: "TestingMacros", type: "ExitTestExpectMacro")
 
 /// Check that an expression causes the process to terminate in a given fashion
 /// and throw an error if it did not.
@@ -556,13 +602,13 @@ public macro require<R>(
 ///   - expectedExitCondition: The expected exit condition.
 ///   - observedValues: An array of key paths representing results from within
 ///     the exit test that should be observed and returned by this macro. The
-///     ``ExitTestArtifacts/exitCondition`` property is always returned.
+///     ``ExitTest/Result/statusAtExit`` property is always returned.
 ///   - comment: A comment describing the expectation.
 ///   - sourceLocation: The source location to which recorded expectations and
 ///     issues should be attributed.
 ///   - expression: The expression to be evaluated.
 ///
-/// - Returns: An instance of ``ExitTestArtifacts`` describing the state of the
+/// - Returns: An instance of ``ExitTest/Result`` describing the state of the
 ///   exit test when it exited.
 ///
 /// - Throws: An instance of ``ExpectationFailedError`` if the exit condition of
@@ -597,8 +643,8 @@ public macro require<R>(
 /// process is terminated.
 ///
 /// Once the child process terminates, the parent process resumes and compares
-/// its exit status against `exitCondition`. If they match, the exit test has
-/// passed; otherwise, it has failed and an issue is recorded.
+/// its exit status against `expectedExitCondition`. If they match, the exit
+/// test has passed; otherwise, it has failed and an issue is recorded.
 ///
 /// ## Child process output
 ///
@@ -654,9 +700,9 @@ public macro require<R>(
 #endif
 @discardableResult
 @freestanding(expression) public macro require(
-  exitsWith expectedExitCondition: ExitCondition,
-  observing observedValues: [any PartialKeyPath<ExitTestArtifacts> & Sendable] = [],
+  exitsWith expectedExitCondition: ExitTest.Condition,
+  observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
-  performing expression: @convention(thin) () async throws -> Void
-) -> ExitTestArtifacts = #externalMacro(module: "TestingMacros", type: "ExitTestRequireMacro")
+  performing expression: @escaping @Sendable @convention(thin) () async throws -> Void
+) -> ExitTest.Result = #externalMacro(module: "TestingMacros", type: "ExitTestRequireMacro")

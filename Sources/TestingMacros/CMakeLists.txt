@@ -87,6 +87,7 @@ target_sources(TestingMacros PRIVATE
   Support/Additions/DeclGroupSyntaxAdditions.swift
   Support/Additions/EditorPlaceholderExprSyntaxAdditions.swift
   Support/Additions/FunctionDeclSyntaxAdditions.swift
+  Support/Additions/IntegerLiteralExprSyntaxAdditions.swift
   Support/Additions/MacroExpansionContextAdditions.swift
   Support/Additions/TokenSyntaxAdditions.swift
   Support/Additions/TriviaPieceAdditions.swift
@@ -103,13 +104,13 @@ target_sources(TestingMacros PRIVATE
   Support/DiagnosticMessage+Diagnosing.swift
   Support/SourceCodeCapturing.swift
   Support/SourceLocationGeneration.swift
+  Support/TestContentGeneration.swift
   TagMacro.swift
   TestDeclarationMacro.swift
   TestingMacrosMain.swift)
 
 target_compile_options(TestingMacros PRIVATE
-  "SHELL:-Xfrontend -disable-implicit-string-processing-module-import"
-  "SHELL:-Xfrontend -disable-implicit-backtracing-module-import")
+  "SHELL:-Xfrontend -disable-implicit-string-processing-module-import")
 
 target_link_libraries(TestingMacros PRIVATE
   SwiftSyntax::SwiftSyntax

@@ -334,29 +334,20 @@ final class RunnerTests: XCTestCase {
   }
   
   func testEvaluateConditionTrait() async throws {
-    let comment: Comment = "comment"
     let trueUnconditional = ConditionTrait(kind: .unconditional(true), comments: [], sourceLocation: #_sourceLocation)
     let falseUnconditional = ConditionTrait.disabled()
     let enabledTrue = ConditionTrait.enabled(if: true)
     let enabledFalse = ConditionTrait.enabled(if: false)
-    let enabledTrueComment = ConditionTrait(kind: .conditional { (true, comment) }, comments: [], sourceLocation: #_sourceLocation)
-    let enabledFalseComment = ConditionTrait(kind: .conditional { (false, comment) }, comments: [], sourceLocation: #_sourceLocation)
-    var result: ConditionTrait.EvaluationResult
+    var result: Bool
     
     result = try await trueUnconditional.evaluate()
-    XCTAssertTrue(result.wasMet)
+    XCTAssertTrue(result)
     result = try await falseUnconditional.evaluate()
-    XCTAssertFalse(result.wasMet)
+    XCTAssertFalse(result)
     result = try await enabledTrue.evaluate()
-    XCTAssertTrue(result.wasMet)
+    XCTAssertTrue(result)
     result = try await enabledFalse.evaluate()
-    XCTAssertFalse(result.wasMet)
-    result = try await enabledTrueComment.evaluate()
-    XCTAssertTrue(result.wasMet)
-    XCTAssertEqual(result.comment, comment)
-    result = try await enabledFalseComment.evaluate()
-    XCTAssertFalse(result.wasMet)
-    XCTAssertEqual(result.comment, comment)
+    XCTAssertFalse(result)
   }
 
   func testGeneratedPlan() async throws {
@@ -452,7 +443,7 @@ final class RunnerTests: XCTestCase {
 
   func testExpectationCheckedEventHandlingWhenDisabled() async {
     var configuration = Configuration()
-    configuration.deliverExpectationCheckedEvents = false
+    configuration.eventHandlingOptions.isExpectationCheckedEventEnabled = false
     configuration.eventHandler = { event, _ in
       if case .expectationChecked = event.kind {
         XCTFail("Expectation checked event was posted unexpectedly")
@@ -485,7 +476,7 @@ final class RunnerTests: XCTestCase {
 #endif
 
     var configuration = Configuration()
-    configuration.deliverExpectationCheckedEvents = true
+    configuration.eventHandlingOptions.isExpectationCheckedEventEnabled = true
     configuration.eventHandler = { event, _ in
       guard case let .expectationChecked(expectation) = event.kind else {
         return
