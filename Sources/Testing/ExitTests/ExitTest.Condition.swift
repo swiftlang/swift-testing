@@ -57,8 +57,9 @@ extension ExitTest {
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 extension ExitTest.Condition {
-  /// A condition that matches when a process terminates successfully with exit
-  /// code `EXIT_SUCCESS`.
+  /// A condition that matches when a process exits normally.
+  ///
+  /// This condition matches the exit code `EXIT_SUCCESS`.
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
@@ -75,8 +76,10 @@ extension ExitTest.Condition {
 #endif
   }
 
-  /// A condition that matches when a process terminates abnormally with any
-  /// exit code other than `EXIT_SUCCESS` or with any signal.
+  /// A condition that matches when a process exits abnormally
+  ///
+  /// This condition matches any exit code other than `EXIT_SUCCESS` or any
+  /// signal that causes the process to exit.
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
@@ -96,7 +99,7 @@ extension ExitTest.Condition {
   /// exit code.
   ///
   /// - Parameters:
-  ///   - exitCode: The exit code yielded by the process.
+  ///   - exitCode: The exit code reported by the process.
   ///
   /// The C programming language defines two standard exit codes, `EXIT_SUCCESS`
   /// and `EXIT_FAILURE`. Platforms may additionally define their own
@@ -116,7 +119,7 @@ extension ExitTest.Condition {
   /// }
   ///
   /// On macOS, FreeBSD, OpenBSD, and Windows, the full exit code reported by
-  /// the process is yielded to the parent process. Linux and other POSIX-like
+  /// the process is reported to the parent process. Linux and other POSIX-like
   /// systems may only reliably report the low unsigned 8 bits (0&ndash;255) of
   /// the exit code.
   ///
@@ -131,11 +134,10 @@ extension ExitTest.Condition {
 #endif
   }
 
-  /// Creates a condition that matches when a process terminates with a given
-  /// signal.
+  /// Creates a condition that matches when a process exits with a given signal.
   ///
   /// - Parameters:
-  ///   - signal: The signal that terminated the process.
+  ///   - signal: The signal that caused the process to exit.
   ///
   /// The C programming language defines a number of standard signals. Platforms
   /// may additionally define their own non-standard signal codes:
