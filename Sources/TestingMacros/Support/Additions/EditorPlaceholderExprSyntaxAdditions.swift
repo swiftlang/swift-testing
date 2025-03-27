@@ -52,3 +52,16 @@ extension EditorPlaceholderExprSyntax {
     self.init(type, type: type)
   }
 }
+
+extension TypeSyntax {
+  /// Construct a type syntax node containing a placeholder string.
+  ///
+  /// - Parameters:
+  ///   - placeholder: The placeholder string, not including surrounding angle
+  ///     brackets or pound characters.
+  ///
+  /// - Returns: A new `TypeSyntax` instance representing a placeholder.
+  static func placeholder(_ placeholder: String) -> Self {
+    return Self(IdentifierTypeSyntax(name: .identifier("<#\(placeholder)#" + ">")))
+  }
+}

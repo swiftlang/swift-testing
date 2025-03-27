@@ -380,6 +380,81 @@ private import _TestingInternals
       #expect((ExitTest.current != nil) as Bool)
     }
   }
+
+#if ExperimentalExitTestValueCapture
+  @Test("Capture list")
+  func captureList() async {
+    let i = 123
+    let s = "abc" as Any
+    await #expect(exitsWith: .success) { [i = i as Int, s = s as! String] in
+      #expect(i == 123)
+      #expect(s == "abc")
+    }
+  }
+
+  @Test("Capture list (very long encoded form)")
+  func longCaptureList() async {
+    let count = 1 * 1024 * 1024
+    let buffer = Array(repeatElement(0 as UInt8, count: count))
+    await #expect(exitsWith: .success) { [count = count as Int, buffer = buffer as [UInt8]] in
+      #expect(buffer.count == count)
+    }
+  }
+
+  struct CapturableSuite: Codable {
+    var property = 456
+
+    @Test("self in capture list")
+    func captureListWithSelf() async {
+      await #expect(exitsWith: .success) { [self] in
+        #expect(self.property == 456)
+      }
+    }
+  }
+
+  class CapturableBaseClass: @unchecked Sendable, Codable {
+    init() {}
+
+    required init(from decoder: any Decoder) throws {}
+    func encode(to encoder: any Encoder) throws {}
+  }
+
+  final class CapturableDerivedClass: CapturableBaseClass, @unchecked Sendable {
+    let x: Int
+
+    init(x: Int) {
+      self.x = x
+      super.init()
+    }
+
+    required init(from decoder: any Decoder) throws {
+      let container = try decoder.singleValueContainer()
+      self.x = try container.decode(Int.self)
+      super.init()
+    }
+
+    override func encode(to encoder: any Encoder) throws {
+      var container = encoder.singleValueContainer()
+      try container.encode(x)
+    }
+  }
+
+  @Test("Capturing an instance of a subclass")
+  func captureSubclass() async {
+    let instance = CapturableDerivedClass(x: 123)
+    await #expect(exitsWith: .success) { [instance = instance as CapturableBaseClass] in
+      #expect((instance as AnyObject) is CapturableBaseClass)
+      // However, because the static type of `instance` is not Derived, we won't
+      // be able to cast it to Derived.
+      #expect(!((instance as AnyObject) is CapturableDerivedClass))
+    }
+    await #expect(exitsWith: .success) { [instance = instance as CapturableDerivedClass] in
+      #expect((instance as AnyObject) is CapturableBaseClass)
+      #expect((instance as AnyObject) is CapturableDerivedClass)
+      #expect(instance.x == 123)
+    }
+  }
+#endif
 }
 
 // MARK: - Fixtures
