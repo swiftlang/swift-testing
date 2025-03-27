@@ -436,7 +436,16 @@ extension ExitTestConditionMacro {
       fatalError("Could not find the body argument to this exit test. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
     }
 
-    let bodyArgumentExpr = arguments[trailingClosureIndex].expression
+    // Find any captured values and extract them from the trailing closure.
+    var capturedValues = [CapturedValue]()
+    var bodyArgumentExpr = arguments[trailingClosureIndex].expression
+    bodyArgumentExpr = removeParentheses(from: bodyArgumentExpr) ?? bodyArgumentExpr
+    if var closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
+       let captureList = closureExpr.signature?.capture?.items {
+      closureExpr.signature?.capture = ClosureCaptureClauseSyntax(items: [], trailingTrivia: .space)
+      capturedValues = captureList.map { CapturedValue($0, in: context) }
+      bodyArgumentExpr = ExprSyntax(closureExpr)
+    }
 
     // TODO: use UUID() here if we can link to Foundation
     let exitTestID = (UInt64.random(in: 0 ... .max), UInt64.random(in: 0 ... .max))
@@ -447,10 +456,20 @@ extension ExitTestConditionMacro {
     // Implement the body of the exit test outside the enum we're declaring so
     // that `Self` resolves to the type containing the exit test, not the enum.
     let bodyThunkName = context.makeUniqueName("")
+    let bodyThunkParameterList = FunctionParameterListSyntax {
+      for capturedValue in capturedValues {
+        FunctionParameterSyntax(
+          firstName: .wildcardToken(trailingTrivia: .space),
+          secondName: capturedValue.name.trimmed,
+          colon: .colonToken(trailingTrivia: .space),
+          type: capturedValue.type.trimmed
+        )
+      }
+    }
     decls.append(
       """
-      @Sendable func \(bodyThunkName)() async throws -> Swift.Void {
-        return try await Testing.__requiringTry(Testing.__requiringAwait(\(bodyArgumentExpr.trimmed)))()
+      @Sendable func \(bodyThunkName)(\(bodyThunkParameterList)) async throws {
+        _ = try await Testing.__requiringTry(Testing.__requiringAwait(\(bodyArgumentExpr.trimmed)))()
       }
       """
     )
@@ -514,15 +533,19 @@ extension ExitTestConditionMacro {
       }
     )
 
-    // Insert the exit test's ID as the first argument. Note that this will
-    // invalidate all indices into `arguments`!
-    arguments.insert(
+    // Insert additional arguments at the beginning of the argument list. Note
+    // that this will invalidate all indices into `arguments`!
+    arguments = [
+      Argument(label: "identifiedBy", expression: exitTestIDExpr),
       Argument(
-        label: "identifiedBy",
-        expression: exitTestIDExpr
+        label: "encodingCapturedValues",
+        expression: TupleExprSyntax {
+          for capturedValue in capturedValues {
+            LabeledExprSyntax(expression: capturedValue.expression.trimmed)
+          }
+        }
       ),
-      at: arguments.startIndex
-    )
+    ] + arguments
 
     // Replace the exit test body (as an argument to the macro) with a stub
     // closure that hosts the type we created above.

@@ -380,6 +380,16 @@ private import _TestingInternals
       #expect((ExitTest.current != nil) as Bool)
     }
   }
+
+  @Test("Capture list")
+  func captureList() async {
+    let i = 123
+    let s = "abc" as Any
+    await #expect(exitsWith: .success) { [i = i as Int, s = s as! String] in
+      #expect(i == 123)
+      #expect(s == "abc")
+    }
+  }
 }
 
 // MARK: - Fixtures

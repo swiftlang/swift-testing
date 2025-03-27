@@ -54,10 +54,13 @@ public struct ExitTest: Sendable, ~Copyable {
 
   /// The body closure of the exit test.
   ///
+  /// - Parameters:
+  ///   - exitTest: The exit test to which this body closure belongs.
+  ///
   /// Do not invoke this closure directly. Instead, invoke ``callAsFunction()``
   /// to run the exit test. Running the exit test will always terminate the
   /// current process.
-  fileprivate var body: @Sendable () async throws -> Void = {}
+  fileprivate var body: @Sendable (_ exitTest: borrowing Self) async throws -> Void = { _ in }
 
   /// Storage for ``observedValues``.
   ///
@@ -93,6 +96,42 @@ public struct ExitTest: Sendable, ~Copyable {
       _observedValues = newValue
     }
   }
+
+  /// The set of values captured in the parent process before the exit test is
+  /// called.
+  ///
+  /// The current exit test handler is responsible for encoding and decoding
+  /// these values. When the handler is called, it is passed an instance of
+  /// ``ExitTest``. The handler should encode the values in that instance's
+  /// ``capturedValues`` property, then pass the encoded forms of those values
+  /// to the child process.
+  ///
+  /// The child process should then decode these values and set the
+  /// ``capturedValues`` property of the exit test returned by
+  /// ``ExitTest/find(identifiedBy:)``.
+  ///
+  /// The order of values in this array must be the same between the parent and
+  /// child processes.
+  @_spi(ForToolsIntegrationOnly)
+  public var capturedValues: [any Codable & Sendable] = []
+
+  /// The types of the values captured in the parent process before the exit
+  /// test is called.
+  ///
+  /// The current exit test handler can use the types in this array to determine
+  /// how to decode captured values.
+  @_spi(ForToolsIntegrationOnly)
+  public fileprivate(set) var capturedValueTypes: [any (Codable & Sendable).Type]
+
+  /// Make a copy of this instance.
+  ///
+  /// - Returns: A copy of this instance.
+  ///
+  /// This function is unsafe because if the caller is not careful, it could
+  /// invoke the same exit test twice.
+  fileprivate borrowing func unsafeCopy() -> Self {
+    Self(id: id, body: body, _observedValues: _observedValues, capturedValues: capturedValues, capturedValueTypes: capturedValueTypes)
+  }
 }
 
 #if !SWT_NO_EXIT_TESTS
@@ -112,7 +151,7 @@ extension ExitTest {
     let exitTest: ExitTest?
 
     init(exitTest: borrowing ExitTest) {
-      self.exitTest = ExitTest(id: exitTest.id, body: exitTest.body, _observedValues: exitTest._observedValues)
+      self.exitTest = exitTest.unsafeCopy()
     }
   }
 
@@ -225,7 +264,7 @@ extension ExitTest {
     }
 
     do {
-      try await body()
+      try await body(self)
     } catch {
       _errorInMain(error)
     }
@@ -259,13 +298,13 @@ extension ExitTest: DiscoverableAsTestContent {
   ///
   /// - Warning: This function is used to implement the `#expect(exitsWith:)`
   ///   macro. Do not use it directly.
-  public static func __store(
+  public static func __store<each T>(
     _ id: (UInt64, UInt64),
-    _ body: @escaping @Sendable () async throws -> Void,
+    _ body: @escaping @Sendable (repeat each T) async throws -> Void,
     into outValue: UnsafeMutableRawPointer,
     asTypeAt typeAddress: UnsafeRawPointer,
     withHintAt hintAddress: UnsafeRawPointer? = nil
-  ) -> CBool {
+  ) -> CBool where repeat each T: Codable & Sendable {
     let callerExpectedType = TypeInfo(describing: typeAddress.load(as: Any.Type.self))
     let selfType = TypeInfo(describing: Self.self)
     guard callerExpectedType == selfType else {
@@ -275,7 +314,19 @@ extension ExitTest: DiscoverableAsTestContent {
     if let hintedID = hintAddress?.load(as: ID.self), hintedID != id {
       return false
     }
-    outValue.initializeMemory(as: Self.self, to: Self(id: id, body: body))
+
+    // Wrap the body function in a thunk that decodes any captured state and
+    // passes it along.
+    let body: @Sendable (borrowing ExitTest) async throws -> Void = { exitTest in
+      let values: (repeat each T) = try exitTest.unpackCapturedValues()
+      try await body(repeat each values)
+    }
+
+    // Gather the types of any captured values.
+    var capturedValueTypes: [any (Codable & Sendable).Type] = []
+    repeat capturedValueTypes.append((each T).self)
+
+    outValue.initializeMemory(as: Self.self, to: Self(id: id, body: body, capturedValueTypes: capturedValueTypes))
     return true
   }
 }
@@ -311,11 +362,104 @@ extension ExitTest {
 
 // MARK: -
 
+extension ExitTest {
+  /// Unpack this exit test's captured values and return them as a tuple.
+  ///
+  /// - Returns: A tuple containing this exit test's captured values.
+  ///
+  /// - Throws: If an expected value could not be found or was not of the
+  ///   correct type.
+  ///
+  /// This function assumes that the entry point function has already set this
+  /// exit test's ``capturedValues`` property correctly.
+  borrowing func unpackCapturedValues<each T>() throws -> (repeat each T) {
+    func nextValue<U>(
+      as type: U.Type,
+      from capturedValues: inout ArraySlice<any Codable & Sendable>
+    ) throws -> U {
+      guard let capturedValue = capturedValues.first as? U else {
+        throw SystemError(description: "Could not find the next captured value in the current exit test.")
+      }
+      capturedValues = capturedValues.dropFirst()
+      return capturedValue
+    }
+
+    var capturedValues = capturedValues[...]
+    return (repeat try nextValue(as: (each T).self, from: &capturedValues))
+  }
+
+  /// Decode this exit test's captured values and update its ``capturedValues``
+  /// property.
+  ///
+  /// - Throws: If a captured value could not be decoded.
+  ///
+  /// This function should only be used when the process was started via the
+  /// `__swiftPMEntryPoint()` function. The effect of using it under other
+  /// configurations is undefined.
+  fileprivate mutating func decodeCapturedValuesForEntryPoint() throws {
+    // FIXME: don't use an environment variable to store this data.
+    guard var allCapturedValuesJSON = Environment.variable(named: "SWT_EXPERIMENTAL_CAPTURED_VALUES") else {
+      throw SystemError(description: "Could not find memory containing the current exit test's captured values list.")
+    }
+    var capturedValuesJSON = try allCapturedValuesJSON.withUTF8 { allCapturedValuesJSON in
+      try JSON.decode([[UInt8]].self, from: UnsafeRawBufferPointer(allCapturedValuesJSON))
+    }[...]
+
+    // Helper function to decode
+    func decodeNextValue<T>(
+      as type: T.Type,
+      from capturedValuesJSON: inout ArraySlice<[UInt8]>
+    ) throws -> T where T: Decodable {
+      guard let capturedValueJSON = capturedValuesJSON.first else {
+        throw SystemError(description: "Could not find memory containing the next captured value in the current exit test.")
+      }
+      capturedValuesJSON = capturedValuesJSON.dropFirst()
+      return try capturedValueJSON.withUnsafeBytes { capturedValueJSON in
+        try JSON.decode(type, from: capturedValueJSON)
+      }
+    }
+
+    // Walk the list of captured values' types, map them to their JSON blobs,
+    // and decode them.
+    self.capturedValues = try capturedValueTypes.map { type in
+      try decodeNextValue(as: type, from: &capturedValuesJSON)
+    }
+  }
+
+  /// Encode this exit test's captured values in a format suitable for passing
+  /// to the child process.
+  ///
+  /// - Parameters:
+  ///   - body: A function to call.
+  ///
+  /// - Returns: Whatever is returned by `body`.
+  ///
+  /// - Throws: Whatever is thrown by `body` or by the encoding process.
+  ///
+  /// This function produces a byte buffer containing the stored representations
+  /// of all the values in this exit test's ``capturedValues`` property, then
+  /// passes that buffer to `body`.
+  ///
+  /// This function should only be used when the process was started via the
+  /// `__swiftPMEntryPoint()` function. The effect of using it under other
+  /// configurations is undefined.
+  fileprivate borrowing func withEncodeCapturedValuesForEntryPoint<R>(_ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    var capturedValuesJSON = [[UInt8]]()
+    for capturedValue in capturedValues {
+      try JSON.withEncoding(of: capturedValue) { capturedValueJSON in
+        capturedValuesJSON.append(Array(capturedValueJSON))
+      }
+    }
+    return try JSON.withEncoding(of: capturedValuesJSON, body)
+  }
+}
+
 /// Check that an expression always exits (terminates the current process) with
 /// a given status.
 ///
 /// - Parameters:
 ///   - exitTestID: The unique identifier of the exit test.
+///   - capturedValues: Any values captured by the exit test.
 ///   - expectedExitCondition: The expected exit condition.
 ///   - observedValues: An array of key paths representing results from within
 ///     the exit test that should be observed and returned by this macro. The
@@ -333,8 +477,9 @@ extension ExitTest {
 /// This function contains the common implementation for all
 /// `await #expect(exitsWith:) { }` invocations regardless of calling
 /// convention.
-func callExitTest(
+func callExitTest<each T>(
   identifiedBy exitTestID: (UInt64, UInt64),
+  encodingCapturedValues capturedValues: (repeat each T),
   exitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable],
   expression: __Expression,
@@ -342,15 +487,26 @@ func callExitTest(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<ExitTest.Result?, any Error> {
+) async -> Result<ExitTest.Result?, any Error> where repeat each T: Codable & Sendable {
   guard let configuration = Configuration.current ?? Configuration.all.first else {
     preconditionFailure("A test must be running on the current task to use #expect(exitsWith:).")
   }
 
   var result: ExitTest.Result
   do {
-    var exitTest = ExitTest(id: ExitTest.ID(exitTestID))
-    exitTest.observedValues = observedValues
+    // Construct a temporary/local exit test to pass to the exit test handler.
+    var capturedValuesArray: [any Codable & Sendable] = []
+    repeat capturedValuesArray.append(each capturedValues)
+    var capturedValueTypes: [any (Codable & Sendable).Type] = []
+    repeat capturedValueTypes.append((each T).self)
+    let exitTest = ExitTest(
+      id: ExitTest.ID(exitTestID),
+      _observedValues: observedValues,
+      capturedValues: capturedValuesArray,
+      capturedValueTypes: capturedValueTypes
+    )
+
+    // Invoke the exit test handler and wait for the child process to terminate.
     result = try await configuration.exitTestHandler(exitTest)
 
 #if os(Windows)
@@ -525,8 +681,15 @@ extension ExitTest {
       }
     }
 
-    result.body = { [configuration, body = result.body] in
-      try await Configuration.withCurrent(configuration, perform: body)
+    // FIXME: get correct source location
+    Issue.withErrorRecording(at: .__here(), configuration: configuration) {
+      try result.decodeCapturedValuesForEntryPoint()
+    }
+
+    result.body = { [configuration, body = result.body] exitTest in
+      try await Configuration.withCurrent(configuration) {
+        try await body(exitTest)
+      }
     }
     return result
   }
@@ -620,6 +783,11 @@ extension ExitTest {
       // to run.
       try JSON.withEncoding(of: exitTest.id) { json in
         childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_ID"] = String(decoding: json, as: UTF8.self)
+      }
+
+      // FIXME: don't use an environment variable to store this data.
+      try exitTest.withEncodeCapturedValuesForEntryPoint { capturedValuesJSON in
+        childEnvironment["SWT_EXPERIMENTAL_CAPTURED_VALUES"] = String(decoding: capturedValuesJSON, as: UTF8.self)
       }
 
       typealias ResultUpdater = @Sendable (inout ExitTest.Result) -> Void
@@ -767,9 +935,7 @@ extension ExitTest {
       // Translate the issue back into a "real" issue and record it
       // in the parent process. This translation is, of course, lossy
       // due to the process boundary, but we make a best effort.
-      let comments: [Comment] = event.messages.compactMap { message in
-        message.symbol == .details ? Comment(rawValue: message.text) : nil
-      }
+      let comments: [Comment] = event.messages.map(\.text).map(Comment.init(rawValue:))
       let issueKind: Issue.Kind = if let error = issue._error {
         .errorCaught(error)
       } else {
