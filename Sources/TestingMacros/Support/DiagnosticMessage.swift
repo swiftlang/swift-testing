@@ -739,22 +739,6 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
-  /// Create a diagnostic message stating that a condition macro nested inside
-  /// an exit test will not record any diagnostics.
-  ///
-  /// - Parameters:
-  ///   - checkMacro: The inner condition macro invocation.
-  ///   - exitTestMacro: The containing exit test macro invocation.
-  ///
-  /// - Returns: A diagnostic message.
-  static func checkUnsupported(_ checkMacro: some FreestandingMacroExpansionSyntax, inExitTest exitTestMacro: some FreestandingMacroExpansionSyntax) -> Self {
-    Self(
-      syntax: Syntax(checkMacro),
-      message: "Expression \(_macroName(checkMacro)) will not record an issue on failure inside exit test \(_macroName(exitTestMacro))",
-      severity: .error
-    )
-  }
-
   var syntax: Syntax
 
   // MARK: - DiagnosticMessage
@@ -768,6 +752,82 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
 // MARK: - Captured values
 
 extension DiagnosticMessage {
+#if ExperimentalExitTestValueCapture
+  /// Create a diagnostic message stating that a specifier keyword cannot be
+  /// used with a given closure capture list item.
+  ///
+  /// - Parameters:
+  ///   - specifier: The invalid specifier.
+  ///   - capture: The closure capture list item.
+  ///
+  /// - Returns: A diagnostic message.
+  static func specifierUnsupported(_ specifier: ClosureCaptureSpecifierSyntax, on capture: ClosureCaptureSyntax) -> Self {
+    Self(
+      syntax: Syntax(specifier),
+      message: "Specifier '\(specifier.trimmed)' cannot be used with captured value '\(capture.name.textWithoutBackticks)'",
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Remove '\(specifier.trimmed)'"),
+          changes: [
+            .replace(
+              oldNode: Syntax(capture),
+              newNode: Syntax(capture.with(\.specifier, nil))
+            )
+          ]
+        ),
+      ]
+    )
+  }
+
+  /// Create a diagnostic message stating that a closure capture list item's
+  /// type is ambiguous and must be made explicit.
+  ///
+  /// - Parameters:
+  ///   - capture: The closure capture list item.
+  ///   - initializerClause: The existing initializer clause, if any.
+  ///
+  /// - Returns: A diagnostic message.
+  static func typeOfCaptureIsAmbiguous(_ capture: ClosureCaptureSyntax, initializedWith initializerClause: InitializerClauseSyntax? = nil) -> Self {
+    let castValueExpr: some ExprSyntaxProtocol = if let initializerClause {
+      ExprSyntax(initializerClause.value.trimmed)
+    } else {
+      ExprSyntax(DeclReferenceExprSyntax(baseName: capture.name.trimmed))
+    }
+    let initializerValueExpr = ExprSyntax(
+      AsExprSyntax(
+        expression: castValueExpr,
+        asKeyword: .keyword(.as, leadingTrivia: .space, trailingTrivia: .space),
+        type: TypeSyntax.placeholder("T")
+      )
+    )
+    let placeholderInitializerClause = if let initializerClause {
+      initializerClause.with(\.value, initializerValueExpr)
+    } else {
+      InitializerClauseSyntax(
+        equal: .equalToken(leadingTrivia: .space, trailingTrivia: .space),
+        value: initializerValueExpr
+      )
+    }
+
+    return Self(
+      syntax: Syntax(capture),
+      message: "Type of captured value '\(capture.name.textWithoutBackticks)' is ambiguous",
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Add '= \(castValueExpr) as T'"),
+          changes: [
+            .replace(
+              oldNode: Syntax(capture),
+              newNode: Syntax(capture.with(\.initializer, placeholderInitializerClause))
+            )
+          ]
+        ),
+      ]
+    )
+  }
+#else
   /// Create a diagnostic message stating that a capture clause cannot be used
   /// in an exit test.
   ///
@@ -778,6 +838,12 @@ extension DiagnosticMessage {
   ///
   /// - Returns: A diagnostic message.
   static func captureClauseUnsupported(_ captureClause: ClosureCaptureClauseSyntax, in closure: ClosureExprSyntax, inExitTest exitTestMacro: some FreestandingMacroExpansionSyntax) -> Self {
+#if SWIFT_PACKAGE
+    let message = "Capture clause in closure passed to \(_macroName(exitTestMacro)) requires that the 'ExperimentalExitTestValueCapture' trait be enabled for package 'swift-testing'"
+#else
+    let message = "Cannot specify a capture clause in closure passed to \(_macroName(exitTestMacro))"
+#endif
+
     let changes: [FixIt.Change]
     if let signature = closure.signature,
        Array(signature.with(\.capture, nil).tokens(viewMode: .sourceAccurate)).count == 1 {
@@ -801,7 +867,7 @@ extension DiagnosticMessage {
 
     return Self(
       syntax: Syntax(captureClause),
-      message: "Cannot specify a capture clause in closure passed to \(_macroName(exitTestMacro))",
+      message: message,
       severity: .error,
       fixIts: [
         FixIt(
@@ -811,4 +877,5 @@ extension DiagnosticMessage {
       ]
     )
   }
+#endif
 }

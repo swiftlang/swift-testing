@@ -32,6 +32,7 @@ add_library(Testing
   Events/Recorder/Event.Symbol.swift
   Events/TimeValue.swift
   ExitTests/ExitTest.swift
+  ExitTests/ExitTest.CapturedValue.swift
   ExitTests/ExitTest.Condition.swift
   ExitTests/ExitTest.Result.swift
   ExitTests/SpawnProcess.swift

@@ -14,17 +14,18 @@ import SwiftSyntaxMacros
 import SwiftDiagnostics
 
 extension MacroExpansionContext {
-  /// Get the type of the lexical context enclosing the given node.
+  /// Get the type of the given lexical context.
   ///
   /// - Parameters:
-  ///   - node: The node whose lexical context should be examined.
+  ///   - lexicalContext: The lexical context.
   ///
-  /// - Returns: The type of the lexical context enclosing `node`, or `nil` if
-  ///   the lexical context cannot be represented as a type.
+  /// - Returns: The type represented by `lexicalContext`, or `nil` if one could
+  ///   not be derived (for example, because the lexical context inclues a
+  ///   function, closure, or some other non-type scope.)
   ///
   /// If the lexical context includes functions, closures, or some other
   /// non-type scope, the value of this property is `nil`.
-  var typeOfLexicalContext: TypeSyntax? {
+  func type(ofLexicalContext lexicalContext: some RandomAccessCollection<Syntax>) -> TypeSyntax? {
     var typeNames = [String]()
     for lexicalContext in lexicalContext.reversed() {
       guard let decl = lexicalContext.asProtocol((any DeclGroupSyntax).self) else {
@@ -37,6 +38,14 @@ extension MacroExpansionContext {
     }
 
     return "\(raw: typeNames.joined(separator: "."))"
+  }
+
+  /// The type of the lexical context enclosing the given node.
+  ///
+  /// If the lexical context includes functions, closures, or some other
+  /// non-type scope, the value of this property is `nil`.
+  var typeOfLexicalContext: TypeSyntax? {
+    type(ofLexicalContext: lexicalContext)
   }
 }
 

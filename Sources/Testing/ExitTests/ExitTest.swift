@@ -64,10 +64,13 @@ public struct ExitTest: Sendable, ~Copyable {
 
   /// The body closure of the exit test.
   ///
+  /// - Parameters:
+  ///   - exitTest: The exit test to which this body closure belongs.
+  ///
   /// Do not invoke this closure directly. Instead, invoke ``callAsFunction()``
   /// to run the exit test. Running the exit test will always terminate the
   /// current process.
-  fileprivate var body: @Sendable () async throws -> Void = {}
+  fileprivate var body: @Sendable (_ exitTest: inout Self) async throws -> Void = { _ in }
 
   /// Storage for ``observedValues``.
   ///
@@ -103,6 +106,41 @@ public struct ExitTest: Sendable, ~Copyable {
       _observedValues = newValue
     }
   }
+
+#if ExperimentalExitTestValueCapture
+  /// The set of values captured in the parent process before the exit test is
+  /// called.
+  ///
+  /// This property is automatically set by the testing library when using the
+  /// built-in exit test handler and entry point functions. Do not modify the
+  /// value of this property unless you are implementing a custom exit test
+  /// handler or entry point function.
+  ///
+  /// The order of values in this array must be the same between the parent and
+  /// child processes.
+  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+  public var capturedValues = [CapturedValue]()
+#else
+  /// Placeholder for ``capturedValues`` when value capturing is disabled.
+  var capturedValues: EmptyCollection<CapturedValue> {
+    EmptyCollection()
+  }
+#endif
+
+  /// Make a copy of this instance.
+  ///
+  /// - Returns: A copy of this instance.
+  ///
+  /// This function is unsafe because if the caller is not careful, it could
+  /// invoke the same exit test twice.
+  fileprivate borrowing func unsafeCopy() -> Self {
+    var result = Self(id: id, body: body)
+    result._observedValues = _observedValues
+#if ExperimentalExitTestValueCapture
+    result.capturedValues = capturedValues
+#endif
+    return result
+  }
 }
 
 #if !SWT_NO_EXIT_TESTS
@@ -122,7 +160,7 @@ extension ExitTest {
     let exitTest: ExitTest?
 
     init(exitTest: borrowing ExitTest) {
-      self.exitTest = ExitTest(id: exitTest.id, body: exitTest.body, _observedValues: exitTest._observedValues)
+      self.exitTest = exitTest.unsafeCopy()
     }
   }
 
@@ -235,7 +273,7 @@ extension ExitTest {
     }
 
     do {
-      try await body()
+      try await body(&self)
     } catch {
       _errorInMain(error)
     }
@@ -269,23 +307,39 @@ extension ExitTest: DiscoverableAsTestContent {
   ///
   /// - Warning: This function is used to implement the `#expect(exitsWith:)`
   ///   macro. Do not use it directly.
-  public static func __store(
+  public static func __store<each T>(
     _ id: (UInt64, UInt64),
-    _ body: @escaping @Sendable () async throws -> Void,
+    _ body: @escaping @Sendable (repeat each T) async throws -> Void,
     into outValue: UnsafeMutableRawPointer,
     asTypeAt typeAddress: UnsafeRawPointer,
     withHintAt hintAddress: UnsafeRawPointer? = nil
-  ) -> CBool {
+  ) -> CBool where repeat each T: Codable & Sendable {
+    // Check that the type matches.
     let callerExpectedType = TypeInfo(describing: typeAddress.load(as: Any.Type.self))
     let selfType = TypeInfo(describing: Self.self)
     guard callerExpectedType == selfType else {
       return false
     }
+
+    // Check that the ID matches if provided.
     let id = ID(id)
     if let hintedID = hintAddress?.load(as: ID.self), hintedID != id {
       return false
     }
-    outValue.initializeMemory(as: Self.self, to: Self(id: id, body: body))
+
+    // Wrap the body function in a thunk that decodes any captured state and
+    // passes it along.
+    let body: @Sendable (inout Self) async throws -> Void = { exitTest in
+      let values: (repeat each T) = try exitTest.capturedValues.takeCapturedValues()
+      try await body(repeat each values)
+    }
+
+    // Construct and return the instance.
+    var exitTest = Self(id: id, body: body)
+#if ExperimentalExitTestValueCapture
+    exitTest.capturedValues = Array(repeat (each T).self)
+#endif
+    outValue.initializeMemory(as: Self.self, to: exitTest)
     return true
   }
 }
@@ -326,6 +380,7 @@ extension ExitTest {
 ///
 /// - Parameters:
 ///   - exitTestID: The unique identifier of the exit test.
+///   - capturedValues: Any values captured by the exit test.
 ///   - expectedExitCondition: The expected exit condition.
 ///   - observedValues: An array of key paths representing results from within
 ///     the exit test that should be observed and returned by this macro. The
@@ -343,8 +398,9 @@ extension ExitTest {
 /// This function contains the common implementation for all
 /// `await #expect(exitsWith:) { }` invocations regardless of calling
 /// convention.
-func callExitTest(
+func callExitTest<each T>(
   identifiedBy exitTestID: (UInt64, UInt64),
+  encodingCapturedValues capturedValues: (repeat each T),
   exitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable],
   expression: __Expression,
@@ -352,15 +408,21 @@ func callExitTest(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<ExitTest.Result?, any Error> {
+) async -> Result<ExitTest.Result?, any Error> where repeat each T: Codable & Sendable {
   guard let configuration = Configuration.current ?? Configuration.all.first else {
     preconditionFailure("A test must be running on the current task to use #expect(exitsWith:).")
   }
 
   var result: ExitTest.Result
   do {
+    // Construct a temporary/local exit test to pass to the exit test handler.
     var exitTest = ExitTest(id: ExitTest.ID(exitTestID))
     exitTest.observedValues = observedValues
+#if ExperimentalExitTestValueCapture
+    exitTest.capturedValues = Array(repeat each capturedValues)
+#endif
+
+    // Invoke the exit test handler and wait for the child process to terminate.
     result = try await configuration.exitTestHandler(exitTest)
 
 #if os(Windows)
@@ -455,15 +517,23 @@ extension ExitTest {
   /// are available or the child environment is otherwise terminated. The parent
   /// environment is then responsible for interpreting those results and
   /// recording any issues that occur.
-  public typealias Handler = @Sendable (_ exitTest: borrowing ExitTest) async throws -> ExitTest.Result
+  public typealias Handler = @Sendable (_ exitTest: borrowing Self) async throws -> ExitTest.Result
 
-  /// The back channel file handle set up by the parent process.
+  /// Make a file handle from the string contained in the given environment
+  /// variable.
   ///
-  /// The value of this property is a file handle open for writing to which
-  /// events should be written, or `nil` if the file handle could not be
-  /// resolved.
-  private static let _backChannelForEntryPoint: FileHandle? = {
-    guard let backChannelEnvironmentVariable = Environment.variable(named: "SWT_EXPERIMENTAL_BACKCHANNEL") else {
+  /// - Parameters:
+  ///   - name: The name of the environment variable to read. The value of this
+  ///     environment variable should represent the file handle. The exact value
+  ///     is platform-specific but is generally the file descriptor as a string.
+  ///   - mode: The mode to open the file with, such as `"wb"`.
+  ///
+  /// - Returns: A new file handle, or `nil` if one could not be created.
+  ///
+  /// The effect of calling this function more than once for the same
+  /// environment variable is undefined.
+  private static func _makeFileHandle(forEnvironmentVariableNamed name: String, mode: String) -> FileHandle? {
+    guard let environmentVariable = Environment.variable(named: name) else {
       return nil
     }
 
@@ -473,20 +543,55 @@ extension ExitTest {
 
     var fd: CInt?
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
-    fd = CInt(backChannelEnvironmentVariable)
+    fd = CInt(environmentVariable)
 #elseif os(Windows)
-    if let handle = UInt(backChannelEnvironmentVariable).flatMap(HANDLE.init(bitPattern:)) {
-      fd = _open_osfhandle(Int(bitPattern: handle), _O_WRONLY | _O_BINARY)
+    if let handle = UInt(environmentVariable).flatMap(HANDLE.init(bitPattern:)) {
+      var flags: CInt = switch (mode.contains("r"), mode.contains("w")) {
+      case (true, true):
+        _O_RDWR
+      case (true, false):
+        _O_RDONLY
+      case (false, true):
+        _O_WRONLY
+      case (false, false):
+        0
+      }
+      flags |= _O_BINARY
+      fd = _open_osfhandle(Int(bitPattern: handle), flags)
     }
 #else
-#warning("Platform-specific implementation missing: back-channel pipe unavailable")
+#warning("Platform-specific implementation missing: additional file descriptors unavailable")
 #endif
     guard let fd, fd >= 0 else {
       return nil
     }
 
-    return try? FileHandle(unsafePOSIXFileDescriptor: fd, mode: "wb")
-  }()
+    return try? FileHandle(unsafePOSIXFileDescriptor: fd, mode: mode)
+  }
+
+  /// Make a string suitable for use as the value of an environment variable
+  /// that describes the given file handle.
+  ///
+  /// - Parameters:
+  ///   - fileHandle: The file handle to represent.
+  ///
+  /// - Returns: A string representation of `fileHandle` that can be converted
+  ///   back to a (new) file handle with `_makeFileHandle()`, or `nil` if the
+  ///   file handle could not be converted to a string.
+  private static func _makeEnvironmentVariable(for fileHandle: borrowing FileHandle) -> String? {
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+    return fileHandle.withUnsafePOSIXFileDescriptor { fd in
+      fd.map(String.init(describing:))
+    }
+#elseif os(Windows)
+    return fileHandle.withUnsafeWindowsHANDLE { handle in
+      handle.flatMap { String(describing: UInt(bitPattern: $0)) }
+    }
+#else
+#warning("Platform-specific implementation missing: additional file descriptors unavailable")
+    return nil
+#endif
+  }
 
   /// Find the exit test function specified in the environment of the current
   /// process, if any.
@@ -521,7 +626,7 @@ extension ExitTest {
     }
 
     // We can't say guard let here because it counts as a consume.
-    guard _backChannelForEntryPoint != nil else {
+    guard let backChannel = _makeFileHandle(forEnvironmentVariableNamed: "SWT_EXPERIMENTAL_BACKCHANNEL", mode: "wb") else {
       return result
     }
 
@@ -532,9 +637,9 @@ extension ExitTest {
     // Only forward issue-recorded events. (If we start handling other kinds of
     // events in the future, we can forward them too.)
     let eventHandler = ABI.BackChannelVersion.eventHandler(encodeAsJSONLines: true) { json in
-      _ = try? _backChannelForEntryPoint?.withLock {
-        try _backChannelForEntryPoint?.write(json)
-        try _backChannelForEntryPoint?.write("\n")
+      _ = try? backChannel.withLock {
+        try backChannel.write(json)
+        try backChannel.write("\n")
       }
     }
     configuration.eventHandler = { event, eventContext in
@@ -543,8 +648,13 @@ extension ExitTest {
       }
     }
 
-    result.body = { [configuration, body = result.body] in
-      try await Configuration.withCurrent(configuration, perform: body)
+    result.body = { [configuration, body = result.body] exitTest in
+      try await Configuration.withCurrent(configuration) {
+#if ExperimentalExitTestValueCapture
+        try exitTest._decodeCapturedValuesForEntryPoint()
+#endif
+        try await body(&exitTest)
+      }
     }
     return result
   }
@@ -570,7 +680,7 @@ extension ExitTest {
       let parentArguments = CommandLine.arguments
 #if SWT_TARGET_OS_APPLE
       lazy var xctestTargetPath = Environment.variable(named: "XCTestBundlePath")
-        ?? parentArguments.dropFirst().last
+      ?? parentArguments.dropFirst().last
       // If the running executable appears to be the XCTest runner executable in
       // Xcode, figure out the path to the running XCTest bundle. If we can find
       // it, then we can re-run the host XCTestCase instance.
@@ -614,7 +724,7 @@ extension ExitTest {
       return result
     }()
 
-    return { exitTest in
+    @Sendable func result(_ exitTest: borrowing ExitTest) async throws -> ExitTest.Result {
       let childProcessExecutablePath = try childProcessExecutablePath.get()
 
       // Inherit the environment from the parent process and make any necessary
@@ -667,36 +777,63 @@ extension ExitTest {
         var backChannelWriteEnd: FileHandle!
         try FileHandle.makePipe(readEnd: &backChannelReadEnd, writeEnd: &backChannelWriteEnd)
 
-        // Let the child process know how to find the back channel by setting a
-        // known environment variable to the corresponding file descriptor
-        // (HANDLE on Windows.)
-        var backChannelEnvironmentVariable: String?
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
-        backChannelEnvironmentVariable = backChannelWriteEnd.withUnsafePOSIXFileDescriptor { fd in
-          fd.map(String.init(describing:))
-        }
-#elseif os(Windows)
-        backChannelEnvironmentVariable = backChannelWriteEnd.withUnsafeWindowsHANDLE { handle in
-          handle.flatMap { String(describing: UInt(bitPattern: $0)) }
-        }
+#if ExperimentalExitTestValueCapture
+        // Create another pipe to send captured values (and possibly other state
+        // in the future) to the child process.
+        var capturedValuesReadEnd: FileHandle!
+        var capturedValuesWriteEnd: FileHandle!
+        try FileHandle.makePipe(readEnd: &capturedValuesReadEnd, writeEnd: &capturedValuesWriteEnd)
 #else
-#warning("Platform-specific implementation missing: back-channel pipe unavailable")
+        // A placeholder variable with this name (to make it easier to get a
+        // pointer to it when we call spawnExecutable().)
+        let capturedValuesReadEnd: Void
 #endif
-        if let backChannelEnvironmentVariable {
+
+        // Let the child process know how to find the back channel and
+        // captured values channel by setting a known environment variable to
+        // the corresponding file descriptor (HANDLE on Windows) for each.
+        if let backChannelEnvironmentVariable = _makeEnvironmentVariable(for: backChannelWriteEnd) {
           childEnvironment["SWT_EXPERIMENTAL_BACKCHANNEL"] = backChannelEnvironmentVariable
         }
+#if ExperimentalExitTestValueCapture
+        if let capturedValuesEnvironmentVariable = _makeEnvironmentVariable(for: capturedValuesReadEnd) {
+          childEnvironment["SWT_EXPERIMENTAL_CAPTURED_VALUES"] = capturedValuesEnvironmentVariable
+        }
+#endif
 
         // Spawn the child process.
         let processID = try withUnsafePointer(to: backChannelWriteEnd) { backChannelWriteEnd in
-          try spawnExecutable(
-            atPath: childProcessExecutablePath,
-            arguments: childArguments,
-            environment: childEnvironment,
-            standardOutput: stdoutWriteEnd,
-            standardError: stderrWriteEnd,
-            additionalFileHandles: [backChannelWriteEnd]
-          )
+          try withUnsafePointer(to: capturedValuesReadEnd) { capturedValuesReadEnd in
+            var additionalFileHandles = [backChannelWriteEnd]
+#if ExperimentalExitTestValueCapture
+            additionalFileHandles.append(capturedValuesReadEnd)
+#endif
+            return try spawnExecutable(
+              atPath: childProcessExecutablePath,
+              arguments: childArguments,
+              environment: childEnvironment,
+              standardOutput: stdoutWriteEnd,
+              standardError: stderrWriteEnd,
+              additionalFileHandles: additionalFileHandles
+            )
+          }
         }
+
+#if ExperimentalExitTestValueCapture
+        // Write the captured values blob over the back channel to the child
+        // process. (If we end up needing to write additional data, we can
+        // define a full schema for this stream. Fortunately, both endpoints are
+        // implemented in the same copy of the testing library, so we don't have
+        // to worry about backwards-compatibility.)
+        try capturedValuesWriteEnd.withLock {
+          try exitTest._withEncodedCapturedValuesForEntryPoint { capturedValuesJSON in
+            try capturedValuesWriteEnd.write(capturedValuesJSON)
+            try capturedValuesWriteEnd.write("\n")
+          }
+        }
+        capturedValuesReadEnd.close()
+        capturedValuesWriteEnd.close()
+#endif
 
         // Await termination of the child process.
         taskGroup.addTask {
@@ -738,6 +875,8 @@ extension ExitTest {
         return result
       }
     }
+
+    return result
   }
 
   /// Read lines from the given back channel file handle and process them as
@@ -785,9 +924,7 @@ extension ExitTest {
       // Translate the issue back into a "real" issue and record it
       // in the parent process. This translation is, of course, lossy
       // due to the process boundary, but we make a best effort.
-      let comments: [Comment] = event.messages.compactMap { message in
-        message.symbol == .details ? Comment(rawValue: message.text) : nil
-      }
+      let comments: [Comment] = event.messages.map(\.text).map(Comment.init(rawValue:))
       let issueKind: Issue.Kind = if let error = issue._error {
         .errorCaught(error)
       } else {
@@ -803,5 +940,64 @@ extension ExitTest {
       issueCopy.record()
     }
   }
+
+#if ExperimentalExitTestValueCapture
+  /// Decode this exit test's captured values and update its ``capturedValues``
+  /// property.
+  ///
+  /// - Throws: If a captured value could not be decoded.
+  ///
+  /// This function should only be used when the process was started via the
+  /// `__swiftPMEntryPoint()` function. The effect of using it under other
+  /// configurations is undefined.
+  private mutating func _decodeCapturedValuesForEntryPoint() throws {
+    // Read the content of the captured values stream provided by the parent
+    // process above.
+    guard let fileHandle = Self._makeFileHandle(forEnvironmentVariableNamed: "SWT_EXPERIMENTAL_CAPTURED_VALUES", mode: "rb") else {
+      return
+    }
+    let capturedValuesJSON = try fileHandle.readToEnd()
+    let capturedValuesJSONLines = capturedValuesJSON.split(whereSeparator: \.isASCIINewline)
+    assert(capturedValues.count == capturedValuesJSONLines.count, "Expected to decode \(capturedValues.count) captured value(s) for the current exit test, but received \(capturedValuesJSONLines.count). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+
+    // Walk the list of captured values' types, map them to their JSON blobs,
+    // and decode them.
+    capturedValues = try zip(capturedValues, capturedValuesJSONLines).map { capturedValue, capturedValueJSON in
+      var capturedValue = capturedValue
+
+      func open<T>(_ type: T.Type) throws -> T where T: Codable & Sendable {
+        return try capturedValueJSON.withUnsafeBytes { capturedValueJSON in
+          try JSON.decode(type, from: capturedValueJSON)
+        }
+      }
+      capturedValue.wrappedValue = try open(capturedValue.typeOfWrappedValue)
+
+      return capturedValue
+    }
+  }
+
+  /// Encode this exit test's captured values in a format suitable for passing
+  /// to the child process.
+  ///
+  /// - Parameters:
+  ///   - body: A function to call. This function is called once per captured
+  ///     value in the exit test.
+  ///
+  /// - Throws: Whatever is thrown by `body` or while encoding.
+  ///
+  /// This function produces a byte buffer representing each value in this exit
+  /// test's ``capturedValues`` property and passes each buffer to `body`.
+  ///
+  /// This function should only be used when the process was started via the
+  /// `__swiftPMEntryPoint()` function. The effect of using it under other
+  /// configurations is undefined.
+  private borrowing func _withEncodedCapturedValuesForEntryPoint(_ body: (UnsafeRawBufferPointer) throws -> Void) throws -> Void {
+    for capturedValue in capturedValues {
+      try JSON.withEncoding(of: capturedValue.wrappedValue!) { capturedValueJSON in
+        try JSON.asJSONLine(capturedValueJSON, body)
+      }
+    }
+  }
+#endif
 }
 #endif

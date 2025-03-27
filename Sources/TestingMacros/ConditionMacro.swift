@@ -421,15 +421,15 @@ extension ExitTestConditionMacro {
     _ = try Base.expansion(of: macro, in: context)
 
     var arguments = argumentList(of: macro, in: context)
-    let requirementIndex = arguments.firstIndex { $0.label?.tokenKind == .identifier("exitsWith") }
-    guard let requirementIndex else {
-      fatalError("Could not find the requirement for this exit test. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+    let conditionIndex = arguments.firstIndex { $0.label?.tokenKind == .identifier("exitsWith") }
+    guard let conditionIndex else {
+      fatalError("Could not find the condition for this exit test. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
     }
     let observationListIndex = arguments.firstIndex { $0.label?.tokenKind == .identifier("observing") }
     if observationListIndex == nil {
       arguments.insert(
         Argument(label: "observing", expression: ArrayExprSyntax(expressions: [])),
-        at: arguments.index(after: requirementIndex)
+        at: arguments.index(after: conditionIndex)
       )
     }
     let trailingClosureIndex = arguments.firstIndex { $0.label?.tokenKind == _trailingClosureLabel.tokenKind }
@@ -437,15 +437,27 @@ extension ExitTestConditionMacro {
       fatalError("Could not find the body argument to this exit test. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
     }
 
-    // Extract the body argument and, if it's a closure with a capture list,
-    // emit an appropriate diagnostic.
     var bodyArgumentExpr = arguments[trailingClosureIndex].expression
+#if ExperimentalExitTestValueCapture
+    // Find any captured values and extract them from the trailing closure.
+    var capturedValues = [CapturedValueInfo]()
     bodyArgumentExpr = removeParentheses(from: bodyArgumentExpr) ?? bodyArgumentExpr
-    if let closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
-       let captureClause = closureExpr.signature?.capture,
-       !captureClause.items.isEmpty {
-      context.diagnose(.captureClauseUnsupported(captureClause, in: closureExpr, inExitTest: macro))
+    if var closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
+       let captureList = closureExpr.signature?.capture?.items {
+      closureExpr.signature?.capture = ClosureCaptureClauseSyntax(items: [], trailingTrivia: .space)
+      capturedValues = captureList.map { CapturedValueInfo($0, in: context) }
+      bodyArgumentExpr = ExprSyntax(closureExpr)
     }
+#else
+    do {
+      let bodyArgumentExpr = removeParentheses(from: bodyArgumentExpr) ?? bodyArgumentExpr
+      if var closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
+         let captureClause = closureExpr.signature?.capture,
+         !captureClause.items.isEmpty {
+        context.diagnose(.captureClauseUnsupported(captureClause, in: closureExpr, inExitTest: macro))
+      }
+    }
+#endif
 
     // Generate a unique identifier for this exit test.
     let idExpr = _makeExitTestIDExpr(for: macro, in: context)
@@ -455,10 +467,22 @@ extension ExitTestConditionMacro {
     // Implement the body of the exit test outside the enum we're declaring so
     // that `Self` resolves to the type containing the exit test, not the enum.
     let bodyThunkName = context.makeUniqueName("")
+    let bodyThunkParameterList = FunctionParameterListSyntax {
+#if ExperimentalExitTestValueCapture
+      for capturedValue in capturedValues {
+        FunctionParameterSyntax(
+          firstName: .wildcardToken(trailingTrivia: .space),
+          secondName: capturedValue.name.trimmed,
+          colon: .colonToken(trailingTrivia: .space),
+          type: capturedValue.type.trimmed
+        )
+      }
+#endif
+    }
     decls.append(
       """
-      @Sendable func \(bodyThunkName)() async throws -> Swift.Void {
-        return try await Testing.__requiringTry(Testing.__requiringAwait(\(bodyArgumentExpr.trimmed)))()
+      @Sendable func \(bodyThunkName)(\(bodyThunkParameterList)) async throws {
+        _ = try await Testing.__requiringTry(Testing.__requiringAwait(\(bodyArgumentExpr.trimmed)))()
       }
       """
     )
@@ -522,12 +546,24 @@ extension ExitTestConditionMacro {
       }
     )
 
-    // Insert the exit test's ID as the first argument. Note that this will
-    // invalidate all indices into `arguments`!
-    arguments.insert(
+    // Insert additional arguments at the beginning of the argument list. Note
+    // that this will invalidate all indices into `arguments`!
+    var leadingArguments = [
       Argument(label: "identifiedBy", expression: idExpr),
-      at: arguments.startIndex
+    ]
+#if ExperimentalExitTestValueCapture
+    leadingArguments.append(
+      Argument(
+        label: "encodingCapturedValues",
+        expression: TupleExprSyntax {
+          for capturedValue in capturedValues {
+            LabeledExprSyntax(expression: capturedValue.expression.trimmed)
+          }
+        }
+      ),
     )
+#endif
+    arguments = leadingArguments + arguments
 
     // Replace the exit test body (as an argument to the macro) with a stub
     // closure that hosts the type we created above.

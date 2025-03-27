@@ -1,4 +1,4 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.1
 
 //
 // This source file is part of the Swift.org open source project
@@ -62,6 +62,13 @@ let package = Package(
 
     return result
   }(),
+
+  traits: [
+    .trait(
+      name: "ExperimentalExitTestValueCapture",
+      description: "Enable experimental support for capturing values in exit tests"
+    ),
+  ],
 
   dependencies: [
     .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "601.0.0-latest"),
