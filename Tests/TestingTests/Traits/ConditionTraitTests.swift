@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable import Testing
+@testable @_spi(Experimental) import Testing
 
 @Suite("Condition Trait Tests", .tags(.traitRelated))
 struct ConditionTraitTests {
@@ -41,4 +41,22 @@ struct ConditionTraitTests {
     .disabled(if: false)
   )
   func disabledTraitIf() throws {}
+  
+  @Test
+  func evaluateCondition() async throws {
+    let trueUnconditional = ConditionTrait(kind: .unconditional(true), comments: [], sourceLocation: #_sourceLocation)
+    let falseUnconditional = ConditionTrait.disabled()
+    let enabledTrue = ConditionTrait.enabled(if: true)
+    let enabledFalse = ConditionTrait.enabled(if: false)
+    var result: Bool
+    
+    result = try await trueUnconditional.evaluate()
+    #expect(result)
+    result = try await falseUnconditional.evaluate()
+    #expect(!result)
+    result = try await enabledTrue.evaluate()
+    #expect(result)
+    result = try await enabledFalse.evaluate()
+    #expect(!result)
+  }
 }

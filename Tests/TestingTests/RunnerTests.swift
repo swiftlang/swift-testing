@@ -332,23 +332,6 @@ final class RunnerTests: XCTestCase {
     let test2 = Test(.disabled(if: Bool.random())) { }
     XCTAssertTrue(test2.traits.compactMap { $0 as? ConditionTrait }.allSatisfy { !$0.isConstant })
   }
-  
-  func testEvaluateConditionTrait() async throws {
-    let trueUnconditional = ConditionTrait(kind: .unconditional(true), comments: [], sourceLocation: #_sourceLocation)
-    let falseUnconditional = ConditionTrait.disabled()
-    let enabledTrue = ConditionTrait.enabled(if: true)
-    let enabledFalse = ConditionTrait.enabled(if: false)
-    var result: Bool
-    
-    result = try await trueUnconditional.evaluate()
-    XCTAssertTrue(result)
-    result = try await falseUnconditional.evaluate()
-    XCTAssertFalse(result)
-    result = try await enabledTrue.evaluate()
-    XCTAssertTrue(result)
-    result = try await enabledFalse.evaluate()
-    XCTAssertFalse(result)
-  }
 
   func testGeneratedPlan() async throws {
     let tests: [(Any.Type, String)] = [
