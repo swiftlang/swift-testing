@@ -39,24 +39,44 @@ struct CapturedValue {
     self.expression = "()"
     self.type = "Swift.Void"
 
-    // Find the initializer clause and extract the expression it captures.
-    guard let initializer = capture.initializer else {
-      context.diagnose(DiagnosticMessage(syntax: Syntax(capture), message: "[ENG] '\(capture.trimmed)' must specify a type using 'as T'! (no init)", severity: .error))
-      return
-    }
-    self.expression = initializer.value
-
-    // Find the 'as' clause so we can determine the type of the captured value.
-    guard let asExpr = (removeParentheses(from: expression) ?? expression).as(AsExprSyntax.self) else {
-      context.diagnose(DiagnosticMessage(syntax: Syntax(capture), message: "[ENG] '\(capture.trimmed)' must specify a type using 'as T'! (no as expr)", severity: .error))
+    // We don't support capture specifiers at this time.
+    if let specifier = capture.specifier {
+      context.diagnose(DiagnosticMessage(syntax: Syntax(capture), message: "[ENG] '\(specifier.trimmed)' not supported here", severity: .error))
       return
     }
 
-    self.type = if asExpr.questionOrExclamationMark?.tokenKind == .postfixQuestionMark {
-      // If the caller us using as?, make the type optional.
-      TypeSyntax(OptionalTypeSyntax(wrappedType: type.trimmed))
+    if let initializer = capture.initializer {
+      // Found an initializer clause. Extract the expression it captures.
+      self.expression = initializer.value
+
+      // Find the 'as' clause so we can determine the type of the captured value.
+      guard let asExpr = (removeParentheses(from: expression) ?? expression).as(AsExprSyntax.self) else {
+        context.diagnose(DiagnosticMessage(syntax: Syntax(capture), message: "[ENG] '\(capture.trimmed)' must specify a type using 'as T'! (no as expr)", severity: .error))
+        return
+      }
+
+      self.type = if asExpr.questionOrExclamationMark?.tokenKind == .postfixQuestionMark {
+        // If the caller us using as?, make the type optional.
+        TypeSyntax(OptionalTypeSyntax(wrappedType: type.trimmed))
+      } else {
+        asExpr.type
+      }
+
+    } else if capture.name.tokenKind == .keyword(.self) {
+      // Capturing self is special-cased if we can find the type name in the
+      // enclosing scope.
+      var lexicalContext = context.lexicalContext[...]
+      lexicalContext = lexicalContext.drop { !$0.isProtocol((any DeclGroupSyntax).self) }
+      if let typeName = context.type(ofLexicalContext: lexicalContext) {
+        self.expression = "self"
+        self.type = typeName
+      } else {
+        context.diagnose(DiagnosticMessage(syntax: Syntax(capture), message: "[ENG] Could not infer the type of '\(capture.name.trimmed)' here", severity: .error))
+      }
+
     } else {
-      asExpr.type
+      // Not enough contextual information to derive the type here.
+      context.diagnose(DiagnosticMessage(syntax: Syntax(capture), message: "[ENG] '\(capture.trimmed)' must specify a type using 'as T'! (no init)", severity: .error))
     }
   }
 }

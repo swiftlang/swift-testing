@@ -400,11 +400,14 @@ extension ExitTest {
     guard let fileHandle = Self._makeFileHandle(forEnvironmentVariableNamed: "SWT_EXPERIMENTAL_CAPTURED_VALUES", mode: "rb") else {
       return
     }
-    let capturedValuesJSON = try fileHandle.readToEnd().split(whereSeparator: \.isASCIINewline)
+    let capturedValuesJSON = try fileHandle.readToEnd()
 
     // Walk the list of captured values' types, map them to their JSON blobs,
     // and decode them.
-    self.capturedValues = try zip(capturedValueTypes, capturedValuesJSON).map { type, capturedValueJSON in
+    self.capturedValues = try zip(
+      capturedValueTypes,
+      capturedValuesJSON.split(whereSeparator: \.isASCIINewline)
+    ).map { type, capturedValueJSON in
       func open<T>(_ type: T.Type) throws -> T where T: Codable & Sendable {
         return try capturedValueJSON.withUnsafeBytes { capturedValueJSON in
           try JSON.decode(type, from: capturedValueJSON)
