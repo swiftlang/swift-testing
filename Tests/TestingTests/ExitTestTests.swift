@@ -385,9 +385,10 @@ private import _TestingInternals
   func captureList() async {
     let i = 123
     let s = "abc" as Any
-    await #expect(exitsWith: .success) { [i = i as Int, s = s as! String] in
+    await #expect(exitsWith: .success) { [i = i as Int, s = s as! String, self = 10.0 as Double] in
       #expect(i == 123)
       #expect(s == "abc")
+      #expect(self == 10.0)
     }
   }
 }

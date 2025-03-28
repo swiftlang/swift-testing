@@ -9,6 +9,7 @@
 //
 
 import SwiftDiagnostics
+import SwiftParser
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
@@ -20,7 +21,11 @@ struct CapturedValue {
 
   /// The name of the captured value.
   var name: TokenSyntax {
-    capture.name
+    let text = capture.name.textWithoutBackticks
+    if text.isValidSwiftIdentifier(for: .variableName) {
+      return capture.name
+    }
+    return .identifier("`\(text)`")
   }
 
   /// The expression to assign to the captured value.
