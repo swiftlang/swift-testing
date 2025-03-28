@@ -62,16 +62,27 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
 
   /// The source location where this trait is specified.
   public var sourceLocation: SourceLocation
-
-  public func prepare(for test: Test) async throws {
-    let result = switch kind {
+  
+  /// Evaluate this instance's underlying condition.
+  ///
+  /// - Returns: The result of evaluating this instance's underlying condition.
+  ///
+  /// The evaluation is performed each time this function is called, and is not
+  /// cached.
+  @_spi(Experimental)
+  public func evaluate() async throws -> Bool {
+    switch kind {
     case let .conditional(condition):
       try await condition()
     case let .unconditional(unconditionalValue):
       unconditionalValue
     }
+  }
 
-    if !result {
+  public func prepare(for test: Test) async throws {
+    let isEnabled = try await evaluate()
+
+    if !isEnabled {
       // We don't need to consider including a backtrace here because it will
       // primarily contain frames in the testing library, not user code. If an
       // error was thrown by a condition evaluated above, the caller _should_
