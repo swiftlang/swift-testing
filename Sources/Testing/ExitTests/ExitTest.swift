@@ -100,28 +100,15 @@ public struct ExitTest: Sendable, ~Copyable {
   /// The set of values captured in the parent process before the exit test is
   /// called.
   ///
-  /// The current exit test handler is responsible for encoding and decoding
-  /// these values. When the handler is called, it is passed an instance of
-  /// ``ExitTest``. The handler should encode the values in that instance's
-  /// ``capturedValues`` property, then pass the encoded forms of those values
-  /// to the child process.
-  ///
-  /// The child process should then decode these values and set the
-  /// ``capturedValues`` property of the exit test returned by
-  /// ``ExitTest/find(identifiedBy:)``.
+  /// This property is automatically set by the testing library when using the
+  /// built-in exit test handler and entry point functions. Do not modify the
+  /// value of this property unless you are implementing a custom exit test
+  /// handler or entry point function.
   ///
   /// The order of values in this array must be the same between the parent and
   /// child processes.
   @_spi(ForToolsIntegrationOnly)
-  public var capturedValues: [any Codable & Sendable] = []
-
-  /// The types of the values captured in the parent process before the exit
-  /// test is called.
-  ///
-  /// The current exit test handler can use the types in this array to determine
-  /// how to decode captured values.
-  @_spi(ForToolsIntegrationOnly)
-  public fileprivate(set) var capturedValueTypes: [any (Codable & Sendable).Type]
+  public var capturedValues: [CapturedValue]
 
   /// Make a copy of this instance.
   ///
@@ -130,7 +117,7 @@ public struct ExitTest: Sendable, ~Copyable {
   /// This function is unsafe because if the caller is not careful, it could
   /// invoke the same exit test twice.
   fileprivate borrowing func unsafeCopy() -> Self {
-    Self(id: id, body: body, _observedValues: _observedValues, capturedValues: capturedValues, capturedValueTypes: capturedValueTypes)
+    Self(id: id, body: body, _observedValues: _observedValues, capturedValues: capturedValues)
   }
 }
 
@@ -318,15 +305,13 @@ extension ExitTest: DiscoverableAsTestContent {
     // Wrap the body function in a thunk that decodes any captured state and
     // passes it along.
     let body: @Sendable (borrowing ExitTest) async throws -> Void = { exitTest in
-      let values: (repeat each T) = try exitTest.unpackCapturedValues()
+      let values: (repeat each T) = try exitTest.capturedValues.takeCapturedValues()
       try await body(repeat each values)
     }
 
     // Gather the types of any captured values.
-    var capturedValueTypes: [any (Codable & Sendable).Type] = []
-    repeat capturedValueTypes.append((each T).self)
-
-    outValue.initializeMemory(as: Self.self, to: Self(id: id, body: body, capturedValueTypes: capturedValueTypes))
+    let exitTest = Self(id: id, body: body, capturedValues: Array(repeat (each T).self))
+    outValue.initializeMemory(as: Self.self, to: exitTest)
     return true
   }
 }
@@ -361,85 +346,6 @@ extension ExitTest {
 }
 
 // MARK: -
-
-extension ExitTest {
-  /// Unpack this exit test's captured values and return them as a tuple.
-  ///
-  /// - Returns: A tuple containing this exit test's captured values.
-  ///
-  /// - Throws: If an expected value could not be found or was not of the
-  ///   correct type.
-  ///
-  /// This function assumes that the entry point function has already set this
-  /// exit test's ``capturedValues`` property correctly.
-  borrowing func unpackCapturedValues<each T>() throws -> (repeat each T) {
-    func nextValue<U>(
-      as type: U.Type,
-      from capturedValues: inout ArraySlice<any Codable & Sendable>
-    ) throws -> U {
-      guard let capturedValue = capturedValues.first as? U else {
-        throw SystemError(description: "Could not find the next captured value in the current exit test.")
-      }
-      capturedValues = capturedValues.dropFirst()
-      return capturedValue
-    }
-
-    var capturedValues = capturedValues[...]
-    return (repeat try nextValue(as: (each T).self, from: &capturedValues))
-  }
-
-  /// Decode this exit test's captured values and update its ``capturedValues``
-  /// property.
-  ///
-  /// - Throws: If a captured value could not be decoded.
-  ///
-  /// This function should only be used when the process was started via the
-  /// `__swiftPMEntryPoint()` function. The effect of using it under other
-  /// configurations is undefined.
-  fileprivate mutating func decodeCapturedValuesForEntryPoint() throws {
-    guard let fileHandle = Self._makeFileHandle(forEnvironmentVariableNamed: "SWT_EXPERIMENTAL_CAPTURED_VALUES", mode: "rb") else {
-      return
-    }
-    let capturedValuesJSON = try fileHandle.readToEnd()
-
-    // Walk the list of captured values' types, map them to their JSON blobs,
-    // and decode them.
-    self.capturedValues = try zip(
-      capturedValueTypes,
-      capturedValuesJSON.split(whereSeparator: \.isASCIINewline)
-    ).map { type, capturedValueJSON in
-      func open<T>(_ type: T.Type) throws -> T where T: Codable & Sendable {
-        return try capturedValueJSON.withUnsafeBytes { capturedValueJSON in
-          try JSON.decode(type, from: capturedValueJSON)
-        }
-      }
-      return try open(type)
-    }
-  }
-
-  /// Encode this exit test's captured values in a format suitable for passing
-  /// to the child process.
-  ///
-  /// - Parameters:
-  ///   - body: A function to call. This function is called once per captured
-  ///     value in the exit test.
-  ///
-  /// - Throws: Whatever is thrown by `body` or while encoding.
-  ///
-  /// This function produces a byte buffer representing each value in this exit
-  /// test's ``capturedValues`` property and passes each buffer to `body`.
-  ///
-  /// This function should only be used when the process was started via the
-  /// `__swiftPMEntryPoint()` function. The effect of using it under other
-  /// configurations is undefined.
-  fileprivate borrowing func withEncodeCapturedValuesForEntryPoint(_ body: (UnsafeRawBufferPointer) throws -> Void) throws -> Void {
-    for capturedValue in capturedValues {
-      try JSON.withEncoding(of: capturedValue) { capturedValueJSON in
-        try JSON.asJSONLine(capturedValueJSON, body)
-      }
-    }
-  }
-}
 
 /// Check that an expression always exits (terminates the current process) with
 /// a given status.
@@ -482,15 +388,10 @@ func callExitTest<each T>(
   var result: ExitTest.Result
   do {
     // Construct a temporary/local exit test to pass to the exit test handler.
-    var capturedValuesArray: [any Codable & Sendable] = []
-    repeat capturedValuesArray.append(each capturedValues)
-    var capturedValueTypes: [any (Codable & Sendable).Type] = []
-    repeat capturedValueTypes.append((each T).self)
     let exitTest = ExitTest(
       id: ExitTest.ID(exitTestID),
       _observedValues: observedValues,
-      capturedValues: capturedValuesArray,
-      capturedValueTypes: capturedValueTypes
+      capturedValues: Array(repeat each capturedValues)
     )
 
     // Invoke the exit test handler and wait for the child process to terminate.
@@ -711,9 +612,9 @@ extension ExitTest {
       }
     }
 
-    // FIXME: get correct source location
+    // TODO: get correct source location
     Issue.withErrorRecording(at: .__here(), configuration: configuration) {
-      try result.decodeCapturedValuesForEntryPoint()
+      try result._decodeCapturedValuesForEntryPoint()
     }
 
     result.body = { [configuration, body = result.body] exitTest in
@@ -745,7 +646,7 @@ extension ExitTest {
       let parentArguments = CommandLine.arguments
 #if SWT_TARGET_OS_APPLE
       lazy var xctestTargetPath = Environment.variable(named: "XCTestBundlePath")
-        ?? parentArguments.dropFirst().last
+      ?? parentArguments.dropFirst().last
       // If the running executable appears to be the XCTest runner executable in
       // Xcode, figure out the path to the running XCTest bundle. If we can find
       // it, then we can re-run the host XCTestCase instance.
@@ -873,12 +774,12 @@ extension ExitTest {
         }
 
         // Write the captured values blob over the back channel to the child
-        // process. (If we end up needing to write additional data, we should
-        // ensure we're using JSON lines. Fortunately, both endpoints are
+        // process. (If we end up needing to write additional data, we can
+        // define a full schema for this stream. Fortunately, both endpoints are
         // implemented in the same copy of the testing library, so we don't have
-        // to worry about staging a change in later.)
+        // to worry about backwards-compatibility.)
         try capturedValuesWriteEnd.withLock {
-          try exitTest.withEncodeCapturedValuesForEntryPoint { capturedValuesJSON in
+          try exitTest._withEncodedCapturedValuesForEntryPoint { capturedValuesJSON in
             try capturedValuesWriteEnd.write(capturedValuesJSON)
             try capturedValuesWriteEnd.write("\n")
           }
@@ -989,6 +890,63 @@ extension ExitTest {
       var issueCopy = Issue(kind: issueKind, comments: comments, sourceContext: sourceContext)
       issueCopy.isKnown = issue.isKnown
       issueCopy.record()
+    }
+  }
+
+  /// Decode this exit test's captured values and update its ``capturedValues``
+  /// property.
+  ///
+  /// - Throws: If a captured value could not be decoded.
+  ///
+  /// This function should only be used when the process was started via the
+  /// `__swiftPMEntryPoint()` function. The effect of using it under other
+  /// configurations is undefined.
+  private mutating func _decodeCapturedValuesForEntryPoint() throws {
+    // Read the content of the captured values stream provided by the parent
+    // process above.
+    guard let fileHandle = Self._makeFileHandle(forEnvironmentVariableNamed: "SWT_EXPERIMENTAL_CAPTURED_VALUES", mode: "rb") else {
+      return
+    }
+    let capturedValuesJSON = try fileHandle.readToEnd()
+    let capturedValuesJSONLines = capturedValuesJSON.split(whereSeparator: \.isASCIINewline)
+    assert(capturedValues.count == capturedValuesJSONLines.count, "Expected to decode \(capturedValues.count) captured value(s) for the current exit test, but received \(capturedValuesJSONLines.count). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+
+    // Walk the list of captured values' types, map them to their JSON blobs,
+    // and decode them.
+    capturedValues = try zip(capturedValues, capturedValuesJSONLines).map { capturedValue, capturedValueJSON in
+      var capturedValue = capturedValue
+
+      func open<T>(_ type: T.Type) throws -> T where T: Codable & Sendable {
+        return try capturedValueJSON.withUnsafeBytes { capturedValueJSON in
+          try JSON.decode(type, from: capturedValueJSON)
+        }
+      }
+      capturedValue.wrappedValue = try open(capturedValue.typeOfWrappedValue)
+
+      return capturedValue
+    }
+  }
+
+  /// Encode this exit test's captured values in a format suitable for passing
+  /// to the child process.
+  ///
+  /// - Parameters:
+  ///   - body: A function to call. This function is called once per captured
+  ///     value in the exit test.
+  ///
+  /// - Throws: Whatever is thrown by `body` or while encoding.
+  ///
+  /// This function produces a byte buffer representing each value in this exit
+  /// test's ``capturedValues`` property and passes each buffer to `body`.
+  ///
+  /// This function should only be used when the process was started via the
+  /// `__swiftPMEntryPoint()` function. The effect of using it under other
+  /// configurations is undefined.
+  private borrowing func _withEncodedCapturedValuesForEntryPoint(_ body: (UnsafeRawBufferPointer) throws -> Void) throws -> Void {
+    for capturedValue in capturedValues {
+      try JSON.withEncoding(of: capturedValue.wrappedValue!) { capturedValueJSON in
+        try JSON.asJSONLine(capturedValueJSON, body)
+      }
     }
   }
 }
