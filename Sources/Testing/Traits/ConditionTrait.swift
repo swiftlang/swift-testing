@@ -26,6 +26,7 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
     ///
     /// - Parameters:
     ///   - body: The function to call. The result of this function determines
+    ///     if the condition is satisfied or not.
     case conditional(_ body: @Sendable () async throws -> Bool)
 
     /// The trait is unconditional and always has the same result.
