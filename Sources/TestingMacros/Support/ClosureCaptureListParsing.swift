@@ -15,7 +15,7 @@ import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
 /// A type representing a value extracted from a closure's capture list.
-struct CapturedValue {
+struct CapturedValueInfo {
   /// The original instance of `ClosureCaptureSyntax` used to create this value.
   var capture: ClosureCaptureSyntax
 
@@ -41,7 +41,7 @@ struct CapturedValue {
 
     // We don't support capture specifiers at this time.
     if let specifier = capture.specifier {
-      context.diagnose(DiagnosticMessage(syntax: Syntax(capture), message: "[ENG] '\(specifier.trimmed)' not supported here", severity: .error))
+      context.diagnose(.specifierUnsupported(specifier, on: capture))
       return
     }
 
@@ -51,7 +51,7 @@ struct CapturedValue {
 
       // Find the 'as' clause so we can determine the type of the captured value.
       guard let asExpr = (removeParentheses(from: expression) ?? expression).as(AsExprSyntax.self) else {
-        context.diagnose(DiagnosticMessage(syntax: Syntax(capture), message: "[ENG] '\(capture.trimmed)' must specify a type using 'as T'! (no as expr)", severity: .error))
+        context.diagnose(.typeOfCaptureIsAmbiguous(capture, initializedWith: initializer))
         return
       }
 
@@ -71,12 +71,12 @@ struct CapturedValue {
         self.expression = "self"
         self.type = typeName
       } else {
-        context.diagnose(DiagnosticMessage(syntax: Syntax(capture), message: "[ENG] Could not infer the type of '\(capture.name.trimmed)' here", severity: .error))
+        context.diagnose(.typeOfCaptureIsAmbiguous(capture))
       }
 
     } else {
       // Not enough contextual information to derive the type here.
-      context.diagnose(DiagnosticMessage(syntax: Syntax(capture), message: "[ENG] '\(capture.trimmed)' must specify a type using 'as T'! (no init)", severity: .error))
+      context.diagnose(.typeOfCaptureIsAmbiguous(capture))
     }
   }
 }

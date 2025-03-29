@@ -437,13 +437,13 @@ extension ExitTestConditionMacro {
     }
 
     // Find any captured values and extract them from the trailing closure.
-    var capturedValues = [CapturedValue]()
+    var capturedValues = [CapturedValueInfo]()
     var bodyArgumentExpr = arguments[trailingClosureIndex].expression
     bodyArgumentExpr = removeParentheses(from: bodyArgumentExpr) ?? bodyArgumentExpr
     if var closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
        let captureList = closureExpr.signature?.capture?.items {
       closureExpr.signature?.capture = ClosureCaptureClauseSyntax(items: [], trailingTrivia: .space)
-      capturedValues = captureList.map { CapturedValue($0, in: context) }
+      capturedValues = captureList.map { CapturedValueInfo($0, in: context) }
       bodyArgumentExpr = ExprSyntax(closureExpr)
     }
 
