@@ -117,7 +117,7 @@ func spawnExecutable(
       }
 
       // Forward standard I/O streams and any explicitly added file handles.
-      var highestFD = max(STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO)
+      var inheritedFDs: Set = [STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO]
       func inherit(_ fileHandle: borrowing FileHandle, as standardFD: CInt? = nil) throws {
         try fileHandle.withUnsafePOSIXFileDescriptor { fd in
           guard let fd else {
@@ -129,7 +129,7 @@ func spawnExecutable(
 #if SWT_TARGET_OS_APPLE
             _ = posix_spawn_file_actions_addinherit_np(fileActions, fd)
 #endif
-            highestFD = max(highestFD, fd)
+            inheritedFDs.insert(fd)
           }
         }
       }
@@ -152,7 +152,15 @@ func spawnExecutable(
 #if SWT_TARGET_OS_APPLE
       // Close all other file descriptors open in the parent.
       flags |= CShort(POSIX_SPAWN_CLOEXEC_DEFAULT)
-#elseif os(Linux)
+#else
+      // Close all file descriptors up to the highest inherited one (except, of
+      // course, the ones we want to keep open!)
+      let highestFD = inheritedFDs.max()!
+      for fd in 0 ..< highestFD where !inheritedFDs.contains(fd) {
+        _ = posix_spawn_file_actions_addclose(fileActions, fd)
+      }
+
+#if os(Linux)
 #if !SWT_NO_DYNAMIC_LINKING
       // This platform doesn't have POSIX_SPAWN_CLOEXEC_DEFAULT, but we can at
       // least close all file descriptors higher than the highest inherited one.
@@ -174,6 +182,7 @@ func spawnExecutable(
       environment["SWT_CLOSEFROM"] = String(describing: highestFD + 1)
 #else
 #warning("Platform-specific implementation missing: cannot close unused file descriptors")
+#endif
 #endif
 
 #if SWT_TARGET_OS_APPLE && DEBUG
