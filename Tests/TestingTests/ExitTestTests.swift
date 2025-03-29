@@ -391,6 +391,15 @@ private import _TestingInternals
     }
   }
 
+  @Test("Capture list (very long encoded form)")
+  func longCaptureList() async {
+    let count = 1 * 1024 * 1024
+    let buffer = Array(repeatElement(0 as UInt8, count: count))
+    await #expect(exitsWith: .success) { [count = count as Int, buffer = buffer as [UInt8]] in
+      #expect(buffer.count == count)
+    }
+  }
+
   struct CapturableSuite: Codable {
     var property = 456
 
