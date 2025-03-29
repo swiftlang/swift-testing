@@ -176,6 +176,11 @@ func spawnExecutable(
 #warning("Platform-specific implementation missing: cannot close unused file descriptors")
 #endif
 
+#if SWT_TARGET_OS_APPLE && DEBUG
+      // Start the process suspended so we can attach a debugger if needed.
+      flags |= CShort(POSIX_SPAWN_START_SUSPENDED)
+#endif
+
       // Set flags; make sure to keep this call below any code that might modify
       // the flags mask!
       _ = posix_spawnattr_setflags(attrs, flags)
@@ -202,6 +207,10 @@ func spawnExecutable(
       guard 0 == processSpawned else {
         throw CError(rawValue: processSpawned)
       }
+#if SWT_TARGET_OS_APPLE && DEBUG
+      // Resume the process.
+      _ = kill(pid, SIGCONT)
+#endif
       return pid
     }
   }
@@ -254,6 +263,12 @@ func spawnExecutable(
       let commandLine = _escapeCommandLine(CollectionOfOne(executablePath) + arguments)
       let environ = environment.map { "\($0.key)=\($0.value)" }.joined(separator: "\0") + "\0\0"
 
+      var flags = DWORD(CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT)
+#if DEBUG
+      // Start the process suspended so we can attach a debugger if needed.
+      flags |= DWORD(CREATE_SUSPENDED)
+#endif
+
       return try commandLine.withCString(encodedAs: UTF16.self) { commandLine in
         try environ.withCString(encodedAs: UTF16.self) { environ in
           var processInfo = PROCESS_INFORMATION()
@@ -264,7 +279,7 @@ func spawnExecutable(
             nil,
             nil,
             true, // bInheritHandles
-            DWORD(CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT),
+            flags,
             .init(mutating: environ),
             nil,
             startupInfo.pointer(to: \.StartupInfo)!,
@@ -272,8 +287,13 @@ func spawnExecutable(
           ) else {
             throw Win32Error(rawValue: GetLastError())
           }
-          _ = CloseHandle(processInfo.hThread)
 
+#if DEBUG
+          // Resume the process.
+          _ = ResumeThread(processInfo.hThread!)
+#endif
+
+          _ = CloseHandle(processInfo.hThread)
           return processInfo.hProcess!
         }
       }

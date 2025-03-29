@@ -764,3 +764,82 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   var severity: DiagnosticSeverity
   var fixIts: [FixIt] = []
 }
+
+// MARK: - Captured values
+
+extension DiagnosticMessage {
+  /// Create a diagnostic message stating that a specifier keyword cannot be
+  /// used with a given closure capture list item.
+  ///
+  /// - Parameters:
+  ///   - specifier: The invalid specifier.
+  ///   - capture: The closure capture list item.
+  ///
+  /// - Returns: A diagnostic message.
+  static func specifierUnsupported(_ specifier: ClosureCaptureSpecifierSyntax, on capture: ClosureCaptureSyntax) -> Self {
+    Self(
+      syntax: Syntax(specifier),
+      message: "Specifier '\(specifier.trimmed)' cannot be used with captured value '\(capture.name.textWithoutBackticks)'",
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Remove '\(specifier.trimmed)'"),
+          changes: [
+            .replace(
+              oldNode: Syntax(capture),
+              newNode: Syntax(capture.with(\.specifier, nil))
+            )
+          ]
+        ),
+      ]
+    )
+  }
+
+  /// Create a diagnostic message stating that a closure capture list item's
+  /// type is ambiguous and must be made explicit.
+  ///
+  /// - Parameters:
+  ///   - capture: The closure capture list item.
+  ///   - initializerClause: The existing initializer clause, if any.
+  ///
+  /// - Returns: A diagnostic message.
+  static func typeOfCaptureIsAmbiguous(_ capture: ClosureCaptureSyntax, initializedWith initializerClause: InitializerClauseSyntax? = nil) -> Self {
+    let castValueExpr: some ExprSyntaxProtocol = if let initializerClause {
+      ExprSyntax(initializerClause.value.trimmed)
+    } else {
+      ExprSyntax(DeclReferenceExprSyntax(baseName: capture.name.trimmed))
+    }
+    let initializerValueExpr = ExprSyntax(
+      AsExprSyntax(
+        expression: castValueExpr,
+        asKeyword: .keyword(.as, leadingTrivia: .space, trailingTrivia: .space),
+        type: TypeSyntax.placeholder("T")
+      )
+    )
+    let placeholderInitializerClause = if let initializerClause {
+      initializerClause.with(\.value, initializerValueExpr)
+    } else {
+      InitializerClauseSyntax(
+        equal: .equalToken(leadingTrivia: .space, trailingTrivia: .space),
+        value: initializerValueExpr
+      )
+    }
+
+    return Self(
+      syntax: Syntax(capture),
+      message: "Type of captured value '\(capture.name.textWithoutBackticks)' is ambiguous",
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Add '= \(castValueExpr) as T'"),
+          changes: [
+            .replace(
+              oldNode: Syntax(capture),
+              newNode: Syntax(capture.with(\.initializer, placeholderInitializerClause))
+            )
+          ]
+        ),
+      ]
+    )
+  }
+}

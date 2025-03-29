@@ -1146,8 +1146,9 @@ public func __checkClosureCall<R>(
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
 @_spi(Experimental)
-public func __checkClosureCall(
+public func __checkClosureCall<each T>(
   identifiedBy exitTestID: (UInt64, UInt64),
+  encodingCapturedValues capturedValues: (repeat each T),
   exitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable],
   performing body: @convention(thin) () -> Void,
@@ -1156,9 +1157,10 @@ public func __checkClosureCall(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<ExitTest.Result?, any Error> {
+) async -> Result<ExitTest.Result?, any Error> where repeat each T: Codable & Sendable {
   await callExitTest(
     identifiedBy: exitTestID,
+    encodingCapturedValues: (repeat each capturedValues),
     exitsWith: expectedExitCondition,
     observing: observedValues,
     expression: expression,

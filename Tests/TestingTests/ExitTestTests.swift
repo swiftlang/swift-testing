@@ -380,6 +380,36 @@ private import _TestingInternals
       #expect((ExitTest.current != nil) as Bool)
     }
   }
+
+  @Test("Capture list")
+  func captureList() async {
+    let i = 123
+    let s = "abc" as Any
+    await #expect(exitsWith: .success) { [i = i as Int, s = s as! String] in
+      #expect(i == 123)
+      #expect(s == "abc")
+    }
+  }
+
+  @Test("Capture list (very long encoded form)")
+  func longCaptureList() async {
+    let count = 1 * 1024 * 1024
+    let buffer = Array(repeatElement(0 as UInt8, count: count))
+    await #expect(exitsWith: .success) { [count = count as Int, buffer = buffer as [UInt8]] in
+      #expect(buffer.count == count)
+    }
+  }
+
+  struct CapturableSuite: Codable {
+    var property = 456
+
+    @Test("self in capture list")
+    func captureListWithSelf() async {
+      await #expect(exitsWith: .success) { [self] in
+        #expect(self.property == 456)
+      }
+    }
+  }
 }
 
 // MARK: - Fixtures
