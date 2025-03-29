@@ -144,13 +144,7 @@ extension Collection where Element == ExitTest.CapturedValue {
       // exit test handler or entry point is likely broken.
       guard let wrappedValue = capturedValues.first?.wrappedValue else {
         let actualCount = self.count
-        let expectedCount: Int = {
-          var result = 0
-          for _ in repeat (each T).self {
-            result += 1
-          }
-          return result
-        }()
+        let expectedCount = parameterPackCount(repeat (each T).self)
         fatalError("Found fewer captured values (\(actualCount)) than expected (\(expectedCount)) when passing them to the current exit test.")
       }
 
