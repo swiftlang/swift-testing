@@ -292,11 +292,14 @@ extension ExitTest: DiscoverableAsTestContent {
     asTypeAt typeAddress: UnsafeRawPointer,
     withHintAt hintAddress: UnsafeRawPointer? = nil
   ) -> CBool where repeat each T: Codable & Sendable {
+    // Check that the type matches.
     let callerExpectedType = TypeInfo(describing: typeAddress.load(as: Any.Type.self))
     let selfType = TypeInfo(describing: Self.self)
     guard callerExpectedType == selfType else {
       return false
     }
+
+    // Check that the ID matches if provided.
     let id = ID(id)
     if let hintedID = hintAddress?.load(as: ID.self), hintedID != id {
       return false
@@ -309,7 +312,7 @@ extension ExitTest: DiscoverableAsTestContent {
       try await body(repeat each values)
     }
 
-    // Gather the types of any captured values.
+    // Construct and return the instance.
     let exitTest = Self(id: id, body: body, capturedValues: Array(repeat (each T).self))
     outValue.initializeMemory(as: Self.self, to: exitTest)
     return true
