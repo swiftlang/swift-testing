@@ -84,23 +84,9 @@ extension TestContentKind: CustomStringConvertible {
   private var _fourCCValue: String? {
     withUnsafeBytes(of: rawValue.bigEndian) { bytes in
       if bytes.allSatisfy(Unicode.ASCII.isASCII) {
-        let characters = String(decoding: bytes, as: Unicode.ASCII.self)
-#if !hasFeature(Embedded)
-        let allAlphanumeric = characters.allSatisfy { $0.isLetter || $0.isWholeNumber }
-#else
-        let allAlphanumeric = bytes.allSatisfy { b in
-          switch b {
-          case UInt8(ascii: "A") ... UInt8(ascii: "Z"),
-            UInt8(ascii: "a") ... UInt8(ascii: "z"),
-            UInt8(ascii: "0") ... UInt8(ascii: "9"):
-            true
-          default:
-            false
-          }
-        }
-#endif
+        let allAlphanumeric = bytes.allSatisfy { 0 != isprint(CInt($0)) }
         if allAlphanumeric {
-          return characters
+          return String(decoding: bytes, as: Unicode.ASCII.self)
         }
       }
       return nil
