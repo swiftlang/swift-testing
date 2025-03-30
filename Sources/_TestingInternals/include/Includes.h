@@ -26,6 +26,7 @@
 ///
 /// - Note: Avoid including headers that aren't actually used.
 
+#include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
 /// Guard against including `signal.h` on WASI. The `signal.h` header file
