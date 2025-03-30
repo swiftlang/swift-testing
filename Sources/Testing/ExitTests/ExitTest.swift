@@ -266,11 +266,13 @@ extension ExitTest: DiscoverableAsTestContent {
     asTypeAt typeAddress: UnsafeRawPointer,
     withHintAt hintAddress: UnsafeRawPointer? = nil
   ) -> CBool {
+#if !hasFeature(Embedded)
     let callerExpectedType = TypeInfo(describing: typeAddress.load(as: Any.Type.self))
     let selfType = TypeInfo(describing: Self.self)
     guard callerExpectedType == selfType else {
       return false
     }
+#endif
     let id = ID(id)
     if let hintedID = hintAddress?.load(as: ID.self), hintedID != id {
       return false
