@@ -52,11 +52,11 @@ extension SectionBounds.Kind {
   /// The Mach-O segment and section name for this instance as a pair of
   /// null-terminated UTF-8 C strings and pass them to a function.
   ///
-  /// The values of this property within this function are instances of
-  /// `StaticString` rather than `String` because the latter's inner storage is
-  /// sometimes Objective-C-backed and touching it here can cause a recursive
-  /// access to an internal libobjc lock, whereas `StaticString`'s internal
-  /// storage is immediately available.
+  /// The values of this property are instances of `StaticString` rather than
+  /// `String` because the latter's inner storage is sometimes backed by
+  /// Objective-C and touching it here can cause a recursive access to an
+  /// internal libobjc lock, whereas `StaticString`'s internal storage is
+  /// immediately available.
   fileprivate var segmentAndSectionName: (segmentName: StaticString, sectionName: StaticString) {
     switch self {
     case .testContent:

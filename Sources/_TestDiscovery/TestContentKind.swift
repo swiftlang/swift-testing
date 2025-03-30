@@ -52,16 +52,18 @@ extension TestContentKind: Equatable, Hashable {
   }
 }
 
+#if !hasFeature(Embedded)
 // MARK: - Codable
 
 extension TestContentKind: Codable {}
+#endif
 
 // MARK: - ExpressibleByStringLiteral, ExpressibleByIntegerLiteral
 
 extension TestContentKind: ExpressibleByStringLiteral, ExpressibleByIntegerLiteral {
   @inlinable public init(stringLiteral stringValue: StaticString) {
-    precondition(stringValue.utf8CodeUnitCount == MemoryLayout<UInt32>.stride, #""\#(stringValue)".utf8CodeUnitCount = \#(stringValue.utf8CodeUnitCount), expected \#(MemoryLayout<UInt32>.stride)"#)
     let rawValue = stringValue.withUTF8Buffer { stringValue in
+      precondition(stringValue.count == MemoryLayout<UInt32>.stride, #""\#(stringValue)".utf8CodeUnitCount = \#(stringValue.count), expected \#(MemoryLayout<UInt32>.stride)"#)
       let bigEndian = UnsafeRawBufferPointer(stringValue).loadUnaligned(as: UInt32.self)
       return UInt32(bigEndian: bigEndian)
     }
