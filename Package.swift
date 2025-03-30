@@ -33,11 +33,7 @@ let buildingForEmbedded: Bool = {
   guard let envvar = Context.environment["SWT_EMBEDDED"] else {
     return false
   }
-  let result = Bool(envvar) ?? ((Int(envvar) ?? 0) != 0)
-  if result {
-    print("Building for Embedded Swift...")
-  }
-  return result
+  return Bool(envvar) ?? ((Int(envvar) ?? 0) != 0)
 }()
 
 let package = Package(
