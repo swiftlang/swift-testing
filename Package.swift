@@ -256,9 +256,12 @@ extension Array where Element == PackageDescription.SwiftSetting {
       result.append(.unsafeFlags(["-require-explicit-sendable"]))
     }
 
+    if buildingForEmbedded {
+      result.append(.enableExperimentalFeature("Embedded"))
+    }
+
     result += [
       .enableUpcomingFeature("ExistentialAny"),
-      .enableExperimentalFeature("Embedded", .whenEmbedded()),
 
       .enableExperimentalFeature("AccessLevelOnImport"),
       .enableUpcomingFeature("InternalImportsByDefault"),
