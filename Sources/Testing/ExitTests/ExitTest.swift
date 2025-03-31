@@ -457,6 +457,10 @@ extension ExitTest {
       return nil
     }
 
+    // Erase the environment variable so that it cannot accidentally be opened
+    // twice (nor, in theory, affect the code of the exit test.)
+    Environment.setVariable(nil, named: "SWT_EXPERIMENTAL_BACKCHANNEL")
+
     var fd: CInt?
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
     fd = CInt(backChannelEnvironmentVariable)
@@ -487,6 +491,10 @@ extension ExitTest {
     // Find the ID of the exit test to run, if any, in the environment block.
     var id: ExitTest.ID?
     if var idString = Environment.variable(named: "SWT_EXPERIMENTAL_EXIT_TEST_ID") {
+      // Clear the environment variable. It's an implementation detail and exit
+      // test code shouldn't be dependent on it. Use ExitTest.current if needed!
+      Environment.setVariable(nil, named: "SWT_EXPERIMENTAL_EXIT_TEST_ID")
+
       id = try? idString.withUTF8 { idBuffer in
         try JSON.decode(ExitTest.ID.self, from: UnsafeRawBufferPointer(idBuffer))
       }
