@@ -21,3 +21,21 @@ extension Array {
     self = optionalValue.map { [$0] } ?? []
   }
 }
+
+/// Get the number of elements in a parameter pack.
+///
+/// - Parameters:
+///   - pack: The parameter pack.
+///
+/// - Returns: The number of elements in `pack`.
+///
+/// - Complexity: O(_n_) where _n_ is the number of elements in `pack`. The
+///   compiler may be able to optimize this operation when the types of `pack`
+///   are statically known.
+func parameterPackCount<each T>(_ pack: repeat each T) -> Int {
+  var result = 0
+  for _ in repeat each pack {
+    result += 1
+  }
+  return result
+}

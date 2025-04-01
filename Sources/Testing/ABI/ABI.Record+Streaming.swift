@@ -12,39 +12,6 @@
 private import Foundation
 
 extension ABI.Version {
-  /// Post-process encoded JSON and write it to a file.
-  ///
-  /// - Parameters:
-  ///   - json: The JSON to write.
-  ///   - file: The file to write to.
-  ///
-  /// - Throws: Whatever is thrown when writing to `file`.
-  private static func _asJSONLine(_ json: UnsafeRawBufferPointer, _ eventHandler: (_ recordJSON: UnsafeRawBufferPointer) throws -> Void) rethrows {
-    // We don't actually expect the JSON encoder to produce output containing
-    // newline characters, so in debug builds we'll log a diagnostic message.
-    if _slowPath(json.contains(where: \.isASCIINewline)) {
-#if DEBUG && !SWT_NO_FILE_IO
-      let message = Event.ConsoleOutputRecorder.warning(
-        "JSON encoder produced one or more newline characters while encoding an event to JSON. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new",
-        options: .for(.stderr)
-      )
-#if SWT_TARGET_OS_APPLE
-      try? FileHandle.stderr.write(message)
-#else
-      print(message)
-#endif
-#endif
-
-      // Remove the newline characters to conform to JSON lines specification.
-      var json = Array(json)
-      json.removeAll(where: \.isASCIINewline)
-      try json.withUnsafeBytes(eventHandler)
-    } else {
-      // No newlines found, no need to copy the buffer.
-      try eventHandler(json)
-    }
-  }
-
   static func eventHandler(
     encodeAsJSONLines: Bool,
     forwardingTo eventHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
@@ -52,7 +19,7 @@ extension ABI.Version {
     // Encode as JSON Lines if requested.
     var eventHandlerCopy = eventHandler
     if encodeAsJSONLines {
-      eventHandlerCopy = { @Sendable in _asJSONLine($0, eventHandler) }
+      eventHandlerCopy = { @Sendable in JSON.asJSONLine($0, eventHandler) }
     }
 
     let humanReadableOutputRecorder = Event.HumanReadableOutputRecorder()
