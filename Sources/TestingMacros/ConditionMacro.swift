@@ -436,7 +436,15 @@ extension ExitTestConditionMacro {
       fatalError("Could not find the body argument to this exit test. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
     }
 
-    let bodyArgumentExpr = arguments[trailingClosureIndex].expression
+    // Extract the body argument and, if it's a closure with a capture list,
+    // emit an appropriate diagnostic.
+    var bodyArgumentExpr = arguments[trailingClosureIndex].expression
+    bodyArgumentExpr = removeParentheses(from: bodyArgumentExpr) ?? bodyArgumentExpr
+    if let closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
+       let captureClause = closureExpr.signature?.capture,
+       !captureClause.items.isEmpty {
+      context.diagnose(.captureClauseUnsupported(captureClause, in: closureExpr, inExitTest: macro))
+    }
 
     // TODO: use UUID() here if we can link to Foundation
     let exitTestID = (UInt64.random(in: 0 ... .max), UInt64.random(in: 0 ... .max))

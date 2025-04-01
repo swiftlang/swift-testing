@@ -383,6 +383,23 @@ struct ConditionMacroTests {
     #expect(diagnostic.message.contains("is redundant"))
   }
 
+  @Test(
+    "Capture list on an exit test produces a diagnostic",
+    arguments: [
+      "#expectExitTest(exitsWith: x) { [a] in }":
+        "Cannot specify a capture clause in closure passed to '#expectExitTest(exitsWith:_:)'"
+    ]
+  )
+  func exitTestCaptureListProducesDiagnostic(input: String, expectedMessage: String) throws {
+    let (_, diagnostics) = try parse(input)
+
+    #expect(diagnostics.count > 0)
+    for diagnostic in diagnostics {
+      #expect(diagnostic.diagMessage.severity == .error)
+      #expect(diagnostic.message == expectedMessage)
+    }
+  }
+
   @Test("Macro expansion is performed within a test function")
   func macroExpansionInTestFunction() throws {
     let input = ##"""
