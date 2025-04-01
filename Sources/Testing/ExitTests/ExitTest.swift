@@ -35,10 +35,20 @@ private import _TestingInternals
 #endif
 public struct ExitTest: Sendable, ~Copyable {
   /// A type whose instances uniquely identify instances of ``ExitTest``.
+  ///
+  /// An instance of this type uniquely identifies an exit test within the
+  /// context of the current test target. You can get an exit test's unique
+  /// identifier from its ``id`` property.
+  ///
+  /// The encoded form of an instance of this type is subject to change over
+  /// time. Instances of this type are only guaranteed to be decodable by the
+  /// same version of the testing library that encoded them.
   @_spi(ForToolsIntegrationOnly)
   public struct ID: Sendable, Equatable, Codable {
-    /// An underlying UUID (stored as two `UInt64` values to avoid relying on
-    /// `UUID` from Foundation or any platform-specific interfaces.)
+    /// Storage for the underlying bits of the ID.
+    ///
+    /// - Note: On Apple platforms, we deploy to OS versions that do not include
+    ///   support for `UInt128`, so we use two `UInt64`s for storage instead.
     private var _lo: UInt64
     private var _hi: UInt64
 
