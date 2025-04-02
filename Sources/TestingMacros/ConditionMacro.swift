@@ -447,6 +447,9 @@ extension ExitTestConditionMacro {
       context.diagnose(.captureClauseUnsupported(captureClause, in: closureExpr, inExitTest: macro))
     }
 
+    // Generate a unique identifier for this exit test.
+    let idExpr = _makeExitTestIDExpr(for: macro, in: context)
+
     var decls = [DeclSyntax]()
 
     // Implement the body of the exit test outside the enum we're declaring so
@@ -491,7 +494,7 @@ extension ExitTestConditionMacro {
         enum \(enumName) {
           private nonisolated static let accessor: Testing.__TestContentRecordAccessor = { outValue, type, hint, _ in
             Testing.ExitTest.__store(
-              \(_makeExitTestIDExpr(for: macro, in: context)),
+              \(idExpr),
               \(bodyThunkName),
               into: outValue,
               asTypeAt: type,
@@ -522,10 +525,7 @@ extension ExitTestConditionMacro {
     // Insert the exit test's ID as the first argument. Note that this will
     // invalidate all indices into `arguments`!
     arguments.insert(
-      Argument(
-        label: "identifiedBy",
-        expression: exitTestIDExpr
-      ),
+      Argument(label: "identifiedBy", expression: idExpr),
       at: arguments.startIndex
     )
 
