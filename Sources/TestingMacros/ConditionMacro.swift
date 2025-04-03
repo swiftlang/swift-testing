@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+import SwiftParser
 public import SwiftSyntax
 import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
@@ -446,9 +447,8 @@ extension ExitTestConditionMacro {
       context.diagnose(.captureClauseUnsupported(captureClause, in: closureExpr, inExitTest: macro))
     }
 
-    // TODO: use UUID() here if we can link to Foundation
-    let exitTestID = (UInt64.random(in: 0 ... .max), UInt64.random(in: 0 ... .max))
-    let exitTestIDExpr: ExprSyntax = "(\(literal: exitTestID.0), \(literal: exitTestID.1))"
+    // Generate a unique identifier for this exit test.
+    let idExpr = _makeExitTestIDExpr(for: macro, in: context)
 
     var decls = [DeclSyntax]()
 
@@ -494,7 +494,7 @@ extension ExitTestConditionMacro {
         enum \(enumName) {
           private nonisolated static let accessor: Testing.__TestContentRecordAccessor = { outValue, type, hint, _ in
             Testing.ExitTest.__store(
-              \(exitTestIDExpr),
+              \(idExpr),
               \(bodyThunkName),
               into: outValue,
               asTypeAt: type,
@@ -525,10 +525,7 @@ extension ExitTestConditionMacro {
     // Insert the exit test's ID as the first argument. Note that this will
     // invalidate all indices into `arguments`!
     arguments.insert(
-      Argument(
-        label: "identifiedBy",
-        expression: exitTestIDExpr
-      ),
+      Argument(label: "identifiedBy", expression: idExpr),
       at: arguments.startIndex
     )
 
@@ -540,6 +537,44 @@ extension ExitTestConditionMacro {
     macro.additionalTrailingClosures = MultipleTrailingClosureElementListSyntax()
 
     return try Base.expansion(of: macro, primaryExpression: bodyArgumentExpr, in: context)
+  }
+
+  /// Make an expression representing an exit test ID that can be passed to the
+  /// `ExitTest.__store()` function at runtime.
+  ///
+  /// - Parameters:
+  ///   - macro: The exit test macro being inspected.
+  ///   - context: The macro context in which the expression is being parsed.
+  ///
+  /// - Returns: An expression representing the exit test's unique ID.
+  private static func _makeExitTestIDExpr(
+    for macro: some FreestandingMacroExpansionSyntax,
+    in context: some MacroExpansionContext
+  ) -> ExprSyntax {
+    let exitTestID: (UInt64, UInt64)
+    if let sourceLocation = context.location(of: macro, at: .afterLeadingTrivia, filePathMode: .fileID),
+       let fileID = sourceLocation.file.as(StringLiteralExprSyntax.self)?.representedLiteralValue,
+       let line = sourceLocation.line.as(IntegerLiteralExprSyntax.self)?.representedLiteralValue,
+       let column = sourceLocation.column.as(IntegerLiteralExprSyntax.self)?.representedLiteralValue {
+      // Hash the entire source location and store as many bits as possible in
+      // the resulting ID.
+      let stringValue = "\(fileID):\(line):\(column)"
+      exitTestID = SHA256.hash(stringValue.utf8).withUnsafeBytes { sha256 in
+        sha256.loadUnaligned(as: (UInt64, UInt64).self)
+      }
+    } else {
+      // This branch is dead code in production, but is used when we expand a
+      // macro in our own unit tests because the macro expansion context does
+      // not have real source location information.
+      exitTestID.0 = .random(in: 0 ... .max)
+      exitTestID.1 = .random(in: 0 ... .max)
+    }
+
+    // Return a tuple of integer literals (which is what the runtime __store()
+    // function is expecting.)
+    return """
+    (\(IntegerLiteralExprSyntax(exitTestID.0, radix: .hex)), \(IntegerLiteralExprSyntax(exitTestID.1, radix: .hex)))
+    """
   }
 }
 
