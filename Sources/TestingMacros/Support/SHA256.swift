@@ -9,7 +9,7 @@
 //
 
 /// The contents of this file were copied more-or-less verbatim from
-/// [swift-tools-support-core](https://github.com/swiftlang/swift-tools-support-core/blob/main/Sources/TSCBasic/HashAlgorithms.swift).
+/// [swift-tools-support-core](https://github.com/swiftlang/swift-tools-support-core/blob/add9e1518ac37a8e52b7612d3eb2f009ae8f6ce8/Sources/TSCBasic/HashAlgorithms.swift).
 
 /// SHA-256 implementation from Secure Hash Algorithm 2 (SHA-2) set of
 /// cryptographic hash functions (FIPS PUB 180-2).
