@@ -52,16 +52,18 @@ extension TestContentKind: Equatable, Hashable {
   }
 }
 
+#if !hasFeature(Embedded)
 // MARK: - Codable
 
 extension TestContentKind: Codable {}
+#endif
 
 // MARK: - ExpressibleByStringLiteral, ExpressibleByIntegerLiteral
 
 extension TestContentKind: ExpressibleByStringLiteral, ExpressibleByIntegerLiteral {
   @inlinable public init(stringLiteral stringValue: StaticString) {
-    precondition(stringValue.utf8CodeUnitCount == MemoryLayout<UInt32>.stride, #""\#(stringValue)".utf8CodeUnitCount = \#(stringValue.utf8CodeUnitCount), expected \#(MemoryLayout<UInt32>.stride)"#)
     let rawValue = stringValue.withUTF8Buffer { stringValue in
+      precondition(stringValue.count == MemoryLayout<UInt32>.stride, #""\#(stringValue)".utf8CodeUnitCount = \#(stringValue.count), expected \#(MemoryLayout<UInt32>.stride)"#)
       let bigEndian = UnsafeRawBufferPointer(stringValue).loadUnaligned(as: UInt32.self)
       return UInt32(bigEndian: bigEndian)
     }
@@ -82,10 +84,9 @@ extension TestContentKind: CustomStringConvertible {
   private var _fourCCValue: String? {
     withUnsafeBytes(of: rawValue.bigEndian) { bytes in
       if bytes.allSatisfy(Unicode.ASCII.isASCII) {
-        let characters = String(decoding: bytes, as: Unicode.ASCII.self)
-        let allAlphanumeric = characters.allSatisfy { $0.isLetter || $0.isWholeNumber }
+        let allAlphanumeric = bytes.allSatisfy { 0 != isprint(CInt($0)) }
         if allAlphanumeric {
-          return characters
+          return String(decoding: bytes, as: Unicode.ASCII.self)
         }
       }
       return nil
