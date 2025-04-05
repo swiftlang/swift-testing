@@ -799,7 +799,9 @@ extension ExitTest {
         sourceLocation: issue.sourceLocation
       )
       var issueCopy = Issue(kind: issueKind, comments: comments, sourceContext: sourceContext)
-      issueCopy.isKnown = issue.isKnown
+      if let context = issue._knownIssueContext {
+        issueCopy.knownIssueContext = Issue.KnownIssueContext(comment: context.comment, sourceLocation: context.sourceLocation)
+      }
       issueCopy.record()
     }
   }
