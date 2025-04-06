@@ -48,13 +48,17 @@ public struct ExitTest: Sendable, ~Copyable {
     /// Storage for the underlying bits of the ID.
     ///
     /// - Note: On Apple platforms, we deploy to OS versions that do not include
-    ///   support for `UInt128`, so we use two `UInt64`s for storage instead.
-    private var _lo: UInt64
-    private var _hi: UInt64
+    ///   support for `UInt128`, so we use four `UInt64`s for storage instead.
+    private var _0: UInt64
+    private var _1: UInt64
+    private var _2: UInt64
+    private var _3: UInt64
 
-    init(_ uuid: (UInt64, UInt64)) {
-      self._lo = uuid.0
-      self._hi = uuid.1
+    init(_ uuid: (UInt64, UInt64, UInt64, UInt64)) {
+      self._0 = uuid.0
+      self._1 = uuid.1
+      self._2 = uuid.2
+      self._3 = uuid.3
     }
   }
 
@@ -270,7 +274,7 @@ extension ExitTest: DiscoverableAsTestContent {
   /// - Warning: This function is used to implement the `#expect(exitsWith:)`
   ///   macro. Do not use it directly.
   public static func __store(
-    _ id: (UInt64, UInt64),
+    _ id: (UInt64, UInt64, UInt64, UInt64),
     _ body: @escaping @Sendable () async throws -> Void,
     into outValue: UnsafeMutableRawPointer,
     asTypeAt typeAddress: UnsafeRawPointer,
@@ -344,7 +348,7 @@ extension ExitTest {
 /// `await #expect(exitsWith:) { }` invocations regardless of calling
 /// convention.
 func callExitTest(
-  identifiedBy exitTestID: (UInt64, UInt64),
+  identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
   exitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable],
   expression: __Expression,
