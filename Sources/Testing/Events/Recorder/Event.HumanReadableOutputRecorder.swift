@@ -455,7 +455,9 @@ extension Event.HumanReadableOutputRecorder {
       additionalMessages += _formattedComments(issue.comments)
       if let knownIssueComment = issue.knownIssueContext?.comment {
         if case .errorCaught = issue.kind {
-          // The known issue comment is already included in `issue.comments`.
+          // `_matchError()` put the known issue comment in `issue.comments`
+          // when it first created the issue, so it's already included in
+          // `additionalMessages`.
         } else {
           additionalMessages.append(_formattedComment(knownIssueComment))
         }
