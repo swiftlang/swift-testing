@@ -30,16 +30,7 @@ extension ABI {
     var _severity: Severity
 
     /// Whether or not this issue is known to occur.
-    ///
-    /// This should perhaps be deprecated in favor of `_knownIssueContext`.
     var isKnown: Bool
-
-    /// An ``Issue/KnownIssueContext-swift.struct`` representing the
-    /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)`` call
-    /// that matched this issue, if any.
-    ///
-    /// - Warning: Known issues are not yet part of the JSON schema.
-    var _knownIssueContext: EncodedKnownIssueContext<V>?
 
     /// The location in source where this issue occurred, if available.
     var sourceLocation: SourceLocation?
@@ -60,9 +51,6 @@ extension ABI {
       case .error: .error
       }
       isKnown = issue.isKnown
-      if let knownIssueContext = issue.knownIssueContext {
-        _knownIssueContext = EncodedKnownIssueContext(encoding: knownIssueContext, in: eventContext)
-      }
       sourceLocation = issue.sourceLocation
       if let backtrace = issue.sourceContext.backtrace {
         _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)

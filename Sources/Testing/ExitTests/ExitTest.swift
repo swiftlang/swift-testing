@@ -746,8 +746,10 @@ extension ExitTest {
         sourceLocation: issue.sourceLocation
       )
       var issueCopy = Issue(kind: issueKind, comments: comments, sourceContext: sourceContext)
-      if let context = issue._knownIssueContext {
-        issueCopy.knownIssueContext = Issue.KnownIssueContext(comment: context.comment, sourceLocation: context.sourceLocation)
+      if issue.isKnown {
+        // The known issue comment, if there was one, is already included in
+        // the `comments` array above.
+        issueCopy.knownIssueContext = Issue.KnownIssueContext()
       }
       issueCopy.record()
     }
