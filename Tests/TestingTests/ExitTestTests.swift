@@ -406,8 +406,9 @@ private import _TestingInternals
 
     @Test("self in capture list")
     func captureListWithSelf() async {
-      await #expect(exitsWith: .success) { [self] in
+      await #expect(exitsWith: .success) { [self, x = self] in
         #expect(self.property == 456)
+        #expect(x.property == 456)
       }
     }
   }

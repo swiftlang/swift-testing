@@ -46,34 +46,41 @@ struct CapturedValueInfo {
       return
     }
 
+    // Potentially get the name of the type comprising the current lexical
+    // context (i.e. whatever `Self` is.)
+    let typeNameOfLexicalContext = {
+      let lexicalContext = context.lexicalContext.drop { !$0.isProtocol((any DeclGroupSyntax).self) }
+      return context.type(ofLexicalContext: lexicalContext)
+    }()
+
     if let initializer = capture.initializer {
       // Found an initializer clause. Extract the expression it captures.
-      self.expression = initializer.value
+      self.expression = removeParentheses(from: initializer.value) ?? initializer.value
 
       // Find the 'as' clause so we can determine the type of the captured value.
-      guard let asExpr = (removeParentheses(from: expression) ?? expression).as(AsExprSyntax.self) else {
+      if let asExpr = self.expression.as(AsExprSyntax.self) {
+        self.type = if asExpr.questionOrExclamationMark?.tokenKind == .postfixQuestionMark {
+          // If the caller is using as?, make the type optional.
+          TypeSyntax(OptionalTypeSyntax(wrappedType: type.trimmed))
+        } else {
+          asExpr.type
+        }
+
+      } else if let selfExpr = self.expression.as(DeclReferenceExprSyntax.self),
+                selfExpr.baseName.tokenKind == .keyword(.self),
+                selfExpr.argumentNames == nil,
+                let typeNameOfLexicalContext {
+        // Copying self.
+        self.type = typeNameOfLexicalContext
+      } else {
         context.diagnose(.typeOfCaptureIsAmbiguous(capture, initializedWith: initializer))
-        return
       }
 
-      self.type = if asExpr.questionOrExclamationMark?.tokenKind == .postfixQuestionMark {
-        // If the caller us using as?, make the type optional.
-        TypeSyntax(OptionalTypeSyntax(wrappedType: type.trimmed))
-      } else {
-        asExpr.type
-      }
-
-    } else if capture.name.tokenKind == .keyword(.self) {
-      // Capturing self is special-cased if we can find the type name in the
-      // enclosing scope.
-      var lexicalContext = context.lexicalContext[...]
-      lexicalContext = lexicalContext.drop { !$0.isProtocol((any DeclGroupSyntax).self) }
-      if let typeName = context.type(ofLexicalContext: lexicalContext) {
-        self.expression = "self"
-        self.type = typeName
-      } else {
-        context.diagnose(.typeOfCaptureIsAmbiguous(capture))
-      }
+    } else if capture.name.tokenKind == .keyword(.self),
+              let typeNameOfLexicalContext {
+      // Capturing self.
+      self.expression = "self"
+      self.type = typeNameOfLexicalContext
 
     } else {
       // Not enough contextual information to derive the type here.
