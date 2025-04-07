@@ -14,11 +14,22 @@
 ///
 /// A stack of these is stored in `KnownIssueScope.current`.
 struct KnownIssueScope: Sendable {
+  /// A function which determines if an issue matches a known issue scope or
+  /// any of its ancestor scopes.
+  ///
+  /// - Parameters:
+  ///   - issue: The issue being matched.
+  /// - Returns: A known issue context containing information about the known
+  /// issue, if the issue is considered "known" by this known issue scope or any
+  /// ancestor scope, or `nil` otherwise.
+  typealias Matcher = @Sendable (Issue) -> Issue.KnownIssueContext?
+
   /// Determine if an issue is known to this scope or any of its ancestor
   /// scopes.
   ///
   /// Returns `nil` if the issue is not known.
-  var match: @Sendable (Issue) -> Issue.KnownIssueContext?
+  var matcher: @Sendable (Issue) -> Issue.KnownIssueContext?
+
   /// The number of issues this scope and its ancestors have matched.
   let matchCounter: Locked<Int>
 
@@ -36,11 +47,11 @@ struct KnownIssueScope: Sendable {
   init(parent: KnownIssueScope?, issueMatcher: @escaping KnownIssueMatcher, context: Issue.KnownIssueContext) {
     let matchCounter = Locked(rawValue: 0)
     self.matchCounter = matchCounter
-    match = { issue in
+    matcher = { issue in
       let matchedContext = if issueMatcher(issue) {
         context
       } else {
-        parent?.match(issue)
+        parent?.matcher(issue)
       }
       if matchedContext != nil {
         matchCounter.increment()
@@ -71,7 +82,7 @@ struct KnownIssueScope: Sendable {
 private func _matchError(_ error: any Error, using scope: KnownIssueScope, comment: Comment?, sourceLocation: SourceLocation) throws {
   let sourceContext = SourceContext(backtrace: Backtrace(forFirstThrowOf: error), sourceLocation: sourceLocation)
   var issue = Issue(kind: .errorCaught(error), comments: Array(comment), sourceContext: sourceContext)
-  if let context = scope.match(issue) {
+  if let context = scope.matcher(issue) {
     // It's a known issue, so mark it as such before recording it.
     issue.knownIssueContext = context
     issue.record()
