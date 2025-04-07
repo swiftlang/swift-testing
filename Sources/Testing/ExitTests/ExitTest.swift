@@ -214,7 +214,7 @@ extension ExitTest {
     // exit code that is unlikely to be encountered "in the wild" and which
     // encodes the caught signal. Corresponding code in the parent process looks
     // for these special exit codes and translates them back to signals.
-    for sig in [SIGINT, SIGILL, SIGFPE, SIGSEGV, SIGTERM, SIGBREAK, SIGABRT] {
+    for sig in [SIGINT, SIGILL, SIGFPE, SIGSEGV, SIGTERM, SIGBREAK, SIGABRT, SIGABRT_COMPAT] {
       _ = signal(sig) { sig in
         _Exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
       }
