@@ -498,18 +498,33 @@ struct EventRecorderTests {
     }
   }
 
-  @Test("HumanReadableOutputRecorder includes known issue comment in messages array")
-  func humanReadableRecorderIncludesKnownIssueCommentInMessagesArray() {
-    var issue = Issue(kind: .unconditional)
-    issue.knownIssueContext = Issue.KnownIssueContext(comment: "Known issue comment")
-    let event = Event(.issueRecorded(issue), testID: nil, testCaseID: nil)
-    let context = Event.Context(test: nil, testCase: nil, configuration: nil)
-
+  @Test(
+    "HumanReadableOutputRecorder includes known issue comment in messages array",
+    arguments: [
+      ("recordWithoutKnownIssueComment()", ["#expect comment"]),
+      ("recordWithKnownIssueComment()", ["#expect comment", "withKnownIssue comment"]),
+      ("throwWithoutKnownIssueComment()", []),
+      ("throwWithKnownIssueComment()", ["withKnownIssue comment"]),
+    ]
+  )
+  func knownIssueComments(testName: String, expectedComments: [String]) async throws {
+    var configuration = Configuration()
     let recorder = Event.HumanReadableOutputRecorder()
-    let messages = recorder.record(event, in: context)
-    #expect(
-      messages.map(\.stringValue).contains("Known issue comment")
-    )
+    let messages = Locked<[Event.HumanReadableOutputRecorder.Message]>(rawValue: [])
+    configuration.eventHandler = { event, context in
+      guard case .issueRecorded = event.kind else { return }
+      messages.withLock {
+        $0.append(contentsOf: recorder.record(event, in: context))
+      }
+    }
+
+    await runTestFunction(named: testName, in: PredictablyFailingKnownIssueTests.self, configuration: configuration)
+
+    // The first message is something along the lines of "Test foo recorded a
+    // known issue" and includes a source location, so is inconvenient to
+    // include in our expectation here.
+    let actualComments = messages.withLock(\.self).dropFirst().map(\.stringValue)
+    #expect(actualComments == expectedComments)
   }
 }
 
@@ -651,5 +666,37 @@ struct EventRecorderTests {
   @Test(.hidden, arguments: [1])
   func n(_ arg: Int) {
     #expect(arg > 0)
+  }
+}
+
+@Suite(.hidden) struct PredictablyFailingKnownIssueTests {
+  @Test(.hidden)
+  func recordWithoutKnownIssueComment() {
+    withKnownIssue {
+      #expect(Bool(false), "#expect comment")
+    }
+  }
+
+  @Test(.hidden)
+  func recordWithKnownIssueComment() {
+    withKnownIssue("withKnownIssue comment") {
+      #expect(Bool(false), "#expect comment")
+    }
+  }
+
+  @Test(.hidden)
+  func throwWithoutKnownIssueComment() {
+    withKnownIssue {
+      struct TheError: Error {}
+      throw TheError()
+    }
+  }
+
+  @Test(.hidden)
+  func throwWithKnownIssueComment() {
+    withKnownIssue("withKnownIssue comment") {
+      struct TheError: Error {}
+      throw TheError()
+    }
   }
 }
