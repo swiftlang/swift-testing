@@ -79,7 +79,6 @@ final class KnownIssueTests: XCTestCase {
 
       XCTAssertEqual(issue.comments, ["Issue Comment"])
       XCTAssertEqual(issue.knownIssueContext?.comment, "With Known Issue Comment")
-      XCTAssertEqual(issue.knownIssueContext?.sourceLocation, sourceLocation)
       XCTAssertTrue(issue.isKnown)
     }
 
@@ -165,7 +164,6 @@ final class KnownIssueTests: XCTestCase {
 
       XCTAssertEqual(issue.comments, ["Issue B"])
       XCTAssertEqual(issue.knownIssueContext?.comment, "Inner Contains B")
-      XCTAssertEqual(issue.knownIssueContext?.sourceLocation, sourceLocation)
       XCTAssertTrue(issue.isKnown)
     }
 

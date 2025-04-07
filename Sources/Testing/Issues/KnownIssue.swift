@@ -211,7 +211,7 @@ public func withKnownIssue(
   guard precondition() else {
     return try body()
   }
-  let scope = KnownIssueScope(parent: .current, issueMatcher: issueMatcher, context: Issue.KnownIssueContext(comment: comment, sourceLocation: sourceLocation))
+  let scope = KnownIssueScope(parent: .current, issueMatcher: issueMatcher, context: Issue.KnownIssueContext(comment: comment))
   defer {
     if !isIntermittent {
       _handleMiscount(by: scope.matchCounter, comment: comment, sourceLocation: sourceLocation)
@@ -330,7 +330,7 @@ public func withKnownIssue(
   guard await precondition() else {
     return try await body()
   }
-  let scope = KnownIssueScope(parent: .current, issueMatcher: issueMatcher, context: Issue.KnownIssueContext(comment: comment, sourceLocation: sourceLocation))
+  let scope = KnownIssueScope(parent: .current, issueMatcher: issueMatcher, context: Issue.KnownIssueContext(comment: comment))
   defer {
     if !isIntermittent {
       _handleMiscount(by: scope.matchCounter, comment: comment, sourceLocation: sourceLocation)

@@ -121,10 +121,7 @@ public struct Issue: Sendable {
   @_spi(ForToolsIntegrationOnly)
   public struct KnownIssueContext: Sendable {
     /// The comment that was passed to `withKnownIssue()`, if any.
-    var comment: Comment?
-
-    /// The source location that was passed to `withKnownIssue()`.
-    var sourceLocation: SourceLocation
+    public var comment: Comment?
   }
 
   /// A ``KnownIssueContext-swift.struct`` representing the
