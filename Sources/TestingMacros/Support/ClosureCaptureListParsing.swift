@@ -65,7 +65,6 @@ struct CapturedValueInfo {
         } else {
           asExpr.type
         }
-
       } else if let selfExpr = self.expression.as(DeclReferenceExprSyntax.self),
                 selfExpr.baseName.tokenKind == .keyword(.self),
                 selfExpr.argumentNames == nil,
