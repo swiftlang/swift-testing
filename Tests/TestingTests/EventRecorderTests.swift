@@ -523,7 +523,7 @@ struct EventRecorderTests {
     // The first message is something along the lines of "Test foo recorded a
     // known issue" and includes a source location, so is inconvenient to
     // include in our expectation here.
-    let actualComments = messages.withLock(\.self).dropFirst().map(\.stringValue)
+    let actualComments = messages.rawValue.dropFirst().map(\.stringValue)
     #expect(actualComments == expectedComments)
   }
 }
