@@ -497,6 +497,20 @@ struct EventRecorderTests {
       recorder.record(Event(.runEnded, testID: nil, testCaseID: nil), in: context)
     }
   }
+
+  @Test("HumanReadableOutputRecorder includes known issue comment in messages array")
+  func humanReadableRecorderIncludesKnownIssueCommentInMessagesArray() {
+    var issue = Issue(kind: .unconditional)
+    issue.knownIssueContext = Issue.KnownIssueContext(comment: "Known issue comment")
+    let event = Event(.issueRecorded(issue), testID: nil, testCaseID: nil)
+    let context = Event.Context(test: nil, testCase: nil, configuration: nil)
+
+    let recorder = Event.HumanReadableOutputRecorder()
+    let messages = recorder.record(event, in: context)
+    #expect(
+      messages.map(\.stringValue).contains("Known issue comment")
+    )
+  }
 }
 
 // MARK: - Fixtures
