@@ -83,11 +83,11 @@ extension TestContentKind: CustomStringConvertible {
   /// value, or `nil` if not.
   private var _fourCCValue: String? {
     withUnsafeBytes(of: rawValue.bigEndian) { bytes in
-      if bytes.allSatisfy(Unicode.ASCII.isASCII) {
-        let allAlphanumeric = bytes.allSatisfy { 0 != isprint(CInt($0)) }
-        if allAlphanumeric {
-          return String(decoding: bytes, as: Unicode.ASCII.self)
-        }
+      let allPrintableASCII = bytes.allSatisfy { byte in
+        Unicode.ASCII.isASCII(byte) && 0 != isprint(CInt(byte))
+      }
+      if allPrintableASCII {
+        return String(decoding: bytes, as: Unicode.ASCII.self)
       }
       return nil
     }

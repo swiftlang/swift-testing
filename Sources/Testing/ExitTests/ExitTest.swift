@@ -35,16 +35,30 @@ private import _TestingInternals
 #endif
 public struct ExitTest: Sendable, ~Copyable {
   /// A type whose instances uniquely identify instances of ``ExitTest``.
+  ///
+  /// An instance of this type uniquely identifies an exit test within the
+  /// context of the current test target. You can get an exit test's unique
+  /// identifier from its ``id`` property.
+  ///
+  /// The encoded form of an instance of this type is subject to change over
+  /// time. Instances of this type are only guaranteed to be decodable by the
+  /// same version of the testing library that encoded them.
   @_spi(ForToolsIntegrationOnly)
   public struct ID: Sendable, Equatable, Codable {
-    /// An underlying UUID (stored as two `UInt64` values to avoid relying on
-    /// `UUID` from Foundation or any platform-specific interfaces.)
-    private var _lo: UInt64
-    private var _hi: UInt64
+    /// Storage for the underlying bits of the ID.
+    ///
+    /// - Note: On Apple platforms, we deploy to OS versions that do not include
+    ///   support for `UInt128`, so we use four `UInt64`s for storage instead.
+    private var _0: UInt64
+    private var _1: UInt64
+    private var _2: UInt64
+    private var _3: UInt64
 
-    init(_ uuid: (UInt64, UInt64)) {
-      self._lo = uuid.0
-      self._hi = uuid.1
+    init(_ uuid: (UInt64, UInt64, UInt64, UInt64)) {
+      self._0 = uuid.0
+      self._1 = uuid.1
+      self._2 = uuid.2
+      self._3 = uuid.3
     }
   }
 
@@ -204,7 +218,7 @@ extension ExitTest {
     // exit code that is unlikely to be encountered "in the wild" and which
     // encodes the caught signal. Corresponding code in the parent process looks
     // for these special exit codes and translates them back to signals.
-    for sig in [SIGINT, SIGILL, SIGFPE, SIGSEGV, SIGTERM, SIGBREAK, SIGABRT] {
+    for sig in [SIGINT, SIGILL, SIGFPE, SIGSEGV, SIGTERM, SIGBREAK, SIGABRT, SIGABRT_COMPAT] {
       _ = signal(sig) { sig in
         _Exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
       }
@@ -260,7 +274,7 @@ extension ExitTest: DiscoverableAsTestContent {
   /// - Warning: This function is used to implement the `#expect(exitsWith:)`
   ///   macro. Do not use it directly.
   public static func __store(
-    _ id: (UInt64, UInt64),
+    _ id: (UInt64, UInt64, UInt64, UInt64),
     _ body: @escaping @Sendable () async throws -> Void,
     into outValue: UnsafeMutableRawPointer,
     asTypeAt typeAddress: UnsafeRawPointer,
@@ -336,7 +350,7 @@ extension ExitTest {
 /// `await #expect(exitsWith:) { }` invocations regardless of calling
 /// convention.
 func callExitTest(
-  identifiedBy exitTestID: (UInt64, UInt64),
+  identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
   exitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable],
   expression: __Expression,
@@ -459,6 +473,10 @@ extension ExitTest {
       return nil
     }
 
+    // Erase the environment variable so that it cannot accidentally be opened
+    // twice (nor, in theory, affect the code of the exit test.)
+    Environment.setVariable(nil, named: "SWT_EXPERIMENTAL_BACKCHANNEL")
+
     var fd: CInt?
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
     fd = CInt(backChannelEnvironmentVariable)
@@ -489,6 +507,10 @@ extension ExitTest {
     // Find the ID of the exit test to run, if any, in the environment block.
     var id: ExitTest.ID?
     if var idString = Environment.variable(named: "SWT_EXPERIMENTAL_EXIT_TEST_ID") {
+      // Clear the environment variable. It's an implementation detail and exit
+      // test code shouldn't be dependent on it. Use ExitTest.current if needed!
+      Environment.setVariable(nil, named: "SWT_EXPERIMENTAL_EXIT_TEST_ID")
+
       id = try? idString.withUTF8 { idBuffer in
         try JSON.decode(ExitTest.ID.self, from: UnsafeRawBufferPointer(idBuffer))
       }

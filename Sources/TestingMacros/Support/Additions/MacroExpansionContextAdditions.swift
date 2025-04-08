@@ -63,10 +63,12 @@ extension MacroExpansionContext {
       .tokens(viewMode: .fixedUp)
       .map(\.textWithoutBackticks)
       .joined()
-    let crcValue = crc32(identifierCharacters.utf8)
-    let suffix = String(crcValue, radix: 16, uppercase: false)
+    let hashValue = SHA256.hash(identifierCharacters.utf8).withUnsafeBytes { sha256 in
+      sha256.loadUnaligned(as: UInt64.self)
+    }
+    let suffix = String(hashValue, radix: 16, uppercase: false)
 
-    // If the caller did not specify a prefix and the CRC32 value starts with a
+    // If the caller did not specify a prefix and the hash value starts with a
     // digit, include a single-character prefix to ensure that Swift's name
     // demangling still works correctly.
     var prefix = prefix
