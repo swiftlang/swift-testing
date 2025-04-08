@@ -114,24 +114,15 @@ public struct ExitTest: Sendable, ~Copyable {
 
 @_spi(Experimental)
 extension ExitTest {
-  /// A container type to hold the current exit test.
-  ///
-  /// This class is temporarily necessary until `ManagedBuffer` is updated to
-  /// support storing move-only values. For more information, see [SE-NNNN](https://github.com/swiftlang/swift-evolution/pull/2657).
-  private final class _CurrentContainer: Sendable {
-    /// The exit test represented by this container.
-    ///
-    /// The value of this property must be optional to avoid a copy when reading
-    /// the value in ``ExitTest/current``.
-    let exitTest: ExitTest?
-
-    init(exitTest: borrowing ExitTest) {
-      self.exitTest = ExitTest(id: exitTest.id, body: exitTest.body, _observedValues: exitTest._observedValues)
-    }
-  }
-
   /// Storage for ``current``.
-  private static let _current = Locked<_CurrentContainer?>()
+  ///
+  /// A pointer is used for indirection because `ManagedBuffer` cannot yet hold
+  /// move-only types.
+  private static nonisolated(unsafe) let _current: Locked<UnsafeMutablePointer<ExitTest?>> = {
+    let result = UnsafeMutablePointer<ExitTest?>.allocate(capacity: 1)
+    result.initialize(to: nil)
+    return Locked(rawValue: result)
+  }()
 
   /// The exit test that is running in the current process, if any.
   ///
@@ -144,11 +135,7 @@ extension ExitTest {
   /// process.
   public static var current: ExitTest? {
     _read {
-      if let current = _current.rawValue {
-        yield current.exitTest
-      } else {
-        yield nil
-      }
+      yield _current.rawValue.pointee
     }
   }
 }
@@ -235,7 +222,7 @@ extension ExitTest {
 
     // Set ExitTest.current before the test body runs.
     Self._current.withLock { current in
-      current = _CurrentContainer(exitTest: self)
+      current.pointee = ExitTest(id: id, body: body, _observedValues: _observedValues)
     }
 
     do {
