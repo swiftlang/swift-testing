@@ -587,30 +587,35 @@ extension ExitTestConditionMacro {
     for macro: some FreestandingMacroExpansionSyntax,
     in context: some MacroExpansionContext
   ) -> ExprSyntax {
-    let exitTestID: (UInt64, UInt64)
-    if let sourceLocation = context.location(of: macro, at: .afterLeadingTrivia, filePathMode: .fileID),
-       let fileID = sourceLocation.file.as(StringLiteralExprSyntax.self)?.representedLiteralValue,
-       let line = sourceLocation.line.as(IntegerLiteralExprSyntax.self)?.representedLiteralValue,
-       let column = sourceLocation.column.as(IntegerLiteralExprSyntax.self)?.representedLiteralValue {
-      // Hash the entire source location and store as many bits as possible in
-      // the resulting ID.
-      let stringValue = "\(fileID):\(line):\(column)"
-      exitTestID = SHA256.hash(stringValue.utf8).withUnsafeBytes { sha256 in
-        sha256.loadUnaligned(as: (UInt64, UInt64).self)
+    withUnsafeTemporaryAllocation(of: UInt64.self, capacity: 4) { exitTestID in
+      if let sourceLocation = context.location(of: macro, at: .afterLeadingTrivia, filePathMode: .fileID),
+         let fileID = sourceLocation.file.as(StringLiteralExprSyntax.self)?.representedLiteralValue,
+         let line = sourceLocation.line.as(IntegerLiteralExprSyntax.self)?.representedLiteralValue,
+         let column = sourceLocation.column.as(IntegerLiteralExprSyntax.self)?.representedLiteralValue {
+        // Hash the entire source location and store the entire hash in the
+        // resulting ID.
+        let stringValue = "\(fileID):\(line):\(column)"
+        exitTestID.withMemoryRebound(to: UInt8.self) { exitTestID in
+          _ = exitTestID.initialize(from: SHA256.hash(stringValue.utf8))
+        }
+      } else {
+        // This branch is dead code in production, but is used when we expand a
+        // macro in our own unit tests because the macro expansion context does
+        // not have real source location information.
+        for i in 0 ..< exitTestID.count {
+          exitTestID[i] = .random(in: 0 ... .max)
+        }
       }
-    } else {
-      // This branch is dead code in production, but is used when we expand a
-      // macro in our own unit tests because the macro expansion context does
-      // not have real source location information.
-      exitTestID.0 = .random(in: 0 ... .max)
-      exitTestID.1 = .random(in: 0 ... .max)
-    }
 
-    // Return a tuple of integer literals (which is what the runtime __store()
-    // function is expecting.)
-    return """
-    (\(IntegerLiteralExprSyntax(exitTestID.0, radix: .hex)), \(IntegerLiteralExprSyntax(exitTestID.1, radix: .hex)))
-    """
+      // Return a tuple of integer literals (which is what the runtime __store()
+      // function is expecting.)
+      let tupleExpr = TupleExprSyntax {
+        for uint64 in exitTestID {
+          LabeledExprSyntax(expression: IntegerLiteralExprSyntax(uint64, radix: .hex))
+        }
+      }
+      return ExprSyntax(tupleExpr)
+    }
   }
 }
 

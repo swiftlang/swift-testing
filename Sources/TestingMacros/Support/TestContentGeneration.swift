@@ -30,12 +30,10 @@ enum TestContentKind: UInt32 {
   /// This kind value as a comment (`/* 'abcd' */`) if it looks like it might be
   /// a [FourCC](https://en.wikipedia.org/wiki/FourCC) value, or `nil` if not.
   var commentRepresentation: Trivia {
-    switch self {
-    case .testDeclaration:
-      .blockComment("/* 'test' */")
-    case .exitTest:
-      .blockComment("/* 'exit' */")
+    let stringValue = withUnsafeBytes(of: self.rawValue.bigEndian) { bytes in
+      String(decoding: bytes, as: Unicode.ASCII.self)
     }
+    return .blockComment("/* '\(stringValue)' */")
   }
 }
 
