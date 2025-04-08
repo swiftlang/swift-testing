@@ -1148,7 +1148,7 @@ public func __checkClosureCall<R>(
 #if ExperimentalExitTestValueCapture
 @_spi(Experimental)
 public func __checkClosureCall<each T>(
-  identifiedBy exitTestID: (UInt64, UInt64),
+  identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
   encodingCapturedValues capturedValues: (repeat each T),
   exitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable],
