@@ -107,6 +107,18 @@ public struct ExitTest: Sendable, ~Copyable {
       _observedValues = newValue
     }
   }
+
+  /// Make a copy of this instance.
+  ///
+  /// - Returns: A copy of this instance.
+  ///
+  /// This function is unsafe because if the caller is not careful, it could
+  /// invoke the same exit test twice.
+  fileprivate borrowing func unsafeCopy() -> Self {
+    var result = Self(id: id, body: body)
+    result._observedValues = _observedValues
+    return result
+  }
 }
 
 #if !SWT_NO_EXIT_TESTS
@@ -118,10 +130,10 @@ extension ExitTest {
   ///
   /// A pointer is used for indirection because `ManagedBuffer` cannot yet hold
   /// move-only types.
-  private static nonisolated(unsafe) let _current: Locked<UnsafeMutablePointer<ExitTest?>> = {
-    let result = UnsafeMutablePointer<ExitTest?>.allocate(capacity: 1)
-    result.initialize(to: nil)
-    return Locked(rawValue: result)
+  private static nonisolated(unsafe) var _current: Locked<UnsafeMutablePointer<ExitTest?>> = {
+    let current = UnsafeMutablePointer<ExitTest?>.allocate(capacity: 1)
+    current.initialize(to: nil)
+    return Locked(rawValue: current)
   }()
 
   /// The exit test that is running in the current process, if any.
@@ -135,7 +147,13 @@ extension ExitTest {
   /// process.
   public static var current: ExitTest? {
     _read {
-      yield _current.rawValue.pointee
+      // NOTE: Even though this accessor is `_read` and has borrowing semantics,
+      // we must make a copy so that we don't yield lock-guarded memory to the
+      // caller (which is not concurrency-safe.)
+      let currentCopy = _current.withLock { current in
+        return current.pointee?.unsafeCopy()
+      }
+      yield currentCopy
     }
   }
 }
@@ -222,7 +240,8 @@ extension ExitTest {
 
     // Set ExitTest.current before the test body runs.
     Self._current.withLock { current in
-      current.pointee = ExitTest(id: id, body: body, _observedValues: _observedValues)
+      precondition(current.pointee == nil, "Set the current exit test twice in the same process. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      current.pointee = self.unsafeCopy()
     }
 
     do {
