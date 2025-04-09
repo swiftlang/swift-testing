@@ -137,6 +137,11 @@ struct SendableTests: Sendable {
 @Suite("Named Sendable test type", .hidden)
 struct NamedSendableTests: Sendable {}
 
+// This is meant to help detect unqualified usages of the `Actor` protocol from
+// Swift's `_Concurrency` module in macro expansion code, since it's possible
+// for another module to declare a type with that name.
+private class Actor {}
+
 #if !SWT_NO_GLOBAL_ACTORS
 @Suite(.hidden)
 @MainActor
