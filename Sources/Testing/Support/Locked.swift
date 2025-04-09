@@ -92,7 +92,7 @@ struct LockedWith<L, T>: RawRepresentable where L: Lockable {
   /// This function can be used to synchronize access to shared data from a
   /// synchronous caller. Wherever possible, use actor isolation or other Swift
   /// concurrency tools.
-  nonmutating func withLock<R>(_ body: (inout T) throws -> R) rethrows -> R {
+  nonmutating func withLock<R>(_ body: (inout T) throws -> R) rethrows -> R where R: ~Copyable {
     try _storage.withUnsafeMutablePointers { rawValue, lock in
       L.unsafelyAcquireLock(at: lock)
       defer {
@@ -122,7 +122,7 @@ struct LockedWith<L, T>: RawRepresentable where L: Lockable {
   /// - Warning: Callers that unlock the lock _must_ lock it again before the
   ///   closure returns. If the lock is not acquired when `body` returns, the
   ///   effect is undefined.
-  nonmutating func withUnsafeUnderlyingLock<R>(_ body: (UnsafeMutablePointer<L>, T) throws -> R) rethrows -> R {
+  nonmutating func withUnsafeUnderlyingLock<R>(_ body: (UnsafeMutablePointer<L>, T) throws -> R) rethrows -> R where R: ~Copyable {
     try withLock { value in
       try _storage.withUnsafeMutablePointerToElements { lock in
         try body(lock, value)
