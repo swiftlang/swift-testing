@@ -52,9 +52,11 @@ extension TestContentKind: Equatable, Hashable {
   }
 }
 
+#if !hasFeature(Embedded)
 // MARK: - Codable
 
 extension TestContentKind: Codable {}
+#endif
 
 // MARK: - ExpressibleByStringLiteral, ExpressibleByIntegerLiteral
 
