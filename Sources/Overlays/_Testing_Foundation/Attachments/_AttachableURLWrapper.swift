@@ -17,7 +17,7 @@ public import Foundation
 ///
 /// You do not need to use this type directly. Instead, initialize an instance
 /// of ``Attachment`` using a file URL.
-public struct _AttachableURLContainer: Sendable {
+public struct _AttachableURLWrapper: Sendable {
   /// The underlying URL.
   var url: URL
 
@@ -30,7 +30,7 @@ public struct _AttachableURLContainer: Sendable {
 
 // MARK: -
 
-extension _AttachableURLContainer: AttachableContainer {
+extension _AttachableURLWrapper: AttachableWrapper {
   public var attachableValue: URL {
     url
   }

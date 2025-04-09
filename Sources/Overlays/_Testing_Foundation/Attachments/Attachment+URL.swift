@@ -32,7 +32,7 @@ extension URL {
   }
 }
 
-extension Attachment where AttachableValue == _AttachableURLContainer {
+extension Attachment where AttachableValue == _AttachableURLWrapper {
 #if SWT_TARGET_OS_APPLE
   /// An operation queue to use for asynchronously reading data from disk.
   private static let _operationQueue = OperationQueue()
@@ -94,8 +94,8 @@ extension Attachment where AttachableValue == _AttachableURLContainer {
     }
 #endif
 
-    let urlContainer = _AttachableURLContainer(url: url, data: data, isCompressedDirectory: isDirectory)
-    self.init(urlContainer, named: preferredName, sourceLocation: sourceLocation)
+    let urlWrapper = _AttachableURLWrapper(url: url, data: data, isCompressedDirectory: isDirectory)
+    self.init(urlWrapper, named: preferredName, sourceLocation: sourceLocation)
   }
 }
 

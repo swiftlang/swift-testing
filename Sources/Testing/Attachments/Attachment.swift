@@ -125,7 +125,7 @@ extension Attachment where AttachableValue == AnyAttachable {
 }
 #endif
 
-/// A type-erased container type that represents any attachable value.
+/// A type-erased wrapper type that represents any attachable value.
 ///
 /// This type is not generally visible to developers. It is used when posting
 /// events of kind ``Event/Kind/valueAttached(_:)``. Test tools authors who use
@@ -137,7 +137,7 @@ extension Attachment where AttachableValue == AnyAttachable {
 //   `Event.Kind.valueAttached(_:)`, otherwise it would be declared private.
 // }
 @_spi(ForToolsIntegrationOnly)
-public struct AnyAttachable: AttachableContainer, Copyable, Sendable {
+public struct AnyAttachable: AttachableWrapper, Copyable, Sendable {
 #if !SWT_NO_LAZY_ATTACHMENTS
   public typealias AttachableValue = any Attachable & Sendable /* & Copyable rdar://137614425 */
 #else
@@ -215,13 +215,13 @@ extension Attachment where AttachableValue: ~Copyable {
   }
 }
 
-extension Attachment where AttachableValue: AttachableContainer & ~Copyable {
+extension Attachment where AttachableValue: AttachableWrapper & ~Copyable {
   /// The value of this attachment.
   ///
-  /// When the attachable value's type conforms to ``AttachableContainer``, the
-  /// value of this property equals the container's underlying attachable value.
+  /// When the attachable value's type conforms to ``AttachableWrapper``, the
+  /// value of this property equals the wrapper's underlying attachable value.
   /// To access the attachable value as an instance of `T` (where `T` conforms
-  /// to ``AttachableContainer``), specify the type explicitly:
+  /// to ``AttachableWrapper``), specify the type explicitly:
   ///
   /// ```swift
   /// let attachableValue = attachment.attachableValue as T
@@ -322,9 +322,9 @@ extension Attachment where AttachableValue: ~Copyable {
   public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #_sourceLocation) {
     do {
       let attachmentCopy = try attachment.withUnsafeBytes { buffer in
-        let attachableContainer = AnyAttachable(attachableValue: Array(buffer))
+        let attachableWrapper = AnyAttachable(attachableValue: Array(buffer))
         return Attachment<AnyAttachable>(
-          _attachableValue: attachableContainer,
+          _attachableValue: attachableWrapper,
           fileSystemPath: attachment.fileSystemPath,
           _preferredName: attachment.preferredName, // invokes preferredName(for:basedOn:)
           sourceLocation: sourceLocation

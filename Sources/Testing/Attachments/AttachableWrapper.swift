@@ -25,7 +25,7 @@
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
 /// }
-public protocol AttachableContainer<AttachableValue>: Attachable, ~Copyable {
+public protocol AttachableWrapper<AttachableValue>: Attachable, ~Copyable {
   /// The type of the attachable value represented by this type.
   ///
   /// @Metadata {

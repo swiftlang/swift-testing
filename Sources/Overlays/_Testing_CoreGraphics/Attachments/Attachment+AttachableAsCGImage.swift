@@ -42,9 +42,9 @@ extension Attachment {
     contentType: (any Sendable)?,
     encodingQuality: Float,
     sourceLocation: SourceLocation
-  ) where AttachableValue == _AttachableImageContainer<T> {
-    let imageContainer = _AttachableImageContainer(image: attachableValue, encodingQuality: encodingQuality, contentType: contentType)
-    self.init(imageContainer, named: preferredName, sourceLocation: sourceLocation)
+  ) where AttachableValue == _AttachableImageWrapper<T> {
+    let imageWrapper = _AttachableImageWrapper(image: attachableValue, encodingQuality: encodingQuality, contentType: contentType)
+    self.init(imageWrapper, named: preferredName, sourceLocation: sourceLocation)
   }
 
   /// Initialize an instance of this type that encloses the given image.
@@ -79,7 +79,7 @@ extension Attachment {
     as contentType: UTType?,
     encodingQuality: Float = 1.0,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) where AttachableValue == _AttachableImageContainer<T> {
+  ) where AttachableValue == _AttachableImageWrapper<T> {
     self.init(attachableValue: attachableValue, named: preferredName, contentType: contentType, encodingQuality: encodingQuality, sourceLocation: sourceLocation)
   }
 
@@ -109,7 +109,7 @@ extension Attachment {
     named preferredName: String? = nil,
     encodingQuality: Float = 1.0,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) where AttachableValue == _AttachableImageContainer<T> {
+  ) where AttachableValue == _AttachableImageWrapper<T> {
     self.init(attachableValue: attachableValue, named: preferredName, contentType: nil, encodingQuality: encodingQuality, sourceLocation: sourceLocation)
   }
 }

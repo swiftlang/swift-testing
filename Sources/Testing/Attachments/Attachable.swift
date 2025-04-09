@@ -24,8 +24,8 @@
 /// A type should conform to this protocol if it can be represented as a
 /// sequence of bytes that would be diagnostically useful if a test fails. If a
 /// type cannot conform directly to this protocol (such as a non-final class or
-/// a type declared in a third-party module), you can create a container type
-/// that conforms to ``AttachableContainer`` to act as a proxy.
+/// a type declared in a third-party module), you can create a wrapper type that
+/// conforms to ``AttachableWrapper`` to act as a proxy.
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)

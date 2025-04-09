@@ -23,7 +23,7 @@ protocol to create your own attachable types.
 
 - ``Attachment``
 - ``Attachable``
-- ``AttachableContainer``
+- ``AttachableWrapper``
 
 <!-- TODO: set up DocC content for overlays if possible
 ### Attaching files to tests
