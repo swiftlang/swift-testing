@@ -107,6 +107,18 @@ public struct ExitTest: Sendable, ~Copyable {
       _observedValues = newValue
     }
   }
+
+  /// Make a copy of this instance.
+  ///
+  /// - Returns: A copy of this instance.
+  ///
+  /// This function is unsafe because if the caller is not careful, it could
+  /// invoke the same exit test twice.
+  fileprivate borrowing func unsafeCopy() -> Self {
+    var result = Self(id: id, body: body)
+    result._observedValues = _observedValues
+    return result
+  }
 }
 
 #if !SWT_NO_EXIT_TESTS
@@ -114,24 +126,15 @@ public struct ExitTest: Sendable, ~Copyable {
 
 @_spi(Experimental)
 extension ExitTest {
-  /// A container type to hold the current exit test.
-  ///
-  /// This class is temporarily necessary until `ManagedBuffer` is updated to
-  /// support storing move-only values. For more information, see [SE-NNNN](https://github.com/swiftlang/swift-evolution/pull/2657).
-  private final class _CurrentContainer: Sendable {
-    /// The exit test represented by this container.
-    ///
-    /// The value of this property must be optional to avoid a copy when reading
-    /// the value in ``ExitTest/current``.
-    let exitTest: ExitTest?
-
-    init(exitTest: borrowing ExitTest) {
-      self.exitTest = ExitTest(id: exitTest.id, body: exitTest.body, _observedValues: exitTest._observedValues)
-    }
-  }
-
   /// Storage for ``current``.
-  private static let _current = Locked<_CurrentContainer?>()
+  ///
+  /// A pointer is used for indirection because `ManagedBuffer` cannot yet hold
+  /// move-only types.
+  private static nonisolated(unsafe) var _current: Locked<UnsafeMutablePointer<ExitTest?>> = {
+    let current = UnsafeMutablePointer<ExitTest?>.allocate(capacity: 1)
+    current.initialize(to: nil)
+    return Locked(rawValue: current)
+  }()
 
   /// The exit test that is running in the current process, if any.
   ///
@@ -144,11 +147,13 @@ extension ExitTest {
   /// process.
   public static var current: ExitTest? {
     _read {
-      if let current = _current.rawValue {
-        yield current.exitTest
-      } else {
-        yield nil
+      // NOTE: Even though this accessor is `_read` and has borrowing semantics,
+      // we must make a copy so that we don't yield lock-guarded memory to the
+      // caller (which is not concurrency-safe.)
+      let currentCopy = _current.withLock { current in
+        return current.pointee?.unsafeCopy()
       }
+      yield currentCopy
     }
   }
 }
@@ -235,7 +240,8 @@ extension ExitTest {
 
     // Set ExitTest.current before the test body runs.
     Self._current.withLock { current in
-      current = _CurrentContainer(exitTest: self)
+      precondition(current.pointee == nil, "Set the current exit test twice in the same process. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      current.pointee = self.unsafeCopy()
     }
 
     do {
