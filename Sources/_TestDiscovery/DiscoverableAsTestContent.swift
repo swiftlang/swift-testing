@@ -48,8 +48,10 @@ public protocol DiscoverableAsTestContent: Sendable, ~Copyable {
 #endif
 }
 
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
 extension DiscoverableAsTestContent where Self: ~Copyable {
   public static var _testContentTypeNameHint: String {
     "__🟡$"
   }
 }
+#endif

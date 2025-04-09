@@ -99,9 +99,9 @@ target_sources(TestingMacros PRIVATE
   Support/AvailabilityGuards.swift
   Support/CommentParsing.swift
   Support/ConditionArgumentParsing.swift
-  Support/CRC32.swift
   Support/DiagnosticMessage.swift
   Support/DiagnosticMessage+Diagnosing.swift
+  Support/SHA256.swift
   Support/SourceCodeCapturing.swift
   Support/SourceLocationGeneration.swift
   Support/TestContentGeneration.swift
