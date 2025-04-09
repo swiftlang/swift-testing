@@ -25,18 +25,18 @@
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
 /// }
-public protocol AttachableWrapper<AttachableValue>: Attachable, ~Copyable {
-  /// The type of the attachable value represented by this type.
+public protocol AttachableWrapper<Wrapped>: Attachable, ~Copyable {
+  /// The type of the underlying value represented by this type.
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
   /// }
-  associatedtype AttachableValue
+  associatedtype Wrapped
 
-  /// The attachable value represented by this instance.
+  /// The underlying value represented by this instance.
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
   /// }
-  var attachableValue: AttachableValue { get }
+  var wrappedValue: Wrapped { get }
 }

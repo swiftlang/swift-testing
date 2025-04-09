@@ -116,7 +116,7 @@ extension Attachment where AttachableValue == AnyAttachable {
   ///   - attachment: The attachment to type-erase.
   fileprivate init(_ attachment: Attachment<some Attachable & Sendable & Copyable>) {
     self.init(
-      _attachableValue: AnyAttachable(attachableValue: attachment.attachableValue),
+      _attachableValue: AnyAttachable(wrappedValue: attachment.attachableValue),
       fileSystemPath: attachment.fileSystemPath,
       _preferredName: attachment._preferredName,
       sourceLocation: attachment.sourceLocation
@@ -139,45 +139,45 @@ extension Attachment where AttachableValue == AnyAttachable {
 @_spi(ForToolsIntegrationOnly)
 public struct AnyAttachable: AttachableWrapper, Copyable, Sendable {
 #if !SWT_NO_LAZY_ATTACHMENTS
-  public typealias AttachableValue = any Attachable & Sendable /* & Copyable rdar://137614425 */
+  public typealias Wrapped = any Attachable & Sendable /* & Copyable rdar://137614425 */
 #else
-  public typealias AttachableValue = [UInt8]
+  public typealias Wrapped = [UInt8]
 #endif
 
-  public var attachableValue: AttachableValue
+  public var wrappedValue: Wrapped
 
-  init(attachableValue: AttachableValue) {
-    self.attachableValue = attachableValue
+  init(wrappedValue: Wrapped) {
+    self.wrappedValue = wrappedValue
   }
 
   public var estimatedAttachmentByteCount: Int? {
-    attachableValue.estimatedAttachmentByteCount
+    wrappedValue.estimatedAttachmentByteCount
   }
 
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    func open<T>(_ attachableValue: T, for attachment: borrowing Attachment<Self>) throws -> R where T: Attachable & Sendable & Copyable {
+    func open<T>(_ wrappedValue: T, for attachment: borrowing Attachment<Self>) throws -> R where T: Attachable & Sendable & Copyable {
       let temporaryAttachment = Attachment<T>(
-        _attachableValue: attachableValue,
+        _attachableValue: wrappedValue,
         fileSystemPath: attachment.fileSystemPath,
         _preferredName: attachment._preferredName,
         sourceLocation: attachment.sourceLocation
       )
       return try temporaryAttachment.withUnsafeBytes(body)
     }
-    return try open(attachableValue, for: attachment)
+    return try open(wrappedValue, for: attachment)
   }
 
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
-    func open<T>(_ attachableValue: T, for attachment: borrowing Attachment<Self>) -> String where T: Attachable & Sendable & Copyable {
+    func open<T>(_ wrappedValue: T, for attachment: borrowing Attachment<Self>) -> String where T: Attachable & Sendable & Copyable {
       let temporaryAttachment = Attachment<T>(
-        _attachableValue: attachableValue,
+        _attachableValue: wrappedValue,
         fileSystemPath: attachment.fileSystemPath,
         _preferredName: attachment._preferredName,
         sourceLocation: attachment.sourceLocation
       )
       return temporaryAttachment.preferredName
     }
-    return open(attachableValue, for: attachment)
+    return open(wrappedValue, for: attachment)
   }
 }
 
@@ -230,9 +230,9 @@ extension Attachment where AttachableValue: AttachableWrapper & ~Copyable {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
   /// }
-  public var attachableValue: AttachableValue.AttachableValue {
+  public var attachableValue: AttachableValue.Wrapped {
     _read {
-      yield attachableValue.attachableValue
+      yield attachableValue.wrappedValue
     }
   }
 }
@@ -322,7 +322,7 @@ extension Attachment where AttachableValue: ~Copyable {
   public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #_sourceLocation) {
     do {
       let attachmentCopy = try attachment.withUnsafeBytes { buffer in
-        let attachableWrapper = AnyAttachable(attachableValue: Array(buffer))
+        let attachableWrapper = AnyAttachable(wrappedValue: Array(buffer))
         return Attachment<AnyAttachable>(
           _attachableValue: attachableWrapper,
           fileSystemPath: attachment.fileSystemPath,

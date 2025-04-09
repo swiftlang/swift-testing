@@ -31,7 +31,7 @@ public struct _AttachableURLWrapper: Sendable {
 // MARK: -
 
 extension _AttachableURLWrapper: AttachableWrapper {
-  public var attachableValue: URL {
+  public var wrappedValue: URL {
     url
   }
 

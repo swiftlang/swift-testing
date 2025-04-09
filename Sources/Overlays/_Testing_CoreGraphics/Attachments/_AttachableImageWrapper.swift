@@ -128,7 +128,7 @@ public struct _AttachableImageWrapper<Image>: Sendable where Image: AttachableAs
 // MARK: -
 
 extension _AttachableImageWrapper: AttachableWrapper {
-  public var attachableValue: Image {
+  public var wrappedValue: Image {
     image
   }
 
