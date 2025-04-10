@@ -24,9 +24,12 @@
 /// A type should conform to this protocol if it can be represented as a
 /// sequence of bytes that would be diagnostically useful if a test fails. If a
 /// type cannot conform directly to this protocol (such as a non-final class or
-/// a type declared in a third-party module), you can create a container type
-/// that conforms to ``AttachableContainer`` to act as a proxy.
-@_spi(Experimental)
+/// a type declared in a third-party module), you can create a wrapper type that
+/// conforms to ``AttachableWrapper`` to act as a proxy.
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+/// }
 public protocol Attachable: ~Copyable {
   /// An estimate of the number of bytes of memory needed to store this value as
   /// an attachment.
@@ -42,6 +45,10 @@ public protocol Attachable: ~Copyable {
   ///
   /// - Complexity: O(1) unless `Self` conforms to `Collection`, in which case
   ///   up to O(_n_) where _n_ is the length of the collection.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   var estimatedAttachmentByteCount: Int? { get }
 
   /// Call a function and pass a buffer representing this instance to it.
@@ -64,6 +71,10 @@ public protocol Attachable: ~Copyable {
   /// the buffer to contain an image in PNG format, JPEG format, etc., but it
   /// would not be idiomatic for the buffer to contain a textual description of
   /// the image.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
 
   /// Generate a preferred name for the given attachment.
@@ -80,6 +91,10 @@ public protocol Attachable: ~Copyable {
   /// when adding `attachment` to a test report or persisting it to storage. The
   /// default implementation of this function returns `suggestedName` without
   /// any changes.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String
 }
 
@@ -119,28 +134,24 @@ extension Attachable where Self: StringProtocol {
 
 // Implement the protocol requirements for byte arrays and buffers so that
 // developers can attach raw data when needed.
-@_spi(Experimental)
 extension Array<UInt8>: Attachable {
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }
 }
 
-@_spi(Experimental)
 extension ContiguousArray<UInt8>: Attachable {
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }
 }
 
-@_spi(Experimental)
 extension ArraySlice<UInt8>: Attachable {
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }
 }
 
-@_spi(Experimental)
 extension String: Attachable {
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var selfCopy = self
@@ -150,7 +161,6 @@ extension String: Attachable {
   }
 }
 
-@_spi(Experimental)
 extension Substring: Attachable {
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var selfCopy = self
