@@ -246,17 +246,17 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // detecting isolation to other global actors.
     lazy var isMainActorIsolated = !functionDecl.attributes(named: "MainActor", inModuleNamed: "_Concurrency").isEmpty
     var forwardCall: (ExprSyntax) -> ExprSyntax = {
-      "try await Testing.__requiringTry(Testing.__requiringAwait(\($0)))"
+      applyEffectfulKeywords([.try, .await, .unsafe], to: $0)
     }
     let forwardInit = forwardCall
     if functionDecl.noasyncAttribute != nil {
       if isMainActorIsolated {
         forwardCall = {
-          "try await MainActor.run { try Testing.__requiringTry(\($0)) }"
+          "try await MainActor.run { \(applyEffectfulKeywords([.try, .unsafe], to: $0)) }"
         }
       } else {
         forwardCall = {
-          "try { try Testing.__requiringTry(\($0)) }()"
+          "try { \(applyEffectfulKeywords([.try, .unsafe], to: $0)) }()"
         }
       }
     }
