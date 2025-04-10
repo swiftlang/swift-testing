@@ -1010,7 +1010,7 @@ final class IssueTests: XCTestCase {
         return
       }
       XCTAssertFalse(issue.isKnown)
-      XCTAssertTrue(issue.severity == .error)
+      XCTAssertEqual(issue.severity, .error)
       guard case .unconditional = issue.kind else {
         XCTFail("Unexpected issue kind \(issue.kind)")
         return
@@ -1030,7 +1030,7 @@ final class IssueTests: XCTestCase {
         return
       }
       XCTAssertFalse(issue.isKnown)
-      XCTAssertTrue(issue.severity == .warning)
+      XCTAssertEqual(issue.severity, .warning)
       guard case .unconditional = issue.kind else {
         XCTFail("Unexpected issue kind \(issue.kind)")
         return
@@ -1068,7 +1068,7 @@ final class IssueTests: XCTestCase {
         return
       }
       XCTAssertFalse(issue.isKnown)
-      XCTAssertTrue(issue.severity == .error)
+      XCTAssertEqual(issue.severity, .error)
       guard case let .errorCaught(error) = issue.kind else {
         XCTFail("Unexpected issue kind \(issue.kind)")
         return
@@ -1089,7 +1089,7 @@ final class IssueTests: XCTestCase {
         return
       }
       XCTAssertFalse(issue.isKnown)
-      XCTAssertTrue(issue.severity == .warning)
+      XCTAssertEqual(issue.severity, .warning)
       guard case let .errorCaught(error) = issue.kind else {
         XCTFail("Unexpected issue kind \(issue.kind)")
         return

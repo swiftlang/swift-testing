@@ -74,16 +74,16 @@ extension Issue {
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
-    record(comment, sourceLocation: sourceLocation, severity: .error)
+    record(comment, severity: .error, sourceLocation: sourceLocation)
   }
 
   /// Record an issue when a running test fails unexpectedly.
   ///
   /// - Parameters:
   ///   - comment: A comment describing the expectation.
+  ///   - severity: The severity of the issue.
   ///   - sourceLocation: The source location to which the issue should be
   ///     attributed.
-  ///   - severity: The severity of the issue.
   ///
   /// - Returns: The issue that was recorded.
   ///
@@ -93,12 +93,12 @@ extension Issue {
   @_spi(Experimental)
   @discardableResult public static func record(
     _ comment: Comment? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation,
-    severity: Severity
+    severity: Severity,
+    sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
-      let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
-      let issue = Issue(kind: .unconditional, severity: severity, comments: Array(comment), sourceContext: sourceContext)
-      return issue.record()
+    let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
+    let issue = Issue(kind: .unconditional, severity: severity, comments: Array(comment), sourceContext: sourceContext)
+    return issue.record()
   }
 }
 
@@ -124,7 +124,7 @@ extension Issue {
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
-    record(error, comment, sourceLocation: sourceLocation, severity: .error)
+    record(error, comment, severity: .error, sourceLocation: sourceLocation)
   }
   
   /// Record a new issue when a running test unexpectedly catches an error.
@@ -132,9 +132,9 @@ extension Issue {
   /// - Parameters:
   ///   - error: The error that caused the issue.
   ///   - comment: A comment describing the expectation.
+  ///   - severity: The severity of the issue.
   ///   - sourceLocation: The source location to which the issue should be
   ///     attributed.
-  ///   - severity: The severity of the issue.
   ///
   /// - Returns: The issue that was recorded.
   ///
@@ -146,8 +146,8 @@ extension Issue {
   @discardableResult public static func record(
     _ error: any Error,
     _ comment: Comment? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation,
-    severity: Severity
+    severity: Severity,
+    sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
     let backtrace = Backtrace(forFirstThrowOf: error) ?? Backtrace.current()
     let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: sourceLocation)
