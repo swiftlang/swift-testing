@@ -74,9 +74,31 @@ extension Issue {
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
-    let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
-    let issue = Issue(kind: .unconditional, comments: Array(comment), sourceContext: sourceContext)
-    return issue.record()
+    return Self.record(comment, sourceLocation: sourceLocation, severity: .error)
+  }
+
+  /// Record an issue when a running test fails unexpectedly.
+  ///
+  /// - Parameters:
+  ///   - comment: A comment describing the expectation.
+  ///   - sourceLocation: The source location to which the issue should be
+  ///     attributed.
+  ///   - severity: The severity of the issue.
+  ///
+  /// - Returns: The issue that was recorded.
+  ///
+  /// Use this function if, while running a test, an issue occurs that cannot be
+  /// represented as an expectation (using the ``expect(_:_:sourceLocation:)``
+  /// or ``require(_:_:sourceLocation:)-5l63q`` macros.)
+  @_spi(Experimental)
+  @discardableResult public static func record(
+    _ comment: Comment? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation,
+    severity: Severity
+  ) -> Self {
+      let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
+      let issue = Issue(kind: .unconditional, severity: severity, comments: Array(comment), sourceContext: sourceContext)
+      return issue.record()
   }
 }
 
@@ -102,10 +124,7 @@ extension Issue {
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
-    let backtrace = Backtrace(forFirstThrowOf: error) ?? Backtrace.current()
-    let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: sourceLocation)
-    let issue = Issue(kind: .errorCaught(error), comments: Array(comment), sourceContext: sourceContext)
-    return issue.record()
+    return Self.record(error, comment, sourceLocation: sourceLocation, severity: .error)
   }
   
   /// Record a new issue when a running test unexpectedly catches an error.
@@ -128,7 +147,7 @@ extension Issue {
     _ error: any Error,
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation,
-    severity: Severity = .error,
+    severity: Severity
   ) -> Self {
     let backtrace = Backtrace(forFirstThrowOf: error) ?? Backtrace.current()
     let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: sourceLocation)

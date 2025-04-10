@@ -1010,6 +1010,7 @@ final class IssueTests: XCTestCase {
         return
       }
       XCTAssertFalse(issue.isKnown)
+      XCTAssertTrue(issue.severity == .error)
       guard case .unconditional = issue.kind else {
         XCTFail("Unexpected issue kind \(issue.kind)")
         return
@@ -1019,6 +1020,25 @@ final class IssueTests: XCTestCase {
     await Test {
       Issue.record()
       Issue.record("Custom message")
+    }.run(configuration: configuration)
+  }
+  
+  func testWarning() async throws {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      XCTAssertFalse(issue.isKnown)
+      XCTAssertTrue(issue.severity == .warning)
+      guard case .unconditional = issue.kind else {
+        XCTFail("Unexpected issue kind \(issue.kind)")
+        return
+      }
+    }
+
+    await Test {
+      Issue.record("Custom message", severity: .warning)
     }.run(configuration: configuration)
   }
 
@@ -1048,6 +1068,7 @@ final class IssueTests: XCTestCase {
         return
       }
       XCTAssertFalse(issue.isKnown)
+      XCTAssertTrue(issue.severity == .error)
       guard case let .errorCaught(error) = issue.kind else {
         XCTFail("Unexpected issue kind \(issue.kind)")
         return
@@ -1058,6 +1079,27 @@ final class IssueTests: XCTestCase {
     await Test {
       Issue.record(MyError())
       Issue.record(MyError(), "Custom message")
+    }.run(configuration: configuration)
+  }
+  
+  func testWarningBecauseOfError() async throws {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      XCTAssertFalse(issue.isKnown)
+      XCTAssertTrue(issue.severity == .warning)
+      guard case let .errorCaught(error) = issue.kind else {
+        XCTFail("Unexpected issue kind \(issue.kind)")
+        return
+      }
+      XCTAssertTrue(error is MyError)
+    }
+
+    await Test {
+      Issue.record(MyError(), severity: .warning)
+      Issue.record(MyError(), "Custom message", severity: .warning)
     }.run(configuration: configuration)
   }
 
