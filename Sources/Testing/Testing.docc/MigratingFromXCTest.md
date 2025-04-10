@@ -757,7 +757,8 @@ conformances for various standard library and Foundation types.
 If you want to attach a value of another type, and that type already conforms to
 [`Encodable`](https://developer.apple.com/documentation/swift/encodable) or to
 [`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding),
-the testing library automatically provides a default implementation:
+the testing library automatically provides a default implementation when you
+import Foundation:
 
 @Row {
   @Column {
@@ -787,8 +788,7 @@ the testing library automatically provides a default implementation:
     @Test func tortillaIntegrity() async {
       let tortilla = Tortilla(diameter: .large)
       ...
-      let attachment = Attachment(tortilla)
-      attachment.attach()
+      Attachment.record(tortilla)
     }
     ```
   }
