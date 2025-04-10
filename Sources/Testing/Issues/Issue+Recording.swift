@@ -74,7 +74,7 @@ extension Issue {
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
-    return Self.record(comment, sourceLocation: sourceLocation, severity: .error)
+    record(comment, sourceLocation: sourceLocation, severity: .error)
   }
 
   /// Record an issue when a running test fails unexpectedly.
@@ -124,7 +124,7 @@ extension Issue {
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
-    return Self.record(error, comment, sourceLocation: sourceLocation, severity: .error)
+    record(error, comment, sourceLocation: sourceLocation, severity: .error)
   }
   
   /// Record a new issue when a running test unexpectedly catches an error.
