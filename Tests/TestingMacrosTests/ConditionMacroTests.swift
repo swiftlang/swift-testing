@@ -383,6 +383,27 @@ struct ConditionMacroTests {
     #expect(diagnostic.message.contains("is redundant"))
   }
 
+#if ExperimentalExitTestValueCapture
+  @Test("#expect(exitsWith:) produces a diagnostic for a bad capture",
+        arguments: [
+          "#expectExitTest(exitsWith: x) { [weak a] in }":
+            "Specifier 'weak' cannot be used with captured value 'a'",
+          "#expectExitTest(exitsWith: x) { [a] in }":
+            "Type of captured value 'a' is ambiguous",
+          "#expectExitTest(exitsWith: x) { [a = b] in }":
+            "Type of captured value 'a' is ambiguous",
+        ]
+  )
+  func exitTestCaptureDiagnostics(input: String, expectedMessage: String) throws {
+    let (_, diagnostics) = try parse(input)
+
+    #expect(diagnostics.count > 0)
+    for diagnostic in diagnostics {
+      #expect(diagnostic.diagMessage.severity == .error)
+      #expect(diagnostic.message == expectedMessage)
+    }
+  }
+#else
   @Test(
     "Capture list on an exit test produces a diagnostic",
     arguments: [
@@ -399,6 +420,7 @@ struct ConditionMacroTests {
       #expect(diagnostic.message == expectedMessage)
     }
   }
+#endif
 
   @Test("Macro expansion is performed within a test function")
   func macroExpansionInTestFunction() throws {
