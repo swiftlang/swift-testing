@@ -537,6 +537,15 @@ extension Test {
   value
 }
 
+/// A function that abstracts away whether or not the `unsafe` keyword is needed
+/// on an expression.
+///
+/// - Warning: This function is used to implement the `@Test` macro. Do not use
+///   it directly.
+@unsafe @inlinable public func __requiringUnsafe<T>(_ value: consuming T) throws -> T where T: ~Copyable {
+  value
+}
+
 /// The current default isolation context.
 ///
 /// - Warning: This property is used to implement the `@Test` macro. Do not call

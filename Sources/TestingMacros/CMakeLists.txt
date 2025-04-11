@@ -101,6 +101,7 @@ target_sources(TestingMacros PRIVATE
   Support/ConditionArgumentParsing.swift
   Support/DiagnosticMessage.swift
   Support/DiagnosticMessage+Diagnosing.swift
+  Support/EffectfulExpressionHandling.swift
   Support/SHA256.swift
   Support/SourceCodeCapturing.swift
   Support/SourceLocationGeneration.swift
