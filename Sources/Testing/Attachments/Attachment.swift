@@ -30,9 +30,9 @@ public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: Atta
   ///
   /// If a developer sets the ``Configuration/attachmentsPath`` property of the
   /// current configuration before running tests, or if a developer passes
-  /// `--experimental-attachments-path` on the command line, then attachments
-  /// will be automatically written to disk when they are attached and the value
-  /// of this property will describe the path where they were written.
+  /// `--attachments-path` on the command line, then attachments will be
+  /// automatically written to disk when they are attached and the value of this
+  /// property will describe the path where they were written.
   ///
   /// If no destination path is set, or if an error occurred while writing this
   /// attachment to disk, the value of this property is `nil`.
@@ -412,9 +412,9 @@ extension Attachment where AttachableValue: ~Copyable {
   /// The attachment is written to a file _within_ `directoryPath`, whose name
   /// is derived from the value of the ``Attachment/preferredName`` property.
   ///
-  /// If you pass `--experimental-attachments-path` to `swift test`, the testing
-  /// library automatically uses this function to persist attachments to the
-  /// directory you specify.
+  /// If you pass `--attachments-path` to `swift test`, the testing library
+  /// automatically uses this function to persist attachments to the directory
+  /// you specify.
   ///
   /// This function does not get or set the value of the attachment's
   /// ``fileSystemPath`` property. The caller is responsible for setting the
