@@ -62,6 +62,7 @@ extension Issue {
   ///
   /// - Parameters:
   ///   - comment: A comment describing the expectation.
+  ///   - kind: The kind of issue.
   ///   - sourceLocation: The source location to which the issue should be
   ///     attributed.
   ///
@@ -72,15 +73,17 @@ extension Issue {
   /// or ``require(_:_:sourceLocation:)-5l63q`` macros.)
   @discardableResult public static func record(
     _ comment: Comment? = nil,
+    kind: Kind = .unconditional,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
-    record(comment, severity: .error, sourceLocation: sourceLocation)
+    record(comment, kind: kind, severity: .error, sourceLocation: sourceLocation)
   }
 
   /// Record an issue when a running test fails unexpectedly.
   ///
   /// - Parameters:
   ///   - comment: A comment describing the expectation.
+  ///   - kind: The kind of issue.
   ///   - severity: The severity of the issue.
   ///   - sourceLocation: The source location to which the issue should be
   ///     attributed.
@@ -93,11 +96,12 @@ extension Issue {
   @_spi(Experimental)
   @discardableResult public static func record(
     _ comment: Comment? = nil,
+    kind: Kind = .unconditional,
     severity: Severity,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
     let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
-    let issue = Issue(kind: .unconditional, severity: severity, comments: Array(comment), sourceContext: sourceContext)
+    let issue = Issue(kind: kind, severity: severity, comments: Array(comment), sourceContext: sourceContext)
     return issue.record()
   }
 }

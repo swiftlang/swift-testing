@@ -73,6 +73,10 @@ public struct Issue: Sendable {
     /// An issue due to a failure in the underlying system, not due to a failure
     /// within the tests being run.
     case system
+    
+    /// An issue which occurred during runtime, either by the system or by using a test author recording it using
+    /// ``Issue/record(_:kind:)``.
+    case runtime
   }
 
   /// The kind of issue this value represents.
@@ -263,6 +267,8 @@ extension Issue.Kind: CustomStringConvertible {
       return "An API was misused"
     case .system:
       return "A system failure occurred"
+    case .runtime:
+      return "A runtime issue occurred"
     }
   }
 }
@@ -416,6 +422,10 @@ extension Issue.Kind {
     /// An issue due to a failure in the underlying system, not due to a failure
     /// within the tests being run.
     case system
+    
+    /// An issue which occurred during runtime, either by the system or by using a test author recording it using
+    /// ``Issue/record(_:kind:)``.
+    case runtime
 
     /// Initialize an instance of this type by snapshotting the specified issue
     /// kind.
@@ -440,6 +450,8 @@ extension Issue.Kind {
           .apiMisused
       case .system:
           .system
+      case .runtime:
+          .runtime
       }
     }
 
@@ -453,6 +465,7 @@ extension Issue.Kind {
       case knownIssueNotRecorded
       case apiMisused
       case system
+      case runtime
 
       /// The keys used to encode ``Issue.Kind.expectationFailed``.
       enum _ExpectationFailedKeys: CodingKey {
@@ -531,6 +544,8 @@ extension Issue.Kind {
         try container.encode(true, forKey: .apiMisused)
       case .system:
         try container.encode(true, forKey: .system)
+      case .runtime:
+        try container.encode(true, forKey: .runtime)
       }
     }
   }
@@ -585,6 +600,8 @@ extension Issue.Kind.Snapshot: CustomStringConvertible {
       "An API was misused"
     case .system:
       "A system failure occurred"
+    case .runtime:
+      "A runtime issue occurred"
     }
   }
 }
