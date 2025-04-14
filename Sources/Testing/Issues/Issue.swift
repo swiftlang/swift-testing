@@ -104,7 +104,15 @@ public struct Issue: Sendable {
   @_spi(Experimental)
   public var severity: Severity
   
-  /// If the issues is a failing issue.
+  /// Whether or not this issue should cause the test it's associated with to be
+  /// considered a failure.
+  ///
+  /// The value of this property is `true` for issues which have a severity level of
+  /// ``Issue/Severity/error``` or greater and are not known issues via ``withKnownIssue(_:...)``.
+  /// Otherwise, the value of this property is `false.`
+  ///
+  /// Use this property to determine if an issue should be considered a failure, instead of
+  /// directly comparing the value of the ``severity`` property.
   @_spi(Experimental)
   public var isFailure: Bool {
     return !self.isKnown && self.severity >= .error
