@@ -10,7 +10,7 @@
 
 #if canImport(XCTest)
 import XCTest
-@testable @_spi(ForToolsIntegrationOnly) import Testing
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
 final class KnownIssueTests: XCTestCase {
   func testIssueIsKnownPropertyIsSetCorrectly() async {
@@ -26,6 +26,7 @@ final class KnownIssueTests: XCTestCase {
       issueRecorded.fulfill()
 
       XCTAssertTrue(issue.isKnown)
+      XCTAssertFalse(issue.isFailure)
     }
 
     await Test {
