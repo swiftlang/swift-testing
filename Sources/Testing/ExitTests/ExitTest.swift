@@ -288,25 +288,20 @@ extension ExitTest {
     typealias TestContentAccessorHint = ID
 
     /// The ID of the represented exit test.
-    private var _id: ExitTest.ID
+    var id: ExitTest.ID
 
     /// The body of the represented exit test.
-    private var _body: ExitTest.Body
+    var body: ExitTest.Body
 
     /// The set of values captured in the parent process before the exit test is
     /// called.
-    fileprivate var capturedValues = [CapturedValue]()
-
-    init(id: ExitTest.ID, body: @escaping ExitTest.Body) {
-      _id = id
-      _body = body
-    }
+    var capturedValues = [CapturedValue]()
 
     /// Make the exit test represented by this instance.
     ///
     /// - Returns: A new exit test as represented by this instance.
     func makeExitTest() -> ExitTest {
-      ExitTest(id: _id, body: _body)
+      ExitTest(id: id, body: body)
     }
   }
 
