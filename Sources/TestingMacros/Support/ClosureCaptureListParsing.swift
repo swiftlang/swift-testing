@@ -60,7 +60,7 @@ struct CapturedValueInfo {
       if let asExpr = self.expression.as(AsExprSyntax.self) {
         self.type = if asExpr.questionOrExclamationMark?.tokenKind == .postfixQuestionMark {
           // If the caller is using as?, make the type optional.
-          TypeSyntax(OptionalTypeSyntax(wrappedType: type.trimmed))
+          TypeSyntax(OptionalTypeSyntax(wrappedType: asExpr.type.trimmed))
         } else {
           asExpr.type
         }
