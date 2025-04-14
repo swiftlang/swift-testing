@@ -42,7 +42,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
 
     // Set up the event handler.
     configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-      if case let .issueRecorded(issue) = event.kind, !issue.isKnown, issue.severity >= .error {
+      if case let .issueRecorded(issue) = event.kind, issue.isFailure {
         exitCode.withLock { exitCode in
           exitCode = EXIT_FAILURE
         }

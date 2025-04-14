@@ -1011,6 +1011,7 @@ final class IssueTests: XCTestCase {
       }
       XCTAssertFalse(issue.isKnown)
       XCTAssertEqual(issue.severity, .error)
+      XCTAssertTrue(issue.isFailure)
       guard case .unconditional = issue.kind else {
         XCTFail("Unexpected issue kind \(issue.kind)")
         return
@@ -1031,6 +1032,7 @@ final class IssueTests: XCTestCase {
       }
       XCTAssertFalse(issue.isKnown)
       XCTAssertEqual(issue.severity, .warning)
+      XCTAssertFalse(issue.isFailure)
       guard case .unconditional = issue.kind else {
         XCTFail("Unexpected issue kind \(issue.kind)")
         return
