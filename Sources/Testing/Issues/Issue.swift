@@ -108,7 +108,8 @@ public struct Issue: Sendable {
   /// considered a failure.
   ///
   /// The value of this property is `true` for issues which have a severity level of
-  /// ``Issue/Severity/error``` or greater and are not known issues via ``withKnownIssue(_:...)``.
+  /// ``Issue/Severity/error``` or greater and are not known issues via
+  /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
   /// Otherwise, the value of this property is `false.`
   ///
   /// Use this property to determine if an issue should be considered a failure, instead of
