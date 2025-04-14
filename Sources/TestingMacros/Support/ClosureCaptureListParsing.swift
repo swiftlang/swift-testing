@@ -8,7 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if ExperimentalExitTestValueCapture
 import SwiftDiagnostics
 import SwiftParser
 import SwiftSyntax
@@ -87,4 +86,3 @@ struct CapturedValueInfo {
     }
   }
 }
-#endif

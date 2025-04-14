@@ -13,6 +13,11 @@ import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 import SwiftDiagnostics
 
+#if !SWT_NO_LIBRARY_MACRO_PLUGINS
+private import Foundation
+private import SwiftParser
+#endif
+
 extension MacroExpansionContext {
   /// Get the type of the given lexical context.
   ///

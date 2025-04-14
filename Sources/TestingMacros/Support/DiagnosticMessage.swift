@@ -752,7 +752,6 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
 // MARK: - Captured values
 
 extension DiagnosticMessage {
-#if ExperimentalExitTestValueCapture
   /// Create a diagnostic message stating that a specifier keyword cannot be
   /// used with a given closure capture list item.
   ///
@@ -827,7 +826,7 @@ extension DiagnosticMessage {
       ]
     )
   }
-#else
+
   /// Create a diagnostic message stating that a capture clause cannot be used
   /// in an exit test.
   ///
@@ -838,12 +837,6 @@ extension DiagnosticMessage {
   ///
   /// - Returns: A diagnostic message.
   static func captureClauseUnsupported(_ captureClause: ClosureCaptureClauseSyntax, in closure: ClosureExprSyntax, inExitTest exitTestMacro: some FreestandingMacroExpansionSyntax) -> Self {
-#if SWIFT_PACKAGE
-    let message = "Capture clause in closure passed to \(_macroName(exitTestMacro)) requires that the 'ExperimentalExitTestValueCapture' trait be enabled for package 'swift-testing'"
-#else
-    let message = "Cannot specify a capture clause in closure passed to \(_macroName(exitTestMacro))"
-#endif
-
     let changes: [FixIt.Change]
     if let signature = closure.signature,
        Array(signature.with(\.capture, nil).tokens(viewMode: .sourceAccurate)).count == 1 {
@@ -867,7 +860,7 @@ extension DiagnosticMessage {
 
     return Self(
       syntax: Syntax(captureClause),
-      message: message,
+      message: "Cannot specify a capture clause in closure passed to \(_macroName(exitTestMacro))",
       severity: .error,
       fixIts: [
         FixIt(
@@ -877,5 +870,4 @@ extension DiagnosticMessage {
       ]
     )
   }
-#endif
 }

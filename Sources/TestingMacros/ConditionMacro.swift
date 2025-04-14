@@ -438,26 +438,27 @@ extension ExitTestConditionMacro {
     }
 
     var bodyArgumentExpr = arguments[trailingClosureIndex].expression
-#if ExperimentalExitTestValueCapture
+    bodyArgumentExpr = removeParentheses(from: bodyArgumentExpr) ?? bodyArgumentExpr
+
     // Find any captured values and extract them from the trailing closure.
     var capturedValues = [CapturedValueInfo]()
-    bodyArgumentExpr = removeParentheses(from: bodyArgumentExpr) ?? bodyArgumentExpr
-    if var closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
-       let captureList = closureExpr.signature?.capture?.items {
-      closureExpr.signature?.capture = ClosureCaptureClauseSyntax(items: [], trailingTrivia: .space)
-      capturedValues = captureList.map { CapturedValueInfo($0, in: context) }
-      bodyArgumentExpr = ExprSyntax(closureExpr)
-    }
-#else
-    do {
-      let bodyArgumentExpr = removeParentheses(from: bodyArgumentExpr) ?? bodyArgumentExpr
+    if ExitTestExpectMacro.isValueCapturingEnabled {
+      // The source file imports @_spi(Experimental), so allow value capturing.
       if var closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
+         let captureList = closureExpr.signature?.capture?.items {
+        closureExpr.signature?.capture = ClosureCaptureClauseSyntax(items: [], trailingTrivia: .space)
+        capturedValues = captureList.map { CapturedValueInfo($0, in: context) }
+        bodyArgumentExpr = ExprSyntax(closureExpr)
+      }
+
+    } else {
+      let bodyArgumentExpr = removeParentheses(from: bodyArgumentExpr) ?? bodyArgumentExpr
+      if let closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
          let captureClause = closureExpr.signature?.capture,
          !captureClause.items.isEmpty {
         context.diagnose(.captureClauseUnsupported(captureClause, in: closureExpr, inExitTest: macro))
       }
     }
-#endif
 
     // Generate a unique identifier for this exit test.
     let idExpr = _makeExitTestIDExpr(for: macro, in: context)
@@ -468,7 +469,6 @@ extension ExitTestConditionMacro {
     // that `Self` resolves to the type containing the exit test, not the enum.
     let bodyThunkName = context.makeUniqueName("")
     let bodyThunkParameterList = FunctionParameterListSyntax {
-#if ExperimentalExitTestValueCapture
       for capturedValue in capturedValues {
         FunctionParameterSyntax(
           firstName: .wildcardToken(trailingTrivia: .space),
@@ -477,7 +477,6 @@ extension ExitTestConditionMacro {
           type: capturedValue.type.trimmed
         )
       }
-#endif
     }
     decls.append(
       """
@@ -548,11 +547,8 @@ extension ExitTestConditionMacro {
 
     // Insert additional arguments at the beginning of the argument list. Note
     // that this will invalidate all indices into `arguments`!
-    var leadingArguments = [
+    arguments = [
       Argument(label: "identifiedBy", expression: idExpr),
-    ]
-#if ExperimentalExitTestValueCapture
-    leadingArguments.append(
       Argument(
         label: "encodingCapturedValues",
         expression: TupleExprSyntax {
@@ -561,9 +557,7 @@ extension ExitTestConditionMacro {
           }
         }
       ),
-    )
-#endif
-    arguments = leadingArguments + arguments
+    ] + arguments
 
     // Replace the exit test body (as an argument to the macro) with a stub
     // closure that hosts the type we created above.
@@ -617,6 +611,22 @@ extension ExitTestConditionMacro {
       return ExprSyntax(tupleExpr)
     }
   }
+}
+
+extension ExitTestExpectMacro {
+  /// Whether or not experimental value capturing via explicit capture lists is
+  /// enabled.
+  ///
+  /// This member is declared on ``ExitTestExpectMacro`` but also applies to
+  /// ``ExitTestRequireMacro``.
+  @TaskLocal
+  static var isValueCapturingEnabled: Bool = {
+#if ExperimentalExitTestValueCapture
+    return true
+#else
+    return false
+#endif
+  }()
 }
 
 /// A type describing the expansion of the `#expect(exitsWith:)` macro.

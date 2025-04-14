@@ -395,15 +395,18 @@ struct ConditionMacroTests {
         ]
   )
   func exitTestCaptureDiagnostics(input: String, expectedMessage: String) throws {
-    let (_, diagnostics) = try parse(input)
+    try ExitTestExpectMacro.$isValueCapturingEnabled.withValue(true) {
+      let (_, diagnostics) = try parse(input)
 
-    #expect(diagnostics.count > 0)
-    for diagnostic in diagnostics {
-      #expect(diagnostic.diagMessage.severity == .error)
-      #expect(diagnostic.message == expectedMessage)
+      #expect(diagnostics.count > 0)
+      for diagnostic in diagnostics {
+        #expect(diagnostic.diagMessage.severity == .error)
+        #expect(diagnostic.message == expectedMessage)
+      }
     }
   }
-#else
+#endif
+
   @Test(
     "Capture list on an exit test produces a diagnostic",
     arguments: [
@@ -412,15 +415,16 @@ struct ConditionMacroTests {
     ]
   )
   func exitTestCaptureListProducesDiagnostic(input: String, expectedMessage: String) throws {
-    let (_, diagnostics) = try parse(input)
+    try ExitTestExpectMacro.$isValueCapturingEnabled.withValue(false) {
+      let (_, diagnostics) = try parse(input)
 
-    #expect(diagnostics.count > 0)
-    for diagnostic in diagnostics {
-      #expect(diagnostic.diagMessage.severity == .error)
-      #expect(diagnostic.message == expectedMessage)
+      #expect(diagnostics.count > 0)
+      for diagnostic in diagnostics {
+        #expect(diagnostic.diagMessage.severity == .error)
+        #expect(diagnostic.message == expectedMessage)
+      }
     }
   }
-#endif
 
   @Test("Macro expansion is performed within a test function")
   func macroExpansionInTestFunction() throws {

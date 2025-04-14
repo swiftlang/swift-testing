@@ -111,7 +111,6 @@ public struct ExitTest: Sendable, ~Copyable {
     }
   }
 
-#if ExperimentalExitTestValueCapture
   /// The set of values captured in the parent process before the exit test is
   /// called.
   ///
@@ -124,12 +123,6 @@ public struct ExitTest: Sendable, ~Copyable {
   /// child processes.
   @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
   public var capturedValues = [CapturedValue]()
-#else
-  /// Placeholder for ``capturedValues`` when value capturing is disabled.
-  var capturedValues: EmptyCollection<CapturedValue> {
-    EmptyCollection()
-  }
-#endif
 
   /// Make a copy of this instance.
   ///
@@ -140,9 +133,7 @@ public struct ExitTest: Sendable, ~Copyable {
   fileprivate borrowing func unsafeCopy() -> Self {
     var result = Self(id: id, body: body)
     result._observedValues = _observedValues
-#if ExperimentalExitTestValueCapture
     result.capturedValues = capturedValues
-#endif
     return result
   }
 }
@@ -336,9 +327,7 @@ extension ExitTest: DiscoverableAsTestContent {
 
     // Construct and return the instance.
     var exitTest = Self(id: id, body: body)
-#if ExperimentalExitTestValueCapture
     exitTest.capturedValues = Array(repeat (each T).self)
-#endif
     outValue.initializeMemory(as: Self.self, to: exitTest)
     return true
   }
@@ -418,9 +407,7 @@ func callExitTest<each T>(
     // Construct a temporary/local exit test to pass to the exit test handler.
     var exitTest = ExitTest(id: ExitTest.ID(exitTestID))
     exitTest.observedValues = observedValues
-#if ExperimentalExitTestValueCapture
     exitTest.capturedValues = Array(repeat each capturedValues)
-#endif
 
     // Invoke the exit test handler and wait for the child process to terminate.
     result = try await configuration.exitTestHandler(exitTest)
@@ -650,9 +637,7 @@ extension ExitTest {
 
     result.body = { [configuration, body = result.body] exitTest in
       try await Configuration.withCurrent(configuration) {
-#if ExperimentalExitTestValueCapture
         try exitTest._decodeCapturedValuesForEntryPoint()
-#endif
         try await body(&exitTest)
       }
     }
@@ -777,17 +762,11 @@ extension ExitTest {
         var backChannelWriteEnd: FileHandle!
         try FileHandle.makePipe(readEnd: &backChannelReadEnd, writeEnd: &backChannelWriteEnd)
 
-#if ExperimentalExitTestValueCapture
         // Create another pipe to send captured values (and possibly other state
         // in the future) to the child process.
         var capturedValuesReadEnd: FileHandle!
         var capturedValuesWriteEnd: FileHandle!
         try FileHandle.makePipe(readEnd: &capturedValuesReadEnd, writeEnd: &capturedValuesWriteEnd)
-#else
-        // A placeholder variable with this name (to make it easier to get a
-        // pointer to it when we call spawnExecutable().)
-        let capturedValuesReadEnd: Void
-#endif
 
         // Let the child process know how to find the back channel and
         // captured values channel by setting a known environment variable to
@@ -795,31 +774,24 @@ extension ExitTest {
         if let backChannelEnvironmentVariable = _makeEnvironmentVariable(for: backChannelWriteEnd) {
           childEnvironment["SWT_EXPERIMENTAL_BACKCHANNEL"] = backChannelEnvironmentVariable
         }
-#if ExperimentalExitTestValueCapture
         if let capturedValuesEnvironmentVariable = _makeEnvironmentVariable(for: capturedValuesReadEnd) {
           childEnvironment["SWT_EXPERIMENTAL_CAPTURED_VALUES"] = capturedValuesEnvironmentVariable
         }
-#endif
 
         // Spawn the child process.
         let processID = try withUnsafePointer(to: backChannelWriteEnd) { backChannelWriteEnd in
           try withUnsafePointer(to: capturedValuesReadEnd) { capturedValuesReadEnd in
-            var additionalFileHandles = [backChannelWriteEnd]
-#if ExperimentalExitTestValueCapture
-            additionalFileHandles.append(capturedValuesReadEnd)
-#endif
-            return try spawnExecutable(
+            try spawnExecutable(
               atPath: childProcessExecutablePath,
               arguments: childArguments,
               environment: childEnvironment,
               standardOutput: stdoutWriteEnd,
               standardError: stderrWriteEnd,
-              additionalFileHandles: additionalFileHandles
+              additionalFileHandles: [backChannelWriteEnd, capturedValuesReadEnd]
             )
           }
         }
 
-#if ExperimentalExitTestValueCapture
         // Write the captured values blob over the back channel to the child
         // process. (If we end up needing to write additional data, we can
         // define a full schema for this stream. Fortunately, both endpoints are
@@ -833,7 +805,6 @@ extension ExitTest {
         }
         capturedValuesReadEnd.close()
         capturedValuesWriteEnd.close()
-#endif
 
         // Await termination of the child process.
         taskGroup.addTask {
@@ -941,7 +912,6 @@ extension ExitTest {
     }
   }
 
-#if ExperimentalExitTestValueCapture
   /// Decode this exit test's captured values and update its ``capturedValues``
   /// property.
   ///
@@ -998,6 +968,5 @@ extension ExitTest {
       }
     }
   }
-#endif
 }
 #endif

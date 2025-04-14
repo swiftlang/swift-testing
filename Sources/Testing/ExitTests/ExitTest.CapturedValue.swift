@@ -11,7 +11,6 @@
 #if !SWT_NO_EXIT_TESTS
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 extension ExitTest {
-#if ExperimentalExitTestValueCapture
   /// A type representing a value captured by an exit test's body.
   ///
   /// An instance of this type may represent the actual value that was captured
@@ -108,15 +107,10 @@ extension ExitTest {
       }
     }
   }
-#else
-  /// A placeholder type for ``CapturedValue`` when value capturing is disabled.
-  typealias CapturedValue = Never
-#endif
 }
 
 // MARK: - Collection conveniences
 
-#if ExperimentalExitTestValueCapture
 extension Array where Element == ExitTest.CapturedValue {
   init<each T>(_ wrappedValues: repeat each T) where repeat each T: Codable & Sendable {
     self.init()
@@ -128,7 +122,6 @@ extension Array where Element == ExitTest.CapturedValue {
     repeat self.append(ExitTest.CapturedValue(typeOnly: (each typesOfWrappedValues).self))
   }
 }
-#endif
 
 extension Collection where Element == ExitTest.CapturedValue {
   /// Cast the elements in this collection to a tuple of their wrapped values.
@@ -146,7 +139,6 @@ extension Collection where Element == ExitTest.CapturedValue {
       as type: U.Type,
       from capturedValues: inout SubSequence
     ) throws -> U {
-#if ExperimentalExitTestValueCapture
       // Get the next captured value in the collection. If we run out of values
       // before running out of parameter pack elements, then something in the
       // exit test handler or entry point is likely broken.
@@ -167,9 +159,6 @@ extension Collection where Element == ExitTest.CapturedValue {
       }
       
       return wrappedValue
-#else
-      fatalError("Unimplemented")
-#endif
     }
 
     var capturedValues = self[...]
