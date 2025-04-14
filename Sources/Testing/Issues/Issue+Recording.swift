@@ -62,25 +62,6 @@ extension Issue {
   ///
   /// - Parameters:
   ///   - comment: A comment describing the expectation.
-  ///   - sourceLocation: The source location to which the issue should be
-  ///     attributed.
-  ///
-  /// - Returns: The issue that was recorded.
-  ///
-  /// Use this function if, while running a test, an issue occurs that cannot be
-  /// represented as an expectation (using the ``expect(_:_:sourceLocation:)``
-  /// or ``require(_:_:sourceLocation:)-5l63q`` macros.)
-  @discardableResult public static func record(
-    _ comment: Comment? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation
-  ) -> Self {
-    record(comment, severity: .error, sourceLocation: sourceLocation)
-  }
-
-  /// Record an issue when a running test fails unexpectedly.
-  ///
-  /// - Parameters:
-  ///   - comment: A comment describing the expectation.
   ///   - severity: The severity of the issue.
   ///   - sourceLocation: The source location to which the issue should be
   ///     attributed.
@@ -90,10 +71,9 @@ extension Issue {
   /// Use this function if, while running a test, an issue occurs that cannot be
   /// represented as an expectation (using the ``expect(_:_:sourceLocation:)``
   /// or ``require(_:_:sourceLocation:)-5l63q`` macros.)
-  @_spi(Experimental)
   @discardableResult public static func record(
     _ comment: Comment? = nil,
-    severity: Severity,
+    severity: Severity = .error,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
     let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
@@ -105,28 +85,7 @@ extension Issue {
 // MARK: - Recording issues for errors
 
 extension Issue {
-  /// Record a new issue when a running test unexpectedly catches an error.
-  ///
-  /// - Parameters:
-  ///   - error: The error that caused the issue.
-  ///   - comment: A comment describing the expectation.
-  ///   - sourceLocation: The source location to which the issue should be
-  ///     attributed.
-  ///
-  /// - Returns: The issue that was recorded.
-  ///
-  /// This function can be used if an unexpected error is caught while running a
-  /// test and it should be treated as a test failure. If an error is thrown
-  /// from a test function, it is automatically recorded as an issue and this
-  /// function does not need to be used.
-  @discardableResult public static func record(
-    _ error: any Error,
-    _ comment: Comment? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation
-  ) -> Self {
-    record(error, comment, severity: .error, sourceLocation: sourceLocation)
-  }
-  
+
   /// Record a new issue when a running test unexpectedly catches an error.
   ///
   /// - Parameters:
@@ -142,11 +101,10 @@ extension Issue {
   /// test and it should be treated as a test failure. If an error is thrown
   /// from a test function, it is automatically recorded as an issue and this
   /// function does not need to be used.
-  @_spi(Experimental)
   @discardableResult public static func record(
     _ error: any Error,
     _ comment: Comment? = nil,
-    severity: Severity,
+    severity: Severity = .error,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
     let backtrace = Backtrace(forFirstThrowOf: error) ?? Backtrace.current()
