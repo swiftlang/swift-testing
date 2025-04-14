@@ -47,7 +47,7 @@ struct CapturedValueInfo {
 
     // Potentially get the name of the type comprising the current lexical
     // context (i.e. whatever `Self` is.)
-    let typeNameOfLexicalContext = {
+    lazy var typeNameOfLexicalContext = {
       let lexicalContext = context.lexicalContext.drop { !$0.isProtocol((any DeclGroupSyntax).self) }
       return context.type(ofLexicalContext: lexicalContext)
     }()
