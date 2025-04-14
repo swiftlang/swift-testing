@@ -103,6 +103,12 @@ public struct Issue: Sendable {
   /// The severity of this issue.
   @_spi(Experimental)
   public var severity: Severity
+  
+  /// If the issues is a failing issue.
+  @_spi(Experimental)
+  public var isFailure: Bool {
+    return !self.isKnown && self.severity >= .error
+  }
 
   /// Any comments provided by the developer and associated with this issue.
   ///
