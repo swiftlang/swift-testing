@@ -65,7 +65,6 @@ public struct Issue: Sendable {
     ///
     /// - Parameters:
     ///   - error: The error which was associated with this issue.
-    @_spi(Experimental)
     case valueAttachmentFailed(_ error: any Error)
 
     /// An issue occurred due to misuse of the testing library.
