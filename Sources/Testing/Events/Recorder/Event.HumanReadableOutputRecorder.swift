@@ -93,10 +93,20 @@ extension Event.HumanReadableOutputRecorder {
   /// - Parameters:
   ///   - comments: The comments that should be formatted.
   ///
-  /// - Returns: A formatted string representing `comments`, or `nil` if there
-  ///   are none.
+  /// - Returns: An array of formatted messages representing `comments`, or an
+  /// empty array if there are none.
   private func _formattedComments(_ comments: [Comment]) -> [Message] {
-    comments.map { Message(symbol: .details, stringValue: $0.rawValue) }
+    comments.map(_formattedComment)
+  }
+
+  /// Get a string representing a single comment, formatted for output.
+  ///
+  /// - Parameters:
+  ///   - comment: The comment that should be formatted.
+  ///
+  /// - Returns: A formatted message representing `comment`.
+  private func _formattedComment(_ comment: Comment) -> Message {
+    Message(symbol: .details, stringValue: comment.rawValue)
   }
 
   /// Get a string representing the comments attached to a test, formatted for
@@ -449,6 +459,15 @@ extension Event.HumanReadableOutputRecorder {
         additionalMessages.append(Message(symbol: .difference, stringValue: differenceDescription))
       }
       additionalMessages += _formattedComments(issue.comments)
+      if let knownIssueComment = issue.knownIssueContext?.comment {
+        if case .errorCaught = issue.kind {
+          // `_matchError()` put the known issue comment in `issue.comments`
+          // when it first created the issue, so it's already included in
+          // `additionalMessages`.
+        } else {
+          additionalMessages.append(_formattedComment(knownIssueComment))
+        }
+      }
 
       if verbosity > 0, case let .expectationFailed(expectation) = issue.kind {
         let expression = expectation.evaluatedExpression

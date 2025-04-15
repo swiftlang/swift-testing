@@ -9,14 +9,6 @@
 //
 
 extension Issue {
-  /// The known issue matcher, as set by `withKnownIssue()`, associated with the
-  /// current task.
-  ///
-  /// If there is no call to `withKnownIssue()` executing on the current task,
-  /// the value of this property is `nil`.
-  @TaskLocal
-  static var currentKnownIssueMatcher: KnownIssueMatcher?
-
   /// Record this issue by wrapping it in an ``Event`` and passing it to the
   /// current event handler.
   ///
@@ -38,9 +30,9 @@ extension Issue {
 
     // If this issue matches via the known issue matcher, set a copy of it to be
     // known and record the copy instead.
-    if !isKnown, let issueMatcher = Self.currentKnownIssueMatcher, issueMatcher(self) {
+    if !isKnown, let context = KnownIssueScope.current?.matcher(self) {
       var selfCopy = self
-      selfCopy.isKnown = true
+      selfCopy.knownIssueContext = context
       return selfCopy.record(configuration: configuration)
     }
 
