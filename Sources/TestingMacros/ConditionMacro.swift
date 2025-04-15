@@ -421,17 +421,6 @@ extension ExitTestConditionMacro {
     _ = try Base.expansion(of: macro, in: context)
 
     var arguments = argumentList(of: macro, in: context)
-    let conditionIndex = arguments.firstIndex { $0.label?.tokenKind == .identifier("exitsWith") }
-    guard let conditionIndex else {
-      fatalError("Could not find the condition for this exit test. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
-    }
-    let observationListIndex = arguments.firstIndex { $0.label?.tokenKind == .identifier("observing") }
-    if observationListIndex == nil {
-      arguments.insert(
-        Argument(label: "observing", expression: ArrayExprSyntax(expressions: [])),
-        at: arguments.index(after: conditionIndex)
-      )
-    }
     let trailingClosureIndex = arguments.firstIndex { $0.label?.tokenKind == _trailingClosureLabel.tokenKind }
     guard let trailingClosureIndex else {
       fatalError("Could not find the body argument to this exit test. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
@@ -451,13 +440,10 @@ extension ExitTestConditionMacro {
         bodyArgumentExpr = ExprSyntax(closureExpr)
       }
 
-    } else {
-      let bodyArgumentExpr = removeParentheses(from: bodyArgumentExpr) ?? bodyArgumentExpr
-      if let closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
-         let captureClause = closureExpr.signature?.capture,
-         !captureClause.items.isEmpty {
-        context.diagnose(.captureClauseUnsupported(captureClause, in: closureExpr, inExitTest: macro))
-      }
+    } else if let closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
+              let captureClause = closureExpr.signature?.capture,
+              !captureClause.items.isEmpty {
+      context.diagnose(.captureClauseUnsupported(captureClause, in: closureExpr, inExitTest: macro))
     }
 
     // Generate a unique identifier for this exit test.
@@ -547,17 +533,22 @@ extension ExitTestConditionMacro {
 
     // Insert additional arguments at the beginning of the argument list. Note
     // that this will invalidate all indices into `arguments`!
-    arguments = [
+    var leadingArguments = [
       Argument(label: "identifiedBy", expression: idExpr),
-      Argument(
-        label: "encodingCapturedValues",
-        expression: TupleExprSyntax {
-          for capturedValue in capturedValues {
-            LabeledExprSyntax(expression: capturedValue.expression.trimmed)
+    ]
+    if !capturedValues.isEmpty {
+      leadingArguments.append(
+        Argument(
+          label: "encodingCapturedValues",
+          expression: TupleExprSyntax {
+            for capturedValue in capturedValues {
+              LabeledExprSyntax(expression: capturedValue.expression.trimmed)
+            }
           }
-        }
-      ),
-    ] + arguments
+        )
+      )
+    }
+    arguments = leadingArguments + arguments
 
     // Replace the exit test body (as an argument to the macro) with a stub
     // closure that hosts the type we created above.
