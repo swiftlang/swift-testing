@@ -526,7 +526,7 @@ extension ExitTest {
 
     // Erase the environment variable so that it cannot accidentally be opened
     // twice (nor, in theory, affect the code of the exit test.)
-    Environment.setVariable(nil, named: "SWT_EXPERIMENTAL_BACKCHANNEL")
+    Environment.setVariable(nil, named: name)
 
     var fd: CInt?
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
