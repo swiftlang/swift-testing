@@ -89,6 +89,7 @@ target_sources(TestingMacros PRIVATE
   Support/Additions/FunctionDeclSyntaxAdditions.swift
   Support/Additions/IntegerLiteralExprSyntaxAdditions.swift
   Support/Additions/MacroExpansionContextAdditions.swift
+  Support/Additions/SyntaxProtocolAdditions.swift
   Support/Additions/TokenSyntaxAdditions.swift
   Support/Additions/TriviaPieceAdditions.swift
   Support/Additions/TypeSyntaxProtocolAdditions.swift
@@ -101,6 +102,7 @@ target_sources(TestingMacros PRIVATE
   Support/ConditionArgumentParsing.swift
   Support/DiagnosticMessage.swift
   Support/DiagnosticMessage+Diagnosing.swift
+  Support/EffectfulExpressionHandling.swift
   Support/SHA256.swift
   Support/SourceCodeCapturing.swift
   Support/SourceLocationGeneration.swift
