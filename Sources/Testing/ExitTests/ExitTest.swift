@@ -387,9 +387,9 @@ extension ExitTest {
 /// This function contains the common implementation for all
 /// `await #expect(exitsWith:) { }` invocations regardless of calling
 /// convention.
-func callExitTest<each T>(
+func callExitTest(
   identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
-  encodingCapturedValues capturedValues: (repeat each T),
+  encodingCapturedValues capturedValues: [ExitTest.CapturedValue],
   exitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable],
   expression: __Expression,
@@ -397,7 +397,7 @@ func callExitTest<each T>(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<ExitTest.Result?, any Error> where repeat each T: Codable & Sendable {
+) async -> Result<ExitTest.Result?, any Error> {
   guard let configuration = Configuration.current ?? Configuration.all.first else {
     preconditionFailure("A test must be running on the current task to use #expect(exitsWith:).")
   }
@@ -407,7 +407,7 @@ func callExitTest<each T>(
     // Construct a temporary/local exit test to pass to the exit test handler.
     var exitTest = ExitTest(id: ExitTest.ID(exitTestID))
     exitTest.observedValues = observedValues
-    exitTest.capturedValues = Array(repeat each capturedValues)
+    exitTest.capturedValues = capturedValues
 
     // Invoke the exit test handler and wait for the child process to terminate.
     result = try await configuration.exitTestHandler(exitTest)

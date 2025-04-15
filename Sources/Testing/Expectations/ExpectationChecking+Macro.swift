@@ -1158,7 +1158,7 @@ public func __checkClosureCall(
 ) async -> Result<ExitTest.Result?, any Error> {
   await callExitTest(
     identifiedBy: exitTestID,
-    encodingCapturedValues: (),
+    encodingCapturedValues: [],
     exitsWith: expectedExitCondition,
     observing: observedValues,
     expression: expression,
@@ -1191,7 +1191,7 @@ public func __checkClosureCall<each T>(
 ) async -> Result<ExitTest.Result?, any Error> where repeat each T: Codable & Sendable {
   await callExitTest(
     identifiedBy: exitTestID,
-    encodingCapturedValues: (repeat each capturedValues),
+    encodingCapturedValues: Array(repeat each capturedValues),
     exitsWith: expectedExitCondition,
     observing: observedValues,
     expression: expression,
