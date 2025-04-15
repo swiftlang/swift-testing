@@ -1,9 +1,9 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.1
 
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2025 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -95,8 +95,15 @@ let package = Package(
     return result
   }(),
 
+  traits: [
+    .trait(
+      name: "ExperimentalExitTestValueCapture",
+      description: "Enable experimental support for capturing values in exit tests"
+    ),
+  ],
+
   dependencies: [
-    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "601.0.0-latest"),
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "602.0.0-latest"),
   ],
 
   targets: [
@@ -284,6 +291,14 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .define("SWT_NO_LEGACY_TEST_DISCOVERY", .whenEmbedded()),
       .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
     ]
+
+    // Unconditionally enable 'ExperimentalExitTestValueCapture' when building
+    // for development.
+    if buildingForDevelopment {
+      result += [
+        .define("ExperimentalExitTestValueCapture")
+      ]
+    }
 
     return result
   }
