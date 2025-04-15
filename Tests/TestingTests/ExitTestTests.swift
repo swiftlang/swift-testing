@@ -88,7 +88,7 @@ private import _TestingInternals
 
       // Mock an exit test where the process exits successfully.
       configuration.exitTestHandler = { _ in
-        return ExitTest.Result(statusAtExit: .exitCode(EXIT_SUCCESS))
+        return ExitTest.Result(exitStatus: .exitCode(EXIT_SUCCESS))
       }
       await Test {
         await #expect(exitsWith: .success) {}
@@ -96,7 +96,7 @@ private import _TestingInternals
 
       // Mock an exit test where the process exits with a particular error code.
       configuration.exitTestHandler = { _ in
-        return ExitTest.Result(statusAtExit: .exitCode(123))
+        return ExitTest.Result(exitStatus: .exitCode(123))
       }
       await Test {
         await #expect(exitsWith: .failure) {}
@@ -104,7 +104,7 @@ private import _TestingInternals
 
       // Mock an exit test where the process exits with a signal.
       configuration.exitTestHandler = { _ in
-        return ExitTest.Result(statusAtExit: .signal(SIGABRT))
+        return ExitTest.Result(exitStatus: .signal(SIGABRT))
       }
       await Test {
         await #expect(exitsWith: .signal(SIGABRT)) {}
@@ -126,7 +126,7 @@ private import _TestingInternals
 
       // Mock exit tests that were expected to fail but passed.
       configuration.exitTestHandler = { _ in
-        return ExitTest.Result(statusAtExit: .exitCode(EXIT_SUCCESS))
+        return ExitTest.Result(exitStatus: .exitCode(EXIT_SUCCESS))
       }
       await Test {
         await #expect(exitsWith: .failure) {}
@@ -140,7 +140,7 @@ private import _TestingInternals
 
       // Mock exit tests that unexpectedly signalled.
       configuration.exitTestHandler = { _ in
-        return ExitTest.Result(statusAtExit: .signal(SIGABRT))
+        return ExitTest.Result(exitStatus: .signal(SIGABRT))
       }
       await Test {
         await #expect(exitsWith: .exitCode(EXIT_SUCCESS)) {}
@@ -245,21 +245,21 @@ private import _TestingInternals
     var result = await #expect(exitsWith: .success) {
       exit(EXIT_SUCCESS)
     }
-    #expect(result?.statusAtExit == .exitCode(EXIT_SUCCESS))
+    #expect(result?.exitStatus == .exitCode(EXIT_SUCCESS))
     result = await #expect(exitsWith: .exitCode(123)) {
       exit(123)
     }
-    #expect(result?.statusAtExit == .exitCode(123))
+    #expect(result?.exitStatus == .exitCode(123))
 
     // Test that basic passing exit tests produce the correct results (#require)
     result = try await #require(exitsWith: .success) {
       exit(EXIT_SUCCESS)
     }
-    #expect(result?.statusAtExit == .exitCode(EXIT_SUCCESS))
+    #expect(result?.exitStatus == .exitCode(EXIT_SUCCESS))
     result = try await #require(exitsWith: .exitCode(123)) {
       exit(123)
     }
-    #expect(result?.statusAtExit == .exitCode(123))
+    #expect(result?.exitStatus == .exitCode(123))
   }
 
   @Test("Result is nil on failure")
@@ -278,7 +278,7 @@ private import _TestingInternals
         }
       }
       configuration.exitTestHandler = { _ in
-        ExitTest.Result(statusAtExit: .exitCode(123))
+        ExitTest.Result(exitStatus: .exitCode(123))
       }
 
       await Test {
@@ -301,7 +301,7 @@ private import _TestingInternals
         }
       }
       configuration.exitTestHandler = { _ in
-        ExitTest.Result(statusAtExit: .exitCode(EXIT_FAILURE))
+        ExitTest.Result(exitStatus: .exitCode(EXIT_FAILURE))
       }
 
       await Test {
@@ -348,7 +348,7 @@ private import _TestingInternals
       try FileHandle.stderr.write(String("STANDARD ERROR".reversed()))
       exit(EXIT_SUCCESS)
     }
-    #expect(result.statusAtExit == .exitCode(EXIT_SUCCESS))
+    #expect(result.exitStatus == .exitCode(EXIT_SUCCESS))
     #expect(result.standardOutputContent.contains("STANDARD OUTPUT".utf8))
     #expect(result.standardErrorContent.isEmpty)
 
@@ -357,7 +357,7 @@ private import _TestingInternals
       try FileHandle.stderr.write(String("STANDARD ERROR".reversed()))
       exit(EXIT_SUCCESS)
     }
-    #expect(result.statusAtExit == .exitCode(EXIT_SUCCESS))
+    #expect(result.exitStatus == .exitCode(EXIT_SUCCESS))
     #expect(result.standardOutputContent.isEmpty)
     #expect(result.standardErrorContent.contains("STANDARD ERROR".utf8.reversed()))
   }

@@ -25,7 +25,7 @@ private import _TestingInternals
 #if SWT_NO_PROCESS_SPAWNING
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
-public enum StatusAtExit: Sendable {
+public enum ExitStatus: Sendable {
   /// The process exited with the given exit code.
   ///
   /// - Parameters:
@@ -90,4 +90,4 @@ public enum StatusAtExit: Sendable {
 #if SWT_NO_PROCESS_SPAWNING
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
-extension StatusAtExit: Equatable {}
+extension ExitStatus: Equatable {}

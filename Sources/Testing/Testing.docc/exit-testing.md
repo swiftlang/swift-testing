@@ -147,6 +147,6 @@ extension Customer {
   third-party dependencies you declare in your package description or Xcode
   project.
 
-The testing library always sets ``ExitTest/Result/statusAtExit`` to the actual
+The testing library always sets ``ExitTest/Result/exitStatus`` to the actual
 exit status of the child process (as reported by the system) even if you do not
 pass it.

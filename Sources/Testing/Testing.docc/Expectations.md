@@ -77,8 +77,8 @@ the test when the code doesn't satisfy a requirement, use
 - <doc:exit-testing>
 - ``expect(exitsWith:observing:_:sourceLocation:performing:)``
 - ``require(exitsWith:observing:_:sourceLocation:performing:)``
+- ``ExitStatus``
 - ``ExitTest``
-- ``StatusAtExit``
 
 ### Confirming that asynchronous events occur
 

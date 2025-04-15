@@ -92,7 +92,7 @@ public struct ExitTest: Sendable, ~Copyable {
   /// this property to determine what information you need to preserve from your
   /// child process.
   ///
-  /// The value of this property always includes ``ExitTest/Result/statusAtExit``
+  /// The value of this property always includes ``ExitTest/Result/exitStatus``
   /// even if the test author does not specify it.
   ///
   /// Within a child process running an exit test, the value of this property is
@@ -101,8 +101,8 @@ public struct ExitTest: Sendable, ~Copyable {
   public var observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] {
     get {
       var result = _observedValues
-      if !result.contains(\.statusAtExit) { // O(n), but n <= 3 (no Set needed)
-        result.append(\.statusAtExit)
+      if !result.contains(\.exitStatus) { // O(n), but n <= 3 (no Set needed)
+        result.append(\.exitStatus)
       }
       return result
     }
@@ -339,7 +339,7 @@ extension ExitTest {
 ///   - expectedExitCondition: The expected exit condition.
 ///   - observedValues: An array of key paths representing results from within
 ///     the exit test that should be observed and returned by this macro. The
-///     ``ExitTest/Result/statusAtExit`` property is always returned.
+///     ``ExitTest/Result/exitStatus`` property is always returned.
 ///   - expression: The expression, corresponding to `condition`, that is being
 ///     evaluated (if available at compile time.)
 ///   - comments: An array of comments describing the expectation. This array
@@ -376,8 +376,8 @@ func callExitTest(
 #if os(Windows)
     // For an explanation of this magic, see the corresponding logic in
     // ExitTest.callAsFunction().
-    if case let .exitCode(exitCode) = result.statusAtExit, (exitCode & ~STATUS_CODE_MASK) == STATUS_SIGNAL_CAUGHT_BITS {
-      result.statusAtExit = .signal(exitCode & STATUS_CODE_MASK)
+    if case let .exitCode(exitCode) = result.exitStatus, (exitCode & ~STATUS_CODE_MASK) == STATUS_SIGNAL_CAUGHT_BITS {
+      result.exitStatus = .signal(exitCode & STATUS_CODE_MASK)
     }
 #endif
   } catch {
@@ -402,22 +402,19 @@ func callExitTest(
     // For lack of a better way to handle an exit test failing in this way,
     // we record the system issue above, then let the expectation fail below by
     // reporting an exit condition that's the inverse of the expected one.
-    let statusAtExit: StatusAtExit = if expectedExitCondition.isApproximatelyEqual(to: .exitCode(EXIT_FAILURE)) {
+    let exitStatus: ExitStatus = if expectedExitCondition.isApproximatelyEqual(to: .exitCode(EXIT_FAILURE)) {
       .exitCode(EXIT_SUCCESS)
     } else {
       .exitCode(EXIT_FAILURE)
     }
-    result = ExitTest.Result(statusAtExit: statusAtExit)
+    result = ExitTest.Result(exitStatus: exitStatus)
   }
-
-  // How did the exit test actually exit?
-  let actualStatusAtExit = result.statusAtExit
 
   // Plumb the exit test's result through the general expectation machinery.
   return __checkValue(
-    expectedExitCondition.isApproximatelyEqual(to: actualStatusAtExit),
+    expectedExitCondition.isApproximatelyEqual(to: result.exitStatus),
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(actualStatusAtExit),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(result.exitStatus),
     mismatchedExitConditionDescription: String(describingForTest: expectedExitCondition),
     comments: comments(),
     isRequired: isRequired,
@@ -710,8 +707,8 @@ extension ExitTest {
 
         // Await termination of the child process.
         taskGroup.addTask {
-          let statusAtExit = try await wait(for: processID)
-          return { $0.statusAtExit = statusAtExit }
+          let exitStatus = try await wait(for: processID)
+          return { $0.exitStatus = exitStatus }
         }
 
         // Read back the stdout and stderr streams.
@@ -741,7 +738,7 @@ extension ExitTest {
         // Collate the various bits of the result. The exit condition used here
         // is just a placeholder and will be replaced by the result of one of
         // the tasks above.
-        var result = ExitTest.Result(statusAtExit: .exitCode(EXIT_FAILURE))
+        var result = ExitTest.Result(exitStatus: .exitCode(EXIT_FAILURE))
         for try await update in taskGroup {
           update?(&result)
         }

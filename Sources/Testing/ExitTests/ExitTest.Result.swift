@@ -28,7 +28,7 @@ extension ExitTest {
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.2)
     /// }
-    public var statusAtExit: StatusAtExit
+    public var exitStatus: ExitStatus
 
     /// All bytes written to the standard output stream of the exit test before
     /// it exited.
@@ -91,8 +91,8 @@ extension ExitTest {
     public var standardErrorContent: [UInt8] = []
 
     @_spi(ForToolsIntegrationOnly)
-    public init(statusAtExit: StatusAtExit) {
-      self.statusAtExit = statusAtExit
+    public init(exitStatus: ExitStatus) {
+      self.exitStatus = exitStatus
     }
   }
 }

@@ -490,7 +490,7 @@ public macro require<R>(
 ///   - expectedExitCondition: The expected exit condition.
 ///   - observedValues: An array of key paths representing results from within
 ///     the exit test that should be observed and returned by this macro. The
-///     ``ExitTest/Result/statusAtExit`` property is always returned.
+///     ``ExitTest/Result/exitStatus`` property is always returned.
 ///   - comment: A comment describing the expectation.
 ///   - sourceLocation: The source location to which recorded expectations and
 ///     issues should be attributed.
@@ -533,7 +533,7 @@ public macro require<R>(
 ///   - expectedExitCondition: The expected exit condition.
 ///   - observedValues: An array of key paths representing results from within
 ///     the exit test that should be observed and returned by this macro. The
-///     ``ExitTest/Result/statusAtExit`` property is always returned.
+///     ``ExitTest/Result/exitStatus`` property is always returned.
 ///   - comment: A comment describing the expectation.
 ///   - sourceLocation: The source location to which recorded expectations and
 ///     issues should be attributed.

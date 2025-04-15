@@ -35,7 +35,7 @@ add_library(Testing
   ExitTests/ExitTest.Condition.swift
   ExitTests/ExitTest.Result.swift
   ExitTests/SpawnProcess.swift
-  ExitTests/StatusAtExit.swift
+  ExitTests/ExitStatus.swift
   ExitTests/WaitFor.swift
   Expectations/Expectation.swift
   Expectations/Expectation+Macro.swift

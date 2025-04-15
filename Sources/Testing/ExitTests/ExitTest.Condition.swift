@@ -40,7 +40,7 @@ extension ExitTest {
     /// An enumeration describing the possible conditions for an exit test.
     private enum _Kind: Sendable, Equatable {
       /// The exit test must exit with a particular exit status.
-      case statusAtExit(StatusAtExit)
+      case exitStatus(ExitStatus)
 
       /// The exit test must exit with any failure.
       case failure
@@ -91,8 +91,8 @@ extension ExitTest.Condition {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
   /// }
-  public init(_ statusAtExit: StatusAtExit) {
-    self.init(_kind: .statusAtExit(statusAtExit))
+  public init(_ exitStatus: ExitStatus) {
+    self.init(_kind: .exitStatus(exitStatus))
   }
 
   /// Creates a condition that matches when a process terminates with a given
@@ -176,22 +176,22 @@ extension ExitTest.Condition {
   /// Check whether or not an exit test condition matches a given exit status.
   ///
   /// - Parameters:
-  ///   - statusAtExit: An exit status to compare against.
+  ///   - exitStatus: An exit status to compare against.
   ///
-  /// - Returns: Whether or not `self` and `statusAtExit` represent the same
-  ///   exit condition.
+  /// - Returns: Whether or not `self` and `exitStatus` represent the same exit
+  ///   condition.
   ///
   /// Two exit test conditions can be compared; if either instance is equal to
   /// ``failure``, it will compare equal to any instance except ``success``.
-  func isApproximatelyEqual(to statusAtExit: StatusAtExit) -> Bool {
-    return switch (self._kind, statusAtExit) {
+  func isApproximatelyEqual(to exitStatus: ExitStatus) -> Bool {
+    return switch (self._kind, exitStatus) {
     case let (.failure, .exitCode(exitCode)):
       exitCode != EXIT_SUCCESS
     case (.failure, .signal):
       // All terminating signals are considered failures.
       true
     default:
-      self._kind == .statusAtExit(statusAtExit)
+      self._kind == .exitStatus(exitStatus)
     }
   }
 }
