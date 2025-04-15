@@ -236,7 +236,6 @@ public struct Configuration: Sendable {
   /// The value of this property must refer to a directory on the local file
   /// system that already exists and which the current user can write to. If it
   /// is a relative path, it is resolved to an absolute path automatically.
-  @_spi(Experimental)
   public var attachmentsPath: String? {
     get {
       _attachmentsPath

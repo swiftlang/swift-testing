@@ -9,7 +9,7 @@
 //
 
 #if canImport(Foundation)
-@_spi(Experimental) import Testing
+import Testing
 import Foundation
 
 /// An enumeration describing the encoding formats we support for `Encodable`

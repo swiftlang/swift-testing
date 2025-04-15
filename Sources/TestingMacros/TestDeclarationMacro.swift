@@ -328,7 +328,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
         }
         FunctionParameterSyntax(
           firstName: .wildcardToken(),
-          type: "isolated (any Actor)?" as TypeSyntax,
+          type: "isolated (any _Concurrency.Actor)?" as TypeSyntax,
           defaultValue: InitializerClauseSyntax(value: "Testing.__defaultSynchronousIsolationContext" as ExprSyntax)
         )
       }

@@ -42,6 +42,9 @@ extension ExitTest {
       /// The exit test must exit with a particular exit status.
       case exitStatus(ExitStatus)
 
+      /// The exit test must exit successfully.
+      case success
+
       /// The exit test must exit with any failure.
       case failure
     }
@@ -65,15 +68,7 @@ extension ExitTest.Condition {
   ///   @Available(Swift, introduced: 6.2)
   /// }
   public static var success: Self {
-    // Strictly speaking, the C standard treats 0 as a successful exit code and
-    // potentially distinct from EXIT_SUCCESS. To my knowledge, no modern
-    // operating system defines EXIT_SUCCESS to any value other than 0, so the
-    // distinction is academic.
-#if !SWT_NO_EXIT_TESTS
-    .exitCode(EXIT_SUCCESS)
-#else
-    fatalError("Unsupported")
-#endif
+    Self(_kind: .success)
   }
 
   /// A condition that matches when a process exits abnormally
@@ -167,6 +162,29 @@ extension ExitTest.Condition {
   }
 }
 
+// MARK: - CustomStringConvertible
+
+@_spi(Experimental)
+#if SWT_NO_EXIT_TESTS
+@available(*, unavailable, message: "Exit tests are not available on this platform.")
+#endif
+extension ExitTest.Condition: CustomStringConvertible {
+  public var description: String {
+#if !SWT_NO_EXIT_TESTS
+    switch _kind {
+    case .failure:
+      ".failure"
+    case .success:
+      ".success"
+    case let .exitStatus(exitStatus):
+      String(describing: exitStatus)
+    }
+#else
+    fatalError("Unsupported")
+#endif
+  }
+}
+
 // MARK: - Comparison
 
 #if SWT_NO_EXIT_TESTS
@@ -184,7 +202,13 @@ extension ExitTest.Condition {
   /// Two exit test conditions can be compared; if either instance is equal to
   /// ``failure``, it will compare equal to any instance except ``success``.
   func isApproximatelyEqual(to exitStatus: ExitStatus) -> Bool {
+    // Strictly speaking, the C standard treats 0 as a successful exit code and
+    // potentially distinct from EXIT_SUCCESS. To my knowledge, no modern
+    // operating system defines EXIT_SUCCESS to any value other than 0, so the
+    // distinction is academic.
     return switch (self._kind, exitStatus) {
+    case let (.success, .exitCode(exitCode)):
+      exitCode == EXIT_SUCCESS
     case let (.failure, .exitCode(exitCode)):
       exitCode != EXIT_SUCCESS
     case (.failure, .signal):

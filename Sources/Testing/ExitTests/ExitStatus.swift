@@ -91,3 +91,19 @@ public enum ExitStatus: Sendable {
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 extension ExitStatus: Equatable {}
+
+// MARK: - CustomStringConvertible
+@_spi(Experimental)
+#if SWT_NO_PROCESS_SPAWNING
+@available(*, unavailable, message: "Exit tests are not available on this platform.")
+#endif
+extension ExitStatus: CustomStringConvertible {
+  public var description: String {
+    switch self {
+    case let .exitCode(exitCode):
+      ".exitCode(\(exitCode))"
+    case let .signal(signal):
+      ".signal(\(signal))"
+    }
+  }
+}
