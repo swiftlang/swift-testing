@@ -117,7 +117,6 @@ extension ConditionMacro {
     var checkArguments = [Argument]()
     do {
       if let trailingClosureIndex {
-
         // Include all arguments other than the "comment" and "sourceLocation"
         // arguments here.
         checkArguments += macroArguments.indices.lazy
@@ -467,7 +466,7 @@ extension ExitTestConditionMacro {
     decls.append(
       """
       @Sendable func \(bodyThunkName)(\(bodyThunkParameterList)) async throws {
-        _ = try await Testing.__requiringTry(Testing.__requiringAwait(\(bodyArgumentExpr.trimmed)))()
+        _ = \(applyEffectfulKeywords([.try, .await, .unsafe], to: bodyArgumentExpr))()
       }
       """
     )
