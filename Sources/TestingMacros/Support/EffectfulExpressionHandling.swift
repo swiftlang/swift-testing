@@ -107,7 +107,7 @@ private func _makeCallToEffectfulThunk(_ thunkName: TokenSyntax, passing expr: s
 ///   adds the keywords in `effectfulKeywords` to `expr`.
 func applyEffectfulKeywords(_ effectfulKeywords: Set<Keyword>, to expr: some ExprSyntaxProtocol) -> ExprSyntax {
   let originalExpr = expr
-  var expr = ExprSyntax(expr)
+  var expr = ExprSyntax(expr.trimmed)
 
   let needAwait = effectfulKeywords.contains(.await) && !expr.is(AwaitExprSyntax.self)
   let needTry = effectfulKeywords.contains(.try) && !expr.is(TryExprSyntax.self)
