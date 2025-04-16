@@ -26,10 +26,13 @@ private import _TestingInternals
 /// A type describing an exit test.
 ///
 /// Instances of this type describe exit tests you create using the
-/// ``expect(exitsWith:observing:_:sourceLocation:performing:)``
+/// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or
 /// ``require(exitsWith:observing:_:sourceLocation:performing:)`` macro. You
 /// don't usually need to interact directly with an instance of this type.
-@_spi(Experimental)
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+/// }
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
@@ -92,7 +95,7 @@ public struct ExitTest: Sendable, ~Copyable {
   /// this property to determine what information you need to preserve from your
   /// child process.
   ///
-  /// The value of this property always includes ``ExitTest/Result/statusAtExit``
+  /// The value of this property always includes ``ExitTest/Result/exitStatus``
   /// even if the test author does not specify it.
   ///
   /// Within a child process running an exit test, the value of this property is
@@ -101,8 +104,8 @@ public struct ExitTest: Sendable, ~Copyable {
   public var observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] {
     get {
       var result = _observedValues
-      if !result.contains(\.statusAtExit) { // O(n), but n <= 3 (no Set needed)
-        result.append(\.statusAtExit)
+      if !result.contains(\.exitStatus) { // O(n), but n <= 3 (no Set needed)
+        result.append(\.exitStatus)
       }
       return result
     }
@@ -141,7 +144,6 @@ public struct ExitTest: Sendable, ~Copyable {
 #if !SWT_NO_EXIT_TESTS
 // MARK: - Current
 
-@_spi(Experimental)
 extension ExitTest {
   /// Storage for ``current``.
   ///
@@ -162,6 +164,10 @@ extension ExitTest {
   ///
   /// The value of this property is constant across all tasks in the current
   /// process.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   public static var current: ExitTest? {
     _read {
       // NOTE: Even though this accessor is `_read` and has borrowing semantics,
@@ -177,7 +183,7 @@ extension ExitTest {
 
 // MARK: - Invocation
 
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+@_spi(ForToolsIntegrationOnly)
 extension ExitTest {
   /// Disable crash reporting, crash logging, or core dumps for the current
   /// process.
@@ -333,7 +339,7 @@ extension ExitTest: DiscoverableAsTestContent {
   }
 }
 
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+@_spi(ForToolsIntegrationOnly)
 extension ExitTest {
   /// Find the exit test function at the given source location.
   ///
@@ -373,7 +379,7 @@ extension ExitTest {
 ///   - expectedExitCondition: The expected exit condition.
 ///   - observedValues: An array of key paths representing results from within
 ///     the exit test that should be observed and returned by this macro. The
-///     ``ExitTest/Result/statusAtExit`` property is always returned.
+///     ``ExitTest/Result/exitStatus`` property is always returned.
 ///   - expression: The expression, corresponding to `condition`, that is being
 ///     evaluated (if available at compile time.)
 ///   - comments: An array of comments describing the expectation. This array
@@ -415,8 +421,8 @@ func callExitTest(
 #if os(Windows)
     // For an explanation of this magic, see the corresponding logic in
     // ExitTest.callAsFunction().
-    if case let .exitCode(exitCode) = result.statusAtExit, (exitCode & ~STATUS_CODE_MASK) == STATUS_SIGNAL_CAUGHT_BITS {
-      result.statusAtExit = .signal(exitCode & STATUS_CODE_MASK)
+    if case let .exitCode(exitCode) = result.exitStatus, (exitCode & ~STATUS_CODE_MASK) == STATUS_SIGNAL_CAUGHT_BITS {
+      result.exitStatus = .signal(exitCode & STATUS_CODE_MASK)
     }
 #endif
   } catch {
@@ -441,22 +447,19 @@ func callExitTest(
     // For lack of a better way to handle an exit test failing in this way,
     // we record the system issue above, then let the expectation fail below by
     // reporting an exit condition that's the inverse of the expected one.
-    let statusAtExit: StatusAtExit = if expectedExitCondition.isApproximatelyEqual(to: .exitCode(EXIT_FAILURE)) {
+    let exitStatus: ExitStatus = if expectedExitCondition.isApproximatelyEqual(to: .exitCode(EXIT_FAILURE)) {
       .exitCode(EXIT_SUCCESS)
     } else {
       .exitCode(EXIT_FAILURE)
     }
-    result = ExitTest.Result(statusAtExit: statusAtExit)
+    result = ExitTest.Result(exitStatus: exitStatus)
   }
-
-  // How did the exit test actually exit?
-  let actualStatusAtExit = result.statusAtExit
 
   // Plumb the exit test's result through the general expectation machinery.
   return __checkValue(
-    expectedExitCondition.isApproximatelyEqual(to: actualStatusAtExit),
+    expectedExitCondition.isApproximatelyEqual(to: result.exitStatus),
     expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(actualStatusAtExit),
+    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(result.exitStatus),
     mismatchedExitConditionDescription: String(describingForTest: expectedExitCondition),
     comments: comments(),
     isRequired: isRequired,
@@ -476,7 +479,7 @@ extension ABI {
   fileprivate typealias BackChannelVersion = v1
 }
 
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+@_spi(ForToolsIntegrationOnly)
 extension ExitTest {
   /// A handler that is invoked when an exit test starts.
   ///
@@ -592,10 +595,10 @@ extension ExitTest {
   static func findInEnvironmentForEntryPoint() -> Self? {
     // Find the ID of the exit test to run, if any, in the environment block.
     var id: ExitTest.ID?
-    if var idString = Environment.variable(named: "SWT_EXPERIMENTAL_EXIT_TEST_ID") {
+    if var idString = Environment.variable(named: "SWT_EXIT_TEST_ID") {
       // Clear the environment variable. It's an implementation detail and exit
       // test code shouldn't be dependent on it. Use ExitTest.current if needed!
-      Environment.setVariable(nil, named: "SWT_EXPERIMENTAL_EXIT_TEST_ID")
+      Environment.setVariable(nil, named: "SWT_EXIT_TEST_ID")
 
       id = try? idString.withUTF8 { idBuffer in
         try JSON.decode(ExitTest.ID.self, from: UnsafeRawBufferPointer(idBuffer))
@@ -613,7 +616,7 @@ extension ExitTest {
     }
 
     // We can't say guard let here because it counts as a consume.
-    guard let backChannel = _makeFileHandle(forEnvironmentVariableNamed: "SWT_EXPERIMENTAL_BACKCHANNEL", mode: "wb") else {
+    guard let backChannel = _makeFileHandle(forEnvironmentVariableNamed: "SWT_BACKCHANNEL", mode: "wb") else {
       return result
     }
 
@@ -732,7 +735,7 @@ extension ExitTest {
       // Insert a specific variable that tells the child process which exit test
       // to run.
       try JSON.withEncoding(of: exitTest.id) { json in
-        childEnvironment["SWT_EXPERIMENTAL_EXIT_TEST_ID"] = String(decoding: json, as: UTF8.self)
+        childEnvironment["SWT_EXIT_TEST_ID"] = String(decoding: json, as: UTF8.self)
       }
 
       typealias ResultUpdater = @Sendable (inout ExitTest.Result) -> Void
@@ -772,7 +775,7 @@ extension ExitTest {
         // captured values channel by setting a known environment variable to
         // the corresponding file descriptor (HANDLE on Windows) for each.
         if let backChannelEnvironmentVariable = _makeEnvironmentVariable(for: backChannelWriteEnd) {
-          childEnvironment["SWT_EXPERIMENTAL_BACKCHANNEL"] = backChannelEnvironmentVariable
+          childEnvironment["SWT_BACKCHANNEL"] = backChannelEnvironmentVariable
         }
         if let capturedValuesEnvironmentVariable = _makeEnvironmentVariable(for: capturedValuesReadEnd) {
           childEnvironment["SWT_EXPERIMENTAL_CAPTURED_VALUES"] = capturedValuesEnvironmentVariable
@@ -808,8 +811,8 @@ extension ExitTest {
 
         // Await termination of the child process.
         taskGroup.addTask {
-          let statusAtExit = try await wait(for: processID)
-          return { $0.statusAtExit = statusAtExit }
+          let exitStatus = try await wait(for: processID)
+          return { $0.exitStatus = exitStatus }
         }
 
         // Read back the stdout and stderr streams.
@@ -839,7 +842,7 @@ extension ExitTest {
         // Collate the various bits of the result. The exit condition used here
         // is just a placeholder and will be replaced by the result of one of
         // the tasks above.
-        var result = ExitTest.Result(statusAtExit: .exitCode(EXIT_FAILURE))
+        var result = ExitTest.Result(exitStatus: .exitCode(EXIT_FAILURE))
         for try await update in taskGroup {
           update?(&result)
         }
