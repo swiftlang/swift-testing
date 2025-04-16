@@ -8,8 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if !SWT_NO_EXIT_TESTS
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+#if SWT_NO_EXIT_TESTS
+@available(*, unavailable, message: "Exit tests are not available on this platform.")
+#endif
 extension ExitTest {
   /// A type representing a value captured by an exit test's body.
   ///
@@ -46,6 +48,7 @@ extension ExitTest {
   /// encoded in the parent process and then updates the ``wrappedValue``
   /// property of each element in the array before calling the exit test's body.
   public struct CapturedValue: Sendable {
+#if !SWT_NO_EXIT_TESTS
     /// An enumeration of the different states a captured value can have.
     private enum _Kind: Sendable {
       /// The runtime value of the captured value is known.
@@ -65,6 +68,7 @@ extension ExitTest {
     init(typeOnly type: (some Codable & Sendable).Type) {
       _kind = .typeOnly(type)
     }
+#endif
 
     /// The underlying value captured by this instance at runtime.
     ///
@@ -72,13 +76,18 @@ extension ExitTest {
     /// of this property is `nil` until the entry point sets it.
     public var wrappedValue: (any Codable & Sendable)? {
       get {
+#if !SWT_NO_EXIT_TESTS
         if case let .wrappedValue(wrappedValue) = _kind {
           return wrappedValue
         }
         return nil
+#else
+        fatalError("Unsupported")
+#endif
       }
 
       set {
+#if !SWT_NO_EXIT_TESTS
         let type = typeOfWrappedValue
 
         func validate<T, U>(_ newValue: T, is expectedType: U.Type) {
@@ -91,6 +100,9 @@ extension ExitTest {
         } else {
           _kind = .typeOnly(type)
         }
+#else
+        fatalError("Unsupported")
+#endif
       }
     }
 
@@ -99,16 +111,21 @@ extension ExitTest {
     /// This type is known at compile time and is always available, even before
     /// this instance's ``wrappedValue`` property is set.
     public var typeOfWrappedValue: any (Codable & Sendable).Type {
+#if !SWT_NO_EXIT_TESTS
       switch _kind {
       case let .wrappedValue(wrappedValue):
         type(of: wrappedValue)
       case let .typeOnly(type):
         type
       }
+#else
+      fatalError("Unsupported")
+#endif
     }
   }
 }
 
+#if !SWT_NO_EXIT_TESTS
 // MARK: - Collection conveniences
 
 extension Array where Element == ExitTest.CapturedValue {
@@ -166,3 +183,4 @@ extension Collection where Element == ExitTest.CapturedValue {
   }
 }
 #endif
+
