@@ -52,7 +52,7 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
   /// ([swift-#79667](https://github.com/swiftlang/swift/issues/79667))
   fileprivate static func validateMemoryLayout() {
     precondition(MemoryLayout<TestContentContext>.stride == MemoryLayout<UInt>.stride, "'\(self).TestContentContext' aka '\(TestContentContext.self)' must have the same stride as 'UInt'.")
-    precondition(MemoryLayout<TestContentContext>.alignment == MemoryLayout<UInt>.alignment, "'\(self).TestContentContext' aka '\(TestContentContext.self)' must have the same alignment as 'UInt'.")
+    precondition(MemoryLayout<TestContentContext>.alignment <= MemoryLayout<UInt>.alignment, "'\(self).TestContentContext' aka '\(TestContentContext.self)' must have an alignment less than or equal to that of 'UInt'.")
   }
 }
 

@@ -66,15 +66,18 @@ public struct ExitTest: Sendable, ~Copyable {
   @_spi(ForToolsIntegrationOnly)
   public var id: ID
 
-  /// The body closure of the exit test.
+  /// An exit test body function.
   ///
   /// - Parameters:
   ///   - exitTest: The exit test to which this body closure belongs.
+  fileprivate typealias Body = @Sendable (_ exitTest: inout Self) async throws -> Void
+
+  /// The body closure of the exit test.
   ///
   /// Do not invoke this closure directly. Instead, invoke ``callAsFunction()``
   /// to run the exit test. Running the exit test will always terminate the
   /// current process.
-  fileprivate var body: @Sendable (_ exitTest: inout Self) async throws -> Void = { _ in }
+  fileprivate var body: Body = { _ in }
 
   /// Storage for ``observedValues``.
   ///
@@ -275,12 +278,34 @@ extension ExitTest {
 
 // MARK: - Discovery
 
-extension ExitTest: DiscoverableAsTestContent {
-  fileprivate static var testContentKind: TestContentKind {
-    "exit"
-  }
+extension ExitTest {
+  /// A type representing an exit test as a test content record.
+  fileprivate struct Record: Sendable, DiscoverableAsTestContent {
+    static var testContentKind: TestContentKind {
+      "exit"
+    }
 
-  fileprivate typealias TestContentAccessorHint = ID
+    typealias TestContentAccessorHint = ID
+
+    /// The ID of the represented exit test.
+    var id: ExitTest.ID
+
+    /// The body of the represented exit test.
+    var body: ExitTest.Body
+
+    /// The set of values captured in the parent process before the exit test is
+    /// called.
+    var capturedValues = [CapturedValue]()
+
+    /// Make the exit test represented by this instance.
+    ///
+    /// - Returns: A new exit test as represented by this instance.
+    func makeExitTest() -> ExitTest {
+      var exitTest = ExitTest(id: id, body: body)
+      exitTest.capturedValues = capturedValues
+      return exitTest
+    }
+  }
 
   /// Store the exit test into the given memory.
   ///
@@ -305,9 +330,7 @@ extension ExitTest: DiscoverableAsTestContent {
   ) -> CBool where repeat each T: Codable & Sendable {
 #if !hasFeature(Embedded)
     // Check that the type matches.
-    let callerExpectedType = TypeInfo(describing: typeAddress.load(as: Any.Type.self))
-    let selfType = TypeInfo(describing: Self.self)
-    guard callerExpectedType == selfType else {
+    guard typeAddress.load(as: Any.Type.self) == Record.self else {
       return false
     }
 #endif
@@ -320,15 +343,15 @@ extension ExitTest: DiscoverableAsTestContent {
 
     // Wrap the body function in a thunk that decodes any captured state and
     // passes it along.
-    let body: @Sendable (inout Self) async throws -> Void = { exitTest in
+    let body: ExitTest.Body = { exitTest in
       let values: (repeat each T) = try exitTest.capturedValues.takeCapturedValues()
       try await body(repeat each values)
     }
 
-    // Construct and return the instance.
-    var exitTest = Self(id: id, body: body)
-    exitTest.capturedValues = Array(repeat (each T).self)
-    outValue.initializeMemory(as: Self.self, to: exitTest)
+    // Construct and return the record.
+    var record = Record(id: id, body: body)
+    record.capturedValues = Array(repeat (each T).self)
+    outValue.initializeMemory(as: Record.self, to: record)
     return true
   }
 }
@@ -343,16 +366,16 @@ extension ExitTest {
   /// - Returns: The specified exit test function, or `nil` if no such exit test
   ///   could be found.
   public static func find(identifiedBy id: ExitTest.ID) -> Self? {
-    for record in Self.allTestContentRecords() {
-      if let exitTest = record.load(withHint: id) {
+    for record in Record.allTestContentRecords() {
+      if let exitTest = record.load(withHint: id)?.makeExitTest() {
         return exitTest
       }
     }
 
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
     // Call the legacy lookup function that discovers tests embedded in types.
-    for record in Self.allTypeMetadataBasedTestContentRecords() {
-      if let exitTest = record.load(withHint: id) {
+    for record in Record.allTypeMetadataBasedTestContentRecords() {
+      if let exitTest = record.load(withHint: id)?.makeExitTest() {
         return exitTest
       }
     }
