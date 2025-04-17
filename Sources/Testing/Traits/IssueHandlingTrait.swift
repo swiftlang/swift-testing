@@ -113,11 +113,11 @@ extension Trait where Self == IssueHandlingTrait {
   ///     this trait is applied to. It is passed a recorded issue, and returns
   ///     an optional issue to replace the passed-in one.
   ///
-  /// The `transformer` closure is called each time an issue is recorded by the
-  /// test this trait is applied to. The closure is passed the recorded issue,
-  /// and if it returns a non-`nil` value, that will be recorded instead of the
-  /// original. Otherwise, if the closure returns `nil`, the issue is suppressed
-  /// and will not be included in the results.
+  /// The `transformer` closure is called synchronously each time an issue is
+  /// recorded by the test this trait is applied to. The closure is passed the
+  /// recorded issue, and if it returns a non-`nil` value, that will be recorded
+  /// instead of the original. Otherwise, if the closure returns `nil`, the
+  /// issue is suppressed and will not be included in the results.
   ///
   /// The `transformer` closure may be called more than once if the test records
   /// multiple issues. If more than one instance of this trait is applied to a
@@ -142,11 +142,11 @@ extension Trait where Self == IssueHandlingTrait {
   ///     should return `true` if the issue should be included, or `false` if it
   ///     should be suppressed.
   ///
-  /// The `isIncluded` closure is called each time an issue is recorded by the
-  /// test this trait is applied to. The closure is passed the recorded issue,
-  /// and if it returns `true`, the issue will be preserved in the test results.
-  /// Otherwise, if the closure returns `false`, the issue will not be included
-  /// in the test results.
+  /// The `isIncluded` closure is called synchronously each time an issue is
+  /// recorded by the test this trait is applied to. The closure is passed the
+  /// recorded issue, and if it returns `true`, the issue will be preserved in
+  /// the test results. Otherwise, if the closure returns `false`, the issue
+  /// will not be included in the test results.
   ///
   /// The `isIncluded` closure may be called more than once if the test records
   /// multiple issues. If more than one instance of this trait is applied to a
