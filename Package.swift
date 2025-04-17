@@ -171,7 +171,7 @@ let package = Package(
       dependencies: ["_TestingInternals",],
       exclude: ["CMakeLists.txt"],
       cxxSettings: .packageSettings,
-      swiftSettings: .packageSettings
+      swiftSettings: .packageSettings + .enableLibraryEvolution()
     ),
 
     // Cross-import overlays (not supported by Swift Package Manager)
