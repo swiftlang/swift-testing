@@ -301,7 +301,9 @@ extension ExitTest {
     ///
     /// - Returns: A new exit test as represented by this instance.
     func makeExitTest() -> ExitTest {
-      ExitTest(id: id, body: body)
+      var exitTest = ExitTest(id: id, body: body)
+      exitTest.capturedValues = capturedValues
+      return exitTest
     }
   }
 
