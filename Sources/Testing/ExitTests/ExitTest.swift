@@ -329,7 +329,7 @@ extension ExitTest {
     withHintAt hintAddress: UnsafeRawPointer? = nil
   ) -> CBool where repeat each T: Codable & Sendable {
 #if !hasFeature(Embedded)
-      // Check that the type matches.
+    // Check that the type matches.
     guard typeAddress.load(as: Any.Type.self) == Record.self else {
       return false
     }
