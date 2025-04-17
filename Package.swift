@@ -239,8 +239,9 @@ extension BuildSettingCondition {
       if let nonEmbeddedCondition = nonEmbeddedCondition() {
         nonEmbeddedCondition
       } else {
-        // The caller did not supply a fallback.
-        .when(platforms: [])
+        // The caller did not supply a fallback. Specify a non-existent platform
+        // to ensure this condition never matches.
+        .when(platforms: [.custom("DoesNotExist")])
       }
     } else {
       // Enable unconditionally because the target is Embedded Swift.
