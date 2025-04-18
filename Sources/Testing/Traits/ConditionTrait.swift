@@ -239,31 +239,37 @@ public struct GroupedConditionTrait: TestTrait, SuiteTrait {
   var operations: [Operation] = []
   
   public func prepare(for test: Test) async throws {
-      let traitCount = conditionTraits.count
-      guard traitCount >= 2 else { return }
-      
-      try await withThrowingTaskGroup(of: Void.self) { group in
-          for (index, operation) in operations.enumerated() where index < traitCount - 1 {
-              let trait1 = conditionTraits[index]
-              let trait2 = conditionTraits[index + 1]
-              group.addTask {
-                  try await operation.operate(trait1, trait2, includeSkipInfo: true)
-              }
-          }
-
-          try await group.waitForAll()
+    let traitCount = conditionTraits.count
+    guard traitCount >= 2 else {
+      if let firstTrait = conditionTraits.first {
+        try await firstTrait.prepare(for: test)
       }
+      return
+    }
+    for (index, operation) in operations.enumerated() where index < traitCount - 1 {
+        let trait1 = conditionTraits[index]
+        let trait2 = conditionTraits[index + 1]
+        try await operation.operate(trait1, trait2, includeSkipInfo: true)
+      
+    }
   }
 
   @_spi(Experimental)
   public func evaluate() async throws -> Bool {
-      var result: Bool = true
-      for (index, operation) in operations.enumerated() {
-          let isEnabled = try await operation.operate(conditionTraits[index],
-                                                      conditionTraits[index + 1])
-          result = result && isEnabled
+    let traitCount = conditionTraits.count
+    guard traitCount >= 2 else {
+      if let firstTrait = conditionTraits.first {
+        return try await firstTrait.evaluate()
       }
-      return result
+      preconditionFailure()
+    }
+    var result: Bool = true
+    for (index, operation) in operations.enumerated() {
+        let isEnabled = try await operation.operate(conditionTraits[index],
+                                                    conditionTraits[index + 1])
+        result = result && isEnabled
+    }
+    return result
   }
 }
 
