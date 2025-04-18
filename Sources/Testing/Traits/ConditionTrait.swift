@@ -96,6 +96,7 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
   public var isRecursive: Bool {
     true
   }
+  internal var isInverted: Bool = false
 }
 
 // MARK: -
@@ -123,7 +124,10 @@ extension Trait where Self == ConditionTrait {
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
-    Self(kind: .conditional(condition), comments: Array(comment), sourceLocation: sourceLocation)
+    Self(kind: .conditional(condition),
+         comments: Array(comment),
+         sourceLocation: sourceLocation,
+         isInverted: false)
   }
 
   /// Constructs a condition trait that disables a test if it returns `false`.
@@ -142,7 +146,10 @@ extension Trait where Self == ConditionTrait {
     sourceLocation: SourceLocation = #_sourceLocation,
     _ condition: @escaping @Sendable () async throws -> Bool
   ) -> Self {
-    Self(kind: .conditional(condition), comments: Array(comment), sourceLocation: sourceLocation)
+    Self(kind: .conditional(condition),
+         comments: Array(comment),
+         sourceLocation: sourceLocation,
+         isInverted: false)
   }
 
   /// Constructs a condition trait that disables a test unconditionally.
@@ -157,7 +164,10 @@ extension Trait where Self == ConditionTrait {
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
-    Self(kind: .unconditional(false), comments: Array(comment), sourceLocation: sourceLocation)
+    Self(kind: .unconditional(false),
+         comments: Array(comment),
+         sourceLocation: sourceLocation,
+         isInverted: true)
   }
 
   /// Constructs a condition trait that disables a test if its value is true.
@@ -182,7 +192,10 @@ extension Trait where Self == ConditionTrait {
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
-    Self(kind: .conditional { !(try condition()) }, comments: Array(comment), sourceLocation: sourceLocation)
+    Self(kind: .conditional { !(try condition()) },
+         comments: Array(comment),
+         sourceLocation: sourceLocation,
+         isInverted: true)
   }
 
   /// Constructs a condition trait that disables a test if its value is true.
@@ -201,6 +214,103 @@ extension Trait where Self == ConditionTrait {
     sourceLocation: SourceLocation = #_sourceLocation,
     _ condition: @escaping @Sendable () async throws -> Bool
   ) -> Self {
-    Self(kind: .conditional { !(try await condition()) }, comments: Array(comment), sourceLocation: sourceLocation)
+    Self(kind: .conditional { !(try await condition()) },
+         comments: Array(comment),
+         sourceLocation: sourceLocation,
+         isInverted: true)
+  }
+}
+
+
+extension Trait where Self == ConditionTrait {
+  
+  public static func && (lhs: Self, rhs: Self) -> GroupedConditionTrait {
+    GroupedConditionTrait(conditionTraits: [lhs, rhs], operations: [.and])
+  }
+  
+  public static func || (lhs: Self, rhs: Self) -> GroupedConditionTrait {
+    GroupedConditionTrait(conditionTraits: [lhs, rhs], operations: [.or])
+  }
+}
+
+public struct GroupedConditionTrait: TestTrait, SuiteTrait {
+  
+  var conditionTraits: [ConditionTrait]
+  var operations: [Operation] = []
+  
+  public func prepare(for test: Test) async throws {
+    for (index, operation) in operations.enumerated() {
+      try await operation.operate(conditionTraits[index], conditionTraits[index + 1], includeSkipInfo: true)
+    }
+  }
+
+  public func evaluate() async throws -> Bool {
+      var result: Bool = true
+      for (index, operation) in operations.enumerated() {
+          let isEnabled = try await operation.operate(conditionTraits[index],
+                                                      conditionTraits[index + 1])
+          result = result && isEnabled
+      }
+      return result
+  }
+}
+
+extension Trait where Self == GroupedConditionTrait {
+  
+  static func && (lhs: Self, rhs: ConditionTrait) -> Self {
+    Self(conditionTraits: lhs.conditionTraits + [rhs], operations: lhs.operations + [.and])
+  }
+  
+  static func && (lhs: Self, rhs: Self) -> Self {
+    Self(conditionTraits: lhs.conditionTraits + rhs.conditionTraits, operations: lhs.operations + [.and] + rhs.operations)
+  }
+  static func || (lhs: Self, rhs: ConditionTrait) -> Self {
+    Self(conditionTraits: lhs.conditionTraits + [rhs], operations: lhs.operations + [.or])
+  }
+  
+  static func || (lhs: Self, rhs: Self) -> Self {
+    Self(conditionTraits: lhs.conditionTraits + rhs.conditionTraits, operations: lhs.operations + [.or] + rhs.operations)
+  }
+}
+
+
+extension GroupedConditionTrait {
+  enum Operation {
+    case `and`
+    case `or`
+    
+    @discardableResult
+    func operate(_ lhs: ConditionTrait,_ rhs: ConditionTrait, includeSkipInfo: Bool = false) async throws -> Bool {
+      let (l,r) = try await evaluate(lhs, rhs)
+      
+      var skipSide: (comments: [Comment]?, sourceLocation: SourceLocation) = (nil, lhs.sourceLocation)
+      let isEnabled: Bool
+      switch self {
+      case .and:
+        isEnabled = l && r
+        
+        if !isEnabled {
+          skipSide = r ? (lhs.comments, lhs.sourceLocation) : (rhs.comments, rhs.sourceLocation)
+        }
+      case .or:
+        isEnabled = ((l != lhs.isInverted) || (r != rhs.isInverted)) != lhs.isInverted && rhs.isInverted
+        
+        if !isEnabled {
+          skipSide = (lhs.comments, lhs.sourceLocation)
+        }
+      }
+      
+      guard isEnabled || !includeSkipInfo else {
+        let sourceContext = SourceContext(backtrace: nil, sourceLocation: skipSide.sourceLocation)
+        throw SkipInfo(comment: skipSide.comments?.first, sourceContext: sourceContext)
+      }
+      return isEnabled
+    }
+    
+    private func evaluate(_ lhs: ConditionTrait, _ rhs: ConditionTrait) async throws -> (Bool, Bool) {
+      let l = try await lhs.evaluate()
+      let r = try await rhs.evaluate()
+      return (l, r)
+    }
   }
 }
