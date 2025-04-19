@@ -277,6 +277,17 @@ extension Array where Element == PackageDescription.SwiftSetting {
       // proposal via Swift Evolution.
       .enableExperimentalFeature("SymbolLinkageMarkers"),
 
+      // This setting is no longer needed when building with a 6.2 or later
+      // toolchain now that SE-0458 has been accepted and implemented, but it is
+      // needed in order to preserve support for building with 6.1 development
+      // snapshot toolchains. (Production 6.1 toolchains can build the testing
+      // library even without this setting since this experimental feature is
+      // _suppressible_.) This setting can be removed once the minimum supported
+      // toolchain for building the testing library is ≥ 6.2. It is not needed
+      // in the CMake settings since that is expected to build using a
+      // new-enough toolchain.
+      .enableExperimentalFeature("AllowUnsafeAttribute"),
+
       // When building as a package, the macro plugin always builds as an
       // executable rather than a library.
       .define("SWT_NO_LIBRARY_MACRO_PLUGINS"),
