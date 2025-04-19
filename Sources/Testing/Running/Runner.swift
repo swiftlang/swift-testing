@@ -91,10 +91,11 @@ extension Runner {
       return try await body()
     }
 
-    // Construct a recursive function that invokes each trait's ``execute(_:for:testCase:)``
-    // function. The order of the sequence is reversed so that the last trait is
-    // the one that invokes body, then the second-to-last invokes the last, etc.
-    // and ultimately the first trait is the first one to be invoked.
+    // Construct a recursive function that invokes each scope provider's
+    // `provideScope(for:testCase:performing:)` function. The order of the
+    // sequence is reversed so that the last trait is the one that invokes body,
+    // then the second-to-last invokes the last, etc. and ultimately the first
+    // trait is the first one to be invoked.
     let executeAllTraits = test.traits.lazy
       .reversed()
       .compactMap { $0.scopeProvider(for: test, testCase: testCase) }
@@ -102,6 +103,41 @@ extension Runner {
       .reduce(body) { executeAllTraits, provideScope in
         {
           try await provideScope(test, testCase, executeAllTraits)
+        }
+      }
+
+    try await executeAllTraits()
+  }
+
+  /// Apply the custom scope from any issue handling traits for the specified
+  /// test.
+  ///
+  /// - Parameters:
+  ///   - test: The test being run, for which to apply its issue handling traits.
+  ///   - body: A function to execute within the scope provided by the test's
+  ///     issue handling traits.
+  ///
+  /// - Throws: Whatever is thrown by `body` or by any of the traits' provide
+  ///   scope function calls.
+  private static func _applyIssueHandlingTraits(for test: Test, _ body: @escaping @Sendable () async throws -> Void) async throws {
+    // If the test does not have any traits, exit early to avoid unnecessary
+    // heap allocations below.
+    if test.traits.isEmpty {
+      return try await body()
+    }
+
+    // Construct a recursive function that invokes each issue handling trait's
+    // `provideScope(performing:)` function. The order of the sequence is
+    // reversed so that the last trait is the one that invokes body, then the
+    // second-to-last invokes the last, etc. and ultimately the first trait is
+    // the first one to be invoked.
+    let executeAllTraits = test.traits.lazy
+      .compactMap { $0 as? IssueHandlingTrait }
+      .reversed()
+      .map { $0.provideScope(performing:) }
+      .reduce(body) { executeAllTraits, provideScope in
+        {
+          try await provideScope(executeAllTraits)
         }
       }
 
@@ -177,7 +213,19 @@ extension Runner {
         Event.post(.testSkipped(skipInfo), for: (step.test, nil), configuration: configuration)
         shouldSendTestEnded = false
       case let .recordIssue(issue):
-        Event.post(.issueRecorded(issue), for: (step.test, nil), configuration: configuration)
+        // Scope posting the issue recorded event such that issue handling
+        // traits have the opportunity to handle it. This ensures that if a test
+        // has an issue handling trait _and_ some other trait which caused an
+        // issue to be recorded, the issue handling trait can process the issue
+        // even though it wasn't recorded by the test function.
+        try await Test.withCurrent(step.test) {
+          try await _applyIssueHandlingTraits(for: step.test) {
+            // Don't specify `configuration` when posting this issue so that
+            // traits can provide scope and potentially customize the
+            // configuration.
+            Event.post(.issueRecorded(issue), for: (step.test, nil))
+          }
+        }
         shouldSendTestEnded = false
       }
     } else {
