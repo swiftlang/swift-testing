@@ -81,7 +81,11 @@ extension GroupedConditionTrait {
       let isEnabled: Bool
       switch self {
       case .and:
-        isEnabled = l && r
+        isEnabled =  if (lhs.isInverted && rhs.isInverted) {
+          !(!l && !r)
+        } else {
+          l && r
+        }
         
         if !isEnabled {
           skipSide = r ? (lhs.comments, lhs.sourceLocation) : (rhs.comments, rhs.sourceLocation)
