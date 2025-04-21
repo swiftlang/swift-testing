@@ -74,8 +74,30 @@ extension Issue {
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
+    record(comment, severity: .error, sourceLocation: sourceLocation)
+  }
+
+  /// Record an issue when a running test fails unexpectedly.
+  ///
+  /// - Parameters:
+  ///   - comment: A comment describing the expectation.
+  ///   - severity: The severity of the issue.
+  ///   - sourceLocation: The source location to which the issue should be
+  ///     attributed.
+  ///
+  /// - Returns: The issue that was recorded.
+  ///
+  /// Use this function if, while running a test, an issue occurs that cannot be
+  /// represented as an expectation (using the ``expect(_:_:sourceLocation:)``
+  /// or ``require(_:_:sourceLocation:)-5l63q`` macros.)
+  @_spi(Experimental)
+  @discardableResult public static func record(
+    _ comment: Comment? = nil,
+    severity: Severity,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) -> Self {
     let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
-    let issue = Issue(kind: .unconditional, comments: Array(comment), sourceContext: sourceContext)
+    let issue = Issue(kind: .unconditional, severity: severity, comments: Array(comment), sourceContext: sourceContext)
     return issue.record()
   }
 }
@@ -102,9 +124,34 @@ extension Issue {
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
+    record(error, comment, severity: .error, sourceLocation: sourceLocation)
+  }
+  
+  /// Record a new issue when a running test unexpectedly catches an error.
+  ///
+  /// - Parameters:
+  ///   - error: The error that caused the issue.
+  ///   - comment: A comment describing the expectation.
+  ///   - severity: The severity of the issue.
+  ///   - sourceLocation: The source location to which the issue should be
+  ///     attributed.
+  ///
+  /// - Returns: The issue that was recorded.
+  ///
+  /// This function can be used if an unexpected error is caught while running a
+  /// test and it should be treated as a test failure. If an error is thrown
+  /// from a test function, it is automatically recorded as an issue and this
+  /// function does not need to be used.
+  @_spi(Experimental)
+  @discardableResult public static func record(
+    _ error: any Error,
+    _ comment: Comment? = nil,
+    severity: Severity,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) -> Self {
     let backtrace = Backtrace(forFirstThrowOf: error) ?? Backtrace.current()
     let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: sourceLocation)
-    let issue = Issue(kind: .errorCaught(error), comments: Array(comment), sourceContext: sourceContext)
+    let issue = Issue(kind: .errorCaught(error), severity: severity, comments: Array(comment), sourceContext: sourceContext)
     return issue.record()
   }
 

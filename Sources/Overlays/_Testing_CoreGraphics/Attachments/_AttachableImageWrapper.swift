@@ -9,7 +9,7 @@
 //
 
 #if SWT_TARGET_OS_APPLE && canImport(CoreGraphics)
-@_spi(Experimental) public import Testing
+public import Testing
 private import CoreGraphics
 
 private import ImageIO
@@ -48,7 +48,7 @@ import UniformTypeIdentifiers
 ///
 /// - [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage)
 @_spi(Experimental)
-public struct _AttachableImageContainer<Image>: Sendable where Image: AttachableAsCGImage {
+public struct _AttachableImageWrapper<Image>: Sendable where Image: AttachableAsCGImage {
   /// The underlying image.
   ///
   /// `CGImage` and `UIImage` are sendable, but `NSImage` is not. `NSImage`
@@ -127,8 +127,8 @@ public struct _AttachableImageContainer<Image>: Sendable where Image: Attachable
 
 // MARK: -
 
-extension _AttachableImageContainer: AttachableContainer {
-  public var attachableValue: Image {
+extension _AttachableImageWrapper: AttachableWrapper {
+  public var wrappedValue: Image {
     image
   }
 

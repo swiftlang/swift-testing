@@ -1,9 +1,9 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.1
 
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2025 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -20,17 +20,49 @@ let git = Context.gitInformation
 /// distribution as a package dependency.
 let buildingForDevelopment = (git?.currentTag == nil)
 
+/// Whether or not this package is being built for Embedded Swift.
+///
+/// This value is `true` if `SWT_EMBEDDED` is set in the environment to `true`
+/// when `swift build` is invoked. This inference is experimental and is subject
+/// to change in the future.
+///
+/// - Bug: There is currently no way for us to tell if we are being asked to
+/// 	build for an Embedded Swift target at the package manifest level.
+///   ([swift-syntax-#8431](https://github.com/swiftlang/swift-package-manager/issues/8431))
+let buildingForEmbedded: Bool = {
+  guard let envvar = Context.environment["SWT_EMBEDDED"] else {
+    return false
+  }
+  return Bool(envvar) ?? ((Int(envvar) ?? 0) != 0)
+}()
+
 let package = Package(
   name: "swift-testing",
 
-  platforms: [
-    .macOS(.v10_15),
-    .iOS(.v13),
-    .watchOS(.v6),
-    .tvOS(.v13),
-    .macCatalyst(.v13),
-    .visionOS(.v1),
-  ],
+  platforms: {
+    if !buildingForEmbedded {
+      [
+        .macOS(.v10_15),
+        .iOS(.v13),
+        .watchOS(.v6),
+        .tvOS(.v13),
+        .macCatalyst(.v13),
+        .visionOS(.v1),
+      ]
+    } else {
+      // Open-source main-branch toolchains (currently required to build this
+      // package for Embedded Swift) have higher Apple platform deployment
+      // targets than we would otherwise require.
+      [
+        .macOS(.v14),
+        .iOS(.v18),
+        .watchOS(.v10),
+        .tvOS(.v18),
+        .macCatalyst(.v18),
+        .visionOS(.v1),
+      ]
+    }
+  }(),
 
   products: {
     var result = [Product]()
@@ -63,8 +95,15 @@ let package = Package(
     return result
   }(),
 
+  traits: [
+    .trait(
+      name: "ExperimentalExitTestValueCapture",
+      description: "Enable experimental support for capturing values in exit tests"
+    ),
+  ],
+
   dependencies: [
-    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "601.0.0-latest"),
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "602.0.0-latest"),
   ],
 
   targets: [
@@ -132,7 +171,7 @@ let package = Package(
       dependencies: ["_TestingInternals",],
       exclude: ["CMakeLists.txt"],
       cxxSettings: .packageSettings,
-      swiftSettings: .packageSettings
+      swiftSettings: .packageSettings + .enableLibraryEvolution()
     ),
 
     // Cross-import overlays (not supported by Swift Package Manager)
@@ -185,6 +224,32 @@ package.targets.append(contentsOf: [
 ])
 #endif
 
+extension BuildSettingCondition {
+  /// Creates a build setting condition that evaluates to `true` for Embedded
+  /// Swift.
+  ///
+  /// - Parameters:
+  /// 	- nonEmbeddedCondition: The value to return if the target is not
+  ///   	Embedded Swift. If `nil`, the build condition evaluates to `false`.
+  ///
+  /// - Returns: A build setting condition that evaluates to `true` for Embedded
+  /// 	Swift or is equal to `nonEmbeddedCondition` for non-Embedded Swift.
+  static func whenEmbedded(or nonEmbeddedCondition: @autoclosure () -> Self? = nil) -> Self? {
+    if !buildingForEmbedded {
+      if let nonEmbeddedCondition = nonEmbeddedCondition() {
+        nonEmbeddedCondition
+      } else {
+        // The caller did not supply a fallback. Specify a non-existent platform
+        // to ensure this condition never matches.
+        .when(platforms: [.custom("DoesNotExist")])
+      }
+    } else {
+      // Enable unconditionally because the target is Embedded Swift.
+      nil
+    }
+  }
+}
+
 extension Array where Element == PackageDescription.SwiftSetting {
   /// Settings intended to be applied to every Swift target in this package.
   /// Analogous to project-level build settings in an Xcode project.
@@ -193,6 +258,10 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
     if buildingForDevelopment {
       result.append(.unsafeFlags(["-require-explicit-sendable"]))
+    }
+
+    if buildingForEmbedded {
+      result.append(.enableExperimentalFeature("Embedded"))
     }
 
     result += [
@@ -208,18 +277,40 @@ extension Array where Element == PackageDescription.SwiftSetting {
       // proposal via Swift Evolution.
       .enableExperimentalFeature("SymbolLinkageMarkers"),
 
+      // This setting is no longer needed when building with a 6.2 or later
+      // toolchain now that SE-0458 has been accepted and implemented, but it is
+      // needed in order to preserve support for building with 6.1 development
+      // snapshot toolchains. (Production 6.1 toolchains can build the testing
+      // library even without this setting since this experimental feature is
+      // _suppressible_.) This setting can be removed once the minimum supported
+      // toolchain for building the testing library is ≥ 6.2. It is not needed
+      // in the CMake settings since that is expected to build using a
+      // new-enough toolchain.
+      .enableExperimentalFeature("AllowUnsafeAttribute"),
+
       // When building as a package, the macro plugin always builds as an
       // executable rather than a library.
       .define("SWT_NO_LIBRARY_MACRO_PLUGINS"),
 
       .define("SWT_TARGET_OS_APPLE", .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])),
 
-      .define("SWT_NO_EXIT_TESTS", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
-      .define("SWT_NO_PROCESS_SPAWNING", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
-      .define("SWT_NO_SNAPSHOT_TYPES", .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi, .android])),
-      .define("SWT_NO_DYNAMIC_LINKING", .when(platforms: [.wasi])),
-      .define("SWT_NO_PIPES", .when(platforms: [.wasi])),
+      .define("SWT_NO_EXIT_TESTS", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]))),
+      .define("SWT_NO_PROCESS_SPAWNING", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]))),
+      .define("SWT_NO_SNAPSHOT_TYPES", .whenEmbedded(or: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi, .android]))),
+      .define("SWT_NO_DYNAMIC_LINKING", .whenEmbedded(or: .when(platforms: [.wasi]))),
+      .define("SWT_NO_PIPES", .whenEmbedded(or: .when(platforms: [.wasi]))),
+
+      .define("SWT_NO_LEGACY_TEST_DISCOVERY", .whenEmbedded()),
+      .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
     ]
+
+    // Unconditionally enable 'ExperimentalExitTestValueCapture' when building
+    // for development.
+    if buildingForDevelopment {
+      result += [
+        .define("ExperimentalExitTestValueCapture")
+      ]
+    }
 
     return result
   }
@@ -271,11 +362,14 @@ extension Array where Element == PackageDescription.CXXSetting {
     var result = Self()
 
     result += [
-      .define("SWT_NO_EXIT_TESTS", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
-      .define("SWT_NO_PROCESS_SPAWNING", .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android])),
-      .define("SWT_NO_SNAPSHOT_TYPES", .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi, .android])),
-      .define("SWT_NO_DYNAMIC_LINKING", .when(platforms: [.wasi])),
-      .define("SWT_NO_PIPES", .when(platforms: [.wasi])),
+      .define("SWT_NO_EXIT_TESTS", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]))),
+      .define("SWT_NO_PROCESS_SPAWNING", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]))),
+      .define("SWT_NO_SNAPSHOT_TYPES", .whenEmbedded(or: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi, .android]))),
+      .define("SWT_NO_DYNAMIC_LINKING", .whenEmbedded(or: .when(platforms: [.wasi]))),
+      .define("SWT_NO_PIPES", .whenEmbedded(or: .when(platforms: [.wasi]))),
+
+      .define("SWT_NO_LEGACY_TEST_DISCOVERY", .whenEmbedded()),
+      .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
     ]
 
     // Capture the testing library's version as a C++ string constant.

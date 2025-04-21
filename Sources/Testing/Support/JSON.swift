@@ -50,6 +50,30 @@ enum JSON {
 #endif
   }
 
+  /// Post-process encoded JSON and write it to a file.
+  ///
+  /// - Parameters:
+  ///   - json: The JSON to write.
+  ///   - body: A function to call. A copy of `json` is passed to it with any
+  ///     newlines removed.
+  ///
+  /// - Returns: Whatever is returned by `body`.
+  ///
+  /// - Throws: Whatever is thrown by `body`.
+  static func asJSONLine<R>(_ json: UnsafeRawBufferPointer, _ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
+    if _slowPath(json.contains(where: \.isASCIINewline)) {
+      // Remove the newline characters to conform to JSON lines specification.
+      // This is not actually expected to happen in practice with Foundation's
+      // JSON encoder.
+      var json = Array(json)
+      json.removeAll(where: \.isASCIINewline)
+      return try json.withUnsafeBytes(body)
+    } else {
+      // No newlines found, no need to copy the buffer.
+      return try body(json)
+    }
+  }
+
   /// Decode a value from JSON data.
   ///
   /// - Parameters:

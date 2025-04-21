@@ -8,11 +8,11 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+@testable @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 #if canImport(Foundation)
 import Foundation
-@_spi(Experimental) import _Testing_Foundation
+import _Testing_Foundation
 #endif
 #if canImport(CoreGraphics)
 import CoreGraphics
