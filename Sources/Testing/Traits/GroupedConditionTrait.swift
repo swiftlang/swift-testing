@@ -87,7 +87,11 @@ extension GroupedConditionTrait {
           skipSide = r ? (lhs.comments, lhs.sourceLocation) : (rhs.comments, rhs.sourceLocation)
         }
       case .or:
-        isEnabled = ((l != lhs.isInverted) || (r != rhs.isInverted)) != lhs.isInverted && rhs.isInverted
+        isEnabled =  if (lhs.isInverted && rhs.isInverted) {
+          !(!l || !r)
+        } else {
+          l || r
+        }
         
         if !isEnabled {
           skipSide = (lhs.comments, lhs.sourceLocation)
