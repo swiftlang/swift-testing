@@ -11,108 +11,96 @@
 
 public struct GroupedConditionTrait: TestTrait, SuiteTrait {
   
-  var conditionTraits: [ConditionTrait]
-  var operations: [Operation] = []
+  let isInverted: Bool
+
+  let conditionClosure: @Sendable () async throws -> Bool
+  
+  
   
   public func prepare(for test: Test) async throws {
-    let traitCount = conditionTraits.count
-    guard traitCount >= 2 else {
-      if let firstTrait = conditionTraits.first {
-        try await firstTrait.prepare(for: test)
-      }
-      return
-    }
-    for (index, operation) in operations.enumerated() where index < traitCount - 1 {
-        let trait1 = conditionTraits[index]
-        let trait2 = conditionTraits[index + 1]
-        try await operation.operate(trait1, trait2, includeSkipInfo: true)
-      
-    }
+    let conditionResult = try await evaluate()
   }
 
   @_spi(Experimental)
   public func evaluate() async throws -> Bool {
-    let traitCount = conditionTraits.count
-    guard traitCount >= 2 else {
-      if let firstTrait = conditionTraits.first {
-        return try await firstTrait.evaluate()
-      }
-      preconditionFailure()
-    }
-    var result: Bool = true
-    for (index, operation) in operations.enumerated() {
-        let isEnabled = try await operation.operate(conditionTraits[index],
-                                                    conditionTraits[index + 1])
-        result = result && isEnabled
-    }
-    return result
+    try await conditionClosure()
   }
 }
 
 extension Trait where Self == GroupedConditionTrait {
   
   static func && (lhs: Self, rhs: ConditionTrait) -> Self {
-    Self(conditionTraits: lhs.conditionTraits + [rhs], operations: lhs.operations + [.and])
+    Self(isInverted: lhs.isInverted && rhs.isInverted,
+         conditionClosure: {
+      let rhsEvaluation = try await rhs.evaluate()
+      let lhsEvaluation = try await lhs.evaluate()
+      let isEnabled = if (lhs.isInverted && rhs.isInverted) {
+        lhsEvaluation || rhsEvaluation
+      } else {
+        lhsEvaluation && rhsEvaluation
+      }
+      
+      guard isEnabled else {
+        let sourceContext = SourceContext(backtrace: nil, sourceLocation: rhs.sourceLocation)
+        let error = SkipInfo(sourceContext: sourceContext)
+        throw error
+      }
+      return isEnabled
+    })
   }
   
   static func && (lhs: Self, rhs: Self) -> Self {
-    Self(conditionTraits: lhs.conditionTraits + rhs.conditionTraits, operations: lhs.operations + [.and] + rhs.operations)
+    Self(isInverted: lhs.isInverted && rhs.isInverted,
+         conditionClosure: {
+      let rhsEvaluation = try await rhs.evaluate()
+      let lhsEvaluation = try await lhs.evaluate()
+      let isEnabled = if (lhs.isInverted && rhs.isInverted) {
+        lhsEvaluation || rhsEvaluation
+      } else {
+        lhsEvaluation && rhsEvaluation
+      }
+      
+      guard isEnabled else {
+        preconditionFailure("the step should've detected erailer that it was disabled")
+      }
+      return isEnabled
+    })
   }
   static func || (lhs: Self, rhs: ConditionTrait) -> Self {
-    Self(conditionTraits: lhs.conditionTraits + [rhs], operations: lhs.operations + [.or])
+    Self(isInverted: lhs.isInverted && rhs.isInverted,
+         conditionClosure: {
+      let rhsEvaluation = try await rhs.evaluate()
+      let lhsEvaluation = try await lhs.evaluate()
+      let isEnabled = if (lhs.isInverted && rhs.isInverted) {
+        lhsEvaluation && rhsEvaluation
+      } else {
+        lhsEvaluation || rhsEvaluation
+      }
+      
+      guard isEnabled else {
+        let sourceContext = SourceContext(backtrace: nil, sourceLocation: rhs.sourceLocation)
+        let error = SkipInfo(sourceContext: sourceContext)
+        throw error
+      }
+      return isEnabled
+    })
   }
   
   static func || (lhs: Self, rhs: Self) -> Self {
-    Self(conditionTraits: lhs.conditionTraits + rhs.conditionTraits, operations: lhs.operations + [.or] + rhs.operations)
-  }
-}
-
-
-extension GroupedConditionTrait {
-  enum Operation {
-    case `and`
-    case `or`
-    
-    @discardableResult
-    func operate(_ lhs: ConditionTrait,_ rhs: ConditionTrait, includeSkipInfo: Bool = false) async throws -> Bool {
-      let (l,r) = try await evaluate(lhs, rhs)
-      
-      var skipSide: (comments: [Comment]?, sourceLocation: SourceLocation) = (nil, lhs.sourceLocation)
-      let isEnabled: Bool
-      switch self {
-      case .and:
-        isEnabled =  if (lhs.isInverted && rhs.isInverted) {
-          !(!l && !r)
-        } else {
-          l && r
-        }
-        
-        if !isEnabled {
-          skipSide = r ? (lhs.comments, lhs.sourceLocation) : (rhs.comments, rhs.sourceLocation)
-        }
-      case .or:
-        isEnabled =  if (lhs.isInverted && rhs.isInverted) {
-          !(!l || !r)
-        } else {
-          l || r
-        }
-        
-        if !isEnabled {
-          skipSide = (lhs.comments, lhs.sourceLocation)
-        }
+    Self(isInverted: lhs.isInverted && rhs.isInverted,
+         conditionClosure: {
+      let rhsEvaluation = try await rhs.evaluate()
+      let lhsEvaluation = try await lhs.evaluate()
+      let isEnabled = if (lhs.isInverted && rhs.isInverted) {
+        lhsEvaluation && rhsEvaluation
+      } else {
+        lhsEvaluation || rhsEvaluation
       }
       
-      guard isEnabled || !includeSkipInfo else {
-        let sourceContext = SourceContext(backtrace: nil, sourceLocation: skipSide.sourceLocation)
-        throw SkipInfo(comment: skipSide.comments?.first, sourceContext: sourceContext)
+      guard isEnabled else {
+        preconditionFailure("the step should've detected erailer that it was disabled")
       }
       return isEnabled
-    }
-    
-    private func evaluate(_ lhs: ConditionTrait, _ rhs: ConditionTrait) async throws -> (Bool, Bool) {
-      let l = try await lhs.evaluate()
-      let r = try await rhs.evaluate()
-      return (l, r)
-    }
+    })
   }
 }
