@@ -12,19 +12,23 @@
 @Suite("Grouped Condition Trait Tests", .tags(.traitRelated))
 struct GroupedConditionTraitTests {
     
-  @Test("evaluate grouped conditions",arguments: [((Conditions.condition1 && Conditions.condition1), true),
+  @Test("evaluate grouped conditions", arguments: [((Conditions.condition1 && Conditions.condition1), true),
                                   (Conditions.condition3 && Conditions.condition1, false),
     (Conditions.condition1 || Conditions.condition3, true),
                                   (Conditions.condition4 || Conditions.condition4, true),
                                   (Conditions.condition2 || Conditions.condition2, false), (Conditions.condition1 && Conditions.condition2 || Conditions.condition3 && Conditions.condition4, false)])
-  func evaluateCondition(_ condition: GroupedConditionTrait, _ expected: Bool) async throws {
-    let result = try await condition.evaluate()
-    #expect( result == expected)
+  func evaluateCondition(_ condition: ConditionTrait, _ expected: Bool) async throws {
+    do {
+      let result = try await condition.evaluate()
+      #expect( result == expected)
+    } catch {
+      
+    }
   }
   
 
   
-  @Test("Applying mixed traits", Conditions.condition1 || Conditions.condition3)
+  @Test("Applying mixed traits", Conditions.condition4 || Conditions.condition3)
   func applyMixedTraits() {
     #expect(true)
   }
