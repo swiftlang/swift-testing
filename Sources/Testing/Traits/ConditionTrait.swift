@@ -223,42 +223,44 @@ extension Trait where Self == ConditionTrait {
 
 
 extension Trait where Self == ConditionTrait {
-    
-    static func &&(lhs: Self, rhs: Self) -> Self {
-      Self(kind: .conditional {
-        let l = try await lhs.evaluate()
-        let r = try await rhs.evaluate()
-        let isEnabled = if (lhs.isInverted && rhs.isInverted) {
-          l || r
-        } else {
-          l && r
-        }
-        guard isEnabled else {
-          let context = SourceContext(backtrace: nil, sourceLocation: l == false ? lhs.sourceLocation : rhs.sourceLocation)
-          throw SkipInfo(sourceContext: context)
-        }
-        return isEnabled
-      }, comments: lhs.comments,
-          sourceLocation: lhs.sourceLocation)
-    }
-    
-    static func ||(lhs: Self, rhs: Self) -> Self {
-        Self(kind: .conditional {
-          let l = try await lhs.evaluate()
-          let r = try await rhs.evaluate()
-          let isEnabled = if (lhs.isInverted && rhs.isInverted) {
-            l && r
-          } else {
-            l || r
-          }
-          
-          guard isEnabled else {
-            let context = SourceContext(backtrace: nil, sourceLocation: l == false ? lhs.sourceLocation : rhs.sourceLocation)
-            throw SkipInfo(sourceContext: context)
-          }
-          
-          return isEnabled
-        }, comments: lhs.comments,
-            sourceLocation: lhs.sourceLocation)
-    }
+  
+  public static func && (lhs: Self, rhs: Self) -> GroupedConditionTrait {
+    GroupedConditionTrait(isInverted: lhs.isInverted && rhs.isInverted,
+         conditionClosure: {
+      let rhsEvaluation = try await rhs.evaluate()
+      let lhsEvaluation = try await lhs.evaluate()
+      let isEnabled = if (lhs.isInverted && rhs.isInverted) {
+        lhsEvaluation || rhsEvaluation
+      } else {
+        lhsEvaluation && rhsEvaluation
+      }
+      
+      guard isEnabled else {
+        let sourceContext = SourceContext(backtrace: nil, sourceLocation: !(lhsEvaluation != lhs.isInverted) ? lhs.sourceLocation : rhs.sourceLocation)
+        let error = SkipInfo(sourceContext: sourceContext)
+        throw error
+      }
+      return isEnabled
+    })
+  }
+  
+  public static func || (lhs: Self, rhs: Self) -> GroupedConditionTrait {
+    GroupedConditionTrait(isInverted: lhs.isInverted && rhs.isInverted,
+         conditionClosure: {
+      let rhsEvaluation = try await rhs.evaluate()
+      let lhsEvaluation = try await lhs.evaluate()
+      let isEnabled = if (lhs.isInverted && rhs.isInverted) {
+        lhsEvaluation && rhsEvaluation
+      } else {
+        lhsEvaluation || rhsEvaluation
+      }
+      
+      guard isEnabled else {
+        let sourceContext = SourceContext(backtrace: nil, sourceLocation: !(lhsEvaluation != lhs.isInverted) ? lhs.sourceLocation : rhs.sourceLocation)
+        let error = SkipInfo(sourceContext: sourceContext)
+        throw error
+      }
+      return isEnabled
+    })
+  }
 }
