@@ -189,8 +189,12 @@ public struct Test: Sendable {
   ///
   /// A test suite can be declared using the ``Suite(_:_:)`` macro.
   public var isSuite: Bool {
-    containingTypeInfo != nil && testCasesState == nil
+    (containingTypeInfo != nil && testCasesState == nil) || isTestTarget
   }
+
+  /// Whether or not this instance is a test suite representing a test target.
+  @_spi(Experimental)
+  public var isTestTarget: Bool = false
 
   /// Whether or not this instance was synthesized at runtime.
   ///
@@ -215,6 +219,15 @@ public struct Test: Sendable {
     self.sourceLocation = sourceLocation
     self.containingTypeInfo = containingTypeInfo
     self.isSynthesized = isSynthesized
+  }
+
+  /// Initialize an instance of this type representing a target-wide test suite.
+  init(moduleName: String, traits: [any Trait]) {
+    self.name = moduleName
+    self.traits = traits
+    self.sourceLocation = SourceLocation(fileID: "\(moduleName)/<compiler-generated>", filePath: "<compiler-generated>", line: 1, column: 1)
+    self.isSynthesized = true
+    self.isTestTarget = true
   }
 
   /// Initialize an instance of this type representing a test function.

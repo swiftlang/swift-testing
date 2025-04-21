@@ -28,6 +28,11 @@
 /// To add this trait to a test, use ``Trait/serialized``.
 public struct ParallelizationTrait: TestTrait, SuiteTrait {}
 
+// MARK: - TargetTrait
+
+@_spi(Experimental)
+extension ParallelizationTrait: TargetTrait {}
+
 // MARK: - TestScoping
 
 extension ParallelizationTrait: TestScoping {

@@ -220,6 +220,20 @@ extension Runner.Plan {
       actionGraph.insertValue(runAction, at: idComponents, intermediateValue: runAction)
     }
 
+    // Insert test target traits into the de facto top-level suite corresponding
+    // to each test target's Swift module.
+    for targetTraitsList in TargetTraitsList.all {
+      let moduleName = targetTraitsList.moduleName
+      if let childGraph = testGraph.children[moduleName] {
+        let targetTraits = await targetTraitsList.generator()
+        if !targetTraits.isEmpty {
+          var suite = childGraph.value ?? Test(moduleName: moduleName, traits: [])
+          suite.traits += targetTraits
+          testGraph.children[moduleName]?.value = suite
+        }
+      }
+    }
+
     // Remove any tests that should be filtered out per the runner's
     // configuration. The action graph is not modified here: actions that lose
     // their corresponding tests are effectively filtered out by the call to

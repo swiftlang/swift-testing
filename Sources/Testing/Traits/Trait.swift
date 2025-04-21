@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) import _TestDiscovery
+
 /// A protocol describing traits that can be added to a test function or to a
 /// test suite.
 ///

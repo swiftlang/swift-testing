@@ -27,6 +27,9 @@ enum TestContentKind: UInt32 {
   /// An exit test.
   case exitTest = 0x65786974
 
+  /// A target trait list.
+  case targetTraits = 0x74677472
+
   /// This kind value as a comment (`/* 'abcd' */`) if it looks like it might be
   /// a [FourCC](https://en.wikipedia.org/wiki/FourCC) value, or `nil` if not.
   var commentRepresentation: Trivia {

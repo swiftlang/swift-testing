@@ -108,6 +108,7 @@ target_sources(TestingMacros PRIVATE
   Support/SourceLocationGeneration.swift
   Support/TestContentGeneration.swift
   TagMacro.swift
+  TargetTraitsMacro.swift
   TestDeclarationMacro.swift
   TestingMacrosMain.swift)
 

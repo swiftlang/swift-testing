@@ -130,6 +130,13 @@ let package = Package(
       ],
       swiftSettings: .packageSettings
     ),
+    .testTarget(
+      name: "TargetTraitTests",
+      dependencies: [
+        "Testing",
+      ],
+      swiftSettings: .packageSettings
+    ),
 
     .macro(
       name: "TestingMacros",

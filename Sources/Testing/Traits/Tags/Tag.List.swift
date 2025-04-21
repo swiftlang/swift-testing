@@ -53,6 +53,11 @@ extension Tag.List: TestTrait, SuiteTrait {
   }
 }
 
+// MARK: - TargetTrait
+
+@_spi(Experimental)
+extension Tag.List: TargetTrait {}
+
 extension Trait where Self == Tag.List {
   /// Construct a list of tags to apply to a test.
   ///
