@@ -13,10 +13,11 @@
 struct GroupedConditionTraitTests {
     
   @Test("evaluate grouped conditions", arguments: [((Conditions.condition1 && Conditions.condition1), true),
-                                  (Conditions.condition3 && Conditions.condition1, false),
-    (Conditions.condition1 || Conditions.condition3, true),
-                                  (Conditions.condition4 || Conditions.condition4, true),
-                                  (Conditions.condition2 || Conditions.condition2, false), (Conditions.condition1 && Conditions.condition2 || Conditions.condition3 && Conditions.condition4, false)])
+                                                   (Conditions.condition3 && Conditions.condition1, false),
+                                                   (Conditions.condition1 || Conditions.condition3, true),
+                                                   (Conditions.condition4 || Conditions.condition4, true),
+                                                   (Conditions.condition2 || Conditions.condition2, false),
+                                                   (Conditions.condition1 && Conditions.condition2 || Conditions.condition3 && Conditions.condition4, false)])
   func evaluateCondition(_ condition: GroupedConditionTrait, _ expected: Bool) async throws {
     do {
       let result = try await condition.evaluate()
@@ -28,7 +29,8 @@ struct GroupedConditionTraitTests {
   
 
   
-  @Test("Applying mixed traits", Conditions.condition4 || Conditions.condition3)
+  @Test("Applying mixed traits",
+        Conditions.condition1 && Conditions.condition2 || Conditions.condition3 && Conditions.condition4)
   func applyMixedTraits() {
     #expect(true)
   }
