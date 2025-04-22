@@ -24,7 +24,7 @@ struct GroupedConditionTraitTests {
   
 
   
-  @Test("Applying mixed traits", Conditions.condition1 || Conditions.condition3)
+  @Test("Applying mixed traits", Conditions.condition2 || Conditions.condition2 || Conditions.condition2 || Conditions.condition2)
   func applyMixedTraits() {
     #expect(true)
   }
