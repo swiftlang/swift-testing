@@ -100,6 +100,7 @@ record's kind is a 32-bit unsigned value. The following kinds are defined:
 | `0x00000000` | &ndash; | Reserved (**do not use**) |
 | `0x74657374` | `'test'` | Test or suite declaration |
 | `0x65786974` | `'exit'` | Exit test |
+| `0x706c6179` | `'play'` | Playground |
 
 <!-- When adding cases to this enumeration, be sure to also update the
 corresponding enumeration in TestContentGeneration.swift. -->
