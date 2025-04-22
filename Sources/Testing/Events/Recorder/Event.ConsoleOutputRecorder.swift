@@ -323,7 +323,7 @@ extension Event.ConsoleOutputRecorder {
         // text instead of just the symbol. Details may be multi-line messages,
         // so split the message on newlines and indent all lines to align them
         // to the indentation provided by the symbol.
-        var lines = message.stringValue.split(whereSeparator: \.isNewline)
+        var lines = message.stringValue.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
         lines = CollectionOfOne(lines[0]) + lines.dropFirst().map { line in
           "\(padding) \(line)"
         }
