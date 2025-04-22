@@ -25,7 +25,7 @@ public struct GroupedConditionTrait: TestTrait, SuiteTrait {
     /// Prepares the trait for a test by evaluating the grouped conditions.
     /// - Parameter test: The `Test` for which to prepare.
     public func prepare(for test: Test) async throws {
-        try await evaluate()
+        _ = try await evaluate()
     }
 
     /// Evaluates the grouped condition traits based on the specified operations.

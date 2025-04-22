@@ -224,24 +224,10 @@ extension Trait where Self == ConditionTrait {
 
 extension Trait where Self == ConditionTrait {
   public static func &&(lhs: Self, rhs: Self) -> GroupedConditionTrait {
-    GroupedConditionTrait.combine(
-      lhs: .init(isInverted: lhs.isInverted, conditionClosure: lhs.evaluate),
-      rhs: .init(isInverted: rhs.isInverted, conditionClosure: rhs.evaluate),
-      op: .and
-    ) { lhsRes, rhsRes in
-      let loc = (lhsRes != lhs.isInverted ? lhs.sourceLocation : rhs.sourceLocation)
-      throw SkipInfo(sourceContext: .init(backtrace: nil, sourceLocation: loc))
+    GroupedConditionTrait(conditionTraits: [lhs,rhs], operations: [.and])
     }
-  }
 
   public static func ||(lhs: Self, rhs: Self) -> GroupedConditionTrait {
-    GroupedConditionTrait.combine(
-      lhs: .init(isInverted: lhs.isInverted, conditionClosure: lhs.evaluate),
-      rhs: .init(isInverted: rhs.isInverted, conditionClosure: rhs.evaluate),
-      op: .or
-    ) { lhsRes, rhsRes in
-      let loc = (lhsRes != lhs.isInverted ? lhs.sourceLocation : rhs.sourceLocation)
-      throw SkipInfo(sourceContext: .init(backtrace: nil, sourceLocation: loc))
-    }
+    GroupedConditionTrait(conditionTraits: [lhs, rhs], operations: [.or])
   }
 }
