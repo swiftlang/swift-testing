@@ -59,7 +59,7 @@ struct DiscoveryTests {
 #endif
 
 #if !SWT_NO_DYNAMIC_LINKING && hasFeature(SymbolLinkageMarkers)
-  struct MyTestContent: Testing.DiscoverableAsTestContent {
+  struct MyTestContent: DiscoverableAsTestContent {
     typealias TestContentAccessorHint = UInt32
 
     var value: UInt32

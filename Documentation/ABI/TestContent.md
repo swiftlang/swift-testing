@@ -100,9 +100,10 @@ record's kind is a 32-bit unsigned value. The following kinds are defined:
 | `0x00000000` | &ndash; | Reserved (**do not use**) |
 | `0x74657374` | `'test'` | Test or suite declaration |
 | `0x65786974` | `'exit'` | Exit test |
+| `0x706c6179` | `'play'` | [Playground](https://github.com/apple/swift-play-experimental) |
 
-<!-- When adding cases to this enumeration, be sure to also update the
-corresponding enumeration in TestContentGeneration.swift. -->
+<!-- The kind values listed in this table should be a superset of the cases in
+the `TestContentKind` enumeration. -->
 
 If a test content record's `kind` field equals `0x00000000`, the values of all
 other fields in that record are undefined.
@@ -149,25 +150,12 @@ The fourth argument to this function, `reserved`, is reserved for future use.
 Accessor functions should assume it is `0` and must not access it.
 
 The concrete Swift type of the value written to `outValue`, the type pointed to
-by `type`, and the value pointed to by `hint` depend on the kind of record:
+by `type`, and the value pointed to by `hint` depend on the kind of record.
 
-- For test or suite declarations (kind `0x74657374`), the accessor produces a
-  structure of type `Testing.Test.Generator` that the testing library can use
-  to generate the corresponding test[^notAccessorSignature].
-
-  [^notAccessorSignature]: This level of indirection is necessary because
-    loading a test or suite declaration is an asynchronous operation, but C
-    functions cannot be `async`.
-
-  Test content records of this kind do not specify a type for `hint`. Always
-  pass `nil`.
-
-- For exit test declarations (kind `0x65786974`), the accessor produces a
-  structure describing the exit test (of type `Testing.ExitTest`.)
-
-  Test content records of this kind accept a `hint` of type `Testing.ExitTest.ID`.
-  They only produce a result if they represent an exit test declared with the
-  same ID (or if `hint` is `nil`.)
+The record kinds defined by Swift Testing (kinds `0x74657374` and `0x65786974`)
+make use of the `DiscoverableAsTestContent` protocol in the `_TestDiscovery`
+module and do not publicly expose the types of their accessor functions'
+arguments. Do not call the accessor functions for these records directly.
 
 > [!WARNING]
 > Calling code should use [`withUnsafeTemporaryAllocation(of:capacity:_:)`](https://developer.apple.com/documentation/swift/withunsafetemporaryallocation(of:capacity:_:))
@@ -274,7 +262,8 @@ extension FoodTruckDiagnostic: DiscoverableAsTestContent {
 ```
 
 If you customize `TestContentContext`, be aware that the type you specify must
-have the same stride and alignment as `UInt`.
+have the same stride as `UInt` and must have an alignment less than or equal to
+that of `UInt`.
 
 When you are done configuring your type's protocol conformance, you can then
 enumerate all test content records matching it as instances of
