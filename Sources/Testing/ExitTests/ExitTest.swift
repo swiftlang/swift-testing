@@ -604,18 +604,13 @@ extension ExitTest {
         try JSON.decode(ExitTest.ID.self, from: UnsafeRawBufferPointer(idBuffer))
       }
     }
-    guard let id else {
+    guard let id, var result = find(identifiedBy: id) else {
       return nil
     }
 
     // If an exit test was found, inject back channel handling into its body.
     // External tools authors should set up their own back channel mechanisms
     // and ensure they're installed before calling ExitTest.callAsFunction().
-    guard var result = find(identifiedBy: id) else {
-      return nil
-    }
-
-    // We can't say guard let here because it counts as a consume.
     guard let backChannel = _makeFileHandle(forEnvironmentVariableNamed: "SWT_BACKCHANNEL", mode: "wb") else {
       return result
     }
