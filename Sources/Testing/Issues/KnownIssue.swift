@@ -41,6 +41,14 @@ private func _combineIssueMatcher(_ issueMatcher: @escaping KnownIssueMatcher, m
 ///   - sourceLocation: The source location to which the issue should be
 ///     attributed.
 private func _matchError(_ error: any Error, using issueMatcher: KnownIssueMatcher, comment: Comment?, sourceLocation: SourceLocation) throws {
+  if error is ExpectationFailedError {
+    // An `ExpectationFailedError` instance was thrown through the call to
+    // `withKnownIssue {}` from a call to `#require()`. The original issue (of
+    // kind `expectationFailed`) will have already been handled by this point,
+    // so we don't want to try to handle it again.
+    throw error
+  }
+
   let sourceContext = SourceContext(backtrace: Backtrace(forFirstThrowOf: error), sourceLocation: sourceLocation)
   var issue = Issue(kind: .errorCaught(error), comments: Array(comment), sourceContext: sourceContext)
   if issueMatcher(issue) {

@@ -45,6 +45,12 @@ public import SwiftSyntaxMacros
 public protocol ConditionMacro: ExpressionMacro, Sendable {
   /// Whether or not the macro's expansion may throw an error.
   static var isThrowing: Bool { get }
+
+  /// The return type of the expansion's closure, if it can be statically
+  /// determined.
+  ///
+  /// This property is ignored when a condition macro is closure-based.
+  static var returnType: TypeSyntax? { get }
 }
 
 // MARK: -
@@ -71,6 +77,15 @@ extension ConditionMacro {
 
   public static var formatMode: FormatMode {
     .disabled
+  }
+
+  public static var returnType: TypeSyntax? {
+    TypeSyntax(
+      MemberTypeSyntax(
+        baseType: IdentifierTypeSyntax(name: .identifier("Swift")),
+        name: .identifier("Bool")
+      )
+    )
   }
 
   /// Perform the expansion of this condition macro.
@@ -113,10 +128,13 @@ extension ConditionMacro {
       .firstIndex { $0.tokenKind == _sourceLocationLabel.tokenKind }
 
     // Construct the argument list to __check().
-    let expandedFunctionName: TokenSyntax
+    var expandedFunctionName = TokenSyntax.identifier("__checkCondition")
     var checkArguments = [Argument]()
+    var effectKeywordsToApply: Set<Keyword> = []
     do {
       if let trailingClosureIndex {
+        expandedFunctionName = .identifier("__checkClosureCall")
+
         // Include all arguments other than the "comment" and "sourceLocation"
         // arguments here.
         checkArguments += macroArguments.indices.lazy
@@ -127,17 +145,79 @@ extension ConditionMacro {
 
         // The trailing closure should be the focus of the source code capture.
         let primaryExpression = primaryExpression ?? macroArguments[trailingClosureIndex].expression
-        let sourceCode = parseCondition(from: primaryExpression, for: macro, in: context).expression
-        checkArguments.append(Argument(label: "expression", expression: sourceCode))
+        let nodeForSourceCodeArgument: Syntax
+        if let closureExpr = primaryExpression.as(ClosureExprSyntax.self),
+           closureExpr.signature == nil && closureExpr.statements.count == 1,
+           let item = closureExpr.statements.first?.item {
+          // TODO: capture closures as a different kind of Testing.Expression
+          // with a separate subexpression per code item.
 
-        expandedFunctionName = .identifier("__checkClosureCall")
+          // If a closure contains a single statement or declaration, we can't
+          // meaningfully break it down as an expression, but we can still
+          // capture its source representation.
+          nodeForSourceCodeArgument = Syntax(item)
+        } else {
+          nodeForSourceCodeArgument = Syntax(primaryExpression)
+        }
+        checkArguments.append(
+          Argument(
+            label: "sourceCode",
+            expression: createDictionaryExpr(forSourceCodeOf: nodeForSourceCodeArgument)
+          )
+        )
 
-      } else {
-        // Get the condition expression and extract its parsed form and source
-        // code. The first argument is always the condition argument if there is
-        // no trailing closure argument.
-        let conditionArgument = parseCondition(from: macroArguments.first!.expression, for: macro, in: context)
-        checkArguments += conditionArgument.arguments
+      } else if let firstArgument = macroArguments.first {
+        let originalArgumentExpr = firstArgument.expression
+        effectKeywordsToApply = findEffectKeywords(in: originalArgumentExpr, context: context)
+
+        var useEscapeHatch = false
+        if let asExpr = originalArgumentExpr.as(AsExprSyntax.self), asExpr.questionOrExclamationMark == nil {
+          // "Escape hatch" for x as Bool to avoid the full recursive expansion.
+          useEscapeHatch = true
+        } else if effectKeywordsToApply.contains(.consume) {
+          // `consume` expressions imply non-copyable values which cannot yet be
+          // safely used with the closure we generate below.
+          useEscapeHatch = true
+        }
+
+        if useEscapeHatch {
+          expandedFunctionName = .identifier("__checkEscapedCondition")
+
+          checkArguments.append(firstArgument)
+          checkArguments.append(
+            Argument(
+              label: "sourceCode",
+              expression: createDictionaryExpr(forSourceCodeOf: originalArgumentExpr)
+            )
+          )
+
+        } else {
+          if effectKeywordsToApply.contains(.await) {
+            expandedFunctionName = .identifier("__checkConditionAsync")
+          }
+
+          let expressionContextName = context.makeUniqueClosureParameterName("__ec", in: originalArgumentExpr)
+          let (closureExpr, rewrittenNodes) = rewrite(
+            originalArgumentExpr,
+            usingExpressionContextNamed: expressionContextName,
+            for: macro,
+            rootedAt: originalArgumentExpr,
+            effectKeywordsToApply: effectKeywordsToApply,
+            returnType: returnType,
+            in: context
+          )
+          checkArguments.append(Argument(expression: closureExpr))
+
+          checkArguments.append(
+            Argument(
+              label: "sourceCode",
+              expression: createDictionaryExpr(
+                forSourceCodeOf: rewrittenNodes,
+                rootedAt: originalArgumentExpr
+              )
+            )
+          )
+        }
 
         // Include all arguments other than the "condition", "comment", and
         // "sourceLocation" arguments here.
@@ -146,15 +226,6 @@ extension ConditionMacro {
           .filter { $0 != isolationArgumentIndex }
           .filter { $0 != sourceLocationArgumentIndex }
           .map { macroArguments[$0] }
-
-        if let primaryExpression {
-          let sourceCode = parseCondition(from: primaryExpression, for: macro, in: context).expression
-          checkArguments.append(Argument(label: "expression", expression: sourceCode))
-        } else {
-          checkArguments.append(Argument(label: "expression", expression: conditionArgument.expression))
-        }
-
-        expandedFunctionName = conditionArgument.expandedFunctionName
       }
 
       // Capture any comments as well -- either in source, preceding the
@@ -201,11 +272,19 @@ extension ConditionMacro {
     }
 
     // Construct and return the call to __check().
-    let call: ExprSyntax = "Testing.\(expandedFunctionName)(\(LabeledExprListSyntax(checkArguments)))"
-    if isThrowing {
-      return "\(call).__required()"
+    var call: ExprSyntax = "Testing.\(expandedFunctionName)(\(LabeledExprListSyntax(checkArguments)))"
+    call = if isThrowing {
+      "\(call).__required()"
+    } else {
+      "\(call).__expected()"
     }
-    return "\(call).__expected()"
+    if effectKeywordsToApply.contains(.await) {
+      call = "await \(call)"
+    }
+    if !isThrowing && effectKeywordsToApply.contains(.try) {
+      call = "try \(call)"
+    }
+    return call
   }
 
   /// Get the complete argument list for a given macro, including any trailing
@@ -269,6 +348,25 @@ public struct RequireMacro: ConditionMacro {
   }
 }
 
+/// A type describing the expansion of the `#require()` macro when it produces
+/// an optional value.
+public struct UnwrapMacro: ConditionMacro {
+  public static var isThrowing: Bool {
+    true
+  }
+
+  public static var returnType: TypeSyntax? {
+    TypeSyntax(
+      MemberTypeSyntax(
+        baseType: IdentifierTypeSyntax(name: .identifier("Swift")),
+        name: .identifier("Optional")
+      )
+    )
+  }
+}
+
+// MARK: - Refined condition macros
+
 /// A protocol that can be used to create a condition macro that refines the
 /// behavior of another previously-defined condition macro.
 public protocol RefinedConditionMacro: ConditionMacro {
@@ -279,6 +377,10 @@ extension RefinedConditionMacro {
   public static var isThrowing: Bool {
     Base.isThrowing
   }
+
+  public static var returnType: TypeSyntax? {
+    Base.returnType
+  }
 }
 
 // MARK: - Diagnostics-emitting condition macros
@@ -288,7 +390,7 @@ extension RefinedConditionMacro {
 ///
 /// This type is otherwise exactly equivalent to ``RequireMacro``.
 public struct AmbiguousRequireMacro: RefinedConditionMacro {
-  public typealias Base = RequireMacro
+  public typealias Base = UnwrapMacro
 
   public static func expansion(
     of macro: some FreestandingMacroExpansionSyntax,
@@ -299,7 +401,7 @@ public struct AmbiguousRequireMacro: RefinedConditionMacro {
     }
 
     // Perform the normal macro expansion for #require().
-    return try RequireMacro.expansion(of: macro, in: context)
+    return try Base.expansion(of: macro, in: context)
   }
 
   /// Check for an ambiguous argument to the `#require()` macro and emit the
@@ -331,7 +433,7 @@ public struct AmbiguousRequireMacro: RefinedConditionMacro {
 ///
 /// This type is otherwise exactly equivalent to ``RequireMacro``.
 public struct NonOptionalRequireMacro: RefinedConditionMacro {
-  public typealias Base = RequireMacro
+  public typealias Base = UnwrapMacro
 
   public static func expansion(
     of macro: some FreestandingMacroExpansionSyntax,
@@ -359,7 +461,7 @@ public struct NonOptionalRequireMacro: RefinedConditionMacro {
     }
 
     // Perform the normal macro expansion for #require().
-    return try RequireMacro.expansion(of: macro, in: context)
+    return try Base.expansion(of: macro, in: context)
   }
 }
 
@@ -388,7 +490,7 @@ public struct RequireThrowsMacro: RefinedConditionMacro {
     }
 
     // Perform the normal macro expansion for #require().
-    return try RequireMacro.expansion(of: macro, in: context)
+    return try Base.expansion(of: macro, in: context)
   }
 }
 
@@ -408,7 +510,7 @@ public struct RequireThrowsNeverMacro: RefinedConditionMacro {
     }
 
     // Perform the normal macro expansion for #require().
-    return try RequireMacro.expansion(of: macro, in: context)
+    return try Base.expansion(of: macro, in: context)
   }
 }
 
