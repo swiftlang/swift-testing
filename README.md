@@ -101,7 +101,7 @@ for various platforms:
 | **tvOS** | | | Supported |
 | **visionOS** | | | Supported |
 | **Ubuntu 22.04** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-6.1-linux)](https://ci.swift.org/job/swift-testing-main-swift-6.1-linux/) | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-linux)](https://ci.swift.org/view/Swift%20Packages/job/swift-testing-main-swift-main-linux/) | Supported |
-| **Windows** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-6.1-windows)](https://ci-external.swift.org/view/all/job/swift-testing-main-swift-6.1-windows/) | [![Build Status](https://ci-external.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-windows)](https://ci-external.swift.org/job/swift-testing-main-swift-main-windows/) | Supported |
+| **Windows** | [![Build Status](https://ci-external.swift.org/buildStatus/icon?job=swift-testing-main-swift-6.1-windows)](https://ci-external.swift.org/view/all/job/swift-testing-main-swift-6.1-windows/) | [![Build Status](https://ci-external.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-windows)](https://ci-external.swift.org/job/swift-testing-main-swift-main-windows/) | Supported |
 | **Wasm** | | | Experimental |
 
 ### Works with XCTest
