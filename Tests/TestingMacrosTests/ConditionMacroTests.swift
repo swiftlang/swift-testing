@@ -277,6 +277,22 @@ struct ConditionMacroTests {
       // Comment for expect
       Testing.__checkValue(x, expression: .__fromSyntaxNode("x"), comments: [.__line("// Comment for try"), .__line("// Comment for await"), .__line("// Comment for expect")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
       """,
+
+      """
+      // Ignore me
+      func example() {
+        // Capture me
+        #expect(x())
+      }
+      """:
+      """
+      func example() {
+        // Capture me
+        Testing.__checkFunctionCall((), calling: { _ in
+          x()
+        }, expression: .__fromFunctionCall(nil, "x"), comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+      }
+      """,
     ]
   )
   func commentCapture(input: String, expectedOutput: String) throws {

@@ -12,7 +12,7 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
-// MARK: - Finding effect keywords
+// MARK: - Finding effect keywords and expressions
 
 /// A syntax visitor class that looks for effectful keywords in a given
 /// expression.
@@ -67,6 +67,19 @@ func findEffectKeywords(in node: some SyntaxProtocol, context: some MacroExpansi
   let effectFinder = _EffectFinder(viewMode: .sourceAccurate)
   effectFinder.walk(node)
   return effectFinder.effectKeywords
+}
+
+extension Sequence<Syntax> {
+  /// The syntax nodes in this sequence which are effectful expressions, such as
+  /// those for `try` or `await`.
+  var effectExpressions: some Sequence<Syntax> {
+    filter { node in
+      // This could be made simpler if/when swift-syntax introduces a protocol
+      // which all effectful expression syntax node types conform to.
+      // See https://github.com/swiftlang/swift-syntax/issues/3040
+      node.is(TryExprSyntax.self) || node.is(AwaitExprSyntax.self) || node.is(UnsafeExprSyntax.self)
+    }
+  }
 }
 
 // MARK: - Inserting effect keywords/thunks
