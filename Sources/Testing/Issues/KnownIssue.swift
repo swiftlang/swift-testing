@@ -36,12 +36,12 @@ struct KnownIssueScope: Sendable {
   ///
   /// - Parameters:
   ///   - parent: The context that should be checked next if `issueMatcher`
-  ///     fails to match an issue.
+  ///     fails to match an issue. Defaults to ``KnownIssueScope.current``.
   ///   - issueMatcher: A function to invoke when an issue occurs that is used
   ///     to determine if the issue is known to occur.
   ///   - context: The context to be associated with issues matched by
   ///     `issueMatcher`.
-  init(parent: KnownIssueScope?, issueMatcher: @escaping KnownIssueMatcher, context: Issue.KnownIssueContext) {
+  init(parent: KnownIssueScope? = .current, issueMatcher: @escaping KnownIssueMatcher, context: Issue.KnownIssueContext) {
     let matchCounter = Locked(rawValue: 0)
     self.matchCounter = matchCounter
     matcher = { issue in
@@ -76,7 +76,7 @@ struct KnownIssueScope: Sendable {
 ///     function.
 ///   - sourceLocation: The source location to which the issue should be
 ///     attributed.
-private func _matchError(_ error: any Error, using scope: KnownIssueScope, comment: Comment?, sourceLocation: SourceLocation) throws {
+private func _matchError(_ error: any Error, in scope: KnownIssueScope, comment: Comment?, sourceLocation: SourceLocation) throws {
   let sourceContext = SourceContext(backtrace: Backtrace(forFirstThrowOf: error), sourceLocation: sourceLocation)
   var issue = Issue(kind: .errorCaught(error), comments: [], sourceContext: sourceContext)
   if let context = scope.matcher(issue) {
@@ -220,7 +220,7 @@ public func withKnownIssue(
   guard precondition() else {
     return try body()
   }
-  let scope = KnownIssueScope(parent: .current, issueMatcher: issueMatcher, context: Issue.KnownIssueContext(comment: comment))
+  let scope = KnownIssueScope(issueMatcher: issueMatcher, context: Issue.KnownIssueContext(comment: comment))
   defer {
     if !isIntermittent {
       _handleMiscount(by: scope.matchCounter, comment: comment, sourceLocation: sourceLocation)
@@ -230,7 +230,7 @@ public func withKnownIssue(
     do {
       try body()
     } catch {
-      try _matchError(error, using: scope, comment: comment, sourceLocation: sourceLocation)
+      try _matchError(error, in: scope, comment: comment, sourceLocation: sourceLocation)
     }
   }
 }
@@ -339,7 +339,7 @@ public func withKnownIssue(
   guard await precondition() else {
     return try await body()
   }
-  let scope = KnownIssueScope(parent: .current, issueMatcher: issueMatcher, context: Issue.KnownIssueContext(comment: comment))
+  let scope = KnownIssueScope(issueMatcher: issueMatcher, context: Issue.KnownIssueContext(comment: comment))
   defer {
     if !isIntermittent {
       _handleMiscount(by: scope.matchCounter, comment: comment, sourceLocation: sourceLocation)
@@ -349,7 +349,7 @@ public func withKnownIssue(
     do {
       try await body()
     } catch {
-      try _matchError(error, using: scope, comment: comment, sourceLocation: sourceLocation)
+      try _matchError(error, in: scope, comment: comment, sourceLocation: sourceLocation)
     }
   }
 }
