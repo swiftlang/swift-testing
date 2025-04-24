@@ -163,7 +163,7 @@ extension ConditionMacro {
       let commentsArrayExpr = ArrayExprSyntax {
         // Lexical context is ordered innermost-to-outermost, so reverse it to
         // maintain the expected order.
-        for lexicalSyntaxNode in context.lexicalContext.effectExpressions.reversed() {
+        for lexicalSyntaxNode in context.lexicalContext.trailingEffectExpressions.reversed() {
           for commentTraitExpr in createCommentTraitExprs(for: lexicalSyntaxNode) {
             ArrayElementSyntax(expression: commentTraitExpr)
           }

@@ -69,16 +69,18 @@ func findEffectKeywords(in node: some SyntaxProtocol, context: some MacroExpansi
   return effectFinder.effectKeywords
 }
 
-extension Sequence<Syntax> {
-  /// The syntax nodes in this sequence which are effectful expressions, such as
-  /// those for `try` or `await`.
-  var effectExpressions: some Sequence<Syntax> {
-    filter { node in
-      // This could be made simpler if/when swift-syntax introduces a protocol
-      // which all effectful expression syntax node types conform to.
-      // See https://github.com/swiftlang/swift-syntax/issues/3040
-      node.is(TryExprSyntax.self) || node.is(AwaitExprSyntax.self) || node.is(UnsafeExprSyntax.self)
-    }
+extension BidirectionalCollection<Syntax> {
+  /// The suffix of syntax nodes in this collection which are effectful
+  /// expressions, such as those for `try` or `await`.
+  var trailingEffectExpressions: some Collection<Syntax> {
+    reversed()
+      .prefix { node in
+        // This could be simplified if/when swift-syntax introduces a protocol
+        // which all effectful expression syntax node types conform to.
+        // See https://github.com/swiftlang/swift-syntax/issues/3040
+        node.is(TryExprSyntax.self) || node.is(AwaitExprSyntax.self) || node.is(UnsafeExprSyntax.self)
+      }
+      .reversed()
   }
 }
 
