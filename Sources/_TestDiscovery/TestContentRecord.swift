@@ -52,7 +52,7 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
   /// ([swift-#79667](https://github.com/swiftlang/swift/issues/79667))
   fileprivate static func validateMemoryLayout() {
     precondition(MemoryLayout<TestContentContext>.stride == MemoryLayout<UInt>.stride, "'\(self).TestContentContext' aka '\(TestContentContext.self)' must have the same stride as 'UInt'.")
-    precondition(MemoryLayout<TestContentContext>.alignment == MemoryLayout<UInt>.alignment, "'\(self).TestContentContext' aka '\(TestContentContext.self)' must have the same alignment as 'UInt'.")
+    precondition(MemoryLayout<TestContentContext>.alignment <= MemoryLayout<UInt>.alignment, "'\(self).TestContentContext' aka '\(TestContentContext.self)' must have an alignment less than or equal to that of 'UInt'.")
   }
 }
 
@@ -139,6 +139,34 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent & ~Copyabl
   /// The type of the `hint` argument to ``load(withHint:)``.
   public typealias Hint = T.TestContentAccessorHint
 
+  /// Invoke an accessor function to load a test content record.
+  ///
+  /// - Parameters:
+  /// 	- accessor: The accessor function to call.
+  ///   - typeAddress: A pointer to the type of test content record.
+  ///   - hint: An optional hint value.
+  ///
+  /// - Returns: An instance of the test content type `T`, or `nil` if the
+  ///   underlying test content record did not match `hint` or otherwise did not
+  ///   produce a value.
+  ///
+  /// Do not call this function directly. Instead, call ``load(withHint:)``.
+  private static func _load(using accessor: _TestContentRecordAccessor, withTypeAt typeAddress: UnsafeRawPointer, withHint hint: Hint? = nil) -> T? {
+    withUnsafeTemporaryAllocation(of: T.self, capacity: 1) { buffer in
+      let initialized = if let hint {
+        withUnsafePointer(to: hint) { hint in
+          accessor(buffer.baseAddress!, typeAddress, hint, 0)
+        }
+      } else {
+        accessor(buffer.baseAddress!, typeAddress, nil, 0)
+      }
+      guard initialized else {
+        return nil
+      }
+      return buffer.baseAddress!.move()
+    }
+  }
+
   /// Load the value represented by this record.
   ///
   /// - Parameters:
@@ -157,21 +185,14 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent & ~Copyabl
       return nil
     }
 
-    return withUnsafePointer(to: T.self) { type in
-      withUnsafeTemporaryAllocation(of: T.self, capacity: 1) { buffer in
-        let initialized = if let hint {
-          withUnsafePointer(to: hint) { hint in
-            accessor(buffer.baseAddress!, type, hint, 0)
-          }
-        } else {
-          accessor(buffer.baseAddress!, type, nil, 0)
-        }
-        guard initialized else {
-          return nil
-        }
-        return buffer.baseAddress!.move()
-      }
+#if !hasFeature(Embedded)
+    return withUnsafePointer(to: T.self) { typeAddress in
+      Self._load(using: accessor, withTypeAt: typeAddress, withHint: hint)
     }
+#else
+    let typeAddress = UnsafeRawPointer(bitPattern: UInt(T.testContentKind.rawValue)).unsafelyUnwrapped
+    return Self._load(using: accessor, withTypeAt: typeAddress, withHint: hint)
+#endif
   }
 }
 
@@ -188,7 +209,11 @@ extension TestContentRecord: Sendable where Context: Sendable {}
 
 extension TestContentRecord: CustomStringConvertible {
   public var description: String {
+#if !hasFeature(Embedded)
     let typeName = String(describing: Self.self)
+#else
+    let typeName = "TestContentRecord"
+#endif
     switch _recordStorage {
     case let .atAddress(recordAddress):
       let recordAddress = imageAddress.map { imageAddress in

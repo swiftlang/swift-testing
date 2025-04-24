@@ -59,7 +59,7 @@ struct DiscoveryTests {
 #endif
 
 #if !SWT_NO_DYNAMIC_LINKING && hasFeature(SymbolLinkageMarkers)
-  struct MyTestContent: Testing.DiscoverableAsTestContent {
+  struct MyTestContent: DiscoverableAsTestContent {
     typealias TestContentAccessorHint = UInt32
 
     var value: UInt32
@@ -94,9 +94,11 @@ struct DiscoveryTests {
       0xABCD1234,
       0,
       { outValue, type, hint, _ in
+#if !hasFeature(Embedded)
         guard type.load(as: Any.Type.self) == MyTestContent.self else {
           return false
         }
+#endif
         if let hint, hint.load(as: TestContentAccessorHint.self) != expectedHint {
           return false
         }
