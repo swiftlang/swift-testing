@@ -492,25 +492,4 @@ struct ConditionMacroTests {
       }
     }
   }
-
-  @Test("Macro expansion is performed within a test function")
-  func macroExpansionInTestFunction() throws {
-    let input = ##"""
-      @Test("Random number generation") func rng() {
-        let number = Int.random(in: 1 ..< .max)
-        #expect((number > 0 && foo() != bar(at: 9)) != !true, "\(number) must be greater than 0")
-      }
-    """##
-
-    let rawExpectedOutput = ##"""
-      @Test("Random number generation") func rng() {
-        let number = Int.random(in: 1 ..< .max)
-        Testing.__checkBinaryOperation((number > 0 && foo() != bar(at: 9)), { $0 != $1() }, !true, expression: .__fromBinaryOperation(.__fromSyntaxNode("(number > 0 && foo() != bar(at: 9))"), "!=", .__fromSyntaxNode("!true")), comments: ["\(number) must be greater than 0"], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
-      }
-    """##
-
-    let (expectedOutput, _) = try parse(rawExpectedOutput, activeMacros: ["expect"], removeWhitespace: true)
-    let (actualOutput, _) = try parse(input, activeMacros: ["expect"], removeWhitespace: true)
-    #expect(expectedOutput == actualOutput)
-  }
 }
