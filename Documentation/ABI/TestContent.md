@@ -100,9 +100,10 @@ record's kind is a 32-bit unsigned value. The following kinds are defined:
 | `0x00000000` | &ndash; | Reserved (**do not use**) |
 | `0x74657374` | `'test'` | Test or suite declaration |
 | `0x65786974` | `'exit'` | Exit test |
+| `0x706c6179` | `'play'` | [Playground](https://github.com/apple/swift-play-experimental) |
 
-<!-- When adding cases to this enumeration, be sure to also update the
-corresponding enumeration in TestContentGeneration.swift. -->
+<!-- The kind values listed in this table should be a superset of the cases in
+the `TestContentKind` enumeration. -->
 
 If a test content record's `kind` field equals `0x00000000`, the values of all
 other fields in that record are undefined.

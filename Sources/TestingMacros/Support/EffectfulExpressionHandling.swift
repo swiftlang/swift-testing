@@ -12,7 +12,7 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
-// MARK: - Finding effect keywords
+// MARK: - Finding effect keywords and expressions
 
 /// A syntax visitor class that looks for effectful keywords in a given
 /// expression.
@@ -69,6 +69,21 @@ func findEffectKeywords(in node: some SyntaxProtocol, context: some MacroExpansi
   return effectFinder.effectKeywords
 }
 
+extension BidirectionalCollection<Syntax> {
+  /// The suffix of syntax nodes in this collection which are effectful
+  /// expressions, such as those for `try` or `await`.
+  var trailingEffectExpressions: some Collection<Syntax> {
+    reversed()
+      .prefix { node in
+        // This could be simplified if/when swift-syntax introduces a protocol
+        // which all effectful expression syntax node types conform to.
+        // See https://github.com/swiftlang/swift-syntax/issues/3040
+        node.is(TryExprSyntax.self) || node.is(AwaitExprSyntax.self) || node.is(UnsafeExprSyntax.self)
+      }
+      .reversed()
+  }
+}
+
 // MARK: - Inserting effect keywords/thunks
 
 /// Make a function call expression to an effectful thunk function provided by
@@ -111,7 +126,13 @@ func applyEffectfulKeywords(_ effectfulKeywords: Set<Keyword>, to expr: some Exp
 
   let needAwait = effectfulKeywords.contains(.await) && !expr.is(AwaitExprSyntax.self)
   let needTry = effectfulKeywords.contains(.try) && !expr.is(TryExprSyntax.self)
+
+  // The 'unsafe' keyword was introduced in 6.2 as part of SE-0458. Older
+  // toolchains are not aware of it, so avoid emitting expressions involving
+  // that keyword when the macro has been built using an older toolchain.
+#if compiler(>=6.2)
   let needUnsafe = effectfulKeywords.contains(.unsafe) && !expr.is(UnsafeExprSyntax.self)
+#endif
 
   // First, add thunk function calls.
   if needAwait {
@@ -120,9 +141,11 @@ func applyEffectfulKeywords(_ effectfulKeywords: Set<Keyword>, to expr: some Exp
   if needTry {
     expr = _makeCallToEffectfulThunk(.identifier("__requiringTry"), passing: expr)
   }
+#if compiler(>=6.2)
   if needUnsafe {
     expr = _makeCallToEffectfulThunk(.identifier("__requiringUnsafe"), passing: expr)
   }
+#endif
 
   // Then add keyword expressions. (We do this separately so we end up writing
   // `try await __r(__r(self))` instead of `try __r(await __r(self))` which is
@@ -143,6 +166,7 @@ func applyEffectfulKeywords(_ effectfulKeywords: Set<Keyword>, to expr: some Exp
       )
     )
   }
+#if compiler(>=6.2)
   if needUnsafe {
     expr = ExprSyntax(
       UnsafeExprSyntax(
@@ -151,6 +175,7 @@ func applyEffectfulKeywords(_ effectfulKeywords: Set<Keyword>, to expr: some Exp
       )
     )
   }
+#endif
 
   expr.leadingTrivia = originalExpr.leadingTrivia
   expr.trailingTrivia = originalExpr.trailingTrivia

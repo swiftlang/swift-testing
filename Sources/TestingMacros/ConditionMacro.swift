@@ -157,8 +157,17 @@ extension ConditionMacro {
         expandedFunctionName = conditionArgument.expandedFunctionName
       }
 
-      // Capture any comments as well (either in source or as a macro argument.)
+      // Capture any comments as well -- either in source, preceding the
+      // expression macro or one of its lexical context nodes, or as an argument
+      // to the macro.
       let commentsArrayExpr = ArrayExprSyntax {
+        // Lexical context is ordered innermost-to-outermost, so reverse it to
+        // maintain the expected order.
+        for lexicalSyntaxNode in context.lexicalContext.trailingEffectExpressions.reversed() {
+          for commentTraitExpr in createCommentTraitExprs(for: lexicalSyntaxNode) {
+            ArrayElementSyntax(expression: commentTraitExpr)
+          }
+        }
         for commentTraitExpr in createCommentTraitExprs(for: macro) {
           ArrayElementSyntax(expression: commentTraitExpr)
         }
