@@ -19,10 +19,11 @@ struct KnownIssueScope: Sendable {
   ///
   /// - Parameters:
   ///   - issue: The issue being matched.
+  ///
   /// - Returns: A known issue context containing information about the known
-  /// issue, if the issue is considered "known" by this known issue scope or any
-  /// ancestor scope, or `nil` otherwise.
-  typealias Matcher = @Sendable (Issue) -> Issue.KnownIssueContext?
+  ///   issue, if the issue is considered "known" by this known issue scope or any
+  ///   ancestor scope, or `nil` otherwise.
+  typealias Matcher = @Sendable (_ issue: Issue) -> Issue.KnownIssueContext?
 
   /// Determine if an issue is known to this scope or any of its ancestor
   /// scopes.

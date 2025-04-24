@@ -94,7 +94,7 @@ extension Event.HumanReadableOutputRecorder {
   ///   - comments: The comments that should be formatted.
   ///
   /// - Returns: An array of formatted messages representing `comments`, or an
-  /// empty array if there are none.
+  ///   empty array if there are none.
   private func _formattedComments(_ comments: [Comment]) -> [Message] {
     comments.map(_formattedComment)
   }
