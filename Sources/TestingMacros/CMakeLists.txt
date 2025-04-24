@@ -105,7 +105,6 @@ target_sources(TestingMacros PRIVATE
   Support/DiagnosticMessage+Diagnosing.swift
   Support/EffectfulExpressionHandling.swift
   Support/SHA256.swift
-  Support/SourceCodeCapturing.swift
   Support/SourceLocationGeneration.swift
   Support/TestContentGeneration.swift
   TagMacro.swift
