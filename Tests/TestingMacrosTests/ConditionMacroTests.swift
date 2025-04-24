@@ -240,6 +240,59 @@ struct ConditionMacroTests {
       // Capture me
       Testing.__checkValue(try x(), expression: .__fromSyntaxNode("try x()"), comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
       """,
+
+      """
+      // Capture me
+      try #expect(x)
+      """:
+      """
+      // Capture me
+      try Testing.__checkValue(x, expression: .__fromSyntaxNode("x"), comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+      """,
+
+      """
+      // Capture me
+      await #expect(x)
+      """:
+      """
+      // Capture me
+      await Testing.__checkValue(x, expression: .__fromSyntaxNode("x"), comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+      """,
+
+      """
+      // Ignore me
+
+      // Comment for try
+      try
+      // Comment for await
+      await
+      // Comment for expect
+      #expect(x)
+      """:
+      """
+      // Comment for try
+      try
+      // Comment for await
+      await
+      // Comment for expect
+      Testing.__checkValue(x, expression: .__fromSyntaxNode("x"), comments: [.__line("// Comment for try"), .__line("// Comment for await"), .__line("// Comment for expect")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+      """,
+
+      """
+      // Ignore me
+      func example() {
+        // Capture me
+        #expect(x())
+      }
+      """:
+      """
+      func example() {
+        // Capture me
+        Testing.__checkFunctionCall((), calling: { _ in
+          x()
+        }, expression: .__fromFunctionCall(nil, "x"), comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+      }
+      """,
     ]
   )
   func commentCapture(input: String, expectedOutput: String) throws {
