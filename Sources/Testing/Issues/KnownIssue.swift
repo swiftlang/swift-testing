@@ -82,7 +82,7 @@ struct KnownIssueScope: Sendable {
 ///     attributed.
 private func _matchError(_ error: any Error, using scope: KnownIssueScope, comment: Comment?, sourceLocation: SourceLocation) throws {
   let sourceContext = SourceContext(backtrace: Backtrace(forFirstThrowOf: error), sourceLocation: sourceLocation)
-  var issue = Issue(kind: .errorCaught(error), comments: Array(comment), sourceContext: sourceContext)
+  var issue = Issue(kind: .errorCaught(error), comments: [], sourceContext: sourceContext)
   if let context = scope.matcher(issue) {
     // It's a known issue, so mark it as such before recording it.
     issue.knownIssueContext = context

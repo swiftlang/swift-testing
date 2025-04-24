@@ -51,8 +51,8 @@ final class KnownIssueTests: XCTestCase {
         return
       }
 
-      XCTAssertEqual(issue.comments.first, "With Known Issue Comment")
       XCTAssertFalse(issue.isKnown)
+      XCTAssertEqual(issue.comments, ["With Known Issue Comment"])
     }
 
     await Test {
@@ -63,8 +63,8 @@ final class KnownIssueTests: XCTestCase {
   }
 
   func testKnownIssueRecordedWithComment() async {
+    let issueMatched = expectation(description: "Issue matched")
     let issueRecorded = expectation(description: "Issue recorded")
-    let sourceLocation = SourceLocation(fileID: "FakeModule/FakeFile.swift", filePath: "", line: 9999, column: 1)
 
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
@@ -77,21 +77,29 @@ final class KnownIssueTests: XCTestCase {
         return
       }
 
+      XCTAssertTrue(issue.isKnown)
       XCTAssertEqual(issue.comments, ["Issue Comment"])
       XCTAssertEqual(issue.knownIssueContext?.comment, "With Known Issue Comment")
-      XCTAssertTrue(issue.isKnown)
     }
 
     await Test {
-      withKnownIssue("With Known Issue Comment", sourceLocation: sourceLocation) {
+      withKnownIssue("With Known Issue Comment") {
         Issue.record("Issue Comment")
+      } matching: { issue in
+        // The issue isn't yet considered known since we haven't matched it yet.
+        XCTAssertFalse(issue.isKnown)
+        XCTAssertEqual(issue.comments, ["Issue Comment"])
+        XCTAssertNil(issue.knownIssueContext)
+        issueMatched.fulfill()
+        return true
       }
     }.run(configuration: configuration)
 
-    await fulfillment(of: [issueRecorded], timeout: 0.0)
+    await fulfillment(of: [issueMatched, issueRecorded], timeout: 0.0)
   }
 
   func testThrownKnownIssueRecordedWithComment() async {
+    let issueMatched = expectation(description: "Issue matched")
     let issueRecorded = expectation(description: "Issue recorded")
 
     var configuration = Configuration()
@@ -105,19 +113,26 @@ final class KnownIssueTests: XCTestCase {
         return
       }
 
-      XCTAssertEqual(issue.comments, ["With Known Issue Comment"])
       XCTAssertTrue(issue.isKnown)
+      XCTAssertEqual(issue.comments, ["With Known Issue Comment"])
     }
 
     struct E: Error {}
 
     await Test {
-      withKnownIssue("With Known Issue Comment") {
+      try withKnownIssue("With Known Issue Comment") {
         throw E()
+      } matching: { issue in
+        // The issue isn't yet considered known since we haven't matched it yet.
+        XCTAssertFalse(issue.isKnown)
+        XCTAssertEqual(issue.comments, [])
+        XCTAssertNil(issue.knownIssueContext)
+        issueMatched.fulfill()
+        return true
       }
     }.run(configuration: configuration)
 
-    await fulfillment(of: [issueRecorded], timeout: 0.0)
+    await fulfillment(of: [issueMatched, issueRecorded], timeout: 0.0)
   }
 
   func testKnownIssueRecordedWithNoComment() async {
@@ -134,8 +149,8 @@ final class KnownIssueTests: XCTestCase {
         return
       }
 
-      XCTAssertEqual(issue.comments, ["Issue Comment"])
       XCTAssertTrue(issue.isKnown)
+      XCTAssertEqual(issue.comments, ["Issue Comment"])
     }
 
     await Test {
@@ -149,7 +164,6 @@ final class KnownIssueTests: XCTestCase {
 
   func testKnownIssueRecordedWithInnermostMatchingComment() async {
     let issueRecorded = expectation(description: "Issue recorded")
-    let sourceLocation = SourceLocation(fileID: "FakeModule/FakeFile.swift", filePath: "", line: 9999, column: 1)
 
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
@@ -162,15 +176,15 @@ final class KnownIssueTests: XCTestCase {
         return
       }
 
+      XCTAssertTrue(issue.isKnown)
       XCTAssertEqual(issue.comments, ["Issue B"])
       XCTAssertEqual(issue.knownIssueContext?.comment, "Inner Contains B")
-      XCTAssertTrue(issue.isKnown)
     }
 
     await Test {
       withKnownIssue("Contains A", isIntermittent: true) {
         withKnownIssue("Outer Contains B", isIntermittent: true) {
-          withKnownIssue("Inner Contains B", sourceLocation: sourceLocation) {
+          withKnownIssue("Inner Contains B") {
             withKnownIssue("Contains C", isIntermittent: true) {
               Issue.record("Issue B")
             } matching: { issue in
@@ -204,8 +218,8 @@ final class KnownIssueTests: XCTestCase {
         return
       }
 
-      XCTAssertEqual(issue.comments, ["Inner Is B", "B"])
       XCTAssertTrue(issue.isKnown)
+      XCTAssertEqual(issue.comments, ["Inner Is B", "B"])
     }
 
     struct A: Error {}
@@ -249,8 +263,8 @@ final class KnownIssueTests: XCTestCase {
         return
       }
 
-      XCTAssertEqual(issue.comments, ["Issue B"])
       XCTAssertTrue(issue.isKnown)
+      XCTAssertEqual(issue.comments, ["Issue B"])
     }
 
     await Test {
