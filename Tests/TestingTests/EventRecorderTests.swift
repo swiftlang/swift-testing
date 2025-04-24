@@ -257,6 +257,30 @@ struct EventRecorderTests {
   }
 #endif
 
+  @Test(
+    "Uncommonly-formatted comments",
+    .bug("rdar://149482060"),
+    arguments: [
+      "", // Empty string
+      "\n\n\n", // Only newlines
+      "\nFoo\n\nBar\n\n\nBaz\n", // Newlines interspersed with non-empty strings
+    ]
+  )
+  func uncommonComments(text: String) async throws {
+    let stream = Stream()
+
+    var configuration = Configuration()
+    configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled = true
+    let eventRecorder = Event.ConsoleOutputRecorder(writingUsing: stream.write)
+    configuration.eventHandler = { event, context in
+      eventRecorder.record(event, in: context)
+    }
+
+    await Test {
+      Issue.record(Comment(rawValue: text) /* empty */)
+    }.run(configuration: configuration)
+  }
+
   @available(_regexAPI, *)
   @Test("Issue counts are omitted on a successful test")
   func issueCountOmittedForPassingTest() async throws {
