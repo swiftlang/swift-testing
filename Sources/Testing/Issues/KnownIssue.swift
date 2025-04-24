@@ -25,11 +25,8 @@ struct KnownIssueScope: Sendable {
   ///   ancestor scope, or `nil` otherwise.
   typealias Matcher = @Sendable (_ issue: Issue) -> Issue.KnownIssueContext?
 
-  /// Determine if an issue is known to this scope or any of its ancestor
-  /// scopes.
-  ///
-  /// Returns `nil` if the issue is not known.
-  var matcher: @Sendable (Issue) -> Issue.KnownIssueContext?
+  /// The matcher function for this known issue scope.
+  var matcher: Matcher
 
   /// The number of issues this scope and its ancestors have matched.
   let matchCounter: Locked<Int>
@@ -44,7 +41,6 @@ struct KnownIssueScope: Sendable {
   ///     to determine if the issue is known to occur.
   ///   - context: The context to be associated with issues matched by
   ///     `issueMatcher`.
-  /// - Returns: A new instance of ``KnownIssueScope``.
   init(parent: KnownIssueScope?, issueMatcher: @escaping KnownIssueMatcher, context: Issue.KnownIssueContext) {
     let matchCounter = Locked(rawValue: 0)
     self.matchCounter = matchCounter
@@ -61,7 +57,7 @@ struct KnownIssueScope: Sendable {
     }
   }
 
-  /// The active known issue scope for the current task.
+  /// The active known issue scope for the current task, if any.
   ///
   /// If there is no call to
   /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``
