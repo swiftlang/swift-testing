@@ -928,7 +928,11 @@ extension ExitTest {
         sourceLocation: issue.sourceLocation
       )
       var issueCopy = Issue(kind: issueKind, comments: comments, sourceContext: sourceContext)
-      issueCopy.isKnown = issue.isKnown
+      if issue.isKnown {
+        // The known issue comment, if there was one, is already included in
+        // the `comments` array above.
+        issueCopy.knownIssueContext = Issue.KnownIssueContext()
+      }
       issueCopy.record()
     }
   }
