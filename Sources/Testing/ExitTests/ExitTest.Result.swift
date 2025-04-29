@@ -15,9 +15,9 @@ extension ExitTest {
   /// A type representing the result of an exit test after it has exited and
   /// returned control to the calling test function.
   ///
-  /// Both ``expect(exitsWith:observing:_:sourceLocation:performing:)`` and
-  /// ``require(exitsWith:observing:_:sourceLocation:performing:)`` return
-  /// instances of this type.
+  /// Both ``expect(processExitsWith:observing:_:sourceLocation:performing:)``
+  /// and ``require(processExitsWith:observing:_:sourceLocation:performing:)``
+  /// return instances of this type.
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
@@ -49,8 +49,8 @@ extension ExitTest {
     ///
     /// To enable gathering output from the standard output stream during an
     /// exit test, pass `\.standardOutputContent` in the `observedValues`
-    /// argument of ``expect(exitsWith:observing:_:sourceLocation:performing:)``
-    /// or ``require(exitsWith:observing:_:sourceLocation:performing:)``.
+    /// argument of ``expect(processExitsWith:observing:_:sourceLocation:performing:)``
+    /// or ``require(processExitsWith:observing:_:sourceLocation:performing:)``.
     ///
     /// If you did not request standard output content when running an exit
     /// test, the value of this property is the empty array.
@@ -79,8 +79,8 @@ extension ExitTest {
     ///
     /// To enable gathering output from the standard error stream during an exit
     /// test, pass `\.standardErrorContent` in the `observedValues` argument of
-    /// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or
-    /// ``require(exitsWith:observing:_:sourceLocation:performing:)``.
+    /// ``expect(processExitsWith:observing:_:sourceLocation:performing:)`` or
+    /// ``require(processExitsWith:observing:_:sourceLocation:performing:)``.
     ///
     /// If you did not request standard error content when running an exit test,
     /// the value of this property is the empty array.

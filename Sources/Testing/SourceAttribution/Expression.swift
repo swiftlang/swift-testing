@@ -22,9 +22,8 @@
 /// let swiftSyntaxExpr: ExprSyntax = "\(testExpr)"
 /// ```
 ///
-/// - Warning: This type is used to implement the `#expect(exitsWith:)`
-///   macro. Do not use it directly. Tools can use the SPI ``Expression``
-///   typealias if needed.
+/// - Warning: This type is used to implement the `#expect()` macro. Do not use
+/// 	it directly. Tools can use the SPI ``Expression`` typealias if needed.
 public struct __Expression: Sendable {
   /// An enumeration describing the various kinds of expression that can be
   /// captured.

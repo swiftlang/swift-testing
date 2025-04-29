@@ -14,26 +14,26 @@ private import _TestingInternals
 #if !SWT_NO_EXIT_TESTS
 @Suite("Exit test tests") struct ExitTestTests {
   @Test("Exit tests (passing)") func passing() async {
-    await #expect(exitsWith: .failure) {
+    await #expect(processExitsWith: .failure) {
       exit(EXIT_FAILURE)
     }
     if EXIT_SUCCESS != EXIT_FAILURE + 1 {
-      await #expect(exitsWith: .failure) {
+      await #expect(processExitsWith: .failure) {
         exit(EXIT_FAILURE + 1)
       }
     }
-    await #expect(exitsWith: .success) {}
-    await #expect(exitsWith: .success) {
+    await #expect(processExitsWith: .success) {}
+    await #expect(processExitsWith: .success) {
       exit(EXIT_SUCCESS)
     }
-    await #expect(exitsWith: .exitCode(123)) {
+    await #expect(processExitsWith: .exitCode(123)) {
       exit(123)
     }
-    await #expect(exitsWith: .exitCode(123)) {
+    await #expect(processExitsWith: .exitCode(123)) {
       await Task.yield()
       exit(123)
     }
-    await #expect(exitsWith: .signal(SIGSEGV)) {
+    await #expect(processExitsWith: .signal(SIGSEGV)) {
       _ = raise(SIGSEGV)
       // Allow up to 1s for the signal to be delivered. On some platforms,
       // raise() delivers signals fully asynchronously and may not terminate the
@@ -44,7 +44,7 @@ private import _TestingInternals
         try await Task.sleep(nanoseconds: 1_000_000_000)
       }
     }
-    await #expect(exitsWith: .signal(SIGABRT)) {
+    await #expect(processExitsWith: .signal(SIGABRT)) {
       abort()
     }
 #if !SWT_NO_UNSTRUCTURED_TASKS
@@ -55,7 +55,7 @@ private import _TestingInternals
     #expect(Test.current != nil)
     await Task.detached {
       #expect(Test.current == nil)
-      await #expect(exitsWith: .failure) {
+      await #expect(processExitsWith: .failure) {
         fatalError()
       }
     }.value
@@ -91,7 +91,7 @@ private import _TestingInternals
         return ExitTest.Result(exitStatus: .exitCode(EXIT_SUCCESS))
       }
       await Test {
-        await #expect(exitsWith: .success) {}
+        await #expect(processExitsWith: .success) {}
       }.run(configuration: configuration)
 
       // Mock an exit test where the process exits with a particular error code.
@@ -99,7 +99,7 @@ private import _TestingInternals
         return ExitTest.Result(exitStatus: .exitCode(123))
       }
       await Test {
-        await #expect(exitsWith: .failure) {}
+        await #expect(processExitsWith: .failure) {}
       }.run(configuration: configuration)
 
       // Mock an exit test where the process exits with a signal.
@@ -107,10 +107,10 @@ private import _TestingInternals
         return ExitTest.Result(exitStatus: .signal(SIGABRT))
       }
       await Test {
-        await #expect(exitsWith: .signal(SIGABRT)) {}
+        await #expect(processExitsWith: .signal(SIGABRT)) {}
       }.run(configuration: configuration)
       await Test {
-        await #expect(exitsWith: .failure) {}
+        await #expect(processExitsWith: .failure) {}
       }.run(configuration: configuration)
     }
   }
@@ -129,13 +129,13 @@ private import _TestingInternals
         return ExitTest.Result(exitStatus: .exitCode(EXIT_SUCCESS))
       }
       await Test {
-        await #expect(exitsWith: .failure) {}
+        await #expect(processExitsWith: .failure) {}
       }.run(configuration: configuration)
       await Test {
-        await #expect(exitsWith: .exitCode(EXIT_FAILURE)) {}
+        await #expect(processExitsWith: .exitCode(EXIT_FAILURE)) {}
       }.run(configuration: configuration)
       await Test {
-        await #expect(exitsWith: .signal(SIGABRT)) {}
+        await #expect(processExitsWith: .signal(SIGABRT)) {}
       }.run(configuration: configuration)
 
       // Mock exit tests that unexpectedly signalled.
@@ -143,13 +143,13 @@ private import _TestingInternals
         return ExitTest.Result(exitStatus: .signal(SIGABRT))
       }
       await Test {
-        await #expect(exitsWith: .exitCode(EXIT_SUCCESS)) {}
+        await #expect(processExitsWith: .exitCode(EXIT_SUCCESS)) {}
       }.run(configuration: configuration)
       await Test {
-        await #expect(exitsWith: .exitCode(EXIT_FAILURE)) {}
+        await #expect(processExitsWith: .exitCode(EXIT_FAILURE)) {}
       }.run(configuration: configuration)
       await Test {
-        await #expect(exitsWith: .success) {}
+        await #expect(processExitsWith: .success) {}
       }.run(configuration: configuration)
     }
   }
@@ -164,7 +164,7 @@ private import _TestingInternals
       }
 
       await Test {
-        await #expect(exitsWith: .success) {}
+        await #expect(processExitsWith: .success) {}
       }.run(configuration: configuration)
     }
   }
@@ -186,11 +186,11 @@ private import _TestingInternals
         configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
 
         await Test {
-          await #expect(exitsWith: .success) {
+          await #expect(processExitsWith: .success) {
             #expect(Bool(false), "Something went wrong!")
             exit(0)
           }
-          await #expect(exitsWith: .failure) {
+          await #expect(processExitsWith: .failure) {
             Issue.record(MyError())
           }
         }.run(configuration: configuration)
@@ -219,7 +219,7 @@ private import _TestingInternals
     //
     // Windows does not have the 8-bit exit code restriction and always reports
     // the full CInt value back to the testing library.
-    await #expect(exitsWith: .exitCode(512)) {
+    await #expect(processExitsWith: .exitCode(512)) {
       exit(512)
     }
   }
@@ -232,7 +232,7 @@ private import _TestingInternals
   @Test("Exit test can be main-actor-isolated")
   @MainActor
   func mainActorIsolation() async {
-    await #expect(exitsWith: .success) {
+    await #expect(processExitsWith: .success) {
       await Self.someMainActorFunction()
       _ = 0
       exit(EXIT_SUCCESS)
@@ -242,21 +242,21 @@ private import _TestingInternals
   @Test("Result is set correctly on success")
   func successfulArtifacts() async throws {
     // Test that basic passing exit tests produce the correct results (#expect)
-    var result = await #expect(exitsWith: .success) {
+    var result = await #expect(processExitsWith: .success) {
       exit(EXIT_SUCCESS)
     }
     #expect(result?.exitStatus == .exitCode(EXIT_SUCCESS))
-    result = await #expect(exitsWith: .exitCode(123)) {
+    result = await #expect(processExitsWith: .exitCode(123)) {
       exit(123)
     }
     #expect(result?.exitStatus == .exitCode(123))
 
     // Test that basic passing exit tests produce the correct results (#require)
-    result = try await #require(exitsWith: .success) {
+    result = try await #require(processExitsWith: .success) {
       exit(EXIT_SUCCESS)
     }
     #expect(result?.exitStatus == .exitCode(EXIT_SUCCESS))
-    result = try await #require(exitsWith: .exitCode(123)) {
+    result = try await #require(processExitsWith: .exitCode(123)) {
       exit(123)
     }
     #expect(result?.exitStatus == .exitCode(123))
@@ -282,7 +282,7 @@ private import _TestingInternals
       }
 
       await Test {
-        let result = await #expect(exitsWith: .success) {}
+        let result = await #expect(processExitsWith: .success) {}
         #expect(result == nil)
       }.run(configuration: configuration)
     }
@@ -305,7 +305,7 @@ private import _TestingInternals
       }
 
       await Test {
-        try await #require(exitsWith: .success) {}
+        try await #require(processExitsWith: .success) {}
         fatalError("Unreachable")
       }.run(configuration: configuration)
     }
@@ -334,7 +334,7 @@ private import _TestingInternals
         }
 
         await Test {
-          let result = await #expect(exitsWith: .success) {}
+          let result = await #expect(processExitsWith: .success) {}
           #expect(result == nil)
         }.run(configuration: configuration)
       }
@@ -343,7 +343,7 @@ private import _TestingInternals
 
   @Test("Result contains stdout/stderr")
   func exitTestResultContainsStandardStreams() async throws {
-    var result = try await #require(exitsWith: .success, observing: [\.standardOutputContent]) {
+    var result = try await #require(processExitsWith: .success, observing: [\.standardOutputContent]) {
       try FileHandle.stdout.write("STANDARD OUTPUT")
       try FileHandle.stderr.write(String("STANDARD ERROR".reversed()))
       exit(EXIT_SUCCESS)
@@ -352,7 +352,7 @@ private import _TestingInternals
     #expect(result.standardOutputContent.contains("STANDARD OUTPUT".utf8))
     #expect(result.standardErrorContent.isEmpty)
 
-    result = try await #require(exitsWith: .success, observing: [\.standardErrorContent]) {
+    result = try await #require(processExitsWith: .success, observing: [\.standardErrorContent]) {
       try FileHandle.stdout.write("STANDARD OUTPUT")
       try FileHandle.stderr.write(String("STANDARD ERROR".reversed()))
       exit(EXIT_SUCCESS)
@@ -368,7 +368,7 @@ private import _TestingInternals
     func nonConstExitCondition() async throws -> ExitTest.Condition {
       .failure
     }
-    await #expect(exitsWith: try await nonConstExitCondition(), sourceLocation: unrelatedSourceLocation) {
+    await #expect(processExitsWith: try await nonConstExitCondition(), sourceLocation: unrelatedSourceLocation) {
       fatalError()
     }
   }
@@ -376,7 +376,7 @@ private import _TestingInternals
   @Test("ExitTest.current property")
   func currentProperty() async {
     #expect((ExitTest.current == nil) as Bool)
-    await #expect(exitsWith: .success) {
+    await #expect(processExitsWith: .success) {
       #expect((ExitTest.current != nil) as Bool)
     }
   }
@@ -386,7 +386,7 @@ private import _TestingInternals
   func captureList() async {
     let i = 123
     let s = "abc" as Any
-    await #expect(exitsWith: .success) { [i = i as Int, s = s as! String, t = (s as Any) as? String?] in
+    await #expect(processExitsWith: .success) { [i = i as Int, s = s as! String, t = (s as Any) as? String?] in
       #expect(i == 123)
       #expect(s == "abc")
       #expect(t == "abc")
@@ -397,7 +397,7 @@ private import _TestingInternals
   func longCaptureList() async {
     let count = 1 * 1024 * 1024
     let buffer = Array(repeatElement(0 as UInt8, count: count))
-    await #expect(exitsWith: .success) { [count = count as Int, buffer = buffer as [UInt8]] in
+    await #expect(processExitsWith: .success) { [count = count as Int, buffer = buffer as [UInt8]] in
       #expect(buffer.count == count)
     }
   }
@@ -407,7 +407,7 @@ private import _TestingInternals
 
     @Test("self in capture list")
     func captureListWithSelf() async {
-      await #expect(exitsWith: .success) { [self, x = self] in
+      await #expect(processExitsWith: .success) { [self, x = self] in
         #expect(self.property == 456)
         #expect(x.property == 456)
       }
@@ -444,13 +444,13 @@ private import _TestingInternals
   @Test("Capturing an instance of a subclass")
   func captureSubclass() async {
     let instance = CapturableDerivedClass(x: 123)
-    await #expect(exitsWith: .success) { [instance = instance as CapturableBaseClass] in
+    await #expect(processExitsWith: .success) { [instance = instance as CapturableBaseClass] in
       #expect((instance as AnyObject) is CapturableBaseClass)
       // However, because the static type of `instance` is not Derived, we won't
       // be able to cast it to Derived.
       #expect(!((instance as AnyObject) is CapturableDerivedClass))
     }
-    await #expect(exitsWith: .success) { [instance = instance as CapturableDerivedClass] in
+    await #expect(processExitsWith: .success) { [instance = instance as CapturableDerivedClass] in
       #expect((instance as AnyObject) is CapturableBaseClass)
       #expect((instance as AnyObject) is CapturableDerivedClass)
       #expect(instance.x == 123)
@@ -463,28 +463,28 @@ private import _TestingInternals
 
 @Suite(.hidden) struct FailingExitTests {
   @Test(.hidden) func failingExitTests() async {
-    await #expect(exitsWith: .failure) {}
-    await #expect(exitsWith: .exitCode(123)) {}
-    await #expect(exitsWith: .failure) {
+    await #expect(processExitsWith: .failure) {}
+    await #expect(processExitsWith: .exitCode(123)) {}
+    await #expect(processExitsWith: .failure) {
       exit(EXIT_SUCCESS)
     }
-    await #expect(exitsWith: .success) {
+    await #expect(processExitsWith: .success) {
       exit(EXIT_FAILURE)
     }
-    await #expect(exitsWith: .exitCode(123)) {
+    await #expect(processExitsWith: .exitCode(123)) {
       exit(0)
     }
 
-    await #expect(exitsWith: .exitCode(SIGABRT)) {
+    await #expect(processExitsWith: .exitCode(SIGABRT)) {
       // abort() raises on Windows, but we don't handle that yet and it is
       // reported as .failure (which will fuzzy-match with SIGABRT.)
       abort()
     }
-    await #expect(exitsWith: .signal(123)) {}
-    await #expect(exitsWith: .signal(123)) {
+    await #expect(processExitsWith: .signal(123)) {}
+    await #expect(processExitsWith: .signal(123)) {
       exit(123)
     }
-    await #expect(exitsWith: .signal(SIGSEGV)) {
+    await #expect(processExitsWith: .signal(SIGSEGV)) {
       abort() // sends SIGABRT, not SIGSEGV
     }
   }
@@ -493,7 +493,7 @@ private import _TestingInternals
 #if false // intentionally fails to compile
 @Test(.hidden, arguments: 100 ..< 200)
 func sellIceCreamCones(count: Int) async throws {
-  try await #require(exitsWith: .failure) {
+  try await #require(processExitsWith: .failure) {
     precondition(count < 10, "Too many ice cream cones")
   }
 }

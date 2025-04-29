@@ -75,8 +75,8 @@ the test when the code doesn't satisfy a requirement, use
 ### Checking how processes exit
 
 - <doc:exit-testing>
-- ``expect(exitsWith:observing:_:sourceLocation:performing:)``
-- ``require(exitsWith:observing:_:sourceLocation:performing:)``
+- ``expect(processExitsWith:observing:_:sourceLocation:performing:)``
+- ``require(processExitsWith:observing:_:sourceLocation:performing:)``
 - ``ExitStatus``
 - ``ExitTest``
 

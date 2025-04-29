@@ -506,7 +506,7 @@ public macro require<R>(
 /// causes a process to terminate:
 ///
 /// ```swift
-/// await #expect(exitsWith: .failure) {
+/// await #expect(processExitsWith: .failure) {
 ///   fatalError()
 /// }
 /// ```
@@ -519,7 +519,7 @@ public macro require<R>(
 #endif
 @discardableResult
 @freestanding(expression) public macro expect(
-  exitsWith expectedExitCondition: ExitTest.Condition,
+  processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
@@ -551,7 +551,7 @@ public macro require<R>(
 /// causes a process to terminate:
 ///
 /// ```swift
-/// try await #require(exitsWith: .failure) {
+/// try await #require(processExitsWith: .failure) {
 ///   fatalError()
 /// }
 /// ```
@@ -564,7 +564,7 @@ public macro require<R>(
 #endif
 @discardableResult
 @freestanding(expression) public macro require(
-  exitsWith expectedExitCondition: ExitTest.Condition,
+  processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,

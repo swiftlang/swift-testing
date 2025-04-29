@@ -76,7 +76,7 @@ struct ConfirmationTests {
       await confirmation(expectedCount: Int.max...Int.max) { _ in }
 #if !SWT_NO_EXIT_TESTS
       await withKnownIssue("Crashes in Swift standard library (rdar://139568287)") {
-        await #expect(exitsWith: .success) {
+        await #expect(processExitsWith: .success) {
           await confirmation(expectedCount: Int.max...) { _ in }
         }
       }
@@ -87,10 +87,10 @@ struct ConfirmationTests {
 #if !SWT_NO_EXIT_TESTS
   @Test("Confirmation requires positive count")
   func positiveCount() async {
-    await #expect(exitsWith: .failure) {
+    await #expect(processExitsWith: .failure) {
       await confirmation { $0.confirm(count: 0) }
     }
-    await #expect(exitsWith: .failure) {
+    await #expect(processExitsWith: .failure) {
       await confirmation { $0.confirm(count: -1) }
     }
   }

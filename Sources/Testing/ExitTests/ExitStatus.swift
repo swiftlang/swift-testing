@@ -16,8 +16,8 @@ private import _TestingInternals
 /// ``ExitTest/Condition`` using ``ExitTest/Condition/init(_:)``. That value
 /// can then be used to describe the condition under which an exit test is
 /// expected to pass or fail by passing it to
-/// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or
-/// ``require(exitsWith:observing:_:sourceLocation:performing:)``.
+/// ``expect(processExitsWith:observing:_:sourceLocation:performing:)`` or
+/// ``require(processExitsWith:observing:_:sourceLocation:performing:)``.
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)

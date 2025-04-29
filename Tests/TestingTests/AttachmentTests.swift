@@ -554,7 +554,7 @@ extension AttachmentTests {
 #if !SWT_NO_EXIT_TESTS
     @available(_uttypesAPI, *)
     @Test func cannotAttachCGImageWithNonImageType() async {
-      await #expect(exitsWith: .failure) {
+      await #expect(processExitsWith: .failure) {
         let attachment = Attachment(try Self.cgImage.get(), named: "diamond", as: .mp3)
         try attachment.attachableValue.withUnsafeBytes(for: attachment) { _ in }
       }

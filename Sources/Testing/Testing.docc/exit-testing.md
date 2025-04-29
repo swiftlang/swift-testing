@@ -41,12 +41,13 @@ functions correctly catch invalid inputs.
 
 ### Create an exit test
 
-To create an exit test, call either the ``expect(exitsWith:observing:_:sourceLocation:performing:)``
-or the ``require(exitsWith:observing:_:sourceLocation:performing:)`` macro:
+To create an exit test, call either the ``expect(processExitsWith:observing:_:sourceLocation:performing:)``
+or the ``require(processExitsWith:observing:_:sourceLocation:performing:)``
+macro:
 
 ```swift
 @Test func `Customer won't eat food unless it's delicious`() async {
-  let result = await #expect(exitsWith: .failure) {
+  let result = await #expect(processExitsWith: .failure) {
     var food = ...
     food.isDelicious = false
     Customer.current.eat(food)
@@ -71,7 +72,7 @@ directly.
   ```swift
   @Test func `Customer won't eat food unless it's nutritious`() async {
     let isNutritious = false
-    await #expect(exitsWith: .failure) {
+    await #expect(processExitsWith: .failure) {
       var food = ...
       food.isNutritious = isNutritious // ❌ ERROR: trying to capture state here
       Customer.current.eat(food)
@@ -104,10 +105,10 @@ records an issue.
 
 ### Gather output from the child process
 
-The ``expect(exitsWith:observing:_:sourceLocation:performing:)`` and
-``require(exitsWith:observing:_:sourceLocation:performing:)`` macros return an
-instance of ``ExitTest/Result`` that contains information about the state of the
-child process. 
+The ``expect(processExitsWith:observing:_:sourceLocation:performing:)`` and
+``require(processExitsWith:observing:_:sourceLocation:performing:)`` macros
+return an instance of ``ExitTest/Result`` that contains information about the
+state of the child process. 
 
 By default, the child process is configured without a standard output or
 standard error stream. If your test needs to review the content of either of
@@ -126,7 +127,7 @@ extension Customer {
 
 @Test func `Customer won't eat food unless it's delicious`() async {
   let result = await #expect(
-    exitsWith: .failure,
+    processExitsWith: .failure,
     observing: [\.standardOutputContent]
   ) {
     var food = ...

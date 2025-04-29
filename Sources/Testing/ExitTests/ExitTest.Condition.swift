@@ -18,8 +18,8 @@ extension ExitTest {
   ///
   /// Values of this type are used to describe the conditions under which an
   /// exit test is expected to pass or fail by passing them to
-  /// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or
-  /// ``require(exitsWith:observing:_:sourceLocation:performing:)``.
+  /// ``expect(processExitsWith:observing:_:sourceLocation:performing:)`` or
+  /// ``require(processExitsWith:observing:_:sourceLocation:performing:)``.
   ///
   /// ## Topics
   ///

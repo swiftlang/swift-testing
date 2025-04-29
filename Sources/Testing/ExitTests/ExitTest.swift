@@ -26,9 +26,9 @@ private import _TestingInternals
 /// A type describing an exit test.
 ///
 /// Instances of this type describe exit tests you create using the
-/// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or
-/// ``require(exitsWith:observing:_:sourceLocation:performing:)`` macro. You
-/// don't usually need to interact directly with an instance of this type.
+/// ``expect(processExitsWith:observing:_:sourceLocation:performing:)`` or
+/// ``require(processExitsWith:observing:_:sourceLocation:performing:)`` macro.
+/// You don't usually need to interact directly with an instance of this type.
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
@@ -93,10 +93,10 @@ public struct ExitTest: Sendable, ~Copyable {
   /// observed and returned to the caller.
   ///
   /// The testing library sets this property to match what was passed by the
-  /// developer to the `#expect(exitsWith:)` or `#require(exitsWith:)` macro.
-  /// If you are implementing an exit test handler, you can check the value of
-  /// this property to determine what information you need to preserve from your
-  /// child process.
+  /// developer to the `#expect(processExitsWith:)` or `#require(processExitsWith:)`
+  /// macro. If you are implementing an exit test handler, you can check the
+  /// value of this property to determine what information you need to preserve
+  /// from your child process.
   ///
   /// The value of this property always includes ``ExitTest/Result/exitStatus``
   /// even if the test author does not specify it.
@@ -234,9 +234,9 @@ extension ExitTest {
   /// Call the exit test in the current process.
   ///
   /// This function invokes the closure originally passed to
-  /// `#expect(exitsWith:)` _in the current process_. That closure is expected
-  /// to terminate the process; if it does not, the testing library will
-  /// terminate the process as if its `main()` function returned naturally.
+  /// `#expect(processExitsWith:)` _in the current process_. That closure is
+  /// expected to terminate the process; if it does not, the testing library
+  /// will terminate the process as if its `main()` function returned naturally.
   public consuming func callAsFunction() async -> Never {
     Self._disableCrashReporting()
 
@@ -325,8 +325,8 @@ extension ExitTest {
   ///
   /// - Returns: Whether or not an exit test was stored into `outValue`.
   ///
-  /// - Warning: This function is used to implement the `#expect(exitsWith:)`
-  ///   macro. Do not use it directly.
+  /// - Warning: This function is used to implement the
+  /// 	`#expect(processExitsWith:)` macro. Do not use it directly.
   public static func __store<each T>(
     _ id: (UInt64, UInt64, UInt64, UInt64),
     _ body: @escaping @Sendable (repeat each T) async throws -> Void,
@@ -414,12 +414,12 @@ extension ExitTest {
 ///   - sourceLocation: The source location of the expectation.
 ///
 /// This function contains the common implementation for all
-/// `await #expect(exitsWith:) { }` invocations regardless of calling
+/// `await #expect(processExitsWith:) { }` invocations regardless of calling
 /// convention.
 func callExitTest(
   identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
   encodingCapturedValues capturedValues: [ExitTest.CapturedValue],
-  exitsWith expectedExitCondition: ExitTest.Condition,
+  processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable],
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
@@ -428,7 +428,7 @@ func callExitTest(
   sourceLocation: SourceLocation
 ) async -> Result<ExitTest.Result?, any Error> {
   guard let configuration = Configuration.current ?? Configuration.all.first else {
-    preconditionFailure("A test must be running on the current task to use #expect(exitsWith:).")
+    preconditionFailure("A test must be running on the current task to use #expect(processExitsWith:).")
   }
 
   var result: ExitTest.Result
@@ -516,11 +516,10 @@ extension ExitTest {
   ///   the exit test.
   ///
   /// This handler is invoked when an exit test (i.e. a call to either
-  /// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or
-  /// ``require(exitsWith:observing:_:sourceLocation:performing:)``) is started.
-  /// The handler is responsible for initializing a new child environment
-  /// (typically a child process) and running the exit test identified by
-  /// `sourceLocation` there.
+  /// ``expect(processExitsWith:observing:_:sourceLocation:performing:)`` or
+  /// ``require(processExitsWith:observing:_:sourceLocation:performing:)``) is
+  /// started. The handler is responsible for initializing a new child
+  /// environment (typically a child process) and running `exitTest` there.
   ///
   /// In the child environment, you can find the exit test again by calling
   /// ``ExitTest/find(at:)`` and can run it by calling
