@@ -83,6 +83,12 @@ extension ExitTest.Condition {
     Self(_kind: .failure)
   }
 
+  /// Initialize an instance of this type that matches the specified exit
+  /// status.
+  ///
+  /// - Parameters:
+  ///   - exitStatus: The particular exit status this condition should match.
+  ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
   /// }
