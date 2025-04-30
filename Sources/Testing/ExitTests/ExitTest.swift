@@ -326,7 +326,7 @@ extension ExitTest {
   /// - Returns: Whether or not an exit test was stored into `outValue`.
   ///
   /// - Warning: This function is used to implement the
-  /// 	`#expect(processExitsWith:)` macro. Do not use it directly.
+  ///   `#expect(processExitsWith:)` macro. Do not use it directly.
   public static func __store<each T>(
     _ id: (UInt64, UInt64, UInt64, UInt64),
     _ body: @escaping @Sendable (repeat each T) async throws -> Void,
