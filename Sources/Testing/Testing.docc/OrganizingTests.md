@@ -124,7 +124,7 @@ struct MenuTests {
 The compiler emits an error when presented with a test suite that doesn't
 meet this requirement.
 
-### Test suite types must always be available
+#### Test suite types must always be available
 
 Although `@available` can be applied to a test function to limit its
 availability at runtime, a test suite type (and any types that contain it) must

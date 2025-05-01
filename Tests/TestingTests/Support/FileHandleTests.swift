@@ -85,7 +85,7 @@ struct FileHandleTests {
 #if !SWT_NO_EXIT_TESTS
   @Test("Writing requires contiguous storage")
   func writeIsContiguous() async {
-    await #expect(exitsWith: .failure) {
+    await #expect(processExitsWith: .failure) {
       let fileHandle = try FileHandle.null(mode: "wb")
       try fileHandle.write([1, 2, 3, 4, 5].lazy.filter { $0 == 1 })
     }

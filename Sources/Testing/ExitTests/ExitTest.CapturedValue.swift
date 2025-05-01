@@ -26,7 +26,7 @@ extension ExitTest {
   /// exit test:
   ///
   /// ```swift
-  /// await #expect(exitsWith: .failure) { [a = a as T, b = b as U, c = c as V] in
+  /// await #expect(processExitsWith: .failure) { [a = a as T, b = b as U, c = c as V] in
   ///   ...
   /// }
   /// ```
