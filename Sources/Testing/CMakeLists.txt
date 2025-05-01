@@ -36,7 +36,7 @@ add_library(Testing
   ExitTests/ExitTest.Condition.swift
   ExitTests/ExitTest.Result.swift
   ExitTests/SpawnProcess.swift
-  ExitTests/StatusAtExit.swift
+  ExitTests/ExitStatus.swift
   ExitTests/WaitFor.swift
   Expectations/Expectation.swift
   Expectations/Expectation+Macro.swift
@@ -97,6 +97,7 @@ add_library(Testing
   Traits/ConditionTrait.swift
   Traits/ConditionTrait+Macro.swift
   Traits/HiddenTrait.swift
+  Traits/IssueHandlingTrait.swift
   Traits/ParallelizationTrait.swift
   Traits/Tags/Tag.Color.swift
   Traits/Tags/Tag.Color+Loading.swift

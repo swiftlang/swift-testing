@@ -437,13 +437,13 @@ struct ConditionMacroTests {
   }
 
 #if ExperimentalExitTestValueCapture
-  @Test("#expect(exitsWith:) produces a diagnostic for a bad capture",
+  @Test("#expect(processExitsWith:) produces a diagnostic for a bad capture",
         arguments: [
-          "#expectExitTest(exitsWith: x) { [weak a] in }":
+          "#expectExitTest(processExitsWith: x) { [weak a] in }":
             "Specifier 'weak' cannot be used with captured value 'a'",
-          "#expectExitTest(exitsWith: x) { [a] in }":
+          "#expectExitTest(processExitsWith: x) { [a] in }":
             "Type of captured value 'a' is ambiguous",
-          "#expectExitTest(exitsWith: x) { [a = b] in }":
+          "#expectExitTest(processExitsWith: x) { [a = b] in }":
             "Type of captured value 'a' is ambiguous",
         ]
   )
@@ -463,8 +463,8 @@ struct ConditionMacroTests {
   @Test(
     "Capture list on an exit test produces a diagnostic",
     arguments: [
-      "#expectExitTest(exitsWith: x) { [a] in }":
-        "Cannot specify a capture clause in closure passed to '#expectExitTest(exitsWith:_:)'"
+      "#expectExitTest(processExitsWith: x) { [a] in }":
+        "Cannot specify a capture clause in closure passed to '#expectExitTest(processExitsWith:_:)'"
     ]
   )
   func exitTestCaptureListProducesDiagnostic(input: String, expectedMessage: String) throws {

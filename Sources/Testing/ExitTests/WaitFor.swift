@@ -20,7 +20,7 @@ internal import _TestingInternals
 ///
 /// - Throws: If the exit status of the process with ID `pid` cannot be
 ///   determined (i.e. it does not represent an exit condition.)
-private func _blockAndWait(for pid: consuming pid_t) throws -> StatusAtExit {
+private func _blockAndWait(for pid: consuming pid_t) throws -> ExitStatus {
   let pid = consume pid
 
   // Get the exit status of the process or throw an error (other than EINTR.)
@@ -61,7 +61,7 @@ private func _blockAndWait(for pid: consuming pid_t) throws -> StatusAtExit {
 /// - Note: The open-source implementation of libdispatch available on Linux
 ///   and other platforms does not support `DispatchSourceProcess`. Those
 ///   platforms use an alternate implementation below.
-func wait(for pid: consuming pid_t) async throws -> StatusAtExit {
+func wait(for pid: consuming pid_t) async throws -> ExitStatus {
   let pid = consume pid
 
   let source = DispatchSource.makeProcessSource(identifier: pid, eventMask: .exit)
@@ -80,7 +80,7 @@ func wait(for pid: consuming pid_t) async throws -> StatusAtExit {
 }
 #elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
 /// A mapping of awaited child PIDs to their corresponding Swift continuations.
-private let _childProcessContinuations = LockedWith<pthread_mutex_t, [pid_t: CheckedContinuation<StatusAtExit, any Error>]>()
+private let _childProcessContinuations = LockedWith<pthread_mutex_t, [pid_t: CheckedContinuation<ExitStatus, any Error>]>()
 
 /// A condition variable used to suspend the waiter thread created by
 /// `_createWaitThread()` when there are no child processes to await.
@@ -202,7 +202,7 @@ private let _createWaitThread: Void = {
 ///
 /// On Apple platforms, the libdispatch-based implementation above is more
 /// efficient because it does not need to permanently reserve a thread.
-func wait(for pid: consuming pid_t) async throws -> StatusAtExit {
+func wait(for pid: consuming pid_t) async throws -> ExitStatus {
   let pid = consume pid
 
   // Ensure the waiter thread is running.
@@ -239,7 +239,7 @@ func wait(for pid: consuming pid_t) async throws -> StatusAtExit {
 /// This implementation of `wait(for:)` calls `RegisterWaitForSingleObject()` to
 /// wait for `processHandle`, suspends the calling task until the waiter's
 /// callback is called, then calls `GetExitCodeProcess()`.
-func wait(for processHandle: consuming HANDLE) async throws -> StatusAtExit {
+func wait(for processHandle: consuming HANDLE) async throws -> ExitStatus {
   let processHandle = consume processHandle
   defer {
     _ = CloseHandle(processHandle)
@@ -283,6 +283,6 @@ func wait(for processHandle: consuming HANDLE) async throws -> StatusAtExit {
 }
 #else
 #warning("Platform-specific implementation missing: cannot wait for child processes to exit")
-func wait(for processID: consuming Never) async throws -> StatusAtExit {}
+func wait(for processID: consuming Never) async throws -> ExitStatus {}
 #endif
 #endif
