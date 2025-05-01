@@ -8,7 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@_spi(Experimental)
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
@@ -16,15 +15,20 @@ extension ExitTest {
   /// A type representing the result of an exit test after it has exited and
   /// returned control to the calling test function.
   ///
-  /// Both ``expect(exitsWith:observing:_:sourceLocation:performing:)`` and
-  /// ``require(exitsWith:observing:_:sourceLocation:performing:)`` return
-  /// instances of this type.
+  /// Both ``expect(processExitsWith:observing:_:sourceLocation:performing:)``
+  /// and ``require(processExitsWith:observing:_:sourceLocation:performing:)``
+  /// return instances of this type.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   public struct Result: Sendable {
-    /// The exit condition the exit test exited with.
+    /// The exit status reported by the process hosting the exit test.
     ///
-    /// When the exit test passes, the value of this property is equal to the
-    /// exit status reported by the process that hosted the exit test.
-    public var statusAtExit: StatusAtExit
+    /// @Metadata {
+    ///   @Available(Swift, introduced: 6.2)
+    /// }
+    public var exitStatus: ExitStatus
 
     /// All bytes written to the standard output stream of the exit test before
     /// it exited.
@@ -45,11 +49,15 @@ extension ExitTest {
     ///
     /// To enable gathering output from the standard output stream during an
     /// exit test, pass `\.standardOutputContent` in the `observedValues`
-    /// argument of ``expect(exitsWith:observing:_:sourceLocation:performing:)``
-    /// or ``require(exitsWith:observing:_:sourceLocation:performing:)``.
+    /// argument of ``expect(processExitsWith:observing:_:sourceLocation:performing:)``
+    /// or ``require(processExitsWith:observing:_:sourceLocation:performing:)``.
     ///
     /// If you did not request standard output content when running an exit
     /// test, the value of this property is the empty array.
+    ///
+    /// @Metadata {
+    ///   @Available(Swift, introduced: 6.2)
+    /// }
     public var standardOutputContent: [UInt8] = []
 
     /// All bytes written to the standard error stream of the exit test before
@@ -71,16 +79,20 @@ extension ExitTest {
     ///
     /// To enable gathering output from the standard error stream during an exit
     /// test, pass `\.standardErrorContent` in the `observedValues` argument of
-    /// ``expect(exitsWith:observing:_:sourceLocation:performing:)`` or
-    /// ``require(exitsWith:observing:_:sourceLocation:performing:)``.
+    /// ``expect(processExitsWith:observing:_:sourceLocation:performing:)`` or
+    /// ``require(processExitsWith:observing:_:sourceLocation:performing:)``.
     ///
     /// If you did not request standard error content when running an exit test,
     /// the value of this property is the empty array.
+    ///
+    /// @Metadata {
+    ///   @Available(Swift, introduced: 6.2)
+    /// }
     public var standardErrorContent: [UInt8] = []
 
     @_spi(ForToolsIntegrationOnly)
-    public init(statusAtExit: StatusAtExit) {
-      self.statusAtExit = statusAtExit
+    public init(exitStatus: ExitStatus) {
+      self.exitStatus = exitStatus
     }
   }
 }

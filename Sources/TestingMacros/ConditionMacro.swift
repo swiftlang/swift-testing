@@ -14,7 +14,7 @@ import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
 
 #if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY
-#error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand #expect(exitsWith:)")
+#error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand #expect(processExitsWith:)")
 #endif
 
 /// A protocol containing the common implementation for the expansions of the
@@ -628,7 +628,7 @@ extension ExitTestExpectMacro {
   }()
 }
 
-/// A type describing the expansion of the `#expect(exitsWith:)` macro.
+/// A type describing the expansion of the `#expect(processExitsWith:)` macro.
 ///
 /// This type checks for nested invocations of `#expect()` and `#require()` and
 /// diagnoses them as unsupported. It is otherwise exactly equivalent to
@@ -637,7 +637,7 @@ public struct ExitTestExpectMacro: ExitTestConditionMacro {
   public typealias Base = ExpectMacro
 }
 
-/// A type describing the expansion of the `#require(exitsWith:)` macro.
+/// A type describing the expansion of the `#require(processExitsWith:)` macro.
 ///
 /// This type checks for nested invocations of `#expect()` and `#require()` and
 /// diagnoses them as unsupported. It is otherwise exactly equivalent to

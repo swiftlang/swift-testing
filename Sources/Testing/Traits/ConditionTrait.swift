@@ -69,7 +69,10 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
   ///
   /// The evaluation is performed each time this function is called, and is not
   /// cached.
-  @_spi(Experimental)
+  /// 
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
   public func evaluate() async throws -> Bool {
     switch kind {
     case let .conditional(condition):

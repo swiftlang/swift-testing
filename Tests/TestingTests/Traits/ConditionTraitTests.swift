@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(Experimental) import Testing
+@testable import Testing
 
 @Suite("Condition Trait Tests", .tags(.traitRelated))
 struct ConditionTraitTests {

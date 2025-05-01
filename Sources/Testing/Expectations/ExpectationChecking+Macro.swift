@@ -1139,15 +1139,14 @@ public func __checkClosureCall<R>(
 /// Check that an expression always exits (terminates the current process) with
 /// a given status.
 ///
-/// This overload is used for `await #expect(exitsWith:) { }` invocations that
-/// do not capture any state.
+/// This overload is used for `await #expect(processExitsWith:) { }` invocations
+/// that do not capture any state.
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-@_spi(Experimental)
 public func __checkClosureCall(
   identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
-  exitsWith expectedExitCondition: ExitTest.Condition,
+  processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
   performing _: @convention(thin) () -> Void,
   expression: __Expression,
@@ -1159,7 +1158,7 @@ public func __checkClosureCall(
   await callExitTest(
     identifiedBy: exitTestID,
     encodingCapturedValues: [],
-    exitsWith: expectedExitCondition,
+    processExitsWith: expectedExitCondition,
     observing: observedValues,
     expression: expression,
     comments: comments(),
@@ -1171,8 +1170,8 @@ public func __checkClosureCall(
 /// Check that an expression always exits (terminates the current process) with
 /// a given status.
 ///
-/// This overload is used for `await #expect(exitsWith:) { }` invocations that
-/// capture some values with an explicit capture list.
+/// This overload is used for `await #expect(processExitsWith:) { }` invocations
+/// that capture some values with an explicit capture list.
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
@@ -1180,7 +1179,7 @@ public func __checkClosureCall(
 public func __checkClosureCall<each T>(
   identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
   encodingCapturedValues capturedValues: (repeat each T),
-  exitsWith expectedExitCondition: ExitTest.Condition,
+  processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
   performing _: @convention(thin) () -> Void,
   expression: __Expression,
@@ -1192,7 +1191,7 @@ public func __checkClosureCall<each T>(
   await callExitTest(
     identifiedBy: exitTestID,
     encodingCapturedValues: Array(repeat each capturedValues),
-    exitsWith: expectedExitCondition,
+    processExitsWith: expectedExitCondition,
     observing: observedValues,
     expression: expression,
     comments: comments(),
