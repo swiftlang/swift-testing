@@ -60,6 +60,8 @@ exit test. When an exit test is performed at runtime, the testing library starts
 a new process with the same executable as the current process. The current task
 is then suspended (as with `await`) and waits for the child process to exit.
 
+- Note: An exit test cannot run within another exit test.
+
 The parent process doesn't call the body of the exit test. Instead, the child
 process treats the body of the exit test as its `main()` function and calls it
 directly.
