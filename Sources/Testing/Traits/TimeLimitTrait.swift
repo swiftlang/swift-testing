@@ -264,7 +264,7 @@ func withTimeLimit(
   _ body: @escaping @Sendable () async throws -> Void,
   timeoutHandler: @escaping @Sendable () -> Void
 ) async throws {
-  try await withThrowingTaskGroup(of: Void.self) { group in
+  try await withThrowingTaskGroup { group in
     group.addTask {
       // If sleep() returns instead of throwing a CancellationError, that means
       // the timeout was reached before this task could be cancelled, so call

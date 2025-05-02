@@ -156,7 +156,7 @@ extension Runner {
     in sequence: some Sequence<E>,
     _ body: @Sendable @escaping (E) async throws -> Void
   ) async throws where E: Sendable {
-    try await withThrowingTaskGroup(of: Void.self) { taskGroup in
+    try await withThrowingTaskGroup { taskGroup in
       for element in sequence {
         // Each element gets its own subtask to run in.
         _ = taskGroup.addTaskUnlessCancelled {
@@ -430,7 +430,7 @@ extension Runner {
           Event.post(.iterationEnded(iterationIndex), for: (nil, nil), configuration: runner.configuration)
         }
 
-        await withTaskGroup(of: Void.self) { [runner] taskGroup in
+        await withTaskGroup { [runner] taskGroup in
           _ = taskGroup.addTaskUnlessCancelled {
             try? await _runStep(atRootOf: runner.plan.stepGraph)
           }
