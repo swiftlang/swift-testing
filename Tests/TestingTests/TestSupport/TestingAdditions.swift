@@ -162,11 +162,11 @@ extension Test {
   ///   - testFunction: The function to call when running this test. During
   ///     testing, this function is called once for each element in
   ///     `collection`.
-  //
-  // @Comment {
-  //   - Bug: The testing library should support variadic generics.
-  //     ([103416861](rdar://103416861))
-  // }
+  ///
+  /// @Comment {
+  ///   - Bug: The testing library should support variadic generics.
+  ///     ([103416861](rdar://103416861))
+  /// }
   init<C>(
     _ traits: any TestTrait...,
     arguments collection: C,
@@ -191,11 +191,11 @@ extension Test {
   ///   - testFunction: The function to call when running this test. During
   ///     testing, this function is called once for each pair of elements in
   ///     `collection1` and `collection2`.
-  //
-  // @Comment {
-  //   - Bug: The testing library should support variadic generics.
-  //     ([103416861](rdar://103416861))
-  // }
+  ///
+  /// @Comment {
+  ///   - Bug: The testing library should support variadic generics.
+  ///     ([103416861](rdar://103416861))
+  /// }
   init<C1, C2>(
     _ traits: any TestTrait...,
     arguments collection1: C1, _ collection2: C2,
