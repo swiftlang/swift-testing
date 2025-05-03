@@ -49,17 +49,17 @@ struct DiscoveryTests {
 #if !SWT_NO_EXIT_TESTS
   @Test("TestContentKind rejects bad string literals")
   func badTestContentKindLiteral() async {
-    await #expect(exitsWith: .failure) {
+    await #expect(processExitsWith: .failure) {
       _ = "abc" as TestContentKind
     }
-    await #expect(exitsWith: .failure) {
+    await #expect(processExitsWith: .failure) {
       _ = "abcde" as TestContentKind
     }
   }
 #endif
 
 #if !SWT_NO_DYNAMIC_LINKING && hasFeature(SymbolLinkageMarkers)
-  struct MyTestContent: Testing.DiscoverableAsTestContent {
+  struct MyTestContent: DiscoverableAsTestContent {
     typealias TestContentAccessorHint = UInt32
 
     var value: UInt32

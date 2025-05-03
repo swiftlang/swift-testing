@@ -48,6 +48,13 @@ types that customize the behavior of your tests.
 - ``Trait/bug(_:id:_:)-10yf5``
 - ``Trait/bug(_:id:_:)-3vtpl``
 
+<!--
+### Handling issues
+
+- ``Trait/transformIssues(_:)``
+- ``Trait/filterIssues(_:)``
+-->
+
 ### Creating custom traits
 
 - ``Trait``
@@ -64,3 +71,4 @@ types that customize the behavior of your tests.
 - ``Tag``
 - ``Tag/List``
 - ``TimeLimitTrait``
+<!--- ``IssueHandlingTrait``-->

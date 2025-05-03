@@ -220,14 +220,14 @@ public macro Test<C>(
 /// During testing, the associated test function is called once for each element
 /// in `collection`.
 ///
+/// @Comment {
+///   - Bug: The testing library should support variadic generics.
+///     ([103416861](rdar://103416861))
+/// }
+///
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
-//
-// @Comment {
-//   - Bug: The testing library should support variadic generics.
-//     ([103416861](rdar://103416861))
-// }
 @attached(peer) public macro Test<C>(
   _ displayName: _const String? = nil,
   _ traits: any TestTrait...,
@@ -273,14 +273,14 @@ extension Test {
 /// During testing, the associated test function is called once for each pair of
 /// elements in `collection1` and `collection2`.
 ///
+/// @Comment {
+///   - Bug: The testing library should support variadic generics.
+///     ([103416861](rdar://103416861))
+/// }
+///
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
-//
-// @Comment {
-//   - Bug: The testing library should support variadic generics.
-//     ([103416861](rdar://103416861))
-// }
 @attached(peer)
 @_documentation(visibility: private)
 public macro Test<C1, C2>(
@@ -301,14 +301,14 @@ public macro Test<C1, C2>(
 /// During testing, the associated test function is called once for each pair of
 /// elements in `collection1` and `collection2`.
 ///
+/// @Comment {
+///   - Bug: The testing library should support variadic generics.
+///     ([103416861](rdar://103416861))
+/// }
+///
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
-//
-// @Comment {
-//   - Bug: The testing library should support variadic generics.
-//     ([103416861](rdar://103416861))
-// }
 @attached(peer) public macro Test<C1, C2>(
   _ displayName: _const String? = nil,
   _ traits: any TestTrait...,
@@ -327,14 +327,14 @@ public macro Test<C1, C2>(
 /// During testing, the associated test function is called once for each element
 /// in `zippedCollections`.
 ///
+/// @Comment {
+///   - Bug: The testing library should support variadic generics.
+///     ([103416861](rdar://103416861))
+/// }
+///
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
-//
-// @Comment {
-//   - Bug: The testing library should support variadic generics.
-//     ([103416861](rdar://103416861))
-// }
 @attached(peer)
 @_documentation(visibility: private)
 public macro Test<C1, C2>(
@@ -355,14 +355,14 @@ public macro Test<C1, C2>(
 /// During testing, the associated test function is called once for each element
 /// in `zippedCollections`.
 ///
+/// @Comment {
+///   - Bug: The testing library should support variadic generics.
+///     ([103416861](rdar://103416861))
+/// }
+///
 /// ## See Also
 ///
 /// - <doc:DefiningTests>
-//
-// @Comment {
-//   - Bug: The testing library should support variadic generics.
-//     ([103416861](rdar://103416861))
-// }
 @attached(peer) public macro Test<C1, C2>(
   _ displayName: _const String? = nil,
   _ traits: any TestTrait...,
@@ -534,6 +534,15 @@ extension Test {
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
 @inlinable public func __requiringAwait<T>(_ value: consuming T, isolation: isolated (any Actor)? = #isolation) async -> T where T: ~Copyable {
+  value
+}
+
+/// A function that abstracts away whether or not the `unsafe` keyword is needed
+/// on an expression.
+///
+/// - Warning: This function is used to implement the `@Test` macro. Do not use
+///   it directly.
+@unsafe @inlinable public func __requiringUnsafe<T>(_ value: consuming T) throws -> T where T: ~Copyable {
   value
 }
 

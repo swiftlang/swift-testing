@@ -8,11 +8,11 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+@testable @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 #if canImport(Foundation)
 import Foundation
-@_spi(Experimental) import _Testing_Foundation
+import _Testing_Foundation
 #endif
 #if canImport(CoreGraphics)
 import CoreGraphics
@@ -554,7 +554,7 @@ extension AttachmentTests {
 #if !SWT_NO_EXIT_TESTS
     @available(_uttypesAPI, *)
     @Test func cannotAttachCGImageWithNonImageType() async {
-      await #expect(exitsWith: .failure) {
+      await #expect(processExitsWith: .failure) {
         let attachment = Attachment(try Self.cgImage.get(), named: "diamond", as: .mp3)
         try attachment.attachableValue.withUnsafeBytes(for: attachment) { _ in }
       }

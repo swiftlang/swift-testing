@@ -240,6 +240,59 @@ struct ConditionMacroTests {
       // Capture me
       Testing.__checkValue(try x(), expression: .__fromSyntaxNode("try x()"), comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
       """,
+
+      """
+      // Capture me
+      try #expect(x)
+      """:
+      """
+      // Capture me
+      try Testing.__checkValue(x, expression: .__fromSyntaxNode("x"), comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+      """,
+
+      """
+      // Capture me
+      await #expect(x)
+      """:
+      """
+      // Capture me
+      await Testing.__checkValue(x, expression: .__fromSyntaxNode("x"), comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+      """,
+
+      """
+      // Ignore me
+
+      // Comment for try
+      try
+      // Comment for await
+      await
+      // Comment for expect
+      #expect(x)
+      """:
+      """
+      // Comment for try
+      try
+      // Comment for await
+      await
+      // Comment for expect
+      Testing.__checkValue(x, expression: .__fromSyntaxNode("x"), comments: [.__line("// Comment for try"), .__line("// Comment for await"), .__line("// Comment for expect")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+      """,
+
+      """
+      // Ignore me
+      func example() {
+        // Capture me
+        #expect(x())
+      }
+      """:
+      """
+      func example() {
+        // Capture me
+        Testing.__checkFunctionCall((), calling: { _ in
+          x()
+        }, expression: .__fromFunctionCall(nil, "x"), comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+      }
+      """,
     ]
   )
   func commentCapture(input: String, expectedOutput: String) throws {
@@ -383,20 +436,46 @@ struct ConditionMacroTests {
     #expect(diagnostic.message.contains("is redundant"))
   }
 
+#if ExperimentalExitTestValueCapture
+  @Test("#expect(processExitsWith:) produces a diagnostic for a bad capture",
+        arguments: [
+          "#expectExitTest(processExitsWith: x) { [weak a] in }":
+            "Specifier 'weak' cannot be used with captured value 'a'",
+          "#expectExitTest(processExitsWith: x) { [a] in }":
+            "Type of captured value 'a' is ambiguous",
+          "#expectExitTest(processExitsWith: x) { [a = b] in }":
+            "Type of captured value 'a' is ambiguous",
+        ]
+  )
+  func exitTestCaptureDiagnostics(input: String, expectedMessage: String) throws {
+    try ExitTestExpectMacro.$isValueCapturingEnabled.withValue(true) {
+      let (_, diagnostics) = try parse(input)
+
+      #expect(diagnostics.count > 0)
+      for diagnostic in diagnostics {
+        #expect(diagnostic.diagMessage.severity == .error)
+        #expect(diagnostic.message == expectedMessage)
+      }
+    }
+  }
+#endif
+
   @Test(
     "Capture list on an exit test produces a diagnostic",
     arguments: [
-      "#expectExitTest(exitsWith: x) { [a] in }":
-        "Cannot specify a capture clause in closure passed to '#expectExitTest(exitsWith:_:)'"
+      "#expectExitTest(processExitsWith: x) { [a] in }":
+        "Cannot specify a capture clause in closure passed to '#expectExitTest(processExitsWith:_:)'"
     ]
   )
   func exitTestCaptureListProducesDiagnostic(input: String, expectedMessage: String) throws {
-    let (_, diagnostics) = try parse(input)
+    try ExitTestExpectMacro.$isValueCapturingEnabled.withValue(false) {
+      let (_, diagnostics) = try parse(input)
 
-    #expect(diagnostics.count > 0)
-    for diagnostic in diagnostics {
-      #expect(diagnostic.diagMessage.severity == .error)
-      #expect(diagnostic.message == expectedMessage)
+      #expect(diagnostics.count > 0)
+      for diagnostic in diagnostics {
+        #expect(diagnostic.diagMessage.severity == .error)
+        #expect(diagnostic.message == expectedMessage)
+      }
     }
   }
 
