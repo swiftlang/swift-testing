@@ -293,7 +293,7 @@ struct MiscellaneousTests {
     #expect(testType.displayName == "Named Sendable test type")
   }
 
-#if compiler(>=6.2)
+#if compiler(>=6.2) && hasFeature(RawIdentifiers)
   @Test func `Test with raw identifier gets a display name`() throws {
     let test = try #require(Test.current)
     #expect(test.displayName == "Test with raw identifier gets a display name")
