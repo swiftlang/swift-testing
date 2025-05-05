@@ -194,22 +194,21 @@ extension TypeInfo {
       components[0] = moduleName
     }
 
-    // If a type is private or embedded in a function, its fully qualified
-    // name may include "(unknown context at $xxxxxxxx)" as a component. Strip
-    // those out as they're uninteresting to us.
-    components = components.filter { !$0.starts(with: "(unknown context at") }
-
-    // Replace non-breaking spaces with spaces. See the helper function's
-    // documentation for more information.
-    components = components.map { component in
-      if let component = _rewriteNonBreakingSpacesAsASCIISpaces(in: component) {
-        component[...]
-      } else {
-        component
-      }
-    }
-
-    return components.map(String.init)
+    return components.lazy
+      .filter { component in
+        // If a type is private or embedded in a function, its fully qualified
+        // name may include "(unknown context at $xxxxxxxx)" as a component.
+        // Strip those out as they're uninteresting to us.
+        !component.starts(with: "(unknown context at")
+      }.map { component in
+        // Replace non-breaking spaces with spaces. See the helper function's
+        // documentation for more information.
+        if let component = _rewriteNonBreakingSpacesAsASCIISpaces(in: component) {
+          component[...]
+        } else {
+          component
+        }
+      }.map(String.init)
   }
 
   /// The complete name of this type, with the names of all referenced types
@@ -284,6 +283,7 @@ extension TypeInfo {
       // documentation for more information.
       var result = String(describing: type)
       result = Self._rewriteNonBreakingSpacesAsASCIISpaces(in: result) ?? result
+
       return result
     case let .nameOnly(_, unqualifiedName, _):
       return unqualifiedName
