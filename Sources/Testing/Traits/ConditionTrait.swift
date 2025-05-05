@@ -226,11 +226,79 @@ extension Trait where Self == ConditionTrait {
 
 
 extension Trait where Self == ConditionTrait {
-  public static func &&(lhs: Self, rhs: Self) -> GroupedConditionTrait {
-    GroupedConditionTrait(conditionTraits: [lhs,rhs], operations: [.and])
-    }
+  /// Combines two ``ConditionTrait`` conditions using the AND (`&&`) operator.
+  ///
+  /// Use this operator to group two conditions such that
+  /// the resulting ``GroupedConditionTraits``
+  /// evaluates to `true` **only if both** subconditions are `true`.
+  ///
+  /// - Example:
+  ///   ```swift
+  ///   struct AppFeature {
+  ///     static let isFeatureEnabled: Bool = true
+  ///     static let osIsAndroid: Bool = true
+  ///
+  ///     static let featureCondition: ConditionTrait = .disabled(if: isFeatureEnabled)
+  ///     static let osCondition: ConditionTrait = .disabled(if: osIsAndroid)
+  ///   }
+  ///
+  ///   @Test(AppFeature.featureCondition && AppFeature.osCondition)
+  ///   func foo() {}
+  ///
+  ///   @Test(.disabled(if: AppFeature.isFeatureEnabled && AppFeature.osIsAndroid))
+  ///   func bar() {}
+  ///   ```
+  ///   In this example, both `foo` and `bar` will be disabled only when **both**
+  ///   `AppFeature.isFeatureEnabled` is `true` and the OS is Android.
+  ///
+  /// - Parameters:
+  ///   - lhs: The left-hand side condition.
+  ///   - rhs: The right-hand side condition.
+  /// - Returns: A ``GroupedConditionTraits`` instance
+  ///   representing the AND of the two conditions.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
+  public static func &&(lhs: Self, rhs: Self) -> GroupedConditionTraits {
+    GroupedConditionTraits(conditionTraits: [lhs, rhs], operations: [.and])
+  }
 
-  public static func ||(lhs: Self, rhs: Self) -> GroupedConditionTrait {
-    GroupedConditionTrait(conditionTraits: [lhs, rhs], operations: [.or])
+  /// Combines two ``ConditionTrait`` conditions using the OR (`||`) operator.
+  ///
+  /// Use this operator to group two conditions such that
+  /// the resulting ``GroupedConditionTraits``
+  /// evaluates to `true` if **either** of the subconditions is `true`.
+  ///
+  /// - Example:
+  ///   ```swift
+  ///   struct AppFeature {
+  ///     static let isInternalBuild: Bool = false
+  ///     static let isSimulator: Bool = true
+  ///
+  ///     static let buildCondition: ConditionTrait = .enabled(if: isInternalBuild)
+  ///     static let platformCondition: ConditionTrait = .enabled(if: isSimulator)
+  ///   }
+  ///
+  ///   @Test(AppFeature.buildCondition || AppFeature.platformCondition)
+  ///   func foo() {}
+  ///
+  ///   @Test(.enabled(if: AppFeature.isInternalBuild || AppFeature.isSimulator))
+  ///   func bar() {}
+  ///   ```
+  ///   In this example, both `foo` and `bar` will be enabled when **either**
+  ///   the build is internal or running on a simulator.
+  ///
+  /// - Parameters:
+  ///   - lhs: The left-hand side condition.
+  ///   - rhs: The right-hand side condition.
+  /// - Returns: A ``GroupedConditionTraits`` instance
+  ///   representing the OR of the two conditions.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
+  public static func ||(lhs: Self, rhs: Self) -> GroupedConditionTraits {
+    GroupedConditionTraits(conditionTraits: [lhs, rhs], operations: [.or])
   }
 }
