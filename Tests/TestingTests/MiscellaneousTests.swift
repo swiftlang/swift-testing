@@ -308,7 +308,7 @@ struct MiscellaneousTests {
     let typeInfo = TypeInfo(describing: `Suite With De Facto Display Name`.self)
     let suite = Test(traits: [], sourceLocation: #_sourceLocation, containingTypeInfo: typeInfo, isSynthesized: true)
     let displayName = try #require(suite.displayName)
-    #expect(Array(displayName.unicodeScalars) == Array("Suite With De Facto Display Name".unicodeScalars))
+    #expect(displayName == "Suite With De Facto Display Name")
   }
 #endif
 
