@@ -181,7 +181,7 @@ struct TimeLimitTraitTests {
   @Test("Cancelled tests can exit early (cancellation checking works)")
   func cancelledTestExitsEarly() async throws {
     let timeAwaited = await Test.Clock().measure {
-      await withTaskGroup(of: Void.self) { taskGroup in
+      await withTaskGroup { taskGroup in
         taskGroup.addTask {
           await Test {
             try await Test.Clock.sleep(for: .seconds(60) * 60)
