@@ -142,6 +142,34 @@ func rawIdentifierAwareSplit<S>(_ string: S, separator: Character, maxSplits: In
 }
 
 extension TypeInfo {
+  /// Replace any non-breaking spaces in the given string with normal spaces.
+  ///
+  /// - Parameters:
+  ///   - rawIdentifier: The string to rewrite.
+  ///
+  /// - Returns: A copy of `rawIdentifier` with non-breaking spaces (`U+00A0`)
+  ///   replaced with normal spaces (`U+0020').
+  ///
+  /// When the Swift runtime demangles a raw identifier, it [replaces](https://github.com/swiftlang/swift/blob/d033eec1aa427f40dcc38679d43b83d9dbc06ae7/lib/Basic/Mangler.cpp#L250)
+  /// normal ASCII spaces with non-breaking spaces to maintain compatibility
+  /// with historical usages of spaces in mangled name forms. Non-breaking
+  /// spaces are not otherwise valid in raw identifiers, so this transformation
+  /// is reversible.
+  private static func _rewriteNonBreakingSpacesAsASCIISpaces(in rawIdentifier: some StringProtocol) -> String? {
+    guard rawIdentifier.contains("\u{00A0}") else {
+      return nil
+    }
+
+    let result = rawIdentifier.lazy.map { c in
+      if c == "\u{00A0}" {
+        " " as Character
+      } else {
+        c
+      }
+    }
+    return String(result)
+  }
+
   /// An in-memory cache of fully-qualified type name components.
   private static let _fullyQualifiedNameComponentsCache = Locked<[ObjectIdentifier: [String]]>()
 
@@ -166,12 +194,21 @@ extension TypeInfo {
       components[0] = moduleName
     }
 
-    // If a type is private or embedded in a function, its fully qualified
-    // name may include "(unknown context at $xxxxxxxx)" as a component. Strip
-    // those out as they're uninteresting to us.
-    components = components.filter { !$0.starts(with: "(unknown context at") }
-
-    return components.map(String.init)
+    return components.lazy
+      .filter { component in
+        // If a type is private or embedded in a function, its fully qualified
+        // name may include "(unknown context at $xxxxxxxx)" as a component.
+        // Strip those out as they're uninteresting to us.
+        !component.starts(with: "(unknown context at")
+      }.map { component in
+        // Replace non-breaking spaces with spaces. See the helper function's
+        // documentation for more information.
+        if let component = _rewriteNonBreakingSpacesAsASCIISpaces(in: component) {
+          component[...]
+        } else {
+          component
+        }
+      }.map(String.init)
   }
 
   /// The complete name of this type, with the names of all referenced types
@@ -242,9 +279,14 @@ extension TypeInfo {
   public var unqualifiedName: String {
     switch _kind {
     case let .type(type):
-      String(describing: type)
+      // Replace non-breaking spaces with spaces. See the helper function's
+      // documentation for more information.
+      var result = String(describing: type)
+      result = Self._rewriteNonBreakingSpacesAsASCIISpaces(in: result) ?? result
+
+      return result
     case let .nameOnly(_, unqualifiedName, _):
-      unqualifiedName
+      return unqualifiedName
     }
   }
 
