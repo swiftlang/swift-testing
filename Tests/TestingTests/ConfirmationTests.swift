@@ -10,6 +10,10 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
+#if canImport(Foundation)
+private import Foundation
+#endif
+
 @Suite("Confirmation Tests")
 struct ConfirmationTests {
   @Test("Successful confirmations")
