@@ -96,7 +96,7 @@ struct CartesianProductTests {
     // Test that the product can be iterated multiple times concurrently.
     let (_, _, product) = computeCartesianProduct()
     let expectedSum = product.reduce(into: 0) { $0 &+= $1.1 }
-    await withTaskGroup(of: Int.self) { taskGroup in
+    await withTaskGroup { taskGroup in
       for _ in 0 ..< 10 {
         taskGroup.addTask {
           product.reduce(into: 0) { $0 &+= $1.1 }

@@ -84,7 +84,7 @@ extension Test {
       // a task group and collate their results.
       if useNewMode {
         let generators = Generator.allTestContentRecords().lazy.compactMap { $0.load() }
-        await withTaskGroup(of: Self.self) { taskGroup in
+        await withTaskGroup { taskGroup in
           for generator in generators {
             taskGroup.addTask { await generator.rawValue() }
           }
@@ -96,7 +96,7 @@ extension Test {
       // Perform legacy test discovery if needed.
       if useLegacyMode && result.isEmpty {
         let generators = Generator.allTypeMetadataBasedTestContentRecords().lazy.compactMap { $0.load() }
-        await withTaskGroup(of: Self.self) { taskGroup in
+        await withTaskGroup { taskGroup in
           for generator in generators {
             taskGroup.addTask { await generator.rawValue() }
           }

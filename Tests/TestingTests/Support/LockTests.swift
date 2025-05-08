@@ -36,7 +36,7 @@ struct LockTests {
   @Test("No lock")
   func noLock() async {
     let lock = LockedWith<Never, Int>(rawValue: 0)
-    await withTaskGroup(of: Void.self) { taskGroup in
+    await withTaskGroup { taskGroup in
       for _ in 0 ..< 100_000 {
         taskGroup.addTask {
           lock.increment()
