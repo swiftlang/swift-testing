@@ -64,7 +64,7 @@ You must include a source file in your test executable target with a
 from the swift-testing dylib. As such, its declaration could instead
 be written in a C header file with its own `module.modulemap`, or
 the runtime address could be obtained via
-[`dlsym()`](https://man7.org/linux/man-pages/man3/dlsym.3.html) or
+[`dlsym()`](https://pubs.opengroup.org/onlinepubs/9799919799/functions/dlsym.html) or
 [`GetProcAddress()`](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getprocaddress).
 
 ```swift
