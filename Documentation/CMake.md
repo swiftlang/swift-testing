@@ -60,8 +60,12 @@ endif()
 
 You must include a source file in your test executable target with a
 `@main` entry point. The example main below requires the experimental
-`Extern` feature. The declaration of `swt_abiv0_getEntryPoint` could
-also be written in a C header file with its own `module.modulemap`.
+`Extern` feature. The function `swt_abiv0_getEntryPoint` is exported
+from the swift-testing dylib. As such, its declaration could instead
+be written in a C header file with its own `module.modulemap`, or
+the runtime address could be obtained via
+[`dlsym()`](https://man7.org/linux/man-pages/man3/dlsym.3.html) or
+[`GetProcAddress()`](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getprocaddress).
 
 ```swift
 typealias EntryPoint = @convention(thin) @Sendable (_ configurationJSON: UnsafeRawBufferPointer?, _ recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void) async throws -> Bool
@@ -86,7 +90,7 @@ func swt_abiv0_getEntryPoint() -> UnsafeRawPointer
 ```
 
 For more information on the input configuration and output records of the ABI entry
-point, refer to the [ABI documentation](ABI/JSON.md)
+point, refer to the [ABI documentation](ABI/JSON.md).
 
 ## Integrate with CTest
 
