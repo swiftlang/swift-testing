@@ -99,6 +99,13 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
   public var isRecursive: Bool {
     true
   }
+  
+  /// Indicates whether the result of the evaluated condition
+  /// should be logically inverted.
+  ///
+  /// This allows the system to track if the condition's result
+  /// has been negated,
+  /// which is useful to differ `disabled(_:)` from `enabled(_:)`
   internal var isInverted: Bool = false
 }
 
@@ -261,7 +268,7 @@ extension Trait where Self == ConditionTrait {
   ///   @Available(Swift, introduced: 6.2)
   /// }
   public static func &&(lhs: Self, rhs: Self) -> GroupedConditionTraits {
-    GroupedConditionTraits(conditionTraits: [lhs, rhs], operations: [.and])
+    GroupedConditionTraits(.and(.trait(lhs), .trait(rhs)))
   }
 
   /// Combines two ``ConditionTrait`` conditions using the OR (`||`) operator.
@@ -299,6 +306,6 @@ extension Trait where Self == ConditionTrait {
   ///   @Available(Swift, introduced: 6.2)
   /// }
   public static func ||(lhs: Self, rhs: Self) -> GroupedConditionTraits {
-    GroupedConditionTraits(conditionTraits: [lhs, rhs], operations: [.or])
+    GroupedConditionTraits(.or(.trait(lhs), .trait(rhs)))
   }
 }

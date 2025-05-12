@@ -17,19 +17,19 @@ struct GroupedConditionTraitTests {
                                                    (Conditions.condition1 || Conditions.condition3, true),
                                                    (Conditions.condition4 || Conditions.condition4, true),
                                                    (Conditions.condition2 || Conditions.condition2, false),
-                                                   (Conditions.condition1 && Conditions.condition2 || Conditions.condition3 && Conditions.condition4, false)])
+                                                   ((Conditions.condition1 && Conditions.condition2) || (Conditions.condition3 && Conditions.condition4), true)])
   func evaluateCondition(_ condition: GroupedConditionTraits, _ expected: Bool) async throws {
     do {
       let result = try await condition.evaluate()
       #expect( result == expected)
     } catch {
-      
+      print(error)
     }
   }
   
 
   
-  @Test("Applying mixed traits", Conditions.condition2 || Conditions.condition2 || Conditions.condition2 || Conditions.condition2)
+  @Test("Applying mixed traits", Conditions.condition1 || Conditions.condition2 || Conditions.condition2 || Conditions.condition2)
   func applyMixedTraits() {
     #expect(true)
   }
