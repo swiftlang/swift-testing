@@ -91,9 +91,17 @@ static LANGID swt_MAKELANGID(int p, int s) {
 static DWORD_PTR swt_PROC_THREAD_ATTRIBUTE_HANDLE_LIST(void) {
   return PROC_THREAD_ATTRIBUTE_HANDLE_LIST;
 }
+
+/// Get the first section in an NT image.
+///
+/// This function is provided because `IMAGE_FIRST_SECTION()` is a complex macro
+/// and cannot be imported directly into Swift.
+static const IMAGE_SECTION_HEADER *_Null_unspecified swt_IMAGE_FIRST_SECTION(const IMAGE_NT_HEADERS *ntHeader) {
+  return IMAGE_FIRST_SECTION(ntHeader);
+}
 #endif
 
-#if defined(__linux__) || defined(__FreeBSD__) || defined(__ANDROID__)
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__ANDROID__)
 /// The environment block.
 ///
 /// By POSIX convention, the environment block variable is declared in client
@@ -107,25 +115,6 @@ SWT_EXTERN char *_Nullable *_Null_unspecified environ;
 static char *_Nullable *_Null_unspecified swt_environ(void) {
   return environ;
 }
-#endif
-
-#if defined(__linux__)
-/// Set the name of the current thread.
-///
-/// This function declaration is provided because `pthread_setname_np()` is
-/// only declared if `_GNU_SOURCE` is set, but setting it causes build errors
-/// due to conflicts with Swift's Glibc module.
-SWT_EXTERN int swt_pthread_setname_np(pthread_t thread, const char *name);
-#endif
-
-#if defined(__GLIBC__)
-/// Close file descriptors above a given value when spawing a new process.
-///
-/// This symbol is provided because the underlying function was added to glibc
-/// relatively recently and may not be available on all targets. Checking
-/// `__GLIBC_PREREQ()` is insufficient because `_DEFAULT_SOURCE` may not be
-/// defined at the point spawn.h is first included.
-SWT_EXTERN int swt_posix_spawn_file_actions_addclosefrom_np(posix_spawn_file_actions_t *fileActions, int from);
 #endif
 
 #if !defined(__ANDROID__)

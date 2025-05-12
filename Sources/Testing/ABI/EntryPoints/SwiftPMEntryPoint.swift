@@ -24,7 +24,7 @@ private import _TestingInternals
 ///
 /// This constant is not part of the public interface of the testing library.
 var EXIT_NO_TESTS_FOUND: CInt {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || os(WASI)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
   EX_UNAVAILABLE
 #elseif os(Windows)
   CInt(ERROR_NOT_FOUND)

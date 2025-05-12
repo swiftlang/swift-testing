@@ -42,7 +42,7 @@ enum Environment {
     }
   }
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || os(WASI)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
   /// Get all environment variables from a POSIX environment block.
   ///
   /// - Parameters:
@@ -74,7 +74,7 @@ enum Environment {
   /// system, the value of this property is `nil`.
   private static let _environ_lock_np = {
     symbol(named: "environ_lock_np").map {
-      unsafeBitCast($0, to: (@convention(c) () -> Void).self)
+      castCFunction(at: $0, to: (@convention(c) () -> Void).self)
     }
   }()
 
@@ -84,7 +84,7 @@ enum Environment {
   /// system, the value of this property is `nil`.
   private static let _environ_unlock_np = {
     symbol(named: "environ_unlock_np").map {
-      unsafeBitCast($0, to: (@convention(c) () -> Void).self)
+      castCFunction(at: $0, to: (@convention(c) () -> Void).self)
     }
   }()
 #endif
@@ -103,7 +103,7 @@ enum Environment {
     }
 #endif
     return _get(fromEnviron: _NSGetEnviron()!.pointee!)
-#elseif os(Linux) || os(FreeBSD) || os(Android)
+#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
     _get(fromEnviron: swt_environ())
 #elseif os(WASI)
     _get(fromEnviron: __wasilibc_get_environ())
@@ -170,7 +170,7 @@ enum Environment {
       }
       return nil
     }
-#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || os(WASI)
+#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
     getenv(name).flatMap { String(validatingCString: $0) }
 #elseif os(Windows)
     name.withCString(encodedAs: UTF16.self) { name in
@@ -233,5 +233,44 @@ enum Environment {
       let first = $0.first
       return first == "t" || first == "T" || first == "y" || first == "Y"
     }
+  }
+}
+
+// MARK: - Setting variables
+
+extension Environment {
+  /// Set the environment variable with the specified name.
+  ///
+  /// - Parameters:
+  ///   - value: The new value for the specified environment variable. Pass
+  ///     `nil` to remove the variable from the current process' environment.
+  ///   - name: The name of the environment variable.
+  ///
+  /// - Returns: Whether or not the environment variable was successfully set.
+  @discardableResult
+  static func setVariable(_ value: String?, named name: String) -> Bool {
+#if SWT_NO_ENVIRONMENT_VARIABLES
+    simulatedEnvironment.withLock { environment in
+      environment[name] = value
+    }
+    return true
+#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+    if let value {
+      return 0 == setenv(name, value, 1)
+    }
+    return 0 == unsetenv(name)
+#elseif os(Windows)
+    name.withCString(encodedAs: UTF16.self) { name in
+      if let value {
+        return value.withCString(encodedAs: UTF16.self) { value in
+          SetEnvironmentVariableW(name, value)
+        }
+      }
+      return SetEnvironmentVariableW(name, nil)
+    }
+#else
+#warning("Platform-specific implementation missing: environment variables unavailable")
+    return false
+#endif
   }
 }

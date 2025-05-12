@@ -12,19 +12,26 @@ include(LibraryVersion)
 include(TargetTriple)
 add_library(_TestingInternals STATIC
   Discovery.cpp
-  Stubs.cpp
   Versions.cpp
   WillThrow.cpp)
 target_include_directories(_TestingInternals PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_compile_options(_TestingInternals PRIVATE
-  -fno-exceptions)
+if("${CMAKE_CXX_COMPILER_FRONTEND_VARIANT}" STREQUAL "MSVC" OR
+   "${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+  target_compile_options(_TestingInternals PRIVATE
+    /EHa-c)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+  target_compile_options(_TestingInternals PRIVATE
+    -fno-exceptions -fPIC)
+else()
+  target_compile_options(_TestingInternals PRIVATE
+    -fno-exceptions)
+endif()
 
 if(NOT BUILD_SHARED_LIBS)
   # When building a static library, install the internal library archive
   # alongside the main library. In shared library builds, the internal library
   # is linked into the main library and does not need to be installed separately.
-  get_swift_testing_install_lib_dir(STATIC_LIBRARY lib_destination_dir)
   install(TARGETS _TestingInternals
-    ARCHIVE DESTINATION ${lib_destination_dir})
+    ARCHIVE DESTINATION "${SwiftTesting_INSTALL_LIBDIR}")
 endif()

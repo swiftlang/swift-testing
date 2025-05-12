@@ -15,7 +15,7 @@ extension Runner {
     public enum Action: Sendable {
       /// A type describing options to apply to actions of case
       /// ``Runner/Plan/Action/run(options:)`` when they are run.
-      public struct RunOptions: Sendable, Codable {
+      public struct RunOptions: Sendable {
         /// Whether or not this step should be run in parallel with other tests.
         ///
         /// By default, all steps in a runner plan are run in parallel if the
@@ -28,7 +28,13 @@ extension Runner {
         /// ## See Also
         ///
         /// - ``ParallelizationTrait``
-        public var isParallelizationEnabled: Bool
+        @available(*, deprecated, message: "The 'isParallelizationEnabled' property is deprecated and no longer used. Its value is always false.")
+        public var isParallelizationEnabled: Bool {
+          get {
+            false
+          }
+          set {}
+        }
       }
 
       /// The test should be run.
@@ -64,19 +70,6 @@ extension Runner {
           // case.
           return true
         }
-      }
-
-      /// Whether or not this action enables parallelization.
-      ///
-      /// If this action is of case ``run(options:)``, the value of this
-      /// property equals the value of its associated
-      /// ``RunOptions/isParallelizationEnabled`` property. Otherwise, the value
-      /// of this property is `nil`.
-      var isParallelizationEnabled: Bool? {
-        if case let .run(options) = self {
-          return options.isParallelizationEnabled
-        }
-        return nil
       }
     }
 
@@ -218,7 +211,7 @@ extension Runner.Plan {
     // Convert the list of test into a graph of steps. The actions for these
     // steps will all be .run() *unless* an error was thrown while examining
     // them, in which case it will be .recordIssue().
-    let runAction = Action.run(options: .init(isParallelizationEnabled: configuration.isParallelizationEnabled))
+    let runAction = Action.run(options: .init())
     var testGraph = Graph<String, Test?>()
     var actionGraph = Graph<String, Action>(value: runAction)
     for test in tests {
@@ -278,11 +271,7 @@ extension Runner.Plan {
       // `SkipInfo`, the error should not be recorded.
       for trait in test.traits {
         do {
-          if let trait = trait as? any SPIAwareTrait {
-            try await trait.prepare(for: test, action: &action)
-          } else {
-            try await trait.prepare(for: test)
-          }
+          try await trait.prepare(for: test)
         } catch let error as SkipInfo {
           action = .skip(error)
           break
@@ -355,6 +344,29 @@ extension Runner.Plan {
   ///   - configuration: The configuration to use for planning.
   public init(configuration: Configuration) async {
     await self.init(tests: Test.all, configuration: configuration)
+  }
+}
+
+extension Runner.Plan.Action.RunOptions: Codable {
+  private enum CodingKeys: CodingKey {
+    case isParallelizationEnabled
+  }
+
+  public init(from decoder: any Decoder) throws {
+    // No-op. This initializer cannot be synthesized since `CodingKeys` includes
+    // a case representing a non-stored property. See comment about the
+    // `isParallelizationEnabled` property in `encode(to:)`.
+    self.init()
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+
+    // The `isParallelizationEnabled` property was removed after this type was
+    // first introduced. Its value was never actually used in a meaningful way
+    // by known clients, but its absence can cause decoding errors, so to avoid
+    // such problems, continue encoding a hardcoded value.
+    try container.encode(false, forKey: .isParallelizationEnabled)
   }
 }
 
@@ -445,7 +457,7 @@ extension Runner.Plan.Step {
 }
 
 extension Runner.Plan.Action {
-  /// A serializable snapshot of a ``Runner/Plan-swift.struct/Step/Action``
+  /// A serializable snapshot of a ``Runner/Plan-swift.struct/Action``
   /// instance.
   @_spi(ForToolsIntegrationOnly)
   public enum Snapshot: Sendable, Codable {

@@ -11,6 +11,7 @@
 import Testing
 @testable import TestingMacros
 
+import SwiftBasicFormat
 import SwiftDiagnostics
 import SwiftParser
 import SwiftSyntax
@@ -140,6 +141,12 @@ struct TestDeclarationMacroTests {
         "Attribute 'Test' cannot be applied to a function within a generic extension to type 'T!'",
       "extension T! { @Suite struct S {} }":
         "Attribute 'Suite' cannot be applied to a structure within a generic extension to type 'T!'",
+      "struct S: ~Escapable { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within structure 'S' because its conformance to 'Escapable' has been suppressed",
+      "struct S: ~Swift.Escapable { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within structure 'S' because its conformance to 'Escapable' has been suppressed",
+      "struct S: ~(Escapable) { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within structure 'S' because its conformance to 'Escapable' has been suppressed",
     ]
   )
   func apiMisuseErrors(input: String, expectedMessage: String) throws {
@@ -209,6 +216,21 @@ struct TestDeclarationMacroTests {
             ),
           ]
         ),
+
+      #"@Test("Goodbye world") func `__raw__$helloWorld`()"#:
+        (
+          message: "Attribute 'Test' specifies display name 'Goodbye world' for function with implicit display name 'helloWorld'",
+          fixIts: [
+            ExpectedFixIt(
+              message: "Remove 'Goodbye world'",
+              changes: [.replace(oldSourceCode: #""Goodbye world""#, newSourceCode: "")]
+            ),
+            ExpectedFixIt(
+              message: "Rename '__raw__$helloWorld'",
+              changes: [.replace(oldSourceCode: "`__raw__$helloWorld`", newSourceCode: "\(EditorPlaceholderExprSyntax("name"))")]
+            ),
+          ]
+        ),
     ]
   }
 
@@ -239,6 +261,30 @@ struct TestDeclarationMacroTests {
         }
       }
     }
+  }
+
+  @Test("Raw identifier is detected")
+  func rawIdentifier() {
+    #expect(TokenSyntax.identifier("`hello`").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("`helloworld`").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("`hélloworld`").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("`hello_world`").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("`hello world`").rawIdentifier != nil)
+    #expect(TokenSyntax.identifier("`hello/world`").rawIdentifier != nil)
+    #expect(TokenSyntax.identifier("`hello\tworld`").rawIdentifier != nil)
+
+    #expect(TokenSyntax.identifier("`class`").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("`struct`").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("`class struct`").rawIdentifier != nil)
+  }
+
+  @Test("Raw function name components")
+  func rawFunctionNameComponents() throws {
+    let decl = """
+    func `__raw__$hello`(`__raw__$world`: T, etc: U, `blah`: V) {}
+    """ as DeclSyntax
+    let functionDecl = try #require(decl.as(FunctionDeclSyntax.self))
+    #expect(functionDecl.completeName.trimmedDescription == "`hello`(`world`:etc:blah:)")
   }
 
   @Test("Warning diagnostics emitted on API misuse",
@@ -363,7 +409,12 @@ struct TestDeclarationMacroTests {
   func differentFunctionTypes(input: String, expectedTypeName: String?, otherCode: String?) throws {
     let (output, _) = try parse(input)
 
-    #expect(output.contains("__TestContainer"))
+#if hasFeature(SymbolLinkageMarkers)
+    #expect(output.contains("@_section"))
+#endif
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+    #expect(output.contains("__TestContentRecordContainer"))
+#endif
     if let expectedTypeName {
       #expect(output.contains(expectedTypeName))
     }

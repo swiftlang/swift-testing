@@ -31,7 +31,7 @@ if(SwiftTesting_BuildMacrosAsExecutables)
   set(FETCHCONTENT_BASE_DIR ${CMAKE_BINARY_DIR}/_d)
   FetchContent_Declare(SwiftSyntax
     GIT_REPOSITORY https://github.com/swiftlang/swift-syntax
-    GIT_TAG cb53fa1bd3219b0b23ded7dfdd3b2baff266fd25) # 600.0.0
+    GIT_TAG 340f8400262d494c7c659cd838223990195d7fed) # 602.0.0-prerelease-2025-04-10
   FetchContent_MakeAvailable(SwiftSyntax)
 endif()
 
@@ -81,11 +81,13 @@ endif()
 
 target_sources(TestingMacros PRIVATE
   ConditionMacro.swift
+  PragmaMacro.swift
   SourceLocationMacro.swift
   SuiteDeclarationMacro.swift
   Support/Additions/DeclGroupSyntaxAdditions.swift
   Support/Additions/EditorPlaceholderExprSyntaxAdditions.swift
   Support/Additions/FunctionDeclSyntaxAdditions.swift
+  Support/Additions/IntegerLiteralExprSyntaxAdditions.swift
   Support/Additions/MacroExpansionContextAdditions.swift
   Support/Additions/TokenSyntaxAdditions.swift
   Support/Additions/TriviaPieceAdditions.swift
@@ -95,20 +97,22 @@ target_sources(TestingMacros PRIVATE
   Support/Argument.swift
   Support/AttributeDiscovery.swift
   Support/AvailabilityGuards.swift
+  Support/ClosureCaptureListParsing.swift
   Support/CommentParsing.swift
   Support/ConditionArgumentParsing.swift
-  Support/CRC32.swift
   Support/DiagnosticMessage.swift
   Support/DiagnosticMessage+Diagnosing.swift
+  Support/EffectfulExpressionHandling.swift
+  Support/SHA256.swift
   Support/SourceCodeCapturing.swift
   Support/SourceLocationGeneration.swift
+  Support/TestContentGeneration.swift
   TagMacro.swift
   TestDeclarationMacro.swift
   TestingMacrosMain.swift)
 
 target_compile_options(TestingMacros PRIVATE
-  "SHELL:-Xfrontend -disable-implicit-string-processing-module-import"
-  "SHELL:-Xfrontend -disable-implicit-backtracing-module-import")
+  "SHELL:-Xfrontend -disable-implicit-string-processing-module-import")
 
 target_link_libraries(TestingMacros PRIVATE
   SwiftSyntax::SwiftSyntax

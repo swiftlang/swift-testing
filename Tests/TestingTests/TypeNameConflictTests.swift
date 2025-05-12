@@ -27,7 +27,7 @@ struct TypeNameConflictTests {
 // MARK: - Fixtures
 
 fileprivate struct SourceLocation {}
-fileprivate struct __TestContainer {}
+fileprivate struct __TestContentRecordContainer {}
 fileprivate struct __XCTestCompatibleSelector {}
 
 fileprivate func __forward<R>(_ value: R) async throws {

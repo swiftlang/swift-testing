@@ -102,7 +102,6 @@ public struct Event: Sendable {
     ///
     /// - Parameters:
     ///   - attachment: The attachment that was created.
-    @_spi(Experimental)
     indirect case valueAttached(_ attachment: Attachment<AnyAttachable>)
 
     /// A test ended.
@@ -290,10 +289,7 @@ extension Event {
     if let configuration = configuration ?? Configuration.current {
       // The caller specified a configuration, or the current task has an
       // associated configuration. Post to either configuration's event handler.
-      switch kind {
-      case .expectationChecked where !configuration.deliverExpectationCheckedEvents:
-        break
-      default:
+      if configuration.eventHandlingOptions.shouldHandleEvent(self) {
         configuration.handleEvent(self, in: context)
       }
     } else {
@@ -462,8 +458,11 @@ extension Event.Kind {
     /// This is the last event posted before ``Runner/run()`` returns.
     case runEnded
 
-    /// Snapshots an ``Event.Kind``.
-    /// - Parameter kind: The original ``Event.Kind`` to snapshot.
+    /// Initialize an instance of this type by snapshotting the specified event
+    /// kind.
+    ///
+    /// - Parameters:
+    ///   - kind: The original event kind to snapshot.
     public init(snapshotting kind: Event.Kind) {
       switch kind {
       case .testDiscovered:

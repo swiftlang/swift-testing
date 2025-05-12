@@ -8,11 +8,18 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+@testable @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 #if canImport(Foundation)
 import Foundation
-@_spi(Experimental) import _Testing_Foundation
+import _Testing_Foundation
+#endif
+#if canImport(CoreGraphics)
+import CoreGraphics
+@_spi(Experimental) import _Testing_CoreGraphics
+#endif
+#if canImport(UniformTypeIdentifiers)
+import UniformTypeIdentifiers
 #endif
 
 @Suite("Attachment Tests")
@@ -20,7 +27,21 @@ struct AttachmentTests {
   @Test func saveValue() {
     let attachableValue = MyAttachable(string: "<!doctype html>")
     let attachment = Attachment(attachableValue, named: "AttachmentTests.saveValue.html")
-    attachment.attach()
+    Attachment.record(attachment)
+  }
+
+  @Test func description() {
+    let attachableValue = MySendableAttachable(string: "<!doctype html>")
+    let attachment = Attachment(attachableValue, named: "AttachmentTests.saveValue.html")
+    #expect(String(describing: attachment).contains(#""\#(attachment.preferredName)""#))
+    #expect(attachment.description.contains("MySendableAttachable("))
+  }
+
+  @Test func moveOnlyDescription() {
+    let attachableValue = MyAttachable(string: "<!doctype html>")
+    let attachment = Attachment(attachableValue, named: "AttachmentTests.saveValue.html")
+    #expect(attachment.description.contains(#""\#(attachment.preferredName)""#))
+    #expect(attachment.description.contains("'MyAttachable'"))
   }
 
 #if !SWT_NO_FILE_IO
@@ -70,7 +91,8 @@ struct AttachmentTests {
       // Write the attachment to disk, then read it back.
       let filePath = try attachment.write(toFileInDirectoryAtPath: temporaryDirectory(), appending: suffixes.next()!)
       createdFilePaths.append(filePath)
-      let fileName = try #require(filePath.split { $0 == "/" || $0 == #"\"# }.last)
+      let filePathComponents = filePath.split { $0 == "/" || $0 == #"\"# }
+      let fileName = try #require(filePathComponents.last)
       if i == 0 {
         #expect(fileName == baseFileName)
       } else {
@@ -97,7 +119,8 @@ struct AttachmentTests {
     defer {
       remove(filePath)
     }
-    let fileName = try #require(filePath.split { $0 == "/" || $0 == #"\"# }.last)
+    let filePathComponents = filePath.split { $0 == "/" || $0 == #"\"# }
+    let fileName = try #require(filePathComponents.last)
     #expect(fileName == "loremipsum-\(suffix).tgz.gif.jpeg.html")
     try compare(attachableValue, toContentsOfFileAtPath: filePath)
   }
@@ -151,41 +174,41 @@ struct AttachmentTests {
 
       await Test {
         let attachment = Attachment(attachableValue, named: "loremipsum.html")
-        attachment.attach()
+        Attachment.record(attachment)
       }.run(configuration: configuration)
     }
   }
 #endif
 
   @Test func attachValue() async {
-    await confirmation("Attachment detected") { valueAttached in
+    await confirmation("Attachment detected", expectedCount: 2) { valueAttached in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
         guard case let .valueAttached(attachment) = event.kind else {
           return
         }
 
-        #expect(attachment.preferredName == "loremipsum")
         #expect(attachment.sourceLocation.fileID == #fileID)
         valueAttached()
       }
 
       await Test {
-        let attachableValue = MyAttachable(string: "<!doctype html>")
-        Attachment(attachableValue, named: "loremipsum").attach()
+        let attachableValue1 = MyAttachable(string: "<!doctype html>")
+        Attachment.record(attachableValue1)
+        let attachableValue2 = MyAttachable(string: "<!doctype html>")
+        Attachment.record(Attachment(attachableValue2))
       }.run(configuration: configuration)
     }
   }
 
   @Test func attachSendableValue() async {
-    await confirmation("Attachment detected") { valueAttached in
+    await confirmation("Attachment detected", expectedCount: 2) { valueAttached in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
         guard case let .valueAttached(attachment) = event.kind else {
           return
         }
 
-        #expect(attachment.preferredName == "loremipsum")
         #expect(attachment.attachableValue is MySendableAttachable)
         #expect(attachment.sourceLocation.fileID == #fileID)
        valueAttached()
@@ -193,7 +216,8 @@ struct AttachmentTests {
 
       await Test {
         let attachableValue = MySendableAttachable(string: "<!doctype html>")
-        Attachment(attachableValue, named: "loremipsum").attach()
+        Attachment.record(attachableValue)
+        Attachment.record(Attachment(attachableValue))
       }.run(configuration: configuration)
     }
   }
@@ -217,7 +241,7 @@ struct AttachmentTests {
         await Test {
           var attachableValue = MyAttachable(string: "<!doctype html>")
           attachableValue.errorToThrow = MyError()
-          Attachment(attachableValue, named: "loremipsum").attach()
+          Attachment.record(Attachment(attachableValue, named: "loremipsum"))
         }.run(configuration: configuration)
       }
     }
@@ -244,7 +268,7 @@ struct AttachmentTests {
 
         #expect(attachment.preferredName == temporaryFileName)
         #expect(throws: Never.self) {
-          try attachment.withUnsafeBufferPointer { buffer in
+          try attachment.withUnsafeBytes { buffer in
             #expect(buffer.count == data.count)
           }
         }
@@ -253,7 +277,7 @@ struct AttachmentTests {
 
       await Test {
         let attachment = try await Attachment(contentsOf: temporaryURL)
-        attachment.attach()
+        Attachment.record(attachment)
       }.run(configuration: configuration)
     }
   }
@@ -275,13 +299,21 @@ struct AttachmentTests {
           return
         }
 
-        #expect(attachment.preferredName == "\(temporaryDirectoryName).tgz")
+        #expect(attachment.preferredName == "\(temporaryDirectoryName).zip")
+        try! attachment.withUnsafeBytes { buffer in
+          #expect(buffer.count > 32)
+          #expect(buffer[0] == UInt8(ascii: "P"))
+          #expect(buffer[1] == UInt8(ascii: "K"))
+          if #available(_regexAPI, *) {
+            #expect(buffer.contains("loremipsum.txt".utf8))
+          }
+        }
         valueAttached()
       }
 
       await Test {
         let attachment = try await Attachment(contentsOf: temporaryURL)
-        attachment.attach()
+        Attachment.record(attachment)
       }.run(configuration: configuration)
     }
   }
@@ -362,7 +394,7 @@ struct AttachmentTests {
     }
 
     func open<T>(_ attachment: borrowing Attachment<T>) throws where T: Attachable {
-      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { bytes in
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { bytes in
         #expect(bytes.first == args.firstCharacter.asciiValue)
         let decodedStringValue = try args.decode(Data(bytes))
         #expect(decodedStringValue == "stringly speaking")
@@ -385,7 +417,7 @@ struct AttachmentTests {
     let attachableValue = MySecureCodingAttachable(string: "stringly speaking")
     let attachment = Attachment(attachableValue, named: "loremipsum.json")
     #expect(throws: CocoaError.self) {
-      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { _ in }
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { _ in }
     }
   }
 
@@ -394,7 +426,7 @@ struct AttachmentTests {
     let attachableValue = MySecureCodingAttachable(string: "stringly speaking")
     let attachment = Attachment(attachableValue, named: "loremipsum.gif")
     #expect(throws: CocoaError.self) {
-      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { _ in }
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { _ in }
     }
   }
 #endif
@@ -406,7 +438,7 @@ extension AttachmentTests {
     func test(_ value: some Attachable) throws {
       #expect(value.estimatedAttachmentByteCount == 6)
       let attachment = Attachment(value)
-      try attachment.withUnsafeBufferPointer { buffer in
+      try attachment.withUnsafeBytes { buffer in
         #expect(buffer.elementsEqual("abc123".utf8))
         #expect(buffer.count == 6)
       }
@@ -446,13 +478,99 @@ extension AttachmentTests {
   }
 }
 
+extension AttachmentTests {
+  @Suite("Image tests")
+  struct ImageTests {
+    enum ImageTestError: Error {
+      case couldNotCreateCGContext
+      case couldNotCreateCGGradient
+      case couldNotCreateCGImage
+    }
+
+#if canImport(CoreGraphics)
+    static let cgImage = Result<CGImage, any Error> {
+      let size = CGSize(width: 32.0, height: 32.0)
+      let rgb = CGColorSpaceCreateDeviceRGB()
+      let bitmapInfo = CGImageAlphaInfo.premultipliedFirst.rawValue
+      guard let context = CGContext(
+        data: nil,
+        width: Int(size.width),
+        height: Int(size.height),
+        bitsPerComponent: 8,
+        bytesPerRow: Int(size.width) * 4,
+        space: rgb,
+        bitmapInfo: bitmapInfo
+      ) else {
+        throw ImageTestError.couldNotCreateCGContext
+      }
+      guard let gradient = CGGradient(
+        colorsSpace: rgb,
+        colors: [
+          CGColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 1.0),
+          CGColor(red: 0.0, green: 1.0, blue: 0.0, alpha: 1.0),
+          CGColor(red: 0.0, green: 0.0, blue: 1.0, alpha: 1.0),
+        ] as CFArray,
+        locations: nil
+      ) else {
+        throw ImageTestError.couldNotCreateCGGradient
+      }
+      context.drawLinearGradient(
+        gradient,
+        start: .zero,
+        end: CGPoint(x: size.width, y: size.height),
+        options: [.drawsBeforeStartLocation, .drawsAfterEndLocation]
+      )
+      guard let image = context.makeImage() else {
+        throw ImageTestError.couldNotCreateCGImage
+      }
+      return image
+    }
+
+    @available(_uttypesAPI, *)
+    @Test func attachCGImage() throws {
+      let image = try Self.cgImage.get()
+      let attachment = Attachment(image, named: "diamond")
+      #expect(attachment.attachableValue === image)
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { buffer in
+        #expect(buffer.count > 32)
+      }
+      Attachment.record(attachment)
+    }
+
+    @available(_uttypesAPI, *)
+    @Test(arguments: [Float(0.0).nextUp, 0.25, 0.5, 0.75, 1.0], [.png as UTType?, .jpeg, .gif, .image, nil])
+    func attachCGImage(quality: Float, type: UTType?) throws {
+      let image = try Self.cgImage.get()
+      let attachment = Attachment(image, named: "diamond", as: type, encodingQuality: quality)
+      #expect(attachment.attachableValue === image)
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { buffer in
+        #expect(buffer.count > 32)
+      }
+      if let ext = type?.preferredFilenameExtension {
+        #expect(attachment.preferredName == ("diamond" as NSString).appendingPathExtension(ext))
+      }
+    }
+
+#if !SWT_NO_EXIT_TESTS
+    @available(_uttypesAPI, *)
+    @Test func cannotAttachCGImageWithNonImageType() async {
+      await #expect(processExitsWith: .failure) {
+        let attachment = Attachment(try Self.cgImage.get(), named: "diamond", as: .mp3)
+        try attachment.attachableValue.withUnsafeBytes(for: attachment) { _ in }
+      }
+    }
+#endif
+#endif
+  }
+}
+
 // MARK: - Fixtures
 
 struct MyAttachable: Attachable, ~Copyable {
   var string: String
   var errorToThrow: (any Error)?
 
-  func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     if let errorToThrow {
       throw errorToThrow
     }
@@ -470,7 +588,7 @@ extension MyAttachable: Sendable {}
 struct MySendableAttachable: Attachable, Sendable {
   var string: String
 
-  func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     #expect(attachment.attachableValue.string == string)
     var string = string
     return try string.withUTF8 { buffer in
@@ -482,7 +600,7 @@ struct MySendableAttachable: Attachable, Sendable {
 struct MySendableAttachableWithDefaultByteCount: Attachable, Sendable {
   var string: String
 
-  func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     var string = string
     return try string.withUTF8 { buffer in
       try body(.init(buffer))

@@ -9,21 +9,23 @@
 //
 
 import SwiftSyntax
+import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 import SwiftDiagnostics
 
 extension MacroExpansionContext {
-  /// Get the type of the lexical context enclosing the given node.
+  /// Get the type of the given lexical context.
   ///
   /// - Parameters:
-  ///   - node: The node whose lexical context should be examined.
+  ///   - lexicalContext: The lexical context.
   ///
-  /// - Returns: The type of the lexical context enclosing `node`, or `nil` if
-  ///   the lexical context cannot be represented as a type.
+  /// - Returns: The type represented by `lexicalContext`, or `nil` if one could
+  ///   not be derived (for example, because the lexical context inclues a
+  ///   function, closure, or some other non-type scope.)
   ///
   /// If the lexical context includes functions, closures, or some other
   /// non-type scope, the value of this property is `nil`.
-  var typeOfLexicalContext: TypeSyntax? {
+  func type(ofLexicalContext lexicalContext: some RandomAccessCollection<Syntax>) -> TypeSyntax? {
     var typeNames = [String]()
     for lexicalContext in lexicalContext.reversed() {
       guard let decl = lexicalContext.asProtocol((any DeclGroupSyntax).self) else {
@@ -36,6 +38,14 @@ extension MacroExpansionContext {
     }
 
     return "\(raw: typeNames.joined(separator: "."))"
+  }
+
+  /// The type of the lexical context enclosing the given node.
+  ///
+  /// If the lexical context includes functions, closures, or some other
+  /// non-type scope, the value of this property is `nil`.
+  var typeOfLexicalContext: TypeSyntax? {
+    type(ofLexicalContext: lexicalContext)
   }
 }
 
@@ -62,10 +72,12 @@ extension MacroExpansionContext {
       .tokens(viewMode: .fixedUp)
       .map(\.textWithoutBackticks)
       .joined()
-    let crcValue = crc32(identifierCharacters.utf8)
-    let suffix = String(crcValue, radix: 16, uppercase: false)
+    let hashValue = SHA256.hash(identifierCharacters.utf8).withUnsafeBytes { sha256 in
+      sha256.loadUnaligned(as: UInt64.self)
+    }
+    let suffix = String(hashValue, radix: 16, uppercase: false)
 
-    // If the caller did not specify a prefix and the CRC32 value starts with a
+    // If the caller did not specify a prefix and the hash value starts with a
     // digit, include a single-character prefix to ensure that Swift's name
     // demangling still works correctly.
     var prefix = prefix
@@ -80,6 +92,26 @@ extension MacroExpansionContext {
 // MARK: -
 
 extension MacroExpansionContext {
+  /// Whether or not our generated warnings are suppressed in the current
+  /// lexical context.
+  ///
+  /// The value of this property is `true` if the current lexical context
+  /// contains a node with the `@__testing(semantics: "nowarnings")` attribute
+  /// applied to it.
+  ///
+  /// - Warning: This functionality is not part of the public interface of the
+  ///   testing library. It may be modified or removed in a future update.
+  var areWarningsSuppressed: Bool {
+#if DEBUG
+    return lexicalContext
+      .compactMap { $0.asProtocol((any WithAttributesSyntax).self) }
+      .flatMap { semantics(of: $0) }
+      .contains("nomacrowarnings")
+#else
+    return false
+#endif
+  }
+
   /// Emit a diagnostic message.
   ///
   /// - Parameters:
@@ -87,23 +119,27 @@ extension MacroExpansionContext {
   ///     arguments to `Diagnostic.init()` are derived from the message's
   ///     `syntax` property.
   func diagnose(_ message: DiagnosticMessage) {
-    diagnose(
-      Diagnostic(
-        node: message.syntax,
-        position: message.syntax.positionAfterSkippingLeadingTrivia,
-        message: message,
-        fixIts: message.fixIts
-      )
-    )
+    diagnose(CollectionOfOne(message))
   }
 
   /// Emit a sequence of diagnostic messages.
   ///
   /// - Parameters:
   ///   - messages: The diagnostic messages to emit.
-  func diagnose(_ messages: some Sequence<DiagnosticMessage>) {
+  func diagnose(_ messages: some Collection<DiagnosticMessage>) {
+    lazy var areWarningsSuppressed = areWarningsSuppressed
     for message in messages {
-      diagnose(message)
+      if message.severity == .warning && areWarningsSuppressed {
+        continue
+      }
+      diagnose(
+        Diagnostic(
+          node: message.syntax,
+          position: message.syntax.positionAfterSkippingLeadingTrivia,
+          message: message,
+          fixIts: message.fixIts
+        )
+      )
     }
   }
 

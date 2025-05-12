@@ -9,6 +9,12 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) import _TestDiscovery
+private import _TestingInternals
+
+#if canImport(Foundation)
+private import Foundation
+#endif
 
 @Test(/* name unspecified */ .hidden)
 @Sendable func freeSyncFunction() {}
@@ -136,6 +142,11 @@ struct SendableTests: Sendable {
 
 @Suite("Named Sendable test type", .hidden)
 struct NamedSendableTests: Sendable {}
+
+// This is meant to help detect unqualified usages of the `Actor` protocol from
+// Swift's `_Concurrency` module in macro expansion code, since it's possible
+// for another module to declare a type with that name.
+private class Actor {}
 
 #if !SWT_NO_GLOBAL_ACTORS
 @Suite(.hidden)
@@ -284,6 +295,15 @@ struct MiscellaneousTests {
   func namedMemberFunctionTest() async throws {
     let testType = try #require(await test(for: NamedSendableTests.self))
     #expect(testType.displayName == "Named Sendable test type")
+  }
+
+  @Test func `__raw__$raw_identifier_provides_a_display_name`() throws {
+    let test = try #require(Test.current)
+    #expect(test.displayName == "raw_identifier_provides_a_display_name")
+    #expect(test.name == "`raw_identifier_provides_a_display_name`()")
+    let id = test.id
+    #expect(id.moduleName == "TestingTests")
+    #expect(id.nameComponents == ["MiscellaneousTests", "`raw_identifier_provides_a_display_name`()"])
   }
 
   @Test("Free functions are runnable")

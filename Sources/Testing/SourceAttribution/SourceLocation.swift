@@ -46,7 +46,7 @@ public struct SourceLocation: Sendable {
   /// - ``moduleName``
   public var fileName: String {
     let lastSlash = fileID.lastIndex(of: "/")!
-    return String(fileID[fileID.index(after: lastSlash)...])
+    return String(fileID[lastSlash...].dropFirst())
   }
 
   /// The name of the module containing the source file.
@@ -67,8 +67,7 @@ public struct SourceLocation: Sendable {
   /// - ``fileName``
   /// - [`#fileID`](https://developer.apple.com/documentation/swift/fileID())
   public var moduleName: String {
-    let firstSlash = fileID.firstIndex(of: "/")!
-    return String(fileID[..<firstSlash])
+    rawIdentifierAwareSplit(fileID, separator: "/", maxSplits: 1).first.map(String.init)!
   }
 
   /// The path to the source file.

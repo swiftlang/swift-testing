@@ -69,7 +69,7 @@ public struct Backtrace: Sendable {
       initializedCount = addresses.withMemoryRebound(to: UnsafeMutableRawPointer.self) { addresses in
         .init(clamping: backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
       }
-#elseif os(Linux) || os(FreeBSD)
+#elseif os(Linux) || os(FreeBSD) || os(OpenBSD)
       initializedCount = .init(clamping: backtrace(addresses.baseAddress!, .init(clamping: addresses.count)))
 #elseif os(Windows)
       initializedCount = Int(clamping: RtlCaptureStackBackTrace(0, ULONG(clamping: addresses.count), addresses.baseAddress!, nil))
@@ -133,7 +133,7 @@ extension Backtrace {
     ///   - errorAddress: The address of the error existential box.
     init(_ errorAddress: UnsafeMutableRawPointer) {
       _rawValue = errorAddress
-#if SWT_TARGET_OS_APPLE
+#if _runtime(_ObjC)
       let error = Unmanaged<AnyObject>.fromOpaque(errorAddress).takeUnretainedValue() as! any Error
       if type(of: error) is AnyObject.Type {
         _rawValue = Unmanaged.passUnretained(error as AnyObject).toOpaque()
@@ -181,7 +181,7 @@ extension Backtrace {
     ///   crash. To avoid said crash, we'll keep a strong reference to the
     ///   object (abandoning memory until the process exits.)
     ///   ([swift-#62985](https://github.com/swiftlang/swift/issues/62985))
-#if os(Windows)
+#if os(Windows) || os(FreeBSD) || os(OpenBSD)
     nonisolated(unsafe) var errorObject: AnyObject?
 #else
     nonisolated(unsafe) weak var errorObject: AnyObject?
@@ -336,10 +336,10 @@ extension Backtrace {
   /// - Note: The underlying Foundation function is called (if present) the
   ///   first time the value of this property is read.
   static let isFoundationCaptureEnabled = {
-#if SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
+#if _runtime(_ObjC) && !SWT_NO_DYNAMIC_LINKING
     if Environment.flag(named: "SWT_FOUNDATION_ERROR_BACKTRACING_ENABLED") == true {
       let _CFErrorSetCallStackCaptureEnabled = symbol(named: "_CFErrorSetCallStackCaptureEnabled").map {
-        unsafeBitCast($0, to: (@convention(c) (DarwinBoolean) -> DarwinBoolean).self)
+        castCFunction(at: $0, to: (@convention(c) (DarwinBoolean) -> DarwinBoolean).self)
       }
       _ = _CFErrorSetCallStackCaptureEnabled?(true)
       return _CFErrorSetCallStackCaptureEnabled != nil

@@ -20,17 +20,15 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 - ``Trait/disabled(if:_:sourceLocation:)``
 - ``Trait/disabled(_:sourceLocation:_:)``
 
-### Limiting the running time of tests
+### Controlling how tests are run
 
-- ``Trait/timeLimit(_:)``
- 
-### Running tests serially or in parallel
-
+- ``Trait/timeLimit(_:)-4kzjp``
 - ``Trait/serialized``
-
-### Categorizing tests
+ 
+### Categorizing tests and adding information
 
 - ``Trait/tags(_:)``
+- ``Trait/comments``
 
 ### Associating bugs
 
@@ -38,9 +36,9 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 - ``Trait/bug(_:id:_:)-10yf5``
 - ``Trait/bug(_:id:_:)-3vtpl``
 
-### Adding information to tests
-- ``Trait/comments``
+### Running code before and after a test or suite
 
-### Preparing internal state
-
+- ``TestScoping``
+- ``Trait/scopeProvider(for:testCase:)-cjmg``
+- ``Trait/TestScopeProvider``
 - ``Trait/prepare(for:)-3s3zo``

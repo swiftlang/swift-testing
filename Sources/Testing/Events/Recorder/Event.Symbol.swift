@@ -22,9 +22,13 @@ extension Event {
     /// The symbol to use when a test passes.
     ///
     /// - Parameters:
-    ///   - knownIssueCount: The number of known issues encountered by the end
-    ///     of the test.
+    ///   - knownIssueCount: The number of known issues recorded for the test.
+    ///     The default value is `0`.
     case pass(knownIssueCount: Int = 0)
+
+    /// The symbol to use when a test passes with one or more warnings.
+    @_spi(Experimental)
+    case passWithWarnings
 
     /// The symbol to use when a test fails.
     case fail
@@ -40,7 +44,6 @@ extension Event {
     case details
 
     /// The symbol to use when describing an instance of ``Attachment``.
-    @_spi(Experimental)
     case attachment
   }
 }
@@ -58,10 +61,12 @@ extension Event.Symbol {
       ("\u{10065F}", "arrow.triangle.turn.up.right.diamond.fill")
     case let .pass(knownIssueCount):
       if knownIssueCount > 0 {
-        ("\u{100884}", "xmark.diamond.fill")
+        ("\u{100883}", "xmark.diamond")
       } else {
         ("\u{10105B}", "checkmark.diamond.fill")
       }
+    case .passWithWarnings:
+      ("\u{100123}", "questionmark.diamond.fill")
     case .fail:
       ("\u{100884}", "xmark.diamond.fill")
     case .difference:
@@ -106,14 +111,14 @@ extension Event.Symbol {
   /// be used to represent it in text-based output. The value of this property
   /// is platform-dependent.
   public var unicodeCharacter: Character {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || os(WASI)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
     switch self {
     case .default:
       // Unicode: WHITE DIAMOND
       return "\u{25C7}"
     case .skip:
-      // Unicode: HEAVY BALLOT X
-      return "\u{2718}"
+      // Unicode: HEAVY ROUND-TIPPED RIGHTWARDS ARROW
+      return "\u{279C}"
     case let .pass(knownIssueCount):
       if knownIssueCount > 0 {
         // Unicode: HEAVY BALLOT X
@@ -122,6 +127,9 @@ extension Event.Symbol {
         // Unicode: HEAVY CHECK MARK
         return "\u{2714}"
       }
+    case .passWithWarnings:
+      // Unicode: QUESTION MARK
+      return "\u{003F}"
     case .fail:
       // Unicode: HEAVY BALLOT X
       return "\u{2718}"
@@ -147,8 +155,8 @@ extension Event.Symbol {
       // Unicode: LOZENGE
       return "\u{25CA}"
     case .skip:
-      // Unicode: MULTIPLICATION SIGN
-      return "\u{00D7}"
+      // Unicode: HEAVY ROUND-TIPPED RIGHTWARDS ARROW
+      return "\u{279C}"
     case let .pass(knownIssueCount):
       if knownIssueCount > 0 {
         // Unicode: MULTIPLICATION SIGN
@@ -157,6 +165,9 @@ extension Event.Symbol {
         // Unicode: SQUARE ROOT
         return "\u{221A}"
       }
+    case .passWithWarnings:
+      // Unicode: QUESTION MARK
+      return "\u{003F}"
     case .fail:
       // Unicode: MULTIPLICATION SIGN
       return "\u{00D7}"

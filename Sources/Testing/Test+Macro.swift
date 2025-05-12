@@ -484,6 +484,39 @@ extension Test {
   }
 }
 
+// MARK: - Test pragmas
+
+/// A macro used similarly to `#pragma` in C or `@_semantics` in the standard
+/// library.
+///
+/// - Parameters:
+///   - arguments: Zero or more context-specific arguments.
+///
+/// The use cases for this macro are subject to change over time as the needs of
+/// the testing library change. The implementation of this macro in the
+/// TestingMacros target determines how different arguments are handled.
+///
+/// - Note: This macro has compile-time effects _only_ and should not affect a
+///   compiled test target.
+///
+/// - Warning: This macro is used to implement other macros declared by the
+///   testing library. Do not use it directly.
+@attached(peer) public macro __testing(
+  semantics arguments: _const String...
+) = #externalMacro(module: "TestingMacros", type: "PragmaMacro")
+
+/// A macro used similarly to `#warning()` but in a position where only an
+/// attribute is valid.
+///
+/// - Parameters:
+///   - message: A string to emit as a warning.
+///
+/// - Warning: This macro is used to implement other macros declared by the
+///   testing library. Do not use it directly.
+@attached(peer) public macro __testing(
+  warning message: _const String
+) = #externalMacro(module: "TestingMacros", type: "PragmaMacro")
+
 // MARK: - Helper functions
 
 /// A function that abstracts away whether or not the `try` keyword is needed on
@@ -501,6 +534,15 @@ extension Test {
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
 @inlinable public func __requiringAwait<T>(_ value: consuming T, isolation: isolated (any Actor)? = #isolation) async -> T where T: ~Copyable {
+  value
+}
+
+/// A function that abstracts away whether or not the `unsafe` keyword is needed
+/// on an expression.
+///
+/// - Warning: This function is used to implement the `@Test` macro. Do not use
+///   it directly.
+@unsafe @inlinable public func __requiringUnsafe<T>(_ value: consuming T) throws -> T where T: ~Copyable {
   value
 }
 

@@ -31,7 +31,7 @@ let operatingSystemVersion: String = {
   default:
     return "\(productVersion) (\(buildNumber))"
   }
-#elseif !SWT_NO_UNAME && (SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD))
+#elseif !SWT_NO_UNAME && (SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD))
   var name = utsname()
   if 0 == uname(&name) {
     let release = withUnsafeBytes(of: name.release) { release in
@@ -65,7 +65,7 @@ let operatingSystemVersion: String = {
   // basically always lies on Windows 10, so don't bother calling it on a
   // fallback path.
   let RtlGetVersion = symbol(in: GetModuleHandleA("ntdll.dll"), named: "RtlGetVersion").map {
-    unsafeBitCast($0, to: (@convention(c) (UnsafeMutablePointer<OSVERSIONINFOW>) -> NTSTATUS).self)
+    castCFunction(at: $0, to: (@convention(c) (UnsafeMutablePointer<OSVERSIONINFOW>) -> NTSTATUS).self)
   }
   if let RtlGetVersion {
     var versionInfo = OSVERSIONINFOW()

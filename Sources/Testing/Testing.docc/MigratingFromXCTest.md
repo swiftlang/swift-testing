@@ -273,7 +273,7 @@ with optional expressions to unwrap them:
 
 ### Record issues
 
-Finally, XCTest has a function, [`XCTFail()`](https://developer.apple.com/documentation/xctest/1500970-xctfail),
+XCTest has a function, [`XCTFail()`](https://developer.apple.com/documentation/xctest/1500970-xctfail),
 that causes a test to fail immediately and unconditionally. This function is
 useful when the syntax of the language prevents the use of an `XCTAssert()`
 function. To record an unconditional issue using the testing library, use the
@@ -326,7 +326,7 @@ their equivalents in the testing library:
 | `XCTAssertLessThanOrEqual(x, y)` | `#expect(x <= y)` |
 | `XCTAssertLessThan(x, y)` | `#expect(x < y)` |
 | `XCTAssertThrowsError(try f())` | `#expect(throws: (any Error).self) { try f() }` |
-| `XCTAssertThrowsError(try f()) { error in … }` | `#expect { try f() } throws: { error in return … }` |
+| `XCTAssertThrowsError(try f()) { error in … }` | `let error = #expect(throws: (any Error).self) { try f() }` |
 | `XCTAssertNoThrow(try f())` | `#expect(throws: Never.self) { try f() }` |
 | `try XCTUnwrap(x)` | `try #require(x)` |
 | `XCTFail("…")` | `Issue.record("…")` |
@@ -397,7 +397,7 @@ Wherever possible, prefer to use Swift concurrency to validate asynchronous
 conditions. For example, if it's necessary to determine the result of an
 asynchronous Swift function, it can be awaited with `await`. For a function that
 takes a completion handler but which doesn't use `await`, a Swift
-[continuation](https://developer.apple.com/documentation/swift/withcheckedcontinuation(function:_:))
+[continuation](https://developer.apple.com/documentation/swift/withcheckedcontinuation(isolation:function:_:))
 can be used to convert the call into an `async`-compatible one.
 
 Some tests, especially those that test asynchronously-delivered events, cannot
@@ -691,6 +691,116 @@ of issues:
     ```
   }
 }
+
+### Run tests sequentially
+
+By default, the testing library runs all tests in a suite in parallel. The
+default behavior of XCTest is to run each test in a suite sequentially. If your
+tests use shared state such as global variables, you may see unexpected
+behavior including unreliable test outcomes when you run tests in parallel.
+
+Annotate your test suite with ``Trait/serialized`` to run tests within that
+suite serially:
+
+@Row {
+  @Column {
+    ```swift
+    // Before
+    class RefrigeratorTests : XCTestCase {
+      func testLightComesOn() throws {
+        try FoodTruck.shared.refrigerator.openDoor()
+        XCTAssertEqual(FoodTruck.shared.refrigerator.lightState, .on)
+      }
+      
+      func testLightGoesOut() throws {
+        try FoodTruck.shared.refrigerator.openDoor()
+        try FoodTruck.shared.refrigerator.closeDoor()
+        XCTAssertEqual(FoodTruck.shared.refrigerator.lightState, .off)
+      }
+    }
+    ```
+  }
+  @Column {
+    ```swift
+    // After
+    @Suite(.serialized)
+    class RefrigeratorTests {
+      @Test func lightComesOn() throws {
+        try FoodTruck.shared.refrigerator.openDoor()
+        #expect(FoodTruck.shared.refrigerator.lightState == .on)
+      }
+      
+      @Test func lightGoesOut() throws {
+        try FoodTruck.shared.refrigerator.openDoor()
+        try FoodTruck.shared.refrigerator.closeDoor()
+        #expect(FoodTruck.shared.refrigerator.lightState == .off)
+      }
+    }
+    ```
+  }
+}
+
+For more information, see <doc:Parallelization>.
+
+### Attach values
+
+In XCTest, you can create an instance of [`XCTAttachment`](https://developer.apple.com/documentation/xctest/xctattachment)
+representing arbitrary data, files, property lists, encodable objects, images,
+and other types of information that would be useful to have available if a test
+fails. Swift Testing has an ``Attachment`` type that serves much the same
+purpose.
+
+To attach a value from a test to the output of a test run, that value must
+conform to the ``Attachable`` protocol. The testing library provides default
+conformances for various standard library and Foundation types.
+
+If you want to attach a value of another type, and that type already conforms to
+[`Encodable`](https://developer.apple.com/documentation/swift/encodable) or to
+[`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding),
+the testing library automatically provides a default implementation when you
+import Foundation:
+
+@Row {
+  @Column {
+    ```swift
+    // Before
+    import Foundation
+
+    class Tortilla: NSSecureCoding { /* ... */ }
+
+    func testTortillaIntegrity() async {
+      let tortilla = Tortilla(diameter: .large)
+      ...
+      let attachment = XCTAttachment(
+        archivableObject: tortilla
+      )
+      self.add(attachment)
+    }
+    ```
+  }
+  @Column {
+    ```swift
+    // After
+    import Foundation
+
+    struct Tortilla: Codable, Attachable { /* ... */ }
+
+    @Test func tortillaIntegrity() async {
+      let tortilla = Tortilla(diameter: .large)
+      ...
+      Attachment.record(tortilla)
+    }
+    ```
+  }
+}
+
+If you have a type that does not (or cannot) conform to `Encodable` or
+`NSSecureCoding`, or if you want fine-grained control over how it is serialized
+when attaching it to a test, you can provide your own implementation of
+``Attachable/withUnsafeBytes(for:_:)``.
+
+<!-- NOTE: not discussing attaching to activities here since there is not yet an
+equivalent interface in Swift Testing. -->
 
 ## See Also
 

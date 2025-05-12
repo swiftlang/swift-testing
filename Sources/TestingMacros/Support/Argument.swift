@@ -9,6 +9,7 @@
 //
 
 import SwiftSyntax
+import SwiftSyntaxBuilder
 
 /// A type describing an argument to a function, closure, etc.
 ///

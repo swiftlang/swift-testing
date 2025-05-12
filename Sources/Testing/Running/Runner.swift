@@ -56,45 +56,88 @@ public struct Runner: Sendable {
 // MARK: - Running tests
 
 extension Runner {
-  /// Execute the ``CustomExecutionTrait/execute(_:for:testCase:)`` functions
-  /// associated with the test in a plan step.
+  /// The current configuration _while_ running.
+  ///
+  /// This should be used from the functions in this extension which access the
+  /// current configuration. This is important since individual tests or suites
+  /// may have traits which customize the execution scope of their children,
+  /// including potentially modifying the current configuration.
+  private static var _configuration: Configuration {
+    .current ?? .init()
+  }
+
+  /// Apply the custom scope for any test scope providers of the traits
+  /// associated with a specified test by calling their
+  /// ``TestScoping/provideScope(for:testCase:performing:)`` function.
   ///
   /// - Parameters:
-  ///   - step: The step being performed.
-  ///   - testCase: The test case, if applicable, for which to execute the
-  ///     custom trait.
+  ///   - test: The test being run, for which to provide custom scope.
+  ///   - testCase: The test case, if applicable, for which to provide custom
+  ///     scope.
   ///   - body: A function to execute from within the
-  ///     ``CustomExecutionTrait/execute(_:for:testCase:)`` functions of each
-  ///     trait applied to `step.test`.
+  ///     ``TestScoping/provideScope(for:testCase:performing:)`` function of
+  ///     each non-`nil` scope provider of the traits applied to `test`.
   ///
   /// - Throws: Whatever is thrown by `body` or by any of the
-  ///   ``CustomExecutionTrait/execute(_:for:testCase:)`` functions.
-  private func _executeTraits(
-    for step: Plan.Step,
+  ///   ``TestScoping/provideScope(for:testCase:performing:)`` function calls.
+  private static func _applyScopingTraits(
+    for test: Test,
     testCase: Test.Case?,
     _ body: @escaping @Sendable () async throws -> Void
   ) async throws {
     // If the test does not have any traits, exit early to avoid unnecessary
     // heap allocations below.
-    if step.test.traits.isEmpty {
+    if test.traits.isEmpty {
       return try await body()
     }
 
-    if case .skip = step.action {
-      return try await body()
-    }
-
-    // Construct a recursive function that invokes each trait's ``execute(_:for:testCase:)``
-    // function. The order of the sequence is reversed so that the last trait is
-    // the one that invokes body, then the second-to-last invokes the last, etc.
-    // and ultimately the first trait is the first one to be invoked.
-    let executeAllTraits = step.test.traits.lazy
+    // Construct a recursive function that invokes each scope provider's
+    // `provideScope(for:testCase:performing:)` function. The order of the
+    // sequence is reversed so that the last trait is the one that invokes body,
+    // then the second-to-last invokes the last, etc. and ultimately the first
+    // trait is the first one to be invoked.
+    let executeAllTraits = test.traits.lazy
       .reversed()
-      .compactMap { $0 as? any CustomExecutionTrait }
-      .compactMap { $0.execute(_:for:testCase:) }
-      .reduce(body) { executeAllTraits, traitExecutor in
+      .compactMap { $0.scopeProvider(for: test, testCase: testCase) }
+      .map { $0.provideScope(for:testCase:performing:) }
+      .reduce(body) { executeAllTraits, provideScope in
         {
-          try await traitExecutor(executeAllTraits, step.test, testCase)
+          try await provideScope(test, testCase, executeAllTraits)
+        }
+      }
+
+    try await executeAllTraits()
+  }
+
+  /// Apply the custom scope from any issue handling traits for the specified
+  /// test.
+  ///
+  /// - Parameters:
+  ///   - test: The test being run, for which to apply its issue handling traits.
+  ///   - body: A function to execute within the scope provided by the test's
+  ///     issue handling traits.
+  ///
+  /// - Throws: Whatever is thrown by `body` or by any of the traits' provide
+  ///   scope function calls.
+  private static func _applyIssueHandlingTraits(for test: Test, _ body: @escaping @Sendable () async throws -> Void) async throws {
+    // If the test does not have any traits, exit early to avoid unnecessary
+    // heap allocations below.
+    if test.traits.isEmpty {
+      return try await body()
+    }
+
+    // Construct a recursive function that invokes each issue handling trait's
+    // `provideScope(performing:)` function. The order of the sequence is
+    // reversed so that the last trait is the one that invokes body, then the
+    // second-to-last invokes the last, etc. and ultimately the first trait is
+    // the first one to be invoked.
+    let executeAllTraits = test.traits.lazy
+      .compactMap { $0 as? IssueHandlingTrait }
+      .reversed()
+      .map { $0.provideScope(performing:) }
+      .reduce(body) { executeAllTraits, provideScope in
+        {
+          try await provideScope(executeAllTraits)
         }
       }
 
@@ -106,22 +149,14 @@ extension Runner {
   ///
   /// - Parameters:
   ///   - sequence: The sequence to enumerate.
-  ///   - step: The plan step that controls parallelization. If `nil`, or if its
-  ///   ``Runner/Plan/Step/action`` property is not of case
-  ///   ``Runner/Plan/Action/run(options:)``, the
-  ///   ``Configuration/isParallelizationEnabled`` property of this runner's
-  ///   ``configuration`` property is used instead to determine if
-  ///   parallelization is enabled.
   ///   - body: The function to invoke.
   ///
   /// - Throws: Whatever is thrown by `body`.
-  private func _forEach<E>(
+  private static func _forEach<E>(
     in sequence: some Sequence<E>,
-    for step: Plan.Step?,
     _ body: @Sendable @escaping (E) async throws -> Void
   ) async throws where E: Sendable {
-    let isParallelizationEnabled = step?.action.isParallelizationEnabled ?? configuration.isParallelizationEnabled
-    try await withThrowingTaskGroup(of: Void.self) { taskGroup in
+    try await withThrowingTaskGroup { taskGroup in
       for element in sequence {
         // Each element gets its own subtask to run in.
         _ = taskGroup.addTaskUnlessCancelled {
@@ -129,7 +164,7 @@ extension Runner {
         }
 
         // If not parallelizing, wait after each task.
-        if !isParallelizationEnabled {
+        if !_configuration.isParallelizationEnabled {
           try await taskGroup.waitForAll()
         }
       }
@@ -140,12 +175,6 @@ extension Runner {
   ///
   /// - Parameters:
   ///   - stepGraph: The subgraph whose root value, a step, is to be run.
-  ///   - depth: How deep into the step graph this call is. The first call has a
-  ///     depth of `0`.
-  ///   - lastAncestorStep: The last-known ancestral step, if any, of the step
-  ///     at the root of `stepGraph`. The options in this step (if its action is
-  ///     of case ``Runner/Plan/Action/run(options:)``) inform the execution of
-  ///     `stepGraph`.
   ///
   /// - Throws: Whatever is thrown from the test body. Thrown errors are
   ///   normally reported as test failures.
@@ -160,7 +189,7 @@ extension Runner {
   /// ## See Also
   ///
   /// - ``Runner/run()``
-  private func _runStep(atRootOf stepGraph: Graph<String, Plan.Step?>, depth: Int, lastAncestorStep: Plan.Step?) async throws {
+  private static func _runStep(atRootOf stepGraph: Graph<String, Plan.Step?>) async throws {
     // Exit early if the task has already been cancelled.
     try Task.checkCancellation()
 
@@ -168,6 +197,8 @@ extension Runner {
     // Some steps' actions may not require a final event to be sent — for
     // example, a skip event only sends `.testSkipped`.
     let shouldSendTestEnded: Bool
+
+    let configuration = _configuration
 
     // Determine what action to take for this step.
     if let step = stepGraph.value {
@@ -182,7 +213,19 @@ extension Runner {
         Event.post(.testSkipped(skipInfo), for: (step.test, nil), configuration: configuration)
         shouldSendTestEnded = false
       case let .recordIssue(issue):
-        Event.post(.issueRecorded(issue), for: (step.test, nil), configuration: configuration)
+        // Scope posting the issue recorded event such that issue handling
+        // traits have the opportunity to handle it. This ensures that if a test
+        // has an issue handling trait _and_ some other trait which caused an
+        // issue to be recorded, the issue handling trait can process the issue
+        // even though it wasn't recorded by the test function.
+        try await Test.withCurrent(step.test) {
+          try await _applyIssueHandlingTraits(for: step.test) {
+            // Don't specify `configuration` when posting this issue so that
+            // traits can provide scope and potentially customize the
+            // configuration.
+            Event.post(.issueRecorded(issue), for: (step.test, nil))
+          }
+        }
         shouldSendTestEnded = false
       }
     } else {
@@ -200,21 +243,21 @@ extension Runner {
     if let step = stepGraph.value, case .run = step.action {
       await Test.withCurrent(step.test) {
         _ = await Issue.withErrorRecording(at: step.test.sourceLocation, configuration: configuration) {
-          try await _executeTraits(for: step, testCase: nil) {
+          try await _applyScopingTraits(for: step.test, testCase: nil) {
             // Run the test function at this step (if one is present.)
             if let testCases = step.test.testCases {
               try await _runTestCases(testCases, within: step)
             }
 
             // Run the children of this test (i.e. the tests in this suite.)
-            try await _runChildren(of: stepGraph, depth: depth, lastAncestorStep: lastAncestorStep)
+            try await _runChildren(of: stepGraph)
           }
         }
       }
     } else {
       // There is no test at this node in the graph, so just skip down to the
       // child nodes.
-      try await _runChildren(of: stepGraph, depth: depth, lastAncestorStep: lastAncestorStep)
+      try await _runChildren(of: stepGraph)
     }
   }
 
@@ -225,7 +268,7 @@ extension Runner {
   ///
   /// - Returns: The source location of the root node of `stepGraph`, or of the
   ///   first descendant node thereof (sorted by source location.)
-  private func _sourceLocation(of stepGraph: Graph<String, Plan.Step?>) -> SourceLocation? {
+  private static func _sourceLocation(of stepGraph: Graph<String, Plan.Step?>) -> SourceLocation? {
     if let result = stepGraph.value?.test.sourceLocation {
       return result
     }
@@ -237,26 +280,13 @@ extension Runner {
   /// Recursively run the tests that are children of a given plan step.
   ///
   /// - Parameters:
-  ///   - stepGraph: The subgraph whose root value, a step, is to be run.
-  ///   - depth: How deep into the step graph this call is. The first call has a
-  ///     depth of `0`.
-  ///   - lastAncestorStep: The last-known ancestral step, if any, of the step
-  ///     at the root of `stepGraph`. The options in this step (if its action is
-  ///     of case ``Runner/Plan/Action/run(options:)``) inform the execution of
-  ///     `stepGraph`.
+  ///   - stepGraph: The subgraph whose root value, a step, will be used to
+  ///     find children to run.
   ///
   /// - Throws: Whatever is thrown from the test body. Thrown errors are
   ///   normally reported as test failures.
-  private func _runChildren(of stepGraph: Graph<String, Plan.Step?>, depth: Int, lastAncestorStep: Plan.Step?) async throws {
-    // Figure out the last-good step, either the one at the root of `stepGraph`
-    // or, if it is nil, the one passed into this function. We need to track
-    // this value in case we run into sparse sections of the graph so we don't
-    // lose track of the recursive `isParallelizationEnabled` property in the
-    // runnable steps' options.
-    let stepOrAncestor = stepGraph.value ?? lastAncestorStep
-
-    let isParallelizationEnabled = stepOrAncestor?.action.isParallelizationEnabled ?? configuration.isParallelizationEnabled
-    let childGraphs = if isParallelizationEnabled {
+  private static func _runChildren(of stepGraph: Graph<String, Plan.Step?>) async throws {
+    let childGraphs = if _configuration.isParallelizationEnabled {
       // Explicitly shuffle the steps to help detect accidental dependencies
       // between tests due to their ordering.
       Array(stepGraph.children)
@@ -285,8 +315,8 @@ extension Runner {
     }
 
     // Run the child nodes.
-    try await _forEach(in: childGraphs, for: stepOrAncestor) { _, childGraph in
-      try await _runStep(atRootOf: childGraph, depth: depth + 1, lastAncestorStep: stepOrAncestor)
+    try await _forEach(in: childGraphs) { _, childGraph in
+      try await _runStep(atRootOf: childGraph)
     }
   }
 
@@ -301,13 +331,14 @@ extension Runner {
   ///
   /// If parallelization is supported and enabled, the generated test cases will
   /// be run in parallel using a task group.
-  private func _runTestCases(_ testCases: some Sequence<Test.Case>, within step: Plan.Step) async throws {
+  private static func _runTestCases(_ testCases: some Sequence<Test.Case>, within step: Plan.Step) async throws {
     // Apply the configuration's test case filter.
+    let testCaseFilter = _configuration.testCaseFilter
     let testCases = testCases.lazy.filter { testCase in
-      configuration.testCaseFilter(testCase, step.test)
+      testCaseFilter(testCase, step.test)
     }
 
-    try await _forEach(in: testCases, for: step) { testCase in
+    try await _forEach(in: testCases) { testCase in
       try await _runTestCase(testCase, within: step)
     }
   }
@@ -323,9 +354,11 @@ extension Runner {
   ///
   /// This function sets ``Test/Case/current``, then invokes the test case's
   /// body closure.
-  private func _runTestCase(_ testCase: Test.Case, within step: Plan.Step) async throws {
+  private static func _runTestCase(_ testCase: Test.Case, within step: Plan.Step) async throws {
     // Exit early if the task has already been cancelled.
     try Task.checkCancellation()
+
+    let configuration = _configuration
 
     Event.post(.testCaseStarted, for: (step.test, testCase), configuration: configuration)
     defer {
@@ -336,7 +369,7 @@ extension Runner {
       let sourceLocation = step.test.sourceLocation
       await Issue.withErrorRecording(at: sourceLocation, configuration: configuration) {
         try await withTimeLimit(for: step.test, configuration: configuration) {
-          try await _executeTraits(for: step, testCase: testCase) {
+          try await _applyScopingTraits(for: step.test, testCase: testCase) {
             try await testCase.body()
           }
         } timeoutHandler: { timeLimit in
@@ -360,9 +393,6 @@ extension Runner {
   ///
   /// - Parameters:
   ///   - runner: The runner to run.
-  ///   - configuration: The configuration to use for running. The value of this
-  ///     argument temporarily replaces the value of `runner`'s
-  ///     ``Runner/configuration`` property.
   ///
   /// This function is `static` so that it cannot accidentally reference `self`
   /// or `self.configuration` when it should use a modified copy of either.
@@ -400,9 +430,9 @@ extension Runner {
           Event.post(.iterationEnded(iterationIndex), for: (nil, nil), configuration: runner.configuration)
         }
 
-        await withTaskGroup(of: Void.self) { [runner] taskGroup in
+        await withTaskGroup { [runner] taskGroup in
           _ = taskGroup.addTaskUnlessCancelled {
-            try? await runner._runStep(atRootOf: runner.plan.stepGraph, depth: 0, lastAncestorStep: nil)
+            try? await _runStep(atRootOf: runner.plan.stepGraph)
           }
           await taskGroup.waitForAll()
         }
