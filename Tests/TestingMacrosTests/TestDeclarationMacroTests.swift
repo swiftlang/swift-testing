@@ -217,17 +217,17 @@ struct TestDeclarationMacroTests {
           ]
         ),
 
-      #"@Test("Goodbye world") func `__raw__$helloWorld`()"#:
+      #"@Test("Goodbye world") func `hello world`()"#:
         (
-          message: "Attribute 'Test' specifies display name 'Goodbye world' for function with implicit display name 'helloWorld'",
+          message: "Attribute 'Test' specifies display name 'Goodbye world' for function with implicit display name 'hello world'",
           fixIts: [
             ExpectedFixIt(
               message: "Remove 'Goodbye world'",
               changes: [.replace(oldSourceCode: #""Goodbye world""#, newSourceCode: "")]
             ),
             ExpectedFixIt(
-              message: "Rename '__raw__$helloWorld'",
-              changes: [.replace(oldSourceCode: "`__raw__$helloWorld`", newSourceCode: "\(EditorPlaceholderExprSyntax("name"))")]
+              message: "Rename 'hello world'",
+              changes: [.replace(oldSourceCode: "`hello world`", newSourceCode: "\(EditorPlaceholderExprSyntax("name"))")]
             ),
           ]
         ),
@@ -281,10 +281,10 @@ struct TestDeclarationMacroTests {
   @Test("Raw function name components")
   func rawFunctionNameComponents() throws {
     let decl = """
-    func `__raw__$hello`(`__raw__$world`: T, etc: U, `blah`: V) {}
+    func `hello there`(`world of mine`: T, etc: U, `blah`: V) {}
     """ as DeclSyntax
     let functionDecl = try #require(decl.as(FunctionDeclSyntax.self))
-    #expect(functionDecl.completeName.trimmedDescription == "`hello`(`world`:etc:blah:)")
+    #expect(functionDecl.completeName.trimmedDescription == "`hello there`(`world of mine`:etc:blah:)")
   }
 
   @Test("Warning diagnostics emitted on API misuse",
