@@ -322,20 +322,29 @@ struct EventRecorderTests {
       print(buffer, terminator: "")
     }
 
+    let testCount = Reference<Int?>()
+    let suiteCount = Reference<Int?>()
+    let issueCount = Reference<Int?>()
+    let knownIssueCount = Reference<Int?>()
+
     let runFailureRegex = Regex {
       One(.anyGraphemeCluster)
       " Test run with "
-      OneOrMore(.digit)
+      Capture(as: testCount) { OneOrMore(.digit) } transform: { Int($0) }
       " test"
+      Optionally("s")
+      " in "
+      Capture(as: suiteCount) { OneOrMore(.digit) } transform: { Int($0) }
+      " suite"
       Optionally("s")
       " failed "
       ZeroOrMore(.any)
       " with "
-      Capture { OneOrMore(.digit) } transform: { Int($0) }
+      Capture(as: issueCount) { OneOrMore(.digit) } transform: { Int($0) }
       " issue"
       Optionally("s")
       " (including "
-      Capture { OneOrMore(.digit) } transform: { Int($0) }
+      Capture(as: knownIssueCount) { OneOrMore(.digit) } transform: { Int($0) }
       " known issue"
       Optionally("s")
       ")."
@@ -346,8 +355,10 @@ struct EventRecorderTests {
         .compactMap(runFailureRegex.wholeMatch(in:))
         .first
     )
-    #expect(match.output.1 == 12)
-    #expect(match.output.2 == 5)
+    #expect(match[testCount] == 9)
+    #expect(match[suiteCount] == 2)
+    #expect(match[issueCount] == 12)
+    #expect(match[knownIssueCount] == 5)
   }
 
   @Test("Issue counts are summed correctly on run end for a test with only warning issues")
@@ -369,16 +380,24 @@ struct EventRecorderTests {
       print(buffer, terminator: "")
     }
 
+    let testCount = Reference<Int?>()
+    let suiteCount = Reference<Int?>()
+    let warningCount = Reference<Int?>()
+
     let runFailureRegex = Regex {
       One(.anyGraphemeCluster)
       " Test run with "
-      OneOrMore(.digit)
+      Capture(as: testCount) { OneOrMore(.digit) } transform: { Int($0) }
       " test"
+      Optionally("s")
+      " in "
+      Capture(as: suiteCount) { OneOrMore(.digit) } transform: { Int($0) }
+      " suite"
       Optionally("s")
       " passed "
       ZeroOrMore(.any)
       " with "
-      Capture { OneOrMore(.digit) } transform: { Int($0) }
+      Capture(as: warningCount) { OneOrMore(.digit) } transform: { Int($0) }
       " warning"
       Optionally("s")
       "."
@@ -390,7 +409,9 @@ struct EventRecorderTests {
         .first,
       "buffer: \(buffer)"
     )
-    #expect(match.output.1 == 1)
+    #expect(match[testCount] == 1)
+    #expect(match[suiteCount] == 1)
+    #expect(match[warningCount] == 1)
   }
 #endif
 
@@ -691,6 +712,8 @@ struct EventRecorderTests {
   func n(_ arg: Int) {
     #expect(arg > 0)
   }
+
+  @Suite struct PredictableSubsuite {}
 }
 
 @Suite(.hidden) struct PredictablyFailingKnownIssueTests {

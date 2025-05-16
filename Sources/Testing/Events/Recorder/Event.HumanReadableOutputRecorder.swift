@@ -542,6 +542,7 @@ extension Event.HumanReadableOutputRecorder {
 
     case .runEnded:
       let testCount = context.testCount
+      let suiteCount = context.suiteCount
       let issues = _issueCounts(in: context.testData)
       let runStartInstant = context.runStartInstant ?? instant
       let duration = runStartInstant.descriptionOfDuration(to: instant)
@@ -550,14 +551,14 @@ extension Event.HumanReadableOutputRecorder {
         [
           Message(
             symbol: .fail,
-            stringValue: "Test run with \(testCount.counting("test")) failed after \(duration)\(issues.description)."
+            stringValue: "Test run with \(testCount.counting("test")) in \(suiteCount.counting("suite")) failed after \(duration)\(issues.description)."
           )
         ]
       } else {
         [
           Message(
             symbol: .pass(knownIssueCount: issues.knownIssueCount),
-            stringValue: "Test run with \(testCount.counting("test")) passed after \(duration)\(issues.description)."
+            stringValue: "Test run with \(testCount.counting("test")) in \(suiteCount.counting("suite")) passed after \(duration)\(issues.description)."
           )
         ]
       }
