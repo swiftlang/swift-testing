@@ -1201,6 +1201,102 @@ public func __checkClosureCall<each T>(
 }
 #endif
 
+// MARK: - Polling
+
+@_spi(Experimental)
+@available(macOS 13, iOS 17, watchOS 9, tvOS 17, visionOS 1, *)
+public func __checkClosureCall(
+  until behavior: PollingBehavior,
+  timeout: Duration = .seconds(60),
+  performing closure: @escaping @Sendable () async throws -> Bool,
+  expression: __Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) async -> Result<Void, any Error> {
+  await callPolling(
+    behavior: behavior,
+    timeout: timeout,
+    closure: closure,
+    expression: expression,
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+@_spi(Experimental)
+@available(macOS 13, iOS 17, watchOS 9, tvOS 17, visionOS 1, *)
+public func __checkClosureCall<E>(
+  until behavior: PollingBehavior,
+  throws error: E,
+  timeout: Duration = .seconds(60),
+  performing closure: @escaping @Sendable () async throws -> Bool,
+  expression: __Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) async -> Result<Void, any Error> where E: Error & Equatable {
+  await callPolling(
+    behavior: behavior,
+    throws: error,
+    timeout: timeout,
+    closure: closure,
+    expression: expression,
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+@_spi(Experimental)
+@available(macOS 13, iOS 17, watchOS 9, tvOS 17, visionOS 1, *)
+public func __checkClosureCall(
+  until behavior: PollingBehavior,
+  timeout: Duration = .seconds(60),
+  performing closure: @escaping @Sendable () async throws -> Bool,
+  throws errorMatcher: @escaping @Sendable (any Error) async throws -> Bool,
+  expression: __Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) async -> Result<Void, any Error> {
+  await callPolling(
+    behavior: behavior,
+    timeout: timeout,
+    closure: closure,
+    errorMatcher: errorMatcher,
+    expression: expression,
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+@_spi(Experimental)
+@available(macOS 13, iOS 17, watchOS 9, tvOS 17, visionOS 1, *)
+public func __checkClosureCall<R>(
+  until behavior: PollingBehavior,
+  timeout: Duration = .seconds(60),
+  performing closure: @escaping @Sendable () async throws -> R,
+  throws errorMatcher: @escaping @Sendable (any Error) async throws -> Bool,
+  expression: __Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) async -> Result<R, any Error> where R: Sendable {
+  await callPolling(
+    behavior: behavior,
+    timeout: timeout,
+    closure: closure,
+    errorMatcher: errorMatcher,
+    expression: expression,
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
 // MARK: -
 
 /// Generate a description of an error that includes its type name if not

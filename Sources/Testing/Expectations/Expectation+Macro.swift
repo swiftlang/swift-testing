@@ -572,3 +572,170 @@ public macro require(
   sourceLocation: SourceLocation = #_sourceLocation,
   performing expression: @escaping @Sendable @convention(thin) () async throws -> Void
 ) -> ExitTest.Result = #externalMacro(module: "TestingMacros", type: "ExitTestRequireMacro")
+
+// MARK: - Polling Expectations
+
+/// Continuously check an expression until it matches the given PollingBehavior
+///
+/// - Parameters:
+///   - until: The desired PollingBehavior to check for.
+///   - timeout: How long to run poll the expression until stopping.
+///   - comment: A comment describing the expectation.
+///   - sourceLocation: The source location to which the recorded expectations
+///     and issues should be attributed.
+///   - expression: The expression to be evaluated.
+///
+/// Use this overload of `#expect()` when you wish to poll whether a value
+/// changes as the result of activity in another task/queue/thread.
+@_spi(Experimental)
+@available(macOS 13, iOS 17, watchOS 9, tvOS 17, visionOS 1, *)
+@freestanding(expression) public macro expect(
+    until pollingBehavior: PollingBehavior,
+    timeout: Duration = .seconds(60),
+    _ comment: @autoclosure () -> Comment? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation,
+    expression: @Sendable () async throws -> Bool
+) = #externalMacro(module: "TestingMacros", type: "ExpectMacro")
+
+/// Continuously check an expression until it matches the given PollingBehavior
+///
+/// - Parameters:
+///   - until: The desired PollingBehavior to check for.
+///   - throws: The error the expression should throw.
+///   - timeout: How long to run poll the expression until stopping.
+///   - comment: A comment describing the expectation.
+///   - sourceLocation: The source location to which the recorded expectations
+///     and issues should be attributed.
+///   - expression: The expression to be evaluated.
+///
+/// Use this overload of `#expect()` when you wish to poll whether a value
+/// changes as the result of activity in another task/queue/thread.
+@_spi(Experimental)
+@available(macOS 13, iOS 17, watchOS 9, tvOS 17, visionOS 1, *)
+@freestanding(expression) public macro expect<E>(
+    until pollingBehavior: PollingBehavior,
+    throws error: E,
+    timeout: Duration = .seconds(60),
+    _ comment: @autoclosure () -> Comment? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation,
+    expression: @Sendable () async throws -> Bool
+) = #externalMacro(module: "TestingMacros", type: "ExpectMacro")
+where E: Error & Equatable
+
+/// Continuously check an expression until it matches the given PollingBehavior
+///
+/// - Parameters:
+///   - until: The desired PollingBehavior to check for.
+///   - timeout: How long to run poll the expression until stopping.
+///   - comment: A comment describing the expectation.
+///   - sourceLocation: The source location to which the recorded expectations
+///     and issues should be attributed.
+///   - expression: The expression to be evaluated.
+///   - throws: A closure to confirm if the expression throws the expected error.
+///
+/// Use this overload of `#expect()` when you wish to poll whether a value
+/// changes as the result of activity in another task/queue/thread.
+@_spi(Experimental)
+@available(macOS 13, iOS 17, watchOS 9, tvOS 17, visionOS 1, *)
+@freestanding(expression) public macro expect(
+    until pollingBehavior: PollingBehavior,
+    timeout: Duration = .seconds(60),
+    _ comment: @autoclosure () -> Comment? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation,
+    performing: @Sendable () async throws -> Bool,
+    throws errorMatcher: @Sendable (any Error) async throws -> Bool
+) = #externalMacro(module: "TestingMacros", type: "ExpectMacro")
+
+/// Continuously check an expression until it matches the given PollingBehavior
+///
+/// - Parameters:
+///   - until: The desired PollingBehavior to check for.
+///   - timeout: How long to run poll the expression until stopping.
+///   - comment: A comment describing the expectation.
+///   - sourceLocation: The source location to which the recorded expectations
+///     and issues should be attributed.
+///   - expression: The expression to be evaluated.
+///
+/// Use this overload of `#require()` when you wish to poll whether a value
+/// changes as the result of activity in another task/queue/thread.
+@_spi(Experimental)
+@available(macOS 13, iOS 17, watchOS 9, tvOS 17, visionOS 1, *)
+@freestanding(expression) public macro require(
+    until pollingBehavior: PollingBehavior,
+    timeout: Duration = .seconds(60),
+    _ comment: @autoclosure () -> Comment? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation,
+    expression: @Sendable () async throws -> Bool
+) = #externalMacro(module: "TestingMacros", type: "RequireMacro")
+
+/// Continuously check an expression until it matches the given PollingBehavior
+///
+/// - Parameters:
+///   - until: The desired PollingBehavior to check for.
+///   - timeout: How long to run poll the expression until stopping.
+///   - comment: A comment describing the expectation.
+///   - sourceLocation: The source location to which the recorded expectations
+///     and issues should be attributed.
+///   - expression: The expression to be evaluated.
+///
+/// Use this overload of `#require()` when you wish to poll whether a value
+/// changes as the result of activity in another task/queue/thread.
+@_spi(Experimental)
+@available(macOS 13, iOS 17, watchOS 9, tvOS 17, visionOS 1, *)
+@freestanding(expression) public macro require<R>(
+    until pollingBehavior: PollingBehavior,
+    timeout: Duration = .seconds(60),
+    _ comment: @autoclosure () -> Comment? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation,
+    expression: @Sendable () async throws -> R?
+) = #externalMacro(module: "TestingMacros", type: "RequireMacro")
+where R: Sendable
+
+/// Continuously check an expression until it matches the given PollingBehavior
+///
+/// - Parameters:
+///   - until: The desired PollingBehavior to check for.
+///   - throws: The error the expression should throw
+///   - timeout: How long to run poll the expression until stopping.
+///   - comment: A comment describing the expectation.
+///   - sourceLocation: The source location to which the recorded expectations
+///     and issues should be attributed.
+///   - expression: The expression to be evaluated.
+///
+/// Use this overload of `#require()` when you wish to poll whether a value
+/// changes as the result of activity in another task/queue/thread.
+@_spi(Experimental)
+@available(macOS 13, iOS 17, watchOS 9, tvOS 17, visionOS 1, *)
+@freestanding(expression) public macro require<E>(
+    until pollingBehavior: PollingBehavior,
+    throws error: E,
+    timeout: Duration = .seconds(60),
+    _ comment: @autoclosure () -> Comment? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation,
+    expression: @Sendable () async throws -> Bool
+) = #externalMacro(module: "TestingMacros", type: "RequireMacro")
+where E: Error & Equatable
+
+/// Continuously check an expression until it matches the given PollingBehavior
+///
+/// - Parameters:
+///   - until: The desired PollingBehavior to check for.
+///   - timeout: How long to run poll the expression until stopping.
+///   - comment: A comment describing the expectation.
+///   - sourceLocation: The source location to which the recorded expectations
+///     and issues should be attributed.
+///   - expression: The expression to be evaluated.
+///   - throws: A closure to confirm if the expression throws the expected error.
+///
+/// Use this overload of `#require()` when you wish to poll whether a value
+/// changes as the result of activity in another task/queue/thread.
+@_spi(Experimental)
+@available(macOS 13, iOS 17, watchOS 9, tvOS 17, visionOS 1, *)
+@freestanding(expression) public macro require<E>(
+    until pollingBehavior: PollingBehavior,
+    timeout: Duration = .seconds(60),
+    _ comment: @autoclosure () -> Comment? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation,
+    expression: @Sendable () async throws -> Bool,
+    throws errorMatcher: @Sendable (any Error) async throws -> Bool
+) = #externalMacro(module: "TestingMacros", type: "RequireMacro")
