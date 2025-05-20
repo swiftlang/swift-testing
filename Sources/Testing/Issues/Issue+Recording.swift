@@ -76,6 +76,7 @@ extension Issue {
   ///   - severity: The severity of the issue.
   ///   - sourceLocation: The source location to which the issue should be
   ///     attributed.
+  ///   - kind: The kind of the issue.
   ///
   /// - Returns: The issue that was recorded.
   ///
@@ -86,10 +87,11 @@ extension Issue {
   @discardableResult public static func record(
     _ comment: Comment? = nil,
     severity: Severity,
-    sourceLocation: SourceLocation = #_sourceLocation
+    sourceLocation: SourceLocation = #_sourceLocation,
+    kind: Kind = .unconditional
   ) -> Self {
     let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
-    let issue = Issue(kind: .unconditional, severity: severity, comments: Array(comment), sourceContext: sourceContext)
+    let issue = Issue(kind: kind, severity: severity, comments: Array(comment), sourceContext: sourceContext)
     return issue.record()
   }
 }
