@@ -1783,7 +1783,6 @@ struct IssueCodingTests {
       }.run(configuration: configuration)
     }
   }
-  
 }
 #endif
 
