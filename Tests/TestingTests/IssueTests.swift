@@ -999,7 +999,7 @@ final class IssueTests: XCTestCase {
       
     }
     await Test {
-      Issue.record("My comment", severity: .error, kind: .apiMisused)
+      Issue.record(kind: .apiMisused, comment: "My comment")
     }.run(configuration: configuration)
     
     await fulfillment(of: [apiMisused], timeout: 0.0)

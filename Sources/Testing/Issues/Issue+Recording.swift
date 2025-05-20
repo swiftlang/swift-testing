@@ -76,7 +76,6 @@ extension Issue {
   ///   - severity: The severity of the issue.
   ///   - sourceLocation: The source location to which the issue should be
   ///     attributed.
-  ///   - kind: The kind of the issue.
   ///
   /// - Returns: The issue that was recorded.
   ///
@@ -87,13 +86,40 @@ extension Issue {
   @discardableResult public static func record(
     _ comment: Comment? = nil,
     severity: Severity,
-    sourceLocation: SourceLocation = #_sourceLocation,
-    kind: Kind = .unconditional
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) -> Self {
+    let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
+    let issue = Issue(kind: .unconditional, severity: severity, comments: Array(comment), sourceContext: sourceContext)
+    return issue.record()
+  }
+  
+  /// Record an issue when a running test fails unexpectedly.
+  ///
+  /// - Parameters:
+  ///   - comment: A comment describing the expectation.
+  ///   - severity: The severity of the issue.
+  ///   - sourceLocation: The source location to which the issue should be
+  ///     attributed.
+  ///   - kind: The kind of the issue.
+  ///
+  /// - Returns: The issue that was recorded.
+  ///
+  /// Use this function if, while running a test, an issue occurs that cannot be
+  /// represented as an expectation (using the ``expect(_:_:sourceLocation:)``
+  /// or ``require(_:_:sourceLocation:)-5l63q`` macros.)
+  @_spi(Experimental)
+  @_spi(ForToolsIntegrationOnly)
+  @discardableResult public static func record(
+    kind: Kind = .unconditional,
+    comment: Comment? = nil,
+    severity: Severity = .error,
+    sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
     let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
     let issue = Issue(kind: kind, severity: severity, comments: Array(comment), sourceContext: sourceContext)
     return issue.record()
   }
+
 }
 
 // MARK: - Recording issues for errors
