@@ -11,6 +11,13 @@
 #if canImport(Foundation)
 public import Testing
 private import Foundation
+#if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
+private import UniformTypeIdentifiers
+#endif
+
+#if canImport(CoreServices_Private)
+private import CoreServices_Private
+#endif
 
 /// A common implementation of ``withUnsafeBytes(for:_:)`` that is used when a
 /// type conforms to `Encodable`, whether or not it also conforms to
@@ -27,15 +34,26 @@ private import Foundation
 ///
 /// - Throws: Whatever is thrown by `body`, or any error that prevented the
 ///   creation of the buffer.
-func withUnsafeBytes<E, R>(encoding attachableValue: borrowing E, for attachment: borrowing Attachment<E>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R where E: Attachable & Encodable {
-  let format = try EncodingFormat(for: attachment)
+func withUnsafeBytes<E, R>(
+  encoding attachableValue: borrowing E,
+  for attachment: borrowing Attachment<E>,
+  _ body: (UnsafeRawBufferPointer) throws -> R
+) throws -> R where E: Attachable & Encodable, E.AttachmentMetadata == EncodableAttachmentMetadata? {
+  let format: EncodableAttachmentMetadata.Format = if let metadata = attachment.metadata {
+    metadata.format
+  } else {
+    try .infer(fromFileName: attachment.preferredName)
+  }
 
   let data: Data
   switch format {
   case let .propertyListFormat(propertyListFormat):
     let plistEncoder = PropertyListEncoder()
     plistEncoder.outputFormat = propertyListFormat
-    data = try plistEncoder.encode(attachableValue)
+    if let metadata = attachment.metadata {
+      plistEncoder.userInfo = metadata.userInfo
+    }
+    data = try plistEncoder.encode(attachment.attachableValue)
   case .default:
     // The default format is JSON.
     fallthrough
@@ -44,10 +62,49 @@ func withUnsafeBytes<E, R>(encoding attachableValue: borrowing E, for attachment
     // require it be exported with (at least) package visibility which would
     // create a visible external dependency on Foundation in the main testing
     // library target.
-    data = try JSONEncoder().encode(attachableValue)
+    let jsonEncoder = JSONEncoder()
+    if let metadata = attachment.metadata {
+      jsonEncoder.userInfo = metadata.userInfo
+
+      if let options = metadata.jsonEncodingOptions {
+        jsonEncoder.outputFormatting = options.outputFormatting
+        jsonEncoder.dateEncodingStrategy = options.dateEncodingStrategy
+        jsonEncoder.dataEncodingStrategy = options.dataEncodingStrategy
+        jsonEncoder.nonConformingFloatEncodingStrategy = options.nonConformingFloatEncodingStrategy
+        jsonEncoder.keyEncodingStrategy = options.keyEncodingStrategy
+      }
+    }
+    data = try jsonEncoder.encode(attachment.attachableValue)
   }
 
   return try data.withUnsafeBytes(body)
+}
+
+/// A common implementation of ``preferredName(for:basedOn:)`` that is used when
+/// a type conforms to `Encodable`, whether or not it also conforms to
+/// `NSSecureCoding`.
+///
+/// For more information, see ``Testing/Attachable/preferredName(for:basedOn:)``.
+func makePreferredName<E>(
+  from suggestedName: String,
+  for attachment: Attachment<E>,
+  defaultFormat: EncodableAttachmentMetadata.Format
+) -> String where E: Attachable, E.AttachmentMetadata == EncodableAttachmentMetadata? {
+#if SWT_TARGET_OS_APPLE && canImport(UniformTypeIdentifiers)
+  if #available(_uttypesAPI, *) {
+    let format = attachment.metadata?.format ?? defaultFormat
+    switch format {
+    case .propertyListFormat:
+      return (suggestedName as NSString).appendingPathExtension(for: .propertyList)
+    case .json:
+      return (suggestedName as NSString).appendingPathExtension(for: .json)
+    default:
+      return suggestedName
+    }
+  }
+#endif
+
+  return suggestedName
 }
 
 // Implement the protocol requirements generically for any encodable value by
@@ -58,6 +115,13 @@ func withUnsafeBytes<E, R>(encoding attachableValue: borrowing E, for attachment
 ///   @Available(Swift, introduced: 6.2)
 /// }
 extension Attachable where Self: Encodable {
+  public typealias AttachmentMetadata = EncodableAttachmentMetadata?
+}
+
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+/// }
+extension Attachable where Self: Encodable, AttachmentMetadata == EncodableAttachmentMetadata? {
   /// Encode this value into a buffer using either [`PropertyListEncoder`](https://developer.apple.com/documentation/foundation/propertylistencoder)
   /// or [`JSONEncoder`](https://developer.apple.com/documentation/foundation/jsonencoder),
   /// then call a function and pass that buffer to it.
@@ -74,9 +138,10 @@ extension Attachable where Self: Encodable {
   ///   creation of the buffer.
   ///
   /// The testing library uses this function when writing an attachment to a
-  /// test report or to a file on disk. The encoding used depends on the path
-  /// extension specified by the value of `attachment`'s ``Testing/Attachment/preferredName``
-  /// property:
+  /// test report or to a file on disk. If you do not provide any metadata when
+  /// you attach this object to a test, the testing library infers the encoding
+  /// format from the path extension on the `attachment`'s
+  /// ``Testing/Attachment/preferredName`` property:
   ///
   /// | Extension | Encoding Used | Encoder Used |
   /// |-|-|-|
@@ -95,6 +160,10 @@ extension Attachable where Self: Encodable {
   /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try _Testing_Foundation.withUnsafeBytes(encoding: self, for: attachment, body)
+  }
+
+  public func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
+    makePreferredName(from: suggestedName, for: attachment, defaultFormat: .json)
   }
 }
 #endif
