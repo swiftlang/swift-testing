@@ -9,7 +9,7 @@
 //
 
 #if canImport(Foundation)
-public import Testing
+@_spi(Experimental) public import Testing
 public import Foundation
 
 // As with Encodable, implement the protocol requirements for
@@ -20,6 +20,13 @@ public import Foundation
 ///   @Available(Swift, introduced: 6.2)
 /// }
 extension Attachable where Self: NSSecureCoding {
+  public typealias _AttachmentMetadata = EncodableAttachmentMetadata?
+}
+
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+/// }
+extension Attachable where Self: NSSecureCoding, _AttachmentMetadata == EncodableAttachmentMetadata? {
   /// Encode this object using [`NSKeyedArchiver`](https://developer.apple.com/documentation/foundation/nskeyedarchiver)
   /// into a buffer, then call a function and pass that buffer to it.
   ///
@@ -54,7 +61,11 @@ extension Attachable where Self: NSSecureCoding {
   ///   @Available(Swift, introduced: 6.2)
   /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    let format = try EncodingFormat(for: attachment)
+    let format: EncodableAttachmentMetadata.Format = if let metadata = attachment.metadata {
+      metadata.format
+    } else {
+      try .infer(fromFileName: attachment.preferredName)
+    }
 
     var data = try NSKeyedArchiver.archivedData(withRootObject: self, requiringSecureCoding: true)
     switch format {

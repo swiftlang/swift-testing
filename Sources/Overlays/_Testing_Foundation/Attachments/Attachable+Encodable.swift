@@ -9,7 +9,7 @@
 //
 
 #if canImport(Foundation)
-public import Testing
+@_spi(Experimental) public import Testing
 private import Foundation
 
 /// A common implementation of ``withUnsafeBytes(for:_:)`` that is used when a
@@ -27,8 +27,12 @@ private import Foundation
 ///
 /// - Throws: Whatever is thrown by `body`, or any error that prevented the
 ///   creation of the buffer.
-func withUnsafeBytes<E, R>(encoding attachableValue: borrowing E, for attachment: borrowing Attachment<E>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R where E: Attachable & Encodable {
-  let format = try EncodingFormat(for: attachment)
+func withUnsafeBytes<E, R>(encoding attachableValue: borrowing E, for attachment: borrowing Attachment<E>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R where E: Attachable & Encodable, E._AttachmentMetadata == EncodableAttachmentMetadata? {
+  let format: EncodableAttachmentMetadata.Format = if let metadata = attachment.metadata {
+    metadata.format
+  } else {
+    try .infer(fromFileName: attachment.preferredName)
+  }
 
   let data: Data
   switch format {
@@ -58,6 +62,13 @@ func withUnsafeBytes<E, R>(encoding attachableValue: borrowing E, for attachment
 ///   @Available(Swift, introduced: 6.2)
 /// }
 extension Attachable where Self: Encodable {
+  public typealias _AttachmentMetadata = EncodableAttachmentMetadata?
+}
+
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+/// }
+extension Attachable where Self: Encodable, _AttachmentMetadata == EncodableAttachmentMetadata? {
   /// Encode this value into a buffer using either [`PropertyListEncoder`](https://developer.apple.com/documentation/foundation/propertylistencoder)
   /// or [`JSONEncoder`](https://developer.apple.com/documentation/foundation/jsonencoder),
   /// then call a function and pass that buffer to it.
