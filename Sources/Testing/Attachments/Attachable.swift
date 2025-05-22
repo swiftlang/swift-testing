@@ -31,6 +31,27 @@
 ///   @Available(Swift, introduced: 6.2)
 /// }
 public protocol Attachable: ~Copyable {
+  /// A type containing additional metadata about an instance of this attachable
+  /// type that a developer can optionally include when creating an attachment.
+  ///
+  /// Instances of this type can contain metadata that is not contained directly
+  /// in the attachable value itself. An instance of this type can be passed to
+  /// the initializers of ``Attachment`` and then accessed later via
+  /// ``Attachment/metadata``.
+  ///
+  /// When implementing ``withUnsafeBytes(for:_:)``, you can access the
+  /// attachment's ``Attachment/metadata`` property to get the metadata that was
+  /// passed when the attachment was created.
+  ///
+  /// This type can be [`Optional`](https://developer.apple.com/documentation/swift/optional).
+  /// By default, this type is equal to [`Never?`](https://developer.apple.com/documentation/swift/never),
+  /// meaning that an attachable value has no metadata associated with it.
+  ///
+  /// - Warning: This associated type is part of an experimental feature. Due to
+  /// 	technical limitations, it cannot be guarded with `@_spi(Experimental)`.
+  ///   It may be renamed or removed in a future update.
+  associatedtype _AttachmentMetadata: Sendable = Never?
+
   /// An estimate of the number of bytes of memory needed to store this value as
   /// an attachment.
   ///

@@ -26,6 +26,13 @@ public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: Atta
   /// Storage for ``attachableValue-7dyjv``.
   fileprivate var _attachableValue: AttachableValue
 
+  /// Metadata associated with this attachment.
+  ///
+  /// The type of this property depends on the type of the attachment's
+  /// ``attachableValue-7dyjv`` property.
+	@_spi(Experimental)
+  public internal(set) var metadata: AttachableValue._AttachmentMetadata
+
   /// The path to which the this attachment was written, if any.
   ///
   /// If a developer sets the ``Configuration/attachmentsPath`` property of the
@@ -83,8 +90,33 @@ extension Attachment: Sendable where AttachableValue: Sendable {}
 
 // MARK: - Initializing an attachment
 
-#if !SWT_NO_LAZY_ATTACHMENTS
 extension Attachment where AttachableValue: ~Copyable {
+  /// Initialize an instance of this type that encloses the given attachable
+  /// value.
+  ///
+  /// - Parameters:
+  ///   - attachableValue: The value that will be attached to the output of the
+  ///     test run.
+  ///   - preferredName: The preferred name of the attachment when writing it to
+  ///     a test report or to disk. If `nil`, the testing library attempts to
+  ///     derive a reasonable filename for the attached value.
+  ///   - metadata: Metadata to include with `attachableValue`.
+  ///   - sourceLocation: The source location of the call to this initializer.
+  ///     This value is used when recording issues associated with the
+  ///     attachment.
+  @_spi(Experimental)
+  public init(
+    _ attachableValue: consuming AttachableValue,
+    named preferredName: String? = nil,
+    metadata: AttachableValue._AttachmentMetadata,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) {
+    self._attachableValue = attachableValue
+    self._preferredName = preferredName
+    self.metadata = metadata
+    self.sourceLocation = sourceLocation
+  }
+
   /// Initialize an instance of this type that encloses the given attachable
   /// value.
   ///
@@ -101,13 +133,45 @@ extension Attachment where AttachableValue: ~Copyable {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
   /// }
-  public init(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
+  @_spi(Experimental)
+  public init<M>(
+    _ attachableValue: consuming AttachableValue,
+    named preferredName: String? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) where AttachableValue._AttachmentMetadata == M? {
     self._attachableValue = attachableValue
     self._preferredName = preferredName
+    self.metadata = nil
     self.sourceLocation = sourceLocation
+  }
+
+  /// Initialize an instance of this type that encloses the given attachable
+  /// value.
+  ///
+  /// - Parameters:
+  ///   - attachableValue: The value that will be attached to the output of the
+  ///     test run.
+  ///   - preferredName: The preferred name of the attachment when writing it to
+  ///     a test report or to disk. If `nil`, the testing library attempts to
+  ///     derive a reasonable filename for the attached value.
+  ///   - sourceLocation: The source location of the call to this initializer.
+  ///     This value is used when recording issues associated with the
+  ///     attachment.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
+	@_disfavoredOverload
+  public init(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
+    // FIXME: remove this initializer when promoting AttachmentMetadata to API!
+    guard let metadata = (nil as Never?) as? AttachableValue._AttachmentMetadata else {
+      fatalError("Attempting to create an instance of 'Attachment<\(AttachableValue.self)>' without a metadata argument of type '\(AttachableValue._AttachmentMetadata.self)'.")
+    }
+    self.init(attachableValue, named: preferredName, metadata: metadata, sourceLocation: sourceLocation)
   }
 }
 
+#if !SWT_NO_LAZY_ATTACHMENTS
 @_spi(ForToolsIntegrationOnly)
 extension Attachment where AttachableValue == AnyAttachable {
   /// Create a type-erased attachment from an instance of ``Attachment``.
@@ -117,6 +181,7 @@ extension Attachment where AttachableValue == AnyAttachable {
   fileprivate init(_ attachment: Attachment<some Attachable & Sendable & Copyable>) {
     self.init(
       _attachableValue: AnyAttachable(wrappedValue: attachment.attachableValue),
+      metadata: attachment.metadata,
       fileSystemPath: attachment.fileSystemPath,
       _preferredName: attachment._preferredName,
       sourceLocation: attachment.sourceLocation
@@ -139,6 +204,7 @@ extension Attachment where AttachableValue == AnyAttachable {
 @_spi(ForToolsIntegrationOnly)
 public struct AnyAttachable: AttachableWrapper, Copyable, Sendable {
 #if !SWT_NO_LAZY_ATTACHMENTS
+  public typealias _AttachmentMetadata = any Sendable /* & Copyable rdar://137614425 */
   public typealias Wrapped = any Attachable & Sendable /* & Copyable rdar://137614425 */
 #else
   public typealias Wrapped = [UInt8]
@@ -158,6 +224,7 @@ public struct AnyAttachable: AttachableWrapper, Copyable, Sendable {
     func open<T>(_ wrappedValue: T, for attachment: borrowing Attachment<Self>) throws -> R where T: Attachable & Sendable & Copyable {
       let temporaryAttachment = Attachment<T>(
         _attachableValue: wrappedValue,
+        metadata: attachment.metadata as! T._AttachmentMetadata,
         fileSystemPath: attachment.fileSystemPath,
         _preferredName: attachment._preferredName,
         sourceLocation: attachment.sourceLocation
@@ -171,6 +238,7 @@ public struct AnyAttachable: AttachableWrapper, Copyable, Sendable {
     func open<T>(_ wrappedValue: T, for attachment: borrowing Attachment<Self>) -> String where T: Attachable & Sendable & Copyable {
       let temporaryAttachment = Attachment<T>(
         _attachableValue: wrappedValue,
+        metadata: attachment.metadata as! T._AttachmentMetadata,
         fileSystemPath: attachment.fileSystemPath,
         _preferredName: attachment._preferredName,
         sourceLocation: attachment.sourceLocation
@@ -274,6 +342,7 @@ extension Attachment where AttachableValue: Sendable & Copyable {
   ///   - preferredName: The preferred name of the attachment when writing it to
   ///     a test report or to disk. If `nil`, the testing library attempts to
   ///     derive a reasonable filename for the attached value.
+  ///   - metadata: Metadata to include with `attachableValue`.
   ///   - sourceLocation: The source location of the call to this function.
   ///
   /// When attaching a value of a type that does not conform to both
@@ -288,53 +357,15 @@ extension Attachment where AttachableValue: Sendable & Copyable {
   /// attaches it to the current test.
   ///
   /// An attachment can only be attached once.
-  ///
-  /// @Metadata {
-  ///   @Available(Swift, introduced: 6.2)
-  /// }
+  @_spi(Experimental)
   @_documentation(visibility: private)
-  public static func record(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
-    record(Self(attachableValue, named: preferredName, sourceLocation: sourceLocation), sourceLocation: sourceLocation)
-  }
-}
-#endif
-
-extension Attachment where AttachableValue: ~Copyable {
-  /// Attach an attachment to the current test.
-  ///
-  /// - Parameters:
-  ///   - attachment: The attachment to attach.
-  ///   - sourceLocation: The source location of the call to this function.
-  ///
-  /// When attaching a value of a type that does not conform to both
-  /// [`Sendable`](https://developer.apple.com/documentation/swift/sendable) and
-  /// [`Copyable`](https://developer.apple.com/documentation/swift/copyable),
-  /// the testing library encodes it as data immediately. If the value cannot be
-  /// encoded and an error is thrown, that error is recorded as an issue in the
-  /// current test and the attachment is not written to the test report or to
-  /// disk.
-  ///
-  /// An attachment can only be attached once.
-  ///
-  /// @Metadata {
-  ///   @Available(Swift, introduced: 6.2)
-  /// }
-  public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #_sourceLocation) {
-    do {
-      let attachmentCopy = try attachment.withUnsafeBytes { buffer in
-        let attachableWrapper = AnyAttachable(wrappedValue: Array(buffer))
-        return Attachment<AnyAttachable>(
-          _attachableValue: attachableWrapper,
-          fileSystemPath: attachment.fileSystemPath,
-          _preferredName: attachment.preferredName, // invokes preferredName(for:basedOn:)
-          sourceLocation: sourceLocation
-        )
-      }
-      Event.post(.valueAttached(attachmentCopy))
-    } catch {
-      let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
-      Issue(kind: .valueAttachmentFailed(error), comments: [], sourceContext: sourceContext).record()
-    }
+  public static func record(
+    _ attachableValue: consuming AttachableValue,
+    named preferredName: String? = nil,
+    metadata: AttachableValue._AttachmentMetadata,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) {
+    record(Self(attachableValue, named: preferredName, metadata: metadata, sourceLocation: sourceLocation), sourceLocation: sourceLocation)
   }
 
   /// Attach a value to the current test.
@@ -362,8 +393,111 @@ extension Attachment where AttachableValue: ~Copyable {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
   /// }
-  public static func record(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
-    record(Self(attachableValue, named: preferredName, sourceLocation: sourceLocation), sourceLocation: sourceLocation)
+  @_documentation(visibility: private)
+  public static func record<M>(
+    _ attachableValue: consuming AttachableValue,
+    named preferredName: String? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) where AttachableValue._AttachmentMetadata == M? {
+    record(attachableValue, named: preferredName, metadata: nil, sourceLocation: sourceLocation)
+  }
+}
+#endif
+
+extension Attachment where AttachableValue: ~Copyable {
+  /// Attach an attachment to the current test.
+  ///
+  /// - Parameters:
+  ///   - attachment: The attachment to attach.
+  ///   - sourceLocation: The source location of the call to this function.
+  ///
+  /// When attaching a value of a type that does not conform to both
+  /// [`Sendable`](https://developer.apple.com/documentation/swift/sendable) and
+  /// [`Copyable`](https://developer.apple.com/documentation/swift/copyable),
+  /// the testing library encodes it as data immediately. If the value cannot be
+  /// encoded and an error is thrown, that error is recorded as an issue in the
+  /// current test and the attachment is not written to the test report or to
+  /// disk.
+  ///
+  /// An attachment can only be attached once.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
+  public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #_sourceLocation) {
+    do {
+      try attachment.withUnsafeBytes { buffer in
+        Attachment<Array>.record(Array(buffer), sourceLocation: sourceLocation)
+      }
+    } catch {
+      let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
+      Issue(kind: .valueAttachmentFailed(error), comments: [], sourceContext: sourceContext).record()
+    }
+  }
+
+  /// Attach a value to the current test.
+  ///
+  /// - Parameters:
+  ///   - attachableValue: The value to attach.
+  ///   - preferredName: The preferred name of the attachment when writing it to
+  ///     a test report or to disk. If `nil`, the testing library attempts to
+  ///     derive a reasonable filename for the attached value.
+  ///   - metadata: Metadata to include with `attachableValue`.
+  ///   - sourceLocation: The source location of the call to this function.
+  ///
+  /// When attaching a value of a type that does not conform to both
+  /// [`Sendable`](https://developer.apple.com/documentation/swift/sendable) and
+  /// [`Copyable`](https://developer.apple.com/documentation/swift/copyable),
+  /// the testing library encodes it as data immediately. If the value cannot be
+  /// encoded and an error is thrown, that error is recorded as an issue in the
+  /// current test and the attachment is not written to the test report or to
+  /// disk.
+  ///
+  /// This function creates a new instance of ``Attachment`` and immediately
+  /// attaches it to the current test.
+  ///
+  /// An attachment can only be attached once.
+  @_spi(Experimental)
+  public static func record(
+    _ attachableValue: consuming AttachableValue,
+    named preferredName: String? = nil,
+    metadata: AttachableValue._AttachmentMetadata,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) {
+    record(Self(attachableValue, named: preferredName, metadata: metadata, sourceLocation: sourceLocation), sourceLocation: sourceLocation)
+  }
+
+  /// Attach a value to the current test.
+  ///
+  /// - Parameters:
+  ///   - attachableValue: The value to attach.
+  ///   - preferredName: The preferred name of the attachment when writing it to
+  ///     a test report or to disk. If `nil`, the testing library attempts to
+  ///     derive a reasonable filename for the attached value.
+  ///   - sourceLocation: The source location of the call to this function.
+  ///
+  /// When attaching a value of a type that does not conform to both
+  /// [`Sendable`](https://developer.apple.com/documentation/swift/sendable) and
+  /// [`Copyable`](https://developer.apple.com/documentation/swift/copyable),
+  /// the testing library encodes it as data immediately. If the value cannot be
+  /// encoded and an error is thrown, that error is recorded as an issue in the
+  /// current test and the attachment is not written to the test report or to
+  /// disk.
+  ///
+  /// This function creates a new instance of ``Attachment`` and immediately
+  /// attaches it to the current test.
+  ///
+  /// An attachment can only be attached once.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
+  public static func record<M>(
+    _ attachableValue: consuming AttachableValue,
+    named preferredName: String? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) where AttachableValue._AttachmentMetadata == M? {
+    record(attachableValue, named: preferredName, metadata: nil, sourceLocation: sourceLocation)
   }
 }
 

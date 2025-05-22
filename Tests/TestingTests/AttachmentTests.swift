@@ -435,8 +435,7 @@ struct AttachmentTests {
 extension AttachmentTests {
   @Suite("Built-in conformances")
   struct BuiltInConformances {
-    func test(_ value: some Attachable) throws {
-      #expect(value.estimatedAttachmentByteCount == 6)
+    func test<A>(_ value: A) throws where A: Attachable, A._AttachmentMetadata == Never? {      #expect(value.estimatedAttachmentByteCount == 6)
       let attachment = Attachment(value)
       try attachment.withUnsafeBytes { buffer in
         #expect(buffer.elementsEqual("abc123".utf8))
