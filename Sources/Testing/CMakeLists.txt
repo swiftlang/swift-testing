@@ -96,8 +96,8 @@ add_library(Testing
   Traits/Comment+Macro.swift
   Traits/ConditionTrait.swift
   Traits/ConditionTrait+Macro.swift
-  Traits/HiddenTrait.swift
   Traits/IssueHandlingTrait.swift
+  Traits/MarkerTrait.swift
   Traits/ParallelizationTrait.swift
   Traits/Tags/Tag.Color.swift
   Traits/Tags/Tag.Color+Loading.swift
