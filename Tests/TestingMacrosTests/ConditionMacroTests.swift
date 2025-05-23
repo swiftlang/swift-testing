@@ -103,76 +103,76 @@ struct ConditionMacroTests {
 
   @Test("#require() macro",
     arguments: [
-      ##"#require(true)"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(true, 0x0)) }, sourceCode: [0x0: "true"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(false)"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(false, 0x0)) }, sourceCode: [0x0: "false"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(false, "Custom message")"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(false, 0x0)) }, sourceCode: [0x0: "false"], comments: ["Custom message"], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(2 > 1)"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(2 > 1, 0x0)) }, sourceCode: [0x0: "2 > 1"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(((true || false) && true) || Bool.random())"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec((__ec(__ec((__ec(__ec(true, 0xf7a) || __ec(false, 0x877a), 0x77a)), 0x7a) && __ec(true, 0x10003a), 0x3a)), 0x2) || __ec(Bool.random(), 0x2000000), 0x0)) }, sourceCode: [0x0: "((true || false) && true) || Bool.random()", 0x2: "((true || false) && true)", 0x3a: "(true || false) && true", 0x7a: "(true || false)", 0x77a: "true || false", 0xf7a: "true", 0x877a: "false", 0x10003a: "true", 0x2000000: "Bool.random()"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(9 > 8 && 7 > 6, "Some comment")"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(9 > 8, 0x2) && __ec(7 > 6, 0x400), 0x0)) }, sourceCode: [0x0: "9 > 8 && 7 > 6", 0x2: "9 > 8", 0x400: "7 > 6"], comments: ["Some comment"], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require("a" == "b")"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec.__cmp({ lhs, rhs -> Swift.Bool in lhs == rhs }, 0x0, "a", 0x2, "b", 0x200)) }, sourceCode: [0x0: #""a" == "b""#], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(!Bool.random())"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(!Bool.random(), 0x0)) }, sourceCode: [0x0: "!Bool.random()"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require((true && false))"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec((__ec(__ec(true, 0x3c) && __ec(false, 0x21c), 0x1c)), 0x0)) }, sourceCode: [0x0: "(true && false)", 0x1c: "true && false", 0x3c: "true", 0x21c: "false"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(try x())"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try __ec(x(), 0x4) }, sourceCode: [0x4: "x()"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(1 is Int)"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec.__is(1, 0x0, (Int).self, 0x10)) }, sourceCode: [0x0: "1 is Int", 0x10: "Int"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require("123") { 1 == 2 } then: { foo() }"##:
-        ##"Testing.__checkClosureCall(performing: { 1 == 2 }, then: { foo() }, sourceCode: [0x0: "1 == 2"], comments: ["123"], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require("123") { let x = 0 }"##:
-        ##"Testing.__checkClosureCall(performing: { let x = 0 }, sourceCode: [0x0: "let x = 0"], comments: ["123"], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require("123") { let x = 0; return x == 0 }"##:
-        ##"Testing.__checkClosureCall(performing: { let x = 0; return x == 0 }, sourceCode: [0x0: "{ let x = 0; return x == 0 }"], comments: ["123"], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(a, "b", c: c)"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(a, 0x0)) }, sourceCode: [0x0: "a"], c: c, comments: ["b"], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(a())"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(a(), 0x0)) }, sourceCode: [0x0: "a()"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(b(c))"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(b(__ec(c, 0x70)), 0x0)) }, sourceCode: [0x0: "b(c)", 0x70: "c"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(a.b(c))"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(a.self, 0x6).b(__ec(c, 0x700)), 0x0)) }, sourceCode: [0x0: "a.b(c)", 0x6: "a", 0x700: "c"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(a.b(c, d: e))"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(a.self, 0x6).b(__ec(c, 0x700), d: __ec(e, 0x12100)), 0x0)) }, sourceCode: [0x0: "a.b(c, d: e)", 0x6: "a", 0x700: "c", 0x12100: "e"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(a.b(&c))"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in defer { __ec.__inoutAfter(c, 0x1700) } return try Testing.__requiringTry(__ec(__ec(a.self, 0x6).b(&c), 0x0)) }, sourceCode: [0x0: "a.b(&c)", 0x6: "a", 0x1700: "c"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(a.b(&c, &d.e))"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in defer { __ec.__inoutAfter(c, 0x1700) __ec.__inoutAfter(d.e, 0x58100) } return try Testing.__requiringTry(__ec(__ec(a.self, 0x6).b(&c, &d.e), 0x0)) }, sourceCode: [0x0: "a.b(&c, &d.e)", 0x6: "a", 0x1700: "c", 0x58100: "d.e"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(a.b(&c, d))"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in defer { __ec.__inoutAfter(c, 0x1700) } return try Testing.__requiringTry(__ec(__ec(a.self, 0x6).b(&c, __ec(d, 0x18100)), 0x0)) }, sourceCode: [0x0: "a.b(&c, d)", 0x6: "a", 0x1700: "c", 0x18100: "d"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(a.b(try c()))"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(a.self, 0x6).b(try __ec(c(), 0x1700)), 0x0)) }, sourceCode: [0x0: "a.b(try c())", 0x6: "a", 0x1700: "c()"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(a?.b(c))"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(a, 0xe)?.b(__ec(c, 0x1c00)), 0x0)) }, sourceCode: [0x0: "a?.b(c)", 0xe: "a", 0x1c00: "c"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(a???.b(c))"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(a, 0x3e)???.b(__ec(c, 0x1c000)), 0x0)) }, sourceCode: [0x0: "a???.b(c)", 0x3e: "a", 0x1c000: "c"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(a?.b.c(d))"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(a, 0x1e)?.b.c(__ec(d, 0x1c000)), 0x0)) }, sourceCode: [0x0: "a?.b.c(d)", 0x1e: "a", 0x1c000: "d"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require({}())"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec({}(), 0x0)) }, sourceCode: [0x0: "{}()"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(a.b(c: d))"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(a.self, 0x6).b(c: __ec(d, 0x1300)), 0x0)) }, sourceCode: [0x0: "a.b(c: d)", 0x6: "a", 0x1300: "d"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(a.b { c })"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(a.self, 0x6).b { c }, 0x0)) }, sourceCode: [0x0: "a.b { c }", 0x6: "a"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(a, sourceLocation: someValue)"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(a, 0x0)) }, sourceCode: [0x0: "a"], comments: [], isRequired: true, sourceLocation: someValue).__required()"##,
-      ##"#require(a.isB)"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(a.isB, 0x0)) }, sourceCode: [0x0: "a.isB"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(a???.isB)"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(a, 0x1e)???.isB, 0x0)) }, sourceCode: [0x0: "a???.isB", 0x1e: "a"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(a?.b.isB)"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(a, 0xe)?.b.isB, 0x0)) }, sourceCode: [0x0: "a?.b.isB", 0xe: "a"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(a?.b().isB)"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(__ec(a, 0x1e)?.b(), 0x2)?.isB, 0x0)) }, sourceCode: [0x0: "a?.b().isB", 0x2: "a?.b()", 0x1e: "a"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#require(isolation: somewhere) {}"##:
-        ##"Testing.__checkClosureCall(performing: {}, sourceCode: [0x0: "{}"], comments: [], isRequired: true, isolation: somewhere, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(true)"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(true, 0x0)) }, sourceCode: [0x0: "true"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(false)"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(false, 0x0)) }, sourceCode: [0x0: "false"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(false, "Custom message")"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(false, 0x0)) }, sourceCode: [0x0: "false"], comments: ["Custom message"], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(2 > 1)"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(2 > 1, 0x0)) }, sourceCode: [0x0: "2 > 1"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(((true || false) && true) || Bool.random())"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec((__ec(__ec((__ec(__ec(true, 0xf7a) || __ec(false, 0x877a), 0x77a)), 0x7a) && __ec(true, 0x10003a), 0x3a)), 0x2) || __ec(Bool.random(), 0x2000000), 0x0)) }, sourceCode: [0x0: "((true || false) && true) || Bool.random()", 0x2: "((true || false) && true)", 0x3a: "(true || false) && true", 0x7a: "(true || false)", 0x77a: "true || false", 0xf7a: "true", 0x877a: "false", 0x10003a: "true", 0x2000000: "Bool.random()"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(9 > 8 && 7 > 6, "Some comment")"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(9 > 8, 0x2) && __ec(7 > 6, 0x400), 0x0)) }, sourceCode: [0x0: "9 > 8 && 7 > 6", 0x2: "9 > 8", 0x400: "7 > 6"], comments: ["Some comment"], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require("a" == "b")"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec.__cmp({ lhs, rhs -> Swift.Bool in lhs == rhs }, 0x0, "a", 0x2, "b", 0x200)) }, sourceCode: [0x0: #""a" == "b""#], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(!Bool.random())"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(!Bool.random(), 0x0)) }, sourceCode: [0x0: "!Bool.random()"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require((true && false))"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec((__ec(__ec(true, 0x3c) && __ec(false, 0x21c), 0x1c)), 0x0)) }, sourceCode: [0x0: "(true && false)", 0x1c: "true && false", 0x3c: "true", 0x21c: "false"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(try x())"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try __ec(x(), 0x4) }, sourceCode: [0x4: "x()"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(1 is Int)"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec.__is(1, 0x0, (Int).self, 0x10)) }, sourceCode: [0x0: "1 is Int", 0x10: "Int"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require("123") { 1 == 2 } then: { foo() }"##:
+        ##"try Testing.__checkClosureCall(performing: { 1 == 2 }, then: { foo() }, sourceCode: [0x0: "1 == 2"], comments: ["123"], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require("123") { let x = 0 }"##:
+        ##"try Testing.__checkClosureCall(performing: { let x = 0 }, sourceCode: [0x0: "let x = 0"], comments: ["123"], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require("123") { let x = 0; return x == 0 }"##:
+        ##"try Testing.__checkClosureCall(performing: { let x = 0; return x == 0 }, sourceCode: [0x0: "{ let x = 0; return x == 0 }"], comments: ["123"], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(a, "b", c: c)"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(a, 0x0)) }, sourceCode: [0x0: "a"], c: c, comments: ["b"], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(a())"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(a(), 0x0)) }, sourceCode: [0x0: "a()"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(b(c))"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(b(__ec(c, 0x70)), 0x0)) }, sourceCode: [0x0: "b(c)", 0x70: "c"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(a.b(c))"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(a.self, 0x6).b(__ec(c, 0x700)), 0x0)) }, sourceCode: [0x0: "a.b(c)", 0x6: "a", 0x700: "c"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(a.b(c, d: e))"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(a.self, 0x6).b(__ec(c, 0x700), d: __ec(e, 0x12100)), 0x0)) }, sourceCode: [0x0: "a.b(c, d: e)", 0x6: "a", 0x700: "c", 0x12100: "e"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(a.b(&c))"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in defer { __ec.__inoutAfter(c, 0x1700) } return try Testing.__requiringTry(__ec(__ec(a.self, 0x6).b(&c), 0x0)) }, sourceCode: [0x0: "a.b(&c)", 0x6: "a", 0x1700: "c"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(a.b(&c, &d.e))"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in defer { __ec.__inoutAfter(c, 0x1700) __ec.__inoutAfter(d.e, 0x58100) } return try Testing.__requiringTry(__ec(__ec(a.self, 0x6).b(&c, &d.e), 0x0)) }, sourceCode: [0x0: "a.b(&c, &d.e)", 0x6: "a", 0x1700: "c", 0x58100: "d.e"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(a.b(&c, d))"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in defer { __ec.__inoutAfter(c, 0x1700) } return try Testing.__requiringTry(__ec(__ec(a.self, 0x6).b(&c, __ec(d, 0x18100)), 0x0)) }, sourceCode: [0x0: "a.b(&c, d)", 0x6: "a", 0x1700: "c", 0x18100: "d"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(a.b(try c()))"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(a.self, 0x6).b(try __ec(c(), 0x1700)), 0x0)) }, sourceCode: [0x0: "a.b(try c())", 0x6: "a", 0x1700: "c()"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(a?.b(c))"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(a, 0xe)?.b(__ec(c, 0x1c00)), 0x0)) }, sourceCode: [0x0: "a?.b(c)", 0xe: "a", 0x1c00: "c"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(a???.b(c))"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(a, 0x3e)???.b(__ec(c, 0x1c000)), 0x0)) }, sourceCode: [0x0: "a???.b(c)", 0x3e: "a", 0x1c000: "c"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(a?.b.c(d))"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(a, 0x1e)?.b.c(__ec(d, 0x1c000)), 0x0)) }, sourceCode: [0x0: "a?.b.c(d)", 0x1e: "a", 0x1c000: "d"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require({}())"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec({}(), 0x0)) }, sourceCode: [0x0: "{}()"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(a.b(c: d))"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(a.self, 0x6).b(c: __ec(d, 0x1300)), 0x0)) }, sourceCode: [0x0: "a.b(c: d)", 0x6: "a", 0x1300: "d"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(a.b { c })"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(a.self, 0x6).b { c }, 0x0)) }, sourceCode: [0x0: "a.b { c }", 0x6: "a"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(a, sourceLocation: someValue)"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(a, 0x0)) }, sourceCode: [0x0: "a"], comments: [], isRequired: true, sourceLocation: someValue).__required()"##,
+      ##"try #require(a.isB)"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(a.isB, 0x0)) }, sourceCode: [0x0: "a.isB"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(a???.isB)"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(a, 0x1e)???.isB, 0x0)) }, sourceCode: [0x0: "a???.isB", 0x1e: "a"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(a?.b.isB)"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(a, 0xe)?.b.isB, 0x0)) }, sourceCode: [0x0: "a?.b.isB", 0xe: "a"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(a?.b().isB)"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(__ec(__ec(a, 0x1e)?.b(), 0x2)?.isB, 0x0)) }, sourceCode: [0x0: "a?.b().isB", 0x2: "a?.b()", 0x1e: "a"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #require(isolation: somewhere) {}"##:
+        ##"try Testing.__checkClosureCall(performing: {}, sourceCode: [0x0: "{}"], comments: [], isRequired: true, isolation: somewhere, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
     ]
   )
   func requireMacro(input: String, expectedOutput: String) throws {
@@ -184,18 +184,18 @@ struct ConditionMacroTests {
 
   @Test("Unwrapping #require() macro",
     arguments: [
-      ##"#requireUnwrap(Optional<Int>.none)"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Optional in try Testing.__requiringTry(__ec(Optional<Int>.none, 0x0)) }, sourceCode: [0x0: "Optional<Int>.none"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#requireUnwrap(nil ?? 123)"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Optional in try Testing.__requiringTry(__ec(nil ?? 123, 0x0)) }, sourceCode: [0x0: "nil ?? 123"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#requireUnwrap(123 ?? nil)"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Optional in try Testing.__requiringTry(__ec(123 ?? nil, 0x0)) }, sourceCode: [0x0: "123 ?? nil"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#requireUnwrap(123 as? Double)"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Optional in try Testing.__requiringTry(__ec.__as(123, 0x0, (Double).self, 0x20)) }, sourceCode: [0x0: "123 as? Double", 0x20: "Double"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#requireUnwrap(123 as Double)"##:
-        ##"Testing.__checkEscapedCondition(123 as Double, sourceCode: [0x0: "123 as Double"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
-      ##"#requireUnwrap(123 as! Double)"##:
-        ##"Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Optional in try Testing.__requiringTry(__ec(123 as! Double, 0x0)) }, sourceCode: [0x0: "123 as! Double"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #requireUnwrap(Optional<Int>.none)"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Optional in try Testing.__requiringTry(__ec(Optional<Int>.none, 0x0)) }, sourceCode: [0x0: "Optional<Int>.none"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #requireUnwrap(nil ?? 123)"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Optional in try Testing.__requiringTry(__ec(nil ?? 123, 0x0)) }, sourceCode: [0x0: "nil ?? 123"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #requireUnwrap(123 ?? nil)"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Optional in try Testing.__requiringTry(__ec(123 ?? nil, 0x0)) }, sourceCode: [0x0: "123 ?? nil"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #requireUnwrap(123 as? Double)"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Optional in try Testing.__requiringTry(__ec.__as(123, 0x0, (Double).self, 0x20)) }, sourceCode: [0x0: "123 as? Double", 0x20: "Double"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #requireUnwrap(123 as Double)"##:
+        ##"try Testing.__checkEscapedCondition(123 as Double, sourceCode: [0x0: "123 as Double"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
+      ##"try #requireUnwrap(123 as! Double)"##:
+        ##"try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Optional in try Testing.__requiringTry(__ec(123 as! Double, 0x0)) }, sourceCode: [0x0: "123 as! Double"], comments: [], isRequired: true, sourceLocation: Testing.SourceLocation.__here()).__required()"##,
     ]
   )
   func unwrappingRequireMacro(input: String, expectedOutput: String) throws {
@@ -260,7 +260,7 @@ struct ConditionMacroTests {
       """:
       """
       // Capture me
-      try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in __ec(x, 0x0) }, sourceCode: [0x0: "x"], comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+      try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try Testing.__requiringTry(__ec(x, 0x0)) }, sourceCode: [0x0: "x"], comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
       """,
 
       """
@@ -269,7 +269,8 @@ struct ConditionMacroTests {
       """:
       """
       // Capture me
-      await Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in __ec(x, 0x0) }, sourceCode: [0x0: "x"], comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+      await Testing.__checkConditionAsync({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in await Testing.__requiringAwait(__ec(x, 0x0)) }, sourceCode: [0x0: "x"], comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+
       """,
 
       """
@@ -288,7 +289,7 @@ struct ConditionMacroTests {
       // Comment for await
       await
       // Comment for expect
-      Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in __ec(x, 0x0) }, sourceCode: [0x0: "x"], comments: [.__line("// Comment for try"), .__line("// Comment for await"), .__line("// Comment for expect")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+      Testing.__checkConditionAsync({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try await Testing.__requiringTry(Testing.__requiringAwait(__ec(x, 0x0))) }, sourceCode: [0x0: "x"], comments: [.__line("// Comment for try"), .__line("// Comment for await"), .__line("// Comment for expect")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
       """,
 
       """

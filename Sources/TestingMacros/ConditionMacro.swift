@@ -131,6 +131,7 @@ extension ConditionMacro {
     var expandedFunctionName = TokenSyntax.identifier("__checkCondition")
     var checkArguments = [Argument]()
     var effectKeywordsToApply: Set<Keyword> = []
+    var effectKeywordsToApplyOverall: Set<Keyword> = []
     do {
       if let trailingClosureIndex {
         expandedFunctionName = .identifier("__checkClosureCall")
@@ -168,7 +169,10 @@ extension ConditionMacro {
 
       } else if let firstArgument = macroArguments.first {
         let originalArgumentExpr = firstArgument.expression
-        effectKeywordsToApply = findEffectKeywords(in: originalArgumentExpr, context: context)
+        let effectKeywordsFromNode = findEffectKeywords(in: originalArgumentExpr)
+        let effectKeywordsFromLexicalContext = findEffectKeywords(in: context)
+        effectKeywordsToApply = effectKeywordsFromNode.union(effectKeywordsFromLexicalContext)
+        effectKeywordsToApplyOverall = effectKeywordsToApply.subtracting(effectKeywordsFromLexicalContext)
 
         var useEscapeHatch = false
         if let asExpr = originalArgumentExpr.as(AsExprSyntax.self), asExpr.questionOrExclamationMark == nil {
@@ -278,12 +282,8 @@ extension ConditionMacro {
     } else {
       "\(call).__expected()"
     }
-    if effectKeywordsToApply.contains(.await) {
-      call = "await \(call)"
-    }
-    if !isThrowing && effectKeywordsToApply.contains(.try) {
-      call = "try \(call)"
-    }
+
+    call = applyEffectfulKeywords(effectKeywordsToApplyOverall, to: call, insertThunkCalls: false)
     return call
   }
 
