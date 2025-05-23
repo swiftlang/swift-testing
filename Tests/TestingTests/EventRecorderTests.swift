@@ -94,6 +94,7 @@ struct EventRecorderTests {
   }
 
   @Test("Verbose output")
+  @available(_regexAPI, *)
   func verboseOutput() async throws {
     let stream = Stream()
 
@@ -112,6 +113,14 @@ struct EventRecorderTests {
     #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter) lhs: Swift.String → "987""#))
     #expect(buffer.contains(#""Animal Crackers" (aka 'WrittenTests')"#))
     #expect(buffer.contains(#""Not A Lobster" (aka 'actuallyCrab()')"#))
+    do {
+      let regex = try Regex(".* Test case passing 1 argument i → 0 \\(Swift.Int\\) to multitudeOcelot\\(i:\\) passed after .*.")
+      #expect(try buffer.split(whereSeparator: \.isNewline).compactMap(regex.wholeMatch(in:)).first != nil)
+    }
+    do {
+      let regex = try Regex(".* Test case passing 1 argument i → 3 \\(Swift.Int\\) to multitudeOcelot\\(i:\\) failed after .* with 1 issue.")
+      #expect(try buffer.split(whereSeparator: \.isNewline).compactMap(regex.wholeMatch(in:)).first != nil)
+    }
 
     if testsWithSignificantIOAreEnabled {
       print(buffer, terminator: "")
@@ -203,17 +212,15 @@ struct EventRecorderTests {
     await runTest(for: PredictablyFailingTests.self, configuration: configuration)
 
     let buffer = stream.buffer.rawValue
-    if testsWithSignificantIOAreEnabled {
-      print(buffer, terminator: "")
-    }
 
-    let aurgmentRegex = try Regex(expectedPattern)
+    let argumentRegex = try Regex(expectedPattern)
     
     #expect(
       (try buffer
         .split(whereSeparator: \.isNewline)
-        .compactMap(aurgmentRegex.wholeMatch(in:))
-        .first) != nil
+        .compactMap(argumentRegex.wholeMatch(in:))
+        .first) != nil,
+      "buffer: \(buffer)"
     )
   }
 
