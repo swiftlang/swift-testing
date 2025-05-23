@@ -114,11 +114,11 @@ struct EventRecorderTests {
     #expect(buffer.contains(#""Animal Crackers" (aka 'WrittenTests')"#))
     #expect(buffer.contains(#""Not A Lobster" (aka 'actuallyCrab()')"#))
     do {
-      let regex = try Regex(".* Passing 1 argument i → 0 \\(Swift.Int\\) to multitudeOcelot\\(i:\\) passed after .*.")
+      let regex = try Regex(".* Test case passing 1 argument i → 0 \\(Swift.Int\\) to multitudeOcelot\\(i:\\) passed after .*.")
       #expect(try buffer.split(whereSeparator: \.isNewline).compactMap(regex.wholeMatch(in:)).first != nil)
     }
     do {
-      let regex = try Regex(".* Passing 1 argument i → 3 \\(Swift.Int\\) to multitudeOcelot\\(i:\\) failed after .* with 1 issue.")
+      let regex = try Regex(".* Test case passing 1 argument i → 3 \\(Swift.Int\\) to multitudeOcelot\\(i:\\) failed after .* with 1 issue.")
       #expect(try buffer.split(whereSeparator: \.isNewline).compactMap(regex.wholeMatch(in:)).first != nil)
     }
 

@@ -526,7 +526,7 @@ extension Event.HumanReadableOutputRecorder {
       return [
         Message(
           symbol: .default,
-          stringValue: "Passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName)\(status)."
+          stringValue: "Test case passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName)\(status) started."
         )
       ]
 
@@ -543,12 +543,12 @@ extension Event.HumanReadableOutputRecorder {
       let message = if issues.errorIssueCount > 0 {
         Message(
           symbol: .fail,
-          stringValue: "Passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) failed after \(duration)\(issues.description)."
+          stringValue: "Test case passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) failed after \(duration)\(issues.description)."
         )
       } else {
         Message(
           symbol: .pass(knownIssueCount: issues.knownIssueCount),
-          stringValue: "Passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) passed after \(duration)\(issues.description)."
+          stringValue: "Test case passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) passed after \(duration)\(issues.description)."
         )
       }
       return [message]
