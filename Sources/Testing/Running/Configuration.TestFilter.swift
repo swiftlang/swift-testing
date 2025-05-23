@@ -235,7 +235,7 @@ extension Configuration.TestFilter.Kind {
   ///   test filter kind. One example is the creation of a `Regex` from a
   ///   `.pattern` kind: if the pattern is not a valid regular expression, an
   ///   error will be thrown.
-  func operation<T>(itemType: T.Type = T.self) throws -> Configuration.TestFilter.Operation<T> where T: _FilterableItem {
+  func operation<T>(itemType: T.Type = T.self) throws -> Configuration.TestFilter.Operation<T> where T: _FilterableItem & Sendable {
     switch self {
     case .unfiltered:
       return .unfiltered
