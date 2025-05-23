@@ -421,7 +421,7 @@ func callExitTest(
   encodingCapturedValues capturedValues: [ExitTest.CapturedValue],
   processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable],
-  expression: __Expression,
+  sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
@@ -479,10 +479,14 @@ func callExitTest(
   }
 
   // Plumb the exit test's result through the general expectation machinery.
-  return __checkValue(
+  let expectationContext = __ExpectationContext(
+    sourceCode: sourceCode(),
+    runtimeValues: [.root: { Expression.Value(reflecting: result.exitStatus) }]
+  )
+  return check(
     expectedExitCondition.isApproximatelyEqual(to: result.exitStatus),
-    expression: expression,
-    expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(result.exitStatus),
+    expectationContext: expectationContext,
+    mismatchedErrorDescription: nil,
     mismatchedExitConditionDescription: String(describingForTest: expectedExitCondition),
     comments: comments(),
     isRequired: isRequired,

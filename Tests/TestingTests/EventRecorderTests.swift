@@ -109,8 +109,8 @@ struct EventRecorderTests {
     await runTest(for: WrittenTests.self, configuration: configuration)
 
     let buffer = stream.buffer.rawValue
-    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter) "abc": Swift.String"#))
-    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter) lhs: Swift.String → "987""#))
+    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter) "abc" == "xyz": Swift.Bool → false"#))
+    #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter)   lhs: Swift.String → "987""#))
     #expect(buffer.contains(#""Animal Crackers" (aka 'WrittenTests')"#))
     #expect(buffer.contains(#""Not A Lobster" (aka 'actuallyCrab()')"#))
     do {
@@ -187,7 +187,7 @@ struct EventRecorderTests {
         .first != nil
     )
   }
-  
+
   @available(_regexAPI, *)
   @Test(
     "Log the total number of test cases in parameterized tests at the end of the test run",
@@ -575,8 +575,10 @@ struct EventRecorderTests {
     // The first message is something along the lines of "Test foo recorded a
     // known issue" and includes a source location, so is inconvenient to
     // include in our expectation here.
-    let actualComments = messages.rawValue.dropFirst().map(\.stringValue)
-    #expect(actualComments == expectedComments)
+    let actualComments = messages.rawValue.map(\.stringValue)
+    for expectedComment in expectedComments {
+      #expect(actualComments.contains(expectedComment))
+    }
   }
 }
 
