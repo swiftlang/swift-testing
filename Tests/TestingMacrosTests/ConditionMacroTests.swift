@@ -225,7 +225,7 @@ struct ConditionMacroTests {
       """
       // Source comment
       /** Doc comment */
-      try Testing.__checkCondition({  (__ec: Testing.__ExpectationContext) -> Swift.Bool in try __ec(x(), 0x4) }, sourceCode: [0x4: "x()"], comments: [.__line("// Source comment"),.__documentationBlock("/** Doc comment */"),"Argument comment"], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+      try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try __ec(x(), 0x4) }, sourceCode: [0x4: "x()"], comments: [.__line("// Source comment"),.__documentationBlock("/** Doc comment */"),"Argument comment"], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
       """,
 
       """
@@ -238,7 +238,7 @@ struct ConditionMacroTests {
       // Ignore me
 
       // Capture me
-      try Testing.__checkCondition({  (__ec: Testing.__ExpectationContext) -> Swift.Bool in try __ec(x(), 0x4) }, sourceCode: [0x4: "x()"], comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+      try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try __ec(x(), 0x4) }, sourceCode: [0x4: "x()"], comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
       """,
 
       """
@@ -251,7 +251,7 @@ struct ConditionMacroTests {
       // Ignore me
       \t
       // Capture me
-      try Testing.__checkCondition({  (__ec: Testing.__ExpectationContext) -> Swift.Bool in try __ec(x(), 0x4) }, sourceCode: [0x4: "x()"], comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+      try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in try __ec(x(), 0x4) }, sourceCode: [0x4: "x()"], comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
       """,
 
       """
@@ -260,7 +260,7 @@ struct ConditionMacroTests {
       """:
       """
       // Capture me
-      try Testing.__checkValue(x, expression: .__fromSyntaxNode("x"), comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+      try Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in __ec(x, 0x0) }, sourceCode: [0x0: "x"], comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
       """,
 
       """
@@ -269,7 +269,7 @@ struct ConditionMacroTests {
       """:
       """
       // Capture me
-      await Testing.__checkValue(x, expression: .__fromSyntaxNode("x"), comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+      await Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in __ec(x, 0x0) }, sourceCode: [0x0: "x"], comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
       """,
 
       """
@@ -288,7 +288,7 @@ struct ConditionMacroTests {
       // Comment for await
       await
       // Comment for expect
-      Testing.__checkValue(x, expression: .__fromSyntaxNode("x"), comments: [.__line("// Comment for try"), .__line("// Comment for await"), .__line("// Comment for expect")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+      Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in __ec(x, 0x0) }, sourceCode: [0x0: "x"], comments: [.__line("// Comment for try"), .__line("// Comment for await"), .__line("// Comment for expect")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
       """,
 
       """
@@ -301,9 +301,7 @@ struct ConditionMacroTests {
       """
       func example() {
         // Capture me
-        Testing.__checkFunctionCall((), calling: { _ in
-          x()
-        }, expression: .__fromFunctionCall(nil, "x"), comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
+        Testing.__checkCondition({ (__ec: Testing.__ExpectationContext) -> Swift.Bool in __ec(x(), 0x0) }, sourceCode: [0x0: "x()"], comments: [.__line("// Capture me")], isRequired: false, sourceLocation: Testing.SourceLocation.__here()).__expected()
       }
       """,
     ]

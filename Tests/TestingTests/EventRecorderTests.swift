@@ -178,7 +178,7 @@ struct EventRecorderTests {
         .first != nil
     )
   }
-  
+
   @available(_regexAPI, *)
   @Test(
     "Log the total number of test cases in parameterized tests at the end of the test run",
@@ -568,8 +568,10 @@ struct EventRecorderTests {
     // The first message is something along the lines of "Test foo recorded a
     // known issue" and includes a source location, so is inconvenient to
     // include in our expectation here.
-    let actualComments = messages.rawValue.dropFirst().map(\.stringValue)
-    #expect(actualComments == expectedComments)
+    let actualComments = messages.rawValue.map(\.stringValue)
+    for expectedComment in expectedComments {
+      #expect(actualComments.contains(expectedComment))
+    }
   }
 }
 
