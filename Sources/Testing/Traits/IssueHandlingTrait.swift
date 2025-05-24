@@ -26,20 +26,31 @@
 /// - ``Trait/filterIssues(_:)``
 @_spi(Experimental)
 public struct IssueHandlingTrait: TestTrait, SuiteTrait {
-  /// A function which transforms an issue and returns an optional replacement.
+  /// A function which handles an issue and returns an optional replacement.
   ///
   /// - Parameters:
-  ///   - issue: The issue to transform.
+  ///   - issue: The issue to handle.
   ///
   /// - Returns: An issue to replace `issue`, or else `nil` if the issue should
   ///   not be recorded.
-  fileprivate typealias Transformer = @Sendable (_ issue: Issue) -> Issue?
+  fileprivate typealias Handler = @Sendable (_ issue: Issue) -> Issue?
 
-  /// This trait's transformer function.
-  private var _transformer: Transformer
+  /// This trait's handler function.
+  private var _handler: Handler
 
-  fileprivate init(transformer: @escaping Transformer) {
-    _transformer = transformer
+  fileprivate init(handler: @escaping Handler) {
+    _handler = handler
+  }
+
+  /// Handle a specified issue.
+  ///
+  /// - Parameters:
+  ///   - issue: The issue to handle.
+  ///
+  /// - Returns: An issue to replace `issue`, or else `nil` if the issue should
+  ///   not be recorded.
+  public func handleIssue(_ issue: Issue) -> Issue? {
+    _handler(issue)
   }
 
   public var isRecursive: Bool {
@@ -90,7 +101,7 @@ extension IssueHandlingTrait: TestScoping {
       // records new issues. This means only issue handling traits whose scope
       // is outside this one will be allowed to handle such issues.
       let newIssue = Configuration.withCurrent(oldConfiguration) {
-        _transformer(issue)
+        handleIssue(issue)
       }
 
       if let newIssue {
@@ -113,6 +124,8 @@ extension Trait where Self == IssueHandlingTrait {
   ///     this trait is applied to. It is passed a recorded issue, and returns
   ///     an optional issue to replace the passed-in one.
   ///
+  /// - Returns: An instance of ``IssueHandlingTrait`` that transforms issues.
+  ///
   /// The `transformer` closure is called synchronously each time an issue is
   /// recorded by the test this trait is applied to. The closure is passed the
   /// recorded issue, and if it returns a non-`nil` value, that will be recorded
@@ -131,7 +144,7 @@ extension Trait where Self == IssueHandlingTrait {
   /// record new issues, although they will only be handled by issue handling
   /// traits which precede this trait or were inherited from a containing suite.
   public static func transformIssues(_ transformer: @escaping @Sendable (Issue) -> Issue?) -> Self {
-    Self(transformer: transformer)
+    Self(handler: transformer)
   }
 
   /// Constructs a trait that filters issues recorded by a test.
@@ -141,6 +154,8 @@ extension Trait where Self == IssueHandlingTrait {
   ///     test this trait is applied to. It is passed a recorded issue, and
   ///     should return `true` if the issue should be included, or `false` if it
   ///     should be suppressed.
+  ///
+  /// - Returns: An instance of ``IssueHandlingTrait`` that filters issues.
   ///
   /// The `isIncluded` closure is called synchronously each time an issue is
   /// recorded by the test this trait is applied to. The closure is passed the
