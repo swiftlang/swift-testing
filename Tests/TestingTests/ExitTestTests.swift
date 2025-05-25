@@ -456,6 +456,35 @@ private import _TestingInternals
       #expect(instance.x == 123)
     }
   }
+
+  @Test("Capturing a parameter to the test function")
+  func captureListWithParameter() async {
+    let i = Int.random(in: 0 ..< 1000)
+
+    func f(j: Int) async {
+      await #expect(processExitsWith: .success) { [i = i as Int, j] in
+        #expect(i == j)
+        #expect(j >= 0)
+        #expect(j < 1000)
+      }
+    }
+    await f(j: i)
+
+    await { (j: Int) in
+      _ = await #expect(processExitsWith: .success) { [i = i as Int, j] in
+        #expect(i == j)
+        #expect(j >= 0)
+        #expect(j < 1000)
+      }
+    }(i)
+
+    // FAILS TO COMPILE: shadowing `i` with a variable of a different type will
+    // prevent correct expansion (we need an equivalent of decltype() for that.)
+//    let i = String(i)
+//    await #expect(processExitsWith: .success) { [i] in
+//      #expect(!i.isEmpty)
+//    }
+  }
 #endif
 }
 
