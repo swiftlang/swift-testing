@@ -66,12 +66,16 @@ func testFunction(named name: String, in containingType: Any.Type) async -> Test
 ///
 /// - Parameters:
 ///   - containingType: The type containing the tests that should be run.
+///   - fileID: The `#fileID` string whose module should be used to locate
+///     the test suite to run. If `nil`, the module which declares
+///     `containingType` is used. The default value is the file ID of the file
+///     in which this method is called.
 ///   - configuration: The configuration to use for running.
 ///
 /// Any tests defined within `containingType` are also run. If no test is found
 /// representing that type, nothing is run.
-func runTest(for containingType: Any.Type, configuration: Configuration = .init()) async {
-  let plan = await Runner.Plan(selecting: containingType, configuration: configuration)
+func runTest(for containingType: Any.Type, inModuleOf fileID: String? = #fileID, configuration: Configuration = .init()) async {
+  let plan = await Runner.Plan(selecting: containingType, inModuleOf: fileID, configuration: configuration)
   let runner = Runner(plan: plan, configuration: configuration)
   await runner.run()
 }
@@ -123,11 +127,20 @@ extension Runner.Plan {
   ///
   /// - Parameters:
   ///   - containingType: The suite type this plan should select.
+  ///   - fileID: The `#fileID` string whose module should be used to locate
+  ///     the test suite to select. If `nil`, the module which declares
+  ///     `containingType` is used. The default value is the file ID of the file
+  ///     in which this initializer is called.
   ///   - configuration: The configuration to use for planning.
-  init(selecting containingType: Any.Type, configuration: Configuration = .init()) async {
+  init(selecting containingType: Any.Type, inModuleOf fileID: String? = #fileID, configuration: Configuration = .init()) async {
+    var testID = Test.ID(type: containingType)
+
+    if let fileID {
+      testID.moduleName = String(fileID[..<fileID.lastIndex(of: "/")!])
+    }
+
     var configuration = configuration
-    let selection = [Test.ID(type: containingType)]
-    configuration.setTestFilter(toInclude: selection, includeHiddenTests: true)
+    configuration.setTestFilter(toInclude: [testID], includeHiddenTests: true)
 
     await self.init(configuration: configuration)
   }
@@ -407,5 +420,19 @@ extension SourceContext {
 
   init(sourceLocation: SourceLocation?) {
     self.init(backtrace: .current(), sourceLocation: sourceLocation)
+  }
+}
+
+extension String {
+  /// The name of the module this method is called from.
+  ///
+  /// - Parameters:
+  ///   - fileID: The `#fileID` of the file in which this method is called,
+  ///     which is used to determine the module name.
+  ///
+  /// - Returns: A string containing the name of the module this method is
+  ///   called from.
+  static func currentModuleName(from fileID: String = #fileID) -> String {
+    String(fileID[..<fileID.lastIndex(of: "/")!])
   }
 }

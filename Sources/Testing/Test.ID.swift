@@ -10,7 +10,15 @@
 
 extension Test: Identifiable {
   public struct ID: Sendable, Equatable, Hashable {
-    /// The name of the module containing the corresponding test.
+    /// The name of the module in which this test is defined.
+    ///
+    /// This may be different than the name of the module this test's containing
+    /// suite type is declared in. For example, if the test is defined in an
+    /// extension of a type declared in an imported module, the value of this
+    /// property on the ID of the containing suite will be the name of the
+    /// imported module, but the value of this property for the ID of the test
+    /// within that extension will be the name of the module which declares the
+    /// extension.
     public var moduleName: String
 
     /// The fully qualified name components (other than the module name) used to
@@ -122,6 +130,8 @@ extension Test: Identifiable {
   public var id: ID {
     var result = containingTypeInfo.map(ID.init)
       ?? ID(moduleName: sourceLocation.moduleName, nameComponents: [], sourceLocation: nil)
+
+    result.moduleName = sourceLocation.moduleName
 
     if !isSuite {
       result.nameComponents.append(name)

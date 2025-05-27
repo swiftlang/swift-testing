@@ -93,6 +93,11 @@ extension Runner {
       stepGraph.compactMap(\.value).sorted { $0.test.sourceLocation < $1.test.sourceLocation }
     }
 
+    /// The tests this runner plan contains.
+    public var tests: some Collection<Test> {
+      steps.lazy.map(\.test)
+    }
+
     /// Initialize an instance of this type with the specified graph of test
     /// plan steps.
     ///
