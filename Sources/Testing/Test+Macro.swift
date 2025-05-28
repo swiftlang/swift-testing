@@ -217,8 +217,10 @@ public macro Test<C>(
 ///   - collection: A collection of values to pass to the associated test
 ///     function.
 ///
-/// During testing, the associated test function is called once for each element
-/// in `collection`.
+/// The expression passed to `collection` may be prefixed with `try` or `await`,
+/// and is lazily evaluated only if the testing library determines that the
+/// associated test will run. During testing, the associated test function is
+/// called once for each element in `collection`.
 ///
 /// @Comment {
 ///   - Bug: The testing library should support variadic generics.
@@ -270,8 +272,11 @@ extension Test {
 ///   - collection1: A collection of values to pass to `testFunction`.
 ///   - collection2: A second collection of values to pass to `testFunction`.
 ///
-/// During testing, the associated test function is called once for each pair of
-/// elements in `collection1` and `collection2`.
+/// The expressions passed to `collection1` and `collection2` may be prefixed
+/// with `try` or `await`, and are lazily evaluated only if the testing library
+/// determines that the associated test will run. During testing, the associated
+/// test function is called once for each pair of elements in `collection1` and
+/// `collection2`.
 ///
 /// @Comment {
 ///   - Bug: The testing library should support variadic generics.
@@ -298,8 +303,11 @@ public macro Test<C1, C2>(
 ///   - collection1: A collection of values to pass to `testFunction`.
 ///   - collection2: A second collection of values to pass to `testFunction`.
 ///
-/// During testing, the associated test function is called once for each pair of
-/// elements in `collection1` and `collection2`.
+/// The expressions passed to `collection1` and `collection2` may be prefixed
+/// with `try` or `await`, and are lazily evaluated only if the testing library
+/// determines that the associated test will run. During testing, the associated
+/// test function is called once for each pair of elements in `collection1` and
+/// `collection2`.
 ///
 /// @Comment {
 ///   - Bug: The testing library should support variadic generics.
@@ -324,8 +332,10 @@ public macro Test<C1, C2>(
 ///   - zippedCollections: Two zipped collections of values to pass to
 ///     `testFunction`.
 ///
-/// During testing, the associated test function is called once for each element
-/// in `zippedCollections`.
+/// The expression passed to `zippedCollections` may be prefixed with `try` or
+/// `await`, and is lazily evaluated only if the testing library determines that
+/// the associated test will run. During testing, the associated test function
+/// is called once for each element in `zippedCollections`.
 ///
 /// @Comment {
 ///   - Bug: The testing library should support variadic generics.
@@ -352,8 +362,10 @@ public macro Test<C1, C2>(
 ///   - zippedCollections: Two zipped collections of values to pass to
 ///     `testFunction`.
 ///
-/// During testing, the associated test function is called once for each element
-/// in `zippedCollections`.
+/// The expression passed to `zippedCollections` may be prefixed with `try` or
+/// `await`, and is lazily evaluated only if the testing library determines that
+/// the associated test will run. During testing, the associated test function
+/// is called once for each element in `zippedCollections`.
 ///
 /// @Comment {
 ///   - Bug: The testing library should support variadic generics.

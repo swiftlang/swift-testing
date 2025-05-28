@@ -101,6 +101,37 @@ func makeLargeOrder(count: Int) async throws {
 - Note: Very large ranges such as `0 ..< .max` may take an excessive amount of
   time to test, or may never complete due to resource constraints.
 
+### Pass the same arguments to multiple test functions
+
+If you want to pass the same collection of arguments to two or more
+parameterized test functions, you can extract the arguments to a separate
+function or property and call it from each `@Test` macro. For example:
+
+```swift
+extension Food {
+  static var bestSelling: [Food] {
+    get async throws { /* ... */ }
+  }
+}
+
+@Test(arguments: try await Food.bestSelling)
+func orderEntree(food: Food) {
+  let foodTruck = FoodTruck()
+  #expect(foodTruck.order(food))
+}
+
+@Test(arguments: try await Food.bestSelling)
+func packageLeftovers(food: Food) throws {
+  let foodTruck = FoodTruck()
+  let container = try #require(foodTruck.container(fitting: food))
+  try container.add(food)
+}
+```
+
+> Tip: Expressions passed to `arguments:` can be prefixed with `try` or `await`
+> and are lazily evaluated only if the testing library determines that the
+> associated test will run.
+
 ### Test with more than one collection
 
 It's possible to test more than one collection. Consider the following test
