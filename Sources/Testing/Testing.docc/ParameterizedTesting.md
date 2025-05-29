@@ -128,8 +128,8 @@ func packageLeftovers(food: Food) throws {
 }
 ```
 
-> Tip: Expressions passed to `arguments:` can be prefixed with `try` or `await`
-> and are lazily evaluated only if the testing library determines that the
+> Tip: You can prefix expressions passed to `arguments:` with `try` or `await`.
+> The testing library evaluates them lazily only if it determines that the
 > associated test will run.
 
 ### Test with more than one collection

@@ -217,10 +217,10 @@ public macro Test<C>(
 ///   - collection: A collection of values to pass to the associated test
 ///     function.
 ///
-/// The expression passed to `collection` may be prefixed with `try` or `await`,
-/// and is lazily evaluated only if the testing library determines that the
-/// associated test will run. During testing, the associated test function is
-/// called once for each element in `collection`.
+/// You can prefix the expression you pass to `collection` with `try` or `await`.
+/// The testing library evaluates the expression lazily only if it determines
+/// that the associated test will run. During testing, the testing library calls
+/// the associated test function once for each element in `collection`.
 ///
 /// @Comment {
 ///   - Bug: The testing library should support variadic generics.
@@ -272,11 +272,11 @@ extension Test {
 ///   - collection1: A collection of values to pass to `testFunction`.
 ///   - collection2: A second collection of values to pass to `testFunction`.
 ///
-/// The expressions passed to `collection1` and `collection2` may be prefixed
-/// with `try` or `await`, and are lazily evaluated only if the testing library
-/// determines that the associated test will run. During testing, the associated
-/// test function is called once for each pair of elements in `collection1` and
-/// `collection2`.
+/// You can prefix the expressions you pass to `collection1` or `collection2`
+/// with `try` or `await`. The testing library evaluates the expressions lazily
+/// only if it determines that the associated test will run. During testing, the
+/// testing library calls the associated test function once for each pair of
+/// elements in `collection1` and `collection2`.
 ///
 /// @Comment {
 ///   - Bug: The testing library should support variadic generics.
@@ -303,11 +303,11 @@ public macro Test<C1, C2>(
 ///   - collection1: A collection of values to pass to `testFunction`.
 ///   - collection2: A second collection of values to pass to `testFunction`.
 ///
-/// The expressions passed to `collection1` and `collection2` may be prefixed
-/// with `try` or `await`, and are lazily evaluated only if the testing library
-/// determines that the associated test will run. During testing, the associated
-/// test function is called once for each pair of elements in `collection1` and
-/// `collection2`.
+/// You can prefix the expressions you pass to `collection1` or `collection2`
+/// with `try` or `await`. The testing library evaluates the expressions lazily
+/// only if it determines that the associated test will run. During testing, the
+/// testing library calls the associated test function once for each pair of
+/// elements in `collection1` and `collection2`.
 ///
 /// @Comment {
 ///   - Bug: The testing library should support variadic generics.
@@ -332,10 +332,11 @@ public macro Test<C1, C2>(
 ///   - zippedCollections: Two zipped collections of values to pass to
 ///     `testFunction`.
 ///
-/// The expression passed to `zippedCollections` may be prefixed with `try` or
-/// `await`, and is lazily evaluated only if the testing library determines that
-/// the associated test will run. During testing, the associated test function
-/// is called once for each element in `zippedCollections`.
+/// You can prefix the expression you pass to `zippedCollections` with `try` or
+/// `await`. The testing library evaluates the expression lazily only if it
+/// determines that the associated test will run. During testing, the testing
+/// library calls the associated test function once for each element in
+/// `zippedCollections`.
 ///
 /// @Comment {
 ///   - Bug: The testing library should support variadic generics.
@@ -362,10 +363,11 @@ public macro Test<C1, C2>(
 ///   - zippedCollections: Two zipped collections of values to pass to
 ///     `testFunction`.
 ///
-/// The expression passed to `zippedCollections` may be prefixed with `try` or
-/// `await`, and is lazily evaluated only if the testing library determines that
-/// the associated test will run. During testing, the associated test function
-/// is called once for each element in `zippedCollections`.
+/// You can prefix the expression you pass to `zippedCollections` with `try` or
+/// `await`. The testing library evaluates the expression lazily only if it
+/// determines that the associated test will run. During testing, the testing
+/// library calls the associated test function once for each element in
+/// `zippedCollections`.
 ///
 /// @Comment {
 ///   - Bug: The testing library should support variadic generics.
