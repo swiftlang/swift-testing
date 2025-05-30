@@ -105,7 +105,7 @@ func makeLargeOrder(count: Int) async throws {
 
 If you want to pass the same collection of arguments to two or more
 parameterized test functions, you can extract the arguments to a separate
-function or property and call it from each `@Test` macro. For example:
+function or property and pass it to each `@Test` attribute. For example:
 
 ```swift
 extension Food {
@@ -115,13 +115,13 @@ extension Food {
 }
 
 @Test(arguments: try await Food.bestSelling)
-func orderEntree(food: Food) {
+func `Order entree`(food: Food) {
   let foodTruck = FoodTruck()
   #expect(foodTruck.order(food))
 }
 
 @Test(arguments: try await Food.bestSelling)
-func packageLeftovers(food: Food) throws {
+func `Package leftovers`(food: Food) throws {
   let foodTruck = FoodTruck()
   let container = try #require(foodTruck.container(fitting: food))
   try container.add(food)
