@@ -983,6 +983,25 @@ final class IssueTests: XCTestCase {
 
     await fulfillment(of: [errorCaught, apiMisused, expectationFailed], timeout: 0.0)
   }
+  
+  func testIssueRecordKinds() async throws {
+    var configuration = Configuration()
+    let apiMisused = expectation(description: "API misused")
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      if case .apiMisused = issue.kind {
+        apiMisused.fulfill()
+      }
+      
+    }
+    await Test {
+      Issue.record(kind: .apiMisused, comment: "My comment")
+    }.run(configuration: configuration)
+    
+    await fulfillment(of: [apiMisused], timeout: 0.0)
+  }
 
   @__testing(semantics: "nomacrowarnings")
   func testErrorCheckingWithRequire_ResultValueIsNever_VariousSyntaxes() throws {
