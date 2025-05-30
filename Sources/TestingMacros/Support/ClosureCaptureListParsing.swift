@@ -47,8 +47,9 @@ struct CapturedValueInfo {
 
     // Potentially get the name of the type comprising the current lexical
     // context (i.e. whatever `Self` is.)
+    lazy var lexicalContext = context.lexicalContext
     lazy var typeNameOfLexicalContext = {
-      let lexicalContext = context.lexicalContext.drop { !$0.isProtocol((any DeclGroupSyntax).self) }
+      let lexicalContext = lexicalContext.drop { !$0.isProtocol((any DeclGroupSyntax).self) }
       return context.type(ofLexicalContext: lexicalContext)
     }()
 
@@ -79,10 +80,51 @@ struct CapturedValueInfo {
       // Capturing self.
       self.expression = "self"
       self.type = typeNameOfLexicalContext
-
+    } else if let parameterType = Self._findTypeOfParameter(named: capture.name, in: lexicalContext) {
+      self.expression = ExprSyntax(DeclReferenceExprSyntax(baseName: capture.name.trimmed))
+      self.type = parameterType
     } else {
       // Not enough contextual information to derive the type here.
       context.diagnose(.typeOfCaptureIsAmbiguous(capture))
     }
+  }
+
+  /// Find a function or closure parameter in the given lexical context with a
+  /// given name and return its type.
+  ///
+  /// - Parameters:
+  /// 	- parameterName: The name of the parameter of interest.
+  ///   - lexicalContext: The lexical context to examine.
+  ///
+  /// - Returns: The Swift type of first parameter found whose name matches, or
+  /// 	`nil` if none was found. The lexical context is searched in the order
+  ///   provided which, by default, starts with the innermost scope.
+  private static func _findTypeOfParameter(named parameterName: TokenSyntax, in lexicalContext: [Syntax]) -> TypeSyntax? {
+    for lexicalContext in lexicalContext {
+      var parameterType: TypeSyntax?
+      if let functionDecl = lexicalContext.as(FunctionDeclSyntax.self) {
+        parameterType = functionDecl.signature.parameterClause.parameters
+          .first { ($0.secondName ?? $0.firstName).tokenKind == parameterName.tokenKind }
+          .map(\.type)
+      } else if let closureExpr = lexicalContext.as(ClosureExprSyntax.self) {
+        if case let .parameterClause(parameterClause) = closureExpr.signature?.parameterClause {
+          parameterType = parameterClause.parameters
+            .first { ($0.secondName ?? $0.firstName).tokenKind == parameterName.tokenKind }
+            .flatMap(\.type)
+        }
+      } else if lexicalContext.is(DeclSyntax.self) {
+        // If we've reached any other enclosing declaration, then any parameters
+        // beyond it won't be capturable and thus it isn't possible to infer
+        // types from them (any capture of `x`, for instance, must refer to some
+        // more-local variable with that name, not to a parameter named `x`.)
+        return nil
+      }
+
+      if let parameterType {
+        return parameterType
+      }
+    }
+
+    return nil
   }
 }
