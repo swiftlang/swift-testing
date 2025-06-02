@@ -499,7 +499,7 @@ extension ExitTestConditionMacro {
       recordDecl = """
       enum \(legacyEnumName): Testing.__TestContentRecordContainer {
         nonisolated static var __testContentRecord: Testing.__TestContentRecord {
-          \(enumName).testContentRecord
+          unsafe \(enumName).testContentRecord
         }
       }
       """
@@ -510,7 +510,7 @@ extension ExitTestConditionMacro {
         @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
         enum \(enumName) {
           private nonisolated static let accessor: Testing.__TestContentRecordAccessor = { outValue, type, hint, _ in
-            Testing.ExitTest.__store(
+            unsafe Testing.ExitTest.__store(
               \(idExpr),
               \(bodyThunkName),
               into: outValue,

@@ -475,7 +475,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       """
       @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
       private \(staticKeyword(for: typeName)) nonisolated let \(accessorName): Testing.__TestContentRecordAccessor = { outValue, type, _, _ in
-        Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
+        unsafe Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
       }
       """
     )
@@ -499,7 +499,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
       enum \(enumName): Testing.__TestContentRecordContainer {
         nonisolated static var __testContentRecord: Testing.__TestContentRecord {
-          \(testContentRecordName)
+          unsafe \(testContentRecordName)
         }
       }
       """

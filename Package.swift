@@ -127,8 +127,17 @@ let package = Package(
         "Testing",
         "_Testing_CoreGraphics",
         "_Testing_Foundation",
+        "MemorySafeTestingTests",
       ],
       swiftSettings: .packageSettings
+    ),
+    .target(
+      name: "MemorySafeTestingTests",
+      dependencies: [
+        "Testing",
+      ],
+      path: "Tests/_MemorySafeTestingTests",
+      swiftSettings: .packageSettings + .strictMemorySafety
     ),
 
     .macro(
@@ -354,6 +363,14 @@ extension Array where Element == PackageDescription.SwiftSetting {
     }
 
     return result
+  }
+
+  /// Settings necessary to enable Strict Memory Safety, introduced in
+  /// [SE-0458: Opt-in Strict Memory Safety Checking](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0458-strict-memory-safety.md#swiftpm-integration).
+  static var strictMemorySafety: Self {
+    // FIXME: Adopt official `.strictMemorySafety()` condition once the minimum
+    // supported toolchain is 6.2.
+    [.unsafeFlags(["-strict-memory-safety"])]
   }
 }
 
