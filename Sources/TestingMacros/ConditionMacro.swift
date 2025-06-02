@@ -510,7 +510,7 @@ extension ExitTestConditionMacro {
         @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
         enum \(enumName) {
           private nonisolated static let accessor: Testing.__TestContentRecordAccessor = { outValue, type, hint, _ in
-            unsafe Testing.ExitTest.__store(
+            Testing.ExitTest.__store(
               \(idExpr),
               \(bodyThunkName),
               into: outValue,

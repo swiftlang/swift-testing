@@ -150,7 +150,7 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
       """
       @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
       private nonisolated static let \(accessorName): Testing.__TestContentRecordAccessor = { outValue, type, _, _ in
-        unsafe Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
+        Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
       }
       """
     )
