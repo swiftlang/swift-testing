@@ -368,9 +368,13 @@ extension Array where Element == PackageDescription.SwiftSetting {
   /// Settings necessary to enable Strict Memory Safety, introduced in
   /// [SE-0458: Opt-in Strict Memory Safety Checking](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0458-strict-memory-safety.md#swiftpm-integration).
   static var strictMemorySafety: Self {
+#if compiler(>=6.2)
     // FIXME: Adopt official `.strictMemorySafety()` condition once the minimum
     // supported toolchain is 6.2.
     [.unsafeFlags(["-strict-memory-safety"])]
+#else
+    []
+#endif
   }
 }
 

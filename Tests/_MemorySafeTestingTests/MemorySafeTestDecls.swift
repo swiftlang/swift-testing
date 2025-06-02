@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if compiler(>=6.2)
+
 @testable import Testing
 
 #if !hasFeature(StrictMemorySafety)
@@ -25,3 +27,5 @@ struct ExampleSuite {
 func exampleExitTest() async {
   await #expect(processExitsWith: .success) {}
 }
+
+#endif
