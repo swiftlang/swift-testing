@@ -63,12 +63,13 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
     IntegerLiteralExprSyntax(context, radix: .binary)
   }
 
+  let unsafeKeyword = isUnsafeKeywordSupported ? TokenSyntax.keyword(.unsafe) : nil
   var result: DeclSyntax = """
   @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
   private nonisolated \(staticKeyword(for: typeName)) let \(name): Testing.__TestContentRecord = (
     \(kindExpr), \(kind.commentRepresentation)
     0,
-    unsafe \(accessorName),
+    \(unsafeKeyword) \(accessorName),
     \(contextExpr),
     0
   )
