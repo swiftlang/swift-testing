@@ -496,11 +496,11 @@ extension ExitTestConditionMacro {
       var recordDecl: DeclSyntax?
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
       let legacyEnumName = context.makeUniqueName("__🟡$")
-      let unsafeKeyword = isUnsafeKeywordSupported ? TokenSyntax.keyword(.unsafe) : nil
+      let unsafeKeyword: TokenSyntax? = isUnsafeKeywordSupported ? .keyword(.unsafe).with(\.trailingTrivia, .space) : nil
       recordDecl = """
       enum \(legacyEnumName): Testing.__TestContentRecordContainer {
         nonisolated static var __testContentRecord: Testing.__TestContentRecord {
-          \(unsafeKeyword) \(enumName).testContentRecord
+          \(unsafeKeyword)\(enumName).testContentRecord
         }
       }
       """
