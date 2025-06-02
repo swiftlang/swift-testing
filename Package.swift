@@ -131,6 +131,12 @@ let package = Package(
       ],
       swiftSettings: .packageSettings
     ),
+
+    // Use a plain `.target` instead of a `.testTarget` to avoid the unnecessary
+    // overhead of having a separate test target for this module. Conceptually,
+    // the content in this module is no different than content which would
+    // typically be placed in the `TestingTests` target, except this content
+    // needs the (module-wide) strict memory safety feature to be enabled.
     .target(
       name: "MemorySafeTestingTests",
       dependencies: [
