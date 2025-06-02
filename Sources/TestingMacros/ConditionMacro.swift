@@ -496,7 +496,7 @@ extension ExitTestConditionMacro {
       var recordDecl: DeclSyntax?
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
       let legacyEnumName = context.makeUniqueName("__🟡$")
-      let unsafeKeyword: TokenSyntax? = isUnsafeKeywordSupported ? .keyword(.unsafe).with(\.trailingTrivia, .space) : nil
+      let unsafeKeyword: TokenSyntax? = isUnsafeKeywordSupported ? .keyword(.unsafe, trailingTrivia: .space) : nil
       recordDecl = """
       enum \(legacyEnumName): Testing.__TestContentRecordContainer {
         nonisolated static var __testContentRecord: Testing.__TestContentRecord {

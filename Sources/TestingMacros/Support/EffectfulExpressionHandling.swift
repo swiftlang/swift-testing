@@ -157,7 +157,7 @@ func applyEffectfulKeywords(_ effectfulKeywords: Set<Keyword>, to expr: some Exp
   if needAwait {
     expr = ExprSyntax(
       AwaitExprSyntax(
-        awaitKeyword: .keyword(.await).with(\.trailingTrivia, .space),
+        awaitKeyword: .keyword(.await, trailingTrivia: .space),
         expression: expr
       )
     )
@@ -165,7 +165,7 @@ func applyEffectfulKeywords(_ effectfulKeywords: Set<Keyword>, to expr: some Exp
   if needTry {
     expr = ExprSyntax(
       TryExprSyntax(
-        tryKeyword: .keyword(.try).with(\.trailingTrivia, .space),
+        tryKeyword: .keyword(.try, trailingTrivia: .space),
         expression: expr
       )
     )
@@ -173,7 +173,7 @@ func applyEffectfulKeywords(_ effectfulKeywords: Set<Keyword>, to expr: some Exp
   if needUnsafe {
     expr = ExprSyntax(
       UnsafeExprSyntax(
-        unsafeKeyword: .keyword(.unsafe).with(\.trailingTrivia, .space),
+        unsafeKeyword: .keyword(.unsafe, trailingTrivia: .space),
         expression: expr
       )
     )
