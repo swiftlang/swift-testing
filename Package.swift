@@ -127,8 +127,23 @@ let package = Package(
         "Testing",
         "_Testing_CoreGraphics",
         "_Testing_Foundation",
+        "MemorySafeTestingTests",
       ],
       swiftSettings: .packageSettings
+    ),
+
+    // Use a plain `.target` instead of a `.testTarget` to avoid the unnecessary
+    // overhead of having a separate test target for this module. Conceptually,
+    // the content in this module is no different than content which would
+    // typically be placed in the `TestingTests` target, except this content
+    // needs the (module-wide) strict memory safety feature to be enabled.
+    .target(
+      name: "MemorySafeTestingTests",
+      dependencies: [
+        "Testing",
+      ],
+      path: "Tests/_MemorySafeTestingTests",
+      swiftSettings: .packageSettings + .strictMemorySafety
     ),
 
     .macro(
@@ -354,6 +369,18 @@ extension Array where Element == PackageDescription.SwiftSetting {
     }
 
     return result
+  }
+
+  /// Settings necessary to enable Strict Memory Safety, introduced in
+  /// [SE-0458: Opt-in Strict Memory Safety Checking](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0458-strict-memory-safety.md#swiftpm-integration).
+  static var strictMemorySafety: Self {
+#if compiler(>=6.2)
+    // FIXME: Adopt official `.strictMemorySafety()` condition once the minimum
+    // supported toolchain is 6.2.
+    [.unsafeFlags(["-strict-memory-safety"])]
+#else
+    []
+#endif
   }
 }
 
