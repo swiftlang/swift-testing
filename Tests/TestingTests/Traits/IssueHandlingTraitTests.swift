@@ -215,4 +215,19 @@ struct IssueHandlingTraitTests {
       Issue(kind: .system).record()
     }.run(configuration: configuration)
   }
+
+#if !SWT_NO_EXIT_TESTS
+  @Test("Disallow assigning kind to .system")
+  func disallowAssigningSystemKind() async throws {
+    await #expect(processExitsWith: .failure) {
+      await Test(.compactMapIssues { issue in
+        var issue = issue
+        issue.kind = .system
+        return issue
+      }) {
+        Issue.record("A non-system issue")
+      }.run()
+    }
+  }
+#endif
 }

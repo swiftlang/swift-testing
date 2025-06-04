@@ -111,6 +111,11 @@ extension IssueHandlingTrait: TestScoping {
       }
 
       if let newIssue {
+        // Prohibit assigning the issue's kind to system.
+        if case .system = newIssue.kind {
+          preconditionFailure("Issue returned by issue handling closure cannot have kind 'system': \(newIssue)")
+        }
+
         var event = event
         event.kind = .issueRecorded(newIssue)
         oldConfiguration.eventHandler(event, context)
@@ -150,8 +155,9 @@ extension Trait where Self == IssueHandlingTrait {
   /// record new issues, although they will only be handled by issue handling
   /// traits which precede this trait or were inherited from a containing suite.
   ///
-  /// - Note: `transform` is never passed issues for which the value of
-  ///   ``Issue/kind`` is ``Issue/Kind/system``.
+  /// - Note: `transform` will never be passed an issue for which the value of
+  ///   ``Issue/kind`` is ``Issue/Kind/system``, and may not return such an
+  ///   issue.
   public static func compactMapIssues(_ transform: @escaping @Sendable (Issue) -> Issue?) -> Self {
     Self(handler: transform)
   }
@@ -184,7 +190,7 @@ extension Trait where Self == IssueHandlingTrait {
   /// record new issues, although they will only be handled by issue handling
   /// traits which precede this trait or were inherited from a containing suite.
   ///
-  /// - Note: `isIncluded` is never passed issues for which the value of
+  /// - Note: `isIncluded` will never be passed an issue for which the value of
   ///   ``Issue/kind`` is ``Issue/Kind/system``.
   public static func filterIssues(_ isIncluded: @escaping @Sendable (Issue) -> Bool) -> Self {
     Self { issue in
