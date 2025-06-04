@@ -96,6 +96,12 @@ extension IssueHandlingTrait: TestScoping {
         return
       }
 
+      // Ignore system issues, as they are not expected to be caused by users.
+      if case .system = issue.kind {
+        oldConfiguration.eventHandler(event, context)
+        return
+      }
+
       // Use the original configuration's event handler when invoking the
       // handler closure to avoid infinite recursion if the handler itself
       // records new issues. This means only issue handling traits whose scope
@@ -143,6 +149,9 @@ extension Trait where Self == IssueHandlingTrait {
   /// using ``Test/current`` ``Test/Case/current``, respectively. You may also
   /// record new issues, although they will only be handled by issue handling
   /// traits which precede this trait or were inherited from a containing suite.
+  ///
+  /// - Note: `transform` is never passed issues for which the value of
+  ///   ``Issue/kind`` is ``Issue/Kind/system``.
   public static func compactMapIssues(_ transform: @escaping @Sendable (Issue) -> Issue?) -> Self {
     Self(handler: transform)
   }
@@ -174,6 +183,9 @@ extension Trait where Self == IssueHandlingTrait {
   /// using ``Test/current`` ``Test/Case/current``, respectively. You may also
   /// record new issues, although they will only be handled by issue handling
   /// traits which precede this trait or were inherited from a containing suite.
+  ///
+  /// - Note: `isIncluded` is never passed issues for which the value of
+  ///   ``Issue/kind`` is ``Issue/Kind/system``.
   public static func filterIssues(_ isIncluded: @escaping @Sendable (Issue) -> Bool) -> Self {
     Self { issue in
       isIncluded(issue) ? issue : nil

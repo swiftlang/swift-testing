@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
 @Suite("IssueHandlingTrait Tests")
 struct IssueHandlingTraitTests {
@@ -193,5 +193,26 @@ struct IssueHandlingTraitTests {
         }.run(configuration: configuration)
       }
     }
+  }
+
+  @Test("System issues are not passed to issue handler closures")
+  func ignoresSystemIssues() async throws {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, context in
+      if case let .issueRecorded(issue) = event.kind, case .unconditional = issue.kind {
+        issue.record()
+      }
+    }
+
+    let handler = IssueHandlingTrait.compactMapIssues { issue in
+      if case .system = issue.kind {
+        Issue.record("Unexpectedly received a system issue")
+      }
+      return nil
+    }
+
+    await Test(handler) {
+      Issue(kind: .system).record()
+    }.run(configuration: configuration)
   }
 }
