@@ -23,7 +23,7 @@ struct IssueHandlingTraitTests {
       #expect(issue.comments == ["Foo", "Bar"])
     }
 
-    let handler = IssueHandlingTrait.transformIssues { issue in
+    let handler = IssueHandlingTrait.compactMapIssues { issue in
       var issue = issue
       issue.comments.append("Bar")
       return issue
@@ -34,8 +34,8 @@ struct IssueHandlingTraitTests {
     }.run(configuration: configuration)
   }
 
-  @Test("Suppressing an issue by returning `nil` from the transform closure")
-  func suppressIssueUsingTransformer() async throws {
+  @Test("Suppressing an issue by returning `nil` from the closure passed to compactMapIssues()")
+  func suppressIssueUsingCompactMapIssues() async throws {
     var configuration = Configuration()
     configuration.eventHandler = { event, context in
       if case .issueRecorded = event.kind {
@@ -43,7 +43,7 @@ struct IssueHandlingTraitTests {
       }
     }
 
-    let handler = IssueHandlingTrait.transformIssues { _ in
+    let handler = IssueHandlingTrait.compactMapIssues { _ in
       // Return nil to suppress the issue.
       nil
     }
@@ -81,10 +81,10 @@ struct IssueHandlingTraitTests {
 
     struct MyError: Error {}
 
-    try await confirmation("Transformer closure is called") { transformerCalled in
-      let transformer: @Sendable (Issue) -> Issue? = { issue in
+    try await confirmation("Issue handler closure is called") { issueHandlerCalled in
+      let transform: @Sendable (Issue) -> Issue? = { issue in
         defer {
-          transformerCalled()
+          issueHandlerCalled()
         }
 
         #expect(Test.Case.current == nil)
@@ -96,7 +96,7 @@ struct IssueHandlingTraitTests {
 
       let test = Test(
         .enabled(if: try { throw MyError() }()),
-        .transformIssues(transformer)
+        .compactMapIssues(transform)
       ) {}
 
       // Use a detached task to intentionally clear task local values for the
@@ -108,12 +108,12 @@ struct IssueHandlingTraitTests {
   }
 #endif
 
-  @Test("Accessing the current Test and Test.Case from a transformer closure")
+  @Test("Accessing the current Test and Test.Case from an issue handler closure")
   func currentTestAndCase() async throws {
-    await confirmation("Transformer closure is called") { transformerCalled in
-      let handler = IssueHandlingTrait.transformIssues { issue in
+    await confirmation("Issue handler closure is called") { issueHandlerCalled in
+      let handler = IssueHandlingTrait.compactMapIssues { issue in
         defer {
-          transformerCalled()
+          issueHandlerCalled()
         }
         #expect(Test.current?.name == "fixture()")
         #expect(Test.Case.current != nil)
@@ -140,12 +140,12 @@ struct IssueHandlingTraitTests {
       #expect(issue.comments == ["Foo", "Bar", "Baz"])
     }
 
-    let outerHandler = IssueHandlingTrait.transformIssues { issue in
+    let outerHandler = IssueHandlingTrait.compactMapIssues { issue in
       var issue = issue
       issue.comments.append("Baz")
       return issue
     }
-    let innerHandler = IssueHandlingTrait.transformIssues { issue in
+    let innerHandler = IssueHandlingTrait.compactMapIssues { issue in
       var issue = issue
       issue.comments.append("Bar")
       return issue
@@ -156,7 +156,7 @@ struct IssueHandlingTraitTests {
     }.run(configuration: configuration)
   }
 
-  @Test("Secondary issue recorded from a transformer closure")
+  @Test("Secondary issue recorded from an issue handler closure")
   func issueRecordedFromClosure() async throws {
     await confirmation("Original issue recorded") { originalIssueRecorded in
       await confirmation("Secondary issue recorded") { secondaryIssueRecorded in
@@ -175,14 +175,14 @@ struct IssueHandlingTraitTests {
           }
         }
 
-        let handler1 = IssueHandlingTrait.transformIssues { issue in
+        let handler1 = IssueHandlingTrait.compactMapIssues { issue in
           return issue
         }
-        let handler2 = IssueHandlingTrait.transformIssues { issue in
+        let handler2 = IssueHandlingTrait.compactMapIssues { issue in
           Issue.record("Something else")
           return issue
         }
-        let handler3 = IssueHandlingTrait.transformIssues { issue in
+        let handler3 = IssueHandlingTrait.compactMapIssues { issue in
           // The "Something else" issue should not be passed to this closure.
           #expect(issue.comments.contains("Foo"))
           return issue
