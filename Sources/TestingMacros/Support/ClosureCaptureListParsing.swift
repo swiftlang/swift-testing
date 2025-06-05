@@ -105,11 +105,11 @@ struct CapturedValueInfo {
   /// given name and return its type.
   ///
   /// - Parameters:
-  /// 	- parameterName: The name of the parameter of interest.
+  ///   - parameterName: The name of the parameter of interest.
   ///   - lexicalContext: The lexical context to examine.
   ///
   /// - Returns: The Swift type of first parameter found whose name matches, or
-  /// 	`nil` if none was found. The lexical context is searched in the order
+  ///   `nil` if none was found. The lexical context is searched in the order
   ///   provided which, by default, starts with the innermost scope.
   private static func _findTypeOfParameter(named parameterName: TokenSyntax, in lexicalContext: [Syntax]) -> TypeSyntax? {
     for lexicalContext in lexicalContext {

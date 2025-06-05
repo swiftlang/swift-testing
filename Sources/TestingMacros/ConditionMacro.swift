@@ -437,21 +437,23 @@ extension ExitTestConditionMacro {
     var bodyArgumentExpr = arguments[trailingClosureIndex].expression
     bodyArgumentExpr = removeParentheses(from: bodyArgumentExpr) ?? bodyArgumentExpr
 
+    // Before building the macro expansion, look for any problems and return
+    // early if found.
+    guard _diagnoseIssues(with: macro, body: bodyArgumentExpr, in: context) else {
+      if Self.isThrowing {
+        return #"{ () async throws -> Testing.ExitTest.Result in Swift.fatalError("Unreachable") }()"#
+      } else {
+        return #"{ () async -> Testing.ExitTest.Result in Swift.fatalError("Unreachable") }()"#
+      }
+    }
+
     // Find any captured values and extract them from the trailing closure.
     var capturedValues = [CapturedValueInfo]()
-    if ExitTestExpectMacro.isValueCapturingEnabled {
-      // The source file imports @_spi(Experimental), so allow value capturing.
-      if var closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
-         let captureList = closureExpr.signature?.capture?.items {
-        closureExpr.signature?.capture = ClosureCaptureClauseSyntax(items: [], trailingTrivia: .space)
-        capturedValues = captureList.map { CapturedValueInfo($0, in: context) }
-        bodyArgumentExpr = ExprSyntax(closureExpr)
-      }
-
-    } else if let closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
-              let captureClause = closureExpr.signature?.capture,
-              !captureClause.items.isEmpty {
-      context.diagnose(.captureClauseUnsupported(captureClause, in: closureExpr, inExitTest: macro))
+    if var closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
+       let captureList = closureExpr.signature?.capture?.items {
+      closureExpr.signature?.capture = ClosureCaptureClauseSyntax(items: [], trailingTrivia: .space)
+      capturedValues = captureList.map { CapturedValueInfo($0, in: context) }
+      bodyArgumentExpr = ExprSyntax(closureExpr)
     }
 
     // Generate a unique identifier for this exit test.
@@ -609,6 +611,66 @@ extension ExitTestConditionMacro {
       }
       return ExprSyntax(tupleExpr)
     }
+  }
+
+  /// Diagnose issues with an exit test macro call.
+  ///
+  /// - Parameters:
+  ///   - macro: The exit test macro call.
+  ///   - bodyArgumentExpr: The exit test's body.
+  ///   - context: The macro context in which the expression is being parsed.
+  ///
+  /// - Returns: Whether or not macro expansion should continue (i.e. stopping
+  ///   if a fatal error was diagnosed.)
+  private static func _diagnoseIssues(
+    with macro: some FreestandingMacroExpansionSyntax,
+    body bodyArgumentExpr: ExprSyntax,
+    in context: some MacroExpansionContext
+  ) -> Bool {
+    var diagnostics = [DiagnosticMessage]()
+
+    var hasCaptureList = false
+    if let closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
+       let captureClause = closureExpr.signature?.capture,
+       !captureClause.items.isEmpty {
+      hasCaptureList = true
+
+      // Disallow capture lists if the experimental feature is not enabled.
+      if !ExitTestExpectMacro.isValueCapturingEnabled {
+        diagnostics.append(.captureClauseUnsupported(captureClause, in: closureExpr, inExitTest: macro))
+      }
+    }
+
+    for lexicalContext in context.lexicalContext {
+       // Disallow exit tests in generic functions as they cannot be correctly
+       // expanded.
+      if let functionDecl = lexicalContext.as(FunctionDeclSyntax.self) {
+        if let genericClause = functionDecl.genericParameterClause {
+          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: genericClause, on: functionDecl))
+        } else if let whereClause = functionDecl.genericWhereClause {
+          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: whereClause, on: functionDecl))
+        } else {
+          for parameter in functionDecl.signature.parameterClause.parameters {
+            if parameter.type.isSome {
+              diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: parameter, on: functionDecl))
+            }
+          }
+        }
+      } else if hasCaptureList, let lexicalContext = lexicalContext.asProtocol((any WithGenericParametersSyntax).self) {
+        // Disallow exit tests in generic types if they have capture lists (because
+        // the types may be ambiguous.)
+        if let genericClause = lexicalContext.genericParameterClause {
+          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: genericClause, on: lexicalContext))
+        } else if let whereClause = lexicalContext.genericWhereClause {
+          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: whereClause, on: lexicalContext))
+        }
+      }
+    }
+
+    for diagnostic in diagnostics {
+      context.diagnose(diagnostic)
+    }
+    return diagnostics.isEmpty
   }
 }
 
