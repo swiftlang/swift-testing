@@ -72,7 +72,19 @@ struct CapturedValueInfo {
         // Copying self.
         self.type = typeNameOfLexicalContext
       } else {
-        context.diagnose(.typeOfCaptureIsAmbiguous(capture, initializedWith: initializer))
+        // Handle literals. Any other types are ambiguous.
+        switch self.expression.kind {
+        case .integerLiteralExpr:
+          self.type = TypeSyntax(IdentifierTypeSyntax(name: .identifier("IntegerLiteralType")))
+        case .floatLiteralExpr:
+          self.type = TypeSyntax(IdentifierTypeSyntax(name: .identifier("FloatLiteralType")))
+        case .booleanLiteralExpr:
+          self.type = TypeSyntax(IdentifierTypeSyntax(name: .identifier("BooleanLiteralType")))
+        case .stringLiteralExpr, .simpleStringLiteralExpr:
+          self.type = TypeSyntax(IdentifierTypeSyntax(name: .identifier("StringLiteralType")))
+        default:
+          context.diagnose(.typeOfCaptureIsAmbiguous(capture, initializedWith: initializer))
+        }
       }
 
     } else if capture.name.tokenKind == .keyword(.self),

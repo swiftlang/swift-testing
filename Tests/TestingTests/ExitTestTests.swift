@@ -485,6 +485,16 @@ private import _TestingInternals
 //      #expect(!i.isEmpty)
 //    }
   }
+
+  @Test("Capturing a literal expression")
+  func captureListWithLiterals() async {
+    await #expect(processExitsWith: .success) { [i = 0, f = 1.0, s = "", b = true] in
+      #expect(i == 0)
+      #expect(f == 1.0)
+      #expect(s == "")
+      #expect(b == true)
+    }
+  }
 #endif
 }
 
