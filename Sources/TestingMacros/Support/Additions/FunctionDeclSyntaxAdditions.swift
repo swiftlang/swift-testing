@@ -13,27 +13,6 @@ import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
 extension FunctionDeclSyntax {
-  /// Whether or not this function a `static` or `class` function.
-  var isStaticOrClass: Bool {
-    modifiers.lazy
-      .map(\.name.tokenKind)
-      .contains { $0 == .keyword(.class) || $0 == .keyword(.static) }
-  }
-
-  /// Whether or not this function is a `mutating` function.
-  var isMutating: Bool {
-    modifiers.lazy
-      .map(\.name.tokenKind)
-      .contains(.keyword(.mutating))
-  }
-
-  /// Whether or not this function is a `nonisolated` function.
-  var isNonisolated: Bool {
-    modifiers.lazy
-      .map(\.name.tokenKind)
-      .contains(.keyword(.nonisolated))
-  }
-
   /// The name of this function including parentheses, parameter labels, and
   /// colons.
   var completeName: DeclReferenceExprSyntax {

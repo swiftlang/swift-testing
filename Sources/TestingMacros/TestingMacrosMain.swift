@@ -19,6 +19,7 @@ struct TestingMacrosMain: CompilerPlugin {
   var providingMacros: [any Macro.Type] {
     [
       SuiteDeclarationMacro.self,
+      SuiteWithArgumentsDeclarationMacro.self,
       TestDeclarationMacro.self,
       ExpectMacro.self,
       RequireMacro.self,

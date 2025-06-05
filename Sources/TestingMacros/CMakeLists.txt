@@ -94,6 +94,7 @@ target_sources(TestingMacros PRIVATE
   Support/Additions/TypeSyntaxProtocolAdditions.swift
   Support/Additions/VersionTupleSyntaxAdditions.swift
   Support/Additions/WithAttributesSyntaxAdditions.swift
+  Support/Additions/WithModifiersSyntaxAdditions.swift
   Support/Argument.swift
   Support/AttributeDiscovery.swift
   Support/AvailabilityGuards.swift

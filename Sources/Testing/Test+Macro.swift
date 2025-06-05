@@ -67,7 +67,8 @@ public typealias __XCTestCompatibleSelector = Never
 /// ## See Also
 ///
 /// - <doc:OrganizingTests>
-@attached(member) @attached(peer)
+@attached(extension, conformances: __Suite, names: named(__SuiteArguments))
+@attached(peer)
 @_documentation(visibility: private)
 public macro Suite(
   _ traits: any SuiteTrait...
@@ -95,7 +96,9 @@ public macro Suite(
 /// ## See Also
 ///
 /// - <doc:OrganizingTests>
-@attached(member) @attached(peer) public macro Suite(
+@attached(extension, conformances: __Suite, names: named(__SuiteArguments))
+@attached(peer)
+public macro Suite(
   _ displayName: _const String? = nil,
   _ traits: any SuiteTrait...
 ) = #externalMacro(module: "TestingMacros", type: "SuiteDeclarationMacro")
@@ -109,7 +112,8 @@ extension Test {
     _ containingType: any ~Copyable.Type,
     displayName: String? = nil,
     traits: [any SuiteTrait],
-    sourceLocation: SourceLocation
+    sourceLocation: SourceLocation,
+    parameters: [__Parameter] = []
   ) -> Self {
     let containingTypeInfo = TypeInfo(describing: containingType)
     return Self(displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo)
@@ -620,4 +624,66 @@ public func __invokeXCTestCaseMethod<T>(
   )
   issue.record()
   return true
+}
+
+// MARK: -
+
+@attached(extension, conformances: __SuiteWithArguments, names: named(__SuiteArguments))
+@attached(peer)
+@_documentation(visibility: private)
+public macro Suite<C>(
+  _ traits: any SuiteTrait...,
+  arguments collection: C
+) = #externalMacro(module: "TestingMacros", type: "SuiteWithArgumentsDeclarationMacro") where C: Collection & Sendable, C.Element: Sendable
+
+extension Test {
+  /// Create an instance of ``Test`` for a suite type.
+  ///
+  /// - Warning: This function is used to implement the `@Suite` macro. Do not
+  ///   call it directly.
+  public static func __type<C>(
+    _ containingType: any ~Copyable.Type,
+    displayName: String? = nil,
+    traits: [any SuiteTrait],
+    arguments collection: @escaping @Sendable () async throws -> C,
+    sourceLocation: SourceLocation,
+    parameters paramTuples: [__Parameter],
+  ) -> Self where C: Collection & Sendable, C.Element: Sendable {
+    let containingTypeInfo = TypeInfo(describing: containingType)
+    let parameters = paramTuples.parameters
+    return Self(displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, arguments: collection, parameters: parameters)
+  }
+}
+
+public protocol __Suite: ~Copyable {}
+
+public protocol __SuiteWithArguments: ~Copyable {
+  associatedtype __SuiteArguments: Sendable
+}
+
+// MARK: -
+
+@inlinable public func __make<T>(
+  isolation: (any Actor)? = #isolation,
+  with initializer: () async throws -> T
+) async throws -> sending T where T: ~Copyable {
+  try await initializer()
+}
+
+//public func __make<T>(
+//  isolation: (any Actor)? = #isolation,
+//  with initializer: (T.__SuiteArguments) async throws -> T
+//) async throws -> sending T where T: __SuiteWithArguments & ~Copyable, T.__SuiteArguments == () {
+//  try await initializer(())
+//}
+//
+public func __make<T>(
+  isolation: (any Actor)? = #isolation,
+  with initializer: (T.__SuiteArguments) async throws -> T
+) async throws -> sending T where T: __SuiteWithArguments & ~Copyable {
+  guard let suiteArguments = currentSuiteArguments() as? T.__SuiteArguments else {
+    let typeName = TypeInfo(describing: T.self).unqualifiedName
+    throw SystemError(description: "Attempted to initialize an instance of parameterized suite type '\(typeName)', but could not get the correct values to pass to 'init(testArguments:)'.")
+  }
+  return try await initializer(suiteArguments)
 }

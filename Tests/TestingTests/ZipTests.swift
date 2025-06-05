@@ -26,3 +26,11 @@ struct ZipTests {
     #expect(i == j)
   }
 }
+
+@Suite(arguments: ["a", "b", "c"]) struct ParameterizedSuiteExample {
+  var string: String
+
+  @Test func foo() {
+    #expect(string.count == 1)
+  }
+}

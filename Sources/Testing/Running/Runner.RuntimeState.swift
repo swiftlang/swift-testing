@@ -25,6 +25,9 @@ extension Runner {
     /// The test case that is running on the current task, if any.
     var testCase: Test.Case?
 
+    /// The current suite arguments, if any, to pass to `init(...)`.
+    var suiteArguments: (any Sendable)?
+
     /// The runtime state related to the runner running on the current task,
     /// if any.
     @TaskLocal
@@ -254,4 +257,10 @@ func currentTestAndTestCase() -> (Test?, Test.Case?) {
     return (nil, nil)
   }
   return (state.test, state.testCase)
+}
+
+// MARK: -
+
+func currentSuiteArguments() -> (any Sendable)? {
+  Runner.RuntimeState.current?.suiteArguments
 }

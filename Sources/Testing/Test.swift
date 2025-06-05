@@ -165,6 +165,9 @@ public struct Test: Sendable {
         throw error
       }
     }
+    if let suiteArguments = try await suiteArguments?() {
+      self.suiteArguments = { suiteArguments }
+    }
   }
 
   /// Whether or not this test is parameterized.
@@ -192,6 +195,8 @@ public struct Test: Sendable {
     containingTypeInfo != nil && testCasesState == nil
   }
 
+  var suiteArguments: (@Sendable () async throws -> (any Collection & Sendable))?
+
   /// Whether or not this instance was synthesized at runtime.
   ///
   /// During test planning, suites that are not explicitly marked with the
@@ -215,6 +220,25 @@ public struct Test: Sendable {
     self.sourceLocation = sourceLocation
     self.containingTypeInfo = containingTypeInfo
     self.isSynthesized = isSynthesized
+  }
+
+  /// Initialize an instance of this type representing a parameterized test
+  /// suite type.
+  init<C>(
+    displayName: String? = nil,
+    traits: [any Trait],
+    sourceLocation: SourceLocation,
+    containingTypeInfo: TypeInfo,
+    arguments: @escaping @Sendable () async throws -> C,
+    parameters: [Parameter]
+  ) where C: Collection & Sendable, C.Element: Sendable {
+    self.name = containingTypeInfo.unqualifiedName
+    self.displayName = displayName
+    self.traits = traits
+    self.sourceLocation = sourceLocation
+    self.containingTypeInfo = containingTypeInfo
+    suiteArguments = { try await arguments() }
+    self.parameters = parameters
   }
 
   /// Initialize an instance of this type representing a test function.

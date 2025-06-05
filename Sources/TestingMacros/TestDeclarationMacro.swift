@@ -274,7 +274,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
         let instanceName = context.makeUniqueName("")
         let varOrLet = functionDecl.isMutating ? "var" : "let"
         thunkBody = """
-        \(raw: varOrLet) \(raw: instanceName) = \(forwardInit("\(typeName)()"))
+        \(raw: varOrLet) \(raw: instanceName) = try await Testing.__make(with: \(typeName).init)
         _ = \(forwardCall("\(raw: instanceName).\(functionDecl.name.trimmed)\(forwardedParamsExpr)"))
         """
 
