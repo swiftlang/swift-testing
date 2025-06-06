@@ -129,7 +129,7 @@ let package = Package(
         "_Testing_Foundation",
         "MemorySafeTestingTests",
       ],
-      swiftSettings: .packageSettings
+      swiftSettings: .packageSettings + .disableMandatoryOptimizationsSettings
     ),
 
     // Use a plain `.target` instead of a `.testTarget` to avoid the unnecessary
@@ -234,7 +234,7 @@ package.targets.append(contentsOf: [
       "Testing",
       "TestingMacros",
     ],
-    swiftSettings: .packageSettings
+    swiftSettings: .packageSettings + .disableMandatoryOptimizationsSettings
   )
 ])
 #endif
@@ -290,7 +290,10 @@ extension Array where Element == PackageDescription.SwiftSetting {
       // This setting is enabled in the package, but not in the toolchain build
       // (via CMake). Enabling it is dependent on acceptance of the @section
       // proposal via Swift Evolution.
-      .enableExperimentalFeature("SymbolLinkageMarkers"),
+      //
+      // FIXME: Re-enable this once a CI blocker is resolved:
+      // https://github.com/swiftlang/swift-testing/issues/1138.
+//      .enableExperimentalFeature("SymbolLinkageMarkers"),
 
       // This setting is no longer needed when building with a 6.2 or later
       // toolchain now that SE-0458 has been accepted and implemented, but it is
@@ -381,6 +384,20 @@ extension Array where Element == PackageDescription.SwiftSetting {
 #else
     []
 #endif
+  }
+
+  /// Settings which disable Swift's mandatory optimizations pass.
+  ///
+  /// This is intended only to work around a build failure caused by a Swift
+  /// compiler regression which is expected to be resolved in
+  /// [swiftlang/swift#82034](https://github.com/swiftlang/swift/pull/82034).
+  ///
+  /// @Comment {
+  ///   - Bug: This should be removed once the CI issue is resolved.
+  ///     [swiftlang/swift-testin#1138](https://github.com/swiftlang/swift-testing/issues/1138).
+  /// }
+  static var disableMandatoryOptimizationsSettings: Self {
+    [.unsafeFlags(["-Xllvm", "-sil-disable-pass=mandatory-performance-optimizations"])]
   }
 }
 
