@@ -24,14 +24,14 @@ public protocol __TestContentRecordContainer {
   nonisolated static var __testContentRecord: __TestContentRecord { get }
 }
 
-extension DiscoverableAsTestContent where Self: ~Copyable {
+extension DiscoverableAsTestContent {
   /// Get all test content of this type known to Swift and found in the current
   /// process using the legacy discovery mechanism.
   ///
   /// - Returns: A sequence of instances of ``TestContentRecord``. Only test
   ///   content records matching this ``TestContent`` type's requirements are
   ///   included in the sequence.
-  static func allTypeMetadataBasedTestContentRecords() -> AnySequence<TestContentRecord<Self>> {
+  static func allTypeMetadataBasedTestContentRecords() -> some Sequence<TestContentRecord<Self>> {
     return allTypeMetadataBasedTestContentRecords { type, buffer in
       guard let type = type as? any __TestContentRecordContainer.Type else {
         return false
