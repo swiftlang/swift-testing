@@ -12,6 +12,10 @@
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import _TestDiscovery
 private import _TestingInternals
 
+#if canImport(Foundation)
+private import Foundation
+#endif
+
 @Test(/* name unspecified */ .hidden)
 @Sendable func freeSyncFunction() {}
 @Sendable func freeAsyncFunction() async {}

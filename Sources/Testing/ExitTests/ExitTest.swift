@@ -327,6 +327,9 @@ extension ExitTest {
   ///
   /// - Warning: This function is used to implement the
   ///   `#expect(processExitsWith:)` macro. Do not use it directly.
+#if compiler(>=6.2)
+  @safe
+#endif
   public static func __store<each T>(
     _ id: (UInt64, UInt64, UInt64, UInt64),
     _ body: @escaping @Sendable (repeat each T) async throws -> Void,

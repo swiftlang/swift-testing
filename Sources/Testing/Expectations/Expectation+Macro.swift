@@ -514,11 +514,12 @@ public macro require<R>(
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
 /// }
+@freestanding(expression)
+@discardableResult
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
-@discardableResult
-@freestanding(expression) public macro expect(
+public macro expect(
   processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
   _ comment: @autoclosure () -> Comment? = nil,
@@ -559,11 +560,12 @@ public macro require<R>(
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
 /// }
+@freestanding(expression)
+@discardableResult
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
-@discardableResult
-@freestanding(expression) public macro require(
+public macro require(
   processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
   _ comment: @autoclosure () -> Comment? = nil,
