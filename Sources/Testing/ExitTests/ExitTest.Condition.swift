@@ -35,6 +35,7 @@ extension ExitTest {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public struct Condition: Sendable {
     /// An enumeration describing the possible conditions for an exit test.
@@ -66,6 +67,7 @@ extension ExitTest.Condition {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public static var success: Self {
     Self(_kind: .success)
@@ -78,6 +80,7 @@ extension ExitTest.Condition {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public static var failure: Self {
     Self(_kind: .failure)
@@ -91,6 +94,7 @@ extension ExitTest.Condition {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public init(_ exitStatus: ExitStatus) {
     self.init(_kind: .exitStatus(exitStatus))
@@ -126,6 +130,7 @@ extension ExitTest.Condition {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public static func exitCode(_ exitCode: CInt) -> Self {
 #if !SWT_NO_EXIT_TESTS
@@ -158,6 +163,7 @@ extension ExitTest.Condition {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public static func signal(_ signal: CInt) -> Self {
 #if !SWT_NO_EXIT_TESTS

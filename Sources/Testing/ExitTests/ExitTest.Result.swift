@@ -21,12 +21,14 @@ extension ExitTest {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public struct Result: Sendable {
     /// The exit status reported by the process hosting the exit test.
     ///
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.2)
+    ///   @Available(Xcode, introduced: 26.0)
     /// }
     public var exitStatus: ExitStatus
 
@@ -57,6 +59,7 @@ extension ExitTest {
     ///
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.2)
+    ///   @Available(Xcode, introduced: 26.0)
     /// }
     public var standardOutputContent: [UInt8] = []
 
@@ -87,6 +90,7 @@ extension ExitTest {
     ///
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.2)
+    ///   @Available(Xcode, introduced: 26.0)
     /// }
     public var standardErrorContent: [UInt8] = []
 
