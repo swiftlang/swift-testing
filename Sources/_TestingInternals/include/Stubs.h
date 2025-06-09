@@ -151,6 +151,25 @@ static int swt_EEXIST(void) {
   return EEXIST;
 }
 
+#if __has_include(<fcntl.h>) || __has_include(<sys/fcntl.h>)
+/// Call `fcntl(F_GETFD)`.
+///
+/// This function is provided because `fcntl()` is a variadic function and
+/// cannot be imported directly into Swift.
+static int swt_getfdflags(int fd) {
+  return fcntl(fd, F_GETFD);
+}
+
+/// Call `fcntl(F_SETFD)`.
+///
+/// This function is provided because `fcntl()` is a variadic function and
+/// cannot be imported directly into Swift.
+static int swt_setfdflags(int fd, int flags) {
+  return fcntl(fd, F_SETFD, flags);
+}
+#endif
+
+
 SWT_ASSUME_NONNULL_END
 
 #endif

@@ -462,6 +462,17 @@ extension FileHandle {
 #if !SWT_NO_PIPES
 // MARK: - Pipes
 
+#if !SWT_TARGET_OS_APPLE && !os(Windows) && !SWT_NO_DYNAMIC_LINKING
+/// Create a pipe with flags.
+///
+/// This function declaration is provided because `pipe2()` is only declared if
+/// `_GNU_SOURCE` is set, but setting it causes build errors due to conflicts
+/// with Swift's Glibc module.
+private let _pipe2 = symbol(named: "pipe2").map {
+  castCFunction(at: $0, to: (@convention(c) (UnsafeMutablePointer<CInt>, CInt) -> CInt).self)
+}
+#endif
+
 extension FileHandle {
   /// Make a pipe connecting two new file handles.
   ///
@@ -489,15 +500,26 @@ extension FileHandle {
       guard 0 == _pipe(fds.baseAddress, 0, _O_BINARY | _O_NOINHERIT) else {
         throw CError(rawValue: swt_errno())
       }
-#elseif SWT_TARGET_OS_APPLE
-      // Apple platforms do not currently implement pipe2(), so simulate it to
-      // the best of our ability.
-      guard 0 == pipe(fds.baseAddress!) else {
-        throw CError(rawValue: swt_errno())
-      }
 #else
-      guard 0 == pipe2(fds.baseAddress!, O_CLOEXEC) else {
-        throw CError(rawValue: swt_errno())
+      var pipe2Called = false
+#if !SWT_TARGET_OS_APPLE && !os(Windows) && !SWT_NO_DYNAMIC_LINKING
+      if let _pipe2 {
+        guard 0 == _pipe2(fds.baseAddress!, O_CLOEXEC) else {
+          throw CError(rawValue: swt_errno())
+        }
+        pipe2Called = true
+      }
+#endif
+
+      if !pipe2Called {
+        // pipe2() is not available. Use pipe() instead and simulate O_CLOEXEC
+        // to the best of our ability.
+        guard 0 == pipe(fds.baseAddress!) else {
+          throw CError(rawValue: swt_errno())
+        }
+        for fd in fds {
+          try? setFileDescriptorInherited(fd, false)
+        }
       }
 #endif
       return (fds[0], fds[1])
@@ -516,13 +538,6 @@ extension FileHandle {
         fdWriteEnd = -1
       }
       try writeEnd = FileHandle(unsafePOSIXFileDescriptor: fdWriteEnd, mode: "wb")
-
-#if SWT_TARGET_OS_APPLE
-      // Apple platforms do not currently implement pipe2(), so simulate it to
-      // the best of our ability.
-      try readEnd?.setInherited(false)
-      try writeEnd?.setInherited(false)
-#endif
     } catch {
       // Don't leak file handles! Ensure we've cleared both pointers before
       // returning so the state is consistent in the caller.
@@ -589,6 +604,39 @@ extension FileHandle {
   }
 #endif
 
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+  /// Set whether or not the given file descriptor is inherited by child processes.
+  ///
+  /// - Parameters:
+  /// 	- fd: The file descriptor.
+  ///   - inherited: Whether or not `fd` is inherited by child processes
+  ///   (ignoring overriding functionality such as Apple's
+  ///   `POSIX_SPAWN_CLOEXEC_DEFAULT` flag.)
+  ///
+  /// - Throws: Any error that occurred while setting the flag.
+  static func setFileDescriptorInherited(_ fd: CInt, _ inherited: Bool) throws {
+    switch swt_getfdflags(fd) {
+    case -1:
+      // An error occurred reading the flags for this file descriptor.
+      throw CError(rawValue: swt_errno())
+    case let oldValue:
+      let newValue = if inherited {
+        oldValue & ~FD_CLOEXEC
+      } else {
+        oldValue | FD_CLOEXEC
+      }
+      if oldValue == newValue {
+        // No need to make a second syscall as nothing has changed.
+        return
+      }
+      if -1 == swt_setfdflags(fd, newValue) {
+        // An error occurred setting the flags for this file descriptor.
+        throw CError(rawValue: swt_errno())
+      }
+    }
+  }
+#endif
+
   /// Set whether or not this file handle is inherited by child processes.
   ///
   /// - Parameters:
@@ -604,25 +652,7 @@ extension FileHandle {
         throw SystemError(description: "Cannot set whether a file handle is inherited unless it is backed by a file descriptor. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
       }
       try withLock {
-        switch fcntl(fd, F_GETFD) {
-        case -1:
-          // An error occurred reading the flags for this file descriptor.
-          throw CError(rawValue: swt_errno())
-        case let oldValue:
-          let newValue = if inherited {
-            oldValue & ~FD_CLOEXEC
-          } else {
-            oldValue | FD_CLOEXEC
-          }
-          if oldValue == newValue {
-            // No need to make a second syscall as nothing has changed.
-            return
-          }
-          if -1 == fcntl(fd, F_SETFD, newValue) {
-            // An error occurred setting the flags for this file descriptor.
-            throw CError(rawValue: swt_errno())
-          }
-        }
+        try Self.setFileDescriptorInherited(fd, inherited)
       }
     }
 #elseif os(Windows)
