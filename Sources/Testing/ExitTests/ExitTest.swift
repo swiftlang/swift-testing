@@ -779,21 +779,17 @@ extension ExitTest {
             _ = setvbuf(stderr, nil, _IONBF, Int(BUFSIZ))
           }
         }
-        try stdoutWriteEnd?.setInherited(true)
-        try stderrWriteEnd?.setInherited(true)
 
         // Create a "back channel" pipe to handle events from the child process.
         var backChannelReadEnd: FileHandle!
         var backChannelWriteEnd: FileHandle!
         try FileHandle.makePipe(readEnd: &backChannelReadEnd, writeEnd: &backChannelWriteEnd)
-        try backChannelWriteEnd.setInherited(true)
 
         // Create another pipe to send captured values (and possibly other state
         // in the future) to the child process.
         var capturedValuesReadEnd: FileHandle!
         var capturedValuesWriteEnd: FileHandle!
         try FileHandle.makePipe(readEnd: &capturedValuesReadEnd, writeEnd: &capturedValuesWriteEnd)
-        try capturedValuesReadEnd.setInherited(true)
 
         // Let the child process know how to find the back channel and
         // captured values channel by setting a known environment variable to
@@ -804,6 +800,15 @@ extension ExitTest {
         if let capturedValuesEnvironmentVariable = _makeEnvironmentVariable(for: capturedValuesReadEnd) {
           childEnvironment["SWT_EXPERIMENTAL_CAPTURED_VALUES"] = capturedValuesEnvironmentVariable
         }
+
+#if !SWT_TARGET_OS_APPLE
+        // Set inherited those file handles that the child process needs. On
+        // Darwin, this is a no-op because we use POSIX_SPAWN_CLOEXEC_DEFAULT.
+        try stdoutWriteEnd?.setInherited(true)
+        try stderrWriteEnd?.setInherited(true)
+        try backChannelWriteEnd.setInherited(true)
+        try capturedValuesReadEnd.setInherited(true)
+#endif
 
         // Spawn the child process.
         let processID = try withUnsafePointer(to: backChannelWriteEnd) { backChannelWriteEnd in
