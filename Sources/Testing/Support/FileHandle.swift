@@ -73,6 +73,13 @@ struct FileHandle: ~Copyable, Sendable {
       return
     }
 
+    // On Windows, "N" is used rather than "e" to signify that a file handle is
+    // not inherited.
+    var mode = mode
+    if let eIndex = mode.firstIndex(of: "e") {
+      mode.replaceSubrange(eIndex ... eIndex, with: "N")
+    }
+
     // Windows deprecates fopen() as insecure, so call _wfopen_s() instead.
     let fileHandle = try path.withCString(encodedAs: UTF16.self) { path in
       try mode.withCString(encodedAs: UTF16.self) { mode in
@@ -98,8 +105,13 @@ struct FileHandle: ~Copyable, Sendable {
   ///   - path: The path to read from.
   ///
   /// - Throws: Any error preventing the stream from being opened.
+  ///
+  /// By default, the resulting file handle is not inherited by any child
+  /// processes (that is, `FD_CLOEXEC` is set on POSIX-like systems and
+  /// `HANDLE_FLAG_INHERIT` is cleared on Windows.) To make it inheritable, call
+  /// ``setInherited()``.
   init(forReadingAtPath path: String) throws {
-    try self.init(atPath: path, mode: "rb")
+    try self.init(atPath: path, mode: "reb")
   }
 
   /// Initialize an instance of this type to write to the given path.
@@ -108,8 +120,13 @@ struct FileHandle: ~Copyable, Sendable {
   ///   - path: The path to write to.
   ///
   /// - Throws: Any error preventing the stream from being opened.
+  ///
+  /// By default, the resulting file handle is not inherited by any child
+  /// processes (that is, `FD_CLOEXEC` is set on POSIX-like systems and
+  /// `HANDLE_FLAG_INHERIT` is cleared on Windows.) To make it inheritable, call
+  /// ``setInherited()``.
   init(forWritingAtPath path: String) throws {
-    try self.init(atPath: path, mode: "wb")
+    try self.init(atPath: path, mode: "web")
   }
 
   /// Initialize an instance of this type with an existing C file handle.
@@ -461,14 +478,25 @@ extension FileHandle {
   /// - Bug: This function should return a tuple containing the file handles
   ///   instead of returning them via `inout` arguments. Swift does not support
   ///   tuples with move-only elements. ([104669935](rdar://104669935))
+  ///
+  /// By default, the resulting file handles are not inherited by any child
+  /// processes (that is, `FD_CLOEXEC` is set on POSIX-like systems and
+  /// `HANDLE_FLAG_INHERIT` is cleared on Windows.) To make them inheritable,
+  /// call ``setInherited()``.
   static func makePipe(readEnd: inout FileHandle?, writeEnd: inout FileHandle?) throws {
     var (fdReadEnd, fdWriteEnd) = try withUnsafeTemporaryAllocation(of: CInt.self, capacity: 2) { fds in
 #if os(Windows)
-      guard 0 == _pipe(fds.baseAddress, 0, _O_BINARY) else {
+      guard 0 == _pipe(fds.baseAddress, 0, _O_BINARY | _O_NOINHERIT) else {
+        throw CError(rawValue: swt_errno())
+      }
+#elseif SWT_TARGET_OS_APPLE
+      // Apple platforms do not currently implement pipe2(), so simulate it to
+      // the best of our ability.
+      guard 0 == pipe(fds.baseAddress!) else {
         throw CError(rawValue: swt_errno())
       }
 #else
-      guard 0 == pipe(fds.baseAddress!) else {
+      guard 0 == pipe2(fds.baseAddress!, O_CLOEXEC) else {
         throw CError(rawValue: swt_errno())
       }
 #endif
@@ -488,6 +516,13 @@ extension FileHandle {
         fdWriteEnd = -1
       }
       try writeEnd = FileHandle(unsafePOSIXFileDescriptor: fdWriteEnd, mode: "wb")
+
+#if SWT_TARGET_OS_APPLE
+      // Apple platforms do not currently implement pipe2(), so simulate it to
+      // the best of our ability.
+      try readEnd?.setInherited(false)
+      try writeEnd?.setInherited(false)
+#endif
     } catch {
       // Don't leak file handles! Ensure we've cleared both pointers before
       // returning so the state is consistent in the caller.
@@ -553,6 +588,57 @@ extension FileHandle {
 #endif
   }
 #endif
+
+  /// Set whether or not this file handle is inherited by child processes.
+  ///
+  /// - Parameters:
+  ///   - inherited: Whether or not this file handle is inherited by child
+  ///     processes (ignoring overriding functionality such as Apple's
+  ///     `POSIX_SPAWN_CLOEXEC_DEFAULT` flag.)
+  ///
+  /// - Throws: Any error that occurred while setting the flag.
+  func setInherited(_ inherited: Bool) throws {
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+    try withUnsafePOSIXFileDescriptor { fd in
+      guard let fd else {
+        throw SystemError(description: "Cannot set whether a file handle is inherited unless it is backed by a file descriptor. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      }
+      try withLock {
+        switch fcntl(fd, F_GETFD) {
+        case -1:
+          // An error occurred reading the flags for this file descriptor.
+          throw CError(rawValue: swt_errno())
+        case let oldValue:
+          let newValue = if inherited {
+            oldValue & ~FD_CLOEXEC
+          } else {
+            oldValue | FD_CLOEXEC
+          }
+          if oldValue == newValue {
+            // No need to make a second syscall as nothing has changed.
+            return
+          }
+          if -1 == fcntl(fd, F_SETFD, newValue) {
+            // An error occurred setting the flags for this file descriptor.
+            throw CError(rawValue: swt_errno())
+          }
+        }
+      }
+    }
+#elseif os(Windows)
+    return withUnsafeWindowsHANDLE { handle in
+      guard let handle else {
+        throw SystemError(description: "Cannot set whether a file handle is inherited unless it is backed by a Windows file handle. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      }
+      let newValue = inherited ? DWORD(HANDLE_FLAG_INHERIT) : 0
+      guard SetHandleInformation(handle, DWORD(HANDLE_FLAG_INHERIT), newValue) else {
+        throw Win32Error(rawValue: GetLastError())
+      }
+    }
+#else
+#warning("Platform-specific implementation missing: cannot set whether a file handle is inherited")
+#endif
+  }
 }
 
 // MARK: - General path utilities

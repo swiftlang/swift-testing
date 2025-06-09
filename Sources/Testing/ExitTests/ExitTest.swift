@@ -779,17 +779,21 @@ extension ExitTest {
             _ = setvbuf(stderr, nil, _IONBF, Int(BUFSIZ))
           }
         }
+        try stdoutWriteEnd?.setInherited(true)
+        try stderrWriteEnd?.setInherited(true)
 
         // Create a "back channel" pipe to handle events from the child process.
         var backChannelReadEnd: FileHandle!
         var backChannelWriteEnd: FileHandle!
         try FileHandle.makePipe(readEnd: &backChannelReadEnd, writeEnd: &backChannelWriteEnd)
+        try backChannelWriteEnd.setInherited(true)
 
         // Create another pipe to send captured values (and possibly other state
         // in the future) to the child process.
         var capturedValuesReadEnd: FileHandle!
         var capturedValuesWriteEnd: FileHandle!
         try FileHandle.makePipe(readEnd: &capturedValuesReadEnd, writeEnd: &capturedValuesWriteEnd)
+        try capturedValuesReadEnd.setInherited(true)
 
         // Let the child process know how to find the back channel and
         // captured values channel by setting a known environment variable to
