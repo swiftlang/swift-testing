@@ -495,13 +495,16 @@ extension FileHandle {
   /// `HANDLE_FLAG_INHERIT` is cleared on Windows.) To make them inheritable,
   /// call ``setInherited()``.
   static func makePipe(readEnd: inout FileHandle?, writeEnd: inout FileHandle?) throws {
+#if !os(Windows)
+    var pipe2Called = false
+#endif
+
     var (fdReadEnd, fdWriteEnd) = try withUnsafeTemporaryAllocation(of: CInt.self, capacity: 2) { fds in
 #if os(Windows)
       guard 0 == _pipe(fds.baseAddress, 0, _O_BINARY | _O_NOINHERIT) else {
         throw CError(rawValue: swt_errno())
       }
 #else
-      var pipe2Called = false
 #if !SWT_TARGET_OS_APPLE && !os(Windows) && !SWT_NO_DYNAMIC_LINKING
       if let _pipe2 {
         guard 0 == _pipe2(fds.baseAddress!, O_CLOEXEC) else {
@@ -517,9 +520,6 @@ extension FileHandle {
         guard 0 == pipe(fds.baseAddress!) else {
           throw CError(rawValue: swt_errno())
         }
-        for fd in fds {
-          try? setFileDescriptorInherited(fd, false)
-        }
       }
 #endif
       return (fds[0], fds[1])
@@ -528,6 +528,15 @@ extension FileHandle {
       Self._close(fdReadEnd)
       Self._close(fdWriteEnd)
     }
+
+#if !os(Windows)
+    if !pipe2Called {
+      // pipe2() is not available. Use pipe() instead and simulate O_CLOEXEC
+      // to the best of our ability.
+      try _setFileDescriptorInherited(fdReadEnd, false)
+      try _setFileDescriptorInherited(fdWriteEnd, false)
+    }
+#endif
 
     do {
       defer {
@@ -608,13 +617,13 @@ extension FileHandle {
   /// Set whether or not the given file descriptor is inherited by child processes.
   ///
   /// - Parameters:
-  /// 	- fd: The file descriptor.
+  ///   - fd: The file descriptor.
   ///   - inherited: Whether or not `fd` is inherited by child processes
-  ///   (ignoring overriding functionality such as Apple's
-  ///   `POSIX_SPAWN_CLOEXEC_DEFAULT` flag.)
+  ///     (ignoring overriding functionality such as Apple's
+  ///     `POSIX_SPAWN_CLOEXEC_DEFAULT` flag.)
   ///
   /// - Throws: Any error that occurred while setting the flag.
-  static func setFileDescriptorInherited(_ fd: CInt, _ inherited: Bool) throws {
+  private static func _setFileDescriptorInherited(_ fd: CInt, _ inherited: Bool) throws {
     switch swt_getfdflags(fd) {
     case -1:
       // An error occurred reading the flags for this file descriptor.
@@ -652,7 +661,7 @@ extension FileHandle {
         throw SystemError(description: "Cannot set whether a file handle is inherited unless it is backed by a file descriptor. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
       }
       try withLock {
-        try Self.setFileDescriptorInherited(fd, inherited)
+        try Self._setFileDescriptorInherited(fd, inherited)
       }
     }
 #elseif os(Windows)

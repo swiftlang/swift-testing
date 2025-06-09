@@ -171,7 +171,6 @@ static int swt_setfdflags(int fd, int flags) {
 }
 #endif
 
-
 SWT_ASSUME_NONNULL_END
 
 #endif
