@@ -656,7 +656,7 @@ extension FileHandle {
       }
     }
 #elseif os(Windows)
-    return withUnsafeWindowsHANDLE { handle in
+    return try withUnsafeWindowsHANDLE { handle in
       guard let handle else {
         throw SystemError(description: "Cannot set whether a file handle is inherited unless it is backed by a Windows file handle. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
       }
