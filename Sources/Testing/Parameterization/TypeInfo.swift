@@ -148,7 +148,7 @@ extension TypeInfo {
   ///   - rawIdentifier: The string to rewrite.
   ///
   /// - Returns: A copy of `rawIdentifier` with non-breaking spaces (`U+00A0`)
-  ///   replaced with normal spaces (`U+0020').
+  ///   replaced with normal spaces (`U+0020`).
   ///
   /// When the Swift runtime demangles a raw identifier, it [replaces](https://github.com/swiftlang/swift/blob/d033eec1aa427f40dcc38679d43b83d9dbc06ae7/lib/Basic/Mangler.cpp#L250)
   /// normal ASCII spaces with non-breaking spaces to maintain compatibility
@@ -156,18 +156,19 @@ extension TypeInfo {
   /// spaces are not otherwise valid in raw identifiers, so this transformation
   /// is reversible.
   private static func _rewriteNonBreakingSpacesAsASCIISpaces(in rawIdentifier: some StringProtocol) -> String? {
-    guard rawIdentifier.contains("\u{00A0}") else {
+    let nbsp = "\u{00A0}" as UnicodeScalar
+
+    // If there are no non-breaking spaces in the string, exit early to avoid
+    // any further allocations.
+    let unicodeScalars = rawIdentifier.unicodeScalars
+    guard unicodeScalars.contains(nbsp) else {
       return nil
     }
 
-    let result = rawIdentifier.lazy.map { c in
-      if c == "\u{00A0}" {
-        " " as Character
-      } else {
-        c
-      }
-    }
-    return String(result)
+    // Replace non-breaking spaces, then construct a new string from the
+    // resulting sequence.
+    let result = unicodeScalars.lazy.map { $0 == nbsp ? " " : $0 }
+    return String(String.UnicodeScalarView(result))
   }
 
   /// An in-memory cache of fully-qualified type name components.
