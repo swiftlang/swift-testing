@@ -151,7 +151,7 @@ static int swt_EEXIST(void) {
   return EEXIST;
 }
 
-#if __has_include(<fcntl.h>) || __has_include(<sys/fcntl.h>)
+#if defined(F_GETFD)
 /// Call `fcntl(F_GETFD)`.
 ///
 /// This function is provided because `fcntl()` is a variadic function and
@@ -159,7 +159,9 @@ static int swt_EEXIST(void) {
 static int swt_getfdflags(int fd) {
   return fcntl(fd, F_GETFD);
 }
+#endif
 
+#if defined(F_SETFD)
 /// Call `fcntl(F_SETFD)`.
 ///
 /// This function is provided because `fcntl()` is a variadic function and
