@@ -48,6 +48,17 @@ static const char *_Nullable swt_getWASIVersion(void) {
 }
 #endif
 
+#if defined(__GLIBC__)
+/// Get the version of glibc used when compiling the testing library.
+///
+/// This function is provided because `__GLIBC__` and `__GLIBC_MINOR__` are not
+/// available in Swift.
+static void swt_getGlibcVersion(int *outMajor, int *outMinor) {
+  *outMajor = __GLIBC__;
+  *outMinor = __GLIBC_MINOR__;
+}
+#endif
+
 SWT_ASSUME_NONNULL_END
 
 #endif

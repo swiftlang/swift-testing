@@ -128,6 +128,8 @@ func spawnExecutable(
           } else {
 #if SWT_TARGET_OS_APPLE
             _ = posix_spawn_file_actions_addinherit_np(fileActions, fd)
+#else
+            _ = posix_spawn_file_actions_adddup2(fileActions, fd, fd)
 #endif
             highestFD = max(highestFD, fd)
           }
