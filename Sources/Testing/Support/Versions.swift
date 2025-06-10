@@ -154,10 +154,10 @@ let swiftStandardLibraryVersion: String = {
 }()
 
 #if canImport(Glibc)
-/// Get the (runtime, not compile-time) version of glibc in use on this system.
+/// The (runtime, not compile-time) version of glibc in use on this system.
 ///
-/// - Returns: The version of glibc currently in use on this system.
-var glibcVersion: (major: Int, minor: Int) {
+/// This value is not part of the public interface of the testing library.
+let glibcVersion: (major: Int, minor: Int) = {
   // Default to the statically available version number if the function call
   // fails for some reason.
   var major = Int(clamping: __GLIBC__)
@@ -167,19 +167,14 @@ var glibcVersion: (major: Int, minor: Int) {
     withUnsafeMutablePointer(to: &major) { major in
       withUnsafeMutablePointer(to: &minor) { minor in
         withVaList([major, minor]) { args in
-          // TEMPORARY FOR DEBUGGING
-          if 2 == vsscanf(strVersion, "%zd.%zd", args) {
-            try! FileHandle.stderr.write("*** GLIBC VERSION SCANNED FROM '\(String(cString: strVersion))': \(major.pointee) \(minor.pointee)\n")
-          } else {
-            try! FileHandle.stderr.write("*** FAILED TO SCAN GLIBC VERSION FROM '\(String(cString: strVersion))'\n")
-          }
+          _ = vsscanf(strVersion, "%zd.%zd", args)
         }
       }
     }
   }
 
   return (major, minor)
-}
+}()
 #endif
 
 // MARK: - sysctlbyname() Wrapper
