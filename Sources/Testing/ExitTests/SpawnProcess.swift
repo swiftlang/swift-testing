@@ -118,9 +118,6 @@ func spawnExecutable(
 
       // Forward standard I/O streams and any explicitly added file handles.
       var highestFD = max(STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO)
-#if canImport(Glibc)
-      lazy var glibcVersion = glibcVersion
-#endif
       func inherit(_ fileHandle: borrowing FileHandle, as standardFD: CInt? = nil) throws {
         try fileHandle.withUnsafePOSIXFileDescriptor { fd in
           guard let fd else {
