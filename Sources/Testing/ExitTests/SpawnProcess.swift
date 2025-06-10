@@ -126,7 +126,7 @@ func spawnExecutable(
           guard let fd else {
             throw SystemError(description: "A child process cannot inherit a file handle without an associated file descriptor. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
           }
-          if let standardFD {
+          if let standardFD, standardFD != fd {
             _ = posix_spawn_file_actions_adddup2(fileActions, fd, standardFD)
           } else {
 #if SWT_TARGET_OS_APPLE
