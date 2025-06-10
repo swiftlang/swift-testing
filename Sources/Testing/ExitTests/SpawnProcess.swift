@@ -135,8 +135,8 @@ func spawnExecutable(
             // posix_spawn_file_actions_adddup2() will automatically clear
             // FD_CLOEXEC after forking but before execing even if the old and
             // new file descriptors are equal. This behavior is supported by
-            // Glibc ≥ 2.29, FreeBSD, OpenBSD, Android (Bionic) and is
-            // standardized in POSIX.1-2024 (see https://pubs.opengroup.org/onlinepubs/9799919799/
+            // Glibc ≥ 2.29, FreeBSD, OpenBSD, and Android (Bionic) and is
+            // standardized in POSIX.1-2024 (see https://pubs.opengroup.org/onlinepubs/9799919799/functions/posix_spawn_file_actions_adddup2.html
             // and https://www.austingroupbugs.net/view.php?id=411).
             _ = posix_spawn_file_actions_adddup2(fileActions, fd, fd)
 #if canImport(Glibc)
