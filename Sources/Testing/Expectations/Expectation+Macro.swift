@@ -513,6 +513,7 @@ public macro require<R>(
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
 /// }
 @freestanding(expression)
 @discardableResult
@@ -559,6 +560,7 @@ public macro expect(
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
 /// }
 @freestanding(expression)
 @discardableResult
