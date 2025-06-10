@@ -118,6 +118,9 @@ func spawnExecutable(
 
       // Forward standard I/O streams and any explicitly added file handles.
       var highestFD = max(STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO)
+#if canImport(Glibc)
+      lazy var glibcVersion = glibcVersion
+#endif
       func inherit(_ fileHandle: borrowing FileHandle, as standardFD: CInt? = nil) throws {
         try fileHandle.withUnsafePOSIXFileDescriptor { fd in
           guard let fd else {
@@ -130,6 +133,13 @@ func spawnExecutable(
             _ = posix_spawn_file_actions_addinherit_np(fileActions, fd)
 #else
             _ = posix_spawn_file_actions_adddup2(fileActions, fd, fd)
+#if canImport(Glibc)
+            if glibcVersion.major < 2 || (glibcVersion.major == 2 && glibcVersion.minor < 29) {
+              // This system is using an older version of glibc that does not
+              // implement FD_CLOEXEC clearing in posix_spawn_file_actions_adddup2().
+              try setFD_CLOEXEC(false, onFileDescriptor: fd)
+            }
+#endif
 #endif
             highestFD = max(highestFD, fd)
           }
@@ -218,36 +228,42 @@ func spawnExecutable(
   }
 #elseif os(Windows)
   return try _withStartupInfoEx(attributeCount: 1) { startupInfo in
-    func inherit(_ fileHandle: borrowing FileHandle, as outWindowsHANDLE: inout HANDLE?) throws {
+    func inherit(_ fileHandle: borrowing FileHandle) throws -> HANDLE {
       try fileHandle.withUnsafeWindowsHANDLE { windowsHANDLE in
         guard let windowsHANDLE else {
           throw SystemError(description: "A child process cannot inherit a file handle without an associated Windows handle. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
         }
-        outWindowsHANDLE = windowsHANDLE
+
+        // Ensure the file handle can be inherited by the child process.
+        guard SetHandleInformation(windowsHANDLE, DWORD(HANDLE_FLAG_INHERIT), DWORD(HANDLE_FLAG_INHERIT)) else {
+          throw Win32Error(rawValue: GetLastError())
+        }
+
+        return windowsHANDLE
       }
     }
-    func inherit(_ fileHandle: borrowing FileHandle?, as outWindowsHANDLE: inout HANDLE?) throws {
+    func inherit(_ fileHandle: borrowing FileHandle?) throws -> HANDLE? {
       if fileHandle != nil {
-        try inherit(fileHandle!, as: &outWindowsHANDLE)
+        return try inherit(fileHandle!)
       } else {
-        outWindowsHANDLE = nil
+        return nil
       }
     }
 
     // Forward standard I/O streams.
-    try inherit(standardInput, as: &startupInfo.pointee.StartupInfo.hStdInput)
-    try inherit(standardOutput, as: &startupInfo.pointee.StartupInfo.hStdOutput)
-    try inherit(standardError, as: &startupInfo.pointee.StartupInfo.hStdError)
+    startupInfo.pointee.StartupInfo.hStdInput = try inherit(standardInput)
+    startupInfo.pointee.StartupInfo.hStdOutput = try inherit(standardOutput)
+    startupInfo.pointee.StartupInfo.hStdError = try inherit(standardError)
     startupInfo.pointee.StartupInfo.dwFlags |= STARTF_USESTDHANDLES
 
     // Ensure standard I/O streams and any explicitly added file handles are
     // inherited by the child process.
     var inheritedHandles = [HANDLE?](repeating: nil, count: additionalFileHandles.count + 3)
-    try inherit(standardInput, as: &inheritedHandles[0])
-    try inherit(standardOutput, as: &inheritedHandles[1])
-    try inherit(standardError, as: &inheritedHandles[2])
+    inheritedHandles[0] = startupInfo.pointee.StartupInfo.hStdInput
+    inheritedHandles[1] = startupInfo.pointee.StartupInfo.hStdOutput
+    inheritedHandles[2] = startupInfo.pointee.StartupInfo.hStdError
     for i in 0 ..< additionalFileHandles.count {
-      try inherit(additionalFileHandles[i].pointee, as: &inheritedHandles[i + 3])
+      inheritedHandles[i + 3] = try inherit(additionalFileHandles[i].pointee)
     }
     inheritedHandles = inheritedHandles.compactMap(\.self)
 

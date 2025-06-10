@@ -801,30 +801,6 @@ extension ExitTest {
           childEnvironment["SWT_EXPERIMENTAL_CAPTURED_VALUES"] = capturedValuesEnvironmentVariable
         }
 
-#if !SWT_TARGET_OS_APPLE
-        // Set inherited those file handles that the child process needs. On
-        // Darwin, this isn't needed because we use POSIX_SPAWN_CLOEXEC_DEFAULT.
-        var setFileHandlesInherited = false
-#if os(Windows)
-        // Always set the file handles to be inherited on Windows. Our calls to
-        // CreateProcessW() specify which file handles are actually inherited on
-        // a per-child basis.
-        setFileHandlesInherited = true
-#elseif canImport(Glibc)
-        // On Glibc ≥ 2.29, posix_spawn_file_actions_adddup2() automatically
-        // clears FD_CLOEXEC for us in the child process.
-        var glibcVersion: (major: CInt, minor: CInt) = (0, 0)
-        swt_getGlibcVersion(&glibcVersion.major, &glibcVersion.minor)
-        setFileHandlesInherited = glibcVersion.major < 2 || (glibcVersion.major == 2 && glibcVersion.minor < 29)
-#endif
-        if setFileHandlesInherited {
-          try stdoutWriteEnd?.setInherited(true)
-          try stderrWriteEnd?.setInherited(true)
-          try backChannelWriteEnd.setInherited(true)
-          try capturedValuesReadEnd.setInherited(true)
-        }
-#endif
-
         // Spawn the child process.
         let processID = try withUnsafePointer(to: backChannelWriteEnd) { backChannelWriteEnd in
           try withUnsafePointer(to: capturedValuesReadEnd) { capturedValuesReadEnd in
