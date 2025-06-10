@@ -551,7 +551,7 @@ extension ExitTestConditionMacro {
           label: "encodingCapturedValues",
           expression: TupleExprSyntax {
             for capturedValue in capturedValues {
-              LabeledExprSyntax(expression: capturedValue.expression.trimmed)
+              LabeledExprSyntax(expression: capturedValue.typeCheckedExpression)
             }
           }
         )
