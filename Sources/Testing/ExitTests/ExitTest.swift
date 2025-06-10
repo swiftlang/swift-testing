@@ -803,15 +803,6 @@ extension ExitTest {
           childEnvironment["SWT_EXPERIMENTAL_CAPTURED_VALUES"] = capturedValuesEnvironmentVariable
         }
 
-#if !SWT_TARGET_OS_APPLE
-        // Set inherited those file handles that the child process needs. On
-        // Darwin, this is a no-op because we use POSIX_SPAWN_CLOEXEC_DEFAULT.
-        try stdoutWriteEnd?.setInherited(true)
-        try stderrWriteEnd?.setInherited(true)
-        try backChannelWriteEnd.setInherited(true)
-        try capturedValuesReadEnd.setInherited(true)
-#endif
-
         // Spawn the child process.
         let processID = try withUnsafePointer(to: backChannelWriteEnd) { backChannelWriteEnd in
           try withUnsafePointer(to: capturedValuesReadEnd) { capturedValuesReadEnd in
