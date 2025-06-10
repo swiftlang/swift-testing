@@ -53,6 +53,7 @@ extension Attachment where AttachableValue == _AttachableURLWrapper {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public init(
     contentsOf url: URL,

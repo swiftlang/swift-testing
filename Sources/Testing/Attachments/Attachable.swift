@@ -29,6 +29,7 @@
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
 /// }
 public protocol Attachable: ~Copyable {
   /// An estimate of the number of bytes of memory needed to store this value as
@@ -48,6 +49,7 @@ public protocol Attachable: ~Copyable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   var estimatedAttachmentByteCount: Int? { get }
 
@@ -74,6 +76,7 @@ public protocol Attachable: ~Copyable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
 
@@ -94,6 +97,7 @@ public protocol Attachable: ~Copyable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String
 }
