@@ -167,7 +167,12 @@ var glibcVersion: (major: Int, minor: Int) {
     withUnsafeMutablePointer(to: &major) { major in
       withUnsafeMutablePointer(to: &minor) { minor in
         withVaList([major, minor]) { args in
-          _ = vsscanf(strVersion, "%zd.%zd", args)
+          // TEMPORARY FOR DEBUGGING
+          if 2 == vsscanf(strVersion, "%zd.%zd", args) {
+            try! FileHandle.stderr.write("*** GLIBC VERSION SCANNED FROM '\(String(cString: strVersion))': \(major.pointee) \(minor.pointee)\n")
+          } else {
+            try! FileHandle.stderr.write("*** FAILED TO SCAN GLIBC VERSION FROM '\(String(cString: strVersion))'\n")
+          }
         }
       }
     }
