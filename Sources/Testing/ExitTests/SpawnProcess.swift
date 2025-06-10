@@ -233,7 +233,7 @@ func spawnExecutable(
   }
 #elseif os(Windows)
   return try _withStartupInfoEx(attributeCount: 1) { startupInfo in
-    func inherit(_ fileHandle: borrowing FileHandle) throws -> HANDLE {
+    func inherit(_ fileHandle: borrowing FileHandle) throws -> HANDLE? {
       try fileHandle.withUnsafeWindowsHANDLE { windowsHANDLE in
         guard let windowsHANDLE else {
           throw SystemError(description: "A child process cannot inherit a file handle without an associated Windows handle. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
