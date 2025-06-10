@@ -132,11 +132,18 @@ func spawnExecutable(
 #if SWT_TARGET_OS_APPLE
             _ = posix_spawn_file_actions_addinherit_np(fileActions, fd)
 #else
+            // posix_spawn_file_actions_adddup2() will automatically clear
+            // FD_CLOEXEC after forking but before execing even if the old and
+            // new file descriptors are equal. This behavior is supported by
+            // Glibc ≥ 2.29, FreeBSD, OpenBSD, Android (Bionic) and is
+            // standardized in POSIX.1-2024 (see https://pubs.opengroup.org/onlinepubs/9799919799/
+            // and https://www.austingroupbugs.net/view.php?id=411).
             _ = posix_spawn_file_actions_adddup2(fileActions, fd, fd)
 #if canImport(Glibc)
-            if glibcVersion.major < 2 || (glibcVersion.major == 2 && glibcVersion.minor < 29) {
+            if _slowPath(glibcVersion.major < 2 || (glibcVersion.major == 2 && glibcVersion.minor < 29)) {
               // This system is using an older version of glibc that does not
-              // implement FD_CLOEXEC clearing in posix_spawn_file_actions_adddup2().
+              // implement FD_CLOEXEC clearing in posix_spawn_file_actions_adddup2(),
+              // so we must clear it here in the parent process.
               try setFD_CLOEXEC(false, onFileDescriptor: fd)
             }
 #endif
@@ -168,8 +175,6 @@ func spawnExecutable(
 #if !SWT_NO_DYNAMIC_LINKING
       // This platform doesn't have POSIX_SPAWN_CLOEXEC_DEFAULT, but we can at
       // least close all file descriptors higher than the highest inherited one.
-      // We are assuming here that the caller didn't set FD_CLOEXEC on any of
-      // these file descriptors.
       _ = _posix_spawn_file_actions_addclosefrom_np?(fileActions, highestFD + 1)
 #endif
 #elseif os(FreeBSD)
