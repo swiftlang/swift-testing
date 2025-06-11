@@ -136,7 +136,7 @@ extension ExitTest.Condition {
 #if !SWT_NO_EXIT_TESTS
     Self(.exitCode(exitCode))
 #else
-    fatalError("Unsupported")
+    swt_unreachable()
 #endif
   }
 
@@ -169,7 +169,7 @@ extension ExitTest.Condition {
 #if !SWT_NO_EXIT_TESTS
     Self(.signal(signal))
 #else
-    fatalError("Unsupported")
+    swt_unreachable()
 #endif
   }
 }
@@ -192,7 +192,7 @@ extension ExitTest.Condition: CustomStringConvertible {
       String(describing: exitStatus)
     }
 #else
-    fatalError("Unsupported")
+    swt_unreachable()
 #endif
   }
 }
