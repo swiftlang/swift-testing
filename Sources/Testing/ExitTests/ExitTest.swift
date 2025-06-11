@@ -381,8 +381,7 @@ extension ExitTest {
     into outValue: UnsafeMutableRawPointer,
     asTypeAt typeAddress: UnsafeRawPointer,
     withHintAt hintAddress: UnsafeRawPointer? = nil
-  ) -> CBool
-  {
+  ) -> CBool {
     fatalError("Unimplemented")
   }
 }
