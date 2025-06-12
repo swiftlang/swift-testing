@@ -306,7 +306,7 @@ private import _TestingInternals
 
       await Test {
         try await #require(processExitsWith: .success) {}
-        fatalError("Unreachable")
+        Issue.record("#require(processExitsWith:) should have thrown an error")
       }.run(configuration: configuration)
     }
   }

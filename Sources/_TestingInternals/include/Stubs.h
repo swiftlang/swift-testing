@@ -16,6 +16,15 @@
 
 SWT_ASSUME_NONNULL_BEGIN
 
+/// Mark a code path as unreachable.
+///
+/// This function is necessary because Swift does not have an equivalent of
+/// `__builtin_unreachable()`.
+__attribute__((always_inline, noreturn))
+static inline void swt_unreachable(void) {
+  __builtin_unreachable();
+}
+
 #if !SWT_NO_FILE_IO
 /// The C file handle type.
 ///
