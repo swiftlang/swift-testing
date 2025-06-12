@@ -34,10 +34,15 @@ struct CapturedValueInfo {
   /// The type of the captured value.
   var type: TypeSyntax
 
+  /// The expression to assign to the captured value with type-checking applied.
+  var typeCheckedExpression: ExprSyntax {
+    #"#__capturedValue(\#(expression.trimmed), \#(literal: name.trimmedDescription))"#
+  }
+
   init(_ capture: ClosureCaptureSyntax, in context: some MacroExpansionContext) {
     self.capture = capture
-    self.expression = "()"
-    self.type = "Swift.Void"
+    self.expression = #"Swift.fatalError("Unsupported")"#
+    self.type = "Swift.Never"
 
     // We don't support capture specifiers at this time.
     if let specifier = capture.specifier {

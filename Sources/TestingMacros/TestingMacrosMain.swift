@@ -28,6 +28,8 @@ struct TestingMacrosMain: CompilerPlugin {
       RequireThrowsNeverMacro.self,
       ExitTestExpectMacro.self,
       ExitTestRequireMacro.self,
+      ExitTestCapturedValueMacro.self,
+      ExitTestBadCapturedValueMacro.self,
       TagMacro.self,
       SourceLocationMacro.self,
       PragmaMacro.self,
