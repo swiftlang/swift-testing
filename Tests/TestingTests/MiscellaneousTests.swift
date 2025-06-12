@@ -311,6 +311,7 @@ struct MiscellaneousTests {
     struct `Suite With De Facto Display Name` {}
     let typeInfo = TypeInfo(describing: `Suite With De Facto Display Name`.self)
     let suite = Test(traits: [], sourceLocation: #_sourceLocation, containingTypeInfo: typeInfo, isSynthesized: true)
+    #expect(suite.name == "`Suite With De Facto Display Name`")
     let displayName = try #require(suite.displayName)
     #expect(displayName == "Suite With De Facto Display Name")
   }
