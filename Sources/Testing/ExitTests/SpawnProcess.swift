@@ -38,7 +38,7 @@ private let _posix_spawn_file_actions_addclosefrom_np = symbol(named: "posix_spa
 }
 #endif
 
-/// Spawn a process and wait for it to terminate.
+/// Spawn a child process.
 ///
 /// - Parameters:
 ///   - executablePath: The path to the executable to spawn.
@@ -61,8 +61,7 @@ private let _posix_spawn_file_actions_addclosefrom_np = symbol(named: "posix_spa
 ///   eventually pass this value to ``wait(for:)`` to avoid leaking system
 ///   resources.
 ///
-/// - Throws: Any error that prevented the process from spawning or its exit
-///   condition from being read.
+/// - Throws: Any error that prevented the process from spawning.
 func spawnExecutable(
   atPath executablePath: String,
   arguments: [String],
@@ -83,8 +82,9 @@ func spawnExecutable(
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
   return try withUnsafeTemporaryAllocation(of: P<posix_spawn_file_actions_t>.self, capacity: 1) { fileActions in
     let fileActions = fileActions.baseAddress!
-    guard 0 == posix_spawn_file_actions_init(fileActions) else {
-      throw CError(rawValue: swt_errno())
+    let fileActionsInitialized = posix_spawn_file_actions_init(fileActions)
+    guard 0 == fileActionsInitialized else {
+      throw CError(rawValue: fileActionsInitialized)
     }
     defer {
       _ = posix_spawn_file_actions_destroy(fileActions)
@@ -92,8 +92,9 @@ func spawnExecutable(
 
     return try withUnsafeTemporaryAllocation(of: P<posix_spawnattr_t>.self, capacity: 1) { attrs in
       let attrs = attrs.baseAddress!
-      guard 0 == posix_spawnattr_init(attrs) else {
-        throw CError(rawValue: swt_errno())
+      let attrsInitialized = posix_spawnattr_init(attrs)
+      guard 0 == attrsInitialized else {
+        throw CError(rawValue: attrsInitialized)
       }
       defer {
         _ = posix_spawnattr_destroy(attrs)
@@ -416,4 +417,29 @@ private func _escapeCommandLine(_ arguments: [String]) -> String {
     }.joined(separator: " ")
 }
 #endif
+
+/// Spawn a child process and wait for it to terminate.
+///
+/// - Parameters:
+///   - executablePath: The path to the executable to spawn.
+///   - arguments: The arguments to pass to the executable, not including the
+///     executable path.
+///   - environment: The environment block to pass to the executable.
+///
+/// - Returns: The exit status of the spawned process.
+///
+/// - Throws: Any error that prevented the process from spawning or its exit
+///   condition from being read.
+///
+/// This function is a convenience that spawns the given process and waits for
+/// it to terminate. It is primarily for use by other targets in this package
+/// such as its cross-import overlays.
+package func spawnExecutableAtPathAndWait(
+  _ executablePath: String,
+  arguments: [String] = [],
+  environment: [String: String] = [:]
+) async throws -> ExitStatus {
+  let processID = try spawnExecutable(atPath: executablePath, arguments: arguments, environment: environment)
+  return try await wait(for: processID)
+}
 #endif
