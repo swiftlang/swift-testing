@@ -16,7 +16,7 @@
 /// because they may be discovered within any isolation context or within
 /// multiple isolation contexts running concurrently.
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-public protocol DiscoverableAsTestContent: Sendable, ~Copyable {
+public protocol DiscoverableAsTestContent: Sendable {
   /// The value of the `kind` field in test content records associated with this
   /// type.
   ///
@@ -49,7 +49,7 @@ public protocol DiscoverableAsTestContent: Sendable, ~Copyable {
 }
 
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
-extension DiscoverableAsTestContent where Self: ~Copyable {
+extension DiscoverableAsTestContent {
   public static var _testContentTypeNameHint: String {
     "__🟡$"
   }
