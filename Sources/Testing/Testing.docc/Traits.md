@@ -51,7 +51,7 @@ types that customize the behavior of your tests.
 <!--
 ### Handling issues
 
-- ``Trait/transformIssues(_:)``
+- ``Trait/compactMapIssues(_:)``
 - ``Trait/filterIssues(_:)``
 -->
 

@@ -32,6 +32,7 @@ private import _TestingInternals
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
 /// }
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
@@ -170,6 +171,7 @@ extension ExitTest {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public static var current: ExitTest? {
     _read {
@@ -327,6 +329,9 @@ extension ExitTest {
   ///
   /// - Warning: This function is used to implement the
   ///   `#expect(processExitsWith:)` macro. Do not use it directly.
+#if compiler(>=6.2)
+  @safe
+#endif
   public static func __store<each T>(
     _ id: (UInt64, UInt64, UInt64, UInt64),
     _ body: @escaping @Sendable (repeat each T) async throws -> Void,
@@ -359,6 +364,27 @@ extension ExitTest {
     record.capturedValues = Array(repeat (each T).self)
     outValue.initializeMemory(as: Record.self, to: record)
     return true
+  }
+
+  /// Attempt to store an invalid exit test into the given memory.
+  ///
+  /// This overload of `__store()` is provided to suppress diagnostics when a
+  /// value of an unsupported type is captured as an argument of `body`. It
+  /// always terminates the current process.
+  ///
+  /// - Warning: This function is used to implement the
+  ///   `#expect(processExitsWith:)` macro. Do not use it directly.
+#if compiler(>=6.2)
+  @safe
+#endif
+  public static func __store<T>(
+    _ id: (UInt64, UInt64, UInt64, UInt64),
+    _ body: T,
+    into outValue: UnsafeMutableRawPointer,
+    asTypeAt typeAddress: UnsafeRawPointer,
+    withHintAt hintAddress: UnsafeRawPointer? = nil
+  ) -> CBool {
+    fatalError("Unimplemented")
   }
 }
 

@@ -306,7 +306,7 @@ private import _TestingInternals
 
       await Test {
         try await #require(processExitsWith: .success) {}
-        fatalError("Unreachable")
+        Issue.record("#require(processExitsWith:) should have thrown an error")
       }.run(configuration: configuration)
     }
   }
@@ -495,6 +495,30 @@ private import _TestingInternals
       #expect(b == true)
     }
   }
+
+  @Test("Capturing #_sourceLocation")
+  func captureListPreservesSourceLocationMacro() async {
+    func sl(_ sl: SourceLocation = #_sourceLocation) -> SourceLocation {
+      sl
+    }
+    await #expect(processExitsWith: .success) { [sl = sl() as SourceLocation] in
+      #expect(sl.fileID == #fileID)
+    }
+  }
+
+#if false // intentionally fails to compile
+  struct NonCodableValue {}
+
+  // We can't capture a value that isn't Codable. A unit test is not possible
+  // for this case as the type checker needs to get involved.
+  @Test("Capturing a move-only value")
+  func captureListWithMoveOnlyValue() async {
+    let x = NonCodableValue()
+    await #expect(processExitsWith: .success) { [x = x as NonCodableValue] in
+      _ = x
+    }
+  }
+#endif
 #endif
 }
 

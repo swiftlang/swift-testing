@@ -827,6 +827,24 @@ extension DiagnosticMessage {
     )
   }
 
+  /// Create a diagnostic message stating that a captured value must conform to
+  /// `Sendable` and `Codable`.
+  ///
+  /// - Parameters:
+  ///   - valueExpr: The captured value.
+  ///   - nameExpr: The name of the capture list item corresponding to
+  ///     `valueExpr`.
+  ///
+  /// - Returns: A diagnostic message.
+  static func capturedValueMustBeSendableAndCodable(_ valueExpr: ExprSyntax, name nameExpr: StringLiteralExprSyntax) -> Self {
+    let name = nameExpr.representedLiteralValue ?? valueExpr.trimmedDescription
+    return Self(
+      syntax: Syntax(valueExpr),
+      message: "Type of captured value '\(name)' must conform to 'Sendable' and 'Codable'",
+      severity: .error
+    )
+  }
+
   /// Create a diagnostic message stating that a capture clause cannot be used
   /// in an exit test.
   ///

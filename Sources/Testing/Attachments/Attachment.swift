@@ -21,6 +21,7 @@ private import _TestingInternals
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
 /// }
 public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: Attachable & ~Copyable {
   /// Storage for ``attachableValue-7dyjv``.
@@ -57,6 +58,7 @@ public struct Attachment<AttachableValue>: ~Copyable where AttachableValue: Atta
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public var preferredName: String {
     let suggestedName = if let _preferredName, !_preferredName.isEmpty {
@@ -100,6 +102,7 @@ extension Attachment where AttachableValue: ~Copyable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public init(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
     self._attachableValue = attachableValue
@@ -194,6 +197,7 @@ extension Attachment where AttachableValue: ~Copyable {
 extension Attachment: CustomStringConvertible {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public var description: String {
     #""\#(preferredName)": \#(String(describingForTest: attachableValue))"#
@@ -207,6 +211,7 @@ extension Attachment where AttachableValue: ~Copyable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   @_disfavoredOverload public var attachableValue: AttachableValue {
     _read {
@@ -229,6 +234,7 @@ extension Attachment where AttachableValue: AttachableWrapper & ~Copyable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public var attachableValue: AttachableValue.Wrapped {
     _read {
@@ -259,6 +265,7 @@ extension Attachment where AttachableValue: Sendable & Copyable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   @_documentation(visibility: private)
   public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #_sourceLocation) {
@@ -291,6 +298,7 @@ extension Attachment where AttachableValue: Sendable & Copyable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   @_documentation(visibility: private)
   public static func record(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
@@ -318,6 +326,7 @@ extension Attachment where AttachableValue: ~Copyable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #_sourceLocation) {
     do {
@@ -361,6 +370,7 @@ extension Attachment where AttachableValue: ~Copyable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public static func record(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
     record(Self(attachableValue, named: preferredName, sourceLocation: sourceLocation), sourceLocation: sourceLocation)
@@ -389,6 +399,7 @@ extension Attachment where AttachableValue: ~Copyable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   @inlinable public borrowing func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try attachableValue.withUnsafeBytes(for: self, body)
@@ -462,7 +473,7 @@ extension Attachment where AttachableValue: ~Copyable {
       // file exists at this path (note "x" in the mode string), an error will
       // be thrown and we'll try again by adding a suffix.
       let preferredPath = appendPathComponent(preferredName, to: directoryPath)
-      file = try FileHandle(atPath: preferredPath, mode: "wxb")
+      file = try FileHandle(atPath: preferredPath, mode: "wxeb")
       result = preferredPath
     } catch {
       // Split the extension(s) off the preferred name. The first component in
@@ -478,7 +489,7 @@ extension Attachment where AttachableValue: ~Copyable {
         // Propagate any error *except* EEXIST, which would indicate that the
         // name was already in use (so we should try again with a new suffix.)
         do {
-          file = try FileHandle(atPath: preferredPath, mode: "wxb")
+          file = try FileHandle(atPath: preferredPath, mode: "wxeb")
           result = preferredPath
           break
         } catch let error as CError where error.rawValue == swt_EEXIST() {
