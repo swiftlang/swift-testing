@@ -285,3 +285,15 @@ extension SuiteTrait {
     false
   }
 }
+
+extension Test {
+  /// Whether or not this test contains the specified trait.
+  ///
+  /// - Parameters:
+  ///   - trait: The trait to search for. Must conform to `Equatable`.
+  ///
+  /// - Returns: Whether or not this test contains `trait`.
+  func containsTrait<T>(_ trait: T) -> Bool where T: Trait & Equatable {
+    traits.contains { ($0 as? T) == trait }
+  }
+}
