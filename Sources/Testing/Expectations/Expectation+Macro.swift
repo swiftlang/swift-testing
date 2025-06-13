@@ -525,7 +525,7 @@ public macro expect(
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
-  performing expression: @escaping @Sendable @convention(thin) () async throws -> Void
+  performing expression: @escaping @Sendable () async throws -> Void
 ) -> ExitTest.Result? = #externalMacro(module: "TestingMacros", type: "ExitTestExpectMacro")
 
 /// Check that an expression causes the process to terminate in a given fashion
@@ -572,7 +572,7 @@ public macro require(
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
-  performing expression: @escaping @Sendable @convention(thin) () async throws -> Void
+  performing expression: @escaping @Sendable () async throws -> Void
 ) -> ExitTest.Result = #externalMacro(module: "TestingMacros", type: "ExitTestRequireMacro")
 
 /// Capture a sendable and codable value to pass to an exit test.
