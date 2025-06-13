@@ -436,6 +436,22 @@ struct ConditionMacroTests {
     #expect(diagnostic.message.contains("is redundant"))
   }
 
+  @Test("#expect(processExitsWith:) diagnostics",
+    arguments: [
+      "func f<T>() { #expectExitTest(processExitsWith: x) {} }":
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within generic function 'f()'",
+    ]
+  )
+  func exitTestDiagnostics(input: String, expectedMessage: String) throws {
+    let (_, diagnostics) = try parse(input)
+
+    #expect(diagnostics.count > 0)
+    for diagnostic in diagnostics {
+      #expect(diagnostic.diagMessage.severity == .error)
+      #expect(diagnostic.message == expectedMessage)
+    }
+  }
+
 #if ExperimentalExitTestValueCapture
   @Test("#expect(processExitsWith:) produces a diagnostic for a bad capture",
         arguments: [
@@ -445,6 +461,8 @@ struct ConditionMacroTests {
             "Type of captured value 'a' is ambiguous",
           "#expectExitTest(processExitsWith: x) { [a = b] in }":
             "Type of captured value 'a' is ambiguous",
+          "struct S<T> { func f() { #expectExitTest(processExitsWith: x) { [a] in } } }":
+            "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within generic structure 'S'",
         ]
   )
   func exitTestCaptureDiagnostics(input: String, expectedMessage: String) throws {
