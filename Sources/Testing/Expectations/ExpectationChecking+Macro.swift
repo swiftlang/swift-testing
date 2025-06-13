@@ -557,6 +557,36 @@ public func __checkPropertyAccess<T>(
 }
 
 /// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed, for nonescapable types.
+///
+/// This overload is used by property accesses:
+///
+/// ```swift
+/// #expect(x.isFoodTruck)
+/// ```
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+public func __checkPropertyAccess<T: ~Escapable>(
+  _ lhs: T, getting memberAccess: (T) -> Bool,
+  expression: __Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) -> Result<Void, any Error> {
+  let condition = memberAccess(lhs)
+  return __checkValue(
+    condition,
+    expression: expression,
+    expressionWithCapturedRuntimeValues:
+      expression.capturingRuntimeValues("<nonescapable>", condition),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+/// Check that an expectation has passed after a condition has been evaluated
 /// and throw an error if it failed.
 ///
 /// This overload is used to conditionally unwrap optional values produced from
@@ -580,6 +610,39 @@ public func __checkPropertyAccess<T, U>(
     optionalValue,
     expression: expression,
     expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(lhs, optionalValue as U??),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed, for nonescapable values.
+///
+/// This overload is used to conditionally unwrap optional values produced from
+/// expanded property accesses:
+///
+/// ```swift
+/// let z = try #require(x.nearestFoodTruck)
+/// ```
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+@lifetime(copy lhs)
+public func __checkPropertyAccess<T: ~Escapable, U: ~Escapable>(
+  _ lhs: T,
+  getting memberAccess: (T) -> U?,
+  expression: __Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) -> Result<U, any Error> {
+  let optionalValue = _overrideLifetime(memberAccess(lhs), copying: lhs)
+  return __checkValue(
+    optionalValue,
+    expression: expression,
+    expressionWithCapturedRuntimeValues:
+      expression.capturingRuntimeValues("<nonescapable>", "<nonescapable>"),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -753,6 +816,46 @@ public func __checkValue<T>(
     sourceLocation: sourceLocation
   ).map {
     optionalValue.unsafelyUnwrapped
+  }
+}
+
+/// Check that an expectation has passed after a condition has been evaluated
+/// and throw an error if it failed, for a nonescapable type.
+///
+/// This overload is used to conditionally unwrap optional values:
+///
+/// ```swift
+/// let x: Int? = ...
+/// let y = try #require(x)
+/// ```
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+@lifetime(copy optionalValue)
+public func __checkValue<T: ~Escapable>(
+  _ optionalValue: T?,
+  expression: __Expression,
+  expressionWithCapturedRuntimeValues: @autoclosure () -> __Expression? = nil,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  sourceLocation: SourceLocation
+) -> Result<T, any Error> {
+  let result = __checkValue(
+    optionalValue != nil,
+    expression: expression,
+    expressionWithCapturedRuntimeValues:
+      (expressionWithCapturedRuntimeValues() ?? expression)
+        .capturingRuntimeValue(optionalValue == nil ? "nil" : "<nonescapable>"),
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+  // Result.map doesn't support ~Escapable, so we do a manual conversion:
+  return switch result {
+  case .success:
+    .success(optionalValue.unsafelyUnwrapped)
+  case .failure(let error):
+    .failure(error)
   }
 }
 

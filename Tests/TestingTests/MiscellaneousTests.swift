@@ -600,4 +600,50 @@ struct MiscellaneousTests {
     }
     #expect(duration < .seconds(1))
   }
+
+  @Test("Instance property of custom nonescapable type")
+  func nonEscapableValue() throws {
+    struct NonEscapableValue: ~Escapable {
+      private(set) var value: Int
+      
+      @lifetime(borrow value)
+      init(_ value: Int) {
+        self.value = value
+      }
+      
+      var isZero: Bool { value == 0 }
+      var isNonZero: Bool { value != 0 }
+      var nonZeroValue: Int? { value == 0 ? nil : value }
+      
+      var incremented: NonEscapableValue? {
+        @lifetime(copy self)
+        get {
+          var result = self
+          result.value += 1
+          return result
+        }
+      }
+    }
+
+    let int = 2
+    let nev = NonEscapableValue(int)
+    #expect(!nev.isZero)
+    #expect(nev.isNonZero)
+    let v = try #require(nev.nonZeroValue)
+    #expect(v == int)
+    
+    // The following errors due to the emitted code looking like:
+    //
+    //     Testing.__checkPropertyAccess(nev.self, { $0.incremented }, ...)
+    //
+    // Since the closure is just declared as `(T) -> U?`, without any lifetime
+    // annotation saying that the `U?` result copies the lifetime of the
+    // input parameter `T`, compilation results in:
+    //
+    //     error: Lifetime-dependent value escapes its scope
+    //     note: It depends on the lifetime of argument '$0'
+    //
+    // let nev2 = try #require(nev.incremented)
+    // #expect(nev2.isNonZero)
+  }
 }

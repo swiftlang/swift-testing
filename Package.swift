@@ -116,7 +116,8 @@ let package = Package(
       ],
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
       cxxSettings: .packageSettings,
-      swiftSettings: .packageSettings + .enableLibraryEvolution(),
+      swiftSettings: .packageSettings + .enableLibraryEvolution()
+        + [.enableExperimentalFeature("LifetimeDependence")],
       linkerSettings: [
         .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd]))
       ]
@@ -130,6 +131,7 @@ let package = Package(
         "MemorySafeTestingTests",
       ],
       swiftSettings: .packageSettings + .disableMandatoryOptimizationsSettings
+        + [.enableExperimentalFeature("LifetimeDependence")]
     ),
 
     // Use a plain `.target` instead of a `.testTarget` to avoid the unnecessary

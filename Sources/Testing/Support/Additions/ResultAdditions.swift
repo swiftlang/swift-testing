@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-extension Result {
+extension Result where Success: ~Escapable {
   /// Handle this instance as if it were returned from a call to `#expect()`.
   ///
   /// - Warning: This function is used to implement the `#expect()` and
@@ -19,6 +19,7 @@ extension Result {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
+  @lifetime(copy self)
   @inlinable public func __required() throws -> Success {
     try get()
   }

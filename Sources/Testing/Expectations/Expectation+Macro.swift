@@ -65,7 +65,7 @@
 /// If `optionalValue` is `nil`, an ``Issue`` is recorded for the test that is
 /// running in the current task and an instance of ``ExpectationFailedError`` is
 /// thrown.
-@freestanding(expression) public macro require<T>(
+@freestanding(expression) public macro require<T: ~Escapable>(
   _ optionalValue: T?,
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation
@@ -123,7 +123,7 @@ public macro require(
 /// diagnostic indicating that the expectation is redundant.
 @freestanding(expression)
 @_documentation(visibility: private)
-public macro require<T>(
+public macro require<T: ~Escapable>(
   _ optionalValue: T,
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation
