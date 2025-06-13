@@ -630,40 +630,29 @@ extension ExitTestConditionMacro {
   ) -> Bool {
     var diagnostics = [DiagnosticMessage]()
 
-    var hasCaptureList = false
     if let closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
        let captureClause = closureExpr.signature?.capture,
        !captureClause.items.isEmpty {
-      hasCaptureList = true
-
       // Disallow capture lists if the experimental feature is not enabled.
       if !ExitTestExpectMacro.isValueCapturingEnabled {
         diagnostics.append(.captureClauseUnsupported(captureClause, in: closureExpr, inExitTest: macro))
       }
     }
 
+    // Disallow exit tests in generic types and functions as they cannot be
+    // correctly expanded due to the use of a nested type with static members.
     for lexicalContext in context.lexicalContext {
-       // Disallow exit tests in generic functions as they cannot be correctly
-       // expanded.
-      if let functionDecl = lexicalContext.as(FunctionDeclSyntax.self) {
-        if let genericClause = functionDecl.genericParameterClause {
-          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: genericClause, on: functionDecl))
-        } else if let whereClause = functionDecl.genericWhereClause {
-          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: whereClause, on: functionDecl))
-        } else {
+      if let lexicalContext = lexicalContext.asProtocol((any WithGenericParametersSyntax).self) {
+        if let genericClause = lexicalContext.genericParameterClause {
+          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: genericClause, on: lexicalContext))
+        } else if let whereClause = lexicalContext.genericWhereClause {
+          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: whereClause, on: lexicalContext))
+        } else if let functionDecl = lexicalContext.as(FunctionDeclSyntax.self) {
           for parameter in functionDecl.signature.parameterClause.parameters {
             if parameter.type.isSome {
               diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: parameter, on: functionDecl))
             }
           }
-        }
-      } else if hasCaptureList, let lexicalContext = lexicalContext.asProtocol((any WithGenericParametersSyntax).self) {
-        // Disallow exit tests in generic types if they have capture lists (because
-        // the types may be ambiguous.)
-        if let genericClause = lexicalContext.genericParameterClause {
-          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: genericClause, on: lexicalContext))
-        } else if let whereClause = lexicalContext.genericWhereClause {
-          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: whereClause, on: lexicalContext))
         }
       }
     }
