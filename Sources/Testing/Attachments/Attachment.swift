@@ -473,7 +473,7 @@ extension Attachment where AttachableValue: ~Copyable {
       // file exists at this path (note "x" in the mode string), an error will
       // be thrown and we'll try again by adding a suffix.
       let preferredPath = appendPathComponent(preferredName, to: directoryPath)
-      file = try FileHandle(atPath: preferredPath, mode: "wxeb")
+      file = try FileHandle(atPath: preferredPath, mode: "wxb")
       result = preferredPath
     } catch {
       // Split the extension(s) off the preferred name. The first component in
@@ -489,7 +489,7 @@ extension Attachment where AttachableValue: ~Copyable {
         // Propagate any error *except* EEXIST, which would indicate that the
         // name was already in use (so we should try again with a new suffix.)
         do {
-          file = try FileHandle(atPath: preferredPath, mode: "wxeb")
+          file = try FileHandle(atPath: preferredPath, mode: "wxb")
           result = preferredPath
           break
         } catch let error as CError where error.rawValue == swt_EEXIST() {
