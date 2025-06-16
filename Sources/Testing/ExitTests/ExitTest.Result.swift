@@ -43,9 +43,9 @@ extension ExitTest {
     ///
     /// When checking the value of this property, keep in mind that the standard
     /// output stream is globally accessible, and any code running in an exit
-    /// test may write to it including including the operating system and any
-    /// third-party dependencies you have declared in your package. Rather than
-    /// comparing the value of this property with [`==`](https://developer.apple.com/documentation/swift/array/==(_:_:)),
+    /// test may write to it including the operating system and any third-party
+    /// dependencies you have declared in your package. Rather than comparing
+    /// the value of this property with [`==`](https://developer.apple.com/documentation/swift/array/==(_:_:)),
     /// use [`contains(_:)`](https://developer.apple.com/documentation/swift/collection/contains(_:))
     /// to check if expected output is present.
     ///
@@ -73,10 +73,10 @@ extension ExitTest {
     /// instead.
     ///
     /// When checking the value of this property, keep in mind that the standard
-    /// error stream is globally accessible, and any code running in an exit
-    /// test may write to it including including the operating system and any
-    /// third-party dependencies you have declared in your package. Rather than
-    /// comparing the value of this property with [`==`](https://developer.apple.com/documentation/swift/array/==(_:_:)),
+    /// output stream is globally accessible, and any code running in an exit
+    /// test may write to it including the operating system and any third-party
+    /// dependencies you have declared in your package. Rather than comparing
+    /// the value of this property with [`==`](https://developer.apple.com/documentation/swift/array/==(_:_:)),
     /// use [`contains(_:)`](https://developer.apple.com/documentation/swift/collection/contains(_:))
     /// to check if expected output is present.
     ///
