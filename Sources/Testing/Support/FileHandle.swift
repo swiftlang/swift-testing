@@ -108,7 +108,8 @@ struct FileHandle: ~Copyable, Sendable {
   ///
   /// By default, the resulting file handle is not inherited by any child
   /// processes (that is, `FD_CLOEXEC` is set on POSIX-like systems and
-  /// `HANDLE_FLAG_INHERIT` is cleared on Windows.).
+  /// `HANDLE_FLAG_INHERIT` is cleared on Windows.) To make it inheritable, call
+  /// ``setInherited()``.
   init(forReadingAtPath path: String) throws {
     try self.init(atPath: path, mode: "reb")
   }
@@ -122,7 +123,8 @@ struct FileHandle: ~Copyable, Sendable {
   ///
   /// By default, the resulting file handle is not inherited by any child
   /// processes (that is, `FD_CLOEXEC` is set on POSIX-like systems and
-  /// `HANDLE_FLAG_INHERIT` is cleared on Windows.).
+  /// `HANDLE_FLAG_INHERIT` is cleared on Windows.) To make it inheritable, call
+  /// ``setInherited()``.
   init(forWritingAtPath path: String) throws {
     try self.init(atPath: path, mode: "web")
   }
@@ -490,7 +492,8 @@ extension FileHandle {
   ///
   /// By default, the resulting file handles are not inherited by any child
   /// processes (that is, `FD_CLOEXEC` is set on POSIX-like systems and
-  /// `HANDLE_FLAG_INHERIT` is cleared on Windows.).
+  /// `HANDLE_FLAG_INHERIT` is cleared on Windows.) To make them inheritable,
+  /// call ``setInherited()``.
   static func makePipe(readEnd: inout FileHandle?, writeEnd: inout FileHandle?) throws {
 #if !os(Windows)
     var pipe2Called = false
@@ -530,8 +533,8 @@ extension FileHandle {
     if !pipe2Called {
       // pipe2() is not available. Use pipe() instead and simulate O_CLOEXEC
       // to the best of our ability.
-      try setFD_CLOEXEC(true, onFileDescriptor: fdReadEnd)
-      try setFD_CLOEXEC(true, onFileDescriptor: fdWriteEnd)
+      try _setFileDescriptorInherited(fdReadEnd, false)
+      try _setFileDescriptorInherited(fdWriteEnd, false)
     }
 #endif
 
@@ -609,6 +612,72 @@ extension FileHandle {
 #endif
   }
 #endif
+
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+  /// Set whether or not the given file descriptor is inherited by child processes.
+  ///
+  /// - Parameters:
+  ///   - fd: The file descriptor.
+  ///   - inherited: Whether or not `fd` is inherited by child processes
+  ///     (ignoring overriding functionality such as Apple's
+  ///     `POSIX_SPAWN_CLOEXEC_DEFAULT` flag.)
+  ///
+  /// - Throws: Any error that occurred while setting the flag.
+  private static func _setFileDescriptorInherited(_ fd: CInt, _ inherited: Bool) throws {
+    switch swt_getfdflags(fd) {
+    case -1:
+      // An error occurred reading the flags for this file descriptor.
+      throw CError(rawValue: swt_errno())
+    case let oldValue:
+      let newValue = if inherited {
+        oldValue & ~FD_CLOEXEC
+      } else {
+        oldValue | FD_CLOEXEC
+      }
+      if oldValue == newValue {
+        // No need to make a second syscall as nothing has changed.
+        return
+      }
+      if -1 == swt_setfdflags(fd, newValue) {
+        // An error occurred setting the flags for this file descriptor.
+        throw CError(rawValue: swt_errno())
+      }
+    }
+  }
+#endif
+
+  /// Set whether or not this file handle is inherited by child processes.
+  ///
+  /// - Parameters:
+  ///   - inherited: Whether or not this file handle is inherited by child
+  ///     processes (ignoring overriding functionality such as Apple's
+  ///     `POSIX_SPAWN_CLOEXEC_DEFAULT` flag.)
+  ///
+  /// - Throws: Any error that occurred while setting the flag.
+  func setInherited(_ inherited: Bool) throws {
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+    try withUnsafePOSIXFileDescriptor { fd in
+      guard let fd else {
+        throw SystemError(description: "Cannot set whether a file handle is inherited unless it is backed by a file descriptor. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      }
+      try withLock {
+        try Self._setFileDescriptorInherited(fd, inherited)
+      }
+    }
+#elseif os(Windows)
+    return try withUnsafeWindowsHANDLE { handle in
+      guard let handle else {
+        throw SystemError(description: "Cannot set whether a file handle is inherited unless it is backed by a Windows file handle. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+      }
+      let newValue = inherited ? DWORD(HANDLE_FLAG_INHERIT) : 0
+      guard SetHandleInformation(handle, DWORD(HANDLE_FLAG_INHERIT), newValue) else {
+        throw Win32Error(rawValue: GetLastError())
+      }
+    }
+#else
+#warning("Platform-specific implementation missing: cannot set whether a file handle is inherited")
+#endif
+  }
 }
 
 // MARK: - General path utilities
@@ -688,35 +757,4 @@ func canonicalizePath(_ path: String) -> String? {
   return nil
 #endif
 }
-
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
-/// Set the given file descriptor's `FD_CLOEXEC` flag.
-///
-/// - Parameters:
-///   - flag: The new value of `fd`'s `FD_CLOEXEC` flag.
-///   - fd: The file descriptor.
-///
-/// - Throws: Any error that occurred while setting the flag.
-func setFD_CLOEXEC(_ flag: Bool, onFileDescriptor fd: CInt) throws {
-  switch swt_getfdflags(fd) {
-  case -1:
-    // An error occurred reading the flags for this file descriptor.
-    throw CError(rawValue: swt_errno())
-  case let oldValue:
-    let newValue = if flag {
-      oldValue & ~FD_CLOEXEC
-    } else {
-      oldValue | FD_CLOEXEC
-    }
-    if oldValue == newValue {
-      // No need to make a second syscall as nothing has changed.
-      return
-    }
-    if -1 == swt_setfdflags(fd, newValue) {
-      // An error occurred setting the flags for this file descriptor.
-      throw CError(rawValue: swt_errno())
-    }
-  }
-}
-#endif
 #endif

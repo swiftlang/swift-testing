@@ -53,10 +53,6 @@
 #include <sys/fcntl.h>
 #endif
 
-#if __has_include(<gnu/libc-version.h>)
-#include <gnu/libc-version.h>
-#endif
-
 #if __has_include(<sys/resource.h>) && !defined(__wasi__)
 #include <sys/resource.h>
 #endif
