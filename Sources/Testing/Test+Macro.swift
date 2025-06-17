@@ -148,7 +148,7 @@ public macro Test(
 ///   - traits: Zero or more traits to apply to this test.
 ///
 /// Surround a test's name with backticks as an alternative to setting the
-/// `displayName` parameter, for example:
+/// `displayName` parameter; for example:
 ///
 /// ```swift
 /// @Test func `Food truck exists`() { ... }
@@ -239,7 +239,7 @@ public macro Test<C>(
 /// the associated test function once for each element in `collection`.
 ///
 /// Surround a test's name with backticks as an alternative to setting the
-/// `displayName` parameter, for example:
+/// `displayName` parameter; for example:
 ///
 /// ```swift
 /// @Test func `Food truck exists`() { ... }
@@ -302,7 +302,7 @@ extension Test {
 /// elements in `collection1` and `collection2`.
 ///
 /// Surround a test's name with backticks as an alternative to setting the
-/// `displayName` parameter, for example:
+/// `displayName` parameter; for example:
 ///
 /// ```swift
 /// @Test func `Food truck exists`() { ... }
@@ -340,7 +340,7 @@ public macro Test<C1, C2>(
 /// elements in `collection1` and `collection2`.
 ///
 /// Surround a test's name with backticks as an alternative to setting the
-/// `displayName` parameter, for example:
+/// `displayName` parameter; for example:
 ///
 /// ```swift
 /// @Test func `Food truck exists`() { ... }
@@ -376,7 +376,7 @@ public macro Test<C1, C2>(
 /// `zippedCollections`.
 ///
 /// Surround a test's name with backticks as an alternative to setting the
-/// `displayName` parameter, for example:
+/// `displayName` parameter; for example:
 ///
 /// ```swift
 /// @Test func `Food truck exists`() { ... }
@@ -414,7 +414,7 @@ public macro Test<C1, C2>(
 /// `zippedCollections`.
 ///
 /// Surround a test's name with backticks as an alternative to setting the
-/// `displayName` parameter, for example:
+/// `displayName` parameter; for example:
 ///
 /// ```swift
 /// @Test func `Food truck exists`() { ... }
