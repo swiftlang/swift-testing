@@ -41,10 +41,11 @@ For more information about test parallelization, see <doc:Parallelization>.
 ### Name a test suite
 
 The testing library uses the name of the Swift type as the test suite's name.
-Use a raw identifier to give the test suite a readable name:
+Surround the type's name with backticks to use spaces and punctuation characters
+in the name:
 
 ```swift
-struct `Food Truck Tests` {
+struct `Food truck tests: existence` {
   @Test func `Food truck exists`() { ... }
 }
 ```
@@ -53,7 +54,7 @@ Alternatively, customize a test suite's name by supplying a string literal as an
 argument to the `@Suite` attribute:
 
 ```swift
-@Suite("Food truck tests") struct FoodTruckTests {
+@Suite("Food truck tests: existence") struct FoodTruckTests {
   @Test func foodTruckExists() { ... }
 }
 ```

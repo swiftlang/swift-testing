@@ -87,8 +87,9 @@ public macro Suite(
 /// suites even if they do not have the `@Suite` attribute applied to them.
 ///
 /// > Tip:
-/// > Use a raw identifier to give a type a readable name instead of using
-/// > `@Suite` to change its display name:
+/// > Give a type a readable name that includes spaces and punctuation by
+/// > surrounding the type's name with backticks, instead of using `@Suite` to
+/// > change its display name:
 /// >
 /// > ```swift
 /// > struct `Delivery region tests` {
@@ -146,7 +147,7 @@ public macro Test(
 ///     associated function's name.
 ///   - traits: Zero or more traits to apply to this test.
 ///
-/// Use a raw identifier as the test's name as an alternative to setting the
+/// Surround a test's name with backticks as an alternative to setting the
 /// `displayName` parameter, for example:
 ///
 /// ```swift
@@ -237,7 +238,7 @@ public macro Test<C>(
 /// that the associated test will run. During testing, the testing library calls
 /// the associated test function once for each element in `collection`.
 ///
-/// Use a raw identifier as the test's name as an alternative to setting the
+/// Surround a test's name with backticks as an alternative to setting the
 /// `displayName` parameter, for example:
 ///
 /// ```swift
@@ -300,7 +301,7 @@ extension Test {
 /// testing library calls the associated test function once for each pair of
 /// elements in `collection1` and `collection2`.
 ///
-/// Use a raw identifier as the test's name as an alternative to setting the
+/// Surround a test's name with backticks as an alternative to setting the
 /// `displayName` parameter, for example:
 ///
 /// ```swift
@@ -338,7 +339,7 @@ public macro Test<C1, C2>(
 /// testing library calls the associated test function once for each pair of
 /// elements in `collection1` and `collection2`.
 ///
-/// Use a raw identifier as the test's name as an alternative to setting the
+/// Surround a test's name with backticks as an alternative to setting the
 /// `displayName` parameter, for example:
 ///
 /// ```swift
@@ -374,7 +375,7 @@ public macro Test<C1, C2>(
 /// library calls the associated test function once for each element in
 /// `zippedCollections`.
 ///
-/// Use a raw identifier as the test's name as an alternative to setting the
+/// Surround a test's name with backticks as an alternative to setting the
 /// `displayName` parameter, for example:
 ///
 /// ```swift
@@ -412,7 +413,7 @@ public macro Test<C1, C2>(
 /// library calls the associated test function once for each element in
 /// `zippedCollections`.
 ///
-/// Use a raw identifier as the test's name as an alternative to setting the
+/// Surround a test's name with backticks as an alternative to setting the
 /// `displayName` parameter, for example:
 ///
 /// ```swift
