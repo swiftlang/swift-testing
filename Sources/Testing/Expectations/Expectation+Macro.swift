@@ -580,6 +580,7 @@ public macro require(
 /// - Parameters:
 ///   - value: The captured value.
 ///   - name: The name of the capture list item corresponding to `value`.
+///   - expectedType: The type of `value`.
 ///
 /// - Returns: `value` verbatim.
 ///
@@ -598,6 +599,7 @@ public macro __capturedValue<T>(
 /// - Parameters:
 ///   - value: The captured value.
 ///   - name: The name of the capture list item corresponding to `value`.
+///   - expectedType: The type of `value`.
 ///
 /// - Returns: The result of a call to `fatalError()`. `value` is discarded at
 ///   compile time.
@@ -617,6 +619,8 @@ public macro __capturedValue<T>(
 /// - Parameters:
 ///   - value: The captured value.
 ///   - name: The name of the capture list item corresponding to `value`.
+///   - expectedType: The _expected_ type of `value`, which will differ from the
+///     _actual_ type of `value`.
 ///
 /// - Returns: The result of a call to `fatalError()`. `value` is discarded at
 ///   compile time.
