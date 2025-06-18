@@ -71,8 +71,8 @@ public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
   ///
   /// | Platform | Pointer Type |
   /// |-|-|
-  /// | macOS, iOS, watchOS, tvOS, visionOS | `UnsafePointer<mach_header64>` |
-  /// | Linux, FreeBSD, Android | `UnsafePointer<ElfW_Ehdr>` |
+  /// | macOS, iOS, watchOS, tvOS, visionOS | `UnsafePointer<mach_header_64>` |
+  /// | Linux, FreeBSD, Android | `UnsafePointer<ElfW(Ehdr)>` |
   /// | OpenBSD | `UnsafePointer<Elf_Ehdr>` |
   /// | Windows | `HMODULE` |
   ///

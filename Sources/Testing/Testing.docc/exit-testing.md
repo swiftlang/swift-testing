@@ -153,4 +153,4 @@ extension Customer {
 
 The testing library always sets ``ExitTest/Result/exitStatus`` to the actual
 exit status of the child process (as reported by the system) even if you do not
-pass it.
+observe `\.exitStatus`.
