@@ -13,6 +13,8 @@ public import SwiftSyntax
 import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
 
+private import MachO.dyld
+
 #if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY
 #error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand #expect(processExitsWith:)")
 #endif
@@ -454,9 +456,9 @@ extension ExitTestConditionMacro {
     // early if found.
     guard _diagnoseIssues(with: macro, body: bodyArgumentExpr, in: context) else {
       if Self.isThrowing {
-        return #"{ () async throws -> Testing.ExitTest.Result in Swift.fatalError("Unreachable") }()"#
+        return #"{ () async throws -> Testing.ExitTest.Result in \#(ExprSyntax.unreachable) }()"#
       } else {
-        return #"{ () async -> Testing.ExitTest.Result in Swift.fatalError("Unreachable") }()"#
+        return #"{ () async -> Testing.ExitTest.Result in \#(ExprSyntax.unreachable) }()"#
       }
     }
 
