@@ -384,7 +384,7 @@ extension ExitTest {
     asTypeAt typeAddress: UnsafeRawPointer,
     withHintAt hintAddress: UnsafeRawPointer? = nil
   ) -> CBool {
-    fatalError("Unimplemented")
+    swt_unreachable()
   }
 }
 
