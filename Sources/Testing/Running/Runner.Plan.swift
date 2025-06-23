@@ -179,13 +179,20 @@ extension Runner.Plan {
           return
         }
 
+        var traits = [any Trait]()
+#if DEBUG
+        // For debugging purposes, keep track of the fact that this suite was
+        // synthesized.
+        traits.append(.synthesized)
+#endif
+
         let typeInfo = TypeInfo(fullyQualifiedNameComponents: nameComponents, unqualifiedName: unqualifiedName)
 
         // Note: When a suite is synthesized, it does not have an accurate
         // source location, so we use the source location of a close descendant
         // test. We do this instead of falling back to some "unknown"
         // placeholder in an attempt to preserve the correct sort ordering.
-        graph.value = Test(traits: [], sourceLocation: sourceLocation, containingTypeInfo: typeInfo, isSynthesized: true)
+        graph.value = Test(traits: traits, sourceLocation: sourceLocation, containingTypeInfo: typeInfo)
       }
     }
 
