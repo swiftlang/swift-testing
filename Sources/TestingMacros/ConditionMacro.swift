@@ -13,8 +13,6 @@ public import SwiftSyntax
 import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
 
-private import MachO.dyld
-
 #if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY
 #error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand #expect(processExitsWith:)")
 #endif
