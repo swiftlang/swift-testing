@@ -36,7 +36,11 @@ struct CapturedValueInfo {
 
   /// The expression to assign to the captured value with type-checking applied.
   var typeCheckedExpression: ExprSyntax {
+#if SWT_FIXED_154221449
     #"#__capturedValue(\#(expression.trimmed), \#(literal: name.trimmedDescription), (\#(type.trimmed)).self)"#
+#else
+    expression.trimmed
+#endif
   }
 
   init(_ capture: ClosureCaptureSyntax, in context: some MacroExpansionContext) {
