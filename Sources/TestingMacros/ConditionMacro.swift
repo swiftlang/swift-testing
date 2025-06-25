@@ -102,7 +102,14 @@ extension ConditionMacro {
       commentIndex = macroArguments[..<trailingClosureIndex].lastIndex { $0.label == nil }
 #else
       commentIndex = macroArguments[..<trailingClosureIndex].lastIndex { argument in
-        argument.label == nil && argument.expression.kind != .macroExpansionExpr
+        guard argument.label == nil else {
+          return false
+        }
+        if let expr = argument.expression.as(MacroExpansionExprSyntax.self),
+           expr.macroName.tokenKind == .identifier("__capturedValue") {
+          return false
+        }
+        return true
       }
 #endif
     } else if macroArguments.count > 1 {
