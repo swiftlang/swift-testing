@@ -81,6 +81,7 @@ endif()
 
 target_sources(TestingMacros PRIVATE
   ConditionMacro.swift
+  ExitTestCapturedValueMacro.swift
   PragmaMacro.swift
   SourceLocationMacro.swift
   SuiteDeclarationMacro.swift

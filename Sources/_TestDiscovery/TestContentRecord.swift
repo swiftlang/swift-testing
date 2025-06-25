@@ -44,7 +44,7 @@ private typealias _TestContentRecord = (
   reserved2: UInt
 )
 
-extension DiscoverableAsTestContent where Self: ~Copyable {
+extension DiscoverableAsTestContent {
   /// Check that the layout of this structure in memory matches its expected
   /// layout in the test content section.
   ///
@@ -64,15 +64,15 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
 /// ``DiscoverableAsTestContent/allTestContentRecords()`` on a type that
 /// conforms to ``DiscoverableAsTestContent``.
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-public struct TestContentRecord<T> where T: DiscoverableAsTestContent & ~Copyable {
+public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
   /// The base address of the image containing this instance, if known.
   ///
   /// The type of this pointer is platform-dependent:
   ///
   /// | Platform | Pointer Type |
   /// |-|-|
-  /// | macOS, iOS, watchOS, tvOS, visionOS | `UnsafePointer<mach_header64>` |
-  /// | Linux, FreeBSD, Android | `UnsafePointer<ElfW_Ehdr>` |
+  /// | macOS, iOS, watchOS, tvOS, visionOS | `UnsafePointer<mach_header_64>` |
+  /// | Linux, FreeBSD, Android | `UnsafePointer<ElfW(Ehdr)>` |
   /// | OpenBSD | `UnsafePointer<Elf_Ehdr>` |
   /// | Windows | `HMODULE` |
   ///
@@ -229,24 +229,19 @@ extension TestContentRecord: CustomStringConvertible {
 
 // MARK: - Enumeration of test content records
 
-extension DiscoverableAsTestContent where Self: ~Copyable {
+extension DiscoverableAsTestContent {
   /// Get all test content of this type known to Swift and found in the current
   /// process.
   ///
   /// - Returns: A sequence of instances of ``TestContentRecord``. Only test
   ///   content records matching this ``TestContent`` type's requirements are
   ///   included in the sequence.
-  ///
-  /// @Comment {
-  ///   - Bug: This function returns an instance of `AnySequence` instead of an
-  ///     opaque type due to a compiler crash. ([143080508](rdar://143080508))
-  /// }
-  public static func allTestContentRecords() -> AnySequence<TestContentRecord<Self>> {
+  public static func allTestContentRecords() -> some Sequence<TestContentRecord<Self>> {
     validateMemoryLayout()
 
     let kind = testContentKind.rawValue
 
-    let result = SectionBounds.all(.testContent).lazy.flatMap { sb in
+    return SectionBounds.all(.testContent).lazy.flatMap { sb in
       sb.buffer.withMemoryRebound(to: _TestContentRecord.self) { records in
         (0 ..< records.count).lazy
           .map { (records.baseAddress! + $0) as UnsafePointer<_TestContentRecord> }
@@ -254,7 +249,6 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
           .map { TestContentRecord<Self>(imageAddress: sb.imageAddress, recordAddress: $0) }
       }
     }
-    return AnySequence(result)
   }
 }
 
@@ -263,7 +257,7 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
 
 private import _TestingInternals
 
-extension DiscoverableAsTestContent where Self: ~Copyable {
+extension DiscoverableAsTestContent {
   /// Get all test content of this type known to Swift and found in the current
   /// process using the legacy discovery mechanism.
   ///
@@ -277,15 +271,10 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
   /// - Returns: A sequence of instances of ``TestContentRecord``. Only test
   ///   content records matching this ``TestContent`` type's requirements are
   ///   included in the sequence.
-  ///
-  /// @Comment {
-  ///   - Bug: This function returns an instance of `AnySequence` instead of an
-  ///     opaque type due to a compiler crash. ([143080508](rdar://143080508))
-  /// }
   @available(swift, deprecated: 100000.0, message: "Do not adopt this functionality in new code. It will be removed in a future release.")
   public static func allTypeMetadataBasedTestContentRecords(
     loadingWith loader: @escaping @Sendable (Any.Type, UnsafeMutableRawBufferPointer) -> Bool
-  ) -> AnySequence<TestContentRecord<Self>> {
+  ) -> some Sequence<TestContentRecord<Self>> {
     validateMemoryLayout()
 
     let typeNameHint = _testContentTypeNameHint
@@ -300,7 +289,7 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
       }
     }
 
-    let result = SectionBounds.all(.typeMetadata).lazy.flatMap { sb in
+    return SectionBounds.all(.typeMetadata).lazy.flatMap { sb in
       stride(from: 0, to: sb.buffer.count, by: SWTTypeMetadataRecordByteCount).lazy
         .map { sb.buffer.baseAddress! + $0 }
         .compactMap { swt_getType(fromTypeMetadataRecord: $0, ifNameContains: typeNameHint) }
@@ -309,7 +298,6 @@ extension DiscoverableAsTestContent where Self: ~Copyable {
         .filter { $0.kind == kind }
         .map { TestContentRecord<Self>(imageAddress: sb.imageAddress, record: $0) }
     }
-    return AnySequence(result)
   }
 }
 #endif

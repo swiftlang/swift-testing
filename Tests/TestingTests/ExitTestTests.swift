@@ -306,7 +306,7 @@ private import _TestingInternals
 
       await Test {
         try await #require(processExitsWith: .success) {}
-        fatalError("Unreachable")
+        Issue.record("#require(processExitsWith:) should have thrown an error")
       }.run(configuration: configuration)
     }
   }
@@ -407,9 +407,10 @@ private import _TestingInternals
 
     @Test("self in capture list")
     func captureListWithSelf() async {
-      await #expect(processExitsWith: .success) { [self, x = self] in
+      await #expect(processExitsWith: .success) { [self, x = self, y = self as Self] in
         #expect(self.property == 456)
         #expect(x.property == 456)
+        #expect(y.property == 456)
       }
     }
   }
@@ -456,6 +457,108 @@ private import _TestingInternals
       #expect(instance.x == 123)
     }
   }
+
+  @Test("Capturing a parameter to the test function")
+  func captureListWithParameter() async {
+    let i = Int.random(in: 0 ..< 1000)
+
+    func f(j: Int) async {
+      await #expect(processExitsWith: .success) { [i = i as Int, j] in
+        #expect(i == j)
+        #expect(j >= 0)
+        #expect(j < 1000)
+      }
+    }
+    await f(j: i)
+
+    await { (j: Int) in
+      _ = await #expect(processExitsWith: .success) { [i = i as Int, j] in
+        #expect(i == j)
+        #expect(j >= 0)
+        #expect(j < 1000)
+      }
+    }(i)
+
+#if false // intentionally fails to compile
+    // FAILS TO COMPILE: shadowing `i` with a variable of a different type will
+    // prevent correct expansion (we need an equivalent of decltype() for that.)
+    func g(i: Int) async {
+      let i = String(i)
+      await #expect(processExitsWith: .success) { [i] in
+        #expect(!i.isEmpty)
+      }
+    }
+#endif
+  }
+
+  @Test("Capturing a literal expression")
+  func captureListWithLiterals() async {
+    await #expect(processExitsWith: .success) { [i = 0, f = 1.0, s = "", b = true] in
+      #expect(i == 0)
+      #expect(f == 1.0)
+      #expect(s == "")
+      #expect(b == true)
+    }
+  }
+
+  @Test("Capturing #_sourceLocation")
+  func captureListPreservesSourceLocationMacro() async {
+    func sl(_ sl: SourceLocation = #_sourceLocation) -> SourceLocation {
+      sl
+    }
+    await #expect(processExitsWith: .success) { [sl = sl() as SourceLocation] in
+      #expect(sl.fileID == #fileID)
+    }
+  }
+
+  @Test("Capturing an optional value")
+  func captureListWithOptionalValue() async throws {
+    await #expect(processExitsWith: .success) { [x = nil as Int?] in
+      #expect(x != 1)
+    }
+    await #expect(processExitsWith: .success) { [x = (0 as Any) as? String] in
+      #expect(x == nil)
+    }
+  }
+
+  @Test("Capturing an effectful expression")
+  func captureListWithEffectfulExpression() async throws {
+    func f() async throws -> Int { 0 }
+    try await #require(processExitsWith: .success) { [f = try await f() as Int] in
+      #expect(f == 0)
+    }
+    try await #expect(processExitsWith: .success) { [f = f() as Int] in
+      #expect(f == 0)
+    }
+  }
+
+#if false // intentionally fails to compile
+  @Test("Capturing a tuple")
+  func captureListWithTuple() async throws {
+    // A tuple whose elements conform to Codable does not itself conform to
+    // Codable, so we cannot actually express this capture list in a way that
+    // works with #expect().
+    await #expect(processExitsWith: .success) { [x = (0 as Int, 1 as Double, "2" as String)] in
+      #expect(x.0 == 0)
+      #expect(x.1 == 1)
+      #expect(x.2 == "2")
+    }
+  }
+#endif
+
+#if false // intentionally fails to compile
+  struct NonCodableValue {}
+
+  // We can't capture a value that isn't Codable. A unit test is not possible
+  // for this case as the type checker needs to get involved.
+  @Test("Capturing a move-only value")
+  func captureListWithMoveOnlyValue() async {
+    let x = NonCodableValue()
+    await #expect(processExitsWith: .success) { [x = x as NonCodableValue] in
+      _ = x
+    }
+  }
+#endif
 #endif
 }
 

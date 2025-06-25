@@ -153,6 +153,30 @@ let swiftStandardLibraryVersion: String = {
   return "unknown"
 }()
 
+#if canImport(Glibc)
+/// The (runtime, not compile-time) version of glibc in use on this system.
+///
+/// This value is not part of the public interface of the testing library.
+let glibcVersion: (major: Int, minor: Int) = {
+  // Default to the statically available version number if the function call
+  // fails for some reason.
+  var major = Int(clamping: __GLIBC__)
+  var minor = Int(clamping: __GLIBC_MINOR__)
+
+  if let strVersion = gnu_get_libc_version() {
+    withUnsafeMutablePointer(to: &major) { major in
+      withUnsafeMutablePointer(to: &minor) { minor in
+        withVaList([major, minor]) { args in
+          _ = vsscanf(strVersion, "%zd.%zd", args)
+        }
+      }
+    }
+  }
+
+  return (major, minor)
+}()
+#endif
+
 // MARK: - sysctlbyname() Wrapper
 
 #if !SWT_NO_SYSCTL && SWT_TARGET_OS_APPLE
