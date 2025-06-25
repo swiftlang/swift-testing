@@ -11,7 +11,6 @@
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
-import SwiftParser
 
 extension FunctionDeclSyntax {
   /// Whether or not this function a `static` or `class` function.
@@ -39,7 +38,7 @@ extension FunctionDeclSyntax {
   /// colons.
   var completeName: DeclReferenceExprSyntax {
     func possiblyRaw(_ token: TokenSyntax) -> TokenSyntax {
-      if let rawIdentifier = token.rawIdentifier, !rawIdentifier.isValidSwiftIdentifier(for: .memberAccess) {
+      if let rawIdentifier = token.rawIdentifier {
         return .identifier("`\(rawIdentifier)`")
       }
       return .identifier(token.textWithoutBackticks)

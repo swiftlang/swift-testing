@@ -263,14 +263,48 @@ struct TestDeclarationMacroTests {
     }
   }
 
-  @Test("No diagnostics are emitted for tests with both a raw identifier name and explicit display name when deemed non-redundant", arguments: [
-    #"@Test("Class") func `class`()"#,
-    #"@Test("Struct") func `struct`()"#,
-    #"@Test("Subscript") func `subscript`()"#,
+  @Test("Warning diagnostics which include fix-its emitted on API misuse", arguments: [
+    #"@Test("Subscript") func `subscript`()"#:
+      (
+        message: "Attribute 'Test' specifies display name 'Subscript' for function with implicit display name 'subscript'",
+        fixIts: [
+          ExpectedFixIt(
+            message: "Remove 'Subscript'",
+            changes: [.replace(oldSourceCode: #""Subscript""#, newSourceCode: "")]
+          ),
+          ExpectedFixIt(
+            message: "Rename 'subscript'",
+            changes: [.replace(oldSourceCode: "`subscript`", newSourceCode: "\(EditorPlaceholderExprSyntax("name"))")]
+          ),
+        ]
+      ),
   ])
-  func nonRedundantRawIdentifierDisplayName(input: String) throws {
+  func apiMisuseWarningsIncludingFixIts(input: String, expectedDiagnostic: (message: String, fixIts: [ExpectedFixIt])) throws {
     let (_, diagnostics) = try parse(input)
-    #expect(diagnostics.isEmpty)
+
+    #expect(diagnostics.count == 1)
+    let diagnostic = try #require(diagnostics.first)
+    #expect(diagnostic.diagMessage.severity == .warning)
+    #expect(diagnostic.message == expectedDiagnostic.message)
+
+    try #require(diagnostic.fixIts.count == expectedDiagnostic.fixIts.count)
+    for (fixIt, expectedFixIt) in zip(diagnostic.fixIts, expectedDiagnostic.fixIts) {
+      #expect(fixIt.message.message == expectedFixIt.message)
+
+      try #require(fixIt.changes.count == expectedFixIt.changes.count)
+      for (change, expectedChange) in zip(fixIt.changes, expectedFixIt.changes) {
+        switch (change, expectedChange) {
+        case let (.replace(oldNode, newNode), .replace(expectedOldSourceCode, expectedNewSourceCode)):
+          let oldSourceCode = String(describing: oldNode.formatted())
+          #expect(oldSourceCode == expectedOldSourceCode)
+
+          let newSourceCode = String(describing: newNode.formatted())
+          #expect(newSourceCode == expectedNewSourceCode)
+        default:
+          Issue.record("Change \(change) differs from expected change \(expectedChange)")
+        }
+      }
+    }
   }
 
   @Test("Raw identifier is detected")

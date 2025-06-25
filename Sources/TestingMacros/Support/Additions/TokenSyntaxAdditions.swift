@@ -35,7 +35,7 @@ extension TokenSyntax {
   /// token, or `nil` if it does not represent one.
   var rawIdentifier: String? {
     let (textWithoutBackticks, backticksRemoved) = _textWithoutBackticks
-    if backticksRemoved {
+    if backticksRemoved, !textWithoutBackticks.isValidSwiftIdentifier(for: .memberAccess) {
       return textWithoutBackticks
     }
 
