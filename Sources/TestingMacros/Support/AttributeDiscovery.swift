@@ -11,6 +11,7 @@
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
+import SwiftParser
 
 /// A syntax rewriter that removes leading `Self.` tokens from member access
 /// expressions in a syntax tree.
@@ -138,11 +139,17 @@ struct AttributeInfo {
       }
     }
 
-    // Disallow an explicit display name for tests and suites with raw
-    // identifier names as it's redundant and potentially confusing.
+    // If this declaration has a raw identifier name, implicitly use the content
+    // of that raw identifier as its display name.
     if let namedDecl = declaration.asProtocol((any NamedDeclSyntax).self),
        let rawIdentifier = namedDecl.name.rawIdentifier {
-      if let displayName, let displayNameArgument {
+      // Disallow having an explicit display name for tests and suites with raw
+      // identifier names as it's redundant and potentially confusing. An
+      // exception to this rule is if the content of the raw identifier is not a
+      // valid identifier on its own. For example:
+      //
+      //   @Test("...") func `subscript`() { ... }
+      if let displayName, let displayNameArgument, !rawIdentifier.isValidSwiftIdentifier(for: .memberAccess) {
         context.diagnose(.declaration(namedDecl, hasExtraneousDisplayName: displayName, fromArgument: displayNameArgument, using: attribute))
       } else {
         displayName = StringLiteralExprSyntax(content: rawIdentifier)
