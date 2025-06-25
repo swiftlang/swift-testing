@@ -39,12 +39,6 @@ extension TokenSyntax {
       return textWithoutBackticks
     }
 
-    // TODO: remove this mock path once the toolchain fully supports raw IDs.
-    let mockPrefix = "__raw__$"
-    if backticksRemoved, textWithoutBackticks.starts(with: mockPrefix) {
-      return String(textWithoutBackticks.dropFirst(mockPrefix.count))
-    }
-
     return nil
   }
 }

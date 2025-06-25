@@ -16,6 +16,15 @@
 
 SWT_ASSUME_NONNULL_BEGIN
 
+/// Mark a code path as unreachable.
+///
+/// This function is necessary because Swift does not have an equivalent of
+/// `__builtin_unreachable()`.
+__attribute__((always_inline, noreturn))
+static inline void swt_unreachable(void) {
+  __builtin_unreachable();
+}
+
 #if !SWT_NO_FILE_IO
 /// The C file handle type.
 ///
@@ -150,6 +159,26 @@ static int swt_siginfo_t_si_status(const siginfo_t *siginfo) {
 static int swt_EEXIST(void) {
   return EEXIST;
 }
+
+#if defined(F_GETFD)
+/// Call `fcntl(F_GETFD)`.
+///
+/// This function is provided because `fcntl()` is a variadic function and
+/// cannot be imported directly into Swift.
+static int swt_getfdflags(int fd) {
+  return fcntl(fd, F_GETFD);
+}
+#endif
+
+#if defined(F_SETFD)
+/// Call `fcntl(F_SETFD)`.
+///
+/// This function is provided because `fcntl()` is a variadic function and
+/// cannot be imported directly into Swift.
+static int swt_setfdflags(int fd, int flags) {
+  return fcntl(fd, F_SETFD, flags);
+}
+#endif
 
 SWT_ASSUME_NONNULL_END
 

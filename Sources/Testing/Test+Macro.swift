@@ -54,7 +54,7 @@ public typealias __XCTestCompatibleSelector = Never
 ///   - traits: Zero or more traits to apply to this test suite.
 ///
 /// A test suite is a type that contains one or more test functions. Any
-/// copyable type (that is, any type that is not marked `~Copyable`) may be a
+/// escapable type (that is, any type that is not marked `~Escapable`) may be a
 /// test suite.
 ///
 /// The use of the `@Suite` attribute is optional; types are recognized as test
@@ -82,7 +82,7 @@ public macro Suite(
 ///   - traits: Zero or more traits to apply to this test suite.
 ///
 /// A test suite is a type that contains one or more test functions. Any
-/// copyable type (that is, any type that is not marked `~Copyable`) may be a
+/// escapable type (that is, any type that is not marked `~Escapable`) may be a
 /// test suite.
 ///
 /// The use of the `@Suite` attribute is optional; types are recognized as test

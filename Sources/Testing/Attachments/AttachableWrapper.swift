@@ -24,12 +24,14 @@
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
 /// }
 public protocol AttachableWrapper<Wrapped>: Attachable, ~Copyable {
   /// The type of the underlying value represented by this type.
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   associatedtype Wrapped
 
@@ -37,6 +39,7 @@ public protocol AttachableWrapper<Wrapped>: Attachable, ~Copyable {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   var wrappedValue: Wrapped { get }
 }

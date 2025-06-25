@@ -513,6 +513,7 @@ public macro require<R>(
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
 /// }
 @freestanding(expression)
 @discardableResult
@@ -524,7 +525,7 @@ public macro expect(
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
-  performing expression: @escaping @Sendable @convention(thin) () async throws -> Void
+  performing expression: @escaping @Sendable () async throws -> Void
 ) -> ExitTest.Result? = #externalMacro(module: "TestingMacros", type: "ExitTestExpectMacro")
 
 /// Check that an expression causes the process to terminate in a given fashion
@@ -559,6 +560,7 @@ public macro expect(
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
 /// }
 @freestanding(expression)
 @discardableResult
@@ -570,5 +572,64 @@ public macro require(
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
   _ comment: @autoclosure () -> Comment? = nil,
   sourceLocation: SourceLocation = #_sourceLocation,
-  performing expression: @escaping @Sendable @convention(thin) () async throws -> Void
+  performing expression: @escaping @Sendable () async throws -> Void
 ) -> ExitTest.Result = #externalMacro(module: "TestingMacros", type: "ExitTestRequireMacro")
+
+/// Capture a sendable and codable value to pass to an exit test.
+///
+/// - Parameters:
+///   - value: The captured value.
+///   - name: The name of the capture list item corresponding to `value`.
+///   - expectedType: The type of `value`.
+///
+/// - Returns: `value` verbatim.
+///
+/// - Warning: This macro is used to implement the `#expect(processExitsWith:)`
+///   macro. Do not use it directly.
+@freestanding(expression)
+public macro __capturedValue<T>(
+  _ value: T,
+  _ name: String,
+  _ expectedType: T.Type
+) -> T = #externalMacro(module: "TestingMacros", type: "ExitTestCapturedValueMacro") where T: Sendable & Codable
+
+/// Emit a compile-time diagnostic when an unsupported value is captured by an
+/// exit test.
+///
+/// - Parameters:
+///   - value: The captured value.
+///   - name: The name of the capture list item corresponding to `value`.
+///   - expectedType: The type of `value`.
+///
+/// - Returns: The result of a call to `fatalError()`. `value` is discarded at
+///   compile time.
+///
+/// - Warning: This macro is used to implement the `#expect(processExitsWith:)`
+///   macro. Do not use it directly.
+@freestanding(expression)
+public macro __capturedValue<T>(
+  _ value: borrowing T,
+  _ name: String,
+  _ expectedType: T.Type
+) -> Never = #externalMacro(module: "TestingMacros", type: "ExitTestBadCapturedValueMacro") where T: ~Copyable & ~Escapable
+
+/// Emit a compile-time diagnostic when a value is captured by an exit test but
+/// we inferred the wrong type.
+///
+/// - Parameters:
+///   - value: The captured value.
+///   - name: The name of the capture list item corresponding to `value`.
+///   - expectedType: The _expected_ type of `value`, which will differ from the
+///     _actual_ type of `value`.
+///
+/// - Returns: The result of a call to `fatalError()`. `value` is discarded at
+///   compile time.
+///
+/// - Warning: This macro is used to implement the `#expect(processExitsWith:)`
+///   macro. Do not use it directly.
+@freestanding(expression)
+public macro __capturedValue<T, U>(
+  _ value: borrowing T,
+  _ name: String,
+  _ expectedType: U.Type
+) -> T = #externalMacro(module: "TestingMacros", type: "ExitTestIncorrectlyCapturedValueMacro") where T: ~Copyable & ~Escapable, U: ~Copyable & ~Escapable
