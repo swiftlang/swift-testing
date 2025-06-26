@@ -84,6 +84,8 @@ concurrency safety:
 For more information about suites and how to declare and customize them, see
 <doc:OrganizingTests>.
 
+> Important: While XCTest test cases running sequentially by default, the test execution happens in parallel by default in Swift Testing. See the [Run tests sequentially](#Run-tests-sequentially) section in this document for further information. 
+
 ### Convert setup and teardown functions
 
 In XCTest, code can be scheduled to run before and after a test using the
