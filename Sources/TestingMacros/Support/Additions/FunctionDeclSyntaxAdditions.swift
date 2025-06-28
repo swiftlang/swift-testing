@@ -178,3 +178,15 @@ extension FunctionParameterSyntax {
     return baseType.trimmedDescription
   }
 }
+
+// MARK: -
+
+extension ExprSyntax {
+  /// An expression representing an unreachable code path.
+  ///
+  /// Use this expression when a macro will emit an error diagnostic but the
+  /// compiler still requires us to produce a valid expression.
+  static var unreachable: Self {
+    #"Swift.fatalError("Unreachable")"#
+  }
+}
