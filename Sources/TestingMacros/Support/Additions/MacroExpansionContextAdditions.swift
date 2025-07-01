@@ -85,7 +85,10 @@ extension MacroExpansionContext {
       prefix = "Z"
     }
 
-    return makeUniqueName("\(prefix)\(suffix)")
+    // Get the source location of the function declaration for better uniqueness
+    let sourceLocation = location(of: functionDecl)
+
+    return makeUniqueName("\(prefix)\(suffix)", sourceLocation: sourceLocation)
   }
 }
 

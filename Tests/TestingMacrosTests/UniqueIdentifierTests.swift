@@ -81,4 +81,17 @@ struct UniqueIdentifierTests {
     let uniqueName2 = try makeUniqueName("func f() { def() }")
     #expect(uniqueName1 == uniqueName2)
   }
+
+
+
+  @Test("Duplicate function names generate different identifiers")
+  func duplicateFunctionNames() throws {
+    // Test that calling makeUniqueName twice with the same base name
+    // generates different identifiers
+    let context = BasicMacroExpansionContext()
+    let name1 = context.makeUniqueName("test")
+    let name2 = context.makeUniqueName("test")
+    
+    #expect(name1.text != name2.text)
+  }
 }
