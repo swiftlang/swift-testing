@@ -103,7 +103,7 @@ let package = Package(
   ],
 
   dependencies: [
-    .package(path: "../swift-syntax"),
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "602.0.0-latest"),
   ],
 
   targets: [
