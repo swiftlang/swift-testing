@@ -22,10 +22,6 @@ import _Testing_Foundation
 import CoreGraphics
 @_spi(Experimental) import _Testing_CoreGraphics
 #endif
-#if canImport(Foundation)
-import Foundation
-@_spi(Experimental) import _Testing_Foundation
-#endif
 #if canImport(UniformTypeIdentifiers)
 import UniformTypeIdentifiers
 #endif
