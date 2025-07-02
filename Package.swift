@@ -216,7 +216,7 @@ let package = Package(
         "_Testing_CoreGraphics",
       ],
       path: "Sources/Overlays/_Testing_CoreImage",
-      swiftSettings: .packageSettings
+      swiftSettings: .packageSettings + .enableLibraryEvolution()
     ),
     .target(
       name: "_Testing_Foundation",
