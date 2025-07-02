@@ -583,7 +583,7 @@ extension AttachmentTests {
       let image = try Self.nsImage
       let attachment = Attachment(image, named: "diamond.jpg")
       #expect(attachment.attachableValue.size == image.size) // NSImage makes a copy
-      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { buffer in
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { buffer in
         #expect(buffer.count > 32)
       }
     }
@@ -597,7 +597,7 @@ extension AttachmentTests {
       }
       let attachment = Attachment(image, named: "diamond.jpg")
       #expect(attachment.attachableValue.size == image.size) // NSImage makes a copy
-      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { buffer in
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { buffer in
         #expect(buffer.count > 32)
       }
     }
@@ -614,7 +614,7 @@ extension AttachmentTests {
       let attachment = Attachment(image, named: "diamond.jpg")
       #expect(attachment.attachableValue === image)
       #expect(attachment.attachableValue.size == image.size) // NSImage makes a copy
-      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { buffer in
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { buffer in
         #expect(buffer.count > 32)
       }
     }
@@ -628,7 +628,7 @@ extension AttachmentTests {
       #expect(attachment.attachableValue.size == image.size) // NSImage makes a copy
       let firstRep = try #require(attachment.attachableValue.representations.first)
       #expect(!(firstRep is MyImageRep<Int>))
-      try attachment.attachableValue.withUnsafeBufferPointer(for: attachment) { buffer in
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { buffer in
         #expect(buffer.count > 32)
       }
     }
