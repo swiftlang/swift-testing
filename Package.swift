@@ -84,6 +84,16 @@ let package = Package(
     )
 #endif
 
+    result += [
+      .library(
+        name: "_Testing_ExperimentalImageAttachments",
+        targets: [
+          "_Testing_AppKit",
+          "_Testing_CoreGraphics",
+        ]
+      )
+    ]
+
     result.append(
       .library(
         name: "_TestDiscovery",
@@ -199,7 +209,7 @@ let package = Package(
         "_Testing_CoreGraphics",
       ],
       path: "Sources/Overlays/_Testing_AppKit",
-      swiftSettings: .packageSettings
+      swiftSettings: .packageSettings + .enableLibraryEvolution()
     ),
     .target(
       name: "_Testing_CoreGraphics",
