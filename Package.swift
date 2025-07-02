@@ -217,6 +217,7 @@ let package = Package(
       name: "SymbolShowcase",
       dependencies: [
         "Testing",
+        "_Testing_CoreGraphics",
       ],
       swiftSettings: .packageSettings
     ),

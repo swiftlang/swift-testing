@@ -39,7 +39,7 @@ extension Attachment {
   ///
   /// The testing library uses the image format specified by `contentType`. Pass
   /// `nil` to let the testing library decide which image format to use. If you
-  /// pass `nil`, then timage format that the testing library uses depends on
+  /// pass `nil`, then the image format that the testing library uses depends on
   /// the path extension you specify in `preferredName`, if any. If you do not
   /// specify a path extension, or if the path extension you specify doesn't
   /// correspond to an image format the operating system knows how to write, the
@@ -83,7 +83,7 @@ extension Attachment {
   ///
   /// The testing library uses the image format specified by `contentType`. Pass
   /// `nil` to let the testing library decide which image format to use. If you
-  /// pass `nil`, then timage format that the testing library uses depends on
+  /// pass `nil`, then the image format that the testing library uses depends on
   /// the path extension you specify in `preferredName`, if any. If you do not
   /// specify a path extension, or if the path extension you specify doesn't
   /// correspond to an image format the operating system knows how to write, the
