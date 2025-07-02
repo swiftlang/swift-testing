@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
@@ -82,7 +84,7 @@ extension ExitTest {
         }
         return nil
 #else
-        fatalError("Unsupported")
+        swt_unreachable()
 #endif
       }
 
@@ -101,7 +103,7 @@ extension ExitTest {
           _kind = .typeOnly(type)
         }
 #else
-        fatalError("Unsupported")
+        swt_unreachable()
 #endif
       }
     }
@@ -119,7 +121,7 @@ extension ExitTest {
         type
       }
 #else
-      fatalError("Unsupported")
+      swt_unreachable()
 #endif
     }
   }

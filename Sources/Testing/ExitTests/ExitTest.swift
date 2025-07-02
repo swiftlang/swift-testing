@@ -32,6 +32,7 @@ private import _TestingInternals
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
 /// }
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
@@ -170,6 +171,7 @@ extension ExitTest {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public static var current: ExitTest? {
     _read {
@@ -243,15 +245,30 @@ extension ExitTest {
 #if os(Windows)
     // Windows does not support signal handling to the degree UNIX-like systems
     // do. When a signal is raised in a Windows process, the default signal
-    // handler simply calls `exit()` and passes the constant value `3`. To allow
-    // us to handle signals on Windows, we install signal handlers for all
+    // handler simply calls `_exit()` and passes the constant value `3`. To
+    // allow us to handle signals on Windows, we install signal handlers for all
     // signals supported on Windows. These signal handlers exit with a specific
     // exit code that is unlikely to be encountered "in the wild" and which
     // encodes the caught signal. Corresponding code in the parent process looks
     // for these special exit codes and translates them back to signals.
+    //
+    // Microsoft's documentation for `_Exit()` and `_exit()` indicates they
+    // behave identically. Their documentation for abort() can be found at
+    // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/abort?view=msvc-170
+    // and states: "[...] abort calls _exit to terminate the process with exit
+    // code 3 [...]".
+    //
+    // The Wine project's implementation of raise() calls `_exit(3)` by default.
+    // See https://github.com/wine-mirror/wine/blob/master/dlls/msvcrt/except.c
+    //
+    // Finally, an official copy of the UCRT sources (not up to date) is hosted
+    // at https://www.nuget.org/packages/Microsoft.Windows.SDK.CRTSource . That
+    // repository doesn't have an official GitHub mirror, but you can manually
+    // navigate to misc/signal.cpp:481 to see the implementation of SIG_DFL
+    // (which, again, calls `_exit(3)` unconditionally.)
     for sig in [SIGINT, SIGILL, SIGFPE, SIGSEGV, SIGTERM, SIGBREAK, SIGABRT, SIGABRT_COMPAT] {
       _ = signal(sig) { sig in
-        _Exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
+        _exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
       }
     }
 #endif
@@ -327,6 +344,9 @@ extension ExitTest {
   ///
   /// - Warning: This function is used to implement the
   ///   `#expect(processExitsWith:)` macro. Do not use it directly.
+#if compiler(>=6.2)
+  @safe
+#endif
   public static func __store<each T>(
     _ id: (UInt64, UInt64, UInt64, UInt64),
     _ body: @escaping @Sendable (repeat each T) async throws -> Void,
@@ -359,6 +379,27 @@ extension ExitTest {
     record.capturedValues = Array(repeat (each T).self)
     outValue.initializeMemory(as: Record.self, to: record)
     return true
+  }
+
+  /// Attempt to store an invalid exit test into the given memory.
+  ///
+  /// This overload of `__store()` is provided to suppress diagnostics when a
+  /// value of an unsupported type is captured as an argument of `body`. It
+  /// always terminates the current process.
+  ///
+  /// - Warning: This function is used to implement the
+  ///   `#expect(processExitsWith:)` macro. Do not use it directly.
+#if compiler(>=6.2)
+  @safe
+#endif
+  public static func __store<T>(
+    _ id: (UInt64, UInt64, UInt64, UInt64),
+    _ body: T,
+    into outValue: UnsafeMutableRawPointer,
+    asTypeAt typeAddress: UnsafeRawPointer,
+    withHintAt hintAddress: UnsafeRawPointer? = nil
+  ) -> CBool {
+    fatalError("Unimplemented")
   }
 }
 

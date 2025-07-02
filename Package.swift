@@ -27,7 +27,7 @@ let buildingForDevelopment = (git?.currentTag == nil)
 /// to change in the future.
 ///
 /// - Bug: There is currently no way for us to tell if we are being asked to
-/// 	build for an Embedded Swift target at the package manifest level.
+///   build for an Embedded Swift target at the package manifest level.
 ///   ([swift-syntax-#8431](https://github.com/swiftlang/swift-package-manager/issues/8431))
 let buildingForEmbedded: Bool = {
   guard let envvar = Context.environment["SWT_EMBEDDED"] else {
@@ -128,8 +128,23 @@ let package = Package(
         "_Testing_AppKit",
         "_Testing_CoreGraphics",
         "_Testing_Foundation",
+        "MemorySafeTestingTests",
       ],
       swiftSettings: .packageSettings
+    ),
+
+    // Use a plain `.target` instead of a `.testTarget` to avoid the unnecessary
+    // overhead of having a separate test target for this module. Conceptually,
+    // the content in this module is no different than content which would
+    // typically be placed in the `TestingTests` target, except this content
+    // needs the (module-wide) strict memory safety feature to be enabled.
+    .target(
+      name: "MemorySafeTestingTests",
+      dependencies: [
+        "Testing",
+      ],
+      path: "Tests/_MemorySafeTestingTests",
+      swiftSettings: .packageSettings + .strictMemorySafety
     ),
 
     .macro(
@@ -203,7 +218,7 @@ let package = Package(
       // The Foundation module only has Library Evolution enabled on Apple
       // platforms, and since this target's module publicly imports Foundation,
       // it can only enable Library Evolution itself on those platforms.
-      swiftSettings: .packageSettings + .enableLibraryEvolution(applePlatformsOnly: true)
+      swiftSettings: .packageSettings + .enableLibraryEvolution(.whenApple())
     ),
 
     // Utility targets: These are utilities intended for use when developing
@@ -239,11 +254,11 @@ extension BuildSettingCondition {
   /// Swift.
   ///
   /// - Parameters:
-  /// 	- nonEmbeddedCondition: The value to return if the target is not
-  ///   	Embedded Swift. If `nil`, the build condition evaluates to `false`.
+  ///   - nonEmbeddedCondition: The value to return if the target is not
+  ///     Embedded Swift. If `nil`, the build condition evaluates to `false`.
   ///
   /// - Returns: A build setting condition that evaluates to `true` for Embedded
-  /// 	Swift or is equal to `nonEmbeddedCondition` for non-Embedded Swift.
+  ///   Swift or is equal to `nonEmbeddedCondition` for non-Embedded Swift.
   static func whenEmbedded(or nonEmbeddedCondition: @autoclosure () -> Self? = nil) -> Self? {
     if !buildingForEmbedded {
       if let nonEmbeddedCondition = nonEmbeddedCondition() {
@@ -256,6 +271,21 @@ extension BuildSettingCondition {
     } else {
       // Enable unconditionally because the target is Embedded Swift.
       nil
+    }
+  }
+
+  /// A build setting condition representing all Apple or non-Apple platforms.
+  ///
+  /// - Parameters:
+  ///   - isApple: Whether or not the result represents Apple platforms.
+  ///
+  /// - Returns: A build setting condition that evaluates to `isApple` for Apple
+  ///   platforms.
+  static func whenApple(_ isApple: Bool = true) -> Self {
+    if isApple {
+      .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])
+    } else {
+      .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi, .android])
     }
   }
 }
@@ -285,7 +315,10 @@ extension Array where Element == PackageDescription.SwiftSetting {
       // This setting is enabled in the package, but not in the toolchain build
       // (via CMake). Enabling it is dependent on acceptance of the @section
       // proposal via Swift Evolution.
-      .enableExperimentalFeature("SymbolLinkageMarkers"),
+      //
+      // FIXME: Re-enable this once a CI blocker is resolved:
+      // https://github.com/swiftlang/swift-testing/issues/1138.
+//      .enableExperimentalFeature("SymbolLinkageMarkers"),
 
       // This setting is no longer needed when building with a 6.2 or later
       // toolchain now that SE-0458 has been accepted and implemented, but it is
@@ -298,17 +331,20 @@ extension Array where Element == PackageDescription.SwiftSetting {
       // new-enough toolchain.
       .enableExperimentalFeature("AllowUnsafeAttribute"),
 
+      .enableUpcomingFeature("InferIsolatedConformances"),
+
       // When building as a package, the macro plugin always builds as an
       // executable rather than a library.
       .define("SWT_NO_LIBRARY_MACRO_PLUGINS"),
 
-      .define("SWT_TARGET_OS_APPLE", .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])),
+      .define("SWT_TARGET_OS_APPLE", .whenApple()),
 
       .define("SWT_NO_EXIT_TESTS", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]))),
       .define("SWT_NO_PROCESS_SPAWNING", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]))),
-      .define("SWT_NO_SNAPSHOT_TYPES", .whenEmbedded(or: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi, .android]))),
+      .define("SWT_NO_SNAPSHOT_TYPES", .whenEmbedded(or: .whenApple(false))),
       .define("SWT_NO_DYNAMIC_LINKING", .whenEmbedded(or: .when(platforms: [.wasi]))),
       .define("SWT_NO_PIPES", .whenEmbedded(or: .when(platforms: [.wasi]))),
+      .define("SWT_NO_FOUNDATION_FILE_COORDINATION", .whenEmbedded(or: .whenApple(false))),
 
       .define("SWT_NO_LEGACY_TEST_DISCOVERY", .whenEmbedded()),
       .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
@@ -344,24 +380,32 @@ extension Array where Element == PackageDescription.SwiftSetting {
     ]
   }
 
-  /// Create a Swift setting which enables Library Evolution, optionally
-  /// constraining it to only Apple platforms.
+  /// Create a Swift setting which enables Library Evolution.
   ///
   /// - Parameters:
-  ///   - applePlatformsOnly: Whether to constrain this setting to only Apple
-  ///     platforms.
-  static func enableLibraryEvolution(applePlatformsOnly: Bool = false) -> Self {
+  ///   - condition: A build setting condition to apply to this setting.
+  ///
+  /// - Returns: A Swift setting that enables Library Evolution.
+  static func enableLibraryEvolution(_ condition: BuildSettingCondition? = nil) -> Self {
     var result = [PackageDescription.SwiftSetting]()
 
     if buildingForDevelopment {
-      var condition: BuildSettingCondition?
-      if applePlatformsOnly {
-        condition = .when(platforms: [.macOS, .iOS, .macCatalyst, .watchOS, .tvOS, .visionOS])
-      }
       result.append(.unsafeFlags(["-enable-library-evolution"], condition))
     }
 
     return result
+  }
+
+  /// Settings necessary to enable Strict Memory Safety, introduced in
+  /// [SE-0458: Opt-in Strict Memory Safety Checking](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0458-strict-memory-safety.md#swiftpm-integration).
+  static var strictMemorySafety: Self {
+#if compiler(>=6.2)
+    // FIXME: Adopt official `.strictMemorySafety()` condition once the minimum
+    // supported toolchain is 6.2.
+    [.unsafeFlags(["-strict-memory-safety"])]
+#else
+    []
+#endif
   }
 }
 
@@ -374,9 +418,10 @@ extension Array where Element == PackageDescription.CXXSetting {
     result += [
       .define("SWT_NO_EXIT_TESTS", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]))),
       .define("SWT_NO_PROCESS_SPAWNING", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]))),
-      .define("SWT_NO_SNAPSHOT_TYPES", .whenEmbedded(or: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .windows, .wasi, .android]))),
+      .define("SWT_NO_SNAPSHOT_TYPES", .whenEmbedded(or: .whenApple(false))),
       .define("SWT_NO_DYNAMIC_LINKING", .whenEmbedded(or: .when(platforms: [.wasi]))),
       .define("SWT_NO_PIPES", .whenEmbedded(or: .when(platforms: [.wasi]))),
+      .define("SWT_NO_FOUNDATION_FILE_COORDINATION", .whenEmbedded(or: .whenApple(false))),
 
       .define("SWT_NO_LEGACY_TEST_DISCOVERY", .whenEmbedded()),
       .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),

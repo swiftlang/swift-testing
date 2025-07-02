@@ -657,10 +657,16 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     fromArgument argumentContainingDisplayName: LabeledExprListSyntax.Element,
     using attribute: AttributeSyntax
   ) -> Self {
-    Self(
+    // If the name of the ambiguously-named symbol should be derived from a raw
+    // identifier, this situation is an error. If the name is not raw but is
+    // still surrounded by backticks (e.g. "func `foo`()" or "struct `if`") then
+    // lower the severity to a warning. That way, existing code structured this
+    // way doesn't suddenly fail to build.
+    let severity: DiagnosticSeverity = (decl.name.rawIdentifier != nil) ? .error : .warning
+    return Self(
       syntax: Syntax(decl),
-      message: "Attribute \(_macroName(attribute)) specifies display name '\(displayNameFromAttribute.representedLiteralValue!)' for \(_kindString(for: decl)) with implicit display name '\(decl.name.rawIdentifier!)'",
-      severity: .error,
+      message: "Attribute \(_macroName(attribute)) specifies display name '\(displayNameFromAttribute.representedLiteralValue!)' for \(_kindString(for: decl)) with implicit display name '\(decl.name.textWithoutBackticks)'",
+      severity: severity,
       fixIts: [
         FixIt(
           message: MacroExpansionFixItMessage("Remove '\(displayNameFromAttribute.representedLiteralValue!)'"),
@@ -827,6 +833,24 @@ extension DiagnosticMessage {
     )
   }
 
+  /// Create a diagnostic message stating that a captured value must conform to
+  /// `Sendable` and `Codable`.
+  ///
+  /// - Parameters:
+  ///   - valueExpr: The captured value.
+  ///   - nameExpr: The name of the capture list item corresponding to
+  ///     `valueExpr`.
+  ///
+  /// - Returns: A diagnostic message.
+  static func capturedValueMustBeSendableAndCodable(_ valueExpr: ExprSyntax, name nameExpr: StringLiteralExprSyntax) -> Self {
+    let name = nameExpr.representedLiteralValue ?? valueExpr.trimmedDescription
+    return Self(
+      syntax: Syntax(valueExpr),
+      message: "Type of captured value '\(name)' must conform to 'Sendable' and 'Codable'",
+      severity: .error
+    )
+  }
+
   /// Create a diagnostic message stating that a capture clause cannot be used
   /// in an exit test.
   ///
@@ -869,5 +893,37 @@ extension DiagnosticMessage {
         ),
       ]
     )
+  }
+
+  /// Create a diagnostic message stating that an expression macro is not
+  /// supported in a generic context.
+  ///
+  /// - Parameters:
+  ///   - macro: The invalid macro.
+  ///   - genericClause: The child node on `genericDecl` that makes it generic.
+  ///   - genericDecl: The generic declaration to which `genericClause` is
+  ///     attached, possibly equal to `decl`.
+  ///
+  /// - Returns: A diagnostic message.
+  static func expressionMacroUnsupported(_ macro: some FreestandingMacroExpansionSyntax, inGenericContextBecauseOf genericClause: some SyntaxProtocol, on genericDecl: some SyntaxProtocol) -> Self {
+    if let functionDecl = genericDecl.as(FunctionDeclSyntax.self) {
+      return Self(
+        syntax: Syntax(macro),
+        message: "Cannot call macro '\(_macroName(macro))' within generic function '\(functionDecl.completeName)'",
+        severity: .error
+      )
+    } else if let namedDecl = genericDecl.asProtocol((any NamedDeclSyntax).self) {
+      return Self(
+        syntax: Syntax(macro),
+        message: "Cannot call macro '\(_macroName(macro))' within generic \(_kindString(for: genericDecl)) '\(namedDecl.name.trimmed)'",
+        severity: .error
+      )
+    } else {
+      return Self(
+        syntax: Syntax(macro),
+        message: "Cannot call macro '\(_macroName(macro))' within a generic \(_kindString(for: genericDecl))",
+        severity: .error
+      )
+    }
   }
 }

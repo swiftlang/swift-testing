@@ -12,6 +12,7 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 @Metadata {
   @Available(Swift, introduced: 6.2)
+  @Available(Xcode, introduced: 26.0)
 }
 
 Use exit tests to test functionality that might cause a test process to exit.
@@ -152,4 +153,4 @@ extension Customer {
 
 The testing library always sets ``ExitTest/Result/exitStatus`` to the actual
 exit status of the child process (as reported by the system) even if you do not
-pass it.
+observe `\.exitStatus`.

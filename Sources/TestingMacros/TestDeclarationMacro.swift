@@ -160,6 +160,8 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       for (label, parameter) in parametersWithLabels {
         if parameter.firstName.tokenKind == .wildcard {
           LabeledExprSyntax(expression: label)
+        } else if let rawIdentifier = parameter.firstName.rawIdentifier {
+          LabeledExprSyntax(label: "`\(rawIdentifier)`", expression: label)
         } else {
           LabeledExprSyntax(label: parameter.firstName.textWithoutBackticks, expression: label)
         }
@@ -494,12 +496,13 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
     // Emit a type that contains a reference to the test content record.
     let enumName = context.makeUniqueName(thunking: functionDecl, withPrefix: "__🟡$")
+    let unsafeKeyword: TokenSyntax? = isUnsafeKeywordSupported ? .keyword(.unsafe, trailingTrivia: .space) : nil
     result.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
       enum \(enumName): Testing.__TestContentRecordContainer {
         nonisolated static var __testContentRecord: Testing.__TestContentRecord {
-          \(testContentRecordName)
+          \(unsafeKeyword)\(testContentRecordName)
         }
       }
       """
