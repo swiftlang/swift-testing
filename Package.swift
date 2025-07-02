@@ -90,6 +90,7 @@ let package = Package(
         targets: [
           "_Testing_AppKit",
           "_Testing_CoreGraphics",
+          "_Testing_CoreImage",
         ]
       )
     ]
