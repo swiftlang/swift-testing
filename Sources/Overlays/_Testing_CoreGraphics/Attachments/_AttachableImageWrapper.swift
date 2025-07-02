@@ -73,7 +73,7 @@ public struct _AttachableImageWrapper<Image>: Sendable where Image: AttachableAs
   /// the result is undefined.
   var contentType: UTType {
     get {
-      _contentType ?? (encodingQuality < 1.0 ? .jpeg : .png)
+      _contentType ?? .image
     }
     set {
       precondition(
@@ -89,22 +89,10 @@ public struct _AttachableImageWrapper<Image>: Sendable where Image: AttachableAs
   ///
   /// This property is not part of the public interface of the testing library.
   var computedContentType: UTType {
-    if let contentType = _contentType, contentType != .image {
-      contentType
-    } else {
-      encodingQuality < 1.0 ? .jpeg : .png
+    if contentType == .image {
+      return encodingQuality < 1.0 ? .jpeg : .png
     }
-  }
-
-  /// The type identifier (as a `CFString`) corresponding to this instance's
-  /// ``computedContentType`` property.
-  ///
-  /// The value of this property is used by ImageIO when serializing an image.
-  ///
-  /// This property is not part of the public interface of the testing library.
-  /// It is used by ImageIO below.
-  var typeIdentifier: CFString {
-    computedContentType.identifier as CFString
+    return contentType
   }
 
   init(image: Image, encodingQuality: Float, contentType: UTType?) {
@@ -131,6 +119,7 @@ extension _AttachableImageWrapper: AttachableWrapper {
     let attachableCGImage = try image.attachableCGImage
 
     // Create the image destination.
+    let typeIdentifier = computedContentType.identifier as CFString
     guard let dest = CGImageDestinationCreateWithData(data as CFMutableData, typeIdentifier, 1, nil) else {
       throw ImageAttachmentError.couldNotCreateImageDestination
     }
