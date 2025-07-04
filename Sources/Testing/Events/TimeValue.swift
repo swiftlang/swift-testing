@@ -55,7 +55,7 @@ struct TimeValue: Sendable {
   @available(_clockAPI, *)
   init(_ instant: SuspendingClock.Instant) {
 #if compiler(>=6.2)
-    self.init(SuspendingClock.systemEpoch.duration(to: instant))
+    self.init(SuspendingClock().systemEpoch.duration(to: instant))
 #else
     self.init(unsafeBitCast(instant, to: Duration.self))
 #endif
@@ -115,7 +115,7 @@ extension Duration {
 extension SuspendingClock.Instant {
   init(_ timeValue: TimeValue) {
 #if compiler(>=6.2)
-    self = SuspendingClock.systemEpoch.advanced(by: Duration(timeValue))
+    self = SuspendingClock().systemEpoch.advanced(by: Duration(timeValue))
 #else
     self = unsafeBitCast(Duration(timeValue), to: SuspendingClock.Instant.self)
 #endif
