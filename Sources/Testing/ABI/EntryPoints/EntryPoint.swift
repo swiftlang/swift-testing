@@ -293,7 +293,7 @@ public struct __CommandLineArguments_v0: Sendable {
   ///
   /// This property is intended for use in testing the testing library itself.
   /// It is not parsed as a command-line argument.
-  var isWarningIssueRecordedEventEnabled: Bool?
+  var isWarningIssueRecordedEventEnabled: Bool? = true
 }
 
 extension __CommandLineArguments_v0: Codable {
