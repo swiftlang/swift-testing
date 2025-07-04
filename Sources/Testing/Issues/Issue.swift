@@ -38,6 +38,9 @@ public struct Issue: Sendable {
     /// confirmed too few or too many times.
     indirect case confirmationMiscounted(actual: Int, expected: any RangeExpression & Sendable)
 
+    @_spi(Experimental)
+    case confirmationPollingFailed
+
     /// An issue due to an `Error` being thrown by a test function and caught by
     /// the testing library.
     ///
@@ -286,6 +289,8 @@ extension Issue.Kind: CustomStringConvertible {
         }
       }
       return "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(String(describingForTest: expected)) time(s)"
+    case .confirmationPollingFailed:
+      return "Confirmation polling failed"
     case let .errorCaught(error):
       return "Caught error: \(error)"
     case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
@@ -464,6 +469,8 @@ extension Issue.Kind {
       case let .expectationFailed(expectation):
           .expectationFailed(Expectation.Snapshot(snapshotting: expectation))
       case .confirmationMiscounted:
+          .unconditional
+      case .confirmationPollingFailed:
           .unconditional
       case let .errorCaught(error), let .valueAttachmentFailed(error):
           .errorCaught(ErrorSnapshot(snapshotting: error))
