@@ -31,7 +31,7 @@ extension ABI {
     
     /// If the issue is a failing issue.
     ///
-    /// - Warning: isFailure is not yet part of the JSON schema.
+    /// - Warning: Non-failing issues are not yet part of the JSON schema.
     var _isFailure: Bool
 
     /// Whether or not this issue is known to occur.
