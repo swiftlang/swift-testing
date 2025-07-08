@@ -284,6 +284,29 @@ func spawnExecutable(
       let commandLine = _escapeCommandLine(CollectionOfOne(executablePath) + arguments)
       let environ = environment.map { "\($0.key)=\($0.value)" }.joined(separator: "\0") + "\0\0"
 
+      // On Windows, a process holds a reference to its current working
+      // directory, which prevents other processes from deleting it. This causes
+      // code to fail if it tries to set the working directory to a temporary
+      // path. SEE: https://github.com/swiftlang/swift-testing/issues/1209
+      //
+      // This problem manifests for us when we spawn a child process without
+      // setting its working directory, which causes it to default to that of
+      // the parent process. To avoid this problem, we set the working directory
+      // of the new process to the root directory of the boot volume (which is
+      // unlikely to be deleted, one hopes).
+      //
+      // SEE: https://devblogs.microsoft.com/oldnewthing/20101109-00/?p=12323
+      let workingDirectoryPath: UnsafeMutablePointer<wchar_t>? = {
+        let systemDrive = Environment.variable(named: "SYSTEMDRIVE") ?? "C:"
+        if systemDrive.last == ":" {
+          return #"\#(systemDrive)\"#
+        }
+        return systemDrive.withCString(encodedAs: UTF16.self) { _wcsdup($0) }
+      }()
+      defer {
+        free(workingDirectoryPath)
+      }
+
       var flags = DWORD(CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT)
 #if DEBUG
       // Start the process suspended so we can attach a debugger if needed.
@@ -302,7 +325,7 @@ func spawnExecutable(
             true, // bInheritHandles
             flags,
             .init(mutating: environ),
-            nil,
+            workingDirectoryPath,
             startupInfo.pointer(to: \.StartupInfo)!,
             &processInfo
           ) else {
