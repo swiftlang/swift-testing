@@ -209,10 +209,14 @@ struct FileHandleTests {
     await #expect(processExitsWith: .success) {
       #expect(Environment.setVariable(nil, named: "SYSTEMDRIVE"))
       #expect(rootDirectoryPath == #"C:\"#)
+    }
 
+    await #expect(processExitsWith: .success) {
       #expect(Environment.setVariable("Q:", named: "SYSTEMDRIVE"))
       #expect(rootDirectoryPath == #"Q:\"#)
+    }
 
+    await #expect(processExitsWith: .success) {
       #expect(Environment.setVariable(#"Q:\abc123"#, named: "SYSTEMDRIVE"))
       #expect(rootDirectoryPath == #"Q:\abc123\"#)
     }
