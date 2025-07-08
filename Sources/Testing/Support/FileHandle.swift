@@ -726,28 +726,26 @@ func setFD_CLOEXEC(_ flag: Bool, onFileDescriptor fd: CInt) throws {
 /// platforms, it is always equal to `"/"`.
 let rootDirectoryPath: String = {
 #if os(Windows)
-  if let systemDrive = Environment.variable(named: "SYSTEMDRIVE")?.utf16 {
-    // Copy the system drive string with room for up to "C:\" and a NUL.
-    var buffer = UnsafeMutableBufferPointer<wchar_t>.allocate(capacity: systemDrive.count + 4)
-    defer {
-      buffer.deallocate()
-    }
-    buffer.initialize(fromContentsOf: systemDrive)
-    buffer[systemDrive.count] = 0
+  var result: String?
 
-    // On the assumption that the value of %SYSTEMDRIVE% is "C:" or similar,
-    // ensure a trailing slash is added to refer to the root directory. If
-    // somebody decides to set this environment variable to something
-    // nonsensical or to a deeper path, we should accept it silently.
-    let rAddBackslash = PathCchAddBackslashEx(buffer.baseAddress!, buffer.count, nil, nil)
-    if rAddBackslash == S_OK || rAddBackslash == S_FALSE,
-       let result = String.decodeCString(buffer.baseAddress!, as: UTF16.self)?.result {
-      return result
+  // The boot volume is, except in some legacy scenarios, the volume that
+  // contains the system Windows directory. For an explanation of the difference
+  // between the Windows directory and the _system_ Windows directory, see
+  // https://devblogs.microsoft.com/oldnewthing/20140723-00/?p=423 .
+  let count = GetSystemWindowsDirectoryW(nil, 0)
+  if count > 0 {
+    withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: Int(count) + 1) { buffer in
+      _ = GetSystemWindowsDirectoryW(buffer.baseAddress!, UINT(buffer.count))
+      let rStrip = PathCchStripToRoot(buffer.baseAddress!, buffer.count)
+      if rStrip == S_OK || rStrip == S_FALSE {
+        result = String.decodeCString(buffer.baseAddress!, as: UTF16.self)?.result
+      }
     }
+
+    // If we weren't able to get a path, fall back to "C:\" on the assumption
+    // that it's the common case and most likely correct.
+    return result ?? #"C:\"#
   }
-  // We weren't able to get a path, so fall back to "C:\" on the assumption that
-  // it's the common case and most likely correct.
-  return #"C:\"#
 #else
   return "/"
 #endif
