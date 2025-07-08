@@ -150,7 +150,7 @@ function, and elements from the second collection are passed as the second
 argument.
 
 Assuming there are five cases in the `Food` enumeration, this test function
-will, when run, be invoked 500 times (5 × 100) with every possible combination
+will, when run, be invoked 500 times (5 x 100) with every possible combination
 of food and order size. These combinations are referred to as the collections'
 Cartesian product.
 
