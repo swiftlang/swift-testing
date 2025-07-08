@@ -67,6 +67,8 @@ struct TestDeclarationMacroTests {
         "Attribute 'Test' cannot be applied to a structure",
       "@Test enum E {}":
         "Attribute 'Test' cannot be applied to an enumeration",
+      "@Test func +() {}":
+        "Attribute 'Test' cannot be applied to an operator",
 
       // Availability
       "@available(*, unavailable) @Suite struct S {}":
@@ -452,6 +454,7 @@ struct TestDeclarationMacroTests {
   }
 
   @Test("Valid tag expressions are allowed",
+    .tags(.traitRelated),
     arguments: [
       #"@Test(.tags(.f)) func f() {}"#,
       #"@Test(Tag.List.tags(.f)) func f() {}"#,
@@ -472,6 +475,7 @@ struct TestDeclarationMacroTests {
   }
 
   @Test("Invalid tag expressions are detected",
+    .tags(.traitRelated),
     arguments: [
       "f()", ".f()", "loose",
       "WrongType.tag", "WrongType.f()",
@@ -490,6 +494,7 @@ struct TestDeclarationMacroTests {
   }
 
   @Test("Valid bug identifiers are allowed",
+    .tags(.traitRelated),
     arguments: [
       #"@Test(.bug(id: 12345)) func f() {}"#,
       #"@Test(.bug(id: "12345")) func f() {}"#,
@@ -512,6 +517,7 @@ struct TestDeclarationMacroTests {
   }
 
   @Test("Invalid bug URLs are detected",
+    .tags(.traitRelated),
     arguments: [
       "mailto: a@example.com", "example.com",
     ]

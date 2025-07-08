@@ -61,7 +61,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     }
 
     // The @Test attribute is only supported on function declarations.
-    guard let function = declaration.as(FunctionDeclSyntax.self) else {
+    guard let function = declaration.as(FunctionDeclSyntax.self), !function.isOperator else {
       diagnostics.append(.attributeNotSupported(testAttribute, on: declaration))
       return false
     }
@@ -160,6 +160,8 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       for (label, parameter) in parametersWithLabels {
         if parameter.firstName.tokenKind == .wildcard {
           LabeledExprSyntax(expression: label)
+        } else if let rawIdentifier = parameter.firstName.rawIdentifier {
+          LabeledExprSyntax(label: "`\(rawIdentifier)`", expression: label)
         } else {
           LabeledExprSyntax(label: parameter.firstName.textWithoutBackticks, expression: label)
         }

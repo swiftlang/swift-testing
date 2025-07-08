@@ -84,6 +84,16 @@ let package = Package(
     )
 #endif
 
+    result += [
+      .library(
+        name: "_Testing_ExperimentalImageAttachments",
+        targets: [
+          "_Testing_AppKit",
+          "_Testing_CoreGraphics",
+        ]
+      )
+    ]
+
     result.append(
       .library(
         name: "_TestDiscovery",
@@ -118,11 +128,12 @@ let package = Package(
       name: "TestingTests",
       dependencies: [
         "Testing",
+        "_Testing_AppKit",
         "_Testing_CoreGraphics",
         "_Testing_Foundation",
         "MemorySafeTestingTests",
       ],
-      swiftSettings: .packageSettings + .disableMandatoryOptimizationsSettings
+      swiftSettings: .packageSettings
     ),
 
     // Use a plain `.target` instead of a `.testTarget` to avoid the unnecessary
@@ -184,6 +195,15 @@ let package = Package(
 
     // Cross-import overlays (not supported by Swift Package Manager)
     .target(
+      name: "_Testing_AppKit",
+      dependencies: [
+        "Testing",
+        "_Testing_CoreGraphics",
+      ],
+      path: "Sources/Overlays/_Testing_AppKit",
+      swiftSettings: .packageSettings + .enableLibraryEvolution()
+    ),
+    .target(
       name: "_Testing_CoreGraphics",
       dependencies: [
         "Testing",
@@ -227,7 +247,7 @@ package.targets.append(contentsOf: [
       "Testing",
       "TestingMacros",
     ],
-    swiftSettings: .packageSettings + .disableMandatoryOptimizationsSettings
+    swiftSettings: .packageSettings
   )
 ])
 #endif
@@ -381,20 +401,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
 #else
     []
 #endif
-  }
-
-  /// Settings which disable Swift's mandatory optimizations pass.
-  ///
-  /// This is intended only to work around a build failure caused by a Swift
-  /// compiler regression which is expected to be resolved in
-  /// [swiftlang/swift#82034](https://github.com/swiftlang/swift/pull/82034).
-  ///
-  /// @Comment {
-  ///   - Bug: This should be removed once the CI issue is resolved.
-  ///     [swiftlang/swift-testin#1138](https://github.com/swiftlang/swift-testing/issues/1138).
-  /// }
-  static var disableMandatoryOptimizationsSettings: Self {
-    [.unsafeFlags(["-Xllvm", "-sil-disable-pass=mandatory-performance-optimizations"])]
   }
 }
 
