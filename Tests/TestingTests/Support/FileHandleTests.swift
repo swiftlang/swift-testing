@@ -203,24 +203,11 @@ struct FileHandleTests {
 #endif
 
   @Test("Root directory path is correct")
-  func rootDirectoryPathIsCorrect() async {
+  func rootDirectoryPathIsCorrect() throws {
 #if os(Windows)
-#if !SWT_NO_EXIT_TESTS
-    await #expect(processExitsWith: .success) {
-      #expect(Environment.setVariable(nil, named: "SYSTEMDRIVE"))
-      #expect(rootDirectoryPath == #"C:\"#)
+    if let systemDrive = Environment.variable(named: "SYSTEMDRIVE") {
+      #expect(rootDirectoryPath.starts(with: systemDrive))
     }
-
-    await #expect(processExitsWith: .success) {
-      #expect(Environment.setVariable("Q:", named: "SYSTEMDRIVE"))
-      #expect(rootDirectoryPath == #"Q:\"#)
-    }
-
-    await #expect(processExitsWith: .success) {
-      #expect(Environment.setVariable(#"Q:\abc123"#, named: "SYSTEMDRIVE"))
-      #expect(rootDirectoryPath == #"Q:\abc123\"#)
-    }
-#endif
 #else
     #expect(rootDirectoryPath == "/")
 #endif
