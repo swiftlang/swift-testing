@@ -297,9 +297,9 @@ func spawnExecutable(
       //
       // SEE: https://devblogs.microsoft.com/oldnewthing/20101109-00/?p=12323
       let workingDirectoryPath: UnsafeMutablePointer<wchar_t>? = {
-        let systemDrive = Environment.variable(named: "SYSTEMDRIVE") ?? "C:"
+        var systemDrive = Environment.variable(named: "SYSTEMDRIVE") ?? "C:"
         if systemDrive.last == ":" {
-          return #"\#(systemDrive)\"#
+          systemDrive = #"\#(systemDrive)\"#
         }
         return systemDrive.withCString(encodedAs: UTF16.self) { _wcsdup($0) }
       }()
