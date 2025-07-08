@@ -229,6 +229,7 @@ func spawnExecutable(
       return pid
     }
   }
+
 #elseif os(Windows)
   return try _withStartupInfoEx(attributeCount: 1) { startupInfo in
     func inherit(_ fileHandle: borrowing FileHandle) throws -> HANDLE? {
@@ -296,15 +297,17 @@ func spawnExecutable(
       // unlikely to be deleted, one hopes).
       //
       // SEE: https://devblogs.microsoft.com/oldnewthing/20101109-00/?p=12323
-      let workingDirectoryPath: UnsafeMutablePointer<wchar_t>? = {
-        var systemDrive = Environment.variable(named: "SYSTEMDRIVE") ?? "C:"
-        if systemDrive.last == ":" {
-          systemDrive = #"\#(systemDrive)\"#
-        }
-        return systemDrive.withCString(encodedAs: UTF16.self) { _wcsdup($0) }
-      }()
+      var workingDirectoryPath = UnsafeMutableBufferPointer<wchar_t>.allocate(capacity: Int(MAX_PATH))
       defer {
-        free(workingDirectoryPath)
+        workingDirectoryPath.deallocate()
+      }
+      let systemDrive = Environment.variable(named: "SYSTEMDRIVE") ?? "C:"
+      systemDrive.withCString(encodedAs: UTF16.self) { systemDrive in
+        wcscpy_s(workingDirectoryPath.baseAddress!, workingDirectoryPath.count, systemDrive)
+        let rAddBackslash = PathCchAddBackslashEx(workingDirectoryPath.baseAddress!, workingDirectoryPath.count, nil, nil)
+        guard rAddBackslash == S_OK || rAddBackslash == S_FALSE else {
+          fatalError("Unexpected error when normalizing system drive path '\(systemDrive)': HRESULT(\(rAddBackslash))")
+        }
       }
 
       var flags = DWORD(CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT)
