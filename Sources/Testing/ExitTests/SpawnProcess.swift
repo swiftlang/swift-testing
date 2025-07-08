@@ -229,7 +229,6 @@ func spawnExecutable(
       return pid
     }
   }
-
 #elseif os(Windows)
   return try _withStartupInfoEx(attributeCount: 1) { startupInfo in
     func inherit(_ fileHandle: borrowing FileHandle) throws -> HANDLE? {
@@ -285,6 +284,14 @@ func spawnExecutable(
       let commandLine = _escapeCommandLine(CollectionOfOne(executablePath) + arguments)
       let environ = environment.map { "\($0.key)=\($0.value)" }.joined(separator: "\0") + "\0\0"
 
+      // CreateProcessW() may modify the command line argument, so we must make
+      // a mutable copy of it. (environ is also passed as a mutable raw pointer,
+      // but it is not documented as actually being mutated.)
+      let commandLineCopy = commandLine.withCString(encodedAs: UTF16.self) { _wcsdup($0) }
+      defer {
+        free(commandLineCopy)
+      }
+
       // On Windows, a process holds a reference to its current working
       // directory, which prevents other processes from deleting it. This causes
       // code to fail if it tries to set the working directory to a temporary
@@ -305,34 +312,32 @@ func spawnExecutable(
       flags |= DWORD(CREATE_SUSPENDED)
 #endif
 
-      return try commandLine.withCString(encodedAs: UTF16.self) { commandLine in
-        try environ.withCString(encodedAs: UTF16.self) { environ in
-          try workingDirectoryPath.withCString(encodedAs: UTF16.self) { workingDirectoryPath in
-            var processInfo = PROCESS_INFORMATION()
+      return try environ.withCString(encodedAs: UTF16.self) { environ in
+        try workingDirectoryPath.withCString(encodedAs: UTF16.self) { workingDirectoryPath in
+          var processInfo = PROCESS_INFORMATION()
 
-            guard CreateProcessW(
-              nil,
-              .init(mutating: commandLine),
-              nil,
-              nil,
-              true, // bInheritHandles
-              flags,
-              .init(mutating: environ),
-              workingDirectoryPath,
-              startupInfo.pointer(to: \.StartupInfo)!,
-              &processInfo
-            ) else {
-              throw Win32Error(rawValue: GetLastError())
-            }
+          guard CreateProcessW(
+            nil,
+            commandLineCopy,
+            nil,
+            nil,
+            true, // bInheritHandles
+            flags,
+            .init(mutating: environ),
+            workingDirectoryPath,
+            startupInfo.pointer(to: \.StartupInfo)!,
+            &processInfo
+          ) else {
+            throw Win32Error(rawValue: GetLastError())
+          }
 
 #if DEBUG
-            // Resume the process.
-            _ = ResumeThread(processInfo.hThread!)
+          // Resume the process.
+          _ = ResumeThread(processInfo.hThread!)
 #endif
 
-            _ = CloseHandle(processInfo.hThread)
-            return processInfo.hProcess!
-          }
+          _ = CloseHandle(processInfo.hThread)
+          return processInfo.hProcess!
         }
       }
     }
