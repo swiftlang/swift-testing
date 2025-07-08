@@ -213,7 +213,7 @@ struct FileHandleTests {
       #expect(Environment.setVariable("Q:", named: "SYSTEMDRIVE"))
       #expect(rootDirectoryPath == #"Q:\"#)
 
-      #expect(Environment.setVariable("Q:\abc123", named: "SYSTEMDRIVE"))
+      #expect(Environment.setVariable(#"Q:\abc123"#, named: "SYSTEMDRIVE"))
       #expect(rootDirectoryPath == #"Q:\abc123\"#)
     }
 #endif
