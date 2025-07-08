@@ -719,4 +719,37 @@ func setFD_CLOEXEC(_ flag: Bool, onFileDescriptor fd: CInt) throws {
   }
 }
 #endif
+
+/// The path to the root directory of the boot volume.
+///
+/// On Windows, this string is usually of the form `"C:\"`. On UNIX-like
+/// platforms, it is always equal to `"/"`.
+let rootDirectoryPath: String = {
+#if os(Windows)
+  if let systemDrive = Environment.variable(named: "SYSTEMDRIVE")?.utf16 {
+    // Copy the system drive string with room for up to "C:\" and a NUL.
+    var buffer = UnsafeMutableBufferPointer<wchar_t>.allocate(capacity: systemDrive.count + 4)
+    defer {
+      buffer.deallocate()
+    }
+    buffer.initialize(fromContentsOf: systemDrive)
+    buffer[systemDrive.count] = 0
+
+    // On the assumption that the value of %SYSTEMDRIVE% is "C:" or similar,
+    // ensure a trailing slash is added to refer to the root directory. If
+    // somebody decides to set this environment variable to something
+    // nonsensical or to a deeper path, we should accept it silently.
+    let rAddBackslash = PathCchAddBackslashEx(buffer.baseAddress!, buffer.count, nil, nil)
+    if rAddBackslash == S_OK || rAddBackslash == S_FALSE,
+       let result = String.decodeCString(buffer.baseAddress!, as: UTF16.self)?.result {
+      return result
+    }
+  }
+  // We weren't able to get a path, so fall back to "C:\" on the assumption that
+  // it's the common case and most likely correct.
+  return #"C:\"#
+#else
+  return "/"
+#endif
+}()
 #endif

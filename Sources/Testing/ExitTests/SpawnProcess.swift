@@ -297,18 +297,7 @@ func spawnExecutable(
       // unlikely to be deleted, one hopes).
       //
       // SEE: https://devblogs.microsoft.com/oldnewthing/20101109-00/?p=12323
-      var workingDirectoryPath = UnsafeMutableBufferPointer<wchar_t>.allocate(capacity: Int(MAX_PATH))
-      defer {
-        workingDirectoryPath.deallocate()
-      }
-      let systemDrive = Environment.variable(named: "SYSTEMDRIVE") ?? "C:"
-      systemDrive.withCString(encodedAs: UTF16.self) { systemDrive in
-        wcscpy_s(workingDirectoryPath.baseAddress!, workingDirectoryPath.count, systemDrive)
-        let rAddBackslash = PathCchAddBackslashEx(workingDirectoryPath.baseAddress!, workingDirectoryPath.count, nil, nil)
-        guard rAddBackslash == S_OK || rAddBackslash == S_FALSE else {
-          fatalError("Unexpected error when normalizing system drive path '\(systemDrive)': HRESULT(\(rAddBackslash))")
-        }
-      }
+      let workingDirectoryPath = rootDirectoryPath
 
       var flags = DWORD(CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT)
 #if DEBUG
@@ -318,30 +307,32 @@ func spawnExecutable(
 
       return try commandLine.withCString(encodedAs: UTF16.self) { commandLine in
         try environ.withCString(encodedAs: UTF16.self) { environ in
-          var processInfo = PROCESS_INFORMATION()
+          try workingDirectoryPath.withCString(encodedAs: UTF16.self) { workingDirectoryPath in
+            var processInfo = PROCESS_INFORMATION()
 
-          guard CreateProcessW(
-            nil,
-            .init(mutating: commandLine),
-            nil,
-            nil,
-            true, // bInheritHandles
-            flags,
-            .init(mutating: environ),
-            workingDirectoryPath,
-            startupInfo.pointer(to: \.StartupInfo)!,
-            &processInfo
-          ) else {
-            throw Win32Error(rawValue: GetLastError())
-          }
+            guard CreateProcessW(
+              nil,
+              .init(mutating: commandLine),
+              nil,
+              nil,
+              true, // bInheritHandles
+              flags,
+              .init(mutating: environ),
+              workingDirectoryPath,
+              startupInfo.pointer(to: \.StartupInfo)!,
+              &processInfo
+            ) else {
+              throw Win32Error(rawValue: GetLastError())
+            }
 
 #if DEBUG
-          // Resume the process.
-          _ = ResumeThread(processInfo.hThread!)
+            // Resume the process.
+            _ = ResumeThread(processInfo.hThread!)
 #endif
 
-          _ = CloseHandle(processInfo.hThread)
-          return processInfo.hProcess!
+            _ = CloseHandle(processInfo.hThread)
+            return processInfo.hProcess!
+          }
         }
       }
     }
