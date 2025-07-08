@@ -741,11 +741,11 @@ let rootDirectoryPath: String = {
         result = String.decodeCString(buffer.baseAddress!, as: UTF16.self)?.result
       }
     }
-
-    // If we weren't able to get a path, fall back to "C:\" on the assumption
-    // that it's the common case and most likely correct.
-    return result ?? #"C:\"#
   }
+
+  // If we weren't able to get a path, fall back to "C:\" on the assumption that
+  // it's the common case and most likely correct.
+  return result ?? #"C:\"#
 #else
   return "/"
 #endif
