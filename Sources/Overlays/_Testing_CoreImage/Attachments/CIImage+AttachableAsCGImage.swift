@@ -25,7 +25,9 @@ extension CIImage: AttachableAsCGImage {
 
   public func _makeCopyForAttachment() -> Self {
     // CIImage is documented as thread-safe, but does not conform to Sendable.
-    self
+    // It conforms to NSCopying and does have mutable state, so we still want to
+    // make a (shallow) copy of it.
+    return self.copy() as? Self ?? self
   }
 }
 #endif
