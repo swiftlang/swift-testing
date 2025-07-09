@@ -14,16 +14,33 @@ public import UIKit
 @_spi(Experimental) private import _Testing_CoreImage
 
 private import ImageIO
+#if canImport(UIKitCore_Private)
+private import UIKitCore_Private
+#endif
 
 @_spi(Experimental)
 extension UIImage: AttachableAsCGImage {
   public var attachableCGImage: CGImage {
     get throws {
-      if let cgImage {
+#if canImport(UIKitCore_Private)
+      // _UIImageGetCGImageRepresentation() is an internal UIKit function that
+      // flattens any (most) UIImage instances to a CGImage. BUG: rdar://155449485
+      if let cgImage = _UIImageGetCGImageRepresentation(self)?.takeUnretainedValue() {
         return cgImage
-      } else if let ciImage {
-        return try ciImage.attachableCGImage
       }
+#else
+      // NOTE: This API is marked to-be-deprecated so we'll need to eventually
+      // switch to UIGraphicsImageRenderer, but that type is not available on
+      // watchOS. BUG: rdar://155452406
+      UIGraphicsBeginImageContextWithOptions(size, true, scale)
+      defer {
+        UIGraphicsEndImageContext()
+      }
+      draw(at: .zero)
+      if let cgImage = UIGraphicsGetImageFromCurrentImageContext()?.cgImage {
+        return cgImage
+      }
+#endif
       throw ImageAttachmentError.couldNotCreateCGImage
     }
   }
