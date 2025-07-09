@@ -92,6 +92,7 @@ let package = Package(
           "_Testing_CoreGraphics",
           "_Testing_CoreImage",
           "_Testing_UIKit",
+          "_Testing_WinSDK",
         ]
       )
     ]
@@ -142,6 +143,7 @@ let package = Package(
         "_Testing_CoreImage",
         "_Testing_Foundation",
         "_Testing_UIKit",
+        "_Testing_WinSDK",
         "MemorySafeTestingTests",
       ],
       swiftSettings: .packageSettings
@@ -251,6 +253,15 @@ let package = Package(
         "_Testing_CoreImage",
       ],
       path: "Sources/Overlays/_Testing_UIKit",
+      swiftSettings: .packageSettings + .enableLibraryEvolution()
+    ),
+    .target(
+      name: "_Testing_WinSDK",
+      dependencies: [
+        "Testing",
+        "_Testing_WinSDKInternals",
+      ],
+      path: "Sources/Overlays/_Testing_WinSDK",
       swiftSettings: .packageSettings + .enableLibraryEvolution()
     ),
 
