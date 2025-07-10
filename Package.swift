@@ -84,6 +84,18 @@ let package = Package(
     )
 #endif
 
+    result += [
+      .library(
+        name: "_Testing_ExperimentalImageAttachments",
+        targets: [
+          "_Testing_AppKit",
+          "_Testing_CoreGraphics",
+          "_Testing_CoreImage",
+          "_Testing_UIKit",
+        ]
+      )
+    ]
+
     result.append(
       .library(
         name: "_TestDiscovery",
@@ -125,8 +137,11 @@ let package = Package(
       name: "TestingTests",
       dependencies: [
         "Testing",
+        "_Testing_AppKit",
         "_Testing_CoreGraphics",
+        "_Testing_CoreImage",
         "_Testing_Foundation",
+        "_Testing_UIKit",
         "MemorySafeTestingTests",
       ],
       swiftSettings: .packageSettings
@@ -191,11 +206,29 @@ let package = Package(
 
     // Cross-import overlays (not supported by Swift Package Manager)
     .target(
+      name: "_Testing_AppKit",
+      dependencies: [
+        "Testing",
+        "_Testing_CoreGraphics",
+      ],
+      path: "Sources/Overlays/_Testing_AppKit",
+      swiftSettings: .packageSettings + .enableLibraryEvolution()
+    ),
+    .target(
       name: "_Testing_CoreGraphics",
       dependencies: [
         "Testing",
       ],
       path: "Sources/Overlays/_Testing_CoreGraphics",
+      swiftSettings: .packageSettings + .enableLibraryEvolution()
+    ),
+    .target(
+      name: "_Testing_CoreImage",
+      dependencies: [
+        "Testing",
+        "_Testing_CoreGraphics",
+      ],
+      path: "Sources/Overlays/_Testing_CoreImage",
       swiftSettings: .packageSettings + .enableLibraryEvolution()
     ),
     .target(
@@ -209,6 +242,16 @@ let package = Package(
       // platforms, and since this target's module publicly imports Foundation,
       // it can only enable Library Evolution itself on those platforms.
       swiftSettings: .packageSettings + .enableLibraryEvolution(.whenApple())
+    ),
+    .target(
+      name: "_Testing_UIKit",
+      dependencies: [
+        "Testing",
+        "_Testing_CoreGraphics",
+        "_Testing_CoreImage",
+      ],
+      path: "Sources/Overlays/_Testing_UIKit",
+      swiftSettings: .packageSettings + .enableLibraryEvolution()
     ),
 
     // Utility targets: These are utilities intended for use when developing
