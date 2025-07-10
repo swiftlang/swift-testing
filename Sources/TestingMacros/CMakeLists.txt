@@ -31,7 +31,7 @@ if(SwiftTesting_BuildMacrosAsExecutables)
   set(FETCHCONTENT_BASE_DIR ${CMAKE_BINARY_DIR}/_d)
   FetchContent_Declare(SwiftSyntax
     GIT_REPOSITORY https://github.com/swiftlang/swift-syntax
-    GIT_TAG 1cd35348b089ff8966588742c69727205d99f8ed) # 601.0.0-prerelease-2024-11-18
+    GIT_TAG 340f8400262d494c7c659cd838223990195d7fed) # 602.0.0-prerelease-2025-04-10
   FetchContent_MakeAvailable(SwiftSyntax)
 endif()
 
@@ -81,6 +81,7 @@ endif()
 
 target_sources(TestingMacros PRIVATE
   ConditionMacro.swift
+  ExitTestCapturedValueMacro.swift
   PragmaMacro.swift
   SourceLocationMacro.swift
   SuiteDeclarationMacro.swift
@@ -97,10 +98,12 @@ target_sources(TestingMacros PRIVATE
   Support/Argument.swift
   Support/AttributeDiscovery.swift
   Support/AvailabilityGuards.swift
+  Support/ClosureCaptureListParsing.swift
   Support/CommentParsing.swift
   Support/ConditionArgumentParsing.swift
   Support/DiagnosticMessage.swift
   Support/DiagnosticMessage+Diagnosing.swift
+  Support/EffectfulExpressionHandling.swift
   Support/SHA256.swift
   Support/SourceCodeCapturing.swift
   Support/SourceLocationGeneration.swift

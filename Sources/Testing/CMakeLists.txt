@@ -22,7 +22,7 @@ add_library(Testing
   ABI/Encoded/ABI.EncodedMessage.swift
   ABI/Encoded/ABI.EncodedTest.swift
   Attachments/Attachable.swift
-  Attachments/AttachableContainer.swift
+  Attachments/AttachableWrapper.swift
   Attachments/Attachment.swift
   Events/Clock.swift
   Events/Event.swift
@@ -32,10 +32,11 @@ add_library(Testing
   Events/Recorder/Event.Symbol.swift
   Events/TimeValue.swift
   ExitTests/ExitTest.swift
+  ExitTests/ExitTest.CapturedValue.swift
   ExitTests/ExitTest.Condition.swift
   ExitTests/ExitTest.Result.swift
   ExitTests/SpawnProcess.swift
-  ExitTests/StatusAtExit.swift
+  ExitTests/ExitStatus.swift
   ExitTests/WaitFor.swift
   Expectations/Expectation.swift
   Expectations/Expectation+Macro.swift
@@ -96,6 +97,7 @@ add_library(Testing
   Traits/ConditionTrait.swift
   Traits/ConditionTrait+Macro.swift
   Traits/HiddenTrait.swift
+  Traits/IssueHandlingTrait.swift
   Traits/ParallelizationTrait.swift
   Traits/Tags/Tag.Color.swift
   Traits/Tags/Tag.Color+Loading.swift

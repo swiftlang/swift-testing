@@ -30,12 +30,10 @@ enum TestContentKind: UInt32 {
   /// This kind value as a comment (`/* 'abcd' */`) if it looks like it might be
   /// a [FourCC](https://en.wikipedia.org/wiki/FourCC) value, or `nil` if not.
   var commentRepresentation: Trivia {
-    switch self {
-    case .testDeclaration:
-      .blockComment("/* 'test' */")
-    case .exitTest:
-      .blockComment("/* 'exit' */")
+    let stringValue = withUnsafeBytes(of: self.rawValue.bigEndian) { bytes in
+      String(decoding: bytes, as: Unicode.ASCII.self)
     }
+    return .blockComment("/* '\(stringValue)' */")
   }
 }
 
@@ -65,12 +63,13 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
     IntegerLiteralExprSyntax(context, radix: .binary)
   }
 
+  let unsafeKeyword: TokenSyntax? = isUnsafeKeywordSupported ? .keyword(.unsafe, trailingTrivia: .space) : nil
   var result: DeclSyntax = """
   @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
   private nonisolated \(staticKeyword(for: typeName)) let \(name): Testing.__TestContentRecord = (
     \(kindExpr), \(kind.commentRepresentation)
     0,
-    \(accessorName),
+    \(unsafeKeyword)\(accessorName),
     \(contextExpr),
     0
   )

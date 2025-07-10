@@ -94,6 +94,7 @@ struct EventRecorderTests {
   }
 
   @Test("Verbose output")
+  @available(_regexAPI, *)
   func verboseOutput() async throws {
     let stream = Stream()
 
@@ -112,6 +113,18 @@ struct EventRecorderTests {
     #expect(buffer.contains(#"\#(Event.Symbol.details.unicodeCharacter) lhs: Swift.String → "987""#))
     #expect(buffer.contains(#""Animal Crackers" (aka 'WrittenTests')"#))
     #expect(buffer.contains(#""Not A Lobster" (aka 'actuallyCrab()')"#))
+    do {
+      let regex = try Regex(".* Test case passing 1 argument i → 0 \\(Swift.Int\\) to multitudeOcelot\\(i:\\) started.")
+      #expect(try buffer.split(whereSeparator: \.isNewline).compactMap(regex.wholeMatch(in:)).first != nil)
+    }
+    do {
+      let regex = try Regex(".* Test case passing 1 argument i → 0 \\(Swift.Int\\) to multitudeOcelot\\(i:\\) passed after .*.")
+      #expect(try buffer.split(whereSeparator: \.isNewline).compactMap(regex.wholeMatch(in:)).first != nil)
+    }
+    do {
+      let regex = try Regex(".* Test case passing 1 argument i → 3 \\(Swift.Int\\) to multitudeOcelot\\(i:\\) failed after .* with 1 issue.")
+      #expect(try buffer.split(whereSeparator: \.isNewline).compactMap(regex.wholeMatch(in:)).first != nil)
+    }
 
     if testsWithSignificantIOAreEnabled {
       print(buffer, terminator: "")
@@ -203,17 +216,15 @@ struct EventRecorderTests {
     await runTest(for: PredictablyFailingTests.self, configuration: configuration)
 
     let buffer = stream.buffer.rawValue
-    if testsWithSignificantIOAreEnabled {
-      print(buffer, terminator: "")
-    }
 
-    let aurgmentRegex = try Regex(expectedPattern)
+    let argumentRegex = try Regex(expectedPattern)
     
     #expect(
       (try buffer
         .split(whereSeparator: \.isNewline)
-        .compactMap(aurgmentRegex.wholeMatch(in:))
-        .first) != nil
+        .compactMap(argumentRegex.wholeMatch(in:))
+        .first) != nil,
+      "buffer: \(buffer)"
     )
   }
 
@@ -257,6 +268,30 @@ struct EventRecorderTests {
   }
 #endif
 
+  @Test(
+    "Uncommonly-formatted comments",
+    .bug("rdar://149482060"),
+    arguments: [
+      "", // Empty string
+      "\n\n\n", // Only newlines
+      "\nFoo\n\nBar\n\n\nBaz\n", // Newlines interspersed with non-empty strings
+    ]
+  )
+  func uncommonComments(text: String) async throws {
+    let stream = Stream()
+
+    var configuration = Configuration()
+    configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled = true
+    let eventRecorder = Event.ConsoleOutputRecorder(writingUsing: stream.write)
+    configuration.eventHandler = { event, context in
+      eventRecorder.record(event, in: context)
+    }
+
+    await Test {
+      Issue.record(Comment(rawValue: text) /* empty */)
+    }.run(configuration: configuration)
+  }
+
   @available(_regexAPI, *)
   @Test("Issue counts are omitted on a successful test")
   func issueCountOmittedForPassingTest() async throws {
@@ -298,20 +333,29 @@ struct EventRecorderTests {
       print(buffer, terminator: "")
     }
 
+    let testCount = Reference<Int?>()
+    let suiteCount = Reference<Int?>()
+    let issueCount = Reference<Int?>()
+    let knownIssueCount = Reference<Int?>()
+
     let runFailureRegex = Regex {
       One(.anyGraphemeCluster)
       " Test run with "
-      OneOrMore(.digit)
+      Capture(as: testCount) { OneOrMore(.digit) } transform: { Int($0) }
       " test"
+      Optionally("s")
+      " in "
+      Capture(as: suiteCount) { OneOrMore(.digit) } transform: { Int($0) }
+      " suite"
       Optionally("s")
       " failed "
       ZeroOrMore(.any)
       " with "
-      Capture { OneOrMore(.digit) } transform: { Int($0) }
+      Capture(as: issueCount) { OneOrMore(.digit) } transform: { Int($0) }
       " issue"
       Optionally("s")
       " (including "
-      Capture { OneOrMore(.digit) } transform: { Int($0) }
+      Capture(as: knownIssueCount) { OneOrMore(.digit) } transform: { Int($0) }
       " known issue"
       Optionally("s")
       ")."
@@ -322,8 +366,10 @@ struct EventRecorderTests {
         .compactMap(runFailureRegex.wholeMatch(in:))
         .first
     )
-    #expect(match.output.1 == 12)
-    #expect(match.output.2 == 5)
+    #expect(match[testCount] == 9)
+    #expect(match[suiteCount] == 2)
+    #expect(match[issueCount] == 12)
+    #expect(match[knownIssueCount] == 5)
   }
 
   @Test("Issue counts are summed correctly on run end for a test with only warning issues")
@@ -345,16 +391,24 @@ struct EventRecorderTests {
       print(buffer, terminator: "")
     }
 
+    let testCount = Reference<Int?>()
+    let suiteCount = Reference<Int?>()
+    let warningCount = Reference<Int?>()
+
     let runFailureRegex = Regex {
       One(.anyGraphemeCluster)
       " Test run with "
-      OneOrMore(.digit)
+      Capture(as: testCount) { OneOrMore(.digit) } transform: { Int($0) }
       " test"
+      Optionally("s")
+      " in "
+      Capture(as: suiteCount) { OneOrMore(.digit) } transform: { Int($0) }
+      " suite"
       Optionally("s")
       " passed "
       ZeroOrMore(.any)
       " with "
-      Capture { OneOrMore(.digit) } transform: { Int($0) }
+      Capture(as: warningCount) { OneOrMore(.digit) } transform: { Int($0) }
       " warning"
       Optionally("s")
       "."
@@ -366,7 +420,9 @@ struct EventRecorderTests {
         .first,
       "buffer: \(buffer)"
     )
-    #expect(match.output.1 == 1)
+    #expect(match[testCount] == 1)
+    #expect(match[suiteCount] == 1)
+    #expect(match[warningCount] == 1)
   }
 #endif
 
@@ -496,6 +552,35 @@ struct EventRecorderTests {
       recorder.record(Event(.issueRecorded(issue), testID: nil, testCaseID: nil), in: context)
       recorder.record(Event(.runEnded, testID: nil, testCaseID: nil), in: context)
     }
+  }
+
+  @Test(
+    "HumanReadableOutputRecorder includes known issue comment in messages array",
+    arguments: [
+      ("recordWithoutKnownIssueComment()", ["#expect comment"]),
+      ("recordWithKnownIssueComment()", ["#expect comment", "withKnownIssue comment"]),
+      ("throwWithoutKnownIssueComment()", []),
+      ("throwWithKnownIssueComment()", ["withKnownIssue comment"]),
+    ]
+  )
+  func knownIssueComments(testName: String, expectedComments: [String]) async throws {
+    var configuration = Configuration()
+    let recorder = Event.HumanReadableOutputRecorder()
+    let messages = Locked<[Event.HumanReadableOutputRecorder.Message]>(rawValue: [])
+    configuration.eventHandler = { event, context in
+      guard case .issueRecorded = event.kind else { return }
+      messages.withLock {
+        $0.append(contentsOf: recorder.record(event, in: context))
+      }
+    }
+
+    await runTestFunction(named: testName, in: PredictablyFailingKnownIssueTests.self, configuration: configuration)
+
+    // The first message is something along the lines of "Test foo recorded a
+    // known issue" and includes a source location, so is inconvenient to
+    // include in our expectation here.
+    let actualComments = messages.rawValue.dropFirst().map(\.stringValue)
+    #expect(actualComments == expectedComments)
   }
 }
 
@@ -637,5 +722,39 @@ struct EventRecorderTests {
   @Test(.hidden, arguments: [1])
   func n(_ arg: Int) {
     #expect(arg > 0)
+  }
+
+  @Suite struct PredictableSubsuite {}
+}
+
+@Suite(.hidden) struct PredictablyFailingKnownIssueTests {
+  @Test(.hidden)
+  func recordWithoutKnownIssueComment() {
+    withKnownIssue {
+      #expect(Bool(false), "#expect comment")
+    }
+  }
+
+  @Test(.hidden)
+  func recordWithKnownIssueComment() {
+    withKnownIssue("withKnownIssue comment") {
+      #expect(Bool(false), "#expect comment")
+    }
+  }
+
+  @Test(.hidden)
+  func throwWithoutKnownIssueComment() {
+    withKnownIssue {
+      struct TheError: Error {}
+      throw TheError()
+    }
+  }
+
+  @Test(.hidden)
+  func throwWithKnownIssueComment() {
+    withKnownIssue("withKnownIssue comment") {
+      struct TheError: Error {}
+      throw TheError()
+    }
   }
 }

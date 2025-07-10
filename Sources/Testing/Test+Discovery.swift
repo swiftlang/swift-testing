@@ -39,14 +39,19 @@ extension Test {
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   use it directly.
+#if compiler(>=6.2)
+  @safe
+#endif
   public static func __store(
     _ generator: @escaping @Sendable () async -> Test,
     into outValue: UnsafeMutableRawPointer,
     asTypeAt typeAddress: UnsafeRawPointer
   ) -> CBool {
+#if !hasFeature(Embedded)
     guard typeAddress.load(as: Any.Type.self) == Generator.self else {
       return false
     }
+#endif
     outValue.initializeMemory(as: Generator.self, to: .init(rawValue: generator))
     return true
   }
@@ -82,7 +87,7 @@ extension Test {
       // a task group and collate their results.
       if useNewMode {
         let generators = Generator.allTestContentRecords().lazy.compactMap { $0.load() }
-        await withTaskGroup(of: Self.self) { taskGroup in
+        await withTaskGroup { taskGroup in
           for generator in generators {
             taskGroup.addTask { await generator.rawValue() }
           }
@@ -94,7 +99,7 @@ extension Test {
       // Perform legacy test discovery if needed.
       if useLegacyMode && result.isEmpty {
         let generators = Generator.allTypeMetadataBasedTestContentRecords().lazy.compactMap { $0.load() }
-        await withTaskGroup(of: Self.self) { taskGroup in
+        await withTaskGroup { taskGroup in
           for generator in generators {
             taskGroup.addTask { await generator.rawValue() }
           }

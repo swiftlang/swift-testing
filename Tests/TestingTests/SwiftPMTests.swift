@@ -11,6 +11,10 @@
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 
+#if canImport(Foundation)
+private import Foundation
+#endif
+
 private func configurationForEntryPoint(withArguments args: [String]) throws -> Configuration {
   let args = try parseCommandLineArguments(from: args)
   return try configurationForEntryPoint(from: args)
@@ -129,7 +133,7 @@ struct SwiftPMTests {
     #expect(planTests.contains(test2))
   }
 
-  @Test(".hidden trait")
+  @Test(".hidden trait", .tags(.traitRelated))
   func hidden() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH"])
     let test1 = Test(name: "hello") {}
