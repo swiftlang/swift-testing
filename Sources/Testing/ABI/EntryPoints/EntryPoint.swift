@@ -51,12 +51,16 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     }
     configuration.verbosity = args.verbosity
 
-#if !SWT_NO_FILE_IO
-    // Configure the event recorder to write events to stderr.
-    if configuration.verbosity > .min {
-      // Use the advanced console output recorder for hierarchical display
+    if configuration.verbosity >= 0 {
       var advancedOptions = Event.AdvancedConsoleOutputRecorder.Options()
       advancedOptions.base = .for(.stderr)
+      
+      advancedOptions.base.useANSIEscapeCodes = true
+      advancedOptions.base.ansiColorBitDepth = 24
+      #if os(macOS)
+      advancedOptions.base.useSFSymbols = true
+      #endif
+      
       advancedOptions.useHierarchicalOutput = true
       
       let eventRecorder = Event.AdvancedConsoleOutputRecorder(options: advancedOptions) { string in
@@ -68,7 +72,6 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
         eventRecorder.handle(event, in: context)
       }
     }
-#endif
 
     // If the caller specified an alternate event handler, hook it up too.
     if let eventHandler {

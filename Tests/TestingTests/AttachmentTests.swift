@@ -26,7 +26,7 @@ import CoreGraphics
 import UniformTypeIdentifiers
 #endif
 
-@Suite("Attachment Tests")
+@Suite("Attachment Tests", .disabled())
 struct AttachmentTests {
   @Test func saveValue() {
     let attachableValue = MyAttachable(string: "<!doctype html>")

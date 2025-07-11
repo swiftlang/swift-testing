@@ -100,6 +100,21 @@ extension Event {
       
       /// Track suite completion to render hierarchically
       var suiteCompletionStatus: [Test.ID: (expected: Int, completed: Int)] = [:]
+      
+      /// Progress tracking
+      var totalTestCount: Int = 0
+      var completedTestCount: Int = 0
+      var showProgressBar: Bool = true
+      
+      /// Buffer hierarchy output until completion
+      var hierarchyBuffer: String = ""
+      
+      /// Simple progress tracking
+      var isRunning: Bool = false
+      var shouldShowSpinner: Bool = true
+      var spinnerIndex: Int = 0
+      var testCounter: Int = 0
+      var startTime: Test.Clock.Instant?
     }
     
     /// The hierarchical context, protected by a lock for thread safety.
@@ -128,25 +143,38 @@ extension Event.AdvancedConsoleOutputRecorder {
   private func handleWithHierarchy(_ event: borrowing Event, in eventContext: borrowing Event.Context) {
     switch event.kind {
     case .runStarted:
+      let testTargetName = extractTestTargetNameFromEventContext(eventContext)
+      let testCount = getTestCount(from: eventContext)
+      
       _context.withLock { context in
         context.runStartTime = event.instant
+        
+        if !testTargetName.isEmpty {
+          context.testTargetName = testTargetName
+        }
+        
+        // Enable spinner mode
+        context.isRunning = true
+        context.shouldShowSpinner = true 
       }
-      let testCount = getTestCount(from: eventContext)
-      #if os(macOS)
-      let runningSymbol = "􀊕" // play.circle
-      #else
-      let runningSymbol = "▶"
-      #endif
-      let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth > 1
-      let tealColor = useColors ? "\u{001B}[38;2;0;128;128m" : ""
+      
+      let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4
+      let tealColor = useColors ? "\u{001B}[96m" : ""  // teal (.default)
       let resetColor = useColors ? "\u{001B}[0m" : ""
+      
+      #if os(macOS)
+      let runningSymbol = String(Event.Symbol.default.sfSymbolCharacter)
+      #else
+      let runningSymbol = String(Event.Symbol.default.unicodeCharacter)
+      #endif
       
       let message = if testCount > 0 {
         "Running \(testCount) tests..."
       } else {
         "Running tests..."
       }
-      write("\(tealColor)\(runningSymbol)\(resetColor) \(message)\n")
+      
+      write("\n\(tealColor)\(runningSymbol) \(resetColor)\(message)\n\n")
       
     case .testStarted:
       guard let test = eventContext.test else { return }
@@ -155,27 +183,37 @@ extension Event.AdvancedConsoleOutputRecorder {
     case .testEnded:
       guard let test = eventContext.test else { return }
       handleTestEnded(test, at: event.instant)
+      renderTestResult(test)  
       
     case let .issueRecorded(issue):
       guard let test = eventContext.test else { return }
-      handleIssueRecorded(issue, for: test)
+      handleIssueRecorded(test, issue: issue, at: event.instant)
+      
+    case .valueAttached(let attachment):
+      guard let test = eventContext.test else { return }
+      handleValueAttached(test, attachment: attachment, at: event.instant)
       
     case .runEnded:
       _context.withLock { context in
         context.runEndTime = event.instant
+        context.isRunning = false
+        context.shouldShowSpinner = false
         
         if let testTargetRootIndex = context.rootNodes.firstIndex(where: { $0.name == context.testTargetName }) {
           context.allNodes[testTargetRootIndex].endTime = event.instant
         }
+        
+        // Clear spinner and show buffered hierarchy
+        write("\r\u{001B}[K\n") 
+        write(context.hierarchyBuffer)
       }
       
-      renderCompleteHierarchy()
       renderFinalSummary()
-      // No "Test run ended" message needed
       
     case .testSkipped:
       if let test = eventContext.test {
         handleTestSkipped(test, at: event.instant)
+        renderTestResult(test)
       }
       
     case .testCaseStarted, .testCaseEnded, .expectationChecked, .iterationStarted, .iterationEnded:
@@ -187,8 +225,166 @@ extension Event.AdvancedConsoleOutputRecorder {
   }
   
   private func getTestCount(from eventContext: borrowing Event.Context) -> Int {
-  
+    // Tests will be counted dynamically as they start
     return 0
+  }
+  
+  private func updateProgressBar() {
+    _context.withLock { context in
+      guard context.showProgressBar && context.totalTestCount > 0 else { return }
+      
+      let completed = max(0, context.completedTestCount)
+      let total = max(1, context.totalTestCount) 
+      let safeCompleted = min(completed, total)
+      let percentage = min(100, max(0, (safeCompleted * 100) / total))
+      
+      // Create progress bar
+      let barWidth = 30
+      let filledWidth = max(0, min(barWidth, (percentage * barWidth) / 100))
+      let emptyWidth = max(0, barWidth - filledWidth)
+      
+      guard filledWidth >= 0 && emptyWidth >= 0 && (filledWidth + emptyWidth) <= barWidth else {
+        write("\r\u{001B}[K")
+        write("Tests: \(safeCompleted)/\(total)")
+        return
+      }
+      
+      let filled = String(repeating: "█", count: filledWidth)
+      let empty = String(repeating: "░", count: emptyWidth)
+      
+      let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4
+      let progressColor = useColors ? "\u{001B}[96m" : "" 
+      let resetColor = useColors ? "\u{001B}[0m" : ""
+      
+      write("\r\u{001B}[K")
+      write("\(progressColor)[\(filled)\(empty)] \(percentage)% (\(safeCompleted)/\(total))\(resetColor)")
+    }
+  }
+  
+  private func renderCompleteHierarchy() {
+    _context.withLock { context in
+      // Render the complete hierarchical tree
+      for (index, rootNode) in context.rootNodes.enumerated() {
+        let isLastRoot = index == context.rootNodes.count - 1
+        let hierarchyOutput = renderNodeTree(rootNode, depth: 0, isLast: isLastRoot, parentPrefix: "", nodeStatusLookup: [:])
+        write(hierarchyOutput)
+      }
+    }
+  }
+  
+  private func extractTestTargetNameFromEventContext(_ eventContext: borrowing Event.Context) -> String {
+    if let test = eventContext.test {
+      return extractTestTargetName(from: test.id)
+    }
+    return ""
+  }
+  
+  private func renderTestResult(_ test: Test) {
+    _context.withLock { context in
+      guard let nodeIndex = context.nodesByID[test.id],
+            nodeIndex < context.allNodes.count else { 
+        renderTestResultFallback(test)
+        return 
+      }
+      
+      let node = context.allNodes[nodeIndex]
+      
+      let hierarchyPath = buildHierarchyPath(for: test.id)
+      let depth = hierarchyPath.count
+      let baseIndent = String(repeating: " ", count: depth * 3)
+      
+      let symbolWithColor = getSymbolWithColorForNode(node)
+      let name = node.displayName ?? node.name
+      let timing = formatTiming(node)
+      let rightAlignedTiming = formatRightAlignedTiming(timing, contentPrefix: "\(baseIndent)├─ \(symbolWithColor)\(name)")
+      
+      let output = "\(baseIndent)├─ \(symbolWithColor)\(name)\(rightAlignedTiming)\n"
+      
+      if context.isRunning && context.shouldShowSpinner {
+        // Buffer output during spinner mode
+        context.hierarchyBuffer += output
+        
+        // Show issues in buffer too
+        if !node.issues.isEmpty {
+          let issueIndent = String(repeating: " ", count: (depth + 1) * 3)
+          for (index, issue) in node.issues.enumerated() {
+            let isLastIssue = index == node.issues.count - 1
+            let issueTreePrefix = isLastIssue ? "╰─ " : "├─ "
+            let issueSymbol = getSymbolWithColorForIssue(issue)
+            context.hierarchyBuffer += "\(issueIndent)\(issueTreePrefix)\(issueSymbol)\(issue.summary)\n"
+          }
+        }
+        
+        context.testCounter += 1
+        
+        // Update spinner on its own line
+        let spinnerChars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        let spinnerChar = spinnerChars[context.spinnerIndex % spinnerChars.count]
+        context.spinnerIndex = (context.spinnerIndex + 1) % spinnerChars.count
+        
+        let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4
+        let spinnerColor = useColors ? "\u{001B}[96m" : ""  // teal
+        let resetColor = useColors ? "\u{001B}[0m" : ""
+        
+        write("\r\u{001B}[K")
+        write("\(spinnerColor)\(spinnerChar) Running tests... (\(context.testCounter) completed)\(resetColor)")
+      } else {
+        write(output)
+        
+        if !node.issues.isEmpty {
+          let issueIndent = String(repeating: " ", count: (depth + 1) * 3)
+          for (index, issue) in node.issues.enumerated() {
+            let isLastIssue = index == node.issues.count - 1
+            let issueTreePrefix = isLastIssue ? "╰─ " : "├─ "
+            let issueSymbol = getSymbolWithColorForIssue(issue)
+            write("\(issueIndent)\(issueTreePrefix)\(issueSymbol)\(issue.summary)\n")
+          }
+        }
+      }
+    }
+  }
+  
+  private func renderTestResultFallback(_ test: Test) {
+    let status: HierarchyNode.NodeStatus = .passed
+    let symbolWithColor = getSymbolWithColorForStatus(status)
+    let name = test.displayName ?? test.name
+    write("├─ \(symbolWithColor)\(name)\n")
+  }
+  
+  private func getSymbolWithColorForStatus(_ status: HierarchyNode.NodeStatus) -> String {
+    let symbol = getEventSymbolForNodeStatus(status)
+    return applyCustomColorToSymbol(symbol, for: status)
+  }
+  
+  private func buildHierarchyPath(for testID: Test.ID) -> [String] {
+    var path: [String] = []
+    var currentID: Test.ID? = testID.parent
+    
+    while let parentID = currentID {
+      let parentName = extractNameFromTestID(parentID)
+      path.insert(parentName, at: 0)
+      currentID = parentID.parent
+    }
+    
+    return path
+  }
+  
+  private func extractNameFromTestID(_ testID: Test.ID) -> String {
+    let idString = testID.description
+    let components = idString.components(separatedBy: ".")
+    return components.last ?? idString
+  }
+  
+  private func calculateTestDepth(_ testID: Test.ID, in context: HierarchyContext) -> Int {
+    var depth = 1 
+    var currentID: Test.ID? = testID.parent
+    
+    while let parentID = currentID {
+      depth += 1
+      currentID = parentID.parent
+    }
+    
+    return depth
   }
   
   private func handleTestStarted(_ test: Test, at instant: Test.Clock.Instant) {
@@ -343,7 +539,7 @@ extension Event.AdvancedConsoleOutputRecorder {
     }
   }
   
-  private func handleIssueRecorded(_ issue: Issue, for test: Test) {
+  private func handleIssueRecorded(_ test: Test, issue: Issue, at instant: Test.Clock.Instant) {
     _context.withLock { context in
       guard let nodeIndex = context.nodesByID[test.id] else { return }
       guard nodeIndex < context.allNodes.count else { return } // Safety check
@@ -355,6 +551,32 @@ extension Event.AdvancedConsoleOutputRecorder {
       )
       
       context.allNodes[nodeIndex].issues.append(issueInfo)
+    }
+  }
+  
+  private func handleValueAttached(_ test: Test, attachment: Attachment<AnyAttachable>, at instant: Test.Clock.Instant) {
+    _context.withLock { context in
+      guard let nodeIndex = context.nodesByID[test.id] else { return }
+      guard nodeIndex < context.allNodes.count else { return }
+      
+      context.overallStats.attachments += 1
+    }
+  }
+  
+  private func applyCustomColorToAttachment(_ symbol: Event.Symbol) -> String {
+    let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4
+    
+    #if os(macOS)
+    let symbolChar = String(symbol.sfSymbolCharacter)
+    #else
+    let symbolChar = String(symbol.unicodeCharacter)
+    #endif
+    
+    if useColors {
+      let colorCode = "\u{001B}[34m"   // blue
+      return "\(colorCode)\(symbolChar) \u{001B}[0m"
+    } else {
+      return "\(symbolChar) "
     }
   }
   
@@ -410,7 +632,7 @@ extension Event.AdvancedConsoleOutputRecorder {
   private func formatRightAlignedTiming(_ timing: String, contentPrefix: String) -> String {
     guard !timing.isEmpty else { return "" }
     
-    let columnWidth = 80 
+    let columnWidth = 150
     
     let cleanPrefix = contentPrefix.replacingOccurrences(of: "\u{001B}\\[[0-9;]*m", with: "", options: .regularExpression)
     
@@ -428,11 +650,10 @@ extension Event.AdvancedConsoleOutputRecorder {
   private func renderNodeTree(_ node: HierarchyNode, depth: Int, isLast: Bool, parentPrefix: String, nodeStatusLookup: [Test.ID: HierarchyNode]) -> String {
     var output = ""
     
-    let baseIndent = String(repeating: " ", count: (depth - 1) * 3)
-    let treePrefix = depth == 0 ? "" : (isLast ? "╰─ " : "├─ ")
-    let currentPrefix = baseIndent + treePrefix
+    // Build the tree prefix for this level
+    let currentPrefix = buildTreePrefix(depth: depth, isLast: false, parentPrefix: parentPrefix)
+    let finalPrefix = buildTreePrefix(depth: depth, isLast: true, parentPrefix: parentPrefix)
     
-    // For tests (not suites), render with proper timing and issues
     if !node.isSuite {
       let currentNode = nodeStatusLookup[node.id] ?? node
       let symbolWithColor = getSymbolWithColorForNode(currentNode)
@@ -443,44 +664,49 @@ extension Event.AdvancedConsoleOutputRecorder {
       output += "\(currentPrefix)\(symbolWithColor)\(name)\(rightAlignedTiming)\n"
       
       if !currentNode.issues.isEmpty {
-        let issueIndent = String(repeating: " ", count: depth * 3)
         for (index, issue) in currentNode.issues.enumerated() {
           let isLastIssue = index == currentNode.issues.count - 1
-          let issueTreePrefix = isLastIssue ? "╰─ " : "├─ "
+          let issuePrefix = buildTreePrefix(depth: depth + 1, isLast: isLastIssue, parentPrefix: currentPrefix)
           let issueSymbol = getSymbolWithColorForIssue(issue)
-          output += "\(issueIndent)\(issueTreePrefix)\(issueSymbol)\(issue.summary)\n"
+          output += "\(issuePrefix)\(issueSymbol)\(issue.summary)\n"
         }
       }
     } else {
       let suiteName = node.displayName ?? node.name
-      let cleanSuiteName = suiteName.hasSuffix("/") ? suiteName : "\(suiteName)/"
+      output += "\(currentPrefix)\(suiteName)\n"
       
-      output += "\(currentPrefix)\(cleanSuiteName)\n"
-      
-      for (index, child) in node.children.enumerated() {
-        let isLastChild = index == node.children.count - 1
-        output += renderNodeTree(child, depth: depth + 1, isLast: isLastChild, parentPrefix: "", nodeStatusLookup: nodeStatusLookup)
+      // Render all children (test cases and sub-suites)
+      for (_, child) in node.children.enumerated() {
+        let childParentPrefix = buildParentPrefix(currentPrefix)
+        
+        output += renderNodeTree(child, depth: depth + 1, isLast: false, parentPrefix: childParentPrefix, nodeStatusLookup: nodeStatusLookup)
       }
       
       let stats = calculateSuiteStatistics(node)
       if stats.passed > 0 || stats.failed > 0 || stats.skipped > 0 || stats.knownIssues > 0 || stats.warnings > 0 {
-        let summaryIndent = String(repeating: " ", count: (depth - 1) * 3)
-        let summaryPrefix = summaryIndent + "╰─ "
         let summary = generateSuiteSummary(node, stats: stats)
-        output += "\(summaryPrefix)\(summary.icon)\(summary.text)\n"
+        let suiteTiming = formatTiming(node)
+        let summaryRightAligned = formatRightAlignedTiming(suiteTiming, contentPrefix: "\(finalPrefix)\(summary.icon)\(summary.text)")
+        output += "\(finalPrefix)\(summary.icon)\(summary.text)\(summaryRightAligned)\n"
       }
     }
     
     return output
   }
   
-  private func calculateTreePrefix(depth: Int, isLast: Bool, parentPrefix: String) -> String {
+  private func buildTreePrefix(depth: Int, isLast: Bool, parentPrefix: String) -> String {
     if depth == 0 {
       return ""
     }
     
-    let connector = isLast ? "╰─" : "├─"
-    return "\(parentPrefix)\(connector) "
+    let connector = isLast ? "╰─ " : "├─ "
+    return "\(parentPrefix)\(connector)"
+  }
+  
+  private func buildParentPrefix(_ currentPrefix: String) -> String {
+    let cleanPrefix = currentPrefix.replacingOccurrences(of: "├─ ", with: "│  ")
+                                  .replacingOccurrences(of: "╰─ ", with: "   ")
+    return cleanPrefix
   }
   
   private func renderIssue(_ issue: HierarchyNode.IssueInfo, prefix: String) -> String {
@@ -489,89 +715,143 @@ extension Event.AdvancedConsoleOutputRecorder {
   }
   
   private func getSymbolWithColorForNode(_ node: HierarchyNode) -> String {
-    let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth > 1
-    
-    let (symbol, colorCode) = getSymbolAndColorForNodeStatus(node.status)
-    
-    if useColors && !colorCode.isEmpty {
-      let resetCode = "\u{001B}[0m"
-      return "\(colorCode)\(symbol)\(resetCode)"
-    } else {
-      return symbol
-    }
+    let symbol = getEventSymbolForNodeStatus(node.status)
+    return applyCustomColorToSymbol(symbol, for: node.status)
   }
   
   private func getSymbolWithColorForIssue(_ issue: HierarchyNode.IssueInfo) -> String {
-    let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth > 1
+    let symbol = getEventSymbolForIssue(issue)
+    return applyCustomColorToIssue(symbol, for: issue)
+  }
+  
+  private func applyCustomColorToSymbol(_ symbol: Event.Symbol, for status: HierarchyNode.NodeStatus) -> String {
+    let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4
     
-    let (symbol, colorCode) = getSymbolAndColorForIssue(issue)
+    #if os(macOS)
+    let symbolChar = String(symbol.sfSymbolCharacter)
+    #else
+    let symbolChar = String(symbol.unicodeCharacter)
+    #endif
     
-    if useColors && !colorCode.isEmpty {
-      let resetCode = "\u{001B}[0m"
-      return "\(colorCode)\(symbol)\(resetCode)"
+    if useColors {
+      let colorCode = getColorForNodeStatus(status)
+      return "\(colorCode)\(symbolChar) \u{001B}[0m"
     } else {
-      return symbol
+      return "\(symbolChar) "
     }
   }
   
-  private func getSymbolAndColorForNodeStatus(_ status: HierarchyNode.NodeStatus) -> (symbol: String, colorCode: String) {
+  private func applyCustomColorToIssue(_ symbol: Event.Symbol, for issue: HierarchyNode.IssueInfo) -> String {
+    let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4
+    
     #if os(macOS)
-    switch status {
-    case .running:
-      return ("􀊕 ", "\u{001B}[38;2;0;128;128m") // play.circle (teal)
-    case .passed:
-      return ("􀁢 ", "\u{001B}[38;2;0;128;0m") // checkmark.circle (green)
-    case .failed:
-      return ("􀁠 ", "\u{001B}[38;2;255;0;0m") // x.circle (red)
-    case .skipped:
-      return ("􀊄 ", "\u{001B}[38;2;128;0;128m") // forward.circle (purple)
-    case .passedWithKnownIssues(_):
-      return ("􀁠 ", "\u{001B}[38;2;128;128;128m") // x.circle (gray)
-    case .passedWithWarnings(_):
-      return ("􀁞 ", "\u{001B}[38;2;255;255;0m") // questionmark.circle (yellow)
-    }
+    let symbolChar = String(symbol.sfSymbolCharacter)
     #else
+    let symbolChar = String(symbol.unicodeCharacter)
+    #endif
+    
+    if useColors {
+      let colorCode = getColorForIssue(issue)
+      return "\(colorCode)\(symbolChar) \u{001B}[0m"
+    } else {
+      return "\(symbolChar) "
+    }
+  }
+  
+  private func getColorForNodeStatus(_ status: HierarchyNode.NodeStatus) -> String {
     switch status {
     case .running:
-      return ("▶ ", "\u{001B}[38;2;0;128;128m") // teal
+      return "\u{001B}[96m"     // teal (.default)
     case .passed:
-      return ("✓ ", "\u{001B}[38;2;0;128;0m") // green
+      return "\u{001B}[92m"     // green (.pass with no known issues)
     case .failed:
-      return ("✗ ", "\u{001B}[38;2;255;0;0m") // red
+      return "\u{001B}[91m"     // red (.fail)
     case .skipped:
-      return ("⏭ ", "\u{001B}[38;2;128;0;128m") // purple
+      return "\u{001B}[95m"     // purple (.skip)
     case .passedWithKnownIssues(_):
-      return ("x ", "\u{001B}[38;2;128;128;128m") // gray
+      return "\u{001B}[90m"     // gray (.pass with known issues)
     case .passedWithWarnings(_):
-      return ("⚠ ", "\u{001B}[38;2;255;255;0m") // yellow
+      return "\u{001B}[93m"     // yellow (.passWithWarnings)
     }
+  }
+  
+  private func getColorForIssue(_ issue: HierarchyNode.IssueInfo) -> String {
+    if issue.isKnown {
+      return "\u{001B}[90m"     // gray for known issues
+    } else {
+      switch issue.issue.kind {
+      case .expectationFailed(_):
+        return "\u{001B}[33m"     // brown for differences (.difference)
+      case .errorCaught(_):
+        return "\u{001B}[91m"     // red for errors (.fail)
+      case .unconditional:
+        return "\u{001B}[93m"     // orange for warnings (.warning)
+      case .timeLimitExceeded(_):
+        return "\u{001B}[91m"     // red for time limit (.fail)
+      case .apiMisused:
+        return "\u{001B}[93m"     // orange for API misuse (.warning)
+      case .knownIssueNotRecorded:
+        return "\u{001B}[93m"     // orange for known issue not recorded (.warning)
+      case .system:
+        return "\u{001B}[91m"     // red for system errors (.fail)
+      case .valueAttachmentFailed(_):
+        return "\u{001B}[34m"     // blue for attachments (.attachment)
+      case .confirmationMiscounted(_, _):
+        return "\u{001B}[33m"     // brown for confirmation differences (.difference)
+      }
+    }
+  }
+  
+  private func getSymbolCharacter(_ symbol: Event.Symbol) -> String {
+    #if os(macOS)
+    return String(symbol.sfSymbolCharacter)
+    #else
+    return String(symbol.unicodeCharacter)
     #endif
   }
   
-  private func getSymbolAndColorForIssue(_ issue: HierarchyNode.IssueInfo) -> (symbol: String, colorCode: String) {
-    #if os(macOS)
+  private func getEventSymbolForNodeStatus(_ status: HierarchyNode.NodeStatus) -> Event.Symbol {
+    switch status {
+    case .running:
+      return .default 
+    case .passed:
+      return .pass(knownIssueCount: 0)
+    case .failed:
+      return .fail
+    case .skipped:
+      return .skip
+    case .passedWithKnownIssues(let count):
+      return .pass(knownIssueCount: count)
+    case .passedWithWarnings(_):
+      return .passWithWarnings
+    }
+  }
+  
+  private func getEventSymbolForIssue(_ issue: HierarchyNode.IssueInfo) -> Event.Symbol {
     if issue.isKnown {
-      return ("􀁠 ", "\u{001B}[38;2;128;128;128m") // x.circle (gray) for known issues
+      return .pass(knownIssueCount: 1) 
     } else {
-      switch issue.issue.severity {
-      case .warning:
-        return ("􀇾 ", "\u{001B}[38;2;255;165;0m") // exclamationmark.circle (orange)
-      case .error:
-        return ("􀁠 ", "\u{001B}[38;2;255;0;0m") // x.circle (red)
+      switch issue.issue.kind {
+      case .expectationFailed(_):
+        return .difference
+      case .errorCaught(_):
+        return .fail
+      case .unconditional:
+        return .warning
+      case .timeLimitExceeded(_):
+        return .fail
+      case .apiMisused:
+        return .warning
+      case .knownIssueNotRecorded:
+        return .warning
+      case .system:
+        return .fail
+      case .valueAttachmentFailed(_):
+        return .attachment
+      case .confirmationMiscounted(_, _):
+        return .difference
       }
     }
-    #else
-    if issue.isKnown {
-      return ("! ", "\u{001B}[38;2;128;128;128m") // gray
-    } else {
-      switch issue.issue.severity {
-      case .warning:
-        return ("⚠ ", "\u{001B}[38;2;255;165;0m") // orange
-      case .error:
-        return ("✗ ", "\u{001B}[38;2;255;0;0m") // red
-      }
-    }
-    #endif
   }
   
   private func formatTiming(_ node: HierarchyNode) -> String {
@@ -653,39 +933,25 @@ extension Event.AdvancedConsoleOutputRecorder {
   }
   
   private func generateSuiteSummary(_ suite: HierarchyNode, stats: (passed: Int, failed: Int, skipped: Int, knownIssues: Int, warnings: Int)) -> (icon: String, text: String) {
-    let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth > 1
-    
-    // Determine overall status icon based on most severe outcome: Fail > Warning > Skip > Pass
-    let (symbol, colorCode): (String, String)
-    
-    #if os(macOS)
+    let eventSymbol: Event.Symbol
     if stats.failed > 0 {
-      (symbol, colorCode) = ("􀁠 ", "\u{001B}[38;2;255;0;0m") // x.circle (red)
+      eventSymbol = .fail
     } else if stats.warnings > 0 {
-      (symbol, colorCode) = ("􀇾 ", "\u{001B}[38;2;255;255;0m") // exclamationmark.circle (yellow)
+      eventSymbol = .passWithWarnings
     } else if stats.skipped > 0 {
-      (symbol, colorCode) = ("􀺅 ", "\u{001B}[38;2;128;0;128m") // forward.end (purple)
+      eventSymbol = .skip
     } else {
-      (symbol, colorCode) = ("􀁢 ", "\u{001B}[38;2;0;128;0m") // checkmark.circle (green)
+      eventSymbol = .pass(knownIssueCount: 0)
     }
-    #else
-    if stats.failed > 0 {
-      (symbol, colorCode) = ("✗ ", "\u{001B}[38;2;255;0;0m") // red
-    } else if stats.warnings > 0 {
-      (symbol, colorCode) = ("⚠ ", "\u{001B}[38;2;255;255;0m") // yellow
-    } else if stats.skipped > 0 {
-      (symbol, colorCode) = ("⏭ ", "\u{001B}[38;2;128;0;128m") // purple
-    } else {
-      (symbol, colorCode) = ("✓ ", "\u{001B}[38;2;0;128;0m") // green
-    }
-    #endif
+    
+    let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4
     
     let symbolWithColor: String
-    if useColors && !colorCode.isEmpty {
-      let resetCode = "\u{001B}[0m"
-      symbolWithColor = "\(colorCode)\(symbol)\(resetCode)"
+    if useColors {
+      let colorCode = getColorForSummarySymbol(eventSymbol)
+      symbolWithColor = "\(colorCode)\(getSymbolCharacter(eventSymbol))\u{001B}[0m"
     } else {
-      symbolWithColor = symbol
+      symbolWithColor = getSymbolCharacter(eventSymbol)
     }
     
     // Generate summary text in format: "X failed, Y passed in Z.ZZs"
@@ -709,14 +975,59 @@ extension Event.AdvancedConsoleOutputRecorder {
     return (icon: symbolWithColor, text: fullText)
   }
   
+  private func getColorForSummarySymbol(_ symbol: Event.Symbol) -> String {
+    switch symbol {
+    case .pass(_):
+      return "\u{001B}[92m"     // green
+    case .fail:
+      return "\u{001B}[91m"     // red
+    case .skip:
+      return "\u{001B}[95m"     // purple
+    case .passWithWarnings:
+      return "\u{001B}[93m"     // yellow
+    case .warning:
+      return "\u{001B}[93m"     // orange 
+    case .difference:
+      return "\u{001B}[33m"     // brown
+    case .details:
+      return "\u{001B}[94m"     // blue
+    case .attachment:
+      return "\u{001B}[34m"     // blue
+    case .default:
+      return "\u{001B}[96m"     // teal
+    }
+  }
+  
   private func renderFinalSummary() {
     _context.withLock { context in
-      let stats = context.overallStats
+      var actualStats = (passed: 0, failed: 0, skipped: 0, knownIssues: 0, warnings: 0, attachments: 0)
+      
+      for node in context.allNodes {
+        if !node.isSuite {
+          switch node.status {
+          case .passed:
+            actualStats.passed += 1
+          case .failed:
+            actualStats.failed += 1
+          case .skipped:
+            actualStats.skipped += 1
+          case .passedWithKnownIssues(let count):
+            actualStats.passed += 1
+            actualStats.knownIssues += count
+          case .passedWithWarnings(let count):
+            actualStats.passed += 1
+            actualStats.warnings += count
+          case .running:
+            break
+          }
+        }
+      }
+      
+      actualStats.attachments = context.overallStats.attachments
       
       // Calculate real test run duration with safety checks
       let duration: String
       if let startTime = context.runStartTime, let endTime = context.runEndTime {
-        // Safety check to prevent timing calculation issues
         if startTime <= endTime {
           let durationString = startTime.descriptionOfDuration(to: endTime)
           duration = durationString
@@ -729,184 +1040,69 @@ extension Event.AdvancedConsoleOutputRecorder {
       
       var output = "\nTests completed in \(duration)  ["
       
-      // Add color-coded symbols and counts using conditional compilation
-      let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth > 1
-      
+      let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4
       var summaryParts: [String] = []
       
-      if stats.passed > 0 {
-        #if os(macOS)
-        let (symbol, colorCode) = ("􀁢", "\u{001B}[38;2;0;128;0m")
-        #else
-        let (symbol, colorCode) = ("✓", "\u{001B}[38;2;0;128;0m")
-        #endif
-        let symbolWithColor = useColors ? "\(colorCode)\(symbol)\u{001B}[0m" : symbol
-        summaryParts.append("\(symbolWithColor) \(stats.passed)")
+      if actualStats.passed > 0 {
+        if useColors {
+          summaryParts.append("\u{001B}[92m\(getSymbolCharacter(.pass(knownIssueCount: 0)))\u{001B}[0m \(actualStats.passed)")
+        } else {
+          summaryParts.append("\(getSymbolCharacter(.pass(knownIssueCount: 0))) \(actualStats.passed)")
+        }
       }
       
-      if stats.failed > 0 {
-        #if os(macOS)
-        let (symbol, colorCode) = ("􀁠", "\u{001B}[38;2;255;0;0m")
-        #else
-        let (symbol, colorCode) = ("✗", "\u{001B}[38;2;255;0;0m")
-        #endif
-        let symbolWithColor = useColors ? "\(colorCode)\(symbol)\u{001B}[0m" : symbol
-        summaryParts.append("\(symbolWithColor) \(stats.failed)")
+      if actualStats.failed > 0 {
+        if useColors {
+          summaryParts.append("\u{001B}[91m\(getSymbolCharacter(.fail))\u{001B}[0m \(actualStats.failed)")
+        } else {
+          summaryParts.append("\(getSymbolCharacter(.fail)) \(actualStats.failed)")
+        }
       }
       
-      if stats.warnings > 0 {
-        #if os(macOS)
-        let (symbol, colorCode) = ("􀇾", "\u{001B}[38;2;255;255;0m")
-        #else
-        let (symbol, colorCode) = ("⚠", "\u{001B}[38;2;255;255;0m")
-        #endif
-        let symbolWithColor = useColors ? "\(colorCode)\(symbol)\u{001B}[0m" : symbol
-        summaryParts.append("\(symbolWithColor) \(stats.warnings)")
+      if actualStats.warnings > 0 {
+        if useColors {
+          summaryParts.append("\u{001B}[93m\(getSymbolCharacter(.warning))\u{001B}[0m \(actualStats.warnings)")
+        } else {
+          summaryParts.append("\(getSymbolCharacter(.warning)) \(actualStats.warnings)")
+        }
       }
       
-      if stats.skipped > 0 {
-        #if os(macOS)
-        let (symbol, colorCode) = ("􀺅", "\u{001B}[38;2;128;0;128m")
-        #else
-        let (symbol, colorCode) = ("⏭", "\u{001B}[38;2;128;0;128m")
-        #endif
-        let symbolWithColor = useColors ? "\(colorCode)\(symbol)\u{001B}[0m" : symbol
-        summaryParts.append("\(symbolWithColor) \(stats.skipped)")
+      if actualStats.skipped > 0 {
+        if useColors {
+          summaryParts.append("\u{001B}[95m\(getSymbolCharacter(.skip))\u{001B}[0m \(actualStats.skipped)")
+        } else {
+          summaryParts.append("\(getSymbolCharacter(.skip)) \(actualStats.skipped)")
+        }
       }
       
-      if stats.knownIssues > 0 {
-        #if os(macOS)
-        let (symbol, colorCode) = ("􀁠", "\u{001B}[38;2;128;128;128m")
-        #else
-        let (symbol, colorCode) = ("!", "\u{001B}[38;2;128;128;128m")
-        #endif
-        let symbolWithColor = useColors ? "\(colorCode)\(symbol)\u{001B}[0m" : symbol
-        summaryParts.append("\(symbolWithColor) \(stats.knownIssues)")
+      if actualStats.knownIssues > 0 {
+        if useColors {
+          summaryParts.append("\u{001B}[90m\(getSymbolCharacter(.pass(knownIssueCount: 1)))\u{001B}[0m \(actualStats.knownIssues)")
+        } else {
+          summaryParts.append("\(getSymbolCharacter(.pass(knownIssueCount: 1))) \(actualStats.knownIssues)")
+        }
       }
       
-      if stats.attachments > 0 {
-        #if os(macOS)
-        let (symbol, colorCode) = ("􀈷", "\u{001B}[38;2;128;128;128m")
-        #else
-        let (symbol, colorCode) = ("📎", "\u{001B}[38;2;128;128;128m")
-        #endif
-        let symbolWithColor = useColors ? "\(colorCode)\(symbol)\u{001B}[0m" : symbol
-        summaryParts.append("\(symbolWithColor) \(stats.attachments)")
+      if actualStats.attachments > 0 {
+        if useColors {
+          summaryParts.append("\u{001B}[34m\(getSymbolCharacter(.attachment))\u{001B}[0m \(actualStats.attachments)")
+        } else {
+          summaryParts.append("\(getSymbolCharacter(.attachment)) \(actualStats.attachments)")
+        }
       }
       
       output += summaryParts.joined(separator: ", ")
       output += "]\n"
       
-      // Add failure explanation if there were failures
-      if stats.failed > 0 {
-        output += "\nFailure explanation - see details below\n"
+      if actualStats.failed > 0 {
+        if options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4 {
+          output += "\n\u{001B}[91mFailure explanation - see details below\u{001B}[0m\n"
+        } else {
+          output += "\nFailure explanation - see details below\n"
+        }
       }
       
       write(output)
     }
-  }
-  
-  private func renderCompleteHierarchy() {
-    _context.withLock { context in
-      guard let testTargetName = context.testTargetName else { return }
-      
-      var nodeStatusLookup: [Test.ID: HierarchyNode] = [:]
-      for node in context.allNodes {
-        nodeStatusLookup[node.id] = node
-      }
-      
-      let hierarchicalOutput = buildHierarchyFromNodes(context.allNodes, testTargetName: testTargetName, nodeStatusLookup: nodeStatusLookup)
-      write(hierarchicalOutput)
-    }
-  }
-  
-  private func buildHierarchyFromNodes(_ allNodes: [HierarchyNode], testTargetName: String, nodeStatusLookup: [Test.ID: HierarchyNode]) -> String {
-    var output = ""
-    
-    output += "\(testTargetName):\n"
-    
-    var topLevelSuites: [HierarchyNode] = []
-    var orphanedTests: [HierarchyNode] = []
-    
-    for node in allNodes {
-      if node.name == testTargetName {
-        continue
-      }
-      
-      // Check if this is a top-level suite or test
-      if node.isSuite {
-        let nodeIDString = node.id.description
-        let components = nodeIDString.components(separatedBy: ".")
-        
-        // If the suite appears to be a direct child of the test target
-        if components.count >= 2 && components[0] == testTargetName {
-          topLevelSuites.append(node)
-        }
-      } else {
-        if node.id.parent == nil {
-          orphanedTests.append(node)
-        }
-      }
-    }
-    
-    if topLevelSuites.isEmpty {
-      var suiteGroups: [String: [HierarchyNode]] = [:]
-      
-      for node in allNodes {
-        if node.name == testTargetName { continue }
-        
-        if let parentID = node.id.parent {
-          let parentKey = parentID.description
-          if suiteGroups[parentKey] == nil {
-            suiteGroups[parentKey] = []
-          }
-          suiteGroups[parentKey]?.append(node)
-        } else {
-          let currentNode = nodeStatusLookup[node.id] ?? node
-          let timing = formatTiming(currentNode)
-          let symbolWithColor = getSymbolWithColorForNode(currentNode)
-          let rightAlignedTiming = formatRightAlignedTiming(timing, contentPrefix: "├─ \(symbolWithColor)\(currentNode.displayName ?? currentNode.name)")
-          output += "├─ \(symbolWithColor)\(currentNode.displayName ?? currentNode.name)\(rightAlignedTiming)\n"
-        }
-      }
-      
-      let sortedSuiteKeys = Array(suiteGroups.keys).sorted()
-      for (index, suiteKey) in sortedSuiteKeys.enumerated() {
-        let isLast = index == sortedSuiteKeys.count - 1
-        let connector = isLast ? "╰─ " : "├─ "
-        
-        if let suiteTests = suiteGroups[suiteKey] {
-          let suiteComponents = suiteKey.components(separatedBy: ".")
-          let suiteName = suiteComponents.last ?? suiteKey
-          output += "\(connector)\(suiteName)/\n"
-          
-          for (testIndex, test) in suiteTests.enumerated() {
-            let isLastTest = testIndex == suiteTests.count - 1
-            let testConnector = isLastTest ? "╰─ " : "├─ "
-            let testIndent = "   "
-            let currentTest = nodeStatusLookup[test.id] ?? test
-            let symbolWithColor = getSymbolWithColorForNode(currentTest)
-            let timing = formatTiming(currentTest)
-            let rightAlignedTiming = formatRightAlignedTiming(timing, contentPrefix: "\(testIndent)\(testConnector)\(symbolWithColor)\(currentTest.displayName ?? currentTest.name)")
-            output += "\(testIndent)\(testConnector)\(symbolWithColor)\(currentTest.displayName ?? currentTest.name)\(rightAlignedTiming)\n"
-          }
-        }
-      }
-    } else {
-      for (index, suite) in topLevelSuites.enumerated() {
-        let isLast = index == topLevelSuites.count - 1
-        output += renderNodeTree(suite, depth: 1, isLast: isLast, parentPrefix: "", nodeStatusLookup: nodeStatusLookup)
-      }
-    }
-    
-    for orphan in orphanedTests {
-      let currentOrphan = nodeStatusLookup[orphan.id] ?? orphan
-      let symbolWithColor = getSymbolWithColorForNode(currentOrphan)
-      let timing = formatTiming(currentOrphan)
-      let rightAlignedTiming = formatRightAlignedTiming(timing, contentPrefix: "├─ \(symbolWithColor)\(currentOrphan.displayName ?? currentOrphan.name)")
-      output += "├─ \(symbolWithColor)\(currentOrphan.displayName ?? currentOrphan.name)\(rightAlignedTiming)\n"
-    }
-    
-    return output
   }
 } 
