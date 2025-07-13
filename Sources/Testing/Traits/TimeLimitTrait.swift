@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 /// A type that defines a time limit to apply to a test.
 ///
 /// To add this trait to a test, use ``Trait/timeLimit(_:)-4kzjp``.
@@ -126,7 +128,7 @@ extension TimeLimitTrait.Duration {
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func seconds(_ seconds: some BinaryInteger) -> Self {
-    fatalError("Unsupported")
+    swt_unreachable()
   }
 
   /// Construct a time limit duration given a number of seconds.
@@ -134,7 +136,7 @@ extension TimeLimitTrait.Duration {
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func seconds(_ seconds: Double) -> Self {
-    fatalError("Unsupported")
+    swt_unreachable()
   }
 
   /// Construct a time limit duration given a number of milliseconds.
@@ -142,7 +144,7 @@ extension TimeLimitTrait.Duration {
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func milliseconds(_ milliseconds: some BinaryInteger) -> Self {
-    fatalError("Unsupported")
+    swt_unreachable()
   }
 
   /// Construct a time limit duration given a number of milliseconds.
@@ -150,7 +152,7 @@ extension TimeLimitTrait.Duration {
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func milliseconds(_ milliseconds: Double) -> Self {
-    fatalError("Unsupported")
+    swt_unreachable()
   }
 
   /// Construct a time limit duration given a number of microseconds.
@@ -158,7 +160,7 @@ extension TimeLimitTrait.Duration {
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func microseconds(_ microseconds: some BinaryInteger) -> Self {
-    fatalError("Unsupported")
+    swt_unreachable()
   }
 
   /// Construct a time limit duration given a number of microseconds.
@@ -166,7 +168,7 @@ extension TimeLimitTrait.Duration {
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func microseconds(_ microseconds: Double) -> Self {
-    fatalError("Unsupported")
+    swt_unreachable()
   }
 
   /// Construct a time limit duration given a number of nanoseconds.
@@ -174,7 +176,7 @@ extension TimeLimitTrait.Duration {
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func nanoseconds(_ nanoseconds: some BinaryInteger) -> Self {
-    fatalError("Unsupported")
+    swt_unreachable()
   }
 }
 
@@ -264,7 +266,7 @@ func withTimeLimit(
   _ body: @escaping @Sendable () async throws -> Void,
   timeoutHandler: @escaping @Sendable () -> Void
 ) async throws {
-  try await withThrowingTaskGroup(of: Void.self) { group in
+  try await withThrowingTaskGroup { group in
     group.addTask {
       // If sleep() returns instead of throwing a CancellationError, that means
       // the timeout was reached before this task could be cancelled, so call

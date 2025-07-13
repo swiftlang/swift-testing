@@ -72,6 +72,14 @@ the test when the code doesn't satisfy a requirement, use
 - ``require(throws:_:sourceLocation:performing:)-4djuw``
 - ``require(_:sourceLocation:performing:throws:)``
 
+### Checking how processes exit
+
+- <doc:exit-testing>
+- ``expect(processExitsWith:observing:_:sourceLocation:performing:)``
+- ``require(processExitsWith:observing:_:sourceLocation:performing:)``
+- ``ExitStatus``
+- ``ExitTest``
+
 ### Confirming that asynchronous events occur
 
 - <doc:testing-asynchronous-code>

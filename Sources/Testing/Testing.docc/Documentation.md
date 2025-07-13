@@ -69,3 +69,7 @@ their problems.
 ### Test customization
 
 - <doc:Traits>
+
+### Data collection
+
+- <doc:Attachments>

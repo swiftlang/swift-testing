@@ -39,14 +39,19 @@ extension Test {
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   use it directly.
+#if compiler(>=6.2)
+  @safe
+#endif
   public static func __store(
     _ generator: @escaping @Sendable () async -> Test,
     into outValue: UnsafeMutableRawPointer,
     asTypeAt typeAddress: UnsafeRawPointer
   ) -> CBool {
+#if !hasFeature(Embedded)
     guard typeAddress.load(as: Any.Type.self) == Generator.self else {
       return false
     }
+#endif
     outValue.initializeMemory(as: Generator.self, to: .init(rawValue: generator))
     return true
   }
@@ -64,7 +69,7 @@ extension Test {
       // Walk all test content and gather generator functions, then call them in
       // a task group and collate their results.
       let generators = Generator.allTestContentRecords().lazy.compactMap { $0.load() }
-      await withTaskGroup(of: Self.self) { taskGroup in
+      await withTaskGroup { taskGroup in
         for generator in generators {
           taskGroup.addTask { await generator.rawValue() }
         }

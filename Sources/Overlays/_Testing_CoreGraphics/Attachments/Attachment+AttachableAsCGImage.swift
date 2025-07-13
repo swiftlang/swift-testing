@@ -11,8 +11,8 @@
 #if SWT_TARGET_OS_APPLE && canImport(CoreGraphics)
 @_spi(Experimental) public import Testing
 
-public import UniformTypeIdentifiers
-
+@_spi(Experimental)
+@available(_uttypesAPI, *)
 extension Attachment {
   /// Initialize an instance of this type that encloses the given image.
   ///
@@ -22,47 +22,7 @@ extension Attachment {
   ///   - preferredName: The preferred name of the attachment when writing it
   ///     to a test report or to disk. If `nil`, the testing library attempts
   ///     to derive a reasonable filename for the attached value.
-  ///   - contentType: The image format with which to encode `attachableValue`.
-  ///     If this type does not conform to [`UTType.image`](https://developer.apple.com/documentation/uniformtypeidentifiers/uttype-swift.struct/image),
-  ///     the result is undefined. Pass `nil` to let the testing library decide
-  ///     which image format to use.
-  ///   - encodingQuality: The encoding quality to use when encoding the image.
-  ///     If the image format used for encoding (specified by the `contentType`
-  ///     argument) does not support variable-quality encoding, the value of
-  ///     this argument is ignored.
-  ///   - sourceLocation: The source location of the call to this initializer.
-  ///     This value is used when recording issues associated with the
-  ///     attachment.
-  ///
-  /// This is the designated initializer for this type when attaching an image
-  /// that conforms to ``AttachableAsCGImage``.
-  fileprivate init<T>(
-    attachableValue: T,
-    named preferredName: String?,
-    contentType: (any Sendable)?,
-    encodingQuality: Float,
-    sourceLocation: SourceLocation
-  ) where AttachableValue == _AttachableImageContainer<T> {
-    let imageContainer = _AttachableImageContainer(image: attachableValue, encodingQuality: encodingQuality, contentType: contentType)
-    self.init(imageContainer, named: preferredName, sourceLocation: sourceLocation)
-  }
-
-  /// Initialize an instance of this type that encloses the given image.
-  ///
-  /// - Parameters:
-  ///   - attachableValue: The value that will be attached to the output of
-  ///     the test run.
-  ///   - preferredName: The preferred name of the attachment when writing it
-  ///     to a test report or to disk. If `nil`, the testing library attempts
-  ///     to derive a reasonable filename for the attached value.
-  ///   - contentType: The image format with which to encode `attachableValue`.
-  ///     If this type does not conform to [`UTType.image`](https://developer.apple.com/documentation/uniformtypeidentifiers/uttype-swift.struct/image),
-  ///     the result is undefined. Pass `nil` to let the testing library decide
-  ///     which image format to use.
-  ///   - encodingQuality: The encoding quality to use when encoding the image.
-  ///     If the image format used for encoding (specified by the `contentType`
-  ///     argument) does not support variable-quality encoding, the value of
-  ///     this argument is ignored.
+  ///   - imageFormat: The image format with which to encode `attachableValue`.
   ///   - sourceLocation: The source location of the call to this initializer.
   ///     This value is used when recording issues associated with the
   ///     attachment.
@@ -71,46 +31,63 @@ extension Attachment {
   /// ``AttachableAsCGImage`` protocol and can be attached to a test:
   ///
   /// - [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage)
-  @_spi(Experimental)
-  @available(_uttypesAPI, *)
+  /// - [`CIImage`](https://developer.apple.com/documentation/coreimage/ciimage)
+  /// - [`NSImage`](https://developer.apple.com/documentation/appkit/nsimage)
+  ///   (macOS)
+  ///
+  /// The testing library uses the image format specified by `imageFormat`. Pass
+  /// `nil` to let the testing library decide which image format to use. If you
+  /// pass `nil`, then the image format that the testing library uses depends on
+  /// the path extension you specify in `preferredName`, if any. If you do not
+  /// specify a path extension, or if the path extension you specify doesn't
+  /// correspond to an image format the operating system knows how to write, the
+  /// testing library selects an appropriate image format for you.
   public init<T>(
     _ attachableValue: T,
     named preferredName: String? = nil,
-    as contentType: UTType?,
-    encodingQuality: Float = 1.0,
+    as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) where AttachableValue == _AttachableImageContainer<T> {
-    self.init(attachableValue: attachableValue, named: preferredName, contentType: contentType, encodingQuality: encodingQuality, sourceLocation: sourceLocation)
+  ) where AttachableValue == _AttachableImageWrapper<T> {
+    let imageWrapper = _AttachableImageWrapper(image: attachableValue, imageFormat: imageFormat)
+    self.init(imageWrapper, named: preferredName, sourceLocation: sourceLocation)
   }
 
-  /// Initialize an instance of this type that encloses the given image.
+  /// Attach an image to the current test.
   ///
   /// - Parameters:
-  ///   - attachableValue: The value that will be attached to the output of
-  ///     the test run.
-  ///   - preferredName: The preferred name of the attachment when writing it
-  ///     to a test report or to disk. If `nil`, the testing library attempts
-  ///     to derive a reasonable filename for the attached value.
-  ///   - encodingQuality: The encoding quality to use when encoding the image.
-  ///     If the image format used for encoding (specified by the `contentType`
-  ///     argument) does not support variable-quality encoding, the value of
-  ///     this argument is ignored.
-  ///   - sourceLocation: The source location of the call to this initializer.
-  ///     This value is used when recording issues associated with the
-  ///     attachment.
+  ///   - image: The value to attach.
+  ///   - preferredName: The preferred name of the attachment when writing it to
+  ///     a test report or to disk. If `nil`, the testing library attempts to
+  ///     derive a reasonable filename for the attached value.
+  ///   - imageFormat: The image format with which to encode `attachableValue`.
+  ///   - sourceLocation: The source location of the call to this function.
+  ///
+  /// This function creates a new instance of ``Attachment`` wrapping `image`
+  /// and immediately attaches it to the current test.
   ///
   /// The following system-provided image types conform to the
   /// ``AttachableAsCGImage`` protocol and can be attached to a test:
   ///
   /// - [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage)
-  @_spi(Experimental)
-  public init<T>(
-    _ attachableValue: T,
+  /// - [`CIImage`](https://developer.apple.com/documentation/coreimage/ciimage)
+  /// - [`NSImage`](https://developer.apple.com/documentation/appkit/nsimage)
+  ///   (macOS)
+  ///
+  /// The testing library uses the image format specified by `imageFormat`. Pass
+  /// `nil` to let the testing library decide which image format to use. If you
+  /// pass `nil`, then the image format that the testing library uses depends on
+  /// the path extension you specify in `preferredName`, if any. If you do not
+  /// specify a path extension, or if the path extension you specify doesn't
+  /// correspond to an image format the operating system knows how to write, the
+  /// testing library selects an appropriate image format for you.
+  public static func record<T>(
+    _ image: consuming T,
     named preferredName: String? = nil,
-    encodingQuality: Float = 1.0,
+    as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) where AttachableValue == _AttachableImageContainer<T> {
-    self.init(attachableValue: attachableValue, named: preferredName, contentType: nil, encodingQuality: encodingQuality, sourceLocation: sourceLocation)
+  ) where AttachableValue == _AttachableImageWrapper<T> {
+    let attachment = Self(image, named: preferredName, as: imageFormat, sourceLocation: sourceLocation)
+    Self.record(attachment, sourceLocation: sourceLocation)
   }
 }
 #endif

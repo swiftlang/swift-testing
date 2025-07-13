@@ -49,12 +49,12 @@ public struct Issue: Sendable {
     ///
     /// - Parameters:
     ///   - timeLimitComponents: The time limit reached by the test.
-    //
-    // @Comment {
-    //   - Bug: The associated value of this enumeration case should be an
-    //     instance of `Duration`, but the testing library's deployment target
-    //     predates the introduction of that type.
-    // }
+    ///
+    /// @Comment {
+    ///   - Bug: The associated value of this enumeration case should be an
+    ///     instance of `Duration`, but the testing library's deployment target
+    ///     predates the introduction of that type.
+    /// }
     indirect case timeLimitExceeded(timeLimitComponents: (seconds: Int64, attoseconds: Int64))
 
     /// A known issue was expected, but was not recorded.
@@ -65,7 +65,6 @@ public struct Issue: Sendable {
     ///
     /// - Parameters:
     ///   - error: The error which was associated with this issue.
-    @_spi(Experimental)
     case valueAttachmentFailed(_ error: any Error)
 
     /// An issue occurred due to misuse of the testing library.
@@ -104,6 +103,21 @@ public struct Issue: Sendable {
   /// The severity of this issue.
   @_spi(Experimental)
   public var severity: Severity
+  
+  /// Whether or not this issue should cause the test it's associated with to be
+  /// considered a failure.
+  ///
+  /// The value of this property is `true` for issues which have a severity level of
+  /// ``Issue/Severity/error`` or greater and are not known issues via
+  /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
+  /// Otherwise, the value of this property is `false.`
+  ///
+  /// Use this property to determine if an issue should be considered a failure, instead of
+  /// directly comparing the value of the ``severity`` property.
+  @_spi(Experimental)
+  public var isFailure: Bool {
+    return !self.isKnown && self.severity >= .error
+  }
 
   /// Any comments provided by the developer and associated with this issue.
   ///
@@ -115,9 +129,29 @@ public struct Issue: Sendable {
   @_spi(ForToolsIntegrationOnly)
   public var sourceContext: SourceContext
 
+  /// A type representing a
+  /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)`` call
+  /// that matched an issue.
+  @_spi(ForToolsIntegrationOnly)
+  public struct KnownIssueContext: Sendable {
+    /// The comment that was passed to
+    /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
+    public var comment: Comment?
+  }
+
+  /// A ``KnownIssueContext-swift.struct`` representing the
+  /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)`` call
+  /// that matched this issue, if any.
+  @_spi(ForToolsIntegrationOnly)
+  public var knownIssueContext: KnownIssueContext? = nil
+
   /// Whether or not this issue is known to occur.
   @_spi(ForToolsIntegrationOnly)
-  public var isKnown: Bool = false
+  public var isKnown: Bool {
+    get { knownIssueContext != nil }
+    @available(*, deprecated, message: "Setting this property has no effect.")
+    set {}
+  }
 
   /// Initialize an issue instance with the specified details.
   ///
@@ -400,12 +434,12 @@ extension Issue.Kind {
     ///
     /// - Parameters:
     ///   - timeLimitComponents: The time limit reached by the test.
-    //
-    // @Comment {
-    //   - Bug: The associated value of this enumeration case should be an
-    //     instance of `Duration`, but the testing library's deployment target
-    //     predates the introduction of that type.
-    // }
+    ///
+    /// @Comment {
+    ///   - Bug: The associated value of this enumeration case should be an
+    ///     instance of `Duration`, but the testing library's deployment target
+    ///     predates the introduction of that type.
+    /// }
     indirect case timeLimitExceeded(timeLimitComponents: (seconds: Int64, attoseconds: Int64))
 
     /// A known issue was expected, but was not recorded.

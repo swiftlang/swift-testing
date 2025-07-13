@@ -41,7 +41,7 @@ extension os_unfair_lock_s: Lockable {
 typealias pthread_mutex_t = _TestingInternals.pthread_mutex_t?
 #endif
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded)) || os(FreeBSD) || os(OpenBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(Android) || (os(WASI) && _runtime(_multithreaded)) || os(FreeBSD) || os(OpenBSD)
 extension pthread_mutex_t: Lockable {
   static func initializeLock(at lock: UnsafeMutablePointer<Self>) {
     _ = pthread_mutex_init(lock, nil)
@@ -83,7 +83,7 @@ extension SRWLOCK: Lockable {
 
 #if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK
 typealias DefaultLock = os_unfair_lock
-#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(Android) || (os(WASI) && compiler(>=6.1) && _runtime(_multithreaded)) || os(FreeBSD) || os(OpenBSD)
+#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(Android) || (os(WASI) && _runtime(_multithreaded)) || os(FreeBSD) || os(OpenBSD)
 typealias DefaultLock = pthread_mutex_t
 #elseif os(Windows)
 typealias DefaultLock = SRWLOCK
@@ -93,15 +93,4 @@ typealias DefaultLock = Never
 #else
 #warning("Platform-specific implementation missing: locking unavailable")
 typealias DefaultLock = Never
-#endif
-
-#if SWT_NO_DYNAMIC_LINKING
-/// A function which, when called by another file, ensures that the file in
-/// which ``DefaultLock`` is declared is linked.
-///
-/// When static linking is used, the linker may opt to strip some or all of the
-/// symbols (including protocol conformance metadata) declared in this file.
-/// ``LockedWith`` calls this function in ``LockedWith/init(rawValue:)`` to work
-/// around that issue.
-func linkLockImplementations() {}
 #endif

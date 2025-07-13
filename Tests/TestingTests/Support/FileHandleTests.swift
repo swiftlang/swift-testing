@@ -85,7 +85,7 @@ struct FileHandleTests {
 #if !SWT_NO_EXIT_TESTS
   @Test("Writing requires contiguous storage")
   func writeIsContiguous() async {
-    await #expect(exitsWith: .failure) {
+    await #expect(processExitsWith: .failure) {
       let fileHandle = try FileHandle.null(mode: "wb")
       try fileHandle.write([1, 2, 3, 4, 5].lazy.filter { $0 == 1 })
     }
@@ -201,6 +201,17 @@ struct FileHandleTests {
 #endif
   }
 #endif
+
+  @Test("Root directory path is correct")
+  func rootDirectoryPathIsCorrect() throws {
+#if os(Windows)
+    if let systemDrive = Environment.variable(named: "SYSTEMDRIVE") {
+      #expect(rootDirectoryPath.starts(with: systemDrive))
+    }
+#else
+    #expect(rootDirectoryPath == "/")
+#endif
+  }
 }
 
 // MARK: - Fixtures

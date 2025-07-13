@@ -61,7 +61,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     }
 
     // The @Test attribute is only supported on function declarations.
-    guard let function = declaration.as(FunctionDeclSyntax.self) else {
+    guard let function = declaration.as(FunctionDeclSyntax.self), !function.isOperator else {
       diagnostics.append(.attributeNotSupported(testAttribute, on: declaration))
       return false
     }
@@ -160,6 +160,8 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       for (label, parameter) in parametersWithLabels {
         if parameter.firstName.tokenKind == .wildcard {
           LabeledExprSyntax(expression: label)
+        } else if let rawIdentifier = parameter.firstName.rawIdentifier {
+          LabeledExprSyntax(label: "`\(rawIdentifier)`", expression: label)
         } else {
           LabeledExprSyntax(label: parameter.firstName.textWithoutBackticks, expression: label)
         }
@@ -246,17 +248,17 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // detecting isolation to other global actors.
     lazy var isMainActorIsolated = !functionDecl.attributes(named: "MainActor", inModuleNamed: "_Concurrency").isEmpty
     var forwardCall: (ExprSyntax) -> ExprSyntax = {
-      "try await Testing.__requiringTry(Testing.__requiringAwait(\($0)))"
+      applyEffectfulKeywords([.try, .await, .unsafe], to: $0)
     }
     let forwardInit = forwardCall
     if functionDecl.noasyncAttribute != nil {
       if isMainActorIsolated {
         forwardCall = {
-          "try await MainActor.run { try Testing.__requiringTry(\($0)) }"
+          "try await MainActor.run { \(applyEffectfulKeywords([.try, .unsafe], to: $0)) }"
         }
       } else {
         forwardCall = {
-          "try { try Testing.__requiringTry(\($0)) }()"
+          "try { \(applyEffectfulKeywords([.try, .unsafe], to: $0)) }()"
         }
       }
     }
@@ -328,7 +330,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
         }
         FunctionParameterSyntax(
           firstName: .wildcardToken(),
-          type: "isolated (any Actor)?" as TypeSyntax,
+          type: "isolated (any _Concurrency.Actor)?" as TypeSyntax,
           defaultValue: InitializerClauseSyntax(value: "Testing.__defaultSynchronousIsolationContext" as ExprSyntax)
         )
       }

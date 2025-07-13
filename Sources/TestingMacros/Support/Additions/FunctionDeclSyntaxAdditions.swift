@@ -34,6 +34,16 @@ extension FunctionDeclSyntax {
       .contains(.keyword(.nonisolated))
   }
 
+  /// Whether or not this function declares an operator.
+  var isOperator: Bool {
+    switch name.tokenKind {
+    case .binaryOperator, .prefixOperator, .postfixOperator:
+      true
+    default:
+      false
+    }
+  }
+
   /// The name of this function including parentheses, parameter labels, and
   /// colons.
   var completeName: DeclReferenceExprSyntax {
@@ -176,5 +186,17 @@ extension FunctionParameterSyntax {
     // trying to obtain the base type to reference it in an expression.
     let baseType = type.as(AttributedTypeSyntax.self)?.baseType ?? type
     return baseType.trimmedDescription
+  }
+}
+
+// MARK: -
+
+extension ExprSyntax {
+  /// An expression representing an unreachable code path.
+  ///
+  /// Use this expression when a macro will emit an error diagnostic but the
+  /// compiler still requires us to produce a valid expression.
+  static var unreachable: Self {
+    #"Swift.fatalError("Unreachable")"#
   }
 }

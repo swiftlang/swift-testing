@@ -27,7 +27,7 @@ extension ABI {
       case testStarted
       case testCaseStarted
       case issueRecorded
-      case valueAttached = "_valueAttached"
+      case valueAttached
       case testCaseEnded
       case testEnded
       case testSkipped
@@ -50,9 +50,7 @@ extension ABI {
     ///
     /// The value of this property is `nil` unless the value of the
     /// ``kind-swift.property`` property is ``Kind-swift.enum/valueAttached``.
-    ///
-    /// - Warning: Attachments are not yet part of the JSON schema.
-    var _attachment: EncodedAttachment<V>?
+    var attachment: EncodedAttachment<V>?
 
     /// Human-readable messages associated with this event that can be presented
     /// to the user.
@@ -82,7 +80,7 @@ extension ABI {
         issue = EncodedIssue(encoding: recordedIssue, in: eventContext)
       case let .valueAttached(attachment):
         kind = .valueAttached
-        _attachment = EncodedAttachment(encoding: attachment, in: eventContext)
+        self.attachment = EncodedAttachment(encoding: attachment, in: eventContext)
       case .testCaseEnded:
         if eventContext.test?.isParameterized == false {
           return nil

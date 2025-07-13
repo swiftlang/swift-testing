@@ -117,11 +117,11 @@ struct PlanIterationTests {
 #if !SWT_NO_EXIT_TESTS
   @Test("Iteration count must be positive")
   func positiveIterationCount() async {
-    await #expect(exitsWith: .failure) {
+    await #expect(processExitsWith: .failure) {
       var configuration = Configuration()
       configuration.repetitionPolicy.maximumIterationCount = 0
     }
-    await #expect(exitsWith: .failure) {
+    await #expect(processExitsWith: .failure) {
       var configuration = Configuration()
       configuration.repetitionPolicy.maximumIterationCount = -1
     }

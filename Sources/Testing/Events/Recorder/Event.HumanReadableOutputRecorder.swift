@@ -36,7 +36,7 @@ extension Event {
 
     /// A type that contains mutable context for
     /// ``Event/ConsoleOutputRecorder``.
-    private struct _Context {
+    fileprivate struct Context {
       /// The instant at which the run started.
       var runStartInstant: Test.Clock.Instant?
 
@@ -51,6 +51,17 @@ extension Event {
       /// The number of test suites started or skipped during the run.
       var suiteCount = 0
 
+      /// An enumeration describing the various keys which can be used in a test
+      /// data graph for an output recorder.
+      enum TestDataKey: Hashable {
+        /// A string key, typically containing one key from the key path
+        /// representation of a ``Test/ID`` instance.
+        case string(String)
+
+        /// A test case ID.
+        case testCaseID(Test.Case.ID)
+      }
+
       /// A type describing data tracked on a per-test basis.
       struct TestData {
         /// The instant at which the test started.
@@ -62,18 +73,15 @@ extension Event {
 
         /// The number of known issues recorded for the test.
         var knownIssueCount = 0
-        
-        /// The number of test cases for the test.
-        var testCasesCount = 0
       }
 
       /// Data tracked on a per-test basis.
-      var testData = Graph<String, TestData?>()
+      var testData = Graph<TestDataKey, TestData?>()
     }
 
     /// This event recorder's mutable context about events it has received,
     /// which may be used to inform how subsequent events are written.
-    private var _context = Locked(rawValue: _Context())
+    private var _context = Locked(rawValue: Context())
 
     /// Initialize a new human-readable event recorder.
     ///
@@ -93,10 +101,20 @@ extension Event.HumanReadableOutputRecorder {
   /// - Parameters:
   ///   - comments: The comments that should be formatted.
   ///
-  /// - Returns: A formatted string representing `comments`, or `nil` if there
-  ///   are none.
+  /// - Returns: An array of formatted messages representing `comments`, or an
+  ///   empty array if there are none.
   private func _formattedComments(_ comments: [Comment]) -> [Message] {
-    comments.map { Message(symbol: .details, stringValue: $0.rawValue) }
+    comments.map(_formattedComment)
+  }
+
+  /// Get a string representing a single comment, formatted for output.
+  ///
+  /// - Parameters:
+  ///   - comment: The comment that should be formatted.
+  ///
+  /// - Returns: A formatted message representing `comment`.
+  private func _formattedComment(_ comment: Comment) -> Message {
+    Message(symbol: .details, stringValue: comment.rawValue)
   }
 
   /// Get a string representing the comments attached to a test, formatted for
@@ -118,7 +136,9 @@ extension Event.HumanReadableOutputRecorder {
   ///   - graph: The graph to walk while counting issues.
   ///
   /// - Returns: A tuple containing the number of issues recorded in `graph`.
-  private func _issueCounts(in graph: Graph<String, Event.HumanReadableOutputRecorder._Context.TestData?>?) -> (errorIssueCount: Int, warningIssueCount: Int, knownIssueCount: Int, totalIssueCount: Int, description: String) {
+  private func _issueCounts(
+    in graph: Graph<Event.HumanReadableOutputRecorder.Context.TestDataKey, Event.HumanReadableOutputRecorder.Context.TestData?>?
+  ) -> (errorIssueCount: Int, warningIssueCount: Int, knownIssueCount: Int, totalIssueCount: Int, description: String) {
     guard let graph else {
       return (0, 0, 0, 0, "")
     }
@@ -231,6 +251,7 @@ extension Event.HumanReadableOutputRecorder {
       0
     }
     let test = eventContext.test
+    let keyPath = eventContext.keyPath
     let testName = if let test {
       if let displayName = test.displayName {
         if verbosity > 0 {
@@ -261,7 +282,7 @@ extension Event.HumanReadableOutputRecorder {
 
       case .testStarted:
         let test = test!
-        context.testData[test.id.keyPathRepresentation] = .init(startInstant: instant)
+        context.testData[keyPath] = .init(startInstant: instant)
         if test.isSuite {
           context.suiteCount += 1
         } else {
@@ -277,23 +298,17 @@ extension Event.HumanReadableOutputRecorder {
         }
 
       case let .issueRecorded(issue):
-        let id: [String] = if let test {
-          test.id.keyPathRepresentation
-        } else {
-          []
-        }
-        var testData = context.testData[id] ?? .init(startInstant: instant)
+        var testData = context.testData[keyPath] ?? .init(startInstant: instant)
         if issue.isKnown {
           testData.knownIssueCount += 1
         } else {
           let issueCount = testData.issueCount[issue.severity] ?? 0
           testData.issueCount[issue.severity] = issueCount + 1
         }
-        context.testData[id] = testData
+        context.testData[keyPath] = testData
       
       case .testCaseStarted:
-        let test = test!
-        context.testData[test.id.keyPathRepresentation]?.testCasesCount += 1
+        context.testData[keyPath] = .init(startInstant: instant)
 
       default:
         // These events do not manipulate the context structure.
@@ -374,13 +389,12 @@ extension Event.HumanReadableOutputRecorder {
 
     case .testEnded:
       let test = test!
-      let id = test.id
-      let testDataGraph = context.testData.subgraph(at: id.keyPathRepresentation)
+      let testDataGraph = context.testData.subgraph(at: keyPath)
       let testData = testDataGraph?.value ?? .init(startInstant: instant)
       let issues = _issueCounts(in: testDataGraph)
       let duration = testData.startInstant.descriptionOfDuration(to: instant)
-      let testCasesCount = if test.isParameterized {
-        " with \(testData.testCasesCount.counting("test case"))"
+      let testCasesCount = if test.isParameterized, let testDataGraph {
+        " with \(testDataGraph.children.count.counting("test case"))"
       } else {
         ""
       }
@@ -449,6 +463,9 @@ extension Event.HumanReadableOutputRecorder {
         additionalMessages.append(Message(symbol: .difference, stringValue: differenceDescription))
       }
       additionalMessages += _formattedComments(issue.comments)
+      if let knownIssueComment = issue.knownIssueContext?.comment {
+        additionalMessages.append(_formattedComment(knownIssueComment))
+      }
 
       if verbosity > 0, case let .expectationFailed(expectation) = issue.kind {
         let expression = expectation.evaluatedExpression
@@ -507,12 +524,32 @@ extension Event.HumanReadableOutputRecorder {
       return [
         Message(
           symbol: .default,
-          stringValue: "Passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName)"
+          stringValue: "Test case passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) started."
         )
       ]
 
     case .testCaseEnded:
-      break
+      guard verbosity > 0, let testCase = eventContext.testCase, testCase.isParameterized, let arguments = testCase.arguments else {
+        break
+      }
+
+      let testDataGraph = context.testData.subgraph(at: keyPath)
+      let testData = testDataGraph?.value ?? .init(startInstant: instant)
+      let issues = _issueCounts(in: testDataGraph)
+      let duration = testData.startInstant.descriptionOfDuration(to: instant)
+
+      let message = if issues.errorIssueCount > 0 {
+        Message(
+          symbol: .fail,
+          stringValue: "Test case passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) failed after \(duration)\(issues.description)."
+        )
+      } else {
+        Message(
+          symbol: .pass(knownIssueCount: issues.knownIssueCount),
+          stringValue: "Test case passing \(arguments.count.counting("argument")) \(testCase.labeledArguments(includingQualifiedTypeNames: verbosity > 0)) to \(testName) passed after \(duration)\(issues.description)."
+        )
+      }
+      return [message]
 
     case let .iterationEnded(index):
       guard let iterationStartInstant = context.iterationStartInstant else {
@@ -529,6 +566,7 @@ extension Event.HumanReadableOutputRecorder {
 
     case .runEnded:
       let testCount = context.testCount
+      let suiteCount = context.suiteCount
       let issues = _issueCounts(in: context.testData)
       let runStartInstant = context.runStartInstant ?? instant
       let duration = runStartInstant.descriptionOfDuration(to: instant)
@@ -537,20 +575,45 @@ extension Event.HumanReadableOutputRecorder {
         [
           Message(
             symbol: .fail,
-            stringValue: "Test run with \(testCount.counting("test")) failed after \(duration)\(issues.description)."
+            stringValue: "Test run with \(testCount.counting("test")) in \(suiteCount.counting("suite")) failed after \(duration)\(issues.description)."
           )
         ]
       } else {
         [
           Message(
             symbol: .pass(knownIssueCount: issues.knownIssueCount),
-            stringValue: "Test run with \(testCount.counting("test")) passed after \(duration)\(issues.description)."
+            stringValue: "Test run with \(testCount.counting("test")) in \(suiteCount.counting("suite")) passed after \(duration)\(issues.description)."
           )
         ]
       }
     }
 
     return []
+  }
+}
+
+extension Test.ID {
+  /// The key path in a test data graph representing this test ID.
+  fileprivate var keyPath: some Collection<Event.HumanReadableOutputRecorder.Context.TestDataKey> {
+    keyPathRepresentation.map { .string($0) }
+  }
+}
+
+extension Event.Context {
+  /// The key path in a test data graph representing this event this context is
+  /// associated with, including its test and/or test case IDs.
+  fileprivate var keyPath: some Collection<Event.HumanReadableOutputRecorder.Context.TestDataKey> {
+    var keyPath = [Event.HumanReadableOutputRecorder.Context.TestDataKey]()
+
+    if let test {
+      keyPath.append(contentsOf: test.id.keyPath)
+
+      if let testCase {
+        keyPath.append(.testCaseID(testCase.id))
+      }
+    }
+
+    return keyPath
   }
 }
 

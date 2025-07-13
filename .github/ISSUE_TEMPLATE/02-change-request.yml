@@ -9,7 +9,7 @@
 name: 🌟 Request a change
 description: >
   Request a feature, API, improvement, or other change.
-labels: [enhancement, triage-needed]
+labels: [enhancement]
 body:
   - type: markdown
     attributes:

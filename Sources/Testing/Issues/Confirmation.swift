@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 /// A type that can be used to confirm that an event occurs zero or more times.
 public struct Confirmation: Sendable {
   /// The number of times ``confirm(count:)`` has been called.
@@ -202,7 +204,7 @@ public func confirmation<R>(
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: (Confirmation) async throws -> R
 ) async rethrows -> R {
-  fatalError("Unsupported")
+  swt_unreachable()
 }
 
 /// An overload of ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-l3il``
@@ -218,7 +220,7 @@ public func confirmation<R>(
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: (Confirmation) async throws -> R
 ) async rethrows -> R {
-  fatalError("Unsupported")
+  swt_unreachable()
 }
 
 /// An overload of ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-l3il``
@@ -234,5 +236,5 @@ public func confirmation<R>(
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: (Confirmation) async throws -> R
 ) async rethrows -> R {
-  fatalError("Unsupported")
+  swt_unreachable()
 }

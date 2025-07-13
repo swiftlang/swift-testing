@@ -9,13 +9,17 @@
 //
 
 #if canImport(Foundation)
-@_spi(Experimental) public import Testing
+public import Testing
 public import Foundation
 
 // As with Encodable, implement the protocol requirements for
 // NSSecureCoding-conformant classes by default. The implementation uses
 // NSKeyedArchiver for encoding.
-@_spi(Experimental)
+
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
+/// }
 extension Attachable where Self: NSSecureCoding {
   /// Encode this object using [`NSKeyedArchiver`](https://developer.apple.com/documentation/foundation/nskeyedarchiver)
   /// into a buffer, then call a function and pass that buffer to it.
@@ -46,6 +50,11 @@ extension Attachable where Self: NSSecureCoding {
   /// _and_ [`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding),
   /// the default implementation of this function uses the value's conformance
   /// to `Encodable`.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
+  /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     let format = try EncodingFormat(for: attachment)
 

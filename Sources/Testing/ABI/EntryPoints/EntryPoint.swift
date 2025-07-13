@@ -42,7 +42,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
 
     // Set up the event handler.
     configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-      if case let .issueRecorded(issue) = event.kind, !issue.isKnown, issue.severity >= .error {
+      if case let .issueRecorded(issue) = event.kind, issue.isFailure {
         exitCode.withLock { exitCode in
           exitCode = EXIT_FAILURE
         }
@@ -285,8 +285,8 @@ public struct __CommandLineArguments_v0: Sendable {
   /// The value of the `--repeat-until` argument.
   public var repeatUntil: String?
 
-  /// The value of the `--experimental-attachments-path` argument.
-  public var experimentalAttachmentsPath: String?
+  /// The value of the `--attachments-path` argument.
+  public var attachmentsPath: String?
 
   /// Whether or not the experimental warning issue severity feature should be
   /// enabled.
@@ -314,7 +314,7 @@ extension __CommandLineArguments_v0: Codable {
     case skip
     case repetitions
     case repeatUntil
-    case experimentalAttachmentsPath
+    case attachmentsPath
   }
 }
 
@@ -396,8 +396,9 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   }
 
   // Attachment output
-  if let attachmentsPathIndex = args.firstIndex(of: "--experimental-attachments-path"), !isLastArgument(at: attachmentsPathIndex) {
-    result.experimentalAttachmentsPath = args[args.index(after: attachmentsPathIndex)]
+  if let attachmentsPathIndex = args.firstIndex(of: "--attachments-path") ?? args.firstIndex(of: "--experimental-attachments-path"),
+     !isLastArgument(at: attachmentsPathIndex) {
+    result.attachmentsPath = args[args.index(after: attachmentsPathIndex)]
   }
 #endif
 
@@ -509,9 +510,9 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   }
 
   // Attachment output.
-  if let attachmentsPath = args.experimentalAttachmentsPath {
+  if let attachmentsPath = args.attachmentsPath {
     guard fileExists(atPath: attachmentsPath) else {
-      throw _EntryPointError.invalidArgument("--experimental-attachments-path", value: attachmentsPath)
+      throw _EntryPointError.invalidArgument("---attachments-path", value: attachmentsPath)
     }
     configuration.attachmentsPath = attachmentsPath
   }
