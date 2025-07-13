@@ -201,6 +201,30 @@ struct CapturedValueInfo {
         _inferredType = TypeSyntax(IdentifierTypeSyntax(name: .identifier("StringLiteralType")))
         return .skipChildren
 
+      case .functionCallExpr:
+        // Attempt to infer the called expression as a type name. For example,
+        // infer the type of `String(...)` as `Swift.String`. We rely on the
+        // Swift runtime in the host having knowledge of the type in question
+        // which is certainly not guaranteed.
+        //
+        // If the type name provided by the developer isn't sufficiently
+        // well-qualified that `_typeByName()` can resolve it, try to see if
+        // there's a type of the same name in the `Swift` or `Testing` module as
+        // they are expected to be imported into a source file that uses the
+        // testing library.
+        //
+        // We could also hypothetically query the Objective-C runtime on the
+        // host, but Objective-C classes that conform to both `Sendable` and
+        // `Codable` are rare and unlikely to be visible host-side anyway.
+        let possibleTypeName = node.cast(FunctionCallExprSyntax.self).calledExpression.trimmedDescription
+        let type = [possibleTypeName, "Swift.\(possibleTypeName)", "Testing.\(possibleTypeName)"]
+          .compactMap(_typeByName)
+          .first
+        if let type {
+          _inferredType = "\(raw: String(reflecting: type))"
+        }
+        return .skipChildren
+
       default:
         // We don't know how to infer a type from this syntax node, so do not
         // proceed further.

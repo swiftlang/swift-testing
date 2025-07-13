@@ -534,6 +534,14 @@ private import _TestingInternals
     }
   }
 
+  @Test("Capturing an initializer expression")
+  func captureListWithInitializers() async {
+    await #expect(processExitsWith: .success) { [a = String("hello world"), b = Swift.Int(123)] in
+      #expect(a == "hello world")
+      #expect(b == 123)
+    }
+  }
+
 #if false // intentionally fails to compile
   @Test("Capturing a tuple")
   func captureListWithTuple() async throws {
