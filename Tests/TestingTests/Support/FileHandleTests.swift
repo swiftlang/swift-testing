@@ -21,9 +21,8 @@ struct FileHandleTests {
   func canGet(_ fileHandle: borrowing FileHandle) {
     // This test function doesn't really do much other than check that the
     // standard I/O files can be accessed.
-    fileHandle.withUnsafeCFILEHandle { fileHandle in
-      #expect(EOF != feof(fileHandle))
-    }
+    let file = fileHandle.unsafeCFILEHandle
+    #expect(EOF != feof(file))
   }
 
   @Test("Can get stdout")
@@ -39,9 +38,8 @@ struct FileHandleTests {
   @Test("Can get file descriptor")
   func fileDescriptor() throws {
     let fileHandle = try FileHandle.temporary()
-    try fileHandle.withUnsafePOSIXFileDescriptor { fd in
-      try #require(fd != nil)
-    }
+    let fd = fileHandle.unsafePOSIXFileDescriptor
+    try #require(fd != nil)
   }
 
 #if !os(Windows) // Windows does not like invalid file descriptors.
@@ -57,9 +55,8 @@ struct FileHandleTests {
   @Test("Can get Windows file HANDLE")
   func fileHANDLE() throws {
     let fileHandle = try FileHandle.temporary()
-    try fileHandle.withUnsafeWindowsHANDLE { handle in
-      try #require(handle != nil)
-    }
+    let handle = fileHandle.unsafeWindowsHANDLE
+    try #require(handle != nil)
   }
 #endif
 

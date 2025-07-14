@@ -120,34 +120,32 @@ func spawnExecutable(
       // Forward standard I/O streams and any explicitly added file handles.
       var highestFD = max(STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO)
       func inherit(_ fileHandle: borrowing FileHandle, as standardFD: CInt? = nil) throws {
-        try fileHandle.withUnsafePOSIXFileDescriptor { fd in
-          guard let fd else {
-            throw SystemError(description: "A child process cannot inherit a file handle without an associated file descriptor. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
-          }
-          if let standardFD, standardFD != fd {
-            _ = posix_spawn_file_actions_adddup2(fileActions, fd, standardFD)
-          } else {
+        guard let fd = fileHandle.unsafePOSIXFileDescriptor else {
+          throw SystemError(description: "A child process cannot inherit a file handle without an associated file descriptor. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+        }
+        if let standardFD, standardFD != fd {
+          _ = posix_spawn_file_actions_adddup2(fileActions, fd, standardFD)
+        } else {
 #if SWT_TARGET_OS_APPLE
-            _ = posix_spawn_file_actions_addinherit_np(fileActions, fd)
+          _ = posix_spawn_file_actions_addinherit_np(fileActions, fd)
 #else
-            // posix_spawn_file_actions_adddup2() will automatically clear
-            // FD_CLOEXEC after forking but before execing even if the old and
-            // new file descriptors are equal. This behavior is supported by
-            // Glibc ≥ 2.29, FreeBSD, OpenBSD, and Android (Bionic) and is
-            // standardized in POSIX.1-2024 (see https://pubs.opengroup.org/onlinepubs/9799919799/functions/posix_spawn_file_actions_adddup2.html
-            // and https://www.austingroupbugs.net/view.php?id=411).
-            _ = posix_spawn_file_actions_adddup2(fileActions, fd, fd)
+          // posix_spawn_file_actions_adddup2() will automatically clear
+          // FD_CLOEXEC after forking but before execing even if the old and new
+          // file descriptors are equal. This behavior is supported by
+          // Glibc ≥ 2.29, FreeBSD, OpenBSD, and Android (Bionic) and is
+          // standardized in POSIX.1-2024 (see https://pubs.opengroup.org/onlinepubs/9799919799/functions/posix_spawn_file_actions_adddup2.html
+          // and https://www.austingroupbugs.net/view.php?id=411).
+          _ = posix_spawn_file_actions_adddup2(fileActions, fd, fd)
 #if canImport(Glibc) && !os(FreeBSD) && !os(OpenBSD)
-            if _slowPath(glibcVersion.major < 2 || (glibcVersion.major == 2 && glibcVersion.minor < 29)) {
-              // This system is using an older version of glibc that does not
-              // implement FD_CLOEXEC clearing in posix_spawn_file_actions_adddup2(),
-              // so we must clear it here in the parent process.
-              try setFD_CLOEXEC(false, onFileDescriptor: fd)
-            }
-#endif
-#endif
-            highestFD = max(highestFD, fd)
+          if _slowPath(glibcVersion.major < 2 || (glibcVersion.major == 2 && glibcVersion.minor < 29)) {
+            // This system is using an older version of glibc that does not
+            // implement FD_CLOEXEC clearing in posix_spawn_file_actions_adddup2(),
+            // so we must clear it here in the parent process.
+            try setFD_CLOEXEC(false, onFileDescriptor: fd)
           }
+#endif
+#endif
+          highestFD = max(highestFD, fd)
         }
       }
       func inherit(_ fileHandle: borrowing FileHandle?, as standardFD: CInt? = nil) throws {
@@ -231,20 +229,19 @@ func spawnExecutable(
   }
 #elseif os(Windows)
   return try _withStartupInfoEx(attributeCount: 1) { startupInfo in
+    @_lifetime(fileHandle)
     func inherit(_ fileHandle: borrowing FileHandle) throws -> HANDLE? {
-      try fileHandle.withUnsafeWindowsHANDLE { windowsHANDLE in
-        guard let windowsHANDLE else {
-          throw SystemError(description: "A child process cannot inherit a file handle without an associated Windows handle. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
-        }
-
-        // Ensure the file handle can be inherited by the child process.
-        guard SetHandleInformation(windowsHANDLE, DWORD(HANDLE_FLAG_INHERIT), DWORD(HANDLE_FLAG_INHERIT)) else {
-          throw Win32Error(rawValue: GetLastError())
-        }
-
-        return windowsHANDLE
+      guard let windowsHANDLE = fileHandle.unsafeWindowsHANDLE else {
+        throw SystemError(description: "A child process cannot inherit a file handle without an associated Windows handle. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
       }
+      // Ensure the file handle can be inherited by the child process.
+      guard SetHandleInformation(windowsHANDLE, DWORD(HANDLE_FLAG_INHERIT), DWORD(HANDLE_FLAG_INHERIT)) else {
+        throw Win32Error(rawValue: GetLastError())
+      }
+
+      return windowsHANDLE
     }
+    @_lifetime(fileHandle)
     func inherit(_ fileHandle: borrowing FileHandle?) throws -> HANDLE? {
       if fileHandle != nil {
         return try inherit(fileHandle!)

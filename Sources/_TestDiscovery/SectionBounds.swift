@@ -223,51 +223,49 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
 /// - Returns: A structure describing the given section, or `nil` if the section
 ///   could not be found.
 private func _findSection(named sectionName: String, in hModule: HMODULE) -> SectionBounds? {
-  hModule.withNTHeader { ntHeader in
-    guard let ntHeader else {
-      return nil
-    }
-
-    let sectionHeaders = UnsafeBufferPointer(
-      start: swt_IMAGE_FIRST_SECTION(ntHeader),
-      count: Int(clamping: max(0, ntHeader.pointee.FileHeader.NumberOfSections))
-    )
-    return sectionHeaders.lazy
-      .filter { sectionHeader in
-        // FIXME: Handle longer names ("/%u") from string table
-        withUnsafeBytes(of: sectionHeader.Name) { thisSectionName in
-          0 == strncmp(sectionName, thisSectionName.baseAddress!, Int(IMAGE_SIZEOF_SHORT_NAME))
-        }
-      }.compactMap { sectionHeader in
-        guard let virtualAddress = Int(exactly: sectionHeader.VirtualAddress), virtualAddress > 0 else {
-          return nil
-        }
-
-        var buffer = UnsafeRawBufferPointer(
-          start: UnsafeRawPointer(hModule) + virtualAddress,
-          count: Int(clamping: min(max(0, sectionHeader.Misc.VirtualSize), max(0, sectionHeader.SizeOfRawData)))
-        )
-        guard buffer.count > 2 * MemoryLayout<UInt>.stride else {
-          return nil
-        }
-
-        // Skip over the leading and trailing zeroed uintptr_t values. These
-        // values are always emitted by SwiftRT-COFF.cpp into all Swift images.
-#if DEBUG
-        let firstPointerValue = buffer.baseAddress!.loadUnaligned(as: UInt.self)
-        assert(firstPointerValue == 0, "First pointer-width value in section '\(sectionName)' at \(buffer.baseAddress!) was expected to equal 0 (found \(firstPointerValue) instead)")
-        let lastPointerValue = ((buffer.baseAddress! + buffer.count) - MemoryLayout<UInt>.stride).loadUnaligned(as: UInt.self)
-        assert(lastPointerValue == 0, "Last pointer-width value in section '\(sectionName)' at \(buffer.baseAddress!) was expected to equal 0 (found \(lastPointerValue) instead)")
-#endif
-        buffer = UnsafeRawBufferPointer(
-          rebasing: buffer
-            .dropFirst(MemoryLayout<UInt>.stride)
-            .dropLast(MemoryLayout<UInt>.stride)
-        )
-
-        return SectionBounds(imageAddress: hModule, buffer: buffer)
-      }.first
+  guard let ntHeader = hModule.ntHeader else {
+    return nil
   }
+
+  let sectionHeaders = UnsafeBufferPointer(
+    start: swt_IMAGE_FIRST_SECTION(ntHeader),
+    count: Int(clamping: max(0, ntHeader.pointee.FileHeader.NumberOfSections))
+  )
+  return sectionHeaders.lazy
+    .filter { sectionHeader in
+      // FIXME: Handle longer names ("/%u") from string table
+      withUnsafeBytes(of: sectionHeader.Name) { thisSectionName in
+        0 == strncmp(sectionName, thisSectionName.baseAddress!, Int(IMAGE_SIZEOF_SHORT_NAME))
+      }
+    }.compactMap { sectionHeader in
+      guard let virtualAddress = Int(exactly: sectionHeader.VirtualAddress), virtualAddress > 0 else {
+        return nil
+      }
+
+      var buffer = UnsafeRawBufferPointer(
+        start: UnsafeRawPointer(hModule) + virtualAddress,
+        count: Int(clamping: min(max(0, sectionHeader.Misc.VirtualSize), max(0, sectionHeader.SizeOfRawData)))
+      )
+      guard buffer.count > 2 * MemoryLayout<UInt>.stride else {
+        return nil
+      }
+
+      // Skip over the leading and trailing zeroed uintptr_t values. These
+      // values are always emitted by SwiftRT-COFF.cpp into all Swift images.
+#if DEBUG
+      let firstPointerValue = buffer.baseAddress!.loadUnaligned(as: UInt.self)
+      assert(firstPointerValue == 0, "First pointer-width value in section '\(sectionName)' at \(buffer.baseAddress!) was expected to equal 0 (found \(firstPointerValue) instead)")
+      let lastPointerValue = ((buffer.baseAddress! + buffer.count) - MemoryLayout<UInt>.stride).loadUnaligned(as: UInt.self)
+      assert(lastPointerValue == 0, "Last pointer-width value in section '\(sectionName)' at \(buffer.baseAddress!) was expected to equal 0 (found \(lastPointerValue) instead)")
+#endif
+      buffer = UnsafeRawBufferPointer(
+        rebasing: buffer
+          .dropFirst(MemoryLayout<UInt>.stride)
+          .dropLast(MemoryLayout<UInt>.stride)
+      )
+
+      return SectionBounds(imageAddress: hModule, buffer: buffer)
+    }.first
 }
 
 /// The Windows-specific implementation of ``SectionBounds/all(_:)``.

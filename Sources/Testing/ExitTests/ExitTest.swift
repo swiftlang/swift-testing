@@ -700,13 +700,9 @@ extension ExitTest {
   ///   file handle could not be converted to a string.
   private static func _makeEnvironmentVariable(for fileHandle: borrowing FileHandle) -> String? {
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
-    return fileHandle.withUnsafePOSIXFileDescriptor { fd in
-      fd.map(String.init(describing:))
-    }
+    fileHandle.unsafePOSIXFileDescriptor.map(String.init(describing:))
 #elseif os(Windows)
-    return fileHandle.withUnsafeWindowsHANDLE { handle in
-      handle.flatMap { String(describing: UInt(bitPattern: $0)) }
-    }
+    fileHandle.unsafeWindowsHANDLE.flatMap { String(describing: UInt(bitPattern: $0)) }
 #else
 #warning("Platform-specific implementation missing: additional file descriptors unavailable")
     return nil
@@ -879,7 +875,7 @@ extension ExitTest {
         var stdoutWriteEnd: FileHandle?
         if exitTest._observedValues.contains(\.standardOutputContent) {
           try FileHandle.makePipe(readEnd: &stdoutReadEnd, writeEnd: &stdoutWriteEnd)
-          stdoutWriteEnd?.withUnsafeCFILEHandle { stdout in
+          if let stdout = stdoutWriteEnd?.unsafeCFILEHandle {
             _ = setvbuf(stdout, nil, _IOLBF, Int(BUFSIZ))
           }
         }
@@ -887,7 +883,7 @@ extension ExitTest {
         var stderrWriteEnd: FileHandle?
         if exitTest._observedValues.contains(\.standardErrorContent) {
           try FileHandle.makePipe(readEnd: &stderrReadEnd, writeEnd: &stderrWriteEnd)
-          stderrWriteEnd?.withUnsafeCFILEHandle { stderr in
+          if let stderr = stderrWriteEnd?.unsafeCFILEHandle {
             _ = setvbuf(stderr, nil, _IONBF, Int(BUFSIZ))
           }
         }

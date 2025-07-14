@@ -54,9 +54,7 @@ public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) 
   // Ensure that stdout is line- rather than block-buffered. Swift Package
   // Manager reroutes standard I/O through pipes, so we tend to end up with
   // block-buffered streams.
-  FileHandle.stdout.withUnsafeCFILEHandle { stdout in
-    _ = setvbuf(stdout, nil, _IOLBF, Int(BUFSIZ))
-  }
+  _ = setvbuf(FileHandle.stdout.unsafeCFILEHandle, nil, _IOLBF, Int(BUFSIZ))
 #endif
 
   return await entryPoint(passing: args, eventHandler: nil)

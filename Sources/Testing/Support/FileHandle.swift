@@ -211,8 +211,10 @@ struct FileHandle: ~Copyable, Sendable {
   ///
   /// Use this function when calling C I/O interfaces such as `fputs()` on the
   /// underlying C file handle.
-  borrowing func withUnsafeCFILEHandle<R>(_ body: (SWT_FILEHandle) throws -> R) rethrows -> R {
-    try body(_fileHandle)
+  var unsafeCFILEHandle: SWT_FILEHandle {
+    @_lifetime(self) get {
+      _fileHandle
+    }
   }
 
   /// Call a function and pass the underlying POSIX file descriptor to it.
@@ -228,21 +230,19 @@ struct FileHandle: ~Copyable, Sendable {
   /// that require a file descriptor instead of the standard `FILE *`
   /// representation. If the file handle cannot be converted to a file
   /// descriptor, `nil` is passed to `body`.
-  borrowing func withUnsafePOSIXFileDescriptor<R>(_ body: (CInt?) throws -> R) rethrows -> R {
-    try withUnsafeCFILEHandle { handle in
+  var unsafePOSIXFileDescriptor: CInt? {
+    @_lifetime(self) get {
+      let file = unsafeCFILEHandle
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
-      let fd = fileno(handle)
+      let fd = fileno(file)
 #elseif os(Windows)
-      let fd = _fileno(handle)
+      let fd = _fileno(file)
 #else
 #warning("Platform-specific implementation missing: cannot get file descriptor from a file handle")
       let fd: CInt = -1
 #endif
 
-      if Bool(fd >= 0) {
-        return try body(fd)
-      }
-      return try body(nil)
+      return Bool(fd >= 0) ? fd : nil
     }
   }
 
@@ -260,16 +260,16 @@ struct FileHandle: ~Copyable, Sendable {
   /// that require the file's `HANDLE` representation instead of the standard
   /// `FILE *` representation. If the file handle cannot be converted to a
   /// Windows handle, `nil` is passed to `body`.
-  borrowing func withUnsafeWindowsHANDLE<R>(_ body: (HANDLE?) throws -> R) rethrows -> R {
-    try withUnsafePOSIXFileDescriptor { fd in
-      guard let fd else {
-        return try body(nil)
+  var unsafeWindowsHANDLE: HANDLE? {
+    @_lifetime(self) get {
+      guard let fd = unsafePOSIXFileDescriptor else {
+        return nil
       }
       var handle = HANDLE(bitPattern: _get_osfhandle(fd))
       if handle == INVALID_HANDLE_VALUE || handle == .init(bitPattern: -2) {
         handle = nil
       }
-      return try body(handle)
+      return handle
     }
   }
 #endif
@@ -288,24 +288,23 @@ struct FileHandle: ~Copyable, Sendable {
   /// are split across multiple calls but must not be interleaved with writes on
   /// other threads.
   borrowing func withLock<R>(_ body: () throws -> R) rethrows -> R {
-    try withUnsafeCFILEHandle { handle in
+    let file = unsafeCFILEHandle
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
-      flockfile(handle)
-      defer {
-        funlockfile(handle)
-      }
+    flockfile(file)
+    defer {
+      funlockfile(file)
+    }
 #elseif os(Windows)
-      _lock_file(handle)
-      defer {
-        _unlock_file(handle)
-      }
+    _lock_file(file)
+    defer {
+      _unlock_file(file)
+    }
 #elseif os(WASI)
-      // No file locking on WASI yet.
+    // No file locking on WASI yet.
 #else
 #warning("Platform-specific implementation missing: cannot lock a file handle")
 #endif
-      return try body()
-    }
+    return try body()
   }
 }
 
@@ -325,37 +324,32 @@ extension FileHandle {
     // the contents of the file being read.
     var size: Int?
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
-    withUnsafePOSIXFileDescriptor { fd in
-      var s = stat()
-      if let fd, 0 == fstat(fd, &s) {
-        size = Int(exactly: s.st_size)
-      }
+    var s = stat()
+    if let fd = unsafePOSIXFileDescriptor, 0 == fstat(fd, &s) {
+      size = Int(exactly: s.st_size)
     }
 #elseif os(Windows)
-    withUnsafeWindowsHANDLE { handle in
-      var liSize = LARGE_INTEGER(QuadPart: 0)
-      if let handle, GetFileSizeEx(handle, &liSize) {
-        size = Int(exactly: liSize.QuadPart)
-      }
+    var liSize = LARGE_INTEGER(QuadPart: 0)
+    if let handle = unsafeWindowsHANDLE, GetFileSizeEx(handle, &liSize) {
+      size = Int(exactly: liSize.QuadPart)
     }
 #endif
     if let size, size > 0 {
       result.reserveCapacity(size)
     }
 
-    try withUnsafeCFILEHandle { file in
-      try withUnsafeTemporaryAllocation(byteCount: 1024, alignment: 1) { buffer in
-        repeat {
-          let countRead = fread(buffer.baseAddress!, 1, buffer.count, file)
-          if 0 != ferror(file) {
-            throw CError(rawValue: swt_errno())
-          }
-          if countRead > 0 {
-            let endIndex = buffer.index(buffer.startIndex, offsetBy: countRead)
-            result.append(contentsOf: buffer[..<endIndex])
-          }
-        } while 0 == feof(file)
-      }
+    let file = unsafeCFILEHandle
+    try withUnsafeTemporaryAllocation(byteCount: 1024, alignment: 1) { buffer in
+      repeat {
+        let countRead = fread(buffer.baseAddress!, 1, buffer.count, file)
+        if 0 != ferror(file) {
+          throw CError(rawValue: swt_errno())
+        }
+        if countRead > 0 {
+          let endIndex = buffer.index(buffer.startIndex, offsetBy: countRead)
+          result.append(contentsOf: buffer[..<endIndex])
+        }
+      } while 0 == feof(file)
     }
 
     return result
@@ -377,17 +371,16 @@ extension FileHandle {
   /// - Throws: Any error that occurred while writing `bytes`. If an error
   ///   occurs while flushing the file, it is not thrown.
   func write(_ bytes: UnsafeBufferPointer<UInt8>, flushAfterward: Bool = true) throws {
-    try withUnsafeCFILEHandle { file in
-      defer {
-        if flushAfterward {
-          _ = fflush(file)
-        }
+    let file = unsafeCFILEHandle
+    defer {
+      if flushAfterward {
+        _ = fflush(file)
       }
+    }
 
-      let countWritten = fwrite(bytes.baseAddress!, MemoryLayout<UInt8>.stride, bytes.count, file)
-      if countWritten < bytes.count {
-        throw CError(rawValue: swt_errno())
-      }
+    let countWritten = fwrite(bytes.baseAddress!, MemoryLayout<UInt8>.stride, bytes.count, file)
+    if countWritten < bytes.count {
+      throw CError(rawValue: swt_errno())
     }
   }
 
@@ -441,17 +434,16 @@ extension FileHandle {
   /// `string` is converted to a UTF-8 C string (UTF-16 on Windows) and written
   /// to this file handle.
   func write(_ string: String, flushAfterward: Bool = true) throws {
-    try withUnsafeCFILEHandle { file in
-      defer {
-        if flushAfterward {
-          _ = fflush(file)
-        }
+    let file = unsafeCFILEHandle
+    defer {
+      if flushAfterward {
+        _ = fflush(file)
       }
+    }
 
-      try string.withCString { string in
-        if EOF == fputs(string, file) {
-          throw CError(rawValue: swt_errno())
-        }
+    try string.withCString { string in
+      if EOF == fputs(string, file) {
+        throw CError(rawValue: swt_errno())
       }
     }
   }
@@ -563,22 +555,18 @@ extension FileHandle {
   var isTTY: Bool {
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
     // If stderr is a TTY and TERM is set, that's good enough for us.
-    withUnsafePOSIXFileDescriptor { fd in
-      if let fd, 0 != isatty(fd), let term = Environment.variable(named: "TERM"), !term.isEmpty {
-        return true
-      }
-      return false
+    if let fd = unsafePOSIXFileDescriptor, 0 != isatty(fd), let term = Environment.variable(named: "TERM"), !term.isEmpty {
+      return true
     }
+    return false
 #elseif os(Windows)
     // If there is a console buffer associated with the file handle, then it's a
     // console.
-    return withUnsafeWindowsHANDLE { handle in
-      guard let handle else {
-        return false
-      }
-      var screenBufferInfo = CONSOLE_SCREEN_BUFFER_INFO()
-      return GetConsoleScreenBufferInfo(handle, &screenBufferInfo)
+    guard let handle = unsafeWindowsHANDLE else {
+      return false
     }
+    var screenBufferInfo = CONSOLE_SCREEN_BUFFER_INFO()
+    return GetConsoleScreenBufferInfo(handle, &screenBufferInfo)
 #else
 #warning("Platform-specific implementation missing: cannot tell if a file is a TTY")
     return false
@@ -589,20 +577,16 @@ extension FileHandle {
   /// Is this file handle a pipe or FIFO?
   var isPipe: Bool {
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
-    withUnsafePOSIXFileDescriptor { fd in
-      guard let fd else {
-        return false
-      }
-      var statStruct = stat()
-      return (0 == fstat(fd, &statStruct) && swt_S_ISFIFO(mode_t(statStruct.st_mode)))
+    guard let fd = unsafePOSIXFileDescriptor else {
+      return false
     }
+    var statStruct = stat()
+    return (0 == fstat(fd, &statStruct) && swt_S_ISFIFO(mode_t(statStruct.st_mode)))
 #elseif os(Windows)
-    return withUnsafeWindowsHANDLE { handle in
-      guard let handle else {
-        return false
-      }
-      return FILE_TYPE_PIPE == GetFileType(handle)
+    guard let handle = unsafeWindowsHANDLE else {
+      return false
     }
+    return FILE_TYPE_PIPE == GetFileType(handle)
 #else
 #warning("Platform-specific implementation missing: cannot tell if a file is a pipe")
     return false
