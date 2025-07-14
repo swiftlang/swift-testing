@@ -107,6 +107,9 @@ func `Customer won't eat food unless it's nutritious`(_ food: Food) async {
 }
 ```
 
+- Note: If you use this macro with a Swift compiler version lower than 6.3, it
+  doesn't support capturing state.
+
 If a captured value is an argument to the current function or is `self`, its
 type is inferred at compile time. Otherwise, explicitly specify the type of the
 value using the `as` operator:
