@@ -90,6 +90,8 @@ let package = Package(
         targets: [
           "_Testing_AppKit",
           "_Testing_CoreGraphics",
+          "_Testing_CoreImage",
+          "_Testing_UIKit",
         ]
       )
     ]
@@ -130,7 +132,9 @@ let package = Package(
         "Testing",
         "_Testing_AppKit",
         "_Testing_CoreGraphics",
+        "_Testing_CoreImage",
         "_Testing_Foundation",
+        "_Testing_UIKit",
         "MemorySafeTestingTests",
       ],
       swiftSettings: .packageSettings
@@ -212,6 +216,15 @@ let package = Package(
       swiftSettings: .packageSettings + .enableLibraryEvolution()
     ),
     .target(
+      name: "_Testing_CoreImage",
+      dependencies: [
+        "Testing",
+        "_Testing_CoreGraphics",
+      ],
+      path: "Sources/Overlays/_Testing_CoreImage",
+      swiftSettings: .packageSettings + .enableLibraryEvolution()
+    ),
+    .target(
       name: "_Testing_Foundation",
       dependencies: [
         "Testing",
@@ -222,6 +235,16 @@ let package = Package(
       // platforms, and since this target's module publicly imports Foundation,
       // it can only enable Library Evolution itself on those platforms.
       swiftSettings: .packageSettings + .enableLibraryEvolution(.whenApple())
+    ),
+    .target(
+      name: "_Testing_UIKit",
+      dependencies: [
+        "Testing",
+        "_Testing_CoreGraphics",
+        "_Testing_CoreImage",
+      ],
+      path: "Sources/Overlays/_Testing_UIKit",
+      swiftSettings: .packageSettings + .enableLibraryEvolution()
     ),
 
     // Utility targets: These are utilities intended for use when developing
