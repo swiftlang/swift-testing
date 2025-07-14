@@ -25,6 +25,15 @@ struct FileHandleTests {
     #expect(EOF != feof(file))
   }
 
+  @Test func foo() throws {
+    var fd: CInt?
+    do {
+      let file = try FileHandle.temporary()
+      fd = file.unsafePOSIXFileDescriptor
+    }
+    print(fd as Any)
+  }
+
   @Test("Can get stdout")
   func canGetStdout() {
     canGet(.stdout)
