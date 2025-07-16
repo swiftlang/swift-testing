@@ -56,6 +56,10 @@ applies it to all test functions and child test suites within that suite.
 The time limit applies to each test in the test suite and any child test suites,
 or each test case for parameterized tests.
 
+For example, if a suite contains five tests and you apply a time limit trait
+with a duration of one minute, then each test in the suite may run for up to
+one minute.
+
 ### Apply time limits to parameterized tests
 
 When you apply a time limit to a parameterized test function, the testing

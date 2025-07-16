@@ -85,7 +85,8 @@ extension Trait where Self == TimeLimitTrait {
   /// a maximum time limit per test case.
   ///
   /// If you apply this trait to a test suite, then it sets the time limit for
-  /// each test in the suite, or each test case in parameterized tests in a suite.
+  /// each test in the suite, or each test case in parameterized tests in the
+  /// suite.
   /// For example, if a suite contains five tests and you apply a time limit trait
   /// with a duration of one minute, then each test in the suite may run for up to
   /// one minute.
@@ -124,7 +125,8 @@ extension Trait where Self == TimeLimitTrait {
   /// with it, the testing library uses the shortest time limit.
   ///
   /// If you apply this trait to a test suite, then it sets the time limit for
-  /// each test in the suite, or each test case in parameterized tests in a suite.
+  /// each test in the suite, or each test case in parameterized tests in the
+  /// suite.
   /// For example, if a suite contains five tests and you apply a time limit trait
   /// with a duration of one minute, then each test in the suite may run for up to
   /// one minute.
