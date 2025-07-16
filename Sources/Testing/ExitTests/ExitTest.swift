@@ -233,6 +233,10 @@ extension ExitTest {
 #endif
   }
 
+  /// The name of the environment variable used to identify the exit test to
+  /// call in a spawned exit test process.
+  static let idEnvironmentVariableName = "SWT_EXIT_TEST_ID"
+
   /// Call the exit test in the current process.
   ///
   /// This function invokes the closure originally passed to
@@ -725,11 +729,7 @@ extension ExitTest {
   static func findInEnvironmentForEntryPoint() -> Self? {
     // Find the ID of the exit test to run, if any, in the environment block.
     var id: ExitTest.ID?
-    if var idString = Environment.variable(named: "SWT_EXIT_TEST_ID") {
-      // Clear the environment variable. It's an implementation detail and exit
-      // test code shouldn't be dependent on it. Use ExitTest.current if needed!
-      Environment.setVariable(nil, named: "SWT_EXIT_TEST_ID")
-
+    if var idString = Environment.variable(named: Self.idEnvironmentVariableName) {
       id = try? idString.withUTF8 { idBuffer in
         try JSON.decode(ExitTest.ID.self, from: UnsafeRawBufferPointer(idBuffer))
       }
@@ -737,6 +737,11 @@ extension ExitTest {
     guard let id, var result = find(identifiedBy: id) else {
       return nil
     }
+
+    // Since an exit test was found, clear the environment variable. It's an
+    // implementation detail and exit test code shouldn't be dependent on it.
+    // Use ExitTest.current if needed!
+    Environment.setVariable(nil, named: Self.idEnvironmentVariableName)
 
     // If an exit test was found, inject back channel handling into its body.
     // External tools authors should set up their own back channel mechanisms
@@ -867,7 +872,7 @@ extension ExitTest {
       // Insert a specific variable that tells the child process which exit test
       // to run.
       try JSON.withEncoding(of: exitTest.id) { json in
-        childEnvironment["SWT_EXIT_TEST_ID"] = String(decoding: json, as: UTF8.self)
+        childEnvironment[Self.idEnvironmentVariableName] = String(decoding: json, as: UTF8.self)
       }
 
       typealias ResultUpdater = @Sendable (inout ExitTest.Result) -> Void
