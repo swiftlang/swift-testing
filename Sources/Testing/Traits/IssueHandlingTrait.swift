@@ -121,9 +121,20 @@ extension IssueHandlingTrait: TestScoping {
       }
 
       if let newIssue {
-        // Prohibit assigning the issue's kind to system.
-        if case .system = newIssue.kind {
+        // Validate the value of the returned issue's 'kind' property.
+        switch (issue.kind, newIssue.kind) {
+        case (_, .system):
+          // Prohibited by ST-0011.
           preconditionFailure("Issue returned by issue handling closure cannot have kind 'system': \(newIssue)")
+        case (.apiMisused, .apiMisused):
+          // This is permitted, but must be listed explicitly before the
+          // wildcard case below.
+          break
+        case (_, .apiMisused):
+          // Prohibited by ST-0011.
+          preconditionFailure("Issue returned by issue handling closure cannot have kind 'apiMisused' when the passed-in issue had a different kind: \(newIssue)")
+        default:
+          break
         }
 
         var event = event
