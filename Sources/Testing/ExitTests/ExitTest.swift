@@ -719,14 +719,13 @@ extension ExitTest {
 
   /// The ID of the exit test to run, if any, specified in the environment.
   static var environmentIDForEntryPoint: ID? {
-    var id: ExitTest.ID?
-    if var idString = Environment.variable(named: Self._idEnvironmentVariableName) {
-      id = try? idString.withUTF8 { idBuffer in
-        try JSON.decode(ExitTest.ID.self, from: UnsafeRawBufferPointer(idBuffer))
-      }
+    guard var idString = Environment.variable(named: Self._idEnvironmentVariableName) else {
+      return nil
     }
 
-    return id
+    return try? idString.withUTF8 { idBuffer in
+      try JSON.decode(ExitTest.ID.self, from: UnsafeRawBufferPointer(idBuffer))
+    }
   }
 
   /// Find the exit test function specified in the environment of the current
