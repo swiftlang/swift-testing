@@ -255,7 +255,7 @@ public struct __CommandLineArguments_v0: Sendable {
   /// whichever occurs first.
   public var eventStreamOutputPath: String?
 
-  /// The value of the `--event-stream-version` or `experimental-event-stream-version`
+  /// The value of the `--event-stream-version` or `--experimental-event-stream-version`
   /// argument, representing the version of the event stream schema to use when
   /// writing events to ``eventStreamOutput``.
   ///
