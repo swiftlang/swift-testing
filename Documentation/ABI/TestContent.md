@@ -41,10 +41,17 @@ Regardless of platform, all test content records created and discoverable by the
 testing library have the following layout:
 
 ```swift
+typealias Accessor = @convention(c) (
+  _ outValue: UnsafeMutableRawPointer,
+  _ type: UnsafeRawPointer,
+  _ hint: UnsafeRawPointer?,
+  _ reserved: UInt
+) -> CBool
+
 typealias TestContentRecord = (
   kind: UInt32,
   reserved1: UInt32,
-  accessor: (@convention(c) (_ outValue: UnsafeMutableRawPointer, _ hint: UnsafeRawPointer?) -> CBool)?,
+  accessor: Accessor?,
   context: UInt,
   reserved2: UInt
 )
@@ -54,14 +61,32 @@ This type has natural size, stride, and alignment. Its fields are native-endian.
 If needed, this type can be represented in C as a structure:
 
 ```c
+typedef bool (* SWTAccessor)(
+  void *outValue,
+  const void *type,
+  const void *_Nullable hint,
+  uintptr_t reserved
+);
+
 struct SWTTestContentRecord {
   uint32_t kind;
   uint32_t reserved1;
-  bool (* _Nullable accessor)(void *outValue, const void *_Null_unspecified hint);
+  SWTAccessor _Nullable accessor;
   uintptr_t context;
   uintptr_t reserved2;
 };
 ```
+
+Do not use the `__TestContentRecord` or `__TestContentRecordAccessor` typealias
+defined in the testing library. These types exist to support the testing
+library's macros and may change in the future (e.g. to accomodate a generic
+argument or to make use of a reserved field.)
+
+Instead, define your own copy of these types where needed&mdash;you can copy the
+definitions above _verbatim_. If your test record type's `context` field (as
+described below) is a pointer type, make sure to change its type in your version
+of `TestContentRecord` accordingly so that, on systems with pointer
+authentication enabled, the pointer is correctly resigned at load time.
 
 ### Record content
 
@@ -75,60 +100,70 @@ record's kind is a 32-bit unsigned value. The following kinds are defined:
 | `0x00000000` | &ndash; | Reserved (**do not use**) |
 | `0x74657374` | `'test'` | Test or suite declaration |
 | `0x65786974` | `'exit'` | Exit test |
+| `0x706c6179` | `'play'` | [Playground](https://github.com/apple/swift-play-experimental) |
 
-<!-- When adding cases to this enumeration, be sure to also update the
-corresponding enumeration in TestContentGeneration.swift. -->
+<!-- The kind values listed in this table should be a superset of the cases in
+the `TestContentKind` enumeration. -->
+
+If a test content record's `kind` field equals `0x00000000`, the values of all
+other fields in that record are undefined.
 
 #### The accessor field
 
 The function `accessor` is a C function. When called, it initializes the memory
-at its argument `outValue` to an instance of some Swift type and returns `true`,
-or returns `false` if it could not generate the relevant content. On successful
-return, the caller is responsible for deinitializing the memory at `outValue`
-when done with it.
+at `outValue` to an instance of the appropriate type and returns `true`; or, if
+it could not generate the relevant content, it leaves the memory uninitialized
+and returns `false`. On successful return, the caller is responsible for
+deinitializing the memory at `outValue` when done with it.
 
 If `accessor` is `nil`, the test content record is ignored. The testing library
 may, in the future, define record kinds that do not provide an accessor function
 (that is, they represent pure compile-time information only.)
 
-The second argument to this function, `hint`, is an optional input that can be
+The second argument to this function, `type`, is a pointer to the type[^mightNotBeSwift]
+(not a bitcast Swift type) of the value expected to be written to `outValue`.
+This argument helps to prevent memory corruption if two copies of Swift Testing
+or a third-party library are inadvertently loaded into the same process. If the
+value at `type` does not match the test content record's expected type, the
+accessor function must return `false` and must not modify `outValue`.
+
+When building for **Embedded Swift**, the value passed as `type` by Swift
+Testing is unspecified because type metadata pointers are not available in that
+environment.
+<!-- TODO: specify what they are instead (FQN type name C strings maybe?) -->
+
+[^mightNotBeSwift]: Although this document primarily deals with Swift, the test
+  content record section is generally language-agnostic. The use of languages
+  other than Swift is beyond the scope of this document. With that in mind, it
+  is _technically_ feasible for a test content accessor to be written in (for
+  example) C++, expect the `type` argument to point to a C++ value of type
+  [`std::type_info`](https://en.cppreference.com/w/cpp/types/type_info), and
+  write a C++ class instance to `outValue` using [placement `new`](https://en.cppreference.com/w/cpp/language/new#Placement_new).
+
+The third argument to this function, `hint`, is an optional input that can be
 passed to help the accessor function determine if its corresponding test content
 record matches what the caller is looking for. If the caller passes `nil` as the
 `hint` argument, the accessor behaves as if it matched (that is, no additional
 filtering is performed.)
 
-The concrete Swift type of the value written to `outValue` and the value pointed
-to by `hint` depend on the kind of record:
+The fourth argument to this function, `reserved`, is reserved for future use.
+Accessor functions should assume it is `0` and must not access it.
 
-- For test or suite declarations (kind `0x74657374`), the accessor produces an
-  asynchronous Swift function that returns an instance of `Test`:
+The concrete Swift type of the value written to `outValue`, the type pointed to
+by `type`, and the value pointed to by `hint` depend on the kind of record.
 
-  ```swift
-  @Sendable () async -> Test
-  ```
-
-  This signature is not the signature of `accessor`, but of the Swift function
-  reference it writes to `outValue`. This level of indirection is necessary
-  because loading a test or suite declaration is an asynchronous operation, but
-  C functions cannot be `async`.
-
-  Test content records of this kind do not specify a type for `hint`. Always
-  pass `nil`.
-
-- For exit test declarations (kind `0x65786974`), the accessor produces a
-  structure describing the exit test (of type `__ExitTest`.)
-
-  Test content records of this kind accept a `hint` of type `__ExitTest.ID`.
-  They only produce a result if they represent an exit test declared with the
-  same ID (or if `hint` is `nil`.)
+The record kinds defined by Swift Testing (kinds `0x74657374` and `0x65786974`)
+make use of the `DiscoverableAsTestContent` protocol in the `_TestDiscovery`
+module and do not publicly expose the types of their accessor functions'
+arguments. Do not call the accessor functions for these records directly.
 
 > [!WARNING]
 > Calling code should use [`withUnsafeTemporaryAllocation(of:capacity:_:)`](https://developer.apple.com/documentation/swift/withunsafetemporaryallocation(of:capacity:_:))
-> and [`withUnsafePointer(to:_:)`](https://developer.apple.com/documentation/swift/withunsafepointer(to:_:)-35wrn),
-> respectively, to ensure the pointers passed to `accessor` are large enough and
-> are well-aligned. If they are not large enough to contain values of the
-> appropriate types (per above), or if `hint` points to uninitialized or
-> incorrectly-typed memory, the result is undefined.
+> and/or [`withUnsafePointer(to:_:)`](https://developer.apple.com/documentation/swift/withunsafepointer(to:_:)-35wrn)
+> to ensure the pointers passed to `accessor` are large enough and are
+> well-aligned. If they are not large enough to contain values of the
+> appropriate types (per above), or if `type` or `hint` points to uninitialized
+> or incorrectly-typed memory, the result is undefined.
 
 #### The context field
 
@@ -161,7 +196,9 @@ Third-party test content should set the `kind` field to a unique value only used
 by that tool, or used by that tool in collaboration with other compatible tools.
 At runtime, Swift Testing ignores test content records with unrecognized `kind`
 values. To reserve a new unique `kind` value, open a [GitHub issue](https://github.com/swiftlang/swift-testing/issues/new/choose)
-against Swift Testing.
+against Swift Testing. The value you reserve does not need to be representable
+as a [FourCC](https://en.wikipedia.org/wiki/FourCC) value, but it can be helpful
+for debugging purposes.
 
 The layout of third-party test content records must be compatible with that of
 `TestContentRecord` as specified above. Third-party tools are ultimately
@@ -174,3 +211,79 @@ TODO: elaborate further, give examples
 TODO: standardize a mechanism for third parties to produce `Test` instances
       since we don't have a public initializer for the `Test` type.
 -->
+
+## Discovering previously-emitted test content
+
+<!--
+TODO: add more detail here about how to set up a package 
+-->
+
+To add test content discovery support to your package, add a dependency on the
+`_TestDiscovery` module in the `swift-testing` package (not the copy of Swift
+Testing included with the Swift toolchain or Xcode), then import the module with
+SPI enabled:
+
+```swift
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) import _TestDiscovery
+```
+
+> [!IMPORTANT]
+> Don't add a dependency on the `swift-testing` package's `Testing` module. If
+> you add a dependency on this module, it will cause you to build and link Swift
+> Testing every time you build your package. You only need the `_TestDiscovery`
+> module in order to discover your own test content types.
+
+After importing `_TestDiscovery`, find the type in your module that should be
+discoverable at runtime and add conformance to the `DiscoverableAsTestContent`
+protocol:
+
+```swift
+extension FoodTruckDiagnostic: DiscoverableAsTestContent {
+  static var testContentKind: TestContentKind { /* Your `kind` value here. */ }
+}
+```
+
+This type does not need to be publicly visible. However, if the values produced
+by your accessor functions are members of a public type, you may be able to
+simplify your code by using the same type.
+
+If you have defined a custom `context` type other than `UInt`, you can specify
+it here by setting the associated `TestContentContext` type. If you have defined
+a custom `hint` type for your accessor functions, you can set
+`TestContentAccessorHint`:
+
+```swift
+extension FoodTruckDiagnostic: DiscoverableAsTestContent {
+  static var testContentKind: TestContentKind { /* Your `kind` value here. */ }
+  
+  typealias TestContentContext = UnsafePointer<FoodTruck.Name>
+  typealias TestContentAccessorHint = String
+}
+```
+
+If you customize `TestContentContext`, be aware that the type you specify must
+have the same stride as `UInt` and must have an alignment less than or equal to
+that of `UInt`.
+
+When you are done configuring your type's protocol conformance, you can then
+enumerate all test content records matching it as instances of
+`TestContentRecord`.
+
+You can use the `context` property to access the `context` field of the record
+(as emitted into the test content section). The testing library will
+automatically cast the value of the field to an instance of `TestContentContext`
+for you.
+
+If you find a record you wish to resolve to an instance of your conforming type,
+call its `load()` function. `load()` calls the record's accessor function and,
+if you have set a hint type, lets you pass an optional instance of that type: 
+
+```swift
+for diagnosticRecord in FoodTruckDiagnostic.allTestContentRecords() {
+  if diagnosticRecord.context.pointee == .briansBranMuffins {
+    if let diagnostic = diagnosticRecord.load(withHint: "...") {
+      diagnostic.run()
+    }
+  }
+}
+```

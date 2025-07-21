@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2025 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -16,41 +16,9 @@
 
 SWT_ASSUME_NONNULL_BEGIN
 
-#pragma mark - Test content records
-
-/// The type of a test content accessor.
-///
-/// - Parameters:
-///   - outValue: On successful return, initialized to the value of the
-///     represented test content record.
-///   - hint: A hint value whose type and meaning depend on the type of test
-///     record being accessed.
-///
-/// - Returns: Whether or not the test record was initialized at `outValue`. If
-///   this function returns `true`, the caller is responsible for deinitializing
-///   the memory at `outValue` when done.
-typedef bool (* SWTTestContentAccessor)(void *outValue, const void *_Null_unspecified hint);
-
-/// Resign an accessor function from a test content record.
-///
-/// - Parameters:
-///   - accessor: The accessor function to resign.
-///
-/// - Returns: A resigned copy of `accessor` on platforms that use pointer
-///   authentication, and an exact copy of `accessor` elsewhere.
-///
-/// - Bug: This C function is needed because Apple's pointer authentication
-///   intrinsics are not available in Swift. ([141465242](rdar://141465242))
-SWT_SWIFT_NAME(swt_resign(_:))
-static SWTTestContentAccessor swt_resignTestContentAccessor(SWTTestContentAccessor accessor) {
-#if defined(__APPLE__) && __has_include(<ptrauth.h>)
-  accessor = ptrauth_strip(accessor, ptrauth_key_function_pointer);
-  accessor = ptrauth_sign_unauthenticated(accessor, ptrauth_key_function_pointer, 0);
-#endif
-  return accessor;
-}
-
 #if defined(__ELF__) && defined(__swift__)
+#pragma mark - ELF image enumeration
+
 /// A function exported by the Swift runtime that enumerates all metadata
 /// sections loaded into the current process.
 ///
@@ -62,47 +30,24 @@ SWT_IMPORT_FROM_STDLIB void swift_enumerateAllMetadataSections(
 );
 #endif
 
-#pragma mark - Statically-linked section bounds
-
-/// The bounds of the test content section statically linked into the image
-/// containing Swift Testing.
-///
-/// - Note: This symbol is _declared_, but not _defined_, on platforms with
-///   dynamic linking because the `SWT_NO_DYNAMIC_LINKING` C++ macro (not the
-///   Swift compiler conditional of the same name) is not consistently declared
-///   when Swift files import the `_TestingInternals` C++ module.
-SWT_EXTERN const void *_Nonnull const SWTTestContentSectionBounds[2];
-
-/// The bounds of the type metadata section statically linked into the image
-/// containing Swift Testing.
-///
-/// - Note: This symbol is _declared_, but not _defined_, on platforms with
-///   dynamic linking because the `SWT_NO_DYNAMIC_LINKING` C++ macro (not the
-///   Swift compiler conditional of the same name) is not consistently declared
-///   when Swift files import the `_TestingInternals` C++ module.
-SWT_EXTERN const void *_Nonnull const SWTTypeMetadataSectionBounds[2];
-
 #pragma mark - Legacy test discovery
 
-/// Copy all types known to Swift found in the given type metadata section with
-/// a name containing the given substring.
+/// The size, in bytes, of a Swift type metadata record.
+SWT_EXTERN const size_t SWTTypeMetadataRecordByteCount;
+
+/// Get the type represented by the type metadata record at the given address if
+/// its name contains the given string.
 ///
 /// - Parameters:
-///   - sectionBegin: The address of the first byte of the Swift type metadata
-///     section.
-///   - sectionSize: The size, in bytes, of the Swift type metadata section.
-///   - nameSubstring: A string which the names of matching classes all contain.
-///   - outCount: On return, the number of type metadata pointers returned.
+///   - recordAddress: The address of the Swift type metadata record.
+///   - nameSubstring: A string which the names of matching types contain.
 ///
-/// - Returns: A pointer to an array of type metadata pointers, or `nil` if no
-///   matching types were found. The caller is responsible for freeing this
-///   memory with `free()` when done.
-SWT_EXTERN void *_Nonnull *_Nullable swt_copyTypesWithNamesContaining(
-  const void *sectionBegin,
-  size_t sectionSize,
-  const char *nameSubstring,
-  size_t *outCount
-) SWT_SWIFT_NAME(swt_copyTypes(in:_:withNamesContaining:count:));
+/// - Returns: A Swift metatype (as `const void *`) or `nullptr` if it wasn't a
+///   usable type metadata record or its name did not contain `nameSubstring`.
+SWT_EXTERN const void *_Nullable swt_getTypeFromTypeMetadataRecord(
+  const void *recordAddress,
+  const char *nameSubstring
+) SWT_SWIFT_NAME(swt_getType(fromTypeMetadataRecord:ifNameContains:));
 
 SWT_ASSUME_NONNULL_END
 

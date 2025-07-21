@@ -11,6 +11,7 @@
 import Testing
 @testable import TestingMacros
 
+import SwiftBasicFormat
 import SwiftDiagnostics
 import SwiftParser
 import SwiftSyntax
@@ -66,6 +67,8 @@ struct TestDeclarationMacroTests {
         "Attribute 'Test' cannot be applied to a structure",
       "@Test enum E {}":
         "Attribute 'Test' cannot be applied to an enumeration",
+      "@Test func +() {}":
+        "Attribute 'Test' cannot be applied to an operator",
 
       // Availability
       "@available(*, unavailable) @Suite struct S {}":
@@ -140,6 +143,12 @@ struct TestDeclarationMacroTests {
         "Attribute 'Test' cannot be applied to a function within a generic extension to type 'T!'",
       "extension T! { @Suite struct S {} }":
         "Attribute 'Suite' cannot be applied to a structure within a generic extension to type 'T!'",
+      "struct S: ~Escapable { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within structure 'S' because its conformance to 'Escapable' has been suppressed",
+      "struct S: ~Swift.Escapable { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within structure 'S' because its conformance to 'Escapable' has been suppressed",
+      "struct S: ~(Escapable) { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within structure 'S' because its conformance to 'Escapable' has been suppressed",
     ]
   )
   func apiMisuseErrors(input: String, expectedMessage: String) throws {
@@ -210,17 +219,17 @@ struct TestDeclarationMacroTests {
           ]
         ),
 
-      #"@Test("Goodbye world") func `__raw__$helloWorld`()"#:
+      #"@Test("Goodbye world") func `hello world`()"#:
         (
-          message: "Attribute 'Test' specifies display name 'Goodbye world' for function with implicit display name 'helloWorld'",
+          message: "Attribute 'Test' specifies display name 'Goodbye world' for function with implicit display name 'hello world'",
           fixIts: [
             ExpectedFixIt(
               message: "Remove 'Goodbye world'",
               changes: [.replace(oldSourceCode: #""Goodbye world""#, newSourceCode: "")]
             ),
             ExpectedFixIt(
-              message: "Rename '__raw__$helloWorld'",
-              changes: [.replace(oldSourceCode: "`__raw__$helloWorld`", newSourceCode: "\(EditorPlaceholderExprSyntax("name"))")]
+              message: "Rename 'hello world'",
+              changes: [.replace(oldSourceCode: "`hello world`", newSourceCode: "\(EditorPlaceholderExprSyntax("name"))")]
             ),
           ]
         ),
@@ -274,10 +283,10 @@ struct TestDeclarationMacroTests {
   @Test("Raw function name components")
   func rawFunctionNameComponents() throws {
     let decl = """
-    func `__raw__$hello`(`__raw__$world`: T, etc: U, `blah`: V) {}
+    func `hello there`(`world of mine`: T, etc: U, `blah`: V) {}
     """ as DeclSyntax
     let functionDecl = try #require(decl.as(FunctionDeclSyntax.self))
-    #expect(functionDecl.completeName.trimmedDescription == "`hello`(`world`:etc:blah:)")
+    #expect(functionDecl.completeName.trimmedDescription == "`hello there`(`world of mine`:etc:blah:)")
   }
 
   @Test("Warning diagnostics emitted on API misuse",
@@ -402,7 +411,12 @@ struct TestDeclarationMacroTests {
   func differentFunctionTypes(input: String, expectedTypeName: String?, otherCode: String?) throws {
     let (output, _) = try parse(input)
 
-    #expect(output.contains("__TestContainer"))
+#if hasFeature(SymbolLinkageMarkers)
+    #expect(output.contains("@_section"))
+#endif
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+    #expect(output.contains("__TestContentRecordContainer"))
+#endif
     if let expectedTypeName {
       #expect(output.contains(expectedTypeName))
     }
@@ -440,6 +454,7 @@ struct TestDeclarationMacroTests {
   }
 
   @Test("Valid tag expressions are allowed",
+    .tags(.traitRelated),
     arguments: [
       #"@Test(.tags(.f)) func f() {}"#,
       #"@Test(Tag.List.tags(.f)) func f() {}"#,
@@ -460,6 +475,7 @@ struct TestDeclarationMacroTests {
   }
 
   @Test("Invalid tag expressions are detected",
+    .tags(.traitRelated),
     arguments: [
       "f()", ".f()", "loose",
       "WrongType.tag", "WrongType.f()",
@@ -478,6 +494,7 @@ struct TestDeclarationMacroTests {
   }
 
   @Test("Valid bug identifiers are allowed",
+    .tags(.traitRelated),
     arguments: [
       #"@Test(.bug(id: 12345)) func f() {}"#,
       #"@Test(.bug(id: "12345")) func f() {}"#,
@@ -500,6 +517,7 @@ struct TestDeclarationMacroTests {
   }
 
   @Test("Invalid bug URLs are detected",
+    .tags(.traitRelated),
     arguments: [
       "mailto: a@example.com", "example.com",
     ]

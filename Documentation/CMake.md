@@ -59,21 +59,38 @@ endif()
 ## Add an entry point
 
 You must include a source file in your test executable target with a
-`@main` entry point. The following example uses the SwiftPM entry point:
+`@main` entry point. The example main below requires the experimental
+`Extern` feature. The function `swt_abiv0_getEntryPoint` is exported
+from the swift-testing dylib. As such, its declaration could instead
+be written in a C header file with its own `module.modulemap`, or
+the runtime address could be obtained via
+[`dlsym()`](https://pubs.opengroup.org/onlinepubs/9799919799/functions/dlsym.html) or
+[`GetProcAddress()`](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getprocaddress).
 
 ```swift
-import Testing
+typealias EntryPoint = @convention(thin) @Sendable (_ configurationJSON: UnsafeRawBufferPointer?, _ recordHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void) async throws -> Bool
+
+@_extern(c, "swt_abiv0_getEntryPoint")
+func swt_abiv0_getEntryPoint() -> UnsafeRawPointer
 
 @main struct Runner {
-    static func main() async {
-        await Testing.__swiftPMEntryPoint() as Never
+    static func main() async throws {
+        nonisolated(unsafe) let configurationJSON: UnsafeRawBufferPointer? = nil
+        let recordHandler: @Sendable (UnsafeRawBufferPointer) -> Void = { _ in }
+
+        let entryPoint = unsafeBitCast(swt_abiv0_getEntryPoint(), to: EntryPoint.self)
+
+        if try await entryPoint(configurationJSON, recordHandler) {
+            exit(EXIT_SUCCESS)
+        } else {
+            exit(EXIT_FAILURE)
+        }
     }
 }
 ```
 
-> [!WARNING]
-> The entry point is expected to change to an entry point designed for other
-> build systems prior to the initial stable release of Swift Testing.
+For more information on the input configuration and output records of the ABI entry
+point, refer to the [ABI documentation](ABI/JSON.md).
 
 ## Integrate with CTest
 

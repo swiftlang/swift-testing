@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2025 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -10,45 +10,15 @@
 
 #include "Discovery.h"
 
-#include <cstdlib>
+#if !defined(SWT_NO_LEGACY_TEST_DISCOVERY)
 #include <cstdint>
 #include <cstring>
 #include <type_traits>
-#include <vector>
-
-#if defined(SWT_NO_DYNAMIC_LINKING)
-#pragma mark - Statically-linked section bounds
-
-#if defined(__APPLE__)
-extern "C" const char testContentSectionBegin __asm("section$start$__DATA_CONST$__swift5_tests");
-extern "C" const char testContentSectionEnd __asm("section$end$__DATA_CONST$__swift5_tests");
-extern "C" const char typeMetadataSectionBegin __asm__("section$start$__TEXT$__swift5_types");
-extern "C" const char typeMetadataSectionEnd __asm__("section$end$__TEXT$__swift5_types");
-#elif defined(__wasi__)
-extern "C" const char testContentSectionBegin __asm__("__start_swift5_tests");
-extern "C" const char testContentSectionEnd __asm__("__stop_swift5_tests");
-extern "C" const char typeMetadataSectionBegin __asm__("__start_swift5_type_metadata");
-extern "C" const char typeMetadataSectionEnd __asm__("__stop_swift5_type_metadata");
-#else
-#warning Platform-specific implementation missing: Runtime test discovery unavailable (static)
-static const char testContentSectionBegin = 0;
-static const char& testContentSectionEnd = testContentSectionBegin;
-static const char typeMetadataSectionBegin = 0;
-static const char& typeMetadataSectionEnd = typeMetadataSectionBegin;
-#endif
-
-const void *_Nonnull const SWTTestContentSectionBounds[2] = {
-  &testContentSectionBegin, &testContentSectionEnd
-};
-
-const void *_Nonnull const SWTTypeMetadataSectionBounds[2] = {
-  &typeMetadataSectionBegin, &typeMetadataSectionEnd
-};
-#endif
 
 #pragma mark - Swift ABI
 
 #if defined(__PTRAUTH_INTRINSICS__)
+#include <ptrauth.h>
 #define SWT_PTRAUTH_SWIFT_TYPE_DESCRIPTOR __ptrauth(ptrauth_key_process_independent_data, 1, 0xae86)
 #else
 #define SWT_PTRAUTH_SWIFT_TYPE_DESCRIPTOR
@@ -189,46 +159,33 @@ public:
 
 #pragma mark - Legacy test discovery
 
-void **swt_copyTypesWithNamesContaining(const void *sectionBegin, size_t sectionSize, const char *nameSubstring, size_t *outCount) {
-  void **result = nullptr;
-  size_t resultCount = 0;
+const size_t SWTTypeMetadataRecordByteCount = sizeof(SWTTypeMetadataRecord);
 
-  auto records = reinterpret_cast<const SWTTypeMetadataRecord *>(sectionBegin);
-  size_t recordCount = sectionSize / sizeof(SWTTypeMetadataRecord);
-  for (size_t i = 0; i < recordCount; i++) {
-    auto contextDescriptor = records[i].getContextDescriptor();
-    if (!contextDescriptor) {
-      // This type metadata record is invalid (or we don't understand how to
-      // get its context descriptor), so skip it.
-      continue;
-    } else if (contextDescriptor->isGeneric()) {
-      // Generic types cannot be fully instantiated without generic
-      // parameters, which is not something we can know abstractly.
-      continue;
-    }
-
-    // Check that the type's name passes. This will be more expensive than the
-    // checks above, but should be cheaper than realizing the metadata.
-    const char *typeName = contextDescriptor->getName();
-    bool nameOK = typeName && nullptr != std::strstr(typeName, nameSubstring);
-    if (!nameOK) {
-      continue;
-    }
-
-    if (void *typeMetadata = contextDescriptor->getMetadata()) {
-      if (!result) {
-        // This is the first matching type we've found. That presumably means
-        // we'll find more, so allocate enough space for all remaining types in
-        // the section. Is this necessarily space-efficient? No, but this
-        // allocation is short-lived and is immediately copied and freed in the
-        // Swift caller.
-        result = reinterpret_cast<void **>(std::calloc(recordCount - i, sizeof(void *)));
-      }
-      result[resultCount] = typeMetadata;
-      resultCount += 1;
-    }
+const void *swt_getTypeFromTypeMetadataRecord(const void *recordAddress, const char *nameSubstring) {
+  auto record = reinterpret_cast<const SWTTypeMetadataRecord *>(recordAddress);
+  auto contextDescriptor = record->getContextDescriptor();
+  if (!contextDescriptor) {
+    // This type metadata record is invalid (or we don't understand how to
+    // get its context descriptor), so skip it.
+    return nullptr;
+  } else if (contextDescriptor->isGeneric()) {
+    // Generic types cannot be fully instantiated without generic
+    // parameters, which is not something we can know abstractly.
+    return nullptr;
   }
 
-  *outCount = resultCount;
-  return result;
+  // Check that the type's name passes. This will be more expensive than the
+  // checks above, but should be cheaper than realizing the metadata.
+  const char *typeName = contextDescriptor->getName();
+  bool nameOK = typeName && nullptr != std::strstr(typeName, nameSubstring);
+  if (!nameOK) {
+    return nullptr;
+  }
+
+  if (void *typeMetadata = contextDescriptor->getMetadata()) {
+    return typeMetadata;
+  }
+
+  return nullptr;
 }
+#endif

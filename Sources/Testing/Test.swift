@@ -199,7 +199,7 @@ public struct Test: Sendable {
   /// being added to the plan. For such suites, the value of this property is
   /// `true`.
   @_spi(ForToolsIntegrationOnly)
-  public var isSynthesized = false
+  public var isSynthesized: Bool = false
 
   /// Initialize an instance of this type representing a test suite type.
   init(
@@ -209,8 +209,13 @@ public struct Test: Sendable {
     containingTypeInfo: TypeInfo,
     isSynthesized: Bool = false
   ) {
-    self.name = containingTypeInfo.unqualifiedName
-    self.displayName = displayName
+    let name = containingTypeInfo.unqualifiedName
+    self.name = name
+    if let displayName {
+      self.displayName = displayName
+    } else if isSynthesized && name.count > 2 && name.first == "`" && name.last == "`" {
+      self.displayName = String(name.dropFirst().dropLast())
+    }
     self.traits = traits
     self.sourceLocation = sourceLocation
     self.containingTypeInfo = containingTypeInfo

@@ -9,13 +9,16 @@
 # Settings intended to be applied to every Swift target in this project.
 # Analogous to project-level build settings in an Xcode project.
 add_compile_options(
+  "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-package-name org.swift.testing>")
+add_compile_options(
   "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -require-explicit-sendable>")
 add_compile_options(
-  "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-experimental-feature -Xfrontend AccessLevelOnImport>"
-  "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-experimental-feature -Xfrontend SuppressedAssociatedTypes>")
+  "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-experimental-feature -Xfrontend AccessLevelOnImport>")
 add_compile_options(
   "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-upcoming-feature -Xfrontend ExistentialAny>"
-  "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-upcoming-feature -Xfrontend InternalImportsByDefault>")
+  "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-upcoming-feature -Xfrontend InternalImportsByDefault>"
+  "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-upcoming-feature -Xfrontend MemberImportVisibility>"
+  "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-upcoming-feature -Xfrontend InferIsolatedConformances>")
 
 # Platform-specific definitions.
 if(APPLE)
@@ -31,6 +34,7 @@ if(CMAKE_SYSTEM_NAME IN_LIST SWT_NO_PROCESS_SPAWNING_LIST)
 endif()
 if(NOT APPLE)
   add_compile_definitions("SWT_NO_SNAPSHOT_TYPES")
+  add_compile_definitions("SWT_NO_FOUNDATION_FILE_COORDINATION")
 endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "WASI")
   add_compile_definitions("SWT_NO_DYNAMIC_LINKING")

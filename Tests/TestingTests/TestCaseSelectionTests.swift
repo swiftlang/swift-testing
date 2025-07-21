@@ -85,8 +85,9 @@ struct TestCaseSelectionTests {
     }
 
     let selectedTestCase = try #require(fixtureTest.testCases?.first { testCase in
-      guard let firstArg = testCase.arguments.first?.value as? String,
-            let secondArg = testCase.arguments.last?.value as? Int
+      guard let arguments = testCase.arguments,
+            let firstArg = arguments.first?.value as? String,
+            let secondArg = arguments.last?.value as? Int
       else {
         return false
       }

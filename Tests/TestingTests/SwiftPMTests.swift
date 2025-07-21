@@ -11,6 +11,10 @@
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 
+#if canImport(Foundation)
+private import Foundation
+#endif
+
 private func configurationForEntryPoint(withArguments args: [String]) throws -> Configuration {
   let args = try parseCommandLineArguments(from: args)
   return try configurationForEntryPoint(from: args)
@@ -129,7 +133,7 @@ struct SwiftPMTests {
     #expect(planTests.contains(test2))
   }
 
-  @Test(".hidden trait")
+  @Test(".hidden trait", .tags(.traitRelated))
   func hidden() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH"])
     let test1 = Test(name: "hello") {}
@@ -226,22 +230,24 @@ struct SwiftPMTests {
     #expect(args.parallel == false)
   }
 
-  func decodeABIv0RecordStream(fromFileAtPath path: String) throws -> [ABIv0.Record] {
-    try FileHandle(forReadingAtPath: path).readToEnd()
-      .split(whereSeparator: \.isASCIINewline)
-      .map { line in
-        try line.withUnsafeBytes { line in
-          try JSON.decode(ABIv0.Record.self, from: line)
-        }
-      }
-  }
-
   @Test("--event-stream-output-path argument (writes to a stream and can be read back)",
         arguments: [
-          ("--event-stream-output-path", "--event-stream-version", "0"),
-          ("--experimental-event-stream-output", "--experimental-event-stream-version", "0"),
+          ("--event-stream-output-path", "--event-stream-version", ABI.v0.versionNumber),
+          ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v0.versionNumber),
+          ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v1.versionNumber),
         ])
-  func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: String) async throws {
+  func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: Int) async throws {
+    switch version {
+    case ABI.v0.versionNumber:
+      try await eventStreamOutput(outputArgumentName: outputArgumentName, versionArgumentName: versionArgumentName, version: ABI.v0.self)
+    case ABI.v1.versionNumber:
+      try await eventStreamOutput(outputArgumentName: outputArgumentName, versionArgumentName: versionArgumentName, version: ABI.v1.self)
+    default:
+      Issue.record("Unreachable event stream version \(version)")
+    }
+  }
+
+  func eventStreamOutput<V>(outputArgumentName: String, versionArgumentName: String, version: V.Type) async throws where V: ABI.Version {
     // Test that JSON records are successfully streamed to a file and can be
     // read back into memory and decoded.
     let tempDirPath = try temporaryDirectory()
@@ -250,8 +256,8 @@ struct SwiftPMTests {
       _ = remove(temporaryFilePath)
     }
     do {
-      let configuration = try configurationForEntryPoint(withArguments: ["PATH", outputArgumentName, temporaryFilePath, versionArgumentName, version])
-      let test = Test {}
+      let configuration = try configurationForEntryPoint(withArguments: ["PATH", outputArgumentName, temporaryFilePath, versionArgumentName, "\(version.versionNumber)"])
+      let test = Test(.tags(.blue)) {}
       let eventContext = Event.Context(test: test, testCase: nil, configuration: nil)
 
       configuration.handleEvent(Event(.testDiscovered, testID: test.id, testCaseID: nil), in: eventContext)
@@ -264,7 +270,14 @@ struct SwiftPMTests {
       configuration.handleEvent(Event(.runEnded, testID: nil, testCaseID: nil), in: eventContext)
     }
 
-    let decodedRecords = try decodeABIv0RecordStream(fromFileAtPath: temporaryFilePath)
+    let decodedRecords = try FileHandle(forReadingAtPath: temporaryFilePath).readToEnd()
+      .split(whereSeparator: \.isASCIINewline)
+      .map { line in
+        try line.withUnsafeBytes { line in
+          try JSON.decode(ABI.Record<V>.self, from: line)
+        }
+      }
+
     let testRecords = decodedRecords.compactMap { record in
       if case let .test(test) = record.kind {
         return test
@@ -272,6 +285,13 @@ struct SwiftPMTests {
       return nil
     }
     #expect(testRecords.count == 1)
+    for testRecord in testRecords {
+      if version.versionNumber >= ABI.v1.versionNumber {
+        #expect(testRecord._tags != nil)
+      } else {
+        #expect(testRecord._tags == nil)
+      }
+    }
     let eventRecords = decodedRecords.compactMap { record in
       if case let .event(event) = record.kind {
         return event
@@ -279,6 +299,14 @@ struct SwiftPMTests {
       return nil
     }
     #expect(eventRecords.count == 4)
+  }
+
+  @Test("Experimental ABI version requires --experimental-event-stream-version argument")
+  func experimentalABIVersionNeedsExperimentalFlag() {
+    #expect(throws: (any Error).self) {
+      let experimentalVersion = ABI.CurrentVersion.versionNumber + 1
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--event-stream-version", "\(experimentalVersion)"])
+    }
   }
 #endif
 #endif

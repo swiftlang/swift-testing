@@ -8,9 +8,14 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ForToolsIntegrationOnly) import Testing
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+
 #if canImport(XCTest)
 import XCTest
+#endif
+
+#if canImport(Foundation)
+import Foundation
 #endif
 
 extension Tag {
@@ -103,6 +108,25 @@ extension Runner {
     inModuleOf fileID: String = #fileID,
     configuration: Configuration = .init()
   ) async {
+    let plan = await Runner.Plan(selecting: testName, inModuleOf: fileID, configuration: configuration)
+    self.init(plan: plan, configuration: configuration)
+  }
+}
+
+extension Runner.Plan {
+  /// Initialize an instance of this type that selects the free test function
+  /// named `testName` in the module specified in `fileID`.
+  ///
+  /// - Parameters:
+  ///   - testName: The name of the test function this instance should run.
+  ///   - fileID: The `#fileID` string whose module should be used to locate
+  ///     the test function to run.
+  ///   - configuration: The configuration to use for running.
+  init(
+    selecting testName: String,
+    inModuleOf fileID: String = #fileID,
+    configuration: Configuration = .init()
+  ) async {
     let moduleName = String(fileID[..<fileID.lastIndex(of: "/")!])
 
     var configuration = configuration
@@ -111,9 +135,7 @@ extension Runner {
 
     await self.init(configuration: configuration)
   }
-}
 
-extension Runner.Plan {
   /// Initialize an instance of this type with the specified suite type.
   ///
   /// - Parameters:
@@ -157,11 +179,11 @@ extension Test {
   ///   - testFunction: The function to call when running this test. During
   ///     testing, this function is called once for each element in
   ///     `collection`.
-  //
-  // @Comment {
-  //   - Bug: The testing library should support variadic generics.
-  //     ([103416861](rdar://103416861))
-  // }
+  ///
+  /// @Comment {
+  ///   - Bug: The testing library should support variadic generics.
+  ///     ([103416861](rdar://103416861))
+  /// }
   init<C>(
     _ traits: any TestTrait...,
     arguments collection: C,
@@ -186,11 +208,11 @@ extension Test {
   ///   - testFunction: The function to call when running this test. During
   ///     testing, this function is called once for each pair of elements in
   ///     `collection1` and `collection2`.
-  //
-  // @Comment {
-  //   - Bug: The testing library should support variadic generics.
-  //     ([103416861](rdar://103416861))
-  // }
+  ///
+  /// @Comment {
+  ///   - Bug: The testing library should support variadic generics.
+  ///     ([103416861](rdar://103416861))
+  /// }
   init<C1, C2>(
     _ traits: any TestTrait...,
     arguments collection1: C1, _ collection2: C2,
@@ -348,6 +370,24 @@ extension JSON {
       try JSON.decode(T.self, from: data)
     }
   }
+
+#if canImport(Foundation)
+  /// Decode a value from JSON data.
+  ///
+  /// - Parameters:
+  ///   - type: The type of value to decode.
+  ///   - jsonRepresentation: Data of the JSON encoding of the value to decode.
+  ///
+  /// - Returns: An instance of `T` decoded from `jsonRepresentation`.
+  ///
+  /// - Throws: Whatever is thrown by the decoding process.
+  @_disfavoredOverload
+  static func decode<T>(_ type: T.Type, from jsonRepresentation: Data) throws -> T where T: Decodable {
+    try jsonRepresentation.withUnsafeBytes { bytes in
+      try JSON.decode(type, from: bytes)
+    }
+  }
+#endif
 }
 
 @available(_clockAPI, *)
@@ -368,8 +408,8 @@ extension Trait where Self == TimeLimitTrait {
 }
 
 extension Issue {
-  init(kind: Kind, sourceContext: SourceContext = .init()) {
-    self.init(kind: kind, comments: [], sourceContext: sourceContext)
+  init(kind: Kind, severity: Severity = .error, sourceContext: SourceContext = .init()) {
+    self.init(kind: kind, severity: severity, comments: [], sourceContext: sourceContext)
   }
 }
 

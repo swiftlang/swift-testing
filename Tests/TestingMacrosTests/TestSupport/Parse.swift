@@ -10,6 +10,7 @@
 
 @testable import TestingMacros
 
+import SwiftBasicFormat
 import SwiftDiagnostics
 import SwiftOperators
 import SwiftParser
@@ -18,7 +19,7 @@ import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 import SwiftSyntaxMacroExpansion
 
-fileprivate let allMacros: [String: any Macro.Type] = [
+fileprivate let allMacros: [String: any (Macro & Sendable).Type] = [
   "expect": ExpectMacro.self,
   "require": RequireMacro.self,
   "requireAmbiguous": AmbiguousRequireMacro.self, // different name needed only for unit testing
