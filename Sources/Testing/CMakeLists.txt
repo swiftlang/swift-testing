@@ -58,6 +58,7 @@ add_library(Testing
   Running/Runner.Plan+Dumping.swift
   Running/Runner.RuntimeState.swift
   Running/Runner.swift
+  Running/Serializer.swift
   Running/SkipInfo.swift
   SourceAttribution/Backtrace.swift
   SourceAttribution/Backtrace+Symbolication.swift
