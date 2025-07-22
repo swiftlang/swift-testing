@@ -87,14 +87,15 @@ func mentionedContinents(videoName: String) async throws {
 ### Cross-platform support
 
 Swift Testing is included in officially-supported Swift toolchains, including
-those for Apple platforms, Linux, and Windows. This means you don't need to
-declare a package dependency to use it—just import the `Testing` module:
+those for Apple platforms, Linux, and Windows. To use the library, import the
+`Testing` module:
 
 ```swift
 import Testing
 ```
 
-Swift Testing is developed as open source and discussed on the
+You don't need to declare a package dependency to use Swift Testing. It's
+developed as open source and discussed on the
 [Swift Forums](https://forums.swift.org/c/development/swift-testing/103)
 so the very best ideas, from anywhere, can help shape the future of testing in
 Swift.
