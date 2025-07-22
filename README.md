@@ -23,6 +23,8 @@ Swift expressions and operators, and captures the evaluated values so you can
 quickly understand what went wrong when a test fails.
 
 ```swift
+import Testing
+
 @Test func helloWorld() {
   let greeting = "Hello, world!"
   #expect(greeting == "Hello") // Expectation failed: (greeting → "Hello, world!") == "Hello"
@@ -84,11 +86,18 @@ func mentionedContinents(videoName: String) async throws {
 
 ### Cross-platform support
 
-Swift Testing works on all major platforms supported by Swift, including Apple
-platforms, Linux, and Windows, so your tests can behave more consistently when
-moving between platforms. It’s developed as open source and discussed on the
-[Swift Forums](https://forums.swift.org/c/development/swift-testing/103) so the
-very best ideas, from anywhere, can help shape the future of testing in Swift.
+Swift Testing is included in officially-supported Swift toolchains, including
+those for Apple platforms, Linux, and Windows. This means you don't need to
+declare a package dependency to use it—just import the `Testing` module:
+
+```swift
+import Testing
+```
+
+Swift Testing is developed as open source and discussed on the
+[Swift Forums](https://forums.swift.org/c/development/swift-testing/103)
+so the very best ideas, from anywhere, can help shape the future of testing in
+Swift.
 
 The table below describes the current level of support that Swift Testing has
 for various platforms:
