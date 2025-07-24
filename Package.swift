@@ -90,6 +90,8 @@ let package = Package(
         targets: [
           "_Testing_AppKit",
           "_Testing_CoreGraphics",
+          "_Testing_CoreImage",
+          "_Testing_UIKit",
         ]
       )
     ]
@@ -104,13 +106,6 @@ let package = Package(
 
     return result
   }(),
-
-  traits: [
-    .trait(
-      name: "ExperimentalExitTestValueCapture",
-      description: "Enable experimental support for capturing values in exit tests"
-    ),
-  ],
 
   dependencies: [
     .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "602.0.0-latest"),
@@ -137,7 +132,9 @@ let package = Package(
         "Testing",
         "_Testing_AppKit",
         "_Testing_CoreGraphics",
+        "_Testing_CoreImage",
         "_Testing_Foundation",
+        "_Testing_UIKit",
         "MemorySafeTestingTests",
       ],
       swiftSettings: .packageSettings
@@ -219,6 +216,15 @@ let package = Package(
       swiftSettings: .packageSettings + .enableLibraryEvolution()
     ),
     .target(
+      name: "_Testing_CoreImage",
+      dependencies: [
+        "Testing",
+        "_Testing_CoreGraphics",
+      ],
+      path: "Sources/Overlays/_Testing_CoreImage",
+      swiftSettings: .packageSettings + .enableLibraryEvolution()
+    ),
+    .target(
       name: "_Testing_Foundation",
       dependencies: [
         "Testing",
@@ -229,6 +235,16 @@ let package = Package(
       // platforms, and since this target's module publicly imports Foundation,
       // it can only enable Library Evolution itself on those platforms.
       swiftSettings: .packageSettings + .enableLibraryEvolution(.whenApple())
+    ),
+    .target(
+      name: "_Testing_UIKit",
+      dependencies: [
+        "Testing",
+        "_Testing_CoreGraphics",
+        "_Testing_CoreImage",
+      ],
+      path: "Sources/Overlays/_Testing_UIKit",
+      swiftSettings: .packageSettings + .enableLibraryEvolution()
     ),
 
     // Utility targets: These are utilities intended for use when developing
@@ -359,14 +375,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .define("SWT_NO_LEGACY_TEST_DISCOVERY", .whenEmbedded()),
       .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
     ]
-
-    // Unconditionally enable 'ExperimentalExitTestValueCapture' when building
-    // for development.
-    if buildingForDevelopment {
-      result += [
-        .define("ExperimentalExitTestValueCapture")
-      ]
-    }
 
     return result
   }

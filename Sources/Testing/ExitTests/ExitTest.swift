@@ -153,7 +153,7 @@ extension ExitTest {
   ///
   /// A pointer is used for indirection because `ManagedBuffer` cannot yet hold
   /// move-only types.
-  private static nonisolated(unsafe) var _current: Locked<UnsafeMutablePointer<ExitTest?>> = {
+  private static nonisolated(unsafe) let _current: Locked<UnsafeMutablePointer<ExitTest?>> = {
     let current = UnsafeMutablePointer<ExitTest?>.allocate(capacity: 1)
     current.initialize(to: nil)
     return Locked(rawValue: current)
@@ -232,6 +232,10 @@ extension ExitTest {
 #warning("Platform-specific implementation missing: unable to disable crash reporting")
 #endif
   }
+
+  /// The name of the environment variable used to identify the exit test to
+  /// call in a spawned exit test process.
+  private static let _idEnvironmentVariableName = "SWT_EXIT_TEST_ID"
 
   /// Call the exit test in the current process.
   ///
@@ -399,7 +403,7 @@ extension ExitTest {
     asTypeAt typeAddress: UnsafeRawPointer,
     withHintAt hintAddress: UnsafeRawPointer? = nil
   ) -> CBool {
-    fatalError("Unimplemented")
+    swt_unreachable()
   }
 }
 
@@ -545,6 +549,73 @@ extension ABI {
 
 @_spi(ForToolsIntegrationOnly)
 extension ExitTest {
+  /// A barrier value to insert into the standard output and standard error
+  /// streams immediately before and after the body of an exit test runs in
+  /// order to distinguish output produced by the host process.
+  ///
+  /// The value of this property was randomly generated. It could conceivably
+  /// show up in actual output from an exit test, but the statistical likelihood
+  /// of that happening is negligible.
+  static var barrierValue: [UInt8] {
+    [
+      0x39, 0x74, 0x87, 0x6d, 0x96, 0xdd, 0xf6, 0x17,
+      0x7f, 0x05, 0x61, 0x5d, 0x46, 0xeb, 0x37, 0x0c,
+      0x90, 0x07, 0xca, 0xe5, 0xed, 0x0b, 0xc4, 0xc4,
+      0x46, 0x36, 0xc5, 0xb8, 0x9c, 0xc7, 0x86, 0x57,
+    ]
+  }
+
+  /// Remove the leading and trailing barrier values from the given array of
+  /// bytes along.
+  ///
+  /// - Parameters:
+  ///   - buffer: The buffer to trim.
+  ///
+  /// - Returns: A copy of `buffer`. If a barrier value (equal to
+  ///   ``barrierValue``) is present in `buffer`, it and everything before it
+  ///   are trimmed from the beginning of the copy. If there is more than one
+  ///   barrier value present, the last one and everything after it are trimmed
+  ///   from the end of the copy. If no barrier value is present, `buffer` is
+  ///   returned verbatim.
+  private static func _trimToBarrierValues(_ buffer: [UInt8]) -> [UInt8] {
+    let barrierValue = barrierValue
+    let firstBarrierByte = barrierValue[0]
+
+    // If the buffer is too small to contain the barrier value, exit early.
+    guard buffer.count > barrierValue.count else {
+      return buffer
+    }
+
+    // Find all the indices where the first byte of the barrier is present.
+    let splits = buffer.indices.filter { buffer[$0] == firstBarrierByte }
+
+    // Trim off the leading barrier value. If we didn't find any barrier values,
+    // we do nothing.
+    let leadingIndex = splits.first { buffer[$0...].starts(with: barrierValue) }
+    guard let leadingIndex else {
+      return buffer
+    }
+    var trimmedBuffer = buffer[leadingIndex...].dropFirst(barrierValue.count)
+
+    // If there's a trailing barrier value, trim it too. If it's at the same
+    // index as the leading barrier value, that means only one barrier value
+    // was present and we should assume it's the leading one.
+    let trailingIndex = splits.last { buffer[$0...].starts(with: barrierValue) }
+    if let trailingIndex, trailingIndex > leadingIndex {
+      trimmedBuffer = trimmedBuffer[..<trailingIndex]
+    }
+
+    return Array(trimmedBuffer)
+  }
+
+  /// Write barrier values (equal to ``barrierValue``) to the standard output
+  /// and standard error streams of the current process.
+  private static func _writeBarrierValues() {
+    let barrierValue = Self.barrierValue
+    try? FileHandle.stdout.write(barrierValue)
+    try? FileHandle.stderr.write(barrierValue)
+  }
+
   /// A handler that is invoked when an exit test starts.
   ///
   /// - Parameters:
@@ -646,6 +717,17 @@ extension ExitTest {
 #endif
   }
 
+  /// The ID of the exit test to run, if any, specified in the environment.
+  static var environmentIDForEntryPoint: ID? {
+    guard var idString = Environment.variable(named: Self._idEnvironmentVariableName) else {
+      return nil
+    }
+
+    return try? idString.withUTF8 { idBuffer in
+      try JSON.decode(ExitTest.ID.self, from: UnsafeRawBufferPointer(idBuffer))
+    }
+  }
+
   /// Find the exit test function specified in the environment of the current
   /// process, if any.
   ///
@@ -656,20 +738,14 @@ extension ExitTest {
   /// `__swiftPMEntryPoint()` function. The effect of using it under other
   /// configurations is undefined.
   static func findInEnvironmentForEntryPoint() -> Self? {
-    // Find the ID of the exit test to run, if any, in the environment block.
-    var id: ExitTest.ID?
-    if var idString = Environment.variable(named: "SWT_EXIT_TEST_ID") {
-      // Clear the environment variable. It's an implementation detail and exit
-      // test code shouldn't be dependent on it. Use ExitTest.current if needed!
-      Environment.setVariable(nil, named: "SWT_EXIT_TEST_ID")
-
-      id = try? idString.withUTF8 { idBuffer in
-        try JSON.decode(ExitTest.ID.self, from: UnsafeRawBufferPointer(idBuffer))
-      }
-    }
-    guard let id, var result = find(identifiedBy: id) else {
+    guard let id = environmentIDForEntryPoint, var result = find(identifiedBy: id) else {
       return nil
     }
+
+    // Since an exit test was found, clear the environment variable. It's an
+    // implementation detail and exit test code shouldn't be dependent on it.
+    // Use ExitTest.current if needed!
+    Environment.setVariable(nil, named: Self._idEnvironmentVariableName)
 
     // If an exit test was found, inject back channel handling into its body.
     // External tools authors should set up their own back channel mechanisms
@@ -697,6 +773,13 @@ extension ExitTest {
     }
 
     result.body = { [configuration, body = result.body] exitTest in
+      Self._writeBarrierValues()
+      defer {
+        // We will generally not end up writing these values if the process
+        // exits abnormally.
+        Self._writeBarrierValues()
+      }
+
       try await Configuration.withCurrent(configuration) {
         try exitTest._decodeCapturedValuesForEntryPoint()
         try await body(&exitTest)
@@ -793,7 +876,7 @@ extension ExitTest {
       // Insert a specific variable that tells the child process which exit test
       // to run.
       try JSON.withEncoding(of: exitTest.id) { json in
-        childEnvironment["SWT_EXIT_TEST_ID"] = String(decoding: json, as: UTF8.self)
+        childEnvironment[Self._idEnvironmentVariableName] = String(decoding: json, as: UTF8.self)
       }
 
       typealias ResultUpdater = @Sendable (inout ExitTest.Result) -> Void
@@ -877,14 +960,14 @@ extension ExitTest {
         if let stdoutReadEnd {
           stdoutWriteEnd?.close()
           taskGroup.addTask {
-            let standardOutputContent = try stdoutReadEnd.readToEnd()
+            let standardOutputContent = try Self._trimToBarrierValues(stdoutReadEnd.readToEnd())
             return { $0.standardOutputContent = standardOutputContent }
           }
         }
         if let stderrReadEnd {
           stderrWriteEnd?.close()
           taskGroup.addTask {
-            let standardErrorContent = try stderrReadEnd.readToEnd()
+            let standardErrorContent = try Self._trimToBarrierValues(stderrReadEnd.readToEnd())
             return { $0.standardErrorContent = standardErrorContent }
           }
         }

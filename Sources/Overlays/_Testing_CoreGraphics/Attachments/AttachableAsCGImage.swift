@@ -24,13 +24,17 @@ private import ImageIO
 /// be attached to a test:
 ///
 /// - [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage)
+/// - [`CIImage`](https://developer.apple.com/documentation/coreimage/ciimage)
 /// - [`NSImage`](https://developer.apple.com/documentation/appkit/nsimage)
 ///   (macOS)
+/// - [`UIImage`](https://developer.apple.com/documentation/uikit/uiimage)
+///   (iOS, watchOS, tvOS, visionOS, and Mac Catalyst)
 ///
 /// You do not generally need to add your own conformances to this protocol. If
 /// you have an image in another format that needs to be attached to a test,
 /// first convert it to an instance of one of the types above.
 @_spi(Experimental)
+@available(_uttypesAPI, *)
 public protocol AttachableAsCGImage {
   /// An instance of `CGImage` representing this image.
   ///
@@ -73,6 +77,7 @@ public protocol AttachableAsCGImage {
   func _makeCopyForAttachment() -> Self
 }
 
+@available(_uttypesAPI, *)
 extension AttachableAsCGImage {
   public var _attachmentOrientation: UInt32 {
     CGImagePropertyOrientation.up.rawValue
@@ -83,6 +88,7 @@ extension AttachableAsCGImage {
   }
 }
 
+@available(_uttypesAPI, *)
 extension AttachableAsCGImage where Self: Sendable {
   public func _makeCopyForAttachment() -> Self {
     self
