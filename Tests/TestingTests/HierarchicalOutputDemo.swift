@@ -8,58 +8,39 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-@testable @_spi(ForToolsIntegrationOnly) import Testing
+import Testing
 import Foundation
 
-@Suite("HierarchicalOutputDemoSuite")
-struct HierarchicalOutputDemoSuite {
-  
-  @Test("passingTest")
-  func passingTest() {
-    #expect(1 + 1 == 2)
-  }
-  
-  @Test("anotherPassingTest")
-  func anotherPassingTest() {
-    #expect(true == true)
-  }
-  
-  @Test("failingTest")
-  func failingTest() {
-    #expect(1 + 1 == 3)
-  }
-  
-  static func shouldSkipTest() -> Bool {
-    // This will always return false (i.e., should skip), but is evaluated at runtime
-    return ProcessInfo.processInfo.environment["NEVER_SET_ENV_VAR"] != nil
-  }
-  
-  @Test("skippedTest", .enabled { shouldSkipTest() })
-  func skippedTest() {
-    #expect(1 + 1 == 2)
-  }
-  
-  @Test("anotherSkippedTest", .disabled { !shouldSkipTest() })
-  func anotherSkippedTest() {
-    #expect(true == true)
-  }
-}
+@Suite("Hierarchical Output Demo - Progress Bar Test")
+struct HierarchicalOutputDemo {
 
-@Suite("AnotherTestSuite")
-struct AnotherTestSuite {
-  
-  @Test("quickTest")
-  func quickTest() {
-    #expect(2 + 2 == 4)
-  }
-  
-  @Test("slightlySlowerTest")
-  func slightlySlowerTest() {
-    #expect(3 + 3 == 6)
-  }
-  
-  @Test("skipInAnotherSuite", .enabled { HierarchicalOutputDemoSuite.shouldSkipTest() })
-  func skipInAnotherSuite() {
-    #expect(1 + 1 == 2)
-  }
+    @Test("Slow Test 1")
+    func slowTest1() async throws {
+        try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+        #expect(1 + 1 == 2)
+    }
+
+    @Test("Slow Test 2")  
+    func slowTest2() async throws {
+        try await Task.sleep(nanoseconds: 2_500_000_000) // 2.5 seconds
+        #expect(2 + 2 == 4)
+    }
+
+    @Test("Slow Test 3")
+    func slowTest3() async throws {
+        try await Task.sleep(nanoseconds: 1_800_000_000) // 1.8 seconds
+        #expect(3 + 3 == 6)
+    }
+
+    @Test("Slow Test 4")
+    func slowTest4() async throws {
+        try await Task.sleep(nanoseconds: 2_200_000_000) // 2.2 seconds
+        #expect(4 + 4 == 8)
+    }
+
+    @Test("Slow Test 5")
+    func slowTest5() async throws {
+        try await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 seconds
+        #expect(5 + 5 == 10)
+    }
 } 

@@ -98,10 +98,11 @@ extension Event {
     private let _context = Locked(rawValue: HierarchyContext())
     
     /// Initialize the hierarchical console output recorder.
-    public init(options: Options = Options(), writingUsing write: @escaping @Sendable (String) -> Void) {
-      self.options = options
-      self.write = write
-    }
+      public init(options: Options = Options(), writingUsing write: @escaping @Sendable (String) -> Void) {
+    self.options = options
+    self.write = write
+    Self.setupSignalHandlers()
+  }
   }
 }
 
@@ -124,6 +125,8 @@ extension Event.AdvancedConsoleOutputRecorder {
     }
     
     private static let _livePhaseState = Locked(rawValue: LivePhaseState())
+    @MainActor private static var _signalHandler: (any DispatchSourceSignal)?
+    @MainActor private static var _hasActiveRecorder: Bool = false
 
     private func updateLiveStats(event: Event, context: Event.Context) {
         Self._livePhaseState.withLock { state in
@@ -497,6 +500,7 @@ extension Event.AdvancedConsoleOutputRecorder {
     }
     
     renderCompleteHierarchy()
+    Self.cleanupSignalHandlers()
   }
   
   private func renderCompleteHierarchy() {
@@ -909,6 +913,54 @@ extension Event.AdvancedConsoleOutputRecorder {
       return true
     default:
       return false
+    }
+  }
+  
+  // MARK: - Signal Handling
+  
+  private static func setupSignalHandlers() {
+    Task { @MainActor in
+      // Only set up the signal handler once
+      guard Self._signalHandler == nil else { return }
+      
+      Self._hasActiveRecorder = true
+      
+      #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS)
+      let signalType = SIGINFO
+      #else
+      let signalType = SIGUSR1
+      #endif
+      
+      signal(signalType, SIG_IGN) // Ignore default handler
+      
+      let signalSource = DispatchSource.makeSignalSource(signal: signalType, queue: .main)
+      signalSource.setEventHandler {
+        Self.printGlobalOnDemandStatus()
+      }
+      signalSource.resume()
+      Self._signalHandler = signalSource
+    }
+  }
+  
+  @MainActor private static func printGlobalOnDemandStatus() {
+    guard _hasActiveRecorder else {
+      try? FileHandle.stderr.write("\nNo active test recorder found.\n")
+      return
+    }
+    
+    let (total, completed, passed, failed, warnings, known, skipped) = _livePhaseState.withLock { state in
+      (max(state.totalTests, state.completedTests), state.completedTests, state.passed, 
+       state.failed, state.warnings, state.knownIssues, state.skipped)
+    }
+    
+    let statusMsg = "STATUS: [\(completed)/\(total)] | ✓ \(passed) | ✗ \(failed) | ? \(warnings) | ~ \(known) | → \(skipped)"
+    
+    try? FileHandle.stderr.write("\n\(statusMsg)\n")
+  }
+  
+  private static func cleanupSignalHandlers() {
+    Task { @MainActor in
+      Self._hasActiveRecorder = false
     }
   }
 }
