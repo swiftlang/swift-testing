@@ -265,7 +265,7 @@ public struct __CommandLineArguments_v0: Sendable {
   ///
   /// If the value of this property is `nil`, the testing library assumes that
   /// the current supported (non-experimental) version should be used.
-  public var eventStreamVersion: Int?
+  public var eventStreamVersion: __ABIVersionNumber?
 
   /// The value(s) of the `--filter` argument.
   public var filter: [String]?
@@ -381,7 +381,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 
       // If the caller specified a version that could not be parsed, treat it as
       // an invalid argument.
-      guard let eventStreamVersion = Int(versionString) else {
+      guard let eventStreamVersion = ABI.VersionNumber(versionString) else {
         let argument = allowExperimental ? "--experimental-event-stream-version" : "--event-stream-version"
         throw _EntryPointError.invalidArgument(argument, value: versionString)
       }
@@ -629,7 +629,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 ///
 /// - Throws: If `version` is not a supported ABI version.
 func eventHandlerForStreamingEvents(
-  version versionNumber: Int?,
+  version versionNumber: ABI.VersionNumber?,
   encodeAsJSONLines: Bool,
   forwardingTo targetEventHandler: @escaping @Sendable (UnsafeRawBufferPointer) -> Void
 ) throws -> Event.Handler {
@@ -637,9 +637,10 @@ func eventHandlerForStreamingEvents(
     return version.eventHandler(encodeAsJSONLines: encodeAsJSONLines, forwardingTo: targetEventHandler)
   }
 
+  guard let versionNumber else {
+    return eventHandler(for: ABI.CurrentVersion.self)
+  }
   return switch versionNumber {
-  case nil:
-    eventHandler(for: ABI.CurrentVersion.self)
 #if !SWT_NO_SNAPSHOT_TYPES
   case ABI.Xcode16.versionNumber:
     // Legacy support for Xcode 16. Support for this undocumented version will
@@ -648,10 +649,10 @@ func eventHandlerForStreamingEvents(
 #endif
   case ABI.v0.versionNumber:
     eventHandler(for: ABI.v0.self)
-  case ABI.v1.versionNumber:
-    eventHandler(for: ABI.v1.self)
-  case let .some(unsupportedVersionNumber):
-    throw _EntryPointError.invalidArgument("--event-stream-version", value: "\(unsupportedVersionNumber)")
+  case ABI.v6_3.versionNumber:
+    eventHandler(for: ABI.v6_3.self)
+  default:
+    throw _EntryPointError.invalidArgument("--event-stream-version", value: "\(versionNumber)")
   }
 }
 #endif
@@ -814,7 +815,7 @@ private enum _EntryPointError: Error {
   ///
   /// - Parameters:
   ///   - versionNumber: The experimental ABI version number.
-  case experimentalABIVersion(_ versionNumber: Int)
+  case experimentalABIVersion(_ versionNumber: ABI.VersionNumber)
 }
 
 extension _EntryPointError: CustomStringConvertible {

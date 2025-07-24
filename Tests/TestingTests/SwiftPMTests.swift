@@ -234,14 +234,14 @@ struct SwiftPMTests {
         arguments: [
           ("--event-stream-output-path", "--event-stream-version", ABI.v0.versionNumber),
           ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v0.versionNumber),
-          ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v1.versionNumber),
+          ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v6_3.versionNumber),
         ])
-  func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: Int) async throws {
+  func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: ABI.VersionNumber) async throws {
     switch version {
     case ABI.v0.versionNumber:
       try await eventStreamOutput(outputArgumentName: outputArgumentName, versionArgumentName: versionArgumentName, version: ABI.v0.self)
-    case ABI.v1.versionNumber:
-      try await eventStreamOutput(outputArgumentName: outputArgumentName, versionArgumentName: versionArgumentName, version: ABI.v1.self)
+    case ABI.v6_3.versionNumber:
+      try await eventStreamOutput(outputArgumentName: outputArgumentName, versionArgumentName: versionArgumentName, version: ABI.v6_3.self)
     default:
       Issue.record("Unreachable event stream version \(version)")
     }
@@ -286,7 +286,7 @@ struct SwiftPMTests {
     }
     #expect(testRecords.count == 1)
     for testRecord in testRecords {
-      if version.versionNumber >= ABI.v1.versionNumber {
+      if version.versionNumber >= ABI.v6_3.versionNumber {
         #expect(testRecord._tags != nil)
       } else {
         #expect(testRecord._tags == nil)
@@ -304,7 +304,8 @@ struct SwiftPMTests {
   @Test("Experimental ABI version requires --experimental-event-stream-version argument")
   func experimentalABIVersionNeedsExperimentalFlag() {
     #expect(throws: (any Error).self) {
-      let experimentalVersion = ABI.CurrentVersion.versionNumber + 1
+      var experimentalVersion = ABI.CurrentVersion.versionNumber
+      experimentalVersion.minor += 1
       _ = try configurationForEntryPoint(withArguments: ["PATH", "--event-stream-version", "\(experimentalVersion)"])
     }
   }
