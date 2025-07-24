@@ -98,20 +98,7 @@ extension ConditionMacro {
     if let trailingClosureIndex {
       // Assume that the comment, if present is the last argument in the
       // argument list prior to the trailing closure that has no label.
-#if SWT_FIXED_154221449
       commentIndex = macroArguments[..<trailingClosureIndex].lastIndex { $0.label == nil }
-#else
-      commentIndex = macroArguments[..<trailingClosureIndex].lastIndex { argument in
-        guard argument.label == nil else {
-          return false
-        }
-        if let expr = argument.expression.as(MacroExpansionExprSyntax.self),
-           expr.macroName.tokenKind == .identifier("__capturedValue") {
-          return false
-        }
-        return true
-      }
-#endif
     } else if macroArguments.count > 1 {
       // If there is no trailing closure argument and there is more than one
       // argument, then the comment is the last argument with no label (and also
@@ -454,9 +441,9 @@ extension ExitTestConditionMacro {
     // early if found.
     guard _diagnoseIssues(with: macro, body: bodyArgumentExpr, in: context) else {
       if Self.isThrowing {
-        return #"{ () async throws -> Testing.ExitTest.Result in Swift.fatalError("Unreachable") }()"#
+        return #"{ () async throws -> Testing.ExitTest.Result in \#(ExprSyntax.unreachable) }()"#
       } else {
-        return #"{ () async -> Testing.ExitTest.Result in Swift.fatalError("Unreachable") }()"#
+        return #"{ () async -> Testing.ExitTest.Result in \#(ExprSyntax.unreachable) }()"#
       }
     }
 
@@ -560,7 +547,6 @@ extension ExitTestConditionMacro {
     var leadingArguments = [
       Argument(label: "identifiedBy", expression: idExpr),
     ]
-#if SWT_FIXED_154221449
     if !capturedValues.isEmpty {
       leadingArguments.append(
         Argument(
@@ -573,19 +559,6 @@ extension ExitTestConditionMacro {
         )
       )
     }
-#else
-    if let firstCapturedValue = capturedValues.first {
-      leadingArguments.append(
-        Argument(
-          label: "encodingCapturedValues",
-          expression: firstCapturedValue.typeCheckedExpression
-        )
-      )
-      leadingArguments += capturedValues.dropFirst()
-        .map(\.typeCheckedExpression)
-        .map { Argument(expression: $0) }
-    }
-#endif
     arguments = leadingArguments + arguments
 
     // Replace the exit test body (as an argument to the macro) with a stub
@@ -657,15 +630,6 @@ extension ExitTestConditionMacro {
   ) -> Bool {
     var diagnostics = [DiagnosticMessage]()
 
-    if let closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
-       let captureClause = closureExpr.signature?.capture,
-       !captureClause.items.isEmpty {
-      // Disallow capture lists if the experimental feature is not enabled.
-      if !ExitTestExpectMacro.isValueCapturingEnabled {
-        diagnostics.append(.captureClauseUnsupported(captureClause, in: closureExpr, inExitTest: macro))
-      }
-    }
-
     // Disallow exit tests in generic types and functions as they cannot be
     // correctly expanded due to the use of a nested type with static members.
     for lexicalContext in context.lexicalContext {
@@ -689,22 +653,6 @@ extension ExitTestConditionMacro {
     }
     return diagnostics.isEmpty
   }
-}
-
-extension ExitTestExpectMacro {
-  /// Whether or not experimental value capturing via explicit capture lists is
-  /// enabled.
-  ///
-  /// This member is declared on ``ExitTestExpectMacro`` but also applies to
-  /// ``ExitTestRequireMacro``.
-  @TaskLocal
-  static var isValueCapturingEnabled: Bool = {
-#if ExperimentalExitTestValueCapture
-    return true
-#else
-    return false
-#endif
-  }()
 }
 
 /// A type describing the expansion of the `#expect(processExitsWith:)` macro.
