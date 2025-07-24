@@ -11,26 +11,28 @@
 import Foundation
 
 extension Event {
-  /// An advanced console output recorder that provides enhanced features like
-  /// live progress reporting, hierarchical suite display, and improved formatting.
+  /// A hierarchical console output recorder that renders test results in a tree structure
+  /// after all tests have completed, following strict formatting specifications.
   ///
-  /// This recorder builds upon the existing `ConsoleOutputRecorder` but adds:
-  /// - Buffered hierarchical output maintaining tree structure during parallel execution
-  /// - Issues displayed as sub-nodes under their parent tests
-  /// - Proper Unicode box-drawing characters for tree visualization
-  /// - Suite summaries "out-dented" to align with parent levels
-  /// - Right-aligned timing information
+  /// This recorder implements:
+  /// - Post-run buffering with complete tree rendering after final event
+  /// - Unicode box-drawing characters (│, ├─, ╰─) for tree visualization
+  /// - Four distinct line types: Suite Header, Test Case, Issue Sub-Node, Suite Summary
+  /// - 3-space indentation per hierarchy level
+  /// - Right-aligned duration formatting
+  /// - Thread-safe concurrent event handling
   @_spi(Experimental)
   public struct AdvancedConsoleOutputRecorder: Sendable {
-    /// Configuration options for the advanced console output recorder.
+    /// Configuration options for the hierarchical console output recorder.
     public struct Options: Sendable {
       public var base: Event.ConsoleOutputRecorder.Options
-      
       public var useHierarchicalOutput: Bool
+      public var showSuccessfulTests: Bool
       
       public init() {
         self.base = Event.ConsoleOutputRecorder.Options()
         self.useHierarchicalOutput = true
+        self.showSuccessfulTests = true
       }
     }
     
@@ -48,13 +50,8 @@ extension Event {
       var startTime: Test.Clock.Instant?
       var endTime: Test.Clock.Instant?
       var issues: [IssueInfo] = []
-      var children: [HierarchyNode] = []
-      
-      struct IssueInfo: Sendable {
-        let issue: Issue
-        let isKnown: Bool
-        let summary: String
-      }
+      var children: [String] = [] // Child node IDs
+      var parent: String? // Parent node ID
       
       enum NodeStatus: Sendable {
         case running
@@ -64,63 +61,43 @@ extension Event {
         case passedWithKnownIssues(count: Int)
         case passedWithWarnings(count: Int)
       }
+      
+      struct IssueInfo: Sendable {
+        let issue: Issue
+        let isKnown: Bool
+        let summary: String
+      }
     }
     
-    private struct HierarchyContext: Sendable {
-      var rootNodes: [HierarchyNode] = []
-      
-      var nodesByID: [Test.ID: Int] = [:] 
-      
-      var allNodes: [HierarchyNode] = []
-      
-      var completedSuites: [Test.ID] = []
-      
-      /// Track which suites have had all their children complete
-      var suiteChildrenStatus: [Test.ID: (total: Int, completed: Int)] = [:]
-      
-      /// Buffer for collecting suite output before rendering
-      var suiteBuffers: [Test.ID: String] = [:]
-      
-      /// Track test execution order for proper rendering
-      var executionOrder: [Test.ID] = []
-      
-      /// Overall test statistics
-      var overallStats = (passed: 0, failed: 0, skipped: 0, knownIssues: 0, warnings: 0, attachments: 0)
-      
-      /// Track test run timing
+    private struct HierarchyContext {
+      var nodes: [String: HierarchyNode] = [:]
+      var rootNodes: [String] = []
       var runStartTime: Test.Clock.Instant?
       var runEndTime: Test.Clock.Instant?
+      var isRunCompleted: Bool = false
+      var totalPassed: Int = 0
+      var totalFailed: Int = 0
+      var totalSkipped: Int = 0
+      var totalKnownIssues: Int = 0
+      var totalWarnings: Int = 0
       
-      /// Test target/module name for root node
-      var testTargetName: String?
-      var testTargetRootNode: HierarchyNode?
-      
-      /// Completed tests that are ready for rendering
-      var completedTests: [Test.ID] = []
-      
-      /// Track suite completion to render hierarchically
-      var suiteCompletionStatus: [Test.ID: (expected: Int, completed: Int)] = [:]
-      
-      /// Progress tracking
-      var totalTestCount: Int = 0
-      var completedTestCount: Int = 0
-      var showProgressBar: Bool = true
-      
-      /// Buffer hierarchy output until completion
-      var hierarchyBuffer: String = ""
-      
-      /// Simple progress tracking
-      var isRunning: Bool = false
-      var shouldShowSpinner: Bool = true
-      var spinnerIndex: Int = 0
-      var testCounter: Int = 0
-      var startTime: Test.Clock.Instant?
+      var symbolCounts: [String: Int] = [
+        "pass": 0,
+        "fail": 0,
+        "passWithKnownIssues": 0,
+        "passWithWarnings": 0,
+        "skip": 0,
+        "difference": 0,
+        "warning": 0,
+        "details": 0,
+        "attachment": 0
+      ]
     }
     
-    /// The hierarchical context, protected by a lock for thread safety.
+    /// Thread-safe access to hierarchy context
     private let _context = Locked(rawValue: HierarchyContext())
     
-    /// Initialize the advanced console output recorder.
+    /// Initialize the hierarchical console output recorder.
     public init(options: Options = Options(), writingUsing write: @escaping @Sendable (String) -> Void) {
       self.options = options
       self.write = write
@@ -129,52 +106,170 @@ extension Event {
 }
 
 extension Event.AdvancedConsoleOutputRecorder {
-  /// Handle an event and produce hierarchical output.
-  public func handle(_ event: borrowing Event, in eventContext: borrowing Event.Context) {
-    if options.useHierarchicalOutput {
-      handleWithHierarchy(event, in: eventContext)
-    } else {
-      // Fallback to regular console output
-      let consoleRecorder = Event.ConsoleOutputRecorder(options: options.base, writingUsing: write)
-      consoleRecorder.record(event, in: eventContext)
+    // --- Live Phase State ---
+    private struct LivePhaseState: Sendable {
+        var runStartedAt: Test.Clock.Instant? = nil
+        var lastProgressUpdate: Test.Clock.Instant? = nil
+        var progressBarShown: Bool = false
+        var totalTests: Int = 0
+        var completedTests: Int = 0
+        var passed: Int = 0
+        var failed: Int = 0
+        var warnings: Int = 0
+        var knownIssues: Int = 0
+        var skipped: Int = 0
+        var erasedProgressBar: Bool = false
+        let progressBarThrottle: UInt64 = 100_000_000 // 100ms in nanoseconds
+        let progressBarDelay: UInt64 = 1_000_000 // 1ms in nanoseconds 
     }
-  }
+    
+    private static let _livePhaseState = Locked(rawValue: LivePhaseState())
+
+    private func updateLiveStats(event: Event, context: Event.Context) {
+        Self._livePhaseState.withLock { state in
+            switch event.kind {
+            case .runStarted:
+                state.runStartedAt = event.instant
+                state.lastProgressUpdate = nil
+                state.progressBarShown = false
+                state.completedTests = 0
+                state.passed = 0
+                state.failed = 0
+                state.warnings = 0
+                state.knownIssues = 0
+                state.skipped = 0
+                state.erasedProgressBar = false
+                state.totalTests = 0
+            case .testStarted:
+                if let test = context.test, !test.isSuite {
+                    state.totalTests += 1
+                }
+            case .testEnded:
+                if let test = context.test, !test.isSuite {
+                    state.completedTests += 1
+                }
+            case .issueRecorded(let issue):
+                if issue.isKnown {
+                    state.knownIssues += 1
+                } else {
+                    switch issue.severity {
+                    case .warning:
+                        state.warnings += 1
+                    case .error:
+                        state.failed += 1
+                    }
+                }
+            case .testSkipped:
+                if let test = context.test, !test.isSuite {
+                    state.skipped += 1
+                    state.completedTests += 1
+                }
+            default:
+                break
+            }
+        }
+    }
+    
+    private func updatePassedCount() {
+        Self._livePhaseState.withLock { state in
+            state.passed = state.completedTests - state.failed - state.skipped
+        }
+    }
+
+    private func shouldShowProgressBar(currentInstant: Test.Clock.Instant) -> Bool {
+        return Self._livePhaseState.withLock { state in
+            guard let started = state.runStartedAt else { return false }
+            let elapsed = started.nanoseconds(until: currentInstant)
+            return elapsed > state.progressBarDelay
+        }
+    }
+
+    private func shouldThrottleProgressBar(currentInstant: Test.Clock.Instant) -> Bool {
+        return Self._livePhaseState.withLock { state in
+            guard let last = state.lastProgressUpdate else { return false }
+            let elapsed = last.nanoseconds(until: currentInstant)
+            return elapsed < state.progressBarThrottle
+        }
+    }
+
+    private func printProgressBar(at instant: Test.Clock.Instant) {
+        Self._livePhaseState.withLock { state in
+            let total = max(state.totalTests, state.completedTests)
+            let progress = "PROGRESS [\(state.completedTests)/\(total)] | ✓ Passed: \(state.passed) | ✗ Failed: \(state.failed) | ? Warnings: \(state.warnings) | ~ Known: \(state.knownIssues) | → Skipped: \(state.skipped)"
+            // Clear line and write progress (without newline to keep it on same line)
+            write("\r\u{001B}[K\(progress)")
+            state.progressBarShown = true
+            state.lastProgressUpdate = instant
+        }
+    }
+
+    private func eraseProgressBar() {
+        Self._livePhaseState.withLock { state in
+            if state.progressBarShown && !state.erasedProgressBar {
+                write("\r\u{001B}[K\n")  // Clear the progress bar line and add empty line
+                state.progressBarShown = false
+                state.erasedProgressBar = true
+            }
+        }
+    }
+
+    private func printLiveFailure(icon: String, testName: String, summary: String, at instant: Test.Clock.Instant) {
+        let wasProgressBarShown = Self._livePhaseState.withLock { $0.progressBarShown }
+        if wasProgressBarShown {
+            write("\r\u{001B}[K")
+        }
+        write("\(icon) \(testName): \(summary)\n")
+        if wasProgressBarShown {
+            printProgressBar(at: instant)
+        }
+    }
+
+    public func handle(_ event: borrowing Event, in eventContext: borrowing Event.Context) {
+      updateLiveStats(event: event, context: eventContext)
+      
+      // Live failure reporting
+      if case .issueRecorded(let issue) = event.kind, !issue.isKnown {
+          if let test = eventContext.test {
+              let icon: String
+              switch issue.severity {
+              case .warning: icon = "?"
+              case .error: icon = "✗"
+              }
+              let testName = test.id.keyPathRepresentation.joined(separator: ".")
+              let summary = formatIssueSummary(issue)
+              printLiveFailure(icon: icon, testName: testName, summary: summary, at: event.instant)
+          }
+      }
+      
+      let shouldShow = shouldShowProgressBar(currentInstant: event.instant)
+      let isThrottled = shouldThrottleProgressBar(currentInstant: event.instant)
+      let isRunEnded = if case .runEnded = event.kind { true } else { false }
+      
+      // Show progress bar on relevant events
+      if shouldShow && !isThrottled && !isRunEnded {
+          updatePassedCount()
+          printProgressBar(at: event.instant)
+      }
+      
+      // On runEnded, erase progress bar before summary
+      if isRunEnded {
+          eraseProgressBar()
+      }
+      
+      // Continue with normal hierarchical buffering/summary
+      if options.useHierarchicalOutput {
+        handleHierarchicalEvent(event, in: eventContext)
+      } else {
+        // Fallback to regular console output  
+        let consoleRecorder = Event.ConsoleOutputRecorder(options: options.base, writingUsing: write)
+        consoleRecorder.record(event, in: eventContext)
+      }
+    }
   
-  private func handleWithHierarchy(_ event: borrowing Event, in eventContext: borrowing Event.Context) {
+  private func handleHierarchicalEvent(_ event: borrowing Event, in eventContext: borrowing Event.Context) {
     switch event.kind {
     case .runStarted:
-      let testTargetName = extractTestTargetNameFromEventContext(eventContext)
-      let testCount = getTestCount(from: eventContext)
-      
-      _context.withLock { context in
-        context.runStartTime = event.instant
-        
-        if !testTargetName.isEmpty {
-          context.testTargetName = testTargetName
-        }
-        
-        // Enable spinner mode
-        context.isRunning = true
-        context.shouldShowSpinner = true 
-      }
-      
-      let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4
-      let tealColor = useColors ? "\u{001B}[96m" : ""  // teal (.default)
-      let resetColor = useColors ? "\u{001B}[0m" : ""
-      
-      #if os(macOS)
-      let runningSymbol = String(Event.Symbol.default.sfSymbolCharacter)
-      #else
-      let runningSymbol = String(Event.Symbol.default.unicodeCharacter)
-      #endif
-      
-      let message = if testCount > 0 {
-        "Running \(testCount) tests..."
-      } else {
-        "Running tests..."
-      }
-      
-      write("\n\(tealColor)\(runningSymbol) \(resetColor)\(message)\n\n")
+      handleRunStarted(event)
       
     case .testStarted:
       guard let test = eventContext.test else { return }
@@ -183,781 +278,393 @@ extension Event.AdvancedConsoleOutputRecorder {
     case .testEnded:
       guard let test = eventContext.test else { return }
       handleTestEnded(test, at: event.instant)
-      renderTestResult(test)  
       
-    case let .issueRecorded(issue):
-      guard let test = eventContext.test else { return }
-      handleIssueRecorded(test, issue: issue, at: event.instant)
+    case .issueRecorded(let issue):
+      handleIssueRecorded(issue, at: event.instant, in: eventContext)
       
-    case .valueAttached(let attachment):
+    case .testSkipped(let skipInfo):
       guard let test = eventContext.test else { return }
-      handleValueAttached(test, attachment: attachment, at: event.instant)
+      handleTestSkipped(test, skipInfo: skipInfo, at: event.instant)
       
     case .runEnded:
-      _context.withLock { context in
-        context.runEndTime = event.instant
-        context.isRunning = false
-        context.shouldShowSpinner = false
-        
-        if let testTargetRootIndex = context.rootNodes.firstIndex(where: { $0.name == context.testTargetName }) {
-          context.allNodes[testTargetRootIndex].endTime = event.instant
-        }
-        
-        // Clear spinner and show buffered hierarchy
-        write("\r\u{001B}[K\n") 
-        write(context.hierarchyBuffer)
-      }
-      
-      renderFinalSummary()
-      
-    case .testSkipped:
-      if let test = eventContext.test {
-        handleTestSkipped(test, at: event.instant)
-        renderTestResult(test)
-      }
-      
-    case .testCaseStarted, .testCaseEnded, .expectationChecked, .iterationStarted, .iterationEnded:
-      break
+      handleRunEnded(event)
       
     default:
-      handleOtherEvent(event, in: eventContext)
+      break
     }
   }
   
-  private func getTestCount(from eventContext: borrowing Event.Context) -> Int {
-    // Tests will be counted dynamically as they start
-    return 0
-  }
-  
-  private func updateProgressBar() {
+  private func handleRunStarted(_ event: borrowing Event) {
     _context.withLock { context in
-      guard context.showProgressBar && context.totalTestCount > 0 else { return }
-      
-      let completed = max(0, context.completedTestCount)
-      let total = max(1, context.totalTestCount) 
-      let safeCompleted = min(completed, total)
-      let percentage = min(100, max(0, (safeCompleted * 100) / total))
-      
-      // Create progress bar
-      let barWidth = 30
-      let filledWidth = max(0, min(barWidth, (percentage * barWidth) / 100))
-      let emptyWidth = max(0, barWidth - filledWidth)
-      
-      guard filledWidth >= 0 && emptyWidth >= 0 && (filledWidth + emptyWidth) <= barWidth else {
-        write("\r\u{001B}[K")
-        write("Tests: \(safeCompleted)/\(total)")
-        return
-      }
-      
-      let filled = String(repeating: "█", count: filledWidth)
-      let empty = String(repeating: "░", count: emptyWidth)
-      
-      let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4
-      let progressColor = useColors ? "\u{001B}[96m" : "" 
-      let resetColor = useColors ? "\u{001B}[0m" : ""
-      
-      write("\r\u{001B}[K")
-      write("\(progressColor)[\(filled)\(empty)] \(percentage)% (\(safeCompleted)/\(total))\(resetColor)")
-    }
-  }
-  
-  private func renderCompleteHierarchy() {
-    _context.withLock { context in
-      // Render the complete hierarchical tree
-      for (index, rootNode) in context.rootNodes.enumerated() {
-        let isLastRoot = index == context.rootNodes.count - 1
-        let hierarchyOutput = renderNodeTree(rootNode, depth: 0, isLast: isLastRoot, parentPrefix: "", nodeStatusLookup: [:])
-        write(hierarchyOutput)
-      }
-    }
-  }
-  
-  private func extractTestTargetNameFromEventContext(_ eventContext: borrowing Event.Context) -> String {
-    if let test = eventContext.test {
-      return extractTestTargetName(from: test.id)
-    }
-    return ""
-  }
-  
-  private func renderTestResult(_ test: Test) {
-    _context.withLock { context in
-      guard let nodeIndex = context.nodesByID[test.id],
-            nodeIndex < context.allNodes.count else { 
-        renderTestResultFallback(test)
-        return 
-      }
-      
-      let node = context.allNodes[nodeIndex]
-      
-      let hierarchyPath = buildHierarchyPath(for: test.id)
-      let depth = hierarchyPath.count
-      let baseIndent = String(repeating: " ", count: depth * 3)
-      
-      let symbolWithColor = getSymbolWithColorForNode(node)
-      let name = node.displayName ?? node.name
-      let timing = formatTiming(node)
-      let rightAlignedTiming = formatRightAlignedTiming(timing, contentPrefix: "\(baseIndent)├─ \(symbolWithColor)\(name)")
-      
-      let output = "\(baseIndent)├─ \(symbolWithColor)\(name)\(rightAlignedTiming)\n"
-      
-      if context.isRunning && context.shouldShowSpinner {
-        // Buffer output during spinner mode
-        context.hierarchyBuffer += output
-        
-        // Show issues in buffer too
-        if !node.issues.isEmpty {
-          let issueIndent = String(repeating: " ", count: (depth + 1) * 3)
-          for (index, issue) in node.issues.enumerated() {
-            let isLastIssue = index == node.issues.count - 1
-            let issueTreePrefix = isLastIssue ? "╰─ " : "├─ "
-            let issueSymbol = getSymbolWithColorForIssue(issue)
-            context.hierarchyBuffer += "\(issueIndent)\(issueTreePrefix)\(issueSymbol)\(issue.summary)\n"
-          }
-        }
-        
-        context.testCounter += 1
-        
-        // Update spinner on its own line
-        let spinnerChars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-        let spinnerChar = spinnerChars[context.spinnerIndex % spinnerChars.count]
-        context.spinnerIndex = (context.spinnerIndex + 1) % spinnerChars.count
-        
-        let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4
-        let spinnerColor = useColors ? "\u{001B}[96m" : ""  // teal
-        let resetColor = useColors ? "\u{001B}[0m" : ""
-        
-        write("\r\u{001B}[K")
-        write("\(spinnerColor)\(spinnerChar) Running tests... (\(context.testCounter) completed)\(resetColor)")
-      } else {
-        write(output)
-        
-        if !node.issues.isEmpty {
-          let issueIndent = String(repeating: " ", count: (depth + 1) * 3)
-          for (index, issue) in node.issues.enumerated() {
-            let isLastIssue = index == node.issues.count - 1
-            let issueTreePrefix = isLastIssue ? "╰─ " : "├─ "
-            let issueSymbol = getSymbolWithColorForIssue(issue)
-            write("\(issueIndent)\(issueTreePrefix)\(issueSymbol)\(issue.summary)\n")
-          }
-        }
-      }
-    }
-  }
-  
-  private func renderTestResultFallback(_ test: Test) {
-    let status: HierarchyNode.NodeStatus = .passed
-    let symbolWithColor = getSymbolWithColorForStatus(status)
-    let name = test.displayName ?? test.name
-    write("├─ \(symbolWithColor)\(name)\n")
-  }
-  
-  private func getSymbolWithColorForStatus(_ status: HierarchyNode.NodeStatus) -> String {
-    let symbol = getEventSymbolForNodeStatus(status)
-    return applyCustomColorToSymbol(symbol, for: status)
-  }
-  
-  private func buildHierarchyPath(for testID: Test.ID) -> [String] {
-    var path: [String] = []
-    var currentID: Test.ID? = testID.parent
-    
-    while let parentID = currentID {
-      let parentName = extractNameFromTestID(parentID)
-      path.insert(parentName, at: 0)
-      currentID = parentID.parent
+      context.runStartTime = event.instant
+      context.isRunCompleted = false
     }
     
-    return path
-  }
-  
-  private func extractNameFromTestID(_ testID: Test.ID) -> String {
-    let idString = testID.description
-    let components = idString.components(separatedBy: ".")
-    return components.last ?? idString
-  }
-  
-  private func calculateTestDepth(_ testID: Test.ID, in context: HierarchyContext) -> Int {
-    var depth = 1 
-    var currentID: Test.ID? = testID.parent
+    write("\n")
     
-    while let parentID = currentID {
-      depth += 1
-      currentID = parentID.parent
-    }
+    let symbol = Event.Symbol.default.stringValue(options: options.base)
+    write("\(symbol) Running tests...")
     
-    return depth
+    write("\n")
   }
   
   private func handleTestStarted(_ test: Test, at instant: Test.Clock.Instant) {
     _context.withLock { context in
-      if context.testTargetRootNode == nil {
-        let testTargetName = extractTestTargetName(from: test.id)
-        context.testTargetName = testTargetName
-        
-        let rootNode = HierarchyNode(
-          id: Test.ID(type: String.self),
-          name: testTargetName,
-          displayName: testTargetName,
-          isSuite: true,
-          startTime: instant
-        )
-        
-        context.allNodes.append(rootNode)
-        let rootIndex = context.allNodes.count - 1
-        context.testTargetRootNode = context.allNodes[rootIndex]
-        context.rootNodes.append(context.allNodes[rootIndex])
+      var pathComponents = test.id.keyPathRepresentation
+      let isSuite = test.isSuite
+      
+      if !isSuite && pathComponents.count > 3 {
+        let lastComponent = pathComponents.last!
+        if lastComponent.contains(".swift:") {
+          pathComponents = Array(pathComponents.dropLast())
+        }
       }
+      
+      let nodeId = pathComponents.joined(separator: ".")
+      
+
       
       let node = HierarchyNode(
         id: test.id,
         name: test.name,
         displayName: test.displayName,
-        isSuite: test.isSuite,
-        startTime: instant
+        isSuite: isSuite,
+        status: .running,
+        startTime: instant,
+        endTime: nil,
+        issues: [],
+        children: [],
+        parent: nil
       )
       
-      context.allNodes.append(node)
-      let currentIndex = context.allNodes.count - 1
-      context.nodesByID[test.id] = currentIndex
-      context.executionOrder.append(test.id)
+      context.nodes[nodeId] = node
       
-      // Add to parent's children or as child of test target root
-      if let parentID = test.id.parent {
-        var actualParentID = parentID
-        if !test.isSuite {
-          var currentID = parentID
-          while let parent = currentID.parent {
-            if context.nodesByID[parent] != nil {
-              actualParentID = parent
-              break
-            }
-            currentID = parent
-          }
-        }
-        
-        if let parentIndex = context.nodesByID[actualParentID] {
-          // Add this node as a child of the parent (modify the parent directly in the array)
-          context.allNodes[parentIndex].children.append(context.allNodes[currentIndex])
-        } else {
-          if isTopLevelSuite(test, targetName: context.testTargetName ?? "") {
-            if let rootIndex = context.rootNodes.firstIndex(where: { $0.name == context.testTargetName }) {
-              context.allNodes[rootIndex].children.append(context.allNodes[currentIndex])
-              context.rootNodes[rootIndex] = context.allNodes[rootIndex]
-            }
-          }
-        }
-      } else {
-        if let rootIndex = context.rootNodes.firstIndex(where: { $0.name == context.testTargetName }) {
-          context.allNodes[rootIndex].children.append(context.allNodes[currentIndex])
-          context.rootNodes[rootIndex] = context.allNodes[rootIndex]
+      for i in 1..<pathComponents.count {
+        let intermediatePath = pathComponents.prefix(i).joined(separator: ".")
+        if context.nodes[intermediatePath] == nil {
+          let intermediateNode = HierarchyNode(
+            id: test.id,
+            name: pathComponents[i-1],
+            displayName: nil,
+            isSuite: true,
+            status: .running,
+            startTime: instant,
+            endTime: nil,
+            issues: [],
+            children: [],
+            parent: nil
+          )
+          context.nodes[intermediatePath] = intermediateNode
         }
       }
+      
+      if pathComponents.count > 1 {
+        let parentPath = pathComponents.dropLast().joined(separator: ".")
+        context.nodes[nodeId]?.parent = parentPath
+        
+        if var parentNode = context.nodes[parentPath] {
+          if !parentNode.children.contains(nodeId) {
+            parentNode.children.append(nodeId)
+            context.nodes[parentPath] = parentNode
+          }
+        }
+      }
+      
+      let rootPath = pathComponents.first!
+      if !context.rootNodes.contains(rootPath) {
+        context.rootNodes.append(rootPath)
+      }
     }
-  }
-  
-  private func extractTestTargetName(from testID: Test.ID) -> String {
-    let components = testID.description.components(separatedBy: ".")
-    return components.first ?? "TestTarget"
-  }
-  
-  private func isTopLevelSuite(_ test: Test, targetName: String) -> Bool {
-    
-    if !test.isSuite {
-      return false
-    }
-    
-    let testIDString = test.id.description
-    let components = testIDString.components(separatedBy: ".")
-    
-    if components.count >= 2 && components[0] == targetName {
-      return true
-    }
-    
-    return false
   }
   
   private func handleTestEnded(_ test: Test, at instant: Test.Clock.Instant) {
     _context.withLock { context in
-      guard let nodeIndex = context.nodesByID[test.id] else { return }
-      guard nodeIndex < context.allNodes.count else { return } // Safety check
+      var pathComponents = test.id.keyPathRepresentation
+      let isSuite = test.isSuite
       
-      context.allNodes[nodeIndex].endTime = instant
-      
-      let node = context.allNodes[nodeIndex]
-      let knownIssueCount = node.issues.filter { $0.isKnown }.count
-      let warningCount = node.issues.filter { $0.issue.severity == .warning }.count
-      let failureCount = node.issues.filter { !$0.isKnown && $0.issue.severity == .error }.count
-      let attachmentCount = node.issues.filter { issueInfo in
-        if case .valueAttachmentFailed = issueInfo.issue.kind {
-          return true
+      if !isSuite && pathComponents.count > 3 {
+        let lastComponent = pathComponents.last!
+        if lastComponent.contains(".swift:") {
+          pathComponents = Array(pathComponents.dropLast())
         }
-        return false
-      }.count
+      }
       
-      if failureCount > 0 {
-        context.allNodes[nodeIndex].status = .failed
-      } else if knownIssueCount > 0 {
-        context.allNodes[nodeIndex].status = .passedWithKnownIssues(count: knownIssueCount)
-      } else if warningCount > 0 {
-        context.allNodes[nodeIndex].status = .passedWithWarnings(count: warningCount)
+      let nodeId = pathComponents.joined(separator: ".")
+      guard var node = context.nodes[nodeId] else { return }
+      
+      node.endTime = instant
+      
+      if !node.isSuite {
+        // Determine final status based on issues
+        let failureIssues = node.issues.filter { !$0.isKnown && isFailureIssue($0.issue) }
+        let knownIssues = node.issues.filter { $0.isKnown }
+        let warningIssues = node.issues.filter { !$0.isKnown && !isFailureIssue($0.issue) }
+        
+        if !failureIssues.isEmpty {
+          node.status = .failed
+          context.totalFailed += 1
+          context.symbolCounts["fail", default: 0] += 1
+        } else if !knownIssues.isEmpty {
+          node.status = .passedWithKnownIssues(count: knownIssues.count)
+          context.totalPassed += 1
+          context.totalKnownIssues += knownIssues.count
+          context.symbolCounts["passWithKnownIssues", default: 0] += 1
+        } else if !warningIssues.isEmpty {
+          node.status = .passedWithWarnings(count: warningIssues.count)
+          context.totalPassed += 1
+          context.totalWarnings += warningIssues.count
+          context.symbolCounts["passWithWarnings", default: 0] += 1
+        } else {
+          node.status = .passed
+          context.totalPassed += 1
+          context.symbolCounts["pass", default: 0] += 1
+        }
+      }
+      
+      context.nodes[nodeId] = node
+    }
+  }
+  
+  private func handleIssueRecorded(_ issue: Issue, at instant: Test.Clock.Instant, in eventContext: borrowing Event.Context) {
+    guard let test = eventContext.test else { return }
+    
+    var pathComponents = test.id.keyPathRepresentation
+    let isSuite = test.isSuite
+    
+    if !isSuite && pathComponents.count > 3 {
+      let lastComponent = pathComponents.last!
+      if lastComponent.contains(".swift:") {
+        pathComponents = Array(pathComponents.dropLast())
+      }
+    }
+    
+    let nodeId = pathComponents.joined(separator: ".")
+    let isKnown = issue.isKnown
+    let summary = formatIssueSummary(issue)
+    
+    let issueInfo = HierarchyNode.IssueInfo(
+      issue: issue,
+      isKnown: isKnown,
+      summary: summary
+    )
+    
+    _context.withLock { context in
+      guard var node = context.nodes[nodeId] else { return }
+      
+      node.issues.append(issueInfo)
+      context.nodes[nodeId] = node
+      
+      switch issue.kind {
+      case .expectationFailed(_):
+        context.symbolCounts["difference", default: 0] += 1
+      case .errorCaught(_):
+        context.symbolCounts["fail", default: 0] += 1
+      case .unconditional:
+        context.symbolCounts["warning", default: 0] += 1
+      case .timeLimitExceeded(_):
+        context.symbolCounts["fail", default: 0] += 1
+      case .apiMisused:
+        context.symbolCounts["warning", default: 0] += 1
+      case .knownIssueNotRecorded:
+        context.symbolCounts["warning", default: 0] += 1
+      case .system:
+        context.symbolCounts["fail", default: 0] += 1
+      case .valueAttachmentFailed(_):
+        context.symbolCounts["attachment", default: 0] += 1
+      case .confirmationMiscounted(_, _):
+        context.symbolCounts["difference", default: 0] += 1
+      }
+    }
+  }
+  
+  private func handleTestSkipped(_ test: Test, skipInfo: SkipInfo, at instant: Test.Clock.Instant) {
+    _context.withLock { context in
+      let nodeId = test.id.keyPathRepresentation.joined(separator: ".")
+      guard var node = context.nodes[nodeId] else { return }
+      
+      node.status = .skipped
+      node.endTime = instant
+      context.totalSkipped += 1
+      context.symbolCounts["skip", default: 0] += 1
+      context.nodes[nodeId] = node
+    }
+  }
+  
+  private func handleRunEnded(_ event: borrowing Event) {
+    _context.withLock { context in
+      context.runEndTime = event.instant
+      context.isRunCompleted = true
+    }
+    
+    renderCompleteHierarchy()
+  }
+  
+  private func renderCompleteHierarchy() {
+    let hierarchyOutput = _context.withLock { context in
+      var output = ""
+      
+      output += "\r\u{001B}[K"
+      
+      if context.rootNodes.isEmpty {
+        let allTestNodes = context.nodes.values.filter { !$0.isSuite }.sorted { $0.name < $1.name }
+        for node in allTestNodes {
+          let statusIcon = getStatusIcon(for: node.status)
+          let testName = node.displayName ?? node.name
+          let duration = formatDuration(from: node.startTime, to: node.endTime)
+          
+          output += "\(statusIcon) \(testName)"
+          if !duration.isEmpty {
+            output += " \(duration)"
+          }
+          output += "\n"
+        }
       } else {
-        context.allNodes[nodeIndex].status = .passed
-      }
-      
-      if !test.isSuite {
-        switch context.allNodes[nodeIndex].status {
-        case .passed:
-          context.overallStats.passed += 1
-        case .failed:
-          context.overallStats.failed += 1
-        case .skipped:
-          context.overallStats.skipped += 1
-        case .passedWithKnownIssues(let count):
-          context.overallStats.passed += 1
-          context.overallStats.knownIssues += count
-        case .passedWithWarnings(let count):
-          context.overallStats.passed += 1
-          context.overallStats.warnings += count
-        case .running:
-          break
-        }
-        context.overallStats.attachments += attachmentCount
-      }
-      
-      // Mark test as completed 
-      context.completedTests.append(test.id)
-      
-      // Handle suite completion tracking - don't render individual tests here
-      // Wait for all tests to complete so we can show final status icons
-      if test.isSuite {
-        // Suite completed - update the test target root end time if needed
-        if let testTargetRootIndex = context.rootNodes.firstIndex(where: { $0.name == context.testTargetName }) {
-          context.allNodes[testTargetRootIndex].endTime = instant
+        for (index, rootNodeId) in context.rootNodes.enumerated() {
+          let isLastRoot = index == context.rootNodes.count - 1
+          let isFirstRoot = index == 0
+          output += renderNode(rootNodeId, context: context, prefix: "", isLast: isLastRoot, depth: 0, isFirst: isFirstRoot)
         }
       }
       
-      // Only render at the very end when run ends to show final status
-    }
-  }
-  
-  private func handleIssueRecorded(_ test: Test, issue: Issue, at instant: Test.Clock.Instant) {
-    _context.withLock { context in
-      guard let nodeIndex = context.nodesByID[test.id] else { return }
-      guard nodeIndex < context.allNodes.count else { return } // Safety check
+      output += renderFinalSummary(context: context)
       
-      let issueInfo = HierarchyNode.IssueInfo(
-        issue: issue,
-        isKnown: issue.isKnown,
-        summary: formatIssueSummary(issue)
-      )
-      
-      context.allNodes[nodeIndex].issues.append(issueInfo)
+      return output
     }
-  }
-  
-  private func handleValueAttached(_ test: Test, attachment: Attachment<AnyAttachable>, at instant: Test.Clock.Instant) {
-    _context.withLock { context in
-      guard let nodeIndex = context.nodesByID[test.id] else { return }
-      guard nodeIndex < context.allNodes.count else { return }
-      
-      context.overallStats.attachments += 1
-    }
-  }
-  
-  private func applyCustomColorToAttachment(_ symbol: Event.Symbol) -> String {
-    let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4
     
-    #if os(macOS)
-    let symbolChar = String(symbol.sfSymbolCharacter)
-    #else
-    let symbolChar = String(symbol.unicodeCharacter)
-    #endif
+    write(hierarchyOutput)
+  }
+  
+  /// Render a single node and its children recursively
+  private func renderNode(_ nodeId: String, context: HierarchyContext, prefix: String, isLast: Bool, depth: Int, isFirst: Bool = false) -> String {
+    guard let node = context.nodes[nodeId] else { return "" }
     
-    if useColors {
-      let colorCode = "\u{001B}[34m"   // blue
-      return "\(colorCode)\(symbolChar) \u{001B}[0m"
+    var output = ""
+    let indent = String(repeating: " ", count: depth * 3)
+    
+    if node.isSuite {
+      let treePrefix: String
+      if isLast {
+        treePrefix = "╰─ "
+      } else if isFirst && depth == 0 {
+        treePrefix = "┌─ "
+      } else {
+        treePrefix = "├─ "
+      }
+      
+      let suiteName = node.displayName ?? node.name
+      output += "\(indent)\(treePrefix)\(suiteName)\n"
+      
+      let childPrefix = indent + (isLast ? "   " : "│  ")
+      for (childIndex, childId) in node.children.enumerated() {
+        let isLastChild = childIndex == node.children.count - 1
+        output += renderNode(childId, context: context, prefix: childPrefix, isLast: isLastChild, depth: depth + 1, isFirst: false)
+      }
+      
+      
+      if !isLast {
+        output += "\n"
+      }
+      
     } else {
-      return "\(symbolChar) "
-    }
-  }
-  
-  private func handleTestSkipped(_ test: Test, at instant: Test.Clock.Instant) {
-    _context.withLock { context in
-      let node = HierarchyNode(
-        id: test.id,
-        name: test.name,
-        displayName: test.displayName,
-        isSuite: test.isSuite,
-        startTime: instant,
-        endTime: instant
-      )
+      let shouldShow = !isPassedStatus(node.status) || options.showSuccessfulTests
       
-      context.allNodes.append(node)
-      let currentIndex = context.allNodes.count - 1
-      context.nodesByID[test.id] = currentIndex
-      context.allNodes[currentIndex].status = .skipped
-      
-      if !test.isSuite {
-        context.overallStats.skipped += 1
-      }
-      
-      if let parentID = test.id.parent {
-        var actualParentID = parentID
-        if !test.isSuite {
-          var currentID = parentID
-          while let parent = currentID.parent {
-            if context.nodesByID[parent] != nil {
-              actualParentID = parent
-              break
+      if shouldShow {
+        let treePrefix: String
+        if isLast {
+          treePrefix = "╰─ "
+        } else if isFirst && depth == 0 {
+          treePrefix = "┌─ "
+        } else {
+          treePrefix = "├─ "
+        }
+        
+        let statusIcon = getStatusIcon(for: node.status)
+        let testName = node.displayName ?? node.name
+        let duration = formatDuration(from: node.startTime, to: node.endTime)
+        
+        let leftPart = "\(indent)\(treePrefix)\(statusIcon) \(testName)"
+        
+        if !duration.isEmpty {
+          let targetWidth = 150
+          let rightPart = "(\(duration))"
+          let totalLeftLength = leftPart.count
+          let totalRightLength = rightPart.count
+          
+          if totalLeftLength + totalRightLength < targetWidth {
+            let paddingLength = targetWidth - totalLeftLength - totalRightLength
+            output += "\(leftPart)\(String(repeating: " ", count: paddingLength))\(rightPart)"
+          } else {
+            output += "\(leftPart) \(rightPart)"
+          }
+        } else {
+          output += leftPart
+        }
+        output += "\n"
+        
+        if !node.issues.isEmpty {
+          let issuePrefix = indent + (isLast ? "   " : "│  ")
+          for (issueIndex, issue) in node.issues.enumerated() {
+            let isLastIssue = issueIndex == node.issues.count - 1
+            let issueTreePrefix: String
+            if isLastIssue {
+              issueTreePrefix = "╰─ "
+            } else {
+              issueTreePrefix = "├─ "
             }
-            currentID = parent
+            let issueIcon = getIssueIcon(for: issue)
+            output += "\(issuePrefix)\(issueTreePrefix)\(issueIcon) \(issue.summary)\n"
+            
+            if let sourceLocation = issue.issue.sourceLocation {
+              let locationPrefix = issuePrefix + "   " 
+              output += "\(locationPrefix)At \(sourceLocation.fileName):\(sourceLocation.line):\(sourceLocation.column)\n"
+            }
           }
         }
-        
-        if let parentIndex = context.nodesByID[actualParentID] {
-          context.allNodes[parentIndex].children.append(context.allNodes[currentIndex])
-        } else {
-          context.rootNodes.append(context.allNodes[currentIndex])
-        }
-      } else {
-        context.rootNodes.append(context.allNodes[currentIndex])
-      }
-    }
-  }
-  
-  private func handleOtherEvent(_ event: borrowing Event, in eventContext: borrowing Event.Context) {
-    let consoleRecorder = Event.ConsoleOutputRecorder(options: options.base, writingUsing: write)
-    consoleRecorder.record(event, in: eventContext)
-  }
-  
-  private func formatRightAlignedTiming(_ timing: String, contentPrefix: String) -> String {
-    guard !timing.isEmpty else { return "" }
-    
-    let columnWidth = 150
-    
-    let cleanPrefix = contentPrefix.replacingOccurrences(of: "\u{001B}\\[[0-9;]*m", with: "", options: .regularExpression)
-    
-    let prefixLength = cleanPrefix.count
-    let timingLength = timing.count
-    let availableSpace = columnWidth - prefixLength - timingLength
-    
-    if availableSpace <= 1 {
-      return " \(timing)"
-    }
-    
-    return String(repeating: " ", count: availableSpace) + timing
-  }
-  
-  private func renderNodeTree(_ node: HierarchyNode, depth: Int, isLast: Bool, parentPrefix: String, nodeStatusLookup: [Test.ID: HierarchyNode]) -> String {
-    var output = ""
-    
-    // Build the tree prefix for this level
-    let currentPrefix = buildTreePrefix(depth: depth, isLast: false, parentPrefix: parentPrefix)
-    let finalPrefix = buildTreePrefix(depth: depth, isLast: true, parentPrefix: parentPrefix)
-    
-    if !node.isSuite {
-      let currentNode = nodeStatusLookup[node.id] ?? node
-      let symbolWithColor = getSymbolWithColorForNode(currentNode)
-      let name = currentNode.displayName ?? currentNode.name
-      let timing = formatTiming(currentNode)
-      let rightAlignedTiming = formatRightAlignedTiming(timing, contentPrefix: "\(currentPrefix)\(symbolWithColor)\(name)")
-      
-      output += "\(currentPrefix)\(symbolWithColor)\(name)\(rightAlignedTiming)\n"
-      
-      if !currentNode.issues.isEmpty {
-        for (index, issue) in currentNode.issues.enumerated() {
-          let isLastIssue = index == currentNode.issues.count - 1
-          let issuePrefix = buildTreePrefix(depth: depth + 1, isLast: isLastIssue, parentPrefix: currentPrefix)
-          let issueSymbol = getSymbolWithColorForIssue(issue)
-          output += "\(issuePrefix)\(issueSymbol)\(issue.summary)\n"
-        }
-      }
-    } else {
-      let suiteName = node.displayName ?? node.name
-      output += "\(currentPrefix)\(suiteName)\n"
-      
-      // Render all children (test cases and sub-suites)
-      for (_, child) in node.children.enumerated() {
-        let childParentPrefix = buildParentPrefix(currentPrefix)
-        
-        output += renderNodeTree(child, depth: depth + 1, isLast: false, parentPrefix: childParentPrefix, nodeStatusLookup: nodeStatusLookup)
-      }
-      
-      let stats = calculateSuiteStatistics(node)
-      if stats.passed > 0 || stats.failed > 0 || stats.skipped > 0 || stats.knownIssues > 0 || stats.warnings > 0 {
-        let summary = generateSuiteSummary(node, stats: stats)
-        let suiteTiming = formatTiming(node)
-        let summaryRightAligned = formatRightAlignedTiming(suiteTiming, contentPrefix: "\(finalPrefix)\(summary.icon)\(summary.text)")
-        output += "\(finalPrefix)\(summary.icon)\(summary.text)\(summaryRightAligned)\n"
       }
     }
     
     return output
   }
   
-  private func buildTreePrefix(depth: Int, isLast: Bool, parentPrefix: String) -> String {
-    if depth == 0 {
-      return ""
-    }
+  private func calculateSuiteStatistics(_ suite: HierarchyNode, context: HierarchyContext) -> (passed: Int, failed: Int, skipped: Int, knownIssues: Int, warnings: Int) {
+    var stats = (passed: 0, failed: 0, skipped: 0, knownIssues: 0, warnings: 0)
     
-    let connector = isLast ? "╰─ " : "├─ "
-    return "\(parentPrefix)\(connector)"
-  }
-  
-  private func buildParentPrefix(_ currentPrefix: String) -> String {
-    let cleanPrefix = currentPrefix.replacingOccurrences(of: "├─ ", with: "│  ")
-                                  .replacingOccurrences(of: "╰─ ", with: "   ")
-    return cleanPrefix
-  }
-  
-  private func renderIssue(_ issue: HierarchyNode.IssueInfo, prefix: String) -> String {
-    let symbolWithColor = getSymbolWithColorForIssue(issue)
-    return "\(prefix)\(symbolWithColor) \(issue.summary)\n"
-  }
-  
-  private func getSymbolWithColorForNode(_ node: HierarchyNode) -> String {
-    let symbol = getEventSymbolForNodeStatus(node.status)
-    return applyCustomColorToSymbol(symbol, for: node.status)
-  }
-  
-  private func getSymbolWithColorForIssue(_ issue: HierarchyNode.IssueInfo) -> String {
-    let symbol = getEventSymbolForIssue(issue)
-    return applyCustomColorToIssue(symbol, for: issue)
-  }
-  
-  private func applyCustomColorToSymbol(_ symbol: Event.Symbol, for status: HierarchyNode.NodeStatus) -> String {
-    let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4
-    
-    #if os(macOS)
-    let symbolChar = String(symbol.sfSymbolCharacter)
-    #else
-    let symbolChar = String(symbol.unicodeCharacter)
-    #endif
-    
-    if useColors {
-      let colorCode = getColorForNodeStatus(status)
-      return "\(colorCode)\(symbolChar) \u{001B}[0m"
-    } else {
-      return "\(symbolChar) "
-    }
-  }
-  
-  private func applyCustomColorToIssue(_ symbol: Event.Symbol, for issue: HierarchyNode.IssueInfo) -> String {
-    let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4
-    
-    #if os(macOS)
-    let symbolChar = String(symbol.sfSymbolCharacter)
-    #else
-    let symbolChar = String(symbol.unicodeCharacter)
-    #endif
-    
-    if useColors {
-      let colorCode = getColorForIssue(issue)
-      return "\(colorCode)\(symbolChar) \u{001B}[0m"
-    } else {
-      return "\(symbolChar) "
-    }
-  }
-  
-  private func getColorForNodeStatus(_ status: HierarchyNode.NodeStatus) -> String {
-    switch status {
-    case .running:
-      return "\u{001B}[96m"     // teal (.default)
-    case .passed:
-      return "\u{001B}[92m"     // green (.pass with no known issues)
-    case .failed:
-      return "\u{001B}[91m"     // red (.fail)
-    case .skipped:
-      return "\u{001B}[95m"     // purple (.skip)
-    case .passedWithKnownIssues(_):
-      return "\u{001B}[90m"     // gray (.pass with known issues)
-    case .passedWithWarnings(_):
-      return "\u{001B}[93m"     // yellow (.passWithWarnings)
-    }
-  }
-  
-  private func getColorForIssue(_ issue: HierarchyNode.IssueInfo) -> String {
-    if issue.isKnown {
-      return "\u{001B}[90m"     // gray for known issues
-    } else {
-      switch issue.issue.kind {
-      case .expectationFailed(_):
-        return "\u{001B}[33m"     // brown for differences (.difference)
-      case .errorCaught(_):
-        return "\u{001B}[91m"     // red for errors (.fail)
-      case .unconditional:
-        return "\u{001B}[93m"     // orange for warnings (.warning)
-      case .timeLimitExceeded(_):
-        return "\u{001B}[91m"     // red for time limit (.fail)
-      case .apiMisused:
-        return "\u{001B}[93m"     // orange for API misuse (.warning)
-      case .knownIssueNotRecorded:
-        return "\u{001B}[93m"     // orange for known issue not recorded (.warning)
-      case .system:
-        return "\u{001B}[91m"     // red for system errors (.fail)
-      case .valueAttachmentFailed(_):
-        return "\u{001B}[34m"     // blue for attachments (.attachment)
-      case .confirmationMiscounted(_, _):
-        return "\u{001B}[33m"     // brown for confirmation differences (.difference)
-      }
-    }
-  }
-  
-  private func getSymbolCharacter(_ symbol: Event.Symbol) -> String {
-    #if os(macOS)
-    return String(symbol.sfSymbolCharacter)
-    #else
-    return String(symbol.unicodeCharacter)
-    #endif
-  }
-  
-  private func getEventSymbolForNodeStatus(_ status: HierarchyNode.NodeStatus) -> Event.Symbol {
-    switch status {
-    case .running:
-      return .default 
-    case .passed:
-      return .pass(knownIssueCount: 0)
-    case .failed:
-      return .fail
-    case .skipped:
-      return .skip
-    case .passedWithKnownIssues(let count):
-      return .pass(knownIssueCount: count)
-    case .passedWithWarnings(_):
-      return .passWithWarnings
-    }
-  }
-  
-  private func getEventSymbolForIssue(_ issue: HierarchyNode.IssueInfo) -> Event.Symbol {
-    if issue.isKnown {
-      return .pass(knownIssueCount: 1) 
-    } else {
-      switch issue.issue.kind {
-      case .expectationFailed(_):
-        return .difference
-      case .errorCaught(_):
-        return .fail
-      case .unconditional:
-        return .warning
-      case .timeLimitExceeded(_):
-        return .fail
-      case .apiMisused:
-        return .warning
-      case .knownIssueNotRecorded:
-        return .warning
-      case .system:
-        return .fail
-      case .valueAttachmentFailed(_):
-        return .attachment
-      case .confirmationMiscounted(_, _):
-        return .difference
-      }
-    }
-  }
-  
-  private func formatTiming(_ node: HierarchyNode) -> String {
-    guard let startTime = node.startTime, let endTime = node.endTime else {
-      return ""
-    }
-    
-    guard startTime <= endTime else {
-      return " (0.000s)"
-    }
-    
-    let duration = startTime.descriptionOfDuration(to: endTime)
-    return " (\(duration))"
-  }
-  
-  private func formatIssueSummary(_ issue: Issue) -> String {
-    let summary: String
-    
-    if case let .expectationFailed(expectation) = issue.kind {
-      let description = expectation.evaluatedExpression.expandedDescription()
-      if description.count > 80 {
-        summary = "Expectation failed: \(String(description.prefix(77)))..."
+    for childId in suite.children {
+      guard let child = context.nodes[childId] else { continue }
+      
+      if child.isSuite {
+        let childStats = calculateSuiteStatistics(child, context: context)
+        stats.passed += childStats.passed
+        stats.failed += childStats.failed
+        stats.skipped += childStats.skipped
+        stats.knownIssues += childStats.knownIssues
+        stats.warnings += childStats.warnings
       } else {
-        summary = "Expectation failed: \(description)"
-      }
-    } else if case let .errorCaught(error) = issue.kind {
-      summary = "Error: \(String(describing: error))"
-    } else if case .unconditional = issue.kind {
-      summary = "Issue recorded"
-    } else if case let .timeLimitExceeded(timeLimitComponents) = issue.kind {
-      summary = "Time limit exceeded: \(TimeValue(timeLimitComponents))"
-    } else if case .apiMisused = issue.kind {
-      summary = "API misuse"
-    } else if case .knownIssueNotRecorded = issue.kind {
-      summary = "Known issue not recorded"
-    } else if case .system = issue.kind {
-      summary = "System error"
-    } else if case let .valueAttachmentFailed(error) = issue.kind {
-      summary = "Attachment error: \(String(describing: error))"
-    } else if case let .confirmationMiscounted(actual, expected) = issue.kind {
-      summary = "Confirmation miscounted: \(actual) actual, \(expected) expected"
-    } else {
-      summary = issue.comments.first?.rawValue ?? "Issue recorded"
-    }
-    
-    return summary
-  }
-  
-  private func calculateSuiteStatistics(_ suite: HierarchyNode) -> (passed: Int, failed: Int, skipped: Int, knownIssues: Int, warnings: Int) {
-    var passed = 0, failed = 0, skipped = 0, knownIssues = 0, warnings = 0
-    
-    func countNode(_ node: HierarchyNode) {
-      if !node.isSuite {
-        switch node.status {
+        switch child.status {
         case .passed:
-          passed += 1
+          stats.passed += 1
         case .failed:
-          failed += 1
+          stats.failed += 1
         case .skipped:
-          skipped += 1
+          stats.skipped += 1
         case .passedWithKnownIssues(let count):
-          passed += 1
-          knownIssues += count
+          stats.passed += 1
+          stats.knownIssues += count
         case .passedWithWarnings(let count):
-          passed += 1
-          warnings += count
+          stats.passed += 1
+          stats.warnings += count
         case .running:
           break
         }
       }
-      
-      for child in node.children {
-        countNode(child)
-      }
     }
     
-    countNode(suite)
-    return (passed, failed, skipped, knownIssues, warnings)
+    return stats
   }
   
-  private func generateSuiteSummary(_ suite: HierarchyNode, stats: (passed: Int, failed: Int, skipped: Int, knownIssues: Int, warnings: Int)) -> (icon: String, text: String) {
-    let eventSymbol: Event.Symbol
-    if stats.failed > 0 {
-      eventSymbol = .fail
-    } else if stats.warnings > 0 {
-      eventSymbol = .passWithWarnings
-    } else if stats.skipped > 0 {
-      eventSymbol = .skip
-    } else {
-      eventSymbol = .pass(knownIssueCount: 0)
-    }
-    
-    let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4
-    
-    let symbolWithColor: String
-    if useColors {
-      let colorCode = getColorForSummarySymbol(eventSymbol)
-      symbolWithColor = "\(colorCode)\(getSymbolCharacter(eventSymbol))\u{001B}[0m"
-    } else {
-      symbolWithColor = getSymbolCharacter(eventSymbol)
-    }
-    
-    // Generate summary text in format: "X failed, Y passed in Z.ZZs"
+  private func formatSuiteStatsSummary(_ stats: (passed: Int, failed: Int, skipped: Int, knownIssues: Int, warnings: Int)) -> String {
     var parts: [String] = []
     
-    // Order matters: failed first, then passed, then skipped
     if stats.failed > 0 {
       parts.append("\(stats.failed) failed")
     }
@@ -968,141 +675,259 @@ extension Event.AdvancedConsoleOutputRecorder {
       parts.append("\(stats.skipped) skipped")
     }
     
-    let summaryText = parts.joined(separator: ", ")
-    let duration = formatTiming(suite).trimmingCharacters(in: CharacterSet(charactersIn: " ()"))
-    let fullText = summaryText.isEmpty ? "in \(duration)" : "\(summaryText) in \(duration)"
+    if parts.isEmpty {
+      return "No tests"
+    }
     
-    return (icon: symbolWithColor, text: fullText)
+    return parts.joined(separator: ", ")
   }
   
-  private func getColorForSummarySymbol(_ symbol: Event.Symbol) -> String {
-    switch symbol {
-    case .pass(_):
-      return "\u{001B}[92m"     // green
-    case .fail:
-      return "\u{001B}[91m"     // red
-    case .skip:
-      return "\u{001B}[95m"     // purple
-    case .passWithWarnings:
-      return "\u{001B}[93m"     // yellow
-    case .warning:
-      return "\u{001B}[93m"     // orange 
-    case .difference:
-      return "\u{001B}[33m"     // brown
-    case .details:
-      return "\u{001B}[94m"     // blue
-    case .attachment:
-      return "\u{001B}[34m"     // blue
-    case .default:
-      return "\u{001B}[96m"     // teal
+  private func getStatusIconForSuiteStats(_ stats: (passed: Int, failed: Int, skipped: Int, knownIssues: Int, warnings: Int)) -> String {
+    let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4
+    
+    if stats.failed > 0 {
+      return getColoredSymbol(.fail, color: useColors ? "\u{001B}[91m" : "", useColors: useColors)
+    } else if stats.passed > 0 {
+      return getColoredSymbol(.pass(knownIssueCount: 0), color: useColors ? "\u{001B}[92m" : "", useColors: useColors)
+    } else {
+      return getColoredSymbol(.skip, color: useColors ? "\u{001B}[95m" : "", useColors: useColors)
     }
   }
   
-  private func renderFinalSummary() {
-    _context.withLock { context in
-      var actualStats = (passed: 0, failed: 0, skipped: 0, knownIssues: 0, warnings: 0, attachments: 0)
-      
-      for node in context.allNodes {
-        if !node.isSuite {
-          switch node.status {
-          case .passed:
-            actualStats.passed += 1
-          case .failed:
-            actualStats.failed += 1
-          case .skipped:
-            actualStats.skipped += 1
-          case .passedWithKnownIssues(let count):
-            actualStats.passed += 1
-            actualStats.knownIssues += count
-          case .passedWithWarnings(let count):
-            actualStats.passed += 1
-            actualStats.warnings += count
-          case .running:
-            break
-          }
-        }
+  private func getStatusIcon(for status: HierarchyNode.NodeStatus) -> String {
+    let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4
+    
+    switch status {
+    case .passed:
+      return getColoredSymbol(.pass(knownIssueCount: 0), color: useColors ? "\u{001B}[92m" : "", useColors: useColors)
+    case .failed:
+      return getColoredSymbol(.fail, color: useColors ? "\u{001B}[91m" : "", useColors: useColors)
+    case .skipped:
+      return getColoredSymbol(.skip, color: useColors ? "\u{001B}[95m" : "", useColors: useColors)
+    case .passedWithKnownIssues(_):
+      return getColoredSymbol(.pass(knownIssueCount: 1), color: useColors ? "\u{001B}[90m" : "", useColors: useColors)
+    case .passedWithWarnings(_):
+      return getColoredSymbol(.pass(knownIssueCount: 0), color: useColors ? "\u{001B}[93m" : "", useColors: useColors)
+    case .running:
+      return getColoredSymbol(.default, color: useColors ? "\u{001B}[96m" : "", useColors: useColors)
+    }
+  }
+  
+  private func getIssueIcon(for issue: HierarchyNode.IssueInfo) -> String {
+    let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4
+    
+    if issue.isKnown {
+      return getColoredSymbol(.pass(knownIssueCount: 1), color: useColors ? "\u{001B}[90m" : "", useColors: useColors)
+    }
+    
+    switch issue.issue.kind {
+    case .expectationFailed(_):
+      return getColoredSymbol(.difference, color: useColors ? "\u{001B}[33m" : "", useColors: useColors)
+    case .errorCaught(_):
+      return getColoredSymbol(.fail, color: useColors ? "\u{001B}[91m" : "", useColors: useColors)
+    case .unconditional:
+      return getColoredSymbol(.warning, color: useColors ? "\u{001B}[93m" : "", useColors: useColors)
+    case .timeLimitExceeded(_):
+      return getColoredSymbol(.fail, color: useColors ? "\u{001B}[91m" : "", useColors: useColors)
+    case .apiMisused:
+      return getColoredSymbol(.warning, color: useColors ? "\u{001B}[93m" : "", useColors: useColors)
+    case .knownIssueNotRecorded:
+      return getColoredSymbol(.warning, color: useColors ? "\u{001B}[93m" : "", useColors: useColors)
+    case .system:
+      return getColoredSymbol(.fail, color: useColors ? "\u{001B}[91m" : "", useColors: useColors)
+    case .valueAttachmentFailed(_):
+      return getColoredSymbol(.attachment, color: useColors ? "\u{001B}[34m" : "", useColors: useColors)
+    case .confirmationMiscounted(_, _):
+      return getColoredSymbol(.difference, color: useColors ? "\u{001B}[33m" : "", useColors: useColors)
+    }
+  }
+  
+  private func getColoredSymbol(_ symbol: Event.Symbol, color: String, useColors: Bool) -> String {
+    return symbol.stringValue(options: options.base)
+  }
+  
+  private func formatIssueSummary(_ issue: Issue) -> String {
+    switch issue.kind {
+    case .expectationFailed(let expectation):
+      return "Expectation failed: \(expectation.evaluatedExpression.expandedDescription())"
+    case .errorCaught(let error):
+      return "Error: \(error)"
+    case .unconditional:
+      return issue.comments.first?.rawValue ?? "Unconditional issue"
+    case .timeLimitExceeded(let timeLimitComponents):
+      return "Time limit exceeded (\(TimeValue(timeLimitComponents)))"
+    case .apiMisused:
+      return "API misused: \(issue.comments.first?.rawValue ?? "")"
+    case .knownIssueNotRecorded:
+      return "Known issue not recorded"
+    case .system:
+      return "System error: \(issue.comments.first?.rawValue ?? "")"
+    case .valueAttachmentFailed(let error):
+      return "Attachment failed: \(error)"
+    case .confirmationMiscounted(let actual, let expected):
+      return "Confirmation count mismatch: expected \(expected), got \(actual)"
+    }
+  }
+  
+  private func isFailureIssue(_ issue: Issue) -> Bool {
+    switch issue.kind {
+    case .expectationFailed(_), .errorCaught(_), .timeLimitExceeded(_), .system, .confirmationMiscounted(_, _):
+      return true
+    case .unconditional, .apiMisused, .knownIssueNotRecorded, .valueAttachmentFailed(_):
+      return false
+    }
+  }
+  
+  private func formatDuration(from startTime: Test.Clock.Instant?, to endTime: Test.Clock.Instant?) -> String {
+    guard let startTime = startTime, let endTime = endTime else { return "" }
+    
+    let originalFormat = startTime.descriptionOfDuration(to: endTime)
+    
+    if originalFormat.hasPrefix("(") && originalFormat.hasSuffix(" seconds)") {
+      let timeString = String(originalFormat.dropFirst().dropLast(9)) // Remove "(" and " seconds)"
+      if let timeValue = Double(timeString) {
+        return String(format: "%.2fs", timeValue)
       }
-      
-      actualStats.attachments = context.overallStats.attachments
-      
-      // Calculate real test run duration with safety checks
-      let duration: String
-      if let startTime = context.runStartTime, let endTime = context.runEndTime {
-        if startTime <= endTime {
-          let durationString = startTime.descriptionOfDuration(to: endTime)
-          duration = durationString
-        } else {
-          duration = "0.000 seconds"
-        }
-      } else {
-        duration = "unknown duration"
+    }
+    
+    let durationNanoseconds = startTime.nanoseconds(until: endTime)
+    let seconds = Double(durationNanoseconds) / 1_000_000_000.0
+    return String(format: "%.2fs", seconds)
+  }
+  
+  private func renderFinalSummary(context: HierarchyContext) -> String {
+    var output = ""
+    
+    let duration = formatDuration(from: context.runStartTime, to: context.runEndTime)
+    
+    output += "\n"
+    
+    let totalTests = context.totalPassed + context.totalFailed + context.totalSkipped
+    let totalSuites = context.nodes.values.filter { $0.isSuite }.count
+    
+    let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4
+    let redColor = useColors ? "\u{001B}[91m" : ""
+    let greenColor = useColors ? "\u{001B}[92m" : ""
+    let yellowColor = useColors ? "\u{001B}[93m" : ""
+    let grayColor = useColors ? "\u{001B}[90m" : ""
+    let resetColor = useColors ? "\u{001B}[0m" : ""
+    
+    let issuesDescription: String
+    if context.totalKnownIssues > 0 || context.totalWarnings > 0 {
+      var parts: [String] = []
+      if context.totalKnownIssues > 0 {
+        let knownText = "\(context.totalKnownIssues) \(grayColor)known \(context.totalKnownIssues == 1 ? "issue" : "issues")\(resetColor)"
+        parts.append(knownText)
       }
-      
-      var output = "\nTests completed in \(duration)  ["
-      
-      let useColors = options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4
-      var summaryParts: [String] = []
-      
-      if actualStats.passed > 0 {
-        if useColors {
-          summaryParts.append("\u{001B}[92m\(getSymbolCharacter(.pass(knownIssueCount: 0)))\u{001B}[0m \(actualStats.passed)")
-        } else {
-          summaryParts.append("\(getSymbolCharacter(.pass(knownIssueCount: 0))) \(actualStats.passed)")
-        }
+      if context.totalWarnings > 0 {
+        let warningText = "\(context.totalWarnings) \(yellowColor)\(context.totalWarnings == 1 ? "warning" : "warnings")\(resetColor)"
+        parts.append(warningText)
       }
-      
-      if actualStats.failed > 0 {
-        if useColors {
-          summaryParts.append("\u{001B}[91m\(getSymbolCharacter(.fail))\u{001B}[0m \(actualStats.failed)")
-        } else {
-          summaryParts.append("\(getSymbolCharacter(.fail)) \(actualStats.failed)")
-        }
-      }
-      
-      if actualStats.warnings > 0 {
-        if useColors {
-          summaryParts.append("\u{001B}[93m\(getSymbolCharacter(.warning))\u{001B}[0m \(actualStats.warnings)")
-        } else {
-          summaryParts.append("\(getSymbolCharacter(.warning)) \(actualStats.warnings)")
-        }
-      }
-      
-      if actualStats.skipped > 0 {
-        if useColors {
-          summaryParts.append("\u{001B}[95m\(getSymbolCharacter(.skip))\u{001B}[0m \(actualStats.skipped)")
-        } else {
-          summaryParts.append("\(getSymbolCharacter(.skip)) \(actualStats.skipped)")
-        }
-      }
-      
-      if actualStats.knownIssues > 0 {
-        if useColors {
-          summaryParts.append("\u{001B}[90m\(getSymbolCharacter(.pass(knownIssueCount: 1)))\u{001B}[0m \(actualStats.knownIssues)")
-        } else {
-          summaryParts.append("\(getSymbolCharacter(.pass(knownIssueCount: 1))) \(actualStats.knownIssues)")
-        }
-      }
-      
-      if actualStats.attachments > 0 {
-        if useColors {
-          summaryParts.append("\u{001B}[34m\(getSymbolCharacter(.attachment))\u{001B}[0m \(actualStats.attachments)")
-        } else {
-          summaryParts.append("\(getSymbolCharacter(.attachment)) \(actualStats.attachments)")
-        }
-      }
-      
-      output += summaryParts.joined(separator: ", ")
-      output += "]\n"
-      
-      if actualStats.failed > 0 {
-        if options.base.useANSIEscapeCodes && options.base.ansiColorBitDepth >= 4 {
-          output += "\n\u{001B}[91mFailure explanation - see details below\u{001B}[0m\n"
-        } else {
-          output += "\nFailure explanation - see details below\n"
-        }
-      }
-      
-      write(output)
+      issuesDescription = " with " + parts.joined(separator: " and ")
+    } else {
+      issuesDescription = ""
+    }
+    
+    if context.totalFailed > 0 {
+      let symbol = Event.Symbol.fail.stringValue(options: options.base)
+      output += "\(symbol) Test run with \(totalTests.counting("test")) in \(totalSuites.counting("suite")) \(redColor)failed\(resetColor) after \(duration)\(issuesDescription).\n"
+    } else {
+      let symbol = Event.Symbol.pass(knownIssueCount: context.totalKnownIssues).stringValue(options: options.base)
+      output += "\(symbol) Test run with \(totalTests.counting("test")) in \(totalSuites.counting("suite")) \(greenColor)passed\(resetColor) after \(duration)\(issuesDescription).\n"
+    }
+    
+    // Add hierarchy summary with symbol showcase
+    output += renderHierarchySummary(context: context)
+    
+    return output
+  }
+  
+  private func renderHierarchySummary(context: HierarchyContext) -> String {
+    var summaryParts: [String] = []
+    
+    // Collect all symbol counts in the specified order
+    if context.symbolCounts["pass", default: 0] > 0 {
+      let symbol = Event.Symbol.pass(knownIssueCount: 0).stringValue(options: options.base)
+      summaryParts.append("\(symbol) \(context.symbolCounts["pass", default: 0])")
+    }
+    
+    if context.symbolCounts["fail", default: 0] > 0 {
+      let symbol = Event.Symbol.fail.stringValue(options: options.base)
+      summaryParts.append("\(symbol) \(context.symbolCounts["fail", default: 0])")
+    }
+    
+    if context.symbolCounts["passWithKnownIssues", default: 0] > 0 {
+      let symbol = Event.Symbol.pass(knownIssueCount: 1).stringValue(options: options.base)
+      summaryParts.append("\(symbol) \(context.symbolCounts["passWithKnownIssues", default: 0])")
+    }
+    
+    if context.symbolCounts["passWithWarnings", default: 0] > 0 {
+      let symbol = Event.Symbol.passWithWarnings.stringValue(options: options.base)
+      summaryParts.append("\(symbol) \(context.symbolCounts["passWithWarnings", default: 0])")
+    }
+    
+    if context.symbolCounts["skip", default: 0] > 0 {
+      let symbol = Event.Symbol.skip.stringValue(options: options.base)
+      summaryParts.append("\(symbol) \(context.symbolCounts["skip", default: 0])")
+    }
+    
+    if context.symbolCounts["warning", default: 0] > 0 {
+      let symbol = Event.Symbol.warning.stringValue(options: options.base)
+      summaryParts.append("\(symbol) \(context.symbolCounts["warning", default: 0])")
+    }
+    
+    if context.symbolCounts["difference", default: 0] > 0 {
+      let symbol = Event.Symbol.difference.stringValue(options: options.base)
+      summaryParts.append("\(symbol) \(context.symbolCounts["difference", default: 0])")
+    }
+    
+    if context.symbolCounts["details", default: 0] > 0 {
+      let symbol = Event.Symbol.details.stringValue(options: options.base)
+      summaryParts.append("\(symbol) \(context.symbolCounts["details", default: 0])")
+    }
+    
+    if context.symbolCounts["attachment", default: 0] > 0 {
+      let symbol = Event.Symbol.attachment.stringValue(options: options.base)
+      summaryParts.append("\(symbol) \(context.symbolCounts["attachment", default: 0])")
+    }
+    
+    if !summaryParts.isEmpty {
+      return summaryParts.joined(separator: " ") + "\n"
+    }
+    
+    return ""
+  }
+  
+  private func getTestCount(from eventContext: borrowing Event.Context) -> Int {
+
+    return 0
+  }
+  
+  private func isPassedStatus(_ status: HierarchyNode.NodeStatus) -> Bool {
+    switch status {
+    case .passed:
+      return true
+    default:
+      return false
+    }
+  }
+}
+
+// MARK: - Extensions
+
+extension Int {
+  /// Get a human-readable description of this instance as a count of some item.
+  ///
+  /// - Parameters:
+  ///   - item: The item being counted.
+  ///
+  /// - Returns: A human-readable description such as "1 test" or "2 tests".
+  fileprivate func counting(_ item: String) -> String {
+    switch self {
+    case 1:
+      return "\(self) \(item)"
+    default:
+      return "\(self) \(item)s"
     }
   }
 } 

@@ -53,7 +53,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
 
     if configuration.verbosity >= 0 {
       var advancedOptions = Event.AdvancedConsoleOutputRecorder.Options()
-      advancedOptions.base = .for(.stderr)
+      advancedOptions.base = .for(FileHandle.stderr)
       
       advancedOptions.base.useANSIEscapeCodes = true
       advancedOptions.base.ansiColorBitDepth = 24
