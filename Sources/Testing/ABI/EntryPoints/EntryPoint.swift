@@ -526,10 +526,10 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   }
 
 #if canImport(Foundation)
-  // Event stream output (experimental)
+  // Event stream output
   if let eventStreamOutputPath = args.eventStreamOutputPath {
     let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
-    let eventHandler = try eventHandlerForStreamingEvents(version: args.eventStreamVersion, encodeAsJSONLines: true) { json in
+    let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersion, encodeAsJSONLines: true) { json in
       _ = try? file.withLock {
         try file.write(json)
         try file.write("\n")
@@ -629,31 +629,15 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 ///
 /// - Throws: If `version` is not a supported ABI version.
 func eventHandlerForStreamingEvents(
-  version versionNumber: ABI.VersionNumber?,
+  withVersionNumber versionNumber: ABI.VersionNumber?,
   encodeAsJSONLines: Bool,
   forwardingTo targetEventHandler: @escaping @Sendable (UnsafeRawBufferPointer) -> Void
 ) throws -> Event.Handler {
-  func eventHandler(for version: (some ABI.Version).Type) -> Event.Handler {
-    return version.eventHandler(encodeAsJSONLines: encodeAsJSONLines, forwardingTo: targetEventHandler)
-  }
-
-  guard let versionNumber else {
-    return eventHandler(for: ABI.CurrentVersion.self)
-  }
-  return switch versionNumber {
-#if !SWT_NO_SNAPSHOT_TYPES
-  case ABI.Xcode16.versionNumber:
-    // Legacy support for Xcode 16. Support for this undocumented version will
-    // be removed in a future update. Do not use it.
-    eventHandler(for: ABI.Xcode16.self)
-#endif
-  case ABI.v0.versionNumber:
-    eventHandler(for: ABI.v0.self)
-  case ABI.v6_3.versionNumber:
-    eventHandler(for: ABI.v6_3.self)
-  default:
+  let versionNumber = versionNumber ?? ABI.CurrentVersion.versionNumber
+  guard let abi = ABI.version(forVersionNumber: versionNumber) else {
     throw _EntryPointError.invalidArgument("--event-stream-version", value: "\(versionNumber)")
   }
+  return abi.eventHandler(encodeAsJSONLines: encodeAsJSONLines, forwardingTo: targetEventHandler)
 }
 #endif
 

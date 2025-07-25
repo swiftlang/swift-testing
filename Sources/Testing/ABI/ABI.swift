@@ -44,6 +44,33 @@ extension ABI {
 
   /// The current supported ABI version (ignoring any experimental versions.)
   typealias CurrentVersion = v0
+
+#if !hasFeature(Embedded)
+  /// Get the type representing a given ABI version.
+  ///
+  /// - Parameters:
+  ///   - versionNumber: The ABI version number for which a concrete type is
+  ///     needed.
+  ///
+  /// - Returns: A type conforming to ``ABI/Version`` that represents the given
+  ///   ABI version, or `nil` if no such type exists.
+  static func version(forVersionNumber versionNumber: VersionNumber = ABI.CurrentVersion.versionNumber) -> (any Version.Type)? {
+    switch versionNumber {
+    case ABI.v6_3.versionNumber...:
+      ABI.v6_3.self
+    case ABI.v0.versionNumber...:
+      ABI.v0.self
+#if !SWT_NO_SNAPSHOT_TYPES
+    case ABI.Xcode16.versionNumber:
+      // Legacy support for Xcode 16. Support for this undocumented version will
+      // be removed in a future update. Do not use it.
+      ABI.Xcode16.self
+#endif
+    default:
+      nil
+    }
+  }
+#endif
 }
 
 // MARK: - Concrete ABI versions
