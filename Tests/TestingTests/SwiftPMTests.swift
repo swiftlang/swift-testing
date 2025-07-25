@@ -230,21 +230,23 @@ struct SwiftPMTests {
     #expect(args.parallel == false)
   }
 
+  @Test("--event-stream-output-path argument with new-but-not-experimental version")
+  func eventStreamOutputWithNewButNotExperimentalVersion() async throws {
+    let versionNumber = ABI.VersionNumber(major: 0, minor: 0, patch: 1)
+    let version = try #require(ABI.version(forVersionNumber: versionNumber))
+    #expect(version.versionNumber == ABI.v0.versionNumber)
+  }
+
   @Test("--event-stream-output-path argument (writes to a stream and can be read back)",
         arguments: [
           ("--event-stream-output-path", "--event-stream-version", ABI.v0.versionNumber),
           ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v0.versionNumber),
           ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v6_3.versionNumber),
+          ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v6_3.versionNumber),
         ])
   func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: ABI.VersionNumber) async throws {
-    switch version {
-    case ABI.v0.versionNumber:
-      try await eventStreamOutput(outputArgumentName: outputArgumentName, versionArgumentName: versionArgumentName, version: ABI.v0.self)
-    case ABI.v6_3.versionNumber:
-      try await eventStreamOutput(outputArgumentName: outputArgumentName, versionArgumentName: versionArgumentName, version: ABI.v6_3.self)
-    default:
-      Issue.record("Unreachable event stream version \(version)")
-    }
+    let version = try #require(ABI.version(forVersionNumber: version))
+    try await eventStreamOutput(outputArgumentName: outputArgumentName, versionArgumentName: versionArgumentName, version: version)
   }
 
   func eventStreamOutput<V>(outputArgumentName: String, versionArgumentName: String, version: V.Type) async throws where V: ABI.Version {
