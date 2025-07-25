@@ -230,11 +230,17 @@ struct SwiftPMTests {
     #expect(args.parallel == false)
   }
 
-  @Test("--event-stream-output-path argument with new-but-not-experimental version")
-  func eventStreamOutputWithNewButNotExperimentalVersion() async throws {
+  @Test("New-but-not-experimental ABI version")
+  func newButNotExperimentalABIVersion() async throws {
     let versionNumber = ABI.VersionNumber(major: 0, minor: 0, patch: 1)
     let version = try #require(ABI.version(forVersionNumber: versionNumber))
     #expect(version.versionNumber == ABI.v0.versionNumber)
+  }
+
+  @Test("Unsupported ABI version")
+  func unsupportedABIVersion() async throws {
+    let versionNumber = ABI.VersionNumber(major: -999, minor: 0, patch: 0)
+    #expect(ABI.version(forVersionNumber: versionNumber) == nil)
   }
 
   @Test("--event-stream-output-path argument (writes to a stream and can be read back)",
