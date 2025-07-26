@@ -89,24 +89,41 @@ enum Environment {
   }()
 #endif
 
+  /// The address of the environment block, if available.
+  ///
+  /// The value of this property is always `nil` on Windows and on platforms
+  /// that do not support environment variables.
+  static var unsafeAddress: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>? {
+#if SWT_NO_ENVIRONMENT_VARIABLES
+    nil
+#elseif SWT_TARGET_OS_APPLE
+    _NSGetEnviron()?.pointee
+#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+    swt_environ()
+#elseif os(WASI)
+    __wasilibc_get_environ()
+#elseif os(Windows)
+    nil
+#else
+#warning("Platform-specific implementation missing: environment variables unavailable")
+    nil
+#endif
+  }
+
   /// Get all environment variables in the current process.
   ///
   /// - Returns: A copy of the current process' environment dictionary.
   static func get() -> [String: String] {
 #if SWT_NO_ENVIRONMENT_VARIABLES
     simulatedEnvironment.rawValue
-#elseif SWT_TARGET_OS_APPLE
-#if !SWT_NO_DYNAMIC_LINKING
+#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
     _environ_lock_np?()
     defer {
       _environ_unlock_np?()
     }
 #endif
-    return _get(fromEnviron: _NSGetEnviron()!.pointee!)
-#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
-    _get(fromEnviron: swt_environ())
-#elseif os(WASI)
-    _get(fromEnviron: __wasilibc_get_environ())
+    return _get(fromEnviron: Self.unsafeAddress!)
 #elseif os(Windows)
     guard let environ = GetEnvironmentStringsW() else {
       return [:]
@@ -153,7 +170,9 @@ enum Environment {
     defer {
       _environ_unlock_np?()
     }
-    let environ = _NSGetEnviron()!.pointee!
+    guard let environ = Self.unsafeAddress else {
+      return nil
+    }
 
     return name.withCString { name in
       for i in 0... {
