@@ -190,7 +190,7 @@ public struct Configuration: Sendable {
     ///
     /// - Warning: Warning issues are not yet an approved feature.
     @_spi(Experimental)
-    public var isWarningIssueRecordedEventEnabled: Bool = false
+    public var isWarningIssueRecordedEventEnabled: Bool = true
 
     /// Whether or not events of the kind
     /// ``Event/Kind-swift.enum/expectationChecked(_:)`` should be delivered to
