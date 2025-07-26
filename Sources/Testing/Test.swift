@@ -192,22 +192,12 @@ public struct Test: Sendable {
     containingTypeInfo != nil && testCasesState == nil
   }
 
-  /// Whether or not this instance was synthesized at runtime.
-  ///
-  /// During test planning, suites that are not explicitly marked with the
-  /// `@Suite` attribute are synthesized from available type information before
-  /// being added to the plan. For such suites, the value of this property is
-  /// `true`.
-  @_spi(ForToolsIntegrationOnly)
-  public var isSynthesized: Bool = false
-
   /// Initialize an instance of this type representing a test suite type.
   init(
     displayName: String? = nil,
     traits: [any Trait],
     sourceLocation: SourceLocation,
-    containingTypeInfo: TypeInfo,
-    isSynthesized: Bool = false
+    containingTypeInfo: TypeInfo
   ) {
     let name = containingTypeInfo.unqualifiedName
     self.name = name
@@ -219,7 +209,6 @@ public struct Test: Sendable {
     self.traits = traits
     self.sourceLocation = sourceLocation
     self.containingTypeInfo = containingTypeInfo
-    self.isSynthesized = isSynthesized
   }
 
   /// Initialize an instance of this type representing a test function.
