@@ -14,13 +14,13 @@
 ///   use it directly.
 public struct __ABIVersionNumber: Sendable {
   /// The major version.
-  var majorComponent: Int = 0
+  var majorComponent: Int8 = 0
 
   /// The minor version.
-  var minorComponent: Int = 0
+  var minorComponent: Int8 = 0
 
   /// The patch, revision, or bug fix version.
-  var patchComponent: Int = 0
+  var patchComponent: Int8 = 0
 }
 
 extension ABI {
@@ -31,7 +31,7 @@ extension ABI {
 // MARK: - ExpressibleByIntegerLiteral, CustomStringConvertible
 
 extension __ABIVersionNumber: ExpressibleByIntegerLiteral, CustomStringConvertible {
-  public init(integerLiteral value: Int) {
+  public init(integerLiteral value: Int8) {
     self.init(majorComponent: value)
   }
 
@@ -48,12 +48,12 @@ extension __ABIVersionNumber: ExpressibleByIntegerLiteral, CustomStringConvertib
   public init?(_ string: String) {
     // Split the string on "." (assuming it is of the form "1", "1.2", or
     // "1.2.3") and parse the individual components as integers.
-    let result: Self? = withUnsafeTemporaryAllocation(of: Int.self, capacity: 3) { componentNumbers in
+    let result: Self? = withUnsafeTemporaryAllocation(of: Int8.self, capacity: 3) { componentNumbers in
       componentNumbers.initialize(repeating: 0)
 
       let components = string.split(separator: ".", maxSplits: 2, omittingEmptySubsequences: false)
       for (i, component) in zip(componentNumbers.indices, components) {
-        guard let componentNumber = Int(component) else {
+        guard let componentNumber = Int8(component) else {
           // Couldn't parse this component as an integer, so bail.
           return nil
         }
@@ -100,7 +100,7 @@ extension __ABIVersionNumber: Equatable, Comparable {
 extension __ABIVersionNumber: Codable {
   public init(from decoder: any Decoder) throws {
     let container = try decoder.singleValueContainer()
-    if let number = try? container.decode(Int.self) {
+    if let number = try? container.decode(Int8.self) {
       self.init(majorComponent: number)
     } else {
       let string = try container.decode(String.self)
