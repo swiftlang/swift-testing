@@ -239,7 +239,7 @@ struct SwiftPMTests {
 
   @Test("Unsupported ABI version")
   func unsupportedABIVersion() async throws {
-    let versionNumber = ABI.VersionNumber(majorComponent: -999, minorComponent: 0, patchComponent: 0)
+    let versionNumber = ABI.VersionNumber(majorComponent: -100, minorComponent: 0, patchComponent: 0)
     #expect(ABI.version(forVersionNumber: versionNumber) == nil)
   }
 
