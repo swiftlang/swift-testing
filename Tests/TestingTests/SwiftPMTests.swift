@@ -232,14 +232,14 @@ struct SwiftPMTests {
 
   @Test("New-but-not-experimental ABI version")
   func newButNotExperimentalABIVersion() async throws {
-    let versionNumber = ABI.VersionNumber(major: 0, minor: 0, patch: 1)
+    let versionNumber = ABI.VersionNumber(majorComponent: 0, minorComponent: 0, patchComponent: 1)
     let version = try #require(ABI.version(forVersionNumber: versionNumber))
     #expect(version.versionNumber == ABI.v0.versionNumber)
   }
 
   @Test("Unsupported ABI version")
   func unsupportedABIVersion() async throws {
-    let versionNumber = ABI.VersionNumber(major: -999, minor: 0, patch: 0)
+    let versionNumber = ABI.VersionNumber(majorComponent: -999, minorComponent: 0, patchComponent: 0)
     #expect(ABI.version(forVersionNumber: versionNumber) == nil)
   }
 
@@ -313,7 +313,7 @@ struct SwiftPMTests {
   func experimentalABIVersionNeedsExperimentalFlag() {
     #expect(throws: (any Error).self) {
       var experimentalVersion = ABI.CurrentVersion.versionNumber
-      experimentalVersion.minor += 1
+      experimentalVersion.minorComponent += 1
       _ = try configurationForEntryPoint(withArguments: ["PATH", "--event-stream-version", "\(experimentalVersion)"])
     }
   }

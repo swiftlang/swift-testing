@@ -97,12 +97,12 @@ extension ABI {
   /// A namespace and type for ABI version 6.3 symbols.
   ///
   /// @Metadata {
-  ///   @Available("Swift Testing ABI", introduced: 6.3)
+  ///   @Available(Swift, introduced: 6.3)
   /// }
   @_spi(Experimental)
   public enum v6_3: Sendable, Version {
     static var versionNumber: VersionNumber {
-      VersionNumber(major: 6, minor: 3)
+      VersionNumber(majorComponent: 6, minorComponent: 3)
     }
   }
 }

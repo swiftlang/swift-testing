@@ -14,13 +14,13 @@
 ///   use it directly.
 public struct __ABIVersionNumber: Sendable {
   /// The major version.
-  var major: Int = 0
+  var majorComponent: Int = 0
 
   /// The minor version.
-  var minor: Int = 0
+  var minorComponent: Int = 0
 
   /// The patch, revision, or bug fix version.
-  var patch: Int = 0
+  var patchComponent: Int = 0
 }
 
 extension ABI {
@@ -32,7 +32,7 @@ extension ABI {
 
 extension __ABIVersionNumber: ExpressibleByIntegerLiteral, CustomStringConvertible {
   public init(integerLiteral value: Int) {
-    self.init(major: value)
+    self.init(majorComponent: value)
   }
 
   /// Initialize an instance of this type by parsing the given string.
@@ -60,7 +60,7 @@ extension __ABIVersionNumber: ExpressibleByIntegerLiteral, CustomStringConvertib
         componentNumbers[i] = componentNumber
       }
 
-      return Self(major: componentNumbers[0], minor: componentNumbers[1], patch: componentNumbers[2])
+      return Self(majorComponent: componentNumbers[0], minorComponent: componentNumbers[1], patchComponent: componentNumbers[2])
     }
 
     if let result {
@@ -71,12 +71,12 @@ extension __ABIVersionNumber: ExpressibleByIntegerLiteral, CustomStringConvertib
   }
 
   public var description: String {
-    if major <= 0 && minor == 0 && patch == 0 {
-      return String(describing: major)
-    } else if patch == 0 {
-      return "\(major).\(minor)"
+    if majorComponent <= 0 && minorComponent == 0 && patchComponent == 0 {
+      return String(describing: majorComponent)
+    } else if patchComponent == 0 {
+      return "\(majorComponent).\(minorComponent)"
     }
-    return "\(major).\(minor).\(patch)"
+    return "\(majorComponent).\(minorComponent).\(patchComponent)"
   }
 }
 
@@ -84,12 +84,12 @@ extension __ABIVersionNumber: ExpressibleByIntegerLiteral, CustomStringConvertib
 
 extension __ABIVersionNumber: Equatable, Comparable {
   public static func <(lhs: Self, rhs: Self) -> Bool {
-    if lhs.major != rhs.major {
-      return lhs.major < rhs.major
-    } else if lhs.minor != rhs.minor {
-      return lhs.minor < rhs.minor
-    } else if lhs.patch != rhs.patch {
-      return lhs.patch < rhs.patch
+    if lhs.majorComponent != rhs.majorComponent {
+      return lhs.majorComponent < rhs.majorComponent
+    } else if lhs.minorComponent != rhs.minorComponent {
+      return lhs.minorComponent < rhs.minorComponent
+    } else if lhs.patchComponent != rhs.patchComponent {
+      return lhs.patchComponent < rhs.patchComponent
     }
     return false
   }
@@ -101,7 +101,7 @@ extension __ABIVersionNumber: Codable {
   public init(from decoder: any Decoder) throws {
     let container = try decoder.singleValueContainer()
     if let number = try? container.decode(Int.self) {
-      self.init(major: number)
+      self.init(majorComponent: number)
     } else {
       let string = try container.decode(String.self)
       guard let result = Self(string) else {
@@ -118,10 +118,10 @@ extension __ABIVersionNumber: Codable {
 
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.singleValueContainer()
-    if major <= 0 && minor == 0 && patch == 0 {
-      try container.encode(major)
+    if majorComponent <= 0 && minorComponent == 0 && patchComponent == 0 {
+      try container.encode(majorComponent)
     } else {
-      try container.encode("\(major).\(minor).\(patch)")
+      try container.encode("\(majorComponent).\(minorComponent).\(patchComponent)")
     }
   }
 }

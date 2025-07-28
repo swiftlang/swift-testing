@@ -126,9 +126,9 @@ struct ABIEntryPointTests {
     let version1_2_3 = try JSON.withEncoding(of: "1.2.3") { versionJSON in
       try JSON.decode(ABI.VersionNumber.self, from: versionJSON)
     }
-    #expect(version1_2_3.major == 1)
-    #expect(version1_2_3.minor == 2)
-    #expect(version1_2_3.patch == 3)
+    #expect(version1_2_3.majorComponent == 1)
+    #expect(version1_2_3.minorComponent == 2)
+    #expect(version1_2_3.patchComponent == 3)
 
     #expect(throws: DecodingError.self) {
       _ = try JSON.withEncoding(of: "not.valid") { versionJSON in
