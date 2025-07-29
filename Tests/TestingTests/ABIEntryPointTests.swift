@@ -121,7 +121,7 @@ struct ABIEntryPointTests {
     let version0 = try JSON.withEncoding(of: 0) { versionJSON in
       try JSON.decode(ABI.VersionNumber.self, from: versionJSON)
     }
-    #expect(version0 == 0)
+    #expect(version0 == ABI.VersionNumber(0, 0))
 
     let version1_2_3 = try JSON.withEncoding(of: "1.2.3") { versionJSON in
       try JSON.decode(ABI.VersionNumber.self, from: versionJSON)
@@ -139,10 +139,10 @@ struct ABIEntryPointTests {
 #endif
 
   @Test(arguments: [
-    (ABI.VersionNumber(-1), "-1"),
-    (ABI.VersionNumber(0), "0"),
-    (ABI.VersionNumber(1), "1.0"),
-    (ABI.VersionNumber(2), "2.0"),
+    (ABI.VersionNumber(-1, 0), "-1"),
+    (ABI.VersionNumber(0, 0), "0"),
+    (ABI.VersionNumber(1, 0), "1.0"),
+    (ABI.VersionNumber(2, 0), "2.0"),
     (ABI.VersionNumber("0.0.1"), "0.0.1"),
     (ABI.VersionNumber("0.1.0"), "0.1"),
   ]) func abiVersionStringConversion(version: ABI.VersionNumber?, expectedString: String) throws {

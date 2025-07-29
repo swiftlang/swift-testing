@@ -82,7 +82,7 @@ extension ABI {
   /// - Warning: This type will be removed in a future update.
   enum Xcode16: Sendable, Version {
     static var versionNumber: VersionNumber {
-      -1
+      VersionNumber(-1, 0)
     }
   }
 #endif
@@ -90,7 +90,7 @@ extension ABI {
   /// A namespace and type for ABI version 0 symbols.
   public enum v0: Sendable, Version {
     static var versionNumber: VersionNumber {
-      0
+      VersionNumber(0, 0)
     }
   }
 
@@ -102,7 +102,7 @@ extension ABI {
   @_spi(Experimental)
   public enum v6_3: Sendable, Version {
     static var versionNumber: VersionNumber {
-      VersionNumber(majorComponent: 6, minorComponent: 3)
+      VersionNumber(6, 3)
     }
   }
 }

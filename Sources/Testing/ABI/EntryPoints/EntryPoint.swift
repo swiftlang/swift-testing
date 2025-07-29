@@ -617,12 +617,12 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
     configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled = true
   } else {
     switch args.eventStreamVersionNumber {
-    case .some(...0):
-      // If the event stream version was explicitly specified to a value < 1,
+    case .some(..<ABI.v6_3.versionNumber):
+      // If the event stream version was explicitly specified to a value < 6.3,
       // disable the warning issue event to maintain legacy behavior.
       configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled = false
     default:
-      // Otherwise the requested event stream version is ≥ 1, so don't change
+      // Otherwise the requested event stream version is ≥ 6.3, so don't change
       // the warning issue event setting.
       break
     }

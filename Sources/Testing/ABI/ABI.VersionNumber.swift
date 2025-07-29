@@ -22,13 +22,15 @@ extension ABI {
   }
 }
 
+extension ABI.VersionNumber {
+  init(_ majorComponent: Int8, _ minorComponent: Int8, _ patchComponent: Int8 = 0) {
+    self.init(majorComponent: majorComponent, minorComponent: minorComponent, patchComponent: patchComponent)
+  }
+}
+
 // MARK: - ExpressibleByIntegerLiteral, CustomStringConvertible
 
-extension ABI.VersionNumber: ExpressibleByIntegerLiteral, CustomStringConvertible {
-  public init(integerLiteral value: Int8) {
-    self.init(majorComponent: value)
-  }
-
+extension ABI.VersionNumber: CustomStringConvertible {
   /// Initialize an instance of this type by parsing the given string.
   ///
   /// - Parameters:
@@ -39,7 +41,7 @@ extension ABI.VersionNumber: ExpressibleByIntegerLiteral, CustomStringConvertibl
   ///     `VersionTupleSyntax` type here because we cannot link to swift-syntax
   ///     in this target.
   /// }
-  public init?(_ string: String) {
+  init?(_ string: String) {
     // Split the string on "." (assuming it is of the form "1", "1.2", or
     // "1.2.3") and parse the individual components as integers.
     let result: Self? = withUnsafeTemporaryAllocation(of: Int8.self, capacity: 3) { componentNumbers in
@@ -64,7 +66,7 @@ extension ABI.VersionNumber: ExpressibleByIntegerLiteral, CustomStringConvertibl
     }
   }
 
-  public var description: String {
+  var description: String {
     if majorComponent <= 0 && minorComponent == 0 && patchComponent == 0 {
       return String(describing: majorComponent)
     } else if patchComponent == 0 {
@@ -77,7 +79,7 @@ extension ABI.VersionNumber: ExpressibleByIntegerLiteral, CustomStringConvertibl
 // MARK: - Equatable, Comparable
 
 extension ABI.VersionNumber: Equatable, Comparable {
-  public static func <(lhs: Self, rhs: Self) -> Bool {
+  static func <(lhs: Self, rhs: Self) -> Bool {
     if lhs.majorComponent != rhs.majorComponent {
       return lhs.majorComponent < rhs.majorComponent
     } else if lhs.minorComponent != rhs.minorComponent {
@@ -92,7 +94,7 @@ extension ABI.VersionNumber: Equatable, Comparable {
 // MARK: - Codable
 
 extension ABI.VersionNumber: Codable {
-  public init(from decoder: any Decoder) throws {
+  init(from decoder: any Decoder) throws {
     let container = try decoder.singleValueContainer()
     if let number = try? container.decode(Int8.self) {
       self.init(majorComponent: number)
@@ -110,7 +112,7 @@ extension ABI.VersionNumber: Codable {
     }
   }
 
-  public func encode(to encoder: any Encoder) throws {
+  func encode(to encoder: any Encoder) throws {
     var container = encoder.singleValueContainer()
     if majorComponent <= 0 && minorComponent == 0 && patchComponent == 0 {
       try container.encode(majorComponent)

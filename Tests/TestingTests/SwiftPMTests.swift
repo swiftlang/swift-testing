@@ -235,36 +235,36 @@ struct SwiftPMTests {
   func deprecatedEventStreamVersionProperty() throws {
     var args = __CommandLineArguments_v0()
     args.eventStreamVersion = 0
-    #expect(args.eventStreamVersionNumber == ABI.VersionNumber(majorComponent: 0))
+    #expect(args.eventStreamVersionNumber == ABI.VersionNumber(0, 0))
     #expect(args.eventStreamSchemaVersion == "0")
 
     args.eventStreamVersion = -1
-    #expect(args.eventStreamVersionNumber == ABI.VersionNumber(majorComponent: -1))
+    #expect(args.eventStreamVersionNumber == ABI.VersionNumber(-1, 0))
     #expect(args.eventStreamSchemaVersion == "-1")
 
     args.eventStreamVersion = 123
-    #expect(args.eventStreamVersionNumber == ABI.VersionNumber(majorComponent: 123))
+    #expect(args.eventStreamVersionNumber == ABI.VersionNumber(123, 0))
     #expect(args.eventStreamSchemaVersion == "123.0")
 
-    args.eventStreamVersionNumber = ABI.VersionNumber(majorComponent: 10, minorComponent: 20, patchComponent: 30)
+    args.eventStreamVersionNumber = ABI.VersionNumber(10, 20, 30)
     #expect(args.eventStreamVersion == 10)
     #expect(args.eventStreamSchemaVersion == "10.20.30")
 
     args.eventStreamSchemaVersion = "10.20.30"
-    #expect(args.eventStreamVersionNumber == ABI.VersionNumber(majorComponent: 10, minorComponent: 20, patchComponent: 30))
+    #expect(args.eventStreamVersionNumber == ABI.VersionNumber(10, 20, 30))
     #expect(args.eventStreamVersion == 10)
   }
 
   @Test("New-but-not-experimental ABI version")
   func newButNotExperimentalABIVersion() async throws {
-    let versionNumber = ABI.VersionNumber(majorComponent: 0, minorComponent: 0, patchComponent: 1)
+    let versionNumber = ABI.VersionNumber(0, 0, 1)
     let version = try #require(ABI.version(forVersionNumber: versionNumber))
     #expect(version.versionNumber == ABI.v0.versionNumber)
   }
 
   @Test("Unsupported ABI version")
   func unsupportedABIVersion() async throws {
-    let versionNumber = ABI.VersionNumber(majorComponent: -100, minorComponent: 0, patchComponent: 0)
+    let versionNumber = ABI.VersionNumber(-100, 0)
     #expect(ABI.version(forVersionNumber: versionNumber) == nil)
   }
 
