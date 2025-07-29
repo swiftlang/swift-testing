@@ -107,11 +107,12 @@ func `Customer won't eat food unless it's nutritious`(_ food: Food) async {
 }
 ```
 
-- Note: If you use this macro with a Swift compiler version lower than 6.3, it
-  doesn't support capturing state.
+- Note: If you use the ``expect(processExitsWith:observing:_:sourceLocation:performing:)``
+  macro with a Swift compiler version lower than 6.3, it doesn't support
+  capturing state.
 
-If a captured value is an argument to the current function or is `self`, its
-type is inferred at compile time. Otherwise, explicitly specify the type of the
+If a captured value is an argument to the current function or is `self`, the
+compiler infers the value's type. Otherwise, explicitly specify the type of the
 value using the `as` operator:
 
 ```swift
@@ -126,10 +127,10 @@ value using the `as` operator:
 ```
 
 Every value you capture in an exit test must conform to [`Sendable`](https://developer.apple.com/documentation/swift/sendable)
-and [`Codable`](https://developer.apple.com/documentation/swift/codable). Each
-value is encoded by the parent process using [`encode(to:)`](https://developer.apple.com/documentation/swift/encodable/encode(to:))
-and is decoded by the child process [`init(from:)`](https://developer.apple.com/documentation/swift/decodable/init(from:))
-before being passed to the exit test body.
+and [`Codable`](https://developer.apple.com/documentation/swift/codable). The
+testing library encodes each value using [`encode(to:)`](https://developer.apple.com/documentation/swift/encodable/encode(to:))
+in the parent process, and decodes it using [`init(from:)`](https://developer.apple.com/documentation/swift/decodable/init(from:))
+in the child process, before passing it to the exit test body.
 
 If a captured value's type does not conform to both `Sendable` and `Codable`, or
 if the value is not explicitly specified in the exit test body's capture list,
