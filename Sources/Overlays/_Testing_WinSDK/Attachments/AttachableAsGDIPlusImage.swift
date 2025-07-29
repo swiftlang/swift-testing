@@ -19,7 +19,7 @@ public protocol AttachableAsGDIPlusImage {
   /// - Warning: Do not call this function directly. Instead, call ``withGDIPlusImage(for:_:)``.
   func _withGDIPlusImage<R>(
     for attachment: borrowing Attachment<some AttachableWrapper<Self>>,
-    _ body: (UnsafeRawPointer) throws -> R
+    _ body: (OpaquePointer) throws -> R
   ) throws -> R
 }
 
@@ -27,12 +27,14 @@ extension AttachableAsGDIPlusImage {
   /// GDI+ objects are [not thread-safe](https://learn.microsoft.com/en-us/windows/win32/procthread/multiple-threads-and-gdi-objects)
   /// by design. The caller is responsible for guarding against concurrent
   /// access to the resulting GDI+ image object.
-  public func withGDIPlusImage<R>(
+  func withGDIPlusImage<R>(
     for attachment: borrowing Attachment<some AttachableWrapper<Self>>,
-    _ body: (UnsafeRawPointer) throws -> R
+    _ body: (OpaquePointer) throws -> R
   ) throws -> R {
-    try withGDIPlus(for: attachment) { attachment in
-      try self._withGDIPlusImage(for: attachment, body)
+    try withUnsafePointer(to: attachment) { attachment in
+      try withGDIPlus {
+        try self._withGDIPlusImage(for: attachment.pointee, body)
+      }
     }
   }
 }

@@ -11,4 +11,6 @@
 module _Gdiplus {
   umbrella "."
   export *
+
+  link "Gdiplus.lib"
 }

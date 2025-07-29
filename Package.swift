@@ -260,8 +260,7 @@ let package = Package(
 #endif
       }(),
       path: "Sources/Overlays/_Testing_WinSDK",
-      swiftSettings: .packageSettings + .enableLibraryEvolution() + [.interoperabilityMode(.Cxx)],
-      linkerSettings: [.linkedLibrary("Gdiplus.lib", .when(platforms: [.windows]))]
+      swiftSettings: .packageSettings + .enableLibraryEvolution() + [.interoperabilityMode(.Cxx)]
     ),
 
     // Utility targets: These are utilities intended for use when developing

@@ -9,27 +9,24 @@
 //
 
 #if os(Windows)
-internal import WinSDK
+import WinSDK
 private import _Gdiplus
 
 struct GDIPlusError: Error, RawRepresentable {
-  var rawValue: CInt
+  var rawValue: Gdiplus.Status
 }
 
-func withGDIPlus<A, R>(
-  for attachmenthment: borrowing Attachment<A>,
-   _ body: (borrowing Attachment<A>) throws -> R
-) throws -> R where A: ~Copyable {
+func withGDIPlus<R>(_ body: () throws -> R) throws -> R {
   var token = ULONG_PTR(0)
   var input = Gdiplus.GdiplusStartupInput(nil, false, false)
   let rStartup = swt_winsdk_GdiplusStartup(&token, &input, nil)
   guard rStartup == Gdiplus.Ok else {
-    throw GDIPlusError(rawValue: rStartup.rawValue)
+    throw GDIPlusError(rawValue: rStartup)
   }
   defer {
     swt_winsdk_GdiplusShutdown(token)
   }
 
-  return try body(attachmenthment)
+  return try body()
 }
 #endif

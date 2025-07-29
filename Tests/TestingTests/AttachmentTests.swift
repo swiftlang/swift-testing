@@ -33,6 +33,10 @@ import UIKit
 #if canImport(UniformTypeIdentifiers)
 import UniformTypeIdentifiers
 #endif
+#if canImport(WinSDK) && canImport(_Testing_WinSDK)
+import WinSDK
+@_spi(Experimental) import _Testing_WinSDK
+#endif
 
 @Suite("Attachment Tests")
 struct AttachmentTests {
@@ -694,6 +698,37 @@ extension AttachmentTests {
       }
     }
 #endif
+#endif
+
+#if canImport(WinSDK) && canImport(_Testing_WinSDK)
+    @MainActor @Test func attachHBITMAP() throws {
+      let (width, height) = (GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON))
+
+      let icon = try #require(LoadIconA(nil, swt_IDI_SHIELD()))
+      defer {
+        DeleteObject(icon)
+      }
+
+      let screenDC = try #require(GetDC(nil))
+      defer {
+        ReleaseDC(nil, screenDC)
+      }
+
+      let dc = try #require(CreateCompatibleDC(nil))
+      defer {
+        DeleteDC(dc)
+      }
+      
+      let bitmap = try #require(CreateCompatibleBitmap(screenDC, width, height))
+      SelectObject(dc, bitmap)
+      DrawIcon(dc, 0, 0, icon)
+      
+      let attachment = Attachment<_AttachableImageWrapper<_AttachableHBITMAPWrapper>>(bitmap, with: nil, named: "diamond.png")
+      try attachment.withUnsafeBytes { buffer in
+        #expect(buffer.count > 32)
+      }
+      Attachment.record(attachment)
+    }
 #endif
   }
 }

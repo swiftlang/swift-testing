@@ -29,4 +29,21 @@ static inline void swt_winsdk_GdiplusShutdown(ULONG_PTR token) {
 static inline Gdiplus::Image *swt_winsdk_GdiplusBitmapCreate(HBITMAP bitmap, HPALETTE palette) {
   return Gdiplus::Bitmap::FromHBITMAP(bitmap, palette);
 }
+
+static inline void swt_winsdk_GdiplusImageDelete(Gdiplus::Image *image) {
+  delete image;
+}
+
+static inline Gdiplus::Status swt_winsdk_GdiplusImageSave(
+  Gdiplus::Image *image,
+  IStream *stream,
+  const CLSID *format,
+  const Gdiplus::EncoderParameters *encoderParams
+) {
+  return image->Save(stream, format, encoderParams);
+}
+
+static inline void swt_winsdk_IStreamRelease(IStream *stream) {
+  stream->Release();
+}
 #endif
