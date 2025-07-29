@@ -9,14 +9,16 @@
 //
 
 #if os(Windows)
+public import Testing
+
 public import WinSDK
-private import _Testing_Internals
+private import _Gdiplus
 
 public final class _AttachableHBITMAPWrapper {
   private let _bitmap: HBITMAP
   private let _palette: HPALETTE?
 
-  init(bitmap: consuming HBITMAP, palette: consuming HPALETTE) {
+  init(bitmap: consuming HBITMAP, palette: consuming HPALETTE? = nil) {
     _bitmap = bitmap
     _palette = palette
   }
@@ -34,10 +36,7 @@ extension _AttachableHBITMAPWrapper: AttachableAsGDIPlusImage {
     for attachment: Attachable<some AttachableWrapper<Self>>,
     _ body: (UnsafeMutableRawPointer) throws -> R
   ) throws -> R {
-    let image = swt_gdiplus_createImageFromHBITMAP(_bitmap, _palette)
-    defer {
-      swt_gdiplus_destroyImage(image)
-    }
+    let image = swt_winsdk_GdiplusBitmapCreate(_bitmap, _palette)
     return try withExtendedLifetime(self) {
       try body(image)
     }
@@ -46,8 +45,8 @@ extension _AttachableHBITMAPWrapper: AttachableAsGDIPlusImage {
 
 extension Attachment where AttachableValue == _AttachableImageWrapper<_AttachableHBITMAPWrapper> {
   public init(
-    _ bitmap: consuming HBITMAP,
-    with palette: consuming HPALETTE? = nil,
+    _ bitmap: consuming WinSDK.HBITMAP,
+    with palette: consuming WinSDK.HPALETTE? = nil,
     named preferredName: String? = nil,
     as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation

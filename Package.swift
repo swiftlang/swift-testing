@@ -252,10 +252,16 @@ let package = Package(
       name: "_Testing_WinSDK",
       dependencies: [
         "Testing",
-        "_Testing_WinSDKInternals",
-      ],
+      ] + {
+#if os(Windows)
+        ["_Gdiplus"]
+#else
+        []
+#endif
+      }(),
       path: "Sources/Overlays/_Testing_WinSDK",
-      swiftSettings: .packageSettings + .enableLibraryEvolution()
+      swiftSettings: .packageSettings + .enableLibraryEvolution() + [.interoperabilityMode(.Cxx)],
+      linkerSettings: [.linkedLibrary("Gdiplus.lib", .when(platforms: [.windows]))]
     ),
 
     // Utility targets: These are utilities intended for use when developing
@@ -283,6 +289,15 @@ package.targets.append(contentsOf: [
     ],
     swiftSettings: .packageSettings
   )
+])
+#endif
+
+#if os(Windows)
+package.targets.append(contentsOf: [
+  .target(
+    name: "_Gdiplus",
+    cxxSettings: .packageSettings
+  ),
 ])
 #endif
 
