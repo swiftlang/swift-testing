@@ -10,6 +10,11 @@
 
 extension ABI {
   /// A type describing an ABI version number.
+  ///
+  /// This type implements a subset of the [semantic versioning](https://semver.org)
+  /// specification (specifically parsing, displaying, and comparing
+  /// `<version core>` values we expect that Swift will need for the foreseeable
+  /// future.)
   struct VersionNumber: Sendable {
     /// The major version.
     var majorComponent: Int8 = 0
@@ -41,10 +46,15 @@ extension ABI.VersionNumber: CustomStringConvertible {
   ///     `VersionTupleSyntax` type here because we cannot link to swift-syntax
   ///     in this target.
   /// }
+  ///
+  /// If `string` contains fewer than 3 numeric components, the missing
+  /// components are inferred to be `0` (for example, `"1.2"` is equivalent to
+  /// `"1.2.0"`.) If `string` contains more than 3 numeric components, the
+  /// additional components are ignored.
   init?(_ string: String) {
     // Split the string on "." (assuming it is of the form "1", "1.2", or
     // "1.2.3") and parse the individual components as integers.
-    let components = string.split(separator: ".", maxSplits: 2, omittingEmptySubsequences: false)
+    let components = string.split(separator: ".", omittingEmptySubsequences: false)
     func componentValue(_ index: Int) -> Int8? {
       components.count > index ? Int8(components[index]) : 0
     }
