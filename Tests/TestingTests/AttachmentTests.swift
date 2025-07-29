@@ -723,7 +723,7 @@ extension AttachmentTests {
       SelectObject(dc, bitmap)
       DrawIcon(dc, 0, 0, icon)
       
-      let attachment = Attachment<_AttachableImageWrapper<_AttachableHBITMAPWrapper>>(bitmap, with: nil, named: "diamond.png")
+      let attachment = Attachment(bitmap, named: "diamond.png")
       try attachment.withUnsafeBytes { buffer in
         #expect(buffer.count > 32)
       }

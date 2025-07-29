@@ -22,6 +22,12 @@ enum GDIPlusError: Error {
 }
 
 func withGDIPlus<R>(_ body: () throws -> R) throws -> R {
+  // "Escape hatch" if the program being tested calls GdiplusStartup() itself in
+  // some way that is incompatible with our assumptions about it.
+  if Environment.flag(named: "SWT_GDIPLUS_STARTUP_ENABLED") == false {
+    return try body()
+  }
+
   var token = ULONG_PTR(0)
   var input = Gdiplus.GdiplusStartupInput(nil, false, false)
   let rStartup = swt_winsdk_GdiplusStartup(&token, &input, nil)
