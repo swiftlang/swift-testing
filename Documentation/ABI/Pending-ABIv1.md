@@ -37,7 +37,7 @@ associated test should be marked as failing.
  }
 
 +<issue-severity> ::= "warning" | "error"
- ; additional severities may be added in the future
++  ; additional severities may be added in the future
 ```
 
 ### See Also
