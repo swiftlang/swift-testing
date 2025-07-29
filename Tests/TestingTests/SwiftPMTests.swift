@@ -232,7 +232,7 @@ struct SwiftPMTests {
 
   @available(*, deprecated)
   @Test("Deprecated eventStreamVersion property")
-  func deprecatedEventStreamVersionProperty() throws {
+  func deprecatedEventStreamVersionProperty() async throws {
     var args = __CommandLineArguments_v0()
     args.eventStreamVersion = 0
     #expect(args.eventStreamVersionNumber == ABI.VersionNumber(0, 0))
@@ -253,6 +253,13 @@ struct SwiftPMTests {
     args.eventStreamSchemaVersion = "10.20.30"
     #expect(args.eventStreamVersionNumber == ABI.VersionNumber(10, 20, 30))
     #expect(args.eventStreamVersion == 10)
+
+#if !SWT_NO_EXIT_TESTS
+    await #expect(processExitsWith: .failure) {
+      var args = __CommandLineArguments_v0()
+      args.eventStreamSchemaVersion = "invalidVersionString"
+    }
+#endif
   }
 
   @Test("New-but-not-experimental ABI version")
@@ -272,7 +279,6 @@ struct SwiftPMTests {
         arguments: [
           ("--event-stream-output-path", "--event-stream-version", ABI.v0.versionNumber),
           ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v0.versionNumber),
-          ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v6_3.versionNumber),
           ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v6_3.versionNumber),
         ])
   func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: ABI.VersionNumber) async throws {

@@ -17,10 +17,10 @@ extension ABI {
   /// future.)
   struct VersionNumber: Sendable {
     /// The major version.
-    var majorComponent: Int8 = 0
+    var majorComponent: Int8
 
     /// The minor version.
-    var minorComponent: Int8 = 0
+    var minorComponent: Int8
 
     /// The patch, revision, or bug fix version.
     var patchComponent: Int8 = 0
@@ -69,6 +69,8 @@ extension ABI.VersionNumber: CustomStringConvertible {
 
   var description: String {
     if majorComponent <= 0 && minorComponent == 0 && patchComponent == 0 {
+      // Version 0 and earlier are described as integers for compatibility with
+      // Swift 6.2 and earlier.
       return String(describing: majorComponent)
     } else if patchComponent == 0 {
       return "\(majorComponent).\(minorComponent)"
@@ -98,7 +100,9 @@ extension ABI.VersionNumber: Codable {
   init(from decoder: any Decoder) throws {
     let container = try decoder.singleValueContainer()
     if let number = try? container.decode(Int8.self) {
-      self.init(majorComponent: number)
+      // Allow for version numbers encoded as integers for compatibility with
+      // Swift 6.2 and earlier.
+      self.init(majorComponent: number, minorComponent: 0)
     } else {
       let string = try container.decode(String.self)
       guard let result = Self(string) else {
@@ -116,6 +120,8 @@ extension ABI.VersionNumber: Codable {
   func encode(to encoder: any Encoder) throws {
     var container = encoder.singleValueContainer()
     if majorComponent <= 0 && minorComponent == 0 && patchComponent == 0 {
+      // Version 0 and earlier are encoded as integers for compatibility with
+      // Swift 6.2 and earlier.
       try container.encode(majorComponent)
     } else {
       try container.encode("\(majorComponent).\(minorComponent).\(patchComponent)")

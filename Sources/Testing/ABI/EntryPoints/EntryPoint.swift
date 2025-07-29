@@ -281,7 +281,12 @@ public struct __CommandLineArguments_v0: Sendable {
       eventStreamVersionNumber.map { String(describing: $0) }
     }
     set {
-      eventStreamVersionNumber = newValue.flatMap { ABI.VersionNumber($0) }
+      eventStreamVersionNumber = newValue.flatMap { newValue in
+        guard let newValue = ABI.VersionNumber(newValue) else {
+          preconditionFailure("Invalid event stream version number '\(newValue)'. Specify a version number of the form 'major.minor.patch'.")
+        }
+        return newValue
+      }
     }
   }
 
@@ -842,7 +847,7 @@ extension __CommandLineArguments_v0 {
       eventStreamVersionNumber.map(\.majorComponent).map(Int.init)
     }
     set {
-      eventStreamVersionNumber = newValue.map { ABI.VersionNumber(majorComponent: Int8(clamping: $0)) }
+      eventStreamVersionNumber = newValue.map { ABI.VersionNumber(majorComponent: Int8(clamping: $0), minorComponent: 0) }
     }
   }
 }
