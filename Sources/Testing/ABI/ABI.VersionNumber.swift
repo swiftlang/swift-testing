@@ -28,7 +28,7 @@ extension ABI.VersionNumber {
   }
 }
 
-// MARK: - ExpressibleByIntegerLiteral, CustomStringConvertible
+// MARK: - CustomStringConvertible
 
 extension ABI.VersionNumber: CustomStringConvertible {
   /// Initialize an instance of this type by parsing the given string.
