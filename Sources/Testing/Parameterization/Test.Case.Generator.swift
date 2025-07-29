@@ -13,11 +13,11 @@ extension Test.Case {
   /// a known collection of argument values.
   ///
   /// Instances of this type can be iterated over multiple times.
-  //
-  // @Comment {
-  //   - Bug: The testing library should support variadic generics.
-  //     ([103416861](rdar://103416861))
-  // }
+  ///
+  /// @Comment {
+  ///   - Bug: The testing library should support variadic generics.
+  ///     ([103416861](rdar://103416861))
+  /// }
   struct Generator<S>: Sendable where S: Sequence & Sendable, S.Element: Sendable {
     /// The underlying sequence of argument values.
     ///
@@ -62,7 +62,7 @@ extension Test.Case {
       // A beautiful hack to give us the right number of cases: iterate over a
       // collection containing a single Void value.
       self.init(sequence: CollectionOfOne(())) { _ in
-        Test.Case(arguments: [], body: testFunction)
+        Test.Case(body: testFunction)
       }
     }
 
@@ -146,11 +146,11 @@ extension Test.Case {
     ///
     /// This initializer overload is specialized for sequences of 2-tuples to
     /// efficiently de-structure their elements when appropriate.
-    //
-    // @Comment {
-    //   - Bug: The testing library should support variadic generics.
-    //     ([103416861](rdar://103416861))
-    // }
+    ///
+    /// @Comment {
+    ///   - Bug: The testing library should support variadic generics.
+    ///     ([103416861](rdar://103416861))
+    /// }
     private init<E1, E2>(
       sequence: S,
       parameters: [Test.Parameter],
@@ -184,11 +184,11 @@ extension Test.Case {
     ///
     /// This initializer overload is specialized for collections of 2-tuples to
     /// efficiently de-structure their elements when appropriate.
-    //
-    // @Comment {
-    //   - Bug: The testing library should support variadic generics.
-    //     ([103416861](rdar://103416861))
-    // }
+    ///
+    /// @Comment {
+    ///   - Bug: The testing library should support variadic generics.
+    ///     ([103416861](rdar://103416861))
+    /// }
     init<E1, E2>(
       arguments collection: S,
       parameters: [Test.Parameter],
@@ -257,7 +257,32 @@ extension Test.Case {
 
 extension Test.Case.Generator: Sequence {
   func makeIterator() -> some IteratorProtocol<Test.Case> {
-    _sequence.lazy.map(_mapElement).makeIterator()
+    let state = (
+      iterator: _sequence.makeIterator(),
+      testCaseIDs: [Test.Case.ID: Int](minimumCapacity: underestimatedCount)
+    )
+
+    return sequence(state: state) { state in
+      guard let element = state.iterator.next() else {
+        return nil
+      }
+
+      var testCase = _mapElement(element)
+
+      if testCase.isParameterized {
+        // Store the original, unmodified test case ID. We're about to modify a
+        // property which affects it, and we want to update state based on the
+        // original one.
+        let testCaseID = testCase.id
+
+        // Ensure test cases with identical IDs each have a unique discriminator.
+        let discriminator = state.testCaseIDs[testCaseID, default: 0]
+        testCase.discriminator = discriminator
+        state.testCaseIDs[testCaseID] = discriminator + 1
+      }
+
+      return testCase
+    }
   }
 
   var underestimatedCount: Int {

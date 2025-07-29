@@ -1139,27 +1139,59 @@ public func __checkClosureCall<R>(
 /// Check that an expression always exits (terminates the current process) with
 /// a given status.
 ///
-/// This overload is used for `await #expect(exitsWith:) { }` invocations. Note
-/// that the `body` argument is thin here because it cannot meaningfully capture
-/// state from the enclosing context.
+/// This overload is used for `await #expect(processExitsWith:) { }` invocations
+/// that do not capture any state.
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-@_spi(Experimental)
 public func __checkClosureCall(
-  identifiedBy exitTestID: __ExitTest.ID,
-  exitsWith expectedExitCondition: ExitCondition,
-  observing observedValues: [any PartialKeyPath<ExitTestArtifacts> & Sendable],
-  performing body: @convention(thin) () -> Void,
+  identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
+  processExitsWith expectedExitCondition: ExitTest.Condition,
+  observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
+  performing _: @convention(c) () -> Void,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<ExitTestArtifacts?, any Error> {
+) async -> Result<ExitTest.Result?, any Error> {
   await callExitTest(
     identifiedBy: exitTestID,
-    exitsWith: expectedExitCondition,
+    encodingCapturedValues: [],
+    processExitsWith: expectedExitCondition,
+    observing: observedValues,
+    expression: expression,
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+/// Check that an expression always exits (terminates the current process) with
+/// a given status.
+///
+/// This overload is used for `await #expect(processExitsWith:) { }` invocations
+/// that capture some values with an explicit capture list.
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+@_spi(Experimental)
+public func __checkClosureCall<each T>(
+  identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
+  encodingCapturedValues capturedValues: (repeat each T),
+  processExitsWith expectedExitCondition: ExitTest.Condition,
+  observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
+  performing _: @convention(c) () -> Void,
+  expression: __Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  isolation: isolated (any Actor)? = #isolation,
+  sourceLocation: SourceLocation
+) async -> Result<ExitTest.Result?, any Error> where repeat each T: Codable & Sendable {
+  await callExitTest(
+    identifiedBy: exitTestID,
+    encodingCapturedValues: Array(repeat each capturedValues),
+    processExitsWith: expectedExitCondition,
     observing: observedValues,
     expression: expression,
     comments: comments(),

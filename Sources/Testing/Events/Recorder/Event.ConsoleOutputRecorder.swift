@@ -136,7 +136,7 @@ extension Event.Symbol {
   ///
   /// - Returns: A string representation of `self` appropriate for writing to
   ///   a stream.
-  fileprivate func stringValue(options: Event.ConsoleOutputRecorder.Options) -> String {
+  package func stringValue(options: Event.ConsoleOutputRecorder.Options) -> String {
     let useColorANSIEscapeCodes = options.useANSIEscapeCodes && options.ansiColorBitDepth >= 4
 
     var symbolCharacter = String(unicodeCharacter)
@@ -162,6 +162,8 @@ extension Event.Symbol {
           return "\(_ansiEscapeCodePrefix)90m\(symbolCharacter)\(_resetANSIEscapeCode)"
         }
         return "\(_ansiEscapeCodePrefix)92m\(symbolCharacter)\(_resetANSIEscapeCode)"
+      case .passWithWarnings:
+        return "\(_ansiEscapeCodePrefix)93m\(symbolCharacter)\(_resetANSIEscapeCode)"
       case .fail:
         return "\(_ansiEscapeCodePrefix)91m\(symbolCharacter)\(_resetANSIEscapeCode)"
       case .warning:
@@ -321,7 +323,7 @@ extension Event.ConsoleOutputRecorder {
         // text instead of just the symbol. Details may be multi-line messages,
         // so split the message on newlines and indent all lines to align them
         // to the indentation provided by the symbol.
-        var lines = message.stringValue.split(whereSeparator: \.isNewline)
+        var lines = message.stringValue.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
         lines = CollectionOfOne(lines[0]) + lines.dropFirst().map { line in
           "\(padding) \(line)"
         }

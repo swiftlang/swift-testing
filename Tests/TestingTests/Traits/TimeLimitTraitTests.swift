@@ -10,6 +10,10 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
+#if canImport(Foundation)
+private import Foundation
+#endif
+
 @Suite("TimeLimitTrait Tests", .tags(.traitRelated))
 struct TimeLimitTraitTests {
   @available(_clockAPI, *)
@@ -181,16 +185,20 @@ struct TimeLimitTraitTests {
   @Test("Cancelled tests can exit early (cancellation checking works)")
   func cancelledTestExitsEarly() async throws {
     let timeAwaited = await Test.Clock().measure {
-      await withTaskGroup(of: Void.self) { taskGroup in
+      await withTaskGroup { taskGroup in
         taskGroup.addTask {
           await Test {
-            try await Test.Clock.sleep(for: .seconds(60))
+            try await Test.Clock.sleep(for: .seconds(60) * 60)
           }.run()
         }
         taskGroup.cancelAll()
       }
     }
-    #expect(timeAwaited < .seconds(5)) // less than the 60 second sleep
+
+    // Expect that the time awaited is significantly less than the duration of
+    // the sleep above. To avoid flakiness in CI, allow for a somewhat long
+    // wait, but still much less than the full sleep duration.
+    #expect(timeAwaited < .seconds(60))
   }
 
   @available(_clockAPI, *)

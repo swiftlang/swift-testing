@@ -9,7 +9,7 @@
 //
 
 #if canImport(Foundation)
-@_spi(Experimental) @_spi(ForSwiftTestingOnly) public import Testing
+public import Testing
 public import Foundation
 
 #if !SWT_NO_PROCESS_SPAWNING && os(Windows)
@@ -32,8 +32,7 @@ extension URL {
   }
 }
 
-@_spi(Experimental)
-extension Attachment where AttachableValue == _AttachableURLContainer {
+extension Attachment where AttachableValue == _AttachableURLWrapper {
 #if SWT_TARGET_OS_APPLE
   /// An operation queue to use for asynchronously reading data from disk.
   private static let _operationQueue = OperationQueue()
@@ -51,6 +50,11 @@ extension Attachment where AttachableValue == _AttachableURLContainer {
   ///     attachment.
   ///
   /// - Throws: Any error that occurs attempting to read from `url`.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
+  /// }
   public init(
     contentsOf url: URL,
     named preferredName: String? = nil,
@@ -67,7 +71,7 @@ extension Attachment where AttachableValue == _AttachableURLContainer {
     let url = url.resolvingSymlinksInPath()
     let isDirectory = try url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory!
 
-#if SWT_TARGET_OS_APPLE
+#if SWT_TARGET_OS_APPLE && !SWT_NO_FOUNDATION_FILE_COORDINATION
     let data: Data = try await withCheckedThrowingContinuation { continuation in
       let fileCoordinator = NSFileCoordinator()
       let fileAccessIntent = NSFileAccessIntent.readingIntent(with: url, options: [.forUploading])
@@ -91,8 +95,8 @@ extension Attachment where AttachableValue == _AttachableURLContainer {
     }
 #endif
 
-    let urlContainer = _AttachableURLContainer(url: url, data: data, isCompressedDirectory: isDirectory)
-    self.init(urlContainer, named: preferredName, sourceLocation: sourceLocation)
+    let urlWrapper = _AttachableURLWrapper(url: url, data: data, isCompressedDirectory: isDirectory)
+    self.init(urlWrapper, named: preferredName, sourceLocation: sourceLocation)
   }
 }
 
@@ -162,25 +166,31 @@ private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> 
   // knows how to write PKZIP archives, while Windows inherited FreeBSD's tar
   // tool in Windows 10 Build 17063 (per https://techcommunity.microsoft.com/blog/containers/tar-and-curl-come-to-windows/382409).
   //
-  // On Linux (which does not have FreeBSD's version of tar(1)), we can use
-  // zip(1) instead.
+  // On Linux and OpenBSD (which do not have FreeBSD's version of tar(1)), we
+  // can use zip(1) instead. This tool compresses paths relative to the current
+  // working directory, and posix_spawn_file_actions_addchdir_np() is not always
+  // available for us to call (not present on OpenBSD, requires glibc ≥ 2.28 on
+  // Linux), so we'll spawn a shell that calls cd before calling zip(1).
   //
   // OpenBSD's tar(1) does not support writing PKZIP archives, and /usr/bin/zip
   // tool is an optional install, so we check if it's present before trying to
   // execute it.
+#if os(Linux) || os(OpenBSD)
+  let archiverPath = "/bin/sh"
 #if os(Linux)
-  let archiverPath = "/usr/bin/zip"
-#elseif SWT_TARGET_OS_APPLE || os(FreeBSD)
-  let archiverPath = "/usr/bin/tar"
-#elseif os(OpenBSD)
-  let archiverPath = "/usr/local/bin/zip"
+  let trueArchiverPath = "/usr/bin/zip"
+#else
+  let trueArchiverPath = "/usr/local/bin/zip"
   var isDirectory = false
-  if !FileManager.default.fileExists(atPath: archiverPath, isDirectory: &isDirectory) || isDirectory {
+  if !FileManager.default.fileExists(atPath: trueArchiverPath, isDirectory: &isDirectory) || isDirectory {
     throw CocoaError(.fileNoSuchFile, userInfo: [
       NSLocalizedDescriptionKey: "The 'zip' package is not installed.",
-      NSFilePathErrorKey: archiverPath
+      NSFilePathErrorKey: trueArchiverPath
     ])
   }
+#endif
+#elseif SWT_TARGET_OS_APPLE || os(FreeBSD)
+  let archiverPath = "/usr/bin/tar"
 #elseif os(Windows)
   guard let archiverPath = _archiverPath else {
     throw CocoaError(.fileWriteUnknown, userInfo: [
@@ -193,20 +203,15 @@ private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> 
   throw CocoaError(.featureUnsupported, userInfo: [NSLocalizedDescriptionKey: "This platform does not support attaching directories to tests."])
 #endif
 
-  try await withCheckedThrowingContinuation { continuation in
-    let process = Process()
-
-    process.executableURL = URL(fileURLWithPath: archiverPath, isDirectory: false)
-
-    let sourcePath = directoryURL.fileSystemPath
-    let destinationPath = temporaryURL.fileSystemPath
+  let sourcePath = directoryURL.fileSystemPath
+  let destinationPath = temporaryURL.fileSystemPath
+  let arguments = {
 #if os(Linux) || os(OpenBSD)
     // The zip command constructs relative paths from the current working
     // directory rather than from command-line arguments.
-    process.arguments = [destinationPath, "--recurse-paths", "."]
-    process.currentDirectoryURL = directoryURL
+    ["-c", #"cd "$0" && "$1" "$2" --recurse-paths ."#, sourcePath, trueArchiverPath, destinationPath]
 #elseif SWT_TARGET_OS_APPLE || os(FreeBSD)
-    process.arguments = ["--create", "--auto-compress", "--directory", sourcePath, "--file", destinationPath, "."]
+    ["--create", "--auto-compress", "--directory", sourcePath, "--file", destinationPath, "."]
 #elseif os(Windows)
     // The Windows version of bsdtar can handle relative paths for other archive
     // formats, but produces empty archives when inferring the zip format with
@@ -215,30 +220,15 @@ private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> 
     // An alternative may be to use PowerShell's Compress-Archive command,
     // however that comes with a security risk as we'd be responsible for two
     // levels of command-line argument escaping.
-    process.arguments = ["--create", "--auto-compress", "--file", destinationPath, sourcePath]
+    ["--create", "--auto-compress", "--file", destinationPath, sourcePath]
 #endif
+  }()
 
-    process.standardOutput = nil
-    process.standardError = nil
-
-    process.terminationHandler = { process in
-      let terminationReason = process.terminationReason
-      let terminationStatus = process.terminationStatus
-      if terminationReason == .exit && terminationStatus == EXIT_SUCCESS {
-        continuation.resume()
-      } else {
-        let error = CocoaError(.fileWriteUnknown, userInfo: [
-          NSLocalizedDescriptionKey: "The directory at '\(sourcePath)' could not be compressed (\(terminationStatus)).",
-        ])
-        continuation.resume(throwing: error)
-      }
-    }
-
-    do {
-      try process.run()
-    } catch {
-      continuation.resume(throwing: error)
-    }
+  let exitStatus = try await spawnExecutableAtPathAndWait(archiverPath, arguments: arguments)
+  guard case .exitCode(EXIT_SUCCESS) = exitStatus else {
+    throw CocoaError(.fileWriteUnknown, userInfo: [
+      NSLocalizedDescriptionKey: "The directory at '\(sourcePath)' could not be compressed (\(exitStatus)).",
+    ])
   }
 
   return try Data(contentsOf: temporaryURL, options: [.mappedIfSafe])

@@ -8,7 +8,7 @@
 
 # The current version of the Swift Testing release. For release branches,
 # remember to remove -dev.
-set(SWT_TESTING_LIBRARY_VERSION "6.2-dev")
+set(SWT_TESTING_LIBRARY_VERSION "6.3-dev")
 
 find_package(Git QUIET)
 if(Git_FOUND)

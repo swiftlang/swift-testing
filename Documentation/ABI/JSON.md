@@ -13,7 +13,7 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 This document outlines the JSON schemas used by the testing library for its ABI
 entry point and for the `--event-stream-output-path` command-line argument. For
 more information about the ABI entry point, see the documentation for
-[ABIv0.EntryPoint](https://github.com/search?q=repo%3Aapple%2Fswift-testing%EntryPoint&type=code).
+[ABI.v0.EntryPoint](https://github.com/search?q=repo%3Aswiftlang%2Fswift-testing%20EntryPoint&type=code).
 
 ## Modified Backus-Naur form
 
@@ -188,17 +188,22 @@ sufficient information to display the event in a human-readable format.
   "kind": <event-kind>,
   "instant": <instant>, ; when the event occurred
   ["issue": <issue>,] ; the recorded issue (if "kind" is "issueRecorded")
+  ["attachment": <attachment>,] ; the attachment (if kind is "valueAttached")
   "messages": <array:message>,
   ["testID": <test-id>,]
 }
 
 <event-kind> ::= "runStarted" | "testStarted" | "testCaseStarted" |
   "issueRecorded" | "testCaseEnded" | "testEnded" | "testSkipped" |
-  "runEnded" ; additional event kinds may be added in the future
+  "runEnded" | "valueAttached"; additional event kinds may be added in the future
 
 <issue> ::= {
   "isKnown": <bool>, ; is this a known issue or not?
   ["sourceLocation": <source-location>,] ; where the issue occurred, if known
+}
+
+<attachment> ::= {
+  "path": <string>, ; the absolute path to the attachment on disk
 }
 
 <message> ::= {

@@ -9,12 +9,12 @@
 //
 
 #if canImport(Foundation)
-@_spi(Experimental) public import Testing
+public import Testing
 private import Foundation
 
-/// A common implementation of ``withUnsafeBufferPointer(for:_:)`` that is
-/// used when a type conforms to `Encodable`, whether or not it also conforms
-/// to `NSSecureCoding`.
+/// A common implementation of ``withUnsafeBytes(for:_:)`` that is used when a
+/// type conforms to `Encodable`, whether or not it also conforms to
+/// `NSSecureCoding`.
 ///
 /// - Parameters:
 ///   - attachableValue: The value to encode.
@@ -27,7 +27,7 @@ private import Foundation
 ///
 /// - Throws: Whatever is thrown by `body`, or any error that prevented the
 ///   creation of the buffer.
-func withUnsafeBufferPointer<E, R>(encoding attachableValue: borrowing E, for attachment: borrowing Attachment<E>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R where E: Attachable & Encodable {
+func withUnsafeBytes<E, R>(encoding attachableValue: borrowing E, for attachment: borrowing Attachment<E>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R where E: Attachable & Encodable {
   let format = try EncodingFormat(for: attachment)
 
   let data: Data
@@ -53,7 +53,11 @@ func withUnsafeBufferPointer<E, R>(encoding attachableValue: borrowing E, for at
 // Implement the protocol requirements generically for any encodable value by
 // encoding to JSON. This lets developers provide trivial conformance to the
 // protocol for types that already support Codable.
-@_spi(Experimental)
+
+/// @Metadata {
+///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
+/// }
 extension Attachable where Self: Encodable {
   /// Encode this value into a buffer using either [`PropertyListEncoder`](https://developer.apple.com/documentation/foundation/propertylistencoder)
   /// or [`JSONEncoder`](https://developer.apple.com/documentation/foundation/jsonencoder),
@@ -86,8 +90,13 @@ extension Attachable where Self: Encodable {
   /// _and_ [`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding),
   /// the default implementation of this function uses the value's conformance
   /// to `Encodable`.
-  public func withUnsafeBufferPointer<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try _Testing_Foundation.withUnsafeBufferPointer(encoding: self, for: attachment, body)
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
+  /// }
+  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try _Testing_Foundation.withUnsafeBytes(encoding: self, for: attachment, body)
   }
 }
 #endif

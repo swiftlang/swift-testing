@@ -10,7 +10,7 @@
 
 #if canImport(XCTest)
 import XCTest
-@testable @_spi(ForToolsIntegrationOnly) import Testing
+@testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
 final class KnownIssueTests: XCTestCase {
   func testIssueIsKnownPropertyIsSetCorrectly() async {
@@ -26,6 +26,7 @@ final class KnownIssueTests: XCTestCase {
       issueRecorded.fulfill()
 
       XCTAssertTrue(issue.isKnown)
+      XCTAssertFalse(issue.isFailure)
     }
 
     await Test {
@@ -37,7 +38,7 @@ final class KnownIssueTests: XCTestCase {
     await fulfillment(of: [issueRecorded], timeout: 0.0)
   }
 
-  func testKnownIssueWithComment() async {
+  func testKnownIssueNotRecordedWithComment() async {
     let issueRecorded = expectation(description: "Issue recorded")
 
     var configuration = Configuration()
@@ -51,12 +52,240 @@ final class KnownIssueTests: XCTestCase {
         return
       }
 
-      XCTAssertEqual(issue.comments.first, "With Known Issue Comment")
       XCTAssertFalse(issue.isKnown)
+      XCTAssertEqual(issue.comments, ["With Known Issue Comment"])
     }
 
     await Test {
       withKnownIssue("With Known Issue Comment") { }
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [issueRecorded], timeout: 0.0)
+  }
+
+  func testKnownIssueRecordedWithComment() async {
+    let issueMatched = expectation(description: "Issue matched")
+    let issueRecorded = expectation(description: "Issue recorded")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      issueRecorded.fulfill()
+
+      guard case .unconditional = issue.kind else {
+        return
+      }
+
+      XCTAssertTrue(issue.isKnown)
+      XCTAssertEqual(issue.comments, ["Issue Comment"])
+      XCTAssertEqual(issue.knownIssueContext?.comment, "With Known Issue Comment")
+    }
+
+    await Test {
+      withKnownIssue("With Known Issue Comment") {
+        Issue.record("Issue Comment")
+      } matching: { issue in
+        // The issue isn't yet considered known since we haven't matched it yet.
+        XCTAssertFalse(issue.isKnown)
+        XCTAssertEqual(issue.comments, ["Issue Comment"])
+        XCTAssertNil(issue.knownIssueContext)
+        issueMatched.fulfill()
+        return true
+      }
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [issueMatched, issueRecorded], timeout: 0.0)
+  }
+
+  func testThrownKnownIssueRecordedWithComment() async {
+    let issueMatched = expectation(description: "Issue matched")
+    let issueRecorded = expectation(description: "Issue recorded")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      issueRecorded.fulfill()
+
+      guard case .unconditional = issue.kind else {
+        return
+      }
+
+      XCTAssertTrue(issue.isKnown)
+      XCTAssertEqual(issue.comments, ["With Known Issue Comment"])
+    }
+
+    struct E: Error {}
+
+    await Test {
+      try withKnownIssue("With Known Issue Comment") {
+        throw E()
+      } matching: { issue in
+        // The issue isn't yet considered known since we haven't matched it yet.
+        XCTAssertFalse(issue.isKnown)
+        XCTAssertEqual(issue.comments, [])
+        XCTAssertNil(issue.knownIssueContext)
+        issueMatched.fulfill()
+        return true
+      }
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [issueMatched, issueRecorded], timeout: 0.0)
+  }
+
+  func testKnownIssueRecordedWithNoComment() async {
+    let issueRecorded = expectation(description: "Issue recorded")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      issueRecorded.fulfill()
+
+      guard case .unconditional = issue.kind else {
+        return
+      }
+
+      XCTAssertTrue(issue.isKnown)
+      XCTAssertEqual(issue.comments, ["Issue Comment"])
+    }
+
+    await Test {
+      withKnownIssue {
+        Issue.record("Issue Comment")
+      }
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [issueRecorded], timeout: 0.0)
+  }
+
+  func testKnownIssueRecordedWithInnermostMatchingComment() async {
+    let issueRecorded = expectation(description: "Issue recorded")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      issueRecorded.fulfill()
+
+      guard case .unconditional = issue.kind else {
+        return
+      }
+
+      XCTAssertTrue(issue.isKnown)
+      XCTAssertEqual(issue.comments, ["Issue B"])
+      XCTAssertEqual(issue.knownIssueContext?.comment, "Inner Contains B")
+    }
+
+    await Test {
+      withKnownIssue("Contains A", isIntermittent: true) {
+        withKnownIssue("Outer Contains B", isIntermittent: true) {
+          withKnownIssue("Inner Contains B") {
+            withKnownIssue("Contains C", isIntermittent: true) {
+              Issue.record("Issue B")
+            } matching: { issue in
+              issue.comments.contains { $0.rawValue.contains("C") }
+            }
+          } matching: { issue in
+            issue.comments.contains { $0.rawValue.contains("B") }
+          }
+        } matching: { issue in
+          issue.comments.contains { $0.rawValue.contains("B") }
+        }
+      } matching: { issue in
+        issue.comments.contains { $0.rawValue.contains("A") }
+      }
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [issueRecorded], timeout: 0.0)
+  }
+
+  func testThrownKnownIssueRecordedWithInnermostMatchingComment() async {
+    let issueRecorded = expectation(description: "Issue recorded")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      issueRecorded.fulfill()
+
+      guard case .unconditional = issue.kind else {
+        return
+      }
+
+      XCTAssertTrue(issue.isKnown)
+      XCTAssertEqual(issue.comments, ["Inner Is B", "B"])
+    }
+
+    struct A: Error {}
+    struct B: Error {}
+    struct C: Error {}
+
+    await Test {
+      try withKnownIssue("Is A", isIntermittent: true) {
+        try withKnownIssue("Outer Is B", isIntermittent: true) {
+          try withKnownIssue("Inner Is B") {
+            try withKnownIssue("Is C", isIntermittent: true) {
+              throw B()
+            } matching: { issue in
+              issue.error is C
+            }
+          } matching: { issue in
+            issue.error is B
+          }
+        } matching: { issue in
+          issue.error is B
+        }
+      } matching: { issue in
+        issue.error is A
+      }
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [issueRecorded], timeout: 0.0)
+  }
+
+  func testKnownIssueRecordedWithNoCommentOnInnermostMatch() async {
+    let issueRecorded = expectation(description: "Issue recorded")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      issueRecorded.fulfill()
+
+      guard case .unconditional = issue.kind else {
+        return
+      }
+
+      XCTAssertTrue(issue.isKnown)
+      XCTAssertEqual(issue.comments, ["Issue B"])
+    }
+
+    await Test {
+      withKnownIssue("Contains A", isIntermittent: true) {
+        withKnownIssue("Outer Contains B", isIntermittent: true) {
+          withKnownIssue { // No comment here on the withKnownIssue that will actually match.
+            withKnownIssue("Contains C", isIntermittent: true) {
+              Issue.record("Issue B")
+            } matching: { issue in
+              issue.comments.contains { $0.rawValue.contains("C") }
+            }
+          } matching: { issue in
+            issue.comments.contains { $0.rawValue.contains("B") }
+          }
+        } matching: { issue in
+          issue.comments.contains { $0.rawValue.contains("B") }
+        }
+      } matching: { issue in
+        issue.comments.contains { $0.rawValue.contains("A") }
+      }
     }.run(configuration: configuration)
 
     await fulfillment(of: [issueRecorded], timeout: 0.0)

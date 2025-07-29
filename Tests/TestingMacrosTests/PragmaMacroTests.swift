@@ -11,8 +11,10 @@
 import Testing
 @testable import TestingMacros
 
+import SwiftDiagnostics
 import SwiftParser
 import SwiftSyntax
+import SwiftSyntaxBuilder
 
 @Suite("PragmaMacro Tests")
 struct PragmaMacroTests {
@@ -20,6 +22,7 @@ struct PragmaMacroTests {
     let node = """
     @Testing.__testing(semantics: "abc123")
     @__testing(semantics: "def456")
+    @UnrelatedModule.__testing(semantics: "xyz789")
     let x = 0
     """ as DeclSyntax
     let nodeWithAttributes = try #require(node.asProtocol((any WithAttributesSyntax).self))

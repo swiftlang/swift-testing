@@ -8,8 +8,14 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+import SwiftParser
 public import SwiftSyntax
+import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
+
+#if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY
+#error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand #expect(processExitsWith:)")
+#endif
 
 /// A protocol containing the common implementation for the expansions of the
 /// `#expect()` and `#require()` macros.
@@ -111,7 +117,6 @@ extension ConditionMacro {
     var checkArguments = [Argument]()
     do {
       if let trailingClosureIndex {
-
         // Include all arguments other than the "comment" and "sourceLocation"
         // arguments here.
         checkArguments += macroArguments.indices.lazy
@@ -152,8 +157,17 @@ extension ConditionMacro {
         expandedFunctionName = conditionArgument.expandedFunctionName
       }
 
-      // Capture any comments as well (either in source or as a macro argument.)
+      // Capture any comments as well -- either in source, preceding the
+      // expression macro or one of its lexical context nodes, or as an argument
+      // to the macro.
       let commentsArrayExpr = ArrayExprSyntax {
+        // Lexical context is ordered innermost-to-outermost, so reverse it to
+        // maintain the expected order.
+        for lexicalSyntaxNode in context.lexicalContext.trailingEffectExpressions.reversed() {
+          for commentTraitExpr in createCommentTraitExprs(for: lexicalSyntaxNode) {
+            ArrayElementSyntax(expression: commentTraitExpr)
+          }
+        }
         for commentTraitExpr in createCommentTraitExprs(for: macro) {
           ArrayElementSyntax(expression: commentTraitExpr)
         }
@@ -324,7 +338,24 @@ public struct NonOptionalRequireMacro: RefinedConditionMacro {
     in context: some MacroExpansionContext
   ) throws -> ExprSyntax {
     if let argument = macro.arguments.first {
+#if !SWT_FIXED_137943258
+      // Silence this warning if we see a token (`?`, `nil`, or "Optional") that
+      // might indicate the test author expects the expression is optional.
+      let tokenKindsIndicatingOptionality: [TokenKind] = [
+        .infixQuestionMark,
+        .postfixQuestionMark,
+        .keyword(.nil),
+        .identifier("Optional")
+      ]
+      let looksOptional = argument.tokens(viewMode: .sourceAccurate).lazy
+        .map(\.tokenKind)
+        .contains(where: tokenKindsIndicatingOptionality.contains)
+      if !looksOptional {
+        context.diagnose(.nonOptionalRequireIsRedundant(argument.expression, in: macro))
+      }
+#else
       context.diagnose(.nonOptionalRequireIsRedundant(argument.expression, in: macro))
+#endif
     }
 
     // Perform the normal macro expansion for #require().
@@ -398,76 +429,137 @@ extension ExitTestConditionMacro {
     _ = try Base.expansion(of: macro, in: context)
 
     var arguments = argumentList(of: macro, in: context)
-    let expectedExitConditionIndex = arguments.firstIndex { $0.label?.tokenKind == .identifier("exitsWith") }
-    guard let expectedExitConditionIndex else {
-      fatalError("Could not find the exit condition for this exit test. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
-    }
-    let observationListIndex = arguments.firstIndex { $0.label?.tokenKind == .identifier("observing") }
-    if observationListIndex == nil {
-      arguments.insert(
-        Argument(label: "observing", expression: ArrayExprSyntax(expressions: [])),
-        at: arguments.index(after: expectedExitConditionIndex)
-      )
-    }
     let trailingClosureIndex = arguments.firstIndex { $0.label?.tokenKind == _trailingClosureLabel.tokenKind }
     guard let trailingClosureIndex else {
       fatalError("Could not find the body argument to this exit test. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
     }
 
-    let bodyArgumentExpr = arguments[trailingClosureIndex].expression
+    var bodyArgumentExpr = arguments[trailingClosureIndex].expression
+    bodyArgumentExpr = removeParentheses(from: bodyArgumentExpr) ?? bodyArgumentExpr
 
-    // TODO: use UUID() here if we can link to Foundation
-    let exitTestID = (UInt64.random(in: 0 ... .max), UInt64.random(in: 0 ... .max))
-    let exitTestIDExpr: ExprSyntax = "Testing.__ExitTest.ID(__uuid: (\(literal: exitTestID.0), \(literal: exitTestID.1)))"
+    // Before building the macro expansion, look for any problems and return
+    // early if found.
+    guard _diagnoseIssues(with: macro, body: bodyArgumentExpr, in: context) else {
+      if Self.isThrowing {
+        return #"{ () async throws -> Testing.ExitTest.Result in \#(ExprSyntax.unreachable) }()"#
+      } else {
+        return #"{ () async -> Testing.ExitTest.Result in \#(ExprSyntax.unreachable) }()"#
+      }
+    }
+
+    // Find any captured values and extract them from the trailing closure.
+    var capturedValues = [CapturedValueInfo]()
+    if var closureExpr = bodyArgumentExpr.as(ClosureExprSyntax.self),
+       let captureList = closureExpr.signature?.capture?.items {
+      closureExpr.signature?.capture = ClosureCaptureClauseSyntax(items: [], trailingTrivia: .space)
+      capturedValues = captureList.map { CapturedValueInfo($0, in: context) }
+      bodyArgumentExpr = ExprSyntax(closureExpr)
+    }
+
+    // Generate a unique identifier for this exit test.
+    let idExpr = _makeExitTestIDExpr(for: macro, in: context)
 
     var decls = [DeclSyntax]()
 
     // Implement the body of the exit test outside the enum we're declaring so
     // that `Self` resolves to the type containing the exit test, not the enum.
     let bodyThunkName = context.makeUniqueName("")
+    let bodyThunkParameterList = FunctionParameterListSyntax {
+      for capturedValue in capturedValues {
+        FunctionParameterSyntax(
+          firstName: .wildcardToken(trailingTrivia: .space),
+          secondName: capturedValue.name.trimmed,
+          colon: .colonToken(trailingTrivia: .space),
+          type: capturedValue.type.trimmed
+        )
+      }
+    }
     decls.append(
       """
-      @Sendable func \(bodyThunkName)() async throws -> Void {
-        return try await Testing.__requiringTry(Testing.__requiringAwait(\(bodyArgumentExpr.trimmed)))()
+      @Sendable func \(bodyThunkName)(\(bodyThunkParameterList)) async throws {
+        _ = \(applyEffectfulKeywords([.try, .await, .unsafe], to: bodyArgumentExpr))()
       }
       """
     )
 
     // Create a local type that can be discovered at runtime and which contains
     // the exit test body.
-    let enumName = context.makeUniqueName("__🟠$exit_test_body__")
-    decls.append(
-      """
-      @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-      enum \(enumName): Testing.__ExitTestContainer, Sendable {
-        static var __id: Testing.__ExitTest.ID {
-          \(exitTestIDExpr)
-        }
-        static var __body: @Sendable () async throws -> Void {
-          \(bodyThunkName)
+    let enumName = context.makeUniqueName("")
+    do {
+      // Create the test content record.
+      let testContentRecordDecl = makeTestContentRecordDecl(
+        named: .identifier("testContentRecord"),
+        in: TypeSyntax(IdentifierTypeSyntax(name: enumName)),
+        ofKind: .exitTest,
+        accessingWith: .identifier("accessor")
+      )
+
+      // Create another local type for legacy test discovery.
+      var recordDecl: DeclSyntax?
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+      let legacyEnumName = context.makeUniqueName("__🟡$")
+      let unsafeKeyword: TokenSyntax? = isUnsafeKeywordSupported ? .keyword(.unsafe, trailingTrivia: .space) : nil
+      recordDecl = """
+      enum \(legacyEnumName): Testing.__TestContentRecordContainer {
+        nonisolated static var __testContentRecord: Testing.__TestContentRecord {
+          \(unsafeKeyword)\(enumName).testContentRecord
         }
       }
       """
-    )
+#endif
+
+      decls.append(
+        """
+        @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
+        enum \(enumName) {
+          private nonisolated static let accessor: Testing.__TestContentRecordAccessor = { outValue, type, hint, _ in
+            Testing.ExitTest.__store(
+              \(idExpr),
+              \(bodyThunkName),
+              into: outValue,
+              asTypeAt: type,
+              withHintAt: hint
+            )
+          }
+
+          \(testContentRecordDecl)
+
+          \(recordDecl)
+        }
+        """
+      )
+    }
 
     arguments[trailingClosureIndex].expression = ExprSyntax(
       ClosureExprSyntax {
         for decl in decls {
-          CodeBlockItemSyntax(item: .decl(decl))
-            .with(\.trailingTrivia, .newline)
+          CodeBlockItemSyntax(
+            leadingTrivia: .newline,
+            item: .decl(decl),
+            trailingTrivia: .newline
+          )
         }
       }
     )
 
-    // Insert the exit test's ID as the first argument. Note that this will
-    // invalidate all indices into `arguments`!
-    arguments.insert(
-      Argument(
-        label: "identifiedBy",
-        expression: exitTestIDExpr
-      ),
-      at: arguments.startIndex
-    )
+    // Insert additional arguments at the beginning of the argument list. Note
+    // that this will invalidate all indices into `arguments`!
+    var leadingArguments = [
+      Argument(label: "identifiedBy", expression: idExpr),
+    ]
+    if !capturedValues.isEmpty {
+      leadingArguments.append(
+        Argument(
+          label: "encodingCapturedValues",
+          expression: TupleExprSyntax {
+            for capturedValue in capturedValues {
+              LabeledExprSyntax(expression: capturedValue.typeCheckedExpression)
+            }
+          }
+        )
+      )
+    }
+    arguments = leadingArguments + arguments
 
     // Replace the exit test body (as an argument to the macro) with a stub
     // closure that hosts the type we created above.
@@ -478,9 +570,92 @@ extension ExitTestConditionMacro {
 
     return try Base.expansion(of: macro, primaryExpression: bodyArgumentExpr, in: context)
   }
+
+  /// Make an expression representing an exit test ID that can be passed to the
+  /// `ExitTest.__store()` function at runtime.
+  ///
+  /// - Parameters:
+  ///   - macro: The exit test macro being inspected.
+  ///   - context: The macro context in which the expression is being parsed.
+  ///
+  /// - Returns: An expression representing the exit test's unique ID.
+  private static func _makeExitTestIDExpr(
+    for macro: some FreestandingMacroExpansionSyntax,
+    in context: some MacroExpansionContext
+  ) -> ExprSyntax {
+    withUnsafeTemporaryAllocation(of: UInt64.self, capacity: 4) { exitTestID in
+      if let sourceLocation = context.location(of: macro, at: .afterLeadingTrivia, filePathMode: .fileID),
+         let fileID = sourceLocation.file.as(StringLiteralExprSyntax.self)?.representedLiteralValue,
+         let line = sourceLocation.line.as(IntegerLiteralExprSyntax.self)?.representedLiteralValue,
+         let column = sourceLocation.column.as(IntegerLiteralExprSyntax.self)?.representedLiteralValue {
+        // Hash the entire source location and store the entire hash in the
+        // resulting ID.
+        let stringValue = "\(fileID):\(line):\(column)"
+        exitTestID.withMemoryRebound(to: UInt8.self) { exitTestID in
+          _ = exitTestID.initialize(from: SHA256.hash(stringValue.utf8))
+        }
+      } else {
+        // This branch is dead code in production, but is used when we expand a
+        // macro in our own unit tests because the macro expansion context does
+        // not have real source location information.
+        for i in 0 ..< exitTestID.count {
+          exitTestID[i] = .random(in: 0 ... .max)
+        }
+      }
+
+      // Return a tuple of integer literals (which is what the runtime __store()
+      // function is expecting.)
+      let tupleExpr = TupleExprSyntax {
+        for uint64 in exitTestID {
+          LabeledExprSyntax(expression: IntegerLiteralExprSyntax(uint64, radix: .hex))
+        }
+      }
+      return ExprSyntax(tupleExpr)
+    }
+  }
+
+  /// Diagnose issues with an exit test macro call.
+  ///
+  /// - Parameters:
+  ///   - macro: The exit test macro call.
+  ///   - bodyArgumentExpr: The exit test's body.
+  ///   - context: The macro context in which the expression is being parsed.
+  ///
+  /// - Returns: Whether or not macro expansion should continue (i.e. stopping
+  ///   if a fatal error was diagnosed.)
+  private static func _diagnoseIssues(
+    with macro: some FreestandingMacroExpansionSyntax,
+    body bodyArgumentExpr: ExprSyntax,
+    in context: some MacroExpansionContext
+  ) -> Bool {
+    var diagnostics = [DiagnosticMessage]()
+
+    // Disallow exit tests in generic types and functions as they cannot be
+    // correctly expanded due to the use of a nested type with static members.
+    for lexicalContext in context.lexicalContext {
+      if let lexicalContext = lexicalContext.asProtocol((any WithGenericParametersSyntax).self) {
+        if let genericClause = lexicalContext.genericParameterClause {
+          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: genericClause, on: lexicalContext))
+        } else if let whereClause = lexicalContext.genericWhereClause {
+          diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: whereClause, on: lexicalContext))
+        } else if let functionDecl = lexicalContext.as(FunctionDeclSyntax.self) {
+          for parameter in functionDecl.signature.parameterClause.parameters {
+            if parameter.type.isSome {
+              diagnostics.append(.expressionMacroUnsupported(macro, inGenericContextBecauseOf: parameter, on: functionDecl))
+            }
+          }
+        }
+      }
+    }
+
+    for diagnostic in diagnostics {
+      context.diagnose(diagnostic)
+    }
+    return diagnostics.isEmpty
+  }
 }
 
-/// A type describing the expansion of the `#expect(exitsWith:)` macro.
+/// A type describing the expansion of the `#expect(processExitsWith:)` macro.
 ///
 /// This type checks for nested invocations of `#expect()` and `#require()` and
 /// diagnoses them as unsupported. It is otherwise exactly equivalent to
@@ -489,7 +664,7 @@ public struct ExitTestExpectMacro: ExitTestConditionMacro {
   public typealias Base = ExpectMacro
 }
 
-/// A type describing the expansion of the `#require(exitsWith:)` macro.
+/// A type describing the expansion of the `#require(processExitsWith:)` macro.
 ///
 /// This type checks for nested invocations of `#expect()` and `#require()` and
 /// diagnoses them as unsupported. It is otherwise exactly equivalent to

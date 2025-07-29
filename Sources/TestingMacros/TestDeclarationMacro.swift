@@ -8,8 +8,14 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+import SwiftDiagnostics
 public import SwiftSyntax
+import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
+
+#if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY
+#error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand @Test")
+#endif
 
 /// A type describing the expansion of the `@Test` attribute macro.
 ///
@@ -28,7 +34,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     let functionDecl = declaration.cast(FunctionDeclSyntax.self)
     let typeName = context.typeOfLexicalContext
 
-    return _createTestContainerDecls(for: functionDecl, on: typeName, testAttribute: node, in: context)
+    return _createTestDecls(for: functionDecl, on: typeName, testAttribute: node, in: context)
   }
 
   public static var formatMode: FormatMode {
@@ -55,20 +61,21 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     }
 
     // The @Test attribute is only supported on function declarations.
-    guard let function = declaration.as(FunctionDeclSyntax.self) else {
+    guard let function = declaration.as(FunctionDeclSyntax.self), !function.isOperator else {
       diagnostics.append(.attributeNotSupported(testAttribute, on: declaration))
       return false
     }
 
     // Check if the lexical context is appropriate for a suite or test.
-    diagnostics += diagnoseIssuesWithLexicalContext(context.lexicalContext, containing: declaration, attribute: testAttribute)
+    let lexicalContext = context.lexicalContext
+    diagnostics += diagnoseIssuesWithLexicalContext(lexicalContext, containing: declaration, attribute: testAttribute)
 
     // Suites inheriting from XCTestCase are not supported. We are a bit
     // conservative here in this check and only check the immediate context.
     // Presumably, if there's an intermediate lexical context that is *not* a
     // type declaration, then it must be a function or closure (disallowed
     // elsewhere) and thus the test function is not a member of any type.
-    if let containingTypeDecl = context.lexicalContext.first?.asProtocol((any DeclGroupSyntax).self),
+    if let containingTypeDecl = lexicalContext.first?.asProtocol((any DeclGroupSyntax).self),
        containingTypeDecl.inherits(fromTypeNamed: "XCTestCase", inModuleNamed: "XCTest") {
       diagnostics.append(.containingNodeUnsupported(containingTypeDecl, whenUsing: testAttribute, on: declaration))
     }
@@ -118,6 +125,21 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       }
     }
 
+    // Disallow non-escapable types as suites. In order to support them, the
+    // compiler team needs to finish implementing the lifetime dependency
+    // feature so that `init()`, ``__requiringTry()`, and `__requiringAwait()`
+    // can be correctly expressed.
+    if let containingType = lexicalContext.first?.asProtocol((any DeclGroupSyntax).self),
+       let inheritedTypes = containingType.inheritanceClause?.inheritedTypes {
+      let escapableNonConformances = inheritedTypes
+        .map(\.type)
+        .compactMap { $0.as(SuppressedTypeSyntax.self) }
+        .filter { $0.type.isNamed("Escapable", inModuleNamed: "Swift") }
+      for escapableNonConformance in escapableNonConformances {
+        diagnostics.append(.containingNodeUnsupported(containingType, whenUsing: testAttribute, on: function, withSuppressedConformanceToEscapable: escapableNonConformance))
+      }
+    }
+
     return !diagnostics.lazy.map(\.severity).contains(.error)
   }
 
@@ -138,6 +160,8 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       for (label, parameter) in parametersWithLabels {
         if parameter.firstName.tokenKind == .wildcard {
           LabeledExprSyntax(expression: label)
+        } else if let rawIdentifier = parameter.firstName.rawIdentifier {
+          LabeledExprSyntax(label: "`\(rawIdentifier)`", expression: label)
         } else {
           LabeledExprSyntax(label: parameter.firstName.textWithoutBackticks, expression: label)
         }
@@ -170,17 +194,6 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       }
     }
     return FunctionParameterClauseSyntax(parameters: parameterList)
-  }
-
-  /// The `static` keyword, if `typeName` is not `nil`.
-  ///
-  /// - Parameters:
-  ///   - typeName: The name of the type containing the macro being expanded.
-  ///
-  /// - Returns: A token representing the `static` keyword, or one representing
-  ///   nothing if `typeName` is `nil`.
-  private static func _staticKeyword(for typeName: TypeSyntax?) -> TokenSyntax {
-    (typeName != nil) ? .keyword(.static) : .unknown("")
   }
 
   /// Create a thunk function with a normalized signature that calls a
@@ -235,17 +248,17 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     // detecting isolation to other global actors.
     lazy var isMainActorIsolated = !functionDecl.attributes(named: "MainActor", inModuleNamed: "_Concurrency").isEmpty
     var forwardCall: (ExprSyntax) -> ExprSyntax = {
-      "try await Testing.__requiringTry(Testing.__requiringAwait(\($0)))"
+      applyEffectfulKeywords([.try, .await, .unsafe], to: $0)
     }
     let forwardInit = forwardCall
     if functionDecl.noasyncAttribute != nil {
       if isMainActorIsolated {
         forwardCall = {
-          "try await MainActor.run { try Testing.__requiringTry(\($0)) }"
+          "try await MainActor.run { \(applyEffectfulKeywords([.try, .unsafe], to: $0)) }"
         }
       } else {
         forwardCall = {
-          "try { try Testing.__requiringTry(\($0)) }()"
+          "try { \(applyEffectfulKeywords([.try, .unsafe], to: $0)) }()"
         }
       }
     }
@@ -317,7 +330,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
         }
         FunctionParameterSyntax(
           firstName: .wildcardToken(),
-          type: "isolated (any Actor)?" as TypeSyntax,
+          type: "isolated (any _Concurrency.Actor)?" as TypeSyntax,
           defaultValue: InitializerClauseSyntax(value: "Testing.__defaultSynchronousIsolationContext" as ExprSyntax)
         )
       }
@@ -340,7 +353,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     let thunkName = context.makeUniqueName(thunking: functionDecl)
     let thunkDecl: DeclSyntax = """
     @available(*, deprecated, message: "This function is an implementation detail of the testing library. Do not use it directly.")
-    @Sendable private \(_staticKeyword(for: typeName)) func \(thunkName)\(thunkParamsExpr) async throws -> Void {
+    @Sendable private \(staticKeyword(for: typeName)) func \(thunkName)\(thunkParamsExpr) async throws -> Void {
       \(thunkBody)
     }
     """
@@ -348,8 +361,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     return thunkDecl.cast(FunctionDeclSyntax.self)
   }
 
-  /// Create a declaration for a type that conforms to the `__TestContainer`
-  /// protocol and which contains a test for the given function.
+  /// Create the declarations necessary to discover a test at runtime.
   ///
   /// - Parameters:
   ///   - functionDecl: The function declaration the result should encapsulate.
@@ -360,7 +372,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
   ///
   /// - Returns: An array of declarations providing runtime information about
   ///   the test function `functionDecl`.
-  private static func _createTestContainerDecls(
+  private static func _createTestDecls(
     for functionDecl: FunctionDeclSyntax,
     on typeName: TypeSyntax?,
     testAttribute: AttributeSyntax,
@@ -405,16 +417,14 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
 
     // Create the expression that returns the Test instance for the function.
     var testsBody: CodeBlockItemListSyntax = """
-    return [
-      .__function(
-        named: \(literal: functionDecl.completeName.trimmedDescription),
-        in: \(typeNameExpr),
-        xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
-        \(raw: attributeInfo.functionArgumentList(in: context)),
-        parameters: \(raw: functionDecl.testFunctionParameterList),
-        testFunction: \(thunkDecl.name)
-      )
-    ]
+    return .__function(
+      named: \(literal: functionDecl.completeName.trimmedDescription),
+      in: \(typeNameExpr),
+      xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
+      \(raw: attributeInfo.functionArgumentList(in: context)),
+      parameters: \(raw: functionDecl.testFunctionParameterList),
+      testFunction: \(thunkDecl.name)
+    )
     """
 
     // If this function has arguments, then it can only be referenced (let alone
@@ -430,16 +440,14 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       result.append(
         """
         @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-        private \(_staticKeyword(for: typeName)) nonisolated func \(unavailableTestName)() async -> [Testing.Test] {
-          [
-            .__function(
-              named: \(literal: functionDecl.completeName.trimmedDescription),
-              in: \(typeNameExpr),
-              xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
-              \(raw: attributeInfo.functionArgumentList(in: context)),
-              testFunction: {}
-            )
-          ]
+        private \(staticKeyword(for: typeName)) nonisolated func \(unavailableTestName)() async -> Testing.Test {
+          .__function(
+            named: \(literal: functionDecl.completeName.trimmedDescription),
+            in: \(typeNameExpr),
+            xcTestCompatibleSelector: \(selectorExpr ?? "nil"),
+            \(raw: attributeInfo.functionArgumentList(in: context)),
+            testFunction: {}
+          )
         }
         """
       )
@@ -454,29 +462,52 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       )
     }
 
-    // The emitted type must be public or the compiler can optimize it away
-    // (since it is not actually used anywhere that the compiler can see.)
-    //
-    // The emitted type must be deprecated to avoid causing warnings in client
-    // code since it references the test function thunk, which is itself
-    // deprecated to allow test functions to validate deprecated APIs. The
-    // emitted type is also annotated unavailable, since it's meant only for use
-    // by the testing library at runtime. The compiler does not allow combining
-    // 'unavailable' and 'deprecated' into a single availability attribute:
-    // rdar://111329796
-    let enumName = context.makeUniqueName(thunking: functionDecl, withPrefix: "__🟠$test_container__function__")
+    let generatorName = context.makeUniqueName(thunking: functionDecl, withPrefix: "generator")
+    result.append(
+      """
+      @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
+      @Sendable private \(staticKeyword(for: typeName)) func \(generatorName)() async -> Testing.Test {
+        \(raw: testsBody)
+      }
+      """
+    )
+
+    let accessorName = context.makeUniqueName(thunking: functionDecl, withPrefix: "accessor")
+    result.append(
+      """
+      @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
+      private \(staticKeyword(for: typeName)) nonisolated let \(accessorName): Testing.__TestContentRecordAccessor = { outValue, type, _, _ in
+        Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
+      }
+      """
+    )
+
+    let testContentRecordName = context.makeUniqueName(thunking: functionDecl, withPrefix: "testContentRecord")
+    result.append(
+      makeTestContentRecordDecl(
+        named: testContentRecordName,
+        in: typeName,
+        ofKind: .testDeclaration,
+        accessingWith: accessorName,
+        context: attributeInfo.testContentRecordFlags
+      )
+    )
+
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+    // Emit a type that contains a reference to the test content record.
+    let enumName = context.makeUniqueName(thunking: functionDecl, withPrefix: "__🟡$")
+    let unsafeKeyword: TokenSyntax? = isUnsafeKeywordSupported ? .keyword(.unsafe, trailingTrivia: .space) : nil
     result.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-      enum \(enumName): Testing.__TestContainer {
-        static var __tests: [Testing.Test] {
-          get async {
-            \(raw: testsBody)
-          }
+      enum \(enumName): Testing.__TestContentRecordContainer {
+        nonisolated static var __testContentRecord: Testing.__TestContentRecord {
+          \(unsafeKeyword)\(testContentRecordName)
         }
       }
       """
     )
+#endif
 
     return result
   }

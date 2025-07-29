@@ -142,6 +142,35 @@ func rawIdentifierAwareSplit<S>(_ string: S, separator: Character, maxSplits: In
 }
 
 extension TypeInfo {
+  /// Replace any non-breaking spaces in the given string with normal spaces.
+  ///
+  /// - Parameters:
+  ///   - rawIdentifier: The string to rewrite.
+  ///
+  /// - Returns: A copy of `rawIdentifier` with non-breaking spaces (`U+00A0`)
+  ///   replaced with normal spaces (`U+0020`).
+  ///
+  /// When the Swift runtime demangles a raw identifier, it [replaces](https://github.com/swiftlang/swift/blob/d033eec1aa427f40dcc38679d43b83d9dbc06ae7/lib/Basic/Mangler.cpp#L250)
+  /// normal ASCII spaces with non-breaking spaces to maintain compatibility
+  /// with historical usages of spaces in mangled name forms. Non-breaking
+  /// spaces are not otherwise valid in raw identifiers, so this transformation
+  /// is reversible.
+  private static func _rewriteNonBreakingSpacesAsASCIISpaces(in rawIdentifier: some StringProtocol) -> String? {
+    let nbsp = "\u{00A0}" as UnicodeScalar
+
+    // If there are no non-breaking spaces in the string, exit early to avoid
+    // any further allocations.
+    let unicodeScalars = rawIdentifier.unicodeScalars
+    guard unicodeScalars.contains(nbsp) else {
+      return nil
+    }
+
+    // Replace non-breaking spaces, then construct a new string from the
+    // resulting sequence.
+    let result = unicodeScalars.lazy.map { $0 == nbsp ? " " : $0 }
+    return String(String.UnicodeScalarView(result))
+  }
+
   /// An in-memory cache of fully-qualified type name components.
   private static let _fullyQualifiedNameComponentsCache = Locked<[ObjectIdentifier: [String]]>()
 
@@ -166,12 +195,21 @@ extension TypeInfo {
       components[0] = moduleName
     }
 
-    // If a type is private or embedded in a function, its fully qualified
-    // name may include "(unknown context at $xxxxxxxx)" as a component. Strip
-    // those out as they're uninteresting to us.
-    components = components.filter { !$0.starts(with: "(unknown context at") }
-
-    return components.map(String.init)
+    return components.lazy
+      .filter { component in
+        // If a type is private or embedded in a function, its fully qualified
+        // name may include "(unknown context at $xxxxxxxx)" as a component.
+        // Strip those out as they're uninteresting to us.
+        !component.starts(with: "(unknown context at")
+      }.map { component in
+        // Replace non-breaking spaces with spaces. See the helper function's
+        // documentation for more information.
+        if let component = _rewriteNonBreakingSpacesAsASCIISpaces(in: component) {
+          component[...]
+        } else {
+          component
+        }
+      }.map(String.init)
   }
 
   /// The complete name of this type, with the names of all referenced types
@@ -242,9 +280,14 @@ extension TypeInfo {
   public var unqualifiedName: String {
     switch _kind {
     case let .type(type):
-      String(describing: type)
+      // Replace non-breaking spaces with spaces. See the helper function's
+      // documentation for more information.
+      var result = String(describing: type)
+      result = Self._rewriteNonBreakingSpacesAsASCIISpaces(in: result) ?? result
+
+      return result
     case let .nameOnly(_, unqualifiedName, _):
-      unqualifiedName
+      return unqualifiedName
     }
   }
 
@@ -265,9 +308,7 @@ extension TypeInfo {
     }
     switch _kind {
     case let .type(type):
-      // _mangledTypeName() works with move-only types, but its signature has
-      // not been updated yet. SEE: rdar://134278607
-      return _mangledTypeName(unsafeBitCast(type, to: Any.Type.self))
+      return _mangledTypeName(type)
     case let .nameOnly(_, _, mangledName):
       return mangledName
     }
@@ -319,13 +360,10 @@ extension TypeInfo {
 /// - Returns: Whether `subclass` is a subclass of, or is equal to,
 ///   `superclass`.
 func isClass(_ subclass: AnyClass, subclassOf superclass: AnyClass) -> Bool {
-  if subclass == superclass {
-    true
-  } else if let subclassImmediateSuperclass = _getSuperclass(subclass) {
-    isClass(subclassImmediateSuperclass, subclassOf: superclass)
-  } else {
-    false
+  func open<T, U>(_: T.Type, _: U.Type) -> Bool where T: AnyObject, U: AnyObject {
+    T.self is U.Type
   }
+  return open(subclass, superclass)
 }
 
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible, CustomTestStringConvertible
@@ -367,6 +405,7 @@ extension TypeInfo: Hashable {
   }
 }
 
+#if compiler(<6.2)
 // MARK: - ObjectIdentifier support
 
 extension ObjectIdentifier {
@@ -381,6 +420,7 @@ extension ObjectIdentifier {
     self.init(unsafeBitCast(type, to: Any.Type.self))
   }
 }
+#endif
 
 // MARK: - Codable
 
@@ -412,3 +452,45 @@ extension TypeInfo: Codable {
 }
 
 extension TypeInfo.EncodedForm: Codable {}
+
+// MARK: - Custom casts
+
+/// Cast the given data pointer to a C function pointer.
+///
+/// - Parameters:
+///   - address: The C function pointer as an untyped data pointer.
+///   - type: The type of the C function. This type must be a function type with
+///     the "C" convention (i.e. `@convention (...) -> ...`).
+///
+/// - Returns: `address` cast to the given C function type.
+///
+/// This function serves to make code that casts C function pointers more
+/// self-documenting. In debug builds, it checks that `type` is a C function
+/// type. In release builds, it behaves the same as `unsafeBitCast(_:to:)`.
+func castCFunction<T>(at address: UnsafeRawPointer, to type: T.Type) -> T {
+#if DEBUG
+  if let mangledName = TypeInfo(describing: T.self).mangledName {
+    precondition(mangledName.last == "C", "\(#function) should only be used to cast a pointer to a C function type.")
+  }
+#endif
+  return unsafeBitCast(address, to: type)
+}
+
+/// Cast the given C function pointer to a data pointer.
+///
+/// - Parameters:
+///   - function: The C function pointer.
+///
+/// - Returns: `function` cast to an untyped data pointer.
+///
+/// This function serves to make code that casts C function pointers more
+/// self-documenting. In debug builds, it checks that `function` is a C function
+/// pointer. In release builds, it behaves the same as `unsafeBitCast(_:to:)`.
+func castCFunction<T>(_ function: T, to _: UnsafeRawPointer.Type) -> UnsafeRawPointer {
+#if DEBUG
+  if let mangledName = TypeInfo(describing: T.self).mangledName {
+    precondition(mangledName.last == "C", "\(#function) should only be used to cast a C function.")
+  }
+#endif
+  return unsafeBitCast(function, to: UnsafeRawPointer.self)
+}

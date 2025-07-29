@@ -8,19 +8,20 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 /// A type that defines a time limit to apply to a test.
 ///
-/// To add this trait to a test, use one of the following functions:
-///
-/// - ``Trait/timeLimit(_:)-4kzjp``
+/// To add this trait to a test, use ``Trait/timeLimit(_:)-4kzjp``.
 @available(_clockAPI, *)
 public struct TimeLimitTrait: TestTrait, SuiteTrait {
   /// A type representing the duration of a time limit applied to a test.
   ///
-  /// This type is intended for use specifically for specifying test timeouts
-  /// with ``TimeLimitTrait``. It is used instead of Swift's built-in `Duration`
-  /// type because test timeouts do not support high-precision, arbitrarily
-  /// short durations. The smallest allowed unit of time is minutes.
+  /// Use this type to specify a test timeout with ``TimeLimitTrait``.
+  /// `TimeLimitTrait` uses this type instead of Swift's built-in `Duration`
+  /// type because the testing library doesn't support high-precision,
+  /// arbitrarily short durations for test timeouts. The smallest unit of time
+  /// you can specify in a `Duration` is minutes.
   public struct Duration: Sendable {
     /// The underlying Swift `Duration` which this time limit duration
     /// represents.
@@ -29,8 +30,7 @@ public struct TimeLimitTrait: TestTrait, SuiteTrait {
     /// Construct a time limit duration given a number of minutes.
     ///
     /// - Parameters:
-    ///   - minutes: The number of minutes the resulting duration should
-    ///     represent.
+    ///   - minutes: The length of the duration in minutes.
     ///
     /// - Returns: A duration representing the specified number of minutes.
     public static func minutes(_ minutes: some BinaryInteger) -> Self {
@@ -83,6 +83,13 @@ extension Trait where Self == TimeLimitTrait {
   /// test cases individually. If a test has more than one time limit associated
   /// with it, the shortest one is used. A test run may also be configured with
   /// a maximum time limit per test case.
+  ///
+  /// If you apply this trait to a test suite, then it sets the time limit for
+  /// each test in the suite, or each test case in parameterized tests in the
+  /// suite.
+  /// For example, if a suite contains five tests and you apply a time limit trait
+  /// with a duration of one minute, then each test in the suite may run for up to
+  /// one minute.
   @_spi(Experimental)
   public static func timeLimit(_ timeLimit: Duration) -> Self {
     return Self(timeLimit: timeLimit)
@@ -97,26 +104,32 @@ extension Trait where Self == TimeLimitTrait {
   /// - Returns: An instance of ``TimeLimitTrait``.
   ///
   /// Test timeouts do not support high-precision, arbitrarily short durations
-  /// due to variability in testing environments. The time limit must be at
-  /// least one minute, and can only be expressed in increments of one minute.
+  /// due to variability in testing environments. You express the duration in
+  /// minutes, with a minimum duration of one minute.
   ///
-  /// When this trait is associated with a test, that test must complete within
-  /// a time limit of, at most, `timeLimit`. If the test runs longer, an issue
-  /// of kind ``Issue/Kind/timeLimitExceeded(timeLimitComponents:)`` is
-  /// recorded. This timeout is treated as a test failure.
+  /// When you associate this trait with a test, that test must complete within
+  /// a time limit of, at most, `timeLimit`. If the test runs longer, the
+  /// testing library records a
+  /// ``Issue/Kind/timeLimitExceeded(timeLimitComponents:)`` issue, which it
+  /// treats as a test failure.
   ///
-  /// The time limit amount specified by `timeLimit` may be reduced if the
-  /// testing library is configured to enforce a maximum per-test limit. When
-  /// such a maximum is set, the effective time limit of the test this trait is
-  /// applied to will be the lesser of `timeLimit` and that maximum. This is a
-  /// policy which may be configured on a global basis by the tool responsible
-  /// for launching the test process. Refer to that tool's documentation for
-  /// more details.
+  /// The testing library can use a shorter time limit than that specified by
+  /// `timeLimit` if you configure it to enforce a maximum per-test limit. When
+  /// you configure a maximum per-test limit, the time limit of the test this
+  /// trait is applied to is the shorter of `timeLimit` and the maximum per-test
+  /// limit. For information on configuring maximum per-test limits, consult the
+  /// documentation for the tool you use to run your tests.
   ///
   /// If a test is parameterized, this time limit is applied to each of its
   /// test cases individually. If a test has more than one time limit associated
-  /// with it, the shortest one is used. A test run may also be configured with
-  /// a maximum time limit per test case.
+  /// with it, the testing library uses the shortest time limit.
+  ///
+  /// If you apply this trait to a test suite, then it sets the time limit for
+  /// each test in the suite, or each test case in parameterized tests in the
+  /// suite.
+  /// For example, if a suite contains five tests and you apply a time limit trait
+  /// with a duration of one minute, then each test in the suite may run for up to
+  /// one minute.
   public static func timeLimit(_ timeLimit: Self.Duration) -> Self {
     return Self(timeLimit: timeLimit.underlyingDuration)
   }
@@ -129,7 +142,7 @@ extension TimeLimitTrait.Duration {
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func seconds(_ seconds: some BinaryInteger) -> Self {
-    fatalError("Unsupported")
+    swt_unreachable()
   }
 
   /// Construct a time limit duration given a number of seconds.
@@ -137,7 +150,7 @@ extension TimeLimitTrait.Duration {
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func seconds(_ seconds: Double) -> Self {
-    fatalError("Unsupported")
+    swt_unreachable()
   }
 
   /// Construct a time limit duration given a number of milliseconds.
@@ -145,7 +158,7 @@ extension TimeLimitTrait.Duration {
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func milliseconds(_ milliseconds: some BinaryInteger) -> Self {
-    fatalError("Unsupported")
+    swt_unreachable()
   }
 
   /// Construct a time limit duration given a number of milliseconds.
@@ -153,7 +166,7 @@ extension TimeLimitTrait.Duration {
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func milliseconds(_ milliseconds: Double) -> Self {
-    fatalError("Unsupported")
+    swt_unreachable()
   }
 
   /// Construct a time limit duration given a number of microseconds.
@@ -161,7 +174,7 @@ extension TimeLimitTrait.Duration {
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func microseconds(_ microseconds: some BinaryInteger) -> Self {
-    fatalError("Unsupported")
+    swt_unreachable()
   }
 
   /// Construct a time limit duration given a number of microseconds.
@@ -169,7 +182,7 @@ extension TimeLimitTrait.Duration {
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func microseconds(_ microseconds: Double) -> Self {
-    fatalError("Unsupported")
+    swt_unreachable()
   }
 
   /// Construct a time limit duration given a number of nanoseconds.
@@ -177,7 +190,7 @@ extension TimeLimitTrait.Duration {
   /// This function is unavailable and is provided for diagnostic purposes only.
   @available(*, unavailable, message: "Time limit must be specified in minutes")
   public static func nanoseconds(_ nanoseconds: some BinaryInteger) -> Self {
-    fatalError("Unsupported")
+    swt_unreachable()
   }
 }
 
@@ -185,11 +198,9 @@ extension TimeLimitTrait.Duration {
 
 @available(_clockAPI, *)
 extension Test {
-  /// The maximum amount of time the cases of this test may run for.
+  /// The maximum amount of time this test's cases may run for.
   ///
-  /// Time limits are associated with tests using this trait:
-  ///
-  /// - ``Trait/timeLimit(_:)-4kzjp``
+  /// Associate a time limit with tests by using ``Trait/timeLimit(_:)-4kzjp``.
   ///
   /// If a test has more than one time limit associated with it, the value of
   /// this property is the shortest one. If a test has no time limits associated
@@ -269,7 +280,7 @@ func withTimeLimit(
   _ body: @escaping @Sendable () async throws -> Void,
   timeoutHandler: @escaping @Sendable () -> Void
 ) async throws {
-  try await withThrowingTaskGroup(of: Void.self) { group in
+  try await withThrowingTaskGroup { group in
     group.addTask {
       // If sleep() returns instead of throwing a CancellationError, that means
       // the timeout was reached before this task could be cancelled, so call

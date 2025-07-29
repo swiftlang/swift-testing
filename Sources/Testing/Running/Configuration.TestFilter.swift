@@ -514,7 +514,7 @@ extension Configuration.TestFilter.Kind {
 
 /// A protocol representing a value which can be filtered using
 /// ``Configuration/TestFilter-swift.struct``.
-private protocol _FilterableItem {
+private protocol _FilterableItem: Sendable {
   /// The test this item represents.
   var test: Test { get }
 

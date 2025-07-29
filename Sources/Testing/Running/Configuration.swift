@@ -178,14 +178,33 @@ public struct Configuration: Sendable {
 
   // MARK: - Event handling
 
-  /// Whether or not events of the kind
-  /// ``Event/Kind-swift.enum/expectationChecked(_:)`` should be delivered to
-  /// this configuration's ``eventHandler`` closure.
-  ///
-  /// By default, events of this kind are not delivered to event handlers
-  /// because they occur frequently in a typical test run and can generate
-  /// significant backpressure on the event handler.
-  public var deliverExpectationCheckedEvents: Bool = false
+  /// A type describing options to use when delivering events to this
+  /// configuration's event handler
+  public struct EventHandlingOptions: Sendable {
+    /// Whether or not events of the kind ``Event/Kind-swift.enum/issueRecorded(_:)``
+    /// containing issues with warning (or lower) severity should be delivered
+    /// to the event handler of the configuration these options are applied to.
+    ///
+    /// By default, events matching this criteria are not delivered to event
+    /// handlers since this is an experimental feature.
+    ///
+    /// - Warning: Warning issues are not yet an approved feature.
+    @_spi(Experimental)
+    public var isWarningIssueRecordedEventEnabled: Bool = false
+
+    /// Whether or not events of the kind
+    /// ``Event/Kind-swift.enum/expectationChecked(_:)`` should be delivered to
+    /// the event handler of the configuration these options are applied to.
+    ///
+    /// By default, events of this kind are not delivered to event handlers
+    /// because they occur frequently in a typical test run and can generate
+    /// significant back-pressure on the event handler.
+    public var isExpectationCheckedEventEnabled: Bool = false
+  }
+
+  /// The options to use when delivering events to this configuration's event
+  /// handler.
+  public var eventHandlingOptions: EventHandlingOptions = .init()
 
   /// The event handler to which events should be passed when they occur.
   public var eventHandler: Event.Handler = { _, _ in }
@@ -198,8 +217,7 @@ public struct Configuration: Sendable {
   /// When using the `swift test` command from Swift Package Manager, this
   /// property is pre-configured. Otherwise, the default value of this property
   /// records an issue indicating that it has not been configured.
-  @_spi(Experimental)
-  public var exitTestHandler: ExitTest.Handler = { _ in
+  public var exitTestHandler: ExitTest.Handler = { exitTest in
     throw SystemError(description: "Exit test support has not been implemented by the current testing infrastructure.")
   }
 #endif
@@ -218,7 +236,6 @@ public struct Configuration: Sendable {
   /// The value of this property must refer to a directory on the local file
   /// system that already exists and which the current user can write to. If it
   /// is a relative path, it is resolved to an absolute path automatically.
-  @_spi(Experimental)
   public var attachmentsPath: String? {
     get {
       _attachmentsPath
@@ -325,4 +342,14 @@ extension Configuration {
     }
   }
 #endif
+
+  @available(*, deprecated, message: "Set eventHandlingOptions.isExpectationCheckedEventEnabled instead.")
+  public var deliverExpectationCheckedEvents: Bool {
+    get {
+      eventHandlingOptions.isExpectationCheckedEventEnabled
+    }
+    set {
+      eventHandlingOptions.isExpectationCheckedEventEnabled = newValue
+    }
+  }
 }
