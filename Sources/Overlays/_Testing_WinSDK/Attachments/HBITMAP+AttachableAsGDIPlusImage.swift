@@ -16,32 +16,13 @@ public import WinSDK
 private import _Gdiplus
 
 @_spi(Experimental)
-public final class _AttachableHBITMAPWrapper {
-  private let _bitmap: HBITMAP
-  private let _palette: HPALETTE?
-
-  fileprivate init(bitmap: consuming HBITMAP, palette: consuming HPALETTE? = nil) {
-    _bitmap = bitmap
-    _palette = palette
-  }
-
-  deinit {
-    DeleteObject(_bitmap)
-    if let _palette {
-      DeleteObject(_palette)
-    }
-  }
-}
-
-@_spi(Experimental)
-extension _AttachableHBITMAPWrapper: AttachableAsGDIPlusImage {
+extension WinSDK.HBITMAP: AttachableAsGDIPlusImage {
   public func _withGDIPlusImage<R>(
-    for attachment: borrowing Attachment<some AttachableWrapper<_AttachableHBITMAPWrapper>>,
+    for attachment: borrowing Attachment<some AttachableWrapper<Self>>,
     _ body: (OpaquePointer) throws -> R
   ) throws -> R {
-    guard let image = swt_winsdk_GdiplusBitmapCreate(_bitmap, _palette) else {
-      print("swt_winsdk_GdiplusBitmapCreate: \(Gdiplus.GenericError)")
-      throw GDIPlusError(rawValue: Gdiplus.GenericError)
+    guard let image = swt_winsdk_GdiplusBitmapCreate(self, nil) else {
+      throw GDIPlusError.status(Gdiplus.GenericError)
     }
     defer {
       swt_winsdk_GdiplusImageDelete(image)
@@ -49,35 +30,6 @@ extension _AttachableHBITMAPWrapper: AttachableAsGDIPlusImage {
     return try withExtendedLifetime(self) {
       try body(image)
     }
-  }
-}
-
-@_spi(Experimental)
-extension Attachment where AttachableValue == _AttachableImageWrapper<_AttachableHBITMAPWrapper> {
-  public init(
-    _ bitmap: consuming UnsafeMutableRawPointer,
-    with palette: consuming UnsafeMutableRawPointer? = nil,
-    named preferredName: String? = nil,
-    as imageFormat: AttachableImageFormat? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation
-  ) {
-    let bitmap = bitmap.assumingMemoryBound(to: HBITMAP__.self)
-    let palette = palette.map { $0.assumingMemoryBound(to: HPALETTE__.self) }
-    let bitmapWrapper = _AttachableHBITMAPWrapper(bitmap: bitmap, palette: palette)
-    self.init(bitmapWrapper, named: preferredName, as: imageFormat, sourceLocation: sourceLocation)
-  }
-
-  public static func record(
-    _ bitmap: consuming UnsafeMutableRawPointer,
-    with palette: consuming UnsafeMutableRawPointer? = nil,
-    named preferredName: String? = nil,
-    as imageFormat: AttachableImageFormat? = nil,
-    sourceLocation: SourceLocation = #_sourceLocation
-  ) {
-    let bitmap = bitmap.assumingMemoryBound(to: HBITMAP__.self)
-    let palette = palette.map { $0.assumingMemoryBound(to: HPALETTE__.self) }
-    let bitmapWrapper = _AttachableHBITMAPWrapper(bitmap: bitmap, palette: palette)
-    Self.record(bitmapWrapper, named: preferredName, as: imageFormat, sourceLocation: sourceLocation)
   }
 }
 #endif

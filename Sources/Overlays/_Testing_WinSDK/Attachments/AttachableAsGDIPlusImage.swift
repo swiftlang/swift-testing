@@ -31,6 +31,9 @@ extension AttachableAsGDIPlusImage {
     for attachment: borrowing Attachment<some AttachableWrapper<Self>>,
     _ body: (OpaquePointer) throws -> R
   ) throws -> R {
+    // Stuff the attachment into a pointer so we can reference it from within
+    // the closure we pass to `withGDIPlus(_:)`. (The compiler currently can't
+    // reason about the lifetime of a borrowed value passed into a closure.)
     try withUnsafePointer(to: attachment) { attachment in
       try withGDIPlus {
         try self._withGDIPlusImage(for: attachment.pointee, body)
