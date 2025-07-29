@@ -259,13 +259,31 @@ public struct __CommandLineArguments_v0: Sendable {
   /// argument, representing the version of the event stream schema to use when
   /// writing events to ``eventStreamOutput``.
   ///
-  /// The corresponding stable schema is used to encode events to the event
-  /// stream. ``ABI/Record`` is used if the value of this property is `0` or
-  /// higher.
+  /// This property is internal because its type is internal. External users of
+  /// this structure can use the ``eventStreamSchemaVersion`` property to get or
+  /// set the value of this property.
+  var eventStreamVersionNumber: ABI.VersionNumber?
+
+  /// The value of the `--event-stream-version` or `--experimental-event-stream-version`
+  /// argument, representing the version of the event stream schema to use when
+  /// writing events to ``eventStreamOutput``.
+  ///
+  /// The value of this property is a 1- or 3-component version string such as
+  /// `"0"` or `"1.2.3"`. The corresponding stable schema is used to encode
+  /// events to the event stream. ``ABI/Record`` is used if the value of this
+  /// property is `"0.0.0"` or higher. The testing library compares components
+  /// individually, so `"1.2"` is less than `"1.20"`.
   ///
   /// If the value of this property is `nil`, the testing library assumes that
   /// the current supported (non-experimental) version should be used.
-  public var eventStreamVersion: __ABIVersionNumber?
+  public var eventStreamSchemaVersion: String? {
+    get {
+      eventStreamVersionNumber.map { String(describing: $0) }
+    }
+    set {
+      eventStreamVersionNumber = newValue.flatMap { ABI.VersionNumber($0) }
+    }
+  }
 
   /// The value(s) of the `--filter` argument.
   public var filter: [String]?
@@ -310,7 +328,7 @@ extension __CommandLineArguments_v0: Codable {
     case _verbosity = "verbosity"
     case xunitOutput
     case eventStreamOutputPath
-    case eventStreamVersion
+    case eventStreamVersionNumber = "eventStreamVersion"
     case filter
     case skip
     case repetitions
@@ -393,7 +411,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
         throw _EntryPointError.experimentalABIVersion(eventStreamVersion)
       }
 
-      result.eventStreamVersion = eventStreamVersion
+      result.eventStreamVersionNumber = eventStreamVersion
     }
   }
 #endif
@@ -529,7 +547,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   // Event stream output
   if let eventStreamOutputPath = args.eventStreamOutputPath {
     let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
-    let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersion, encodeAsJSONLines: true) { json in
+    let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: true) { json in
       _ = try? file.withLock {
         try file.write(json)
         try file.write("\n")
@@ -598,7 +616,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   if args.isWarningIssueRecordedEventEnabled == true {
     configuration.eventHandlingOptions.isWarningIssueRecordedEventEnabled = true
   } else {
-    switch args.eventStreamVersion {
+    switch args.eventStreamVersionNumber {
     case .some(...0):
       // If the event stream version was explicitly specified to a value < 1,
       // disable the warning issue event to maintain legacy behavior.
@@ -811,6 +829,20 @@ extension _EntryPointError: CustomStringConvertible {
       #"Invalid value "\#(value)" for argument \#(name)"#
     case let .experimentalABIVersion(versionNumber):
       "Event stream version \(versionNumber) is experimental. Use --experimental-event-stream-version to enable it."
+    }
+  }
+}
+
+// MARK: - Deprecated
+
+extension __CommandLineArguments_v0 {
+  @available(*, deprecated, message: "Use eventStreamSchemaVersion instead.")
+  public var eventStreamVersion: Int? {
+    get {
+      eventStreamVersionNumber.map(\.majorComponent).map(Int.init)
+    }
+    set {
+      eventStreamVersionNumber = newValue.map { ABI.VersionNumber(majorComponent: Int8(clamping: $0)) }
     }
   }
 }

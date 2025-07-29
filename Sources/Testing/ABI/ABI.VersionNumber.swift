@@ -8,29 +8,23 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-/// A type describing an ABI version number.
-///
-/// - Warning: This type is used to implement the testing library's ABI. Do not
-///   use it directly.
-public struct __ABIVersionNumber: Sendable {
-  /// The major version.
-  var majorComponent: Int8 = 0
-
-  /// The minor version.
-  var minorComponent: Int8 = 0
-
-  /// The patch, revision, or bug fix version.
-  var patchComponent: Int8 = 0
-}
-
 extension ABI {
   /// A type describing an ABI version number.
-  typealias VersionNumber = __ABIVersionNumber
+  struct VersionNumber: Sendable {
+    /// The major version.
+    var majorComponent: Int8 = 0
+
+    /// The minor version.
+    var minorComponent: Int8 = 0
+
+    /// The patch, revision, or bug fix version.
+    var patchComponent: Int8 = 0
+  }
 }
 
 // MARK: - ExpressibleByIntegerLiteral, CustomStringConvertible
 
-extension __ABIVersionNumber: ExpressibleByIntegerLiteral, CustomStringConvertible {
+extension ABI.VersionNumber: ExpressibleByIntegerLiteral, CustomStringConvertible {
   public init(integerLiteral value: Int8) {
     self.init(majorComponent: value)
   }
@@ -82,7 +76,7 @@ extension __ABIVersionNumber: ExpressibleByIntegerLiteral, CustomStringConvertib
 
 // MARK: - Equatable, Comparable
 
-extension __ABIVersionNumber: Equatable, Comparable {
+extension ABI.VersionNumber: Equatable, Comparable {
   public static func <(lhs: Self, rhs: Self) -> Bool {
     if lhs.majorComponent != rhs.majorComponent {
       return lhs.majorComponent < rhs.majorComponent
@@ -97,7 +91,7 @@ extension __ABIVersionNumber: Equatable, Comparable {
 
 // MARK: - Codable
 
-extension __ABIVersionNumber: Codable {
+extension ABI.VersionNumber: Codable {
   public init(from decoder: any Decoder) throws {
     let container = try decoder.singleValueContainer()
     if let number = try? container.decode(Int8.self) {

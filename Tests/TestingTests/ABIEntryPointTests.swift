@@ -21,7 +21,7 @@ struct ABIEntryPointTests {
   @Test func v0() async throws {
     var arguments = __CommandLineArguments_v0()
     arguments.filter = ["NonExistentTestThatMatchesNothingHopefully"]
-    arguments.eventStreamVersion = 0
+    arguments.eventStreamSchemaVersion = "0"
     arguments.verbosity = .min
 
     let result = try await _invokeEntryPointV0(passing: arguments) { recordJSON in
@@ -36,7 +36,7 @@ struct ABIEntryPointTests {
   func v0_manyFilters() async throws {
     var arguments = __CommandLineArguments_v0()
     arguments.filter = (1...100).map { "NonExistentTestThatMatchesNothingHopefully_\($0)" }
-    arguments.eventStreamVersion = 0
+    arguments.eventStreamSchemaVersion = "0"
     arguments.verbosity = .min
 
     let result = try await _invokeEntryPointV0(passing: arguments)
@@ -48,7 +48,7 @@ struct ABIEntryPointTests {
   func v0_listingTestsOnly() async throws {
     var arguments = __CommandLineArguments_v0()
     arguments.listTests = true
-    arguments.eventStreamVersion = 0
+    arguments.eventStreamSchemaVersion = "0"
     arguments.verbosity = .min
 
     try await confirmation("Test matched", expectedCount: 1...) { testMatched in

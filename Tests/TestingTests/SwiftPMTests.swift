@@ -230,6 +230,31 @@ struct SwiftPMTests {
     #expect(args.parallel == false)
   }
 
+  @available(*, deprecated)
+  @Test("Deprecated eventStreamVersion property")
+  func deprecatedEventStreamVersionProperty() throws {
+    var args = __CommandLineArguments_v0()
+    args.eventStreamVersion = 0
+    #expect(args.eventStreamVersionNumber == ABI.VersionNumber(majorComponent: 0))
+    #expect(args.eventStreamSchemaVersion == "0")
+
+    args.eventStreamVersion = -1
+    #expect(args.eventStreamVersionNumber == ABI.VersionNumber(majorComponent: -1))
+    #expect(args.eventStreamSchemaVersion == "-1")
+
+    args.eventStreamVersion = 123
+    #expect(args.eventStreamVersionNumber == ABI.VersionNumber(majorComponent: 123))
+    #expect(args.eventStreamSchemaVersion == "123.0")
+
+    args.eventStreamVersionNumber = ABI.VersionNumber(majorComponent: 10, minorComponent: 20, patchComponent: 30)
+    #expect(args.eventStreamVersion == 10)
+    #expect(args.eventStreamSchemaVersion == "10.20.30")
+
+    args.eventStreamSchemaVersion = "10.20.30"
+    #expect(args.eventStreamVersionNumber == ABI.VersionNumber(majorComponent: 10, minorComponent: 20, patchComponent: 30))
+    #expect(args.eventStreamVersion == 10)
+  }
+
   @Test("New-but-not-experimental ABI version")
   func newButNotExperimentalABIVersion() async throws {
     let versionNumber = ABI.VersionNumber(majorComponent: 0, minorComponent: 0, patchComponent: 1)
