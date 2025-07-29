@@ -107,9 +107,9 @@ func `Customer won't eat food unless it's nutritious`(_ food: Food) async {
 }
 ```
 
-- Note: If you use the ``expect(processExitsWith:observing:_:sourceLocation:performing:)``
-  macro with a Swift compiler version lower than 6.3, it doesn't support
-  capturing state.
+- Note: If you use ``expect(processExitsWith:observing:_:sourceLocation:performing:)``
+  or ``require(processExitsWith:observing:_:sourceLocation:performing:)`` with a
+  Swift compiler version lower than 6.3, the macro doesn't capture state.
 
 If a captured value is an argument to the current function or is `self`, the
 compiler infers the value's type. Otherwise, explicitly specify the type of the
