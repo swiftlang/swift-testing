@@ -44,26 +44,17 @@ extension ABI.VersionNumber: CustomStringConvertible {
   init?(_ string: String) {
     // Split the string on "." (assuming it is of the form "1", "1.2", or
     // "1.2.3") and parse the individual components as integers.
-    let result: Self? = withUnsafeTemporaryAllocation(of: Int8.self, capacity: 3) { componentNumbers in
-      componentNumbers.initialize(repeating: 0)
-
-      let components = string.split(separator: ".", maxSplits: 2, omittingEmptySubsequences: false)
-      for (i, component) in zip(componentNumbers.indices, components) {
-        guard let componentNumber = Int8(component) else {
-          // Couldn't parse this component as an integer, so bail.
-          return nil
-        }
-        componentNumbers[i] = componentNumber
-      }
-
-      return Self(majorComponent: componentNumbers[0], minorComponent: componentNumbers[1], patchComponent: componentNumbers[2])
+    let components = string.split(separator: ".", maxSplits: 2, omittingEmptySubsequences: false)
+    func componentValue(_ index: Int) -> Int8? {
+      components.count > index ? Int8(components[index]) : 0
     }
 
-    if let result {
-      self = result
-    } else {
+    guard let majorComponent = componentValue(0),
+          let minorComponent = componentValue(1),
+          let patchComponent = componentValue(2) else {
       return nil
     }
+    self.init(majorComponent, minorComponent, patchComponent)
   }
 
   var description: String {
