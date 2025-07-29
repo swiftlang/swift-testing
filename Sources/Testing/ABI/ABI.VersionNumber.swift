@@ -28,7 +28,7 @@ extension ABI {
 }
 
 extension ABI.VersionNumber {
-  init(_ majorComponent: Int8, _ minorComponent: Int8, _ patchComponent: Int8 = 0) {
+  init(_ majorComponent: _const Int8, _ minorComponent: _const Int8, _ patchComponent: _const Int8 = 0) {
     self.init(majorComponent: majorComponent, minorComponent: minorComponent, patchComponent: patchComponent)
   }
 }
@@ -64,7 +64,7 @@ extension ABI.VersionNumber: CustomStringConvertible {
           let patchComponent = componentValue(2) else {
       return nil
     }
-    self.init(majorComponent, minorComponent, patchComponent)
+    self.init(majorComponent: majorComponent, minorComponent: minorComponent, patchComponent: patchComponent)
   }
 
   var description: String {
