@@ -50,11 +50,32 @@ extension Issue {
     return self
   }
 
+  /// Record an issue when a running test fails unexpectedly.
+  ///
+  /// - Parameters:
+  ///   - comment: A comment describing the expectation.
+  ///   - sourceLocation: The source location to which the issue should be
+  ///     attributed.
+  ///
+  /// - Returns: The issue that was recorded.
+  ///
+  /// Use this function if, while running a test, an issue occurs that cannot be
+  /// represented as an expectation (using the ``expect(_:_:sourceLocation:)``
+  /// or ``require(_:_:sourceLocation:)-5l63q`` macros.)
+  @_disfavoredOverload
+  @discardableResult public static func record(
+    _ comment: Comment? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) -> Self {
+    record(comment, severity: .error, sourceLocation: sourceLocation)
+  }
+
   /// Record an issue when a running test and an issue occurs.
   ///
   /// - Parameters:
   ///   - comment: A comment describing the expectation.
-  ///   - severity: The severity level of the issue.  This factor impacts whether the issue constitutes a failure.
+  ///   - severity: The severity level of the issue.  This factor impacts whether the
+  ///     issue constitutes a failure.  The default is .error.
   ///   - sourceLocation: The source location to which the issue should be
   ///     attributed.
   ///
