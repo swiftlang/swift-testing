@@ -49,7 +49,7 @@ public protocol _AttachableByAddressAsGDIPlusImage: ~Copyable {
   /// 
   /// The testing library automatically calls `GdiplusStartup()` and
   /// `GdiplusShutdown()` before and after calling this function. This function
-  /// can therefore assume that GDI+ is correclty configured on the current
+  /// can therefore assume that GDI+ is correctly configured on the current
   /// thread when it is called.
   ///
   /// - Warning: Do not call this function directly. Instead, call
@@ -107,7 +107,7 @@ public protocol AttachableAsGDIPlusImage {
   /// 
   /// The testing library automatically calls `GdiplusStartup()` and
   /// `GdiplusShutdown()` before and after calling this function. This function
-  /// can therefore assume that GDI+ is correclty configured on the current
+  /// can therefore assume that GDI+ is correctly configured on the current
   /// thread when it is called.
   ///
   /// - Warning: Do not call this function directly. Instead, call
