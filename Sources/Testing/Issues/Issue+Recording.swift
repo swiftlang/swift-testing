@@ -84,6 +84,9 @@ extension Issue {
   /// Use this function if, while running a test, an issue occurs that cannot be
   /// represented as an expectation (using the ``expect(_:_:sourceLocation:)``
   /// or ``require(_:_:sourceLocation:)-5l63q`` macros.)
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
   @discardableResult public static func record(
     _ comment: Comment? = nil,
     severity: Severity = .error,

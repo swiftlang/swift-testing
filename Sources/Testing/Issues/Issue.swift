@@ -84,6 +84,9 @@ public struct Issue: Sendable {
   ///
   /// - ``warning``
   /// - ``error``
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
   public enum Severity: Sendable {
     /// The severity level for an issue which should be noted but is not
     /// necessarily an error.
@@ -100,6 +103,9 @@ public struct Issue: Sendable {
   }
 
   /// The severity of this issue.
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
   public var severity: Severity
   
   /// Whether or not this issue should cause the test it's associated with to be
@@ -112,6 +118,9 @@ public struct Issue: Sendable {
   ///
   /// Use this property to determine if an issue should be considered a failure, instead of
   /// directly comparing the value of the ``severity`` property.
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
   public var isFailure: Bool {
     return !self.isKnown && self.severity >= .error
   }
@@ -160,6 +169,9 @@ public struct Issue: Sendable {
   ///     empty.
   ///   - sourceContext: A ``SourceContext`` indicating where and how this issue
   ///     occurred.
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
   init(
     kind: Kind,
     severity: Severity = .error,
