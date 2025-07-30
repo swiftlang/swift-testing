@@ -65,7 +65,7 @@ extension Issue {
   /// or ``require(_:_:sourceLocation:)-5l63q`` macros.)
   @discardableResult public static func record(
     _ comment: Comment? = nil,
-    severity: Severity,
+    severity: Severity = .error,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
     let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
