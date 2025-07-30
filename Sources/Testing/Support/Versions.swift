@@ -168,14 +168,12 @@ let swiftStandardLibraryVersion: VersionNumber? = {
 /// This value is not part of the public interface of the testing library.
 var swiftCompilerVersion: VersionNumber {
   let packedValue = swt_getSwiftCompilerVersion()
-#if !SWT_TARGET_OS_APPLE
   if packedValue == 0, let swiftStandardLibraryVersion {
     // The compiler did not supply its version. This is currently expected on
     // non-Darwin targets in particular. Substitute the stdlib version (which
     // should generally be aligned on non-Darwin targets.)
     return swiftStandardLibraryVersion
   }
-#endif
   return VersionNumber(
     majorComponent: .init((packedValue % 1_000_000_000_000_000) / 1_000_000_000_000),
     minorComponent: .init((packedValue % 1_000_000_000_000)     / 1_000_000_000),
