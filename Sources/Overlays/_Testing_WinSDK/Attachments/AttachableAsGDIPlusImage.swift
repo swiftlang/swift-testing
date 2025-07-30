@@ -16,14 +16,16 @@ public protocol AttachableAsGDIPlusImage {
   /// by design. The caller is responsible for guarding against concurrent
   /// access to the resulting GDI+ image object.
   /// 
-  /// - Warning: Do not call this function directly. Instead, call ``withGDIPlusImage(for:_:)``.
-  func _withGDIPlusImage<R>(
-    for attachment: borrowing Attachment<some AttachableWrapper<Self>>,
+  /// - Warning: Do not call this function directly. Instead, call
+  ///   ``UnsafeMutablePointer/withGDIPlusImage(for:_:)``.
+  static func _withGDIPlusImage<P, R>(
+    at address: P,
+    for attachment: borrowing Attachment<some AttachableWrapper<P>>,
     _ body: (OpaquePointer) throws -> R
-  ) throws -> R
+  ) throws -> R where P: _Pointer, P.Pointee == Self
 }
 
-extension AttachableAsGDIPlusImage {
+extension _Pointer where Pointee: AttachableAsGDIPlusImage {
   /// GDI+ objects are [not thread-safe](https://learn.microsoft.com/en-us/windows/win32/procthread/multiple-threads-and-gdi-objects)
   /// by design. The caller is responsible for guarding against concurrent
   /// access to the resulting GDI+ image object.
@@ -36,22 +38,9 @@ extension AttachableAsGDIPlusImage {
     // reason about the lifetime of a borrowed value passed into a closure.)
     try withUnsafePointer(to: attachment) { attachment in
       try withGDIPlus {
-        try self._withGDIPlusImage(for: attachment.pointee, body)
+        try Pointee._withGDIPlusImage(at: self, for: attachment.pointee, body)
       }
     }
   }
-}
-
-public protocol _AttachableByAddressAsGDIPlusImage {
-  /// GDI+ objects are [not thread-safe](https://learn.microsoft.com/en-us/windows/win32/procthread/multiple-threads-and-gdi-objects)
-  /// by design. The caller is responsible for guarding against concurrent
-  /// access to the resulting GDI+ image object.
-  /// 
-  /// - Warning: Do not call this function directly. Instead, call ``withGDIPlusImage(for:_:)``.
-  static func _withGDIPlusImage<R>(
-    _ address: UnsafeMutablePointer<Self>,
-    for attachment: borrowing Attachment<some AttachableWrapper<UnsafeMutablePointer<Self>>>,
-    _ body: (OpaquePointer) throws -> R
-  ) throws -> R
 }
 #endif

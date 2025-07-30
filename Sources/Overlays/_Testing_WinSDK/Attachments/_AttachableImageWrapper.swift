@@ -15,14 +15,9 @@ import WinSDK
 private import _Gdiplus
 
 @_spi(Experimental)
-public struct _AttachableImageWrapper<Image>: Sendable where Image: AttachableAsGDIPlusImage {
-  /// The underlying image.
-  ///
-  /// `CGImage` and `UIImage` are sendable, but `NSImage` is not. `NSImage`
-  /// instances can be created from closures that are run at rendering time.
-  /// The AppKit cross-import overlay is responsible for ensuring that any
-  /// instances of this type it creates hold "safe" `NSImage` instances.
-  nonisolated(unsafe) var image: Image
+public struct _AttachableImageWrapper<Pointer>: Sendable where Pointer: _Pointer, Pointer.Pointee: AttachableAsGDIPlusImage {
+  /// A pointer to the underlying image.
+  nonisolated(unsafe) var pointer: Pointer
 
   /// The image format to use when encoding the represented image.
   var imageFormat: AttachableImageFormat?
@@ -32,8 +27,8 @@ public struct _AttachableImageWrapper<Image>: Sendable where Image: AttachableAs
 
 @available(_uttypesAPI, *)
 extension _AttachableImageWrapper: AttachableWrapper {
-  public var wrappedValue: Image {
-    image
+  public var wrappedValue: Pointer {
+    pointer
   }
 
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
@@ -58,7 +53,7 @@ extension _AttachableImageWrapper: AttachableWrapper {
     }
 
     // Save the image into the stream.
-    try image.withGDIPlusImage(for: attachment) { image in
+    try pointer.withGDIPlusImage(for: attachment) { image in
       let rSave = swt_winsdk_GdiplusImageSave(image, stream, &clsid, nil)
       guard rSave == Gdiplus.Ok else {
         throw GDIPlusError.status(rSave)

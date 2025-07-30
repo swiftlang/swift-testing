@@ -14,22 +14,22 @@
 @_spi(Experimental)
 @available(_uttypesAPI, *)
 extension Attachment {
-  public init<T>(
-    _ attachableValue: T,
+  public init<P>(
+    _ attachableValue: P,
     named preferredName: String? = nil,
     as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) where AttachableValue == _AttachableImageWrapper<T> {
-    let imageWrapper = _AttachableImageWrapper(image: attachableValue, imageFormat: imageFormat)
+  ) where AttachableValue == _AttachableImageWrapper<P> {
+    let imageWrapper = _AttachableImageWrapper(pointer: attachableValue, imageFormat: imageFormat)
     self.init(imageWrapper, named: preferredName, sourceLocation: sourceLocation)
   }
 
-  public static func record<T>(
-    _ image: consuming T,
+  public static func record<P>(
+    _ image: P,
     named preferredName: String? = nil,
     as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) where AttachableValue == _AttachableImageWrapper<T> {
+  ) where AttachableValue == _AttachableImageWrapper<P> {
     let attachment = Self(image, named: preferredName, as: imageFormat, sourceLocation: sourceLocation)
     Self.record(attachment, sourceLocation: sourceLocation)
   }
