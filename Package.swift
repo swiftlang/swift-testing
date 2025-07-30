@@ -252,13 +252,7 @@ let package = Package(
       name: "_Testing_WinSDK",
       dependencies: [
         "Testing",
-      ] + {
-#if os(Windows)
-        ["_Gdiplus"]
-#else
-        []
-#endif
-      }(),
+      ],
       path: "Sources/Overlays/_Testing_WinSDK",
       swiftSettings: .packageSettings + .enableLibraryEvolution() + [.interoperabilityMode(.Cxx)]
     ),
@@ -288,15 +282,6 @@ package.targets.append(contentsOf: [
     ],
     swiftSettings: .packageSettings
   )
-])
-#endif
-
-#if os(Windows)
-package.targets.append(contentsOf: [
-  .target(
-    name: "_Gdiplus",
-    cxxSettings: .packageSettings
-  ),
 ])
 #endif
 

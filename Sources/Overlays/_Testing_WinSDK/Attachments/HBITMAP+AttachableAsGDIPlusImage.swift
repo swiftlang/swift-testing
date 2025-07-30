@@ -10,28 +10,32 @@
 
 #if os(Windows)
 @_spi(Experimental) public import Testing
+private import _TestingInternals.GDIPlus
 
-// FIXME: swiftc gets confused about the _Gdiplus module using types from WinSDK; needs to be part of WinSDK directly
 public import WinSDK
-private import _Gdiplus
 
 @_spi(Experimental)
-extension WinSDK.HBITMAP__: AttachableAsGDIPlusImage {
+extension HBITMAP__: AttachableAsGDIPlusImage {
   public static func _withGDIPlusImage<P, R>(
     at address: P,
-    for attachment: borrowing Attachment<some AttachableWrapper<P>>,
+    for attachment: borrowing Attachment<some AttachableWrapper<P> & ~Copyable>,
     _ body: (OpaquePointer) throws -> R
   ) throws -> R where P: _Pointer, P.Pointee == Self {
-    let address = UnsafeMutablePointer<Self>(bitPattern: UInt(bitPattern: address))
-    guard let image = swt_winsdk_GdiplusBitmapCreate(address, nil) else {
+    let address = UnsafeMutablePointer<Self>(bitPattern: UInt(bitPattern: address))!
+    guard let bitmap = swt_GdiplusBitmapFromHBITMAP(address, nil) else {
       throw GDIPlusError.status(Gdiplus.GenericError)
     }
     defer {
-      swt_winsdk_GdiplusImageDelete(image)
+      swt_GdiplusBitmapDelete(bitmap)
     }
     return try withExtendedLifetime(self) {
-      try body(image)
+      try body(bitmap)
     }
+  }
+
+  public static func _cleanUpAttachment<P>(at address: P) where P: _Pointer, P.Pointee == Self {
+    let address = UnsafeMutablePointer<Self>(bitPattern: UInt(bitPattern: address))!
+    DeleteObject(address)
   }
 }
 #endif

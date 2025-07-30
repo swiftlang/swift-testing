@@ -10,9 +10,9 @@
 
 #if os(Windows)
 @_spi(Experimental) import Testing
+private import _TestingInternals.GDIPlus
 
-import WinSDK
-private import _Gdiplus
+internal import WinSDK
 
 enum GDIPlusError: Error {
   case status(Gdiplus.Status)
@@ -47,12 +47,12 @@ func withGDIPlus<R>(_ body: () throws -> R) throws -> R {
 
   var token = ULONG_PTR(0)
   var input = Gdiplus.GdiplusStartupInput(nil, false, false)
-  let rStartup = swt_winsdk_GdiplusStartup(&token, &input, nil)
+  let rStartup = swt_GdiplusStartup(&token, &input, nil)
   guard rStartup == Gdiplus.Ok else {
     throw GDIPlusError.status(rStartup)
   }
   defer {
-    swt_winsdk_GdiplusShutdown(token)
+    swt_GdiplusShutdown(token)
   }
 
   return try body()

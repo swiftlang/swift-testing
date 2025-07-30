@@ -10,9 +10,9 @@
 
 #if os(Windows)
 @_spi(Experimental) import Testing
+private import _TestingInternals.GDIPlus
 
 public import WinSDK
-private import _Gdiplus
 
 extension AttachableImageFormat {
   /// The set of `ImageCodecInfo` instances known to GDI+.

@@ -10,18 +10,40 @@
 
 #if os(Windows)
 @_spi(Experimental) public import Testing
+private import _TestingInternals.GDIPlus
 
-import WinSDK
-private import _Gdiplus
+internal import WinSDK
 
 @_spi(Experimental)
-public struct _AttachableImageWrapper<Pointer>: Sendable where Pointer: _Pointer, Pointer.Pointee: AttachableAsGDIPlusImage {
+public struct _AttachableImageWrapper<Pointer>: ~Copyable where Pointer: _Pointer, Pointer.Pointee: AttachableAsGDIPlusImage {
   /// A pointer to the underlying image.
-  nonisolated(unsafe) var pointer: Pointer
+  var pointer: Pointer
 
   /// The image format to use when encoding the represented image.
   var imageFormat: AttachableImageFormat?
+
+  /// Whether or not to call `_cleanUpAttachment(at:)` on `pointer` when this
+  /// instance is deinitialized.
+  /// 
+  /// - Note: If cleanup is not performed, `pointer` is effectively being
+  ///   borrowed from the calling context.
+  var cleanUpWhenDone: Bool
+
+  init(pointer: Pointer, imageFormat: AttachableImageFormat?, cleanUpWhenDone: Bool) {
+    self.pointer = pointer
+    self.imageFormat = imageFormat
+    self.cleanUpWhenDone = cleanUpWhenDone
+  }
+
+  deinit {
+    if cleanUpWhenDone {
+      Pointer.Pointee._cleanUpAttachment(at: pointer)
+    }
+  }
 }
+
+@available(*, unavailable)
+extension _AttachableImageWrapper: Sendable {}
 
 // MARK: -
 
@@ -37,11 +59,13 @@ extension _AttachableImageWrapper: AttachableWrapper {
     // does not provide a mechanism to access the underlying memory directly.
     var stream: UnsafeMutablePointer<IStream>?
     let rCreateStream = CreateStreamOnHGlobal(nil, true, &stream)
-    guard S_OK == rCreateStream else {
+    guard S_OK == rCreateStream, let stream else {
       throw GDIPlusError.streamCreationFailed(rCreateStream)
     }
     defer {
-      swt_winsdk_IStreamRelease(stream)
+      stream.withMemoryRebound(to: IUnknown.self, capacity: 1) { stream in
+        _ = swt_IUnknown_Release(stream)
+      }
     }
 
     // Get the CLSID of the image encoder corresponding to the specified image
@@ -54,7 +78,7 @@ extension _AttachableImageWrapper: AttachableWrapper {
 
     // Save the image into the stream.
     try pointer.withGDIPlusImage(for: attachment) { image in
-      let rSave = swt_winsdk_GdiplusImageSave(image, stream, &clsid, nil)
+      let rSave = swt_GdiplusBitmapSave(image, stream, &clsid, nil)
       guard rSave == Gdiplus.Ok else {
         throw GDIPlusError.status(rSave)
       }
