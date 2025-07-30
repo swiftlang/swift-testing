@@ -15,9 +15,9 @@ private import _TestingInternals.GDIPlus
 internal import WinSDK
 
 @_spi(Experimental)
-public struct _AttachableImageWrapper<Pointer>: ~Copyable where Pointer: _Pointer, Pointer.Pointee: AttachableAsGDIPlusImage {
+public struct _AttachableImageWrapper<Image>: ~Copyable where Image: AttachableAsGDIPlusImage {
   /// A pointer to the underlying image.
-  var pointer: Pointer
+  var imageAddress: UnsafeMutablePointer<Image>
 
   /// The image format to use when encoding the represented image.
   var imageFormat: AttachableImageFormat?
@@ -29,15 +29,15 @@ public struct _AttachableImageWrapper<Pointer>: ~Copyable where Pointer: _Pointe
   ///   borrowed from the calling context.
   var cleanUpWhenDone: Bool
 
-  init(pointer: Pointer, imageFormat: AttachableImageFormat?, cleanUpWhenDone: Bool) {
-    self.pointer = pointer
+  init(imageAddress: UnsafeMutablePointer<Image>, imageFormat: AttachableImageFormat?, cleanUpWhenDone: Bool) {
+    self.imageAddress = imageAddress
     self.imageFormat = imageFormat
     self.cleanUpWhenDone = cleanUpWhenDone
   }
 
   deinit {
     if cleanUpWhenDone {
-      Pointer.Pointee._cleanUpAttachment(at: pointer)
+      Image._cleanUpAttachment(at: imageAddress)
     }
   }
 }
@@ -49,8 +49,8 @@ extension _AttachableImageWrapper: Sendable {}
 
 @available(_uttypesAPI, *)
 extension _AttachableImageWrapper: AttachableWrapper {
-  public var wrappedValue: Pointer {
-    pointer
+  public var wrappedValue: UnsafePointer<Image> {
+    UnsafePointer(imageAddress)
   }
 
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
@@ -77,7 +77,7 @@ extension _AttachableImageWrapper: AttachableWrapper {
     }
 
     // Save the image into the stream.
-    try pointer.withGDIPlusImage(for: attachment) { image in
+    try imageAddress.withGDIPlusImage(for: attachment) { image in
       let rSave = swt_GdiplusBitmapSave(image, stream, &clsid, nil)
       guard rSave == Gdiplus.Ok else {
         throw GDIPlusError.status(rSave)

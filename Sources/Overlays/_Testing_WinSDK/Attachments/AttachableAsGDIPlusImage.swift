@@ -14,6 +14,7 @@ private import _TestingInternals.GDIPlus
 
 internal import WinSDK
 
+@_spi(Experimental)
 public protocol AttachableAsGDIPlusImage {
   /// Call a function and pass a GDI+ image representing this instance to it.
   ///
@@ -40,11 +41,11 @@ public protocol AttachableAsGDIPlusImage {
   /// 
   /// - Warning: Do not call this function directly. Instead, call
   ///   ``UnsafeMutablePointer/withGDIPlusImage(for:_:)``.
-  static func _withGDIPlusImage<P, R>(
-    at address: P,
-    for attachment: borrowing Attachment<some AttachableWrapper<P> & ~Copyable>,
+  static func _withGDIPlusImage<R>(
+    at address: UnsafeMutablePointer<Self>,
+    for attachment: borrowing Attachment<_AttachableImageWrapper<Self>>,
     _ body: (OpaquePointer) throws -> R
-  ) throws -> R where P: _Pointer, P.Pointee == Self
+  ) throws -> R
 
   /// Clean up any resources at the given address.
   /// 
@@ -56,10 +57,10 @@ public protocol AttachableAsGDIPlusImage {
   /// automatically by `_AttachableImageWrapper` when it is deinitialized.
   /// 
   /// - Warning: Do not call this function directly.
-  static func _cleanUpAttachment<P>(at address: P) where P: _Pointer, P.Pointee == Self
+  static func _cleanUpAttachment(at address: UnsafeMutablePointer<Self>)
 }
 
-extension _Pointer where Pointee: AttachableAsGDIPlusImage {
+extension UnsafeMutablePointer where Pointee: AttachableAsGDIPlusImage {
   /// Call a function and pass a GDI+ image representing this instance to it.
   ///
   /// - Parameters:
@@ -80,7 +81,7 @@ extension _Pointer where Pointee: AttachableAsGDIPlusImage {
   ///   by design. The caller is responsible for guarding against concurrent
   ///   access to the resulting GDI+ image object.
   func withGDIPlusImage<R>(
-    for attachment: borrowing Attachment<some AttachableWrapper<Self> & ~Copyable>,
+    for attachment: borrowing Attachment<_AttachableImageWrapper<Pointee>>,
     _ body: (OpaquePointer) throws -> R
   ) throws -> R {
     // Stuff the attachment into a pointer so we can reference it from within

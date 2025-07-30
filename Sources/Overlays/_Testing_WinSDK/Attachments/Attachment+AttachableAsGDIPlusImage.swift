@@ -47,13 +47,13 @@ extension Attachment where AttachableValue: ~Copyable {
   ///   ``Attachment/record(_:named:as:sourceLocation)`` instead of this
   ///   initializer, or make a copy of the resource before passing it to this
   ///   initializer.
-  public init<P>(
-    _ attachableValue: consuming P,
+  public init<T>(
+    _ attachableValue: consuming UnsafeMutablePointer<T>,
     named preferredName: String? = nil,
     as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) where AttachableValue == _AttachableImageWrapper<P> {
-    let imageWrapper = _AttachableImageWrapper(pointer: attachableValue, imageFormat: imageFormat, cleanUpWhenDone: true)
+  ) where AttachableValue == _AttachableImageWrapper<T> {
+    let imageWrapper = _AttachableImageWrapper(imageAddress: attachableValue, imageFormat: imageFormat, cleanUpWhenDone: true)
     self.init(imageWrapper, named: preferredName, sourceLocation: sourceLocation)
   }
 
@@ -85,13 +85,13 @@ extension Attachment where AttachableValue: ~Copyable {
   /// specify a path extension, or if the path extension you specify doesn't
   /// correspond to an image format the operating system knows how to write, the
   /// testing library selects an appropriate image format for you.
-  public static func record<P>(
-    _ image: borrowing P,
+  public static func record<T>(
+    _ image: borrowing UnsafeMutablePointer<T>,
     named preferredName: String? = nil,
     as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) where AttachableValue == _AttachableImageWrapper<P> {
-    let imageWrapper = _AttachableImageWrapper(pointer: copy image, imageFormat: imageFormat, cleanUpWhenDone: true)
+  ) where AttachableValue == _AttachableImageWrapper<T> {
+    let imageWrapper = _AttachableImageWrapper(imageAddress: copy image, imageFormat: imageFormat, cleanUpWhenDone: true)
     let attachment = Self(imageWrapper, named: preferredName, sourceLocation: sourceLocation)
     Self.record(attachment, sourceLocation: sourceLocation)
   }

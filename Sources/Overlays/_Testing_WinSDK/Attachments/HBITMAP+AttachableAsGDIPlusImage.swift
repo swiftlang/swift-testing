@@ -16,12 +16,11 @@ public import WinSDK
 
 @_spi(Experimental)
 extension HBITMAP__: AttachableAsGDIPlusImage {
-  public static func _withGDIPlusImage<P, R>(
-    at address: P,
-    for attachment: borrowing Attachment<some AttachableWrapper<P> & ~Copyable>,
+  public static func _withGDIPlusImage<R>(
+    at address: UnsafeMutablePointer<Self>,
+    for attachment: borrowing Attachment<_AttachableImageWrapper<Self>>,
     _ body: (OpaquePointer) throws -> R
-  ) throws -> R where P: _Pointer, P.Pointee == Self {
-    let address = UnsafeMutablePointer<Self>(bitPattern: UInt(bitPattern: address))!
+  ) throws -> R {
     guard let bitmap = swt_GdiplusBitmapFromHBITMAP(address, nil) else {
       throw GDIPlusError.status(Gdiplus.GenericError)
     }
@@ -33,7 +32,7 @@ extension HBITMAP__: AttachableAsGDIPlusImage {
     }
   }
 
-  public static func _cleanUpAttachment<P>(at address: P) where P: _Pointer, P.Pointee == Self {
+  public static func _cleanUpAttachment(at address: UnsafeMutablePointer<Self>) {
     let address = UnsafeMutablePointer<Self>(bitPattern: UInt(bitPattern: address))!
     DeleteObject(address)
   }
