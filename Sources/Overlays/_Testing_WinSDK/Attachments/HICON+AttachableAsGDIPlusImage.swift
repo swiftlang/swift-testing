@@ -16,12 +16,12 @@ public import WinSDK
 
 @_spi(Experimental)
 extension HICON__: AttachableAsGDIPlusImage {
-  public static func _withGDIPlusImage<R>(
-    at address: UnsafeMutablePointer<Self>,
-    for attachment: borrowing Attachment<_AttachableImageWrapper<Self>>,
+  public static func _withGDIPlusImage<A, R>(
+    at imageAddress: UnsafeMutablePointer<Self>,
+    for attachment: borrowing Attachment<_AttachableImageWrapper<A>>,
     _ body: (OpaquePointer) throws -> R
-  ) throws -> R {
-    guard let bitmap = swt_GdiplusBitmapFromHICON(address) else {
+  ) throws -> R where A: AttachableAsGDIPlusImage {
+    guard let bitmap = swt_GdiplusBitmapFromHICON(imageAddress) else {
       throw GDIPlusError.status(Gdiplus.GenericError)
     }
     defer {
@@ -32,9 +32,8 @@ extension HICON__: AttachableAsGDIPlusImage {
     }
   }
 
-  public static func _cleanUpAttachment(at address: UnsafeMutablePointer<Self>) {
-    let address = UnsafeMutablePointer<Self>(bitPattern: UInt(bitPattern: address))!
-    DeleteObject(address)
+  public static func _cleanUpAttachment(at imageAddress: UnsafeMutablePointer<Self>) {
+    DeleteObject(imageAddress)
   }
 }
 #endif

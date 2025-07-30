@@ -19,7 +19,7 @@ public protocol AttachableAsGDIPlusImage {
   /// Call a function and pass a GDI+ image representing this instance to it.
   ///
   /// - Parameters:
-  ///   - address: The address of the instance of this type.
+  ///   - imageAddress: The address of the instance of this type.
   ///   - attachment: The attachment that is requesting an image (that is, the
   ///     attachment containing this instance.)
   ///   - body: A function to call. A copy of this instance converted to a GDI+
@@ -41,26 +41,26 @@ public protocol AttachableAsGDIPlusImage {
   /// 
   /// - Warning: Do not call this function directly. Instead, call
   ///   ``UnsafeMutablePointer/withGDIPlusImage(for:_:)``.
-  static func _withGDIPlusImage<R>(
-    at address: UnsafeMutablePointer<Self>,
-    for attachment: borrowing Attachment<_AttachableImageWrapper<Self>>,
+  static func _withGDIPlusImage<A, R>(
+    at imageAddress: UnsafeMutablePointer<Self>,
+    for attachment: borrowing Attachment<_AttachableImageWrapper<A>>,
     _ body: (OpaquePointer) throws -> R
-  ) throws -> R
+  ) throws -> R where A: AttachableAsGDIPlusImage
 
   /// Clean up any resources at the given address.
   /// 
   /// - Parameters:
-  ///   - address: The address of the instance of this type.
+  ///   - imageAddress: The address of the instance of this type.
   /// 
   /// The implementation of this function cleans up any resources (such as
-  /// handles or COM objects) at `address`. This function is invoked
+  /// handles or COM objects) at `imageAddress`. This function is invoked
   /// automatically by `_AttachableImageWrapper` when it is deinitialized.
   /// 
   /// - Warning: Do not call this function directly.
-  static func _cleanUpAttachment(at address: UnsafeMutablePointer<Self>)
+  static func _cleanUpAttachment(at imageAddress: UnsafeMutablePointer<Self>)
 }
 
-extension UnsafeMutablePointer where Pointee: AttachableAsGDIPlusImage {
+extension AttachableAsGDIPlusImage {
   /// Call a function and pass a GDI+ image representing this instance to it.
   ///
   /// - Parameters:
@@ -80,16 +80,19 @@ extension UnsafeMutablePointer where Pointee: AttachableAsGDIPlusImage {
   /// - Warning: GDI+ objects are [not thread-safe](https://learn.microsoft.com/en-us/windows/win32/procthread/multiple-threads-and-gdi-objects)
   ///   by design. The caller is responsible for guarding against concurrent
   ///   access to the resulting GDI+ image object.
-  func withGDIPlusImage<R>(
-    for attachment: borrowing Attachment<_AttachableImageWrapper<Pointee>>,
+  func withGDIPlusImage<A, R>(
+    for attachment: borrowing Attachment<_AttachableImageWrapper<A>>,
     _ body: (OpaquePointer) throws -> R
-  ) throws -> R {
-    // Stuff the attachment into a pointer so we can reference it from within
-    // the closure we pass to `withGDIPlus(_:)`. (The compiler currently can't
-    // reason about the lifetime of a borrowed value passed into a closure.)
-    try withUnsafePointer(to: attachment) { attachment in
-      try withGDIPlus {
-        try Pointee._withGDIPlusImage(at: self, for: attachment.pointee, body)
+  ) throws -> R where A: AttachableAsGDIPlusImage {
+    var selfCopy = self
+    return try withUnsafeMutablePointer(to: &selfCopy) { imageAddress in
+      // Stuff the attachment into a pointer so we can reference it from within
+      // the closure we pass to `withGDIPlus(_:)`. (The compiler currently can't
+      // reason about the lifetime of a borrowed value passed into a closure.)
+      try withUnsafePointer(to: attachment) { attachment in
+        try withGDIPlus {
+          try Self._withGDIPlusImage(at: imageAddress, for: attachment.pointee, body)
+        }
       }
     }
   }
