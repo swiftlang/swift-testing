@@ -169,9 +169,6 @@ public struct Issue: Sendable {
   ///     empty.
   ///   - sourceContext: A ``SourceContext`` indicating where and how this issue
   ///     occurred.
-  /// @Metadata {
-  ///   @Available(Swift, introduced: 6.3)
-  /// }
   init(
     kind: Kind,
     severity: Severity = .error,
