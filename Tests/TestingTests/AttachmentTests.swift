@@ -701,6 +701,15 @@ extension AttachmentTests {
 #endif
 
 #if canImport(WinSDK) && canImport(_Testing_WinSDK)
+    @MainActor @Test func attachHICON() throws {
+      let icon = try #require(LoadIconA(nil, swt_IDI_SHIELD()))
+      let attachment = Attachment(icon, named: "square.png")
+      try attachment.withUnsafeBytes { buffer in
+        #expect(buffer.count > 32)
+      }
+      Attachment.record(attachment)
+    }
+
     @MainActor @Test func attachHBITMAP() throws {
       let (width, height) = (GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON))
 
@@ -722,7 +731,7 @@ extension AttachmentTests {
       let bitmap = try #require(CreateCompatibleBitmap(screenDC, width, height))
       SelectObject(dc, bitmap)
       DrawIcon(dc, 0, 0, icon)
-      
+
       let attachment = Attachment(bitmap, named: "diamond.png")
       try attachment.withUnsafeBytes { buffer in
         #expect(buffer.count > 32)

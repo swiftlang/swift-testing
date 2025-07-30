@@ -43,7 +43,7 @@ extension _AttachableImageWrapper: AttachableWrapper {
     var stream: UnsafeMutablePointer<IStream>?
     let rCreateStream = CreateStreamOnHGlobal(nil, true, &stream)
     guard S_OK == rCreateStream else {
-      throw GDIPlusError.hresult(rCreateStream)
+      throw GDIPlusError.streamCreationFailed(rCreateStream)
     }
     defer {
       swt_winsdk_IStreamRelease(stream)
@@ -54,7 +54,7 @@ extension _AttachableImageWrapper: AttachableWrapper {
     // TODO: infer an image format from the filename like we do on Darwin.
     let imageFormat = self.imageFormat ?? .png
     guard var clsid = imageFormat.clsid else {
-      throw GDIPlusError.clsidNotFoundForImageFormat(imageFormat)
+      throw GDIPlusError.clsidNotFound
     }
 
     // Save the image into the stream.
@@ -71,10 +71,10 @@ extension _AttachableImageWrapper: AttachableWrapper {
     var global: HGLOBAL?
     let rGetGlobal = GetHGlobalFromStream(stream, &global)
     guard S_OK == rGetGlobal else {
-      throw GDIPlusError.hresult(rGetGlobal)
+      throw GDIPlusError.globalFromStreamFailed(rGetGlobal)
     }
     guard let baseAddress = GlobalLock(global) else {
-      throw GDIPlusError.win32Error(GetLastError())
+      throw Win32Error(rawValue: GetLastError())
     }
     defer {
       GlobalUnlock(global)

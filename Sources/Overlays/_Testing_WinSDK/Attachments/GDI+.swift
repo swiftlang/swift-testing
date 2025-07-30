@@ -16,10 +16,27 @@ private import _Gdiplus
 
 enum GDIPlusError: Error {
   case status(Gdiplus.Status)
-  case hresult(HRESULT)
-  case win32Error(DWORD)
-  case clsidNotFoundForImageFormat(AttachableImageFormat)
+  case streamCreationFailed(HRESULT)
+  case globalFromStreamFailed(HRESULT)
+  case clsidNotFound
 }
+
+extension GDIPlusError: CustomStringConvertible {
+  var description: String {
+    switch self {
+    case let .status(status):
+      "Could not create the corresponding GDI+ image (Gdiplus.Status \(status.rawValue))."
+    case let .streamCreationFailed(result):
+      "Could not create an in-memory stream (HRESULT \(result))."
+    case let .globalFromStreamFailed(result):
+      "Could not access the buffer containing the encoded image (HRESULT \(result))."
+    case .clsidNotFound:
+      "Could not find an appropriate CSLID value for the specified image format."
+    }
+  }
+}
+
+// MARK: -
 
 func withGDIPlus<R>(_ body: () throws -> R) throws -> R {
   // "Escape hatch" if the program being tested calls GdiplusStartup() itself in
