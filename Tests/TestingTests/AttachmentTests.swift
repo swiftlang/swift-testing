@@ -737,7 +737,10 @@ extension AttachmentTests {
       }
       
       let bitmap = try #require(CreateCompatibleBitmap(screenDC, width, height))
-      SelectObject(dc, bitmap)
+      let oldSelectedObject = SelectObject(dc, bitmap)
+      defer {
+        _ = SelectObject(dc, oldSelectedObject)
+      }
       DrawIcon(dc, 0, 0, icon)
 
       return bitmap

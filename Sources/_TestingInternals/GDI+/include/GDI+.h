@@ -31,25 +31,29 @@ static inline void swt_GdiplusShutdown(ULONG_PTR token) {
   Gdiplus::GdiplusShutdown(token);
 }
 
-static inline Gdiplus::Bitmap *_Nullable swt_GdiplusBitmapFromHBITMAP(HBITMAP bitmap, HPALETTE _Nullable palette) {
+static inline Gdiplus::Image *swt_GdiplusImageFromHBITMAP(HBITMAP bitmap, HPALETTE _Nullable palette) {
   return Gdiplus::Bitmap::FromHBITMAP(bitmap, palette);
 }
 
-static inline Gdiplus::Bitmap *_Nullable swt_GdiplusBitmapFromHICON(HICON icon) {
+static inline Gdiplus::Image *swt_GdiplusImageFromHICON(HICON icon) {
   return Gdiplus::Bitmap::FromHICON(icon);
 }
 
-static inline void swt_GdiplusBitmapDelete(Gdiplus::Bitmap *bitmap) {
-  delete bitmap;
+static inline Gdiplus::Image *swt_GdiplusImageClone(Gdiplus::Image *image) {
+  return image->Clone();
 }
 
-static inline Gdiplus::Status swt_GdiplusBitmapSave(
-  Gdiplus::Bitmap *bitmap,
+static inline void swt_GdiplusImageDelete(Gdiplus::Image *image) {
+  delete image;
+}
+
+static inline Gdiplus::Status swt_GdiplusImageSave(
+  Gdiplus::Image *image,
   IStream *stream,
   const CLSID *format,
   const Gdiplus::EncoderParameters *_Nullable encoderParams
 ) {
-  return bitmap->Save(stream, format, encoderParams);
+  return image->Save(stream, format, encoderParams);
 }
 
 static inline GUID swt_GdiplusEncoderQuality(void) {

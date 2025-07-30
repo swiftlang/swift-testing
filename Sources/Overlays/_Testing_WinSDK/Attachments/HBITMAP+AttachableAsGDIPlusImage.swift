@@ -19,16 +19,15 @@ extension HBITMAP__: _AttachableByAddressAsGDIPlusImage {
   public static func _withGDIPlusImage<A, R>(
     at imageAddress: UnsafeMutablePointer<Self>,
     for attachment: borrowing Attachment<_AttachableImageWrapper<A>>,
-    _ body: (OpaquePointer) throws -> R
+    _ body: (borrowing UnsafeMutablePointer<GDIPlusImage>) throws -> R
   ) throws -> R where A: AttachableAsGDIPlusImage {
-    guard let bitmap = swt_GdiplusBitmapFromHBITMAP(imageAddress, nil) else {
-      throw GDIPlusError.status(Gdiplus.GenericError)
-    }
+    let image = swt_GdiplusImageFromHBITMAP(imageAddress, nil)
     defer {
-      swt_GdiplusBitmapDelete(bitmap)
+      swt_GdiplusImageDelete(image)
     }
     return try withExtendedLifetime(self) {
-      try body(bitmap)
+      var image: GDIPlusImage = GDIPlusImage(borrowing: image)
+      return try body(&image)
     }
   }
 

@@ -19,16 +19,15 @@ extension HICON__: _AttachableByAddressAsGDIPlusImage {
   public static func _withGDIPlusImage<A, R>(
     at imageAddress: UnsafeMutablePointer<Self>,
     for attachment: borrowing Attachment<_AttachableImageWrapper<A>>,
-    _ body: (OpaquePointer) throws -> R
+    _ body: (borrowing UnsafeMutablePointer<GDIPlusImage>) throws -> R
   ) throws -> R where A: AttachableAsGDIPlusImage {
-    guard let bitmap = swt_GdiplusBitmapFromHICON(imageAddress) else {
-      throw GDIPlusError.status(Gdiplus.GenericError)
-    }
+    let image = swt_GdiplusImageFromHICON(imageAddress)
     defer {
-      swt_GdiplusBitmapDelete(bitmap)
+      swt_GdiplusImageDelete(image)
     }
     return try withExtendedLifetime(self) {
-      try body(bitmap)
+      var image = GDIPlusImage(borrowing: image)
+      return try body(&image)
     }
   }
 

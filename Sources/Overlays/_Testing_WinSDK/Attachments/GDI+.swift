@@ -10,7 +10,7 @@
 
 #if os(Windows)
 @_spi(Experimental) import Testing
-private import _TestingInternals.GDIPlus
+internal import _TestingInternals.GDIPlus
 
 internal import WinSDK
 

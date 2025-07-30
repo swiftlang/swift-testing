@@ -32,7 +32,7 @@ internal import WinSDK
 /// you have an image in another format that needs to be attached to a test,
 /// first convert it to an instance of one of the types above.
 @_spi(Experimental)
-public protocol _AttachableByAddressAsGDIPlusImage {
+public protocol _AttachableByAddressAsGDIPlusImage: ~Copyable {
   /// Call a function and pass a GDI+ image representing this instance to it.
   ///
   /// - Parameters:
@@ -57,7 +57,7 @@ public protocol _AttachableByAddressAsGDIPlusImage {
   static func _withGDIPlusImage<A, R>(
     at imageAddress: UnsafeMutablePointer<Self>,
     for attachment: borrowing Attachment<_AttachableImageWrapper<A>>,
-    _ body: (OpaquePointer) throws -> R
+    _ body: (borrowing UnsafeMutablePointer<GDIPlusImage>) throws -> R
   ) throws -> R where A: AttachableAsGDIPlusImage
 
   /// Clean up any resources at the given address.
@@ -114,7 +114,7 @@ public protocol AttachableAsGDIPlusImage {
   ///   ``UnsafeMutablePointer/withGDIPlusImage(for:_:)``.
   func _withGDIPlusImage<A, R>(
     for attachment: borrowing Attachment<_AttachableImageWrapper<A>>,
-    _ body: (OpaquePointer) throws -> R
+    _ body: (borrowing UnsafeMutablePointer<GDIPlusImage>) throws -> R
   ) throws -> R where A: AttachableAsGDIPlusImage
 
   /// Clean up any resources at the given address.
@@ -148,7 +148,7 @@ extension AttachableAsGDIPlusImage {
   /// calls `GdiplusStartup()` and `GdiplusShutdown()` at the appropriate times.
   func withGDIPlusImage<A, R>(
     for attachment: borrowing Attachment<_AttachableImageWrapper<A>>,
-    _ body: (OpaquePointer) throws -> R
+    _ body: (borrowing UnsafeMutablePointer<GDIPlusImage>) throws -> R
   ) throws -> R where A: AttachableAsGDIPlusImage {
     // Stuff the attachment into a pointer so we can reference it from within
     // the closure we pass to `withGDIPlus(_:)`. (The compiler currently can't

@@ -97,7 +97,7 @@ extension _AttachableImageWrapper: AttachableWrapper {
 
       // Save the image into the stream.
       try image.withGDIPlusImage(for: attachment) { image in
-        let rSave = swt_GdiplusBitmapSave(image, stream, &clsid, &encoderParams)
+        let rSave = swt_GdiplusImageSave(image.pointee.imageAddress, stream, &clsid, &encoderParams)
         guard rSave == Gdiplus.Ok else {
           throw GDIPlusError.status(rSave)
         }
