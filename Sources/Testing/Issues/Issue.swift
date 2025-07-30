@@ -333,6 +333,9 @@ extension Issue {
     public var kind: Kind.Snapshot
 
     /// The severity of this issue.
+    /// @Metadata {
+    ///   @Available(Swift, introduced: 6.3)
+    /// }
     public var severity: Severity
 
     /// Any comments provided by the developer and associated with this issue.
