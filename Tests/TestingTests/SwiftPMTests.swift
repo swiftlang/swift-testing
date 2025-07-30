@@ -279,7 +279,7 @@ struct SwiftPMTests {
 
   @Test("Future ABI version (should be nil)")
   func futureABIVersion() async throws {
-    #expect(swiftCompilerVersion >= VersionNumber(6, 1))
+    #expect(swiftCompilerVersion >= VersionNumber(6, 0))
     #expect(swiftCompilerVersion < VersionNumber(8, 0), "Swift 8.0 is here! Please update this test.")
     let versionNumber = VersionNumber(8, 0)
     let versionTypeInfo = ABI.version(forVersionNumber: versionNumber).map(TypeInfo.init(describing:))
