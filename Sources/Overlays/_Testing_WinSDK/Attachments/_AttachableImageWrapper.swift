@@ -14,10 +14,21 @@ private import _TestingInternals.GDIPlus
 
 internal import WinSDK
 
+/// A wrapper type for image types such as `HBITMAP` and `HICON` that can be
+/// attached indirectly.
+///
+/// You do not need to use this type directly. Instead, initialize an instance
+/// of ``Attachment`` using an instance of an image type that conforms to
+/// ``AttachableAsGDIPlusImage``. The following system-provided image types
+/// conform to the ``AttachableAsGDIPlusImage`` protocol and can be attached to
+/// a test:
+///
+/// - [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps)
+/// - [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons)
 @_spi(Experimental)
 public struct _AttachableImageWrapper<Image>: ~Copyable where Image: AttachableAsGDIPlusImage {
-  /// A pointer to the underlying image.
-  var imageAddress: UnsafeMutablePointer<Image>
+  /// The underlying image.
+  var image: Image
 
   /// The image format to use when encoding the represented image.
   var imageFormat: AttachableImageFormat?
@@ -29,15 +40,15 @@ public struct _AttachableImageWrapper<Image>: ~Copyable where Image: AttachableA
   ///   borrowed from the calling context.
   var cleanUpWhenDone: Bool
 
-  init(imageAddress: UnsafeMutablePointer<Image>, imageFormat: AttachableImageFormat?, cleanUpWhenDone: Bool) {
-    self.imageAddress = imageAddress
+  init(image: Image, imageFormat: AttachableImageFormat?, cleanUpWhenDone: Bool) {
+    self.image = image
     self.imageFormat = imageFormat
     self.cleanUpWhenDone = cleanUpWhenDone
   }
 
   deinit {
     if cleanUpWhenDone {
-      Image._cleanUpAttachment(at: imageAddress)
+      image._cleanUpAttachment()
     }
   }
 }
@@ -49,8 +60,8 @@ extension _AttachableImageWrapper: Sendable {}
 
 @available(_uttypesAPI, *)
 extension _AttachableImageWrapper: AttachableWrapper {
-  public var wrappedValue: UnsafePointer<Image> {
-    UnsafePointer(imageAddress)
+  public var wrappedValue: Image {
+    image
   }
 
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
@@ -70,17 +81,26 @@ extension _AttachableImageWrapper: AttachableWrapper {
 
     // Get the CLSID of the image encoder corresponding to the specified image
     // format.
-    // TODO: infer an image format from the filename like we do on Darwin.
     let imageFormat = self.imageFormat ?? .png
     guard var clsid = imageFormat.clsid else {
       throw GDIPlusError.clsidNotFound
     }
 
-    // Save the image into the stream.
-    try imageAddress.withGDIPlusImage(for: attachment) { image in
-      let rSave = swt_GdiplusBitmapSave(image, stream, &clsid, nil)
-      guard rSave == Gdiplus.Ok else {
-        throw GDIPlusError.status(rSave)
+    var encodingQuality = LONG(imageFormat.encodingQuality * 100.0)
+    try withUnsafeMutableBytes(of: &encodingQuality) { encodingQuality in
+      var encoderParams = Gdiplus.EncoderParameters()
+      encoderParams.Count = 1
+      encoderParams.Parameter.Guid = swt_GdiplusEncoderQuality()
+      encoderParams.Parameter.Type = ULONG(Gdiplus.EncoderParameterValueTypeLong.rawValue)
+      encoderParams.Parameter.NumberOfValues = 1
+      encoderParams.Parameter.Value = encodingQuality.baseAddress
+
+      // Save the image into the stream.
+      try image.withGDIPlusImage(for: attachment) { image in
+        let rSave = swt_GdiplusBitmapSave(image, stream, &clsid, &encoderParams)
+        guard rSave == Gdiplus.Ok else {
+          throw GDIPlusError.status(rSave)
+        }
       }
     }
 
@@ -100,6 +120,13 @@ extension _AttachableImageWrapper: AttachableWrapper {
     }
     let byteCount = GlobalSize(global)
     return try body(UnsafeRawBufferPointer(start: baseAddress, count: Int(byteCount)))
+  }
+
+  public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
+    guard let clsid = AttachableImageFormat.computeCLSID(for: imageFormat, withPreferredName: suggestedName) else {
+      return suggestedName
+    }
+    return AttachableImageFormat.appendPathExtension(for: clsid, to: suggestedName)
   }
 }
 #endif

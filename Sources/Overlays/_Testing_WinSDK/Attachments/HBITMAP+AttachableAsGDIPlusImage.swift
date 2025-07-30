@@ -15,7 +15,7 @@ private import _TestingInternals.GDIPlus
 public import WinSDK
 
 @_spi(Experimental)
-extension HBITMAP__: AttachableAsGDIPlusImage {
+extension HBITMAP__: _AttachableByAddressAsGDIPlusImage {
   public static func _withGDIPlusImage<A, R>(
     at imageAddress: UnsafeMutablePointer<Self>,
     for attachment: borrowing Attachment<_AttachableImageWrapper<A>>,

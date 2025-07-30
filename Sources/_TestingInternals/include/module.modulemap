@@ -16,8 +16,6 @@ module _TestingInternals {
     header "../GDI+/include/GDI+.h"
     export *
 
-    requires cplusplus
-
     link "gdiplus.lib"
   }
 }

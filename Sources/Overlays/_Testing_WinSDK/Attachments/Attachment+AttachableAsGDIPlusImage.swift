@@ -47,13 +47,14 @@ extension Attachment where AttachableValue: ~Copyable {
   ///   ``Attachment/record(_:named:as:sourceLocation)`` instead of this
   ///   initializer, or make a copy of the resource before passing it to this
   ///   initializer.
+  @unsafe
   public init<T>(
-    _ attachableValue: consuming UnsafeMutablePointer<T>,
+    _ attachableValue: consuming T,
     named preferredName: String? = nil,
     as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) where AttachableValue == _AttachableImageWrapper<T> {
-    let imageWrapper = _AttachableImageWrapper(imageAddress: attachableValue, imageFormat: imageFormat, cleanUpWhenDone: true)
+    let imageWrapper = _AttachableImageWrapper(image: attachableValue, imageFormat: imageFormat, cleanUpWhenDone: true)
     self.init(imageWrapper, named: preferredName, sourceLocation: sourceLocation)
   }
 
@@ -86,12 +87,12 @@ extension Attachment where AttachableValue: ~Copyable {
   /// correspond to an image format the operating system knows how to write, the
   /// testing library selects an appropriate image format for you.
   public static func record<T>(
-    _ image: borrowing UnsafeMutablePointer<T>,
+    _ image: borrowing T,
     named preferredName: String? = nil,
     as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) where AttachableValue == _AttachableImageWrapper<T> {
-    let imageWrapper = _AttachableImageWrapper(imageAddress: copy image, imageFormat: imageFormat, cleanUpWhenDone: true)
+    let imageWrapper = _AttachableImageWrapper(image: copy image, imageFormat: imageFormat, cleanUpWhenDone: true)
     let attachment = Self(imageWrapper, named: preferredName, sourceLocation: sourceLocation)
     Self.record(attachment, sourceLocation: sourceLocation)
   }

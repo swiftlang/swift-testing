@@ -14,8 +14,25 @@ private import _TestingInternals.GDIPlus
 
 internal import WinSDK
 
+/// A protocol describing images that can be converted to instances of
+/// ``Testing/Attachment``.
+///
+/// Instances of types conforming to this protocol do not themselves conform to
+/// ``Testing/Attachable``. Instead, the testing library provides additional
+/// initializers on ``Testing/Attachment`` that take instances of such types and
+/// handle converting them to image data when needed.
+///
+/// The following system-provided image types conform to this protocol and can
+/// be attached to a test:
+///
+/// - [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps)
+/// - [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons)
+///
+/// You do not generally need to add your own conformances to this protocol. If
+/// you have an image in another format that needs to be attached to a test,
+/// first convert it to an instance of one of the types above.
 @_spi(Experimental)
-public protocol AttachableAsGDIPlusImage {
+public protocol _AttachableByAddressAsGDIPlusImage {
   /// Call a function and pass a GDI+ image representing this instance to it.
   ///
   /// - Parameters:
@@ -35,12 +52,8 @@ public protocol AttachableAsGDIPlusImage {
   /// can therefore assume that GDI+ is correclty configured on the current
   /// thread when it is called.
   ///
-  /// - Warning: GDI+ objects are [not thread-safe](https://learn.microsoft.com/en-us/windows/win32/procthread/multiple-threads-and-gdi-objects)
-  ///   by design. The caller is responsible for guarding against concurrent
-  ///   access to the resulting GDI+ image object.
-  /// 
   /// - Warning: Do not call this function directly. Instead, call
-  ///   ``UnsafeMutablePointer/withGDIPlusImage(for:_:)``.
+  ///   ``AttachableAsGDIPlusImage/withGDIPlusImage(for:_:)``.
   static func _withGDIPlusImage<A, R>(
     at imageAddress: UnsafeMutablePointer<Self>,
     for attachment: borrowing Attachment<_AttachableImageWrapper<A>>,
@@ -60,6 +73,63 @@ public protocol AttachableAsGDIPlusImage {
   static func _cleanUpAttachment(at imageAddress: UnsafeMutablePointer<Self>)
 }
 
+/// A protocol describing images that can be converted to instances of
+/// ``Testing/Attachment``.
+///
+/// Instances of types conforming to this protocol do not themselves conform to
+/// ``Testing/Attachable``. Instead, the testing library provides additional
+/// initializers on ``Testing/Attachment`` that take instances of such types and
+/// handle converting them to image data when needed.
+///
+/// The following system-provided image types conform to this protocol and can
+/// be attached to a test:
+///
+/// - [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps)
+/// - [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons)
+///
+/// You do not generally need to add your own conformances to this protocol. If
+/// you have an image in another format that needs to be attached to a test,
+/// first convert it to an instance of one of the types above.
+@_spi(Experimental)
+public protocol AttachableAsGDIPlusImage {
+  /// Call a function and pass a GDI+ image representing this instance to it.
+  ///
+  /// - Parameters:
+  ///   - attachment: The attachment that is requesting an image (that is, the
+  ///     attachment containing this instance.)
+  ///   - body: A function to call. A copy of this instance converted to a GDI+
+  ///     image is passed to it.
+  ///
+  /// - Returns: Whatever is returned by `body`.
+  ///
+  /// - Throws: Whatever is thrown by `body`, or any error that prevented the
+  ///   creation of the buffer.
+  /// 
+  /// The testing library automatically calls `GdiplusStartup()` and
+  /// `GdiplusShutdown()` before and after calling this function. This function
+  /// can therefore assume that GDI+ is correclty configured on the current
+  /// thread when it is called.
+  ///
+  /// - Warning: Do not call this function directly. Instead, call
+  ///   ``UnsafeMutablePointer/withGDIPlusImage(for:_:)``.
+  func _withGDIPlusImage<A, R>(
+    for attachment: borrowing Attachment<_AttachableImageWrapper<A>>,
+    _ body: (OpaquePointer) throws -> R
+  ) throws -> R where A: AttachableAsGDIPlusImage
+
+  /// Clean up any resources at the given address.
+  /// 
+  /// - Parameters:
+  ///   - imageAddress: The address of the instance of this type.
+  /// 
+  /// The implementation of this function cleans up any resources (such as
+  /// handles or COM objects) at `imageAddress`. This function is invoked
+  /// automatically by `_AttachableImageWrapper` when it is deinitialized.
+  /// 
+  /// - Warning: Do not call this function directly.
+  func _cleanUpAttachment()
+}
+
 extension AttachableAsGDIPlusImage {
   /// Call a function and pass a GDI+ image representing this instance to it.
   ///
@@ -76,23 +146,16 @@ extension AttachableAsGDIPlusImage {
   ///
   /// This function is a convenience wrapper around `_withGDIPlusImage()` that
   /// calls `GdiplusStartup()` and `GdiplusShutdown()` at the appropriate times.
-  ///
-  /// - Warning: GDI+ objects are [not thread-safe](https://learn.microsoft.com/en-us/windows/win32/procthread/multiple-threads-and-gdi-objects)
-  ///   by design. The caller is responsible for guarding against concurrent
-  ///   access to the resulting GDI+ image object.
   func withGDIPlusImage<A, R>(
     for attachment: borrowing Attachment<_AttachableImageWrapper<A>>,
     _ body: (OpaquePointer) throws -> R
   ) throws -> R where A: AttachableAsGDIPlusImage {
-    var selfCopy = self
-    return try withUnsafeMutablePointer(to: &selfCopy) { imageAddress in
-      // Stuff the attachment into a pointer so we can reference it from within
-      // the closure we pass to `withGDIPlus(_:)`. (The compiler currently can't
-      // reason about the lifetime of a borrowed value passed into a closure.)
-      try withUnsafePointer(to: attachment) { attachment in
-        try withGDIPlus {
-          try Self._withGDIPlusImage(at: imageAddress, for: attachment.pointee, body)
-        }
+    // Stuff the attachment into a pointer so we can reference it from within
+    // the closure we pass to `withGDIPlus(_:)`. (The compiler currently can't
+    // reason about the lifetime of a borrowed value passed into a closure.)
+    try withUnsafePointer(to: attachment) { attachment in
+      try withGDIPlus {
+        try _withGDIPlusImage(for: attachment.pointee, body)
       }
     }
   }

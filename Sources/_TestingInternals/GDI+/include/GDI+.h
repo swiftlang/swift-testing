@@ -52,6 +52,10 @@ static inline Gdiplus::Status swt_GdiplusBitmapSave(
   return bitmap->Save(stream, format, encoderParams);
 }
 
+static inline GUID swt_GdiplusEncoderQuality(void) {
+  return Gdiplus::EncoderQuality;
+}
+
 SWT_ASSUME_NONNULL_END
 
 #endif

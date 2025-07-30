@@ -19,12 +19,12 @@ extension AttachableImageFormat {
   /// 
   /// If the testing library was unable to determine the set of image formats,
   /// the value of this property is `nil`.
-  private static nonisolated(unsafe) let _allImageCodecInfo: UnsafeBufferPointer<Gdiplus.ImageCodecInfo>? = {
+  private static nonisolated(unsafe) let _allCodecs: UnsafeBufferPointer<Gdiplus.ImageCodecInfo>? = {
     try? withGDIPlus {
       // Find out the size of the buffer needed.
-      var encoderCount = UINT(0)
+      var codecCount = UINT(0)
       var byteCount = UINT(0)
-      let rGetSize = Gdiplus.GetImageEncodersSize(&encoderCount, &byteCount)
+      let rGetSize = Gdiplus.GetImageEncodersSize(&codecCount, &byteCount)
       guard rGetSize == Gdiplus.Ok else {
         return nil
       }
@@ -36,19 +36,128 @@ extension AttachableImageFormat {
         byteCount: Int(byteCount),
         alignment: MemoryLayout<Gdiplus.ImageCodecInfo>.alignment
       )
-      let encoderBuffer = result
-        .prefix(MemoryLayout<Gdiplus.ImageCodecInfo>.stride * Int(encoderCount))
+      let codecBuffer = result
+        .prefix(MemoryLayout<Gdiplus.ImageCodecInfo>.stride * Int(codecCount))
         .bindMemory(to: Gdiplus.ImageCodecInfo.self)
 
       // Read the encoders list.
-      let rGetEncoders = Gdiplus.GetImageEncoders(encoderCount, byteCount, encoderBuffer.baseAddress!)
+      let rGetEncoders = Gdiplus.GetImageEncoders(codecCount, byteCount, codecBuffer.baseAddress!)
       guard rGetEncoders == Gdiplus.Ok else {
         result.deallocate()
         return nil
       }
-      return .init(encoderBuffer)
+      return .init(codecBuffer)
     }
   }()
+
+  /// Get the set of path extensions corresponding to the image format
+  /// represented by a GDI+ codec info structure.
+  /// 
+  /// - Parameters:
+  ///   - codec: The GDI+ codec info structure of interest.
+  /// 
+  /// - Returns: An array of zero or more path extensions. The case of the
+  ///   resulting strings is unspecified.
+  private static func _pathExtensions(for codec: Gdiplus.ImageCodecInfo) -> [String] {
+    guard let extensions = String.decodeCString(codec.FilenameExtension, as: UTF16.self)?.result else {
+      return []
+    }
+    return extensions
+      .split(separator: ";")
+      .map { ext in
+        if ext.starts(with: "*.") {
+          ext.dropFirst(2)
+        } else {
+          ext[...]
+        }
+      }.map{ $0.lowercased() } // Vestiges of MS-DOS...
+  }
+
+  /// Get the `CLSID` value corresponding to the same image format as the path
+  /// extension on the given attachment filename.
+  /// 
+  /// - Parameters:
+  ///   - preferredName: The preferred name of the image for which a `CLSID`
+  ///     value is needed.
+  /// 
+  /// - Returns: An instance of `CLSID` referring to a concrete image type, or
+  ///   `nil` if one could not be determined.
+  private static func _computeCLSID(forPreferredName preferredName: String) -> CLSID? {
+    preferredName.withCString(encodedAs: UTF16.self) { (preferredName) -> CLSID? in
+      // Get the path extension on the preferred name, if any.
+      var dot: PCWSTR?
+      guard S_OK == PathCchFindExtension(preferredName, wcslen(preferredName) + 1, &dot), let dot, dot[0] != 0 else {
+        return nil
+      }
+      let ext = dot + 1
+
+      return _allCodecs?.first { codec in
+        _pathExtensions(for: codec)
+          .contains { codecExtension in
+            codecExtension.withCString(encodedAs: UTF16.self) { codecExtension in
+              0 == _wcsicmp(ext, codecExtension)
+            }
+          }
+      }.map(\.Clsid)
+    }
+  }
+
+  /// Get the `CLSID` value` to use when encoding the image.
+  ///
+  /// - Parameters:
+  ///   - imageFormat: The image format to use, or `nil` if the developer did
+  ///     not specify one.
+  ///   - preferredName: The preferred name of the image for which a type is
+  ///     needed.
+  ///
+  /// - Returns: An instance of `CLSID` referring to a concrete image type, or
+  ///   `nil` if one could not be determined.
+  ///
+  /// This function is not part of the public interface of the testing library.
+  static func computeCLSID(for imageFormat: Self?, withPreferredName preferredName: String) -> CLSID? {
+    if let clsid = imageFormat?.clsid {
+      return clsid
+    }
+
+    // The developer didn't specify a CLSID, or we couldn't figure one out from
+    // context, so try to derive one from the preferred name's path extension.
+    if let inferredCLSID = _computeCLSID(forPreferredName: preferredName) {
+      return inferredCLSID
+    }
+
+    // We couldn't derive a concrete type from the path extension, so default
+    // to PNG. Unlike Apple platforms, there's no abstract "image" type on
+    // Windows so we don't need to make any more decisions.
+    return _pngCLSID
+  }
+
+  /// Append the path extension preferred by GDI+ for the given `CLSID` value
+  /// representing an image format to a suggested extension filename.
+  /// 
+  /// - Parameters:
+  ///   - clsid: The `CLSID` value representing the image format of interest.
+  ///   - preferredName: The preferred name of the image for which a type is
+  ///     needed.
+  /// 
+  /// - Returns: A string containing the corresponding path extension, or `nil`
+  ///   if none could be determined.
+  static func appendPathExtension(for clsid: CLSID, to preferredName: String) -> String {
+    // If there's already a CLSID associated with the filename, and it matches
+    // the one passed to us, no changes are needed.
+    if let existingCLSID = _computeCLSID(forPreferredName: preferredName), 0 != IsEqualGUID(clsid, existingCLSID) {
+      return preferredName
+    }
+
+    let ext = _allCodecs?
+      .first { $0.Clsid == clsid }
+      .flatMap { _pathExtensions(for: $0).first }
+    guard let ext else {
+      // Couldn't find a path extension for the given CLSID, so make no changes.
+      return preferredName
+    }
+
+    return "\(preferredName).\(ext)"
+  }
 
   /// Get a `CLSID` value corresponding to the image format with the given MIME
   /// type.
@@ -60,7 +169,7 @@ extension AttachableImageFormat {
   ///   was found corresponding to `mimeType`.
   private static func _clsid(forMIMEType mimeType: String) -> CLSID? {
     mimeType.withCString(encodedAs: UTF16.self) { mimeType in
-      _allImageCodecInfo?.first { 0 == wcscmp($0.MimeType, mimeType) }?.Clsid
+      _allCodecs?.first { 0 == wcscmp($0.MimeType, mimeType) }?.Clsid
     }
   }
 
