@@ -195,7 +195,7 @@ let glibcVersion: VersionNumber = {
     }
   }
 
-  return VersionNumber(majorComponent: .init(clamping: major), minorComponent: .init(clampingminor))
+  return VersionNumber(majorComponent: .init(clamping: major), minorComponent: .init(clamping: minor))
 }()
 #endif
 
