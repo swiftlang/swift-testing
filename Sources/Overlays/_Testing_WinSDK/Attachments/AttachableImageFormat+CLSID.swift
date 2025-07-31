@@ -19,7 +19,11 @@ extension AttachableImageFormat {
   ///
   /// If the testing library was unable to determine the set of image formats,
   /// the value of this property is `nil`.
-  private static nonisolated(unsafe) let _allCodecs: [Gdiplus.ImageCodecInfo] = {
+  ///
+  /// - Note: The type of this property is a buffer pointer rather than an array
+  ///   because the resulting buffer owns trailing untyped memory where path
+  ///   extensions and other fields are stored. Do not deallocate this buffer.
+  private static nonisolated(unsafe) let _allCodecs: UnsafeBufferPointer<Gdiplus.ImageCodecInfo> = {
     let result = try? withGDIPlus {
       // Find out the size of the buffer needed.
       var codecCount = UINT(0)
@@ -36,9 +40,6 @@ extension AttachableImageFormat {
         byteCount: Int(byteCount),
         alignment: MemoryLayout<Gdiplus.ImageCodecInfo>.alignment
       )
-      defer {
-        result.deallocate()
-      }
       let codecBuffer = result
         .prefix(MemoryLayout<Gdiplus.ImageCodecInfo>.stride * Int(codecCount))
         .bindMemory(to: Gdiplus.ImageCodecInfo.self)
@@ -49,9 +50,9 @@ extension AttachableImageFormat {
         result.deallocate()
         throw GDIPlusError.status(rGetEncoders)
       }
-      return Array(codecBuffer)
+      return UnsafeBufferPointer(codecBuffer)
     }
-    return result ?? []
+    return result ?? UnsafeBufferPointer(start: nil, count: 0)
   }()
 
   /// Get the set of path extensions corresponding to the image format
