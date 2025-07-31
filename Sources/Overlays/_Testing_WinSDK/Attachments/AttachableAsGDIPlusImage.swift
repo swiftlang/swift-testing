@@ -32,20 +32,21 @@ internal import WinSDK
 /// you have an image in another format that needs to be attached to a test,
 /// first convert it to an instance of one of the types above.
 @_spi(Experimental)
-public protocol _AttachableByAddressAsGDIPlusImage: ~Copyable {
-  /// Call a function and pass a GDI+ image representing this instance to it.
+public protocol _AttachableByAddressAsGDIPlusImage {
+  /// Create a GDI+ image representing an instance of this type at the given
+  /// address.
   ///
   /// - Parameters:
   ///   - imageAddress: The address of the instance of this type.
-  ///   - attachment: The attachment that is requesting an image (that is, the
-  ///     attachment containing this instance.)
-  ///   - body: A function to call. A copy of this instance converted to a GDI+
-  ///     image is passed to it.
   ///
-  /// - Returns: Whatever is returned by `body`.
+  /// - Returns: A pointer to a new GDI+ image representing this image. The
+  ///   caller is responsible for deleting this image when done with it.
   ///
-  /// - Throws: Whatever is thrown by `body`, or any error that prevented the
-  ///   creation of the buffer.
+  /// - Throws: Any error that prevented the creation of the GDI+ image.
+  ///
+  /// - Note: This function returns a value of C++ type `Gdiplus::Image *`. That
+  ///   type cannot be directly represented in Swift. If this function returns a
+  ///   value of any other concrete type, the result is undefined.
   ///
   /// The testing library automatically calls `GdiplusStartup()` and
   /// `GdiplusShutdown()` before and after calling this function. This function
@@ -53,12 +54,8 @@ public protocol _AttachableByAddressAsGDIPlusImage: ~Copyable {
   /// thread when it is called.
   ///
   /// - Warning: Do not call this function directly. Instead, call
-  ///   ``AttachableAsGDIPlusImage/withGDIPlusImage(for:_:)``.
-  static func _withGDIPlusImage<A, R>(
-    at imageAddress: UnsafeMutablePointer<Self>,
-    for attachment: borrowing Attachment<_AttachableImageWrapper<A>>,
-    _ body: (borrowing UnsafeMutablePointer<GDIPlusImage>) throws -> R
-  ) throws -> R where A: AttachableAsGDIPlusImage
+  ///   ``AttachableAsGDIPlusImage/withGDIPlusImage(_:)``.
+  static func _copyAttachableGDIPlusImage(at imageAddress: UnsafeMutablePointer<Self>) throws -> OpaquePointer
 
   /// Clean up any resources at the given address.
   ///
@@ -66,8 +63,11 @@ public protocol _AttachableByAddressAsGDIPlusImage: ~Copyable {
   ///   - imageAddress: The address of the instance of this type.
   ///
   /// The implementation of this function cleans up any resources (such as
-  /// handles or COM objects) at `imageAddress`. This function is invoked
-  /// automatically by `_AttachableImageWrapper` when it is deinitialized.
+  /// handles or COM objects) associated with this value. The testing library
+  /// automatically invokes this function as needed.
+  ///
+  /// This function is not responsible for deleting the image returned from
+  /// `_copyAttachableGDIPlusImage(at:)`.
   ///
   /// - Warning: Do not call this function directly.
   static func _cleanUpAttachment(at imageAddress: UnsafeMutablePointer<Self>)
@@ -92,18 +92,16 @@ public protocol _AttachableByAddressAsGDIPlusImage: ~Copyable {
 /// first convert it to an instance of one of the types above.
 @_spi(Experimental)
 public protocol AttachableAsGDIPlusImage {
-  /// Call a function and pass a GDI+ image representing this instance to it.
+  /// Create a GDI+ image representing this instance.
   ///
-  /// - Parameters:
-  ///   - attachment: The attachment that is requesting an image (that is, the
-  ///     attachment containing this instance.)
-  ///   - body: A function to call. A copy of this instance converted to a GDI+
-  ///     image is passed to it.
+  /// - Returns: A pointer to a new GDI+ image representing this image. The
+  ///   caller is responsible for deleting this image when done with it.
   ///
-  /// - Returns: Whatever is returned by `body`.
+  /// - Throws: Any error that prevented the creation of the GDI+ image.
   ///
-  /// - Throws: Whatever is thrown by `body`, or any error that prevented the
-  ///   creation of the buffer.
+  /// - Note: This function returns a value of C++ type `Gdiplus::Image *`. That
+  ///   type cannot be directly represented in Swift. If this function returns a
+  ///   value of any other concrete type, the result is undefined.
   ///
   /// The testing library automatically calls `GdiplusStartup()` and
   /// `GdiplusShutdown()` before and after calling this function. This function
@@ -111,20 +109,17 @@ public protocol AttachableAsGDIPlusImage {
   /// thread when it is called.
   ///
   /// - Warning: Do not call this function directly. Instead, call
-  ///   ``UnsafeMutablePointer/withGDIPlusImage(for:_:)``.
-  func _withGDIPlusImage<A, R>(
-    for attachment: borrowing Attachment<_AttachableImageWrapper<A>>,
-    _ body: (borrowing UnsafeMutablePointer<GDIPlusImage>) throws -> R
-  ) throws -> R where A: AttachableAsGDIPlusImage
+  ///   ``AttachableAsGDIPlusImage/withGDIPlusImage(_:)``.
+  func _copyAttachableGDIPlusImage() throws -> OpaquePointer
 
-  /// Clean up any resources at the given address.
-  ///
-  /// - Parameters:
-  ///   - imageAddress: The address of the instance of this type.
+  /// Clean up any resources associated with this instance.
   ///
   /// The implementation of this function cleans up any resources (such as
-  /// handles or COM objects) at `imageAddress`. This function is invoked
-  /// automatically by `_AttachableImageWrapper` when it is deinitialized.
+  /// handles or COM objects) associated with this value. The testing library
+  /// automatically invokes this function as needed.
+  ///
+  /// This function is not responsible for deleting the image returned from
+  /// `_copyAttachableGDIPlusImage()`.
   ///
   /// - Warning: Do not call this function directly.
   func _cleanUpAttachment()
@@ -144,19 +139,18 @@ extension AttachableAsGDIPlusImage {
   /// - Throws: Whatever is thrown by `body`, or any error that prevented the
   ///   creation of the buffer.
   ///
+  /// - Note: The argument passed to `body` is of C++ type `Gdiplus::Image *`.
+  ///   That type cannot be directly represented in Swift.
+  ///
   /// This function is a convenience wrapper around `_withGDIPlusImage()` that
   /// calls `GdiplusStartup()` and `GdiplusShutdown()` at the appropriate times.
-  func withGDIPlusImage<A, R>(
-    for attachment: borrowing Attachment<_AttachableImageWrapper<A>>,
-    _ body: (borrowing UnsafeMutablePointer<GDIPlusImage>) throws -> R
-  ) throws -> R where A: AttachableAsGDIPlusImage {
-    // Stuff the attachment into a pointer so we can reference it from within
-    // the closure we pass to `withGDIPlus(_:)`. (The compiler currently can't
-    // reason about the lifetime of a borrowed value passed into a closure.)
-    try withUnsafePointer(to: attachment) { attachment in
-      try withGDIPlus {
-        try _withGDIPlusImage(for: attachment.pointee, body)
+  func withGDIPlusImage<R>(_ body: (borrowing OpaquePointer) throws -> R) throws -> R {
+    try withGDIPlus {
+      let image = try _copyGDIPlusImage()
+      defer {
+        swt_GdiplusImageDelete(image)
       }
+      return try body(image)
     }
   }
 }

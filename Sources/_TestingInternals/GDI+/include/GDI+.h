@@ -11,6 +11,11 @@
 #if !defined(SWT_GDIPLUS_H)
 #define SWT_GDIPLUS_H
 
+/// This header includes thunk functions for various GDI+ functions that the
+/// Swift importer is currently unable to import. As such, I haven't documented
+/// each function individually; refer to the GDI+ documentation for more
+/// information about the thunked functions.
+
 #if defined(_WIN32) && defined(__cplusplus)
 #include "../include/Defines.h"
 #include "../include/Includes.h"

@@ -16,19 +16,8 @@ public import WinSDK
 
 @_spi(Experimental)
 extension HICON__: _AttachableByAddressAsGDIPlusImage {
-  public static func _withGDIPlusImage<A, R>(
-    at imageAddress: UnsafeMutablePointer<Self>,
-    for attachment: borrowing Attachment<_AttachableImageWrapper<A>>,
-    _ body: (borrowing UnsafeMutablePointer<GDIPlusImage>) throws -> R
-  ) throws -> R where A: AttachableAsGDIPlusImage {
-    let image = swt_GdiplusImageFromHICON(imageAddress)
-    defer {
-      swt_GdiplusImageDelete(image)
-    }
-    return try withExtendedLifetime(self) {
-      var image = GDIPlusImage(borrowing: image)
-      return try body(&image)
-    }
+  public static func _copyAttachableGDIPlusImage(at imageAddress: UnsafeMutablePointer<Self>) throws -> OpaquePointer {
+    swt_GdiplusImageFromHICON(imageAddress)
   }
 
   public static func _cleanUpAttachment(at imageAddress: UnsafeMutablePointer<Self>) {

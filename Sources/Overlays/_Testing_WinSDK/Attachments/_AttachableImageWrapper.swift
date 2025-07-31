@@ -58,7 +58,6 @@ extension _AttachableImageWrapper: Sendable {}
 
 // MARK: -
 
-@available(_uttypesAPI, *)
 extension _AttachableImageWrapper: AttachableWrapper {
   public var wrappedValue: Image {
     image
@@ -96,8 +95,8 @@ extension _AttachableImageWrapper: AttachableWrapper {
       encoderParams.Parameter.Value = encodingQuality.baseAddress
 
       // Save the image into the stream.
-      try image.withGDIPlusImage(for: attachment) { image in
-        let rSave = swt_GdiplusImageSave(image.pointee.imageAddress, stream, &clsid, &encoderParams)
+      try image.withGDIPlusImage { image in
+        let rSave = swt_GdiplusImageSave(image, stream, &clsid, &encoderParams)
         guard rSave == Gdiplus.Ok else {
           throw GDIPlusError.status(rSave)
         }

@@ -12,7 +12,6 @@
 @_spi(Experimental) public import Testing
 
 @_spi(Experimental)
-@available(_uttypesAPI, *)
 extension Attachment where AttachableValue: ~Copyable {
   /// Initialize an instance of this type that encloses the given image.
   ///

@@ -16,19 +16,8 @@ public import WinSDK
 
 @_spi(Experimental)
 extension HBITMAP__: _AttachableByAddressAsGDIPlusImage {
-  public static func _withGDIPlusImage<A, R>(
-    at imageAddress: UnsafeMutablePointer<Self>,
-    for attachment: borrowing Attachment<_AttachableImageWrapper<A>>,
-    _ body: (borrowing UnsafeMutablePointer<GDIPlusImage>) throws -> R
-  ) throws -> R where A: AttachableAsGDIPlusImage {
-    let image = swt_GdiplusImageFromHBITMAP(imageAddress, nil)
-    defer {
-      swt_GdiplusImageDelete(image)
-    }
-    return try withExtendedLifetime(self) {
-      var image: GDIPlusImage = GDIPlusImage(borrowing: image)
-      return try body(&image)
-    }
+  public static func _copyAttachableGDIPlusImage(at imageAddress: UnsafeMutablePointer<Self>) throws -> OpaquePointer {
+    swt_GdiplusImageFromHBITMAP(imageAddress, nil)
   }
 
   public static func _cleanUpAttachment(at imageAddress: UnsafeMutablePointer<Self>) {

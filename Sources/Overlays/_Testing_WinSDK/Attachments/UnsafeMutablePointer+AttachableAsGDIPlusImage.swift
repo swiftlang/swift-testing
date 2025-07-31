@@ -12,12 +12,9 @@
 @_spi(Experimental) public import Testing
 
 @_spi(Experimental)
-extension UnsafeMutablePointer: AttachableAsGDIPlusImage where Pointee: _AttachableByAddressAsGDIPlusImage & ~Copyable {
-  public func _withGDIPlusImage<A, R>(
-    for attachment: borrowing Attachment<_AttachableImageWrapper<A>>,
-    _ body: (borrowing UnsafeMutablePointer<GDIPlusImage>) throws -> R
-  ) throws -> R where A: AttachableAsGDIPlusImage {
-    try Pointee._withGDIPlusImage(at: self, for: attachment, body)
+extension UnsafeMutablePointer: AttachableAsGDIPlusImage where Pointee: _AttachableByAddressAsGDIPlusImage {
+  public func _copyAttachableGDIPlusImage() throws -> OpaquePointer {
+    try Pointee._copyAttachableGDIPlusImage(at: self)
   }
 
   public func _cleanUpAttachment() {
