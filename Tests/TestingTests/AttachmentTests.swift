@@ -735,7 +735,7 @@ extension AttachmentTests {
       defer {
         DeleteDC(dc)
       }
-      
+
       let bitmap = try #require(CreateCompatibleBitmap(screenDC, width, height))
       let oldSelectedObject = SelectObject(dc, bitmap)
       defer {

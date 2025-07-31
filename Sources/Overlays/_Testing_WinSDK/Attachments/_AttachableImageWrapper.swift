@@ -35,7 +35,7 @@ public struct _AttachableImageWrapper<Image>: ~Copyable where Image: AttachableA
 
   /// Whether or not to call `_cleanUpAttachment(at:)` on `pointer` when this
   /// instance is deinitialized.
-  /// 
+  ///
   /// - Note: If cleanup is not performed, `pointer` is effectively being
   ///   borrowed from the calling context.
   var cleanUpWhenDone: Bool

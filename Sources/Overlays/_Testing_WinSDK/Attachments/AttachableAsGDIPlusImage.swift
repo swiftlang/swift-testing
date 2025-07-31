@@ -46,7 +46,7 @@ public protocol _AttachableByAddressAsGDIPlusImage: ~Copyable {
   ///
   /// - Throws: Whatever is thrown by `body`, or any error that prevented the
   ///   creation of the buffer.
-  /// 
+  ///
   /// The testing library automatically calls `GdiplusStartup()` and
   /// `GdiplusShutdown()` before and after calling this function. This function
   /// can therefore assume that GDI+ is correctly configured on the current
@@ -61,14 +61,14 @@ public protocol _AttachableByAddressAsGDIPlusImage: ~Copyable {
   ) throws -> R where A: AttachableAsGDIPlusImage
 
   /// Clean up any resources at the given address.
-  /// 
+  ///
   /// - Parameters:
   ///   - imageAddress: The address of the instance of this type.
-  /// 
+  ///
   /// The implementation of this function cleans up any resources (such as
   /// handles or COM objects) at `imageAddress`. This function is invoked
   /// automatically by `_AttachableImageWrapper` when it is deinitialized.
-  /// 
+  ///
   /// - Warning: Do not call this function directly.
   static func _cleanUpAttachment(at imageAddress: UnsafeMutablePointer<Self>)
 }
@@ -104,7 +104,7 @@ public protocol AttachableAsGDIPlusImage {
   ///
   /// - Throws: Whatever is thrown by `body`, or any error that prevented the
   ///   creation of the buffer.
-  /// 
+  ///
   /// The testing library automatically calls `GdiplusStartup()` and
   /// `GdiplusShutdown()` before and after calling this function. This function
   /// can therefore assume that GDI+ is correctly configured on the current
@@ -118,14 +118,14 @@ public protocol AttachableAsGDIPlusImage {
   ) throws -> R where A: AttachableAsGDIPlusImage
 
   /// Clean up any resources at the given address.
-  /// 
+  ///
   /// - Parameters:
   ///   - imageAddress: The address of the instance of this type.
-  /// 
+  ///
   /// The implementation of this function cleans up any resources (such as
   /// handles or COM objects) at `imageAddress`. This function is invoked
   /// automatically by `_AttachableImageWrapper` when it is deinitialized.
-  /// 
+  ///
   /// - Warning: Do not call this function directly.
   func _cleanUpAttachment()
 }

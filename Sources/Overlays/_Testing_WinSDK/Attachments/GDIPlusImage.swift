@@ -15,7 +15,7 @@ private import _TestingInternals.GDIPlus
 internal import WinSDK
 
 /// A GDI+ image.
-/// 
+///
 /// Instances of this type represent GDI+ images (that is, instances of
 /// [`Gdiplus.Image`](https://learn.microsoft.com/en-us/windows/win32/api/gdiplusheaders/nl-gdiplusheaders-image)).
 @_spi(Experimental)
@@ -26,15 +26,15 @@ internal import WinSDK
   private var _deleteWhenDone: Bool
 
   /// Construct an instance of this type by cloning an existing GDI+ image.
-  /// 
+  ///
   /// - Parameters:
   ///   - imageAddress: The address of an existing GDI+ image of type
   ///     [`Gdiplus.Image`](https://learn.microsoft.com/en-us/windows/win32/api/gdiplusheaders/nl-gdiplusheaders-image)).
-  /// 
+  ///
   /// This initializer makes a copy of `imageAddress` by calling its[`Clone()`](https://learn.microsoft.com/en-us/windows/win32/api/gdiplusheaders/nf-gdiplusheaders-image-clone)
   /// function. The caller is responsible for ensuring that the resources
   /// backing the resulting image remain valid until it is deinitialized.
-  /// 
+  ///
   /// - Important: If `imageAddress` is not a pointer to a GDI+ image, the
   ///   result is undefined.
   public init(unsafe imageAddress: OpaquePointer) {
@@ -43,14 +43,14 @@ internal import WinSDK
   }
 
   /// Construct an instance of this type by borrowing an existing GDI+ image.
-  /// 
+  ///
   /// - Parameters:
   ///   - imageAddress: The address of an existing GDI+ image of type
   ///     [`Gdiplus.Image`](https://learn.microsoft.com/en-us/windows/win32/api/gdiplusheaders/nl-gdiplusheaders-image)).
-  /// 
+  ///
   /// The caller is responsible for ensuring that the resources backing the
   /// resulting image remain valid until it is deinitialized.
-  /// 
+  ///
   /// - Important: If `imageAddress` is not a pointer to a GDI+ image, the
   ///   result is undefined.
   init(borrowing imageAddress: OpaquePointer) {

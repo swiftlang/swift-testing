@@ -16,7 +16,7 @@ public import WinSDK
 
 extension AttachableImageFormat {
   /// The set of `ImageCodecInfo` instances known to GDI+.
-  /// 
+  ///
   /// If the testing library was unable to determine the set of image formats,
   /// the value of this property is `nil`.
   private static nonisolated(unsafe) let _allCodecs: UnsafeBufferPointer<Gdiplus.ImageCodecInfo>? = {
@@ -52,10 +52,10 @@ extension AttachableImageFormat {
 
   /// Get the set of path extensions corresponding to the image format
   /// represented by a GDI+ codec info structure.
-  /// 
+  ///
   /// - Parameters:
   ///   - codec: The GDI+ codec info structure of interest.
-  /// 
+  ///
   /// - Returns: An array of zero or more path extensions. The case of the
   ///   resulting strings is unspecified.
   private static func _pathExtensions(for codec: Gdiplus.ImageCodecInfo) -> [String] {
@@ -73,13 +73,33 @@ extension AttachableImageFormat {
       }.map{ $0.lowercased() } // Vestiges of MS-DOS...
   }
 
+  /// Get the `CLSID` value corresponding to the same image format as the given
+  /// path extension.
+  ///
+  /// - Parameters:
+  ///   - pathExtension: The path extension (as a wide C string) for which a
+  ///     `CLSID` value is needed.
+  ///
+  /// - Returns: An instance of `CLSID` referring to a concrete image type, or
+  ///   `nil` if one could not be determined.
+  private static func _computeCLSID(forPathExtension pathExtension: UnsafePointer<wchar_t>) -> CLSID? {
+    _allCodecs?.first { codec in
+      _pathExtensions(for: codec)
+        .contains { codecExtension in
+          codecExtension.withCString(encodedAs: UTF16.self) { codecExtension in
+            0 == _wcsicmp(pathExtension, codecExtension)
+          }
+        }
+    }.map(\.Clsid)
+  }
+
   /// Get the `CLSID` value corresponding to the same image format as the path
   /// extension on the given attachment filename.
-  /// 
+  ///
   /// - Parameters:
   ///   - preferredName: The preferred name of the image for which a `CLSID`
   ///     value is needed.
-  /// 
+  ///
   /// - Returns: An instance of `CLSID` referring to a concrete image type, or
   ///   `nil` if one could not be determined.
   private static func _computeCLSID(forPreferredName preferredName: String) -> CLSID? {
@@ -89,16 +109,7 @@ extension AttachableImageFormat {
       guard S_OK == PathCchFindExtension(preferredName, wcslen(preferredName) + 1, &dot), let dot, dot[0] != 0 else {
         return nil
       }
-      let ext = dot + 1
-
-      return _allCodecs?.first { codec in
-        _pathExtensions(for: codec)
-          .contains { codecExtension in
-            codecExtension.withCString(encodedAs: UTF16.self) { codecExtension in
-              0 == _wcsicmp(ext, codecExtension)
-            }
-          }
-      }.map(\.Clsid)
+      return _computeCLSID(forPathExtension: dot + 1)
     }
   }
 
@@ -133,18 +144,18 @@ extension AttachableImageFormat {
 
   /// Append the path extension preferred by GDI+ for the given `CLSID` value
   /// representing an image format to a suggested extension filename.
-  /// 
+  ///
   /// - Parameters:
   ///   - clsid: The `CLSID` value representing the image format of interest.
   ///   - preferredName: The preferred name of the image for which a type is
   ///     needed.
-  /// 
+  ///
   /// - Returns: A string containing the corresponding path extension, or `nil`
   ///   if none could be determined.
   static func appendPathExtension(for clsid: CLSID, to preferredName: String) -> String {
     // If there's already a CLSID associated with the filename, and it matches
     // the one passed to us, no changes are needed.
-    if let existingCLSID = _computeCLSID(forPreferredName: preferredName), 0 != IsEqualGUID(clsid, existingCLSID) {
+    if let existingCLSID = _computeCLSID(forPreferredName: preferredName), clsid == existingCLSID {
       return preferredName
     }
 
@@ -161,10 +172,10 @@ extension AttachableImageFormat {
 
   /// Get a `CLSID` value corresponding to the image format with the given MIME
   /// type.
-  /// 
+  ///
   /// - Parameters:
   ///   - mimeType: The MIME type of the image format of interest.
-  /// 
+  ///
   /// - Returns: A `CLSID` value suitable for use with GDI+, or `nil` if none
   ///   was found corresponding to `mimeType`.
   private static func _clsid(forMIMEType mimeType: String) -> CLSID? {
@@ -199,7 +210,7 @@ extension AttachableImageFormat {
     }
   }
 
-  /// Initialize an instance of this type with the given `CLSID` value` and
+  /// Construct an instance of this type with the given `CLSID` value and
   /// encoding quality.
   ///
   /// - Parameters:
@@ -219,5 +230,45 @@ extension AttachableImageFormat {
   public init(_ clsid: CLSID, encodingQuality: Float = 1.0) {
     self.init(kind: .systemValue(clsid), encodingQuality: encodingQuality)
   }
+
+  /// Construct an instance of this type with the given path extension and
+  /// encoding quality.
+  ///
+  /// - Parameters:
+  ///   - pathExtension: A path extension corresponding to the image format to
+  ///     use when encoding images.
+  ///   - encodingQuality: The encoding quality to use when encoding images. For
+  ///     the lowest supported quality, pass `0.0`. For the highest supported
+  ///     quality, pass `1.0`.
+  ///
+  /// If the target image format does not support variable-quality encoding,
+  /// the value of the `encodingQuality` argument is ignored.
+  ///
+  /// If `pathExtension` does not correspond to an image format supported by
+  /// GDI+, this initializer returns `nil`. For a list of image formats
+  /// supported by GDI+, see the [GetImageEncoders()](https://learn.microsoft.com/en-us/windows/win32/api/gdiplusimagecodec/nf-gdiplusimagecodec-getimageencoders)
+  /// function.
+  public init?(pathExtension: String, encodingQuality: Float = 1.0) {
+    let pathExtension = pathExtension.drop { $0 == "." }
+    let clsid = pathExtension.withCString(encodedAs: UTF16.self) { pathExtension in
+      Self._computeCLSID(forPathExtension: pathExtension)
+    }
+    if let clsid {
+      self.init(clsid, encodingQuality: encodingQuality)
+    } else {
+      return nil
+    }
+  }
+}
+
+// MARK: -
+
+func ==(lhs: CLSID, rhs: CLSID) -> Bool {
+  // Using IsEqualGUID() from the Windows SDK triggers an AST->SIL failure. Work
+  // around it by implementing an equivalent function ourselves.
+  // BUG: https://github.com/swiftlang/swift/issues/83452
+  var lhs = lhs
+  var rhs = rhs
+  return 0 == memcmp(&lhs, &rhs)
 }
 #endif
