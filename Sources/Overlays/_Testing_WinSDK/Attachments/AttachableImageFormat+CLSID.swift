@@ -26,7 +26,7 @@ extension AttachableImageFormat {
       var byteCount = UINT(0)
       let rGetSize = Gdiplus.GetImageEncodersSize(&codecCount, &byteCount)
       guard rGetSize == Gdiplus.Ok else {
-        return nil
+        throw GDIPlusError.status(rGetSize)
       }
 
       // Allocate a buffer of sufficient byte size, then bind the leading bytes
@@ -44,7 +44,7 @@ extension AttachableImageFormat {
       let rGetEncoders = Gdiplus.GetImageEncoders(codecCount, byteCount, codecBuffer.baseAddress!)
       guard rGetEncoders == Gdiplus.Ok else {
         result.deallocate()
-        return nil
+        throw GDIPlusError.status(rGetEncoders)
       }
       return .init(codecBuffer)
     }
@@ -93,6 +93,20 @@ extension AttachableImageFormat {
     }.map(\.Clsid)
   }
 
+  /// Get the `CLSID` value corresponding to the same image format as the given
+  /// path extension.
+  ///
+  /// - Parameters:
+  ///   - pathExtension: The path extension for which a `CLSID` value is needed.
+  ///
+  /// - Returns: An instance of `CLSID` referring to a concrete image type, or
+  ///   `nil` if one could not be determined.
+  private static func _computeCLSID(forPathExtension pathExtension: String) -> CLSID? {
+    pathExtension.withCString(encodedAs: UTF16.self) { pathExtension in
+      _computeCLSID(forPathExtension: pathExtension)
+    }
+  }
+
   /// Get the `CLSID` value corresponding to the same image format as the path
   /// extension on the given attachment filename.
   ///
@@ -125,7 +139,7 @@ extension AttachableImageFormat {
   ///   `nil` if one could not be determined.
   ///
   /// This function is not part of the public interface of the testing library.
-  static func computeCLSID(for imageFormat: Self?, withPreferredName preferredName: String) -> CLSID? {
+  static func computeCLSID(for imageFormat: Self?, withPreferredName preferredName: String) -> CLSID {
     if let clsid = imageFormat?.clsid {
       return clsid
     }
@@ -170,43 +184,29 @@ extension AttachableImageFormat {
     return "\(preferredName).\(ext)"
   }
 
-  /// Get a `CLSID` value corresponding to the image format with the given MIME
-  /// type.
-  ///
-  /// - Parameters:
-  ///   - mimeType: The MIME type of the image format of interest.
-  ///
-  /// - Returns: A `CLSID` value suitable for use with GDI+, or `nil` if none
-  ///   was found corresponding to `mimeType`.
-  private static func _clsid(forMIMEType mimeType: String) -> CLSID? {
-    mimeType.withCString(encodedAs: UTF16.self) { mimeType in
-      _allCodecs?.first { 0 == wcscmp($0.MimeType, mimeType) }?.Clsid
-    }
-  }
-
   /// The `CLSID` value corresponding to the PNG image format.
   ///
   /// - Note: The named constant [`ImageFormatPNG`](https://learn.microsoft.com/en-us/windows/win32/gdiplus/-gdiplus-constant-image-file-format-constants)
   ///   is not the correct value and will cause `Image::Save()` to fail if
   ///   passed to it.
-  private static let _pngCLSID = _clsid(forMIMEType: "image/png")
+  private static let _pngCLSID = _computeCLSID(forPathExtension: "png")!
 
   /// The `CLSID` value corresponding to the JPEG image format.
   ///
   /// - Note: The named constant [`ImageFormatJPEG`](https://learn.microsoft.com/en-us/windows/win32/gdiplus/-gdiplus-constant-image-file-format-constants)
   ///   is not the correct value and will cause `Image::Save()` to fail if
   ///   passed to it.
-  private static let _jpegCLSID = _clsid(forMIMEType: "image/jpeg")
+  private static let _jpegCLSID = _computeCLSID(forPathExtension: "jpg")!
 
   /// The `CLSID` value corresponding to this image format.
-  public var clsid: CLSID? {
+  public var clsid: CLSID {
     switch kind {
     case .png:
       Self._pngCLSID
     case .jpeg:
       Self._jpegCLSID
     case let .systemValue(clsid):
-      clsid as? CLSID
+      clsid as! CLSID
     }
   }
 
@@ -250,9 +250,7 @@ extension AttachableImageFormat {
   /// function.
   public init?(pathExtension: String, encodingQuality: Float = 1.0) {
     let pathExtension = pathExtension.drop { $0 == "." }
-    let clsid = pathExtension.withCString(encodedAs: UTF16.self) { pathExtension in
-      Self._computeCLSID(forPathExtension: pathExtension)
-    }
+    let clsid = Self._computeCLSID(forPathExtension: String(pathExtension))
     if let clsid {
       self.init(clsid, encodingQuality: encodingQuality)
     } else {
