@@ -28,9 +28,9 @@ struct CError: Error, RawRepresentable {
 ///
 /// This type is not part of the public interface of the testing library.
 package struct Win32Error: Error, RawRepresentable {
-  package var rawValue: CUnsignedInt
+  package var rawValue: CUnsignedLong
 
-  package init(rawValue: CUnsignedInt) {
+  package init(rawValue: CUnsignedLong) {
     self.rawValue = rawValue
   }
 }
