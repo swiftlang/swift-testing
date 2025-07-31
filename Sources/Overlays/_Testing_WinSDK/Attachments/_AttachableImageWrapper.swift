@@ -78,24 +78,29 @@ extension _AttachableImageWrapper: AttachableWrapper {
       }
     }
 
-    // Get the CLSID of the image encoder corresponding to the specified image
-    // format.
-    let imageFormat = self.imageFormat ?? .png
-    guard var clsid = imageFormat.clsid else {
-      throw GDIPlusError.clsidNotFound
-    }
+    try withGDIPlus {
+      // Get a GDI+ image from the attachment.
+      let image = try image._copyAttachableGDIPlusImage()
+      defer {
+        swt_GdiplusImageDelete(image)
+      }
 
-    var encodingQuality = LONG(imageFormat.encodingQuality * 100.0)
-    try withUnsafeMutableBytes(of: &encodingQuality) { encodingQuality in
-      var encoderParams = Gdiplus.EncoderParameters()
-      encoderParams.Count = 1
-      encoderParams.Parameter.Guid = swt_GdiplusEncoderQuality()
-      encoderParams.Parameter.Type = ULONG(Gdiplus.EncoderParameterValueTypeLong.rawValue)
-      encoderParams.Parameter.NumberOfValues = 1
-      encoderParams.Parameter.Value = encodingQuality.baseAddress
+      // Get the CLSID of the image encoder corresponding to the specified image
+      // format.
+      guard var clsid = AttachableImageFormat.computeCLSID(for: imageFormat, withPreferredName: attachment.preferredName) else {
+        throw GDIPlusError.clsidNotFound
+      }
 
-      // Save the image into the stream.
-      try image.withGDIPlusImage { image in
+      var encodingQuality = LONG((imageFormat?.encodingQuality ?? 1.0) * 100.0)
+      try withUnsafeMutableBytes(of: &encodingQuality) { encodingQuality in
+        var encoderParams = Gdiplus.EncoderParameters()
+        encoderParams.Count = 1
+        encoderParams.Parameter.Guid = swt_GdiplusEncoderQuality()
+        encoderParams.Parameter.Type = ULONG(Gdiplus.EncoderParameterValueTypeLong.rawValue)
+        encoderParams.Parameter.NumberOfValues = 1
+        encoderParams.Parameter.Value = encodingQuality.baseAddress
+
+        // Save the image into the stream.
         let rSave = swt_GdiplusImageSave(image, stream, &clsid, &encoderParams)
         guard rSave == Gdiplus.Ok else {
           throw GDIPlusError.status(rSave)
