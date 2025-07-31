@@ -87,9 +87,7 @@ extension _AttachableImageWrapper: AttachableWrapper {
 
       // Get the CLSID of the image encoder corresponding to the specified image
       // format.
-      guard var clsid = AttachableImageFormat.computeCLSID(for: imageFormat, withPreferredName: attachment.preferredName) else {
-        throw GDIPlusError.clsidNotFound
-      }
+      var clsid = AttachableImageFormat.computeCLSID(for: imageFormat, withPreferredName: attachment.preferredName)
 
       var encodingQuality = LONG((imageFormat?.encodingQuality ?? 1.0) * 100.0)
       try withUnsafeMutableBytes(of: &encodingQuality) { encodingQuality in
@@ -127,9 +125,7 @@ extension _AttachableImageWrapper: AttachableWrapper {
   }
 
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
-    guard let clsid = AttachableImageFormat.computeCLSID(for: imageFormat, withPreferredName: suggestedName) else {
-      return suggestedName
-    }
+    let clsid = AttachableImageFormat.computeCLSID(for: imageFormat, withPreferredName: suggestedName)
     return AttachableImageFormat.appendPathExtension(for: clsid, to: suggestedName)
   }
 }

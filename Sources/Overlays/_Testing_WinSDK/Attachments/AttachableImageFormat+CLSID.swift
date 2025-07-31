@@ -19,8 +19,8 @@ extension AttachableImageFormat {
   ///
   /// If the testing library was unable to determine the set of image formats,
   /// the value of this property is `nil`.
-  private static nonisolated(unsafe) let _allCodecs: UnsafeBufferPointer<Gdiplus.ImageCodecInfo>? = {
-    try? withGDIPlus {
+  private static nonisolated(unsafe) let _allCodecs: [Gdiplus.ImageCodecInfo] = {
+    let result = try? withGDIPlus {
       // Find out the size of the buffer needed.
       var codecCount = UINT(0)
       var byteCount = UINT(0)
@@ -36,6 +36,9 @@ extension AttachableImageFormat {
         byteCount: Int(byteCount),
         alignment: MemoryLayout<Gdiplus.ImageCodecInfo>.alignment
       )
+      defer {
+        result.deallocate()
+      }
       let codecBuffer = result
         .prefix(MemoryLayout<Gdiplus.ImageCodecInfo>.stride * Int(codecCount))
         .bindMemory(to: Gdiplus.ImageCodecInfo.self)
@@ -46,8 +49,9 @@ extension AttachableImageFormat {
         result.deallocate()
         throw GDIPlusError.status(rGetEncoders)
       }
-      return .init(codecBuffer)
+      return Array(codecBuffer)
     }
+    return result ?? []
   }()
 
   /// Get the set of path extensions corresponding to the image format
@@ -83,7 +87,7 @@ extension AttachableImageFormat {
   /// - Returns: An instance of `CLSID` referring to a concrete image type, or
   ///   `nil` if one could not be determined.
   private static func _computeCLSID(forPathExtension pathExtension: UnsafePointer<CWideChar>) -> CLSID? {
-    _allCodecs?.first { codec in
+    _allCodecs.first { codec in
       _pathExtensions(for: codec)
         .contains { codecExtension in
           codecExtension.withCString(encodedAs: UTF16.self) { codecExtension in
@@ -173,7 +177,7 @@ extension AttachableImageFormat {
       return preferredName
     }
 
-    let ext = _allCodecs?
+    let ext = _allCodecs
       .first { $0.Clsid == clsid }
       .flatMap { _pathExtensions(for: $0).first }
     guard let ext else {
@@ -257,16 +261,5 @@ extension AttachableImageFormat {
       return nil
     }
   }
-}
-
-// MARK: -
-
-func ==(lhs: CLSID, rhs: CLSID) -> Bool {
-  // Using IsEqualGUID() from the Windows SDK triggers an AST->SIL failure. Work
-  // around it by implementing an equivalent function ourselves.
-  // BUG: https://github.com/swiftlang/swift/issues/83452
-  var lhs = lhs
-  var rhs = rhs
-  return 0 == memcmp(&lhs, &rhs, MemoryLayout<CLSID>.size)
 }
 #endif

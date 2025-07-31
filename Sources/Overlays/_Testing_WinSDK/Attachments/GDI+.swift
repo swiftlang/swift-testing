@@ -14,11 +14,16 @@ internal import _TestingInternals.GDIPlus
 
 internal import WinSDK
 
+/// A type describing errors that can be thrown by GDI+.
 enum GDIPlusError: Error {
+  /// A GDI+ status code.
   case status(Gdiplus.Status)
+
+  /// The testing library failed to create an in-memory stream.
   case streamCreationFailed(HRESULT)
+
+  /// The testing library failed to get an in-memory stream's underlying buffer.
   case globalFromStreamFailed(HRESULT)
-  case clsidNotFound
 }
 
 extension GDIPlusError: CustomStringConvertible {
@@ -30,14 +35,20 @@ extension GDIPlusError: CustomStringConvertible {
       "Could not create an in-memory stream (HRESULT \(result))."
     case let .globalFromStreamFailed(result):
       "Could not access the buffer containing the encoded image (HRESULT \(result))."
-    case .clsidNotFound:
-      "Could not find an appropriate CSLID value for the specified image format."
     }
   }
 }
 
 // MARK: -
 
+/// Call a function while GDI+ is set up on the current thread.
+/// 
+/// - Parameters:
+///   - body: The function to invoke.
+///
+/// - Returns: Whatever is returned by `body`.
+///
+/// - Throws: Whatever is thrown by `body`.
 func withGDIPlus<R>(_ body: () throws -> R) throws -> R {
   // "Escape hatch" if the program being tested calls GdiplusStartup() itself in
   // some way that is incompatible with our assumptions about it.
