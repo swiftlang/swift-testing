@@ -82,7 +82,7 @@ extension AttachableImageFormat {
   ///
   /// - Returns: An instance of `CLSID` referring to a concrete image type, or
   ///   `nil` if one could not be determined.
-  private static func _computeCLSID(forPathExtension pathExtension: UnsafePointer<wchar_t>) -> CLSID? {
+  private static func _computeCLSID(forPathExtension pathExtension: UnsafePointer<CWideChar>) -> CLSID? {
     _allCodecs?.first { codec in
       _pathExtensions(for: codec)
         .contains { codecExtension in
@@ -269,6 +269,6 @@ func ==(lhs: CLSID, rhs: CLSID) -> Bool {
   // BUG: https://github.com/swiftlang/swift/issues/83452
   var lhs = lhs
   var rhs = rhs
-  return 0 == memcmp(&lhs, &rhs)
+  return 0 == memcmp(&lhs, &rhs, MemoryLayout<CLSID>.size)
 }
 #endif

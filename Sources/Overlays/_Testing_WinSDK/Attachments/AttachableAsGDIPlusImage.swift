@@ -146,7 +146,7 @@ extension AttachableAsGDIPlusImage {
   /// calls `GdiplusStartup()` and `GdiplusShutdown()` at the appropriate times.
   func withGDIPlusImage<R>(_ body: (borrowing OpaquePointer) throws -> R) throws -> R {
     try withGDIPlus {
-      let image = try _copyGDIPlusImage()
+      let image = try _copyAttachableGDIPlusImage()
       defer {
         swt_GdiplusImageDelete(image)
       }
