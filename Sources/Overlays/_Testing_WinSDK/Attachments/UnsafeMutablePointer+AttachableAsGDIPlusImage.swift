@@ -9,7 +9,7 @@
 //
 
 #if os(Windows)
-@_spi(Experimental) public import Testing
+import Testing
 
 @_spi(Experimental)
 extension UnsafeMutablePointer: AttachableAsGDIPlusImage where Pointee: _AttachableByAddressAsGDIPlusImage {

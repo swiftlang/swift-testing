@@ -9,7 +9,7 @@
 //
 
 #if os(Windows)
-@_spi(Experimental) public import Testing
+import Testing
 private import _TestingInternals.GDIPlus
 
 public import WinSDK
