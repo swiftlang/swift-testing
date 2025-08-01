@@ -80,5 +80,3 @@ extension Event.AdvancedConsoleOutputRecorder {
     _fallbackRecorder.record(event, in: eventContext)
   }
 }
-
- 
