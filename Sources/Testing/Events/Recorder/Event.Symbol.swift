@@ -61,22 +61,22 @@ extension Event.Symbol {
       ("\u{10065F}", "arrow.triangle.turn.up.right.diamond.fill")
     case let .pass(knownIssueCount):
       if knownIssueCount > 0 {
-        ("\u{100791}", "diamond.fill")
+        ("\u{100883}", "xmark.diamond")
       } else {
-        ("\u{100663}", "checkmark.diamond.fill")
+        ("\u{10105B}", "checkmark.diamond.fill")
       }
     case .passWithWarnings:
-      ("\u{10078B}", "exclamationmark.diamond.fill")
+      ("\u{100123}", "questionmark.diamond.fill")
     case .fail:
-      ("\u{100791}", "diamond.fill")
+      ("\u{100884}", "xmark.diamond.fill")
     case .difference:
-      ("\u{100635}", "plusminus.circle.fill")
+      ("\u{10017A}", "plus.forwardslash.minus")
     case .warning:
-      ("\u{10078B}", "exclamationmark.diamond.fill")
+      ("\u{1001FF}", "exclamationmark.triangle.fill")
     case .details:
-      ("\u{100631}", "arrow.down.right.circle.fill")
+      ("\u{100135}", "arrow.turn.down.right")
     case .attachment:
-      ("\u{100631}", "arrow.down.right.circle.fill")
+      ("\u{100237}", "doc")
     }
   }
 

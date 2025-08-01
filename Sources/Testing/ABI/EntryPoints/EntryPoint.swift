@@ -51,40 +51,35 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     }
     configuration.verbosity = args.verbosity
 
-    if configuration.verbosity >= 0 {
+#if !SWT_NO_FILE_IO
+    // Configure the event recorder to write events to stderr.
+    if configuration.verbosity > .min {
       // Check for experimental console output flag
       if Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") {
+        // Use experimental AdvancedConsoleOutputRecorder
         var advancedOptions = Event.AdvancedConsoleOutputRecorder.Options()
-        advancedOptions.base = .for(FileHandle.stderr)
-        
-        advancedOptions.base.useANSIEscapeCodes = true
-        advancedOptions.base.ansiColorBitDepth = 24
-        #if os(macOS)
-        advancedOptions.base.useSFSymbols = true
-        #endif
-        
-        advancedOptions.useHierarchicalOutput = true
+        advancedOptions.base = .for(.stderr)
         
         let eventRecorder = Event.AdvancedConsoleOutputRecorder(options: advancedOptions) { string in
           try? FileHandle.stderr.write(string)
         }
         
-        // Replace the event handler completely with our advanced recorder
-        configuration.eventHandler = { event, context in
+        configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
           eventRecorder.handle(event, in: context)
+          oldEventHandler(event, context)
         }
       } else {
-        // Use the standard console output recorder
+        // Use the standard console output recorder (default behavior)
         let eventRecorder = Event.ConsoleOutputRecorder(options: .for(.stderr)) { string in
           try? FileHandle.stderr.write(string)
         }
-        
         configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
-          oldEventHandler(event, context)
           eventRecorder.record(event, in: context)
+          oldEventHandler(event, context)
         }
       }
     }
+#endif
 
     // If the caller specified an alternate event handler, hook it up too.
     if let eventHandler {
