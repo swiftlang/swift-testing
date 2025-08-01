@@ -34,7 +34,7 @@ import UIKit
 import UniformTypeIdentifiers
 #endif
 
-@Suite("Attachment Tests", .disabled())
+@Suite("Attachment Tests")
 struct AttachmentTests {
   @Test func saveValue() {
     let attachableValue = MyAttachable(string: "<!doctype html>")

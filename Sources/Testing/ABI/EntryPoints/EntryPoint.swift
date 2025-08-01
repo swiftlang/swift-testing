@@ -52,24 +52,37 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     configuration.verbosity = args.verbosity
 
     if configuration.verbosity >= 0 {
-      var advancedOptions = Event.AdvancedConsoleOutputRecorder.Options()
-      advancedOptions.base = .for(FileHandle.stderr)
-      
-      advancedOptions.base.useANSIEscapeCodes = true
-      advancedOptions.base.ansiColorBitDepth = 24
-      #if os(macOS)
-      advancedOptions.base.useSFSymbols = true
-      #endif
-      
-      advancedOptions.useHierarchicalOutput = true
-      
-      let eventRecorder = Event.AdvancedConsoleOutputRecorder(options: advancedOptions) { string in
-        try? FileHandle.stderr.write(string)
-      }
-      
-      // Replace the event handler completely with our advanced recorder
-      configuration.eventHandler = { event, context in
-        eventRecorder.handle(event, in: context)
+      // Check for experimental console output flag
+      if Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") {
+        var advancedOptions = Event.AdvancedConsoleOutputRecorder.Options()
+        advancedOptions.base = .for(FileHandle.stderr)
+        
+        advancedOptions.base.useANSIEscapeCodes = true
+        advancedOptions.base.ansiColorBitDepth = 24
+        #if os(macOS)
+        advancedOptions.base.useSFSymbols = true
+        #endif
+        
+        advancedOptions.useHierarchicalOutput = true
+        
+        let eventRecorder = Event.AdvancedConsoleOutputRecorder(options: advancedOptions) { string in
+          try? FileHandle.stderr.write(string)
+        }
+        
+        // Replace the event handler completely with our advanced recorder
+        configuration.eventHandler = { event, context in
+          eventRecorder.handle(event, in: context)
+        }
+      } else {
+        // Use the standard console output recorder
+        let eventRecorder = Event.ConsoleOutputRecorder(options: .for(.stderr)) { string in
+          try? FileHandle.stderr.write(string)
+        }
+        
+        configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+          oldEventHandler(event, context)
+          eventRecorder.record(event, in: context)
+        }
       }
     }
 

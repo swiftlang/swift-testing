@@ -56,27 +56,27 @@ extension Event.Symbol {
   private var _sfSymbolInfo: (privateUseAreaCharacter: Character, name: String) {
     switch self {
     case .default:
-      ("􀊕", "play.circle")  // running: play.circle (teal)
+      ("\u{1007C8}", "diamond")
     case .skip:
-      ("􀺅", "forward.circle")  // skip: forward.circle (purple)
+      ("\u{10065F}", "arrow.triangle.turn.up.right.diamond.fill")
     case let .pass(knownIssueCount):
       if knownIssueCount > 0 {
-        ("􀀲", "x.circle")  // pass with known issues: x.circle (gray)
+        ("\u{100791}", "diamond.fill")
       } else {
-        ("􀁢", "checkmark.circle")  // pass: checkmark.circle (green)
+        ("\u{100663}", "checkmark.diamond.fill")
       }
     case .passWithWarnings:
-      ("􀁜", "questionmark.circle")  // pass with warnings: questionmark.circle (yellow)
+      ("\u{10078B}", "exclamationmark.diamond.fill")
     case .fail:
-      ("􀀲", "x.circle")  // fail: x.circle (red)
+      ("\u{100791}", "diamond.fill")
     case .difference:
-      ("􂫃", "notequal.circle")  // difference: notequal.circle (brown)
+      ("\u{100635}", "plusminus.circle.fill")
     case .warning:
-      ("􀁞", "exclamationmark.circle")  // warning: exclamationmark.circle (orange)
+      ("\u{10078B}", "exclamationmark.diamond.fill")
     case .details:
-      ("􀂄", "arrow.up.right.circle")  // details: arrow.up.right.circle (blue)
+      ("\u{100631}", "arrow.down.right.circle.fill")
     case .attachment:
-      ("􀒔", "paperclip.circle")  // attachment: paperclip.circle (gray)
+      ("\u{100631}", "arrow.down.right.circle.fill")
     }
   }
 
