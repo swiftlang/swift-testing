@@ -128,9 +128,13 @@ value using the `as` operator:
 
 Every value you capture in an exit test must conform to [`Sendable`](https://developer.apple.com/documentation/swift/sendable)
 and [`Codable`](https://developer.apple.com/documentation/swift/codable). The
-testing library encodes each value using [`encode(to:)`](https://developer.apple.com/documentation/swift/encodable/encode(to:))
-in the parent process, and decodes it using [`init(from:)`](https://developer.apple.com/documentation/swift/decodable/init(from:))
-in the child process, before passing it to the exit test body.
+testing library passes each value to the exit test body by following this process:
+
+1. It encodes each value using [`encode(to:)`](https://developer.apple.com/documentation/swift/encodable/encode(to:))
+in the parent process
+2. It passes the encoded value to the child process
+3. It decodes each value using [`init(from:)`](https://developer.apple.com/documentation/swift/decodable/init(from:))
+in the child process
 
 If a captured value's type does not conform to both `Sendable` and `Codable`, or
 if the value is not explicitly specified in the exit test body's capture list,
