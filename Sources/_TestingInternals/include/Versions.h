@@ -16,6 +16,14 @@
 
 SWT_ASSUME_NONNULL_BEGIN
 
+static inline uint64_t swt_getSwiftCompilerVersion(void) {
+#if defined(__SWIFT_COMPILER_VERSION)
+  return __SWIFT_COMPILER_VERSION;
+#else
+  return 0;
+#endif
+}
+
 /// Get the human-readable version of the testing library.
 ///
 /// - Returns: A human-readable string describing the version of the testing
