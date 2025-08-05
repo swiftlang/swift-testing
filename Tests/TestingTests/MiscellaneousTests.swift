@@ -606,3 +606,28 @@ struct MiscellaneousTests {
     #expect(duration < .seconds(1))
   }
 }
+
+#if canImport(Foundation)
+@Test func uuidToFoundationUUID() {
+  let uuid = Testing.UUID()
+  let fuuid = uuid.withUnsafeBytes { bytes in
+    Foundation.UUID(uuid: bytes.load(as: uuid_t.self))
+  }
+  #expect(String(describing: uuid).lowercased() == String(describing: fuuid).lowercased())
+}
+
+@Test func foundationUUIDToUUID() throws {
+  let fuuid = Foundation.UUID()
+  let uuid = withUnsafeBytes(of: fuuid.uuid) { bytes in
+    Testing.UUID(bytes)
+  }
+  #expect(String(describing: uuid).lowercased() == String(describing: fuuid).lowercased())
+}
+
+@Test func encodeFoundationUUIDAndDecodeUUID() throws {
+  let fuuid = Foundation.UUID()
+  let data = try JSONEncoder().encode(fuuid)
+  let uuid = try JSONDecoder().decode(Testing.UUID.self, from: data)
+  #expect(String(describing: uuid).lowercased() == String(describing: fuuid).lowercased())
+}
+#endif

@@ -123,6 +123,10 @@
 #include <sysexits.h>
 #endif
 
+#if __has_include(<uuid/uuid.h>)
+#include <uuid/uuid.h>
+#endif
+
 // MARK: - Platform-specific includes
 
 #if defined(__APPLE__)

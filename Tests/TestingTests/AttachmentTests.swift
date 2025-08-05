@@ -267,7 +267,7 @@ struct AttachmentTests {
 #if !SWT_NO_FILE_IO
   @Test func attachContentsOfFileURL() async throws {
     let data = try #require("<!doctype html>".data(using: .utf8))
-    let temporaryFileName = "\(UUID().uuidString).html"
+    let temporaryFileName = "\(Foundation.UUID().uuidString).html"
     let temporaryPath = try appendPathComponent(temporaryFileName, to: temporaryDirectory())
     let temporaryURL = URL(fileURLWithPath: temporaryPath, isDirectory: false)
     try data.write(to: temporaryURL)
@@ -300,7 +300,7 @@ struct AttachmentTests {
 
 #if !SWT_NO_PROCESS_SPAWNING
   @Test func attachContentsOfDirectoryURL() async throws {
-    let temporaryDirectoryName = UUID().uuidString
+    let temporaryDirectoryName = Foundation.UUID().uuidString
     let temporaryPath = try appendPathComponent(temporaryDirectoryName, to: temporaryDirectory())
     let temporaryURL = URL(fileURLWithPath: temporaryPath, isDirectory: false)
     try FileManager.default.createDirectory(at: temporaryURL, withIntermediateDirectories: true)
