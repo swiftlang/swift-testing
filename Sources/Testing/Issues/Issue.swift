@@ -84,6 +84,7 @@ public struct Issue: Sendable {
   ///
   /// - ``warning``
   /// - ``error``
+  ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
   /// }
@@ -103,6 +104,7 @@ public struct Issue: Sendable {
   }
 
   /// The severity of this issue.
+  ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
   /// }
@@ -118,6 +120,7 @@ public struct Issue: Sendable {
   ///
   /// Use this property to determine if an issue should be considered a failure, instead of
   /// directly comparing the value of the ``severity`` property.
+  ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
   /// }
@@ -330,6 +333,7 @@ extension Issue {
     public var kind: Kind.Snapshot
 
     /// The severity of this issue.
+    /// 
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.3)
     /// }

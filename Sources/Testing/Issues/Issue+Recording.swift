@@ -50,7 +50,7 @@ extension Issue {
     return self
   }
 
-  /// Record an issue when a running test fails unexpectedly.
+  /// Records an issue that a test encounters while it's running.
   ///
   /// - Parameters:
   ///   - comment: A comment describing the expectation.
@@ -63,6 +63,8 @@ extension Issue {
   /// represented as an expectation (using the ``expect(_:_:sourceLocation:)``
   /// or ``require(_:_:sourceLocation:)-5l63q`` macros.)
   @_disfavoredOverload
+  @_documentation(visibility: private)
+  @available(*, deprecated, message: "Use record(_:severity:sourceLocation:) instead.")
   @discardableResult public static func record(
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
@@ -70,11 +72,13 @@ extension Issue {
     record(comment, severity: .error, sourceLocation: sourceLocation)
   }
 
-  /// Record an issue when a running test and an issue occurs.
+  /// Records an issue that a test encounters while it's running.
   ///
   /// - Parameters:
   ///   - comment: A comment describing the expectation.
-  ///   - severity: The severity level of the issue.  The testing library marks the test as failed if the severity is greater than ``Issue/Severity/warning``.  The default is ``Issue/Severity/error``.
+  ///   - severity: The severity level of the issue.  The testing library marks the
+  ///   test as failed if the severity is greater than ``Issue/Severity/warning``.
+  ///   The default is ``Issue/Severity/error``.
   ///   - sourceLocation: The source location to which the issue should be
   ///     attributed.
   ///
@@ -83,6 +87,7 @@ extension Issue {
   /// Use this function if, while running a test, an issue occurs that cannot be
   /// represented as an expectation (using the ``expect(_:_:sourceLocation:)``
   /// or ``require(_:_:sourceLocation:)-5l63q`` macros.)
+  /// 
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
   /// }
