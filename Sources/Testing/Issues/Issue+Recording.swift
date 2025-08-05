@@ -74,8 +74,7 @@ extension Issue {
   ///
   /// - Parameters:
   ///   - comment: A comment describing the expectation.
-  ///   - severity: The severity level of the issue.  This factor impacts whether the
-  ///     issue constitutes a failure.  The default is .error.
+  ///   - severity: The severity level of the issue.  The testing library marks the test as failed if the severity is greater than ``Issue/Severity/warning``.  The default is ``Issue/Severity/error``.
   ///   - sourceLocation: The source location to which the issue should be
   ///     attributed.
   ///
