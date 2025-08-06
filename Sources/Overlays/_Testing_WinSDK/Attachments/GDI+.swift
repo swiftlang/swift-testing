@@ -10,14 +10,14 @@
 
 #if os(Windows)
 @_spi(Experimental) import Testing
-internal import _TestingInternals.GDIPlus
+import _Testing_WinSDK_GDIPlus
 
 internal import WinSDK
 
 /// A type describing errors that can be thrown by GDI+.
 enum GDIPlusError: Error {
   /// A GDI+ status code.
-  case status(Gdiplus.Status)
+  case status(SWTGDIPlusStatusCode)
 
   /// The testing library failed to create an in-memory stream.
   case streamCreationFailed(HRESULT)
@@ -39,6 +39,24 @@ extension GDIPlusError: CustomStringConvertible {
   }
 }
 
+/// Call the given GDI+ function and, if it failed, throw an error.
+/// 
+/// - Parameters:
+///   - expression: An expression to evaluate that returns a GDI+ status code.
+/// 
+/// - Returns: Always returns `true`.
+/// 
+/// - Throws: An instance of ``GDIPlusError`` if `expression` failed.
+@discardableResult
+func call(_ expression: @autoclosure () -> SWTGDIPlusStatusCode) throws(GDIPlusError) -> Bool {
+  switch expression() {
+  case .ok:
+    return true
+  case let statusCode:
+    throw GDIPlusError.status(statusCode)
+  }
+}
+
 // MARK: -
 
 /// Call a function while GDI+ is set up on the current thread.
@@ -56,12 +74,8 @@ func withGDIPlus<R>(_ body: () throws -> R) throws -> R {
     return try body()
   }
 
-  var token = ULONG_PTR(0)
-  var input = Gdiplus.GdiplusStartupInput(nil, false, false)
-  let rStartup = swt_GdiplusStartup(&token, &input, nil)
-  guard rStartup == Gdiplus.Ok else {
-    throw GDIPlusError.status(rStartup)
-  }
+  var token = ULONG_PTR(0)  
+  try call(swt_GdiplusStartup(&token))
   defer {
     swt_GdiplusShutdown(token)
   }

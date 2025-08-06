@@ -10,7 +10,7 @@
 
 #if os(Windows)
 @_spi(Experimental) import Testing
-private import _TestingInternals.GDIPlus
+import _Testing_WinSDK_GDIPlus
 
 internal import WinSDK
 
@@ -125,5 +125,20 @@ public protocol AttachableAsGDIPlusImage {
   /// This function is not part of the public interface of the testing library.
   /// It may be removed in a future update.
   func _cleanUpAttachment()
+}
+
+extension AttachableAsGDIPlusImage {
+  /// Create a GDI+ image representing this instance.
+  ///
+  /// - Returns: A pointer to a new GDI+ image representing this image. The
+  ///   caller is responsible for deleting this image when done with it.
+  ///
+  /// - Throws: Any error that prevented the creation of the GDI+ image.
+  /// 
+  /// This function wraps `_copyAttachableGDIPlusImage()` and casts the opaque
+  /// pointer returned by that function to the correct type.
+  func copyAttachableGDIPlusImage() throws -> UnsafeMutablePointer<SWTGDIPlusImage> {
+    try .init(_copyAttachableGDIPlusImage())
+  }
 }
 #endif

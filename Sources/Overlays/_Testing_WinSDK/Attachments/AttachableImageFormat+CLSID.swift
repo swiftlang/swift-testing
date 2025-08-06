@@ -10,51 +10,27 @@
 
 #if os(Windows)
 @_spi(Experimental) import Testing
-private import _TestingInternals.GDIPlus
+import _Testing_WinSDK_GDIPlus
 
 public import WinSDK
 
-extension AttachableImageFormat {
+extension SWTGDIPlusImageCodecInfo {
   /// The set of `ImageCodecInfo` instances known to GDI+.
   ///
   /// If the testing library was unable to determine the set of image formats,
-  /// the value of this property is `nil`.
-  ///
-  /// - Note: The type of this property is a buffer pointer rather than an array
-  ///   because the resulting buffer owns trailing untyped memory where path
-  ///   extensions and other fields are stored. Do not deallocate this buffer.
-  private static nonisolated(unsafe) let _allCodecs: UnsafeBufferPointer<Gdiplus.ImageCodecInfo> = {
+  /// the value of this property is the empty array.
+  fileprivate static nonisolated(unsafe) let all: [UnsafePointer<Self>] = {
     let result = try? withGDIPlus {
-      // Find out the size of the buffer needed.
-      var codecCount = UINT(0)
-      var byteCount = UINT(0)
-      let rGetSize = Gdiplus.GetImageEncodersSize(&codecCount, &byteCount)
-      guard rGetSize == Gdiplus.Ok else {
-        throw GDIPlusError.status(rGetSize)
-      }
-
-      // Allocate a buffer of sufficient byte size, then bind the leading bytes
-      // to ImageCodecInfo. This leaves some number of trailing bytes unbound to
-      // any Swift type.
-      let result = UnsafeMutableRawBufferPointer.allocate(
-        byteCount: Int(byteCount),
-        alignment: MemoryLayout<Gdiplus.ImageCodecInfo>.alignment
-      )
-      let codecBuffer = result
-        .prefix(MemoryLayout<Gdiplus.ImageCodecInfo>.stride * Int(codecCount))
-        .bindMemory(to: Gdiplus.ImageCodecInfo.self)
-
-      // Read the encoders list.
-      let rGetEncoders = Gdiplus.GetImageEncoders(codecCount, byteCount, codecBuffer.baseAddress!)
-      guard rGetEncoders == Gdiplus.Ok else {
-        result.deallocate()
-        throw GDIPlusError.status(rGetEncoders)
-      }
-      return UnsafeBufferPointer(codecBuffer)
+      var baseAddress: UnsafeMutablePointer<UnsafePointer<Self>>?
+      var count = 0
+      try call(swt_GdiplusCopyAllImageCodecInfo(&baseAddress, &count))
+      return Array(UnsafeBufferPointer(start: baseAddress, count: count))
     }
-    return result ?? UnsafeBufferPointer(start: nil, count: 0)
+    return result ?? []
   }()
+}
 
+extension AttachableImageFormat {
   /// Get the set of path extensions corresponding to the image format
   /// represented by a GDI+ codec info structure.
   ///
@@ -63,8 +39,8 @@ extension AttachableImageFormat {
   ///
   /// - Returns: An array of zero or more path extensions. The case of the
   ///   resulting strings is unspecified.
-  private static func _pathExtensions(for codec: Gdiplus.ImageCodecInfo) -> [String] {
-    guard let extensions = String.decodeCString(codec.FilenameExtension, as: UTF16.self)?.result else {
+  private static func _pathExtensions(for codec: UnsafePointer<SWTGDIPlusImageCodecInfo>) -> [String] {
+    guard let extensions = String.decodeCString(swt_GdiplusImageCodecInfoGetFilenameExtension(codec), as: UTF16.self)?.result else {
       return []
     }
     return extensions
@@ -88,14 +64,14 @@ extension AttachableImageFormat {
   /// - Returns: An instance of `CLSID` referring to a concrete image type, or
   ///   `nil` if one could not be determined.
   private static func _computeCLSID(forPathExtension pathExtension: UnsafePointer<CWideChar>) -> CLSID? {
-    _allCodecs.first { codec in
+    SWTGDIPlusImageCodecInfo.all.first { codec in
       _pathExtensions(for: codec)
         .contains { codecExtension in
           codecExtension.withCString(encodedAs: UTF16.self) { codecExtension in
             0 == _wcsicmp(pathExtension, codecExtension)
           }
         }
-    }.map(\.Clsid)
+    }.map(swt_GdiplusImageCodecInfoGetCLSID)
   }
 
   /// Get the `CLSID` value corresponding to the same image format as the given
@@ -178,8 +154,8 @@ extension AttachableImageFormat {
       return preferredName
     }
 
-    let ext = _allCodecs
-      .first { $0.Clsid == clsid }
+    let ext = SWTGDIPlusImageCodecInfo.all
+      .first { swt_GdiplusImageCodecInfoGetCLSID($0) == clsid }
       .flatMap { _pathExtensions(for: $0).first }
     guard let ext else {
       // Couldn't find a path extension for the given CLSID, so make no changes.

@@ -8,7 +8,9 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-module _TestingInternals {
+module _Testing_WinSDK_GDIPlus {
   umbrella "."
   export *
+
+  link "gdiplus.lib"
 }

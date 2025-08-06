@@ -10,7 +10,7 @@
 
 #if os(Windows)
 @_spi(Experimental) public import Testing
-private import _TestingInternals.GDIPlus
+import _Testing_WinSDK_GDIPlus
 
 internal import WinSDK
 
@@ -80,30 +80,18 @@ extension _AttachableImageWrapper: AttachableWrapper {
 
     try withGDIPlus {
       // Get a GDI+ image from the attachment.
-      let image = try image._copyAttachableGDIPlusImage()
+      let image = try image.copyAttachableGDIPlusImage()
       defer {
         swt_GdiplusImageDelete(image)
       }
 
       // Get the CLSID of the image encoder corresponding to the specified image
       // format.
-      var clsid = AttachableImageFormat.computeCLSID(for: imageFormat, withPreferredName: attachment.preferredName)
+      let clsid = AttachableImageFormat.computeCLSID(for: imageFormat, withPreferredName: attachment.preferredName)
+      var encodingQuality = imageFormat?.encodingQuality ?? 1.0
 
-      var encodingQuality = LONG((imageFormat?.encodingQuality ?? 1.0) * 100.0)
-      try withUnsafeMutableBytes(of: &encodingQuality) { encodingQuality in
-        var encoderParams = Gdiplus.EncoderParameters()
-        encoderParams.Count = 1
-        encoderParams.Parameter.Guid = swt_GdiplusEncoderQuality()
-        encoderParams.Parameter.Type = ULONG(Gdiplus.EncoderParameterValueTypeLong.rawValue)
-        encoderParams.Parameter.NumberOfValues = 1
-        encoderParams.Parameter.Value = encodingQuality.baseAddress
-
-        // Save the image into the stream.
-        let rSave = swt_GdiplusImageSave(image, stream, &clsid, &encoderParams)
-        guard rSave == Gdiplus.Ok else {
-          throw GDIPlusError.status(rSave)
-        }
-      }
+      // Save the image into the stream.
+      try call(swt_GdiplusImageSave(image, stream, clsid, &encodingQuality))
     }
 
     // Extract the serialized image and pass it back to the caller. We hold the

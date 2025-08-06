@@ -252,9 +252,15 @@ let package = Package(
       name: "_Testing_WinSDK",
       dependencies: [
         "Testing",
+        "_Testing_WinSDK_GDIPlus",
       ],
       path: "Sources/Overlays/_Testing_WinSDK",
-      swiftSettings: .packageSettings + .enableLibraryEvolution() + [.interoperabilityMode(.Cxx)]
+      swiftSettings: .packageSettings + .enableLibraryEvolution()
+    ),
+    .target(
+      name: "_Testing_WinSDK_GDIPlus",
+      path: "Sources/Overlays/_Testing_WinSDK_GDIPlus",
+      cxxSettings: .packageSettings
     ),
 
     // Utility targets: These are utilities intended for use when developing

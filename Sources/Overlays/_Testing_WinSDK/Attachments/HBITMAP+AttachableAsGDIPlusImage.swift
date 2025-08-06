@@ -10,14 +10,14 @@
 
 #if os(Windows)
 import Testing
-private import _TestingInternals.GDIPlus
+import _Testing_WinSDK_GDIPlus
 
 public import WinSDK
 
 @_spi(Experimental)
 extension HBITMAP__: _AttachableByAddressAsGDIPlusImage {
   public static func _copyAttachableGDIPlusImage(at imageAddress: UnsafeMutablePointer<Self>) throws -> OpaquePointer {
-    swt_GdiplusImageFromHBITMAP(imageAddress, nil)
+    OpaquePointer(swt_GdiplusImageCreateFromHBITMAP(imageAddress, nil))
   }
 
   public static func _cleanUpAttachment(at imageAddress: UnsafeMutablePointer<Self>) {
