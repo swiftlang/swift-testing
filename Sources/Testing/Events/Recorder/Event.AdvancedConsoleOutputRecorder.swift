@@ -66,10 +66,7 @@ extension Event.AdvancedConsoleOutputRecorder {
   /// Handle an event by processing it and generating appropriate output.
   ///
   /// Currently this is a skeleton implementation that delegates to the
-  /// standard ConsoleOutputRecorder. Future PRs will add:
-  /// - PR #2: Hierarchical display logic
-  /// - PR #3: Live progress bar functionality
-  /// - PR #4: Enhanced symbol integration
+  /// standard ConsoleOutputRecorder.
   ///
   /// - Parameters:
   ///   - event: The event to handle.

@@ -27,5 +27,5 @@
 /// printLiveUpdatingLine("Processing... 100%")
 /// ```
 public func printLiveUpdatingLine(_ text: String) {
-    print("\r\u{001B}[2K\(text)", terminator: "")
+  print("\r\u{001B}[2K\(text)", terminator: "")
 } 
