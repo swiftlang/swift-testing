@@ -27,10 +27,11 @@ extension Attachment where AttachableValue: ~Copyable {
   ///     attachment.
   ///
   /// The following system-provided image types conform to the
-  /// ``AttachableAsGDIPlusImage`` protocol and can be attached to a test:
+  /// ``AttachableAsIWICBitmap`` protocol and can be attached to a test:
   ///
   /// - [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps)
   /// - [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons)
+  /// - [`IWICBitmap`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmap)
   ///
   /// The testing library uses the image format specified by `imageFormat`. Pass
   /// `nil` to let the testing library decide which image format to use. If you
@@ -53,7 +54,7 @@ extension Attachment where AttachableValue: ~Copyable {
     as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) where AttachableValue == _AttachableImageWrapper<T> {
-    let imageWrapper = _AttachableImageWrapper(image: attachableValue, imageFormat: imageFormat, cleanUpWhenDone: true)
+    let imageWrapper = _AttachableImageWrapper(image: attachableValue, imageFormat: imageFormat, deinitializeWhenDone: true)
     self.init(imageWrapper, named: preferredName, sourceLocation: sourceLocation)
   }
 
@@ -73,10 +74,11 @@ extension Attachment where AttachableValue: ~Copyable {
   /// and immediately attaches it to the current test.
   ///
   /// The following system-provided image types conform to the
-  /// ``AttachableAsGDIPlusImage`` protocol and can be attached to a test:
+  /// ``AttachableAsIWICBitmap`` protocol and can be attached to a test:
   ///
   /// - [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps)
   /// - [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons)
+  /// - [`IWICBitmap`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmap)
   ///
   /// The testing library uses the image format specified by `imageFormat`. Pass
   /// `nil` to let the testing library decide which image format to use. If you
@@ -91,7 +93,7 @@ extension Attachment where AttachableValue: ~Copyable {
     as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) where AttachableValue == _AttachableImageWrapper<T> {
-    let imageWrapper = _AttachableImageWrapper(image: copy image, imageFormat: imageFormat, cleanUpWhenDone: true)
+    let imageWrapper = _AttachableImageWrapper(image: copy image, imageFormat: imageFormat, deinitializeWhenDone: false)
     let attachment = Self(imageWrapper, named: preferredName, sourceLocation: sourceLocation)
     Self.record(attachment, sourceLocation: sourceLocation)
   }

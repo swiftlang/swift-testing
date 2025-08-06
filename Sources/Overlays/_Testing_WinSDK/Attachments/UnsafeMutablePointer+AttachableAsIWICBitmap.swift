@@ -10,18 +10,17 @@
 
 #if os(Windows)
 import Testing
-private import _TestingInternals.GDIPlus
 
 public import WinSDK
 
 @_spi(Experimental)
-extension HICON__: _AttachableByAddressAsGDIPlusImage {
-  public static func _copyAttachableGDIPlusImage(at imageAddress: UnsafeMutablePointer<Self>) throws -> OpaquePointer {
-    swt_GdiplusImageFromHICON(imageAddress)
+extension UnsafeMutablePointer: AttachableAsIWICBitmap where Pointee: _AttachableByAddressAsIWICBitmap {
+  public func _copyAttachableIWICBitmap(using factory: UnsafeMutablePointer<IWICImagingFactory>) throws -> UnsafeMutablePointer<IWICBitmap> {
+    try Pointee._copyAttachableIWICBitmap(from: self, using: factory)
   }
 
-  public static func _cleanUpAttachment(at imageAddress: UnsafeMutablePointer<Self>) {
-    DeleteObject(imageAddress)
+  public consuming func _deinitializeAttachment() {
+    Pointee._deinitializeAttachment(at: self)
   }
 }
 #endif
