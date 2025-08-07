@@ -74,7 +74,7 @@ extension _AttachableImageWrapper: AttachableWrapper {
     }
     defer {
       stream.withMemoryRebound(to: IUnknown.self, capacity: 1) { stream in
-        _ = swt_IUnknown_Release(stream)
+        stream.Release()
       }
     }
 

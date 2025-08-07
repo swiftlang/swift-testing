@@ -11,6 +11,8 @@
 #if !defined(SWT_GDIPLUS_H)
 #define SWT_GDIPLUS_H
 
+#include <Initguid.h>
+
 /// This header includes thunk functions for various GDI+ functions that the
 /// Swift importer is currently unable to import. As such, I haven't documented
 /// each function individually; refer to the GDI+ documentation for more
@@ -63,29 +65,34 @@ typedef struct SWTGDIPlusImage {
 ///   - bitmap: The bitmap.
 ///   - palette: Optionally, a palette associated with `bitmap`.
 ///
-/// - Returns: A new GDI+ image.
-SWT_EXTERN SWTGDIPlusImage *swt_GdiplusImageCreateFromHBITMAP(
-  HBITMAP bitmap,
-  HPALETTE _Nullable palette
-);
+/// - Returns: A new GDI+ image. The caller is responsible for ensuring that
+///   `bitmap` and `palette` remain valid until this image is deleted.
+SWT_EXTERN SWTGDIPlusImage *swt_GdiplusImageCreateFromHBITMAP(HBITMAP bitmap, HPALETTE _Nullable palette);
 
 /// Create a GDI+ image from an `HICON` instance.
 ///
 /// - Parameters:
 ///   - icon: The icon.
 ///
-/// - Returns: A new GDI+ image.
-SWT_EXTERN SWTGDIPlusImage *swt_GdiplusImageCreateFromHICON(
-  HICON icon
-);
+/// - Returns: A new GDI+ image. The caller is responsible for ensuring that
+///   `icon` remains valid until this image is deleted.
+SWT_EXTERN SWTGDIPlusImage *swt_GdiplusImageCreateFromHICON(HICON icon);
+
+/// Create a GDI+ image from a COM object.
+///
+/// - Parameters:
+///   - object: The COM object.
+///
+/// - Returns: A new GDI+ image, or `nullptr` if `object` was not of a supported
+///   COM type. The implementation holds a reference to `object` until the image
+///   is deleted or `object` is no longer needed.
+SWT_EXTERN SWTGDIPlusImage *swt_GdiplusImageCreateFromIUnknown(IUnknown *object);
 
 /// Delete a GDI+ image previously created with a function in this library.
 ///
 /// - Parameters:
 ///   - image: The image to delete.
-SWT_EXTERN void swt_GdiplusImageDelete(
-  SWTGDIPlusImage *image
-);
+SWT_EXTERN void swt_GdiplusImageDelete(SWTGDIPlusImage *image);
 
 /// Save a GDI+ image to a stream.
 ///
@@ -130,9 +137,7 @@ SWT_EXTERN SWTGDIPlusStatusCode swt_GdiplusCopyAllImageCodecInfo(
 ///   - info: Information about the codec of interest.
 ///
 /// - Returns: The `CLSID` value associated with `info`.
-SWT_EXTERN CLSID swt_GdiplusImageCodecInfoGetCLSID(
-  const SWTGDIPlusImageCodecInfo *info
-);
+SWT_EXTERN CLSID swt_GdiplusImageCodecInfoGetCLSID(const SWTGDIPlusImageCodecInfo *info);
 
 /// Get a string containing the filename extensions associated with a GDI+
 /// image codec.
@@ -144,9 +149,7 @@ SWT_EXTERN CLSID swt_GdiplusImageCodecInfoGetCLSID(
 ///   path extensions associated with `info`. The format of this string is
 ///   described in Microsoft's GDI+ documentation. The caller must not
 ///   deallocate this string.
-SWT_EXTERN const wchar_t *swt_GdiplusImageCodecInfoGetFilenameExtension(
-  const SWTGDIPlusImageCodecInfo *info
-);
+SWT_EXTERN const wchar_t *swt_GdiplusImageCodecInfoGetFilenameExtension(const SWTGDIPlusImageCodecInfo *info);
 
 SWT_ASSUME_NONNULL_END
 

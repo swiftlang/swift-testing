@@ -17,7 +17,10 @@
 
 #if defined(_WIN32)
 #include <Windows.h>
+#include <d2d1.h>
+#include <ddraw.h>
 #include <Gdiplus.h>
+#include <wincodec.h>
 
 #include <algorithm>
 #include <cstdlib>
@@ -44,6 +47,36 @@ SWTGDIPlusImage *swt_GdiplusImageCreateFromHBITMAP(HBITMAP bitmap, HPALETTE pale
 
 SWTGDIPlusImage *swt_GdiplusImageCreateFromHICON(HICON icon) {
   Image *result = Bitmap::FromHICON(icon);
+  return reinterpret_cast<SWTGDIPlusImage *>(result);
+}
+
+SWTGDIPlusImage *swt_GdiplusImageCreateFromIUnknown(IUnknown *object) {
+  Image *result = nullptr;
+
+  if (!result) {
+    ID2D1Bitmap *bitmap;
+    if (S_OK == object->QueryInterface<ID2D1Bitmap>(&bitmap)) {
+      // TODO: convert D2D bitmap to GDI+ image
+      bitmap->Release();
+    }
+  }
+
+  if (!result) {
+    IWICBitmap *bitmap;
+    if (S_OK == object->QueryInterface<IWICBitmap>(&bitmap)) {
+      // TODO: convert WIC bitmap to GDI+ image
+      bitmap->Release();
+    }
+  }
+
+  if (!result) {
+    IDirectDrawSurface7 *surface = nullptr;
+    if (S_OK == object->QueryInterface(IID_IDirectDrawSurface7, reinterpret_cast<void **>(&surface))) {
+      result = Bitmap::FromDirectDrawSurface7(surface);
+      surface->Release();
+    }
+  }
+
   return reinterpret_cast<SWTGDIPlusImage *>(result);
 }
 

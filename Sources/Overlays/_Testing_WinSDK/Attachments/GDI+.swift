@@ -19,6 +19,9 @@ enum GDIPlusError: Error {
   /// A GDI+ status code.
   case status(SWTGDIPlusStatusCode)
 
+  /// A call to `QueryInterface()` failed.
+  case queryInterfaceFailed(HRESULT)
+
   /// The testing library failed to create an in-memory stream.
   case streamCreationFailed(HRESULT)
 
@@ -31,6 +34,8 @@ extension GDIPlusError: CustomStringConvertible {
     switch self {
     case let .status(status):
       "Could not create the corresponding GDI+ image (Gdiplus.Status \(status.rawValue))."
+    case let .queryInterfaceFailed(result):
+      "Could not cast a COM object to the expected type (HRESULT \(result))."
     case let .streamCreationFailed(result):
       "Could not create an in-memory stream (HRESULT \(result))."
     case let .globalFromStreamFailed(result):
