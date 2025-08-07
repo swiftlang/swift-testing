@@ -30,7 +30,7 @@ extension IWICImagingFactory {
           &factory
         )
         guard rCreate == S_OK, let factory = factory?.assumingMemoryBound(to: Self.self) else {
-          throw ImageAttachmentError.wicObjectCreationFailed(Self.self, rCreate)
+          throw ImageAttachmentError.comObjectCreationFailed(Self.self, rCreate)
         }
         return factory
       }

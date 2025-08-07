@@ -71,7 +71,7 @@ extension _AttachableImageWrapper: AttachableWrapper {
     var stream: UnsafeMutablePointer<IStream>?
     let rCreateStream = CreateStreamOnHGlobal(nil, true, &stream)
     guard S_OK == rCreateStream, let stream else {
-      throw ImageAttachmentError.wicObjectCreationFailed(IStream.self, rCreateStream)
+      throw ImageAttachmentError.comObjectCreationFailed(IStream.self, rCreateStream)
     }
     defer {
       _ = stream.pointee.lpVtbl.pointee.Release(stream)
@@ -101,7 +101,7 @@ extension _AttachableImageWrapper: AttachableWrapper {
         &encoder
       )
       guard rCreate == S_OK, let encoder = encoder?.assumingMemoryBound(to: IWICBitmapEncoder.self) else {
-        throw ImageAttachmentError.wicObjectCreationFailed(IWICBitmapEncoder.self, rCreate)
+        throw ImageAttachmentError.comObjectCreationFailed(IWICBitmapEncoder.self, rCreate)
       }
       return encoder
     }
@@ -115,7 +115,7 @@ extension _AttachableImageWrapper: AttachableWrapper {
     var propertyBag: UnsafeMutablePointer<IPropertyBag2>?
     let rCreateFrame = encoder.pointee.lpVtbl.pointee.CreateNewFrame(encoder, &frame, &propertyBag)
     guard rCreateFrame == S_OK, let frame, let propertyBag else {
-      throw ImageAttachmentError.wicObjectCreationFailed(IWICBitmapFrameEncode.self, rCreateFrame)
+      throw ImageAttachmentError.comObjectCreationFailed(IWICBitmapFrameEncode.self, rCreateFrame)
     }
     defer {
       _ = frame.pointee.lpVtbl.pointee.Release(frame)

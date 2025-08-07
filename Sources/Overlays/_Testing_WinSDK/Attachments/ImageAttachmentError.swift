@@ -20,7 +20,7 @@ enum ImageAttachmentError: Error {
   case queryInterfaceFailed(Any.Type, HRESULT)
 
   /// The testing library failed to create a WIC object.
-  case wicObjectCreationFailed(Any.Type, HRESULT)
+  case comObjectCreationFailed(Any.Type, HRESULT)
 
   /// An image could not be written.
   case imageWritingFailed(HRESULT)
@@ -36,9 +36,9 @@ extension ImageAttachmentError: CustomStringConvertible {
   var description: String {
     switch self {
     case let .queryInterfaceFailed(type, result):
-      "Could not cast a Windows Imaging Component object to type '\(type)' (HRESULT \(result))."
-    case let .wicObjectCreationFailed(type, result):
-      "Could not create a Windows Imaging Component object of type '\(type)' (HRESULT \(result))."
+      "Could not cast a COM object to type '\(type)' (HRESULT \(result))."
+    case let .comObjectCreationFailed(type, result):
+      "Could not create a COM object of type '\(type)' (HRESULT \(result))."
     case let .imageWritingFailed(result):
       "Could not write the image (HRESULT \(result))."
     case let .globalFromStreamFailed(result):

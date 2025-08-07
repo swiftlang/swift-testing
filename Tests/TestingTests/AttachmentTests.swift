@@ -782,7 +782,7 @@ extension AttachmentTests {
       var wicBitmap: UnsafeMutablePointer<IWICBitmap>?
       let rCreate = factory.pointee.lpVtbl.pointee.CreateBitmapFromHBITMAP(factory, bitmap, nil, WICBitmapUsePremultipliedAlpha, &wicBitmap)
       guard rCreate == S_OK, let wicBitmap else {
-        throw ImageAttachmentError.wicObjectCreationFailed(IWICBitmap.self, rCreate)
+        throw ImageAttachmentError.comObjectCreationFailed(IWICBitmap.self, rCreate)
       }
 
       let attachment = Attachment(wicBitmap, named: "diamond.png")

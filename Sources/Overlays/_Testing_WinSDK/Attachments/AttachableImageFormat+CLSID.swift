@@ -32,7 +32,7 @@ extension AttachableImageFormat {
       &enumerator
     )
     guard rCreate == S_OK, let enumerator else {
-      throw ImageAttachmentError.wicObjectCreationFailed(IEnumUnknown.self, rCreate)
+      throw ImageAttachmentError.comObjectCreationFailed(IEnumUnknown.self, rCreate)
     }
     defer {
       _ = enumerator.pointee.lpVtbl.pointee.Release(enumerator)
