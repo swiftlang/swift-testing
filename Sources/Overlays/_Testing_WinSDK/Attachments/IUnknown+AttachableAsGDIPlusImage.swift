@@ -17,7 +17,10 @@ public import WinSDK
 @_spi(Experimental)
 extension IUnknown: _AttachableByAddressAsGDIPlusImage {
   public static func _copyAttachableGDIPlusImage(at imageAddress: UnsafeMutablePointer<Self>) throws -> OpaquePointer {
-    OpaquePointer(swt_GdiplusImageCreateFromIUnknown(imageAddress))
+    guard let image = swt_GdiplusImageCreateFromIUnknown(imageAddress) else {
+      throw GDIPlusError.queryInterfaceFailed(/*E_NOINTERFACE = */HRESULT(bitPattern: 0x80004002))
+    }
+    return OpaquePointer(image)
   }
 
   public static func _cleanUpAttachment(at imageAddress: UnsafeMutablePointer<Self>) {

@@ -86,7 +86,7 @@ SWT_EXTERN SWTGDIPlusImage *swt_GdiplusImageCreateFromHICON(HICON icon);
 /// - Returns: A new GDI+ image, or `nullptr` if `object` was not of a supported
 ///   COM type. The implementation holds a reference to `object` until the image
 ///   is deleted or `object` is no longer needed.
-SWT_EXTERN SWTGDIPlusImage *swt_GdiplusImageCreateFromIUnknown(IUnknown *object);
+SWT_EXTERN SWTGDIPlusImage *_Nullable swt_GdiplusImageCreateFromIUnknown(IUnknown *object);
 
 /// Delete a GDI+ image previously created with a function in this library.
 ///
