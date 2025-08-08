@@ -55,7 +55,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     // Configure the event recorder to write events to stderr.
     if configuration.verbosity > .min {
       // Check for experimental console output flag
-      if Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") {
+      if Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true {
         // Use experimental AdvancedConsoleOutputRecorder
         var advancedOptions = Event.AdvancedConsoleOutputRecorder.Options()
         advancedOptions.base = .for(.stderr)
