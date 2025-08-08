@@ -19,12 +19,12 @@ extension IWICBitmap: _AttachableByAddressAsIWICBitmap {
     from imageAddress: UnsafeMutablePointer<Self>,
     using factory: UnsafeMutablePointer<IWICImagingFactory>
   ) throws -> UnsafeMutablePointer<IWICBitmap> {
-    _ = imageAddress.pointee.lpVtbl.pointee.AddRef(imageAddress)
+    _ = imageAddress.AddRef()
     return imageAddress
   }
 
   public static func _deinitializeAttachment(at imageAddress: UnsafeMutablePointer<Self>) {
-    _ = imageAddress.pointee.lpVtbl.pointee.Release(imageAddress)
+    _ = imageAddress.Release()
   }
 }
 #endif

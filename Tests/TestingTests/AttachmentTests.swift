@@ -771,7 +771,7 @@ extension AttachmentTests {
     @MainActor @Test func attachIWICBitmap() throws {
       let factory = try IWICImagingFactory.create()
       defer {
-        _ = factory.pointee.lpVtbl.pointee.Release(factory)
+        _ = factory.Release()
       }
 
       let bitmap = try copyHBITMAP()
@@ -780,7 +780,7 @@ extension AttachmentTests {
       }
 
       var wicBitmap: UnsafeMutablePointer<IWICBitmap>?
-      let rCreate = factory.pointee.lpVtbl.pointee.CreateBitmapFromHBITMAP(factory, bitmap, nil, WICBitmapUsePremultipliedAlpha, &wicBitmap)
+      let rCreate = factory.lpVtbl.CreateBitmapFromHBITMAP(factory, bitmap, nil, WICBitmapUsePremultipliedAlpha, &wicBitmap)
       guard rCreate == S_OK, let wicBitmap else {
         throw ImageAttachmentError.comObjectCreationFailed(IWICBitmap.self, rCreate)
       }

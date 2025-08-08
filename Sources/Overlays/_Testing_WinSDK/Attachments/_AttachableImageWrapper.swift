@@ -74,19 +74,19 @@ extension _AttachableImageWrapper: AttachableWrapper {
       throw ImageAttachmentError.comObjectCreationFailed(IStream.self, rCreateStream)
     }
     defer {
-      _ = stream.pointee.lpVtbl.pointee.Release(stream)
+      _ = stream.Release()
     }
 
     // Get an imaging factory to create the WIC bitmap and encoder.
     let factory = try IWICImagingFactory.create()
     defer {
-      _ = factory.pointee.lpVtbl.pointee.Release(factory)
+      _ = factory.Release()
     }
 
     // Create the bitmap and downcast it to an IWICBitmapSource for later use.
     let bitmap = try image.copyAttachableIWICBitmapSource(using: factory)
     defer {
-      _ = bitmap.pointee.lpVtbl.pointee.Release(bitmap)
+      _ = bitmap.Release()
     }
 
     // Create the encoder.
@@ -106,44 +106,44 @@ extension _AttachableImageWrapper: AttachableWrapper {
       return encoder
     }
     defer {
-      _ = encoder.pointee.lpVtbl.pointee.Release(encoder)
+      _ = encoder.Release()
     }
-    _ = encoder.pointee.lpVtbl.pointee.Initialize(encoder, stream, WICBitmapEncoderNoCache)
+    _ = encoder.lpVtbl.Initialize(encoder, stream, WICBitmapEncoderNoCache)
 
     // Create the frame into which the bitmap will be composited.
     var frame: UnsafeMutablePointer<IWICBitmapFrameEncode>?
     var propertyBag: UnsafeMutablePointer<IPropertyBag2>?
-    let rCreateFrame = encoder.pointee.lpVtbl.pointee.CreateNewFrame(encoder, &frame, &propertyBag)
+    let rCreateFrame = encoder.lpVtbl.CreateNewFrame(encoder, &frame, &propertyBag)
     guard rCreateFrame == S_OK, let frame, let propertyBag else {
       throw ImageAttachmentError.comObjectCreationFailed(IWICBitmapFrameEncode.self, rCreateFrame)
     }
     defer {
-      _ = frame.pointee.lpVtbl.pointee.Release(frame)
-      _ = propertyBag.pointee.lpVtbl.pointee.Release(propertyBag)
+      _ = frame.Release()
+      _ = propertyBag.Release()
     }
 
     // Set properties. The only property we currently set is image quality.
     if let encodingQuality = imageFormat?.encodingQuality {
       try propertyBag.write(encodingQuality, named: "ImageQuality")
     }
-    _ = frame.pointee.lpVtbl.pointee.Initialize(frame, propertyBag)
+    _ = frame.lpVtbl.Initialize(frame, propertyBag)
 
     // Write the image!
-    let rWrite = frame.pointee.lpVtbl.pointee.WriteSource(frame, bitmap, nil)
+    let rWrite = frame.lpVtbl.WriteSource(frame, bitmap, nil)
     guard rWrite == S_OK else {
       throw ImageAttachmentError.imageWritingFailed(rWrite)
     }
 
     // Commit changes through the various layers.
-    var rCommit = frame.pointee.lpVtbl.pointee.Commit(frame)
+    var rCommit = frame.lpVtbl.Commit(frame)
     guard rCommit == S_OK else {
       throw ImageAttachmentError.imageWritingFailed(rCommit)
     }
-    rCommit = encoder.pointee.lpVtbl.pointee.Commit(encoder)
+    rCommit = encoder.lpVtbl.Commit(encoder)
     guard rCommit == S_OK else {
       throw ImageAttachmentError.imageWritingFailed(rCommit)
     }
-    rCommit = stream.pointee.lpVtbl.pointee.Commit(stream, DWORD(bitPattern: STGC_DEFAULT.rawValue))
+    rCommit = stream.lpVtbl.Commit(stream, DWORD(bitPattern: STGC_DEFAULT.rawValue))
     guard rCommit == S_OK else {
       throw ImageAttachmentError.imageWritingFailed(rCommit)
     }

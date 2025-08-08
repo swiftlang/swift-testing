@@ -29,7 +29,7 @@ extension UnsafeMutablePointer<IPropertyBag2> {
         VariantInit(variant)
         variant.pointee.vt = .init(VT_R4.rawValue)
         variant.pointee.fltVal = value
-        return self.pointee.lpVtbl.pointee.Write(self, 1, &option, variant)
+        return self.lpVtbl.Write(self, 1, &option, variant)
       }
     }
     guard rWrite == S_OK else {

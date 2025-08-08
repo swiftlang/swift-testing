@@ -20,12 +20,12 @@ extension AttachableImageFormat {
     // Create an imaging factory.
     let factory = try IWICImagingFactory.create()
     defer {
-      _ = factory.pointee.lpVtbl.pointee.Release(factory)
+      _ = factory.Release()
     }
 
     // Create a COM enumerator over the encoders known to WIC.
     var enumerator: UnsafeMutablePointer<IEnumUnknown>?
-    let rCreate = factory.pointee.lpVtbl.pointee.CreateComponentEnumerator(
+    let rCreate = factory.lpVtbl.CreateComponentEnumerator(
       factory,
       DWORD(bitPattern: WICEncoder.rawValue),
       DWORD(bitPattern: WICComponentEnumerateDefault.rawValue),
@@ -35,36 +35,29 @@ extension AttachableImageFormat {
       throw ImageAttachmentError.comObjectCreationFailed(IEnumUnknown.self, rCreate)
     }
     defer {
-      _ = enumerator.pointee.lpVtbl.pointee.Release(enumerator)
+      _ = enumerator.Release()
     }
 
     // Loop through the iterator and extract the path extensions and CLSID of
     // each encoder we find.
     while true {
       var nextObject: UnsafeMutablePointer<IUnknown>?
-      guard S_OK == enumerator.pointee.lpVtbl.pointee.Next(enumerator, 1, &nextObject, nil), let nextObject else {
+      guard S_OK == enumerator.lpVtbl.Next(enumerator, 1, &nextObject, nil), let nextObject else {
         // End of loop.
         break
       }
       defer {
-        _ = nextObject.pointee.lpVtbl.pointee.Release(nextObject)
+        _ = nextObject.Release()
       }
 
       // Cast the enumerated object to the correct/expected type.
-      let info = try withUnsafePointer(to: IID_IWICBitmapEncoderInfo) { IID_IWICBitmapEncoderInfo in
-        var info: UnsafeMutableRawPointer?
-        let rQuery = nextObject.pointee.lpVtbl.pointee.QueryInterface(nextObject, IID_IWICBitmapEncoderInfo, &info)
-        guard rQuery == S_OK, let info else {
-          throw ImageAttachmentError.queryInterfaceFailed(IWICBitmapEncoderInfo.self, rQuery)
-        }
-        return info.assumingMemoryBound(to: IWICBitmapEncoderInfo.self)
-      }
+      let info = try nextObject.QueryInterface(IWICBitmapEncoderInfo.self)
       defer {
-        _ = info.pointee.lpVtbl.pointee.Release(info)
+        _ = info.Release()
       }
 
       var clsid = CLSID()
-      guard S_OK == info.pointee.lpVtbl.pointee.GetCLSID(info, &clsid) else {
+      guard S_OK == info.lpVtbl.GetCLSID(info, &clsid) else {
         continue
       }
       let extensions = _pathExtensions(for: info)
@@ -86,7 +79,7 @@ extension AttachableImageFormat {
     // Figure out the size of the buffer we need. (Microsoft does not specify if
     // the size is in wide characters or bytes.)
     var charCount = UINT(0)
-    var rGet = info.pointee.lpVtbl.pointee.GetFileExtensions(info, 0, nil, &charCount)
+    var rGet = info.lpVtbl.GetFileExtensions(info, 0, nil, &charCount)
     guard rGet == S_OK else {
       return []
     }
@@ -96,7 +89,7 @@ extension AttachableImageFormat {
     defer {
       buffer.deallocate()
     }
-    rGet = info.pointee.lpVtbl.pointee.GetFileExtensions(info, UINT(buffer.count), buffer.baseAddress!, &charCount)
+    rGet = info.lpVtbl.GetFileExtensions(info, UINT(buffer.count), buffer.baseAddress!, &charCount)
     guard rGet == S_OK else {
       return []
     }

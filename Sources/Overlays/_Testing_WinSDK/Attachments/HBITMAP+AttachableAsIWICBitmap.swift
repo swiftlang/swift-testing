@@ -20,7 +20,7 @@ extension HBITMAP__: _AttachableByAddressAsIWICBitmap {
     using factory: UnsafeMutablePointer<IWICImagingFactory>
   ) throws -> UnsafeMutablePointer<IWICBitmap> {
     var bitmap: UnsafeMutablePointer<IWICBitmap>!
-    let rCreate = factory.pointee.lpVtbl.pointee.CreateBitmapFromHBITMAP(factory, imageAddress, nil, WICBitmapUsePremultipliedAlpha, &bitmap)
+    let rCreate = factory.lpVtbl.CreateBitmapFromHBITMAP(factory, imageAddress, nil, WICBitmapUsePremultipliedAlpha, &bitmap)
     guard rCreate == S_OK, let bitmap else {
       throw ImageAttachmentError.comObjectCreationFailed(IWICBitmap.self, rCreate)
     }

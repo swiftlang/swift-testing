@@ -142,17 +142,10 @@ extension AttachableAsIWICBitmap {
   ) throws -> UnsafeMutablePointer<IWICBitmapSource> {
     let bitmap = try _copyAttachableIWICBitmap(using: factory)
     defer {
-      _ = bitmap.pointee.lpVtbl.pointee.Release(bitmap)
+      _ = bitmap.Release()
     }
 
-    return try withUnsafePointer(to: IID_IWICBitmapSource) { IID_IWICBitmapSource in
-      var bitmapSource: UnsafeMutableRawPointer?
-      let rQuery = bitmap.pointee.lpVtbl.pointee.QueryInterface(bitmap, IID_IWICBitmapSource, &bitmapSource)
-      guard rQuery == S_OK, let bitmapSource else {
-        throw ImageAttachmentError.queryInterfaceFailed(IWICBitmapSource.self, rQuery)
-      }
-      return bitmapSource.assumingMemoryBound(to: IWICBitmapSource.self)
-    }
+    return try bitmap.QueryInterface(IWICBitmapSource.self)
   }
 }
 #endif
