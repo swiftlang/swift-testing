@@ -12,7 +12,7 @@
 /// record themselves as test issues.
 ///
 /// When a type conforms to this protocol, values of that type can be passed to
-/// ``Issue/record(_:_:_:)``. The testing library then calls the
+/// ``Issue/record(_:severity:sourceLocation:)``. The testing library then calls the
 /// ``customize(_:)`` function and passes it an instance of ``Issue`` that will
 /// be used to represent the value. The function can then reconfigure or replace
 /// the issue as needed.
