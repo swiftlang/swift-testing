@@ -90,6 +90,7 @@ target_sources(TestingMacros PRIVATE
   Support/Additions/FunctionDeclSyntaxAdditions.swift
   Support/Additions/IntegerLiteralExprSyntaxAdditions.swift
   Support/Additions/MacroExpansionContextAdditions.swift
+  Support/Additions/StringLiteralExprSyntaxAdditions.swift
   Support/Additions/TokenSyntaxAdditions.swift
   Support/Additions/TriviaPieceAdditions.swift
   Support/Additions/TypeSyntaxProtocolAdditions.swift

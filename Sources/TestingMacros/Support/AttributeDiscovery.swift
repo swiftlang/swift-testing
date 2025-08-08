@@ -149,6 +149,14 @@ struct AttributeInfo {
       }
     }
 
+    // If there was a display name but it's completely empty, emit a warning
+    // diagnostic since this can cause confusion isn't generally recommended.
+    // Note that this is only possible for string literal display names; the
+    // compiler enforces that raw identifiers must be non-empty.
+    if let displayName, displayName.isEmptyLiteral {
+      context.diagnose(.emptyDisplayName(displayName))
+    }
+
     // Remove leading "Self." expressions from the arguments of the attribute.
     // See _SelfRemover for more information. Rewriting a syntax tree discards
     // location information from the copy, so only invoke the rewriter if the

@@ -304,6 +304,14 @@ struct TestDeclarationMacroTests {
       // .serialized on a non-parameterized test function
       "@Test(.serialized) func f() {}":
         "Trait '.serialized' has no effect when used with a non-parameterized test function",
+
+      // empty display name string literal
+      #"@Test("") func f() {}"#:
+        "Display name string should not be empty",
+      ##"@Test(#""#) func f() {}"##:
+        "Display name string should not be empty",
+      #"@Suite("") struct S {}"#:
+        "Display name string should not be empty",
     ]
   )
   func apiMisuseWarnings(input: String, expectedMessage: String) throws {

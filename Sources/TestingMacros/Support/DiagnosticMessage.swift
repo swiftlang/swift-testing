@@ -643,6 +643,22 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
+  /// Create a diagnostic message stating that a string literal expression
+  /// passed as the display name to a `@Test` or `@Suite` attribute is empty
+  /// but should not be.
+  ///
+  /// - Parameters:
+  ///   - displayNameExpr: The display name string literal expression.
+  ///
+  /// - Returns: A diagnostic message.
+  static func emptyDisplayName(_ displayNameExpr: StringLiteralExprSyntax) -> Self {
+    Self(
+      syntax: Syntax(displayNameExpr),
+      message: "Display name string should not be empty",
+      severity: .warning
+    )
+  }
+
   /// Create a diagnostic message stating that a declaration has two display
   /// names.
   ///
