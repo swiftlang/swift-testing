@@ -40,7 +40,6 @@ extension Attachment where AttachableValue: ~Copyable {
   /// specify a path extension, or if the path extension you specify doesn't
   /// correspond to an image format the operating system knows how to write, the
   /// testing library selects an appropriate image format for you.
-  @unsafe
   public init<T>(
     _ attachableValue: borrowing T,
     named preferredName: String? = nil,
