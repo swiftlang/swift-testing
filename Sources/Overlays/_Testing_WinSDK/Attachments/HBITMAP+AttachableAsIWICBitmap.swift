@@ -27,7 +27,15 @@ extension HBITMAP__: _AttachableByAddressAsIWICBitmap {
     return bitmap
   }
 
-  public static func _deinitializeAttachment(at imageAddress: UnsafeMutablePointer<Self>) {
+  public static func _copyAttachableValue(at imageAddress: UnsafeMutablePointer<Self>) throws -> UnsafeMutablePointer<Self> {
+    let result: HBITMAP? = CopyImage(imageAddress, UINT(IMAGE_BITMAP), 0, 0, 0).assumingMemoryBound(to: Self.self)
+    guard let result else {
+      throw Win32Error(rawValue: GetLastError())
+    }
+    return result
+  }
+
+  public static func _deinitializeAttachableValue(at imageAddress: UnsafeMutablePointer<Self>) {
     DeleteObject(imageAddress)
   }
 }

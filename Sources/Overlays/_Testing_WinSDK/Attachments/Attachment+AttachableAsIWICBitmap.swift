@@ -40,16 +40,9 @@ extension Attachment where AttachableValue: ~Copyable {
   /// specify a path extension, or if the path extension you specify doesn't
   /// correspond to an image format the operating system knows how to write, the
   /// testing library selects an appropriate image format for you.
-  ///
-  /// - Important: The resulting instance of ``Attachment`` takes ownership of
-  ///   `attachableValue` and frees its resources upon deinitialization. If you
-  ///   do not want the testing library to take ownership of this value, call
-  ///   ``Attachment/record(_:named:as:sourceLocation)`` instead of this
-  ///   initializer, or make a copy of the resource before passing it to this
-  ///   initializer.
   @unsafe
   public init<T>(
-    _ attachableValue: consuming T,
+    _ attachableValue: borrowing T,
     named preferredName: String? = nil,
     as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
@@ -93,7 +86,7 @@ extension Attachment where AttachableValue: ~Copyable {
     as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) where AttachableValue == _AttachableImageWrapper<T> {
-    let imageWrapper = _AttachableImageWrapper(image: copy image, imageFormat: imageFormat, deinitializeWhenDone: false)
+    let imageWrapper = _AttachableImageWrapper(image: image, imageFormat: imageFormat, deinitializeWhenDone: false)
     let attachment = Self(imageWrapper, named: preferredName, sourceLocation: sourceLocation)
     Self.record(attachment, sourceLocation: sourceLocation)
   }

@@ -19,8 +19,12 @@ extension UnsafeMutablePointer: AttachableAsIWICBitmap where Pointee: _Attachabl
     try Pointee._copyAttachableIWICBitmap(from: self, using: factory)
   }
 
-  public consuming func _deinitializeAttachment() {
-    Pointee._deinitializeAttachment(at: self)
+  public func _copyAttachableValue() throws -> Self {
+    try Pointee._copyAttachableValue(at: self)
+  }
+
+  public consuming func _deinitializeAttachableValue() {
+    Pointee._deinitializeAttachableValue(at: self)
   }
 }
 #endif

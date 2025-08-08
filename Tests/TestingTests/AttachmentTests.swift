@@ -709,7 +709,7 @@ extension AttachmentTests {
     @MainActor @Test func attachHICON() throws {
       let icon = try copyHICON()
       defer {
-        DeleteObject(icon)
+        DestroyIcon(icon)
       }
 
       let attachment = Attachment(icon, named: "diamond.jpeg")
@@ -723,7 +723,7 @@ extension AttachmentTests {
 
       let icon = try copyHICON()
       defer {
-        DeleteObject(icon)
+        DestroyIcon(icon)
       }
 
       let screenDC = try #require(GetDC(nil))
@@ -748,6 +748,10 @@ extension AttachmentTests {
 
     @MainActor @Test func attachHBITMAP() throws {
       let bitmap = try copyHBITMAP()
+      defer {
+        DeleteObject(bitmap)
+      }
+
       let attachment = Attachment(bitmap, named: "diamond.png")
       try attachment.withUnsafeBytes { buffer in
         #expect(buffer.count > 32)
@@ -756,10 +760,13 @@ extension AttachmentTests {
     }
 
     @MainActor @Test func attachHBITMAPAsJPEG() throws {
-      let bitmap1 = try copyHBITMAP()
-      let hiFi = Attachment(bitmap1, named: "diamond", as: .jpeg(withEncodingQuality: 1.0))
-      let bitmap2 = try copyHBITMAP()
-      let loFi = Attachment(bitmap2, named: "diamond", as: .jpeg(withEncodingQuality: 0.1))
+      let bitmap = try copyHBITMAP()
+      defer {
+        DeleteObject(bitmap)
+      }
+      let hiFi = Attachment(bitmap, named: "hifi", as: .jpeg(withEncodingQuality: 1.0))
+      let loFi = Attachment(bitmap, named: "lofi", as: .jpeg(withEncodingQuality: 0.1))
+
       try hiFi.withUnsafeBytes { hiFi in
         try loFi.withUnsafeBytes { loFi in
           #expect(hiFi.count > loFi.count)
@@ -783,6 +790,9 @@ extension AttachmentTests {
       let rCreate = factory.pointee.lpVtbl.pointee.CreateBitmapFromHBITMAP(factory, bitmap, nil, WICBitmapUsePremultipliedAlpha, &wicBitmap)
       guard rCreate == S_OK, let wicBitmap else {
         throw ImageAttachmentError.comObjectCreationFailed(IWICBitmap.self, rCreate)
+      }
+      defer {
+        _ = wicBitmap.pointee.lpVtbl.pointee.Release(wicBitmap)
       }
 
       let attachment = Attachment(wicBitmap, named: "diamond.png")

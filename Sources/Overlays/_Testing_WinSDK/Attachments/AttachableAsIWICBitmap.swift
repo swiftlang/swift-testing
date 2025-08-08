@@ -53,21 +53,44 @@ public protocol _AttachableByAddressAsIWICBitmap {
     using factory: UnsafeMutablePointer<IWICImagingFactory>
   ) throws -> UnsafeMutablePointer<IWICBitmap>
 
+  /// Make a copy of the instance of this type at the given address.
+  ///
+  /// - Parameters:
+  ///   - imageAddress: The address of the instance of this type that should be
+  ///     copied.
+  ///
+  /// - Returns: A copy of `imageAddress`, or `imageAddress` if this type does
+  ///   not support a copying operation.
+  ///
+  /// - Throws: Any error that prevented copying the value at `imageAddress`.
+  ///
+  /// The testing library uses this function to take ownership of image
+  /// resources that test authors pass to it. If possible, make a copy of or add
+  /// a reference to the value at `imageAddress`. If this type does not support
+  /// making copies, return `imageAddress` verbatim.
+  ///
+  /// This function is not part of the public interface of the testing library.
+  /// It may be removed in a future update.
+  static func _copyAttachableValue(at imageAddress: UnsafeMutablePointer<Self>) throws -> UnsafeMutablePointer<Self>
+
   /// Manually deinitialize any resources at the given address.
   ///
   /// - Parameters:
   ///   - imageAddress: The address of the instance of this type.
   ///
-  /// The implementation of this function cleans up any resources (such as
-  /// handles or COM objects) associated with this image. The testing library
-  /// automatically invokes this function as needed.
+  /// The implementation of this function is responsible for balancing a
+  /// previous call to `_copyAttachableValue(at:)` by cleaning up any resources
+  /// (such as handles or COM objects) associated with the value at
+  /// `imageAddress`. The testing library automatically invokes this function as
+  /// needed. If `_copyAttachableValue(at:)` threw an error, the testing library
+  /// does not call this function.
   ///
   /// This function is not responsible for releasing the image returned from
   /// `_copyAttachableIWICBitmap(from:using:)`.
   ///
   /// This function is not part of the public interface of the testing library.
   /// It may be removed in a future update.
-  static func _deinitializeAttachment(at imageAddress: consuming UnsafeMutablePointer<Self>)
+  static func _deinitializeAttachableValue(at imageAddress: UnsafeMutablePointer<Self>)
 }
 
 /// A protocol describing images that can be converted to instances of
@@ -107,6 +130,22 @@ public protocol AttachableAsIWICBitmap {
     using factory: UnsafeMutablePointer<IWICImagingFactory>
   ) throws -> UnsafeMutablePointer<IWICBitmap>
 
+  /// Make a copy of this instance.
+  ///
+  /// - Returns: A copy of `self`, or `self` if this type does not support a
+  ///   copying operation.
+  ///
+  /// - Throws: Any error that prevented copying this value.
+  ///
+  /// The testing library uses this function to take ownership of image
+  /// resources that test authors pass to it. If possible, make a copy of or add
+  /// a reference to `self`. If this type does not support making copies, return
+  /// `self` verbatim.
+  ///
+  /// This function is not part of the public interface of the testing library.
+  /// It may be removed in a future update.
+  func _copyAttachableValue() throws -> Self
+
   /// Manually deinitialize any resources associated with this image.
   ///
   /// The implementation of this function cleans up any resources (such as
@@ -118,7 +157,7 @@ public protocol AttachableAsIWICBitmap {
   ///
   /// This function is not part of the public interface of the testing library.
   /// It may be removed in a future update.
-  consuming func _deinitializeAttachment()
+  func _deinitializeAttachableValue()
 }
 
 extension AttachableAsIWICBitmap {

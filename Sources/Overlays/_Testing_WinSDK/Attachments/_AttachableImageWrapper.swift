@@ -26,45 +26,44 @@ internal import WinSDK
 /// - [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons)
 /// - [`IWICBitmap`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmap)
 @_spi(Experimental)
-public struct _AttachableImageWrapper<Image>: ~Copyable where Image: AttachableAsIWICBitmap {
+public final class _AttachableImageWrapper<Image>: Sendable where Image: AttachableAsIWICBitmap {
   /// The underlying image.
-  var image: Image
+  nonisolated(unsafe) let image: Result<Image, any Error>
 
   /// The image format to use when encoding the represented image.
-  var imageFormat: AttachableImageFormat?
+  let imageFormat: AttachableImageFormat?
 
-  /// Whether or not to call `_deinitializeAttachment()` on `image` when this
+  /// Whether or not to call `_deinitializeAttachableValue()` on `image` when this
   /// instance is deinitialized.
   ///
   /// - Note: If deinitialization is not performed and `image` is a type that
   ///   does not participate in ARC, `image` is effectively being borrowed from
   ///   the calling context.
-  private var _deinitializeWhenDone: Bool
+  private let _deinitializeWhenDone: Bool
 
-  init(image: consuming Image, imageFormat: AttachableImageFormat?, deinitializeWhenDone: Bool) {
-    self.image = image
+  init(image: borrowing Image, imageFormat: AttachableImageFormat?, deinitializeWhenDone: Bool) {
+    self.image = Result { [image = copy image] in
+      try image._copyAttachableValue()
+    }
     self.imageFormat = imageFormat
     self._deinitializeWhenDone = deinitializeWhenDone
   }
 
   deinit {
-    if _deinitializeWhenDone {
-      image._deinitializeAttachment()
+    if _deinitializeWhenDone, let image = try? image.get() {
+      image._deinitializeAttachableValue()
     }
   }
 }
 
-@available(*, unavailable)
-extension _AttachableImageWrapper: Sendable {}
-
 // MARK: -
 
 extension _AttachableImageWrapper: AttachableWrapper {
-  public var wrappedValue: Image {
-    image
+  public var wrappedValue: Image? {
+    try? image.get()
   }
 
-  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<_AttachableImageWrapper>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     // Create an in-memory stream to write the image data to. Note that Windows
     // documentation recommends SHCreateMemStream() instead, but that function
     // does not provide a mechanism to access the underlying memory directly.
@@ -84,14 +83,14 @@ extension _AttachableImageWrapper: AttachableWrapper {
     }
 
     // Create the bitmap and downcast it to an IWICBitmapSource for later use.
-    let bitmap = try image.copyAttachableIWICBitmapSource(using: factory)
+    let bitmap = try image.get().copyAttachableIWICBitmapSource(using: factory)
     defer {
       _ = bitmap.pointee.lpVtbl.pointee.Release(bitmap)
     }
 
     // Create the encoder.
-    let encoder = try withUnsafePointer(to: IID_IWICBitmapEncoder) { IID_IWICBitmapEncoder in
-      var encoderCLSID = AttachableImageFormat.computeCLSID(for: imageFormat, withPreferredName: attachment.preferredName)
+    let encoder = try withUnsafePointer(to: IID_IWICBitmapEncoder) { [preferredName = attachment.preferredName] IID_IWICBitmapEncoder in
+      var encoderCLSID = AttachableImageFormat.computeCLSID(for: imageFormat, withPreferredName: preferredName)
       var encoder: UnsafeMutableRawPointer?
       let rCreate = CoCreateInstance(
         &encoderCLSID,
@@ -166,7 +165,7 @@ extension _AttachableImageWrapper: AttachableWrapper {
     return try body(UnsafeRawBufferPointer(start: baseAddress, count: Int(byteCount)))
   }
 
-  public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
+  public borrowing func preferredName(for attachment: borrowing Attachment<_AttachableImageWrapper>, basedOn suggestedName: String) -> String {
     let clsid = AttachableImageFormat.computeCLSID(for: imageFormat, withPreferredName: suggestedName)
     return AttachableImageFormat.appendPathExtension(for: clsid, to: suggestedName)
   }

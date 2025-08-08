@@ -27,8 +27,16 @@ extension HICON__: _AttachableByAddressAsIWICBitmap {
     return bitmap
   }
 
-  public static func _deinitializeAttachment(at imageAddress: UnsafeMutablePointer<Self>) {
-    DeleteObject(imageAddress)
+  public static func _copyAttachableValue(at imageAddress: UnsafeMutablePointer<Self>) throws -> UnsafeMutablePointer<Self> {
+    let result: HICON? = CopyImage(imageAddress, UINT(IMAGE_ICON), 0, 0, 0).assumingMemoryBound(to: Self.self)
+    guard let result else {
+      throw Win32Error(rawValue: GetLastError())
+    }
+    return result
+  }
+
+  public static func _deinitializeAttachableValue(at imageAddress: UnsafeMutablePointer<Self>) {
+    DestroyIcon(imageAddress)
   }
 }
 #endif
