@@ -47,7 +47,7 @@ extension Attachment where AttachableValue: ~Copyable {
     as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) where AttachableValue == _AttachableImageWrapper<T> {
-    let imageWrapper = _AttachableImageWrapper(image: attachableValue, imageFormat: imageFormat, deinitializeWhenDone: true)
+    let imageWrapper = _AttachableImageWrapper(image: attachableValue, imageFormat: imageFormat)
     self.init(imageWrapper, named: preferredName, sourceLocation: sourceLocation)
   }
 
@@ -86,7 +86,7 @@ extension Attachment where AttachableValue: ~Copyable {
     as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) where AttachableValue == _AttachableImageWrapper<T> {
-    let imageWrapper = _AttachableImageWrapper(image: image, imageFormat: imageFormat, deinitializeWhenDone: false)
+    let imageWrapper = _AttachableImageWrapper(image: image, imageFormat: imageFormat)
     let attachment = Self(imageWrapper, named: preferredName, sourceLocation: sourceLocation)
     Self.record(attachment, sourceLocation: sourceLocation)
   }

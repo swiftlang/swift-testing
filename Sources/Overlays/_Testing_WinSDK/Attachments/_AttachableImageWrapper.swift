@@ -33,24 +33,15 @@ public final class _AttachableImageWrapper<Image>: Sendable where Image: Attacha
   /// The image format to use when encoding the represented image.
   let imageFormat: AttachableImageFormat?
 
-  /// Whether or not to call `_deinitializeAttachableValue()` on `image` when this
-  /// instance is deinitialized.
-  ///
-  /// - Note: If deinitialization is not performed and `image` is a type that
-  ///   does not participate in ARC, `image` is effectively being borrowed from
-  ///   the calling context.
-  private let _deinitializeWhenDone: Bool
-
-  init(image: borrowing Image, imageFormat: AttachableImageFormat?, deinitializeWhenDone: Bool) {
+  init(image: borrowing Image, imageFormat: AttachableImageFormat?) {
     self.image = Result { [image = copy image] in
       try image._copyAttachableValue()
     }
     self.imageFormat = imageFormat
-    self._deinitializeWhenDone = deinitializeWhenDone
   }
 
   deinit {
-    if _deinitializeWhenDone, let image = try? image.get() {
+    if let image = try? image.get() {
       image._deinitializeAttachableValue()
     }
   }
