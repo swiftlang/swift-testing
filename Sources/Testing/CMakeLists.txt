@@ -26,6 +26,7 @@ add_library(Testing
   Attachments/Attachment.swift
   Events/Clock.swift
   Events/Event.swift
+  Events/Recorder/Event.AdvancedConsoleOutputRecorder.swift
   Events/Recorder/Event.ConsoleOutputRecorder.swift
   Events/Recorder/Event.HumanReadableOutputRecorder.swift
   Events/Recorder/Event.JUnitXMLRecorder.swift
@@ -81,6 +82,7 @@ add_library(Testing
   Support/GetSymbol.swift
   Support/Graph.swift
   Support/JSON.swift
+  Support/LiveUpdatingLine.swift
   Support/Locked.swift
   Support/Locked+Platform.swift
   Support/VersionNumber.swift
