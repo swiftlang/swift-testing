@@ -11,6 +11,7 @@
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
+import SwiftParser
 
 /// A syntax rewriter that removes leading `Self.` tokens from member access
 /// expressions in a syntax tree.
@@ -147,6 +148,14 @@ struct AttributeInfo {
       } else {
         displayName = StringLiteralExprSyntax(content: rawIdentifier)
       }
+    }
+
+    // If there was a display name but it's completely empty, emit a warning
+    // diagnostic since this can cause confusion isn't generally recommended.
+    // Note that this is only possible for string literal display names; the
+    // compiler enforces that raw identifiers must be non-empty.
+    if let displayName, displayName.representedLiteralValue?.isEmpty == true {
+      context.diagnose(.emptyDisplayName(displayName))
     }
 
     // Remove leading "Self." expressions from the arguments of the attribute.
