@@ -51,6 +51,26 @@ extension Attachment where AttachableValue == _AttachableURLWrapper {
   ///
   /// - Throws: Any error that occurs attempting to read from `url`.
   ///
+  /// Use this initialize to create an instance of ``Attachment`` that
+  /// represents a local file or directory:
+  ///
+  /// ```swift
+  /// let url = try await FoodTruck.saveMenu(as: .pdf)
+  /// let attachment = try await Attachment(contentsOf: url)
+  /// Attachment.record(attachment)
+  /// ```
+  ///
+  /// When you call this initializer and pass it the URL of a file, it reads or
+  /// maps the contents of that file into memory. When you call this initializer
+  /// and pass it the URL of a directory, it creates a temporary ZIP file of the
+  /// directory before reading or mapping it into memory. These operations may
+  /// take some time, so this initializer suspends the calling task until they
+  /// are complete.
+  ///
+  /// - Important: This initializer supports creating attachments from file URLs
+  ///   only. It does not support creating attachments from resources on the
+  ///   Internet or the local network.
+  ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
   ///   @Available(Xcode, introduced: 26.0)
