@@ -110,11 +110,11 @@ extension AttachableImageFormat {
       .split(separator: ",")
       .map { ext in
         if ext.starts(with: ".") {
-          String(ext.dropFirst(1))
+          ext.dropFirst(1)
         } else {
           ext
         }
-      }
+      }.map(String.init)
   }
 
   /// Get the `CLSID` value of the WIC image encoder corresponding to the same
