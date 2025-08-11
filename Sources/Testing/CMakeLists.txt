@@ -125,8 +125,6 @@ if(NOT APPLE)
     target_link_libraries(Testing PUBLIC
       dispatch)
   endif()
-  target_link_libraries(Testing PUBLIC
-    Foundation)
   if (CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR
       CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
     target_link_libraries(Testing PUBLIC execinfo)
