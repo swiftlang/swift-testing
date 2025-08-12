@@ -648,18 +648,22 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   /// but should not be.
   ///
   /// - Parameters:
+  ///   - decl: The declaration that has an empty display name.
   ///   - displayNameExpr: The display name string literal expression.
   ///   - argumentContainingDisplayName: The argument node containing the node
   ///     `displayNameExpr`.
+  ///   - attribute: The `@Test` or `@Suite` attribute.
   ///
   /// - Returns: A diagnostic message.
-  static func emptyDisplayName(
-    _ displayNameExpr: StringLiteralExprSyntax,
-    fromArgument argumentContainingDisplayName: LabeledExprListSyntax.Element
+  static func declaration(
+    _ decl: some NamedDeclSyntax,
+    hasEmptyDisplayName displayNameExpr: StringLiteralExprSyntax,
+    fromArgument argumentContainingDisplayName: LabeledExprListSyntax.Element,
+    using attribute: AttributeSyntax
   ) -> Self {
     Self(
       syntax: Syntax(displayNameExpr),
-      message: "Display name string should not be empty",
+      message: "Attribute \(_macroName(attribute)) specifies an empty display name for \(_kindString(for: decl))",
       severity: .warning,
       fixIts: [
         FixIt(

@@ -154,8 +154,10 @@ struct AttributeInfo {
     // diagnostic since this can cause confusion isn't generally recommended.
     // Note that this is only possible for string literal display names; the
     // compiler enforces that raw identifiers must be non-empty.
-    if let displayName, let displayNameArgument, displayName.representedLiteralValue?.isEmpty == true {
-      context.diagnose(.emptyDisplayName(displayName, fromArgument: displayNameArgument))
+    if let namedDecl = declaration.asProtocol((any NamedDeclSyntax).self),
+       let displayName, let displayNameArgument,
+        displayName.representedLiteralValue?.isEmpty == true {
+      context.diagnose(.declaration(namedDecl, hasEmptyDisplayName: displayName, fromArgument: displayNameArgument, using: attribute))
     }
 
     // Remove leading "Self." expressions from the arguments of the attribute.
