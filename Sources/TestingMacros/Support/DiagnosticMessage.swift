@@ -663,11 +663,11 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ) -> Self {
     Self(
       syntax: Syntax(displayNameExpr),
-      message: "Attribute \(_macroName(attribute)) specifies an empty display name for \(_kindString(for: decl))",
+      message: "Attribute \(_macroName(attribute)) specifies an empty display name for this \(_kindString(for: decl))",
       severity: .warning,
       fixIts: [
         FixIt(
-          message: MacroExpansionFixItMessage("Remove '\(displayNameExpr.representedLiteralValue!)'"),
+          message: MacroExpansionFixItMessage("Remove display name argument"),
           changes: [.replace(oldNode: Syntax(argumentContainingDisplayName), newNode: Syntax("" as ExprSyntax))]
         ),
       ]

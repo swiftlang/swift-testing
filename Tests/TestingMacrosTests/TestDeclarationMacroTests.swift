@@ -307,11 +307,11 @@ struct TestDeclarationMacroTests {
 
       // empty display name string literal
       #"@Test("") func f() {}"#:
-        "Attribute 'Test' specifies an empty display name for function",
+        "Attribute 'Test' specifies an empty display name for this function",
       ##"@Test(#""#) func f() {}"##:
-        "Attribute 'Test' specifies an empty display name for function",
+        "Attribute 'Test' specifies an empty display name for this function",
       #"@Suite("") struct S {}"#:
-        "Attribute 'Suite' specifies an empty display name for structure",
+        "Attribute 'Suite' specifies an empty display name for this structure",
     ]
   )
   func apiMisuseWarnings(input: String, expectedMessage: String) throws {
