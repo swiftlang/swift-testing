@@ -51,7 +51,7 @@ extension Attachment where AttachableValue == _AttachableURLWrapper {
   ///
   /// - Throws: Any error that occurs attempting to read from `url`.
   ///
-  /// Use this initialize to create an instance of ``Attachment`` that
+  /// Use this initializer to create an instance of ``Attachment`` that
   /// represents a local file or directory:
   ///
   /// ```swift
