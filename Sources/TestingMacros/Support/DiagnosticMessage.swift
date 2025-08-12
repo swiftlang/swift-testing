@@ -649,13 +649,24 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///
   /// - Parameters:
   ///   - displayNameExpr: The display name string literal expression.
+  ///   - argumentContainingDisplayName: The argument node containing the node
+  ///     `displayNameExpr`.
   ///
   /// - Returns: A diagnostic message.
-  static func emptyDisplayName(_ displayNameExpr: StringLiteralExprSyntax) -> Self {
+  static func emptyDisplayName(
+    _ displayNameExpr: StringLiteralExprSyntax,
+    fromArgument argumentContainingDisplayName: LabeledExprListSyntax.Element
+  ) -> Self {
     Self(
       syntax: Syntax(displayNameExpr),
       message: "Display name string should not be empty",
-      severity: .warning
+      severity: .warning,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Remove '\(displayNameExpr.representedLiteralValue!)'"),
+          changes: [.replace(oldNode: Syntax(argumentContainingDisplayName), newNode: Syntax("" as ExprSyntax))]
+        ),
+      ]
     )
   }
 
