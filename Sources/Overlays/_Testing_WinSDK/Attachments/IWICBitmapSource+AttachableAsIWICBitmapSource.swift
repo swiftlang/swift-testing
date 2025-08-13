@@ -13,45 +13,56 @@ import Testing
 
 public import WinSDK
 
-/// A protocol that provides a subclass of `IWICBitmapSource` with its
-/// conformance to `_AttachableByAddressAsIWICBitmapSource`.
+/// A protocol that identifies a type as a COM subclass of `IWICBitmapSource`.
 ///
-/// - Note: Because COM class inheritance is not visible in Swift, we must
-///   manually apply conformances to this protocol to each COM type that
-///   inherits from `IWICBitmapSource`.
+/// Because COM class inheritance is not visible in Swift, we must manually
+/// apply conformances to this protocol to each COM type that inherits from
+/// `IWICBitmapSource`.
+///
+/// Because this protocol is not `public`, we must also explicitly restate
+/// conformance to the public protocol `_AttachableByAddressAsIWICBitmapSource`
+/// even though this protocol refines that one. This protocol refines
+/// `_AttachableByAddressAsIWICBitmapSource` because otherwise the compiler will
+/// not allow us to declare `public` members in its extension that provides the
+/// implementation of `_AttachableByAddressAsIWICBitmapSource` below.
 ///
 /// This protocol is not part of the public interface of the testing library. It
 /// allows us to reuse code across all subclasses of `IWICBitmapSource`.
-protocol AttachableByAddressAsSubclassOfIWICBitmapSource: _AttachableByAddressAsIWICBitmapSource {}
+protocol IWICBitmapSourceProtocol: _AttachableByAddressAsIWICBitmapSource {}
 
-extension AttachableByAddressAsSubclassOfIWICBitmapSource {
-  public static func _copyAttachableIWICBitmapSource(
-    from imageAddress: UnsafeMutablePointer<Self>,
-    using factory: UnsafeMutablePointer<IWICImagingFactory>
-  ) throws -> UnsafeMutablePointer<IWICBitmapSource> {
-    imageAddress.withMemoryRebound(to: IUnknown.self, capacity: 1) { imageAddress in
-      _ = imageAddress.pointee.lpVtbl.pointee.AddRef(imageAddress)
-    }
-    return try imageAddress.cast(to: IWICBitmapSource.self)
-  }
+@_spi(Experimental)
+extension IWICBitmapSource: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
 
-  public static func _copyAttachableValue(at imageAddress: UnsafeMutablePointer<Self>) -> UnsafeMutablePointer<Self> {
-    imageAddress.withMemoryRebound(to: IUnknown.self, capacity: 1) { imageAddress in
-      _ = imageAddress.pointee.lpVtbl.pointee.AddRef(imageAddress)
-    }
-    return imageAddress
-  }
+@_spi(Experimental)
+extension IWICBitmap: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
 
-  public static func _deinitializeAttachableValue(at imageAddress: UnsafeMutablePointer<Self>) {
-    imageAddress.withMemoryRebound(to: IUnknown.self, capacity: 1) { imageAddress in
-      _ = imageAddress.pointee.lpVtbl.pointee.Release(imageAddress)
-    }
-  }
-}
+@_spi(Experimental)
+extension IWICBitmapClipper: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
 
-// MARK: -
+@_spi(Experimental)
+extension IWICBitmapFlipRotator: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
 
-extension UnsafeMutablePointer where Pointee: AttachableByAddressAsSubclassOfIWICBitmapSource {
+@_spi(Experimental)
+extension IWICBitmapFrameDecode: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
+
+@_spi(Experimental)
+extension IWICBitmapScaler: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
+
+@_spi(Experimental)
+extension IWICBitmapSourceTransform2: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
+
+@_spi(Experimental)
+extension IWICColorTransform: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
+
+@_spi(Experimental)
+extension IWICFormatConverter: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
+
+@_spi(Experimental)
+extension IWICPlanarFormatConverter: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
+
+// MARK: - Upcasting conveniences
+
+extension UnsafeMutablePointer where Pointee: IWICBitmapSourceProtocol {
   /// Upcast this WIC bitmap to a WIC bitmap source (its parent type).
   ///
   /// - Returns: `self`, cast to the parent type via `QueryInterface()`. The
@@ -82,35 +93,27 @@ extension UnsafeMutablePointer where Pointee: AttachableByAddressAsSubclassOfIWI
   }
 }
 
-// MARK: - Conformances
+// MARK: - _AttachableByAddressAsIWICBitmapSource implementation
 
-@_spi(Experimental)
-extension IWICBitmapSource: _AttachableByAddressAsIWICBitmapSource, AttachableByAddressAsSubclassOfIWICBitmapSource {}
+extension IWICBitmapSourceProtocol {
+  public static func _copyAttachableIWICBitmapSource(
+    from imageAddress: UnsafeMutablePointer<Self>,
+    using factory: UnsafeMutablePointer<IWICImagingFactory>
+  ) throws -> UnsafeMutablePointer<IWICBitmapSource> {
+    try _copyAttachableValue(at: imageAddress).cast(to: IWICBitmapSource.self)
+  }
 
-@_spi(Experimental)
-extension IWICBitmap: _AttachableByAddressAsIWICBitmapSource, AttachableByAddressAsSubclassOfIWICBitmapSource {}
+  public static func _copyAttachableValue(at imageAddress: UnsafeMutablePointer<Self>) -> UnsafeMutablePointer<Self> {
+    imageAddress.withMemoryRebound(to: IUnknown.self, capacity: 1) { imageAddress in
+      _ = imageAddress.pointee.lpVtbl.pointee.AddRef(imageAddress)
+    }
+    return imageAddress
+  }
 
-@_spi(Experimental)
-extension IWICBitmapClipper: _AttachableByAddressAsIWICBitmapSource, AttachableByAddressAsSubclassOfIWICBitmapSource {}
-
-@_spi(Experimental)
-extension IWICBitmapFlipRotator: _AttachableByAddressAsIWICBitmapSource, AttachableByAddressAsSubclassOfIWICBitmapSource {}
-
-@_spi(Experimental)
-extension IWICBitmapFrameDecode: _AttachableByAddressAsIWICBitmapSource, AttachableByAddressAsSubclassOfIWICBitmapSource {}
-
-@_spi(Experimental)
-extension IWICBitmapScaler: _AttachableByAddressAsIWICBitmapSource, AttachableByAddressAsSubclassOfIWICBitmapSource {}
-
-@_spi(Experimental)
-extension IWICBitmapSourceTransform2: _AttachableByAddressAsIWICBitmapSource, AttachableByAddressAsSubclassOfIWICBitmapSource {}
-
-@_spi(Experimental)
-extension IWICColorTransform: _AttachableByAddressAsIWICBitmapSource, AttachableByAddressAsSubclassOfIWICBitmapSource {}
-
-@_spi(Experimental)
-extension IWICFormatConverter: _AttachableByAddressAsIWICBitmapSource, AttachableByAddressAsSubclassOfIWICBitmapSource {}
-
-@_spi(Experimental)
-extension IWICPlanarFormatConverter: _AttachableByAddressAsIWICBitmapSource, AttachableByAddressAsSubclassOfIWICBitmapSource {}
+  public static func _deinitializeAttachableValue(at imageAddress: UnsafeMutablePointer<Self>) {
+    imageAddress.withMemoryRebound(to: IUnknown.self, capacity: 1) { imageAddress in
+      _ = imageAddress.pointee.lpVtbl.pointee.Release(imageAddress)
+    }
+  }
+}
 #endif
