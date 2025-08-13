@@ -670,6 +670,10 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
           message: MacroExpansionFixItMessage("Remove display name argument"),
           changes: [.replace(oldNode: Syntax(argumentContainingDisplayName), newNode: Syntax("" as ExprSyntax))]
         ),
+        FixIt(
+          message: MacroExpansionFixItMessage("Add display name"),
+          changes: [.replace(oldNode: Syntax(argumentContainingDisplayName), newNode: Syntax(StringLiteralExprSyntax(placeholder: "display name")))]
+        ),
       ]
     )
   }
