@@ -22,35 +22,29 @@ public import WinSDK
 ///
 /// This protocol is not part of the public interface of the testing library. It
 /// allows us to reuse code across all subclasses of `IWICBitmapSource`.
-protocol AttachableByAddressAsSubclassOfIWICBitmapSource: _AttachableByAddressAsIWICBitmapSource {
-  /// The type of this COM class' vtable pointer.
-  associatedtype Vtbl
-
-  /// This instance's vtable pointer.
-  var lpVtbl: UnsafeMutablePointer<Vtbl>! { get }
-}
+protocol AttachableByAddressAsSubclassOfIWICBitmapSource: _AttachableByAddressAsIWICBitmapSource {}
 
 extension AttachableByAddressAsSubclassOfIWICBitmapSource {
   public static func _copyAttachableIWICBitmapSource(
     from imageAddress: UnsafeMutablePointer<Self>,
     using factory: UnsafeMutablePointer<IWICImagingFactory>
   ) throws -> UnsafeMutablePointer<IWICBitmapSource> {
-    imageAddress.pointee.lpVtbl.withMemoryRebound(to: IUnknownVtbl.self, capacity: 1) { lpVtbl in
-      _ = lpVtbl.pointee.AddRef(imageAddress)
+    imageAddress.withMemoryRebound(to: IUnknown.self, capacity: 1) { imageAddress in
+      _ = imageAddress.pointee.lpVtbl.pointee.AddRef(imageAddress)
     }
     return try imageAddress.cast(to: IWICBitmapSource.self)
   }
 
   public static func _copyAttachableValue(at imageAddress: UnsafeMutablePointer<Self>) -> UnsafeMutablePointer<Self> {
-    imageAddress.pointee.lpVtbl.withMemoryRebound(to: IUnknownVtbl.self, capacity: 1) { lpVtbl in
-      _ = lpVtbl.pointee.AddRef(imageAddress)
-      return imageAddress
+    imageAddress.withMemoryRebound(to: IUnknown.self, capacity: 1) { imageAddress in
+      _ = imageAddress.pointee.lpVtbl.pointee.AddRef(imageAddress)
     }
+    return imageAddress
   }
 
   public static func _deinitializeAttachableValue(at imageAddress: UnsafeMutablePointer<Self>) {
-    imageAddress.pointee.lpVtbl.withMemoryRebound(to: IUnknownVtbl.self, capacity: 1) { lpVtbl in
-      _ = lpVtbl.pointee.Release(imageAddress)
+    imageAddress.withMemoryRebound(to: IUnknown.self, capacity: 1) { imageAddress in
+      _ = imageAddress.pointee.lpVtbl.pointee.Release(imageAddress)
     }
   }
 }
@@ -71,14 +65,14 @@ extension UnsafeMutablePointer where Pointee: AttachableByAddressAsSubclassOfIWI
   /// - Important: This function consumes a reference to `self` even if the cast
   ///   fails.
   consuming func cast(to _: IWICBitmapSource.Type) throws -> UnsafeMutablePointer<IWICBitmapSource> {
-    self.pointee.lpVtbl.withMemoryRebound(to: IUnknownVtbl.self, capacity: 1) { lpVtbl in
+    try self.withMemoryRebound(to: IUnknown.self, capacity: 1) { `self` in
       defer {
-        _ = lpVtbl.pointee.Release(self)
+        _ = self.pointee.lpVtbl.pointee.Release(self)
       }
 
       return try withUnsafePointer(to: IID_IWICBitmapSource) { IID_IWICBitmapSource in
         var bitmapSource: UnsafeMutableRawPointer?
-        let rQuery = lpVtbl.pointee.QueryInterface(self, IID_IWICBitmapSource, &bitmapSource)
+        let rQuery = self.pointee.lpVtbl.pointee.QueryInterface(self, IID_IWICBitmapSource, &bitmapSource)
         guard rQuery == S_OK, let bitmapSource else {
           throw ImageAttachmentError.queryInterfaceFailed(IWICBitmapSource.self, rQuery)
         }
@@ -97,6 +91,9 @@ extension IWICBitmapSource: _AttachableByAddressAsIWICBitmapSource, AttachableBy
 extension IWICBitmap: _AttachableByAddressAsIWICBitmapSource, AttachableByAddressAsSubclassOfIWICBitmapSource {}
 
 @_spi(Experimental)
+extension IWICBitmapClipper: _AttachableByAddressAsIWICBitmapSource, AttachableByAddressAsSubclassOfIWICBitmapSource {}
+
+@_spi(Experimental)
 extension IWICBitmapFlipRotator: _AttachableByAddressAsIWICBitmapSource, AttachableByAddressAsSubclassOfIWICBitmapSource {}
 
 @_spi(Experimental)
@@ -104,4 +101,16 @@ extension IWICBitmapFrameDecode: _AttachableByAddressAsIWICBitmapSource, Attacha
 
 @_spi(Experimental)
 extension IWICBitmapScaler: _AttachableByAddressAsIWICBitmapSource, AttachableByAddressAsSubclassOfIWICBitmapSource {}
+
+@_spi(Experimental)
+extension IWICBitmapSourceTransform2: _AttachableByAddressAsIWICBitmapSource, AttachableByAddressAsSubclassOfIWICBitmapSource {}
+
+@_spi(Experimental)
+extension IWICColorTransform: _AttachableByAddressAsIWICBitmapSource, AttachableByAddressAsSubclassOfIWICBitmapSource {}
+
+@_spi(Experimental)
+extension IWICFormatConverter: _AttachableByAddressAsIWICBitmapSource, AttachableByAddressAsSubclassOfIWICBitmapSource {}
+
+@_spi(Experimental)
+extension IWICPlanarFormatConverter: _AttachableByAddressAsIWICBitmapSource, AttachableByAddressAsSubclassOfIWICBitmapSource {}
 #endif
