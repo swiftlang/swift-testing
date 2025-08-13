@@ -149,6 +149,14 @@ struct TestDeclarationMacroTests {
         "Attribute 'Test' cannot be applied to a function within structure 'S' because its conformance to 'Escapable' has been suppressed",
       "struct S: ~(Escapable) { @Test func f() {} }":
         "Attribute 'Test' cannot be applied to a function within structure 'S' because its conformance to 'Escapable' has been suppressed",
+
+      // empty display name string literal
+      #"@Test("") func f() {}"#:
+        "Attribute 'Test' specifies an empty display name for this function",
+      ##"@Test(#""#) func f() {}"##:
+        "Attribute 'Test' specifies an empty display name for this function",
+      #"@Suite("") struct S {}"#:
+        "Attribute 'Suite' specifies an empty display name for this structure",
     ]
   )
   func apiMisuseErrors(input: String, expectedMessage: String) throws {
@@ -304,14 +312,6 @@ struct TestDeclarationMacroTests {
       // .serialized on a non-parameterized test function
       "@Test(.serialized) func f() {}":
         "Trait '.serialized' has no effect when used with a non-parameterized test function",
-
-      // empty display name string literal
-      #"@Test("") func f() {}"#:
-        "Attribute 'Test' specifies an empty display name for this function",
-      ##"@Test(#""#) func f() {}"##:
-        "Attribute 'Test' specifies an empty display name for this function",
-      #"@Suite("") struct S {}"#:
-        "Attribute 'Suite' specifies an empty display name for this structure",
     ]
   )
   func apiMisuseWarnings(input: String, expectedMessage: String) throws {

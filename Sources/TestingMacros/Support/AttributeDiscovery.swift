@@ -150,10 +150,10 @@ struct AttributeInfo {
       }
     }
 
-    // If there was a display name but it's completely empty, emit a warning
-    // diagnostic since this can cause confusion isn't generally recommended.
-    // Note that this is only possible for string literal display names; the
-    // compiler enforces that raw identifiers must be non-empty.
+    // If there was a display name but it's completely empty, emit a diagnostic
+    // since this can cause confusion isn't generally recommended. Note that
+    // this is only possible for string literal display names; the compiler
+    // enforces that raw identifiers must be non-empty.
     if let namedDecl = declaration.asProtocol((any NamedDeclSyntax).self),
        let displayName, let displayNameArgument,
         displayName.representedLiteralValue?.isEmpty == true {

@@ -664,7 +664,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     Self(
       syntax: Syntax(displayNameExpr),
       message: "Attribute \(_macroName(attribute)) specifies an empty display name for this \(_kindString(for: decl))",
-      severity: .warning,
+      severity: .error,
       fixIts: [
         FixIt(
           message: MacroExpansionFixItMessage("Remove display name argument"),
