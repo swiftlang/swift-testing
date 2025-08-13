@@ -49,7 +49,7 @@ extension IWICBitmapFrameDecode: _AttachableByAddressAsIWICBitmapSource, IWICBit
 extension IWICBitmapScaler: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
 
 @_spi(Experimental)
-extension IWICBitmapSourceTransform2: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
+extension IWICBitmapSourceTransform: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
 
 @_spi(Experimental)
 extension IWICColorTransform: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
