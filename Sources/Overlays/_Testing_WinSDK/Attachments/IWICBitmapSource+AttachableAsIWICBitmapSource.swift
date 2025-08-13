@@ -19,6 +19,9 @@ public import WinSDK
 /// - Note: Because COM class inheritance is not visible in Swift, we must
 ///   manually apply conformances to this protocol to each COM type that
 ///   inherits from `IWICBitmapSource`.
+///
+/// This protocol is not part of the public interface of the testing library. It
+/// allows us to reuse code across all subclasses of `IWICBitmapSource`.
 protocol AttachableByAddressAsSubclassOfIWICBitmapSource: _AttachableByAddressAsIWICBitmapSource {
   /// The type of this COM class' vtable pointer.
   associatedtype Vtbl
