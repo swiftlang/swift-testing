@@ -14,29 +14,14 @@ extension Event {
   ///
   /// This recorder is currently experimental and must be enabled via the
   /// `SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT` environment variable.
-  ///
-  /// Future capabilities will include:
-  /// - Hierarchical test result display with tree visualization
-  /// - Live progress indicators during test execution
-  /// - Enhanced SF Symbols integration on supported platforms
   struct AdvancedConsoleOutputRecorder: Sendable {
     /// Configuration options for the advanced console output recorder.
     struct Options: Sendable {
       /// Base console output recorder options to inherit from.
       var base: Event.ConsoleOutputRecorder.Options
       
-      /// Whether to enable experimental hierarchical output display.
-      /// Currently unused - reserved for future PR #2.
-      var useHierarchicalOutput: Bool
-      
-      /// Whether to show successful tests in the output.
-      /// Currently unused - reserved for future PR #2.
-      var showSuccessfulTests: Bool
-      
       init() {
         self.base = Event.ConsoleOutputRecorder.Options()
-        self.useHierarchicalOutput = true
-        self.showSuccessfulTests = true
       }
     }
     
@@ -63,17 +48,16 @@ extension Event {
 }
 
 extension Event.AdvancedConsoleOutputRecorder {
-  /// Handle an event by processing it and generating appropriate output.
+  /// Record an event by processing it and generating appropriate output.
   ///
-  /// Currently this is a skeleton implementation that delegates to the
-  /// standard ConsoleOutputRecorder.
+  /// Currently this is a skeleton implementation that delegates to
+  /// ``Event/ConsoleOutputRecorder``.
   ///
   /// - Parameters:
-  ///   - event: The event to handle.
+  ///   - event: The event to record.
   ///   - eventContext: The context associated with the event.
-  func handle(_ event: borrowing Event, in eventContext: borrowing Event.Context) {
-    // Skeleton implementation: delegate to standard recorder
-    // Future PRs will add enhanced functionality here
+  func record(_ event: borrowing Event, in eventContext: borrowing Event.Context) {
+    // Skeleton implementation: delegate to ConsoleOutputRecorder
     _fallbackRecorder.record(event, in: eventContext)
   }
 }
