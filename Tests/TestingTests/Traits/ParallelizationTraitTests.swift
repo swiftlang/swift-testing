@@ -9,6 +9,11 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+private import _TestingInternals
+
+#if canImport(Foundation)
+import Foundation
+#endif
 
 @Suite("Parallelization Trait Tests", .tags(.traitRelated))
 struct ParallelizationTraitTests {
@@ -46,6 +51,107 @@ struct ParallelizationTraitTests {
   }
 }
 
+// MARK: -
+
+@Suite("Parallelization Trait Tests with Dependencies")
+struct ParallelizationTraitTestsWithDependencies {
+  func dependency() throws -> ParallelizationTrait.Dependency.Kind {
+    let traits = try #require(Test.current?.traits.compactMap { $0 as? ParallelizationTrait })
+    try #require(traits.count == 1)
+    return try #require(traits[0].dependency?.kind)
+  }
+
+  @Test(.serialized(for: Dependency1.self))
+  func type() throws {
+    let dependency = try dependency()
+    #expect(dependency == .keyPath(\Dependency1.self))
+  }
+
+  @Test(.serialized(for: Dependency1.self), .serialized(for: Dependency1.self))
+  func duplicates() throws {
+    let dependency = try dependency()
+    #expect(dependency == .keyPath(\Dependency1.self))
+  }
+
+  @Test(.serialized(for: Dependency1.self), .serialized(for: Dependency2.self))
+  func multiple() throws {
+    let dependency = try dependency()
+    #expect(dependency == .unbounded)
+  }
+
+  @Test(.serialized(for: Dependency1.self), .serialized, arguments: [0])
+  func mixedDependencyAndNot(_: Int) throws {
+    let dependency = try dependency()
+    #expect(dependency == .keyPath(\Dependency1.self))
+  }
+
+  @Test(.serialized, .serialized(for: Dependency1.self), arguments: [0])
+  func mixedNotAndDependency(_: Int) throws {
+    let dependency = try dependency()
+    #expect(dependency == .keyPath(\Dependency1.self))
+  }
+
+  @Test(unsafe .serialized(for: dependency3))
+  func pointer() throws {
+    let dependency = try dependency()
+    #expect(dependency == .address(dependency3))
+  }
+
+  @Test(unsafe .serialized(for: dependency3), unsafe .serialized(for: dependency4))
+  func multiplePointers() throws {
+    let dependency = try dependency()
+    #expect(dependency == .unbounded)
+  }
+
+  @Test(.serialized(for: .tagDependency))
+  func tag() throws {
+    let dependency = try dependency()
+    #expect(dependency == .tag(.tagDependency))
+  }
+
+  @Test(.serialized(for: Environment.self))
+  func environment() throws {
+    let dependency = try dependency()
+    #expect(dependency == .environ)
+  }
+
+#if !SWT_NO_ENVIRONMENT_VARIABLES
+#if canImport(Foundation)
+  @Test(.serialized(for: ProcessInfo.self))
+  func foundationEnvironment() throws {
+    let dependency = try dependency()
+    #expect(dependency == .environ)
+  }
+#endif
+
+#if SWT_TARGET_OS_APPLE
+  @Test(unsafe .serialized(for: _NSGetEnviron()))
+  func appleCRTEnvironOuterPointer() throws {
+    let dependency = try dependency()
+    #expect(dependency == .environ)
+  }
+
+  @Test(unsafe .serialized(for: _NSGetEnviron()!.pointee!))
+  func appleCRTEnviron() throws {
+    let dependency = try dependency()
+    #expect(dependency == .environ)
+  }
+#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+  @Test(unsafe .serialized(for: swt_environ()))
+  func posixEnviron() throws {
+    let dependency = try dependency()
+    #expect(dependency == .environ)
+  }
+#elseif os(WASI)
+  @Test(unsafe .serialized(for: __wasilibc_get_environ()))
+  func wasiEnviron() throws {
+    let dependency = try dependency()
+    #expect(dependency == .environ)
+  }
+#endif
+#endif
+}
+
 // MARK: - Fixtures
 
 @Suite(.hidden, .serialized)
@@ -65,4 +171,19 @@ private struct OuterSuite {
 @Test(.hidden, .serialized, arguments: 0 ..< 10_000)
 private func globalParameterized(i: Int) {
   Issue.record("PARAMETERIZED\(i)")
+}
+
+private struct Dependency1 {
+  var x = 0
+  var y = 0
+}
+
+private struct Dependency2 {}
+
+private nonisolated(unsafe) let dependency3 = UnsafeMutablePointer<CChar>.allocate(capacity: 1)
+
+private nonisolated(unsafe) let dependency4 = UnsafeMutablePointer<CChar>.allocate(capacity: 1)
+
+extension Tag {
+  @Tag fileprivate static var tagDependency: Self
 }
