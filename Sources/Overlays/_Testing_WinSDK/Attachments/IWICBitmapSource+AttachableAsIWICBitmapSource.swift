@@ -118,4 +118,14 @@ extension IWICBitmapSourceProtocol {
     }
   }
 }
+
+extension IWICBitmapSource {
+  public static func _copyAttachableIWICBitmapSource(
+    from imageAddress: UnsafeMutablePointer<Self>,
+    using factory: UnsafeMutablePointer<IWICImagingFactory>
+  ) throws -> UnsafeMutablePointer<IWICBitmapSource> {
+    _ = imageAddress.pointee.lpVtbl.pointee.AddRef(imageAddress)
+    return imageAddress
+  }
+}
 #endif
