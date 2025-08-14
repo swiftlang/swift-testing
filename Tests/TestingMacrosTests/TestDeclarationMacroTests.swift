@@ -273,8 +273,7 @@ struct TestDeclarationMacroTests {
          ),
        #"@Suite("") struct S {}"#:
        (
-         message:
-         "Attribute 'Suite' specifies an empty display name for this structure",
+         message: "Attribute 'Suite' specifies an empty display name for this structure",
          fixIts: [
            ExpectedFixIt(
              message: "Remove display name argument",
