@@ -149,6 +149,32 @@ extension Trait where Self == ConditionTrait {
     Self(kind: .conditional(condition), comments: Array(comment), sourceLocation: sourceLocation)
   }
 
+  /// Constructs a condition trait that disables a test if an environment
+  /// variable is not present.
+  ///
+  /// - Parameters:
+  ///   - comment: An optional comment that describes this trait.
+  ///   - sourceLocation: The source location of the trait.
+  ///   - environmentName: The name of an environment variable. If it is found
+  ///     the current environment, the trait allows the test to run.
+  ///     Otherwise, the testing library skips the test. The value of
+  ///     the environment variable is not inspected.
+  ///
+  /// - Returns: An instance of ``ConditionTrait`` that checks for the provided
+  /// environment variable.
+  @_spi(Experimental)
+  public static func enabled(
+    ifEnvironmentPresent environmentName: String,
+    _ comment: Comment? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) -> Self {
+    Self(
+      kind: .conditional {
+        Environment.variable(named: environmentName) != nil
+      }, comments: Array(comment), sourceLocation: sourceLocation
+    )
+  }
+
   /// Constructs a condition trait that disables a test unconditionally.
   ///
   /// - Parameters:
@@ -206,5 +232,31 @@ extension Trait where Self == ConditionTrait {
     _ condition: @escaping @Sendable () async throws -> Bool
   ) -> Self {
     Self(kind: .conditional { !(try await condition()) }, comments: Array(comment), sourceLocation: sourceLocation)
+  }
+
+  /// Constructs a condition trait that disables a test if an environment
+  /// variable is present.
+  ///
+  /// - Parameters:
+  ///   - comment: An optional comment that describes this trait.
+  ///   - sourceLocation: The source location of the trait.
+  ///   - environmentName: The name of an environment variable. If it is not
+  ///     found the current environment, the trait allows the test to run.
+  ///     Otherwise, the testing library skips the test. The value of
+  ///     the environment variable is not inspected.
+  ///
+  /// - Returns: An instance of ``ConditionTrait`` that checks for the provided
+  ///   environment variable.
+  @_spi(Experimental)
+  public static func disabled(
+    ifEnvironmentPresent environmentName: String,
+    _ comment: Comment? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) -> Self {
+    Self(
+      kind: .conditional {
+        Environment.variable(named: environmentName) == nil
+      }, comments: Array(comment), sourceLocation: sourceLocation
+    )
   }
 }
