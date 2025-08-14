@@ -284,12 +284,11 @@ extension AttachableImageFormat {
   public init?(pathExtension: String, encodingQuality: Float = 1.0) {
     let pathExtension = pathExtension.drop { $0 == "." }
 
-    let clsid = Self._computeCLSID(forPathExtension: String(pathExtension))
-    if let clsid {
-      self.init(clsid, encodingQuality: encodingQuality)
-    } else {
+    guard let clsid = Self._computeCLSID(forPathExtension: String(pathExtension)) else {
       return nil
     }
+
+    self.init(clsid, encodingQuality: encodingQuality)
   }
 }
 #endif
