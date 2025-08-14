@@ -13,6 +13,11 @@ import Testing
 
 public import WinSDK
 
+/// - Important: The casts in this file to `IUnknown` are safe insofar as we use
+///   them to access fixed members of the COM vtable. The casts would become
+///   unsafe if we allowed the resulting pointers to escape _and_ if any of the
+///   types we use them on have multiple non-virtual inheritance to `IUnknown`.
+
 /// A protocol that identifies a type as a COM subclass of `IWICBitmapSource`.
 ///
 /// Because COM class inheritance is not visible in Swift, we must manually
