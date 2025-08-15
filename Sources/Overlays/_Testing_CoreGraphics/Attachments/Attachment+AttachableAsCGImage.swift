@@ -48,8 +48,12 @@ extension Attachment {
     named preferredName: String? = nil,
     as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) where AttachableValue == _AttachableImageWrapper<T> {
-    let imageWrapper = _AttachableImageWrapper(image: image, imageFormat: imageFormat)
+  ) where T: AttachableAsCGImage, AttachableValue == _AttachableImageWrapper<T> {
+    let imageWrapper = _AttachableImageWrapper(
+      image: image._copyAttachableValue(),
+      imageFormat: imageFormat,
+      deinitializingWith: { _ in }
+    )
     self.init(imageWrapper, named: preferredName, sourceLocation: sourceLocation)
   }
 
@@ -88,19 +92,20 @@ extension Attachment {
     named preferredName: String? = nil,
     as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) where AttachableValue == _AttachableImageWrapper<T> {
+  ) where T: AttachableAsCGImage, AttachableValue == _AttachableImageWrapper<T> {
     let attachment = Self(image, named: preferredName, as: imageFormat, sourceLocation: sourceLocation)
     Self.record(attachment, sourceLocation: sourceLocation)
   }
 }
 
+// MARK: -
+
 @_spi(Experimental) // STOP: not part of ST-0014
 @available(_uttypesAPI, *)
 extension Attachment where AttachableValue: AttachableWrapper, AttachableValue.Wrapped: AttachableAsCGImage {
   /// The image format to use when encoding the represented image.
-  @_disfavoredOverload
-  public var imageFormat: AttachableImageFormat? {
-    // FIXME: no way to express `where AttachableValue == _AttachableImageWrapper<???>` on a property
+  @_disfavoredOverload public var imageFormat: AttachableImageFormat? {
+    // FIXME: no way to express `where AttachableValue == _AttachableImageWrapper<???>` on a property (see rdar://47559973)
     (attachableValue as? _AttachableImageWrapper<AttachableValue.Wrapped>)?.imageFormat
   }
 }

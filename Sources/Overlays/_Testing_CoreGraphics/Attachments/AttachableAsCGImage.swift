@@ -35,7 +35,7 @@ private import ImageIO
 /// first convert it to an instance of one of the types above.
 @_spi(Experimental)
 @available(_uttypesAPI, *)
-public protocol AttachableAsCGImage {
+public protocol AttachableAsCGImage: SendableMetatype {
   /// An instance of `CGImage` representing this image.
   ///
   /// - Throws: Any error that prevents the creation of an image.
