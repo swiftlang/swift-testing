@@ -46,8 +46,12 @@ extension Attachment {
     named preferredName: String? = nil,
     as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) where AttachableValue == _AttachableImageWrapper<T> {
-    let imageWrapper = _AttachableImageWrapper(image: image, imageFormat: imageFormat)
+  ) where T: AttachableAsIWICBitmapSource, AttachableValue == _AttachableImageWrapper<T> {
+    let imageWrapper = _AttachableImageWrapper(
+      image: image._copyAttachableValue(),
+      imageFormat: imageFormat,
+      deinitializingWith: { $0._deinitializeAttachableValue() }
+    )
     self.init(imageWrapper, named: preferredName, sourceLocation: sourceLocation)
   }
 
@@ -86,8 +90,12 @@ extension Attachment {
     named preferredName: String? = nil,
     as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) where AttachableValue == _AttachableImageWrapper<T> {
-    let imageWrapper = _AttachableImageWrapper(image: image, imageFormat: imageFormat)
+  ) where T: AttachableAsIWICBitmapSource, AttachableValue == _AttachableImageWrapper<T> {
+    let imageWrapper = _AttachableImageWrapper(
+      image: image._copyAttachableValue(),
+      imageFormat: imageFormat,
+      deinitializingWith: { $0._deinitializeAttachableValue() }
+    )
     let attachment = Self(imageWrapper, named: preferredName, sourceLocation: sourceLocation)
     Self.record(attachment, sourceLocation: sourceLocation)
   }
@@ -96,9 +104,8 @@ extension Attachment {
 @_spi(Experimental)
 extension Attachment where AttachableValue: AttachableWrapper, AttachableValue.Wrapped: AttachableAsIWICBitmapSource {
   /// The image format to use when encoding the represented image.
-  @_disfavoredOverload
-  public var imageFormat: AttachableImageFormat? {
-    // FIXME: no way to express `where AttachableValue == _AttachableImageWrapper<???>` on a property
+  @_disfavoredOverload public var imageFormat: AttachableImageFormat? {
+    // FIXME: no way to express `where AttachableValue == _AttachableImageWrapper<???>` on a property (see rdar://47559973)
     (attachableValue as? _AttachableImageWrapper<AttachableValue.Wrapped>)?.imageFormat
   }
 }

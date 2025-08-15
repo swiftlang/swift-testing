@@ -112,7 +112,7 @@ public protocol _AttachableByAddressAsIWICBitmapSource {
 /// you have an image in another format that needs to be attached to a test,
 /// first convert it to an instance of one of the types above.
 @_spi(Experimental)
-public protocol AttachableAsIWICBitmapSource {
+public protocol AttachableAsIWICBitmapSource: SendableMetatype {
   /// Create a WIC bitmap source representing an instance of this type.
   ///
   /// - Returns: A pointer to a new WIC bitmap source representing this image.
