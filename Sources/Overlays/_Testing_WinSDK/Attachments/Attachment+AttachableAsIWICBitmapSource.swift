@@ -91,12 +91,7 @@ extension Attachment {
     as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) where T: AttachableAsIWICBitmapSource, AttachableValue == _AttachableImageWrapper<T> {
-    let imageWrapper = _AttachableImageWrapper(
-      image: image._copyAttachableValue(),
-      imageFormat: imageFormat,
-      deinitializingWith: { $0._deinitializeAttachableValue() }
-    )
-    let attachment = Self(imageWrapper, named: preferredName, sourceLocation: sourceLocation)
+    let attachment = Self(image, named: preferredName, as: imageFormat, sourceLocation: sourceLocation)
     Self.record(attachment, sourceLocation: sourceLocation)
   }
 }
