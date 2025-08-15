@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 /// A type representing an error that can occur when attaching an image.
 package enum ImageAttachmentError: Error {
 #if SWT_TARGET_OS_APPLE
@@ -61,6 +63,8 @@ extension ImageAttachmentError: CustomStringConvertible {
     case let .propertyBagWritingFailed(name, result):
       "Could not set the property '\(name)' (HRESULT \(result))."
     }
+#else
+    swt_unreachable()
 #endif
   }
 }
