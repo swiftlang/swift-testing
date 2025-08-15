@@ -114,10 +114,13 @@ extension AttachableImageFormat {
   /// If the target image format does not support variable-quality encoding,
   /// the value of the `encodingQuality` argument is ignored.
   ///
-  /// If `pathExtension` does not correspond to an image format that WIC can use
-  /// to encode images, this initializer returns `nil`. For a list of image
-  /// encoders supported by WIC, see the documentation for the [IWICBitmapEncoder](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapencoder)
-  /// class.
+  /// If `pathExtension` does not correspond to a recognized image format, this
+  /// initializer returns `nil`:
+  ///
+  /// - On Apple platforms, the content type corresponding to `pathExtension`
+  ///   must conform to [`UTType.image`](https://developer.apple.com/documentation/uniformtypeidentifiers/uttype-swift.struct/image).
+  /// - On Windows, there must be a corresponding subclass of [`IWICBitmapEncoder`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapencoder)
+  ///   registered with Windows Imaging Component.
   public init?(pathExtension: String, encodingQuality: Float = 1.0) {
     let pathExtension = pathExtension.drop { $0 == "." }
 
