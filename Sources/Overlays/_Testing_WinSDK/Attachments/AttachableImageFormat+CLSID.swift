@@ -9,8 +9,7 @@
 //
 
 #if os(Windows)
-@_spi(Experimental) import Testing
-
+@_spi(Experimental) public import Testing
 public import WinSDK
 
 extension AttachableImageFormat {

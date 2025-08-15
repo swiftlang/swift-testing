@@ -9,8 +9,7 @@
 //
 
 #if os(Windows)
-@_spi(Experimental) import Testing
-
+private import Testing
 public import WinSDK
 
 /// A protocol describing images that can be converted to instances of

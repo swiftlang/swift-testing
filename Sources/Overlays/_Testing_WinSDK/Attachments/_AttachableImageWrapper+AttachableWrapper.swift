@@ -10,8 +10,7 @@
 
 #if os(Windows)
 @_spi(Experimental) public import Testing
-
-internal import WinSDK
+private import WinSDK
 
 extension _AttachableImageWrapper: Attachable, AttachableWrapper where Image: AttachableAsIWICBitmapSource {
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<_AttachableImageWrapper>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {

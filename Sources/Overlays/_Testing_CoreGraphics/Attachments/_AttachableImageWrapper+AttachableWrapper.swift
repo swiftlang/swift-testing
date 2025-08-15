@@ -13,7 +13,7 @@
 private import CoreGraphics
 
 private import ImageIO
-import UniformTypeIdentifiers
+private import UniformTypeIdentifiers
 
 /// ## Why can't images directly conform to Attachable?
 ///
