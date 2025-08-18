@@ -93,12 +93,12 @@ public protocol _AttachableByAddressAsIWICBitmapSource {
 }
 
 /// A protocol describing images that can be converted to instances of
-/// ``Testing/Attachment``.
+/// [`Attachment`](https://developer.apple.com/documentation/testing/attachment).
 ///
 /// Instances of types conforming to this protocol do not themselves conform to
-/// ``Testing/Attachable``. Instead, the testing library provides additional
-/// initializers on ``Testing/Attachment`` that take instances of such types and
-/// handle converting them to image data when needed.
+/// [`Attachable`](https://developer.apple.com/documentation/testing/attachable).
+/// Instead, the testing library provides additional initializers on [`Attachment`](https://developer.apple.com/documentation/testing/attachment)
+/// that take instances of such types and handle converting them to image data when needed.
 ///
 /// You can attach instances of the following system-provided image types to a
 /// test:
