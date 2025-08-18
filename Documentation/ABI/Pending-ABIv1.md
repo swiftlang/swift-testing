@@ -1,4 +1,4 @@
-# Pending ABIv1 Changes
+# Pending ABIv6.3 Changes
 
 This document collects changes which have been made and are anticipated to be
 released in a future ABI/event stream version, but are still pending.
