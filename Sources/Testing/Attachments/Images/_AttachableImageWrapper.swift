@@ -10,28 +10,11 @@
 
 /// A wrapper type for images that can be indirectly attached to a test.
 ///
-/// You do not need to use this type directly. Instead, initialize an instance
-/// of ``Attachment`` using an instance of an image type that conforms to
-/// ``AttachableAsCGImage`` (on Apple platforms) or
-/// ``AttachableAsIWICBitmapSource`` (on Windows).
+/// You can attach instances of the following system-provided image types to a
+/// test:
 ///
-/// On Apple platforms, the following system-provided image types conform
-/// to the ``AttachableAsCGImage`` protocol and can be attached to a test:
-///
-/// - [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage)
-/// - [`CIImage`](https://developer.apple.com/documentation/coreimage/ciimage)
-/// - [`NSImage`](https://developer.apple.com/documentation/appkit/nsimage)
-///   (macOS)
-/// - [`UIImage`](https://developer.apple.com/documentation/uikit/uiimage)
-///   (iOS, watchOS, tvOS, visionOS, and Mac Catalyst)
-///
-/// On Windows, the following system-provided image types conform to the
-/// ``AttachableAsIWICBitmapSource`` protocol and can be attached to a test:
-///
-/// - [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps)
-/// - [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons)
-/// - [`IWICBitmapSource`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapsource)
-///   (including its subclasses declared by Windows Imaging Component)
+/// | Apple platforms | [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage), [`CIImage`](https://developer.apple.com/documentation/coreimage/ciimage), [`NSImage`](https://developer.apple.com/documentation/appkit/nsimage) (macOS), [`UIImage`](https://developer.apple.com/documentation/uikit/uiimage) (iOS, watchOS, tvOS, visionOS, and Mac Catalyst) |
+/// | Windows | [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps), [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons), [`IWICBitmapSource`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapsource) (including its subclasses declared by Windows Imaging Component) |
 @_spi(Experimental)
 @available(_uttypesAPI, *)
 public final class _AttachableImageWrapper<Image>: Sendable {

@@ -20,13 +20,11 @@ public import WinSDK
 /// initializers on ``Testing/Attachment`` that take instances of such types and
 /// handle converting them to image data when needed.
 ///
-/// The following system-provided image types conform to this protocol and can
-/// be attached to a test:
+/// You can attach instances of the following system-provided image types to a
+/// test:
 ///
-/// - [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps)
-/// - [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons)
-/// - [`IWICBitmapSource`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapsource)
-///   (including its subclasses declared by Windows Imaging Component)
+/// | Apple platforms | [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage), [`CIImage`](https://developer.apple.com/documentation/coreimage/ciimage), [`NSImage`](https://developer.apple.com/documentation/appkit/nsimage) (macOS), [`UIImage`](https://developer.apple.com/documentation/uikit/uiimage) (iOS, watchOS, tvOS, visionOS, and Mac Catalyst) |
+/// | Windows | [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps), [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons), [`IWICBitmapSource`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapsource) (including its subclasses declared by Windows Imaging Component) |
 ///
 /// You do not generally need to add your own conformances to this protocol. If
 /// you have an image in another format that needs to be attached to a test,
@@ -99,13 +97,11 @@ public protocol _AttachableByAddressAsIWICBitmapSource {
 /// initializers on ``Testing/Attachment`` that take instances of such types and
 /// handle converting them to image data when needed.
 ///
-/// The following system-provided image types conform to this protocol and can
-/// be attached to a test:
+/// You can attach instances of the following system-provided image types to a
+/// test:
 ///
-/// - [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps)
-/// - [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons)
-/// - [`IWICBitmapSource`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapsource)
-///   (including its subclasses declared by Windows Imaging Component)
+/// | Apple platforms | [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage), [`CIImage`](https://developer.apple.com/documentation/coreimage/ciimage), [`NSImage`](https://developer.apple.com/documentation/appkit/nsimage) (macOS), [`UIImage`](https://developer.apple.com/documentation/uikit/uiimage) (iOS, watchOS, tvOS, visionOS, and Mac Catalyst) |
+/// | Windows | [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps), [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons), [`IWICBitmapSource`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapsource) (including its subclasses declared by Windows Imaging Component) |
 ///
 /// You do not generally need to add your own conformances to this protocol. If
 /// you have an image in another format that needs to be attached to a test,

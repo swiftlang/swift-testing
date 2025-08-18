@@ -12,7 +12,7 @@
 @_spi(Experimental) public import Testing
 private import WinSDK
 
-extension _AttachableImageWrapper: Attachable, AttachableWrapper where Image: AttachableAsIWICBitmapSource {
+extension _AttachableImageWrapper: Attachable, AttachableWrapper where Image: AttachableAsCGImage {
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<_AttachableImageWrapper>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     // Create an in-memory stream to write the image data to. Note that Windows
     // documentation recommends SHCreateMemStream() instead, but that function

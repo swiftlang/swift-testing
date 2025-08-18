@@ -26,13 +26,11 @@ extension Attachment {
   ///     This value is used when recording issues associated with the
   ///     attachment.
   ///
-  /// The following system-provided image types conform to the
-  /// ``AttachableAsIWICBitmapSource`` protocol and can be attached to a test:
+  /// You can attach instances of the following system-provided image types to a
+  /// test:
   ///
-  /// - [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps)
-  /// - [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons)
-  /// - [`IWICBitmapSource`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapsource)
-  ///   (including its subclasses declared by Windows Imaging Component)
+  /// | Apple platforms | [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage), [`CIImage`](https://developer.apple.com/documentation/coreimage/ciimage), [`NSImage`](https://developer.apple.com/documentation/appkit/nsimage) (macOS), [`UIImage`](https://developer.apple.com/documentation/uikit/uiimage) (iOS, watchOS, tvOS, visionOS, and Mac Catalyst) |
+  /// | Windows | [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps), [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons), [`IWICBitmapSource`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapsource) (including its subclasses declared by Windows Imaging Component) |
   ///
   /// The testing library uses the image format specified by `imageFormat`. Pass
   /// `nil` to let the testing library decide which image format to use. If you
@@ -68,15 +66,11 @@ extension Attachment {
   ///     attachment.
   ///
   /// This function creates a new instance of ``Attachment`` wrapping `image`
-  /// and immediately attaches it to the current test.
+  /// and immediately attaches it to the current test. You can attach instances
+  /// of the following system-provided image types to a test:
   ///
-  /// The following system-provided image types conform to the
-  /// ``AttachableAsIWICBitmapSource`` protocol and can be attached to a test:
-  ///
-  /// - [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps)
-  /// - [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons)
-  /// - [`IWICBitmapSource`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapsource)
-  ///   (including its subclasses declared by Windows Imaging Component)
+  /// | Apple platforms | [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage), [`CIImage`](https://developer.apple.com/documentation/coreimage/ciimage), [`NSImage`](https://developer.apple.com/documentation/appkit/nsimage) (macOS), [`UIImage`](https://developer.apple.com/documentation/uikit/uiimage) (iOS, watchOS, tvOS, visionOS, and Mac Catalyst) |
+  /// | Windows | [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps), [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons), [`IWICBitmapSource`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapsource) (including its subclasses declared by Windows Imaging Component) |
   ///
   /// The testing library uses the image format specified by `imageFormat`. Pass
   /// `nil` to let the testing library decide which image format to use. If you
