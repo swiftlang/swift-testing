@@ -12,7 +12,9 @@ if(APPLE) // iOS (etc.) and Mac Catalyst
     ReexportTesting.swift)
 
   target_link_libraries(_Testing_UIKit PUBLIC
-    Testing)
+    Testing
+    _Testing_CoreGraphics
+    UIKit)
 
   target_compile_options(_Testing_UIKit PRIVATE
     -enable-library-evolution

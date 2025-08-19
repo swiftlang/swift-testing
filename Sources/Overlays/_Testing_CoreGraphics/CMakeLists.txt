@@ -12,7 +12,13 @@ if(APPLE)
     ReexportTesting.swift)
 
   target_link_libraries(_Testing_CoreGraphics PUBLIC
-    Testing)
+    Testing
+    CoreGraphics
+    UniformTypeIdentifiers)
+
+  target_link_libraries(_Testing_CoreGraphics PRIVATE
+    Foundation
+    ImageIO)
 
   target_compile_options(_Testing_CoreGraphics PRIVATE
     -enable-library-evolution

@@ -12,7 +12,9 @@ if(APPLE)
     ReexportTesting.swift)
 
   target_link_libraries(_Testing_CoreImage PUBLIC
-    Testing)
+    Testing
+    _Testing_CoreGraphics
+    CoreImage)
 
   target_compile_options(_Testing_CoreImage PRIVATE
     -enable-library-evolution

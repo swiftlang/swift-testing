@@ -12,7 +12,9 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     ReexportTesting.swift)
 
   target_link_libraries(_Testing_AppKit PUBLIC
-    Testing)
+    Testing
+    _Testing_CoreGraphics
+    AppKit)
 
   target_compile_options(_Testing_AppKit PRIVATE
     -enable-library-evolution
