@@ -54,7 +54,7 @@ extension PollingFailedError: CustomIssueRepresentable {
 
 /// A type defining when to stop polling early.
 /// This also determines what happens if the duration elapses during polling.
-public enum PollingStopCondition: Sendable {
+public enum PollingStopCondition: Sendable, Equatable {
   /// Evaluates the expression until the first time it returns true.
   /// If it does not pass once by the time the timeout is reached, then a
   /// failure will be reported.
@@ -78,17 +78,15 @@ public enum PollingStopCondition: Sendable {
 ///     This value may not correspond to the wall-clock time that polling lasts
 ///     for, especially on highly-loaded systems with a lot of tests running.
 ///     If nil, this uses whatever value is specified under the last
-///     ``PollingUntilFirstPassConfigurationTrait`` or
-///     ``PollingUntilStopsPassingConfigurationTrait`` added to the test or
-///     suite.
+///     ``PollingConfirmationConfigurationTrait`` added to the test or suite
+///     with a matching stopCondition.
 ///     If no such trait has been added, then polling will be attempted for
 ///     about 1 second before recording an issue.
 ///     `duration` must be greater than 0.
 ///   - interval: The minimum amount of time to wait between polling attempts.
 ///     If nil, this uses whatever value is specified under the last
-///     ``PollingUntilFirstPassConfigurationTrait`` or
-///     ``PollingUntilStopsPassingConfigurationTrait`` added to the test or
-///     suite.
+///     ``PollingConfirmationConfigurationTrait`` added to the test or suite
+///     with a matching stopCondition.
 ///     If no such trait has been added, then polling will wait at least
 ///     1 millisecond between polling attempts.
 ///     `interval` must be greater than 0.
@@ -142,17 +140,15 @@ public func confirmation(
 ///     This value may not correspond to the wall-clock time that polling lasts
 ///     for, especially on highly-loaded systems with a lot of tests running.
 ///     If nil, this uses whatever value is specified under the last
-///     ``PollingUntilFirstPassConfigurationTrait`` or
-///     ``PollingUntilStopsPassingConfigurationTrait`` added to the test or
-///     suite.
+///     ``PollingConfirmationConfigurationTrait`` added to the test or suite
+///     with a matching stopCondition.
 ///     If no such trait has been added, then polling will be attempted for
 ///     about 1 second before recording an issue.
 ///     `duration` must be greater than 0.
 ///   - interval: The minimum amount of time to wait between polling attempts.
 ///     If nil, this uses whatever value is specified under the last
-///     ``PollingUntilFirstPassConfigurationTrait`` or
-///     ``PollingUntilStopsPassingConfigurationTrait`` added to the test or
-///     suite.
+///     ``PollingConfirmationConfigurationTrait`` added to the test or suite
+///     with a matching stopCondition.
 ///     If no such trait has been added, then polling will wait at least
 ///     1 millisecond between polling attempts.
 ///     `interval` must be greater than 0.
@@ -221,11 +217,13 @@ public func confirmation<R>(
 private func getValueFromTrait<TraitKind, Value>(
   providedValue: Value?,
   default: Value,
-  _ keyPath: KeyPath<TraitKind, Value?>
+  _ keyPath: KeyPath<TraitKind, Value?>,
+  where filter: @escaping (TraitKind) -> Bool
 ) -> Value {
   if let providedValue { return providedValue }
   guard let test = Test.current else { return `default` }
   let possibleTraits = test.traits.compactMap { $0 as? TraitKind }
+    .filter(filter)
   let traitValues = possibleTraits.compactMap { $0[keyPath: keyPath] }
   return traitValues.last ?? `default`
 }
@@ -257,20 +255,12 @@ extension PollingStopCondition {
   /// ``PollingUntilFirstPassConfigurationTrait``.
   @available(_clockAPI, *)
   fileprivate func duration(with provided: Duration?) -> Duration {
-    switch self {
-    case .firstPass:
-      getValueFromTrait(
-        providedValue: provided,
-        default: defaultPollingConfiguration.pollingDuration,
-        \PollingUntilFirstPassConfigurationTrait.duration
-      )
-    case .stopsPassing:
-      getValueFromTrait(
-        providedValue: provided,
-        default: defaultPollingConfiguration.pollingDuration,
-        \PollingUntilStopsPassingConfigurationTrait.duration
-      )
-    }
+    getValueFromTrait(
+      providedValue: provided,
+      default: defaultPollingConfiguration.pollingDuration,
+      \PollingConfirmationConfigurationTrait.duration,
+      where: { $0.stopCondition == self }
+    )
   }
 
   /// Determine the polling interval to use for the given provided value.
@@ -279,20 +269,12 @@ extension PollingStopCondition {
   /// ``PollingUntilFirstPassConfigurationTrait``.
   @available(_clockAPI, *)
   fileprivate func interval(with provided: Duration?) -> Duration {
-    switch self {
-    case .firstPass:
-      getValueFromTrait(
-        providedValue: provided,
-        default: defaultPollingConfiguration.pollingInterval,
-        \PollingUntilFirstPassConfigurationTrait.interval
-      )
-    case .stopsPassing:
-      getValueFromTrait(
-        providedValue: provided,
-        default: defaultPollingConfiguration.pollingInterval,
-        \PollingUntilStopsPassingConfigurationTrait.interval
-      )
-    }
+    getValueFromTrait(
+      providedValue: provided,
+      default: defaultPollingConfiguration.pollingInterval,
+      \PollingConfirmationConfigurationTrait.interval,
+      where: { $0.stopCondition == self }
+    )
   }
 }
 

@@ -85,14 +85,39 @@ struct PollingConfirmationTests {
 
     @Suite(
       "Configuration traits",
-      .pollingUntilFirstPassDefaults(until: .milliseconds(100))
+      .pollingConfirmationDefaults(
+        until: .firstPass,
+        within: .milliseconds(100)
+      )
     )
     struct WithConfigurationTraits {
       let stop = PollingStopCondition.firstPass
 
       @available(_clockAPI, *)
       @Test("When no test or callsite configuration provided, uses the suite configuration")
-      func testUsesSuiteConfiguration() async throws {
+      func testUsesSuiteConfiguration() async {
+        let incrementor = Incrementor()
+        var test = Test {
+          try await confirmation(until: stop, pollingEvery: .milliseconds(1)) {
+            await incrementor.increment() == 0
+          }
+        }
+        test.traits = Test.current?.traits ?? []
+        await runTest(test: test)
+        let count = await incrementor.count
+        #expect(count == 100)
+      }
+
+      @available(_clockAPI, *)
+      @Test(
+        "Ignore trait configurations that don't match the stop condition",
+        .pollingConfirmationDefaults(
+          until: .stopsPassing,
+          within: .milliseconds(
+            500
+          )
+        )
+      ) func testIgnoresTraitsWithNonmatchingStopConditions() async {
         let incrementor = Incrementor()
         var test = Test {
           try await confirmation(until: stop, pollingEvery: .milliseconds(1)) {
@@ -108,7 +133,10 @@ struct PollingConfirmationTests {
       @available(_clockAPI, *)
       @Test(
         "When test configuration provided, uses the test configuration",
-        .pollingUntilFirstPassDefaults(until: .milliseconds(10))
+        .pollingConfirmationDefaults(
+          until: .firstPass,
+          within: .milliseconds(10)
+        )
       )
       func testUsesTestConfigurationOverSuiteConfiguration() async {
         let incrementor = Incrementor()
@@ -126,7 +154,10 @@ struct PollingConfirmationTests {
       @available(_clockAPI, *)
       @Test(
         "When callsite configuration provided, uses that",
-        .pollingUntilFirstPassDefaults(until: .milliseconds(10))
+        .pollingConfirmationDefaults(
+          until: .firstPass,
+          within: .milliseconds(10)
+        )
       )
       func testUsesCallsiteConfiguration() async {
         let incrementor = Incrementor()
@@ -263,7 +294,10 @@ struct PollingConfirmationTests {
 
     @Suite(
       "Configuration traits",
-      .pollingUntilStopsPassingDefaults(until: .milliseconds(100))
+      .pollingConfirmationDefaults(
+        until: .stopsPassing,
+        within: .milliseconds(100)
+      )
     )
     struct WithConfigurationTraits {
       let stop = PollingStopCondition.stopsPassing
@@ -283,8 +317,29 @@ struct PollingConfirmationTests {
 
       @available(_clockAPI, *)
       @Test(
+        "Ignore trait configurations that don't match the stop condition",
+        .pollingConfirmationDefaults(
+          until: .firstPass,
+          within: .milliseconds(
+            500
+          )
+        )
+      ) func testIgnoresTraitsWithNonmatchingStopConditions() async throws {
+        let incrementor = Incrementor()
+        try await confirmation(until: stop, pollingEvery: .milliseconds(1)) {
+          await incrementor.increment() != 0
+        }
+        let count = await incrementor.count
+        #expect(count == 100)
+      }
+
+      @available(_clockAPI, *)
+      @Test(
         "When test configuration porvided, uses the test configuration",
-        .pollingUntilStopsPassingDefaults(until: .milliseconds(10))
+        .pollingConfirmationDefaults(
+          until: .stopsPassing,
+          within: .milliseconds(10)
+        )
       )
       func testUsesTestConfigurationOverSuiteConfiguration() async throws  {
         let incrementor = Incrementor()
@@ -298,7 +353,10 @@ struct PollingConfirmationTests {
       @available(_clockAPI, *)
       @Test(
         "When callsite configuration provided, uses that",
-        .pollingUntilStopsPassingDefaults(until: .milliseconds(10))
+        .pollingConfirmationDefaults(
+          until: .stopsPassing,
+          within: .milliseconds(10)
+        )
       )
       func testUsesCallsiteConfiguration() async throws {
         let incrementor = Incrementor()
