@@ -15,6 +15,7 @@ if(APPLE) // iOS (etc.) and Mac Catalyst
     Testing)
 
   target_compile_options(_Testing_UIKit PRIVATE
+    -enable-library-evolution
     -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:_Testing_UIKit,Swift_MODULE_DIRECTORY>/_Testing_UIKit.swiftinterface)
 
   _swift_testing_install_target(_Testing_UIKit)

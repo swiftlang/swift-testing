@@ -15,6 +15,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     Testing)
 
   target_compile_options(_Testing_AppKit PRIVATE
+    -enable-library-evolution
     -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:_Testing_AppKit,Swift_MODULE_DIRECTORY>/_Testing_AppKit.swiftinterface)
 
   _swift_testing_install_target(_Testing_AppKit)

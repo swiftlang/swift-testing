@@ -15,6 +15,7 @@ if(APPLE)
     Testing)
 
   target_compile_options(_Testing_CoreImage PRIVATE
+    -enable-library-evolution
     -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:_Testing_CoreImage,Swift_MODULE_DIRECTORY>/_Testing_CoreImage.swiftinterface)
 
   _swift_testing_install_target(_Testing_CoreImage)
