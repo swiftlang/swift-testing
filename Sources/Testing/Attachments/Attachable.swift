@@ -8,6 +8,13 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+/// A protocol describing a sendable metatype.
+///
+/// This protocol is used to constrain types that can be used as sendable metatypes
+/// in attachment protocols.
+@_spi(Experimental)
+public protocol SendableMetatype: Sendable {}
+
 /// A protocol describing a type that can be attached to a test report or
 /// written to disk when a test is run.
 ///
