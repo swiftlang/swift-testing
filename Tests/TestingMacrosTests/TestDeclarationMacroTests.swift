@@ -233,6 +233,62 @@ struct TestDeclarationMacroTests {
             ),
           ]
         ),
+
+      // empty display name string literal
+      #"@Test("") func f() {}"#:
+        (
+          message: "Attribute 'Test' specifies an empty display name for this function",
+          fixIts: [
+            ExpectedFixIt(
+              message: "Remove display name argument",
+              changes: [
+                .replace(oldSourceCode: #""""#, newSourceCode: "")
+              ]),
+            ExpectedFixIt(
+              message: "Add display name",
+              changes: [
+                .replace(
+                  oldSourceCode: #""""#,
+                  newSourceCode: #""\#(EditorPlaceholderExprSyntax("display name"))""#)
+              ])
+          ]
+        ),
+       ##"@Test(#""#) func f() {}"##:
+         (
+           message: "Attribute 'Test' specifies an empty display name for this function",
+           fixIts: [
+             ExpectedFixIt(
+               message: "Remove display name argument",
+               changes: [
+                 .replace(oldSourceCode: ##"#""#"##, newSourceCode: "")
+               ]),
+             ExpectedFixIt(
+               message: "Add display name",
+               changes: [
+                 .replace(
+                   oldSourceCode: ##"#""#"##,
+                   newSourceCode: #""\#(EditorPlaceholderExprSyntax("display name"))""#)
+               ])
+           ]
+         ),
+       #"@Suite("") struct S {}"#:
+       (
+         message: "Attribute 'Suite' specifies an empty display name for this structure",
+         fixIts: [
+           ExpectedFixIt(
+             message: "Remove display name argument",
+             changes: [
+               .replace(oldSourceCode: #""""#, newSourceCode: "")
+             ]),
+           ExpectedFixIt(
+            message: "Add display name",
+            changes: [
+              .replace(
+                oldSourceCode: #""""#,
+                newSourceCode: #""\#(EditorPlaceholderExprSyntax("display name"))""#)
+            ])
+         ]
+       )
     ]
   }
 
