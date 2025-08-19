@@ -6,7 +6,7 @@
 # See http://swift.org/LICENSE.txt for license information
 # See http://swift.org/CONTRIBUTORS.txt for Swift project authors
 
-if(APPLE) // iOS (etc.) and Mac Catalyst
+if(APPLE)
   add_library(_Testing_UIKit
     Attachments/UIImage+AttachableAsCGImage.swift
     ReexportTesting.swift)
