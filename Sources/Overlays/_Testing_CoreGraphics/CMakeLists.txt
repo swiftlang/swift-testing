@@ -8,7 +8,7 @@
 
 if(APPLE)
   add_library(_Testing_CoreGraphics
-    Attachments/NSImage+AttachableAsCGImage.swift
+    Attachments/CGImage+AttachableAsCGImage.swift
     ReexportTesting.swift)
 
   target_link_libraries(_Testing_CoreGraphics PUBLIC
