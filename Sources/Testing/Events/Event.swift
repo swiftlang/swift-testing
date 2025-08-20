@@ -289,7 +289,7 @@ extension Event {
       Issue(event)?.record()
     case .valueAttached:
       if let attachment = event.attachment {
-        Attachment.record(attachment)
+        Attachment.record(attachment, sourceLocation: attachment._sourceLocation ?? .__here())
       }
     default:
       // Not handled here.

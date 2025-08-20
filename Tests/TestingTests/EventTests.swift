@@ -182,6 +182,7 @@ private func MockXCTAttachmentAdd(_ string: String, named name: String) {
   }
 
   @Test func `Attachment is passed to fallback event handler`() async {
+    MockXCTAttachmentAdd("0123456789", named: "numbers.txt")
     await confirmation("Attachment recorded") { valueAttached in
       var configuration = Configuration()
       configuration.eventHandler = { event, _ in
