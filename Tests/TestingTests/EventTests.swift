@@ -78,3 +78,129 @@ struct EventTests {
 #endif
 }
 #endif
+
+// MARK: -
+
+#if canImport(Foundation)
+private import _Testing_ExperimentalInfrastructure
+import Foundation
+
+private func MockXCTAssert(_ condition: Bool, _ message: String, _ sourceLocation: SourceLocation = #_sourceLocation) {
+  #expect(throws: Never.self) {
+    if condition {
+      return
+    }
+    guard let fallbackEventHandler = fallbackEventHandler() else {
+      return
+    }
+
+    let jsonObject: [String: Any] = [
+      "version": 0,
+      "kind": "event",
+      "payload": [
+        "kind": "issueRecorded",
+        "instant": [
+          "absolute": 0.0,
+          "since1970": Date().timeIntervalSince1970,
+        ],
+        "issue": [
+          "isKnown": false,
+          "sourceLocation": [
+            "fileID": sourceLocation.fileID,
+            "_filePath": sourceLocation._filePath,
+            "line": sourceLocation.line,
+            "column": sourceLocation.column,
+          ]
+        ],
+        "messages": [
+          [
+            "symbol": "fail",
+            "text": message
+          ]
+        ],
+      ],
+    ]
+
+    let json = try JSONSerialization.data(withJSONObject: jsonObject, options: [])
+    json.withUnsafeBytes { json in
+      fallbackEventHandler("0", json.baseAddress!, json.count, nil)
+    }
+  }
+}
+
+private func MockXCTAttachmentAdd(_ string: String, named name: String) {
+  #expect(throws: Never.self) {
+    guard let fallbackEventHandler = fallbackEventHandler() else {
+      return
+    }
+
+    let bytes = try #require(string.data(using: .utf8)?.base64EncodedString())
+
+    let jsonObject: [String: Any] = [
+      "version": 0,
+      "kind": "event",
+      "payload": [
+        "kind": "valueAttached",
+        "instant": [
+          "absolute": 0.0,
+          "since1970": Date().timeIntervalSince1970,
+        ],
+        "attachment": [
+          "_bytes": bytes,
+          "_preferredName": name
+        ],
+        "messages": [],
+      ],
+    ]
+
+    let json = try JSONSerialization.data(withJSONObject: jsonObject, options: [])
+    json.withUnsafeBytes { json in
+      fallbackEventHandler("0", json.baseAddress!, json.count, nil)
+    }
+  }
+}
+
+@Suite struct `Fallback event handler tests` {
+  @Test func `Fallback event handler is set`() {
+    #expect(fallbackEventHandler() != nil)
+  }
+
+  @Test func `Fallback event handler is invoked for issue`() async {
+    await confirmation("Issue recorded") { issueRecorded in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        guard case .issueRecorded = event.kind else {
+          return
+        }
+        issueRecorded()
+      }
+
+      await Test {
+        MockXCTAssert(1 == 2, "I'm bad at math!")
+      }.run(configuration: configuration)
+    }
+  }
+
+  @Test func `Attachment is passed to fallback event handler`() async {
+    await confirmation("Attachment recorded") { valueAttached in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        guard case let .valueAttached(attachment) = event.kind else {
+          return
+        }
+        #expect(throws: Never.self) {
+          let estimatedByteCount = try #require(attachment.attachableValue.estimatedAttachmentByteCount)
+          #expect(estimatedByteCount == 10)
+        }
+        #expect(attachment.preferredName == "numbers.txt")
+
+        valueAttached()
+      }
+
+      await Test {
+        MockXCTAttachmentAdd("0123456789", named: "numbers.txt")
+      }.run(configuration: configuration)
+    }
+  }
+}
+#endif
