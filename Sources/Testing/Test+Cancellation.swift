@@ -49,6 +49,13 @@ extension TestCancellable {
         return try await body()
       }
     } else {
+      let oldTask = _Concurrency.withUnsafeCurrentTask { task in
+        unsafeCurrentTask.withLock { $0 = task }
+        return task
+      }
+      defer {
+        unsafeCurrentTask.withLock { $0 = oldTask }
+      }
       return try await body()
     }
   }
@@ -139,7 +146,6 @@ extension Test: TestCancellable {
   ///   example, because it was created with [`Task.detached(name:priority:operation:)`](https://developer.apple.com/documentation/swift/task/detached(name:priority:operation:)-795w1))
   ///   this function records an issue and cancels the current task.
   @_spi(Experimental)
-  @available(_asyncUnsafeCurrentTaskAPI, *)
   public static func cancel(
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
@@ -191,7 +197,6 @@ extension Test.Case: TestCancellable {
   ///   example, because it was created with [`Task.detached(name:priority:operation:)`](https://developer.apple.com/documentation/swift/task/detached(name:priority:operation:)-795w1))
   ///   this function records an issue and cancels the current task.
   @_spi(Experimental)
-  @available(_asyncUnsafeCurrentTaskAPI, *)
   public static func cancel(
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
