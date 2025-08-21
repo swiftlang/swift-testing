@@ -8,13 +8,17 @@
 
 if(APPLE)
   add_library(_Testing_CoreGraphics
+    Attachments/_AttachableImageWrapper+AttachableWrapper.swift
+    Attachments/AttachableAsCGImage.swift
+    Attachments/AttachableImageFormat+UTType.swift
+    Attachment+AttachableAsCGImage.swift
     Attachments/CGImage+AttachableAsCGImage.swift
     ReexportTesting.swift)
 
   target_link_libraries(_Testing_CoreGraphics PUBLIC
     Testing
     CoreGraphics
-    UniformTypeIdentifiers)
+    "-weak_framework UniformTypeIdentifiers")
 
   target_link_libraries(_Testing_CoreGraphics PRIVATE
     Foundation
