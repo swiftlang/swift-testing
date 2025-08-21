@@ -25,6 +25,15 @@ extension Event {
       }
     }
     
+    /// Context for storing data across events during test execution.
+    private struct Context: Sendable {
+      /// Storage for test information, keyed by test ID string value.
+      /// This is needed because ABI.EncodedEvent doesn't contain full test context.
+      var testStorage: [String: ABI.EncodedTest<ABI.HighestVersion>] = [:]
+      
+      // Future storage for result data and other event information can be added here
+    }
+    
     /// The options for this recorder.
     let options: Options
     
@@ -34,9 +43,8 @@ extension Event {
     /// The fallback console recorder for standard output.
     private let _fallbackRecorder: Event.ConsoleOutputRecorder
     
-    /// Storage for test information, keyed by test ID string value.
-    /// This is needed because ABI.EncodedEvent doesn't contain full test context.
-    private let _testStorage: Locked<[String: ABI.EncodedTest<ABI.CurrentVersion>]>
+    /// Context storage for test information and results.
+    private let _context: Locked<Context>
     
     /// Human-readable output recorder for generating messages.
     private let _humanReadableRecorder: Event.HumanReadableOutputRecorder
@@ -50,7 +58,7 @@ extension Event {
       self.options = options
       self.write = write
       self._fallbackRecorder = Event.ConsoleOutputRecorder(options: options.base, writingUsing: write)
-      self._testStorage = Locked()
+      self._context = Locked(rawValue: Context())
       self._humanReadableRecorder = Event.HumanReadableOutputRecorder()
     }
   }
@@ -68,17 +76,17 @@ extension Event.AdvancedConsoleOutputRecorder {
   func record(_ event: borrowing Event, in eventContext: borrowing Event.Context) {
     // Handle test discovery to populate our test storage
     if case .testDiscovered = event.kind, let test = eventContext.test {
-      let encodedTest = ABI.EncodedTest<ABI.CurrentVersion>(encoding: test)
-      _testStorage.withLock { storage in
-        storage[encodedTest.id.stringValue] = encodedTest
+      let encodedTest = ABI.EncodedTest<ABI.HighestVersion>(encoding: test)
+      _context.withLock { context in
+        context.testStorage[encodedTest.id.stringValue] = encodedTest
       }
     }
     
     // Generate human-readable messages for the event
-    let messages = _humanReadableRecorder.record(event, in: eventContext, verbosity: 0)
+    let messages = _humanReadableRecorder.record(event, in: eventContext)
     
     // Convert Event to ABI.EncodedEvent
-    if let encodedEvent = ABI.EncodedEvent<ABI.CurrentVersion>(encoding: event, in: eventContext, messages: messages) {
+    if let encodedEvent = ABI.EncodedEvent<ABI.HighestVersion>(encoding: event, in: eventContext, messages: messages) {
       // Process the ABI event
       _processABIEvent(encodedEvent)
     }
@@ -92,8 +100,9 @@ extension Event.AdvancedConsoleOutputRecorder {
   /// This is where the enhanced console logic will be implemented in future PRs.
   /// Currently this is a placeholder that demonstrates the ABI conversion.
   ///
-  /// - Parameter encodedEvent: The ABI-encoded event to process.
-  private func _processABIEvent(_ encodedEvent: ABI.EncodedEvent<ABI.CurrentVersion>) {
+  /// - Parameters:
+  ///   - encodedEvent: The ABI-encoded event to process.
+  private func _processABIEvent(_ encodedEvent: ABI.EncodedEvent<ABI.HighestVersion>) {
     // TODO: Implement enhanced console output logic here
     // This will be expanded in subsequent PRs for:
     // - Failure summary display

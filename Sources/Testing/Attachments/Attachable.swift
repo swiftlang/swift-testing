@@ -1,19 +1,12 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2023 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
-
-/// A protocol describing a sendable metatype.
-///
-/// This protocol is used to constrain types that can be used as sendable metatypes
-/// in attachment protocols.
-@_spi(Experimental)
-public protocol SendableMetatype: Sendable {}
 
 /// A protocol describing a type that can be attached to a test report or
 /// written to disk when a test is run.
