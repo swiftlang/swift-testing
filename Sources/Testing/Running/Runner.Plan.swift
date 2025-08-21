@@ -193,6 +193,36 @@ extension Runner.Plan {
     synthesizeSuites(in: &graph, sourceLocation: &sourceLocation)
   }
 
+  /// The basic "run" action.
+  private static let _runAction = Action.run(options: .init())
+
+  private static func _determineAction(for test: Test) async -> (Action, (any Error)?) {
+    await withTaskGroup(returning: (Action, (any Error)?).self) { taskGroup in
+      taskGroup.addTask {
+        var action = _runAction
+        var firstCaughtError: (any Error)?
+
+        await Test.withCurrent(test) {
+          for trait in test.traits {
+            do {
+              try await trait.prepare(for: test)
+            } catch let error as SkipInfo {
+              action = .skip(error)
+              break
+            } catch {
+              // Only preserve the first caught error
+              firstCaughtError = firstCaughtError ?? error
+            }
+          }
+        }
+
+        return (action, firstCaughtError)
+      }
+
+      return await taskGroup.first { _ in true }!
+    }
+  }
+
   /// Construct a graph of runner plan steps for the specified tests.
   ///
   /// - Parameters:
@@ -211,7 +241,7 @@ extension Runner.Plan {
     // Convert the list of test into a graph of steps. The actions for these
     // steps will all be .run() *unless* an error was thrown while examining
     // them, in which case it will be .recordIssue().
-    let runAction = Action.run(options: .init())
+    let runAction = _runAction
     var testGraph = Graph<String, Test?>()
     var actionGraph = Graph<String, Action>(value: runAction)
     for test in tests {
@@ -269,17 +299,7 @@ extension Runner.Plan {
       // But if any throw another kind of error, keep track of the first error
       // but continue walking, because if any subsequent traits throw a
       // `SkipInfo`, the error should not be recorded.
-      for trait in test.traits {
-        do {
-          try await trait.prepare(for: test)
-        } catch let error as SkipInfo {
-          action = .skip(error)
-          break
-        } catch {
-          // Only preserve the first caught error
-          firstCaughtError = firstCaughtError ?? error
-        }
-      }
+      (action, firstCaughtError) = await _determineAction(for: test)
 
       // If no trait specified that the test should be skipped, but one did
       // throw an error, then the action is to record an issue for that error.
