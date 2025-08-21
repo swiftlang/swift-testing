@@ -31,7 +31,40 @@ extension Event {
       /// This is needed because ABI.EncodedEvent doesn't contain full test context.
       var testStorage: [String: ABI.EncodedTest<V>] = [:]
       
-      // Future storage for result data and other event information can be added here
+      /// Hierarchical test node structure for building the test tree.
+      var testHierarchy: _TestNode? = nil
+      
+      /// Test results keyed by test ID string for tracking outcomes.
+      var testResults: [String: _TestResult] = [:]
+      
+      /// Issues recorded during test execution, keyed by test ID string.
+      var testIssues: [String: [ABI.EncodedIssue<V>]] = [:]
+      
+      /// Test timing information for duration display.
+      var testTimings: [String: (start: ABI.EncodedInstant<V>?, end: ABI.EncodedInstant<V>?)] = [:]
+    }
+    
+    /// Represents a node in the test hierarchy tree.
+    private struct _TestNode: Sendable {
+      let testID: String
+      let name: String
+      let isSuite: Bool
+      var children: [_TestNode] = []
+      var parent: String? = nil
+      
+      init(testID: String, name: String, isSuite: Bool) {
+        self.testID = testID
+        self.name = name
+        self.isSuite = isSuite
+      }
+    }
+    
+    /// Represents the result of a test execution.
+    private enum _TestResult: Sendable {
+      case passed
+      case failed
+      case skipped
+      case unknown
     }
     
     /// The options for this recorder.
@@ -74,11 +107,12 @@ extension Event.AdvancedConsoleOutputRecorder {
   ///   - event: The event to record.
   ///   - eventContext: The context associated with the event.
   func record(_ event: borrowing Event, in eventContext: borrowing Event.Context) {
-    // Handle test discovery to populate our test storage
+    // Handle test discovery to populate our test storage and build hierarchy
     if case .testDiscovered = event.kind, let test = eventContext.test {
       let encodedTest = ABI.EncodedTest<V>(encoding: test)
       _context.withLock { context in
         context.testStorage[encodedTest.id.stringValue] = encodedTest
+        _buildTestHierarchy(encodedTest, in: &context)
       }
     }
     
@@ -87,7 +121,7 @@ extension Event.AdvancedConsoleOutputRecorder {
     
     // Convert Event to ABI.EncodedEvent
     if let encodedEvent = ABI.EncodedEvent<V>(encoding: event, in: eventContext, messages: messages) {
-      // Process the ABI event
+      // Process the ABI event for hierarchical tracking
       _processABIEvent(encodedEvent)
     }
     
@@ -103,32 +137,105 @@ extension Event.AdvancedConsoleOutputRecorder {
   /// - Parameters:
   ///   - encodedEvent: The ABI-encoded event to process.
   private func _processABIEvent(_ encodedEvent: ABI.EncodedEvent<V>) {
-    // TODO: Implement enhanced console output logic here
-    // This will be expanded in subsequent PRs for:
-    // - Failure summary display
-    // - Progress bar functionality
-    // - Hierarchical test result display
-    
-    // For now, we just demonstrate that we can access the ABI event data
-    switch encodedEvent.kind {
-    case .runStarted:
-      // Could implement run start logic here
-      break
-    case .testStarted:
-      // Could implement test start logic here
-      break
-    case .issueRecorded:
-      // Could implement issue recording logic here
-      break
-    case .testEnded:
-      // Could implement test end logic here
-      break
-    case .runEnded:
-      // Could implement run end logic here
-      break
-    default:
-      // Handle other event types
-      break
+    _context.withLock { context in
+      switch encodedEvent.kind {
+      case .runStarted:
+        // Initialize hierarchy for the test run
+        break
+      case .testStarted:
+        // Track test start time
+        if let testID = encodedEvent.testID?.stringValue {
+          context.testTimings[testID] = (start: encodedEvent.instant, end: nil)
+        }
+      case .issueRecorded:
+        // Record issues for failure summary
+        if let testID = encodedEvent.testID?.stringValue,
+           let issue = encodedEvent.issue {
+          if context.testIssues[testID] == nil {
+            context.testIssues[testID] = []
+          }
+          context.testIssues[testID]?.append(issue)
+        }
+      case .testEnded:
+        // Track test end time and determine result
+        if let testID = encodedEvent.testID?.stringValue {
+          var timing = context.testTimings[testID] ?? (start: nil, end: nil)
+          timing.end = encodedEvent.instant
+          context.testTimings[testID] = timing
+          
+          // Determine test result based on issues
+          let hasFailures = context.testIssues[testID]?.contains { !$0.isKnown } ?? false
+          context.testResults[testID] = hasFailures ? .failed : .passed
+        }
+      case .testSkipped:
+        // Mark test as skipped
+        if let testID = encodedEvent.testID?.stringValue {
+          context.testResults[testID] = .skipped
+        }
+      case .runEnded:
+        // Generate and output failure summary
+        _generateFailureSummary(context: context)
+      default:
+        // Handle other event types
+        break
+      }
     }
+  }
+  
+  /// Build the test hierarchy from discovered tests.
+  ///
+  /// - Parameters:
+  ///   - encodedTest: The test to add to the hierarchy.
+  ///   - context: The mutable context to update.
+  private func _buildTestHierarchy(_ encodedTest: ABI.EncodedTest<V>, in context: inout _Context) {
+    let testID = encodedTest.id.stringValue
+    
+    // Create test node - use the test name and kind
+    let testName = encodedTest.displayName ?? encodedTest.name
+    let isSuite = encodedTest.kind == .suite
+    let testNode = _TestNode(testID: testID, name: testName, isSuite: isSuite)
+    
+    // For now, store as a flat list - we'll build the tree structure later
+    // This is a simplified approach for the initial implementation
+    if context.testHierarchy == nil {
+      context.testHierarchy = testNode
+    }
+    // TODO: Implement proper tree building logic in next iteration
+  }
+  
+  /// Generate and output the failure summary.
+  ///
+  /// - Parameters:
+  ///   - context: The context containing test results and hierarchy.
+  private func _generateFailureSummary(context: _Context) {
+    var output = "\n"
+    output += "Test Summary:\n"
+    
+    // Find all failed tests
+    let failedTests = context.testResults.compactMap { (testID, result) -> (String, ABI.EncodedTest<V>)? in
+      guard result == .failed, let test = context.testStorage[testID] else { return nil }
+      return (testID, test)
+    }
+    
+    if failedTests.isEmpty {
+      output += "All tests passed! ✅\n"
+    } else {
+      output += "\nFailures:\n"
+      
+      for (testID, test) in failedTests {
+        // Basic failure display - will enhance with hierarchy later
+        output += "├─ ❌ \(test.displayName ?? test.name)\n"
+        
+        // Show issues for this test
+        if let issues = context.testIssues[testID] {
+          for issue in issues where !issue.isKnown {
+            let issueText = issue._error?.description ?? "Test failure"
+            output += "│  └─ \(issueText)\n"
+          }
+        }
+      }
+    }
+    
+    write(output)
   }
 }
