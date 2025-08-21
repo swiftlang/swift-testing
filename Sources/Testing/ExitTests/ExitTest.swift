@@ -1034,35 +1034,8 @@ extension ExitTest {
   /// - Throws: Any error encountered attempting to decode or process the JSON.
   private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
     let record = try JSON.decode(ABI.Record<ABI.BackChannelVersion>.self, from: recordJSON)
-
-    if case let .event(event) = record.kind, let issue = event.issue {
-      // Translate the issue back into a "real" issue and record it
-      // in the parent process. This translation is, of course, lossy
-      // due to the process boundary, but we make a best effort.
-      let comments: [Comment] = event.messages.map(\.text).map(Comment.init(rawValue:))
-      let issueKind: Issue.Kind = if let error = issue._error {
-        .errorCaught(error)
-      } else {
-        // TODO: improve fidelity of issue kind reporting (especially those without associated values)
-        .unconditional
-      }
-      let severity: Issue.Severity = switch issue._severity {
-      case .warning:
-        .warning
-      case .error:
-        .error
-      }
-      let sourceContext = SourceContext(
-        backtrace: nil, // `issue._backtrace` will have the wrong address space.
-        sourceLocation: issue.sourceLocation
-      )
-      var issueCopy = Issue(kind: issueKind, severity: severity, comments: comments, sourceContext: sourceContext)
-      if issue.isKnown {
-        // The known issue comment, if there was one, is already included in
-        // the `comments` array above.
-        issueCopy.knownIssueContext = Issue.KnownIssueContext()
-      }
-      issueCopy.record()
+    if case let .event(event) = record.kind, let issue = Issue(event) {
+      issue.record()
     }
   }
 
