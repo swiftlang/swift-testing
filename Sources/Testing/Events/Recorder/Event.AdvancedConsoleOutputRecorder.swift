@@ -209,7 +209,9 @@ extension Event.AdvancedConsoleOutputRecorder {
   ///   - context: The context containing test results and hierarchy.
   private func _generateFailureSummary(context: _Context) {
     var output = "\n"
-    output += "Test Summary:\n"
+    output += "═══════════════════════════════════════════════════════════════════════════════\n"
+    output += "Test Summary\n"
+    output += "═══════════════════════════════════════════════════════════════════════════════\n"
     
     // Find all failed tests
     let failedTests = context.testResults.compactMap { (testID, result) -> (String, ABI.EncodedTest<V>)? in
@@ -217,25 +219,97 @@ extension Event.AdvancedConsoleOutputRecorder {
       return (testID, test)
     }
     
+    // Count test results
+    let totalTests = context.testResults.count
+    let passedTests = context.testResults.values.filter { $0 == .passed }.count
+    let failedCount = failedTests.count
+    let skippedTests = context.testResults.values.filter { $0 == .skipped }.count
+    
     if failedTests.isEmpty {
-      output += "All tests passed! ✅\n"
+      output += "\n"
+      output += "✅ All tests passed!\n"
+      output += "\n"
+      output += "📊 Results: \(passedTests) passed"
+      if skippedTests > 0 {
+        output += ", \(skippedTests) skipped"
+      }
+      output += " (\(totalTests) total)\n"
     } else {
-      output += "\nFailures:\n"
+      output += "\n"
+      output += "❌ \(failedCount) test\(failedCount == 1 ? "" : "s") failed\n"
+      output += "\n"
+      output += "Failures:\n"
       
-      for (testID, test) in failedTests {
-        // Basic failure display - will enhance with hierarchy later
-        output += "├─ ❌ \(test.displayName ?? test.name)\n"
+      for (index, (testID, test)) in failedTests.enumerated() {
+        let isLast = index == failedTests.count - 1
+        let connector = isLast ? "╰─" : "├─"
+        
+        // Format test name with timing if available
+        var testLine = "\(connector) ❌ \(test.displayName ?? test.name)"
+        
+        // Add timing information if available
+        if let timing = context.testTimings[testID],
+           let start = timing.start,
+           let end = timing.end {
+          let duration = end.absolute - start.absolute
+          let formattedDuration = _formatDuration(duration)
+          testLine += " (\(formattedDuration))"
+        }
+        
+        output += "\(testLine)\n"
         
         // Show issues for this test
         if let issues = context.testIssues[testID] {
-          for issue in issues where !issue.isKnown {
+          let failureIssues = issues.filter { !$0.isKnown }
+          for (issueIndex, issue) in failureIssues.enumerated() {
+            let isLastIssue = issueIndex == failureIssues.count - 1
+            let issueConnector = isLast ? (isLastIssue ? "   ╰─" : "   ├─") : (isLastIssue ? "│  ╰─" : "│  ├─")
             let issueText = issue._error?.description ?? "Test failure"
-            output += "│  └─ \(issueText)\n"
+            output += "\(issueConnector) \(issueText)\n"
+            
+            // Add source location if available
+            if let sourceLocation = issue.sourceLocation {
+              let locationConnector = isLast ? "     " : "│    "
+              output += "\(locationConnector)at \(sourceLocation.fileID):\(sourceLocation.line)\n"
+            }
           }
         }
+        
+        if !isLast {
+          output += "│\n"
+        }
       }
+      
+      output += "\n"
+      output += "📊 Results: \(passedTests) passed, \(failedCount) failed"
+      if skippedTests > 0 {
+        output += ", \(skippedTests) skipped"
+      }
+      output += " (\(totalTests) total)\n"
     }
     
+    output += "═══════════════════════════════════════════════════════════════════════════════\n"
+    
     write(output)
+  }
+  
+  /// Format a duration in seconds to a readable string.
+  ///
+  /// - Parameters:
+  ///   - duration: Duration in seconds.
+  /// - Returns: Formatted duration string like "1.23s".
+  private func _formatDuration(_ duration: Double) -> String {
+    // Format to 2 decimal places maximum without Foundation
+    let rounded = (duration * 100).rounded() / 100
+    let integerPart = Int(rounded)
+    let fractionalPart = Int((rounded - Double(integerPart)) * 100)
+    
+    if fractionalPart == 0 {
+      return "\(integerPart)s"
+    } else if fractionalPart % 10 == 0 {
+      return "\(integerPart).\(fractionalPart / 10)s"
+    } else {
+      return "\(integerPart).\(fractionalPart < 10 ? "0" : "")\(fractionalPart)s"
+    }
   }
 }
