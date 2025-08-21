@@ -41,8 +41,11 @@ extension TestCancellable {
   func withUnsafeCurrentTask<R>(_ body: () async throws -> R) async rethrows -> R {
     if #available(_asyncUnsafeCurrentTaskAPI, *) {
       return try await _Concurrency.withUnsafeCurrentTask { task in
-        let oldTask = task
-        unsafeCurrentTask.withLock { $0 = task }
+        let oldTask = unsafeCurrentTask.withLock { unsafeCurrentTask in
+          let oldTask = unsafeCurrentTask
+          unsafeCurrentTask = task
+          return oldTask
+        }
         defer {
           unsafeCurrentTask.withLock { $0 = oldTask }
         }
@@ -50,8 +53,11 @@ extension TestCancellable {
       }
     } else {
       let oldTask = _Concurrency.withUnsafeCurrentTask { task in
-        unsafeCurrentTask.withLock { $0 = task }
-        return task
+        unsafeCurrentTask.withLock { unsafeCurrentTask in
+          let oldTask = unsafeCurrentTask
+          unsafeCurrentTask = task
+          return oldTask
+        }
       }
       defer {
         unsafeCurrentTask.withLock { $0 = oldTask }
