@@ -120,6 +120,7 @@ extension ABI.EncodedAttachment: Attachable {
       return try bytes.withUnsafeBytes(body)
     }
 
+#if !SWT_NO_FILE_IO
     guard let path else {
       throw BytesUnavailableError()
     }
@@ -132,6 +133,10 @@ extension ABI.EncodedAttachment: Attachable {
     let bytes = try fileHandle.readToEnd()
 #endif
     return try bytes.withUnsafeBytes(body)
+#else
+    // Cannot read the attachment from disk on this platform.
+    throw BytesUnavailableError()
+#endif
   }
 
   borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
