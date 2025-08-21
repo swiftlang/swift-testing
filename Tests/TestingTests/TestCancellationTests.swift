@@ -38,6 +38,7 @@ struct `Test cancellation tests` {
     }
   }
 
+  @available(_asyncUnsafeCurrentTaskAPI, *)
   @Test func `Cancelling a test`() async {
     await testCancellation(testCancelled: 1) { configuration in
       await Test {
@@ -46,6 +47,7 @@ struct `Test cancellation tests` {
     }
   }
 
+  @available(_asyncUnsafeCurrentTaskAPI, *)
   @Test func `Cancelling a non-parameterized test via Test.Case.cancel()`() async {
     await testCancellation(testCancelled: 1) { configuration in
       await Test {
@@ -54,6 +56,7 @@ struct `Test cancellation tests` {
     }
   }
 
+  @available(_asyncUnsafeCurrentTaskAPI, *)
   @Test func `Cancelling a test case in a parameterized test`() async {
     await testCancellation(testCaseCancelled: 5, issueRecorded: 5) { configuration in
       await Test(arguments: 0 ..< 10) { i in
@@ -65,6 +68,7 @@ struct `Test cancellation tests` {
     }
   }
 
+  @available(_asyncUnsafeCurrentTaskAPI, *)
   @Test func `Cancelling an entire parameterized test`() async {
     await testCancellation(testCancelled: 1) { configuration in
       // .serialized to ensure that none of the cases complete before the first
@@ -78,12 +82,14 @@ struct `Test cancellation tests` {
     }
   }
 
+  @available(_asyncUnsafeCurrentTaskAPI, *)
   struct CancelledTrait: TestTrait {
     func prepare(for test: Test) async throws {
       try Test.cancel("Cancelled from trait")
     }
   }
 
+  @available(_asyncUnsafeCurrentTaskAPI, *)
   @Test func `Cancelling a test case while evaluating traits skips the test`() async {
     await testCancellation(testSkipped: 1) { configuration in
       await Test(CancelledTrait()) {
