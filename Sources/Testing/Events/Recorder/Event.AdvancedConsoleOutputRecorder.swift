@@ -26,7 +26,7 @@ extension Event {
     }
     
     /// Context for storing data across events during test execution.
-    private struct Context: Sendable {
+    private struct _Context: Sendable {
       /// Storage for test information, keyed by test ID string value.
       /// This is needed because ABI.EncodedEvent doesn't contain full test context.
       var testStorage: [String: ABI.EncodedTest<V>] = [:]
@@ -44,7 +44,7 @@ extension Event {
     private let _fallbackRecorder: Event.ConsoleOutputRecorder
     
     /// Context storage for test information and results.
-    private let _context: Locked<Context>
+    private let _context: Locked<_Context>
     
     /// Human-readable output recorder for generating messages.
     private let _humanReadableRecorder: Event.HumanReadableOutputRecorder
@@ -58,7 +58,7 @@ extension Event {
       self.options = options
       self.write = write
       self._fallbackRecorder = Event.ConsoleOutputRecorder(options: options.base, writingUsing: write)
-      self._context = Locked(rawValue: Context())
+      self._context = Locked(rawValue: _Context())
       self._humanReadableRecorder = Event.HumanReadableOutputRecorder()
     }
   }
