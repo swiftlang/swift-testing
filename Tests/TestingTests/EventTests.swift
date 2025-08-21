@@ -8,10 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if !SWT_NO_SNAPSHOT_TYPES
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 
+#if !SWT_NO_SNAPSHOT_TYPES
 @Suite("Event Tests")
 struct EventTests {
 #if canImport(Foundation)
