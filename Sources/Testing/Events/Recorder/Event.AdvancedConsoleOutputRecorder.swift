@@ -14,7 +14,7 @@ extension Event {
   ///
   /// This recorder is currently experimental and must be enabled via the
   /// `SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT` environment variable.
-  struct AdvancedConsoleOutputRecorder: Sendable {
+  struct AdvancedConsoleOutputRecorder<V: ABI.Version>: Sendable {
     /// Configuration options for the advanced console output recorder.
     struct Options: Sendable {
       /// Base console output recorder options to inherit from.
@@ -29,7 +29,7 @@ extension Event {
     private struct Context: Sendable {
       /// Storage for test information, keyed by test ID string value.
       /// This is needed because ABI.EncodedEvent doesn't contain full test context.
-      var testStorage: [String: ABI.EncodedTest<ABI.HighestVersion>] = [:]
+      var testStorage: [String: ABI.EncodedTest<V>] = [:]
       
       // Future storage for result data and other event information can be added here
     }
@@ -76,7 +76,7 @@ extension Event.AdvancedConsoleOutputRecorder {
   func record(_ event: borrowing Event, in eventContext: borrowing Event.Context) {
     // Handle test discovery to populate our test storage
     if case .testDiscovered = event.kind, let test = eventContext.test {
-      let encodedTest = ABI.EncodedTest<ABI.HighestVersion>(encoding: test)
+      let encodedTest = ABI.EncodedTest<V>(encoding: test)
       _context.withLock { context in
         context.testStorage[encodedTest.id.stringValue] = encodedTest
       }
@@ -86,7 +86,7 @@ extension Event.AdvancedConsoleOutputRecorder {
     let messages = _humanReadableRecorder.record(event, in: eventContext)
     
     // Convert Event to ABI.EncodedEvent
-    if let encodedEvent = ABI.EncodedEvent<ABI.HighestVersion>(encoding: event, in: eventContext, messages: messages) {
+    if let encodedEvent = ABI.EncodedEvent<V>(encoding: event, in: eventContext, messages: messages) {
       // Process the ABI event
       _processABIEvent(encodedEvent)
     }
@@ -102,7 +102,7 @@ extension Event.AdvancedConsoleOutputRecorder {
   ///
   /// - Parameters:
   ///   - encodedEvent: The ABI-encoded event to process.
-  private func _processABIEvent(_ encodedEvent: ABI.EncodedEvent<ABI.HighestVersion>) {
+  private func _processABIEvent(_ encodedEvent: ABI.EncodedEvent<V>) {
     // TODO: Implement enhanced console output logic here
     // This will be expanded in subsequent PRs for:
     // - Failure summary display
