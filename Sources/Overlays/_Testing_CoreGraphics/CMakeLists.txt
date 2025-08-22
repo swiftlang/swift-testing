@@ -18,7 +18,7 @@ if(APPLE)
   target_link_libraries(_Testing_CoreGraphics PUBLIC
     Testing
     CoreGraphics
-    "-weak_framework UniformTypeIdentifiers")
+    "$<LINK_LIBRARY:WEAK_FRAMEWORK,UniformTypeIdentifiers>")
 
   target_link_libraries(_Testing_CoreGraphics PRIVATE
     Foundation
