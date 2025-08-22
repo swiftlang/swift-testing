@@ -58,7 +58,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
       if Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT") == true {
         // Use experimental AdvancedConsoleOutputRecorder
         var advancedOptions = Event.AdvancedConsoleOutputRecorder<ABI.HighestVersion>.Options()
-        advancedOptions.base = .for(.stderr)
+        advancedOptions.base = Event.ConsoleOutputRecorder.Options.for(.stderr)
         
         let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.HighestVersion>(options: advancedOptions) { string in
           try? FileHandle.stderr.write(string)

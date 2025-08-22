@@ -32,29 +32,38 @@ extension Event {
       var testStorage: [String: ABI.EncodedTest<V>] = [:]
       
       /// Hierarchical test node structure for building the test tree.
-      var testHierarchy: _TestNode? = nil
+      var nodes: [String: _HierarchyNode] = [:]
+      var rootNodes: [String] = []
       
-      /// Test results keyed by test ID string for tracking outcomes.
+      /// Test results and timing information.
       var testResults: [String: _TestResult] = [:]
-      
-      /// Issues recorded during test execution, keyed by test ID string.
+      var testTimings: [String: (start: ABI.EncodedInstant<V>?, end: ABI.EncodedInstant<V>?)] = [:]
       var testIssues: [String: [ABI.EncodedIssue<V>]] = [:]
       
-      /// Test timing information for duration display.
-      var testTimings: [String: (start: ABI.EncodedInstant<V>?, end: ABI.EncodedInstant<V>?)] = [:]
+      /// Run timing information.
+      var runStartTime: ABI.EncodedInstant<V>?
+      var runEndTime: ABI.EncodedInstant<V>?
+      var isRunCompleted: Bool = false
+      
+      /// Statistics tracking.
+      var totalPassed: Int = 0
+      var totalFailed: Int = 0
+      var totalSkipped: Int = 0
     }
     
     /// Represents a node in the test hierarchy tree.
-    private struct _TestNode: Sendable {
+    private struct _HierarchyNode: Sendable {
       let testID: String
       let name: String
+      let displayName: String?
       let isSuite: Bool
-      var children: [_TestNode] = []
-      var parent: String? = nil
+      var children: [String] = []
+      var parent: String?
       
-      init(testID: String, name: String, isSuite: Bool) {
+      init(testID: String, name: String, displayName: String?, isSuite: Bool) {
         self.testID = testID
         self.name = name
+        self.displayName = displayName
         self.isSuite = isSuite
       }
     }
@@ -64,7 +73,6 @@ extension Event {
       case passed
       case failed
       case skipped
-      case unknown
     }
     
     /// The options for this recorder.
@@ -98,87 +106,46 @@ extension Event {
 }
 
 extension Event.AdvancedConsoleOutputRecorder {
-  /// Record an event by processing it and generating appropriate output.
-  ///
-  /// This implementation converts the Event to ABI.EncodedEvent for internal processing,
-  /// following the ABI-based architecture for future separation into a harness process.
+  /// Record an event and its context.
   ///
   /// - Parameters:
   ///   - event: The event to record.
-  ///   - eventContext: The context associated with the event.
-  func record(_ event: borrowing Event, in eventContext: borrowing Event.Context) {
-    // Handle test discovery to populate our test storage and build hierarchy
-    if case .testDiscovered = event.kind, let test = eventContext.test {
+  ///   - eventContext: Contextual information about the event.
+  public func record(_ event: borrowing Event, in eventContext: borrowing Event.Context) {
+    // Extract values before entering lock to avoid borrowing issues
+    let eventKind = event.kind
+    let testValue = eventContext.test
+    
+    // Handle test discovery for hierarchy building
+    if case .testDiscovered = eventKind, let test = testValue {
       let encodedTest = ABI.EncodedTest<V>(encoding: test)
+      
       _context.withLock { context in
-        context.testStorage[encodedTest.id.stringValue] = encodedTest
         _buildTestHierarchy(encodedTest, in: &context)
       }
     }
     
-    // Generate human-readable messages for the event
-    let messages = _humanReadableRecorder.record(event, in: eventContext)
-    
-    // Convert Event to ABI.EncodedEvent
+    // Convert Event to ABI.EncodedEvent for processing (if needed)
+    let messages: [Event.HumanReadableOutputRecorder.Message] = []
     if let encodedEvent = ABI.EncodedEvent<V>(encoding: event, in: eventContext, messages: messages) {
-      // Process the ABI event for hierarchical tracking
       _processABIEvent(encodedEvent)
     }
     
-    // For now, still delegate to the fallback recorder to maintain existing functionality
-    _fallbackRecorder.record(event, in: eventContext)
-  }
-  
-  /// Process an ABI.EncodedEvent for advanced console output.
-  ///
-  /// This is where the enhanced console logic will be implemented in future PRs.
-  /// Currently this is a placeholder that demonstrates the ABI conversion.
-  ///
-  /// - Parameters:
-  ///   - encodedEvent: The ABI-encoded event to process.
-  private func _processABIEvent(_ encodedEvent: ABI.EncodedEvent<V>) {
-    _context.withLock { context in
-      switch encodedEvent.kind {
-      case .runStarted:
-        // Initialize hierarchy for the test run
-        break
-      case .testStarted:
-        // Track test start time
-        if let testID = encodedEvent.testID?.stringValue {
-          context.testTimings[testID] = (start: encodedEvent.instant, end: nil)
-        }
-      case .issueRecorded:
-        // Record issues for failure summary
-        if let testID = encodedEvent.testID?.stringValue,
-           let issue = encodedEvent.issue {
-          if context.testIssues[testID] == nil {
-            context.testIssues[testID] = []
-          }
-          context.testIssues[testID]?.append(issue)
-        }
-      case .testEnded:
-        // Track test end time and determine result
-        if let testID = encodedEvent.testID?.stringValue {
-          var timing = context.testTimings[testID] ?? (start: nil, end: nil)
-          timing.end = encodedEvent.instant
-          context.testTimings[testID] = timing
-          
-          // Determine test result based on issues
-          let hasFailures = context.testIssues[testID]?.contains { !$0.isKnown } ?? false
-          context.testResults[testID] = hasFailures ? .failed : .passed
-        }
-      case .testSkipped:
-        // Mark test as skipped
-        if let testID = encodedEvent.testID?.stringValue {
-          context.testResults[testID] = .skipped
-        }
-      case .runEnded:
-        // Generate and output failure summary
-        _generateFailureSummary(context: context)
-      default:
-        // Handle other event types
-        break
-      }
+    // Only output specific messages during the run, suppress most standard output
+    // The hierarchical summary will be shown at the end
+    switch eventKind {
+    case .runStarted:
+      let symbol = Event.Symbol.default.stringValue(options: _fallbackRecorder.options)
+      write("\(symbol) Test run started.\n")
+      
+    case .runEnded:
+      // The hierarchical summary is generated in _processABIEvent for runEnded
+      break
+      
+    default:
+      // Suppress other standard messages to avoid duplicate output
+      // The hierarchy will show all the details at the end
+      break
     }
   }
   
@@ -189,127 +156,557 @@ extension Event.AdvancedConsoleOutputRecorder {
   ///   - context: The mutable context to update.
   private func _buildTestHierarchy(_ encodedTest: ABI.EncodedTest<V>, in context: inout _Context) {
     let testID = encodedTest.id.stringValue
-    
-    // Create test node - use the test name and kind
-    let testName = encodedTest.displayName ?? encodedTest.name
     let isSuite = encodedTest.kind == .suite
-    let testNode = _TestNode(testID: testID, name: testName, isSuite: isSuite)
     
-    // For now, store as a flat list - we'll build the tree structure later
-    // This is a simplified approach for the initial implementation
-    if context.testHierarchy == nil {
-      context.testHierarchy = testNode
-    }
-    // TODO: Implement proper tree building logic in next iteration
-  }
-  
-  /// Generate and output the failure summary.
-  ///
-  /// - Parameters:
-  ///   - context: The context containing test results and hierarchy.
-  private func _generateFailureSummary(context: _Context) {
-    var output = "\n"
-    output += "═══════════════════════════════════════════════════════════════════════════════\n"
-    output += "Test Summary\n"
-    output += "═══════════════════════════════════════════════════════════════════════════════\n"
+    // Create hierarchy node
+    let hierarchyNode = _HierarchyNode(
+      testID: testID,
+      name: encodedTest.name,
+      displayName: encodedTest.displayName,
+      isSuite: isSuite
+    )
     
-    // Find all failed tests
-    let failedTests = context.testResults.compactMap { (testID, result) -> (String, ABI.EncodedTest<V>)? in
-      guard result == .failed, let test = context.testStorage[testID] else { return nil }
-      return (testID, test)
-    }
+    context.nodes[testID] = hierarchyNode
     
-    // Count test results
-    let totalTests = context.testResults.count
-    let passedTests = context.testResults.values.filter { $0 == .passed }.count
-    let failedCount = failedTests.count
-    let skippedTests = context.testResults.values.filter { $0 == .skipped }.count
+    // Swift Testing test IDs include source location information
+    // We need to extract the logical hierarchy path without source locations
+    // Examples:
+    // Suite: "TestingTests.HierarchyDemoTests/NestedSuite"
+    // Test: "TestingTests.HierarchyDemoTests/failingTest()/HierarchyDemoTests.swift:21:4"
     
-    if failedTests.isEmpty {
-      output += "\n"
-      output += "✅ All tests passed!\n"
-      output += "\n"
-      output += "📊 Results: \(passedTests) passed"
-      if skippedTests > 0 {
-        output += ", \(skippedTests) skipped"
+    let components = testID.split(separator: "/").map(String.init)
+    var logicalPath: [String] = []
+    
+    for component in components {
+      // Skip source location components (they contain .swift: pattern)
+      if _containsSwiftFile(component) {
+        break
       }
-      output += " (\(totalTests) total)\n"
-    } else {
-      output += "\n"
-      output += "❌ \(failedCount) test\(failedCount == 1 ? "" : "s") failed\n"
-      output += "\n"
-      output += "Failures:\n"
-      
-      for (index, (testID, test)) in failedTests.enumerated() {
-        let isLast = index == failedTests.count - 1
-        let connector = isLast ? "╰─" : "├─"
+      logicalPath.append(component)
+    }
+    
+    // Extract module name and test path from the first component
+    // e.g., "TestingTests.ClockAPITests" -> module: "TestingTests", suite: "ClockAPITests"
+    if let firstComponent = logicalPath.first {
+      let moduleParts = firstComponent.split(separator: ".").map(String.init)
+      if moduleParts.count >= 2 {
+        let moduleName = moduleParts[0] // e.g., "TestingTests"
+        let suiteNames = Array(moduleParts.dropFirst()) // e.g., ["ClockAPITests"]
         
-        // Format test name with timing if available
-        var testLine = "\(connector) ❌ \(test.displayName ?? test.name)"
-        
-        // Add timing information if available
-        if let timing = context.testTimings[testID],
-           let start = timing.start,
-           let end = timing.end {
-          let duration = end.absolute - start.absolute
-          let formattedDuration = _formatDuration(duration)
-          testLine += " (\(formattedDuration))"
-        }
-        
-        output += "\(testLine)\n"
-        
-        // Show issues for this test
-        if let issues = context.testIssues[testID] {
-          let failureIssues = issues.filter { !$0.isKnown }
-          for (issueIndex, issue) in failureIssues.enumerated() {
-            let isLastIssue = issueIndex == failureIssues.count - 1
-            let issueConnector = isLast ? (isLastIssue ? "   ╰─" : "   ├─") : (isLastIssue ? "│  ╰─" : "│  ├─")
-            let issueText = issue._error?.description ?? "Test failure"
-            output += "\(issueConnector) \(issueText)\n"
-            
-            // Add source location if available
-            if let sourceLocation = issue.sourceLocation {
-              let locationConnector = isLast ? "     " : "│    "
-              output += "\(locationConnector)at \(sourceLocation.fileID):\(sourceLocation.line)\n"
-            }
+        // Create module node if it doesn't exist
+        if context.nodes[moduleName] == nil {
+          let moduleNode = _HierarchyNode(
+            testID: moduleName,
+            name: moduleName,
+            displayName: moduleName,
+            isSuite: true
+          )
+          context.nodes[moduleName] = moduleNode
+          
+          // Add module to root nodes if not already there
+          if !context.rootNodes.contains(moduleName) {
+            context.rootNodes.append(moduleName)
           }
         }
         
-        if !isLast {
-          output += "│\n"
+        // Build the full hierarchy: Module -> Suite(s) -> Test
+        var currentParentID = moduleName
+        var currentPath = moduleName
+        
+        // Add suite levels
+        for suiteName in suiteNames {
+          currentPath += "." + suiteName
+          
+          if context.nodes[currentPath] == nil {
+            let suiteNode = _HierarchyNode(
+              testID: currentPath,
+              name: suiteName,
+              displayName: suiteName,
+              isSuite: true
+            )
+            context.nodes[currentPath] = suiteNode
+          }
+          
+          // Link to parent
+          if var parentNode = context.nodes[currentParentID] {
+            if !parentNode.children.contains(currentPath) {
+              parentNode.children.append(currentPath)
+              context.nodes[currentParentID] = parentNode
+            }
+          }
+          
+          if var currentNode = context.nodes[currentPath] {
+            currentNode.parent = currentParentID
+            context.nodes[currentPath] = currentNode
+          }
+          
+          currentParentID = currentPath
+        }
+        
+        // Link the actual test/suite to its parent
+        if testID != currentPath {
+          if var parentNode = context.nodes[currentParentID] {
+            if !parentNode.children.contains(testID) {
+              parentNode.children.append(testID)
+              context.nodes[currentParentID] = parentNode
+            }
+          }
+          
+          if var testNode = context.nodes[testID] {
+            testNode.parent = currentParentID
+            context.nodes[testID] = testNode
+          }
+        }
+      } else {
+        // Fallback for simple cases
+        if !context.rootNodes.contains(testID) {
+          context.rootNodes.append(testID)
         }
       }
-      
-      output += "\n"
-      output += "📊 Results: \(passedTests) passed, \(failedCount) failed"
-      if skippedTests > 0 {
-        output += ", \(skippedTests) skipped"
+    }
+  }
+  
+  /// Process an ABI.EncodedEvent for advanced console output.
+  ///
+  /// This implements the enhanced console logic for hierarchical display and failure summary.
+  ///
+  /// - Parameters:
+  ///   - encodedEvent: The ABI-encoded event to process.
+  private func _processABIEvent(_ encodedEvent: ABI.EncodedEvent<V>) {
+    _context.withLock { context in
+      switch encodedEvent.kind {
+      case .runStarted:
+        context.runStartTime = encodedEvent.instant
+        context.isRunCompleted = false
+        
+      case .testStarted:
+        // Track test start time
+        if let testID = encodedEvent.testID?.stringValue {
+          context.testTimings[testID] = (start: encodedEvent.instant, end: nil)
+        }
+        
+      case .issueRecorded:
+        // Record issues for failure summary
+        if let testID = encodedEvent.testID?.stringValue,
+           let issue = encodedEvent.issue {
+          if context.testIssues[testID] == nil {
+            context.testIssues[testID] = []
+          }
+          context.testIssues[testID]?.append(issue)
+        }
+        
+      case .testEnded:
+        // Track test end time and determine result
+        if let testID = encodedEvent.testID?.stringValue {
+          var timing = context.testTimings[testID] ?? (start: nil, end: nil)
+          timing.end = encodedEvent.instant
+          context.testTimings[testID] = timing
+          
+          // Determine test result based on issues
+          let hasFailures = context.testIssues[testID]?.contains { !$0.isKnown && $0._isFailure } ?? false
+          let result: _TestResult = hasFailures ? .failed : .passed
+          context.testResults[testID] = result
+          
+          // Update statistics
+          switch result {
+          case .passed:
+            context.totalPassed += 1
+          case .failed:
+            context.totalFailed += 1
+          case .skipped:
+            context.totalSkipped += 1
+          }
+        }
+        
+      case .testSkipped:
+        // Mark test as skipped
+        if let testID = encodedEvent.testID?.stringValue {
+          context.testResults[testID] = .skipped
+          context.totalSkipped += 1
+        }
+        
+      case .runEnded:
+        context.runEndTime = encodedEvent.instant
+        context.isRunCompleted = true
+        // Generate hierarchical summary
+        _generateHierarchicalSummary(context: context)
+        
+      default:
+        // Handle other event types
+        break
       }
-      output += " (\(totalTests) total)\n"
+    }
+  }
+  
+  /// Generate the final hierarchical summary when the run completes.
+  ///
+  /// - Parameters:
+  ///   - context: The context containing all hierarchy and results data.
+  private func _generateHierarchicalSummary(context: _Context) {
+    var output = "\n"
+    
+    // Hierarchical Test Results
+    output += "══════════════════════════════════════ HIERARCHICAL TEST RESULTS ══════════════════════════════════════\n"
+    output += "\n"
+    
+    // Render the test hierarchy tree
+    if context.rootNodes.isEmpty {
+      // Show test results as flat list if no hierarchy
+      let allTests = context.testResults.sorted { $0.key < $1.key }
+      for (testID, result) in allTests {
+        let statusIcon = _getStatusIcon(for: result)
+        let testName = context.nodes[testID]?.displayName ?? context.nodes[testID]?.name ?? testID
+        output += "\(statusIcon) \(testName)\n"
+      }
+    } else {
+      // Render the test hierarchy tree
+      for (index, rootNodeID) in context.rootNodes.enumerated() {
+        if let rootNode = context.nodes[rootNodeID] {
+          let isFirstRoot = index == 0
+          let isLastRoot = index == context.rootNodes.count - 1
+          output += _renderHierarchyNode(rootNode, context: context, prefix: "", isLast: isLastRoot, isFirstRoot: isFirstRoot)
+          
+          // Add spacing between top-level modules with vertical line continuation
+          if index < context.rootNodes.count - 1 {
+            output += "│\n"  // Add vertical line continuation between modules
+          }
+        }
+      }
     }
     
-    output += "═══════════════════════════════════════════════════════════════════════════════\n"
+    output += "\n"
+    
+    // Test run summary
+    let totalTests = context.totalPassed + context.totalFailed + context.totalSkipped
+    
+    // Calculate total run duration
+    var totalDuration = ""
+    if let startTime = context.runStartTime, let endTime = context.runEndTime {
+      totalDuration = _formatDuration(endTime.absolute - startTime.absolute)
+    }
+    
+    // Format: [total] tests completed in [duration] ([pass symbol] pass: [number], [failed symbol] fail: [number], ...)
+    let passIcon = _getStatusIcon(for: .passed)
+    let failIcon = _getStatusIcon(for: .failed) 
+    let skipIcon = _getStatusIcon(for: .skipped)
+    
+    var summaryParts: [String] = []
+    if context.totalPassed > 0 {
+      summaryParts.append("\(passIcon) pass: \(context.totalPassed)")
+    }
+    if context.totalFailed > 0 {
+      summaryParts.append("\(failIcon) fail: \(context.totalFailed)")
+    }
+    if context.totalSkipped > 0 {
+      summaryParts.append("\(skipIcon) skip: \(context.totalSkipped)")
+    }
+    
+    let summaryDetails = summaryParts.joined(separator: ", ")
+    let durationText = totalDuration.isEmpty ? "" : " in \(totalDuration)"
+    output += "\(totalTests) test\(totalTests == 1 ? "" : "s") completed\(durationText) (\(summaryDetails))\n"
+    output += "\n"
+    
+    // Failed Test Details (only if there are failures)
+    let failedTests = context.testResults.filter { $0.value == .failed }
+    if !failedTests.isEmpty {
+      output += "══════════════════════════════════════ FAILED TEST DETAILS ══════════════════════════════════════\n"
+      output += "\n"
+      
+      // Iterate through all tests that recorded one or more failures
+      for (testID, _) in failedTests {
+        // Get the fully qualified test name by traversing up the hierarchy
+        let fullyQualifiedName = _getFullyQualifiedTestNameWithFile(testID: testID, context: context)
+        
+        let failureIcon = _getStatusIcon(for: .failed)
+        output += "\(failureIcon) \(fullyQualifiedName)\n"
+        
+        // Show detailed issue information with proper indentation
+        if let issues = context.testIssues[testID] {
+          for issue in issues {
+            // Get detailed error description
+            if let error = issue._error {
+              let errorDescription = "\(error)"
+              
+              if !errorDescription.isEmpty && errorDescription != "Test failure" {
+                output += "  Expectation failed:\n"
+                
+                // Split multi-line error descriptions and indent each line
+                let errorLines = errorDescription.split(separator: "\n", omittingEmptySubsequences: false)
+                for line in errorLines {
+                  output += "    \(line)\n"
+                }
+              }
+            }
+            
+            // Add source location
+            if let sourceLocation = issue.sourceLocation {
+              output += "  at \(sourceLocation.fileName):\(sourceLocation.line)\n"
+            }
+            
+            output += "\n"
+          }
+        }
+      }
+    }
     
     write(output)
   }
   
-  /// Format a duration in seconds to a readable string.
+  /// Render a hierarchy node with proper indentation and tree drawing characters.
   ///
   /// - Parameters:
-  ///   - duration: Duration in seconds.
-  /// - Returns: Formatted duration string like "1.23s".
-  private func _formatDuration(_ duration: Double) -> String {
-    // Format to 2 decimal places maximum without Foundation
-    let rounded = (duration * 100).rounded() / 100
-    let integerPart = Int(rounded)
-    let fractionalPart = Int((rounded - Double(integerPart)) * 100)
+  ///   - node: The node to render.
+  ///   - context: The hierarchy context.
+  ///   - prefix: The prefix for indentation and tree drawing.
+  ///   - isLast: Whether this is the last child at its level.
+  ///   - isFirstRoot: Whether this is the first root node.
+  /// - Returns: The rendered string for this node and its children.
+  private func _renderHierarchyNode(_ node: _HierarchyNode, context: _Context, prefix: String, isLast: Bool, isFirstRoot: Bool) -> String {
+    var output = ""
     
-    if fractionalPart == 0 {
-      return "\(integerPart)s"
-    } else if fractionalPart % 10 == 0 {
-      return "\(integerPart).\(fractionalPart / 10)s"
+    if node.isSuite {
+      // Suite header
+      let treePrefix: String
+      if prefix.isEmpty && isFirstRoot {
+        // First root uses "┌─"
+        treePrefix = "┌─ "
+      } else {
+        treePrefix = isLast ? "╰─ " : "├─ "
+      }
+      
+      let suiteName = node.displayName ?? node.name
+      output += "\(prefix)\(treePrefix)\(suiteName)\n"
+      
+      // Render children with updated prefix  
+      // For root nodes (at prefix ""), children always get 3 spaces
+      // For nested nodes, use standard vertical line logic
+      let childPrefix: String
+      if prefix.isEmpty {
+        // Root node case: always use 3 spaces for children
+        childPrefix = "   "
+      } else {
+        // Nested case: continue vertical line unless this is the last node
+        childPrefix = prefix + (isLast ? "   " : "│  ")
+      }
+      
+      for (childIndex, childID) in node.children.enumerated() {
+        let isLastChild = childIndex == node.children.count - 1
+        if let childNode = context.nodes[childID] {
+          output += _renderHierarchyNode(childNode, context: context, prefix: childPrefix, isLast: isLastChild, isFirstRoot: false)
+          
+          // Add spacing between child nodes when the next sibling is a suite
+          // Continue the tree structure with vertical line
+          if childIndex < node.children.count - 1 {
+            // Check if the next sibling is a suite
+            let nextChildID = node.children[childIndex + 1]
+            if let nextChildNode = context.nodes[nextChildID], nextChildNode.isSuite {
+              // Use the correct spacing prefix
+              let spacingPrefix: String
+              if prefix.isEmpty {
+                // Root node case: use 3 spaces + vertical line
+                spacingPrefix = "   │"
+              } else {
+                // Nested case: use the child prefix
+                spacingPrefix = childPrefix
+              }
+              output += "\(spacingPrefix)\n"  // Add the vertical line continuation
+            }
+          }
+        }
+      }
     } else {
-      return "\(integerPart).\(fractionalPart < 10 ? "0" : "")\(fractionalPart)s"
+      // Test case line
+      let treePrefix = isLast ? "╰─ " : "├─ "
+      let statusIcon = _getStatusIcon(for: context.testResults[node.testID] ?? .passed)
+      let testName = node.displayName ?? node.name
+      
+      // Calculate duration
+      var duration = ""
+      if let startTime = context.testTimings[node.testID]?.start,
+         let endTime = context.testTimings[node.testID]?.end {
+        duration = _formatDuration(endTime.absolute - startTime.absolute)
+      }
+      
+      // Format with right-aligned duration
+      let testLine = "\(statusIcon) \(testName)"
+      let paddedTestLine = _padWithDuration(testLine, duration: duration)
+      output += "\(prefix)\(treePrefix)\(paddedTestLine)\n"
+      
+      // Render issues for failed tests
+      if let issues = context.testIssues[node.testID], !issues.isEmpty {
+        let issuePrefix = prefix + (isLast ? "   " : "│  ")
+        for (issueIndex, issue) in issues.enumerated() {
+          let isLastIssue = issueIndex == issues.count - 1
+          let issueTreePrefix = isLastIssue ? "╰─ " : "├─ "
+          let issueIcon = _getStatusIcon(for: .failed)
+          let issueDescription = issue._error?.description ?? "Test failure"
+          
+          output += "\(issuePrefix)\(issueTreePrefix)\(issueIcon) \(issueDescription)\n"
+          
+          // Add source location
+          if let sourceLocation = issue.sourceLocation {
+            let locationPrefix = issuePrefix + (isLastIssue ? "   " : "│  ")
+            output += "\(locationPrefix)At \(sourceLocation.fileName):\(sourceLocation.line):\(sourceLocation.column)\n"
+          }
+        }
+      }
     }
+    
+    return output
+  }
+  
+  /// Get the status icon for a test result.
+  ///
+  /// - Parameters:
+  ///   - result: The test result.
+  /// - Returns: The appropriate symbol string.
+  private func _getStatusIcon(for result: _TestResult) -> String {
+    switch result {
+    case .passed:
+      return Event.Symbol.pass(knownIssueCount: 0).stringValue(options: options.base)
+    case .failed:
+      return Event.Symbol.fail.stringValue(options: options.base)
+    case .skipped:
+      return Event.Symbol.skip.stringValue(options: options.base)
+    }
+  }
+  
+  /// Format a duration in seconds with exactly 2 decimal places.
+  ///
+  /// - Parameter duration: The duration to format.
+  /// - Returns: A formatted duration string (e.g., "1.80s", "0.05s").
+  private func _formatDuration(_ duration: Double) -> String {
+    // Always format to exactly 2 decimal places
+    let wholePart = Int(duration)
+    let fractionalPart = Int((duration - Double(wholePart)) * 100 + 0.5) // Round to nearest hundredth
+    
+    // Handle rounding overflow (e.g., 0.999 -> 1.00)
+    if fractionalPart >= 100 {
+      return "\(wholePart + 1).00s"
+    } else {
+      let fractionalString = fractionalPart < 10 ? "0\(fractionalPart)" : "\(fractionalPart)"
+      return "\(wholePart).\(fractionalString)s"
+    }
+  }
+  
+  /// Pad a test line with right-aligned duration.
+  ///
+  /// - Parameters:
+  ///   - testLine: The test line to pad.
+  ///   - duration: The duration string.
+  /// - Returns: The padded test line with right-aligned duration.
+  private func _padWithDuration(_ testLine: String, duration: String) -> String {
+    if duration.isEmpty {
+      return testLine
+    }
+    
+    let targetWidth = 100
+    let rightPart = "(\(duration))"
+    let totalLeftLength = testLine.count
+    let totalRightLength = rightPart.count
+    
+    if totalLeftLength + totalRightLength + 5 < targetWidth {
+      let paddingLength = targetWidth - totalLeftLength - totalRightLength
+      return "\(testLine)\(String(repeating: " ", count: paddingLength))\(rightPart)"
+    } else {
+      return "\(testLine) \(rightPart)"
+    }
+  }
+  
+  /// Check if a string contains Swift file pattern without using Foundation.
+  ///
+  /// - Parameters:
+  ///   - string: The string to check.
+  /// - Returns: True if the string contains ".swift:" pattern.
+  private func _containsSwiftFile(_ string: String) -> Bool {
+    let target = ".swift:"
+    let targetLength = target.count
+    let stringLength = string.count
+    
+    guard stringLength >= targetLength else { return false }
+    
+    for i in 0...(stringLength - targetLength) {
+      let startIndex = string.index(string.startIndex, offsetBy: i)
+      let endIndex = string.index(startIndex, offsetBy: targetLength)
+      let substring = String(string[startIndex..<endIndex])
+      if substring == target {
+        return true
+      }
+    }
+    return false
+  }
+  
+  /// Get the fully qualified test name for a given test ID.
+  ///
+  /// This function traverses the hierarchy to build the full test name.
+  ///
+  /// - Parameters:
+  ///   - testID: The ID of the test.
+  ///   - context: The context containing the test hierarchy.
+  /// - Returns: The fully qualified test name.
+  private func _getFullyQualifiedTestName(testID: String, context: _Context) -> String {
+    guard context.nodes[testID] != nil else { return testID }
+    
+    var nameParts: [String] = []
+    var currentID: String? = testID
+    
+    // Traverse up the hierarchy to get the full name
+    while let nodeID = currentID, let currentNode = context.nodes[nodeID] {
+      let displayName = currentNode.displayName ?? currentNode.name
+      nameParts.append(displayName)
+      currentID = currentNode.parent
+    }
+    
+    // Reverse the parts to get the correct order (parent first, then child)
+    let reversedParts = nameParts.reversed()
+    return reversedParts.joined(separator: "/")
+  }
+
+  /// Get the fully qualified test name for a given test ID, including the file name.
+  ///
+  /// This function traverses the hierarchy to build the full test name in the format:
+  /// ModuleName/FileName/"SuiteName"/"TestName"
+  ///
+  /// - Parameters:
+  ///   - testID: The ID of the test.
+  ///   - context: The context containing the test hierarchy.
+  /// - Returns: The fully qualified test name with file name included.
+  private func _getFullyQualifiedTestNameWithFile(testID: String, context: _Context) -> String {
+    guard context.nodes[testID] != nil else { return testID }
+    
+    // Get the source file name from the first issue
+    var fileName = ""
+    if let issues = context.testIssues[testID], 
+       let firstIssue = issues.first,
+       let sourceLocation = firstIssue.sourceLocation {
+      fileName = sourceLocation.fileName
+    }
+    
+    var nameParts: [String] = []
+    var currentID: String? = testID
+    
+    // Traverse up the hierarchy to get the full name
+    while let nodeID = currentID, let currentNode = context.nodes[nodeID] {
+      let displayName = currentNode.displayName ?? currentNode.name
+      
+      // For non-module nodes (suites and tests), wrap in quotes
+      if currentNode.parent != nil {
+        nameParts.append("\"\(displayName)\"")
+      } else {
+        // Module name - no quotes
+        nameParts.append(displayName)
+      }
+      currentID = currentNode.parent
+    }
+    
+    // Reverse to get correct order and insert file name after module
+    var reversedParts = Array(nameParts.reversed())
+    
+    // Insert file name after module name if we have it
+    if !fileName.isEmpty && reversedParts.count > 0 {
+      reversedParts.insert(fileName, at: 1)
+    }
+    
+    return reversedParts.joined(separator: "/")
   }
 }
