@@ -185,6 +185,9 @@ extension Issue {
       // This error is thrown by expectation checking functions to indicate a
       // condition evaluated to `false`. Those functions record their own issue,
       // so we don't need to record another one redundantly.
+    } catch is SkipInfo {
+      // This error represents control flow rather than an issue, so we suppress
+      // it here.
     } catch {
       let issue = Issue(for: error, sourceLocation: sourceLocation)
       issue.record(configuration: configuration)
@@ -226,6 +229,9 @@ extension Issue {
       // This error is thrown by expectation checking functions to indicate a
       // condition evaluated to `false`. Those functions record their own issue,
       // so we don't need to record another one redundantly.
+    } catch is SkipInfo {
+      // This error represents control flow rather than an issue, so we suppress
+      // it here.
     } catch {
       let issue = Issue(for: error, sourceLocation: sourceLocation)
       issue.record(configuration: configuration)

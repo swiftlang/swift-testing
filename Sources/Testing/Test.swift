@@ -201,6 +201,9 @@ public struct Test: Sendable {
   @_spi(ForToolsIntegrationOnly)
   public var isSynthesized: Bool = false
 
+  /// The task associated with this test, if any, guarded by a lock.
+  nonisolated(unsafe) var unsafeCurrentTask = Locked<UnsafeCurrentTask?>()
+
   /// Initialize an instance of this type representing a test suite type.
   init(
     displayName: String? = nil,
