@@ -171,6 +171,60 @@ extension Runner {
     }
   }
 
+  /// Post `testStarted` and `testEnded` (or `testSkipped`) events for the test
+  /// at the given plan step.
+  ///
+  /// - Parameters:
+  ///   - step: The plan step for which events should be posted.
+  ///   - configuration: The configuration to use for running.
+  ///   - body: A function to execute between the started/ended events.
+  ///
+  /// - Throws: Whatever is thrown by `body` or while handling any issues
+  ///   recorded in the process.
+  ///
+  /// - Returns: Whatever is returned by `body`.
+  ///
+  /// This function does _not_ post the `planStepStarted` and `planStepEnded`
+  /// events.
+  private static func _postingTestStartedAndEndedEvents<R>(for step: Plan.Step, configuration: Configuration, _ body: @Sendable () async throws -> R) async throws -> R {
+    // Whether to send a `.testEnded` event at the end of running this step.
+    // Some steps' actions may not require a final event to be sent — for
+    // example, a skip event only sends `.testSkipped`.
+    let shouldSendTestEnded: Bool
+
+    // Determine what kind of event to send for this step based on its action.
+    switch step.action {
+    case .run:
+      Event.post(.testStarted, for: (step.test, nil), configuration: configuration)
+      shouldSendTestEnded = true
+    case let .skip(skipInfo):
+      Event.post(.testSkipped(skipInfo), for: (step.test, nil), configuration: configuration)
+      shouldSendTestEnded = false
+    case let .recordIssue(issue):
+      // Scope posting the issue recorded event such that issue handling
+      // traits have the opportunity to handle it. This ensures that if a test
+      // has an issue handling trait _and_ some other trait which caused an
+      // issue to be recorded, the issue handling trait can process the issue
+      // even though it wasn't recorded by the test function.
+      try await Test.withCurrent(step.test) {
+        try await _applyIssueHandlingTraits(for: step.test) {
+          // Don't specify `configuration` when posting this issue so that
+          // traits can provide scope and potentially customize the
+          // configuration.
+          Event.post(.issueRecorded(issue), for: (step.test, nil))
+        }
+      }
+      shouldSendTestEnded = false
+    }
+    defer {
+      if shouldSendTestEnded {
+        Event.post(.testEnded, for: (step.test, nil), configuration: configuration)
+      }
+    }
+
+    return try await body()
+  }
+
   /// Run this test.
   ///
   /// - Parameters:
@@ -193,64 +247,34 @@ extension Runner {
     // Exit early if the task has already been cancelled.
     try Task.checkCancellation()
 
-    // Whether to send a `.testEnded` event at the end of running this step.
-    // Some steps' actions may not require a final event to be sent — for
-    // example, a skip event only sends `.testSkipped`.
-    let shouldSendTestEnded: Bool
-
-    let configuration = _configuration
-
-    // Determine what action to take for this step.
     if let step = stepGraph.value {
+      let configuration = _configuration
       Event.post(.planStepStarted(step), for: (step.test, nil), configuration: configuration)
-
-      // Determine what kind of event to send for this step based on its action.
-      switch step.action {
-      case .run:
-        Event.post(.testStarted, for: (step.test, nil), configuration: configuration)
-        shouldSendTestEnded = true
-      case let .skip(skipInfo):
-        Event.post(.testSkipped(skipInfo), for: (step.test, nil), configuration: configuration)
-        shouldSendTestEnded = false
-      case let .recordIssue(issue):
-        // Scope posting the issue recorded event such that issue handling
-        // traits have the opportunity to handle it. This ensures that if a test
-        // has an issue handling trait _and_ some other trait which caused an
-        // issue to be recorded, the issue handling trait can process the issue
-        // even though it wasn't recorded by the test function.
-        try await Test.withCurrent(step.test) {
-          try await _applyIssueHandlingTraits(for: step.test) {
-            // Don't specify `configuration` when posting this issue so that
-            // traits can provide scope and potentially customize the
-            // configuration.
-            Event.post(.issueRecorded(issue), for: (step.test, nil))
-          }
-        }
-        shouldSendTestEnded = false
-      }
-    } else {
-      shouldSendTestEnded = false
-    }
-    defer {
-      if let step = stepGraph.value {
-        if shouldSendTestEnded {
-          Event.post(.testEnded, for: (step.test, nil), configuration: configuration)
-        }
+      defer {
         Event.post(.planStepEnded(step), for: (step.test, nil), configuration: configuration)
       }
-    }
 
-    if let step = stepGraph.value, case .run = step.action {
       await Test.withCurrent(step.test) {
         _ = await Issue.withErrorRecording(at: step.test.sourceLocation, configuration: configuration) {
-          try await _applyScopingTraits(for: step.test, testCase: nil) {
-            // Run the test function at this step (if one is present.)
-            if let testCases = step.test.testCases {
-              try await _runTestCases(testCases, within: step)
-            }
+          switch step.action {
+          case .run:
+            try await _applyScopingTraits(for: step.test, testCase: nil) {
+              try await _postingTestStartedAndEndedEvents(for: step, configuration: configuration) {
+                // Run the test function at this step (if one is present.)
+                if let testCases = step.test.testCases {
+                  try await _runTestCases(testCases, within: step)
+                }
 
-            // Run the children of this test (i.e. the tests in this suite.)
-            try await _runChildren(of: stepGraph)
+                // Run the children of this test (i.e. the tests in this suite.)
+                try await _runChildren(of: stepGraph)
+              }
+            }
+          default:
+            // Skipping this step or otherwise not running it. Post appropriate
+            // started/ended events for the test and walk any child nodes.
+            try await _postingTestStartedAndEndedEvents(for: step, configuration: configuration) {
+              try await _runChildren(of: stepGraph)
+            }
           }
         }
       }
