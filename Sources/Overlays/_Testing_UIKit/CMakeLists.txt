@@ -13,8 +13,7 @@ if(APPLE)
 
   target_link_libraries(_Testing_UIKit PUBLIC
     Testing
-    _Testing_CoreGraphics
-    UIKit)
+    _Testing_CoreGraphics)
 
   target_compile_options(_Testing_UIKit PRIVATE
     -enable-library-evolution
