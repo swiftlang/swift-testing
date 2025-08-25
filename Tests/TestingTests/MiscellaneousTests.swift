@@ -28,6 +28,10 @@ private import Foundation
 
 @Sendable func freeSyncFunctionParameterized2(_ i: Int, _ j: String) {}
 
+#if compiler(>=6.2) && hasFeature(RawIdentifiers)
+@Test(.hidden, arguments: [0]) func `ValidSingleCapitalizedToken`(someLengthyParameterName: Int) {}
+#endif
+
 // This type ensures the parser can correctly infer that f() is a member
 // function even though @Test is preceded by another attribute or is embedded in
 // a #if statement.
@@ -319,6 +323,12 @@ struct MiscellaneousTests {
   @Test(arguments: [0])
   func `Test with raw identifier and raw identifier parameter labels can compile`(`argument name` i: Int) {
     #expect(i == 0)
+  }
+
+  @Test func singleValidTokenRawIdentifiers() async throws {
+    let test = try #require(await Test.all.first { $0.name.contains("ValidSingleCapitalizedToken") })
+    #expect(test.name == "ValidSingleCapitalizedToken(someLengthyParameterName:)")
+    #expect(test.displayName == "ValidSingleCapitalizedToken")
   }
 #endif
 

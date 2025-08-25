@@ -321,19 +321,60 @@ struct TestDeclarationMacroTests {
     }
   }
 
+  @Test("Warning diagnostics which include fix-its emitted on API misuse", arguments: [
+    #"@Test("Subscript") func `subscript`()"#:
+      (
+        message: "Attribute 'Test' specifies display name 'Subscript' for function with implicit display name 'subscript'",
+        fixIts: [
+          ExpectedFixIt(
+            message: "Remove 'Subscript'",
+            changes: [.replace(oldSourceCode: #""Subscript""#, newSourceCode: "")]
+          ),
+          ExpectedFixIt(
+            message: "Rename 'subscript'",
+            changes: [.replace(oldSourceCode: "`subscript`", newSourceCode: "\(EditorPlaceholderExprSyntax("name"))")]
+          ),
+        ]
+      ),
+  ])
+  func apiMisuseWarningsIncludingFixIts(input: String, expectedDiagnostic: (message: String, fixIts: [ExpectedFixIt])) throws {
+    let (_, diagnostics) = try parse(input)
+
+    #expect(diagnostics.count == 1)
+    let diagnostic = try #require(diagnostics.first)
+    #expect(diagnostic.diagMessage.severity == .warning)
+    #expect(diagnostic.message == expectedDiagnostic.message)
+
+    try #require(diagnostic.fixIts.count == expectedDiagnostic.fixIts.count)
+    for (fixIt, expectedFixIt) in zip(diagnostic.fixIts, expectedDiagnostic.fixIts) {
+      #expect(fixIt.message.message == expectedFixIt.message)
+
+      try #require(fixIt.changes.count == expectedFixIt.changes.count)
+      for (change, expectedChange) in zip(fixIt.changes, expectedFixIt.changes) {
+        switch (change, expectedChange) {
+        case let (.replace(oldNode, newNode), .replace(expectedOldSourceCode, expectedNewSourceCode)):
+          let oldSourceCode = String(describing: oldNode.formatted())
+          #expect(oldSourceCode == expectedOldSourceCode)
+
+          let newSourceCode = String(describing: newNode.formatted())
+          #expect(newSourceCode == expectedNewSourceCode)
+        default:
+          Issue.record("Change \(change) differs from expected change \(expectedChange)")
+        }
+      }
+    }
+  }
+
   @Test("Raw identifier is detected")
   func rawIdentifier() {
-    #expect(TokenSyntax.identifier("`hello`").rawIdentifier == nil)
-    #expect(TokenSyntax.identifier("`helloworld`").rawIdentifier == nil)
-    #expect(TokenSyntax.identifier("`hélloworld`").rawIdentifier == nil)
-    #expect(TokenSyntax.identifier("`hello_world`").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("hello").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("`hello").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("hello`").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("hélloworld").rawIdentifier == nil)
+    #expect(TokenSyntax.identifier("hello_world").rawIdentifier == nil)
     #expect(TokenSyntax.identifier("`hello world`").rawIdentifier != nil)
     #expect(TokenSyntax.identifier("`hello/world`").rawIdentifier != nil)
     #expect(TokenSyntax.identifier("`hello\tworld`").rawIdentifier != nil)
-
-    #expect(TokenSyntax.identifier("`class`").rawIdentifier == nil)
-    #expect(TokenSyntax.identifier("`struct`").rawIdentifier == nil)
-    #expect(TokenSyntax.identifier("`class struct`").rawIdentifier != nil)
   }
 
   @Test("Raw function name components")

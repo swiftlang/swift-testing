@@ -139,14 +139,17 @@ struct AttributeInfo {
       }
     }
 
-    // Disallow an explicit display name for tests and suites with raw
-    // identifier names as it's redundant and potentially confusing.
+    // If this declaration's name is surrounded by backticks, it may be an
+    // escaped or raw identifier. If it has an explicitly-specified display name
+    // string, honor that, otherwise use the content of the backtick-enclosed
+    // name as the display name.
     if let namedDecl = declaration.asProtocol((any NamedDeclSyntax).self),
-       let rawIdentifier = namedDecl.name.rawIdentifier {
+       case let nameWithoutBackticks = namedDecl.name.textWithoutBackticks,
+       nameWithoutBackticks != namedDecl.name.text {
       if let displayName, let displayNameArgument {
         context.diagnose(.declaration(namedDecl, hasExtraneousDisplayName: displayName, fromArgument: displayNameArgument, using: attribute))
       } else {
-        displayName = StringLiteralExprSyntax(content: rawIdentifier)
+        displayName = StringLiteralExprSyntax(content: nameWithoutBackticks)
       }
     }
 
