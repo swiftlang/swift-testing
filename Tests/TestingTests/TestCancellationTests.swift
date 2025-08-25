@@ -69,7 +69,7 @@ struct `Test cancellation tests` {
   }
 
   @Test func `Cancelling an entire parameterized test`() async {
-    await testCancellation(testCancelled: 1) { configuration in
+    await testCancellation(testCancelled: 1, testCaseCancelled: 10) { configuration in
       // .serialized to ensure that none of the cases complete before the first
       // one cancels the test.
       await Test(.serialized, arguments: 0 ..< 10) { i in
@@ -77,6 +77,31 @@ struct `Test cancellation tests` {
           try Test.cancel("\(i) cancelled the test")
         }
         Issue.record("\(i) records an issue!")
+      }.run(configuration: configuration)
+    }
+  }
+
+  @Test func `Cancelling a test by cancelling its task (throwing)`() async {
+    await testCancellation(testCancelled: 1) { configuration in
+      await Test {
+        withUnsafeCurrentTask { $0?.cancel() }
+        try Task.checkCancellation()
+      }.run(configuration: configuration)
+    }
+  }
+
+  @Test func `Cancelling a test by cancelling its task (returning)`() async {
+    await testCancellation(testCancelled: 1) { configuration in
+      await Test {
+        withUnsafeCurrentTask { $0?.cancel() }
+      }.run(configuration: configuration)
+    }
+  }
+
+  @Test func `Throwing CancellationError without cancelling the test task`() async {
+    await testCancellation(issueRecorded: 1) { configuration in
+      await Test {
+        throw CancellationError()
       }.run(configuration: configuration)
     }
   }

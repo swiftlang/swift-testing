@@ -207,7 +207,7 @@ extension Test {
     var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.test = test
     return try await Runner.RuntimeState.$current.withValue(runtimeState) {
-      try await test.withUnsafeCurrentTask(body)
+      try await test.withCancellationHandling(body)
     }
   }
 }
@@ -242,7 +242,7 @@ extension Test.Case {
     var runtimeState = Runner.RuntimeState.current ?? .init()
     runtimeState.testCase = testCase
     return try await Runner.RuntimeState.$current.withValue(runtimeState) {
-      try await testCase.withUnsafeCurrentTask(body)
+      try await testCase.withCancellationHandling(body)
     }
   }
 }
