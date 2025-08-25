@@ -188,6 +188,15 @@ extension Issue {
     } catch is SkipInfo {
       // This error represents control flow rather than an issue, so we suppress
       // it here.
+    } catch is CancellationError where Task.isCancelled {
+      // This error also represents control flow. It should cause the current
+      // test case to be cancelled, or the current test if there is no current
+      // test case.
+      if Test.Case.current != nil {
+        _ = try? Test.Case.cancel(sourceLocation: sourceLocation)
+      } else {
+        _ = try? Test.cancel(sourceLocation: sourceLocation)
+      }
     } catch {
       let issue = Issue(for: error, sourceLocation: sourceLocation)
       issue.record(configuration: configuration)
@@ -232,6 +241,15 @@ extension Issue {
     } catch is SkipInfo {
       // This error represents control flow rather than an issue, so we suppress
       // it here.
+    } catch is CancellationError where Task.isCancelled {
+      // This error also represents control flow. It should cause the current
+      // test case to be cancelled, or the current test if there is no current
+      // test case.
+      if Test.Case.current != nil {
+        _ = try? Test.Case.cancel(sourceLocation: sourceLocation)
+      } else {
+        _ = try? Test.cancel(sourceLocation: sourceLocation)
+      }
     } catch {
       let issue = Issue(for: error, sourceLocation: sourceLocation)
       issue.record(configuration: configuration)
