@@ -15,7 +15,7 @@ struct `Test cancellation tests` {
     await confirmation("Test cancelled", expectedCount: testCancelled) { testCancelled in
       await confirmation("Test skipped", expectedCount: testSkipped) { testSkipped in
         await confirmation("Test case cancelled", expectedCount: testCaseCancelled) { testCaseCancelled in
-          await confirmation("Issue recorded", expectedCount: issueRecorded) { issueRecorded in
+          await confirmation("Issue recorded", expectedCount: issueRecorded) { [issueRecordedCount = issueRecorded] issueRecorded in
             var configuration = Configuration()
             configuration.eventHandler = { event, _ in
               switch event.kind {
@@ -25,7 +25,10 @@ struct `Test cancellation tests` {
                 testSkipped()
               case .testCaseCancelled:
                 testCaseCancelled()
-              case .issueRecorded:
+              case let .issueRecorded(issue):
+                if issueRecordedCount == 0 {
+                  issue.record()
+                }
                 issueRecorded()
               default:
                 break
