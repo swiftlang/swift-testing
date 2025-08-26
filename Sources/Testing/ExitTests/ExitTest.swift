@@ -767,8 +767,12 @@ extension ExitTest {
       }
     }
     configuration.eventHandler = { event, eventContext in
-      if case .issueRecorded = event.kind {
+      switch event.kind {
+      case .issueRecorded, .valueAttached:
         eventHandler(event, eventContext)
+      default:
+        // Don't forward other kinds of event.
+        break
       }
     }
 
@@ -1034,8 +1038,14 @@ extension ExitTest {
   /// - Throws: Any error encountered attempting to decode or process the JSON.
   private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
     let record = try JSON.decode(ABI.Record<ABI.BackChannelVersion>.self, from: recordJSON)
-    if case let .event(event) = record.kind, let issue = Issue(event) {
+    guard case let .event(event) = record.kind else {
+      return
+    }
+
+    if let issue = Issue(event) {
       issue.record()
+    } else if let attachment = event.attachment {
+      Attachment.record(attachment, sourceLocation: attachment._sourceLocation!)
     }
   }
 

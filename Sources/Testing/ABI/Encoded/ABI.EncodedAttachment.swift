@@ -8,32 +8,9 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _TestingInternals
-
 #if canImport(Foundation)
 private import Foundation
 #endif
-
-/// The maximum size, in bytes, of an attachment that will be stored inline in
-/// an encoded attachment.
-private let _maximumInlineAttachmentByteCount: Int = {
-  let pageSize: Int
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
-  pageSize = Int(clamping: sysconf(_SC_PAGESIZE))
-#elseif os(WASI)
-  // sysconf(_SC_PAGESIZE) is a complex macro in wasi-libc.
-  pageSize = Int(clamping: getpagesize())
-#elseif os(Windows)
-  var systemInfo = SYSTEM_INFO()
-  GetSystemInfo(&systemInfo)
-  pageSize = Int(clamping: systemInfo.dwPageSize)
-#else
-#warning("Platform-specific implementation missing: page size unknown (assuming 4KB)")
-  pageSize = 4 * 1024
-#endif
-
-  return pageSize // i.e. we'll store up to a page-sized attachment
-}()
 
 extension ABI {
   /// A type implementing the JSON encoding of ``Attachment`` for the ABI entry
@@ -54,8 +31,9 @@ extension ABI {
 
     /// The raw content of the attachment, if available.
     ///
-    /// If the value of this property is `nil`, the attachment can instead be
-    /// read from ``path``.
+    /// The value of this property is set if the attachment was not first saved
+    /// to a file. It may also be `nil` if an error occurred while trying to get
+    /// the original attachment's serialized representation.
     ///
     /// - Warning: Inline attachment content is not yet part of the JSON schema.
     var _bytes: Bytes?
@@ -68,19 +46,18 @@ extension ABI {
 
     init(encoding attachment: borrowing Attachment<AnyAttachable>, in eventContext: borrowing Event.Context) {
       path = attachment.fileSystemPath
-      _preferredName = attachment.preferredName
 
-      if let estimatedByteCount = attachment.attachableValue.estimatedAttachmentByteCount,
-         estimatedByteCount <= _maximumInlineAttachmentByteCount {
-        _bytes = try? attachment.withUnsafeBytes { bytes in
-          if bytes.count > 0 && bytes.count < _maximumInlineAttachmentByteCount {
+      if V.versionNumber >= ABI.v6_3.versionNumber {
+        _preferredName = attachment.preferredName
+
+        if path == nil {
+          _bytes = try? attachment.withUnsafeBytes { bytes in
             return Bytes(rawValue: [UInt8](bytes))
           }
-          return nil
         }
-      }
 
-      _sourceLocation = attachment.sourceLocation
+        _sourceLocation = attachment.sourceLocation
+      }
     }
 
     /// A structure representing the bytes of an attachment.
@@ -134,6 +111,8 @@ extension ABI.EncodedAttachment: Attachable {
     _bytes?.rawValue.count
   }
 
+  /// An error type that is thrown when ``ABI/EncodedAttachment`` cannot satisfy
+  /// a request for the underlying attachment's bytes.
   fileprivate struct BytesUnavailableError: Error {}
 
   borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
@@ -141,13 +120,23 @@ extension ABI.EncodedAttachment: Attachable {
       return try bytes.withUnsafeBytes(body)
     }
 
+#if !SWT_NO_FILE_IO
     guard let path else {
       throw BytesUnavailableError()
     }
+#if canImport(Foundation)
+    // Leverage Foundation's file-mapping logic since we're using Data anyway.
+    let url = URL(fileURLWithPath: path, isDirectory: false)
+    let bytes = try Data(contentsOf: url, options: [.mappedIfSafe])
+#else
     let fileHandle = try FileHandle(forReadingAtPath: path)
-    // TODO: map the attachment back into memory
     let bytes = try fileHandle.readToEnd()
+#endif
     return try bytes.withUnsafeBytes(body)
+#else
+    // Cannot read the attachment from disk on this platform.
+    throw BytesUnavailableError()
+#endif
   }
 
   borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
