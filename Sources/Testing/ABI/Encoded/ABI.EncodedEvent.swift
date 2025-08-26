@@ -66,6 +66,11 @@ extension ABI {
     /// - Warning: Test cases are not yet part of the JSON schema.
     var _testCase: EncodedTestCase<V>?
 
+    /// The comments the test author provided for this event, if any.
+    ///
+    /// - Warning: Comments at this level are not yet part of the JSON schema.
+    var _comments: [String]?
+
     /// A source location associated with this event, if any.
     ///
     /// - Warning: Source locations at this level of the JSON schema are not yet
@@ -86,6 +91,7 @@ extension ABI {
       case let .issueRecorded(recordedIssue):
         kind = .issueRecorded
         issue = EncodedIssue(encoding: recordedIssue, in: eventContext)
+        _comments = recordedIssue.comments.map(\.rawValue)
         _sourceLocation = recordedIssue.sourceLocation
       case let .valueAttached(attachment):
         kind = .valueAttached
@@ -98,14 +104,17 @@ extension ABI {
         kind = .testCaseEnded
       case let .testCaseCancelled(skipInfo):
         kind = .testCaseCancelled
+        _comments = Array(skipInfo.comment).map(\.rawValue)
         _sourceLocation = skipInfo.sourceLocation
       case .testEnded:
         kind = .testEnded
       case let .testSkipped(skipInfo):
         kind = .testSkipped
+        _comments = Array(skipInfo.comment).map(\.rawValue)
         _sourceLocation = skipInfo.sourceLocation
       case let .testCancelled(skipInfo):
         kind = .testCancelled
+        _comments = Array(skipInfo.comment).map(\.rawValue)
         _sourceLocation = skipInfo.sourceLocation
       case .runEnded:
         kind = .runEnded

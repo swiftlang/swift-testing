@@ -159,7 +159,8 @@ extension Issue {
   /// allowing it to propagate to the caller.
   ///
   /// - Parameters:
-  ///   - sourceLocation: The source location to attribute any caught error to.
+  ///   - sourceLocation: The source location to attribute any caught error to,
+  ///     if available.
   ///   - configuration: The test configuration to use when recording an issue.
   ///     The default value is ``Configuration/current``.
   ///   - body: A closure that might throw an error.
@@ -168,7 +169,7 @@ extension Issue {
   ///   caught, otherwise `nil`.
   @discardableResult
   static func withErrorRecording(
-    at sourceLocation: SourceLocation,
+    at sourceLocation: SourceLocation?,
     configuration: Configuration? = nil,
     _ body: () throws -> Void
   ) -> (any Error)? {
@@ -202,7 +203,8 @@ extension Issue {
   /// issue instead of allowing it to propagate to the caller.
   ///
   /// - Parameters:
-  ///   - sourceLocation: The source location to attribute any caught error to.
+  ///   - sourceLocation: The source location to attribute any caught error to,
+  ///     if available.
   ///   - configuration: The test configuration to use when recording an issue.
   ///     The default value is ``Configuration/current``.
   ///   - isolation: The actor to which `body` is isolated, if any.
@@ -212,7 +214,7 @@ extension Issue {
   ///   caught, otherwise `nil`.
   @discardableResult
   static func withErrorRecording(
-    at sourceLocation: SourceLocation,
+    at sourceLocation: SourceLocation?,
     configuration: Configuration? = nil,
     isolation: isolated (any Actor)? = #isolation,
     _ body: () async throws -> Void

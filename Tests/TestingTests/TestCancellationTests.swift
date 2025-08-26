@@ -126,12 +126,26 @@
   }
 
 #if !SWT_NO_EXIT_TESTS
-  @Test func `Cancelling from within an exit test records an issue`() async {
-    await testCancellation(issueRecorded: 1) { configuration in
+  @Test func `Cancelling the current test from within an exit test`() async {
+    await testCancellation(testCancelled: 1, testCaseCancelled: 1) { configuration in
       await Test {
         await #expect(processExitsWith: .success) {
-          _ = try? Test.cancel("Cancelled test")
+          try Test.cancel("Cancelled test")
         }
+        #expect(Task.isCancelled)
+        try Task.checkCancellation()
+      }.run(configuration: configuration)
+    }
+  }
+
+  @Test func `Cancelling the current test case from within an exit test`() async {
+    await testCancellation(testCancelled: 1, testCaseCancelled: 1) { configuration in
+      await Test {
+        await #expect(processExitsWith: .success) {
+          try Test.Case.cancel("Cancelled test")
+        }
+        #expect(Task.isCancelled)
+        try Task.checkCancellation()
       }.run(configuration: configuration)
     }
   }
