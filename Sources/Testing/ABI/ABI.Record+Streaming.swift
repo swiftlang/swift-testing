@@ -47,18 +47,11 @@ extension ABI.Xcode16 {
     forwardingTo eventHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
   ) -> Event.Handler {
     return { event, context in
-      switch event.kind {
-      case .testDiscovered:
+      if case .testDiscovered = event.kind {
         // Discard events of this kind rather than forwarding them to avoid a
         // crash in Xcode 16 (which does not expect any events to occur before
         // .runStarted.)
         return
-      case .testCancelled, .testCaseCancelled:
-        // Discard these events as Xcode 16 does not know how to handle them and
-        // may crash if they arrive during trait evaluation.
-        return
-      default:
-        break
       }
 
       struct EventAndContextSnapshot: Codable {
