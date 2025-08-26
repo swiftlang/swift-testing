@@ -62,6 +62,7 @@ extension ABI.Xcode16 {
         event: Event.Snapshot(snapshotting: event),
         eventContext: Event.Context.Snapshot(snapshotting: context)
       )
+
       try? JSON.withEncoding(of: snapshot) { eventAndContextJSON in
         eventAndContextJSON.withUnsafeBytes { eventAndContextJSON in
           eventHandler(eventAndContextJSON)

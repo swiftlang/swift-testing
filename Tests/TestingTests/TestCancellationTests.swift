@@ -10,7 +10,7 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-struct `Test cancellation tests` {
+@Suite(.serialized) struct `Test cancellation tests` {
   func testCancellation(testCancelled: Int = 0, testSkipped: Int = 0, testCaseCancelled: Int = 0, issueRecorded: Int = 0, _ body: @Sendable (Configuration) async -> Void) async {
     await confirmation("Test cancelled", expectedCount: testCancelled) { testCancelled in
       await confirmation("Test skipped", expectedCount: testSkipped) { testSkipped in
@@ -45,7 +45,7 @@ struct `Test cancellation tests` {
   }
 
   @Test func `Cancelling a test`() async {
-    await testCancellation(testCancelled: 1) { configuration in
+    await testCancellation(testCancelled: 1, testCaseCancelled: 1) { configuration in
       await Test {
         try Test.cancel("Cancelled test")
       }.run(configuration: configuration)
@@ -53,7 +53,7 @@ struct `Test cancellation tests` {
   }
 
   @Test func `Cancelling a non-parameterized test via Test.Case.cancel()`() async {
-    await testCancellation(testCancelled: 1) { configuration in
+    await testCancellation(testCancelled: 1, testCaseCancelled: 1) { configuration in
       await Test {
         try Test.Case.cancel("Cancelled test")
       }.run(configuration: configuration)
@@ -85,7 +85,7 @@ struct `Test cancellation tests` {
   }
 
   @Test func `Cancelling a test by cancelling its task (throwing)`() async {
-    await testCancellation(testCancelled: 1) { configuration in
+    await testCancellation(testCancelled: 1, testCaseCancelled: 1) { configuration in
       await Test {
         withUnsafeCurrentTask { $0?.cancel() }
         try Task.checkCancellation()
@@ -94,7 +94,7 @@ struct `Test cancellation tests` {
   }
 
   @Test func `Cancelling a test by cancelling its task (returning)`() async {
-    await testCancellation(testCancelled: 1) { configuration in
+    await testCancellation(testCancelled: 1, testCaseCancelled: 1) { configuration in
       await Test {
         withUnsafeCurrentTask { $0?.cancel() }
       }.run(configuration: configuration)
@@ -106,18 +106,6 @@ struct `Test cancellation tests` {
       await Test {
         throw CancellationError()
       }.run(configuration: configuration)
-    }
-  }
-
-  struct CancelledTrait: TestTrait {
-    var cancelsTask = false
-
-    func prepare(for test: Test) async throws {
-      if cancelsTask {
-        withUnsafeCurrentTask { $0?.cancel() }
-        throw CancellationError()
-      }
-      try Test.cancel("Cancelled from trait")
     }
   }
 
@@ -176,6 +164,28 @@ final class TestCancellationTests: XCTestCase {
     }.run(configuration: configuration)
 
     await fulfillment(of: [testCancelled, issueRecorded], timeout: 0.0)
+  }
+}
+#endif
+
+// MARK: - Fixtures
+
+struct CancelledTrait: TestTrait {
+  var cancelsTask = false
+
+  func prepare(for test: Test) async throws {
+    if cancelsTask {
+      withUnsafeCurrentTask { $0?.cancel() }
+      throw CancellationError()
+    }
+    try Test.cancel("Cancelled from trait")
+  }
+}
+
+#if !SWT_NO_SNAPSHOT_TYPES
+struct `Shows as skipped in Xcode 16` {
+  @Test func `Cancelled test`() throws {
+    try Test.cancel("This test should appear cancelled/skipped")
   }
 }
 #endif
