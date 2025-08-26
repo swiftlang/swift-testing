@@ -131,7 +131,7 @@ extension ABI {
   /// considered experimental.
   enum ExperimentalVersion: Sendable, Version {
     static var versionNumber: VersionNumber {
-      VersionNumber(99, 99)
+      VersionNumber(99, 0)
     }
   }
 }
