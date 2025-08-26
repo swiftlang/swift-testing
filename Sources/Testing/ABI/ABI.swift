@@ -45,7 +45,8 @@ extension ABI {
   /// The current supported ABI version (ignoring any experimental versions.)
   typealias CurrentVersion = v0
 
-  /// The highest supported ABI version (including any experimental versions.)
+  /// The highest defined and supported ABI version (including any experimental
+  /// versions.)
   typealias HighestVersion = v6_3
 
 #if !hasFeature(Embedded)
@@ -123,6 +124,14 @@ extension ABI {
   public enum v6_3: Sendable, Version {
     static var versionNumber: VersionNumber {
       VersionNumber(6, 3)
+    }
+  }
+
+  /// A namespace and type representing the ABI version whose symbols are
+  /// considered experimental.
+  enum ExperimentalVersion: Sendable, Version {
+    static var versionNumber: VersionNumber {
+      VersionNumber(99, 99)
     }
   }
 }

@@ -73,11 +73,13 @@ extension ABI {
       }
 
       // Experimental
-      if let backtrace = issue.sourceContext.backtrace {
-        _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)
-      }
-      if let error = issue.error {
-        _error = EncodedError(encoding: error, in: eventContext)
+      if V.versionNumber >= ABI.ExperimentalVersion.versionNumber {
+        if let backtrace = issue.sourceContext.backtrace {
+          _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)
+        }
+        if let error = issue.error {
+          _error = EncodedError(encoding: error, in: eventContext)
+        }
       }
     }
   }
