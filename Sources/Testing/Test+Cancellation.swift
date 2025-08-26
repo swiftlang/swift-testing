@@ -146,7 +146,9 @@ private func _cancel<T>(_ cancellableValue: T?, for testAndTestCase: (Test?, Tes
     } else {
       ["Attempted to cancel the current test or test case, but one is not associated with the current task."]
     }
-    comments.append(comment)
+    if let comment {
+      comments.append(comment)
+    }
     let issue = Issue(kind: .apiMisused, comments: comments, sourceContext: sourceContext())
     issue.record()
   }
