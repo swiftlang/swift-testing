@@ -26,7 +26,7 @@ protocol TestCancellable: Sendable {
   /// Note that the public ``Test/cancel(_:sourceLocation:)`` function has a
   /// different signature and accepts a source location rather than a source
   /// context value.
-  static func cancel(comment: Comment?, sourceContext: SourceContext) throws -> Never
+  static func cancel(comment: Comment?, sourceContext: @autoclosure () -> SourceContext) throws -> Never
 
   /// Make an instance of ``Event/Kind`` appropriate for an instance of this
   /// type.
@@ -95,8 +95,10 @@ extension TestCancellable {
       } onCancel: {
         // The current task was cancelled, so cancel the test case or test
         // associated with it.
-        let sourceContext = SourceContext(backtrace: .current(), sourceLocation: nil)
-        _ = try? Self.cancel(comment: nil, sourceContext: sourceContext)
+        _ = try? Self.cancel(
+          comment: nil,
+          sourceContext: SourceContext(backtrace: .current(), sourceLocation: nil)
+        )
       }
     }
   }
@@ -115,8 +117,8 @@ extension TestCancellable {
 ///     attribute the cancellation.
 ///
 /// - Throws: An instance of ``SkipInfo`` describing the cancellation.
-private func _cancel<T>(_ cancellableValue: T?, for testAndTestCase: (Test?, Test.Case?), comment: Comment?, sourceContext: SourceContext) throws -> Never where T: TestCancellable {
-  let skipInfo = SkipInfo(comment: comment, sourceContext: sourceContext)
+private func _cancel<T>(_ cancellableValue: T?, for testAndTestCase: (Test?, Test.Case?), comment: Comment?, sourceContext: @autoclosure () -> SourceContext) throws -> Never where T: TestCancellable {
+  var skipInfo = SkipInfo(comment: comment, sourceContext: .init(backtrace: nil, sourceLocation: nil))
 
   if cancellableValue != nil {
     // If the current test case is still running, cancel its task and clear its
@@ -127,6 +129,7 @@ private func _cancel<T>(_ cancellableValue: T?, for testAndTestCase: (Test?, Tes
     // If we just cancelled the current test case's task, post a corresponding
     // event with the relevant skip info.
     if task != nil {
+      skipInfo.sourceContext = sourceContext()
       Event.post(T.makeCancelledEventKind(with: skipInfo), for: testAndTestCase)
     }
   } else {
@@ -146,7 +149,7 @@ private func _cancel<T>(_ cancellableValue: T?, for testAndTestCase: (Test?, Tes
     let issue = Issue(
       kind: .apiMisused,
       comments: CollectionOfOne(comment) + Array(comment),
-      sourceContext: sourceContext
+      sourceContext: sourceContext()
     )
     issue.record()
   }
@@ -196,13 +199,15 @@ extension Test: TestCancellable {
   ///   this function records an issue and cancels the current task.
   @_spi(Experimental)
   public static func cancel(_ comment: Comment? = nil, sourceLocation: SourceLocation = #_sourceLocation) throws -> Never {
-    let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
-    try Self.cancel(comment: comment, sourceContext: sourceContext)
+    try Self.cancel(
+      comment: comment,
+      sourceContext: SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
+    )
   }
 
-  static func cancel(comment: Comment?, sourceContext: SourceContext) throws -> Never {
+  static func cancel(comment: Comment?, sourceContext: @autoclosure () -> SourceContext) throws -> Never {
     let test = Test.current
-    try _cancel(test, for: (test, nil), comment: comment, sourceContext: sourceContext)
+    try _cancel(test, for: (test, nil), comment: comment, sourceContext: sourceContext())
   }
 
   static func makeCancelledEventKind(with skipInfo: SkipInfo) -> Event.Kind {
@@ -252,13 +257,16 @@ extension Test.Case: TestCancellable {
   ///   this function records an issue and cancels the current task.
   @_spi(Experimental)
   public static func cancel(_ comment: Comment? = nil, sourceLocation: SourceLocation = #_sourceLocation) throws -> Never {
-    let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
-    try Self.cancel(comment: comment, sourceContext: sourceContext)
+    try Self.cancel(
+      comment: comment,
+      sourceContext: SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
+    )
   }
 
-  static func cancel(comment: Comment?, sourceContext: SourceContext) throws -> Never {
+  static func cancel(comment: Comment?, sourceContext: @autoclosure () -> SourceContext) throws -> Never {
     let test = Test.current
     let testCase = Test.Case.current
+    let sourceContext = sourceContext() // evaluated twice, avoid laziness
 
     do {
       // Cancel the current test case (if it's nil, that's the API misuse path.)
