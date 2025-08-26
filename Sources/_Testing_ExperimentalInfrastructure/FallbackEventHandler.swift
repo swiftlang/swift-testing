@@ -15,6 +15,7 @@ private import Synchronization
 #endif
 
 #if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK
+/// The installed event handler.
 private nonisolated(unsafe) let _fallbackEventHandler = {
   let result = ManagedBuffer<FallbackEventHandler?, os_unfair_lock>.create(
     minimumCapacity: 1,
@@ -24,6 +25,7 @@ private nonisolated(unsafe) let _fallbackEventHandler = {
   return result
 }()
 #else
+/// The installed event handler.
 private nonisolated(unsafe) let _fallbackEventHandler = Atomic<UnsafeRawPointer?>(nil)
 #endif
 
@@ -36,6 +38,7 @@ private nonisolated(unsafe) let _fallbackEventHandler = Atomic<UnsafeRawPointer?
 ///   - recordJSONBaseAddress: A pointer to the first byte of the encoded event.
 ///   - recordJSONByteCount: The size of the encoded event in bytes.
 ///   - reserved: Reserved for future use.
+@usableFromInline
 package typealias FallbackEventHandler = @Sendable @convention(c) (
   _ recordJSONSchemaVersionNumber: UnsafePointer<CChar>,
   _ recordJSONBaseAddress: UnsafeRawPointer,
@@ -52,6 +55,7 @@ package typealias FallbackEventHandler = @Sendable @convention(c) (
 ///   exchange the previous value with a new value, call
 ///   ``setFallbackEventHandler(_:)`` and store its returned value.
 @_cdecl("swift_testing_getFallbackEventHandler")
+@usableFromInline
 package func fallbackEventHandler() -> FallbackEventHandler? {
 #if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK
   return _fallbackEventHandler.withUnsafeMutablePointers { fallbackEventHandler, lock in
@@ -79,6 +83,7 @@ package func fallbackEventHandler() -> FallbackEventHandler? {
 /// by the first testing library to run. If this function has already been
 /// called and the handler set, it does not replace the previous handler.
 @_cdecl("swift_testing_installFallbackEventHandler")
+@usableFromInline
 package func installFallbackEventHandler(_ handler: FallbackEventHandler) -> CBool {
 #if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK
   return _fallbackEventHandler.withUnsafeMutablePointers { fallbackEventHandler, lock in
