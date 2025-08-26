@@ -767,8 +767,12 @@ extension ExitTest {
       }
     }
     configuration.eventHandler = { event, eventContext in
-      if case .issueRecorded = event.kind {
+      switch event.kind {
+      case .issueRecorded, .valueAttached:
         eventHandler(event, eventContext)
+      default:
+        // Don't forward other kinds of event.
+        break
       }
     }
 
@@ -1034,8 +1038,11 @@ extension ExitTest {
   /// - Throws: Any error encountered attempting to decode or process the JSON.
   private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
     let record = try JSON.decode(ABI.Record<ABI.BackChannelVersion>.self, from: recordJSON)
+    guard case let .event(event) = record.kind else {
+      return
+    }
 
-    if case let .event(event) = record.kind, let issue = event.issue {
+    if let issue = event.issue {
       // Translate the issue back into a "real" issue and record it
       // in the parent process. This translation is, of course, lossy
       // due to the process boundary, but we make a best effort.
@@ -1046,10 +1053,11 @@ extension ExitTest {
         // TODO: improve fidelity of issue kind reporting (especially those without associated values)
         .unconditional
       }
-      let severity: Issue.Severity = switch issue._severity {
+      let severity: Issue.Severity = switch issue.severity {
       case .warning:
         .warning
-      case .error:
+      case .error, nil:
+        // Prior to 6.3, all Issues are errors
         .error
       }
       let sourceContext = SourceContext(
@@ -1063,6 +1071,8 @@ extension ExitTest {
         issueCopy.knownIssueContext = Issue.KnownIssueContext()
       }
       issueCopy.record()
+    } else if let attachment = event.attachment {
+      Attachment.record(attachment, sourceLocation: attachment._sourceLocation!)
     }
   }
 
