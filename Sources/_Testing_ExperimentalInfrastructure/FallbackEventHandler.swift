@@ -8,7 +8,24 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK
 private import _TestingInternals
+#else
+private import Synchronization
+#endif
+
+#if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK
+private nonisolated(unsafe) let _fallbackEventHandler = {
+  let result = ManagedBuffer<FallbackEventHandler?, os_unfair_lock>.create(
+    minimumCapacity: 1,
+    makingHeaderWith: { _ in nil }
+  )
+  result.withUnsafeMutablePointerToHeader { $0.initialize(to: nil) }
+  return result
+}()
+#else
+private nonisolated(unsafe) let _fallbackEventHandler = Atomic<UnsafeRawPointer?>(nil)
+#endif
 
 /// A type describing a fallback event handler to invoke when testing API is
 /// used while the testing library is not running.
@@ -36,7 +53,19 @@ package typealias FallbackEventHandler = @Sendable @convention(c) (
 ///   ``setFallbackEventHandler(_:)`` and store its returned value.
 @_cdecl("swift_testing_getFallbackEventHandler")
 package func fallbackEventHandler() -> FallbackEventHandler? {
-  swt_loadFallbackEventHandler()
+#if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK
+  return _fallbackEventHandler.withUnsafeMutablePointers { fallbackEventHandler, lock in
+    os_unfair_lock_lock(lock)
+    defer {
+      os_unfair_lock_unlock(lock)
+    }
+    return fallbackEventHandler.pointee
+  }
+#else
+  return _fallbackEventHandler.load(ordering: .sequentiallyConsistent).map { fallbackEventHandler in
+    unsafeBitCast(fallbackEventHandler, to: FallbackEventHandler?.self)
+  }
+#endif
 }
 
 /// Set the current fallback event handler if one has not already been set.
@@ -51,5 +80,20 @@ package func fallbackEventHandler() -> FallbackEventHandler? {
 /// called and the handler set, it does not replace the previous handler.
 @_cdecl("swift_testing_installFallbackEventHandler")
 package func installFallbackEventHandler(_ handler: FallbackEventHandler) -> CBool {
-  swt_installFallbackEventHandler(handler)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK
+  return _fallbackEventHandler.withUnsafeMutablePointers { fallbackEventHandler, lock in
+    os_unfair_lock_lock(lock)
+    defer {
+      os_unfair_lock_unlock(lock)
+    }
+    guard fallbackEventHandler.pointee == nil else {
+      return false
+    }
+    fallbackEventHandler.pointee = handler
+    return true
+  }
+#else
+  let handler = unsafeBitCast(handler, to: UnsafeRawPointer.self)
+  return _fallbackEventHandler.compareExchange(expected: nil, desired: handler, ordering: .sequentiallyConsistent).exchanged
+#endif
 }
