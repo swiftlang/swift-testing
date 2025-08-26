@@ -67,8 +67,9 @@ extension TestCancellable {
   ///
   /// - Throws: Whatever is thrown by `body`.
   ///
-  /// This function sets the ``unsafeCurrentTask`` property, calls `body`, then
-  /// sets ``unsafeCurrentTask`` back to its previous value.
+  /// This function sets up a task cancellation handler and calls `body`. If
+  /// the current task, test, or test case is cancelled, it records a
+  /// corresponding cancellation event.
   func withCancellationHandling<R>(_ body: () async throws -> R) async rethrows -> R {
     var currentTaskReferences = _currentTaskReferences
     currentTaskReferences[ObjectIdentifier(Self.self)] = _TaskReference()

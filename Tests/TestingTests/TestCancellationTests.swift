@@ -107,14 +107,28 @@ struct `Test cancellation tests` {
   }
 
   struct CancelledTrait: TestTrait {
+    var cancelsTask = false
+
     func prepare(for test: Test) async throws {
+      if cancelsTask {
+        withUnsafeCurrentTask { $0?.cancel() }
+        throw CancellationError()
+      }
       try Test.cancel("Cancelled from trait")
     }
   }
 
-  @Test func `Cancelling a test case while evaluating traits skips the test`() async {
+  @Test func `Cancelling a test while evaluating traits skips the test`() async {
     await testCancellation(testSkipped: 1) { configuration in
       await Test(CancelledTrait()) {
+        Issue.record("Recorded an issue!")
+      }.run(configuration: configuration)
+    }
+  }
+
+  @Test func `Cancelling the current task while evaluating traits skips the test`() async {
+    await testCancellation(testSkipped: 1) { configuration in
+      await Test(CancelledTrait(cancelsTask: true)) {
         Issue.record("Recorded an issue!")
       }.run(configuration: configuration)
     }
