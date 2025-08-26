@@ -1072,7 +1072,7 @@ extension ExitTest {
       }
       issueCopy.record()
     } else if let attachment = event.attachment {
-      Attachment.record(attachment, sourceLocation: attachment._sourceLocation!)
+      Attachment.record(attachment, sourceLocation: event._sourceLocation!)
     }
   }
 
