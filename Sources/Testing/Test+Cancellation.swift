@@ -67,7 +67,7 @@ private struct _TaskReference: Sendable {
   }
 }
 
-/// A dictionary of tasks tracked per-task and keyed by types that conform to
+/// A dictionary of tracked tasks, keyed by types that conform to
 /// ``TestCancellable``.
 @TaskLocal
 private var _currentTaskReferences = [ObjectIdentifier: _TaskReference]()
@@ -139,18 +139,15 @@ private func _cancel<T>(_ cancellableValue: T?, for testAndTestCase: (Test?, Tes
       task?.cancel()
     }
 
-    let comment: Comment = if ExitTest.current != nil {
+    var comments: [Comment] = if ExitTest.current != nil {
       // Attempted to cancel the test or test case from within an exit test. The
       // semantics of such an action aren't yet well-defined.
-      "Attempted to cancel the current test or test case from within an exit test."
+      ["Attempted to cancel the current test or test case from within an exit test."]
     } else {
-      "Attempted to cancel the current test or test case, but one is not associated with the current task."
+      ["Attempted to cancel the current test or test case, but one is not associated with the current task."]
     }
-    let issue = Issue(
-      kind: .apiMisused,
-      comments: CollectionOfOne(comment) + Array(comment),
-      sourceContext: sourceContext()
-    )
+    comments.append(comment)
+    let issue = Issue(kind: .apiMisused, comments: comments, sourceContext: sourceContext())
     issue.record()
   }
 
