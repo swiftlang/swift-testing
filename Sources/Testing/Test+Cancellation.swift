@@ -247,7 +247,7 @@ extension Test.Case: TestCancellable {
   /// - Important: If the current task is not associated with a test case (for
   ///   example, because it was created with [`Task.detached(name:priority:operation:)`](https://developer.apple.com/documentation/swift/task/detached(name:priority:operation:)-795w1))
   ///   this function records an issue and cancels the current task.
-  //@_spi(Experimental)
+  @_spi(Experimental)
   public static func cancel(_ comment: Comment? = nil, sourceLocation: SourceLocation = #_sourceLocation) throws -> Never {
     let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
     try Self.cancel(comment: comment, sourceContext: sourceContext)
