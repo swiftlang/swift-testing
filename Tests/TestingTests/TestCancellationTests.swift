@@ -109,6 +109,13 @@
     }
   }
 
+  @Test func `Throwing CancellationError while evaluating traits without cancelling the test task`() async {
+    await testCancellation(issueRecorded: 1) { configuration in
+      await Test(CancelledTrait(throwsWithoutCancelling: true)) {
+      }.run(configuration: configuration)
+    }
+  }
+
   @Test func `Cancelling a test while evaluating traits skips the test`() async {
     await testCancellation(testSkipped: 1) { configuration in
       await Test(CancelledTrait()) {
@@ -197,12 +204,16 @@ final class TestCancellationTests: XCTestCase {
 // MARK: - Fixtures
 
 struct CancelledTrait: TestTrait {
+  var throwsWithoutCancelling = false
   var cancelsTask = false
 
   func prepare(for test: Test) async throws {
+    if throwsWithoutCancelling {
+      throw CancellationError()
+    }
     if cancelsTask {
       withUnsafeCurrentTask { $0?.cancel() }
-      throw CancellationError()
+      try Task.checkCancellation()
     }
     try Test.cancel("Cancelled from trait")
   }

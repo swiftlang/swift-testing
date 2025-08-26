@@ -219,7 +219,7 @@ extension Runner.Plan {
             } catch let error as SkipInfo {
               action = .skip(error)
               break
-            } catch is CancellationError {
+            } catch is CancellationError where Task.isCancelled {
               // Synthesize skip info for this cancellation error.
               let sourceContext = SourceContext(backtrace: .current(), sourceLocation: nil)
               let skipInfo = SkipInfo(comment: nil, sourceContext: sourceContext)
