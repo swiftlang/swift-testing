@@ -149,6 +149,18 @@
       }.run(configuration: configuration)
     }
   }
+
+  @Test func `Cancelling the current task in an exit test doesn't cancel the test`() async {
+    await testCancellation(testCancelled: 0, testCaseCancelled: 0) { configuration in
+      await Test {
+        await #expect(processExitsWith: .success) {
+          withUnsafeCurrentTask { $0?.cancel() }
+        }
+        #expect(!Task.isCancelled)
+        try Task.checkCancellation()
+      }.run(configuration: configuration)
+    }
+  }
 #endif
 }
 

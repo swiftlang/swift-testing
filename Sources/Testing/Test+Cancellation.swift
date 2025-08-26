@@ -192,15 +192,16 @@ extension Test: TestCancellable {
   /// @Comment {
   ///   TODO: Document the interaction between an exit test and test
   ///   cancellation. In particular, the error thrown by this function isn't
-  ///   thrown into the parent process.
+  ///   thrown into the parent process and task cancellation doesn't propagate
+  ///   (because the exit test _de facto_ runs in a detached task.)
   /// }
-  ///
-  /// To cancel the current test case but leave other test cases of the current
-  /// test alone, call ``Test/Case/cancel(_:sourceLocation:)`` instead.
   ///
   /// - Important: If the current task is not associated with a test (for
   ///   example, because it was created with [`Task.detached(name:priority:operation:)`](https://developer.apple.com/documentation/swift/task/detached(name:priority:operation:)-795w1))
   ///   this function records an issue and cancels the current task.
+  ///
+  /// To cancel the current test case but leave other test cases of the current
+  /// test alone, call ``Test/Case/cancel(_:sourceLocation:)`` instead.
   @_spi(Experimental)
   public static func cancel(_ comment: Comment? = nil, sourceLocation: SourceLocation = #_sourceLocation) throws -> Never {
     try Self.cancel(
@@ -254,15 +255,16 @@ extension Test.Case: TestCancellable {
   /// @Comment {
   ///   TODO: Document the interaction between an exit test and test
   ///   cancellation. In particular, the error thrown by this function isn't
-  ///   thrown into the parent process.
+  ///   thrown into the parent process and task cancellation doesn't propagate
+  ///   (because the exit test _de facto_ runs in a detached task.)
   /// }
-  ///
-  /// To cancel all test cases in the current test, call
-  /// ``Test/cancel(_:sourceLocation:)`` instead.
   ///
   /// - Important: If the current task is not associated with a test case (for
   ///   example, because it was created with [`Task.detached(name:priority:operation:)`](https://developer.apple.com/documentation/swift/task/detached(name:priority:operation:)-795w1))
   ///   this function records an issue and cancels the current task.
+  ///
+  /// To cancel all test cases in the current test, call
+  /// ``Test/cancel(_:sourceLocation:)`` instead.
   @_spi(Experimental)
   public static func cancel(_ comment: Comment? = nil, sourceLocation: SourceLocation = #_sourceLocation) throws -> Never {
     try Self.cancel(
