@@ -233,9 +233,6 @@ extension Test {
     /// Do not invoke this closure directly. Always use a ``Runner`` to invoke a
     /// test or test case.
     var body: @Sendable () async throws -> Void
-
-    /// The task associated with this instance, if any, guarded by a lock.
-    nonisolated(unsafe) var unsafeCurrentTask = Locked<UnsafeCurrentTask?>()
   }
 
   /// A type representing a single parameter to a parameterized test function.
@@ -287,9 +284,6 @@ extension Test.Case.Argument.ID: Codable {}
 
 extension Test.Parameter: Hashable {}
 extension Test.Case.Argument.ID: Hashable {}
-
-// MARK: - Cancellation
-
 
 #if !SWT_NO_SNAPSHOT_TYPES
 // MARK: - Snapshotting

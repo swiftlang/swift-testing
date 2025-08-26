@@ -13,17 +13,48 @@
 /// This protocol is used to abstract away the common implementation of test and
 /// test case cancellation.
 protocol TestCancellable: Sendable {
-  /// The task associated with this instance, if any, guarded by a lock.
-  var unsafeCurrentTask: Locked<UnsafeCurrentTask?> { get set }
-
   /// Make an instance of ``Event/Kind`` appropriate for `self`.
   ///
   /// - Parameters:
   ///   - skipInfo: The ``SkipInfo`` structure describing the cancellation.
   ///
   /// - Returns: An instance of ``Event/Kind`` that describes the cancellation.
-  func makeCancelledEventKind(with skipInfo: SkipInfo) -> Event.Kind
+  static func makeCancelledEventKind(with skipInfo: SkipInfo) -> Event.Kind
 }
+
+// MARK: - Tracking the current task
+
+/// A structure describing a reference to a task that is associated with some
+/// ``TestCancellable`` value.
+private struct _TaskReference: Sendable {
+  /// The unsafe underlying reference to the associated task.
+  private nonisolated(unsafe) var _unsafeCurrentTask = Locked<UnsafeCurrentTask?>()
+
+  init() {
+    let unsafeCurrentTask = withUnsafeCurrentTask { $0 }
+    _unsafeCurrentTask = Locked(rawValue: unsafeCurrentTask)
+  }
+
+  /// Take this instance's reference to its associated task.
+  ///
+  /// - Returns: An `UnsafeCurrentTask` instance, or `nil` if it was already
+  ///   taken or if it was never available.
+  ///
+  /// This function consumes the reference to the task. After the first call,
+  /// subsequent calls on the same instance return `nil`.
+  func takeUnsafeCurrentTask() -> UnsafeCurrentTask? {
+    _unsafeCurrentTask.withLock { unsafeCurrentTask in
+      let result = unsafeCurrentTask
+      unsafeCurrentTask = nil
+      return result
+    }
+  }
+}
+
+/// A dictionary of tasks tracked per-task and keyed by types that conform to
+/// ``TestCancellable``.
+@TaskLocal
+private var _currentTaskReferences = [ObjectIdentifier: _TaskReference]()
 
 extension TestCancellable {
   /// Call a function while the ``unsafeCurrentTask`` property of this instance
@@ -39,31 +70,25 @@ extension TestCancellable {
   /// This function sets the ``unsafeCurrentTask`` property, calls `body`, then
   /// sets ``unsafeCurrentTask`` back to its previous value.
   func withCancellationHandling<R>(_ body: () async throws -> R) async rethrows -> R {
-    // TODO: adopt async withUnsafeCurrentTask() when our deployment target allows
-    let oldTask = withUnsafeCurrentTask { task in
-      unsafeCurrentTask.withLock { unsafeCurrentTask in
-        let oldTask = unsafeCurrentTask
-        unsafeCurrentTask = task
-        return oldTask
-      }
-    }
-    defer {
-      unsafeCurrentTask.withLock { $0 = oldTask }
-    }
-
-    return try await withTaskCancellationHandler {
-      try await body()
-    } onCancel: {
-      // The current task was cancelled, so cancel the test case or test
-      // associated with it.
-      if Test.Case.current != nil {
-        _ = try? Test.Case.cancel(comment: nil, sourceLocation: nil)
-      } else if let test = Test.current {
-        _ = try? _cancel(test, nil, sourceLocation: nil)
+    var currentTaskReferences = _currentTaskReferences
+    currentTaskReferences[ObjectIdentifier(Self.self)] = _TaskReference()
+    return try await $_currentTaskReferences.withValue(currentTaskReferences) {
+      try await withTaskCancellationHandler {
+        try await body()
+      } onCancel: {
+        // The current task was cancelled, so cancel the test case or test
+        // associated with it.
+        if Test.Case.current != nil {
+          _ = try? Test.Case.cancel(comment: nil, sourceLocation: nil)
+        } else if let test = Test.current {
+          _ = try? _cancel(test, comment: nil, sourceLocation: nil)
+        }
       }
     }
   }
 }
+
+// MARK: -
 
 /// The common implementation of cancellation for ``Test`` and ``Test/Case``.
 ///
@@ -75,24 +100,20 @@ extension TestCancellable {
 ///     attribute the cancellation, if available.
 ///
 /// - Throws: An instance of ``SkipInfo`` describing the cancellation.
-private func _cancel(_ cancellableValue: (some TestCancellable)?, _ comment: Comment?, sourceLocation: SourceLocation?) throws -> Never {
+private func _cancel<T>(_ cancellableValue: T?, comment: Comment?, sourceLocation: SourceLocation?) throws -> Never where T: TestCancellable {
   let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
   let skipInfo = SkipInfo(comment: comment, sourceContext: sourceContext)
 
-  if let cancellableValue {
+  if cancellableValue != nil {
     // If the current test case is still running, cancel its task and clear its
     // task property (which signals that it has been cancelled.)
-    let task = cancellableValue.unsafeCurrentTask.withLock { task in
-      let result = task
-      task = nil
-      return result
-    }
+    let task = _currentTaskReferences[ObjectIdentifier(T.self)]?.takeUnsafeCurrentTask()
     task?.cancel()
 
     // If we just cancelled the current test case's task, post a corresponding
     // event with the relevant skip info.
     if task != nil {
-      Event.post(cancellableValue.makeCancelledEventKind(with: skipInfo))
+      Event.post(T.makeCancelledEventKind(with: skipInfo))
     }
   } else {
     // The current task isn't associated with a test case, so just cancel it
@@ -101,11 +122,21 @@ private func _cancel(_ cancellableValue: (some TestCancellable)?, _ comment: Com
       task?.cancel()
     }
 
-    let issue = Issue(
-      kind: .apiMisused,
-      comments: ["Attempted to cancel the current test or case, but one is not associated with the current task."] + Array(comment),
-      sourceContext: sourceContext
-    )
+    let issue = if ExitTest.current != nil {
+      // Attempted to cancel the test or test case from within an exit test. The
+      // semantics of such an action aren't yet well-defined.
+      Issue(
+        kind: .apiMisused,
+        comments: ["Attempted to cancel the current test or test case from within an exit test."] + Array(comment),
+        sourceContext: sourceContext
+      )
+    } else {
+      Issue(
+        kind: .apiMisused,
+        comments: ["Attempted to cancel the current test or test case, but one is not associated with the current task."] + Array(comment),
+        sourceContext: sourceContext
+      )
+    }
     issue.record()
   }
 
@@ -144,6 +175,8 @@ extension Test: TestCancellable {
   /// test or if it has already finished running, this function throws an error
   /// but does not attempt to cancel the test a second time.
   ///
+  /// - Note: You cannot cancel a test from within the body of an [exit test](doc:exit-testing).
+  ///
   /// To cancel the current test case but leave other test cases of the current
   /// test alone, call ``Test/Case/cancel(_:sourceLocation:)`` instead.
   ///
@@ -152,10 +185,10 @@ extension Test: TestCancellable {
   ///   this function records an issue and cancels the current task.
   @_spi(Experimental)
   public static func cancel(_ comment: Comment? = nil, sourceLocation: SourceLocation = #_sourceLocation) throws -> Never {
-    try _cancel(Test.current, comment, sourceLocation: sourceLocation)
+    try _cancel(Test.current, comment: comment, sourceLocation: sourceLocation)
   }
 
-  func makeCancelledEventKind(with skipInfo: SkipInfo) -> Event.Kind {
+  static func makeCancelledEventKind(with skipInfo: SkipInfo) -> Event.Kind {
     .testCancelled(skipInfo)
   }
 }
@@ -180,11 +213,11 @@ extension Test.Case: TestCancellable {
     if let test = Test.current, !test.isParameterized {
       // The current test is not parameterized, so cancel the whole test rather
       // than just the test case.
-      try _cancel(test, comment, sourceLocation: sourceLocation)
+      try _cancel(test, comment: comment, sourceLocation: sourceLocation)
     }
 
     // Cancel the current test case (if it's nil, that's the API misuse path.)
-    try _cancel(Test.Case.current, comment, sourceLocation: sourceLocation)
+    try _cancel(Test.Case.current, comment: comment, sourceLocation: sourceLocation)
   }
 
   /// Cancel the current test case.
@@ -216,18 +249,20 @@ extension Test.Case: TestCancellable {
   /// function throws an error but does not attempt to cancel the test case a
   /// second time.
   ///
+  /// - Note: You cannot cancel a test case from within the body of an [exit test](doc:exit-testing).
+  ///
   /// To cancel all test cases in the current test, call
   /// ``Test/cancel(_:sourceLocation:)`` instead.
   ///
   /// - Important: If the current task is not associated with a test case (for
   ///   example, because it was created with [`Task.detached(name:priority:operation:)`](https://developer.apple.com/documentation/swift/task/detached(name:priority:operation:)-795w1))
   ///   this function records an issue and cancels the current task.
-  @_spi(Experimental)
+  //@_spi(Experimental)
   public static func cancel(_ comment: Comment? = nil, sourceLocation: SourceLocation = #_sourceLocation) throws -> Never {
     try cancel(comment: comment, sourceLocation: sourceLocation)
   }
 
-  func makeCancelledEventKind(with skipInfo: SkipInfo) -> Event.Kind {
+  static func makeCancelledEventKind(with skipInfo: SkipInfo) -> Event.Kind {
     .testCaseCancelled(skipInfo)
   }
 }

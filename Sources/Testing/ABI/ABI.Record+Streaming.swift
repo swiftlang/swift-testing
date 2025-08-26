@@ -54,7 +54,8 @@ extension ABI.Xcode16 {
         // .runStarted.)
         return
       case .testCancelled, .testCaseCancelled:
-        // Discard these events as Xcode 16 does not know how to handle them.
+        // Discard these events as Xcode 16 does not know how to handle them and
+        // may crash if they arrive during trait evaluation.
         return
       default:
         break

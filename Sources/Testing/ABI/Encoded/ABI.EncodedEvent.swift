@@ -29,8 +29,10 @@ extension ABI {
       case issueRecorded
       case valueAttached
       case testCaseEnded
+      case testCaseCancelled = "_testCaseCancelled"
       case testEnded
       case testSkipped
+      case testCancelled = "_testCancelled"
       case runEnded
     }
 
@@ -64,6 +66,12 @@ extension ABI {
     /// - Warning: Test cases are not yet part of the JSON schema.
     var _testCase: EncodedTestCase<V>?
 
+    /// A source location associated with this event, if any.
+    ///
+    /// - Warning: Source locations at this level of the JSON schema are not yet
+    ///   part of said JSON schema.
+    var _sourceLocation: SourceLocation?
+
     init?(encoding event: borrowing Event, in eventContext: borrowing Event.Context, messages: borrowing [Event.HumanReadableOutputRecorder.Message]) {
       switch event.kind {
       case .runStarted:
@@ -78,18 +86,27 @@ extension ABI {
       case let .issueRecorded(recordedIssue):
         kind = .issueRecorded
         issue = EncodedIssue(encoding: recordedIssue, in: eventContext)
+        _sourceLocation = recordedIssue.sourceLocation
       case let .valueAttached(attachment):
         kind = .valueAttached
         self.attachment = EncodedAttachment(encoding: attachment, in: eventContext)
+        _sourceLocation = attachment.sourceLocation
       case .testCaseEnded:
         if eventContext.test?.isParameterized == false {
           return nil
         }
         kind = .testCaseEnded
+      case let .testCaseCancelled(skipInfo):
+        kind = .testCaseCancelled
+        _sourceLocation = skipInfo.sourceLocation
       case .testEnded:
         kind = .testEnded
-      case .testSkipped:
+      case let .testSkipped(skipInfo):
         kind = .testSkipped
+        _sourceLocation = skipInfo.sourceLocation
+      case let .testCancelled(skipInfo):
+        kind = .testCancelled
+        _sourceLocation = skipInfo.sourceLocation
       case .runEnded:
         kind = .runEnded
       default:

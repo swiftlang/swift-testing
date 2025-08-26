@@ -196,7 +196,17 @@ extension Runner.Plan {
   /// The basic "run" action.
   private static let _runAction = Action.run(options: .init())
 
+  /// Determine what action to perform for a given test by preparing its traits.
+  ///
+  /// - Parameters:
+  ///   - test: The test whose action will be determined.
+  ///
+  /// - Returns: A tuple containing the action to take for `test` as well as any
+  ///   error that was thrown during trait evaluation. If more than one error
+  ///   was thrown, the first-caught error is returned.
   private static func _determineAction(for test: Test) async -> (Action, (any Error)?) {
+    // FIXME: Parallelize this work. Calling `prepare(...)` on all traits and
+    // evaluating all test arguments should be safely parallelizable.
     await withTaskGroup(returning: (Action, (any Error)?).self) { taskGroup in
       taskGroup.addTask {
         var action = _runAction
@@ -208,6 +218,12 @@ extension Runner.Plan {
               try await trait.prepare(for: test)
             } catch let error as SkipInfo {
               action = .skip(error)
+              break
+            } catch is CancellationError {
+              // Synthesize skip info for this cancellation error.
+              let sourceContext = SourceContext(backtrace: .current(), sourceLocation: nil)
+              let skipInfo = SkipInfo(comment: nil, sourceContext: sourceContext)
+              action = .skip(skipInfo)
               break
             } catch {
               // Only preserve the first caught error
@@ -281,9 +297,6 @@ extension Runner.Plan {
     _recursivelyApplyTraits(to: &testGraph)
 
     // For each test value, determine the appropriate action for it.
-    //
-    // FIXME: Parallelize this work. Calling `prepare(...)` on all traits and
-    // evaluating all test arguments should be safely parallelizable.
     testGraph = await testGraph.mapValues { keyPath, test in
       // Skip any nil test, which implies this node is just a placeholder and
       // not actual test content.
