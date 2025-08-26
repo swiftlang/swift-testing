@@ -34,6 +34,9 @@ struct `Test cancellation tests` {
                 break
               }
             }
+#if !SWT_NO_EXIT_TESTS
+            configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+#endif
             await body(configuration)
           }
         }
@@ -133,4 +136,46 @@ struct `Test cancellation tests` {
       }.run(configuration: configuration)
     }
   }
+
+#if !SWT_NO_EXIT_TESTS
+  @Test func `Cancelling from within an exit test records an issue`() async {
+    await testCancellation(issueRecorded: 1) { configuration in
+      await Test {
+        await #expect(processExitsWith: .success) {
+          _ = try? Test.cancel("Cancelled test")
+        }
+      }.run(configuration: configuration)
+    }
+  }
+#endif
 }
+
+#if canImport(XCTest)
+import XCTest
+
+final class TestCancellationTests: XCTestCase {
+  func testCancellationFromBackgroundTask() async {
+    let testCancelled = expectation(description: "Test cancelled")
+    testCancelled.isInverted = true
+
+    let issueRecorded = expectation(description: "Issue recorded")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      if case .testCancelled = event.kind {
+        testCancelled.fulfill()
+      } else if case .issueRecorded = event.kind {
+        issueRecorded.fulfill()
+      }
+    }
+
+    await Test {
+      await Task.detached {
+        _ = try? Test.cancel("Cancelled test")
+      }.value
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [testCancelled, issueRecorded], timeout: 0.0)
+  }
+}
+#endif

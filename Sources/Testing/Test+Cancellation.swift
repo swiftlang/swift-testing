@@ -13,6 +13,21 @@
 /// This protocol is used to abstract away the common implementation of test and
 /// test case cancellation.
 protocol TestCancellable: Sendable {
+  /// Cancel the current instance of this type.
+  ///
+  /// - Parameters:
+  ///   - comment: A comment describing why you are cancelling the test.
+  ///   - sourceContext: The source context to which the testing library will
+  ///     attribute the cancellation.
+  ///
+  /// - Throws: An error indicating that the current instance of this type has
+  ///   been cancelled.
+  ///
+  /// Note that the public ``Test/cancel(_:sourceLocation:)`` function has a
+  /// different signature and accepts a source location rather than a source
+  /// context value.
+  static func cancel(comment: Comment?, sourceContext: SourceContext) throws -> Never
+
   /// Make an instance of ``Event/Kind`` appropriate for `self`.
   ///
   /// - Parameters:
@@ -79,11 +94,8 @@ extension TestCancellable {
       } onCancel: {
         // The current task was cancelled, so cancel the test case or test
         // associated with it.
-        if Test.Case.current != nil {
-          _ = try? Test.Case.cancel(comment: nil, sourceLocation: nil)
-        } else if let test = Test.current {
-          _ = try? _cancel(test, comment: nil, sourceLocation: nil)
-        }
+        let sourceContext = SourceContext(backtrace: .current(), sourceLocation: nil)
+        _ = try? Self.cancel(comment: nil, sourceContext: sourceContext)
       }
     }
   }
@@ -97,12 +109,11 @@ extension TestCancellable {
 ///   - cancellableValue: The test or test case to cancel, or `nil` if neither
 ///     is set and we need fallback handling.
 ///   - comment: A comment describing why you are cancelling the test/case.
-///   - sourceLocation: The source location to which the testing library will
-///     attribute the cancellation, if available.
+///   - sourceContext: The source context to which the testing library will
+///     attribute the cancellation.
 ///
 /// - Throws: An instance of ``SkipInfo`` describing the cancellation.
-private func _cancel<T>(_ cancellableValue: T?, comment: Comment?, sourceLocation: SourceLocation?) throws -> Never where T: TestCancellable {
-  let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
+private func _cancel<T>(_ cancellableValue: T?, comment: Comment?, sourceContext: SourceContext) throws -> Never where T: TestCancellable {
   let skipInfo = SkipInfo(comment: comment, sourceContext: sourceContext)
 
   if cancellableValue != nil {
@@ -123,21 +134,18 @@ private func _cancel<T>(_ cancellableValue: T?, comment: Comment?, sourceLocatio
       task?.cancel()
     }
 
-    let issue = if ExitTest.current != nil {
+    let comment: Comment = if ExitTest.current != nil {
       // Attempted to cancel the test or test case from within an exit test. The
       // semantics of such an action aren't yet well-defined.
-      Issue(
-        kind: .apiMisused,
-        comments: ["Attempted to cancel the current test or test case from within an exit test."] + Array(comment),
-        sourceContext: sourceContext
-      )
+      "Attempted to cancel the current test or test case from within an exit test."
     } else {
-      Issue(
-        kind: .apiMisused,
-        comments: ["Attempted to cancel the current test or test case, but one is not associated with the current task."] + Array(comment),
-        sourceContext: sourceContext
-      )
+      "Attempted to cancel the current test or test case, but one is not associated with the current task."
     }
+    let issue = Issue(
+      kind: .apiMisused,
+      comments: CollectionOfOne(comment) + Array(comment),
+      sourceContext: sourceContext
+    )
     issue.record()
   }
 
@@ -186,7 +194,12 @@ extension Test: TestCancellable {
   ///   this function records an issue and cancels the current task.
   @_spi(Experimental)
   public static func cancel(_ comment: Comment? = nil, sourceLocation: SourceLocation = #_sourceLocation) throws -> Never {
-    try _cancel(Test.current, comment: comment, sourceLocation: sourceLocation)
+    let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
+    try Self.cancel(comment: comment, sourceContext: sourceContext)
+  }
+
+  static func cancel(comment: Comment?, sourceContext: SourceContext) throws -> Never {
+    try _cancel(Test.current, comment: comment, sourceContext: sourceContext)
   }
 
   static func makeCancelledEventKind(with skipInfo: SkipInfo) -> Event.Kind {
@@ -197,30 +210,6 @@ extension Test: TestCancellable {
 // MARK: - Test case cancellation
 
 extension Test.Case: TestCancellable {
-  /// The implementation of ``cancel(_:sourceLocation:)``, but able to take a
-  /// `nil` value as its `sourceLocation` argument.
-  ///
-  /// - Parameters:
-  ///   - comment: A comment describing why you are cancelling the test.
-  ///   - sourceLocation: The source location to which the testing library will
-  ///     attribute the cancellation.
-  ///
-  /// - Throws: An error indicating that the current test case has been
-  ///   cancelled.
-  ///
-  /// This overload of `cancel()` is factored out so we can call it with a `nil`
-  /// source location in ``withCancellationHandling(_:)``.
-  fileprivate static func cancel(comment: Comment?, sourceLocation: SourceLocation?) throws -> Never {
-    if let test = Test.current, !test.isParameterized {
-      // The current test is not parameterized, so cancel the whole test rather
-      // than just the test case.
-      try _cancel(test, comment: comment, sourceLocation: sourceLocation)
-    }
-
-    // Cancel the current test case (if it's nil, that's the API misuse path.)
-    try _cancel(Test.Case.current, comment: comment, sourceLocation: sourceLocation)
-  }
-
   /// Cancel the current test case.
   ///
   /// - Parameters:
@@ -260,7 +249,19 @@ extension Test.Case: TestCancellable {
   ///   this function records an issue and cancels the current task.
   //@_spi(Experimental)
   public static func cancel(_ comment: Comment? = nil, sourceLocation: SourceLocation = #_sourceLocation) throws -> Never {
-    try cancel(comment: comment, sourceLocation: sourceLocation)
+    let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
+    try Self.cancel(comment: comment, sourceContext: sourceContext)
+  }
+
+  static func cancel(comment: Comment?, sourceContext: SourceContext) throws -> Never {
+    if let test = Test.current, !test.isParameterized {
+      // The current test is not parameterized, so cancel the whole test rather
+      // than just the test case.
+      try _cancel(test, comment: comment, sourceContext: sourceContext)
+    }
+
+    // Cancel the current test case (if it's nil, that's the API misuse path.)
+    try _cancel(Test.Case.current, comment: comment, sourceContext: sourceContext)
   }
 
   static func makeCancelledEventKind(with skipInfo: SkipInfo) -> Event.Kind {
