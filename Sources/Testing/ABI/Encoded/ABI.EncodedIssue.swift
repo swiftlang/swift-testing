@@ -112,7 +112,7 @@ extension Issue {
       // TODO: improve fidelity of issue kind reporting (especially those without associated values)
       .unconditional
     }
-    let severity: Issue.Severity = switch issue._severity {
+    let severity: Issue.Severity = switch issue.severity {
     case .warning:
         .warning
     case nil, .error:

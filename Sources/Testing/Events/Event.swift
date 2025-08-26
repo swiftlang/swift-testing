@@ -8,8 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-internal import _Testing_ExperimentalInfrastructure
-
 /// An event that occurred during testing.
 @_spi(ForToolsIntegrationOnly)
 public struct Event: Sendable {
@@ -272,60 +270,6 @@ extension Event {
     }
   }
 
-  /// The implementation of ``fallbackEventHandler``.
-  ///
-  /// - Parameters:
-  ///   - abi: The ABI version to use for decoding `recordJSON`.
-  ///   - recordJSON: The JSON encoding of an event record.
-  ///
-  /// - Throws: Any error that prevented handling the encoded record.
-  private static func _fallbackEventHandler<V>(_ abi: V.Type, _ recordJSON: UnsafeRawBufferPointer) throws where V: ABI.Version {
-    let record = try JSON.decode(ABI.Record<ABI.CurrentVersion>.self, from: recordJSON)
-    guard case let .event(event) = record.kind else {
-      return
-    }
-    switch event.kind {
-    case .issueRecorded:
-      Issue(event)?.record()
-    case .valueAttached:
-      if let attachment = event.attachment {
-        Attachment.record(attachment, sourceLocation: attachment._sourceLocation ?? .__here())
-      }
-    default:
-      // Not handled here.
-      break
-    }
-  }
-
-  /// The fallback event handler to set when Swift Testing is the active testing
-  /// library.
-  ///
-  /// ## See Also
-  ///
-  /// - `swift_testing_getFallbackEventHandler()`
-  /// - `swift_testing_setFallbackEventHandler()`
-  static let fallbackEventHandler: FallbackEventHandler = { recordJSONSchemaVersionNumber, recordJSONBaseAddress, recordJSONByteCount, _ in
-    let abi = String(validatingCString: recordJSONSchemaVersionNumber)
-      .flatMap(VersionNumber.init)
-      .flatMap(ABI.version(forVersionNumber:))
-    if let abi {
-      let recordJSON = UnsafeRawBufferPointer(start: recordJSONBaseAddress, count: recordJSONByteCount)
-      try! Self._fallbackEventHandler(abi, recordJSON)
-    }
-  }
-
-  /// The implementation of ``installFallbackEventHandler()``.
-  private static let _installFallbackHandler: Bool = {
-    _Testing_ExperimentalInfrastructure.installFallbackEventHandler(Self.fallbackEventHandler)
-  }()
-
-  /// Install the testing library's fallback event handler.
-  ///
-  /// - Returns: Whether or not the handler was installed.
-  static func installFallbackHandler() -> Bool {
-    _installFallbackHandler
-  }
-
   /// Post this event to the currently-installed event handler.
   ///
   /// - Parameters:
@@ -348,19 +292,8 @@ extension Event {
       if configuration.eventHandlingOptions.shouldHandleEvent(self) {
         configuration.handleEvent(self, in: context)
       }
-    } else if let fallbackEventHandler = _Testing_ExperimentalInfrastructure.fallbackEventHandler(),
-              castCFunction(fallbackEventHandler, to: UnsafeRawPointer.self) != castCFunction(Self.fallbackEventHandler, to: UnsafeRawPointer.self) {
-      // Some library other than Swift Testing has set a fallback event handler.
-      // Encode the event as JSON and call it.
-      let fallbackEventHandler = ABI.CurrentVersion.eventHandler(encodeAsJSONLines: false) { recordJSON in
-        fallbackEventHandler(
-          String(describing: ABI.CurrentVersion.versionNumber),
-          recordJSON.baseAddress!,
-          recordJSON.count,
-          nil
-        )
-      }
-      fallbackEventHandler(self, context)
+    } else if postToFallbackHandler(in: context) {
+      // The fallback event handler handled this event.
     } else {
       // The current task does NOT have an associated configuration. This event
       // will be lost! Post it to every registered event handler to avoid that.

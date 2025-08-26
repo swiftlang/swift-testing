@@ -19,7 +19,6 @@ private import _TestingInternals
 ///   - recordJSONBaseAddress: A pointer to the first byte of the encoded event.
 ///   - recordJSONByteCount: The size of the encoded event in bytes.
 ///   - reserved: Reserved for future use.
-@usableFromInline
 package typealias FallbackEventHandler = @Sendable @convention(c) (
   _ recordJSONSchemaVersionNumber: UnsafePointer<CChar>,
   _ recordJSONBaseAddress: UnsafeRawPointer,
@@ -36,7 +35,6 @@ package typealias FallbackEventHandler = @Sendable @convention(c) (
 ///   exchange the previous value with a new value, call
 ///   ``setFallbackEventHandler(_:)`` and store its returned value.
 @_cdecl("swift_testing_getFallbackEventHandler")
-@usableFromInline
 package func fallbackEventHandler() -> FallbackEventHandler? {
   swt_loadFallbackEventHandler()
 }
@@ -52,7 +50,6 @@ package func fallbackEventHandler() -> FallbackEventHandler? {
 /// by the first testing library to run. If this function has already been
 /// called and the handler set, it does not replace the previous handler.
 @_cdecl("swift_testing_installFallbackEventHandler")
-@usableFromInline
 package func installFallbackEventHandler(_ handler: FallbackEventHandler) -> CBool {
   swt_installFallbackEventHandler(handler)
 }
