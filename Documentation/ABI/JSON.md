@@ -203,7 +203,8 @@ sufficient information to display the event in a human-readable format.
 }
 
 <attachment> ::= {
-  "path": <string>, ; the absolute path to the attachment on disk
+  ["path": <string>,] ; the absolute path to the attachment on disk if it has
+                      ; been saved as a file
 }
 
 <message> ::= {

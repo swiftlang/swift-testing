@@ -105,6 +105,14 @@ let package = Package(
       )
     )
 
+    result.append(
+      .library(
+        name: "_Testing_ExperimentalInfrastructure",
+        type: .dynamic,
+        targets: ["_Testing_ExperimentalInfrastructure"]
+      )
+    )
+
     return result
   }(),
 
@@ -126,6 +134,7 @@ let package = Package(
       dependencies: [
         "_TestDiscovery",
         "_TestingInternals",
+        "_Testing_ExperimentalInfrastructure",
         "TestingMacros",
       ],
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
@@ -204,6 +213,13 @@ let package = Package(
     ),
     .target(
       name: "_TestDiscovery",
+      dependencies: ["_TestingInternals",],
+      exclude: ["CMakeLists.txt"],
+      cxxSettings: .packageSettings,
+      swiftSettings: .packageSettings + .enableLibraryEvolution()
+    ),
+    .target(
+      name: "_Testing_ExperimentalInfrastructure",
       dependencies: ["_TestingInternals",],
       exclude: ["CMakeLists.txt"],
       cxxSettings: .packageSettings,

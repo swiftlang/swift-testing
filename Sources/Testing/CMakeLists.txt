@@ -29,6 +29,7 @@ add_library(Testing
   Attachments/Attachment.swift
   Events/Clock.swift
   Events/Event.swift
+  Events/Event+FallbackHandler.swift
   Events/Recorder/Event.AdvancedConsoleOutputRecorder.swift
   Events/Recorder/Event.ConsoleOutputRecorder.swift
   Events/Recorder/Event.HumanReadableOutputRecorder.swift
