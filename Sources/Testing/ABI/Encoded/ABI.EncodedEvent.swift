@@ -68,10 +68,31 @@ extension ABI {
 
     /// The comments the test author provided for this event, if any.
     ///
+    /// The value of this property contains the comments related to the primary
+    /// user action that caused this event to be generated.
+    ///
+    /// Some kinds of events have additional associated comments. For example,
+    /// when using ``withKnownIssue(_:isIntermittent:sourceLocation:_:)``, there
+    /// can be separate comments for the "underlying" issue versus the known
+    /// issue matcher, and either can be `nil`. In such cases, the secondary
+    /// comment(s) are represented via a distinct property depending on the kind
+    /// of that event.
+    ///
     /// - Warning: Comments at this level are not yet part of the JSON schema.
     var _comments: [String]?
 
     /// A source location associated with this event, if any.
+    ///
+    /// The value of this property represents the source location most closely
+    /// related to the primary user action that caused this event to be
+    /// generated.
+    ///
+    /// Some kinds of events have additional associated source locations. For
+    /// example, when using ``withKnownIssue(_:isIntermittent:sourceLocation:_:)``,
+    /// there can be separate source locations for the "underlying" issue versus
+    /// the known issue matcher. In such cases, the secondary source location(s)
+    /// are represented via a distinct property depending on the kind of that
+    /// event.
     ///
     /// - Warning: Source locations at this level of the JSON schema are not yet
     ///   part of said JSON schema.
