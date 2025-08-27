@@ -94,6 +94,33 @@ extension ABI {
 #endif
 }
 
+/// The value of the environment variable flag which enables experimental event
+/// stream fields, if any.
+private let _shouldIncludeExperimentalFlags = Environment.flag(named: "SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED")
+
+extension ABI.Version {
+  /// Whether or not experimental fields should be included when using this
+  /// ABI version.
+  ///
+  /// The value of this property is `true` if any of the following conditions
+  /// are satisfied:
+  ///
+  /// - The version number is less than 6.3. This is to preserve compatibility
+  ///   with existing clients before the inclusion of experimental fields became
+  ///   opt-in starting in 6.3.
+  /// - The version number is greater than or equal to 6.3 and the environment
+  ///   variable flag `SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED` is set to a
+  ///   true value.
+  /// - The version number is greater than or equal to that of ``ABI/ExperimentalVersion``.
+  ///
+  /// Otherwise, the value of this property is `false`.
+  static var includesExperimentalFields: Bool {
+    versionNumber < ABI.v6_3.versionNumber
+      || (versionNumber >= ABI.v6_3.versionNumber && _shouldIncludeExperimentalFlags == true)
+      || versionNumber >= ABI.ExperimentalVersion.versionNumber
+  }
+}
+
 // MARK: - Concrete ABI versions
 
 extension ABI {

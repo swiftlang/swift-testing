@@ -72,8 +72,8 @@ extension ABI {
         isFailure = issue.isFailure
       }
 
-      // Experimental
-      if V.versionNumber >= ABI.ExperimentalVersion.versionNumber {
+      // Experimental fields
+      if V.includesExperimentalFields {
         if let backtrace = issue.sourceContext.backtrace {
           _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)
         }
