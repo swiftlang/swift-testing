@@ -90,12 +90,25 @@ extension ABI {
       sourceLocation = test.sourceLocation
       id = ID(encoding: test.id)
 
+      // Experimental test case encoding: This field was included in v0 with an
+      // underscore-prefixed name despite not having been formally proposed, and
+      // a prominent client (the VS Code Swift plugin) depends on it. To avoid
+      // breaking existing versions of that plugin, continue unconditionally
+      // including this field in versions earlier than 6.3 (including v0). In
+      // 6.3 and later, don't include it by default but allow opting-in to it
+      // via an environment variable. (This is to maintain compatibility until
+      // the field has been formally proposed and accepted, and discourage new
+      // clients from becoming dependent on it in the mean time.) Finally,
+      // in the special experimental version always include this field.
+      if isParameterized == true,
+         (V.versionNumber < ABI.v6_3.versionNumber
+          || V.versionNumber >= ABI.ExperimentalVersion.versionNumber
+          || Environment.flag(named: "SWT_ENABLE_EXPERIMENTAL_EVENT_STREAM_TEST_CASE_ENCODING") == true) {
+        _testCases = test.uncheckedTestCases?.map(EncodedTestCase.init(encoding:))
+      }
+
       // Experimental
       if V.versionNumber >= ABI.ExperimentalVersion.versionNumber {
-        if isParameterized == true {
-          _testCases = test.uncheckedTestCases?.map(EncodedTestCase.init(encoding:))
-        }
-
         let tags = test.tags
         if !tags.isEmpty {
           _tags = tags.map(String.init(describing:))
