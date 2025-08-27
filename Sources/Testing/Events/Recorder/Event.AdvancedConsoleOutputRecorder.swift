@@ -35,20 +35,25 @@ extension Event {
       var nodes: [String: _HierarchyNode] = [:]
       var rootNodes: [String] = []
       
-      /// Test results and timing information.
-      var testResults: [String: _TestResult] = [:]
-      var testTimings: [String: (start: ABI.EncodedInstant<V>?, end: ABI.EncodedInstant<V>?)] = [:]
-      var testIssues: [String: [ABI.EncodedIssue<V>]] = [:]
+      /// Consolidated test data for each test.
+      var testData: [String: _TestData] = [:]
       
       /// Run timing information.
       var runStartTime: ABI.EncodedInstant<V>?
       var runEndTime: ABI.EncodedInstant<V>?
-      var isRunCompleted: Bool = false
       
       /// Statistics tracking.
       var totalPassed: Int = 0
       var totalFailed: Int = 0
       var totalSkipped: Int = 0
+    }
+    
+    /// Consolidated data for a single test, combining result, timing, and issues.
+    private struct _TestData: Sendable {
+      var result: _TestResult?
+      var startTime: ABI.EncodedInstant<V>?
+      var endTime: ABI.EncodedInstant<V>?
+      var issues: [ABI.EncodedIssue<V>] = []
     }
     
     /// Represents a node in the test hierarchy tree.
@@ -277,35 +282,35 @@ extension Event.AdvancedConsoleOutputRecorder {
       switch encodedEvent.kind {
       case .runStarted:
         context.runStartTime = encodedEvent.instant
-        context.isRunCompleted = false
         
       case .testStarted:
         // Track test start time
         if let testID = encodedEvent.testID?.stringValue {
-          context.testTimings[testID] = (start: encodedEvent.instant, end: nil)
+          var testData = context.testData[testID] ?? _TestData()
+          testData.startTime = encodedEvent.instant
+          context.testData[testID] = testData
         }
         
       case .issueRecorded:
         // Record issues for failure summary
         if let testID = encodedEvent.testID?.stringValue,
            let issue = encodedEvent.issue {
-          if context.testIssues[testID] == nil {
-            context.testIssues[testID] = []
-          }
-          context.testIssues[testID]?.append(issue)
+          var testData = context.testData[testID] ?? _TestData()
+          testData.issues.append(issue)
+          context.testData[testID] = testData
         }
         
       case .testEnded:
         // Track test end time and determine result
         if let testID = encodedEvent.testID?.stringValue {
-          var timing = context.testTimings[testID] ?? (start: nil, end: nil)
-          timing.end = encodedEvent.instant
-          context.testTimings[testID] = timing
+          var testData = context.testData[testID] ?? _TestData()
+          testData.endTime = encodedEvent.instant
           
           // Determine test result based on issues
-          let hasFailures = context.testIssues[testID]?.contains { !$0.isKnown && $0._isFailure } ?? false
+          let hasFailures = testData.issues.contains { !$0.isKnown && ($0.isFailure ?? true) }
           let result: _TestResult = hasFailures ? .failed : .passed
-          context.testResults[testID] = result
+          testData.result = result
+          context.testData[testID] = testData
           
           // Update statistics
           switch result {
@@ -321,13 +326,14 @@ extension Event.AdvancedConsoleOutputRecorder {
       case .testSkipped:
         // Mark test as skipped
         if let testID = encodedEvent.testID?.stringValue {
-          context.testResults[testID] = .skipped
+          var testData = context.testData[testID] ?? _TestData()
+          testData.result = .skipped
+          context.testData[testID] = testData
           context.totalSkipped += 1
         }
         
       case .runEnded:
         context.runEndTime = encodedEvent.instant
-        context.isRunCompleted = true
         // Generate hierarchical summary
         _generateHierarchicalSummary(context: context)
         
@@ -352,9 +358,9 @@ extension Event.AdvancedConsoleOutputRecorder {
     // Render the test hierarchy tree
     if context.rootNodes.isEmpty {
       // Show test results as flat list if no hierarchy
-      let allTests = context.testResults.sorted { $0.key < $1.key }
-      for (testID, result) in allTests {
-        let statusIcon = _getStatusIcon(for: result)
+      let allTests = context.testData.sorted { $0.key < $1.key }
+      for (testID, testData) in allTests {
+        let statusIcon = _getStatusIcon(for: testData.result ?? .passed)
         let testName = context.nodes[testID]?.displayName ?? context.nodes[testID]?.name ?? testID
         output += "\(statusIcon) \(testName)\n"
       }
@@ -407,13 +413,13 @@ extension Event.AdvancedConsoleOutputRecorder {
     output += "\n"
     
     // Failed Test Details (only if there are failures)
-    let failedTests = context.testResults.filter { $0.value == .failed }
+    let failedTests = context.testData.filter { $0.value.result == .failed }
     if !failedTests.isEmpty {
       output += "══════════════════════════════════════ FAILED TEST DETAILS ══════════════════════════════════════\n"
       output += "\n"
       
       // Iterate through all tests that recorded one or more failures
-      for (testID, _) in failedTests {
+      for (testID, testData) in failedTests {
         // Get the fully qualified test name by traversing up the hierarchy
         let fullyQualifiedName = _getFullyQualifiedTestNameWithFile(testID: testID, context: context)
         
@@ -421,8 +427,8 @@ extension Event.AdvancedConsoleOutputRecorder {
         output += "\(failureIcon) \(fullyQualifiedName)\n"
         
         // Show detailed issue information with proper indentation
-        if let issues = context.testIssues[testID] {
-          for issue in issues {
+        if !testData.issues.isEmpty {
+          for issue in testData.issues {
             // Get detailed error description
             if let error = issue._error {
               let errorDescription = "\(error)"
@@ -517,13 +523,13 @@ extension Event.AdvancedConsoleOutputRecorder {
     } else {
       // Test case line
       let treePrefix = isLast ? "╰─ " : "├─ "
-      let statusIcon = _getStatusIcon(for: context.testResults[node.testID] ?? .passed)
+      let statusIcon = _getStatusIcon(for: context.testData[node.testID]?.result ?? .passed)
       let testName = node.displayName ?? node.name
       
       // Calculate duration
       var duration = ""
-      if let startTime = context.testTimings[node.testID]?.start,
-         let endTime = context.testTimings[node.testID]?.end {
+      if let startTime = context.testData[node.testID]?.startTime,
+         let endTime = context.testData[node.testID]?.endTime {
         duration = _formatDuration(endTime.absolute - startTime.absolute)
       }
       
@@ -533,7 +539,7 @@ extension Event.AdvancedConsoleOutputRecorder {
       output += "\(prefix)\(treePrefix)\(paddedTestLine)\n"
       
       // Render issues for failed tests
-      if let issues = context.testIssues[node.testID], !issues.isEmpty {
+      if let issues = context.testData[node.testID]?.issues, !issues.isEmpty {
         let issuePrefix = prefix + (isLast ? "   " : "│  ")
         for (issueIndex, issue) in issues.enumerated() {
           let isLastIssue = issueIndex == issues.count - 1
@@ -676,7 +682,7 @@ extension Event.AdvancedConsoleOutputRecorder {
     
     // Get the source file name from the first issue
     var fileName = ""
-    if let issues = context.testIssues[testID], 
+    if let issues = context.testData[testID]?.issues, 
        let firstIssue = issues.first,
        let sourceLocation = firstIssue.sourceLocation {
       fileName = sourceLocation.fileName
