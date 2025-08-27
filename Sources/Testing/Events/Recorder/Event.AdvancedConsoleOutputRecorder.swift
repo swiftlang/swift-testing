@@ -32,37 +32,74 @@ extension Event {
       var testStorage: [String: ABI.EncodedTest<V>] = [:]
       
       /// Hierarchical test node structure for building the test tree.
+      /// Maps test ID string to its corresponding hierarchy node.
       var nodes: [String: _HierarchyNode] = [:]
+      
+      /// Array of root node IDs that have no parent nodes.
+      /// These represent top-level modules or test suites.
       var rootNodes: [String] = []
       
-      /// Consolidated test data for each test.
+      /// Consolidated test data for each test, keyed by test ID string.
+      /// Contains all runtime information gathered during test execution.
       var testData: [String: _TestData] = [:]
       
-      /// Run timing information.
+      /// The instant when the test run was started.
+      /// Used to calculate total run duration.
       var runStartTime: ABI.EncodedInstant<V>?
+      
+      /// The instant when the test run was completed.
+      /// Used to calculate total run duration.
       var runEndTime: ABI.EncodedInstant<V>?
       
-      /// Statistics tracking.
+      /// The number of tests that passed during this run.
       var totalPassed: Int = 0
+      
+      /// The number of tests that failed during this run.
       var totalFailed: Int = 0
+      
+      /// The number of tests that were skipped during this run.
       var totalSkipped: Int = 0
     }
     
     /// Consolidated data for a single test, combining result, timing, and issues.
     private struct _TestData: Sendable {
+      /// The final result of the test execution (passed, failed, or skipped).
+      /// This is determined after all events for the test have been processed.
       var result: _TestResult?
+      
+      /// The instant when the test started executing.
+      /// Used to calculate individual test duration.
       var startTime: ABI.EncodedInstant<V>?
+      
+      /// The instant when the test finished executing.
+      /// Used to calculate individual test duration.
       var endTime: ABI.EncodedInstant<V>?
+      
+      /// All issues recorded during the test execution.
+      /// Includes failures, warnings, and other diagnostic information.
       var issues: [ABI.EncodedIssue<V>] = []
     }
     
     /// Represents a node in the test hierarchy tree.
     private struct _HierarchyNode: Sendable {
+      /// The unique identifier for this test or test suite.
       let testID: String
+      
+      /// The base name of the test or suite without display formatting.
       let name: String
+      
+      /// The human-readable display name for the test or suite, if different from name.
       let displayName: String?
+      
+      /// Whether this node represents a test suite (true) or individual test (false).
       let isSuite: Bool
+      
+      /// Array of child node IDs that belong to this test suite.
+      /// Empty for individual test nodes.
       var children: [String] = []
+      
+      /// The ID of the parent node, if this node has a parent.
+      /// Nil for root nodes.
       var parent: String?
       
       init(testID: String, name: String, displayName: String?, isSuite: Bool) {
@@ -75,8 +112,13 @@ extension Event {
     
     /// Represents the result of a test execution.
     private enum _TestResult: Sendable {
+      /// The test executed successfully without any failures.
       case passed
+      
+      /// The test failed due to one or more assertion failures or errors.
       case failed
+      
+      /// The test was skipped and did not execute.
       case skipped
     }
     
