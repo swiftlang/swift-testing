@@ -205,6 +205,11 @@ extension Runner.Plan {
   ///   error that was thrown during trait evaluation. If more than one error
   ///   was thrown, the first-caught error is returned.
   private static func _determineAction(for test: Test) async -> (Action, (any Error)?) {
+    // We use a task group here with a single child task so that, if the trait
+    // code calls Test.cancel() we don't end up cancelling the entire test run.
+    // We could also model this as an unstructured task except that they aren't
+    // available in the "task-to-thread" concurrency model.
+    //
     // FIXME: Parallelize this work. Calling `prepare(...)` on all traits and
     // evaluating all test arguments should be safely parallelizable.
     await withTaskGroup(returning: (Action, (any Error)?).self) { taskGroup in
