@@ -370,7 +370,8 @@ extension Event.AdvancedConsoleOutputRecorder {
         if let rootNode = context.nodes[rootNodeID] {
           let isFirstRoot = index == 0
           let isLastRoot = index == context.rootNodes.count - 1
-          output += _renderHierarchyNode(rootNode, context: context, prefix: "", isLast: isLastRoot, isFirstRoot: isFirstRoot)
+          let isSingleRoot = context.rootNodes.count == 1
+          output += _renderHierarchyNode(rootNode, context: context, prefix: "", isLast: isLastRoot, isFirstRoot: isFirstRoot, isSingleRoot: isSingleRoot)
           
           // Add spacing between top-level modules with vertical line continuation
           if index < context.rootNodes.count - 1 {
@@ -466,17 +467,27 @@ extension Event.AdvancedConsoleOutputRecorder {
   ///   - prefix: The prefix for indentation and tree drawing.
   ///   - isLast: Whether this is the last child at its level.
   ///   - isFirstRoot: Whether this is the first root node.
+  ///   - isSingleRoot: Whether there's only one root node in the entire hierarchy.
   /// - Returns: The rendered string for this node and its children.
-  private func _renderHierarchyNode(_ node: _HierarchyNode, context: _Context, prefix: String, isLast: Bool, isFirstRoot: Bool) -> String {
+  private func _renderHierarchyNode(_ node: _HierarchyNode, context: _Context, prefix: String, isLast: Bool, isFirstRoot: Bool, isSingleRoot: Bool = false) -> String {
     var output = ""
     
     if node.isSuite {
       // Suite header
       let treePrefix: String
-      if prefix.isEmpty && isFirstRoot {
-        // First root uses "┌─"
-        treePrefix = "┌─ "
+      if prefix.isEmpty {
+        if isSingleRoot {
+          // Single root module: no tree prefix, flush left
+          treePrefix = ""
+        } else if isFirstRoot {
+          // Multiple roots: first root uses "┌─"
+          treePrefix = "┌─ "
+        } else {
+          // Multiple roots: other roots use standard tree characters
+          treePrefix = isLast ? "╰─ " : "├─ "
+        }
       } else {
+        // Nested suites: use standard tree characters
         treePrefix = isLast ? "╰─ " : "├─ "
       }
       
@@ -484,12 +495,15 @@ extension Event.AdvancedConsoleOutputRecorder {
       output += "\(prefix)\(treePrefix)\(suiteName)\n"
       
       // Render children with updated prefix  
-      // For root nodes (at prefix ""), children always get 3 spaces
-      // For nested nodes, use standard vertical line logic
       let childPrefix: String
       if prefix.isEmpty {
-        // Root node case: always use 3 spaces for children
-        childPrefix = "   "
+        if isSingleRoot {
+          // Single root: children start with 3 spaces (no vertical line needed)
+          childPrefix = "   "
+        } else {
+          // Multiple roots: children get 3 spaces as before
+          childPrefix = "   "
+        }
       } else {
         // Nested case: continue vertical line unless this is the last node
         childPrefix = prefix + (isLast ? "   " : "│  ")
@@ -498,7 +512,7 @@ extension Event.AdvancedConsoleOutputRecorder {
       for (childIndex, childID) in node.children.enumerated() {
         let isLastChild = childIndex == node.children.count - 1
         if let childNode = context.nodes[childID] {
-          output += _renderHierarchyNode(childNode, context: context, prefix: childPrefix, isLast: isLastChild, isFirstRoot: false)
+          output += _renderHierarchyNode(childNode, context: context, prefix: childPrefix, isLast: isLastChild, isFirstRoot: false, isSingleRoot: isSingleRoot)
           
           // Add spacing between child nodes when the next sibling is a suite
           // Continue the tree structure with vertical line
@@ -509,8 +523,13 @@ extension Event.AdvancedConsoleOutputRecorder {
               // Use the correct spacing prefix
               let spacingPrefix: String
               if prefix.isEmpty {
-                // Root node case: use 3 spaces + vertical line
-                spacingPrefix = "   │"
+                if isSingleRoot {
+                  // Single root case: use 3 spaces + vertical line
+                  spacingPrefix = "   │"
+                } else {
+                  // Multiple roots case: use 3 spaces + vertical line
+                  spacingPrefix = "   │"
+                }
               } else {
                 // Nested case: use the child prefix
                 spacingPrefix = childPrefix
