@@ -152,6 +152,51 @@ extension Event {
   }
 }
 
+// MARK: - ASCII Fallback Support
+
+extension Event.AdvancedConsoleOutputRecorder {
+  /// Get the appropriate tree drawing character with ASCII fallback.
+  ///
+  /// - Parameters:
+  ///   - unicode: The Unicode box-drawing character to use.
+  ///   - ascii: The ASCII fallback character(s) to use.
+  ///
+  /// - Returns: The appropriate character based on terminal capabilities.
+  private func _treeCharacter(unicode: String, ascii: String) -> String {
+    // Use ASCII fallback on Windows or when ANSI escape codes are disabled
+    // This follows the same pattern as Event.Symbol
+#if os(Windows)
+    return ascii
+#else
+    if options.base.useANSIEscapeCodes {
+      return unicode
+    } else {
+      return ascii
+    }
+#endif
+  }
+  
+  /// Get the tree branch character (├─).
+  private var _treeBranch: String {
+    _treeCharacter(unicode: "├─ ", ascii: "|- ")
+  }
+  
+  /// Get the tree last branch character (╰─).
+  private var _treeLastBranch: String {
+    _treeCharacter(unicode: "╰─ ", ascii: "`- ")
+  }
+  
+  /// Get the tree first branch character (┌─).
+  private var _treeFirstBranch: String {
+    _treeCharacter(unicode: "┌─ ", ascii: ".- ")
+  }
+  
+  /// Get the tree vertical line character (│).
+  private var _treeVertical: String {
+    _treeCharacter(unicode: "│", ascii: "|")
+  }
+}
+
 extension Event.AdvancedConsoleOutputRecorder {
   /// Record an event and its context.
   ///
@@ -417,7 +462,7 @@ extension Event.AdvancedConsoleOutputRecorder {
           
           // Add spacing between top-level modules with vertical line continuation
           if index < context.rootNodes.count - 1 {
-            output += "│\n"  // Add vertical line continuation between modules
+            output += "\(_treeVertical)\n"  // Add vertical line continuation between modules
           }
         }
       }
@@ -522,15 +567,15 @@ extension Event.AdvancedConsoleOutputRecorder {
           // Single root module: no tree prefix, flush left
           treePrefix = ""
         } else if isFirstRoot {
-          // Multiple roots: first root uses "┌─"
-          treePrefix = "┌─ "
+                  // Multiple roots: first root uses first branch character
+        treePrefix = _treeFirstBranch
         } else {
           // Multiple roots: other roots use standard tree characters
-          treePrefix = isLast ? "╰─ " : "├─ "
+          treePrefix = isLast ? _treeLastBranch : _treeBranch
         }
       } else {
         // Nested suites: use standard tree characters
-        treePrefix = isLast ? "╰─ " : "├─ "
+        treePrefix = isLast ? _treeLastBranch : _treeBranch
       }
       
       let suiteName = node.displayName ?? node.name
@@ -548,7 +593,7 @@ extension Event.AdvancedConsoleOutputRecorder {
         }
       } else {
         // Nested case: continue vertical line unless this is the last node
-        childPrefix = prefix + (isLast ? "   " : "│  ")
+        childPrefix = prefix + (isLast ? "   " : "\(_treeVertical)  ")
       }
       
       for (childIndex, childID) in node.children.enumerated() {
@@ -567,10 +612,10 @@ extension Event.AdvancedConsoleOutputRecorder {
               if prefix.isEmpty {
                 if isSingleRoot {
                   // Single root case: use 3 spaces + vertical line
-                  spacingPrefix = "   │"
+                  spacingPrefix = "   \(_treeVertical)"
                 } else {
                   // Multiple roots case: use 3 spaces + vertical line
-                  spacingPrefix = "   │"
+                  spacingPrefix = "   \(_treeVertical)"
                 }
               } else {
                 // Nested case: use the child prefix
@@ -583,7 +628,7 @@ extension Event.AdvancedConsoleOutputRecorder {
       }
     } else {
       // Test case line
-      let treePrefix = isLast ? "╰─ " : "├─ "
+      let treePrefix = isLast ? _treeLastBranch : _treeBranch
       let statusIcon = _getStatusIcon(for: context.testData[node.testID]?.result ?? .passed)
       let testName = node.displayName ?? node.name
       
@@ -601,10 +646,10 @@ extension Event.AdvancedConsoleOutputRecorder {
       
       // Render issues for failed tests
       if let issues = context.testData[node.testID]?.issues, !issues.isEmpty {
-        let issuePrefix = prefix + (isLast ? "   " : "│  ")
+        let issuePrefix = prefix + (isLast ? "   " : "\(_treeVertical)  ")
         for (issueIndex, issue) in issues.enumerated() {
           let isLastIssue = issueIndex == issues.count - 1
-          let issueTreePrefix = isLastIssue ? "╰─ " : "├─ "
+          let issueTreePrefix = isLastIssue ? _treeLastBranch : _treeBranch
           let issueIcon = _getStatusIcon(for: .failed)
           let issueDescription = issue._error?.description ?? "Test failure"
           
@@ -612,7 +657,7 @@ extension Event.AdvancedConsoleOutputRecorder {
           
           // Add source location
           if let sourceLocation = issue.sourceLocation {
-            let locationPrefix = issuePrefix + (isLastIssue ? "   " : "│  ")
+            let locationPrefix = issuePrefix + (isLastIssue ? "   " : "\(_treeVertical)  ")
             output += "\(locationPrefix)At \(sourceLocation.fileName):\(sourceLocation.line):\(sourceLocation.column)\n"
           }
         }

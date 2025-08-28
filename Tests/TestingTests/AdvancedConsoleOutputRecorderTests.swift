@@ -86,8 +86,9 @@ struct AdvancedConsoleOutputRecorderTests {
     #expect(buffer.contains("HIERARCHICAL TEST RESULTS"))
     #expect(buffer.contains("completed"))
     
-    // Should contain tree structure characters
-    #expect(buffer.contains("├─") || buffer.contains("╰─") || buffer.contains("┌─"))
+    // Should contain tree structure characters (Unicode or ASCII fallback)
+    #expect(buffer.contains("├─") || buffer.contains("╰─") || buffer.contains("┌─") ||
+            buffer.contains("|-") || buffer.contains("`-") || buffer.contains(".-"))
   }
 
   @Test("Failed test details are properly formatted")
