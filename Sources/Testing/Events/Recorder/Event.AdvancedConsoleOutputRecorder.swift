@@ -31,13 +31,10 @@ extension Event {
       /// This is needed because ABI.EncodedEvent doesn't contain full test context.
       var testStorage: [String: ABI.EncodedTest<V>] = [:]
       
-      /// Hierarchical test node structure for building the test tree.
-      /// Maps test ID string to its corresponding hierarchy node.
-      var nodes: [String: _HierarchyNode] = [:]
-      
-      /// Array of root node IDs that have no parent nodes.
-      /// These represent top-level modules or test suites.
-      var rootNodes: [String] = []
+      /// Hierarchical test tree structure using Graph for efficient operations.
+      /// Key path represents the hierarchy (e.g., ["TestingTests", "ClockAPITests", "testMethod"])
+      /// Value contains the test node data for that specific node.
+      var testTree: Graph<String, _HierarchyNode?> = Graph()
       
       /// Consolidated test data for each test, keyed by test ID string.
       /// Contains all runtime information gathered during test execution.
@@ -81,6 +78,7 @@ extension Event {
     }
     
     /// Represents a node in the test hierarchy tree.
+    /// Graph handles the parent-child relationships, so this only stores node-specific data.
     private struct _HierarchyNode: Sendable {
       /// The unique identifier for this test or test suite.
       let testID: String
@@ -93,14 +91,6 @@ extension Event {
       
       /// Whether this node represents a test suite (true) or individual test (false).
       let isSuite: Bool
-      
-      /// Array of child node IDs that belong to this test suite.
-      /// Empty for individual test nodes.
-      var children: [String] = []
-      
-      /// The ID of the parent node, if this node has a parent.
-      /// Nil for root nodes.
-      var parent: String?
       
       init(testID: String, name: String, displayName: String?, isSuite: Bool) {
         self.testID = testID
@@ -258,8 +248,40 @@ extension Event.AdvancedConsoleOutputRecorder {
       isSuite: isSuite
     )
     
-    context.nodes[testID] = hierarchyNode
+    // Parse the test ID to extract the key path for Graph
+    let keyPath = _parseTestIDToKeyPath(testID)
     
+    // Insert the node into the Graph at the appropriate key path
+    context.testTree[keyPath] = hierarchyNode
+    
+    // Create intermediate nodes (modules and suites) if they don't exist
+    for i in 1..<keyPath.count {
+      let intermediateKeyPath = Array(keyPath.prefix(i))
+      if context.testTree[intermediateKeyPath] == nil {
+        // Create intermediate node
+        let intermediateName = intermediateKeyPath.last ?? ""
+        let intermediateNode = _HierarchyNode(
+          testID: intermediateKeyPath.joined(separator: "."),
+          name: intermediateName,
+          displayName: intermediateName,
+          isSuite: true
+        )
+        context.testTree[intermediateKeyPath] = intermediateNode
+      }
+    }
+
+  }
+  
+  /// Parse a test ID into a key path suitable for Graph insertion.
+  ///
+  /// Examples:
+  /// - "TestingTests.ClockAPITests/testMethod()" -> ["TestingTests", "ClockAPITests", "testMethod()"]
+  /// - "TestingTests" -> ["TestingTests"]
+  ///
+  /// - Parameters:
+  ///   - testID: The test ID to parse.
+  /// - Returns: An array of key path components.
+  private func _parseTestIDToKeyPath(_ testID: String) -> [String] {
     // Swift Testing test IDs include source location information
     // We need to extract the logical hierarchy path without source locations
     // Examples:
@@ -277,85 +299,100 @@ extension Event.AdvancedConsoleOutputRecorder {
       logicalPath.append(component)
     }
     
-    // Extract module name and test path from the first component
-    // e.g., "TestingTests.ClockAPITests" -> module: "TestingTests", suite: "ClockAPITests"
+    // Convert the first component from dot notation to separate components
+    // e.g., "TestingTests.ClockAPITests" -> ["TestingTests", "ClockAPITests"]
+    var keyPath: [String] = []
+    
     if let firstComponent = logicalPath.first {
       let moduleParts = firstComponent.split(separator: ".").map(String.init)
-      if moduleParts.count >= 2 {
-        let moduleName = moduleParts[0] // e.g., "TestingTests"
-        let suiteNames = Array(moduleParts.dropFirst()) // e.g., ["ClockAPITests"]
-        
-        // Create module node if it doesn't exist
-        if context.nodes[moduleName] == nil {
-          let moduleNode = _HierarchyNode(
-            testID: moduleName,
-            name: moduleName,
-            displayName: moduleName,
-            isSuite: true
-          )
-          context.nodes[moduleName] = moduleNode
-          
-          // Add module to root nodes if not already there
-          if !context.rootNodes.contains(moduleName) {
-            context.rootNodes.append(moduleName)
-          }
-        }
-        
-        // Build the full hierarchy: Module -> Suite(s) -> Test
-        var currentParentID = moduleName
-        var currentPath = moduleName
-        
-        // Add suite levels
-        for suiteName in suiteNames {
-          currentPath += "." + suiteName
-          
-          if context.nodes[currentPath] == nil {
-            let suiteNode = _HierarchyNode(
-              testID: currentPath,
-              name: suiteName,
-              displayName: suiteName,
-              isSuite: true
-            )
-            context.nodes[currentPath] = suiteNode
-          }
-          
-          // Link to parent
-          if var parentNode = context.nodes[currentParentID] {
-            if !parentNode.children.contains(currentPath) {
-              parentNode.children.append(currentPath)
-              context.nodes[currentParentID] = parentNode
-            }
-          }
-          
-          if var currentNode = context.nodes[currentPath] {
-            currentNode.parent = currentParentID
-            context.nodes[currentPath] = currentNode
-          }
-          
-          currentParentID = currentPath
-        }
-        
-        // Link the actual test/suite to its parent
-        if testID != currentPath {
-          if var parentNode = context.nodes[currentParentID] {
-            if !parentNode.children.contains(testID) {
-              parentNode.children.append(testID)
-              context.nodes[currentParentID] = parentNode
-            }
-          }
-          
-          if var testNode = context.nodes[testID] {
-            testNode.parent = currentParentID
-            context.nodes[testID] = testNode
-          }
-        }
-      } else {
-        // Fallback for simple cases
-        if !context.rootNodes.contains(testID) {
-          context.rootNodes.append(testID)
-        }
+      keyPath.append(contentsOf: moduleParts)
+      
+      // Add any additional path components (for nested suites)
+      keyPath.append(contentsOf: logicalPath.dropFirst())
+    }
+    
+    return keyPath.isEmpty ? [testID] : keyPath
+  }
+  
+  /// Get all root nodes (module-level nodes) from the Graph.
+  ///
+  /// - Parameters:
+  ///   - testTree: The Graph to extract root nodes from.
+  /// - Returns: Array of key paths for root nodes (modules).
+  private func _getRootNodes(from testTree: Graph<String, _HierarchyNode?>) -> [[String]] {
+    var rootNodes: [[String]] = []
+    var moduleNames: Set<String> = []
+    
+    // Find all unique module names (first component of key paths)
+    testTree.forEach { keyPath, node in
+      if node != nil && !keyPath.isEmpty {
+        let moduleName = keyPath[0]
+        moduleNames.insert(moduleName)
       }
     }
+    
+    // Convert module names to single-component key paths
+    for moduleName in moduleNames.sorted() {
+      rootNodes.append([moduleName])
+    }
+    
+    return rootNodes
+  }
+  
+  /// Get a hierarchy node from a test ID by searching the Graph.
+  ///
+  /// - Parameters:
+  ///   - testID: The test ID to search for.
+  ///   - testTree: The Graph to search in.
+  /// - Returns: The hierarchy node if found.
+  private func _getNodeFromTestID(_ testID: String, in testTree: Graph<String, _HierarchyNode?>) -> _HierarchyNode? {
+    var foundNode: _HierarchyNode?
+    
+    testTree.forEach { keyPath, node in
+      if node?.testID == testID {
+        foundNode = node
+      }
+    }
+    
+    return foundNode
+  }
+  
+  /// Get all child key paths for a given parent key path in the Graph.
+  ///
+  /// - Parameters:
+  ///   - parentKeyPath: The parent key path.
+  ///   - testTree: The Graph to search in.
+  /// - Returns: Array of child key paths sorted alphabetically.
+  private func _getChildKeyPaths(for parentKeyPath: [String], in testTree: Graph<String, _HierarchyNode?>) -> [[String]] {
+    var childKeyPaths: [[String]] = []
+    
+    testTree.forEach { keyPath, node in
+      if keyPath.count == parentKeyPath.count + 1 &&
+         keyPath.prefix(parentKeyPath.count).elementsEqual(parentKeyPath) &&
+         node != nil {
+        childKeyPaths.append(keyPath)
+      }
+    }
+    
+    return childKeyPaths.sorted { $0.last ?? "" < $1.last ?? "" }
+  }
+  
+  /// Find the key path for a given test ID in the Graph.
+  ///
+  /// - Parameters:
+  ///   - testID: The test ID to search for.
+  ///   - testTree: The Graph to search in.
+  /// - Returns: The key path if found, nil otherwise.
+  private func _findKeyPathForTestID(_ testID: String, in testTree: Graph<String, _HierarchyNode?>) -> [String]? {
+    var foundKeyPath: [String]?
+    
+    testTree.forEach { keyPath, node in
+      if node?.testID == testID {
+        foundKeyPath = keyPath
+      }
+    }
+    
+    return foundKeyPath
   }
   
   /// Process an ABI.EncodedEvent for advanced console output.
@@ -442,26 +479,28 @@ extension Event.AdvancedConsoleOutputRecorder {
     output += "══════════════════════════════════════ HIERARCHICAL TEST RESULTS ══════════════════════════════════════\n"
     output += "\n"
     
-    // Render the test hierarchy tree
-    if context.rootNodes.isEmpty {
+    // Render the test hierarchy tree using Graph
+    let rootNodes = _getRootNodes(from: context.testTree)
+    
+    if rootNodes.isEmpty {
       // Show test results as flat list if no hierarchy
       let allTests = context.testData.sorted { $0.key < $1.key }
       for (testID, testData) in allTests {
         let statusIcon = _getStatusIcon(for: testData.result ?? .passed)
-        let testName = context.nodes[testID]?.displayName ?? context.nodes[testID]?.name ?? testID
+        let testName = _getNodeFromTestID(testID, in: context.testTree)?.displayName ?? _getNodeFromTestID(testID, in: context.testTree)?.name ?? testID
         output += "\(statusIcon) \(testName)\n"
       }
     } else {
       // Render the test hierarchy tree
-      for (index, rootNodeID) in context.rootNodes.enumerated() {
-        if let rootNode = context.nodes[rootNodeID] {
+      for (index, rootKeyPath) in rootNodes.enumerated() {
+        if let rootNode = context.testTree[rootKeyPath] {
           let isFirstRoot = index == 0
-          let isLastRoot = index == context.rootNodes.count - 1
-          let isSingleRoot = context.rootNodes.count == 1
-          output += _renderHierarchyNode(rootNode, context: context, prefix: "", isLast: isLastRoot, isFirstRoot: isFirstRoot, isSingleRoot: isSingleRoot)
+          let isLastRoot = index == rootNodes.count - 1
+          let isSingleRoot = rootNodes.count == 1
+          output += _renderHierarchyNode(rootNode, keyPath: rootKeyPath, context: context, prefix: "", isLast: isLastRoot, isFirstRoot: isFirstRoot, isSingleRoot: isSingleRoot)
           
           // Add spacing between top-level modules with vertical line continuation
-          if index < context.rootNodes.count - 1 {
+          if index < rootNodes.count - 1 {
             output += "\(_treeVertical)\n"  // Add vertical line continuation between modules
           }
         }
@@ -556,7 +595,7 @@ extension Event.AdvancedConsoleOutputRecorder {
   ///   - isFirstRoot: Whether this is the first root node.
   ///   - isSingleRoot: Whether there's only one root node in the entire hierarchy.
   /// - Returns: The rendered string for this node and its children.
-  private func _renderHierarchyNode(_ node: _HierarchyNode, context: _Context, prefix: String, isLast: Bool, isFirstRoot: Bool, isSingleRoot: Bool = false) -> String {
+  private func _renderHierarchyNode(_ node: _HierarchyNode, keyPath: [String], context: _Context, prefix: String, isLast: Bool, isFirstRoot: Bool, isSingleRoot: Bool = false) -> String {
     var output = ""
     
     if node.isSuite {
@@ -596,17 +635,18 @@ extension Event.AdvancedConsoleOutputRecorder {
         childPrefix = prefix + (isLast ? "   " : "\(_treeVertical)  ")
       }
       
-      for (childIndex, childID) in node.children.enumerated() {
-        let isLastChild = childIndex == node.children.count - 1
-        if let childNode = context.nodes[childID] {
-          output += _renderHierarchyNode(childNode, context: context, prefix: childPrefix, isLast: isLastChild, isFirstRoot: false, isSingleRoot: isSingleRoot)
+      let childKeyPaths = _getChildKeyPaths(for: keyPath, in: context.testTree)
+      for (childIndex, childKeyPath) in childKeyPaths.enumerated() {
+        let isLastChild = childIndex == childKeyPaths.count - 1
+        if let childNode = context.testTree[childKeyPath] {
+          output += _renderHierarchyNode(childNode, keyPath: childKeyPath, context: context, prefix: childPrefix, isLast: isLastChild, isFirstRoot: false, isSingleRoot: isSingleRoot)
           
           // Add spacing between child nodes when the next sibling is a suite
           // Continue the tree structure with vertical line
-          if childIndex < node.children.count - 1 {
+          if childIndex < childKeyPaths.count - 1 {
             // Check if the next sibling is a suite
-            let nextChildID = node.children[childIndex + 1]
-            if let nextChildNode = context.nodes[nextChildID], nextChildNode.isSuite {
+            let nextChildKeyPath = childKeyPaths[childIndex + 1]
+            if let nextChildNode = context.testTree[nextChildKeyPath], nextChildNode.isSuite {
               // Use the correct spacing prefix
               let spacingPrefix: String
               if prefix.isEmpty {
@@ -757,21 +797,20 @@ extension Event.AdvancedConsoleOutputRecorder {
   ///   - context: The context containing the test hierarchy.
   /// - Returns: The fully qualified test name.
   private func _getFullyQualifiedTestName(testID: String, context: _Context) -> String {
-    guard context.nodes[testID] != nil else { return testID }
+    guard let keyPath = _findKeyPathForTestID(testID, in: context.testTree) else { return testID }
     
     var nameParts: [String] = []
-    var currentID: String? = testID
     
-    // Traverse up the hierarchy to get the full name
-    while let nodeID = currentID, let currentNode = context.nodes[nodeID] {
-      let displayName = currentNode.displayName ?? currentNode.name
-      nameParts.append(displayName)
-      currentID = currentNode.parent
+    // Build the hierarchy path by traversing from root to leaf
+    for i in 1...keyPath.count {
+      let currentKeyPath = Array(keyPath.prefix(i))
+      if let node = context.testTree[currentKeyPath] {
+        let displayName = node.displayName ?? node.name
+        nameParts.append(displayName)
+      }
     }
     
-    // Reverse the parts to get the correct order (parent first, then child)
-    let reversedParts = nameParts.reversed()
-    return reversedParts.joined(separator: "/")
+    return nameParts.joined(separator: "/")
   }
 
   /// Get the fully qualified test name for a given test ID, including the file name.
@@ -784,7 +823,7 @@ extension Event.AdvancedConsoleOutputRecorder {
   ///   - context: The context containing the test hierarchy.
   /// - Returns: The fully qualified test name with file name included.
   private func _getFullyQualifiedTestNameWithFile(testID: String, context: _Context) -> String {
-    guard context.nodes[testID] != nil else { return testID }
+    guard let keyPath = _findKeyPathForTestID(testID, in: context.testTree) else { return testID }
     
     // Get the source file name from the first issue
     var fileName = ""
@@ -795,30 +834,28 @@ extension Event.AdvancedConsoleOutputRecorder {
     }
     
     var nameParts: [String] = []
-    var currentID: String? = testID
     
-    // Traverse up the hierarchy to get the full name
-    while let nodeID = currentID, let currentNode = context.nodes[nodeID] {
-      let displayName = currentNode.displayName ?? currentNode.name
-      
-      // For non-module nodes (suites and tests), wrap in quotes
-      if currentNode.parent != nil {
-        nameParts.append("\"\(displayName)\"")
-      } else {
-        // Module name - no quotes
-        nameParts.append(displayName)
+    // Build the hierarchy path by traversing from root to leaf
+    for i in 1...keyPath.count {
+      let currentKeyPath = Array(keyPath.prefix(i))
+      if let node = context.testTree[currentKeyPath] {
+        let displayName = node.displayName ?? node.name
+        
+        // For non-module nodes (suites and tests), wrap in quotes
+        if i > 1 {
+          nameParts.append("\"\(displayName)\"")
+        } else {
+          // Module name - no quotes
+          nameParts.append(displayName)
+        }
       }
-      currentID = currentNode.parent
     }
-    
-    // Reverse to get correct order and insert file name after module
-    var reversedParts = Array(nameParts.reversed())
     
     // Insert file name after module name if we have it
-    if !fileName.isEmpty && reversedParts.count > 0 {
-      reversedParts.insert(fileName, at: 1)
+    if !fileName.isEmpty && nameParts.count > 0 {
+      nameParts.insert(fileName, at: 1)
     }
     
-    return reversedParts.joined(separator: "/")
+    return nameParts.joined(separator: "/")
   }
 }
