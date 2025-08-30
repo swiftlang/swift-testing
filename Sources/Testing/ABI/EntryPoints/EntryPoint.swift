@@ -59,7 +59,6 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
         // Use experimental AdvancedConsoleOutputRecorder
         var advancedOptions = Event.AdvancedConsoleOutputRecorder<ABI.HighestVersion>.Options()
         advancedOptions.base = Event.ConsoleOutputRecorder.Options.for(.stderr)
-        
         let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.HighestVersion>(options: advancedOptions) { string in
           try? FileHandle.stderr.write(string)
         }

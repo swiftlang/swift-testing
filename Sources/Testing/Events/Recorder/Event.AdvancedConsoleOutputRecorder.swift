@@ -178,7 +178,7 @@ extension Event.AdvancedConsoleOutputRecorder {
   
   /// Get the tree first branch character (┌─).
   private var _treeFirstBranch: String {
-    _treeCharacter(unicode: "┌─ ", ascii: ".- ")
+    _treeCharacter(unicode: "┌─ ", ascii: "-- ")
   }
   
   /// Get the tree vertical line character (│).
@@ -273,6 +273,7 @@ extension Event.AdvancedConsoleOutputRecorder {
   }
   
   /// Parse a test ID into a key path suitable for Graph insertion.
+  /// Uses existing Test.ID infrastructure and backtick-aware parsing.
   ///
   /// Examples:
   /// - "TestingTests.ClockAPITests/testMethod()" -> ["TestingTests", "ClockAPITests", "testMethod()"]
@@ -282,13 +283,8 @@ extension Event.AdvancedConsoleOutputRecorder {
   ///   - testID: The test ID to parse.
   /// - Returns: An array of key path components.
   private func _parseTestIDToKeyPath(_ testID: String) -> [String] {
-    // Swift Testing test IDs include source location information
-    // We need to extract the logical hierarchy path without source locations
-    // Examples:
-    // Suite: "TestingTests.HierarchyDemoTests/NestedSuite"
-    // Test: "TestingTests.HierarchyDemoTests/failingTest()/HierarchyDemoTests.swift:21:4"
-    
-    let components = testID.split(separator: "/").map(String.init)
+    // Use backtick-aware split for proper handling of raw identifiers
+    let components = rawIdentifierAwareSplit(testID, separator: "/").map(String.init)
     var logicalPath: [String] = []
     
     for component in components {
@@ -304,7 +300,7 @@ extension Event.AdvancedConsoleOutputRecorder {
     var keyPath: [String] = []
     
     if let firstComponent = logicalPath.first {
-      let moduleParts = firstComponent.split(separator: ".").map(String.init)
+      let moduleParts = rawIdentifierAwareSplit(firstComponent, separator: ".").map(String.init)
       keyPath.append(contentsOf: moduleParts)
       
       // Add any additional path components (for nested suites)
