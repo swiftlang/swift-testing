@@ -263,13 +263,13 @@ extension AttachableImageFormat {
   /// see the documentation for the [`IWICBitmapEncoder`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapencoder)
   /// class.
   public init(encoderCLSID: CLSID, encodingQuality: Float = 1.0) {
-    switch clsid {
+    switch encoderCLSID {
     case CLSID_WICPngEncoder:
       self = .png
     case CLSID_WICJpegEncoder:
       self = .jpeg
     default:
-      self.init(kind: .systemValue(clsid), encodingQuality: encodingQuality)
+      self.init(kind: .systemValue(encoderCLSID), encodingQuality: encodingQuality)
     }
   }
 
@@ -296,10 +296,10 @@ extension AttachableImageFormat {
   public init?(pathExtension: String, encodingQuality: Float = 1.0) {
     let pathExtension = pathExtension.drop { $0 == "." }
 
-    guard let clsid = Self._computeEncoderCLSID(forPathExtension: String(pathExtension)) else {
+    guard let encoderCLSID = Self._computeEncoderCLSID(forPathExtension: String(pathExtension)) else {
       return nil
     }
-    self.init(clsid, encodingQuality: encodingQuality)
+    self.init(encoderCLSID: encoderCLSID, encodingQuality: encodingQuality)
   }
 }
 #endif
