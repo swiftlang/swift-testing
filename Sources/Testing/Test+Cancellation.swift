@@ -45,6 +45,16 @@ private struct _TaskReference: Sendable {
   private nonisolated(unsafe) var _unsafeCurrentTask = Locked<UnsafeCurrentTask?>()
 
   init() {
+    // WARNING! Normally, allowing an instance of `UnsafeCurrentTask` to escape
+    // its scope is dangerous because it could be used unsafely after the task
+    // ends. However, because we take care not to allow the task object to
+    // escape the task (by only storing it in a task-local value), we can ensure
+    // these unsafe scenarios won't occur.
+    //
+    // TODO: when our deployment targets allow, we should switch to calling the
+    // `async` overload of `withUnsafeCurrentTask()` from the body of
+    // `withCancellationHandling(_:)`. That will allow us to use the task object
+    // in a safely scoped fashion.
     _unsafeCurrentTask = withUnsafeCurrentTask { Locked(rawValue: $0) }
   }
 
