@@ -93,7 +93,7 @@ extension _AttachableImageWrapper: Attachable, AttachableWrapper where Image: At
     guard rCommit == S_OK else {
       throw ImageAttachmentError.imageWritingFailed(rCommit)
     }
-    rCommit = stream.pointee.lpVtbl.pointee.Commit(stream, DWORD(bitPattern: STGC_DEFAULT.rawValue))
+    rCommit = stream.pointee.lpVtbl.pointee.Commit(stream, DWORD(STGC_DEFAULT.rawValue))
     guard rCommit == S_OK else {
       throw ImageAttachmentError.imageWritingFailed(rCommit)
     }
