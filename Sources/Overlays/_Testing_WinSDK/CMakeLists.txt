@@ -16,6 +16,9 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     Attachments/HICON+AttachableAsIWICBitmapSource.swift
     Attachments/IWICBitmapSource+AttachableAsIWICBitmapSource.swift
     Attachments/UnsafeMutablePointer+AttachableAsIWICBitmapSource.swift
+    Support/Additions/GUIDAdditions.swift
+    Support/Additions/IPropertyBag2Additions.swift
+    Support/Additions/IWICImagingFactoryAdditions.swift
     ReexportTesting.swift)
 
   target_link_libraries(_Testing_WinSDK PUBLIC
