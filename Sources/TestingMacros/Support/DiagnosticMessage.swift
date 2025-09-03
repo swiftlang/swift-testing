@@ -643,6 +643,41 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
+  /// Create a diagnostic message stating that a string literal expression
+  /// passed as the display name to a `@Test` or `@Suite` attribute is empty
+  /// but should not be.
+  ///
+  /// - Parameters:
+  ///   - decl: The declaration that has an empty display name.
+  ///   - displayNameExpr: The display name string literal expression.
+  ///   - argumentContainingDisplayName: The argument node containing the node
+  ///     `displayNameExpr`.
+  ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///
+  /// - Returns: A diagnostic message.
+  static func declaration(
+    _ decl: some NamedDeclSyntax,
+    hasEmptyDisplayName displayNameExpr: StringLiteralExprSyntax,
+    fromArgument argumentContainingDisplayName: LabeledExprListSyntax.Element,
+    using attribute: AttributeSyntax
+  ) -> Self {
+    Self(
+      syntax: Syntax(displayNameExpr),
+      message: "Attribute \(_macroName(attribute)) specifies an empty display name for this \(_kindString(for: decl))",
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Remove display name argument"),
+          changes: [.replace(oldNode: Syntax(argumentContainingDisplayName), newNode: Syntax("" as ExprSyntax))]
+        ),
+        FixIt(
+          message: MacroExpansionFixItMessage("Add display name"),
+          changes: [.replace(oldNode: Syntax(argumentContainingDisplayName), newNode: Syntax(StringLiteralExprSyntax(placeholder: "display name")))]
+        ),
+      ]
+    )
+  }
+
   /// Create a diagnostic message stating that a declaration has two display
   /// names.
   ///
@@ -852,50 +887,6 @@ extension DiagnosticMessage {
       syntax: Syntax(valueExpr),
       message: "Type of captured value '\(name)' must conform to 'Sendable' and 'Codable'",
       severity: .error
-    )
-  }
-
-  /// Create a diagnostic message stating that a capture clause cannot be used
-  /// in an exit test.
-  ///
-  /// - Parameters:
-  ///   - captureClause: The invalid capture clause.
-  ///   - closure: The closure containing `captureClause`.
-  ///   - exitTestMacro: The containing exit test macro invocation.
-  ///
-  /// - Returns: A diagnostic message.
-  static func captureClauseUnsupported(_ captureClause: ClosureCaptureClauseSyntax, in closure: ClosureExprSyntax, inExitTest exitTestMacro: some FreestandingMacroExpansionSyntax) -> Self {
-    let changes: [FixIt.Change]
-    if let signature = closure.signature,
-       Array(signature.with(\.capture, nil).tokens(viewMode: .sourceAccurate)).count == 1 {
-      // The only remaining token in the signature is `in`, so remove the whole
-      // signature tree instead of just the capture clause.
-      changes = [
-        .replaceTrailingTrivia(token: closure.leftBrace, newTrivia: ""),
-        .replace(
-          oldNode: Syntax(signature),
-          newNode: Syntax("" as ExprSyntax)
-        )
-      ]
-    } else {
-      changes = [
-        .replace(
-          oldNode: Syntax(captureClause),
-          newNode: Syntax("" as ExprSyntax)
-        )
-      ]
-    }
-
-    return Self(
-      syntax: Syntax(captureClause),
-      message: "Cannot specify a capture clause in closure passed to \(_macroName(exitTestMacro))",
-      severity: .error,
-      fixIts: [
-        FixIt(
-          message: MacroExpansionFixItMessage("Remove '\(captureClause.trimmed)'"),
-          changes: changes
-        ),
-      ]
     )
   }
 

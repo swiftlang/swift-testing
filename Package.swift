@@ -92,6 +92,7 @@ let package = Package(
           "_Testing_CoreGraphics",
           "_Testing_CoreImage",
           "_Testing_UIKit",
+          "_Testing_WinSDK",
         ]
       )
     ]
@@ -107,15 +108,16 @@ let package = Package(
     return result
   }(),
 
-  traits: [
-    .trait(
-      name: "ExperimentalExitTestValueCapture",
-      description: "Enable experimental support for capturing values in exit tests"
-    ),
-  ],
-
   dependencies: [
-    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "602.0.0-latest"),
+    // swift-syntax periodically publishes a new tag with a suffix of the format
+    // "-prerelease-YYYY-MM-DD". We always want to use the most recent tag
+    // associated with a particular Swift version, without needing to hardcode
+    // an exact tag and manually keep it up-to-date. Specifying the suffix
+    // "-latest" on this dependency is a workaround which causes Swift package
+    // manager to use the lexicographically highest-sorted tag with the
+    // specified semantic version, meaning the most recent "prerelease" tag will
+    // always be used.
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "603.0.0-latest"),
   ],
 
   targets: [
@@ -142,9 +144,13 @@ let package = Package(
         "_Testing_CoreImage",
         "_Testing_Foundation",
         "_Testing_UIKit",
+        "_Testing_WinSDK",
         "MemorySafeTestingTests",
       ],
-      swiftSettings: .packageSettings
+      swiftSettings: .packageSettings,
+      linkerSettings: [
+        .linkedLibrary("util", .when(platforms: [.openbsd]))
+      ]
     ),
 
     // Use a plain `.target` instead of a `.testTarget` to avoid the unnecessary
@@ -212,6 +218,7 @@ let package = Package(
         "_Testing_CoreGraphics",
       ],
       path: "Sources/Overlays/_Testing_AppKit",
+      exclude: ["CMakeLists.txt"],
       swiftSettings: .packageSettings + .enableLibraryEvolution()
     ),
     .target(
@@ -220,6 +227,7 @@ let package = Package(
         "Testing",
       ],
       path: "Sources/Overlays/_Testing_CoreGraphics",
+      exclude: ["CMakeLists.txt"],
       swiftSettings: .packageSettings + .enableLibraryEvolution()
     ),
     .target(
@@ -229,6 +237,7 @@ let package = Package(
         "_Testing_CoreGraphics",
       ],
       path: "Sources/Overlays/_Testing_CoreImage",
+      exclude: ["CMakeLists.txt"],
       swiftSettings: .packageSettings + .enableLibraryEvolution()
     ),
     .target(
@@ -251,6 +260,15 @@ let package = Package(
         "_Testing_CoreImage",
       ],
       path: "Sources/Overlays/_Testing_UIKit",
+      exclude: ["CMakeLists.txt"],
+      swiftSettings: .packageSettings + .enableLibraryEvolution()
+    ),
+    .target(
+      name: "_Testing_WinSDK",
+      dependencies: [
+        "Testing",
+      ],
+      path: "Sources/Overlays/_Testing_WinSDK",
       swiftSettings: .packageSettings + .enableLibraryEvolution()
     ),
 
@@ -375,14 +393,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
       .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
     ]
-
-    // Unconditionally enable 'ExperimentalExitTestValueCapture' when building
-    // for development.
-    if buildingForDevelopment {
-      result += [
-        .define("ExperimentalExitTestValueCapture")
-      ]
-    }
 
     return result
   }

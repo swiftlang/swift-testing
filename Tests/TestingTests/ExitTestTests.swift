@@ -198,6 +198,33 @@ private import _TestingInternals
     }
   }
 
+  private static let attachmentPayload = [UInt8](0...255)
+
+  @Test("Exit test forwards attachments") func forwardsAttachments() async {
+    await confirmation("Value attached") { valueAttached in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        guard case let .valueAttached(attachment) = event.kind else {
+          return
+        }
+        #expect(throws: Never.self) {
+          try attachment.withUnsafeBytes { bytes in
+            #expect(Array(bytes) == Self.attachmentPayload)
+          }
+        }
+        #expect(attachment.preferredName == "my attachment.bytes")
+        valueAttached()
+      }
+      configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+
+      await Test {
+        await #expect(processExitsWith: .success) {
+          Attachment.record(Self.attachmentPayload, named: "my attachment.bytes")
+        }
+      }.run(configuration: configuration)
+    }
+  }
+
 #if !os(Linux)
   @Test("Exit test reports > 8 bits of the exit code")
   func fullWidthExitCode() async {
@@ -383,7 +410,26 @@ private import _TestingInternals
     }
   }
 
-#if ExperimentalExitTestValueCapture
+  @Test("Issue severity")
+  func issueSeverity() async {
+    await confirmation("Recorded issue had warning severity") { wasWarning in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        if case let .issueRecorded(issue) = event.kind, issue.severity == .warning {
+          wasWarning()
+        }
+      }
+
+      // Mock an exit test where the process exits successfully.
+      configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+      await Test {
+        await #expect(processExitsWith: .success) {
+          Issue.record("Issue recorded", severity: .warning)
+        }
+      }.run(configuration: configuration)
+    }
+  }
+
   @Test("Capture list")
   func captureList() async {
     let i = 123
@@ -560,7 +606,6 @@ private import _TestingInternals
       _ = x
     }
   }
-#endif
 #endif
 }
 
