@@ -8,11 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if os(Windows)
-package import _TestingInternals // for DWORD
-#else
 internal import _TestingInternals
-#endif
 
 /// A type representing an error from a C function such as `fopen()`.
 ///
@@ -32,9 +28,9 @@ struct CError: Error, RawRepresentable {
 ///
 /// This type is not part of the public interface of the testing library.
 package struct Win32Error: Error, RawRepresentable {
-  package var rawValue: DWORD
+  package var rawValue: CUnsignedLong
 
-  package init(rawValue: DWORD) {
+  package init(rawValue: CUnsignedLong) {
     self.rawValue = rawValue
   }
 }
