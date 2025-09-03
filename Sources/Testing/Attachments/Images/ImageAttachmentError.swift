@@ -8,7 +8,9 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _TestingInternals
+#if os(Windows)
+package import _TestingInternals // for HRESULT
+#endif
 
 /// A type representing an error that can occur when attaching an image.
 package enum ImageAttachmentError: Error {
@@ -23,19 +25,19 @@ package enum ImageAttachmentError: Error {
   case couldNotConvertImage
 #elseif os(Windows)
   /// A call to `QueryInterface()` failed.
-  case queryInterfaceFailed(Any.Type, Int32)
+  case queryInterfaceFailed(Any.Type, HRESULT)
 
   /// The testing library failed to create a COM object.
-  case comObjectCreationFailed(Any.Type, Int32)
+  case comObjectCreationFailed(Any.Type, HRESULT)
 
   /// An image could not be written.
-  case imageWritingFailed(Int32)
+  case imageWritingFailed(HRESULT)
 
   /// The testing library failed to get an in-memory stream's underlying buffer.
-  case globalFromStreamFailed(Int32)
+  case globalFromStreamFailed(HRESULT)
 
   /// A property could not be written to a property bag.
-  case propertyBagWritingFailed(String, Int32)
+  case propertyBagWritingFailed(String, HRESULT)
 #endif
 }
 
