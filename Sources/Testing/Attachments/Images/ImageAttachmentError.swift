@@ -10,8 +10,6 @@
 
 #if os(Windows)
 package import _TestingInternals // for HRESULT
-#else
-private import _TestingInternals
 #endif
 
 /// A type representing an error that can occur when attaching an image.
