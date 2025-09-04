@@ -88,7 +88,6 @@ extension SkipInfo {
     let userInfo = error._userInfo as? [String: Any] ?? [:]
 
     var message = userInfo["XCTestErrorUserInfoKeyMessage"] as? String
-    var explanation = userInfo["XCTestErrorUserInfoKeyExplanation"] as? String
     var callStackAddresses = userInfo["XCTestErrorUserInfoKeyCallStackAddresses"] as? [UInt64]
     let sourceLocation: SourceLocation? = (userInfo["XCTestErrorUserInfoKeySourceLocation"] as? [String: Any]).flatMap { sourceLocation in
       guard let fileID = sourceLocation["fileID"] as? String,
@@ -103,26 +102,15 @@ extension SkipInfo {
 #if _runtime(_ObjC) && canImport(Foundation)
     // Temporary workaround that allows us to implement XCTSkip bridging on
     // Apple platforms where XCTest does not provide the user info values above.
-    if message == nil && explanation == nil && callStackAddresses == nil,
+    if message == nil && callStackAddresses == nil,
        let skippedContext = userInfo["XCTestErrorUserInfoKeySkippedTestContext"] as? NSObject {
       message = skippedContext.value(forKey: "message") as? String
-      explanation = skippedContext.value(forKey: "explanation") as? String
       callStackAddresses = skippedContext.value(forKeyPath: "sourceCodeContext.callStack.address") as? [UInt64]
     }
 #endif
 
-    let comment: Comment? = switch (message, explanation) {
-    case let (.some(message), .some(explanation)):
-      "\(message) - \(explanation)"
-    case let (_, .some(comment)), let (.some(comment), _):
-      Comment(rawValue: comment)
-    default:
-      nil
-    }
-    let backtrace: Backtrace? = callStackAddresses.map { callStackAddresses in
-      Backtrace(addresses: callStackAddresses)
-    }
-
+    let comment: Comment? = message.map(Comment.init(rawValue:))
+    let backtrace: Backtrace? = callStackAddresses.map(Backtrace.init(addresses:))
     let sourceContext = SourceContext(
       backtrace: backtrace ?? Backtrace(forFirstThrowOf: error),
       sourceLocation: sourceLocation
