@@ -87,34 +87,39 @@ extension SkipInfo {
 
     let userInfo = error._userInfo as? [String: Any] ?? [:]
 
-    var message = userInfo["XCTestErrorUserInfoKeyMessage"] as? String
-    var callStackAddresses = userInfo["XCTestErrorUserInfoKeyCallStackAddresses"] as? [UInt64]
-    let sourceLocation: SourceLocation? = (userInfo["XCTestErrorUserInfoKeySourceLocation"] as? [String: Any]).flatMap { sourceLocation in
-      guard let fileID = sourceLocation["fileID"] as? String,
-            let filePath = sourceLocation["filePath"] as? String,
-            let line = sourceLocation["line"] as? Int,
-            let column = sourceLocation["column"] as? Int else {
-        return nil
+    if let skipInfoJSON = userInfo["XCTestErrorUserInfoKeyBridgedJSONRepresentation"] as? any RandomAccessCollection {
+      func open(_ skipInfoJSON: some RandomAccessCollection) -> Self? {
+        try? skipInfoJSON.withContiguousStorageIfAvailable { skipInfoJSON in
+          try JSON.decode(Self.self, from: UnsafeRawBufferPointer(skipInfoJSON))
+        }
       }
-      return SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
+      if let skipInfo = open(skipInfoJSON) {
+        return skipInfo
+      }
     }
 
+    var comment: Comment?
+    var backtrace: Backtrace?
 #if _runtime(_ObjC) && canImport(Foundation)
     // Temporary workaround that allows us to implement XCTSkip bridging on
     // Apple platforms where XCTest does not provide the user info values above.
-    if message == nil && callStackAddresses == nil,
-       let skippedContext = userInfo["XCTestErrorUserInfoKeySkippedTestContext"] as? NSObject {
-      message = skippedContext.value(forKey: "message") as? String
-      callStackAddresses = skippedContext.value(forKeyPath: "sourceCodeContext.callStack.address") as? [UInt64]
+    if let skippedContext = userInfo["XCTestErrorUserInfoKeySkippedTestContext"] as? NSObject {
+      if let message = skippedContext.value(forKey: "message") as? String {
+        comment = Comment.init(rawValue: message)
+      }
+      if let callStackAddresses = skippedContext.value(forKeyPath: "sourceCodeContext.callStack.address") as? [UInt64] {
+        backtrace = Backtrace(addresses: callStackAddresses)
+      }
     }
+#else
+    // On non-Apple platforms, we just don't have this information.
+    // SEE: swift-corelibs-xctest-#511
 #endif
+    if backtrace == nil {
+      backtrace = Backtrace(forFirstThrowOf: error)
+    }
 
-    let comment: Comment? = message.map(Comment.init(rawValue:))
-    let backtrace: Backtrace? = callStackAddresses.map(Backtrace.init(addresses:))
-    let sourceContext = SourceContext(
-      backtrace: backtrace ?? Backtrace(forFirstThrowOf: error),
-      sourceLocation: sourceLocation
-    )
+    let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: nil)
     return SkipInfo(comment: comment, sourceContext: sourceContext)
   }
 
