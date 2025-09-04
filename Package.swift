@@ -363,9 +363,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
       .enableUpcomingFeature("MemberImportVisibility"),
 
-      // This setting is enabled in the package, but not in the toolchain build
-      // (via CMake). Enabling it is dependent on acceptance of the @section
-      // proposal via Swift Evolution.
       .enableExperimentalFeature("SymbolLinkageMarkers"),
 
       // This setting is no longer needed when building with a 6.2 or later
@@ -394,7 +391,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .define("SWT_NO_PIPES", .whenEmbedded(or: .when(platforms: [.wasi]))),
       .define("SWT_NO_FOUNDATION_FILE_COORDINATION", .whenEmbedded(or: .whenApple(false))),
 
-      .define("SWT_NO_LEGACY_TEST_DISCOVERY", .whenEmbedded()),
       .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
     ]
 
@@ -463,7 +459,6 @@ extension Array where Element == PackageDescription.CXXSetting {
       .define("SWT_NO_PIPES", .whenEmbedded(or: .when(platforms: [.wasi]))),
       .define("SWT_NO_FOUNDATION_FILE_COORDINATION", .whenEmbedded(or: .whenApple(false))),
 
-      .define("SWT_NO_LEGACY_TEST_DISCOVERY", .whenEmbedded()),
       .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
     ]
 
