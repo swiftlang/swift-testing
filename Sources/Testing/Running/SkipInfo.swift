@@ -62,53 +62,18 @@ extension SkipInfo: Codable {}
 // MARK: -
 
 extension SkipInfo {
+  /// The Swift type corresponding to `XCTSkip` if XCTest has been linked into
+  /// the current process.
+  private static let _xctSkipType: Any.Type? = _typeByName("6XCTest7XCTSkipV") // _mangledTypeName(XCTest.XCTSkip.self)
+
   /// Whether or not we can create an instance of ``SkipInfo`` from an instance
   /// of XCTest's `XCTSkip` type.
   static var isXCTSkipInteropEnabled: Bool {
-    _XCTSkipCopyInfoDictionary != nil
+    _xctSkipType != nil
   }
 
-  /// Gather the properties of an instance of `XCTSkip` that we can use to
-  /// construct an instance of ``SkipInfo``.
-  private static let _XCTSkipCopyInfoDictionary: (@convention(c) (Unmanaged<AnyObject>) -> Unmanaged<AnyObject>?)? = {
-#if !SWT_NO_DYNAMIC_LINKING
-    // Check if XCTest exports a function for us to invoke to get the bits of
-    // the XCTSkip error we need. If so, call it and extract them.
-    var result = symbol(named: "_XCTSkipCopyInfoDictionary").map {
-      castCFunction(at: $0, to: (@convention(c) (Unmanaged<AnyObject>) -> Unmanaged<AnyObject>?).self)
-    }
-    if let result {
-      return result
-    }
-
-#if _runtime(_ObjC) && canImport(Foundation)
-    if result == nil {
-      // Temporary workaround that allows us to implement XCTSkip bridging on
-      // Apple platforms where XCTest does not export the necessary function.
-      return { errorAddress in
-        guard let error = errorAddress.takeUnretainedValue() as? any Error,
-              error._domain == "com.apple.XCTestErrorDomain" && error._code == 106,
-              let userInfo = error._userInfo as? [String: Any],
-              let skippedContext = userInfo["XCTestErrorUserInfoKeySkippedTestContext"] as? NSObject else {
-          return nil
-        }
-
-        var result = [String: Any]()
-        result["XCTSkipMessage"] = skippedContext.value(forKey: "message")
-        result["XCTSkipCallStack"] = skippedContext.value(forKeyPath: "sourceCodeContext.callStack.address")
-        return .passRetained(result as AnyObject)
-      }
-    }
-#endif
-
-    return result
-#else
-    return nil
-#endif
-  }()
-
   /// Attempt to create an instance of this type from an instance of XCTest's
-  /// `XCTSkip` error type or its Objective-C equivalent.
+  /// `XCTSkip` error type.
   ///
   /// - Parameters:
   ///   - error: The error that may be an instance of `XCTSkip`.
@@ -116,18 +81,53 @@ extension SkipInfo {
   /// - Returns: An instance of ``SkipInfo`` corresponding to `error`, or `nil`
   ///   if `error` was not an instance of `XCTSkip`.
   private static func _fromXCTSkip(_ error: any Error) -> Self? {
-    let errorObject = error as AnyObject
-    if let info = _XCTSkipCopyInfoDictionary?(.passUnretained(errorObject))?.takeRetainedValue() as? [String: Any] {
-      let comment = (info["XCTSkipMessage"] as? String).map { Comment(rawValue: $0) }
-      let backtrace = (info["XCTSkipCallStack"] as? [UInt64]).map { Backtrace(addresses: $0) }
-      let sourceContext = SourceContext(
-        backtrace: backtrace ?? Backtrace(forFirstThrowOf: error),
-        sourceLocation: nil
-      )
-      return SkipInfo(comment: comment, sourceContext: sourceContext)
+    guard let _xctSkipType, type(of: error) == _xctSkipType else {
+      return nil
     }
 
-    return nil
+    let userInfo = error._userInfo as? [String: Any] ?? [:]
+
+    var message = userInfo["XCTestErrorUserInfoKeyMessage"] as? String
+    var explanation = userInfo["XCTestErrorUserInfoKeyExplanation"] as? String
+    var callStackAddresses = userInfo["XCTestErrorUserInfoKeyCallStackAddresses"] as? [UInt64]
+    let sourceLocation: SourceLocation? = (userInfo["XCTestErrorUserInfoKeySourceLocation"] as? [String: Any]).flatMap { sourceLocation in
+      guard let fileID = sourceLocation["fileID"] as? String,
+            let filePath = sourceLocation["filePath"] as? String,
+            let line = sourceLocation["line"] as? Int,
+            let column = sourceLocation["column"] as? Int else {
+        return nil
+      }
+      return SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
+    }
+
+#if _runtime(_ObjC) && canImport(Foundation)
+    // Temporary workaround that allows us to implement XCTSkip bridging on
+    // Apple platforms where XCTest does not provide the user info values above.
+    if message == nil && explanation == nil && callStackAddresses == nil,
+       let skippedContext = userInfo["XCTestErrorUserInfoKeySkippedTestContext"] as? NSObject {
+      message = skippedContext.value(forKey: "message") as? String
+      explanation = skippedContext.value(forKey: "explanation") as? String
+      callStackAddresses = skippedContext.value(forKeyPath: "sourceCodeContext.callStack.address") as? [UInt64]
+    }
+#endif
+
+    let comment: Comment? = switch (message, explanation) {
+    case let (.some(message), .some(explanation)):
+      "\(message) - \(explanation)"
+    case let (_, .some(comment)), let (.some(comment), _):
+      Comment(rawValue: comment)
+    default:
+      nil
+    }
+    let backtrace: Backtrace? = callStackAddresses.map { callStackAddresses in
+      Backtrace(addresses: callStackAddresses)
+    }
+
+    let sourceContext = SourceContext(
+      backtrace: backtrace ?? Backtrace(forFirstThrowOf: error),
+      sourceLocation: sourceLocation
+    )
+    return SkipInfo(comment: comment, sourceContext: sourceContext)
   }
 
   /// Initialize an instance of this type from an arbitrary error.

@@ -187,6 +187,20 @@ import XCTest
       }
     }
   }
+
+  @Test(.enabled(if: SkipInfo.isXCTSkipInteropEnabled))
+  func `Cancelling a test with XCTSkipIf`() async {
+    await testCancellation(testCancelled: 1, testCaseCancelled: 1) { configuration in
+      await Test {
+        try XCTSkipIf(1 > 0, "Threw XCTSkip instead of SkipInfo")
+      }.run(configuration: configuration)
+    } eventHandler: { event, eventContext in
+      if case let .testCancelled(skipInfo) = event.kind {
+        print(skipInfo)
+        #expect(skipInfo.comment == "Threw XCTSkip instead of SkipInfo")
+      }
+    }
+  }
 #endif
 
 #if !SWT_NO_EXIT_TESTS
