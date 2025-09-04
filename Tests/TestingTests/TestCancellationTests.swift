@@ -191,7 +191,7 @@ import XCTest
       }.run(configuration: configuration)
     } eventHandler: { event, eventContext in
       if case let .testCancelled(skipInfo) = event.kind {
-        withKnownIssue("Comment isn't transferred from XCTSkip") {
+        withKnownIssue("Comment isn't transferred from XCTSkip (swift-corelibs-xctest-#511)") {
           #expect(skipInfo.comment == "Threw XCTSkip instead of SkipInfo")
         } when: {
           Self.usesCorelibsXCTest
@@ -208,7 +208,7 @@ import XCTest
       }.run(configuration: configuration)
     } eventHandler: { event, eventContext in
       if case let .testCancelled(skipInfo) = event.kind {
-        withKnownIssue("Comment isn't transferred from XCTSkip") {
+        withKnownIssue("Comment isn't transferred from XCTSkip (swift-corelibs-xctest-#511)") {
           #expect(skipInfo.comment == "Threw XCTSkip instead of SkipInfo")
         } when: {
           Self.usesCorelibsXCTest
