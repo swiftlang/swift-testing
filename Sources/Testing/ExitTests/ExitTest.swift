@@ -1076,9 +1076,9 @@ extension ExitTest {
     } else if let attachment = event.attachment {
       Attachment.record(attachment, sourceLocation: event._sourceLocation!)
     } else if case .testCancelled = event.kind {
-      _ = try? Test.cancel(with: skipInfo)
+      Test.cancel(with: skipInfo)
     } else if case .testCaseCancelled = event.kind {
-      _ = try? Test.Case.cancel(with: skipInfo)
+      Test.Case.cancel(with: skipInfo)
     }
   }
 

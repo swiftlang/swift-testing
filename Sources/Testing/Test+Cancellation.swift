@@ -18,13 +18,12 @@ protocol TestCancellable: Sendable {
   /// - Parameters:
   ///   - skipInfo: Information about the cancellation event.
   ///
-  /// - Throws: An error indicating that the current instance of this type has
-  ///   been cancelled.
-  ///
   /// Note that the public ``Test/cancel(_:sourceLocation:)`` function has a
   /// different signature and accepts a source location rather than a source
   /// context value.
-  static func cancel(with skipInfo: SkipInfo) throws -> Never
+  ///
+  /// The caller is responsible for throwing `skipInfo` where needed.
+  static func cancel(with skipInfo: SkipInfo)
 
   /// Make an instance of ``Event/Kind`` appropriate for an instance of this
   /// type.
@@ -110,7 +109,7 @@ extension TestCancellable {
         // associated with it.
 
         let skipInfo = _currentSkipInfo ?? SkipInfo(sourceContext: SourceContext(backtrace: .current(), sourceLocation: nil))
-        _ = try? Self.cancel(with: skipInfo)
+        Self.cancel(with: skipInfo)
       }
     }
   }
@@ -125,9 +124,7 @@ extension TestCancellable {
 ///     is set and we need fallback handling.
 ///   - testAndTestCase: The test and test case to use when posting an event.
 ///   - skipInfo: Information about the cancellation event.
-///
-/// - Throws: An instance of ``SkipInfo`` describing the cancellation.
-private func _cancel<T>(_ cancellableValue: T?, for testAndTestCase: (Test?, Test.Case?), skipInfo: SkipInfo) throws -> Never where T: TestCancellable {
+private func _cancel<T>(_ cancellableValue: T?, for testAndTestCase: (Test?, Test.Case?), skipInfo: SkipInfo) where T: TestCancellable {
   if cancellableValue != nil {
     // If the current test case is still running, take its task property (which
     // signals to subsequent callers that it has been cancelled.)
@@ -171,8 +168,6 @@ private func _cancel<T>(_ cancellableValue: T?, for testAndTestCase: (Test?, Tes
       issue.record()
     }
   }
-
-  throw skipInfo
 }
 
 // MARK: - Test cancellation
@@ -223,12 +218,13 @@ extension Test: TestCancellable {
   @_spi(Experimental)
   public static func cancel(_ comment: Comment? = nil, sourceLocation: SourceLocation = #_sourceLocation) throws -> Never {
     let skipInfo = SkipInfo(comment: comment, sourceContext: SourceContext(backtrace: nil, sourceLocation: sourceLocation))
-    try Self.cancel(with: skipInfo)
+    Self.cancel(with: skipInfo)
+    throw skipInfo
   }
 
-  static func cancel(with skipInfo: SkipInfo) throws -> Never {
+  static func cancel(with skipInfo: SkipInfo) {
     let test = Test.current
-    try _cancel(test, for: (test, nil), skipInfo: skipInfo)
+    _cancel(test, for: (test, nil), skipInfo: skipInfo)
   }
 
   static func makeCancelledEventKind(with skipInfo: SkipInfo) -> Event.Kind {
@@ -284,19 +280,20 @@ extension Test.Case: TestCancellable {
   @_spi(Experimental)
   public static func cancel(_ comment: Comment? = nil, sourceLocation: SourceLocation = #_sourceLocation) throws -> Never {
     let skipInfo = SkipInfo(comment: comment, sourceContext: SourceContext(backtrace: nil, sourceLocation: sourceLocation))
-    try Self.cancel(with: skipInfo)
+    Self.cancel(with: skipInfo)
+    throw skipInfo
   }
 
-  static func cancel(with skipInfo: SkipInfo) throws -> Never {
+  static func cancel(with skipInfo: SkipInfo) {
     let test = Test.current
     let testCase = Test.Case.current
 
-    do {
-      // Cancel the current test case (if it's nil, that's the API misuse path.)
-      try _cancel(testCase, for: (test, testCase), skipInfo: skipInfo)
-    } catch _ where test?.isParameterized == false {
+    // Cancel the current test case (if it's nil, that's the API misuse path.)
+    _cancel(testCase, for: (test, testCase), skipInfo: skipInfo)
+
+    if let test, !test.isParameterized {
       // The current test is not parameterized, so cancel the whole test too.
-      try _cancel(test, for: (test, nil), skipInfo: skipInfo)
+      _cancel(test, for: (test, nil), skipInfo: skipInfo)
     }
   }
 
