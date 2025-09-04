@@ -175,6 +175,14 @@ import XCTest
   }
 
 #if canImport(XCTest)
+  static var usesCorelibsXCTest: Bool {
+#if SWT_TARGET_OS_APPLE
+    false
+#else
+    true
+#endif
+  }
+
   @Test(.enabled(if: SkipInfo.isXCTSkipInteropEnabled))
   func `Cancelling a test with XCTSkip`() async {
     await testCancellation(testCancelled: 1, testCaseCancelled: 1) { configuration in
@@ -183,7 +191,11 @@ import XCTest
       }.run(configuration: configuration)
     } eventHandler: { event, eventContext in
       if case let .testCancelled(skipInfo) = event.kind {
-        #expect(skipInfo.comment == "Threw XCTSkip instead of SkipInfo")
+        withKnownIssue("Comment isn't transferred from XCTSkip") {
+          #expect(skipInfo.comment == "Threw XCTSkip instead of SkipInfo")
+        } when: {
+          Self.usesCorelibsXCTest
+        }
       }
     }
   }
@@ -196,8 +208,11 @@ import XCTest
       }.run(configuration: configuration)
     } eventHandler: { event, eventContext in
       if case let .testCancelled(skipInfo) = event.kind {
-        print(skipInfo)
-        #expect(skipInfo.comment == "Threw XCTSkip instead of SkipInfo")
+        withKnownIssue("Comment isn't transferred from XCTSkip") {
+          #expect(skipInfo.comment == "Threw XCTSkip instead of SkipInfo")
+        } when: {
+          Self.usesCorelibsXCTest
+        }
       }
     }
   }
