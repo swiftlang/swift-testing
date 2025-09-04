@@ -24,9 +24,9 @@ package enum ImageAttachmentError: Error {
 #elseif os(Windows)
   /// The architecture-specific `HRESULT` type.
 #if _pointerBitWidth(_64)
-  typealias HRESULT = Int32
+  package typealias HRESULT = Int32
 #else
-  typealias HRESULT = Int
+  package typealias HRESULT = Int
 #endif
 
   /// A call to `QueryInterface()` failed.
