@@ -46,7 +46,7 @@ extension _AttachableImageWrapper: Attachable, AttachableWrapper where Image: At
       let rCreate = CoCreateInstance(
         &encoderCLSID,
         nil,
-        DWORD(bitPattern: CLSCTX_INPROC_SERVER.rawValue),
+        DWORD(CLSCTX_INPROC_SERVER.rawValue),
         IID_IWICBitmapEncoder,
         &encoder
       )

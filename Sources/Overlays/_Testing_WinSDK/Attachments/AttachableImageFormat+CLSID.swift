@@ -26,8 +26,8 @@ extension AttachableImageFormat {
     var enumerator: UnsafeMutablePointer<IEnumUnknown>?
     let rCreate = factory.pointee.lpVtbl.pointee.CreateComponentEnumerator(
       factory,
-      DWORD(bitPattern: WICEncoder.rawValue),
-      DWORD(bitPattern: WICComponentEnumerateDefault.rawValue),
+      DWORD(WICEncoder.rawValue),
+      DWORD(WICComponentEnumerateDefault.rawValue),
       &enumerator
     )
     guard rCreate == S_OK, let enumerator else {
