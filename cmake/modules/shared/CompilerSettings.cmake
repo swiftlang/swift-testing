@@ -17,7 +17,8 @@ add_compile_options(
 add_compile_options(
   "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-upcoming-feature -Xfrontend ExistentialAny>"
   "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-upcoming-feature -Xfrontend InternalImportsByDefault>"
-  "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-upcoming-feature -Xfrontend MemberImportVisibility>")
+  "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-upcoming-feature -Xfrontend MemberImportVisibility>"
+  "SHELL:$<$<COMPILE_LANGUAGE:Swift>:-Xfrontend -enable-upcoming-feature -Xfrontend InferIsolatedConformances>")
 
 # Platform-specific definitions.
 if(APPLE)
@@ -33,6 +34,7 @@ if(CMAKE_SYSTEM_NAME IN_LIST SWT_NO_PROCESS_SPAWNING_LIST)
 endif()
 if(NOT APPLE)
   add_compile_definitions("SWT_NO_SNAPSHOT_TYPES")
+  add_compile_definitions("SWT_NO_FOUNDATION_FILE_COORDINATION")
 endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "WASI")
   add_compile_definitions("SWT_NO_DYNAMIC_LINKING")

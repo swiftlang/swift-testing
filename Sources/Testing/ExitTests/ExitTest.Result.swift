@@ -21,12 +21,14 @@ extension ExitTest {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public struct Result: Sendable {
     /// The exit status reported by the process hosting the exit test.
     ///
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.2)
+    ///   @Available(Xcode, introduced: 26.0)
     /// }
     public var exitStatus: ExitStatus
 
@@ -36,14 +38,14 @@ extension ExitTest {
     /// The value of this property may contain any arbitrary sequence of bytes,
     /// including sequences that are not valid UTF-8 and cannot be decoded by
     /// [`String.init(cString:)`](https://developer.apple.com/documentation/swift/string/init(cstring:)-6kr8s).
-    /// Consider using [`String.init(validatingCString:)`](https://developer.apple.com/documentation/swift/string/init(validatingcstring:)-992vo)
+    /// Consider using [`String.init(validating:as:)`](https://developer.apple.com/documentation/swift/string/init(validating:as:)-84qr9)
     /// instead.
     ///
     /// When checking the value of this property, keep in mind that the standard
     /// output stream is globally accessible, and any code running in an exit
-    /// test may write to it including including the operating system and any
-    /// third-party dependencies you have declared in your package. Rather than
-    /// comparing the value of this property with [`==`](https://developer.apple.com/documentation/swift/array/==(_:_:)),
+    /// test may write to it including the operating system and any third-party
+    /// dependencies you have declared in your package. Rather than comparing
+    /// the value of this property with [`==`](https://developer.apple.com/documentation/swift/array/==(_:_:)),
     /// use [`contains(_:)`](https://developer.apple.com/documentation/swift/collection/contains(_:))
     /// to check if expected output is present.
     ///
@@ -57,6 +59,7 @@ extension ExitTest {
     ///
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.2)
+    ///   @Available(Xcode, introduced: 26.0)
     /// }
     public var standardOutputContent: [UInt8] = []
 
@@ -66,14 +69,14 @@ extension ExitTest {
     /// The value of this property may contain any arbitrary sequence of bytes,
     /// including sequences that are not valid UTF-8 and cannot be decoded by
     /// [`String.init(cString:)`](https://developer.apple.com/documentation/swift/string/init(cstring:)-6kr8s).
-    /// Consider using [`String.init(validatingCString:)`](https://developer.apple.com/documentation/swift/string/init(validatingcstring:)-992vo)
+    /// Consider using [`String.init(validating:as:)`](https://developer.apple.com/documentation/swift/string/init(validating:as:)-84qr9)
     /// instead.
     ///
     /// When checking the value of this property, keep in mind that the standard
-    /// error stream is globally accessible, and any code running in an exit
-    /// test may write to it including including the operating system and any
-    /// third-party dependencies you have declared in your package. Rather than
-    /// comparing the value of this property with [`==`](https://developer.apple.com/documentation/swift/array/==(_:_:)),
+    /// output stream is globally accessible, and any code running in an exit
+    /// test may write to it including the operating system and any third-party
+    /// dependencies you have declared in your package. Rather than comparing
+    /// the value of this property with [`==`](https://developer.apple.com/documentation/swift/array/==(_:_:)),
     /// use [`contains(_:)`](https://developer.apple.com/documentation/swift/collection/contains(_:))
     /// to check if expected output is present.
     ///
@@ -87,6 +90,7 @@ extension ExitTest {
     ///
     /// @Metadata {
     ///   @Available(Swift, introduced: 6.2)
+    ///   @Available(Xcode, introduced: 26.0)
     /// }
     public var standardErrorContent: [UInt8] = []
 

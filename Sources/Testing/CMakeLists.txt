@@ -23,11 +23,15 @@ add_library(Testing
   ABI/Encoded/ABI.EncodedIssue.swift
   ABI/Encoded/ABI.EncodedMessage.swift
   ABI/Encoded/ABI.EncodedTest.swift
+  Attachments/Images/_AttachableImageWrapper.swift
+  Attachments/Images/AttachableImageFormat.swift
+  Attachments/Images/ImageAttachmentError.swift
   Attachments/Attachable.swift
   Attachments/AttachableWrapper.swift
   Attachments/Attachment.swift
   Events/Clock.swift
   Events/Event.swift
+  Events/Recorder/Event.AdvancedConsoleOutputRecorder.swift
   Events/Recorder/Event.ConsoleOutputRecorder.swift
   Events/Recorder/Event.HumanReadableOutputRecorder.swift
   Events/Recorder/Event.JUnitXMLRecorder.swift
@@ -87,11 +91,13 @@ add_library(Testing
   Support/JSON.swift
   Support/Locked.swift
   Support/Locked+Platform.swift
+  Support/VersionNumber.swift
   Support/Versions.swift
   Discovery+Macro.swift
   Test.ID.Selection.swift
   Test.ID.swift
   Test.swift
+  Test+Cancellation.swift
   Test+Discovery.swift
   Test+Discovery+Legacy.swift
   Test+Macro.swift

@@ -32,6 +32,7 @@ private import _TestingInternals
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
+///   @Available(Xcode, introduced: 26.0)
 /// }
 #if SWT_NO_EXIT_TESTS
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
@@ -152,7 +153,7 @@ extension ExitTest {
   ///
   /// A pointer is used for indirection because `ManagedBuffer` cannot yet hold
   /// move-only types.
-  private static nonisolated(unsafe) var _current: Locked<UnsafeMutablePointer<ExitTest?>> = {
+  private static nonisolated(unsafe) let _current: Locked<UnsafeMutablePointer<ExitTest?>> = {
     let current = UnsafeMutablePointer<ExitTest?>.allocate(capacity: 1)
     current.initialize(to: nil)
     return Locked(rawValue: current)
@@ -170,6 +171,7 @@ extension ExitTest {
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public static var current: ExitTest? {
     _read {
@@ -231,6 +233,10 @@ extension ExitTest {
 #endif
   }
 
+  /// The name of the environment variable used to identify the exit test to
+  /// call in a spawned exit test process.
+  private static let _idEnvironmentVariableName = "SWT_EXIT_TEST_ID"
+
   /// Call the exit test in the current process.
   ///
   /// This function invokes the closure originally passed to
@@ -243,15 +249,30 @@ extension ExitTest {
 #if os(Windows)
     // Windows does not support signal handling to the degree UNIX-like systems
     // do. When a signal is raised in a Windows process, the default signal
-    // handler simply calls `exit()` and passes the constant value `3`. To allow
-    // us to handle signals on Windows, we install signal handlers for all
+    // handler simply calls `_exit()` and passes the constant value `3`. To
+    // allow us to handle signals on Windows, we install signal handlers for all
     // signals supported on Windows. These signal handlers exit with a specific
     // exit code that is unlikely to be encountered "in the wild" and which
     // encodes the caught signal. Corresponding code in the parent process looks
     // for these special exit codes and translates them back to signals.
+    //
+    // Microsoft's documentation for `_Exit()` and `_exit()` indicates they
+    // behave identically. Their documentation for abort() can be found at
+    // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/abort?view=msvc-170
+    // and states: "[...] abort calls _exit to terminate the process with exit
+    // code 3 [...]".
+    //
+    // The Wine project's implementation of raise() calls `_exit(3)` by default.
+    // See https://github.com/wine-mirror/wine/blob/master/dlls/msvcrt/except.c
+    //
+    // Finally, an official copy of the UCRT sources (not up to date) is hosted
+    // at https://www.nuget.org/packages/Microsoft.Windows.SDK.CRTSource . That
+    // repository doesn't have an official GitHub mirror, but you can manually
+    // navigate to misc/signal.cpp:481 to see the implementation of SIG_DFL
+    // (which, again, calls `_exit(3)` unconditionally.)
     for sig in [SIGINT, SIGILL, SIGFPE, SIGSEGV, SIGTERM, SIGBREAK, SIGABRT, SIGABRT_COMPAT] {
       _ = signal(sig) { sig in
-        _Exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
+        _exit(STATUS_SIGNAL_CAUGHT_BITS | sig)
       }
     }
 #endif
@@ -270,9 +291,10 @@ extension ExitTest {
       current.pointee = self.unsafeCopy()
     }
 
-    do {
+    let error = await Issue.withErrorRecording(at: nil) {
       try await body(&self)
-    } catch {
+    }
+    if let error {
       _errorInMain(error)
     }
 
@@ -327,6 +349,9 @@ extension ExitTest {
   ///
   /// - Warning: This function is used to implement the
   ///   `#expect(processExitsWith:)` macro. Do not use it directly.
+#if compiler(>=6.2)
+  @safe
+#endif
   public static func __store<each T>(
     _ id: (UInt64, UInt64, UInt64, UInt64),
     _ body: @escaping @Sendable (repeat each T) async throws -> Void,
@@ -359,6 +384,27 @@ extension ExitTest {
     record.capturedValues = Array(repeat (each T).self)
     outValue.initializeMemory(as: Record.self, to: record)
     return true
+  }
+
+  /// Attempt to store an invalid exit test into the given memory.
+  ///
+  /// This overload of `__store()` is provided to suppress diagnostics when a
+  /// value of an unsupported type is captured as an argument of `body`. It
+  /// always terminates the current process.
+  ///
+  /// - Warning: This function is used to implement the
+  ///   `#expect(processExitsWith:)` macro. Do not use it directly.
+#if compiler(>=6.2)
+  @safe
+#endif
+  public static func __store<T>(
+    _ id: (UInt64, UInt64, UInt64, UInt64),
+    _ body: T,
+    into outValue: UnsafeMutableRawPointer,
+    asTypeAt typeAddress: UnsafeRawPointer,
+    withHintAt hintAddress: UnsafeRawPointer? = nil
+  ) -> CBool {
+    swt_unreachable()
   }
 }
 
@@ -503,11 +549,78 @@ extension ABI {
   /// The back channel always uses the latest ABI version (even if experimental)
   /// since both the producer and consumer use this exact version of the testing
   /// library.
-  fileprivate typealias BackChannelVersion = v1
+  fileprivate typealias BackChannelVersion = v6_3
 }
 
 @_spi(ForToolsIntegrationOnly)
 extension ExitTest {
+  /// A barrier value to insert into the standard output and standard error
+  /// streams immediately before and after the body of an exit test runs in
+  /// order to distinguish output produced by the host process.
+  ///
+  /// The value of this property was randomly generated. It could conceivably
+  /// show up in actual output from an exit test, but the statistical likelihood
+  /// of that happening is negligible.
+  static var barrierValue: [UInt8] {
+    [
+      0x39, 0x74, 0x87, 0x6d, 0x96, 0xdd, 0xf6, 0x17,
+      0x7f, 0x05, 0x61, 0x5d, 0x46, 0xeb, 0x37, 0x0c,
+      0x90, 0x07, 0xca, 0xe5, 0xed, 0x0b, 0xc4, 0xc4,
+      0x46, 0x36, 0xc5, 0xb8, 0x9c, 0xc7, 0x86, 0x57,
+    ]
+  }
+
+  /// Remove the leading and trailing barrier values from the given array of
+  /// bytes along.
+  ///
+  /// - Parameters:
+  ///   - buffer: The buffer to trim.
+  ///
+  /// - Returns: A copy of `buffer`. If a barrier value (equal to
+  ///   ``barrierValue``) is present in `buffer`, it and everything before it
+  ///   are trimmed from the beginning of the copy. If there is more than one
+  ///   barrier value present, the last one and everything after it are trimmed
+  ///   from the end of the copy. If no barrier value is present, `buffer` is
+  ///   returned verbatim.
+  private static func _trimToBarrierValues(_ buffer: [UInt8]) -> [UInt8] {
+    let barrierValue = barrierValue
+    let firstBarrierByte = barrierValue[0]
+
+    // If the buffer is too small to contain the barrier value, exit early.
+    guard buffer.count > barrierValue.count else {
+      return buffer
+    }
+
+    // Find all the indices where the first byte of the barrier is present.
+    let splits = buffer.indices.filter { buffer[$0] == firstBarrierByte }
+
+    // Trim off the leading barrier value. If we didn't find any barrier values,
+    // we do nothing.
+    let leadingIndex = splits.first { buffer[$0...].starts(with: barrierValue) }
+    guard let leadingIndex else {
+      return buffer
+    }
+    var trimmedBuffer = buffer[leadingIndex...].dropFirst(barrierValue.count)
+
+    // If there's a trailing barrier value, trim it too. If it's at the same
+    // index as the leading barrier value, that means only one barrier value
+    // was present and we should assume it's the leading one.
+    let trailingIndex = splits.last { buffer[$0...].starts(with: barrierValue) }
+    if let trailingIndex, trailingIndex > leadingIndex {
+      trimmedBuffer = trimmedBuffer[..<trailingIndex]
+    }
+
+    return Array(trimmedBuffer)
+  }
+
+  /// Write barrier values (equal to ``barrierValue``) to the standard output
+  /// and standard error streams of the current process.
+  private static func _writeBarrierValues() {
+    let barrierValue = Self.barrierValue
+    try? FileHandle.stdout.write(barrierValue)
+    try? FileHandle.stderr.write(barrierValue)
+  }
+
   /// A handler that is invoked when an exit test starts.
   ///
   /// - Parameters:
@@ -609,6 +722,17 @@ extension ExitTest {
 #endif
   }
 
+  /// The ID of the exit test to run, if any, specified in the environment.
+  static var environmentIDForEntryPoint: ID? {
+    guard var idString = Environment.variable(named: Self._idEnvironmentVariableName) else {
+      return nil
+    }
+
+    return try? idString.withUTF8 { idBuffer in
+      try JSON.decode(ExitTest.ID.self, from: UnsafeRawBufferPointer(idBuffer))
+    }
+  }
+
   /// Find the exit test function specified in the environment of the current
   /// process, if any.
   ///
@@ -619,20 +743,14 @@ extension ExitTest {
   /// `__swiftPMEntryPoint()` function. The effect of using it under other
   /// configurations is undefined.
   static func findInEnvironmentForEntryPoint() -> Self? {
-    // Find the ID of the exit test to run, if any, in the environment block.
-    var id: ExitTest.ID?
-    if var idString = Environment.variable(named: "SWT_EXIT_TEST_ID") {
-      // Clear the environment variable. It's an implementation detail and exit
-      // test code shouldn't be dependent on it. Use ExitTest.current if needed!
-      Environment.setVariable(nil, named: "SWT_EXIT_TEST_ID")
-
-      id = try? idString.withUTF8 { idBuffer in
-        try JSON.decode(ExitTest.ID.self, from: UnsafeRawBufferPointer(idBuffer))
-      }
-    }
-    guard let id, var result = find(identifiedBy: id) else {
+    guard let id = environmentIDForEntryPoint, var result = find(identifiedBy: id) else {
       return nil
     }
+
+    // Since an exit test was found, clear the environment variable. It's an
+    // implementation detail and exit test code shouldn't be dependent on it.
+    // Use ExitTest.current if needed!
+    Environment.setVariable(nil, named: Self._idEnvironmentVariableName)
 
     // If an exit test was found, inject back channel handling into its body.
     // External tools authors should set up their own back channel mechanisms
@@ -654,12 +772,23 @@ extension ExitTest {
       }
     }
     configuration.eventHandler = { event, eventContext in
-      if case .issueRecorded = event.kind {
+      switch event.kind {
+      case .issueRecorded, .valueAttached, .testCancelled, .testCaseCancelled:
         eventHandler(event, eventContext)
+      default:
+        // Don't forward other kinds of event.
+        break
       }
     }
 
     result.body = { [configuration, body = result.body] exitTest in
+      Self._writeBarrierValues()
+      defer {
+        // We will generally not end up writing these values if the process
+        // exits abnormally.
+        Self._writeBarrierValues()
+      }
+
       try await Configuration.withCurrent(configuration) {
         try exitTest._decodeCapturedValuesForEntryPoint()
         try await body(&exitTest)
@@ -756,7 +885,7 @@ extension ExitTest {
       // Insert a specific variable that tells the child process which exit test
       // to run.
       try JSON.withEncoding(of: exitTest.id) { json in
-        childEnvironment["SWT_EXIT_TEST_ID"] = String(decoding: json, as: UTF8.self)
+        childEnvironment[Self._idEnvironmentVariableName] = String(decoding: json, as: UTF8.self)
       }
 
       typealias ResultUpdater = @Sendable (inout ExitTest.Result) -> Void
@@ -799,7 +928,7 @@ extension ExitTest {
           childEnvironment["SWT_BACKCHANNEL"] = backChannelEnvironmentVariable
         }
         if let capturedValuesEnvironmentVariable = _makeEnvironmentVariable(for: capturedValuesReadEnd) {
-          childEnvironment["SWT_EXPERIMENTAL_CAPTURED_VALUES"] = capturedValuesEnvironmentVariable
+          childEnvironment["SWT_CAPTURED_VALUES"] = capturedValuesEnvironmentVariable
         }
 
         // Spawn the child process.
@@ -840,14 +969,14 @@ extension ExitTest {
         if let stdoutReadEnd {
           stdoutWriteEnd?.close()
           taskGroup.addTask {
-            let standardOutputContent = try stdoutReadEnd.readToEnd()
+            let standardOutputContent = try Self._trimToBarrierValues(stdoutReadEnd.readToEnd())
             return { $0.standardOutputContent = standardOutputContent }
           }
         }
         if let stderrReadEnd {
           stderrWriteEnd?.close()
           taskGroup.addTask {
-            let standardErrorContent = try stderrReadEnd.readToEnd()
+            let standardErrorContent = try Self._trimToBarrierValues(stderrReadEnd.readToEnd())
             return { $0.standardErrorContent = standardErrorContent }
           }
         }
@@ -914,29 +1043,46 @@ extension ExitTest {
   /// - Throws: Any error encountered attempting to decode or process the JSON.
   private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
     let record = try JSON.decode(ABI.Record<ABI.BackChannelVersion>.self, from: recordJSON)
+    guard case let .event(event) = record.kind else {
+      return
+    }
 
-    if case let .event(event) = record.kind, let issue = event.issue {
+    lazy var comments: [Comment] = event._comments?.map(Comment.init(rawValue:)) ?? []
+    lazy var sourceContext = SourceContext(
+      backtrace: nil, // A backtrace from the child process will have the wrong address space.
+      sourceLocation: event._sourceLocation
+    )
+    lazy var skipInfo = SkipInfo(comment: comments.first, sourceContext: sourceContext)
+    if let issue = event.issue {
       // Translate the issue back into a "real" issue and record it
       // in the parent process. This translation is, of course, lossy
       // due to the process boundary, but we make a best effort.
-      let comments: [Comment] = event.messages.map(\.text).map(Comment.init(rawValue:))
       let issueKind: Issue.Kind = if let error = issue._error {
         .errorCaught(error)
       } else {
         // TODO: improve fidelity of issue kind reporting (especially those without associated values)
         .unconditional
       }
-      let sourceContext = SourceContext(
-        backtrace: nil, // `issue._backtrace` will have the wrong address space.
-        sourceLocation: issue.sourceLocation
-      )
-      var issueCopy = Issue(kind: issueKind, comments: comments, sourceContext: sourceContext)
+      let severity: Issue.Severity = switch issue.severity {
+      case .warning:
+        .warning
+      case .error, nil:
+        // Prior to 6.3, all Issues are errors
+        .error
+      }
+      var issueCopy = Issue(kind: issueKind, severity: severity, comments: comments, sourceContext: sourceContext)
       if issue.isKnown {
         // The known issue comment, if there was one, is already included in
         // the `comments` array above.
         issueCopy.knownIssueContext = Issue.KnownIssueContext()
       }
       issueCopy.record()
+    } else if let attachment = event.attachment {
+      Attachment.record(attachment, sourceLocation: event._sourceLocation!)
+    } else if case .testCancelled = event.kind {
+      _ = try? Test.cancel(with: skipInfo)
+    } else if case .testCaseCancelled = event.kind {
+      _ = try? Test.Case.cancel(with: skipInfo)
     }
   }
 
@@ -951,7 +1097,7 @@ extension ExitTest {
   private mutating func _decodeCapturedValuesForEntryPoint() throws {
     // Read the content of the captured values stream provided by the parent
     // process above.
-    guard let fileHandle = Self._makeFileHandle(forEnvironmentVariableNamed: "SWT_EXPERIMENTAL_CAPTURED_VALUES", mode: "rb") else {
+    guard let fileHandle = Self._makeFileHandle(forEnvironmentVariableNamed: "SWT_CAPTURED_VALUES", mode: "rb") else {
       return
     }
     let capturedValuesJSON = try fileHandle.readToEnd()

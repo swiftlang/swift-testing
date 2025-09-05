@@ -23,6 +23,8 @@ Swift expressions and operators, and captures the evaluated values so you can
 quickly understand what went wrong when a test fails.
 
 ```swift
+import Testing
+
 @Test func helloWorld() {
   let greeting = "Hello, world!"
   #expect(greeting == "Hello") // Expectation failed: (greeting → "Hello, world!") == "Hello"
@@ -84,24 +86,34 @@ func mentionedContinents(videoName: String) async throws {
 
 ### Cross-platform support
 
-Swift Testing works on all major platforms supported by Swift, including Apple
-platforms, Linux, and Windows, so your tests can behave more consistently when
-moving between platforms. It’s developed as open source and discussed on the
-[Swift Forums](https://forums.swift.org/c/development/swift-testing/103) so the
-very best ideas, from anywhere, can help shape the future of testing in Swift.
+Swift Testing is included in officially-supported Swift toolchains, including
+those for Apple platforms, Linux, and Windows. To use the library, import the
+`Testing` module:
+
+```swift
+import Testing
+```
+
+You don't need to declare a package dependency to use Swift Testing. It's
+developed as open source and discussed on the
+[Swift Forums](https://forums.swift.org/c/development/swift-testing/103)
+so the very best ideas, from anywhere, can help shape the future of testing in
+Swift.
 
 The table below describes the current level of support that Swift Testing has
 for various platforms:
 
-| **Platform** | **CI Status (6.1)** | **CI Status (main)** | **Support Status** |
+| **Platform** | **CI Status (6.2)** | **CI Status (main)** | **Support Status** |
 |---|:-:|:-:|---|
-| **macOS** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-6.1-macos)](https://ci.swift.org/job/swift-testing-main-swift-6.1-macos/) | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-macos)](https://ci.swift.org/view/Swift%20Packages/job/swift-testing-main-swift-main-macos/) | Supported |
+| **macOS** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-6.2-macos)](https://ci.swift.org/job/swift-testing-main-swift-6.2-macos/) | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-macos)](https://ci.swift.org/view/Swift%20Packages/job/swift-testing-main-swift-main-macos/) | Supported |
 | **iOS** | | | Supported |
 | **watchOS** | | | Supported |
 | **tvOS** | | | Supported |
 | **visionOS** | | | Supported |
-| **Ubuntu 22.04** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-6.1-linux)](https://ci.swift.org/job/swift-testing-main-swift-6.1-linux/) | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-linux)](https://ci.swift.org/view/Swift%20Packages/job/swift-testing-main-swift-main-linux/) | Supported |
-| **Windows** | [![Build Status](https://ci-external.swift.org/buildStatus/icon?job=swift-testing-main-swift-6.1-windows)](https://ci-external.swift.org/view/all/job/swift-testing-main-swift-6.1-windows/) | [![Build Status](https://ci-external.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-windows)](https://ci-external.swift.org/job/swift-testing-main-swift-main-windows/) | Supported |
+| **Ubuntu 22.04** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-6.2-linux)](https://ci.swift.org/job/swift-testing-main-swift-6.2-linux/) | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-linux)](https://ci.swift.org/view/Swift%20Packages/job/swift-testing-main-swift-main-linux/) | Supported |
+| **FreeBSD** | | | Experimental |
+| **OpenBSD** | | | Experimental |
+| **Windows** | [![Build Status](https://ci-external.swift.org/buildStatus/icon?job=swift-testing-main-swift-6.2-windows)](https://ci-external.swift.org/view/all/job/swift-testing-main-swift-6.2-windows/) | [![Build Status](https://ci-external.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-windows)](https://ci-external.swift.org/job/swift-testing-main-swift-main-windows/) | Supported |
 | **Wasm** | | | Experimental |
 
 ### Works with XCTest

@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2024–2025 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -9,108 +9,111 @@
 //
 
 #if SWT_TARGET_OS_APPLE && canImport(CoreGraphics)
-@_spi(Experimental) public import Testing
+public import Testing
 
-public import UniformTypeIdentifiers
-
+@available(_uttypesAPI, *)
 extension Attachment {
   /// Initialize an instance of this type that encloses the given image.
   ///
   /// - Parameters:
-  ///   - attachableValue: The value that will be attached to the output of
-  ///     the test run.
+  ///   - image: The value that will be attached to the output of the test run.
   ///   - preferredName: The preferred name of the attachment when writing it
   ///     to a test report or to disk. If `nil`, the testing library attempts
   ///     to derive a reasonable filename for the attached value.
-  ///   - contentType: The image format with which to encode `attachableValue`.
-  ///     If this type does not conform to [`UTType.image`](https://developer.apple.com/documentation/uniformtypeidentifiers/uttype-swift.struct/image),
-  ///     the result is undefined. Pass `nil` to let the testing library decide
-  ///     which image format to use.
-  ///   - encodingQuality: The encoding quality to use when encoding the image.
-  ///     If the image format used for encoding (specified by the `contentType`
-  ///     argument) does not support variable-quality encoding, the value of
-  ///     this argument is ignored.
+  ///   - imageFormat: The image format with which to encode `image`.
   ///   - sourceLocation: The source location of the call to this initializer.
   ///     This value is used when recording issues associated with the
   ///     attachment.
   ///
-  /// This is the designated initializer for this type when attaching an image
-  /// that conforms to ``AttachableAsCGImage``.
-  fileprivate init<T>(
-    attachableValue: T,
-    named preferredName: String?,
-    contentType: (any Sendable)?,
-    encodingQuality: Float,
-    sourceLocation: SourceLocation
-  ) where AttachableValue == _AttachableImageWrapper<T> {
-    let imageWrapper = _AttachableImageWrapper(image: attachableValue, encodingQuality: encodingQuality, contentType: contentType)
+  /// You can attach instances of the following system-provided image types to a
+  /// test:
+  ///
+  /// | Platform | Supported Types |
+  /// |-|-|
+  /// | macOS | [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage), [`CIImage`](https://developer.apple.com/documentation/coreimage/ciimage), [`NSImage`](https://developer.apple.com/documentation/appkit/nsimage) |
+  /// | iOS, watchOS, tvOS, and visionOS | [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage), [`CIImage`](https://developer.apple.com/documentation/coreimage/ciimage), [`UIImage`](https://developer.apple.com/documentation/uikit/uiimage) |
+  /// @Comment {
+  /// | Windows | [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps), [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons), [`IWICBitmapSource`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapsource) (including its subclasses declared by Windows Imaging Component) |
+  /// }
+  ///
+  /// The testing library uses the image format specified by `imageFormat`. Pass
+  /// `nil` to let the testing library decide which image format to use. If you
+  /// pass `nil`, then the image format that the testing library uses depends on
+  /// the path extension you specify in `preferredName`, if any. If you do not
+  /// specify a path extension, or if the path extension you specify doesn't
+  /// correspond to an image format the operating system knows how to write, the
+  /// testing library selects an appropriate image format for you.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
+  public init<T>(
+    _ image: T,
+    named preferredName: String? = nil,
+    as imageFormat: AttachableImageFormat? = nil,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) where T: AttachableAsCGImage, AttachableValue == _AttachableImageWrapper<T> {
+    let imageWrapper = _AttachableImageWrapper(
+      image: image._copyAttachableValue(),
+      imageFormat: imageFormat,
+      deinitializingWith: { _ in }
+    )
     self.init(imageWrapper, named: preferredName, sourceLocation: sourceLocation)
   }
 
-  /// Initialize an instance of this type that encloses the given image.
+  /// Attach an image to the current test.
   ///
   /// - Parameters:
-  ///   - attachableValue: The value that will be attached to the output of
-  ///     the test run.
-  ///   - preferredName: The preferred name of the attachment when writing it
-  ///     to a test report or to disk. If `nil`, the testing library attempts
-  ///     to derive a reasonable filename for the attached value.
-  ///   - contentType: The image format with which to encode `attachableValue`.
-  ///     If this type does not conform to [`UTType.image`](https://developer.apple.com/documentation/uniformtypeidentifiers/uttype-swift.struct/image),
-  ///     the result is undefined. Pass `nil` to let the testing library decide
-  ///     which image format to use.
-  ///   - encodingQuality: The encoding quality to use when encoding the image.
-  ///     If the image format used for encoding (specified by the `contentType`
-  ///     argument) does not support variable-quality encoding, the value of
-  ///     this argument is ignored.
-  ///   - sourceLocation: The source location of the call to this initializer.
-  ///     This value is used when recording issues associated with the
-  ///     attachment.
+  ///   - image: The value to attach.
+  ///   - preferredName: The preferred name of the attachment when writing it to
+  ///     a test report or to disk. If `nil`, the testing library attempts to
+  ///     derive a reasonable filename for the attached value.
+  ///   - imageFormat: The image format with which to encode `image`.
+  ///   - sourceLocation: The source location of the call to this function.
   ///
-  /// The following system-provided image types conform to the
-  /// ``AttachableAsCGImage`` protocol and can be attached to a test:
+  /// This function creates a new instance of ``Attachment`` wrapping `image`
+  /// and immediately attaches it to the current test. You can attach instances
+  /// of the following system-provided image types to a test:
   ///
-  /// - [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage)
-  @_spi(Experimental)
-  @available(_uttypesAPI, *)
-  public init<T>(
-    _ attachableValue: T,
+  /// | Platform | Supported Types |
+  /// |-|-|
+  /// | macOS | [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage), [`CIImage`](https://developer.apple.com/documentation/coreimage/ciimage), [`NSImage`](https://developer.apple.com/documentation/appkit/nsimage) |
+  /// | iOS, watchOS, tvOS, and visionOS | [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage), [`CIImage`](https://developer.apple.com/documentation/coreimage/ciimage), [`UIImage`](https://developer.apple.com/documentation/uikit/uiimage) |
+  /// @Comment {
+  /// | Windows | [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps), [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons), [`IWICBitmapSource`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapsource) (including its subclasses declared by Windows Imaging Component) |
+  /// }
+  ///
+  /// The testing library uses the image format specified by `imageFormat`. Pass
+  /// `nil` to let the testing library decide which image format to use. If you
+  /// pass `nil`, then the image format that the testing library uses depends on
+  /// the path extension you specify in `preferredName`, if any. If you do not
+  /// specify a path extension, or if the path extension you specify doesn't
+  /// correspond to an image format the operating system knows how to write, the
+  /// testing library selects an appropriate image format for you.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
+  public static func record<T>(
+    _ image: T,
     named preferredName: String? = nil,
-    as contentType: UTType?,
-    encodingQuality: Float = 1.0,
+    as imageFormat: AttachableImageFormat? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
-  ) where AttachableValue == _AttachableImageWrapper<T> {
-    self.init(attachableValue: attachableValue, named: preferredName, contentType: contentType, encodingQuality: encodingQuality, sourceLocation: sourceLocation)
+  ) where T: AttachableAsCGImage, AttachableValue == _AttachableImageWrapper<T> {
+    let attachment = Self(image, named: preferredName, as: imageFormat, sourceLocation: sourceLocation)
+    Self.record(attachment, sourceLocation: sourceLocation)
   }
+}
 
-  /// Initialize an instance of this type that encloses the given image.
-  ///
-  /// - Parameters:
-  ///   - attachableValue: The value that will be attached to the output of
-  ///     the test run.
-  ///   - preferredName: The preferred name of the attachment when writing it
-  ///     to a test report or to disk. If `nil`, the testing library attempts
-  ///     to derive a reasonable filename for the attached value.
-  ///   - encodingQuality: The encoding quality to use when encoding the image.
-  ///     If the image format used for encoding (specified by the `contentType`
-  ///     argument) does not support variable-quality encoding, the value of
-  ///     this argument is ignored.
-  ///   - sourceLocation: The source location of the call to this initializer.
-  ///     This value is used when recording issues associated with the
-  ///     attachment.
-  ///
-  /// The following system-provided image types conform to the
-  /// ``AttachableAsCGImage`` protocol and can be attached to a test:
-  ///
-  /// - [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage)
-  @_spi(Experimental)
-  public init<T>(
-    _ attachableValue: T,
-    named preferredName: String? = nil,
-    encodingQuality: Float = 1.0,
-    sourceLocation: SourceLocation = #_sourceLocation
-  ) where AttachableValue == _AttachableImageWrapper<T> {
-    self.init(attachableValue: attachableValue, named: preferredName, contentType: nil, encodingQuality: encodingQuality, sourceLocation: sourceLocation)
+// MARK: -
+
+@_spi(Experimental) // STOP: not part of ST-0014
+@available(_uttypesAPI, *)
+extension Attachment where AttachableValue: AttachableWrapper, AttachableValue.Wrapped: AttachableAsCGImage {
+  /// The image format to use when encoding the represented image.
+  @_disfavoredOverload public var imageFormat: AttachableImageFormat? {
+    // FIXME: no way to express `where AttachableValue == _AttachableImageWrapper<???>` on a property (see rdar://47559973)
+    (attachableValue as? _AttachableImageWrapper<AttachableValue.Wrapped>)?.imageFormat
   }
 }
 #endif

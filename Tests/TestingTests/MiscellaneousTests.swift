@@ -302,14 +302,30 @@ struct MiscellaneousTests {
     #expect(testType.displayName == "Named Sendable test type")
   }
 
-  @Test func `__raw__$raw_identifier_provides_a_display_name`() throws {
+#if compiler(>=6.2) && hasFeature(RawIdentifiers)
+  @Test func `Test with raw identifier gets a display name`() throws {
     let test = try #require(Test.current)
-    #expect(test.displayName == "raw_identifier_provides_a_display_name")
-    #expect(test.name == "`raw_identifier_provides_a_display_name`()")
+    #expect(test.displayName == "Test with raw identifier gets a display name")
+    #expect(test.name == "`Test with raw identifier gets a display name`()")
     let id = test.id
     #expect(id.moduleName == "TestingTests")
-    #expect(id.nameComponents == ["MiscellaneousTests", "`raw_identifier_provides_a_display_name`()"])
+    #expect(id.nameComponents == ["MiscellaneousTests", "`Test with raw identifier gets a display name`()"])
   }
+
+  @Test func `Suite type with raw identifier gets a display name`() throws {
+    struct `Suite With De Facto Display Name` {}
+    let typeInfo = TypeInfo(describing: `Suite With De Facto Display Name`.self)
+    let suite = Test(traits: [], sourceLocation: #_sourceLocation, containingTypeInfo: typeInfo, isSynthesized: true)
+    #expect(suite.name == "`Suite With De Facto Display Name`")
+    let displayName = try #require(suite.displayName)
+    #expect(displayName == "Suite With De Facto Display Name")
+  }
+
+  @Test(arguments: [0])
+  func `Test with raw identifier and raw identifier parameter labels can compile`(`argument name` i: Int) {
+    #expect(i == 0)
+  }
+#endif
 
   @Test("Free functions are runnable")
   func freeFunction() async throws {

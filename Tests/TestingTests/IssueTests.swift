@@ -503,7 +503,6 @@ final class IssueTests: XCTestCase {
     }.run(configuration: .init())
   }
 
-#if !SWT_TARGET_OS_APPLE || SWT_FIXED_149299786
   func testErrorCheckingWithExpect() async throws {
     let expectationFailed = expectation(description: "Expectation failed")
     expectationFailed.isInverted = true
@@ -623,7 +622,6 @@ final class IssueTests: XCTestCase {
 
     await fulfillment(of: [expectationFailed], timeout: 0.0)
   }
-#endif
 
   func testErrorCheckingWithExpect_mismatchedErrorDescription() async throws {
     let expectationFailed = expectation(description: "Expectation failed")

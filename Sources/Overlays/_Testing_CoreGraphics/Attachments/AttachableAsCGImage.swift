@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2024–2025 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -13,26 +13,40 @@ public import CoreGraphics
 private import ImageIO
 
 /// A protocol describing images that can be converted to instances of
-/// ``Testing/Attachment``.
+/// [`Attachment`](https://developer.apple.com/documentation/testing/attachment).
 ///
 /// Instances of types conforming to this protocol do not themselves conform to
-/// ``Testing/Attachable``. Instead, the testing library provides additional
-/// initializers on ``Testing/Attachment`` that take instances of such types and
-/// handle converting them to image data when needed.
+/// [`Attachable`](https://developer.apple.com/documentation/testing/attachable).
+/// Instead, the testing library provides additional initializers on [`Attachment`](https://developer.apple.com/documentation/testing/attachment)
+/// that take instances of such types and handle converting them to image data when needed.
 ///
-/// The following system-provided image types conform to this protocol and can
-/// be attached to a test:
+/// You can attach instances of the following system-provided image types to a
+/// test:
 ///
-/// - [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage)
+/// | Platform | Supported Types |
+/// |-|-|
+/// | macOS | [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage), [`CIImage`](https://developer.apple.com/documentation/coreimage/ciimage), [`NSImage`](https://developer.apple.com/documentation/appkit/nsimage) |
+/// | iOS, watchOS, tvOS, and visionOS | [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage), [`CIImage`](https://developer.apple.com/documentation/coreimage/ciimage), [`UIImage`](https://developer.apple.com/documentation/uikit/uiimage) |
+/// @Comment {
+/// | Windows | [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps), [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons), [`IWICBitmapSource`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapsource) (including its subclasses declared by Windows Imaging Component) |
+/// }
 ///
 /// You do not generally need to add your own conformances to this protocol. If
 /// you have an image in another format that needs to be attached to a test,
 /// first convert it to an instance of one of the types above.
-@_spi(Experimental)
-public protocol AttachableAsCGImage {
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.3)
+/// }
+@available(_uttypesAPI, *)
+public protocol AttachableAsCGImage: SendableMetatype {
   /// An instance of `CGImage` representing this image.
   ///
   /// - Throws: Any error that prevents the creation of an image.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
   var attachableCGImage: CGImage { get throws }
 
   /// The orientation of the image.
@@ -59,18 +73,20 @@ public protocol AttachableAsCGImage {
   ///
   /// - Returns: A copy of `self`, or `self` if no copy is needed.
   ///
-  /// Several system image types do not conform to `Sendable`; use this
-  /// function to make copies of such images that will not be shared outside
-  /// of an attachment and so can be generally safely stored.
+  /// The testing library uses this function to take ownership of image
+  /// resources that test authors pass to it. If possible, make a copy of or add
+  /// a reference to `self`. If this type does not support making copies, return
+  /// `self` verbatim.
   ///
   /// The default implementation of this function when `Self` conforms to
   /// `Sendable` simply returns `self`.
   ///
   /// This function is not part of the public interface of the testing library.
   /// It may be removed in a future update.
-  func _makeCopyForAttachment() -> Self
+  func _copyAttachableValue() -> Self
 }
 
+@available(_uttypesAPI, *)
 extension AttachableAsCGImage {
   public var _attachmentOrientation: UInt32 {
     CGImagePropertyOrientation.up.rawValue
@@ -81,8 +97,9 @@ extension AttachableAsCGImage {
   }
 }
 
+@available(_uttypesAPI, *)
 extension AttachableAsCGImage where Self: Sendable {
-  public func _makeCopyForAttachment() -> Self {
+  public func _copyAttachableValue() -> Self {
     self
   }
 }

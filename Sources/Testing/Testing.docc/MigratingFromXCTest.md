@@ -277,7 +277,7 @@ XCTest has a function, [`XCTFail()`](https://developer.apple.com/documentation/x
 that causes a test to fail immediately and unconditionally. This function is
 useful when the syntax of the language prevents the use of an `XCTAssert()`
 function. To record an unconditional issue using the testing library, use the
-``Issue/record(_:sourceLocation:)`` function:
+``Issue/record(_:severity:sourceLocation:)`` function:
 
 @Row {
   @Column {
@@ -555,6 +555,45 @@ test function with an instance of this trait type to control whether it runs:
     ```
   }
 }
+
+<!-- TODO: document Test.cancel() and Test.Case.cancel() here
+If a test has already started running and you determine it cannot complete and
+should end early without failing, use ``Test/cancel(_:sourceLocation:)`` instead
+of [`XCTSkip`](https://developer.apple.com/documentation/xctest/xctskip) to
+cancel the task associated with the current test:
+
+@Row {
+  @Column {
+    ```swift
+    // Before
+    func testCashRegister() throws {
+      let cashRegister = CashRegister()
+      let drawer = cashRegister.open()
+      if drawer.isEmpty {
+        throw XCTSkip("Cash register is empty")
+      }
+      ...
+    }
+    ```
+  }
+  @Column {
+    ```swift
+    // After
+    @Test func cashRegister() throws {
+      let cashRegister = CashRegister()
+      let drawer = cashRegister.open()
+      if drawer.isEmpty {
+        try Test.cancel("Cash register is empty")
+      }
+      ...
+    }
+    ```
+  }
+}
+
+If the test is parameterized and you only want to cancel the current test case
+rather than the entire test, use ``Test/Case/cancel(_:sourceLocation:)``.
+-->
 
 ### Annotate known issues
 

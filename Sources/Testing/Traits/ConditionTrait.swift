@@ -72,6 +72,7 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
   /// 
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
   /// }
   public func evaluate() async throws -> Bool {
     switch kind {
@@ -84,15 +85,13 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
 
   public func prepare(for test: Test) async throws {
     let isEnabled = try await evaluate()
-
     if !isEnabled {
       // We don't need to consider including a backtrace here because it will
       // primarily contain frames in the testing library, not user code. If an
       // error was thrown by a condition evaluated above, the caller _should_
       // attempt to get the backtrace of the caught error when creating an issue
       // for it, however.
-      let sourceContext = SourceContext(backtrace: nil, sourceLocation: sourceLocation)
-      throw SkipInfo(comment: comments.first, sourceContext: sourceContext)
+      try Test.cancel(comments.first, sourceLocation: sourceLocation)
     }
   }
 

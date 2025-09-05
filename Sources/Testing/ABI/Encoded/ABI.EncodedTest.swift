@@ -78,7 +78,7 @@ extension ABI {
     /// - Warning: Tags are not yet part of the JSON schema.
     ///
     /// @Metadata {
-    ///   @Available("Swift Testing ABI", introduced: 1)
+    ///   @Available("Swift Testing ABI", introduced: 6.3)
     /// }
     var _tags: [String]?
 
@@ -98,7 +98,7 @@ extension ABI {
       sourceLocation = test.sourceLocation
       id = ID(encoding: test.id)
 
-      if V.versionNumber >= ABI.v1.versionNumber {
+      if V.versionNumber >= ABI.v6_3.versionNumber {
         let tags = test.tags
         if !tags.isEmpty {
           _tags = tags.map(String.init(describing:))

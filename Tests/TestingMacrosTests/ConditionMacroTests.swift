@@ -449,7 +449,22 @@ struct ConditionMacroTests {
     #expect(diagnostic.message.contains("is redundant"))
   }
 
-#if ExperimentalExitTestValueCapture
+  @Test("#expect(processExitsWith:) diagnostics",
+    arguments: [
+      "func f<T>() { #expectExitTest(processExitsWith: x) {} }":
+        "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within generic function 'f()'",
+    ]
+  )
+  func exitTestDiagnostics(input: String, expectedMessage: String) throws {
+    let (_, diagnostics) = try parse(input)
+
+    #expect(diagnostics.count > 0)
+    for diagnostic in diagnostics {
+      #expect(diagnostic.diagMessage.severity == .error)
+      #expect(diagnostic.message == expectedMessage)
+    }
+  }
+
   @Test("#expect(processExitsWith:) produces a diagnostic for a bad capture",
         arguments: [
           "#expectExitTest(processExitsWith: x) { [weak a] in }":
@@ -458,37 +473,21 @@ struct ConditionMacroTests {
             "Type of captured value 'a' is ambiguous",
           "#expectExitTest(processExitsWith: x) { [a = b] in }":
             "Type of captured value 'a' is ambiguous",
+          "#expectExitTest(processExitsWith: x) { [a = b as any T] in }":
+            "Type of captured value 'a' is ambiguous",
+          "#expectExitTest(processExitsWith: x) { [a = b as some T] in }":
+            "Type of captured value 'a' is ambiguous",
+          "struct S<T> { func f() { #expectExitTest(processExitsWith: x) { [a] in } } }":
+            "Cannot call macro ''#expectExitTest(processExitsWith:_:)'' within generic structure 'S'",
         ]
   )
   func exitTestCaptureDiagnostics(input: String, expectedMessage: String) throws {
-    try ExitTestExpectMacro.$isValueCapturingEnabled.withValue(true) {
-      let (_, diagnostics) = try parse(input)
+    let (_, diagnostics) = try parse(input)
 
-      #expect(diagnostics.count > 0)
-      for diagnostic in diagnostics {
-        #expect(diagnostic.diagMessage.severity == .error)
-        #expect(diagnostic.message == expectedMessage)
-      }
-    }
-  }
-#endif
-
-  @Test(
-    "Capture list on an exit test produces a diagnostic",
-    arguments: [
-      "#expectExitTest(processExitsWith: x) { [a] in }":
-        "Cannot specify a capture clause in closure passed to '#expectExitTest(processExitsWith:_:)'"
-    ]
-  )
-  func exitTestCaptureListProducesDiagnostic(input: String, expectedMessage: String) throws {
-    try ExitTestExpectMacro.$isValueCapturingEnabled.withValue(false) {
-      let (_, diagnostics) = try parse(input)
-
-      #expect(diagnostics.count > 0)
-      for diagnostic in diagnostics {
-        #expect(diagnostic.diagMessage.severity == .error)
-        #expect(diagnostic.message == expectedMessage)
-      }
+    #expect(diagnostics.count > 0)
+    for diagnostic in diagnostics {
+      #expect(diagnostic.diagMessage.severity == .error)
+      #expect(diagnostic.message == expectedMessage)
     }
   }
 }
