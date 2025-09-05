@@ -115,9 +115,15 @@ extension ABI.Version {
   ///
   /// Otherwise, the value of this property is `false`.
   static var includesExperimentalFields: Bool {
-    versionNumber < ABI.v6_3.versionNumber
-      || (versionNumber >= ABI.v6_3.versionNumber && _shouldIncludeExperimentalFlags == true)
-      || versionNumber >= ABI.ExperimentalVersion.versionNumber
+    switch versionNumber {
+    case ABI.ExperimentalVersion.versionNumber...:
+      true
+    case ABI.v6_3.versionNumber...:
+      _shouldIncludeExperimentalFlags == true
+    default:
+      // Maintain behavior for pre-6.3 versions.
+      true
+    }
   }
 }
 
