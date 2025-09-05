@@ -9,15 +9,70 @@
 //
 
 private import _TestingInternals
+private import Synchronization
 
 /// A type that can be used to confirm that an event occurs zero or more times.
 public struct Confirmation: Sendable {
-  /// The number of times ``confirm(count:)`` has been called.
-  ///
-  /// This property is fileprivate because it may be mutated asynchronously and
-  /// callers may be tempted to use it in ways that result in data races.
-  fileprivate var count = Locked(rawValue: 0)
+  /// A type describing the context of a non-escaping confirmation.
+  private final class _Context: Sendable {
+    /// The comment associated with this confirmation.
+    let comment: Comment?
 
+    /// The number of times ``confirm(count:)`` is expected to be called.
+    let expectedCount: any RangeExpression<Int> & Sequence<Int> & Sendable
+
+    /// The number of times ``confirm(count:)`` has been called.
+    ///
+    /// - Bug: This value should be of type `Atomic<Int>`.
+    let count = Locked(rawValue: 0)
+    // let count = Atomic<Int>(0)
+
+    /// The source location of the confirmation and any resulting issues.
+    let sourceLocation: SourceLocation
+
+    /// The current test and test case at the time this instance was created.
+    ///
+    /// - Bug: If the confirmation is torn down after the test case ends, we
+    ///   don't have a way to detect it and record a separate issue. Adding a
+    ///   heap-allocated lock to every test case for this narrow use case is
+    ///   probably too expensive.
+    private let (_test, _testCase) = currentTestAndTestCase()
+
+    /// The current configuration at the time this instance was created.
+    private let _configuration = Configuration.current
+
+    init(comment: Comment?, expectedCount: some RangeExpression<Int> & Sequence<Int> & Sendable, sourceLocation: SourceLocation) {
+      self.comment = comment
+      self.expectedCount = expectedCount
+      self.sourceLocation = sourceLocation
+    }
+
+    deinit {
+      let actualCount = count.rawValue
+      //let actualCount = count.load(ordering: .sequentiallyConsistent)
+      if !expectedCount.contains(actualCount) {
+        let issue = Issue(
+          kind: .confirmationMiscounted(actual: actualCount, expected: expectedCount),
+          comments: Array(comment),
+          sourceContext: .init(backtrace: .current(), sourceLocation: sourceLocation)
+        )
+        issue.record(for: (_test, _testCase), configuration: _configuration)
+      }
+    }
+  }
+
+  /// Context for this instance.
+  private var _context: _Context
+
+  @_lifetime(immortal)
+  fileprivate init(comment: Comment?, expectedCount: some RangeExpression<Int> & Sequence<Int> & Sendable, sourceLocation: SourceLocation) {
+    _context = _Context(comment: comment, expectedCount: expectedCount, sourceLocation: sourceLocation)
+  }
+}
+
+// MARK: -
+
+extension Confirmation {
   /// Confirm this confirmation.
   ///
   /// - Parameters:
@@ -27,13 +82,10 @@ public struct Confirmation: Sendable {
   /// directly.
   public func confirm(count: Int = 1) {
     precondition(count > 0)
-    self.count.add(count)
+    _context.count.add(count)
+    //_context.count.add(count, ordering: .sequentiallyConsistent)
   }
-}
 
-// MARK: -
-
-extension Confirmation {
   /// Confirm this confirmation.
   ///
   /// - Parameters:
@@ -175,18 +227,7 @@ public func confirmation<R>(
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: (Confirmation) async throws -> sending R
 ) async rethrows -> R {
-  let confirmation = Confirmation()
-  defer {
-    let actualCount = confirmation.count.rawValue
-    if !expectedCount.contains(actualCount) {
-      let issue = Issue(
-        kind: .confirmationMiscounted(actual: actualCount, expected: expectedCount),
-        comments: Array(comment),
-        sourceContext: .init(backtrace: .current(), sourceLocation: sourceLocation)
-      )
-      issue.record()
-    }
-  }
+  let confirmation = Confirmation(comment: comment, expectedCount: expectedCount, sourceLocation: sourceLocation)
   return try await body(confirmation)
 }
 

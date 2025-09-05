@@ -105,6 +105,16 @@ struct ConfirmationTests {
   func mainActorIsolated() async {
     await confirmation { $0() }
   }
+
+  @Test("Holding on to a confirmation past the end of the scope")
+  func outOfScope() async {
+    let task = await confirmation("Thing happened", expectedCount: 2) { thingHappened in
+      Task.detached {
+        thingHappened()
+      }
+    }
+    await task.value
+  }
 }
 
 // MARK: - Fixtures
