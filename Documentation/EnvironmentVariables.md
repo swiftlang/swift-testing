@@ -26,10 +26,10 @@ names prefixed with `SWT_`.
 | Variable Name | Value Type | Notes |
 |-|:-:|-|
 | `COLORTERM`\* | `String` | Used to determine if the current terminal supports 24-bit color. Common across UNIX-like platforms. |
-| `NO_COLOR`\* | `Any?` | If set to any value, disables color output regardless of terminal capabilities. |
+| `NO_COLOR`[\*](https://no-color.org) | `Any?` | If set to any value, disables color output regardless of terminal capabilities. |
 | `SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT` | `Bool` | Used to enable or disable experimental console output. |
 | `SWT_SF_SYMBOLS_ENABLED` | `Bool` | Used to explicitly enable or disable SF&nbsp;Symbols support on macOS. |
-| `TERM`\* | `String` | Used to determine if the current terminal supports 4- or 8-bit color. Common across UNIX-like platforms. |
+| `TERM`[\*](https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap08.html) | `String` | Used to determine if the current terminal supports 4- or 8-bit color. Common across UNIX-like platforms. |
 
 ## Error handling
 
@@ -37,6 +37,13 @@ names prefixed with `SWT_`.
 |-|:-:|-|
 | `SWT_FOUNDATION_ERROR_BACKTRACING_ENABLED` | `Bool` | Used to explicitly enable or disable error backtrace capturing when an instance of `NSError` or `CFError` is created on Apple platforms. |
 | `SWT_SWIFT_ERROR_BACKTRACING_ENABLED` | `Bool` | Used to explicitly enable or disable error backtrace capturing when a Swift error is thrown. |
+
+## Event streams
+
+| Variable Name | Value Type | Notes |
+|-|:-:|-|
+| `SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED` | `Bool` | Used to explicitly enable or disable experimental fields in the JSON event stream. |
+| `SWT_PRETTY_PRINT_JSON` | `Bool` | Used to enable pretty-printed JSON output to the event stream (for debugging purposes). |
 
 ## Exit tests
 
@@ -53,8 +60,7 @@ names prefixed with `SWT_`.
 | Variable Name | Value Type | Notes |
 |-|:-:|-|
 | `CFFIXED_USER_HOME`\* | `String` | Used on Apple platforms to determine the user's home directory. |
-| `HOME`\* | `String` | Used to determine the user's home directory. |
+| `HOME`[\*](https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap08.html) | `String` | Used to determine the user's home directory. |
 | `SIMULATOR_RUNTIME_BUILD_VERSION`\* | `String` | Used when running in the iOS (etc.) Simulator to determine the simulator's version. |
 | `SIMULATOR_RUNTIME_VERSION`\* | `String` | Used when running in the iOS (etc.) Simulator to determine the simulator's version. |
-| `SWT_PRETTY_PRINT_JSON` | `Bool` | Used to enable pretty-printed JSON output to the event stream (for debugging purposes). |
 | `SWT_USE_LEGACY_TEST_DISCOVERY` | `Bool` | Used to explicitly enable or disable legacy test discovery. |
