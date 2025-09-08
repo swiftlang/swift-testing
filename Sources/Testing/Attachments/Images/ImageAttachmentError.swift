@@ -22,27 +22,20 @@ package enum ImageAttachmentError: Error {
   /// The image could not be converted.
   case couldNotConvertImage
 #elseif os(Windows)
-  /// The architecture-specific `HRESULT` type.
-#if _pointerBitWidth(_64)
-  package typealias HRESULT = Int32
-#else
-  package typealias HRESULT = Int
-#endif
-
   /// A call to `QueryInterface()` failed.
-  case queryInterfaceFailed(Any.Type, HRESULT)
+  case queryInterfaceFailed(Any.Type, CLong)
 
   /// The testing library failed to create a COM object.
-  case comObjectCreationFailed(Any.Type, HRESULT)
+  case comObjectCreationFailed(Any.Type, CLong)
 
   /// An image could not be written.
-  case imageWritingFailed(HRESULT)
+  case imageWritingFailed(CLong)
 
   /// The testing library failed to get an in-memory stream's underlying buffer.
-  case globalFromStreamFailed(HRESULT)
+  case globalFromStreamFailed(CLong)
 
   /// A property could not be written to a property bag.
-  case propertyBagWritingFailed(String, HRESULT)
+  case propertyBagWritingFailed(String, CLong)
 #endif
 }
 
