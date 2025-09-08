@@ -96,7 +96,18 @@ public enum ExitStatus: Sendable {
 extension ExitStatus: Equatable {}
 
 // MARK: - CustomStringConvertible
-@_spi(Experimental)
+
+#if os(Linux)
+/// Get the short name of a signal constant.
+///
+/// This function declaration is provided because `sigabbrev_np()` is only
+/// declared if `_GNU_SOURCE` is set, but setting it causes build errors due to
+/// conflicts with Swift's Glibc module.
+private let _sigabbrev_np = symbol(named: "sigabbrev_np").map {
+  castCFunction(at: $0, to: (@convention(c) (CInt) -> UnsafePointer<CChar>?).self)
+}
+#endif
+
 #if SWT_NO_PROCESS_SPAWNING
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
@@ -104,9 +115,37 @@ extension ExitStatus: CustomStringConvertible {
   public var description: String {
     switch self {
     case let .exitCode(exitCode):
-      ".exitCode(\(exitCode))"
+      return ".exitCode(\(exitCode))"
     case let .signal(signal):
-      ".signal(\(signal))"
+      var signalName: String?
+#if SWT_TARGET_OS_APPLE || os(FreeBSD)
+      // These platforms define sys_signame with a size, which is imported
+      // into Swift as a tuple.
+      withUnsafeBytes(of: sys_signame) { sys_signame in
+        sys_signame.withMemoryRebound(to: UnsafePointer<CChar>.self) { sys_signame in
+          if signal > 0 && signal < sys_signame.count {
+            signalName = String(validatingCString: sys_signame[Int(signal)])
+          }
+        }
+      }
+#elseif os(OpenBSD) || os(Android)
+      if signal > 0 && signal < _NSIG {
+        signalName = String(validatingCString: sys_signame[Int(signal)])
+      }
+#elseif os(Linux)
+      signalName = _sigabbrev_np?(signal)
+        .flatMap(String.init(validatingCString:))
+#elseif os(Windows) || os(WASI)
+      // These platforms do not have API to get the programmatic name of a
+      // signal constant.
+#else
+#warning("Platform-specific implementation missing: signal names unavailable")
+#endif
+
+      if let signalName {
+        return ".signal(SIG\(signalName.uppercased()))"
+      }
+      return ".signal(\(signal))"
     }
   }
 }
