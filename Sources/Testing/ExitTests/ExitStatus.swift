@@ -97,7 +97,7 @@ extension ExitStatus: Equatable {}
 
 // MARK: - CustomStringConvertible
 
-#if os(Linux)
+#if os(Linux) && !SWT_NO_DYNAMIC_LINKING
 /// Get the short name of a signal constant.
 ///
 /// This symbol is provided because the underlying function was added to glibc
@@ -126,13 +126,14 @@ extension ExitStatus: CustomStringConvertible {
       withUnsafeBytes(of: sys_signame) { sys_signame in
         sys_signame.withMemoryRebound(to: UnsafePointer<CChar>.self) { sys_signame in
           if signal > 0 && signal < sys_signame.count {
-            signalName = String(validatingCString: sys_signame[Int(signal)])
+            signalName = String(validatingCString: sys_signame[Int(signal)])?.uppercased()
           }
         }
       }
 #elseif os(Linux)
-      signalName = _sigabbrev_np?(signal)
-        .flatMap(String.init(validatingCString:))
+#if !SWT_NO_DYNAMIC_LINKING
+      signalName = _sigabbrev_np?(signal).flatMap(String.init(validatingCString:))
+#endif
 #elseif os(Windows) || os(WASI)
       // These platforms do not have API to get the programmatic name of a
       // signal constant.
@@ -141,7 +142,7 @@ extension ExitStatus: CustomStringConvertible {
 #endif
 
       if let signalName {
-        return ".signal(SIG\(signalName.uppercased()) → \(signal))"
+        return ".signal(SIG\(signalName) → \(signal))"
       }
       return ".signal(\(signal))"
     }
