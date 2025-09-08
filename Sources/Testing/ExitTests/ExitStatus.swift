@@ -100,9 +100,10 @@ extension ExitStatus: Equatable {}
 #if os(Linux)
 /// Get the short name of a signal constant.
 ///
-/// This function declaration is provided because `sigabbrev_np()` is only
-/// declared if `_GNU_SOURCE` is set, but setting it causes build errors due to
-/// conflicts with Swift's Glibc module.
+/// This symbol is provided because the underlying function was added to glibc
+/// relatively recently and may not be available on all targets. Checking
+/// `__GLIBC_PREREQ()` is insufficient because `_GNU_SOURCE` may not be defined
+/// at the point string.h is first included.
 private let _sigabbrev_np = symbol(named: "sigabbrev_np").map {
   castCFunction(at: $0, to: (@convention(c) (CInt) -> UnsafePointer<CChar>?).self)
 }
@@ -118,6 +119,7 @@ extension ExitStatus: CustomStringConvertible {
       return ".exitCode(\(exitCode))"
     case let .signal(signal):
       var signalName: String?
+
 #if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD) || os(Android)
       // These platforms define sys_signame with a size, which is imported
       // into Swift as a tuple.
@@ -139,7 +141,7 @@ extension ExitStatus: CustomStringConvertible {
 #endif
 
       if let signalName {
-        return ".signal(SIG\(signalName.uppercased()))"
+        return ".signal(SIG\(signalName.uppercased()) → \(signal))"
       }
       return ".signal(\(signal))"
     }
