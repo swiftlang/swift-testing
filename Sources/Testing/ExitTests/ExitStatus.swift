@@ -118,7 +118,7 @@ extension ExitStatus: CustomStringConvertible {
       return ".exitCode(\(exitCode))"
     case let .signal(signal):
       var signalName: String?
-#if SWT_TARGET_OS_APPLE || os(FreeBSD)
+#if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD) || os(Android)
       // These platforms define sys_signame with a size, which is imported
       // into Swift as a tuple.
       withUnsafeBytes(of: sys_signame) { sys_signame in
@@ -127,10 +127,6 @@ extension ExitStatus: CustomStringConvertible {
             signalName = String(validatingCString: sys_signame[Int(signal)])
           }
         }
-      }
-#elseif os(OpenBSD) || os(Android)
-      if signal > 0 && signal < _NSIG {
-        signalName = String(validatingCString: sys_signame[Int(signal)])
       }
 #elseif os(Linux)
       signalName = _sigabbrev_np?(signal)
