@@ -15,7 +15,7 @@ private import _TestingInternals
 @Suite("Exit test tests") struct ExitTestTests {
   @Test("Signal names are reported (where supported)") func signalName() {
     let exitStatus = ExitStatus.signal(SIGABRT)
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
     #expect(String(describing: exitStatus) == ".signal(SIGABRT)")
 #else
     #expect(String(describing: exitStatus) == ".signal(\(SIGABRT))")
