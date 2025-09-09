@@ -263,6 +263,7 @@ struct TimeoutError: Error, CustomStringConvertible {
 /// Invoke a function with a timeout.
 ///
 /// - Parameters:
+///   - taskName: The name of the child task that runs `body`.
 ///   - timeLimit: The amount of time until the closure times out.
 ///   - body: The function to invoke.
 ///   - timeoutHandler: A function to invoke if `body` times out.
@@ -276,19 +277,21 @@ struct TimeoutError: Error, CustomStringConvertible {
 /// This function is not part of the public interface of the testing library.
 @available(_clockAPI, *)
 func withTimeLimit(
+  taskName: String? = nil,
   _ timeLimit: Duration,
   _ body: @escaping @Sendable () async throws -> Void,
   timeoutHandler: @escaping @Sendable () -> Void
 ) async throws {
   try await withThrowingTaskGroup { group in
-    group.addTask {
+    let timeoutHandlerTaskName = taskName.map { "\($0) (timeout handler)" }
+    group.addTask(name: timeoutHandlerTaskName) {
       // If sleep() returns instead of throwing a CancellationError, that means
       // the timeout was reached before this task could be cancelled, so call
       // the timeout handler.
       try await Test.Clock.sleep(for: timeLimit)
       timeoutHandler()
     }
-    group.addTask(operation: body)
+    group.addTask(name: taskName, operation: body)
 
     defer {
       group.cancelAll()
