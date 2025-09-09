@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <iterator>
 #include <mutex>
 
 const char *swt_getTestingLibraryVersion(void) {
@@ -30,7 +31,7 @@ const char *swt_getTestingLibraryVersion(void) {
   // Trim any trailing whitespace.
   static std::once_flag once;
   std::call_once(once, [] {
-    auto i = std::find_if(std::begin(version), std::end(version), std::isspace);
+    auto i = std::find_if(std::begin(version), std::end(version), isspace);
     if (i != std::end(version)) {
       *i = '\0';
     }
