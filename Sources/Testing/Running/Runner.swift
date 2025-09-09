@@ -320,7 +320,13 @@ extension Runner {
 
     // Figure out how to name child tasks.
     func taskNamer(_ childGraph: Graph<String, Plan.Step?>) -> String? {
-      childGraph.value.map { $0.test.humanReadableName() }
+      childGraph.value.map { step in
+        let testName = step.test.humanReadableName()
+        if step.test.isSuite {
+          return "suite \(testName)"
+        }
+        return "test \(testName)"
+      }
     }
 
     // Run the child nodes.
