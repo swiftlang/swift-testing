@@ -18,6 +18,7 @@ add_library(_Testing_Foundation
   ReexportTesting.swift)
 
 target_link_libraries(_Testing_Foundation PUBLIC
+  _TestingInternals
   Testing)
 
 # Although this library links Foundation on all platforms, it only does so using
@@ -35,6 +36,7 @@ endif()
 # interface, because Foundation does not have Library Evolution enabled for all
 # platforms.
 target_compile_options(_Testing_Foundation PRIVATE
-  -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:_Testing_Foundation,Swift_MODULE_DIRECTORY>/_Testing_Foundation.swiftinterface)
+  -emit-module-interface
+  -emit-module-interface-path $<TARGET_PROPERTY:_Testing_Foundation,Swift_MODULE_DIRECTORY>/_Testing_Foundation.swiftinterface)
 
 _swift_testing_install_target(_Testing_Foundation)

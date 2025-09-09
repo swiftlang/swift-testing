@@ -136,9 +136,13 @@ if(NOT BUILD_SHARED_LIBS)
 endif()
 add_dependencies(Testing
   TestingMacros)
-target_compile_options(Testing PRIVATE
-  -enable-library-evolution
-  -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:Testing,Swift_MODULE_DIRECTORY>/Testing.swiftinterface)
+
+if(SwiftTesting_ENABLE_LIBRARY_EVOLUTION)
+  target_compile_options(Testing PRIVATE
+    -enable-library-evolution
+    -emit-module-interface
+    -emit-module-interface-path $<TARGET_PROPERTY:Testing,Swift_MODULE_DIRECTORY>/Testing.swiftinterface)
+endif()
 
 _swift_testing_install_target(Testing)
 

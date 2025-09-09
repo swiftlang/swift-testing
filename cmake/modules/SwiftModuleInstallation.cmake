@@ -26,9 +26,15 @@ function(_swift_testing_install_target module)
   install(FILES $<TARGET_PROPERTY:${module},Swift_MODULE_DIRECTORY>/${module_name}.swiftdoc
     DESTINATION "${module_dir}"
     RENAME ${SwiftTesting_MODULE_TRIPLE}.swiftdoc)
-  install(FILES $<TARGET_PROPERTY:${module},Swift_MODULE_DIRECTORY>/${module_name}.swiftinterface
-    DESTINATION "${module_dir}"
-    RENAME ${SwiftTesting_MODULE_TRIPLE}.swiftinterface)
+  if(SwiftTesting_ENABLE_LIBRARY_EVOLUTION)
+    install(FILES $<TARGET_PROPERTY:${module},Swift_MODULE_DIRECTORY>/${module_name}.swiftinterface
+      DESTINATION "${module_dir}"
+      RENAME ${SwiftTesting_MODULE_TRIPLE}.swiftinterface)
+  else()
+    install(FILES $<TARGET_PROPERTY:${module},Swift_MODULE_DIRECTORY>/${module_name}.swiftmodule
+      DESTINATION "${module_dir}"
+      RENAME ${SwiftTesting_MODULE_TRIPLE}.swiftmodule)
+  endif()
 endfunction()
 
 # Install the specified .swiftcrossimport directory for the specified declaring
