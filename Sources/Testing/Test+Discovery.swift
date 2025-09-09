@@ -102,7 +102,7 @@ extension Test {
         let generators = Generator.allTypeMetadataBasedTestContentRecords().lazy.compactMap { $0.load() }
         await withTaskGroup { taskGroup in
           for (i, generator) in generators.enumerated() {
-            let taskName = "legacy test discovery (#\(i))"
+            let taskName = "type-based test discovery (#\(i))"
             taskGroup.addTask(name: makeTaskName(taskName)) { await generator.rawValue() }
           }
           result = await taskGroup.reduce(into: result) { $0.insert($1) }
