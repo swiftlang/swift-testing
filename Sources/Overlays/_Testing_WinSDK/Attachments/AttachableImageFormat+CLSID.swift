@@ -12,6 +12,7 @@
 @_spi(Experimental) public import Testing
 public import WinSDK
 
+@_spi(Experimental)
 extension AttachableImageFormat {
   private static let _encoderPathExtensionsByCLSID = Result<[UInt128: [String]], any Error> {
     var result = [UInt128: [String]]()
