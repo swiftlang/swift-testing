@@ -167,7 +167,7 @@ extension Runner {
   /// - Parameters:
   ///   - sequence: The sequence to enumerate.
   ///   - body: The function to invoke.
-  ///   - elementNamer: A function to invoke for each element in `sequence`. The
+  ///   - taskNamer: A function to invoke for each element in `sequence`. The
   ///     result of this function is used to name each child task.
   ///
   /// - Throws: Whatever is thrown by `body`.
