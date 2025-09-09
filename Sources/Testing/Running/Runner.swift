@@ -449,7 +449,7 @@ extension Runner {
         }
 
         await withTaskGroup { [runner] taskGroup in
-          var taskName = if iterationCount > 1 {
+          let taskName = if iterationCount > 1 {
             "test run (iteration #\(iterationIndex + 1))"
           } else {
             "test run"
