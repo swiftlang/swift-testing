@@ -196,11 +196,11 @@ extension Test {
   ///
   /// - Returns: The name of this test, suitable for display to the user.
   func humanReadableName(withVerbosity verbosity: Int = 0) -> String {
-    switch (displayName, verbosity) {
-    case let (.some(displayName), ...0):
-      displayName
-    case let (.some(displayName), _):
+    switch displayName {
+    case let .some(displayName) where verbosity > 0:
       #""\#(displayName)" (aka '\#(name)')"#
+    case let .some(displayName):
+      #""\#(displayName)""#
     default:
       name
     }

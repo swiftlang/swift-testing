@@ -90,7 +90,7 @@ extension Test {
         await withTaskGroup { taskGroup in
           for (i, generator) in generators.enumerated() {
             let taskName = "test discovery (#\(i))"
-            taskGroup.addTask(name: taskName) { await generator.rawValue() }
+            taskGroup.addTask(name: makeTaskName(taskName)) { await generator.rawValue() }
           }
           result = await taskGroup.reduce(into: result) { $0.insert($1) }
         }
@@ -103,7 +103,7 @@ extension Test {
         await withTaskGroup { taskGroup in
           for (i, generator) in generators.enumerated() {
             let taskName = "legacy test discovery (#\(i))"
-            taskGroup.addTask(name: taskName) { await generator.rawValue() }
+            taskGroup.addTask(name: makeTaskName(taskName)) { await generator.rawValue() }
           }
           result = await taskGroup.reduce(into: result) { $0.insert($1) }
         }

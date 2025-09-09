@@ -284,14 +284,14 @@ func withTimeLimit(
 ) async throws {
   try await withThrowingTaskGroup { group in
     let timeoutHandlerTaskName = taskName.map { "\($0) (timeout handler)" }
-    group.addTask(name: timeoutHandlerTaskName) {
+    group.addTask(name: makeTaskName(timeoutHandlerTaskName)) {
       // If sleep() returns instead of throwing a CancellationError, that means
       // the timeout was reached before this task could be cancelled, so call
       // the timeout handler.
       try await Test.Clock.sleep(for: timeLimit)
       timeoutHandler()
     }
-    group.addTask(name: taskName, operation: body)
+    group.addTask(name: makeTaskName(taskName), operation: body)
 
     defer {
       group.cancelAll()

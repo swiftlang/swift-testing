@@ -955,7 +955,7 @@ extension ExitTest {
         capturedValuesWriteEnd.close()
 
         // Await termination of the child process.
-        taskGroup.addTask(name: "exit test (awaiting termination)") {
+        taskGroup.addTask(name: makeTaskName("exit test (awaiting termination)")) {
           let exitStatus = try await wait(for: processID)
           return { $0.exitStatus = exitStatus }
         }
@@ -963,14 +963,14 @@ extension ExitTest {
         // Read back the stdout and stderr streams.
         if let stdoutReadEnd {
           stdoutWriteEnd?.close()
-          taskGroup.addTask(name: "exit test (reading stdout)") {
+          taskGroup.addTask(name: makeTaskName("exit test (reading stdout)")) {
             let standardOutputContent = try Self._trimToBarrierValues(stdoutReadEnd.readToEnd())
             return { $0.standardOutputContent = standardOutputContent }
           }
         }
         if let stderrReadEnd {
           stderrWriteEnd?.close()
-          taskGroup.addTask(name: "exit test (reading stderr)") {
+          taskGroup.addTask(name: makeTaskName("exit test (reading stderr)")) {
             let standardErrorContent = try Self._trimToBarrierValues(stderrReadEnd.readToEnd())
             return { $0.standardErrorContent = standardErrorContent }
           }
@@ -979,7 +979,7 @@ extension ExitTest {
         // Read back all data written to the back channel by the child process
         // and process it as a (minimal) event stream.
         backChannelWriteEnd.close()
-        taskGroup.addTask(name: "exit test (processing events)") {
+        taskGroup.addTask(name: makeTaskName("exit test (processing events)")) {
           Self._processRecords(fromBackChannel: backChannelReadEnd)
           return nil
         }
