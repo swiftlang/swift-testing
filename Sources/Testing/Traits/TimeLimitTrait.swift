@@ -263,7 +263,7 @@ struct TimeoutError: Error, CustomStringConvertible {
 /// Invoke a function with a timeout.
 ///
 /// - Parameters:
-///   - taskName: The name of the child task that runs `body`.
+///   - taskName: The name of the child task that runs `body`, if any.
 ///   - timeLimit: The amount of time until the closure times out.
 ///   - body: The function to invoke.
 ///   - timeoutHandler: A function to invoke if `body` times out.
