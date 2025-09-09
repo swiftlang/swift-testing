@@ -10,6 +10,7 @@
 
 #include "Versions.h"
 
+#include <algorithm>
 #include <mutex>
 
 const char *swt_getTestingLibraryVersion(void) {
