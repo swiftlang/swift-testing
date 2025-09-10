@@ -156,14 +156,14 @@ extension Runner {
   /// - Throws: Whatever is thrown by `body`.
   private static func _forEach<E>(
     in sequence: some Sequence<E>,
-    namingTasksWith taskNamer: (borrowing E) -> String?,
+    namingTasksWith taskNamer: (borrowing E) -> (taskName: String, action: String?)?,
     _ body: @Sendable @escaping (borrowing E) async throws -> Void
   ) async rethrows where E: Sendable {
     try await withThrowingTaskGroup { taskGroup in
       for element in sequence {
         // Each element gets its own subtask to run in.
         let taskName = taskNamer(element)
-        taskGroup.addTask(name: makeTaskName(taskName)) {
+        taskGroup.addTask(name: decorateTaskName(taskName?.taskName, withAction: taskName?.action)) {
           try await body(element)
         }
 
@@ -319,13 +319,13 @@ extension Runner {
     }
 
     // Figure out how to name child tasks.
-    func taskNamer(_ childGraph: Graph<String, Plan.Step?>) -> String? {
+    func taskNamer(_ childGraph: Graph<String, Plan.Step?>) -> (String, String?)? {
       childGraph.value.map { step in
         let testName = step.test.humanReadableName()
         if step.test.isSuite {
-          return "suite \(testName)"
+          return ("suite \(testName)", "running")
         }
-        return "test \(testName)"
+        return ("test \(testName)", nil) // test cases have " - running" suffix
       }
     }
 
@@ -351,11 +351,11 @@ extension Runner {
     }
 
     // Figure out how to name child tasks.
-    let testName = step.test.humanReadableName()
-    let taskNamer: (Int, Test.Case) -> String? = if step.test.isParameterized {
-      { i, _ in "\(testName) (test case #\(i + 1))" }
+    let testName = "test \(step.test.humanReadableName())"
+    let taskNamer: (Int, Test.Case) -> (String, String?)? = if step.test.isParameterized {
+      { i, _ in (testName, "running test case #\(i + 1)") }
     } else {
-      { _, _ in testName }
+      { _, _ in (testName, "running") }
     }
 
     await _forEach(in: testCases.enumerated(), namingTasksWith: taskNamer) { _, testCase in
@@ -449,12 +449,11 @@ extension Runner {
         }
 
         await withTaskGroup { [runner] taskGroup in
-          let taskName = if iterationCount > 1 {
-            "test run (iteration #\(iterationIndex + 1))"
-          } else {
-            "test run"
+          var taskAction: String?
+          if iterationCount > 1 {
+            taskAction = "running iteration #\(iterationIndex + 1)"
           }
-          _ = taskGroup.addTaskUnlessCancelled(name: makeTaskName(taskName)) {
+          _ = taskGroup.addTaskUnlessCancelled(name: decorateTaskName("test run", withAction: taskAction)) {
             try? await _runStep(atRootOf: runner.plan.stepGraph)
           }
           await taskGroup.waitForAll()
