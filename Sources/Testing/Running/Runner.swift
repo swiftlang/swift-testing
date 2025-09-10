@@ -149,9 +149,9 @@ extension Runner {
   ///
   /// - Parameters:
   ///   - sequence: The sequence to enumerate.
-  ///   - body: The function to invoke.
   ///   - taskNamer: A function to invoke for each element in `sequence`. The
   ///     result of this function is used to name each child task.
+  ///   - body: The function to invoke.
   ///
   /// - Throws: Whatever is thrown by `body`.
   private static func _forEach<E>(
