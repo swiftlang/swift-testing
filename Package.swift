@@ -470,8 +470,8 @@ extension Array where Element == PackageDescription.CXXSetting {
 
     // Capture the testing library's commit info as C++ constants.
     if let git {
-      let testingLibraryVersion = if let tag = git.currentTag {
-        result.append(.define("SWT_TESTING_LIBRARY_VERSION", to: #""\#(testingLibraryVersion)""#))
+      if let tag = git.currentTag {
+        result.append(.define("SWT_TESTING_LIBRARY_VERSION", to: #""\#(tag)""#))
       } else {
         result.append(.define("SWT_TESTING_LIBRARY_VERSION", to: "0"))
       }
