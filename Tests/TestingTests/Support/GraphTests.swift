@@ -53,8 +53,7 @@ struct GraphTests {
     #expect(graph.subgraph(at: "C2", "C3")?.value == 2468)
   }
 
-  @Test("subscript([K]) operator")
-  func `subscript`() {
+  @Test func `subscript([K]) operator`() {
     let graph = Graph<String, Int>(value: 123, children: [
       "C1": Graph(value: 456),
       "C2": Graph(value: 789, children: [
