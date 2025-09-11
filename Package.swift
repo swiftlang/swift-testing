@@ -468,16 +468,12 @@ extension Array where Element == PackageDescription.CXXSetting {
       .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
     ]
 
-    // Capture the testing library's version as a C++ string constant.
+    // Capture the testing library's commit info as C++ constants.
     if let git {
-      let testingLibraryVersion = if let tag = git.currentTag {
-        tag
-      } else if git.hasUncommittedChanges {
-        "\(git.currentCommit) (modified)"
-      } else {
-        git.currentCommit
+      result.append(.define("SWT_TESTING_LIBRARY_COMMIT_HASH", to: #""\#(git.currentCommit)""#))
+      if git.hasUncommittedChanges {
+        result.append(.define("SWT_TESTING_LIBRARY_COMMIT_MODIFIED", to: "1"))
       }
-      result.append(.define("SWT_TESTING_LIBRARY_VERSION", to: #""\#(testingLibraryVersion)""#))
     }
 
     return result
