@@ -28,13 +28,11 @@ const char *swt_getTestingLibraryVersion(void) {
 #pragma clang diagnostic pop
   };
 
-  // Trim any trailing whitespace.
+  // Zero any trailing characters (e.g. the copyright block.)
   static std::once_flag once;
   std::call_once(once, [] {
     auto i = std::find_if(std::begin(version), std::end(version), isspace);
-    if (i != std::end(version)) {
-      *i = '\0';
-    }
+    std::fill(i, std::end(version), '\0');
   });
 
   return version;
