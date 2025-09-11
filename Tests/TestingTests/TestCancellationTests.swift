@@ -10,6 +10,10 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
+#if canImport(XCTest)
+import XCTest
+#endif
+
 @Suite(.serialized) struct `Test cancellation tests` {
   func testCancellation(
     testCancelled: Int = 0,
@@ -170,6 +174,50 @@
     }
   }
 
+#if canImport(XCTest)
+  static var usesCorelibsXCTest: Bool {
+#if SWT_TARGET_OS_APPLE
+    false
+#else
+    true
+#endif
+  }
+
+  @Test(.enabled(if: SkipInfo.isXCTSkipInteropEnabled))
+  func `Cancelling a test with XCTSkip`() async {
+    await testCancellation(testCancelled: 1, testCaseCancelled: 1) { configuration in
+      await Test {
+        throw XCTSkip("Threw XCTSkip instead of SkipInfo")
+      }.run(configuration: configuration)
+    } eventHandler: { event, eventContext in
+      if case let .testCancelled(skipInfo) = event.kind {
+        withKnownIssue("Comment isn't transferred from XCTSkip (swift-corelibs-xctest-#511)") {
+          #expect(skipInfo.comment == "Threw XCTSkip instead of SkipInfo")
+        } when: {
+          Self.usesCorelibsXCTest
+        }
+      }
+    }
+  }
+
+  @Test(.enabled(if: SkipInfo.isXCTSkipInteropEnabled))
+  func `Cancelling a test with XCTSkipIf`() async {
+    await testCancellation(testCancelled: 1, testCaseCancelled: 1) { configuration in
+      await Test {
+        try XCTSkipIf(1 > 0, "Threw XCTSkip instead of SkipInfo")
+      }.run(configuration: configuration)
+    } eventHandler: { event, eventContext in
+      if case let .testCancelled(skipInfo) = event.kind {
+        withKnownIssue("Comment isn't transferred from XCTSkip (swift-corelibs-xctest-#511)") {
+          #expect(skipInfo.comment == "Threw XCTSkip instead of SkipInfo")
+        } when: {
+          Self.usesCorelibsXCTest
+        }
+      }
+    }
+  }
+#endif
+
 #if !SWT_NO_EXIT_TESTS
   @Test func `Cancelling the current test from within an exit test`() async {
     await testCancellation(testCancelled: 1, testCaseCancelled: 1) { configuration in
@@ -210,8 +258,6 @@
 }
 
 #if canImport(XCTest)
-import XCTest
-
 final class TestCancellationTests: XCTestCase {
   func testCancellationFromBackgroundTask() async {
     let testCancelled = expectation(description: "Test cancelled")
