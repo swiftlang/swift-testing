@@ -22,11 +22,15 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     ReexportTesting.swift)
 
   target_link_libraries(_Testing_WinSDK PUBLIC
+    _TestingInternals
     Testing)
 
-  target_compile_options(_Testing_WinSDK PRIVATE
-    -enable-library-evolution
-    -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:_Testing_WinSDK,Swift_MODULE_DIRECTORY>/_Testing_WinSDK.swiftinterface)
+  if(SwiftTesting_ENABLE_LIBRARY_EVOLUTION)
+    target_compile_options(_Testing_WinSDK PRIVATE
+      -enable-library-evolution
+      -emit-module-interface
+      -emit-module-interface-path $<TARGET_PROPERTY:_Testing_WinSDK,Swift_MODULE_DIRECTORY>/_Testing_WinSDK.swiftinterface)
+  endif()
 
   _swift_testing_install_target(_Testing_WinSDK)
 endif()
