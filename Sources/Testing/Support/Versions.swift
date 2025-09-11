@@ -130,9 +130,7 @@ let simulatorVersion: String = {
 ///
 /// This value is not part of the public interface of the testing library.
 let testingLibraryVersion: String = {
-  guard var result = swt_getTestingLibraryVersion().flatMap(String.init(validatingCString:)) else {
-    return "unknown"
-  }
+  var result = swt_getTestingLibraryVersion().flatMap(String.init(validatingCString:)) ?? "unknown"
 
   // Get details of the git commit used when compiling the testing library.
   var commitHash: UnsafePointer<CChar>?
