@@ -31,7 +31,9 @@ const char *swt_getTestingLibraryVersion(void) {
     // Copy the first line from the C string into a C array so that we can
     // return it from this closure.
     std::array<char, std::size(version) + 1> result {};
-    auto i = std::find(std::begin(version), std::end(version), '\n');
+    auto i = std::find_if(std::begin(version), std::end(version), [] (char c) {
+      return c == '\r' || c == '\n';
+    });
     std::copy(std::begin(version), i, result.begin());
     return result;
   }();
