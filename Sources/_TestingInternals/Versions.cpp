@@ -10,32 +10,33 @@
 
 #include "Versions.h"
 
+#include <array>
 #include <algorithm>
-#include <cctype>
 #include <iterator>
-#include <mutex>
 
 const char *swt_getTestingLibraryVersion(void) {
 #if defined(SWT_TESTING_LIBRARY_VERSION)
   // The current environment explicitly specifies a version string to return.
   return SWT_TESTING_LIBRARY_VERSION;
 #elif __has_embed("../../version.txt")
-  // Read the version from version.txt at the root of the package's repository.
-  static char version[] = {
+  static constinit auto version = [] () constexpr {
+    // Read the version from version.txt at the root of the package's repo.
+    char version[] = {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wc23-extensions"
-#embed "../../version.txt" suffix(, '\0')
+#embed "../../version.txt"
 #pragma clang diagnostic pop
-  };
+    };
 
-  // Zero any trailing characters (e.g. the copyright block.)
-  static std::once_flag once;
-  std::call_once(once, [] {
-    auto i = std::find_if(std::begin(version), std::end(version), isspace);
-    std::fill(i, std::end(version), '\0');
-  });
+    // Copy the first line from the C string into a C array so that we can
+    // return it from this closure.
+    std::array<char, std::size(version) + 1> result {};
+    auto i = std::find(std::begin(version), std::end(version), '\n');
+    std::copy(std::begin(version), i, result.begin());
+    return result;
+  }();
 
-  return version;
+  return version.data();
 #else
 #warning SWT_TESTING_LIBRARY_VERSION not defined and version.txt not found: testing library version is unavailable
   return nullptr;
