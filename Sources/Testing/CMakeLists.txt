@@ -102,6 +102,7 @@ add_library(Testing
   Traits/Comment.swift
   Traits/Comment+Macro.swift
   Traits/ConditionTrait.swift
+  Traits/GroupedConditionTraits.swift
   Traits/ConditionTrait+Macro.swift
   Traits/HiddenTrait.swift
   Traits/IssueHandlingTrait.swift
