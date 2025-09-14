@@ -6,5 +6,5 @@
 # See http://swift.org/LICENSE.txt for license information
 # See http://swift.org/CONTRIBUTORS.txt for Swift project authors
 
-# The library version is now tracked in version.txt at the root directory of the
+# The library version is now tracked in VERSION.txt at the root directory of the
 # repository. This file will be removed in a future commit.
