@@ -40,7 +40,7 @@ const char *swt_getTestingLibraryVersion(void) {
 
   return version.data();
 #else
-#warning SWT_TESTING_LIBRARY_VERSION not defined and version.txt not found: testing library version is unavailable
+#warning SWT_TESTING_LIBRARY_VERSION not defined and VERSION.txt not found: testing library version is unavailable
   return nullptr;
 #endif
 }
