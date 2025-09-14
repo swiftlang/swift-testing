@@ -18,13 +18,13 @@ const char *swt_getTestingLibraryVersion(void) {
 #if defined(SWT_TESTING_LIBRARY_VERSION)
   // The current environment explicitly specifies a version string to return.
   return SWT_TESTING_LIBRARY_VERSION;
-#elif __has_embed("../../version.txt")
+#elif __has_embed("../../VERSION.txt")
   static constinit auto version = [] () constexpr {
     // Read the version from version.txt at the root of the package's repo.
     char version[] = {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wc23-extensions"
-#embed "../../version.txt"
+#embed "../../VERSION.txt"
 #pragma clang diagnostic pop
     };
 
