@@ -1,0 +1,43 @@
+name: Update Swift Testing version
+
+on:
+  workflow_dispatch:
+    # Inputs the workflow accepts.
+    inputs:
+      version:
+        description: 'Swift version (e.g. 5.0.1)'
+        required: true
+        type: string
+      isRelease:
+        description: 'Is this a release branch?'
+        required: true
+        type: boolean
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+    - name: Creating and pushing branch from ${{ github.ref }}...
+      run: |
+        git checkout -b "$GITHUB_ACTOR/update-version.txt"
+        if [ $SWT_IS_RELEASE -eq "false" ]; then
+          export SWT_VERSION="$SWT_VERSION"-dev
+        fi
+        echo "$SWT_VERSION" > VERSION.txt
+        git add VERSION.txt &&
+        git commit -m "Update branch version" &&
+        git push -u origin HEAD
+      env:
+        SWT_VERSION: ${{ github.event.inputs.version }}
+        SWT_IS_RELEASE: ${{ github.event.inputs.isRelease }}
+    - name: Creating pull request...
+      run: gh pr create -B base_branch -H branch_to_merge \
+        --title "Update version to $SWT_VERSION" \
+        --body "This PR updates the Swift Testing version on branch $GITHUB_REF to $SWT_VERSION. This PR was auto-generated. A code owner must review it before it can be merged."
+      env:
+        SWT_VERSION: ${{ github.event.inputs.version }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
