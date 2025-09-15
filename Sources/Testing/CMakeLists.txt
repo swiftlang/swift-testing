@@ -3,8 +3,8 @@
 # Copyright (c) 2024 Apple Inc. and the Swift project authors
 # Licensed under Apache License v2.0 with Runtime Library Exception
 #
-# See http://swift.org/LICENSE.txt for license information
-# See http://swift.org/CONTRIBUTORS.txt for Swift project authors
+# See https://swift.org/LICENSE.txt for license information
+# See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 add_library(Testing
   ABI/EntryPoints/ABIEntryPoint.swift
@@ -76,6 +76,7 @@ add_library(Testing
   Support/Additions/CommandLineAdditions.swift
   Support/Additions/NumericAdditions.swift
   Support/Additions/ResultAdditions.swift
+  Support/Additions/TaskAdditions.swift
   Support/Additions/WinSDKAdditions.swift
   Support/CartesianProduct.swift
   Support/CError.swift
@@ -93,6 +94,7 @@ add_library(Testing
   Test.ID.Selection.swift
   Test.ID.swift
   Test.swift
+  Test+Cancellation.swift
   Test+Discovery.swift
   Test+Discovery+Legacy.swift
   Test+Macro.swift

@@ -13,6 +13,15 @@ private import _TestingInternals
 
 #if !SWT_NO_EXIT_TESTS
 @Suite("Exit test tests") struct ExitTestTests {
+  @Test("Signal names are reported (where supported)") func signalName() {
+    let exitStatus = ExitStatus.signal(SIGABRT)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+    #expect(String(describing: exitStatus) == ".signal(SIGABRT → \(SIGABRT))")
+#else
+    #expect(String(describing: exitStatus) == ".signal(\(SIGABRT))")
+#endif
+  }
+
   @Test("Exit tests (passing)") func passing() async {
     await #expect(processExitsWith: .failure) {
       exit(EXIT_FAILURE)
@@ -195,6 +204,33 @@ private import _TestingInternals
           }
         }.run(configuration: configuration)
       }
+    }
+  }
+
+  private static let attachmentPayload = [UInt8](0...255)
+
+  @Test("Exit test forwards attachments") func forwardsAttachments() async {
+    await confirmation("Value attached") { valueAttached in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        guard case let .valueAttached(attachment) = event.kind else {
+          return
+        }
+        #expect(throws: Never.self) {
+          try attachment.withUnsafeBytes { bytes in
+            #expect(Array(bytes) == Self.attachmentPayload)
+          }
+        }
+        #expect(attachment.preferredName == "my attachment.bytes")
+        valueAttached()
+      }
+      configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
+
+      await Test {
+        await #expect(processExitsWith: .success) {
+          Attachment.record(Self.attachmentPayload, named: "my attachment.bytes")
+        }
+      }.run(configuration: configuration)
     }
   }
 

@@ -291,9 +291,10 @@ extension ExitTest {
       current.pointee = self.unsafeCopy()
     }
 
-    do {
+    let error = await Issue.withErrorRecording(at: nil) {
       try await body(&self)
-    } catch {
+    }
+    if let error {
       _errorInMain(error)
     }
 
@@ -541,10 +542,9 @@ extension ABI {
   /// The ABI version to use for encoding and decoding events sent over the back
   /// channel.
   ///
-  /// The back channel always uses the latest ABI version (even if experimental)
-  /// since both the producer and consumer use this exact version of the testing
-  /// library.
-  fileprivate typealias BackChannelVersion = v6_3
+  /// The back channel always uses the experimental ABI version since both the
+  /// producer and consumer use this exact version of the testing library.
+  fileprivate typealias BackChannelVersion = ExperimentalVersion
 }
 
 @_spi(ForToolsIntegrationOnly)
@@ -767,8 +767,12 @@ extension ExitTest {
       }
     }
     configuration.eventHandler = { event, eventContext in
-      if case .issueRecorded = event.kind {
+      switch event.kind {
+      case .issueRecorded, .valueAttached, .testCancelled, .testCaseCancelled:
         eventHandler(event, eventContext)
+      default:
+        // Don't forward other kinds of event.
+        break
       }
     }
 
@@ -951,7 +955,7 @@ extension ExitTest {
         capturedValuesWriteEnd.close()
 
         // Await termination of the child process.
-        taskGroup.addTask {
+        taskGroup.addTask(name: decorateTaskName("exit test", withAction: "awaiting termination")) {
           let exitStatus = try await wait(for: processID)
           return { $0.exitStatus = exitStatus }
         }
@@ -959,14 +963,14 @@ extension ExitTest {
         // Read back the stdout and stderr streams.
         if let stdoutReadEnd {
           stdoutWriteEnd?.close()
-          taskGroup.addTask {
+          taskGroup.addTask(name: decorateTaskName("exit test", withAction: "reading stdout")) {
             let standardOutputContent = try Self._trimToBarrierValues(stdoutReadEnd.readToEnd())
             return { $0.standardOutputContent = standardOutputContent }
           }
         }
         if let stderrReadEnd {
           stderrWriteEnd?.close()
-          taskGroup.addTask {
+          taskGroup.addTask(name: decorateTaskName("exit test", withAction: "reading stderr")) {
             let standardErrorContent = try Self._trimToBarrierValues(stderrReadEnd.readToEnd())
             return { $0.standardErrorContent = standardErrorContent }
           }
@@ -975,7 +979,7 @@ extension ExitTest {
         // Read back all data written to the back channel by the child process
         // and process it as a (minimal) event stream.
         backChannelWriteEnd.close()
-        taskGroup.addTask {
+        taskGroup.addTask(name: decorateTaskName("exit test", withAction: "processing events")) {
           Self._processRecords(fromBackChannel: backChannelReadEnd)
           return nil
         }
@@ -1034,12 +1038,20 @@ extension ExitTest {
   /// - Throws: Any error encountered attempting to decode or process the JSON.
   private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
     let record = try JSON.decode(ABI.Record<ABI.BackChannelVersion>.self, from: recordJSON)
+    guard case let .event(event) = record.kind else {
+      return
+    }
 
-    if case let .event(event) = record.kind, let issue = event.issue {
+    lazy var comments: [Comment] = event._comments?.map(Comment.init(rawValue:)) ?? []
+    lazy var sourceContext = SourceContext(
+      backtrace: nil, // A backtrace from the child process will have the wrong address space.
+      sourceLocation: event._sourceLocation
+    )
+    lazy var skipInfo = SkipInfo(comment: comments.first, sourceContext: sourceContext)
+    if let issue = event.issue {
       // Translate the issue back into a "real" issue and record it
       // in the parent process. This translation is, of course, lossy
       // due to the process boundary, but we make a best effort.
-      let comments: [Comment] = event.messages.map(\.text).map(Comment.init(rawValue:))
       let issueKind: Issue.Kind = if let error = issue._error {
         .errorCaught(error)
       } else {
@@ -1053,10 +1065,6 @@ extension ExitTest {
         // Prior to 6.3, all Issues are errors
         .error
       }
-      let sourceContext = SourceContext(
-        backtrace: nil, // `issue._backtrace` will have the wrong address space.
-        sourceLocation: issue.sourceLocation
-      )
       var issueCopy = Issue(kind: issueKind, severity: severity, comments: comments, sourceContext: sourceContext)
       if issue.isKnown {
         // The known issue comment, if there was one, is already included in
@@ -1064,6 +1072,12 @@ extension ExitTest {
         issueCopy.knownIssueContext = Issue.KnownIssueContext()
       }
       issueCopy.record()
+    } else if let attachment = event.attachment {
+      Attachment.record(attachment, sourceLocation: event._sourceLocation!)
+    } else if case .testCancelled = event.kind {
+      _ = try? Test.cancel(with: skipInfo)
+    } else if case .testCaseCancelled = event.kind {
+      _ = try? Test.Case.cancel(with: skipInfo)
     }
   }
 

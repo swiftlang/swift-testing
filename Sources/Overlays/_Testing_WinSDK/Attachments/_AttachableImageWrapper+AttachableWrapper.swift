@@ -41,12 +41,12 @@ extension _AttachableImageWrapper: Attachable, AttachableWrapper where Image: At
 
     // Create the encoder.
     let encoder = try withUnsafePointer(to: IID_IWICBitmapEncoder) { [preferredName = attachment.preferredName] IID_IWICBitmapEncoder in
-      var encoderCLSID = AttachableImageFormat.computeCLSID(for: imageFormat, withPreferredName: preferredName)
+      var encoderCLSID = AttachableImageFormat.computeEncoderCLSID(for: imageFormat, withPreferredName: preferredName)
       var encoder: UnsafeMutableRawPointer?
       let rCreate = CoCreateInstance(
         &encoderCLSID,
         nil,
-        DWORD(bitPattern: CLSCTX_INPROC_SERVER.rawValue),
+        DWORD(CLSCTX_INPROC_SERVER.rawValue),
         IID_IWICBitmapEncoder,
         &encoder
       )
@@ -93,7 +93,7 @@ extension _AttachableImageWrapper: Attachable, AttachableWrapper where Image: At
     guard rCommit == S_OK else {
       throw ImageAttachmentError.imageWritingFailed(rCommit)
     }
-    rCommit = stream.pointee.lpVtbl.pointee.Commit(stream, DWORD(bitPattern: STGC_DEFAULT.rawValue))
+    rCommit = stream.pointee.lpVtbl.pointee.Commit(stream, DWORD(STGC_DEFAULT.rawValue))
     guard rCommit == S_OK else {
       throw ImageAttachmentError.imageWritingFailed(rCommit)
     }
@@ -117,7 +117,7 @@ extension _AttachableImageWrapper: Attachable, AttachableWrapper where Image: At
   }
 
   public borrowing func preferredName(for attachment: borrowing Attachment<_AttachableImageWrapper>, basedOn suggestedName: String) -> String {
-    let clsid = AttachableImageFormat.computeCLSID(for: imageFormat, withPreferredName: suggestedName)
+    let clsid = AttachableImageFormat.computeEncoderCLSID(for: imageFormat, withPreferredName: suggestedName)
     return AttachableImageFormat.appendPathExtension(for: clsid, to: suggestedName)
   }
 }
