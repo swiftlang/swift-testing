@@ -38,8 +38,8 @@ public struct Attachment<AttachableValue> where AttachableValue: Attachable & ~C
     }
   }
 
-  /// Storage for ``attachableValue``.
-  fileprivate var storage: Storage
+  /// Storage for ``attachableValue-7dyjv``.
+  private var _storage: Storage
 
   /// The path to which the this attachment was written, if any.
   ///
@@ -118,7 +118,7 @@ extension Attachment where AttachableValue: ~Copyable {
   ///   @Available(Xcode, introduced: 26.0)
   /// }
   public init(_ attachableValue: consuming AttachableValue, named preferredName: String? = nil, sourceLocation: SourceLocation = #_sourceLocation) {
-    self.storage = Storage(attachableValue)
+    self._storage = Storage(attachableValue)
     self._preferredName = preferredName
     self.sourceLocation = sourceLocation
   }
@@ -180,14 +180,6 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
 
 // MARK: - Describing an attachment
 
-extension Attachment where AttachableValue: ~Copyable {
-  @_documentation(visibility: private)
-  public var description: String {
-    let typeInfo = TypeInfo(describing: AttachableValue.self)
-    return #""\#(preferredName)": instance of '\#(typeInfo.unqualifiedName)'"#
-  }
-}
-
 extension Attachment: CustomStringConvertible {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
@@ -209,7 +201,7 @@ extension Attachment where AttachableValue: ~Copyable {
   /// }
   @_disfavoredOverload public var attachableValue: AttachableValue {
     _read {
-      yield storage.attachableValue
+      yield _storage.attachableValue
     }
   }
 }
