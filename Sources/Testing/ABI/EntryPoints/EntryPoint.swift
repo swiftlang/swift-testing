@@ -59,11 +59,11 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
         // Use experimental AdvancedConsoleOutputRecorder
         var advancedOptions = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>.Options()
         advancedOptions.base = .for(.stderr)
-        
+
         let eventRecorder = Event.AdvancedConsoleOutputRecorder<ABI.ExperimentalVersion>(options: advancedOptions) { string in
           try? FileHandle.stderr.write(string)
         }
-        
+
         configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
           eventRecorder.record(event, in: context)
           oldEventHandler(event, context)
@@ -627,7 +627,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   configuration.exitTestHandler = ExitTest.handlerForEntryPoint()
 #endif
 
-    // Warning issues (experimental).
+  // Warning issues (experimental).
   switch args.eventStreamVersionNumber {
   case .some(..<ABI.v6_3.versionNumber):
     // If the event stream version was explicitly specified to a value < 6.3,
