@@ -124,22 +124,6 @@ extension Attachment where AttachableValue: ~Copyable {
   }
 }
 
-@_spi(ForToolsIntegrationOnly)
-extension Attachment where AttachableValue == AnyAttachable {
-  /// Create a type-erased attachment from an instance of ``Attachment``.
-  ///
-  /// - Parameters:
-  ///   - attachment: The attachment to type-erase.
-  fileprivate init(_ attachment: Attachment<some Attachable & Sendable & ~Copyable>) {
-    self.init(
-      storage: Storage(AnyAttachable(attachment)),
-      fileSystemPath: attachment.fileSystemPath,
-      _preferredName: attachment._preferredName,
-      sourceLocation: attachment.sourceLocation
-    )
-  }
-}
-
 /// A type-erased wrapper type that represents any attachable value.
 ///
 /// This type is not generally visible to developers. It is used when posting
@@ -276,8 +260,12 @@ extension Attachment where AttachableValue: Sendable & ~Copyable {
   /// }
   @_documentation(visibility: private)
   public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #_sourceLocation) {
-    var attachmentCopy = Attachment<AnyAttachable>(attachment)
-    attachmentCopy.sourceLocation = sourceLocation
+    var attachmentCopy = Attachment<AnyAttachable>(
+      AnyAttachable(copy attachment),
+      named: attachment._preferredName,
+      sourceLocation: sourceLocation
+    )
+    attachmentCopy.fileSystemPath = attachment.fileSystemPath
     Event.post(.valueAttached(attachmentCopy))
   }
 
