@@ -180,6 +180,14 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
 
 // MARK: - Describing an attachment
 
+extension Attachment where AttachableValue: ~Copyable {
+  @_documentation(visibility: private)
+  public var description: String {
+    let typeInfo = TypeInfo(describing: AttachableValue.self)
+    return #""\#(preferredName)": instance of '\#(typeInfo.unqualifiedName)'"#
+  }
+}
+
 extension Attachment: CustomStringConvertible {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
