@@ -290,13 +290,13 @@ extension Attachment where AttachableValue: Sendable & ~Copyable {
   ///     derive a reasonable filename for the attached value.
   ///   - sourceLocation: The source location of the call to this function.
   ///
-  /// When attaching a value of a type that does not conform to both
-  /// [`Sendable`](https://developer.apple.com/documentation/swift/sendable) and
-  /// [`Copyable`](https://developer.apple.com/documentation/swift/copyable),
-  /// the testing library encodes it as data immediately. If the value cannot be
-  /// encoded and an error is thrown, that error is recorded as an issue in the
-  /// current test and the attachment is not written to the test report or to
-  /// disk.
+  /// When `attachableValue` is an instance of a type that does not conform to
+  /// the [`Sendable`](https://developer.apple.com/documentation/swift/sendable)
+  /// protocol, the testing library encodes it as data immediately. If
+  /// `attachableValue` throws an error when the testing library attempts to
+  /// encode it, the testing library records that error as an issue in the
+  /// current test and does not write the attachment to the test report or to
+  /// persistent storage.
   ///
   /// This function creates a new instance of ``Attachment`` and immediately
   /// attaches it to the current test.
@@ -318,12 +318,13 @@ extension Attachment where AttachableValue: ~Copyable {
   ///   - attachment: The attachment to attach.
   ///   - sourceLocation: The source location of the call to this function.
   ///
-  /// When attaching a value of a type that does not conform to the
-  /// [`Sendable`](https://developer.apple.com/documentation/swift/sendable)
-  /// protocol, the testing library encodes it as data immediately. If the value
-  /// cannot be encoded and an error is thrown, that error is recorded as an
-  /// issue in the current test and the attachment is not written to the test
-  /// report or to disk.
+  /// When `attachableValue` is an instance of a type that does not conform to
+  /// the [`Sendable`](https://developer.apple.com/documentation/swift/sendable)
+  /// protocol, the testing library encodes it as data immediately. If
+  /// `attachableValue` throws an error when the testing library attempts to
+  /// encode it, the testing library records that error as an issue in the
+  /// current test and does not write the attachment to the test report or to
+  /// persistent storage.
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
