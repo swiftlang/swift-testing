@@ -15,13 +15,33 @@ extension Event {
   /// This recorder is currently experimental and must be enabled via the
   /// `SWT_ENABLE_EXPERIMENTAL_CONSOLE_OUTPUT` environment variable.
   struct AdvancedConsoleOutputRecorder<V: ABI.Version>: Sendable {
+    /// Configuration for box-drawing character rendering strategy.
+    enum BoxDrawingMode: Sendable {
+      /// Use Unicode box-drawing characters (┌─, ├─, ╰─, │).
+      case unicode
+      /// Use Windows Code Page 437 box-drawing characters (┌─, ├─, └─, │).
+      case windows437
+      /// Use ASCII fallback characters (--, |-, `-, |).
+      case ascii
+    }
+    
     /// Configuration options for the advanced console output recorder.
     struct Options: Sendable {
       /// Base console output recorder options to inherit from.
       var base: Event.ConsoleOutputRecorder.Options
       
+      /// Box-drawing character mode override.
+      /// 
+      /// When `nil` (default), the mode is automatically determined based on platform:
+      /// - macOS/Linux: Unicode if ANSI enabled, otherwise ASCII
+      /// - Windows: Code Page 437 if ANSI enabled, otherwise ASCII
+      /// 
+      /// Set to a specific mode to override the automatic selection.
+      var boxDrawingMode: BoxDrawingMode?
+      
       init() {
         self.base = Event.ConsoleOutputRecorder.Options()
+        self.boxDrawingMode = nil // Use automatic selection
       }
     }
     
@@ -75,6 +95,10 @@ extension Event {
       /// All issues recorded during the test execution.
       /// Includes failures, warnings, and other diagnostic information.
       var issues: [ABI.EncodedIssue<V>] = []
+      
+      /// Detailed messages for each issue, preserving the order and association.
+      /// Each inner array contains all messages for a single issue.
+      var issueMessages: [[ABI.EncodedMessage<V>]] = []
     }
     
     /// Represents a node in the test hierarchy tree.
@@ -142,48 +166,63 @@ extension Event {
   }
 }
 
-// MARK: - ASCII Fallback Support
+// MARK: - 3-Tiered Fallback Support
 
 extension Event.AdvancedConsoleOutputRecorder {
-  /// Get the appropriate tree drawing character with ASCII fallback.
+  /// Determine the appropriate box-drawing mode based on platform and configuration.
+  private var _boxDrawingMode: BoxDrawingMode {
+    // Use explicit override if provided
+    if let explicitMode = options.boxDrawingMode {
+      return explicitMode
+    }
+    
+    // Otherwise, use platform-appropriate defaults
+#if os(Windows)
+    // On Windows, prefer Code Page 437 characters if ANSI is enabled, otherwise ASCII
+    return options.base.useANSIEscapeCodes ? .windows437 : .ascii
+#else
+    // On macOS/Linux, prefer Unicode if ANSI is enabled, otherwise ASCII
+    return options.base.useANSIEscapeCodes ? .unicode : .ascii
+#endif
+  }
+  
+  /// Get the appropriate tree drawing character with 3-tiered fallback.
+  ///
+  /// Implements the fallback strategy:
+  /// 1. Default (macOS/Linux): Unicode characters (┌─, ├─, ╰─, │)
+  /// 2. Windows fallback: Code Page 437 characters (┌─, ├─, └─, │) 
+  /// 3. Final fallback: ASCII characters (--, |-, `-, |)
   ///
   /// - Parameters:
   ///   - unicode: The Unicode box-drawing character to use.
+  ///   - windows437: The Windows Code Page 437 character to use.
   ///   - ascii: The ASCII fallback character(s) to use.
   ///
-  /// - Returns: The appropriate character based on terminal capabilities.
-  private func _treeCharacter(unicode: String, ascii: String) -> String {
-    // Use ASCII fallback on Windows or when ANSI escape codes are disabled
-    // This follows the same pattern as Event.Symbol
-#if os(Windows)
-    return ascii
-#else
-    if options.base.useANSIEscapeCodes {
+  /// - Returns: The appropriate character based on platform and terminal capabilities.
+  private func _treeCharacter(unicode: String, windows437: String, ascii: String) -> String {
+    switch _boxDrawingMode {
+    case .unicode:
       return unicode
-    } else {
+    case .windows437:
+      return windows437
+    case .ascii:
       return ascii
     }
-#endif
   }
   
   /// Get the tree branch character (├─).
   private var _treeBranch: String {
-    _treeCharacter(unicode: "├─ ", ascii: "|- ")
+    _treeCharacter(unicode: "├─ ", windows437: "├─ ", ascii: "|- ")
   }
   
-  /// Get the tree last branch character (╰─).
+  /// Get the tree last branch character (╰─ or └─).
   private var _treeLastBranch: String {
-    _treeCharacter(unicode: "╰─ ", ascii: "`- ")
-  }
-  
-  /// Get the tree first branch character (┌─).
-  private var _treeFirstBranch: String {
-    _treeCharacter(unicode: "┌─ ", ascii: "-- ")
+    _treeCharacter(unicode: "╰─ ", windows437: "└─ ", ascii: "`- ")
   }
   
   /// Get the tree vertical line character (│).
   private var _treeVertical: String {
-    _treeCharacter(unicode: "│", ascii: "|")
+    _treeCharacter(unicode: "│", windows437: "│", ascii: "|")
   }
 }
 
@@ -207,8 +246,10 @@ extension Event.AdvancedConsoleOutputRecorder {
       }
     }
     
+    // Generate detailed messages using HumanReadableOutputRecorder
+    let messages = _humanReadableRecorder.record(event, in: eventContext)
+    
     // Convert Event to ABI.EncodedEvent for processing (if needed)
-    let messages: [Event.HumanReadableOutputRecorder.Message] = []
     if let encodedEvent = ABI.EncodedEvent<V>(encoding: event, in: eventContext, messages: messages) {
       _processABIEvent(encodedEvent)
     }
@@ -288,8 +329,8 @@ extension Event.AdvancedConsoleOutputRecorder {
     var logicalPath: [String] = []
     
     for component in components {
-      // Skip source location components (they contain .swift: pattern)
-      if _containsSwiftFile(component) {
+      // Skip source location components (filename should be the last component)
+      if component.hasSuffix(".swift:") {
         break
       }
       logicalPath.append(component)
@@ -310,12 +351,12 @@ extension Event.AdvancedConsoleOutputRecorder {
     return keyPath.isEmpty ? [testID] : keyPath
   }
   
-  /// Get all root nodes (module-level nodes) from the Graph.
+  /// Extract all root nodes (module-level nodes) from the Graph.
   ///
   /// - Parameters:
   ///   - testTree: The Graph to extract root nodes from.
   /// - Returns: Array of key paths for root nodes (modules).
-  private func _getRootNodes(from testTree: Graph<String, _HierarchyNode?>) -> [[String]] {
+  private func _rootNodes(from testTree: Graph<String, _HierarchyNode?>) -> [[String]] {
     var rootNodes: [[String]] = []
     var moduleNames: Set<String> = []
     
@@ -335,13 +376,13 @@ extension Event.AdvancedConsoleOutputRecorder {
     return rootNodes
   }
   
-  /// Get a hierarchy node from a test ID by searching the Graph.
+  /// Find a hierarchy node from a test ID by searching the Graph.
   ///
   /// - Parameters:
   ///   - testID: The test ID to search for.
   ///   - testTree: The Graph to search in.
   /// - Returns: The hierarchy node if found.
-  private func _getNodeFromTestID(_ testID: String, in testTree: Graph<String, _HierarchyNode?>) -> _HierarchyNode? {
+  private func _nodeFromTestID(_ testID: String, in testTree: Graph<String, _HierarchyNode?>) -> _HierarchyNode? {
     var foundNode: _HierarchyNode?
     
     testTree.forEach { keyPath, node in
@@ -353,13 +394,13 @@ extension Event.AdvancedConsoleOutputRecorder {
     return foundNode
   }
   
-  /// Get all child key paths for a given parent key path in the Graph.
+  /// Find all child key paths for a given parent key path in the Graph.
   ///
   /// - Parameters:
   ///   - parentKeyPath: The parent key path.
   ///   - testTree: The Graph to search in.
   /// - Returns: Array of child key paths sorted alphabetically.
-  private func _getChildKeyPaths(for parentKeyPath: [String], in testTree: Graph<String, _HierarchyNode?>) -> [[String]] {
+  private func _childKeyPaths(for parentKeyPath: [String], in testTree: Graph<String, _HierarchyNode?>) -> [[String]] {
     var childKeyPaths: [[String]] = []
     
     testTree.forEach { keyPath, node in
@@ -417,6 +458,7 @@ extension Event.AdvancedConsoleOutputRecorder {
            let issue = encodedEvent.issue {
           var testData = context.testData[testID] ?? _TestData()
           testData.issues.append(issue)
+          testData.issueMessages.append(encodedEvent.messages)
           context.testData[testID] = testData
         }
         
@@ -476,28 +518,25 @@ extension Event.AdvancedConsoleOutputRecorder {
     output += "\n"
     
     // Render the test hierarchy tree using Graph
-    let rootNodes = _getRootNodes(from: context.testTree)
+    let rootNodes = _rootNodes(from: context.testTree)
     
     if rootNodes.isEmpty {
       // Show test results as flat list if no hierarchy
       let allTests = context.testData.sorted { $0.key < $1.key }
       for (testID, testData) in allTests {
-        let statusIcon = _getStatusIcon(for: testData.result ?? .passed)
-        let testName = _getNodeFromTestID(testID, in: context.testTree)?.displayName ?? _getNodeFromTestID(testID, in: context.testTree)?.name ?? testID
+        let statusIcon = _statusIcon(for: testData.result ?? .passed)
+        let testName = _nodeFromTestID(testID, in: context.testTree)?.displayName ?? _nodeFromTestID(testID, in: context.testTree)?.name ?? testID
         output += "\(statusIcon) \(testName)\n"
       }
     } else {
       // Render the test hierarchy tree
       for (index, rootKeyPath) in rootNodes.enumerated() {
         if let rootNode = context.testTree[rootKeyPath] {
-          let isFirstRoot = index == 0
-          let isLastRoot = index == rootNodes.count - 1
-          let isSingleRoot = rootNodes.count == 1
-          output += _renderHierarchyNode(rootNode, keyPath: rootKeyPath, context: context, prefix: "", isLast: isLastRoot, isFirstRoot: isFirstRoot, isSingleRoot: isSingleRoot)
+          output += _renderHierarchyNode(rootNode, keyPath: rootKeyPath, context: context, prefix: "", isLast: true)
           
-          // Add spacing between top-level modules with vertical line continuation
+          // Add blank line between top-level modules (treat as separate trees)
           if index < rootNodes.count - 1 {
-            output += "\(_treeVertical)\n"  // Add vertical line continuation between modules
+            output += "\n"
           }
         }
       }
@@ -515,9 +554,9 @@ extension Event.AdvancedConsoleOutputRecorder {
     }
     
     // Format: [total] tests completed in [duration] ([pass symbol] pass: [number], [failed symbol] fail: [number], ...)
-    let passIcon = _getStatusIcon(for: .passed)
-    let failIcon = _getStatusIcon(for: .failed) 
-    let skipIcon = _getStatusIcon(for: .skipped)
+    let passIcon = _statusIcon(for: .passed)
+    let failIcon = _statusIcon(for: .failed) 
+    let skipIcon = _statusIcon(for: .skipped)
     
     var summaryParts: [String] = []
     if context.totalPassed > 0 {
@@ -538,42 +577,56 @@ extension Event.AdvancedConsoleOutputRecorder {
     // Failed Test Details (only if there are failures)
     let failedTests = context.testData.filter { $0.value.result == .failed }
     if !failedTests.isEmpty {
-      output += "══════════════════════════════════════ FAILED TEST DETAILS ══════════════════════════════════════\n"
+      output += "══════════════════════════════════════ FAILED TEST DETAILS (\(failedTests.count)) ══════════════════════════════════════\n"
       output += "\n"
       
       // Iterate through all tests that recorded one or more failures
-      for (testID, testData) in failedTests {
+      for (testIndex, testEntry) in failedTests.enumerated() {
+        let (testID, testData) = testEntry
+        let testNumber = testIndex + 1
+        let totalFailedTests = failedTests.count
+        
         // Get the fully qualified test name by traversing up the hierarchy
         let fullyQualifiedName = _getFullyQualifiedTestNameWithFile(testID: testID, context: context)
         
-        let failureIcon = _getStatusIcon(for: .failed)
+        let failureIcon = _statusIcon(for: .failed)
         output += "\(failureIcon) \(fullyQualifiedName)\n"
         
-        // Show detailed issue information with proper indentation
+        // Show detailed issue information with enhanced formatting
         if !testData.issues.isEmpty {
-          for issue in testData.issues {
-            // Get detailed error description
-            if let error = issue._error {
-              let errorDescription = "\(error)"
-              
-              if !errorDescription.isEmpty && errorDescription != "Test failure" {
-                output += "  Expectation failed:\n"
-                
-                // Split multi-line error descriptions and indent each line
-                let errorLines = errorDescription.split(separator: "\n", omittingEmptySubsequences: false)
-                for line in errorLines {
-                  output += "    \(line)\n"
-                }
+          for (issueIndex, issue) in testData.issues.enumerated() {
+            // 1. Error Message - Get detailed error description
+            let issueDescription = _formatDetailedIssueDescription(issue, issueIndex: issueIndex, testData: testData)
+            
+            if !issueDescription.isEmpty {
+              let errorLines = issueDescription.split(separator: "\n", omittingEmptySubsequences: false)
+              for line in errorLines {
+                output += "  \(line)\n"
               }
             }
             
-            // Add source location
+            // 2. Location
             if let sourceLocation = issue.sourceLocation {
-              output += "  at \(sourceLocation.fileName):\(sourceLocation.line)\n"
+              output += "\n"
+              output += "  Location: \(sourceLocation.fileName):\(sourceLocation.line):\(sourceLocation.column)\n"
             }
             
+            // 3. Statistics - Error counter in lower right
+            let errorCounter = "[\(testNumber)/\(totalFailedTests)]"
+            let paddingLength = max(0, 100 - errorCounter.count)
             output += "\n"
+            output += "\(String(repeating: " ", count: paddingLength))\(errorCounter)\n"
+            
+            // Add spacing between issues (except for the last one)
+            if issueIndex < testData.issues.count - 1 {
+              output += "\n"
+            }
           }
+        }
+        
+        // Add spacing between tests (except for the last one)
+        if testIndex < failedTests.count - 1 {
+          output += "\n"
         }
       }
     }
@@ -588,26 +641,16 @@ extension Event.AdvancedConsoleOutputRecorder {
   ///   - context: The hierarchy context.
   ///   - prefix: The prefix for indentation and tree drawing.
   ///   - isLast: Whether this is the last child at its level.
-  ///   - isFirstRoot: Whether this is the first root node.
-  ///   - isSingleRoot: Whether there's only one root node in the entire hierarchy.
   /// - Returns: The rendered string for this node and its children.
-  private func _renderHierarchyNode(_ node: _HierarchyNode, keyPath: [String], context: _Context, prefix: String, isLast: Bool, isFirstRoot: Bool, isSingleRoot: Bool = false) -> String {
+  private func _renderHierarchyNode(_ node: _HierarchyNode, keyPath: [String], context: _Context, prefix: String, isLast: Bool) -> String {
     var output = ""
     
     if node.isSuite {
       // Suite header
       let treePrefix: String
       if prefix.isEmpty {
-        if isSingleRoot {
-          // Single root module: no tree prefix, flush left
-          treePrefix = ""
-        } else if isFirstRoot {
-                  // Multiple roots: first root uses first branch character
-        treePrefix = _treeFirstBranch
-        } else {
-          // Multiple roots: other roots use standard tree characters
-          treePrefix = isLast ? _treeLastBranch : _treeBranch
-        }
+        // Top-level modules: no tree prefix, flush left (treat as separate trees)
+        treePrefix = ""
       } else {
         // Nested suites: use standard tree characters
         treePrefix = isLast ? _treeLastBranch : _treeBranch
@@ -619,23 +662,18 @@ extension Event.AdvancedConsoleOutputRecorder {
       // Render children with updated prefix  
       let childPrefix: String
       if prefix.isEmpty {
-        if isSingleRoot {
-          // Single root: children start with 3 spaces (no vertical line needed)
-          childPrefix = "   "
-        } else {
-          // Multiple roots: children get 3 spaces as before
-          childPrefix = "   "
-        }
+        // Top-level modules: children start with 3 spaces (no vertical line needed)
+        childPrefix = "   "
       } else {
         // Nested case: continue vertical line unless this is the last node
         childPrefix = prefix + (isLast ? "   " : "\(_treeVertical)  ")
       }
       
-      let childKeyPaths = _getChildKeyPaths(for: keyPath, in: context.testTree)
+      let childKeyPaths = _childKeyPaths(for: keyPath, in: context.testTree)
       for (childIndex, childKeyPath) in childKeyPaths.enumerated() {
         let isLastChild = childIndex == childKeyPaths.count - 1
         if let childNode = context.testTree[childKeyPath] {
-          output += _renderHierarchyNode(childNode, keyPath: childKeyPath, context: context, prefix: childPrefix, isLast: isLastChild, isFirstRoot: false, isSingleRoot: isSingleRoot)
+          output += _renderHierarchyNode(childNode, keyPath: childKeyPath, context: context, prefix: childPrefix, isLast: isLastChild)
           
           // Add spacing between child nodes when the next sibling is a suite
           // Continue the tree structure with vertical line
@@ -646,13 +684,8 @@ extension Event.AdvancedConsoleOutputRecorder {
               // Use the correct spacing prefix
               let spacingPrefix: String
               if prefix.isEmpty {
-                if isSingleRoot {
-                  // Single root case: use 3 spaces + vertical line
-                  spacingPrefix = "   \(_treeVertical)"
-                } else {
-                  // Multiple roots case: use 3 spaces + vertical line
-                  spacingPrefix = "   \(_treeVertical)"
-                }
+                // Top-level modules: use 3 spaces + vertical line
+                spacingPrefix = "   \(_treeVertical)"
               } else {
                 // Nested case: use the child prefix
                 spacingPrefix = childPrefix
@@ -665,7 +698,7 @@ extension Event.AdvancedConsoleOutputRecorder {
     } else {
       // Test case line
       let treePrefix = isLast ? _treeLastBranch : _treeBranch
-      let statusIcon = _getStatusIcon(for: context.testData[node.testID]?.result ?? .passed)
+      let statusIcon = _statusIcon(for: context.testData[node.testID]?.result ?? .passed)
       let testName = node.displayName ?? node.name
       
       // Calculate duration
@@ -677,24 +710,26 @@ extension Event.AdvancedConsoleOutputRecorder {
       
       // Format with right-aligned duration
       let testLine = "\(statusIcon) \(testName)"
-      let paddedTestLine = _padWithDuration(testLine, duration: duration)
-      output += "\(prefix)\(treePrefix)\(paddedTestLine)\n"
+      let fullPrefix = "\(prefix)\(treePrefix)"
+      let paddedTestLine = _padWithDuration(testLine, duration: duration, existingPrefix: fullPrefix)
+      output += "\(fullPrefix)\(paddedTestLine)\n"
       
-      // Render issues for failed tests
+      // Show concise issue summary for quick overview
       if let issues = context.testData[node.testID]?.issues, !issues.isEmpty {
         let issuePrefix = prefix + (isLast ? "   " : "\(_treeVertical)  ")
         for (issueIndex, issue) in issues.enumerated() {
           let isLastIssue = issueIndex == issues.count - 1
           let issueTreePrefix = isLastIssue ? _treeLastBranch : _treeBranch
-          let issueIcon = _getStatusIcon(for: .failed)
-          let issueDescription = issue._error?.description ?? "Test failure"
           
-          output += "\(issuePrefix)\(issueTreePrefix)\(issueIcon) \(issueDescription)\n"
+          // Show "Expectation failed" with the actual error details
+          let fullDescription = _formatDetailedIssueDescription(issue, issueIndex: issueIndex, testData: context.testData[node.testID]!)
+          let conciseDescription = fullDescription.split(separator: "\n").first.map(String.init) ?? "Expected condition was not met"
+          output += "\(issuePrefix)\(issueTreePrefix)Expectation failed: \(conciseDescription)\n"
           
-          // Add source location
+          // Add concise source location
           if let sourceLocation = issue.sourceLocation {
             let locationPrefix = issuePrefix + (isLastIssue ? "   " : "\(_treeVertical)  ")
-            output += "\(locationPrefix)At \(sourceLocation.fileName):\(sourceLocation.line):\(sourceLocation.column)\n"
+            output += "\(locationPrefix)at \(sourceLocation.fileName):\(sourceLocation.line)\n"
           }
         }
       }
@@ -703,12 +738,71 @@ extension Event.AdvancedConsoleOutputRecorder {
     return output
   }
   
-  /// Get the status icon for a test result.
+  /// Format a detailed description of an issue for the Failed Test Details section.
+  ///
+  /// - Parameters:
+  ///   - issue: The encoded issue to format.
+  ///   - issueIndex: The index of the issue in the testData.issues array.
+  ///   - testData: The test data containing the stored messages.
+  /// - Returns: A detailed description of what failed.
+  private func _formatDetailedIssueDescription(_ issue: ABI.EncodedIssue<V>, issueIndex: Int, testData: _TestData) -> String {
+    // Get the corresponding messages for this issue
+    guard issueIndex < testData.issueMessages.count else {
+      // Fallback to error description if available
+      if let error = issue._error {
+        return error.description
+      }
+      return "Issue recorded"
+    }
+    
+    let messages = testData.issueMessages[issueIndex]
+    
+    // Look for detailed messages (difference, details) that contain the actual failure information
+    var detailedMessages: [String] = []
+    
+    for message in messages {
+      switch message.symbol {
+      case .difference, .details:
+        // These contain the detailed expectation failure information
+        detailedMessages.append(message.text)
+      case .fail:
+        // Primary failure message - use if no detailed messages available
+        if detailedMessages.isEmpty {
+          detailedMessages.append(message.text)
+        }
+      default:
+        break
+      }
+    }
+    
+    if !detailedMessages.isEmpty {
+      let fullMessage = detailedMessages.joined(separator: "\n")
+      // Truncate very long messages to prevent layout issues
+      if fullMessage.count > 200 {
+        let truncated = String(fullMessage.prefix(200))
+        return truncated + "..."
+      }
+      return fullMessage
+    }
+    
+    // Final fallback
+    if let error = issue._error {
+      let errorDesc = error.description
+      // Truncate very long error descriptions
+      if errorDesc.count > 200 {
+        return String(errorDesc.prefix(200)) + "..."
+      }
+      return errorDesc
+    }
+    return "Issue recorded"
+  }
+  
+  /// Determine the status icon for a test result.
   ///
   /// - Parameters:
   ///   - result: The test result.
   /// - Returns: The appropriate symbol string.
-  private func _getStatusIcon(for result: _TestResult) -> String {
+  private func _statusIcon(for result: _TestResult) -> String {
     switch result {
     case .passed:
       return Event.Symbol.pass(knownIssueCount: 0).stringValue(options: options.base)
@@ -742,46 +836,75 @@ extension Event.AdvancedConsoleOutputRecorder {
   /// - Parameters:
   ///   - testLine: The test line to pad.
   ///   - duration: The duration string.
+  ///   - existingPrefix: Any prefix that will be added before this line.
   /// - Returns: The padded test line with right-aligned duration.
-  private func _padWithDuration(_ testLine: String, duration: String) -> String {
+  private func _padWithDuration(_ testLine: String, duration: String, existingPrefix: String = "") -> String {
     if duration.isEmpty {
       return testLine
     }
     
-    let targetWidth = 100
+    // Get terminal width dynamically, fall back to 120 if unavailable
+    let targetWidth = _terminalWidth()
     let rightPart = "(\(duration))"
-    let totalLeftLength = testLine.count
+    
+    // Calculate visible character count (excluding ANSI escape codes)
+    let visiblePrefixLength = _visibleCharacterCount(existingPrefix)
+    let visibleLeftLength = _visibleCharacterCount(testLine)
     let totalRightLength = rightPart.count
     
-    if totalLeftLength + totalRightLength + 5 < targetWidth {
-      let paddingLength = targetWidth - totalLeftLength - totalRightLength
+    // Ensure minimum spacing between content and duration
+    let minimumSpacing = 3
+    let totalUsedWidth = visiblePrefixLength + visibleLeftLength + totalRightLength + minimumSpacing
+    
+    if totalUsedWidth < targetWidth {
+      let paddingLength = targetWidth - visiblePrefixLength - visibleLeftLength - totalRightLength
       return "\(testLine)\(String(repeating: " ", count: paddingLength))\(rightPart)"
     } else {
       return "\(testLine) \(rightPart)"
     }
   }
   
-  /// Check if a string contains Swift file pattern without using Foundation.
+  /// Determine the current terminal width, with fallback to reasonable default.
+  ///
+  /// - Returns: Terminal width in characters, defaults to 120 if unavailable.
+  private func _terminalWidth() -> Int {
+    // Try to get terminal width from environment variable
+    if let columnsEnv = Environment.variable(named: "COLUMNS"),
+       let columns = Int(columnsEnv), columns > 0 {
+      return columns
+    }
+    
+    // Fallback to a reasonable default width
+    // Modern terminals are typically 120+ characters wide
+    return 120
+  }
+  
+  /// Calculate the visible character count, excluding ANSI escape sequences.
   ///
   /// - Parameters:
-  ///   - string: The string to check.
-  /// - Returns: True if the string contains ".swift:" pattern.
-  private func _containsSwiftFile(_ string: String) -> Bool {
-    let target = ".swift:"
-    let targetLength = target.count
-    let stringLength = string.count
+  ///   - string: The string to count visible characters in.
+  /// - Returns: The number of visible characters.
+  private func _visibleCharacterCount(_ string: String) -> Int {
+    var visibleCount = 0
+    var inEscapeSequence = false
+    var i = string.startIndex
     
-    guard stringLength >= targetLength else { return false }
-    
-    for i in 0...(stringLength - targetLength) {
-      let startIndex = string.index(string.startIndex, offsetBy: i)
-      let endIndex = string.index(startIndex, offsetBy: targetLength)
-      let substring = String(string[startIndex..<endIndex])
-      if substring == target {
-        return true
+    while i < string.endIndex {
+      let char = string[i]
+      
+      if char == "\u{1B}" { // ESC character
+        inEscapeSequence = true
+      } else if inEscapeSequence && (char == "m" || char == "K") {
+        // End of ANSI escape sequence
+        inEscapeSequence = false
+      } else if !inEscapeSequence {
+        visibleCount += 1
       }
+      
+      i = string.index(after: i)
     }
-    return false
+    
+    return visibleCount
   }
   
   /// Get the fully qualified test name for a given test ID.
