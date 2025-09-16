@@ -10,10 +10,10 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
-struct `Attachment.ConditionalRecordingTrait tests` {
-  func runRecordingAttachmentTests(with trait: AttachmentSavingTrait?, expectedCount: Int, expectedIssueCount: Int = Self.issueCountFromTestBodies, expectedPreferredName: String?) async throws {
-    let traitToApply = trait as (any SuiteTrait)? ?? Self.currentRecordingAttachmentsTrait
-    try await Self.$currentRecordingAttachmentsTrait.withValue(traitToApply) {
+struct `AttachmentSavingTrait tests` {
+  func runAttachmentSavingTests(with trait: AttachmentSavingTrait?, expectedCount: Int, expectedIssueCount: Int = Self.issueCountFromTestBodies, expectedPreferredName: String?) async throws {
+    let traitToApply = trait as (any SuiteTrait)? ?? Self.currentAttachmentSavingTrait
+    try await Self.$currentAttachmentSavingTrait.withValue(traitToApply) {
       try await confirmation("Issue recorded", expectedCount: expectedIssueCount) { issueRecorded in
         try await confirmation("Attachment detected", expectedCount: expectedCount) { valueAttached in
           var configuration = Configuration()
@@ -41,62 +41,62 @@ struct `Attachment.ConditionalRecordingTrait tests` {
     }
   }
 
-  @Test func `Recording attachments without conditions`() async throws {
-    try await runRecordingAttachmentTests(
+  @Test func `Saving attachments without conditions`() async throws {
+    try await runAttachmentSavingTests(
       with: nil,
       expectedCount: Self.totalTestCaseCount,
       expectedPreferredName: nil
     )
   }
 
-  @Test func `Recording attachments only on test pass`() async throws {
-    try await runRecordingAttachmentTests(
+  @Test func `Saving attachments only on test pass`() async throws {
+    try await runAttachmentSavingTests(
       with: .savingAttachments(if: .testPasses),
       expectedCount: Self.passingTestCaseCount,
       expectedPreferredName: "PASSING TEST"
     )
   }
 
-  @Test func `Recording attachments only on test failure`() async throws {
-    try await runRecordingAttachmentTests(
+  @Test func `Saving attachments only on test failure`() async throws {
+    try await runAttachmentSavingTests(
       with: .savingAttachments(if: .testFails),
       expectedCount: Self.failingTestCaseCount,
       expectedPreferredName: "FAILING TEST"
     )
   }
 
-  @Test func `Recording attachments with custom condition`() async throws {
-    try await runRecordingAttachmentTests(
+  @Test func `Saving attachments with custom condition`() async throws {
+    try await runAttachmentSavingTests(
       with: .savingAttachments(if: true),
       expectedCount: Self.totalTestCaseCount,
       expectedPreferredName: nil
     )
 
-    try await runRecordingAttachmentTests(
+    try await runAttachmentSavingTests(
       with: .savingAttachments(if: false),
       expectedCount: 0,
       expectedPreferredName: nil
     )
   }
 
-  @Test func `Recording attachments with custom async condition`() async throws {
+  @Test func `Saving attachments with custom async condition`() async throws {
     @Sendable func conditionFunction() async -> Bool {
       true
     }
 
-    try await runRecordingAttachmentTests(
+    try await runAttachmentSavingTests(
       with: .savingAttachments(if: conditionFunction),
       expectedCount: Self.totalTestCaseCount,
       expectedPreferredName: nil
     )
   }
 
-  @Test func `Recording attachments but the condition throws`() async throws {
+  @Test func `Saving attachments but the condition throws`() async throws {
     @Sendable func conditionFunction() throws -> Bool {
       throw MyError()
     }
 
-    try await runRecordingAttachmentTests(
+    try await runAttachmentSavingTests(
       with: .savingAttachments(if: conditionFunction),
       expectedCount: 0,
       expectedIssueCount: Self.issueCountFromTestBodies + Self.totalTestCaseCount /* thrown from conditionFunction */,
@@ -107,16 +107,16 @@ struct `Attachment.ConditionalRecordingTrait tests` {
 
 // MARK: - Fixtures
 
-extension `Attachment.ConditionalRecordingTrait tests` {
+extension `AttachmentSavingTrait tests` {
   static let totalTestCaseCount = 1 + 1 + 5 + 7
   static let passingTestCaseCount = 1 + 5
   static let failingTestCaseCount = 1 + 7
   static let issueCountFromTestBodies = failingTestCaseCount
 
   @TaskLocal
-  static var currentRecordingAttachmentsTrait: any SuiteTrait = Comment(rawValue: "<no .recordingAttachments trait set>")
+  static var currentAttachmentSavingTrait: any SuiteTrait = Comment(rawValue: "<no .savingAttachments trait set>")
 
-  @Suite(.hidden, currentRecordingAttachmentsTrait)
+  @Suite(.hidden, currentAttachmentSavingTrait)
   struct FixtureSuite {
     @Test(.hidden) func `Records an attachment (passing)`() {
       Attachment.record("", named: "PASSING TEST")
