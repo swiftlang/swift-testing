@@ -42,7 +42,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "WASI")
   add_compile_definitions("SWT_NO_DYNAMIC_LINKING")
   add_compile_definitions("SWT_NO_PIPES")
 endif()
-if(CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
-  file(STRINGS "../VERSION.txt" SWT_TESTING_LIBRARY_VERSION)
-  add_compile_definitions("$<$<COMPILE_LANGUAGE:CXX>:SWT_TESTING_LIBRARY_VERSION=\"${SWT_TESTING_LIBRARY_VERSION}\">")
-endif()
+
+# Avoid using C23's #embed when building with CMake as OpenBSD and Amazon Linux
+# 2 are both using older clang versions that don't support it.
+file(STRINGS "../VERSION.txt" SWT_TESTING_LIBRARY_VERSION LIMIT_COUNT 1)
+add_compile_definitions("$<$<COMPILE_LANGUAGE:CXX>:SWT_TESTING_LIBRARY_VERSION=\"${SWT_TESTING_LIBRARY_VERSION}\">")
