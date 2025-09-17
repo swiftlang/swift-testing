@@ -81,6 +81,10 @@ extension TimeValue: Codable {}
 
 extension TimeValue: CustomStringConvertible {
   var description: String {
+#if os(WASI)
+    // BUG: https://github.com/swiftlang/swift/issues/72398
+    return String(describing: Duration(self))
+#else
     let (secondsFromAttoseconds, attosecondsRemaining) = attoseconds.quotientAndRemainder(dividingBy: 1_000_000_000_000_000_000)
     let seconds = seconds + secondsFromAttoseconds
     var milliseconds = attosecondsRemaining / 1_000_000_000_000_000
@@ -94,6 +98,7 @@ extension TimeValue: CustomStringConvertible {
       }
       return String(cString: buffer.baseAddress!)
     }
+#endif
   }
 }
 
