@@ -19,6 +19,8 @@ if(POLICY CMP0157)
   endif()
 endif()
 
+set(SWT_SOURCE_ROOT_DIR ${PROJECT_SOURCE_DIR})
+
 project(SwiftTesting
   LANGUAGES CXX Swift)
 
