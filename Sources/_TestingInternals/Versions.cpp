@@ -18,7 +18,8 @@ const char *swt_getTestingLibraryVersion(void) {
 #if defined(SWT_TESTING_LIBRARY_VERSION)
   // The current environment explicitly specifies a version string to return.
   return SWT_TESTING_LIBRARY_VERSION;
-#elif __has_embed("../../VERSION.txt")
+#elif __clang_major__ >= 19
+#if __has_embed("../../VERSION.txt")
   static constinit auto version = [] () constexpr {
     // Read the version from version.txt at the root of the package's repo.
     char version[] = {
@@ -41,6 +42,10 @@ const char *swt_getTestingLibraryVersion(void) {
   return version.data();
 #else
 #warning SWT_TESTING_LIBRARY_VERSION not defined and VERSION.txt not found: testing library version is unavailable
+  return nullptr;
+#endif
+#else
+#warning SWT_TESTING_LIBRARY_VERSION not defined and could not read from VERSION.txt at compile time: testing library version is unavailable
   return nullptr;
 #endif
 }
