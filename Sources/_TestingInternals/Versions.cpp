@@ -26,7 +26,7 @@ const char *swt_getTestingLibraryVersion(void) {
   static char version[] = {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wc23-extensions"
-#embed "../../VERSION.txt"
+#embed "../../VERSION.txt" suffix(, '\0')
 #pragma clang diagnostic pop
   };
 
