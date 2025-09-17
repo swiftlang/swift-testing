@@ -22,7 +22,7 @@ private import _TestingInternals
 #endif
 
     let exitStatus = ExitStatus.signal(SIGABRT)
-    if hasSignalNames {
+    if Bool(hasSignalNames) {
       #expect(String(describing: exitStatus) == ".signal(SIGABRT → \(SIGABRT))")
     } else {
       #expect(String(describing: exitStatus) == ".signal(\(SIGABRT))")
