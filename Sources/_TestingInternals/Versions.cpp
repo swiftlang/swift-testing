@@ -18,6 +18,7 @@
 const char *swt_getTestingLibraryVersion(void) {
 #if defined(SWT_TESTING_LIBRARY_VERSION)
   // The current environment explicitly specifies a version string to return.
+  // All CMake builds should take this path (see CompilerSettings.cmake.)
   return SWT_TESTING_LIBRARY_VERSION;
 #elif __clang_major__ >= 17 && defined(__has_embed)
 #if __has_embed("../../VERSION.txt")
@@ -43,6 +44,9 @@ const char *swt_getTestingLibraryVersion(void) {
 #warning SWT_TESTING_LIBRARY_VERSION not defined and VERSION.txt not found: testing library version is unavailable
   return nullptr;
 #endif
+#elif defined(__OpenBSD__)
+  // OpenBSD's version of clang doesn't support __has_embed or #embed.
+  return nullptr;
 #else
 #warning SWT_TESTING_LIBRARY_VERSION not defined and could not read from VERSION.txt at compile time: testing library version is unavailable
   return nullptr;

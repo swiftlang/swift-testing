@@ -466,9 +466,6 @@ extension Array where Element == PackageDescription.CXXSetting {
 
       .define("SWT_NO_LEGACY_TEST_DISCOVERY", .whenEmbedded()),
       .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
-
-      // OpenBSD's version of clang doesn't support __has_embed.
-      .define("SWT_TESTING_LIBRARY_VERSION", to: "0", .when(platforms: [.openbsd]))
     ]
 
     // Capture the testing library's commit info as C++ constants.
