@@ -18,7 +18,7 @@ const char *swt_getTestingLibraryVersion(void) {
 #if defined(SWT_TESTING_LIBRARY_VERSION)
   // The current environment explicitly specifies a version string to return.
   return SWT_TESTING_LIBRARY_VERSION;
-#elif __clang_major__ >= 19
+#elif __clang_major__ >= 17 && defined(__has_embed)
 #if __has_embed("../../VERSION.txt")
   static constinit auto version = [] () constexpr {
     // Read the version from version.txt at the root of the package's repo.
