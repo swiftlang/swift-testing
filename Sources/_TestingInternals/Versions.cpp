@@ -14,6 +14,10 @@
 #include <algorithm>
 #include <iterator>
 
+int clangMajor(void) {
+  return __clang_major__;
+}
+
 const char *swt_getTestingLibraryVersion(void) {
 #if defined(SWT_TESTING_LIBRARY_VERSION)
   // The current environment explicitly specifies a version string to return.

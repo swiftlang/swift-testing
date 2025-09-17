@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 extension Event {
   /// A type which handles ``Event`` instances and outputs representations of
   /// them as human-readable messages.
@@ -356,6 +358,7 @@ extension Event.HumanReadableOutputRecorder {
 
     case .runStarted:
       var comments = [Comment]()
+      comments.append("Clang Major: \(clangMajor())")
       if verbosity > 0 {
         if let swiftStandardLibraryVersion {
           comments.append("Swift Standard Library Version: \(swiftStandardLibraryVersion)")

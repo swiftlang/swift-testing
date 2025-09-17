@@ -30,6 +30,8 @@ static inline uint64_t swt_getSwiftCompilerVersion(void) {
 #endif
 }
 
+SWT_EXTERN int clangMajor(void);
+
 /// Get the human-readable version of the testing library.
 ///
 /// - Returns: A human-readable string describing the version of the testing
