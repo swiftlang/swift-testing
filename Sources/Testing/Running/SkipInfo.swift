@@ -8,6 +8,11 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if _runtime(_ObjC) && canImport(Foundation)
+private import ObjectiveC
+private import Foundation
+#endif
+
 /// A type representing the details of a skipped test.
 @_spi(ForToolsIntegrationOnly)
 public struct SkipInfo: Sendable {
@@ -57,6 +62,67 @@ extension SkipInfo: Codable {}
 // MARK: -
 
 extension SkipInfo {
+  /// The Swift type corresponding to `XCTSkip` if XCTest has been linked into
+  /// the current process.
+  private static let _xctSkipType: Any.Type? = _typeByName("6XCTest7XCTSkipV") // _mangledTypeName(XCTest.XCTSkip.self)
+
+  /// Whether or not we can create an instance of ``SkipInfo`` from an instance
+  /// of XCTest's `XCTSkip` type.
+  static var isXCTSkipInteropEnabled: Bool {
+    _xctSkipType != nil
+  }
+
+  /// Attempt to create an instance of this type from an instance of XCTest's
+  /// `XCTSkip` error type.
+  ///
+  /// - Parameters:
+  ///   - error: The error that may be an instance of `XCTSkip`.
+  ///
+  /// - Returns: An instance of ``SkipInfo`` corresponding to `error`, or `nil`
+  ///   if `error` was not an instance of `XCTSkip`.
+  private static func _fromXCTSkip(_ error: any Error) -> Self? {
+    guard let _xctSkipType, type(of: error) == _xctSkipType else {
+      return nil
+    }
+
+    let userInfo = error._userInfo as? [String: Any] ?? [:]
+
+    if let skipInfoJSON = userInfo["XCTestErrorUserInfoKeyBridgedJSONRepresentation"] as? any RandomAccessCollection {
+      func open(_ skipInfoJSON: some RandomAccessCollection) -> Self? {
+        try? skipInfoJSON.withContiguousStorageIfAvailable { skipInfoJSON in
+          try JSON.decode(Self.self, from: UnsafeRawBufferPointer(skipInfoJSON))
+        }
+      }
+      if let skipInfo = open(skipInfoJSON) {
+        return skipInfo
+      }
+    }
+
+    var comment: Comment?
+    var backtrace: Backtrace?
+#if _runtime(_ObjC) && canImport(Foundation)
+    // Temporary workaround that allows us to implement XCTSkip bridging on
+    // Apple platforms where XCTest does not provide the user info values above.
+    if let skippedContext = userInfo["XCTestErrorUserInfoKeySkippedTestContext"] as? NSObject {
+      if let message = skippedContext.value(forKey: "message") as? String {
+        comment = Comment.init(rawValue: message)
+      }
+      if let callStackAddresses = skippedContext.value(forKeyPath: "sourceCodeContext.callStack.address") as? [UInt64] {
+        backtrace = Backtrace(addresses: callStackAddresses)
+      }
+    }
+#else
+    // On non-Apple platforms, we just don't have this information.
+    // SEE: swift-corelibs-xctest-#511
+#endif
+    if backtrace == nil {
+      backtrace = Backtrace(forFirstThrowOf: error)
+    }
+
+    let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: nil)
+    return SkipInfo(comment: comment, sourceContext: sourceContext)
+  }
+
   /// Initialize an instance of this type from an arbitrary error.
   ///
   /// - Parameters:
@@ -72,6 +138,15 @@ extension SkipInfo {
       let backtrace = Backtrace(forFirstThrowOf: error)
       let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: nil)
       self.init(comment: nil, sourceContext: sourceContext)
+    } else if let skipInfo = Self._fromXCTSkip(error) {
+      // XCTSkip doesn't cancel the current test or task for us, so we do it
+      // here as part of the bridging process.
+      self = skipInfo
+      if Test.Case.current != nil {
+        Test.Case.cancel(with: skipInfo)
+      } else if Test.current != nil {
+        Test.cancel(with: skipInfo)
+      }
     } else {
       return nil
     }
