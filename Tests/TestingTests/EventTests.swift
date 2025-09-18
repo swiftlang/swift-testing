@@ -128,7 +128,7 @@ private func MockXCTAssert(_ condition: Bool, _ message: String, _ sourceLocatio
   }
 }
 
-private func MockXCTAttachmentAdd(_ string: String, named name: String) {
+private func MockXCTAttachmentAdd(_ string: String, named name: String, _ sourceLocation: SourceLocation = #_sourceLocation) {
   #expect(throws: Never.self) {
     guard let fallbackEventHandler = fallbackEventHandler() else {
       return
@@ -150,6 +150,15 @@ private func MockXCTAttachmentAdd(_ string: String, named name: String) {
           "_preferredName": name
         ],
         "messages": [],
+        "_comments": [
+          "comment #1",
+        ],
+        "_sourceLocation": [
+          "fileID": sourceLocation.fileID,
+          "_filePath": sourceLocation._filePath,
+          "line": sourceLocation.line,
+          "column": sourceLocation.column,
+        ]
       ],
     ]
 

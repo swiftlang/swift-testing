@@ -58,6 +58,12 @@ extension ABI {
     /// - Warning: Errors are not yet part of the JSON schema.
     var _error: EncodedError<V>?
 
+    /// The comment associated with the call to `withKnownIssue()` that
+    /// generated this issue.
+    ///
+    /// - Warning: This field is not yet part of the JSON schema.
+    var _knownIssueComment: String?
+
     init(encoding issue: borrowing Issue, in eventContext: borrowing Event.Context) {
       // >= v0
       isKnown = issue.isKnown
@@ -80,6 +86,9 @@ extension ABI {
         if let error = issue.error {
           _error = EncodedError(encoding: error, in: eventContext)
         }
+        if let knownIssueContext = issue.knownIssueContext {
+          _knownIssueComment = knownIssueContext.comment?.rawValue
+        }
       }
     }
   }
@@ -89,47 +98,3 @@ extension ABI {
 
 extension ABI.EncodedIssue: Codable {}
 extension ABI.EncodedIssue.Severity: Codable {}
-
-// MARK: - Converting back to an Issue
-
-extension Issue {
-  /// Attempt to reconstruct an instance of ``Issue`` from the given encoded
-  /// event.
-  ///
-  /// - Parameters:
-  ///   - event: The event that may contain an encoded issue.
-  ///
-  /// If `event` does not represent an issue, this initializer returns `nil`.
-  init?<V>(_ event: ABI.EncodedEvent<V>) {
-    guard let issue = event.issue else {
-      return nil
-    }
-
-    // Translate the issue back into a "real" issue and record it
-    // in the parent process. This translation is, of course, lossy
-    // due to the process boundary, but we make a best effort.
-    let comments: [Comment] = event.messages.map(\.text).map(Comment.init(rawValue:))
-    let issueKind: Issue.Kind = if let error = issue._error {
-      .errorCaught(error)
-    } else {
-      // TODO: improve fidelity of issue kind reporting (especially those without associated values)
-      .unconditional
-    }
-    let severity: Issue.Severity = switch issue.severity {
-    case .warning:
-        .warning
-    case nil, .error:
-        .error
-    }
-    let sourceContext = SourceContext(
-      backtrace: nil, // `issue._backtrace` will have the wrong address space.
-      sourceLocation: issue.sourceLocation
-    )
-    self.init(kind: issueKind, severity: severity, comments: comments, sourceContext: sourceContext)
-    if issue.isKnown {
-      // The known issue comment, if there was one, is already included in
-      // the `comments` array above.
-      knownIssueContext = Issue.KnownIssueContext()
-    }
-  }
-}

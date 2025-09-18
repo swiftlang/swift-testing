@@ -33,8 +33,26 @@ extension Event {
       sourceLocation: event._sourceLocation
     )
     lazy var skipInfo = SkipInfo(comment: comments.first, sourceContext: sourceContext)
-    if let issue = Issue(event) {
-      issue.record()
+    if let issue = event.issue {
+      // Translate the issue back into a "real" issue and record it in the
+      // parent process. This translation is, of course, lossy due to the ABI
+      // and/or process boundary, but we make a best effort.
+      let issueKind: Issue.Kind = if let error = issue._error {
+        .errorCaught(error)
+      } else {
+        // TODO: improve fidelity of issue kind reporting (especially those without associated values)
+        .unconditional
+      }
+      let severity: Issue.Severity = switch issue.severity {
+      case .warning: .warning
+      case nil, .error: .error
+      }
+      var issueCopy = Issue(kind: issueKind, severity: severity, comments: comments, sourceContext: sourceContext)
+      if issue.isKnown {
+        issueCopy.knownIssueContext = Issue.KnownIssueContext()
+        issueCopy.knownIssueContext?.comment = issue._knownIssueComment.map(Comment.init(rawValue:))
+      }
+      issueCopy.record()
     } else if let attachment = event.attachment {
       Attachment.record(attachment, sourceLocation: event._sourceLocation!)
     } else if case .testCancelled = event.kind {
@@ -42,17 +60,6 @@ extension Event {
     } else if case .testCaseCancelled = event.kind {
       _ = try? Test.Case.cancel(with: skipInfo)
     }
-  }
-
-  /// The implementation of ``fallbackEventHandler``.
-  ///
-  /// - Parameters:
-  ///   - abi: The ABI version to use for decoding `recordJSON`.
-  ///   - recordJSON: The JSON encoding of an event record.
-  ///
-  /// - Throws: Any error that prevented handling the encoded record.
-  private static func _fallbackEventHandler<V>(_ abi: V.Type, _ recordJSON: UnsafeRawBufferPointer) throws where V: ABI.Version {
-    try handle(recordJSON, encodedWith: abi)
   }
 
   /// The fallback event handler to set when Swift Testing is the active testing
@@ -63,7 +70,7 @@ extension Event {
       .flatMap(ABI.version(forVersionNumber:))
     if let abi {
       let recordJSON = UnsafeRawBufferPointer(start: recordJSONBaseAddress, count: recordJSONByteCount)
-      try! Self._fallbackEventHandler(abi, recordJSON)
+      try! Self.handle(recordJSON, encodedWith: abi)
     }
   }
 
