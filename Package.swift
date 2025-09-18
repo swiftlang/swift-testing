@@ -164,7 +164,7 @@ let package = Package(
         "Testing",
       ],
       path: "Tests/_MemorySafeTestingTests",
-      swiftSettings: .packageSettings + .strictMemorySafety()
+      swiftSettings: .packageSettings + [.strictMemorySafety()]
     ),
 
     .macro(
