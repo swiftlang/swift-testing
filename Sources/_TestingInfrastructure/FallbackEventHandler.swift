@@ -54,9 +54,9 @@ package typealias FallbackEventHandler = @Sendable @convention(c) (
 ///   to calls to ``setFallbackEventHandler(_:)``. If you need to atomically
 ///   exchange the previous value with a new value, call
 ///   ``setFallbackEventHandler(_:)`` and store its returned value.
-@_cdecl("swift_testing_getFallbackEventHandler")
+@_cdecl("_swift_testing_getFallbackEventHandler")
 @usableFromInline
-package func fallbackEventHandler() -> FallbackEventHandler? {
+package func _swift_testing_getFallbackEventHandler() -> FallbackEventHandler? {
 #if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK
   return _fallbackEventHandler.withUnsafeMutablePointers { fallbackEventHandler, lock in
     os_unfair_lock_lock(lock)
@@ -82,9 +82,9 @@ package func fallbackEventHandler() -> FallbackEventHandler? {
 /// The fallback event handler can only be installed once per process, typically
 /// by the first testing library to run. If this function has already been
 /// called and the handler set, it does not replace the previous handler.
-@_cdecl("swift_testing_installFallbackEventHandler")
+@_cdecl("_swift_testing_installFallbackEventHandler")
 @usableFromInline
-package func installFallbackEventHandler(_ handler: FallbackEventHandler) -> CBool {
+package func _swift_testing_installFallbackEventHandler(_ handler: FallbackEventHandler) -> CBool {
 #if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK
   return _fallbackEventHandler.withUnsafeMutablePointers { fallbackEventHandler, lock in
     os_unfair_lock_lock(lock)

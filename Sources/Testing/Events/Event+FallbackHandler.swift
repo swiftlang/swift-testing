@@ -8,7 +8,9 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _Testing_ExperimentalInfrastructure
+#if canImport(_TestingInfrastructure)
+private import _TestingInfrastructure
+#endif
 
 extension Event {
   /// Attempt to handle an event encoded as JSON as if it had been generated in
@@ -62,6 +64,7 @@ extension Event {
     }
   }
 
+#if canImport(_TestingInfrastructure)
   /// The fallback event handler to set when Swift Testing is the active testing
   /// library.
   private static let _fallbackEventHandler: FallbackEventHandler = { recordJSONSchemaVersionNumber, recordJSONBaseAddress, recordJSONByteCount, _ in
@@ -73,10 +76,15 @@ extension Event {
       try! Self.handle(recordJSON, encodedWith: abi)
     }
   }
+#endif
 
   /// The implementation of ``installFallbackEventHandler()``.
   private static let _installFallbackHandler: Bool = {
-    _Testing_ExperimentalInfrastructure.installFallbackEventHandler(Self._fallbackEventHandler)
+#if canImport(_TestingInfrastructure)
+    _swift_testing_installFallbackEventHandler(Self._fallbackEventHandler)
+#else
+    false
+#endif
   }()
 
   /// Install the testing library's fallback event handler.
@@ -95,7 +103,8 @@ extension Event {
   ///   currently-installed handler belongs to the testing library, returns
   ///   `false`.
   borrowing func postToFallbackHandler(in context: borrowing Context) -> Bool {
-    guard let fallbackEventHandler = _Testing_ExperimentalInfrastructure.fallbackEventHandler() else {
+#if canImport(_TestingInfrastructure)
+    guard let fallbackEventHandler = _swift_testing_getFallbackEventHandler() else {
       // No fallback event handler is installed.
       return false
     }
@@ -116,5 +125,8 @@ extension Event {
     }
     encodeAndInvoke(self, context)
     return true
+#else
+    return false
+#endif
   }
 }

@@ -6,10 +6,10 @@
 # See http://swift.org/LICENSE.txt for license information
 # See http://swift.org/CONTRIBUTORS.txt for Swift project authors
 
-add_library(_Testing_ExperimentalInfrastructure
+add_library(_TestingInfrastructure
   FallbackEventHandler.swift)
 
-target_link_libraries(_Testing_ExperimentalInfrastructure PRIVATE
+target_link_libraries(_TestingInfrastructure PRIVATE
   _TestingInternals)
 if(NOT BUILD_SHARED_LIBS)
   # When building a static library, tell clients to autolink the internal
@@ -17,8 +17,8 @@ if(NOT BUILD_SHARED_LIBS)
   target_compile_options(Testing PRIVATE
     "SHELL:-Xfrontend -public-autolink-library -Xfrontend _TestingInternals")
 endif()
-target_compile_options(_Testing_ExperimentalInfrastructure PRIVATE
+target_compile_options(_TestingInfrastructure PRIVATE
   -enable-library-evolution
-  -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:_Testing_ExperimentalInfrastructure,Swift_MODULE_DIRECTORY>/_Testing_ExperimentalInfrastructure.swiftinterface)
+  -emit-module-interface -emit-module-interface-path $<TARGET_PROPERTY:_TestingInfrastructure,Swift_MODULE_DIRECTORY>/_TestingInfrastructure.swiftinterface)
 
-_swift_testing_install_target(_Testing_ExperimentalInfrastructure)
+_swift_testing_install_target(_TestingInfrastructure)

@@ -81,8 +81,8 @@ struct EventTests {
 
 // MARK: -
 
-#if canImport(Foundation)
-private import _Testing_ExperimentalInfrastructure
+#if canImport(_TestingInfrastructure) && canImport(Foundation)
+private import _TestingInfrastructure
 import Foundation
 
 private func MockXCTAssert(_ condition: Bool, _ message: String, _ sourceLocation: SourceLocation = #_sourceLocation) {
