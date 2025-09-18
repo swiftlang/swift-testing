@@ -72,12 +72,14 @@ extension ABI {
         isFailure = issue.isFailure
       }
 
-      // Experimental
-      if let backtrace = issue.sourceContext.backtrace {
-        _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)
-      }
-      if let error = issue.error {
-        _error = EncodedError(encoding: error, in: eventContext)
+      // Experimental fields
+      if V.includesExperimentalFields {
+        if let backtrace = issue.sourceContext.backtrace {
+          _backtrace = EncodedBacktrace(encoding: backtrace, in: eventContext)
+        }
+        if let error = issue.error {
+          _error = EncodedError(encoding: error, in: eventContext)
+        }
       }
     }
   }
@@ -102,6 +104,7 @@ extension Issue {
     guard let issue = event.issue else {
       return nil
     }
+
     // Translate the issue back into a "real" issue and record it
     // in the parent process. This translation is, of course, lossy
     // due to the process boundary, but we make a best effort.

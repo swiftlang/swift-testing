@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2025 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -12,7 +12,7 @@
 private import _TestingInternals
 #if canImport(AppKit) && canImport(_Testing_AppKit)
 import AppKit
-@_spi(Experimental) import _Testing_AppKit
+import _Testing_AppKit
 #endif
 #if canImport(Foundation) && canImport(_Testing_Foundation)
 import Foundation
@@ -24,11 +24,11 @@ import CoreGraphics
 #endif
 #if canImport(CoreImage) && canImport(_Testing_CoreImage)
 import CoreImage
-@_spi(Experimental) import _Testing_CoreImage
+import _Testing_CoreImage
 #endif
 #if canImport(UIKit) && canImport(_Testing_UIKit)
 import UIKit
-@_spi(Experimental) import _Testing_UIKit
+import _Testing_UIKit
 #endif
 #if canImport(UniformTypeIdentifiers)
 import UniformTypeIdentifiers
@@ -53,12 +53,14 @@ struct AttachmentTests {
     #expect(attachment.description.contains("MySendableAttachable("))
   }
 
+#if compiler(>=6.3) || !os(Windows) // WORKAROUND: swift-#84184
   @Test func moveOnlyDescription() {
     let attachableValue = MyAttachable(string: "<!doctype html>")
     let attachment = Attachment(attachableValue, named: "AttachmentTests.saveValue.html")
     #expect(attachment.description.contains(#""\#(attachment.preferredName)""#))
     #expect(attachment.description.contains("'MyAttachable'"))
   }
+#endif
 
 #if !SWT_NO_FILE_IO
   func compare(_ attachableValue: borrowing MySendableAttachable, toContentsOfFileAtPath filePath: String) throws {
@@ -175,16 +177,12 @@ struct AttachmentTests {
         }
         valueAttached()
 
-        // BUG: We could use #expect(throws: Never.self) here, but the Swift 6.1
-        // compiler crashes trying to expand the macro (rdar://138997009)
-        do {
+        #expect(throws: Never.self) {
           let filePath = try #require(attachment.fileSystemPath)
           defer {
             remove(filePath)
           }
           try compare(attachableValue, toContentsOfFileAtPath: filePath)
-        } catch {
-          Issue.record(error)
         }
       }
 
@@ -225,7 +223,7 @@ struct AttachmentTests {
           return
         }
 
-        #expect(attachment.attachableValue is MySendableAttachable)
+        #expect((attachment.attachableValue as Any) is AnyAttachable.Wrapped)
         #expect(attachment.sourceLocation.fileID == #fileID)
        valueAttached()
       }
@@ -821,11 +819,11 @@ extension AttachmentTests {
     }
 
     @MainActor @Test func pathExtensionAndCLSID() {
-      let pngCLSID = AttachableImageFormat.png.clsid
+      let pngCLSID = AttachableImageFormat.png.encoderCLSID
       let pngFilename = AttachableImageFormat.appendPathExtension(for: pngCLSID, to: "example")
       #expect(pngFilename == "example.png")
 
-      let jpegCLSID = AttachableImageFormat.jpeg.clsid
+      let jpegCLSID = AttachableImageFormat.jpeg.encoderCLSID
       let jpegFilename = AttachableImageFormat.appendPathExtension(for: jpegCLSID, to: "example")
       #expect(jpegFilename == "example.jpeg")
 

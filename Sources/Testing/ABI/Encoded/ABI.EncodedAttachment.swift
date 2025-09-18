@@ -38,16 +38,10 @@ extension ABI {
     /// - Warning: Inline attachment content is not yet part of the JSON schema.
     var _bytes: Bytes?
 
-    /// The source location where this attachment was created.
-    ///
-    /// - Warning: Attachment source locations are not yet part of the JSON
-    ///   schema.
-    var _sourceLocation: SourceLocation?
-
     init(encoding attachment: borrowing Attachment<AnyAttachable>, in eventContext: borrowing Event.Context) {
       path = attachment.fileSystemPath
 
-      if V.versionNumber >= ABI.v6_3.versionNumber {
+      if V.includesExperimentalFields {
         _preferredName = attachment.preferredName
 
         if path == nil {
@@ -55,8 +49,6 @@ extension ABI {
             return Bytes(rawValue: [UInt8](bytes))
           }
         }
-
-        _sourceLocation = attachment.sourceLocation
       }
     }
 
