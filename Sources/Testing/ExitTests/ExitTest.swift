@@ -1031,26 +1031,7 @@ extension ExitTest {
   ///
   /// - Throws: Any error encountered attempting to decode or process the JSON.
   private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
-    let record = try JSON.decode(ABI.Record<ABI.BackChannelVersion>.self, from: recordJSON)
-    guard case let .event(event) = record.kind else {
-      return
-    }
-
-    lazy var comments: [Comment] = event._comments?.map(Comment.init(rawValue:)) ?? []
-    lazy var sourceContext = SourceContext(
-      backtrace: nil, // A backtrace from the child process will have the wrong address space.
-      sourceLocation: event._sourceLocation
-    )
-    lazy var skipInfo = SkipInfo(comment: comments.first, sourceContext: sourceContext)
-    if let issue = Issue(event) {
-      issue.record()
-    } else if let attachment = event.attachment {
-      Attachment.record(attachment, sourceLocation: event._sourceLocation!)
-    } else if case .testCancelled = event.kind {
-      _ = try? Test.cancel(with: skipInfo)
-    } else if case .testCaseCancelled = event.kind {
-      _ = try? Test.Case.cancel(with: skipInfo)
-    }
+    try Event.handle(recordJSON, encodedWith: ABI.BackChannelVersion.self)
   }
 
   /// Decode this exit test's captured values and update its ``capturedValues``

@@ -11,6 +11,39 @@
 private import _Testing_ExperimentalInfrastructure
 
 extension Event {
+  /// Attempt to handle an event encoded as JSON as if it had been generated in
+  /// the current testing context.
+  ///
+  /// - Parameters:
+  ///   - recordJSON: The JSON encoding of an event record.
+  ///   - abi: The ABI version to use for decoding `recordJSON`.
+  ///
+  /// - Throws: Any error that prevented handling the encoded record.
+  ///
+  /// - Important: This function only handles a subset of event kinds.
+  static func handle<V>(_ recordJSON: UnsafeRawBufferPointer, encodedWith abi: V.Type) throws where V: ABI.Version {
+    let record = try JSON.decode(ABI.Record<V>.self, from: recordJSON)
+    guard case let .event(event) = record.kind else {
+      return
+    }
+
+    lazy var comments: [Comment] = event._comments?.map(Comment.init(rawValue:)) ?? []
+    lazy var sourceContext = SourceContext(
+      backtrace: nil, // A backtrace from the child process will have the wrong address space.
+      sourceLocation: event._sourceLocation
+    )
+    lazy var skipInfo = SkipInfo(comment: comments.first, sourceContext: sourceContext)
+    if let issue = Issue(event) {
+      issue.record()
+    } else if let attachment = event.attachment {
+      Attachment.record(attachment, sourceLocation: event._sourceLocation!)
+    } else if case .testCancelled = event.kind {
+      _ = try? Test.cancel(with: skipInfo)
+    } else if case .testCaseCancelled = event.kind {
+      _ = try? Test.Case.cancel(with: skipInfo)
+    }
+  }
+
   /// The implementation of ``fallbackEventHandler``.
   ///
   /// - Parameters:
@@ -19,21 +52,7 @@ extension Event {
   ///
   /// - Throws: Any error that prevented handling the encoded record.
   private static func _fallbackEventHandler<V>(_ abi: V.Type, _ recordJSON: UnsafeRawBufferPointer) throws where V: ABI.Version {
-    let record = try JSON.decode(ABI.Record<ABI.CurrentVersion>.self, from: recordJSON)
-    guard case let .event(event) = record.kind else {
-      return
-    }
-    switch event.kind {
-    case .issueRecorded:
-      Issue(event)?.record()
-    case .valueAttached:
-      if let attachment = event.attachment {
-        Attachment.record(attachment, sourceLocation: attachment._sourceLocation ?? .__here())
-      }
-    default:
-      // Not handled here.
-      break
-    }
+    try handle(recordJSON, encodedWith: abi)
   }
 
   /// The fallback event handler to set when Swift Testing is the active testing
