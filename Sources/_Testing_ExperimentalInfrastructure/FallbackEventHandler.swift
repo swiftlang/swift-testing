@@ -66,7 +66,7 @@ package func fallbackEventHandler() -> FallbackEventHandler? {
     return fallbackEventHandler.pointee
   }
 #else
-  return _fallbackEventHandler.load(ordering: .sequentiallyConsistent).map { fallbackEventHandler in
+  return _fallbackEventHandler.load(ordering: .sequentiallyConsistent).flatMap { fallbackEventHandler in
     unsafeBitCast(fallbackEventHandler, to: FallbackEventHandler?.self)
   }
 #endif
