@@ -30,7 +30,7 @@ extension UnsafeMutablePointer: AttachableAsIWICBitmapSource where Pointee: _Att
     Pointee._copyAttachableValue(at: self)
   }
 
-  public consuming func _deinitializeAttachableValue() {
+  public func _deinitializeAttachableValue() {
     Pointee._deinitializeAttachableValue(at: self)
   }
 }
