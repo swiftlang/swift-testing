@@ -20,7 +20,7 @@
 /// @Comment {
 /// | Windows | [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps), [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons), [`IWICBitmapSource`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapsource) (including its subclasses declared by Windows Imaging Component) |
 /// }
-#if !(SWT_TARGET_OS_APPLE || os(Windows))
+#if SWT_NO_IMAGE_ATTACHMENTS
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 @available(_uttypesAPI, *)
@@ -41,7 +41,7 @@ public final class _AttachableImageWrapper<Image>: Sendable where Image: _Attach
   }
 }
 
-#if !(SWT_TARGET_OS_APPLE || os(Windows))
+#if SWT_NO_IMAGE_ATTACHMENTS
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 @available(_uttypesAPI, *)

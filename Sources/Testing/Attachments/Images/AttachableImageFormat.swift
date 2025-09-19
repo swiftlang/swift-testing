@@ -31,7 +31,7 @@
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
 /// }
-#if !(SWT_TARGET_OS_APPLE || os(Windows))
+#if SWT_NO_IMAGE_ATTACHMENTS
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 @available(_uttypesAPI, *)
@@ -80,7 +80,7 @@ public struct AttachableImageFormat: Sendable {
 
 // MARK: -
 
-#if !(SWT_TARGET_OS_APPLE || os(Windows))
+#if SWT_NO_IMAGE_ATTACHMENTS
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 @available(_uttypesAPI, *)

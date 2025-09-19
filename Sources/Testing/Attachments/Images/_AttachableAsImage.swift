@@ -8,6 +8,14 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if SWT_TARGET_OS_APPLE
+// Image attachments on Apple platforms conform to AttachableAsCGImage.
+#elseif os(Windows)
+// Image attachments on Windows platforms conform to AttachableAsIWICBitmapSource.
+#elseif !SWT_NO_IMAGE_ATTACHMENTS
+#error("Platform-specific misconfiguration: support for image attachments requires a platform-specific implementation")
+#endif
+
 /// A protocol describing images that can be converted to instances of
 /// [`Attachment`](https://developer.apple.com/documentation/testing/attachment).
 ///
@@ -18,7 +26,7 @@
 ///   A future Swift Evolution proposal will promote this protocol to API so
 ///   that we don't need to underscore its name.
 /// }
-#if !(SWT_TARGET_OS_APPLE || os(Windows))
+#if SWT_NO_IMAGE_ATTACHMENTS
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 @available(_uttypesAPI, *)
