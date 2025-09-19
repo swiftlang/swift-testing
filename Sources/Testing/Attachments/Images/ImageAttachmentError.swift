@@ -11,7 +11,7 @@
 private import _TestingInternals
 
 /// A type representing an error that can occur when attaching an image.
-#if SWT_NO_IMAGE_ATTACHMENTS
+#if SWT_NO_IMAGE_ATTACHMENTS && !SWT_DOCC
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 package enum ImageAttachmentError: Error {
@@ -42,7 +42,7 @@ package enum ImageAttachmentError: Error {
 #endif
 }
 
-#if SWT_NO_IMAGE_ATTACHMENTS
+#if SWT_NO_IMAGE_ATTACHMENTS && !SWT_DOCC
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 extension ImageAttachmentError: CustomStringConvertible {
