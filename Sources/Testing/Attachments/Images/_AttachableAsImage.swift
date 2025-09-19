@@ -18,6 +18,9 @@
 ///   A future Swift Evolution proposal will promote this protocol to API so
 ///   that we don't need to underscore its name.
 /// }
+#if !(SWT_TARGET_OS_APPLE || os(Windows))
+@available(*, unavailable, message: "Image attachments are not available on this platform.")
+#endif
 @available(_uttypesAPI, *)
 public protocol _AttachableAsImage: SendableMetatype {
   /// Make a copy of this instance to pass to an attachment.

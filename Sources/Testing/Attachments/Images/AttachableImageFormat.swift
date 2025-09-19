@@ -31,6 +31,9 @@
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
 /// }
+#if !(SWT_TARGET_OS_APPLE || os(Windows))
+@available(*, unavailable, message: "Image attachments are not available on this platform.")
+#endif
 @available(_uttypesAPI, *)
 public struct AttachableImageFormat: Sendable {
   /// An enumeration describing the various kinds of image format that can be
@@ -77,6 +80,9 @@ public struct AttachableImageFormat: Sendable {
 
 // MARK: -
 
+#if !(SWT_TARGET_OS_APPLE || os(Windows))
+@available(*, unavailable, message: "Image attachments are not available on this platform.")
+#endif
 @available(_uttypesAPI, *)
 extension AttachableImageFormat {
   /// The PNG image format.
