@@ -36,6 +36,33 @@ struct CartesianProductTests {
     #expect(productCount == 26 * 100)
   }
 
+  func test(c1: [Character], c2: [Int], product: CartesianProduct<[Character], [Int]>) {
+    __checkCondition(
+      { (__ec: __ExpectationContext) -> Swift.Bool in
+        __ec.__cmp(
+          { lhs, rhs -> Swift.Bool in
+            lhs == rhs
+          },
+          0x0,
+          __ec(
+            __ec(Array(__ec(product, 0x1c6)), 0x6).count,
+            0x2
+          ),
+          0x2,
+          __ec(
+            __ec(c1.count, 0x60000) * __ec(c2.count, 0x4020000),
+            0x20000
+          ),
+          0x20000
+        )
+      },
+      sourceCode: [:],
+      comments: [],
+      isRequired: false,
+      sourceLocation: SourceLocation.__here()
+    )
+  }
+
   @Test("First element is correct")
   func firstElement() throws {
     // Check that the first element is correct. (This value is also tested in
