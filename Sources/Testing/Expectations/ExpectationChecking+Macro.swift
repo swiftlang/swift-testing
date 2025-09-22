@@ -17,8 +17,6 @@
 ///     contains information about `condition` and its subexpressions (if any.)
 ///   - mismatchedErrorDescription: A description of the thrown error that did
 ///     not match the expectation, if applicable.
-///   - mismatchedExitConditionDescription: A description of the exit condition
-///     of the child process that did not match the expectation, if applicable.
 ///   - comments: An array of comments describing the expectation. This array
 ///     may be empty.
 ///   - isRequired: Whether or not the expectation is required. The value of
@@ -58,7 +56,6 @@ func check(
   _ condition: Bool,
   expectationContext: consuming __ExpectationContext,
   mismatchedErrorDescription: @autoclosure () -> String?,
-  mismatchedExitConditionDescription: @autoclosure () -> String?,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -86,7 +83,6 @@ func check(
   // Since this expectation failed, populate its optional fields which are
   // only evaluated and included lazily upon failure.
   expectation.mismatchedErrorDescription = mismatchedErrorDescription()
-  expectation.mismatchedExitConditionDescription = mismatchedExitConditionDescription()
 
   // Ensure the backtrace is captured here so it has fewer extraneous frames
   // from the testing framework which aren't relevant to the user.
@@ -118,7 +114,6 @@ public func __checkCondition(
     condition,
     expectationContext: expectationContext,
     mismatchedErrorDescription: nil,
-    mismatchedExitConditionDescription: nil,
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -144,7 +139,6 @@ public func __checkCondition<T>(
     optionalValue != nil,
     expectationContext: expectationContext,
     mismatchedErrorDescription: nil,
-    mismatchedExitConditionDescription: nil,
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -180,7 +174,6 @@ public func __checkConditionAsync(
     condition,
     expectationContext: expectationContext,
     mismatchedErrorDescription: nil,
-    mismatchedExitConditionDescription: nil,
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -207,7 +200,6 @@ public func __checkConditionAsync<T>(
     optionalValue != nil,
     expectationContext: expectationContext,
     mismatchedErrorDescription: nil,
-    mismatchedExitConditionDescription: nil,
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -242,7 +234,6 @@ public func __checkEscapedCondition(
     condition,
     expectationContext: expectationContext,
     mismatchedErrorDescription: nil,
-    mismatchedExitConditionDescription: nil,
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -270,7 +261,6 @@ public func __checkEscapedCondition<T>(
     optionalValue != nil,
     expectationContext: expectationContext,
     mismatchedErrorDescription: nil,
-    mismatchedExitConditionDescription: nil,
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -397,7 +387,6 @@ public func __checkClosureCall(
     success,
     expectationContext: expectationContext,
     mismatchedErrorDescription: mismatchExplanationValue,
-    mismatchedExitConditionDescription: nil,
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -436,7 +425,6 @@ public func __checkClosureCall(
     success,
     expectationContext: expectationContext,
     mismatchedErrorDescription: mismatchExplanationValue,
-    mismatchedExitConditionDescription: nil,
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -546,7 +534,6 @@ public func __checkClosureCall<R>(
     errorMatches,
     expectationContext: expectationContext,
     mismatchedErrorDescription: mismatchExplanationValue,
-    mismatchedExitConditionDescription: nil,
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -599,7 +586,6 @@ public func __checkClosureCall<R>(
     errorMatches,
     expectationContext: expectationContext,
     mismatchedErrorDescription: mismatchExplanationValue,
-    mismatchedExitConditionDescription: nil,
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation

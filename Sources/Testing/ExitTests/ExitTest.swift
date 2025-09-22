@@ -527,7 +527,6 @@ func callExitTest(
     expectedExitCondition.isApproximatelyEqual(to: result.exitStatus),
     expectationContext: expectationContext,
     mismatchedErrorDescription: nil,
-    mismatchedExitConditionDescription: nil,
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
