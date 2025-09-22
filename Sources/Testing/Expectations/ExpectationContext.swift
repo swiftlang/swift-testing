@@ -253,13 +253,77 @@ extension __ExpectationContext {
     return resultComponents.joined(separator: ", ")
   }
 
+  /// Capture the difference between `lhs` and `rhs` at runtime.
+  ///
+  /// - Parameters:
+  ///   - lhs: The left-hand operand.
+  ///   - rhs: The right-hand operand.
+  ///   - opID: A value that uniquely identifies the binary operation expression
+  ///     of which `lhs` and `rhs` are operands.
+  ///
+  /// This function performs additional type checking of `lhs` and `rhs` at
+  /// runtime. If we instead overload the caller (`__cmp()`) it puts extra
+  /// compile-time pressure on the type checker that we don't want.
+  @usableFromInline func captureDifferences<T, U>(_ lhs: T, _ rhs: U, _ opID: __ExpressionID) {
+#if !hasFeature(Embedded) // no existentials
+    if let lhs = lhs as? any StringProtocol {
+      func open<V>(_ lhs: V, _ rhs: U) where V: StringProtocol {
+        guard let rhs = rhs as? V else {
+          return
+        }
+        differences[opID] = {
+          // Compare strings by line, not by character.
+          let lhsLines = String(lhs).split(whereSeparator: \.isNewline)
+          let rhsLines = String(rhs).split(whereSeparator: \.isNewline)
+
+          if lhsLines.count == 1 && rhsLines.count == 1 {
+            // There are no newlines in either string, so there's no meaningful
+            // per-line difference. Bail.
+            return nil
+          }
+
+          let diff = lhsLines.difference(from: rhsLines)
+          if diff.isEmpty {
+            // The strings must have compared on a per-character basis, or this
+            // operator doesn't behave the way we expected. Bail.
+            return nil
+          }
+
+          return CollectionDifference<Any>(diff)
+        }
+      }
+      open(lhs, rhs)
+    } else if lhs is any RangeExpression {
+      // Do _not_ perform a diffing operation on `lhs` and `rhs`. Range
+      // expressions are not usefully diffable the way other kinds of
+      // collections are. SEE: https://github.com/swiftlang/swift-testing/issues/639
+    } else if let lhs = lhs as? any BidirectionalCollection {
+      func open<V>(_ lhs: V, _ rhs: U) where V: BidirectionalCollection {
+        guard let rhs = rhs as? V,
+              let elementType = V.Element.self as? any Equatable.Type else {
+          return
+        }
+        differences[opID] = {
+          func open<E>(_: E.Type) -> CollectionDifference<Any> where E: Equatable {
+            let lhs: some BidirectionalCollection<E> = lhs.lazy.map { unsafeBitCast($0, to: E.self) }
+            let rhs: some BidirectionalCollection<E> = rhs.lazy.map { unsafeBitCast($0, to: E.self) }
+            return CollectionDifference<Any>(lhs.difference(from: rhs))
+          }
+          return open(elementType)
+        }
+      }
+      open(lhs, rhs)
+    }
+#endif
+  }
+
   /// Compare two values using `==` or `!=`.
   ///
   /// - Parameters:
   ///   - lhs: The left-hand operand.
   ///   - lhsID: A value that uniquely identifies the expression represented by
   ///     `lhs` in the context of the expectation currently being evaluated.
-  ///   - rhs: The left-hand operand.
+  ///   - rhs: The right-hand operand.
   ///   - rhsID: A value that uniquely identifies the expression represented by
   ///     `rhs` in the context of the expectation currently being evaluated.
   ///   - op: A function that performs an operation on `lhs` and `rhs`.
@@ -283,97 +347,10 @@ extension __ExpectationContext {
   ) rethrows -> Bool {
     let lhs = copy lhs
     let rhs = copy rhs
-    return try captureValue(op(captureValue(lhs, lhsID), captureValue(rhs, rhsID)), opID)
-  }
-
-  /// Compare two bidirectional collections using `==` or `!=`.
-  ///
-  /// This overload of `__cmp()` performs a diffing operation on `lhs` and `rhs`
-  /// if the result of `op(lhs, rhs)` is `false`.
-  ///
-  /// - Warning: This function is used to implement the `#expect()` and
-  ///   `#require()` macros. Do not call it directly.
-  public func __cmp<C>(
-    _ op: (C, C) -> Bool,
-    _ opID: __ExpressionID,
-    _ lhs: borrowing C,
-    _ lhsID: __ExpressionID,
-    _ rhs: borrowing C,
-    _ rhsID: __ExpressionID
-  ) -> Bool where C: BidirectionalCollection, C.Element: Equatable {
-    let lhs = copy lhs
-    let rhs = copy rhs
-    let result = captureValue(op(captureValue(lhs, lhsID), captureValue(rhs, rhsID)), opID)
+    let result = try captureValue(op(captureValue(lhs, lhsID), captureValue(rhs, rhsID)), opID)
 
     if !result {
-      differences[opID] = { CollectionDifference<Any>(lhs.difference(from: rhs)) }
-    }
-
-    return result
-  }
-
-  /// Compare two range expressions using `==` or `!=`.
-  ///
-  /// This overload of `__cmp()` does _not_ perform a diffing operation on `lhs`
-  /// and `rhs`. Range expressions are not usefully diffable the way other kinds
-  /// of collections are. ([#639](https://github.com/swiftlang/swift-testing/issues/639))
-  ///
-  /// - Warning: This function is used to implement the `#expect()` and
-  ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __cmp<R>(
-    _ op: (R, R) -> Bool,
-    _ opID: __ExpressionID,
-    _ lhs: borrowing R,
-    _ lhsID: __ExpressionID,
-    _ rhs: borrowing R,
-    _ rhsID: __ExpressionID
-  ) -> Bool where R: RangeExpression & BidirectionalCollection, R.Element: Equatable {
-    let lhs = copy lhs
-    let rhs = copy rhs
-    return captureValue(op(captureValue(lhs, lhsID), captureValue(rhs, rhsID)), opID)
-  }
-
-  /// Compare two strings using `==` or `!=`.
-  ///
-  /// This overload of `__cmp()` performs a diffing operation on `lhs` and `rhs`
-  /// if the result of `op(lhs, rhs)` is `false`, but does so by _line_, not by
-  /// _character_.
-  ///
-  /// - Warning: This function is used to implement the `#expect()` and
-  ///   `#require()` macros. Do not call it directly.
-  public func __cmp<S>(
-    _ op: (S, S) -> Bool,
-    _ opID: __ExpressionID,
-    _ lhs: borrowing S,
-    _ lhsID: __ExpressionID,
-    _ rhs: borrowing S,
-    _ rhsID: __ExpressionID
-  ) -> Bool where S: StringProtocol {
-    let lhs = copy lhs
-    let rhs = copy rhs
-    let result = captureValue(op(captureValue(lhs, lhsID), captureValue(rhs, rhsID)), opID)
-
-    if !result {
-      differences[opID] = {
-        // Compare strings by line, not by character.
-        let lhsLines = String(lhs).split(whereSeparator: \.isNewline)
-        let rhsLines = String(rhs).split(whereSeparator: \.isNewline)
-
-        if lhsLines.count == 1 && rhsLines.count == 1 {
-          // There are no newlines in either string, so there's no meaningful
-          // per-line difference. Bail.
-          return nil
-        }
-
-        let diff = lhsLines.difference(from: rhsLines)
-        if diff.isEmpty {
-          // The strings must have compared on a per-character basis, or this
-          // operator doesn't behave the way we expected. Bail.
-          return nil
-        }
-
-        return CollectionDifference<Any>(diff)
-      }
+      captureDifferences(lhs, rhs, opID)
     }
 
     return result
