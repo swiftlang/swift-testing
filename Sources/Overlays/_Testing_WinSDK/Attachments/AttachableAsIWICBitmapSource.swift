@@ -154,12 +154,4 @@ extension AttachableAsIWICBitmapSource {
     try copyAttachableIWICBitmapSource()
   }
 }
-
-extension AttachableAsIWICBitmapSource where Self: Sendable {
-  public func _copyAttachableValue() -> Self {
-    self
-  }
-
-  public func _deinitializeAttachableValue() {}
-}
 #endif
