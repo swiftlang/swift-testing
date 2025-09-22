@@ -59,12 +59,14 @@ struct AttachmentTests {
     #expect(attachment.description.contains("MySendableAttachable("))
   }
 
+#if compiler(>=6.3) || !os(Windows) // WORKAROUND: swift-#84184
   @Test func moveOnlyDescription() {
     let attachableValue = MyAttachable(string: "<!doctype html>")
     let attachment = Attachment(attachableValue, named: "AttachmentTests.saveValue.html")
     #expect(attachment.description.contains(#""\#(attachment.preferredName)""#))
     #expect(attachment.description.contains("'MyAttachable'"))
   }
+#endif
 
 #if !SWT_NO_FILE_IO
   func compare(_ attachableValue: borrowing MySendableAttachable, toContentsOfFileAtPath filePath: String) throws {
@@ -181,16 +183,12 @@ struct AttachmentTests {
         }
         valueAttached()
 
-        // BUG: We could use #expect(throws: Never.self) here, but the Swift 6.1
-        // compiler crashes trying to expand the macro (rdar://138997009)
-        do {
+        #expect(throws: Never.self) {
           let filePath = try #require(attachment.fileSystemPath)
           defer {
             remove(filePath)
           }
           try compare(attachableValue, toContentsOfFileAtPath: filePath)
-        } catch {
-          Issue.record(error)
         }
       }
 
@@ -231,7 +229,7 @@ struct AttachmentTests {
           return
         }
 
-        #expect(attachment.attachableValue is MySendableAttachable)
+        #expect((attachment.attachableValue as Any) is AnyAttachable.Wrapped)
         #expect(attachment.sourceLocation.fileID == #fileID)
        valueAttached()
       }

@@ -263,7 +263,7 @@ extension ExitTest {
     // code 3 [...]".
     //
     // The Wine project's implementation of raise() calls `_exit(3)` by default.
-    // See https://github.com/wine-mirror/wine/blob/master/dlls/msvcrt/except.c
+    // See https://github.com/wine-mirror/wine/blob/master/dlls/msvcrt/except.c (ignore-unacceptable-language)
     //
     // Finally, an official copy of the UCRT sources (not up to date) is hosted
     // at https://www.nuget.org/packages/Microsoft.Windows.SDK.CRTSource . That
@@ -349,10 +349,7 @@ extension ExitTest {
   ///
   /// - Warning: This function is used to implement the
   ///   `#expect(processExitsWith:)` macro. Do not use it directly.
-#if compiler(>=6.2)
-  @safe
-#endif
-  public static func __store<each T>(
+  @safe public static func __store<each T>(
     _ id: (UInt64, UInt64, UInt64, UInt64),
     _ body: @escaping @Sendable (repeat each T) async throws -> Void,
     into outValue: UnsafeMutableRawPointer,
@@ -394,10 +391,7 @@ extension ExitTest {
   ///
   /// - Warning: This function is used to implement the
   ///   `#expect(processExitsWith:)` macro. Do not use it directly.
-#if compiler(>=6.2)
-  @safe
-#endif
-  public static func __store<T>(
+  @safe public static func __store<T>(
     _ id: (UInt64, UInt64, UInt64, UInt64),
     _ body: T,
     into outValue: UnsafeMutableRawPointer,
@@ -526,14 +520,14 @@ func callExitTest(
 
   // Plumb the exit test's result through the general expectation machinery.
   let expectationContext = __ExpectationContext(
-    sourceCode: sourceCode(),
+    sourceCode: [.root: String(describingForTest: expectedExitCondition)],
     runtimeValues: [.root: { Expression.Value(reflecting: result.exitStatus) }]
   )
   return check(
     expectedExitCondition.isApproximatelyEqual(to: result.exitStatus),
     expectationContext: expectationContext,
     mismatchedErrorDescription: nil,
-    mismatchedExitConditionDescription: String(describingForTest: expectedExitCondition),
+    mismatchedExitConditionDescription: nil,
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -546,10 +540,9 @@ extension ABI {
   /// The ABI version to use for encoding and decoding events sent over the back
   /// channel.
   ///
-  /// The back channel always uses the latest ABI version (even if experimental)
-  /// since both the producer and consumer use this exact version of the testing
-  /// library.
-  fileprivate typealias BackChannelVersion = v6_3
+  /// The back channel always uses the experimental ABI version since both the
+  /// producer and consumer use this exact version of the testing library.
+  fileprivate typealias BackChannelVersion = ExperimentalVersion
 }
 
 @_spi(ForToolsIntegrationOnly)
@@ -960,7 +953,7 @@ extension ExitTest {
         capturedValuesWriteEnd.close()
 
         // Await termination of the child process.
-        taskGroup.addTask {
+        taskGroup.addTask(name: decorateTaskName("exit test", withAction: "awaiting termination")) {
           let exitStatus = try await wait(for: processID)
           return { $0.exitStatus = exitStatus }
         }
@@ -968,14 +961,14 @@ extension ExitTest {
         // Read back the stdout and stderr streams.
         if let stdoutReadEnd {
           stdoutWriteEnd?.close()
-          taskGroup.addTask {
+          taskGroup.addTask(name: decorateTaskName("exit test", withAction: "reading stdout")) {
             let standardOutputContent = try Self._trimToBarrierValues(stdoutReadEnd.readToEnd())
             return { $0.standardOutputContent = standardOutputContent }
           }
         }
         if let stderrReadEnd {
           stderrWriteEnd?.close()
-          taskGroup.addTask {
+          taskGroup.addTask(name: decorateTaskName("exit test", withAction: "reading stderr")) {
             let standardErrorContent = try Self._trimToBarrierValues(stderrReadEnd.readToEnd())
             return { $0.standardErrorContent = standardErrorContent }
           }
@@ -984,7 +977,7 @@ extension ExitTest {
         // Read back all data written to the back channel by the child process
         // and process it as a (minimal) event stream.
         backChannelWriteEnd.close()
-        taskGroup.addTask {
+        taskGroup.addTask(name: decorateTaskName("exit test", withAction: "processing events")) {
           Self._processRecords(fromBackChannel: backChannelReadEnd)
           return nil
         }

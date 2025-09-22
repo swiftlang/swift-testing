@@ -1,4 +1,4 @@
-// swift-tools-version: 6.1
+// swift-tools-version: 6.2
 
 //
 // This source file is part of the Swift.org open source project
@@ -164,7 +164,7 @@ let package = Package(
         "Testing",
       ],
       path: "Tests/_MemorySafeTestingTests",
-      swiftSettings: .packageSettings + .strictMemorySafety
+      swiftSettings: .packageSettings + [.strictMemorySafety()]
     ),
     .testTarget(
       name: "SubexpressionShowcase",
@@ -276,6 +276,7 @@ let package = Package(
         "Testing",
       ],
       path: "Sources/Overlays/_Testing_WinSDK",
+      exclude: ["CMakeLists.txt"],
       swiftSettings: .packageSettings + .enableLibraryEvolution()
     ),
 
@@ -376,17 +377,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
       // proposal via Swift Evolution.
       .enableExperimentalFeature("SymbolLinkageMarkers"),
 
-      // This setting is no longer needed when building with a 6.2 or later
-      // toolchain now that SE-0458 has been accepted and implemented, but it is
-      // needed in order to preserve support for building with 6.1 development
-      // snapshot toolchains. (Production 6.1 toolchains can build the testing
-      // library even without this setting since this experimental feature is
-      // _suppressible_.) This setting can be removed once the minimum supported
-      // toolchain for building the testing library is ≥ 6.2. It is not needed
-      // in the CMake settings since that is expected to build using a
-      // new-enough toolchain.
-      .enableExperimentalFeature("AllowUnsafeAttribute"),
-
       .enableUpcomingFeature("InferIsolatedConformances"),
 
       // When building as a package, the macro plugin always builds as an
@@ -443,18 +433,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
     return result
   }
-
-  /// Settings necessary to enable Strict Memory Safety, introduced in
-  /// [SE-0458: Opt-in Strict Memory Safety Checking](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0458-strict-memory-safety.md#swiftpm-integration).
-  static var strictMemorySafety: Self {
-#if compiler(>=6.2)
-    // FIXME: Adopt official `.strictMemorySafety()` condition once the minimum
-    // supported toolchain is 6.2.
-    [.unsafeFlags(["-strict-memory-safety"])]
-#else
-    []
-#endif
-  }
 }
 
 extension Array where Element == PackageDescription.CXXSetting {
@@ -475,16 +453,16 @@ extension Array where Element == PackageDescription.CXXSetting {
       .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
     ]
 
-    // Capture the testing library's version as a C++ string constant.
+    // Capture the testing library's commit info as C++ constants.
     if let git {
-      let testingLibraryVersion = if let tag = git.currentTag {
-        tag
-      } else if git.hasUncommittedChanges {
-        "\(git.currentCommit) (modified)"
-      } else {
-        git.currentCommit
+      result.append(.define("SWT_TESTING_LIBRARY_COMMIT_HASH", to: #""\#(git.currentCommit)""#))
+      if git.hasUncommittedChanges {
+        result.append(.define("SWT_TESTING_LIBRARY_COMMIT_MODIFIED", to: "1"))
       }
-      result.append(.define("SWT_TESTING_LIBRARY_VERSION", to: #""\#(testingLibraryVersion)""#))
+    } else if let gitHubSHA = Context.environment["GITHUB_SHA"] {
+      // When building in GitHub Actions, the git command may fail to get us the
+      // commit hash, so check if GitHub shared it with us instead.
+      result.append(.define("SWT_TESTING_LIBRARY_COMMIT_HASH", to: #""\#(gitHubSHA)""#))
     }
 
     return result
