@@ -89,7 +89,7 @@
 /// running in the current task and an instance of ``ExpectationFailedError`` is
 /// thrown.
 ///
-/// This overload of ``require(_:_:sourceLocation:)-6w9oo`` checks if
+/// This overload of ``require(_:_:sourceLocation:)-5l63q`` checks if
 /// `optionalValue` may be ambiguous (i.e. it is unclear if the developer
 /// intended to check for a boolean value or unwrap an optional boolean value)
 /// and provides additional compile-time diagnostics when it is.
@@ -118,7 +118,7 @@ public macro require(
 /// running in the current task and an instance of ``ExpectationFailedError`` is
 /// thrown.
 ///
-/// This overload of ``require(_:_:sourceLocation:)-6w9oo`` is used when a
+/// This overload of ``require(_:_:sourceLocation:)-5l63q`` is used when a
 /// non-optional, non-`Bool` value is passed to `#require()`. It emits a warning
 /// diagnostic indicating that the expectation is redundant.
 @freestanding(expression)
