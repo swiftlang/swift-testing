@@ -1031,48 +1031,7 @@ extension ExitTest {
   ///
   /// - Throws: Any error encountered attempting to decode or process the JSON.
   private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
-    let record = try JSON.decode(ABI.Record<ABI.BackChannelVersion>.self, from: recordJSON)
-    guard case let .event(event) = record.kind else {
-      return
-    }
-
-    lazy var comments: [Comment] = event._comments?.map(Comment.init(rawValue:)) ?? []
-    lazy var sourceContext = SourceContext(
-      backtrace: nil, // A backtrace from the child process will have the wrong address space.
-      sourceLocation: event._sourceLocation
-    )
-    lazy var skipInfo = SkipInfo(comment: comments.first, sourceContext: sourceContext)
-    if let issue = event.issue {
-      // Translate the issue back into a "real" issue and record it
-      // in the parent process. This translation is, of course, lossy
-      // due to the process boundary, but we make a best effort.
-      let issueKind: Issue.Kind = if let error = issue._error {
-        .errorCaught(error)
-      } else {
-        // TODO: improve fidelity of issue kind reporting (especially those without associated values)
-        .unconditional
-      }
-      let severity: Issue.Severity = switch issue.severity {
-      case .warning:
-        .warning
-      case .error, nil:
-        // Prior to 6.3, all Issues are errors
-        .error
-      }
-      var issueCopy = Issue(kind: issueKind, severity: severity, comments: comments, sourceContext: sourceContext)
-      if issue.isKnown {
-        // The known issue comment, if there was one, is already included in
-        // the `comments` array above.
-        issueCopy.knownIssueContext = Issue.KnownIssueContext()
-      }
-      issueCopy.record()
-    } else if let attachment = event.attachment {
-      Attachment.record(attachment, sourceLocation: event._sourceLocation!)
-    } else if case .testCancelled = event.kind {
-      _ = try? Test.cancel(with: skipInfo)
-    } else if case .testCaseCancelled = event.kind {
-      _ = try? Test.Case.cancel(with: skipInfo)
-    }
+    try Event.handle(recordJSON, encodedWith: ABI.BackChannelVersion.self)
   }
 
   /// Decode this exit test's captured values and update its ``capturedValues``
