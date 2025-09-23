@@ -229,12 +229,6 @@ extension AttachableImageFormat {
     return preferredName
   }
 
-#if compiler(>=6.3)
-  // Workaround for https://github.com/swiftlang/swift/pull/84466
-  // (This typealias will be removed when that issue is resolved.)
-  public typealias CLSID = _GUID
-#endif
-
   /// The `CLSID` value of the Windows Imaging Component (WIC) encoder class
   /// that corresponds to this image format.
   ///
