@@ -238,7 +238,7 @@ extension AttachableImageFormat {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
   /// }
-  public var encoderCLSID: CLSID {
+  public var encoderCLSID: WinSDK.CLSID {
     switch kind {
     case .png:
       CLSID_WICPngEncoder
@@ -270,7 +270,7 @@ extension AttachableImageFormat {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
   /// }
-  public init(encoderCLSID: CLSID, encodingQuality: Float = 1.0) {
+  public init(encoderCLSID: WinSDK.CLSID, encodingQuality: Float = 1.0) {
     if encoderCLSID == CLSID_WICPngEncoder {
       self = .png
     } else if encoderCLSID == CLSID_WICJpegEncoder {
