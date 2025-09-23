@@ -168,9 +168,11 @@ extension SourceLocation: Codable {
   private enum _CodingKeys: String, CodingKey {
     case fileID
     case filePath
-    case _filePath
     case line
     case column
+
+    /// A backwards-compatible synonym of ``filePath``.
+    case _filePath
   }
 
   public func encode(to encoder: any Encoder) throws {
@@ -192,8 +194,8 @@ extension SourceLocation: Codable {
 
     // For simplicity's sake, we won't be picky about which key contains the
     // file path.
-    filePath = try container.decodeIfPresent(String.self, forKey: ._filePath)
-      ?? try container.decode(String.self, forKey: .filePath)
+    filePath = try container.decodeIfPresent(String.self, forKey: .filePath)
+      ?? container.decode(String.self, forKey: ._filePath)
   }
 }
 
