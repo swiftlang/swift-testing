@@ -121,6 +121,16 @@ struct SourceLocationTests {
   }
 #endif
 
+  @Test("SourceLocation.filePath property")
+  func sourceLocationFilePath() {
+    var sourceLocation = #_sourceLocation
+    #expect(sourceLocation.filePath == #filePath)
+
+    sourceLocation.filePath = "A"
+    #expect(sourceLocation.filePath == "A")
+  }
+
+  @available(swift, deprecated: 100000.0)
   @Test("SourceLocation._filePath property")
   func sourceLocationFilePath() {
     var sourceLocation = #_sourceLocation
