@@ -229,6 +229,11 @@ extension AttachableImageFormat {
     return preferredName
   }
 
+#if compiler(>=6.3)
+  // Workaround for https://github.com/swiftlang/swift/pull/84466
+  public typealias CLSID = WinSDK.GUID
+#endif
+
   /// The `CLSID` value of the Windows Imaging Component (WIC) encoder class
   /// that corresponds to this image format.
   ///
@@ -238,7 +243,7 @@ extension AttachableImageFormat {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
   /// }
-  public var encoderCLSID: WinSDK.CLSID {
+  public var encoderCLSID: CLSID {
     switch kind {
     case .png:
       CLSID_WICPngEncoder
@@ -270,7 +275,7 @@ extension AttachableImageFormat {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
   /// }
-  public init(encoderCLSID: WinSDK.CLSID, encodingQuality: Float = 1.0) {
+  public init(encoderCLSID: CLSID, encodingQuality: Float = 1.0) {
     if encoderCLSID == CLSID_WICPngEncoder {
       self = .png
     } else if encoderCLSID == CLSID_WICJpegEncoder {
