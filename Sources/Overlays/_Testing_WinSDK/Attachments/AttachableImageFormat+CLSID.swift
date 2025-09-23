@@ -231,6 +231,7 @@ extension AttachableImageFormat {
 
 #if compiler(>=6.3)
   // Workaround for https://github.com/swiftlang/swift/pull/84466
+  // (This typealias will be removed when that issue is resolved.)
   public typealias CLSID = WinSDK.GUID
 #endif
 
