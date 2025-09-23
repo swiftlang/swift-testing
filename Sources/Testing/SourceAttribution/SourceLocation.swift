@@ -165,7 +165,7 @@ extension SourceLocation: CustomStringConvertible, CustomDebugStringConvertible 
 // MARK: - Codable
 
 extension SourceLocation: Codable {
-  private enum CodingKeys: String, CodingKey {
+  private enum _CodingKeys: String, CodingKey {
     case fileID
     case filePath
     case _filePath
@@ -173,8 +173,8 @@ extension SourceLocation: Codable {
     case column
   }
 
-  func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: _CodingKeys.self)
     try container.encode(fileID, forKey: .fileID)
     try container.encode(line, forKey: .line)
     try container.encode(column, forKey: .column)
@@ -184,8 +184,8 @@ extension SourceLocation: Codable {
     try container.encode(filePath, forKey: .filePath)
   }
 
-  init(from decoder: any Decoder) throws {
-    let container = try decoder.container(keyedBy: CodingKeys.self)
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: _CodingKeys.self)
     fileID = try container.decode(String.self, forKey: .fileID)
     line = try container.decode(Int.self, forKey: .line)
     column = try container.decode(Int.self, forKey: .column)
