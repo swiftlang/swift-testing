@@ -9,10 +9,9 @@
 //
 
 #if os(Windows)
-@_spi(Experimental) public import Testing
+public import Testing
 public import WinSDK
 
-@_spi(Experimental)
 extension AttachableImageFormat {
   private static let _encoderPathExtensionsByCLSID = Result<[UInt128: [String]], any Error> {
     var result = [UInt128: [String]]()
@@ -235,6 +234,10 @@ extension AttachableImageFormat {
   ///
   /// For example, if this image format equals ``png``, the value of this
   /// property equals [`CLSID_WICPngEncoder`](https://learn.microsoft.com/en-us/windows/win32/wic/-wic-guids-clsids#wic-guids-and-clsids).
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
   public var encoderCLSID: CLSID {
     switch kind {
     case .png:
@@ -263,6 +266,10 @@ extension AttachableImageFormat {
   /// result is undefined. For a list of image encoder classes supported by WIC,
   /// see the documentation for the [`IWICBitmapEncoder`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapencoder)
   /// class.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
   public init(encoderCLSID: CLSID, encodingQuality: Float = 1.0) {
     if encoderCLSID == CLSID_WICPngEncoder {
       self = .png
