@@ -167,7 +167,7 @@ extension __ExpectationContext {
   ///
   /// This function helps overloads of `callAsFunction(_:_:)` disambiguate
   /// themselves and avoid accidental recursion.
-  @usableFromInline func captureValue<T>(_ value: consuming T, _ id: __ExpressionID) -> T {
+  @usableFromInline func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID) -> T {
     let value = copy value
     runtimeValues[id] = { Expression.Value(reflecting: value) }
     return value
@@ -186,7 +186,7 @@ extension __ExpectationContext {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   @_disfavoredOverload
-  @inlinable public func callAsFunction<T>(_ value: consuming T, _ id: __ExpressionID) -> T {
+  @inlinable public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> T {
     captureValue(value, id)
   }
 
@@ -204,7 +204,7 @@ extension __ExpectationContext {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   @_disfavoredOverload
-  public func callAsFunction<T>(_ value: consuming T, _ id: __ExpressionID) -> T where T: ~Copyable {
+  public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> T where T: ~Copyable {
     // TODO: add support for borrowing non-copyable expressions (need @lifetime)
     return value
   }
@@ -345,8 +345,6 @@ extension __ExpectationContext {
     _ rhs: borrowing U,
     _ rhsID: __ExpressionID
   ) rethrows -> Bool {
-    let lhs = copy lhs
-    let rhs = copy rhs
     let result = try captureValue(op(captureValue(lhs, lhsID), captureValue(rhs, rhsID)), opID)
 
     if !result {
@@ -378,8 +376,7 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __as<T, U>(_ value: consuming T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> U? {
-    let value = copy value
+  @inlinable public func __as<T, U>(_ value: borrowing T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> U? {
     let result = captureValue(value, valueID) as? U
 
     if result == nil {
@@ -409,14 +406,6 @@ extension __ExpectationContext {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   @inlinable public func __is<T, U>(_ value: borrowing T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> Bool {
-    let value = copy value
-    let result = captureValue(value, valueID) is U
-
-    if !result {
-      let correctType = Swift.type(of: value as Any)
-      _ = captureValue(correctType, typeID)
-    }
-
-    return result
+    __as(value, valueID, type, typeID) != nil
   }
 }
