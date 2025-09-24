@@ -28,7 +28,7 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func callAsFunction<P>(_ value: consuming P, _ id: __ExpressionID) -> P where P: _Pointer {
+  @inlinable public func callAsFunction<P>(_ value: borrowing P, _ id: __ExpressionID) -> P where P: _Pointer {
     captureValue(value, id)
   }
 
@@ -49,7 +49,7 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func callAsFunction(_ value: consuming String, _ id: __ExpressionID) -> String {
+  @inlinable public func callAsFunction(_ value: borrowing String, _ id: __ExpressionID) -> String {
     captureValue(value, id)
   }
 
@@ -70,7 +70,7 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func callAsFunction<E>(_ value: consuming Array<E>, _ id: __ExpressionID) -> Array<E> {
+  @inlinable public func callAsFunction<E>(_ value: borrowing Array<E>, _ id: __ExpressionID) -> Array<E> {
     captureValue(value, id)
   }
 
@@ -90,7 +90,7 @@ extension __ExpectationContext {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   @_disfavoredOverload
-  @inlinable public func callAsFunction<T>(_ value: consuming T?, _ id: __ExpressionID) -> T? {
+  @inlinable public func callAsFunction<T>(_ value: borrowing T?, _ id: __ExpressionID) -> T? {
     captureValue(value, id)
   }
 }

@@ -380,7 +380,7 @@ extension __ExpectationContext {
     let result = captureValue(value, valueID) as? U
 
     if result == nil {
-      let correctType = Swift.type(of: value as Any)
+      let correctType = Swift.type(of: (copy value) as Any)
       _ = captureValue(correctType, typeID)
     }
 
