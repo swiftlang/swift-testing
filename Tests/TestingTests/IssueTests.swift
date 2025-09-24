@@ -511,12 +511,14 @@ final class IssueTests: XCTestCase {
 
     let randomNumber = Int.random(in: 0 ... .max)
     await Test {
+#if !hasFeature(Embedded)
       #expect {
         asyncNotRequired()
         throw MyError()
       } throws: {
         $0 is MyError
       }
+#endif
       #expect(throws: MyError.self) {
         asyncNotRequired()
         throw MyError()
@@ -541,7 +543,11 @@ final class IssueTests: XCTestCase {
 
   func testErrorCheckingWithExpect_Mismatching() async throws {
     let expectationFailed = expectation(description: "Expectation failed")
+#if !hasFeature(Embedded)
     expectationFailed.expectedFulfillmentCount = 13
+#else
+    expectationFailed.expectedFulfillmentCount = 10
+#endif
 
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
@@ -559,11 +565,13 @@ final class IssueTests: XCTestCase {
     let randomNumber = Int.random(in: 0 ... .max)
 
     await Test {
+#if !hasFeature(Embedded)
       #expect {
         asyncNotRequired()
       } throws: {
         $0 is MyError
       }
+#endif
       #expect(throws: MyError.self) {
         asyncNotRequired()
       }
@@ -582,11 +590,13 @@ final class IssueTests: XCTestCase {
       #expect(throws: MyError()) {
         throw MyDescriptiveError(description: "something wrong")
       }
+#if !hasFeature(Embedded)
       #expect {
         throw MyDescriptiveError(description: "something wrong")
       } throws: {
         _ in false
       }
+#endif
       #expect(throws: Never.self) {
         throw MyError()
       }
@@ -600,12 +610,14 @@ final class IssueTests: XCTestCase {
       #expect(throws: MyError.self) {
         try nonVoidReturning()
       }
+#if !hasFeature(Embedded)
       #expect {
         throw MyError()
       } throws: { error in
         let parameterizedError = try #require(error as? MyParameterizedError)
         return parameterizedError.index == 123
       }
+#endif
     }.run(configuration: configuration)
 
     await fulfillment(of: [expectationFailed], timeout: 0.0)
@@ -681,11 +693,13 @@ final class IssueTests: XCTestCase {
 
     let randomNumber = Int.random(in: 0 ... .max)
     await Test {
+#if !hasFeature(Embedded)
       await #expect { () async throws in
         throw MyError()
       } throws: {
         $0 is MyError
       }
+#endif
       await #expect(throws: MyError.self) { () async throws in
         throw MyError()
       }
@@ -708,7 +722,11 @@ final class IssueTests: XCTestCase {
 
   func testErrorCheckingWithExpectAsync_Mismatching() async throws {
     let expectationFailed = expectation(description: "Expectation failed")
+#if !hasFeature(Embedded)
     expectationFailed.expectedFulfillmentCount = 13
+#else
+    expectationFailed.expectedFulfillmentCount = 10
+#endif
 
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
@@ -724,9 +742,11 @@ final class IssueTests: XCTestCase {
 
     let randomNumber = Int.random(in: 0 ... .max)
     await Test {
+#if !hasFeature(Embedded)
       await #expect { () async in } throws: {
         $0 is MyError
       }
+#endif
       await #expect(throws: MyError.self) { () async in }
       await #expect(throws: MyParameterizedError(index: randomNumber)) { () async in }
       await #expect(throws: MyError.self) { () async throws in
@@ -741,11 +761,13 @@ final class IssueTests: XCTestCase {
       await #expect(throws: MyError()) { () async throws in
         throw MyDescriptiveError(description: "something wrong")
       }
+#if !hasFeature(Embedded)
       await #expect { () async throws in
         throw MyDescriptiveError(description: "something wrong")
       } throws: {
         _ in false
       }
+#endif
       await #expect(throws: Never.self) { () async throws in
         throw MyError()
       }
@@ -759,12 +781,14 @@ final class IssueTests: XCTestCase {
       await #expect(throws: MyError.self) {
         try await nonVoidReturning()
       }
+#if !hasFeature(Embedded)
       await #expect { () async throws in
         throw MyError()
       } throws: { error in
         let parameterizedError = try #require(error as? MyParameterizedError)
         return parameterizedError.index == 123
       }
+#endif
     }.run(configuration: configuration)
 
     await fulfillment(of: [expectationFailed], timeout: 0.0)
@@ -822,6 +846,7 @@ final class IssueTests: XCTestCase {
     await fulfillment(of: [expectationFailed], timeout: 0.0)
   }
 
+#if !hasFeature(Embedded)
   func testErrorCheckingWithExpect_ThrowingFromErrorMatcher() async throws {
     let errorCaught = expectation(description: "Error matcher's error caught")
     let expectationFailed = expectation(description: "Expectation failed")
@@ -931,6 +956,7 @@ final class IssueTests: XCTestCase {
 
     await fulfillment(of: [errorCaught, expectationFailed], timeout: 0.0)
   }
+#endif
 
   func testErrorCheckingWithExpect_ResultValue() throws {
     let error = #expect(throws: MyDescriptiveError.self) {

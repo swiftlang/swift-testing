@@ -19,7 +19,7 @@ extension Result {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __required() throws -> Success {
+  @inlinable public func __required() throws(Failure) -> Success {
     try get()
   }
 }
@@ -48,7 +48,7 @@ extension Result {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @discardableResult public func __required<T>() throws -> T where Success == T? {
+  @discardableResult public func __required<T>() throws(any Error) -> T where Success == T? {
     guard let result = try get() else {
       throw APIMisuseError(description: "Could not unwrap 'nil' value of type Optional<\(T.self)>. Consider using #expect() instead of #require() here.")
     }
