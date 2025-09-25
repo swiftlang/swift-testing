@@ -87,14 +87,8 @@ extension FunctionDeclSyntax {
   var xcTestCompatibleSelector: ObjCSelectorPieceListSyntax? {
     // First, look for an @objc attribute with an explicit selector, and use
     // that if found.
-    let objcAttribute = attributes.lazy
-      .compactMap {
-        if case let .attribute(attribute) = $0 {
-          return attribute
-        }
-        return nil
-      }.first { $0.attributeNameText == "objc" }
-    if let objcAttribute, case let .objCName(objCName) = objcAttribute.arguments {
+    if objcAttribute = firstAttribute(named: "objc"),
+       case let .objCName(objCName) = objcAttribute.arguments {
       if true == objCName.first?.name?.textWithoutBackticks.hasPrefix("test") {
         return objCName
       }

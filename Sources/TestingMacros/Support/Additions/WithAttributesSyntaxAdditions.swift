@@ -102,27 +102,33 @@ extension WithAttributesSyntax {
     }
   }
 
-  /// The first `@available(*, noasync)` or `@_unavailableFromAsync` attribute
-  /// on this instance, if any.
-  var noasyncAttribute: AttributeSyntax? {
-    availability(when: .noasync).first?.attribute ?? attributes.lazy
+  /// Find the first attribute on this syntax node with the given name.
+  ///
+  /// - Parameters:
+  ///   - name: The name of the attribute to search for.
+  ///
+  /// - Returns: The first `AttributeSyntax` node on `self` with the given name,
+  ///   or `nil` if none was found.
+  func firstAttribute(named name: String) -> AttributeSyntax? {
+    attributes.lazy
       .compactMap { attribute in
         if case let .attribute(attribute) = attribute {
           return attribute
         }
         return nil
-      }.first { $0.attributeNameText == "_unavailableFromAsync" }
+      }.first { $0.attributeNameText == name }
+  }
+
+  /// The first `@available(*, noasync)` or `@_unavailableFromAsync` attribute
+  /// on this instance, if any.
+  var noasyncAttribute: AttributeSyntax? {
+    availability(when: .noasync).first?.attribute
+      ?? firstAttribute(named: "_unavailableFromAsync")
   }
 
   /// The first `@_unavailableInEmbedded` attribute on this instance, if any.
   var noembeddedAttribute: AttributeSyntax? {
-    availability(when: .noasync).first?.attribute ?? attributes.lazy
-      .compactMap { attribute in
-        if case let .attribute(attribute) = attribute {
-          return attribute
-        }
-        return nil
-      }.first { $0.attributeNameText == "_unavailableInEmbedded" }
+    firstAttribute(named: "_unavailableInEmbedded")
   }
 
   /// Find all attributes on this node, if any, with the given name.
