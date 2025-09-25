@@ -827,7 +827,11 @@ final class RunnerTests: XCTestCase {
 
   func testUnavailableInEmbeddedAttribute() async throws {
     let testStarted = expectation(description: "Test started")
+#if !hasFeature(Embedded)
     testStarted.expectedFulfillmentCount = 3
+#else
+    testStarted.isInverted = true
+#endif
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       if case .testStarted = event.kind {

@@ -87,7 +87,7 @@ extension FunctionDeclSyntax {
   var xcTestCompatibleSelector: ObjCSelectorPieceListSyntax? {
     // First, look for an @objc attribute with an explicit selector, and use
     // that if found.
-    if objcAttribute = firstAttribute(named: "objc"),
+    if let objcAttribute = attributes(named: "objc", inModuleNamed: "Swift").first,
        case let .objCName(objCName) = objcAttribute.arguments {
       if true == objCName.first?.name?.textWithoutBackticks.hasPrefix("test") {
         return objCName
