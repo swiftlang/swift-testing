@@ -140,6 +140,24 @@ private func _createAvailabilityTraitExpr(
   }
 }
 
+/// Create an expression that contains a test trait for symbols that are
+/// unavailable in Embedded Swift.
+///
+/// - Parameters:
+///   - attribute: The `@_unavailableInEmbedded` attribute.
+///   - context: The macro context in which the expression is being parsed.
+///
+/// - Returns: An instance of `ExprSyntax` representing an instance of
+///   ``Trait`` that can be used to prevent a test from running in Embedded
+///   Swift.
+private func _createNoEmbeddedAvailabilityTraitExpr(
+  from attribute: AttributeSyntax,
+  in context: some MacroExpansionContext
+) -> ExprSyntax {
+  let sourceLocationExpr = createSourceLocationExpr(of: attribute, context: context)
+  return ".__unavailableInEmbedded(sourceLocation: \(sourceLocationExpr))"
+}
+
 /// Create an expression that contains test traits for availability (i.e.
 /// `.enabled(if: ...)`).
 ///
@@ -167,6 +185,10 @@ func createAvailabilityTraitExprs(
 
   result += decl.availability(when: .obsoleted).lazy.map { availability in
     _createAvailabilityTraitExpr(from: availability, when: .obsoleted, in: context)
+  }
+
+  if let noembeddedAttribute = decl.noembeddedAttribute {
+    result += [_createNoEmbeddedAvailabilityTraitExpr(from: noembeddedAttribute, in: context)]
   }
 
   return result
@@ -288,6 +310,17 @@ func createSyntaxNode(
       #endif
       """
     }
+  }
+
+  // Handle Embedded Swift.
+  if decl.noembeddedAttribute != nil {
+    result = """
+      #if !hasFeature(Embedded)
+      \(result)
+      #else
+      \(exitStatement)
+      #endif
+      """
   }
 
   return result

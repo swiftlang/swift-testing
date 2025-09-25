@@ -114,6 +114,17 @@ extension WithAttributesSyntax {
       }.first { $0.attributeNameText == "_unavailableFromAsync" }
   }
 
+  /// The first `@_unavailableInEmbedded` attribute on this instance, if any.
+  var noembeddedAttribute: AttributeSyntax? {
+    availability(when: .noasync).first?.attribute ?? attributes.lazy
+      .compactMap { attribute in
+        if case let .attribute(attribute) = attribute {
+          return attribute
+        }
+        return nil
+      }.first { $0.attributeNameText == "_unavailableInEmbedded" }
+  }
+
   /// Find all attributes on this node, if any, with the given name.
   ///
   /// - Parameters:
