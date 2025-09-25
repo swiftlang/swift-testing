@@ -9,6 +9,7 @@
 //
 
 #if SWT_NO_IMAGE_ATTACHMENTS
+@_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 @available(_uttypesAPI, *)
@@ -101,6 +102,7 @@ extension Attachment {
 
 @_spi(Experimental) // STOP: not part of ST-0014
 #if SWT_NO_IMAGE_ATTACHMENTS
+@_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 @available(_uttypesAPI, *)
