@@ -126,10 +126,9 @@ extension Trait where Self == ConditionTrait {
   }
 
   /// Create a trait controlling availability of a test based on an
-  /// `@available(*, unavailable)` attribute applied to it.
+  /// `@_unavailableInEmbedded` attribute applied to it.
   ///
   /// - Parameters:
-  ///   - message: The `message` parameter of the availability attribute.
   ///   - sourceLocation: The source location of the test.
   ///
   /// - Returns: A trait.
