@@ -1050,7 +1050,6 @@ public func __checkClosureCall<EExpected, EActual>(
 public func __checkClosureCall<R>(
   performing body: () throws(any Error) -> R,
   throws errorMatcher: (any Error) throws(any Error) -> Bool,
-  mismatchExplanation: ((any Error) -> String)? = nil,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
@@ -1059,7 +1058,7 @@ public func __checkClosureCall<R>(
   _check(
     performing: body,
     throws: errorMatcher,
-    mismatchExplanation: mismatchExplanation,
+    mismatchExplanation: nil,
     expression: expression,
     comments: comments(),
     isRequired: isRequired,
@@ -1076,7 +1075,6 @@ public func __checkClosureCall<R>(
 public func __checkClosureCall<R>(
   performing body: () async throws(any Error) -> sending R,
   throws errorMatcher: (any Error) async throws(any Error) -> Bool,
-  mismatchExplanation: ((any Error) -> String)? = nil,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
@@ -1086,7 +1084,7 @@ public func __checkClosureCall<R>(
   await _check(
     performing: body,
     throws: errorMatcher,
-    mismatchExplanation: mismatchExplanation,
+    mismatchExplanation: nil,
     expression: expression,
     comments: comments(),
     isRequired: isRequired,
