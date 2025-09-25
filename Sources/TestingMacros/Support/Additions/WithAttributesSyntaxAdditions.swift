@@ -110,7 +110,7 @@ extension WithAttributesSyntax {
   }
 
   /// The first `@_unavailableInEmbedded` attribute on this instance, if any.
-  var noembeddedAttribute: AttributeSyntax? {
+  var unavailableInEmbeddedAttribute: AttributeSyntax? {
     attributes(named: "_unavailableInEmbedded", inModuleNamed: "Swift").first
   }
 
