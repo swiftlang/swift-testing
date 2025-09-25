@@ -88,9 +88,21 @@ public struct TypeInfo: Sendable {
   ///
   /// - Parameters:
   ///   - value: The value whose type this instance should describe.
-  init(describingTypeOf value: borrowing some ~Copyable) {
+  init(describingTypeOf value: some Any) {
+#if !hasFeature(Embedded)
+    let value = value as Any
+#endif
     let type = Swift.type(of: value)
     self.init(describing: type)
+  }
+
+  /// Initialize an instance of this type describing the type of the specified
+  /// value.
+  ///
+  /// - Parameters:
+  ///   - value: The value whose type this instance should describe.
+  init<T>(describingTypeOf value: borrowing T) where T: ~Copyable {
+    self.init(describing: T.self)
   }
 }
 
