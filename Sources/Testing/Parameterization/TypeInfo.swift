@@ -79,7 +79,7 @@ public struct TypeInfo: Sendable {
   ///
   /// - Parameters:
   ///   - type: The type which this instance should describe.
-  init(describing type: any ~Copyable.Type) {
+  init(describing type: (some ~Copyable).Type) {
     _kind = .type(type)
   }
 
@@ -88,8 +88,9 @@ public struct TypeInfo: Sendable {
   ///
   /// - Parameters:
   ///   - value: The value whose type this instance should describe.
-  init(describingTypeOf value: Any) {
-    self.init(describing: Swift.type(of: value))
+  init(describingTypeOf value: borrowing some ~Copyable) {
+    let type = Swift.type(of: value)
+    self.init(describing: type)
   }
 }
 
