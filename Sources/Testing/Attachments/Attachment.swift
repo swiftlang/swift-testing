@@ -97,6 +97,19 @@ public struct Attachment<AttachableValue> where AttachableValue: Attachable & ~C
 extension Attachment: Sendable where AttachableValue: Sendable {}
 extension Attachment.Storage: Sendable where AttachableValue: Sendable {}
 
+#if !hasFeature(Embedded)
+/// A protocol that describes an attachment with a copyable value.
+///
+/// We can use this protocol to make runtime decisions about attachments based
+/// on whether or not their attachable values are copyable.
+private protocol _AttachmentWithCopyableValue {
+  associatedtype AttachableValue: Attachable & Copyable
+  var attachableValue: AttachableValue { get }
+}
+
+extension Attachment: _AttachmentWithCopyableValue where AttachableValue: Copyable {}
+#endif
+
 // MARK: - Initializing an attachment
 
 extension Attachment where AttachableValue: ~Copyable {
@@ -180,21 +193,19 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
 
 // MARK: - Describing an attachment
 
-extension Attachment where AttachableValue: ~Copyable {
-  @_documentation(visibility: private)
-  public var description: String {
-    let typeInfo = TypeInfo(describing: AttachableValue.self)
-    return #""\#(preferredName)": instance of '\#(typeInfo.unqualifiedName)'"#
-  }
-}
-
-extension Attachment: CustomStringConvertible {
+extension Attachment: CustomStringConvertible where AttachableValue: ~Copyable {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
   ///   @Available(Xcode, introduced: 26.0)
   /// }
   public var description: String {
-    #""\#(preferredName)": \#(String(describingForTest: attachableValue))"#
+#if !hasFeature(Embedded)
+    if let selfCopy = self as? any _AttachmentWithCopyableValue {
+      return #""\#(preferredName)": \#(String(describingForTest: selfCopy.attachableValue))"#
+    }
+#endif
+    let typeInfo = TypeInfo(describing: AttachableValue.self)
+    return #""\#(preferredName)": instance of '\#(typeInfo.unqualifiedName)'"#
   }
 }
 
