@@ -238,6 +238,9 @@ extension AttachableImageFormat {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
   /// }
+#if compiler(>=6.3) && !SWT_FIXED_84466
+  @_spi(_)
+#endif
   public var encoderCLSID: CLSID {
     switch kind {
     case .png:
@@ -270,6 +273,9 @@ extension AttachableImageFormat {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
   /// }
+#if compiler(>=6.3) && !SWT_FIXED_84466
+  @_spi(_)
+#endif
   public init(encoderCLSID: CLSID, encodingQuality: Float = 1.0) {
     if encoderCLSID == CLSID_WICPngEncoder {
       self = .png
