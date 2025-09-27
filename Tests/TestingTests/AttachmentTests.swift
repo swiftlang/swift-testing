@@ -50,15 +50,15 @@ struct AttachmentTests {
     let attachableValue = MySendableAttachable(string: "<!doctype html>")
     let attachment = Attachment(attachableValue, named: "AttachmentTests.saveValue.html")
     #expect(String(describing: attachment).contains(#""\#(attachment.preferredName)""#))
-    #expect(attachment.description.contains("MySendableAttachable("))
+    #expect(String(describing: attachment).contains("MySendableAttachable("))
   }
 
 #if compiler(>=6.3) || !os(Windows) // WORKAROUND: swift-#84184
   @Test func moveOnlyDescription() {
     let attachableValue = MyAttachable(string: "<!doctype html>")
     let attachment = Attachment(attachableValue, named: "AttachmentTests.saveValue.html")
-    #expect(attachment.description.contains(#""\#(attachment.preferredName)""#))
-    #expect(attachment.description.contains("'MyAttachable'"))
+    #expect(String(describing: attachment).contains(#""\#(attachment.preferredName)""#))
+    #expect(String(describing: attachment).contains("'MyAttachable'"))
   }
 #endif
 
