@@ -446,11 +446,15 @@ extension Backtrace {
   @inline(never)
   init?(forFirstThrowOf error: any Error, checkFoundation: Bool = true) {
     if checkFoundation && Self.isFoundationCaptureEnabled {
+#if !hasFeature(Embedded) && SWT_TARGET_OS_APPLE && !SWT_NO_DYNAMIC_LINKING
       if let addresses = Self._CFErrorCopyCallStackReturnAddresses?(error)?.takeRetainedValue() as? [Address] {
         self.init(addresses: addresses)
         return
-      } else if let userInfo = error._userInfo as? [String: Any],
-                let addresses = userInfo["NSCallStackReturnAddresses"] as? [Address], !addresses.isEmpty {
+      }
+#endif
+
+      if let userInfo = error._userInfo as? [String: Any],
+         let addresses = userInfo["NSCallStackReturnAddresses"] as? [Address], !addresses.isEmpty {
         self.init(addresses: addresses)
         return
       }
