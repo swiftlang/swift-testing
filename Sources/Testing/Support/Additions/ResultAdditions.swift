@@ -8,18 +8,18 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-extension Result {
+extension Result where Success: ~Copyable {
   /// Handle this instance as if it were returned from a call to `#expect()`.
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __expected() where Success == Void {}
+  @inlinable public borrowing func __expected() where Success == Void {}
 
   /// Handle this instance as if it were returned from a call to `#require()`.
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __required() throws -> Success {
+  @inlinable public consuming func __required() throws -> Success {
     try get()
   }
 }
