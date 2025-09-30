@@ -335,9 +335,8 @@ extension Backtrace {
   ///   when it was created, or `nil` if none was captured. The caller is
   ///   responsible for releasing this object when done.
   ///
-  /// This function was added in an internal Foundation PR
-  /// ([#2678](https://github.pie.apple.com/Cocoa/Foundation/pull/2678)) and is
-  /// not available on older systems.
+  /// This function was added in an internal Foundation PR and is not available
+  /// on older systems.
   private static let _CFErrorCopyCallStackReturnAddresses = symbol(named: "_CFErrorCopyCallStackReturnAddresses").map {
     castCFunction(at: $0, to: (@convention(c) (_ error: any Error) -> Unmanaged<AnyObject>?).self)
   }
