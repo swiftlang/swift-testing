@@ -24,8 +24,8 @@
 ///   `.build/attachments` by default. Visual Studio Code reports the paths to
 ///   individual attachments in its Tests Results panel.
 /// - When using Swift Package Manager's `swift test` command, you can pass the
-///   `--attachments-path` option and the testing library will save attachments
-///   to the specified directory.
+///   `--attachments-path` option. The testing library saves attachments to the
+///   specified directory.
 ///
 /// If you add an instance of this trait type to a test, any attachments that
 /// test records are stored in memory until the test finishes running. The
@@ -238,8 +238,8 @@ extension Trait where Self == AttachmentSavingTrait {
   ///   `.build/attachments` by default. Visual Studio Code reports the paths to
   ///   individual attachments in its Tests Results panel.
   /// - When using Swift Package Manager's `swift test` command, you can pass
-  ///   the `--attachments-path` option and the testing library will save
-  ///   attachments to the specified directory.
+  ///   the `--attachments-path` option. The testing library saves attachments
+  ///   to the specified directory.
   ///
   /// If you add this trait to a test, any attachments that test records are
   /// stored in memory until the test finishes running. The testing library then
@@ -276,8 +276,8 @@ extension Trait where Self == AttachmentSavingTrait {
   ///   to `.build/attachments` by default. Visual Studio Code reports the paths
   ///   to individual attachments in its Tests Results panel.
   /// - When using Swift Package Manager's `swift test` command, you can pass
-  ///   the `--attachments-path` option and the testing library will save
-  ///   attachments to the specified directory.
+  ///   the `--attachments-path` option. The testing library saves attachments
+  ///   to the specified directory.
   ///
   /// If you add this trait to a test, any attachments that test records are
   /// stored in memory until the test finishes running. The testing library then
@@ -315,8 +315,8 @@ extension Trait where Self == AttachmentSavingTrait {
   ///   to `.build/attachments` by default. Visual Studio Code reports the paths
   ///   to individual attachments in its Tests Results panel.
   /// - When using Swift Package Manager's `swift test` command, you can pass
-  ///   the `--attachments-path` option and the testing library will save
-  ///   attachments to the specified directory.
+  ///   the `--attachments-path` option. The testing library saves attachments
+  ///   to the specified directory.
   ///
   /// If you add this trait to a test, any attachments that test records are
   /// stored in memory until the test finishes running. The testing library then

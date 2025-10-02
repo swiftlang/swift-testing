@@ -29,8 +29,8 @@ private import _TestingInternals
 ///   `.build/attachments` by default. Visual Studio Code reports the paths to
 ///   individual attachments in its Tests Results panel.
 /// - When using Swift Package Manager's `swift test` command, you can pass the
-///   `--attachments-path` option and the testing library will save attachments
-///   to the specified directory.
+///   `--attachments-path` option. The testing library saves attachments to the
+///   specified directory.
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
