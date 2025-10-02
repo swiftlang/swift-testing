@@ -382,7 +382,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
 
     // Get the name of the type containing the function for passing to the test
     // factory function later.
-    let typeNameExpr: ExprSyntax = typeName.map { "\($0).self" } ?? "nil"
+    let typeNameExpr: ExprSyntax = typeName.map { "\($0).self" } ?? "nil as Swift.Never.Type?"
 
     if typeName != nil, let genericGuardDecl = makeGenericGuardDecl(guardingAgainst: functionDecl, in: context) {
       result.append(genericGuardDecl)
@@ -496,13 +496,12 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
     // Emit a type that contains a reference to the test content record.
     let enumName = context.makeUniqueName(thunking: functionDecl, withPrefix: "__🟡$")
-    let unsafeKeyword: TokenSyntax? = isUnsafeKeywordSupported ? .keyword(.unsafe, trailingTrivia: .space) : nil
     result.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
       enum \(enumName): Testing.__TestContentRecordContainer {
         nonisolated static var __testContentRecord: Testing.__TestContentRecord {
-          \(unsafeKeyword)\(testContentRecordName)
+          unsafe \(testContentRecordName)
         }
       }
       """

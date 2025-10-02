@@ -35,6 +35,7 @@ private import _TestingInternals
 ///   @Available(Xcode, introduced: 26.0)
 /// }
 #if SWT_NO_EXIT_TESTS
+@_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 public struct ExitTest: Sendable, ~Copyable {
@@ -128,7 +129,7 @@ public struct ExitTest: Sendable, ~Copyable {
   ///
   /// The order of values in this array must be the same between the parent and
   /// child processes.
-  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+  @_spi(ForToolsIntegrationOnly)
   public var capturedValues = [CapturedValue]()
 
   /// Make a copy of this instance.
@@ -349,10 +350,7 @@ extension ExitTest {
   ///
   /// - Warning: This function is used to implement the
   ///   `#expect(processExitsWith:)` macro. Do not use it directly.
-#if compiler(>=6.2)
-  @safe
-#endif
-  public static func __store<each T>(
+  @safe public static func __store<each T>(
     _ id: (UInt64, UInt64, UInt64, UInt64),
     _ body: @escaping @Sendable (repeat each T) async throws -> Void,
     into outValue: UnsafeMutableRawPointer,
@@ -394,10 +392,7 @@ extension ExitTest {
   ///
   /// - Warning: This function is used to implement the
   ///   `#expect(processExitsWith:)` macro. Do not use it directly.
-#if compiler(>=6.2)
-  @safe
-#endif
-  public static func __store<T>(
+  @safe public static func __store<T>(
     _ id: (UInt64, UInt64, UInt64, UInt64),
     _ body: T,
     into outValue: UnsafeMutableRawPointer,
@@ -525,11 +520,11 @@ func callExitTest(
   }
 
   // Plumb the exit test's result through the general expectation machinery.
+  let expression = __Expression(String(describingForTest: expectedExitCondition))
   return __checkValue(
     expectedExitCondition.isApproximatelyEqual(to: result.exitStatus),
     expression: expression,
     expressionWithCapturedRuntimeValues: expression.capturingRuntimeValues(result.exitStatus),
-    mismatchedExitConditionDescription: String(describingForTest: expectedExitCondition),
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
@@ -768,7 +763,7 @@ extension ExitTest {
     }
     configuration.eventHandler = { event, eventContext in
       switch event.kind {
-      case .issueRecorded, .valueAttached, .testCancelled, .testCaseCancelled:
+      case .issueRecorded, .valueAttached, .testCancelled:
         eventHandler(event, eventContext)
       default:
         // Don't forward other kinds of event.
@@ -1076,8 +1071,6 @@ extension ExitTest {
       Attachment.record(attachment, sourceLocation: event._sourceLocation!)
     } else if case .testCancelled = event.kind {
       _ = try? Test.cancel(with: skipInfo)
-    } else if case .testCaseCancelled = event.kind {
-      _ = try? Test.Case.cancel(with: skipInfo)
     }
   }
 

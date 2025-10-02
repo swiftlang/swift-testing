@@ -1,4 +1,4 @@
-// swift-tools-version: 6.1
+// swift-tools-version: 6.2
 
 //
 // This source file is part of the Swift.org open source project
@@ -164,7 +164,7 @@ let package = Package(
         "Testing",
       ],
       path: "Tests/_MemorySafeTestingTests",
-      swiftSettings: .packageSettings + .strictMemorySafety
+      swiftSettings: .packageSettings + [.strictMemorySafety()]
     ),
 
     .macro(
@@ -369,17 +369,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
       // proposal via Swift Evolution.
       .enableExperimentalFeature("SymbolLinkageMarkers"),
 
-      // This setting is no longer needed when building with a 6.2 or later
-      // toolchain now that SE-0458 has been accepted and implemented, but it is
-      // needed in order to preserve support for building with 6.1 development
-      // snapshot toolchains. (Production 6.1 toolchains can build the testing
-      // library even without this setting since this experimental feature is
-      // _suppressible_.) This setting can be removed once the minimum supported
-      // toolchain for building the testing library is ≥ 6.2. It is not needed
-      // in the CMake settings since that is expected to build using a
-      // new-enough toolchain.
-      .enableExperimentalFeature("AllowUnsafeAttribute"),
-
       .enableUpcomingFeature("InferIsolatedConformances"),
 
       // When building as a package, the macro plugin always builds as an
@@ -394,6 +383,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .define("SWT_NO_DYNAMIC_LINKING", .whenEmbedded(or: .when(platforms: [.wasi]))),
       .define("SWT_NO_PIPES", .whenEmbedded(or: .when(platforms: [.wasi]))),
       .define("SWT_NO_FOUNDATION_FILE_COORDINATION", .whenEmbedded(or: .whenApple(false))),
+      .define("SWT_NO_IMAGE_ATTACHMENTS", .whenEmbedded(or: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android]))),
 
       .define("SWT_NO_LEGACY_TEST_DISCOVERY", .whenEmbedded()),
       .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
@@ -435,18 +425,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
     }
 
     return result
-  }
-
-  /// Settings necessary to enable Strict Memory Safety, introduced in
-  /// [SE-0458: Opt-in Strict Memory Safety Checking](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0458-strict-memory-safety.md#swiftpm-integration).
-  static var strictMemorySafety: Self {
-#if compiler(>=6.2)
-    // FIXME: Adopt official `.strictMemorySafety()` condition once the minimum
-    // supported toolchain is 6.2.
-    [.unsafeFlags(["-strict-memory-safety"])]
-#else
-    []
-#endif
   }
 }
 
