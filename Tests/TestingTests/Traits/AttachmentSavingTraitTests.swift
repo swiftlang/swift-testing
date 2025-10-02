@@ -57,6 +57,14 @@ struct `AttachmentSavingTrait tests` {
     )
   }
 
+  @Test func `Saving attachments with warning issue`() async throws {
+    try await runAttachmentSavingTests(
+      with: .savingAttachments(if: .testRecordsIssue { $0.severity == .warning }),
+      expectedCount: Self.warningTestCaseCount,
+      expectedPreferredName: "PASSING TEST"
+    )
+  }
+
   @Test func `Saving attachments only on test failure`() async throws {
     try await runAttachmentSavingTests(
       with: .savingAttachments(if: .testFails),
@@ -108,10 +116,11 @@ struct `AttachmentSavingTrait tests` {
 // MARK: - Fixtures
 
 extension `AttachmentSavingTrait tests` {
-  static let totalTestCaseCount = 1 + 1 + 5 + 7
-  static let passingTestCaseCount = 1 + 5
+  static let totalTestCaseCount = passingTestCaseCount + failingTestCaseCount
+  static let passingTestCaseCount = 1 + 5 + warningTestCaseCount
+  static let warningTestCaseCount = 1
   static let failingTestCaseCount = 1 + 7
-  static let issueCountFromTestBodies = failingTestCaseCount
+  static let issueCountFromTestBodies = warningTestCaseCount + failingTestCaseCount
 
   @TaskLocal
   static var currentAttachmentSavingTrait: any SuiteTrait = Comment(rawValue: "<no .savingAttachments trait set>")
@@ -120,6 +129,11 @@ extension `AttachmentSavingTrait tests` {
   struct FixtureSuite {
     @Test(.hidden) func `Records an attachment (passing)`() {
       Attachment.record("", named: "PASSING TEST")
+    }
+
+    @Test(.hidden) func `Records an attachment (warning)`() {
+      Attachment.record("", named: "PASSING TEST")
+      Issue.record("", severity: .warning)
     }
 
     @Test(.hidden) func `Records an attachment (failing)`() {

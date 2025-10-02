@@ -48,12 +48,39 @@ public struct AttachmentSavingTrait: TestTrait, SuiteTrait {
       Self { $0.hasFailed }
     }
 
+    /// The testing library saves attachments if the test records a matching
+    /// issue.
+    ///
+    /// - Parameters:
+    ///   - issueMatcher: A function to invoke when an issue occurs that is used
+    ///     to determine if the testing library should save attachments for the
+    ///     current test.
+    ///
+    /// - Returns: An instance of ``AttachmentSavingTrait/Condition`` that
+    ///   evaluates `issueMatcher`.
+    public static func testRecordsIssue(
+      matching issueMatcher: @escaping @Sendable (_ issue: Issue) async throws -> Bool
+    ) -> Self {
+      Self(inspectsIssues: true) { context in
+        for issue in context.issues {
+          if try await issueMatcher(issue) {
+            return true
+          }
+        }
+        return false
+      }
+    }
+
+    /// Whether or not this condition needs to inspect individual issues (which
+    /// implies a slower path.)
+    fileprivate var inspectsIssues = false
+
     /// The condition function.
     ///
     /// - Parameters:
     ///   - condition: The function to call. The result of this function
     ///     determines if the condition is satisfied or not.
-    fileprivate var condition: @Sendable (borrowing Context) async throws -> Bool
+    fileprivate var body: @Sendable (borrowing Context) async throws -> Bool
   }
 
   /// This instance's condition.
@@ -70,7 +97,7 @@ public struct AttachmentSavingTrait: TestTrait, SuiteTrait {
 // MARK: - TestScoping
 
 extension AttachmentSavingTrait: TestScoping {
-  /// A type representing the per-test context for this trait.
+  /// A type representing the per-test-case context for this trait.
   ///
   /// An instance of this type is created for each scope this trait provides.
   /// When the scope ends, the context is then passed to the trait's condition
@@ -79,8 +106,11 @@ extension AttachmentSavingTrait: TestScoping {
     /// The set of events that were deferred for later conditional handling.
     var deferredEvents = [Event]()
 
-    /// Whether or not the current test has recorded a failing issue.
+    /// Whether or not the current test case has recorded a failing issue.
     var hasFailed = false
+
+    /// All issues recorded within the scope of the current test case.
+    var issues = [Issue]()
   }
 
   public func scopeProvider(for test: Test, testCase: Test.Case?) -> Self? {
@@ -124,7 +154,14 @@ extension AttachmentSavingTrait: TestScoping {
         }
 
       case let .issueRecorded(issue):
-        if issue.isFailure {
+        if condition.inspectsIssues {
+          context.withLock { context in
+            if issue.isFailure {
+              context.hasFailed = true
+            }
+            context.issues.append(issue)
+          }
+        } else if issue.isFailure {
           context.withLock { context in
             context.hasFailed = true
           }
@@ -161,7 +198,7 @@ extension AttachmentSavingTrait: TestScoping {
 
     await Issue.withErrorRecording(at: sourceLocation, configuration: configuration) {
       // Evaluate the condition.
-      guard try await condition.condition(context) else {
+      guard try await condition.body(context) else {
         return
       }
 
