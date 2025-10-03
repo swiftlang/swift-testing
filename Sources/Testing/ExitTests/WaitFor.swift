@@ -86,7 +86,7 @@ private nonisolated(unsafe) let _childProcessContinuations = {
     makingHeaderWith: { _ in [:] }
   )
 
-  result.withUnsafeMutablePointers { sectionBounds, lock in
+  result.withUnsafeMutablePointers { _, lock in
     _ = pthread_mutex_init(lock, nil)
   }
 
