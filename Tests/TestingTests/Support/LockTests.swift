@@ -22,4 +22,17 @@ struct LockTests {
     }
     #expect(lock.rawValue == 1)
   }
+
+  @Test("Repeatedly accessing a lock")
+  func lockRepeatedly() async {
+    let lock = Locked(rawValue: 0)
+    await withTaskGroup { taskGroup in
+      for _ in 0 ..< 100_000 {
+        taskGroup.addTask {
+          lock.increment()
+        }
+      }
+    }
+    #expect(lock.rawValue == 100_000)
+  }
 }
