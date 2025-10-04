@@ -153,4 +153,5 @@ extension Locked {
 
 #if os(FreeBSD) || os(OpenBSD)
 typealias pthread_mutex_t = _TestingInternals.pthread_mutex_t?
+typealias pthread_cond_t = _TestingInternals.pthread_cond_t?
 #endif
