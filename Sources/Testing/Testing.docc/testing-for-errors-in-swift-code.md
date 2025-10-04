@@ -26,7 +26,7 @@ If the code throws an error, then your test fails.
 
 To check that the code under test throws a specific error, or to continue a
 longer test function after the code throws an error, pass that error as the
-first argument of ``expect(throws:_:sourceLocation:performing:)-7du1h``, and
+first argument of ``expect(throws:_:sourceLocation:performing:)-3y3oo``, and
 pass a closure that calls the code under test:
 
 ```swift
@@ -48,8 +48,8 @@ running your test if the code doesn't throw the expected error.
 
 To check that the code under test throws an error of any type, pass
 `(any Error).self` as the first argument to either
-``expect(throws:_:sourceLocation:performing:)-1hfms`` or
-``require(throws:_:sourceLocation:performing:)-7n34r``:
+``expect(throws:_:sourceLocation:performing:)-7p3ic`` or
+``require(throws:_:sourceLocation:performing:)-1zgzw``:
 
 ```swift
 @Test func cannotAddToppingToPizzaBeforeStartOfList() {
@@ -81,7 +81,7 @@ the error to `Never`:
 If the closure throws _any_ error, the testing library records an issue.
 If you need the test to stop when the code throws an error, include the
 code inline in the test function instead of wrapping it in a call to
-``expect(throws:_:sourceLocation:performing:)-7du1h``.
+``expect(throws:_:sourceLocation:performing:)-3y3oo``.
 
 ## Inspect an error thrown by your code
 
