@@ -492,4 +492,25 @@ struct SwiftPMTests {
     let args = try parseCommandLineArguments(from: ["PATH", "--verbosity", "12345"])
     #expect(args.verbosity == 12345)
   }
+
+  @Test("--foo=bar form")
+  func equalsSignForm() throws {
+    // We can split the string and parse the result correctly.
+    do {
+      let args = try parseCommandLineArguments(from: ["PATH", "--verbosity=12345"])
+      #expect(args.verbosity == 12345)
+    }
+
+    // We don't overrun the string and correctly handle empty values.
+    do {
+      let args = try parseCommandLineArguments(from: ["PATH", "--xunit-output="])
+      #expect(args.xunitOutput == "")
+    }
+
+    // We split at the first equals-sign.
+    do {
+      let args = try parseCommandLineArguments(from: ["PATH", "--xunit-output=abc=123"])
+      #expect(args.xunitOutput == "abc=123")
+    }
+  }
 }
