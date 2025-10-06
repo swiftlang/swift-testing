@@ -90,6 +90,7 @@ struct SwiftPMTests {
   @available(_regexAPI, *)
   func filter() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "hello"])
+    print(configuration)
     let test1 = Test(name: "hello") {}
     let test2 = Test(name: "goodbye") {}
     let plan = await Runner.Plan(tests: [test1, test2], configuration: configuration)
@@ -143,6 +144,13 @@ struct SwiftPMTests {
     let planTests = plan.steps.map(\.test)
     #expect(!planTests.contains(test1))
     #expect(planTests.contains(test2))
+  }
+
+  @Test("--filter or --skip argument as last argument")
+  @available(_regexAPI, *)
+  func filterOrSkipAsLast() async throws {
+    _ = try configurationForEntryPoint(withArguments: ["PATH", "--filter"])
+    _ = try configurationForEntryPoint(withArguments: ["PATH", "--skip"])
   }
 
   @Test(".hidden trait", .tags(.traitRelated))

@@ -357,14 +357,22 @@ extension RandomAccessCollection<String> {
   ///
   /// - Parameters:
   ///   - key: The key or name of the argument, e.g. `"--attachments-path"`.
+  ///   - index: Optionally, the index where `key` should be found.
   ///
   /// - Returns: The value of the argument named by `key`. If no value is
   ///   available, returns `nil`.
   ///
   /// This function handles arguments of the form `--key value` and
   /// `--key=value`. Other argument syntaxes are not supported.
-  fileprivate func argumentValue(forKey key: String) -> String? {
-    if let index = firstIndex(of: key) {
+  fileprivate func argumentValue(forKey key: String, at index: Index? = nil) -> String? {
+    guard let index else {
+      return indices.lazy
+        .compactMap { argumentValue(forKey: key, at: $0) }
+        .first
+    }
+
+    let element = self[index]
+    if element == key {
       let nextIndex = self.index(after: index)
       if nextIndex < endIndex {
         return self[nextIndex]
@@ -372,9 +380,8 @@ extension RandomAccessCollection<String> {
     } else {
       // Find an element equal to something like "--foo=bar" and split it.
       let prefix = "\(key)="
-      let index = self.firstIndex { $0.hasPrefix(prefix) }
-      if let index, case let key = self[index], let equalsIndex = key.firstIndex(of: "=") {
-        return String(key[equalsIndex...].dropFirst())
+      if element.hasPrefix(prefix), let equalsIndex = element.firstIndex(of: "=") {
+        return String(element[equalsIndex...].dropFirst())
       }
     }
 
@@ -498,9 +505,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 
   // Filtering
   func filterValues(forArgumentsWithLabel label: String) -> [String] {
-    args.indices.lazy
-      .filter { args[$0] == label && $0 < args.endIndex }
-      .map { args[args.index(after: $0)] }
+    args.indices.compactMap { args.argumentValue(forKey: label, at: $0) }
   }
   let filter = filterValues(forArgumentsWithLabel: "--filter")
   if !filter.isEmpty {
