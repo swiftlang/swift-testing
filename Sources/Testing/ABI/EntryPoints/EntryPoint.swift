@@ -353,14 +353,16 @@ extension __CommandLineArguments_v0: Codable {
 }
 
 extension RandomAccessCollection<String> {
-  /// Get the value of the command line argument named at the given index.
+  /// Get the value of the command line argument with the given name.
   ///
   /// - Parameters:
   ///   - key: The key or name of the argument, e.g. `"--attachments-path"`.
-  ///   - index: Optionally, the index where `key` should be found.
+  ///   - index: The index where `key` should be found, or `nil` to search the
+  ///     entire collection.
   ///
-  /// - Returns: The value of the argument named by `key`. If no value is
-  ///   available, returns `nil`.
+  /// - Returns: The value of the argument named by `key` at `index`. If no
+  ///   value is available, or if `index` is not `nil` and the argument at
+  ///   `index` is not named `key`, returns `nil`.
   ///
   /// This function handles arguments of the form `--key value` and
   /// `--key=value`. Other argument syntaxes are not supported.
