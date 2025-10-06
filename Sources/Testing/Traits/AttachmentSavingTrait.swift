@@ -200,8 +200,11 @@ extension AttachmentSavingTrait: TestScoping {
 
       // Finally issue the attachment-recorded events that we deferred.
       let eventContext = Event.Context(test: test, testCase: testCase, configuration: configuration)
-      for var event in context.deferredEvents {
+      for event in context.deferredEvents {
+#if DEBUG
+        var event = event
         event.wasDeferred = true
+#endif
         configuration.eventHandler(event, eventContext)
       }
     }

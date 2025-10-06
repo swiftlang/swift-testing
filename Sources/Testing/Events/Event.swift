@@ -191,6 +191,7 @@ public struct Event: Sendable {
   /// The instant at which the event occurred.
   public var instant: Test.Clock.Instant
 
+#if DEBUG
   /// Whether or not this event was deferred.
   ///
   /// A deferred event is handled significantly later than when was posted.
@@ -198,6 +199,7 @@ public struct Event: Sendable {
   /// We currently use this property in our tests, but do not expose it as API
   /// or SPI. We can expose it in the future if tools need it.
   var wasDeferred: Bool = false
+#endif
 
   /// Initialize an instance of this type.
   ///

@@ -23,9 +23,11 @@ struct `AttachmentSavingTrait tests` {
             case .issueRecorded:
               issueRecorded()
             case let .valueAttached(attachment):
+#if DEBUG
               if trait != nil {
                 #expect(event.wasDeferred)
               }
+#endif
               if let expectedPreferredName {
                 #expect(attachment.preferredName == expectedPreferredName)
               }
