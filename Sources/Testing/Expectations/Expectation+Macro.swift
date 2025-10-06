@@ -882,6 +882,7 @@ public macro require<R>(
 @freestanding(expression)
 @discardableResult
 #if SWT_NO_EXIT_TESTS
+@_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 public macro expect<E>(
@@ -929,6 +930,7 @@ public macro expect<E>(
 @freestanding(expression)
 @discardableResult
 #if SWT_NO_EXIT_TESTS
+@_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
 public macro require<E>(
