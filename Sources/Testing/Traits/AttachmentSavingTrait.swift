@@ -38,45 +38,65 @@ public struct AttachmentSavingTrait: TestTrait, SuiteTrait {
   ///
   /// You can pass instances of this type to ``Trait/savingAttachments(if:)``.
   public struct Condition: Sendable {
-    /// The testing library saves attachments if the test passes.
-    public static var testPasses: Self {
-      Self { !$0.hasFailed }
+    /// An enumeration describing the various kinds of condition that can be
+    /// applied when saving attachments.
+    fileprivate enum Kind: Sendable {
+      /// Saving is unconditional.
+      case unconditional
+
+      /// Save if the test passes.
+      case testPasses
+
+      /// Save if the test fails.
+      case testFails
+
+      /// Save if the test records an issue matching the given closure.
+      ///
+      /// - Parameters:
+      ///   - issueMatcher: A function to invoke when an issue occurs that is
+      ///     used to determine if the testing library should save attachments
+      ///     for the current test.
+      case testRecordsIssue(_ issueMatcher: @Sendable (Issue) async throws -> Bool)
+
+      /// Save if a custom condition function passes.
+      ///
+      /// - Parameters:
+      ///   - body: A function to invoke at the end of the test that determines
+      ///     if the testing library should save its attachments.
+      case custom(_ body: @Sendable (borrowing Context) async throws -> Bool)
     }
 
-    /// The testing library saves attachments if the test fails.
-    public static var testFails: Self {
-      Self { $0.hasFailed }
-    }
+    /// The kind of condition.
+    fileprivate var kind: Kind
 
-    /// The testing library saves attachments if the test records a matching
-    /// issue.
+    /// Evaluate this condition.
     ///
     /// - Parameters:
-    ///   - issueMatcher: A function to invoke when an issue occurs that is used
-    ///     to determine if the testing library should save attachments for the
-    ///     current test.
+    ///   - context: The context in which to evaluate this condition.
     ///
-    /// - Returns: An instance of ``AttachmentSavingTrait/Condition`` that
-    ///   evaluates `issueMatcher`.
-    public static func testRecordsIssue(
-      matching issueMatcher: @escaping @Sendable (_ issue: Issue) async throws -> Bool
-    ) -> Self {
-      Self(inspectsIssues: true) { context in
+    /// - Returns: Whether or not attachments should be saved.
+    ///
+    /// - Throws: Any error thrown by the condition's associated closure (if one
+    ///   was specified.)
+    fileprivate func evaluate(in context: borrowing Context) async throws -> Bool {
+      switch kind {
+      case .unconditional:
+        return true
+      case .testPasses:
+        return !context.hasFailed
+      case .testFails:
+        return context.hasFailed
+      case let .testRecordsIssue(issueMatcher):
         for issue in context.issues {
           if try await issueMatcher(issue) {
             return true
           }
         }
         return false
+      case let .custom(body):
+        return try await body(context)
       }
     }
-
-    /// Whether or not this condition needs to inspect individual issues (which
-    /// implies a slower path.)
-    fileprivate var inspectsIssues = false
-
-    /// The condition function.
-    fileprivate var body: @Sendable (borrowing Context) async throws -> Bool
   }
 
   /// This instance's condition.
@@ -142,15 +162,25 @@ extension AttachmentSavingTrait: TestScoping {
       }
 
       switch event.kind {
-      case .valueAttached:
-        // Defer this event until the current test or test case ends.
-        eventDeferred = true
-        context.withLock { context in
-          context.deferredEvents.append(event)
+      case let .valueAttached(attachment):
+        if case .unconditional = condition.kind {
+          // Modify the event to mark it as unconditionally recorded, then
+          // deliver it immediately.
+          var attachmentCopy = copy attachment
+          attachmentCopy.wasUnconditionallyRecorded = true
+          var eventCopy = copy event
+          eventCopy.kind = .valueAttached(attachmentCopy)
+          oldConfiguration.eventHandler(eventCopy, eventContext)
+        } else {
+          // Defer this event until the current test or test case ends.
+          eventDeferred = true
+          context.withLock { context in
+            context.deferredEvents.append(event)
+          }
         }
 
       case let .issueRecorded(issue):
-        if condition.inspectsIssues {
+        if case .testRecordsIssue = condition.kind {
           context.withLock { context in
             if issue.isFailure {
               context.hasFailed = true
@@ -194,7 +224,7 @@ extension AttachmentSavingTrait: TestScoping {
 
     await Issue.withErrorRecording(at: sourceLocation, configuration: configuration) {
       // Evaluate the condition.
-      guard try await condition.body(context) else {
+      guard try await condition.evaluate(in: context) else {
         return
       }
 
@@ -213,8 +243,66 @@ extension AttachmentSavingTrait: TestScoping {
 
 // MARK: -
 
+extension AttachmentSavingTrait.Condition {
+  /// The testing library saves attachments if the test passes.
+  public static var testPasses: Self {
+    Self(kind: .testPasses)
+  }
+
+  /// The testing library saves attachments if the test fails.
+  public static var testFails: Self {
+    Self(kind: .testFails)
+  }
+
+  /// The testing library saves attachments if the test records a matching
+  /// issue.
+  ///
+  /// - Parameters:
+  ///   - issueMatcher: A function to invoke when an issue occurs that is used
+  ///     to determine if the testing library should save attachments for the
+  ///     current test.
+  ///
+  /// - Returns: An instance of ``AttachmentSavingTrait/Condition`` that
+  ///   evaluates `issueMatcher`.
+  public static func testRecordsIssue(
+    matching issueMatcher: @escaping @Sendable (_ issue: Issue) async throws -> Bool
+  ) -> Self {
+    Self(kind: .testRecordsIssue(issueMatcher))
+  }
+}
+
 @_spi(Experimental)
 extension Trait where Self == AttachmentSavingTrait {
+  /// Constructs a trait that tells the testing library to save attachments
+  /// unconditionally.
+  ///
+  /// - Parameters:
+  ///   - sourceLocation: The source location of the trait.
+  ///
+  /// - Returns: An instance of ``AttachmentSavingTrait``.
+  ///
+  /// By default, the testing library saves your attachments as soon as you call
+  /// ``Attachment/record(_:named:sourceLocation:)``. You can access saved
+  /// attachments after your tests finish running:
+  ///
+  /// - When using Xcode, you can access attachments from the test report.
+  /// - When using Visual Studio Code, the testing library saves attachments to
+  ///   `.build/attachments` by default. Visual Studio Code reports the paths to
+  ///   individual attachments in its Tests Results panel.
+  /// - When using Swift Package Manager's `swift test` command, you can pass
+  ///   the `--attachments-path` option. The testing library saves attachments
+  ///   to the specified directory.
+  ///
+  /// If you add this trait to a test, the testing library records the
+  /// attachment unconditionally even if the current test plan is configured to
+  /// discard attachments by default.
+  public static func savingAttachments(
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) -> Self {
+    let condition = Self.Condition(kind: .unconditional)
+    return Self(condition: condition, sourceLocation: sourceLocation)
+  }
+
   /// Constructs a trait that tells the testing library to only save attachments
   /// if a given condition is met.
   ///
@@ -285,7 +373,7 @@ extension Trait where Self == AttachmentSavingTrait {
     if condition: @autoclosure @escaping @Sendable () throws -> Bool,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
-    let condition = Self.Condition { _ in try condition() }
+    let condition = Self.Condition(kind: .custom { _ in try condition() })
     return savingAttachments(if: condition, sourceLocation: sourceLocation)
   }
 
@@ -330,7 +418,7 @@ extension Trait where Self == AttachmentSavingTrait {
     if condition: @escaping @Sendable () async throws -> Bool,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
-    let condition = Self.Condition { _ in try await condition() }
+    let condition = Self.Condition(kind: .custom { _ in try await condition() })
     return savingAttachments(if: condition, sourceLocation: sourceLocation)
   }
 }

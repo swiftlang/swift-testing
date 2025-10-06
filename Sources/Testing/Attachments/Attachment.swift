@@ -68,6 +68,14 @@ public struct Attachment<AttachableValue> where AttachableValue: Attachable & ~C
   @_spi(ForToolsIntegrationOnly)
   public var fileSystemPath: String?
 
+  /// Whether or not this attachment was unconditionally recorded.
+  ///
+  /// An attachment is unconditionally recorded if its enclosing context has the
+  /// ``Trait/savingAttachments(sourceLocation:)`` trait (with no condition)
+  /// applied to it.
+  @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+  public var wasUnconditionallyRecorded: Bool = false
+
   /// The default preferred name to use if the developer does not supply one.
   package static var defaultPreferredName: String {
     "untitled"
