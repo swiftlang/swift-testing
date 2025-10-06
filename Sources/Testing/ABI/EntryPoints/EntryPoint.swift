@@ -356,32 +356,32 @@ extension RandomAccessCollection<String> {
   /// Get the value of the command line argument with the given name.
   ///
   /// - Parameters:
-  ///   - key: The key or name of the argument, e.g. `"--attachments-path"`.
-  ///   - index: The index where `key` should be found, or `nil` to search the
+  ///   - label: The label or name of the argument, e.g. `"--attachments-path"`.
+  ///   - index: The index where `label` should be found, or `nil` to search the
   ///     entire collection.
   ///
-  /// - Returns: The value of the argument named by `key` at `index`. If no
+  /// - Returns: The value of the argument named by `label` at `index`. If no
   ///   value is available, or if `index` is not `nil` and the argument at
-  ///   `index` is not named `key`, returns `nil`.
+  ///   `index` is not named `label`, returns `nil`.
   ///
-  /// This function handles arguments of the form `--key value` and
-  /// `--key=value`. Other argument syntaxes are not supported.
-  fileprivate func argumentValue(forKey key: String, at index: Index? = nil) -> String? {
+  /// This function handles arguments of the form `--label value` and
+  /// `--label=value`. Other argument syntaxes are not supported.
+  fileprivate func argumentValue(forLabel label: String, at index: Index? = nil) -> String? {
     guard let index else {
       return indices.lazy
-        .compactMap { argumentValue(forKey: key, at: $0) }
+        .compactMap { argumentValue(forLabel: label, at: $0) }
         .first
     }
 
     let element = self[index]
-    if element == key {
+    if element == label {
       let nextIndex = self.index(after: index)
       if nextIndex < endIndex {
         return self[nextIndex]
       }
     } else {
       // Find an element equal to something like "--foo=bar" and split it.
-      let prefix = "\(key)="
+      let prefix = "\(label)="
       if element.hasPrefix(prefix), let equalsIndex = element.firstIndex(of: "=") {
         return String(element[equalsIndex...].dropFirst())
       }
@@ -414,7 +414,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   // NOTE: While the output event stream is opened later, it is necessary to
   // open the configuration file early (here) in order to correctly construct
   // the resulting __CommandLineArguments_v0 instance.
-  if let path = args.argumentValue(forKey: "--configuration-path") ?? args.argumentValue(forKey: "--experimental-configuration-path") {
+  if let path = args.argumentValue(forLabel: "--configuration-path") ?? args.argumentValue(forLabel: "--experimental-configuration-path") {
     let file = try FileHandle(forReadingAtPath: path)
     let configurationJSON = try file.readToEnd()
     result = try configurationJSON.withUnsafeBufferPointer { configurationJSON in
@@ -427,7 +427,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   }
 
   // Event stream output
-  if let path = args.argumentValue(forKey: "--event-stream-output-path") ?? args.argumentValue(forKey: "--experimental-event-stream-output") {
+  if let path = args.argumentValue(forLabel: "--event-stream-output-path") ?? args.argumentValue(forLabel: "--experimental-event-stream-output") {
     result.eventStreamOutputPath = path
   }
 
@@ -435,9 +435,9 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   do {
     var versionString: String?
     var allowExperimental = false
-    versionString = args.argumentValue(forKey: "--event-stream-version")
+    versionString = args.argumentValue(forLabel: "--event-stream-version")
     if versionString == nil {
-      versionString = args.argumentValue(forKey: "--experimental-event-stream-version")
+      versionString = args.argumentValue(forLabel: "--experimental-event-stream-version")
       if versionString != nil {
         allowExperimental = true
       }
@@ -463,12 +463,12 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 #endif
 
   // XML output
-  if let xunitOutputPath = args.argumentValue(forKey: "--xunit-output") {
+  if let xunitOutputPath = args.argumentValue(forLabel: "--xunit-output") {
     result.xunitOutput = xunitOutputPath
   }
 
   // Attachment output
-  if let attachmentsPath = args.argumentValue(forKey: "--attachments-path") ?? args.argumentValue(forKey: "--experimental-attachments-path") {
+  if let attachmentsPath = args.argumentValue(forLabel: "--attachments-path") ?? args.argumentValue(forLabel: "--experimental-attachments-path") {
     result.attachmentsPath = attachmentsPath
   }
 #endif
@@ -487,12 +487,12 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   }
 
   // Whether or not to symbolicate backtraces in the event stream.
-  if let symbolicateBacktraces = args.argumentValue(forKey: "--symbolicate-backtraces") {
+  if let symbolicateBacktraces = args.argumentValue(forLabel: "--symbolicate-backtraces") {
     result.symbolicateBacktraces = symbolicateBacktraces
   }
 
   // Verbosity
-  if let verbosity = args.argumentValue(forKey: "--verbosity").flatMap(Int.init) {
+  if let verbosity = args.argumentValue(forLabel: "--verbosity").flatMap(Int.init) {
     result.verbosity = verbosity
   }
   if args.contains("--verbose") || args.contains("-v") {
@@ -507,7 +507,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 
   // Filtering
   func filterValues(forArgumentsWithLabel label: String) -> [String] {
-    args.indices.compactMap { args.argumentValue(forKey: label, at: $0) }
+    args.indices.compactMap { args.argumentValue(forLabel: label, at: $0) }
   }
   let filter = filterValues(forArgumentsWithLabel: "--filter")
   if !filter.isEmpty {
@@ -519,10 +519,10 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   }
 
   // Set up the iteration policy for the test run.
-  if let repetitions = args.argumentValue(forKey: "--repetitions").flatMap(Int.init) {
+  if let repetitions = args.argumentValue(forLabel: "--repetitions").flatMap(Int.init) {
     result.repetitions = repetitions
   }
-  if let repeatUntil = args.argumentValue(forKey: "--repeat-until") {
+  if let repeatUntil = args.argumentValue(forLabel: "--repeat-until") {
     result.repeatUntil = repeatUntil
   }
 
