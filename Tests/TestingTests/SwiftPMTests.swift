@@ -90,7 +90,6 @@ struct SwiftPMTests {
   @available(_regexAPI, *)
   func filter() async throws {
     let configuration = try configurationForEntryPoint(withArguments: ["PATH", "--filter", "hello"])
-    print(configuration)
     let test1 = Test(name: "hello") {}
     let test2 = Test(name: "goodbye") {}
     let plan = await Runner.Plan(tests: [test1, test2], configuration: configuration)
