@@ -76,10 +76,6 @@ public struct AttachmentSavingTrait: TestTrait, SuiteTrait {
     fileprivate var inspectsIssues = false
 
     /// The condition function.
-    ///
-    /// - Parameters:
-    ///   - condition: The function to call. The result of this function
-    ///     determines if the condition is satisfied or not.
     fileprivate var body: @Sendable (borrowing Context) async throws -> Bool
   }
 
