@@ -84,6 +84,35 @@ static mach_port_t swt_mach_task_self(void) {
 }
 #endif
 
+#if defined(__APPLE__) && __has_include(<os/log.h>)
+#define OS_LOG_CALLBACK_INFO_T_VERSION 1
+struct os_log_callback_info_s {
+  const uint32_t version;
+  const __unsafe_unretained os_log_t handle;
+  const char *subsystem;
+  const char *category;
+  const char *format_str;
+  const char *message;
+  const void *pc;
+  os_log_type_t type;
+};
+
+typedef void (*_os_log_callback)(const struct os_log_callback_info_s *info);
+
+API_AVAILABLE(macos(13.0), ios(16.0), tvos(16.0), watchos(9.0))
+SWT_IMPORT_FROM_STDLIB _os_log_callback os_log_set_test_callback(_os_log_callback callback);
+
+SWT_IMPORT_FROM_STDLIB _os_log_callback os_log_set_fault_callback(_os_log_callback callback);
+
+/// A boolean value indicating whether the current thread is inside the callback
+/// to `os_log_set_test_callback()`.
+///
+/// This value is thread-local rather than task-local because
+/// `os_log_set_test_callback()` is a synchronous function and because the act
+/// of setting a task-local value can trigger additional recursive logging.
+static _Thread_local bool swt_isHandlingOSLogMessage __attribute__((swift_attr("nonisolated(unsafe)"))) = false;
+#endif
+
 #if defined(_WIN32)
 /// Make a Win32 language ID.
 ///

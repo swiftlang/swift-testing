@@ -142,6 +142,10 @@
 #if !SWT_NO_OS_UNFAIR_LOCK
 #include <os/lock.h>
 #endif
+
+#if defined(__APPLE__) && __has_include(<os/log.h>)
+#include <os/log.h>
+#endif
 #endif
 
 #if defined(__FreeBSD__)

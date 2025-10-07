@@ -440,6 +440,9 @@ extension Runner {
         Event.post(.runEnded, for: (nil, nil), configuration: runner.configuration)
       }
 
+      // Start listening for logged messages.
+      Test.Log.startListening()
+
       let repetitionPolicy = runner.configuration.repetitionPolicy
       let iterationCount = repetitionPolicy.maximumIterationCount
       for iterationIndex in 0 ..< iterationCount {

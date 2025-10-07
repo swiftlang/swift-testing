@@ -545,6 +545,26 @@ extension Event.HumanReadableOutputRecorder {
       }
       return result
 
+    case let .messageLogged(message):
+      let result: Message
+
+      let atSourceLocation = message.sourceLocation.map { " at \($0)" } ?? ""
+      if let test {
+        result = Message(
+          symbol: .default,
+          stringValue: "\(_capitalizedTitle(for: test)) \(testName) logged a message\(atSourceLocation): \(message.stringValue)",
+          conciseStringValue: message.stringValue
+        )
+      } else {
+        result = Message(
+          symbol: .default,
+          stringValue: "Logged a message \(atSourceLocation): \(message.stringValue)",
+          conciseStringValue: message.stringValue
+        )
+      }
+
+      return [result]
+
     case .testCaseStarted:
       guard let testCase, testCase.isParameterized, let arguments = testCase.arguments else {
         break
