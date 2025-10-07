@@ -8,30 +8,28 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if os(Windows)
-internal import WinSDK
+#if os(Windows) && compiler(<6.4)
+public import WinSDK
 
-extension UInt128 {
-  init(_ guid: GUID) {
-    self = withUnsafeBytes(of: guid) { buffer in
-      buffer.baseAddress!.loadUnaligned(as: Self.self)
+// Retroactively add conformance to `Equatable` and `Hashable` until
+// https://github.com/swiftlang/swift/pull/84792 is merged into the WinSDK Swift
+// overlay.
+
+@_spi(_)
+extension GUID: @retroactive Equatable, @retroactive Hashable {
+  /// This GUID as an integer.
+  private var _uint128Value: UInt128 {
+    withUnsafeBytes(of: self) { buffer in
+      buffer.baseAddress!.loadUnaligned(as: UInt128.self)
     }
   }
-}
 
-extension GUID {
-  init(_ uint128Value: UInt128) {
-    self = withUnsafeBytes(of: uint128Value) { buffer in
-      buffer.baseAddress!.loadUnaligned(as: Self.self)
-    }
+  public static func ==(lhs: Self, rhs: Self) -> Bool {
+    lhs._uint128Value == rhs._uint128Value
   }
 
-  static func ==(lhs: Self, rhs: Self) -> Bool {
-    withUnsafeBytes(of: lhs) { lhs in
-      withUnsafeBytes(of: rhs) { rhs in
-        lhs.elementsEqual(rhs)
-      }
-    }
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(_uint128Value)
   }
 }
 #endif
