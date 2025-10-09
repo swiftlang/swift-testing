@@ -13,6 +13,9 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 Swift Testing is a package with expressive and intuitive APIs that make testing
 your Swift code a breeze.
 
+[![CI status badge for main branch using main toolchain](https://github.com/swiftlang/swift-testing/actions/workflows/main_using_main.yml/badge.svg?branch=main&event=push)](https://github.com/swiftlang/swift-testing/actions/workflows/main_using_main.yml)
+[![CI status badge for main branch using 6.2 toolchain](https://github.com/swiftlang/swift-testing/actions/workflows/main_using_release.yml/badge.svg?branch=main&event=push)](https://github.com/swiftlang/swift-testing/actions/workflows/main_using_release.yml)
+
 ## Feature overview
 
 ### Clear, expressive API
@@ -121,16 +124,6 @@ for various platforms:
 If you already have tests written using XCTest, you can run them side-by-side
 with newer tests written using Swift Testing. This helps you migrate tests
 incrementally, at your own pace.
-
-## Continuous integration
-
-The table below shows the current status of continuous integration build and
-test workflows for Swift Testing:
-
-| **Branch** | **Toolchain** | **Status** |
-|-|-|-|
-| **main** | main | [![main branch, main toolchain](https://github.com/swiftlang/swift-testing/actions/workflows/main_using_main.yml/badge.svg?branch=main&event=push)](https://github.com/swiftlang/swift-testing/actions/workflows/main_using_main.yml) |
-| **main** | 6.2 | [![main branch, 6.2 toolchain](https://github.com/swiftlang/swift-testing/actions/workflows/main_using_release.yml/badge.svg?branch=main&event=push)](https://github.com/swiftlang/swift-testing/actions/workflows/main_using_release.yml) |
 
 ## Documentation
 
