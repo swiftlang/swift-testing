@@ -9,12 +9,11 @@
 //
 
 #if os(Windows)
-public import Testing
 public import WinSDK
 
 extension AttachableImageFormat {
-  private static let _encoderPathExtensionsByCLSID = Result<[UInt128: [String]], any Error> {
-    var result = [UInt128: [String]]()
+  private static let _encoderPathExtensionsByCLSID = Result {
+    var result = [GUID: [String]]()
 
     // Create an imaging factory.
     let factory = try IWICImagingFactory.create()
@@ -67,7 +66,7 @@ extension AttachableImageFormat {
         continue
       }
       let extensions = _pathExtensions(for: info)
-      result[UInt128(clsid)] = extensions
+      result[clsid] = extensions
     }
 
     return result
@@ -134,21 +133,7 @@ extension AttachableImageFormat {
             0 == _wcsicmp(pathExtension, encoderExt)
           }
         }
-      }.map { CLSID($0.key) }
-  }
-
-  /// Get the `CLSID` value of the WIC image encoder corresponding to the same
-  /// image format as the given path extension.
-  ///
-  /// - Parameters:
-  ///   - pathExtension: The path extension for which a `CLSID` value is needed.
-  ///
-  /// - Returns: An instance of `CLSID` referring to a a WIC image encoder, or
-  ///   `nil` if one could not be determined.
-  private static func _computeEncoderCLSID(forPathExtension pathExtension: String) -> CLSID? {
-    pathExtension.withCString(encodedAs: UTF16.self) { pathExtension in
-      _computeEncoderCLSID(forPathExtension: pathExtension)
-    }
+      }.map { $0.key }
   }
 
   /// Get the `CLSID` value of the WIC image encoder corresponding to the same
@@ -160,7 +145,7 @@ extension AttachableImageFormat {
   ///
   /// - Returns: An instance of `CLSID` referring to a a WIC image encoder, or
   ///   `nil` if one could not be determined.
-  private static func _computeEncoderCLSID(forPreferredName preferredName: String) -> CLSID? {
+  static func computeEncoderCLSID(forPreferredName preferredName: String) -> CLSID? {
     preferredName.withCString(encodedAs: UTF16.self) { (preferredName) -> CLSID? in
       // Get the path extension on the preferred name, if any.
       var dot: PCWSTR?
@@ -169,37 +154,6 @@ extension AttachableImageFormat {
       }
       return _computeEncoderCLSID(forPathExtension: dot + 1)
     }
-  }
-
-  /// Get the `CLSID` value of the WIC image encoder to use when encoding an
-  /// image.
-  ///
-  /// - Parameters:
-  ///   - imageFormat: The image format to use, or `nil` if the developer did
-  ///     not specify one.
-  ///   - preferredName: The preferred name of the image for which a type is
-  ///     needed.
-  ///
-  /// - Returns: An instance of `CLSID` referring to a a WIC image encoder. If
-  ///   none could be derived from `imageFormat` or `preferredName`, the PNG
-  ///   encoder is used.
-  ///
-  /// This function is not part of the public interface of the testing library.
-  static func computeEncoderCLSID(for imageFormat: Self?, withPreferredName preferredName: String) -> CLSID {
-    if let clsid = imageFormat?.encoderCLSID {
-      return clsid
-    }
-
-    // The developer didn't specify a CLSID, or we couldn't figure one out from
-    // context, so try to derive one from the preferred name's path extension.
-    if let inferredCLSID = _computeEncoderCLSID(forPreferredName: preferredName) {
-      return inferredCLSID
-    }
-
-    // We couldn't derive a concrete type from the path extension, so default
-    // to PNG. Unlike Apple platforms, there's no abstract "image" type on
-    // Windows so we don't need to make any more decisions.
-    return CLSID_WICPngEncoder
   }
 
   /// Append the path extension preferred by WIC for the image format
@@ -215,13 +169,13 @@ extension AttachableImageFormat {
   static func appendPathExtension(for clsid: CLSID, to preferredName: String) -> String {
     // If there's already a CLSID associated with the filename, and it matches
     // the one passed to us, no changes are needed.
-    if let existingCLSID = _computeEncoderCLSID(forPreferredName: preferredName), clsid == existingCLSID {
+    if let existingCLSID = computeEncoderCLSID(forPreferredName: preferredName), clsid == existingCLSID {
       return preferredName
     }
 
     // Find the preferred path extension for the encoder with the given CLSID.
     let encoderPathExtensionsByCLSID = (try? _encoderPathExtensionsByCLSID.get()) ?? [:]
-    if let ext = encoderPathExtensionsByCLSID[UInt128(clsid)]?.first {
+    if let ext = encoderPathExtensionsByCLSID[clsid]?.first {
       return "\(preferredName).\(ext)"
     }
 
@@ -248,7 +202,7 @@ extension AttachableImageFormat {
     case .jpeg:
       CLSID_WICJpegEncoder
     case let .systemValue(clsid):
-      clsid as! CLSID
+      clsid as! GUID
     }
   }
 
