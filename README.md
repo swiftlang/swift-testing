@@ -108,16 +108,12 @@ for various platforms:
 
 | **Platform** | **Support Status** |
 |-|-|
-| **macOS** | Supported |
-| **iOS** | Supported |
-| **watchOS** | Supported |
-| **tvOS** | Supported |
-| **visionOS** | Supported |
-| **Ubuntu 22.04** | Supported |
-| **Windows** | Supported |
-| **FreeBSD** | Experimental |
-| **OpenBSD** | Experimental |
-| **Wasm** | Experimental |
+| Apple platforms | Supported |
+| Linux | Supported |
+| Windows | Supported |
+| FreeBSD, OpenBSD | Experimental |
+| Wasm | Experimental |
+| Android | Experimental |
 
 ### Works with XCTest
 
