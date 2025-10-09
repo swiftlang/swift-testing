@@ -103,24 +103,34 @@ Swift.
 The table below describes the current level of support that Swift Testing has
 for various platforms:
 
-| **Platform** | **CI Status (6.2)** | **CI Status (main)** | **Support Status** |
-|---|:-:|:-:|---|
-| **macOS** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-6.2-macos)](https://ci.swift.org/job/swift-testing-main-swift-6.2-macos/) | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-macos)](https://ci.swift.org/view/Swift%20Packages/job/swift-testing-main-swift-main-macos/) | Supported |
-| **iOS** | | | Supported |
-| **watchOS** | | | Supported |
-| **tvOS** | | | Supported |
-| **visionOS** | | | Supported |
-| **Ubuntu 22.04** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-6.2-linux)](https://ci.swift.org/job/swift-testing-main-swift-6.2-linux/) | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-linux)](https://ci.swift.org/view/Swift%20Packages/job/swift-testing-main-swift-main-linux/) | Supported |
-| **FreeBSD** | | | Experimental |
-| **OpenBSD** | | | Experimental |
-| **Windows** | [![Build Status](https://ci-external.swift.org/buildStatus/icon?job=swift-testing-main-swift-6.2-windows)](https://ci-external.swift.org/view/all/job/swift-testing-main-swift-6.2-windows/) | [![Build Status](https://ci-external.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-windows)](https://ci-external.swift.org/job/swift-testing-main-swift-main-windows/) | Supported |
-| **Wasm** | | | Experimental |
+| **Platform** | **Support Status** |
+|-|-|
+| **macOS** | Supported |
+| **iOS** | Supported |
+| **watchOS** | Supported |
+| **tvOS** | Supported |
+| **visionOS** | Supported |
+| **Ubuntu 22.04** | Supported |
+| **Windows** | Supported |
+| **FreeBSD** | Experimental |
+| **OpenBSD** | Experimental |
+| **Wasm** | Experimental |
 
 ### Works with XCTest
 
 If you already have tests written using XCTest, you can run them side-by-side
 with newer tests written using Swift Testing. This helps you migrate tests
 incrementally, at your own pace.
+
+## Continuous integration
+
+The table below shows the current status of continuous integration build and
+test workflows for Swift Testing:
+
+| **Branch** | **Toolchain** | **Status** |
+|-|-|-|
+| **main** | main | [![main branch, main toolchain](https://github.com/swiftlang/swift-testing/actions/workflows/main_using_main.yml/badge.svg?branch=main&event=push)](https://github.com/swiftlang/swift-testing/actions/workflows/main_using_main.yml) |
+| **main** | 6.2 | [![main branch, 6.2 toolchain](https://github.com/swiftlang/swift-testing/actions/workflows/main_using_release.yml/badge.svg?branch=main&event=push)](https://github.com/swiftlang/swift-testing/actions/workflows/main_using_release.yml) |
 
 ## Documentation
 
