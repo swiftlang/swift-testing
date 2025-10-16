@@ -282,7 +282,7 @@ extension AttachableImageFormat {
       .png
     case UInt128(CLSID_WICJpegEncoder):
       .jpeg
-    case let encoderCLSID:
+    default:
       .systemValue(encoderCLSID)
     }
     self.init(kind: kind, encodingQuality: encodingQuality)
