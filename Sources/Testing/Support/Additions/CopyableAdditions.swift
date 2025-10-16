@@ -41,7 +41,7 @@ func boxCopyableValue(_ value: borrowing some ~Copyable) -> Any? {
   }
 }
 #else
-func boxCopyableValue(_ value: borrowing some ~Copyable) -> Never? {
+func boxCopyableValue(_ value: borrowing some ~Copyable) -> Void? {
   nil
 }
 #endif
