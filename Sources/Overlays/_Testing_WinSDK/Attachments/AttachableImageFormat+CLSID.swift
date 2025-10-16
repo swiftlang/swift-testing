@@ -277,10 +277,10 @@ extension AttachableImageFormat {
   @_spi(_)
 #endif
   public init(encoderCLSID: CLSID, encodingQuality: Float = 1.0) {
-    let kind: Kind = switch CLSID.Wrapper(encoderCLSID) {
-    case CLSID.Wrapper(CLSID_WICPngEncoder):
+    let kind: Kind = switch UInt128(encoderCLSID) {
+    case UInt128(CLSID_WICPngEncoder):
       .png
-    case CLSID.Wrapper(CLSID_WICJpegEncoder):
+    case UInt128(CLSID_WICJpegEncoder):
       .jpeg
     case let encoderCLSID:
       .systemValue(encoderCLSID)
