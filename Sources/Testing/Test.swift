@@ -35,8 +35,12 @@ public struct Test: Sendable {
   public var displayName: String?
 
   /// The set of traits added to this instance when it was initialized.
+  @_unavailableInEmbedded
   public var traits: [any Trait] {
-    willSet {
+    get {
+      untypedTraits.map { $0.as((any Trait).self) }
+    }
+    set {
       // Prevent programmatically adding suite traits to test functions or test
       // traits to test suites.
       func traitsAreCorrectlyTyped() -> Bool {
@@ -47,8 +51,13 @@ public struct Test: Sendable {
         }
       }
       precondition(traitsAreCorrectlyTyped(), "Programmatically added an inapplicable trait to test \(self)")
+      untypedTraits = newValue.map { AnyTrait($0) }
     }
   }
+
+  /// The type-erased set of traits added to this instance when it was
+  /// initialized.
+  var untypedTraits: [AnyTrait]
 
   /// The source location of this test.
   public var sourceLocation: SourceLocation
@@ -197,7 +206,7 @@ public struct Test: Sendable {
   /// Initialize an instance of this type representing a test suite type.
   init(
     displayName: String? = nil,
-    traits: [any Trait],
+    traits: [AnyTrait],
     sourceLocation: SourceLocation,
     containingTypeInfo: TypeInfo,
     isSynthesized: Bool = false
@@ -209,7 +218,7 @@ public struct Test: Sendable {
     } else if isSynthesized && name.count > 2 && name.first == "`" && name.last == "`" {
       self.displayName = String(name.dropFirst().dropLast())
     }
-    self.traits = traits
+    self.untypedTraits = traits
     self.sourceLocation = sourceLocation
     self.containingTypeInfo = containingTypeInfo
     self.isSynthesized = isSynthesized
@@ -219,7 +228,7 @@ public struct Test: Sendable {
   init<S>(
     name: String,
     displayName: String? = nil,
-    traits: [any Trait],
+    traits: [AnyTrait],
     sourceLocation: SourceLocation,
     containingTypeInfo: TypeInfo? = nil,
     xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
@@ -228,7 +237,7 @@ public struct Test: Sendable {
   ) {
     self.name = name
     self.displayName = displayName
-    self.traits = traits
+    self.untypedTraits = traits
     self.sourceLocation = sourceLocation
     self.containingTypeInfo = containingTypeInfo
     self.xcTestCompatibleSelector = xcTestCompatibleSelector
@@ -240,7 +249,7 @@ public struct Test: Sendable {
   init<S>(
     name: String,
     displayName: String? = nil,
-    traits: [any Trait],
+    traits: [AnyTrait],
     sourceLocation: SourceLocation,
     containingTypeInfo: TypeInfo? = nil,
     xcTestCompatibleSelector: __XCTestCompatibleSelector? = nil,
@@ -249,7 +258,7 @@ public struct Test: Sendable {
   ) {
     self.name = name
     self.displayName = displayName
-    self.traits = traits
+    self.untypedTraits = traits
     self.sourceLocation = sourceLocation
     self.containingTypeInfo = containingTypeInfo
     self.xcTestCompatibleSelector = xcTestCompatibleSelector

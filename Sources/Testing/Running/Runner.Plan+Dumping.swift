@@ -53,7 +53,7 @@ extension Runner.Plan {
       // Print traits. Special-case tags to combine them into a single trait for
       // display.
       do {
-        var traits = value.test.traits.filter { !($0 is Tag.List) }
+        var traits = value.test.untypedTraits.compactMap { $0.as(Tag.List.self) }
         let tags = value.test.tags.sorted(by: <)
         if !tags.isEmpty {
           traits.append(Tag.List(tags: tags))

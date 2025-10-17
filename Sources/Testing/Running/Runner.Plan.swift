@@ -131,18 +131,17 @@ extension Runner.Plan {
   ///     `testGraph`.
   ///   - testGraph: The graph of tests to modify.
   ///
-  /// The traits in `testGraph.value?.traits` are added to each node in
+  /// The traits in `testGraph.value?.untypedTraits` are added to each node in
   /// `testGraph`, and then this function is called recursively on each child
   /// node.
-  private static func _recursivelyApplyTraits(_ parentTraits: [any SuiteTrait] = [], to testGraph: inout Graph<String, Test?>) {
-    let traits: [any SuiteTrait] = parentTraits + (testGraph.value?.traits ?? []).lazy
-      .compactMap { $0 as? any SuiteTrait }
+  private static func _recursivelyApplyTraits(_ parentTraits: [AnyTrait] = [], to testGraph: inout Graph<String, Test?>) {
+    let traits: [AnyTrait] = parentTraits + (testGraph.value?.untypedTraits ?? []).lazy
       .filter(\.isRecursive)
 
     testGraph.children = testGraph.children.mapValues { child in
       var child = child
       _recursivelyApplyTraits(traits, to: &child)
-      child.value?.traits.insert(contentsOf: traits, at: 0)
+      child.value?.untypedTraits.insert(contentsOf: traits, at: 0)
       return child
     }
   }
@@ -228,7 +227,7 @@ extension Runner.Plan {
           do {
             var firstCaughtError: (any Error)?
 
-            for trait in test.traits {
+            for trait in test.untypedTraits {
               do {
                 try await trait.prepare(for: test)
               } catch {

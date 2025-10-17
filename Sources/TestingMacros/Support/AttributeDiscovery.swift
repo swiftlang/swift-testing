@@ -216,11 +216,18 @@ struct AttributeInfo {
     if let displayName {
       arguments.append(Argument(label: .identifier("displayName"), expression: displayName))
     }
-    arguments.append(Argument(label: .identifier("traits"), expression: ArrayExprSyntax {
-      for traitExpr in traits {
-        ArrayElementSyntax(expression: traitExpr).trimmed
-      }
-    }))
+
+    // Type inference for member accesses doesn't work within a tuple expression
+    // so we can't expand the traits to e.g. `(.foo, .bar)`. And we don't want
+    // to have a separate overload for each function that takes no `traits`
+    // argument if we can avoid it (we already have a lot of functions here.)
+    // So we'll cheat a bit and have a single empty tuple as the argument after
+    // traits, then an unlabelled sequence of arguments (which can be empty) for
+    // the actual traits.
+    arguments.append(Argument(label: .identifier("traits"), expression: TupleExprSyntax {}))
+    arguments += traits.map { traitExpr in
+      Argument(expression: traitExpr.trimmed)
+    }
 
     // If there are any parameterized test function arguments, wrap each in a
     // closure so they may be evaluated lazily at runtime.

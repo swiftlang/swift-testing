@@ -109,6 +109,14 @@ public protocol Trait: Sendable {
   ///   @Available(Xcode, introduced: 16.3)
   /// }
   func scopeProvider(for test: Test, testCase: Test.Case?) -> TestScopeProvider?
+
+#if hasFeature(Embedded)
+  /// A unique value associated with this trait type used in lieu of a metatype.
+  ///
+  /// This property is not part of the public interface of the testing library.
+  /// It may be removed in a future update.
+  static var _uniqueID: Int { get }
+#endif
 }
 
 /// A protocol that tells the test runner to run custom code before or after it
@@ -255,6 +263,13 @@ extension Trait {
   public var comments: [Comment] {
     []
   }
+
+#if !hasFeature(Embedded)
+  /// A unique value associated with this trait type used in lieu of a metatype.
+  static var _uniqueID: Int {
+    Int(bitPattern: ObjectIdentifier(Self.self))
+  }
+#endif
 }
 
 extension Trait where TestScopeProvider == Never {

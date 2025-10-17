@@ -105,14 +105,14 @@ extension Test {
   ///
   /// - Warning: This function is used to implement the `@Suite` macro. Do not
   ///   call it directly.
-  public static func __type(
+  public static func __type<each T>(
     _ containingType: any ~Copyable.Type,
     displayName: String? = nil,
-    traits: [any SuiteTrait],
+    traits _: (), _ traits: repeat each T,
     sourceLocation: SourceLocation
-  ) -> Self {
+  ) -> Self where repeat each T: SuiteTrait {
     let containingTypeInfo = TypeInfo(describing: containingType)
-    return Self(displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo)
+    return Self(displayName: displayName, traits: Array(repeat each traits), sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo)
   }
 }
 
@@ -157,16 +157,16 @@ extension Test {
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
-  public static func __function<S>(
+  public static func __function<S, each T>(
     named testFunctionName: String,
     in containingType: S.Type?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
-    traits: [any TestTrait],
+    traits _: (), _ traits: repeat each T,
     sourceLocation: SourceLocation,
     parameters: [__Parameter] = [],
     testFunction: @escaping @Sendable () async throws -> Void
-  ) -> Self where S: ~Copyable {
+  ) -> Self where S: ~Copyable, repeat each T: TestTrait {
     // Don't use Optional.map here due to a miscompile/crash. Expand out to an
     // if expression instead. SEE: rdar://134280902
     let containingTypeInfo: TypeInfo? = if let containingType {
@@ -175,7 +175,7 @@ extension Test {
       nil
     }
     let caseGenerator = { @Sendable in Case.Generator(testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: [])
+    return Self(name: testFunctionName, displayName: displayName, traits: Array(repeat each traits), sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: [])
   }
 }
 
@@ -241,17 +241,17 @@ extension Test {
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
-  public static func __function<S, C>(
+  public static func __function<S, each T, C>(
     named testFunctionName: String,
     in containingType: S.Type?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
-    traits: [any TestTrait],
+    traits _: (), _ traits: repeat each T,
     arguments collection: @escaping @Sendable () async throws -> C,
     sourceLocation: SourceLocation,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
-  ) -> Self where S: ~Copyable, C: Collection & Sendable, C.Element: Sendable {
+  ) -> Self where S: ~Copyable, repeat each T: TestTrait, C: Collection & Sendable, C.Element: Sendable {
     let containingTypeInfo: TypeInfo? = if let containingType {
       TypeInfo(describing: containingType)
     } else {
@@ -259,7 +259,7 @@ extension Test {
     }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: Array(repeat each traits), sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 }
 
@@ -388,17 +388,17 @@ extension Test {
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
-  public static func __function<S, C1, C2>(
+  public static func __function<S, each T, C1, C2>(
     named testFunctionName: String,
     in containingType: S.Type?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
-    traits: [any TestTrait],
+    traits _: (), _ traits: repeat each T,
     arguments collection1: @escaping @Sendable () async throws -> C1, _ collection2: @escaping @Sendable () async throws -> C2,
     sourceLocation: SourceLocation,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
-  ) -> Self where S: ~Copyable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
+  ) -> Self where S: ~Copyable, repeat each T: TestTrait, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let containingTypeInfo: TypeInfo? = if let containingType {
       TypeInfo(describing: containingType)
     } else {
@@ -406,7 +406,7 @@ extension Test {
     }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in try await Case.Generator(arguments: collection1(), collection2(), parameters: parameters, testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: Array(repeat each traits), sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
@@ -416,17 +416,17 @@ extension Test {
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
-  public static func __function<S, C, E1, E2>(
+  public static func __function<S, each T, C, E1, E2>(
     named testFunctionName: String,
     in containingType: S.Type?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
-    traits: [any TestTrait],
+    traits _: (), _ traits: repeat each T,
     arguments collection: @escaping @Sendable () async throws -> C,
     sourceLocation: SourceLocation,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable ((E1, E2)) async throws -> Void
-  ) -> Self where S: ~Copyable, C: Collection & Sendable, C.Element == (E1, E2), E1: Sendable, E2: Sendable {
+  ) -> Self where S: ~Copyable, repeat each T: TestTrait, C: Collection & Sendable, C.Element == (E1, E2), E1: Sendable, E2: Sendable {
     let containingTypeInfo: TypeInfo? = if let containingType {
       TypeInfo(describing: containingType)
     } else {
@@ -434,7 +434,7 @@ extension Test {
     }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in Case.Generator(arguments: try await collection(), parameters: parameters, testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: Array(repeat each traits), sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
@@ -447,17 +447,17 @@ extension Test {
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
-  public static func __function<S, Key, Value>(
+  public static func __function<S, each T, Key, Value>(
     named testFunctionName: String,
     in containingType: S.Type?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
-    traits: [any TestTrait],
+    traits _: (), _ traits: repeat each T,
     arguments dictionary: @escaping @Sendable () async throws -> Dictionary<Key, Value>,
     sourceLocation: SourceLocation,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable ((Key, Value)) async throws -> Void
-  ) -> Self where S: ~Copyable, Key: Sendable, Value: Sendable {
+  ) -> Self where S: ~Copyable, repeat each T: TestTrait, Key: Sendable, Value: Sendable {
     let containingTypeInfo: TypeInfo? = if let containingType {
       TypeInfo(describing: containingType)
     } else {
@@ -465,24 +465,24 @@ extension Test {
     }
     let parameters = paramTuples.parameters
     let caseGenerator = { @Sendable in Case.Generator(arguments: try await dictionary(), parameters: parameters, testFunction: testFunction) }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: Array(repeat each traits), sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 
   /// Create an instance of ``Test`` for a parameterized function.
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
-  public static func __function<S, C1, C2>(
+  public static func __function<S, each T, C1, C2>(
     named testFunctionName: String,
     in containingType: S.Type?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
-    traits: [any TestTrait],
+    traits _: (), _ traits: repeat each T,
     arguments zippedCollections: @escaping @Sendable () async throws -> Zip2Sequence<C1, C2>,
     sourceLocation: SourceLocation,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
-  ) -> Self where S: ~Copyable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
+  ) -> Self where S: ~Copyable, repeat each T: TestTrait, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let containingTypeInfo: TypeInfo? = if let containingType {
       TypeInfo(describing: containingType)
     } else {
@@ -494,7 +494,7 @@ extension Test {
         try await testFunction($0, $1)
       }
     }
-    return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
+    return Self(name: testFunctionName, displayName: displayName, traits: Array(repeat each traits), sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 }
 

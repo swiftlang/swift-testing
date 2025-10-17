@@ -87,7 +87,7 @@ extension Runner {
   ) async throws {
     // If the test does not have any traits, exit early to avoid unnecessary
     // heap allocations below.
-    if test.traits.isEmpty {
+    if test.untypedTraits.isEmpty {
       return try await body()
     }
 
@@ -96,7 +96,7 @@ extension Runner {
     // sequence is reversed so that the last trait is the one that invokes body,
     // then the second-to-last invokes the last, etc. and ultimately the first
     // trait is the first one to be invoked.
-    let executeAllTraits = test.traits.lazy
+    let executeAllTraits = test.untypedTraits.lazy
       .reversed()
       .compactMap { $0.scopeProvider(for: test, testCase: testCase) }
       .map { $0.provideScope(for:testCase:performing:) }
@@ -122,7 +122,7 @@ extension Runner {
   private static func _applyIssueHandlingTraits(for test: Test, _ body: @escaping @Sendable () async throws -> Void) async throws {
     // If the test does not have any traits, exit early to avoid unnecessary
     // heap allocations below.
-    if test.traits.isEmpty {
+    if test.untypedTraits.isEmpty {
       return try await body()
     }
 
@@ -131,8 +131,8 @@ extension Runner {
     // reversed so that the last trait is the one that invokes body, then the
     // second-to-last invokes the last, etc. and ultimately the first trait is
     // the first one to be invoked.
-    let executeAllTraits = test.traits.lazy
-      .compactMap { $0 as? IssueHandlingTrait }
+    let executeAllTraits = test.untypedTraits.lazy
+      .compactMap { $0.as(IssueHandlingTrait.self) }
       .reversed()
       .map { $0.provideScope(performing:) }
       .reduce(body) { executeAllTraits, provideScope in
