@@ -93,7 +93,6 @@ add_library(Testing
   Support/Graph.swift
   Support/JSON.swift
   Support/Locked.swift
-  Support/Locked+Platform.swift
   Support/VersionNumber.swift
   Support/Versions.swift
   Discovery+Macro.swift
@@ -104,6 +103,7 @@ add_library(Testing
   Test+Discovery.swift
   Test+Discovery+Legacy.swift
   Test+Macro.swift
+  Traits/AttachmentSavingTrait.swift
   Traits/Bug.swift
   Traits/Comment.swift
   Traits/Comment+Macro.swift
