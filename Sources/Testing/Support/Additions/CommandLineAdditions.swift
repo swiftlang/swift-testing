@@ -56,13 +56,10 @@ extension CommandLine {
         }
       }
 #elseif os(OpenBSD)
-      // OpenBSD does not have API to get a path to the running executable. Use
-      // arguments[0]. We do a basic sniff test for a path-like string, but
-      // otherwise return argv[0] verbatim.
-      guard let argv0 = arguments.first, argv0.contains("/") else {
+      guard let executablePath = swt_getExecutablePath().flatMap(String.init(validatingCString:)) else {
         throw CError(rawValue: ENOEXEC)
       }
-      return argv0
+      return executablePath
 #elseif os(Windows)
       var result: String?
 #if DEBUG

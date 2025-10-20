@@ -12,6 +12,7 @@ include(GitCommit)
 include(TargetTriple)
 add_library(_TestingInternals STATIC
   Discovery.cpp
+  Stubs.cpp
   Versions.cpp
   WillThrow.cpp)
 target_include_directories(_TestingInternals PUBLIC

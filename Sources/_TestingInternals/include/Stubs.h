@@ -126,6 +126,15 @@ static char *_Nullable *_Null_unspecified swt_environ(void) {
 }
 #endif
 
+#if defined(__OpenBSD__)
+/// Get the executable path.
+///
+/// This function is provided on OpenBSD because the platform does not provide
+/// an interface for getting the executable path, so we must simulate it in a
+/// way that is not supported in Swift.
+SWT_EXTERN const char *_Nullable swt_getExecutablePath(void);
+#endif
+
 #if !defined(__ANDROID__)
 #if __has_include(<signal.h>) && defined(si_pid)
 /// Get the value of the `si_pid` field of a `siginfo_t` structure.
