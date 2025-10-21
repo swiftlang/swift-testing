@@ -30,8 +30,13 @@ private nonisolated(unsafe) let _fallbackEventHandler = {
 private nonisolated(unsafe) let _fallbackEventHandler = Atomic<UnsafeRawPointer?>(nil)
 #endif
 
-/// A type describing a fallback event handler to invoke when testing API is
-/// used while the testing library is not running.
+/// A type describing a fallback event handler that testing API can invoke as an
+/// alternate method of reporting test events to the current test runner.
+///
+/// For example, an `XCTAssert` failure in the body of a Swift Testing test
+/// cannot record issues directly with the Swift Testing runner. Instead, the
+/// framework packages the assertion failure as a JSON `Event` and invokes this
+/// handler to report the failure.
 ///
 /// - Parameters:
 ///   - recordJSONSchemaVersionNumber: The JSON schema version used to encode
@@ -50,11 +55,6 @@ package typealias FallbackEventHandler = @Sendable @convention(c) (
 /// Get the current fallback event handler.
 ///
 /// - Returns: The currently-set handler function, if any.
-///
-/// - Important: This operation is thread-safe, but is not atomic with respect
-///   to calls to ``setFallbackEventHandler(_:)``. If you need to atomically
-///   exchange the previous value with a new value, call
-///   ``setFallbackEventHandler(_:)`` and store its returned value.
 @_cdecl("_swift_testing_getFallbackEventHandler")
 @usableFromInline
 package func _swift_testing_getFallbackEventHandler() -> FallbackEventHandler? {
