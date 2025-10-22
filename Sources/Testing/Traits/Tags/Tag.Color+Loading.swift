@@ -11,7 +11,7 @@
 private import _TestingInternals
 
 #if !SWT_NO_FILE_IO
-#if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst)) || os(Linux) || os(FreeBSD)
+#if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst)) || os(Linux) || os(FreeBSD) || os(OpenBSD)
 /// The path to the current user's home directory, if known.
 private var _homeDirectoryPath: String? {
 #if SWT_TARGET_OS_APPLE
@@ -57,7 +57,7 @@ var swiftTestingDirectoryPath: String? {
   // The (default) name of the .swift-testing directory.
   let swiftTestingDirectoryName = ".swift-testing"
 
-#if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst)) || os(Linux) || os(FreeBSD)
+#if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst)) || os(Linux) || os(FreeBSD) || os(OpenBSD)
   if let homeDirectoryPath = _homeDirectoryPath {
     return appendPathComponent(swiftTestingDirectoryName, to: homeDirectoryPath)
   }

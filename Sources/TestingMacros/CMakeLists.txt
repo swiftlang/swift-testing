@@ -3,14 +3,16 @@
 # Copyright (c) 2024 Apple Inc. and the Swift project authors
 # Licensed under Apache License v2.0 with Runtime Library Exception
 #
-# See http://swift.org/LICENSE.txt for license information
-# See http://swift.org/CONTRIBUTORS.txt for Swift project authors
+# See https://swift.org/LICENSE.txt for license information
+# See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 cmake_minimum_required(VERSION 3.19.6...3.29)
 
 if(POLICY CMP0157)
   cmake_policy(SET CMP0157 NEW)
 endif()
+
+set(SWT_SOURCE_ROOT_DIR ${CMAKE_SOURCE_DIR}/../..)
 
 project(TestingMacros
   LANGUAGES Swift)
@@ -31,7 +33,7 @@ if(SwiftTesting_BuildMacrosAsExecutables)
   set(FETCHCONTENT_BASE_DIR ${CMAKE_BINARY_DIR}/_d)
   FetchContent_Declare(SwiftSyntax
     GIT_REPOSITORY https://github.com/swiftlang/swift-syntax
-    GIT_TAG cb53fa1bd3219b0b23ded7dfdd3b2baff266fd25) # 600.0.0
+    GIT_TAG 07bf225e198119c23b2b9a0a3432bdb534498873) # 603.0.0-prerelease-2025-08-11
   FetchContent_MakeAvailable(SwiftSyntax)
 endif()
 
@@ -81,11 +83,14 @@ endif()
 
 target_sources(TestingMacros PRIVATE
   ConditionMacro.swift
+  ExitTestCapturedValueMacro.swift
+  PragmaMacro.swift
   SourceLocationMacro.swift
   SuiteDeclarationMacro.swift
   Support/Additions/DeclGroupSyntaxAdditions.swift
   Support/Additions/EditorPlaceholderExprSyntaxAdditions.swift
   Support/Additions/FunctionDeclSyntaxAdditions.swift
+  Support/Additions/IntegerLiteralExprSyntaxAdditions.swift
   Support/Additions/MacroExpansionContextAdditions.swift
   Support/Additions/TokenSyntaxAdditions.swift
   Support/Additions/TriviaPieceAdditions.swift
@@ -95,20 +100,22 @@ target_sources(TestingMacros PRIVATE
   Support/Argument.swift
   Support/AttributeDiscovery.swift
   Support/AvailabilityGuards.swift
+  Support/ClosureCaptureListParsing.swift
   Support/CommentParsing.swift
   Support/ConditionArgumentParsing.swift
-  Support/CRC32.swift
   Support/DiagnosticMessage.swift
   Support/DiagnosticMessage+Diagnosing.swift
+  Support/EffectfulExpressionHandling.swift
+  Support/SHA256.swift
   Support/SourceCodeCapturing.swift
   Support/SourceLocationGeneration.swift
+  Support/TestContentGeneration.swift
   TagMacro.swift
   TestDeclarationMacro.swift
   TestingMacrosMain.swift)
 
 target_compile_options(TestingMacros PRIVATE
-  "SHELL:-Xfrontend -disable-implicit-string-processing-module-import"
-  "SHELL:-Xfrontend -disable-implicit-backtracing-module-import")
+  "SHELL:-Xfrontend -disable-implicit-string-processing-module-import")
 
 target_link_libraries(TestingMacros PRIVATE
   SwiftSyntax::SwiftSyntax

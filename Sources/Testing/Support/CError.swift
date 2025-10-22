@@ -27,8 +27,12 @@ struct CError: Error, RawRepresentable {
 /// [here](https://learn.microsoft.com/en-us/windows/win32/debug/system-error-codes).
 ///
 /// This type is not part of the public interface of the testing library.
-struct Win32Error: Error, RawRepresentable {
-  var rawValue: DWORD
+package struct Win32Error: Error, RawRepresentable {
+  package var rawValue: CUnsignedLong
+
+  package init(rawValue: CUnsignedLong) {
+    self.rawValue = rawValue
+  }
 }
 #endif
 
@@ -47,6 +51,12 @@ func strerror(_ errorCode: CInt) -> String {
     _ = strerror_s(buffer.baseAddress!, buffer.count, errorCode)
     return strnlen(buffer.baseAddress!, buffer.count)
   }
+#elseif os(FreeBSD) || os(OpenBSD)
+  // FreeBSD's/OpenBSD's implementation of strerror() is not thread-safe.
+  String(unsafeUninitializedCapacity: 1024) { buffer in
+    _ = strerror_r(errorCode, buffer.baseAddress!, buffer.count)
+    return strnlen(buffer.baseAddress!, buffer.count)
+  }
 #else
   String(cString: _TestingInternals.strerror(errorCode))
 #endif
@@ -60,7 +70,7 @@ extension CError: CustomStringConvertible {
 
 #if os(Windows)
 extension Win32Error: CustomStringConvertible {
-  var description: String {
+  package var description: String {
     let (address, count) = withUnsafeTemporaryAllocation(of: LPWSTR?.self, capacity: 1) { buffer in
       // FormatMessageW() takes a wide-character buffer into which it writes the
       // error message... _unless_ you pass `FORMAT_MESSAGE_ALLOCATE_BUFFER` in

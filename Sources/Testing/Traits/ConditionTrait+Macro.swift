@@ -92,9 +92,16 @@ extension Trait where Self == ConditionTrait {
     _ condition: @escaping @Sendable () -> Bool
   ) -> Self {
     // TODO: Semantic capture of platform name/version (rather than just a comment)
-    Self(
+    let message: Comment = if let message {
+      message
+    } else if let version {
+      "Obsolete as of \(_description(ofPlatformName: platformName, version: version))"
+    } else {
+      "Unavailable on \(_description(ofPlatformName: platformName, version: nil))"
+    }
+    return Self(
       kind: .conditional(condition),
-      comments: [message ?? "Obsolete as of \(_description(ofPlatformName: platformName, version: version))"],
+      comments: [message],
       sourceLocation: sourceLocation
     )
   }
@@ -114,6 +121,29 @@ extension Trait where Self == ConditionTrait {
     Self(
       kind: .unconditional(false),
       comments: [message ?? "Marked @available(*, unavailable)"],
+      sourceLocation: sourceLocation
+    )
+  }
+
+  /// Create a trait controlling availability of a test based on an
+  /// `@_unavailableInEmbedded` attribute applied to it.
+  ///
+  /// - Parameters:
+  ///   - sourceLocation: The source location of the test.
+  ///
+  /// - Returns: A trait.
+  ///
+  /// - Warning: This function is used to implement the `@Test` macro. Do not
+  ///   call it directly.
+  public static func __unavailableInEmbedded(sourceLocation: SourceLocation) -> Self {
+#if hasFeature(Embedded)
+    let isEmbedded = true
+#else
+    let isEmbedded = false
+#endif
+    return Self(
+      kind: .unconditional(!isEmbedded),
+      comments: ["Marked @_unavailableInEmbedded"],
       sourceLocation: sourceLocation
     )
   }

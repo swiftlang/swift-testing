@@ -9,6 +9,7 @@
 //
 
 import SwiftSyntax
+import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
 /// Get an expression initializing an instance of ``SourceLocation`` from an

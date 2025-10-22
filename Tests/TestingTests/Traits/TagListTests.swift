@@ -11,6 +11,10 @@
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 
+#if canImport(Foundation)
+private import Foundation
+#endif
+
 @Suite("Tag/Tag List Tests", .tags(.traitRelated))
 struct TagListTests {
   @Test(".tags() factory method with one tag")
@@ -171,7 +175,7 @@ struct TagListTests {
   func noTagColorsReadFromBadPath(tagColorJSON: String) throws {
     var tagColorJSON = tagColorJSON
     tagColorJSON.withUTF8 { tagColorJSON in
-      #expect(throws: (any Error).self) {
+      _ = #expect(throws: (any Error).self) {
         _ = try JSON.decode(Tag.Color.self, from: .init(tagColorJSON))
       }
     }

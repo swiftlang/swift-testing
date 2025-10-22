@@ -144,7 +144,7 @@ final class IssueTests: XCTestCase {
     static func f(_ x: Int) -> Bool { false }
     static func g(label x: Int) -> Bool { false }
     static func h(_ x: () -> Void) -> Bool { false }
-    static func j(_ x: Int) -> Never? { nil }
+    static func j(_ x: Int) -> Int? { nil }
     static func k(_ x: inout Int) -> Bool { false }
     static func m(_ x: Bool) -> Bool { false }
     static func n(_ x: Int) throws -> Bool { false }
@@ -301,7 +301,7 @@ final class IssueTests: XCTestCase {
     let expectationChecked = expectation(description: "expectation checked")
 
     var configuration = Configuration()
-    configuration.deliverExpectationCheckedEvents = true
+    configuration.eventHandlingOptions.isExpectationCheckedEventEnabled = true
     configuration.eventHandler = { event, _ in
       guard case let .expectationChecked(expectation) = event.kind else {
         return
@@ -484,7 +484,7 @@ final class IssueTests: XCTestCase {
   }
 
   func testCastAsAnyProtocol() async {
-    // Sanity check that we parse types cleanly.
+    // Check that we parse types cleanly.
     await Test {
       #expect((1 as Any) is any Numeric)
       _ = try #require((1 as Any) as? any Numeric)
@@ -932,6 +932,77 @@ final class IssueTests: XCTestCase {
     await fulfillment(of: [errorCaught, expectationFailed], timeout: 0.0)
   }
 
+  func testErrorCheckingWithExpect_ResultValue() throws {
+    let error = #expect(throws: MyDescriptiveError.self) {
+      throw MyDescriptiveError(description: "abc123")
+    }
+    #expect(error?.description == "abc123")
+  }
+
+  func testErrorCheckingWithRequire_ResultValue() async throws {
+    let error = try #require(throws: MyDescriptiveError.self) {
+      throw MyDescriptiveError(description: "abc123")
+    }
+    #expect(error.description == "abc123")
+  }
+
+  func testErrorCheckingWithExpect_ResultValueIsNever() async throws {
+    let error: Never? = #expect(throws: Never.self) {
+      throw MyDescriptiveError(description: "abc123")
+    }
+    #expect(error == nil)
+  }
+
+  func testErrorCheckingWithRequire_ResultValueIsNever() async throws {
+    let errorCaught = expectation(description: "Error caught")
+    errorCaught.isInverted = true
+    let apiMisused = expectation(description: "API misused")
+    let expectationFailed = expectation(description: "Expectation failed")
+    expectationFailed.isInverted = true
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      if case .errorCaught = issue.kind {
+        errorCaught.fulfill()
+      } else if case .apiMisused = issue.kind {
+        apiMisused.fulfill()
+      } else {
+        expectationFailed.fulfill()
+      }
+    }
+
+    await Test {
+      func f<E>(_ type: E.Type) throws -> E where E: Error {
+        try #require(throws: type) {}
+      }
+      try f(Never.self)
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [errorCaught, apiMisused, expectationFailed], timeout: 0.0)
+  }
+
+  @__testing(semantics: "nomacrowarnings")
+  func testErrorCheckingWithRequire_ResultValueIsNever_VariousSyntaxes() throws {
+    // Basic expressions succeed and don't diagnose.
+    #expect(throws: Never.self) {}
+    try #require(throws: Never.self) {}
+
+    // Casting to specific types succeeds and doesn't diagnose.
+    let _: Void = try #require(throws: Never.self) {}
+    let _: Any = try #require(throws: Never.self) {}
+
+    // Casting to any Error throws an API misuse error because Never cannot be
+    // instantiated. NOTE: inner function needed for lexical context.
+    @__testing(semantics: "nomacrowarnings")
+    func castToAnyError() throws {
+      let _: any Error = try #require(throws: Never.self) {}
+    }
+    #expect(throws: APIMisuseError.self, performing: castToAnyError)
+  }
+
   func testFail() async throws {
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
@@ -939,6 +1010,8 @@ final class IssueTests: XCTestCase {
         return
       }
       XCTAssertFalse(issue.isKnown)
+      XCTAssertEqual(issue.severity, .error)
+      XCTAssertTrue(issue.isFailure)
       guard case .unconditional = issue.kind else {
         XCTFail("Unexpected issue kind \(issue.kind)")
         return
@@ -948,6 +1021,26 @@ final class IssueTests: XCTestCase {
     await Test {
       Issue.record()
       Issue.record("Custom message")
+    }.run(configuration: configuration)
+  }
+  
+  func testWarning() async throws {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      XCTAssertFalse(issue.isKnown)
+      XCTAssertEqual(issue.severity, .warning)
+      XCTAssertFalse(issue.isFailure)
+      guard case .unconditional = issue.kind else {
+        XCTFail("Unexpected issue kind \(issue.kind)")
+        return
+      }
+    }
+
+    await Test {
+      Issue.record("Custom message", severity: .warning)
     }.run(configuration: configuration)
   }
 
@@ -977,6 +1070,7 @@ final class IssueTests: XCTestCase {
         return
       }
       XCTAssertFalse(issue.isKnown)
+      XCTAssertEqual(issue.severity, .error)
       guard case let .errorCaught(error) = issue.kind else {
         XCTFail("Unexpected issue kind \(issue.kind)")
         return
@@ -987,6 +1081,27 @@ final class IssueTests: XCTestCase {
     await Test {
       Issue.record(MyError())
       Issue.record(MyError(), "Custom message")
+    }.run(configuration: configuration)
+  }
+  
+  func testWarningBecauseOfError() async throws {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      XCTAssertFalse(issue.isKnown)
+      XCTAssertEqual(issue.severity, .warning)
+      guard case let .errorCaught(error) = issue.kind else {
+        XCTFail("Unexpected issue kind \(issue.kind)")
+        return
+      }
+      XCTAssertTrue(error is MyError)
+    }
+
+    await Test {
+      Issue.record(MyError(), severity: .warning)
+      Issue.record(MyError(), "Custom message", severity: .warning)
     }.run(configuration: configuration)
   }
 
@@ -1053,12 +1168,12 @@ final class IssueTests: XCTestCase {
     do {
       let sourceLocation = SourceLocation.init(fileID: "FakeModule/FakeFile.swift", filePath: "", line: 9999, column: 1)
       let issue = Issue(kind: .system, comments: ["Some issue"], sourceContext: SourceContext(sourceLocation: sourceLocation))
-      XCTAssertEqual(issue.description, "A system failure occurred: Some issue")
-      XCTAssertEqual(issue.debugDescription, "A system failure occurred at FakeFile.swift:9999:1: Some issue")
+      XCTAssertEqual(issue.description, "A system failure occurred (error): Some issue")
+      XCTAssertEqual(issue.debugDescription, "A system failure occurred at FakeFile.swift:9999:1 (error): Some issue")
     }
     do {
       let issue = Issue(kind: .system, comments: ["Some issue"], sourceContext: SourceContext(sourceLocation: nil))
-      XCTAssertEqual(issue.debugDescription, "A system failure occurred: Some issue")
+      XCTAssertEqual(issue.debugDescription, "A system failure occurred (error): Some issue")
     }
   }
 
@@ -1444,6 +1559,84 @@ final class IssueTests: XCTestCase {
 
     await fulfillment(of: [expectationFailed], timeout: 0.0)
   }
+
+  func testThrowing(_ error: some Error, producesIssueMatching issueMatcher: @escaping @Sendable (Issue) -> Bool) async {
+    let issueRecorded = expectation(description: "Issue recorded")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      if issueMatcher(issue) {
+        issueRecorded.fulfill()
+        let description = String(describing: error)
+        #expect(issue.comments.map(String.init(describing:)).contains(description))
+      } else {
+        Issue.record("Unexpected issue \(issue)")
+      }
+    }
+
+    await Test {
+      throw error
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [issueRecorded], timeout: 0.0)
+  }
+
+  func testThrowingSystemErrorProducesSystemIssue() async {
+    await testThrowing(
+      SystemError(description: "flinging excuses"),
+      producesIssueMatching: { issue in
+        if case .system = issue.kind {
+          return true
+        }
+        return false
+      }
+    )
+  }
+
+  func testThrowingAPIMisuseErrorProducesAPIMisuseIssue() async {
+    await testThrowing(
+      APIMisuseError(description: "you did it wrong"),
+      producesIssueMatching: { issue in
+        if case .apiMisused = issue.kind {
+          return true
+        }
+        return false
+      }
+    )
+  }
+
+  func testRethrowingExpectationFailedErrorCausesAPIMisuseError() async {
+    let expectationFailed = expectation(description: "Expectation failed (issue recorded)")
+    let apiMisused = expectation(description: "API misused (issue recorded)")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      switch issue.kind {
+      case .expectationFailed:
+        expectationFailed.fulfill()
+      case .apiMisused:
+        apiMisused.fulfill()
+      default:
+        Issue.record("Unexpected issue \(issue)")
+      }
+    }
+
+    await Test {
+      do {
+        try #require(Bool(false))
+      } catch {
+        Issue.record(error)
+      }
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [expectationFailed, apiMisused], timeout: 0.0)
+  }
 }
 #endif
 
@@ -1489,8 +1682,8 @@ struct IssueCodingTests {
 
   @Test func sourceLocationPropertyGetter() throws {
     let sourceLocation = SourceLocation(
-      fileID: "fileID",
-      filePath: "filePath",
+      fileID: "M/file.swift",
+      filePath: "M/file.swift",
       line: 13,
       column: 42
     )
@@ -1509,8 +1702,8 @@ struct IssueCodingTests {
 
   @Test func sourceLocationPropertySetter() throws {
     let initialSourceLocation = SourceLocation(
-      fileID: "fileID",
-      filePath: "filePath",
+      fileID: "M/file.swift",
+      filePath: "file.swift",
       line: 13,
       column: 42
     )
@@ -1523,8 +1716,8 @@ struct IssueCodingTests {
     let issue = Issue(kind: .apiMisused, sourceContext: sourceContext)
 
     let updatedSourceLocation = SourceLocation(
-      fileID: "fileID2",
-      filePath: "filePath2",
+      fileID: "M/file2.swift",
+      filePath: "file2.swift",
       line: 14,
       column: 43
     )
@@ -1551,6 +1744,23 @@ struct IssueCodingTests {
 
     #expect(String(describing: issueSnapshot) == String(describing: issue))
     #expect(String(reflecting: issueSnapshot) == String(reflecting: issue))
+  }
+
+  @Test func binaryOperatorExpansionPrefersBooleanOverOptional() async throws {
+    await confirmation("Issue recorded", expectedCount: 3) { issueRecorded in
+      var configuration = Configuration()
+      configuration.eventHandler = { event, _ in
+        if case .issueRecorded = event.kind {
+          issueRecorded()
+        }
+      }
+
+      await Test {
+        #expect(true == false)
+        #expect(false != false)
+        try #require(true != true)
+      }.run(configuration: configuration)
+    }
   }
 }
 #endif

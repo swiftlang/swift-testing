@@ -122,7 +122,7 @@ extension Event.JUnitXMLRecorder {
       }
       return nil
     case let .issueRecorded(issue):
-      if issue.isKnown {
+      if issue.isKnown || issue.severity < .error {
         return nil
       }
       if let id = test?.id {

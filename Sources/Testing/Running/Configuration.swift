@@ -18,7 +18,7 @@ public struct Configuration: Sendable {
   // MARK: - Parallelization
 
   /// Whether or not to parallelize the execution of tests and test cases.
-  public var isParallelizationEnabled = true
+  public var isParallelizationEnabled: Bool = true
 
   /// How to symbolicate backtraces captured during a test run.
   ///
@@ -69,17 +69,16 @@ public struct Configuration: Sendable {
     /// The conditions under which test iterations should continue.
     ///
     /// If the value of this property is `nil`, a test plan will be run
-    /// ``count`` times regardless of whether or not issues are encountered
-    /// while running.
+    /// ``maximumIterationCount`` times regardless of whether or not issues are
+    /// encountered while running.
     public var continuationCondition: ContinuationCondition?
 
     /// The maximum number of times the test run should iterate.
     ///
-    /// - Precondition: The value of this property must be greater than or equal
-    ///   to `1`.
+    /// - Precondition: The value of this property must be greater than `0`.
     public var maximumIterationCount: Int {
       willSet {
-        precondition(newValue >= 1, "Test runs must iterate at least once.")
+        precondition(newValue > 0, "Test runs must iterate at least once (maximumIterationCount was \(newValue)).")
       }
     }
 
@@ -89,7 +88,8 @@ public struct Configuration: Sendable {
     ///   - continuationCondition: The conditions under which test iterations
     ///     should continue. If `nil`, the iterations should continue
     ///     unconditionally `count` times.
-    ///   - count: The maximum number of times the test run should iterate.
+    ///   - maximumIterationCount: The maximum number of times the test run
+    ///     should iterate.
     public static func repeating(_ continuationCondition: ContinuationCondition? = nil, maximumIterationCount: Int) -> Self {
       Self(continuationCondition: continuationCondition, maximumIterationCount: maximumIterationCount)
     }
@@ -178,14 +178,27 @@ public struct Configuration: Sendable {
 
   // MARK: - Event handling
 
-  /// Whether or not events of the kind
-  /// ``Event/Kind-swift.enum/expectationChecked(_:)`` should be delivered to
-  /// this configuration's ``eventHandler`` closure.
-  ///
-  /// By default, events of this kind are not delivered to event handlers
-  /// because they occur frequently in a typical test run and can generate
-  /// significant backpressure on the event handler.
-  public var deliverExpectationCheckedEvents = false
+  /// A type describing options to use when delivering events to this
+  /// configuration's event handler
+  public struct EventHandlingOptions: Sendable {
+    /// Whether or not events of the kind ``Event/Kind-swift.enum/issueRecorded(_:)``
+    /// containing issues with warning (or lower) severity should be delivered
+    /// to the event handler of the configuration these options are applied to.
+    public var isWarningIssueRecordedEventEnabled: Bool = true
+
+    /// Whether or not events of the kind
+    /// ``Event/Kind-swift.enum/expectationChecked(_:)`` should be delivered to
+    /// the event handler of the configuration these options are applied to.
+    ///
+    /// By default, events of this kind are not delivered to event handlers
+    /// because they occur frequently in a typical test run and can generate
+    /// significant back-pressure on the event handler.
+    public var isExpectationCheckedEventEnabled: Bool = false
+  }
+
+  /// The options to use when delivering events to this configuration's event
+  /// handler.
+  public var eventHandlingOptions: EventHandlingOptions = .init()
 
   /// The event handler to which events should be passed when they occur.
   public var eventHandler: Event.Handler = { _, _ in }
@@ -198,9 +211,34 @@ public struct Configuration: Sendable {
   /// When using the `swift test` command from Swift Package Manager, this
   /// property is pre-configured. Otherwise, the default value of this property
   /// records an issue indicating that it has not been configured.
-  @_spi(Experimental)
-  public var exitTestHandler: ExitTest.Handler = { _ in
+  public var exitTestHandler: ExitTest.Handler = { exitTest in
     throw SystemError(description: "Exit test support has not been implemented by the current testing infrastructure.")
+  }
+#endif
+
+#if !SWT_NO_FILE_IO
+  /// Storage for ``attachmentsPath``.
+  private var _attachmentsPath: String?
+
+  /// The path to which attachments should be written.
+  ///
+  /// By default, attachments are not written to disk when they are created. If
+  /// the value of this property is not `nil`, then when an attachment is
+  /// created and attached to a test, it will automatically be written to a file
+  /// in this directory.
+  ///
+  /// The value of this property must refer to a directory on the local file
+  /// system that already exists and which the current user can write to. If it
+  /// is a relative path, it is resolved to an absolute path automatically.
+  public var attachmentsPath: String? {
+    get {
+      _attachmentsPath
+    }
+    set {
+      _attachmentsPath = newValue.map { newValue in
+        canonicalizePath(newValue) ?? newValue
+      }
+    }
   }
 #endif
 
@@ -210,7 +248,7 @@ public struct Configuration: Sendable {
   /// is provided. When the value of this property is less than `0`, some
   /// output is suppressed. The exact effects of this property are determined by
   /// the instance's event handler.
-  public var verbosity = 0
+  public var verbosity: Int = 0
 
   // MARK: - Test selection
 
@@ -231,6 +269,53 @@ public struct Configuration: Sendable {
 
   /// The test case filter to which test cases should be filtered when run.
   public var testCaseFilter: TestCaseFilter = { _, _ in true }
+
+  // MARK: - Expectation value reflection
+
+  /// The options to use when reflecting values in expressions checked by
+  /// expectations, or `nil` if reflection is disabled.
+  ///
+  /// When the value of this property is a non-`nil` instance, values checked by
+  /// expressions will be reflected using `Mirror` and the specified options
+  /// will influence how that reflection is formed. Otherwise, when its value is
+  /// `nil`, value reflection will not use `Mirror` and instead will use
+  /// `String(describing:)`.
+  ///
+  /// The default value of this property is an instance of ``ValueReflectionOptions-swift.struct``
+  /// with its properties initialized to their default values.
+  public var valueReflectionOptions: ValueReflectionOptions? = .init()
+
+  /// A type describing options to use when forming a reflection of a value
+  /// checked by an expectation.
+  public struct ValueReflectionOptions: Sendable {
+    /// The maximum number of elements that can included in a single child
+    /// collection when reflecting a value checked by an expectation.
+    ///
+    /// When ``Expression/Value/init(reflecting:)`` is reflecting a value and it
+    /// encounters a child value which is a collection, it consults the value of
+    /// this property and only includes the children of that collection up to
+    /// this maximum count. After this maximum is reached, all subsequent
+    /// elements are omitted and a single placeholder child is added indicating
+    /// the number of elements which have been truncated.
+    public var maximumCollectionCount: Int = 10
+
+    /// The maximum depth of children that can be included in the reflection of
+    /// a checked expectation value.
+    ///
+    /// When ``Expression/Value/init(reflecting:)`` is reflecting a value, it
+    /// recursively reflects that value's children. Before doing so, it consults
+    /// the value of this property to determine the maximum depth of the
+    /// children to include. After this maximum depth is reached, all children
+    /// at deeper levels are omitted and the ``Expression/Value/isTruncated``
+    /// property is set to `true` to reflect that the reflection is incomplete.
+    ///
+    /// - Note: `Optional` values contribute twice towards this maximum, since
+    ///   their mirror represents the wrapped value as a child of the optional.
+    ///   Since optionals are common, the default value of this property is
+    ///   somewhat larger than it otherwise would be in an attempt to make the
+    ///   defaults useful for real-world tests.
+    public var maximumChildDepth: Int = 10
+  }
 }
 
 // MARK: - Deprecated
@@ -251,4 +336,14 @@ extension Configuration {
     }
   }
 #endif
+
+  @available(*, deprecated, message: "Set eventHandlingOptions.isExpectationCheckedEventEnabled instead.")
+  public var deliverExpectationCheckedEvents: Bool {
+    get {
+      eventHandlingOptions.isExpectationCheckedEventEnabled
+    }
+    set {
+      eventHandlingOptions.isExpectationCheckedEventEnabled = newValue
+    }
+  }
 }

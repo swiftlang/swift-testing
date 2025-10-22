@@ -1,145 +1,115 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2023 Apple Inc. and the Swift project authors
+// Copyright (c) 2023–2025 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) private import _TestDiscovery
 private import _TestingInternals
 
-/// A protocol describing a type that contains tests.
-///
-/// - Warning: This protocol is used to implement the `@Test` macro. Do not use
-///   it directly.
-@_alwaysEmitConformanceMetadata
-public protocol __TestContainer {
-  /// The set of tests contained by this type.
-  static var __tests: [Test] { get async }
-}
-
 extension Test {
-  /// A string that appears within all auto-generated types conforming to the
-  /// `__TestContainer` protocol.
-  private static let _testContainerTypeNameMagic = "__🟠$test_container__"
+  /// A type that encapsulates test content records that produce instances of
+  /// ``Test``.
+  ///
+  /// This type is necessary because such test content records produce an
+  /// indirect `async` accessor function rather than directly producing
+  /// instances of ``Test``, but functions are non-nominal types and cannot
+  /// directly conform to protocols.
+  fileprivate struct Generator: DiscoverableAsTestContent, RawRepresentable {
+    static var testContentKind: TestContentKind {
+      "test"
+    }
+
+    var rawValue: @Sendable () async -> Test
+  }
+
+  /// Store the test generator function into the given memory.
+  ///
+  /// - Parameters:
+  ///   - generator: The generator function to store.
+  ///   - outValue: The uninitialized memory to store `generator` into.
+  ///   - typeAddress: A pointer to the expected type of `generator` as passed
+  ///     to the test content record calling this function.
+  ///
+  /// - Returns: Whether or not `generator` was stored into `outValue`.
+  ///
+  /// - Warning: This function is used to implement the `@Test` macro. Do not
+  ///   use it directly.
+  @safe public static func __store(
+    _ generator: @escaping @Sendable () async -> Test,
+    into outValue: UnsafeMutableRawPointer,
+    asTypeAt typeAddress: UnsafeRawPointer
+  ) -> CBool {
+#if !hasFeature(Embedded)
+    guard typeAddress.load(as: Any.Type.self) == Generator.self else {
+      return false
+    }
+#endif
+    outValue.initializeMemory(as: Generator.self, to: .init(rawValue: generator))
+    return true
+  }
 
   /// All available ``Test`` instances in the process, according to the runtime.
   ///
   /// The order of values in this sequence is unspecified.
-  static var all: some Sequence<Test> {
+  static var all: some Sequence<Self> {
     get async {
-      // Convert the raw sequence of tests to a dictionary keyed by ID.
-      var result = await testsByID(_all)
+      // The result is a set rather than an array to deduplicate tests that were
+      // generated multiple times (e.g. from multiple discovery modes or from
+      // defective test records.)
+      var result = Set<Self>()
 
-      // Ensure test suite types that don't have the @Suite attribute are still
-      // represented in the result.
-      _synthesizeSuiteTypes(into: &result)
+      // Figure out which discovery mechanism to use. By default, we'll use both
+      // the legacy and new mechanisms, but we can set an environment variable
+      // to explicitly select one or the other. When we remove legacy support,
+      // we can also remove this enumeration and environment variable check.
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+      let (useNewMode, useLegacyMode) = switch Environment.flag(named: "SWT_USE_LEGACY_TEST_DISCOVERY") {
+      case .none:
+        (true, true)
+      case .some(true):
+        (false, true)
+      case .some(false):
+        (true, false)
+      }
+#else
+      let useNewMode = true
+#endif
 
-      return result.values
-    }
-  }
-
-  /// All available ``Test`` instances in the process, according to the runtime.
-  ///
-  /// The order of values in this sequence is unspecified. This sequence may
-  /// contain duplicates; callers should use ``all`` instead.
-  private static var _all: some Sequence<Self> {
-    get async {
-      await withTaskGroup(of: [Self].self) { taskGroup in
-        enumerateTypes(withNamesContaining: _testContainerTypeNameMagic) { _, type, _ in
-          if let type = type as? any __TestContainer.Type {
-            taskGroup.addTask {
-              await type.__tests
+      // Walk all test content and gather generator functions, then call them in
+      // a task group and collate their results.
+      if useNewMode {
+        let generators = Generator.allTestContentRecords().lazy.compactMap { $0.load() }
+        await withTaskGroup { taskGroup in
+          for (i, generator) in generators.enumerated() {
+            taskGroup.addTask(name: decorateTaskName("test discovery", withAction: "loading test #\(i)")) {
+              await generator.rawValue()
             }
           }
+          result = await taskGroup.reduce(into: result) { $0.insert($1) }
         }
-
-        return await taskGroup.reduce(into: [], +=)
       }
-    }
-  }
 
-  /// Create a dictionary mapping the IDs of a sequence of tests to those tests.
-  ///
-  /// - Parameters:
-  ///   - tests: The sequence to convert to a dictionary.
-  ///
-  /// - Returns: A dictionary containing `tests` keyed by those tests' IDs.
-  static func testsByID(_ tests: some Sequence<Self>) -> [ID: Self] {
-    [ID: Self](
-      tests.lazy.map { ($0.id, $0) },
-      uniquingKeysWith: { existing, _ in existing }
-    )
-  }
-
-  /// Synthesize any missing test suite types (that is, types containing test
-  /// content that do not have the `@Suite` attribute) and add them to a
-  /// dictionary of tests.
-  ///
-  /// - Parameters:
-  ///   - tests: A dictionary of tests to amend.
-  ///
-  /// - Returns: The number of key-value pairs added to `tests`.
-  @discardableResult private static func _synthesizeSuiteTypes(into tests: inout [ID: Self]) -> Int {
-    let originalCount = tests.count
-
-    // Find any instances of Test in the input that are *not* suites. We'll be
-    // checking the containing types of each one.
-    for test in tests.values where !test.isSuite {
-      guard let suiteTypeInfo = test.containingTypeInfo else {
-        continue
-      }
-      let suiteID = ID(typeInfo: suiteTypeInfo)
-      if tests[suiteID] == nil {
-        tests[suiteID] = Test(traits: [], sourceLocation: test.sourceLocation, containingTypeInfo: suiteTypeInfo, isSynthesized: true)
-
-        // Also synthesize any ancestral suites that don't have tests.
-        for ancestralSuiteTypeInfo in suiteTypeInfo.allContainingTypeInfo {
-          let ancestralSuiteID = ID(typeInfo: ancestralSuiteTypeInfo)
-          if tests[ancestralSuiteID] == nil {
-            tests[ancestralSuiteID] = Test(traits: [], sourceLocation: test.sourceLocation, containingTypeInfo: ancestralSuiteTypeInfo, isSynthesized: true)
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+      // Perform legacy test discovery if needed.
+      if useLegacyMode && result.isEmpty {
+        let generators = Generator.allTypeMetadataBasedTestContentRecords().lazy.compactMap { $0.load() }
+        await withTaskGroup { taskGroup in
+          for (i, generator) in generators.enumerated() {
+            taskGroup.addTask(name: decorateTaskName("type-based test discovery", withAction: "loading test #\(i)")) {
+              await generator.rawValue()
+            }
           }
+          result = await taskGroup.reduce(into: result) { $0.insert($1) }
         }
       }
-    }
+#endif
 
-    return tests.count - originalCount
-  }
-}
-
-// MARK: -
-
-/// The type of callback called by ``enumerateTypes(withNamesContaining:_:)``.
-///
-/// - Parameters:
-///   - imageAddress: A pointer to the start of the image. This value is _not_
-///     equal to the value returned from `dlopen()`. On platforms that do not
-///     support dynamic loading (and so do not have loadable images), this
-///     argument is unspecified.
-///   - type: A Swift type.
-///   - stop: An `inout` boolean variable indicating whether type enumeration
-///     should stop after the function returns. Set `stop` to `true` to stop
-///     type enumeration.
-typealias TypeEnumerator = (_ imageAddress: UnsafeRawPointer?, _ type: Any.Type, _ stop: inout Bool) -> Void
-
-/// Enumerate all types known to Swift found in the current process whose names
-/// contain a given substring.
-///
-/// - Parameters:
-///   - nameSubstring: A string which the names of matching classes all contain.
-///   - body: A function to invoke, once per matching type.
-func enumerateTypes(withNamesContaining nameSubstring: String, _ typeEnumerator: TypeEnumerator) {
-  withoutActuallyEscaping(typeEnumerator) { typeEnumerator in
-    withUnsafePointer(to: typeEnumerator) { context in
-      swt_enumerateTypes(withNamesContaining: nameSubstring, .init(mutating: context)) { imageAddress, type, stop, context in
-        let typeEnumerator = context!.load(as: TypeEnumerator.self)
-        let type = unsafeBitCast(type, to: Any.Type.self)
-        var stop2 = false
-        typeEnumerator(imageAddress, type, &stop2)
-        stop.pointee = stop2
-      }
+      return result
     }
   }
 }

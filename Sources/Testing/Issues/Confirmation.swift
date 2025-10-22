@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 /// A type that can be used to confirm that an event occurs zero or more times.
 public struct Confirmation: Sendable {
   /// The number of times ``confirm(count:)`` has been called.
@@ -174,9 +176,14 @@ public func confirmation<R>(
 /// ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-5mqz2`` instead.
 ///
 /// @Comment {
-/// If the work performed by `body` may continue after it returns, use
-/// ``confirmation(_:within:expectedCount:isolation:sourceLocation:_:)``
-/// instead.
+///   If the work performed by `body` may continue after it returns, use
+///   ``confirmation(_:within:expectedCount:isolation:sourceLocation:_:)``
+///   instead.
+/// }
+///
+/// @Metadata {
+///   @Available(Swift, introduced: 6.1)
+///   @Available(Xcode, introduced: 16.3)
 /// }
 public func confirmation<R>(
   _ comment: Comment? = nil,
@@ -214,7 +221,7 @@ public func confirmation<R>(
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: (Confirmation) async throws -> R
 ) async rethrows -> R {
-  fatalError("Unsupported")
+  swt_unreachable()
 }
 
 /// An overload of ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-l3il``
@@ -230,7 +237,7 @@ public func confirmation<R>(
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: (Confirmation) async throws -> R
 ) async rethrows -> R {
-  fatalError("Unsupported")
+  swt_unreachable()
 }
 
 /// An overload of ``confirmation(_:expectedCount:isolation:sourceLocation:_:)-l3il``
@@ -246,7 +253,7 @@ public func confirmation<R>(
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: (Confirmation) async throws -> R
 ) async rethrows -> R {
-  fatalError("Unsupported")
+  swt_unreachable()
 }
 
 // MARK: - Confirmations with time limits
@@ -323,7 +330,7 @@ public func confirmation<R>(
 #endif
 public func confirmation<R>(
   _ comment: Comment? = nil,
-  within timeLimit: Duration,
+  within timeLimit: TimeLimitTrait.Duration,
   expectedCount: PartialRangeFrom<Int> = 1...,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation = #_sourceLocation,
@@ -331,8 +338,6 @@ public func confirmation<R>(
 ) async rethrows -> R {
 #if !SWT_NO_UNSTRUCTURED_TASKS
   return try await confirmation(comment, expectedCount: expectedCount, sourceLocation: sourceLocation) { confirmation in
-    let start = Test.Clock.Instant.now
-
     // Configure the confirmation to end a locally-created async stream. We can
     // then use the stream as a sort of continuation except that it can be
     // "resumed" more than once and does not require our code to run in an
@@ -344,6 +349,10 @@ public func confirmation<R>(
         continuation.finish()
       }
     }
+
+    // Start timing.
+    let start = Test.Clock.Instant.now
+    let timeLimit = timeLimit.underlyingDuration
 
     // Run the caller-supplied body closure.
     let result = try await body(confirmation)

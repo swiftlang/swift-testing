@@ -770,7 +770,7 @@ public func __checkValue<T>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkBinaryOperation<T>(
+@_disfavoredOverload public func __checkBinaryOperation<T>(
   _ lhs: T?, _ op: (T?, () -> T?) -> T?, _ rhs: @autoclosure () -> T?,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
@@ -824,7 +824,8 @@ public func __checkCast<V, T>(
 /// Check that an expression always throws an error.
 ///
 /// This overload is used for `#expect(throws:) { }` invocations that take error
-/// types.
+/// types. It is disfavored so that `#expect(throws: Never.self)` preferentially
+/// returns `Void`.
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
@@ -835,7 +836,7 @@ public func __checkClosureCall<E>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> where E: Error {
+) -> Result<E?, any Error> where E: Error {
   if errorType == Never.self {
     __checkClosureCall(
       throws: Never.self,
@@ -844,7 +845,7 @@ public func __checkClosureCall<E>(
       comments: comments(),
       isRequired: isRequired,
       sourceLocation: sourceLocation
-    )
+    ).map { _ in nil }
   } else {
     __checkClosureCall(
       performing: body,
@@ -854,14 +855,15 @@ public func __checkClosureCall<E>(
       comments: comments(),
       isRequired: isRequired,
       sourceLocation: sourceLocation
-    )
+    ).map { $0 as? E }
   }
 }
 
 /// Check that an expression always throws an error.
 ///
 /// This overload is used for `await #expect(throws:) { }` invocations that take
-/// error types.
+/// error types. It is disfavored so that `#expect(throws: Never.self)`
+/// preferentially returns `Void`.
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
@@ -873,7 +875,7 @@ public func __checkClosureCall<E>(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<Void, any Error> where E: Error {
+) async -> Result<E?, any Error> where E: Error {
   if errorType == Never.self {
     await __checkClosureCall(
       throws: Never.self,
@@ -883,7 +885,7 @@ public func __checkClosureCall<E>(
       isRequired: isRequired,
       isolation: isolation,
       sourceLocation: sourceLocation
-    )
+    ).map { _ in nil }
   } else {
     await __checkClosureCall(
       performing: body,
@@ -894,7 +896,7 @@ public func __checkClosureCall<E>(
       isRequired: isRequired,
       isolation: isolation,
       sourceLocation: sourceLocation
-    )
+    ).map { $0 as? E }
   }
 }
 
@@ -932,7 +934,7 @@ public func __checkClosureCall(
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
-  )
+  ).map { _ in }
 }
 
 /// Check that an expression never throws an error.
@@ -969,7 +971,7 @@ public func __checkClosureCall(
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
-  )
+  ).map { _ in }
 }
 
 // MARK: - Matching instances of equatable errors
@@ -988,7 +990,7 @@ public func __checkClosureCall<E>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> where E: Error & Equatable {
+) -> Result<E?, any Error> where E: Error & Equatable {
   __checkClosureCall(
     performing: body,
     throws: { true == (($0 as? E) == error) },
@@ -997,7 +999,7 @@ public func __checkClosureCall<E>(
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
-  )
+  ).map { $0 as? E }
 }
 
 /// Check that an expression always throws an error.
@@ -1015,7 +1017,7 @@ public func __checkClosureCall<E>(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<Void, any Error> where E: Error & Equatable {
+) async -> Result<E?, any Error> where E: Error & Equatable {
   await __checkClosureCall(
     performing: body,
     throws: { true == (($0 as? E) == error) },
@@ -1025,7 +1027,7 @@ public func __checkClosureCall<E>(
     isRequired: isRequired,
     isolation: isolation,
     sourceLocation: sourceLocation
-  )
+  ).map { $0 as? E }
 }
 
 // MARK: - Arbitrary error matching
@@ -1044,10 +1046,11 @@ public func __checkClosureCall<R>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> {
+) -> Result<(any Error)?, any Error> {
   var errorMatches = false
   var mismatchExplanationValue: String? = nil
   var expression = expression
+  var caughtError: (any Error)?
   do {
     let result = try body()
 
@@ -1057,6 +1060,7 @@ public func __checkClosureCall<R>(
     }
     mismatchExplanationValue = explanation
   } catch {
+    caughtError = error
     expression = expression.capturingRuntimeValues(error)
     let secondError = Issue.withErrorRecording(at: sourceLocation) {
       errorMatches = try errorMatcher(error)
@@ -1075,7 +1079,7 @@ public func __checkClosureCall<R>(
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
-  )
+  ).map { caughtError }
 }
 
 /// Check that an expression always throws an error.
@@ -1093,10 +1097,11 @@ public func __checkClosureCall<R>(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<Void, any Error> {
+) async -> Result<(any Error)?, any Error> {
   var errorMatches = false
   var mismatchExplanationValue: String? = nil
   var expression = expression
+  var caughtError: (any Error)?
   do {
     let result = try await body()
 
@@ -1106,6 +1111,7 @@ public func __checkClosureCall<R>(
     }
     mismatchExplanationValue = explanation
   } catch {
+    caughtError = error
     expression = expression.capturingRuntimeValues(error)
     let secondError = await Issue.withErrorRecording(at: sourceLocation) {
       errorMatches = try await errorMatcher(error)
@@ -1124,7 +1130,7 @@ public func __checkClosureCall<R>(
     comments: comments(),
     isRequired: isRequired,
     sourceLocation: sourceLocation
-  )
+  ).map { caughtError }
 }
 
 // MARK: - Exit tests
@@ -1133,25 +1139,58 @@ public func __checkClosureCall<R>(
 /// Check that an expression always exits (terminates the current process) with
 /// a given status.
 ///
-/// This overload is used for `await #expect(exitsWith:) { }` invocations. Note
-/// that the `body` argument is thin here because it cannot meaningfully capture
-/// state from the enclosing context.
+/// This overload is used for `await #expect(processExitsWith:) { }` invocations
+/// that do not capture any state.
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-@_spi(Experimental)
 public func __checkClosureCall(
-  exitsWith expectedExitCondition: ExitCondition,
-  observing observedValues: [any PartialKeyPath<ExitTestArtifacts> & Sendable],
-  performing body: @convention(thin) () -> Void,
+  identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
+  processExitsWith expectedExitCondition: ExitTest.Condition,
+  observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
+  performing _: @convention(c) () -> Void,
   expression: __Expression,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<ExitTestArtifacts?, any Error> {
+) async -> Result<ExitTest.Result?, any Error> {
   await callExitTest(
-    exitsWith: expectedExitCondition,
+    identifiedBy: exitTestID,
+    encodingCapturedValues: [],
+    processExitsWith: expectedExitCondition,
+    observing: observedValues,
+    expression: expression,
+    comments: comments(),
+    isRequired: isRequired,
+    sourceLocation: sourceLocation
+  )
+}
+
+/// Check that an expression always exits (terminates the current process) with
+/// a given status.
+///
+/// This overload is used for `await #expect(processExitsWith:) { }` invocations
+/// that capture some values with an explicit capture list.
+///
+/// - Warning: This function is used to implement the `#expect()` and
+///   `#require()` macros. Do not call it directly.
+public func __checkClosureCall<each T>(
+  identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
+  encodingCapturedValues capturedValues: (repeat each T),
+  processExitsWith expectedExitCondition: ExitTest.Condition,
+  observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
+  performing _: @convention(c) () -> Void,
+  expression: __Expression,
+  comments: @autoclosure () -> [Comment],
+  isRequired: Bool,
+  isolation: isolated (any Actor)? = #isolation,
+  sourceLocation: SourceLocation
+) async -> Result<ExitTest.Result?, any Error> where repeat each T: Codable & Sendable {
+  await callExitTest(
+    identifiedBy: exitTestID,
+    encodingCapturedValues: Array(repeat each capturedValues),
+    processExitsWith: expectedExitCondition,
     observing: observedValues,
     expression: expression,
     comments: comments(),

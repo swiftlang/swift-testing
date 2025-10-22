@@ -13,7 +13,7 @@ public struct Issue: Sendable {
   /// Kinds of issues which may be recorded.
   public enum Kind: Sendable {
     /// An issue which occurred unconditionally, for example by using
-    /// ``Issue/record(_:sourceLocation:)``.
+    /// ``Issue/record(_:severity:sourceLocation:)``.
     case unconditional
 
     /// An issue due to a failed expectation, such as those produced by
@@ -60,6 +60,13 @@ public struct Issue: Sendable {
     /// A known issue was expected, but was not recorded.
     case knownIssueNotRecorded
 
+    /// An issue due to an `Error` being thrown while attempting to save an
+    /// attachment to a test report or to disk.
+    ///
+    /// - Parameters:
+    ///   - error: The error which was associated with this issue.
+    case valueAttachmentFailed(_ error: any Error)
+
     /// An issue occurred due to misuse of the testing library.
     case apiMisused
 
@@ -71,6 +78,56 @@ public struct Issue: Sendable {
   /// The kind of issue this value represents.
   public var kind: Kind
 
+  /// An enumeration representing the level of severity of a recorded issue.
+  ///
+  /// The supported levels, in increasing order of severity, are:
+  ///
+  /// - ``warning``
+  /// - ``error``
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
+  public enum Severity: Sendable {
+    /// The severity level for an issue which should be noted but is not
+    /// necessarily an error.
+    ///
+    /// An issue with warning severity does not cause the test it's associated
+    /// with to be marked as a failure, but is noted in the results.
+    case warning
+
+    /// The severity level for an issue which represents an error in a test.
+    ///
+    /// An issue with error severity causes the test it's associated with to be
+    /// marked as a failure.
+    case error
+  }
+
+  /// The severity of this issue.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
+  public var severity: Severity
+  
+  /// Whether or not this issue should cause the test it's associated with to be
+  /// considered a failure.
+  ///
+  /// The value of this property is `true` for issues which have a severity level of
+  /// ``Issue/Severity/error`` or greater and are not known issues via
+  /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
+  /// Otherwise, the value of this property is `false.`
+  ///
+  /// Use this property to determine if an issue should be considered a failure, instead of
+  /// directly comparing the value of the ``severity`` property.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
+  public var isFailure: Bool {
+    return !self.isKnown && self.severity >= .error
+  }
+
   /// Any comments provided by the developer and associated with this issue.
   ///
   /// If no comment was supplied when the issue occurred, the value of this
@@ -81,24 +138,48 @@ public struct Issue: Sendable {
   @_spi(ForToolsIntegrationOnly)
   public var sourceContext: SourceContext
 
+  /// A type representing a
+  /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)`` call
+  /// that matched an issue.
+  @_spi(ForToolsIntegrationOnly)
+  public struct KnownIssueContext: Sendable {
+    /// The comment that was passed to
+    /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)``.
+    public var comment: Comment?
+  }
+
+  /// A ``KnownIssueContext-swift.struct`` representing the
+  /// ``withKnownIssue(_:isIntermittent:sourceLocation:_:when:matching:)`` call
+  /// that matched this issue, if any.
+  @_spi(ForToolsIntegrationOnly)
+  public var knownIssueContext: KnownIssueContext? = nil
+
   /// Whether or not this issue is known to occur.
   @_spi(ForToolsIntegrationOnly)
-  public var isKnown = false
+  public var isKnown: Bool {
+    get { knownIssueContext != nil }
+    @available(*, deprecated, message: "Setting this property has no effect.")
+    set {}
+  }
 
   /// Initialize an issue instance with the specified details.
   ///
   /// - Parameters:
   ///   - kind: The kind of issue this value represents.
+  ///   - severity: The severity of this issue. The default value is
+  ///     ``Severity-swift.enum/error``.
   ///   - comments: An array of comments describing the issue. This array may be
   ///     empty.
   ///   - sourceContext: A ``SourceContext`` indicating where and how this issue
   ///     occurred.
   init(
     kind: Kind,
+    severity: Severity = .error,
     comments: [Comment],
     sourceContext: SourceContext
   ) {
     self.kind = kind
+    self.severity = severity
     self.comments = comments
     self.sourceContext = sourceContext
   }
@@ -146,27 +227,31 @@ public struct Issue: Sendable {
   }
 }
 
+extension Issue.Severity: Comparable {}
+
 // MARK: - CustomStringConvertible, CustomDebugStringConvertible
 
 extension Issue: CustomStringConvertible, CustomDebugStringConvertible {
   public var description: String {
-    if comments.isEmpty {
-      return String(describing: kind)
+    let joinedComments = if comments.isEmpty {
+      ""
+    } else {
+      ": " + comments.lazy
+        .map(\.rawValue)
+        .joined(separator: "\n")
     }
-    let joinedComments = comments.lazy
-      .map(\.rawValue)
-      .joined(separator: "\n")
-    return "\(kind): \(joinedComments)"
+    return "\(kind) (\(severity))\(joinedComments)"
   }
 
   public var debugDescription: String {
-    if comments.isEmpty {
-      return "\(kind)\(sourceLocation.map { " at \($0)" } ?? "")"
+    let joinedComments = if comments.isEmpty {
+      ""
+    } else {
+      ": " + comments.lazy
+        .map(\.rawValue)
+        .joined(separator: "\n")
     }
-    let joinedComments: String = comments.lazy
-      .map(\.rawValue)
-      .joined(separator: "\n")
-    return "\(kind)\(sourceLocation.map { " at \($0)" } ?? ""): \(joinedComments)"
+    return "\(kind)\(sourceLocation.map { " at \($0)" } ?? "") (\(severity))\(joinedComments)"
   }
 }
 
@@ -175,11 +260,9 @@ extension Issue: CustomStringConvertible, CustomDebugStringConvertible {
 /// In the future, when our minimum deployment target supports casting a value
 /// to a constrained existential type ([SE-0353](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0353-constrained-existential-types.md#effect-on-abi-stability)),
 /// we can remove this protocol and cast to `RangeExpression<Int>` instead.
-private protocol _RangeExpressionOverIntValues: RangeExpression where Bound == Int {}
+private protocol _RangeExpressionOverIntValues: RangeExpression & Sequence where Bound == Int, Element == Int {}
 extension ClosedRange<Int>: _RangeExpressionOverIntValues {}
 extension PartialRangeFrom<Int>: _RangeExpressionOverIntValues {}
-extension PartialRangeThrough<Int>: _RangeExpressionOverIntValues {}
-extension PartialRangeUpTo<Int>: _RangeExpressionOverIntValues {}
 extension Range<Int>: _RangeExpressionOverIntValues {}
 
 extension Issue.Kind: CustomStringConvertible {
@@ -200,9 +283,15 @@ extension Issue.Kind: CustomStringConvertible {
       }
     case let .confirmationMiscounted(actual: actual, expected: expected):
       if let expected = expected as? any _RangeExpressionOverIntValues {
-        let expected = expected.relative(to: [])
-        if expected.upperBound > expected.lowerBound && expected.lowerBound == expected.upperBound - 1 {
-          return "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(expected.lowerBound.counting("time"))"
+        let lowerBound = expected.first { _ in true }
+        if let lowerBound {
+          // Not actually an upper bound, just "any value greater than the lower
+          // bound." That's sufficient for us to determine if the range contains
+          // a single value.
+          let upperBound = expected.first { $0 > lowerBound }
+          if upperBound == nil {
+            return "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(lowerBound.counting("time"))"
+          }
         }
       }
       return "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(String(describingForTest: expected)) time(s)"
@@ -212,10 +301,23 @@ extension Issue.Kind: CustomStringConvertible {
       return "Time limit was exceeded: \(TimeValue(timeLimitComponents))"
     case .knownIssueNotRecorded:
       return "Known issue was not recorded"
+    case let .valueAttachmentFailed(error):
+      return "Caught error while saving attachment: \(error)"
     case .apiMisused:
       return "An API was misused"
     case .system:
       return "A system failure occurred"
+    }
+  }
+}
+
+extension Issue.Severity: CustomStringConvertible {
+  public var description: String {
+    switch self {
+    case .warning:
+      "warning"
+    case .error:
+      "error"
     }
   }
 }
@@ -230,6 +332,13 @@ extension Issue {
     /// The kind of issue this value represents.
     public var kind: Kind.Snapshot
 
+    /// The severity of this issue.
+    /// 
+    /// @Metadata {
+    ///   @Available(Swift, introduced: 6.3)
+    /// }
+    public var severity: Severity
+
     /// Any comments provided by the developer and associated with this issue.
     ///
     /// If no comment was supplied when the issue occurred, the value of this
@@ -240,7 +349,7 @@ extension Issue {
     public var sourceContext: SourceContext
 
     /// Whether or not this issue is known to occur.
-    public var isKnown = false
+    public var isKnown: Bool = false
 
     /// Initialize an issue instance with the specified details.
     ///
@@ -254,8 +363,20 @@ extension Issue {
         self.kind = Issue.Kind.Snapshot(snapshotting: issue.kind)
         self.comments = issue.comments
       }
+      self.severity = issue.severity
       self.sourceContext = issue.sourceContext
       self.isKnown = issue.isKnown
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      self.kind = try container.decode(Issue.Kind.Snapshot.self, forKey: .kind)
+      self.comments = try container.decode([Comment].self, forKey: .comments)
+      self.sourceContext = try container.decode(SourceContext.self, forKey: .sourceContext)
+      self.isKnown = try container.decode(Bool.self, forKey: .isKnown)
+
+      // Severity is a new field, so fall back to .error if it's not present.
+      self.severity = try container.decodeIfPresent(Issue.Severity.self, forKey: .severity) ?? .error
     }
 
     /// The error which was associated with this issue, if any.
@@ -281,12 +402,14 @@ extension Issue {
   }
 }
 
+extension Issue.Severity: Codable {}
+
 extension Issue.Kind {
   /// Serializable kinds of issues which may be recorded.
   @_spi(ForToolsIntegrationOnly)
   public enum Snapshot: Sendable, Codable {
     /// An issue which occurred unconditionally, for example by using
-    /// ``Issue/record(_:sourceLocation:)``.
+    /// ``Issue/record(_:severity:sourceLocation:)``.
     case unconditional
 
     /// An issue due to a failed expectation, such as those produced by
@@ -341,8 +464,11 @@ extension Issue.Kind {
     /// within the tests being run.
     case system
 
-    /// Snapshots an ``Issue.Kind``.
-    /// - Parameter kind: The original ``Issue.Kind`` to snapshot.
+    /// Initialize an instance of this type by snapshotting the specified issue
+    /// kind.
+    ///
+    /// - Parameters:
+    ///   - kind: The original issue kind to snapshot.
     public init(snapshotting kind: Issue.Kind) {
       self = switch kind {
       case .unconditional:
@@ -351,7 +477,7 @@ extension Issue.Kind {
           .expectationFailed(Expectation.Snapshot(snapshotting: expectation))
       case .confirmationMiscounted:
           .unconditional
-      case let .errorCaught(error):
+      case let .errorCaught(error), let .valueAttachmentFailed(error):
           .errorCaught(ErrorSnapshot(snapshotting: error))
       case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
           .timeLimitExceeded(timeLimitComponents: timeLimitComponents)
@@ -461,23 +587,25 @@ extension Issue.Kind {
 
 extension Issue.Snapshot: CustomStringConvertible, CustomDebugStringConvertible {
   public var description: String {
-    if comments.isEmpty {
-      return String(describing: kind)
+    let joinedComments = if comments.isEmpty {
+      ""
+    } else {
+      ": " + comments.lazy
+        .map(\.rawValue)
+        .joined(separator: "\n")
     }
-    let joinedComments = comments.lazy
-      .map(\.rawValue)
-      .joined(separator: "\n")
-    return "\(kind): \(joinedComments)"
+    return "\(kind) (\(severity))\(joinedComments)"
   }
 
   public var debugDescription: String {
-    if comments.isEmpty {
-      return "\(kind)\(sourceLocation.map { " at \($0)" } ?? "")"
+    let joinedComments = if comments.isEmpty {
+      ""
+    } else {
+      ": " + comments.lazy
+        .map(\.rawValue)
+        .joined(separator: "\n")
     }
-    let joinedComments: String = comments.lazy
-      .map(\.rawValue)
-      .joined(separator: "\n")
-    return "\(kind)\(sourceLocation.map { " at \($0)" } ?? ""): \(joinedComments)"
+    return "\(kind)\(sourceLocation.map { " at \($0)" } ?? "") (\(severity))\(joinedComments)"
   }
 }
 

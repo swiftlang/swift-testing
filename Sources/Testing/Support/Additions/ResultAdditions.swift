@@ -31,16 +31,27 @@ extension Result {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __expected<T>() -> Success where Success == T? {
+  @discardableResult @inlinable public func __expected<T>() -> Success where Success == T? {
     try? get()
   }
 
   /// Handle this instance as if it were returned from a call to `#require()`.
   ///
+  /// This overload of `__require()` assumes that the result cannot actually be
+  /// `nil` on success. The optionality is part of our ABI contract for the
+  /// `__check()` function family so that we can support uninhabited types and
+  /// "soft" failures.
+  ///
+  /// If the value really is `nil` (e.g. we're dealing with `Never`), the
+  /// testing library throws an error representing an issue of kind
+  /// ``Issue/Kind-swift.enum/apiMisused``.
+  ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __required<T>() throws -> T where Success == T? {
-    // TODO: handle edge case where the value is nil (see #780)
-    try get()!
+  @discardableResult public func __required<T>() throws -> T where Success == T? {
+    guard let result = try get() else {
+      throw APIMisuseError(description: "Could not unwrap 'nil' value of type Optional<\(T.self)>. Consider using #expect() instead of #require() here.")
+    }
+    return result
   }
 }

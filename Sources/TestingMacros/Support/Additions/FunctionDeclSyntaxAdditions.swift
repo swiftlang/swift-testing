@@ -9,6 +9,7 @@
 //
 
 import SwiftSyntax
+import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
 extension FunctionDeclSyntax {
@@ -33,18 +34,36 @@ extension FunctionDeclSyntax {
       .contains(.keyword(.nonisolated))
   }
 
+  /// Whether or not this function declares an operator.
+  var isOperator: Bool {
+    switch name.tokenKind {
+    case .binaryOperator, .prefixOperator, .postfixOperator:
+      true
+    default:
+      false
+    }
+  }
+
   /// The name of this function including parentheses, parameter labels, and
   /// colons.
-  var completeName: String {
-    var result = [name.textWithoutBackticks, "(",]
-
-    for parameter in signature.parameterClause.parameters {
-      result.append(parameter.firstName.textWithoutBackticks)
-      result.append(":")
+  var completeName: DeclReferenceExprSyntax {
+    func possiblyRaw(_ token: TokenSyntax) -> TokenSyntax {
+      if let rawIdentifier = token.rawIdentifier {
+        return .identifier("`\(rawIdentifier)`")
+      }
+      return .identifier(token.textWithoutBackticks)
     }
-    result.append(")")
 
-    return result.joined()
+    return DeclReferenceExprSyntax(
+      baseName: possiblyRaw(name),
+      argumentNames: DeclNameArgumentsSyntax(
+        arguments: DeclNameArgumentListSyntax {
+          for parameter in signature.parameterClause.parameters {
+            DeclNameArgumentSyntax(name: possiblyRaw(parameter.firstName))
+          }
+        }
+      )
+    )
   }
 
   /// An array of tuples representing this function's parameters.
@@ -68,14 +87,8 @@ extension FunctionDeclSyntax {
   var xcTestCompatibleSelector: ObjCSelectorPieceListSyntax? {
     // First, look for an @objc attribute with an explicit selector, and use
     // that if found.
-    let objcAttribute = attributes.lazy
-      .compactMap {
-        if case let .attribute(attribute) = $0 {
-          return attribute
-        }
-        return nil
-      }.first { $0.attributeNameText == "objc" }
-    if let objcAttribute, case let .objCName(objCName) = objcAttribute.arguments {
+    if let objcAttribute = attributes(named: "objc", inModuleNamed: "Swift").first,
+       case let .objCName(objCName) = objcAttribute.arguments {
       if true == objCName.first?.name?.textWithoutBackticks.hasPrefix("test") {
         return objCName
       }
@@ -167,5 +180,17 @@ extension FunctionParameterSyntax {
     // trying to obtain the base type to reference it in an expression.
     let baseType = type.as(AttributedTypeSyntax.self)?.baseType ?? type
     return baseType.trimmedDescription
+  }
+}
+
+// MARK: -
+
+extension ExprSyntax {
+  /// An expression representing an unreachable code path.
+  ///
+  /// Use this expression when a macro will emit an error diagnostic but the
+  /// compiler still requires us to produce a valid expression.
+  static var unreachable: Self {
+    #"Swift.fatalError("Unreachable")"#
   }
 }

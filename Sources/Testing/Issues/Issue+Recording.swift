@@ -9,14 +9,6 @@
 //
 
 extension Issue {
-  /// The known issue matcher, as set by `withKnownIssue()`, associated with the
-  /// current task.
-  ///
-  /// If there is no call to `withKnownIssue()` executing on the current task,
-  /// the value of this property is `nil`.
-  @TaskLocal
-  static var currentKnownIssueMatcher: KnownIssueMatcher?
-
   /// Record this issue by wrapping it in an ``Event`` and passing it to the
   /// current event handler.
   ///
@@ -27,20 +19,20 @@ extension Issue {
   /// - Returns: The issue that was recorded (`self` or a modified copy of it.)
   @discardableResult
   func record(configuration: Configuration? = nil) -> Self {
-    // If this issue is a caught error of kind SystemError, reinterpret it as a
-    // testing system issue instead (per the documentation for SystemError.)
-    if case let .errorCaught(error) = kind, let error = error as? SystemError {
-      var selfCopy = self
-      selfCopy.kind = .system
-      selfCopy.comments.append(Comment(rawValue: String(describingForTest: error)))
-      return selfCopy.record(configuration: configuration)
+    // If this issue is a caught error that has a custom issue representation,
+    // perform that customization now.
+    if case let .errorCaught(error) = kind {
+      if let error = error as? any CustomIssueRepresentable {
+        let selfCopy = error.customize(self)
+        return selfCopy.record(configuration: configuration)
+      }
     }
 
     // If this issue matches via the known issue matcher, set a copy of it to be
     // known and record the copy instead.
-    if !isKnown, let issueMatcher = Self.currentKnownIssueMatcher, issueMatcher(self) {
+    if !isKnown, let context = KnownIssueScope.current?.matcher(self) {
       var selfCopy = self
-      selfCopy.isKnown = true
+      selfCopy.knownIssueContext = context
       return selfCopy.record(configuration: configuration)
     }
 
@@ -58,7 +50,7 @@ extension Issue {
     return self
   }
 
-  /// Record an issue when a running test fails unexpectedly.
+  /// Records an issue that a test encounters while it's running.
   ///
   /// - Parameters:
   ///   - comment: A comment describing the expectation.
@@ -70,12 +62,42 @@ extension Issue {
   /// Use this function if, while running a test, an issue occurs that cannot be
   /// represented as an expectation (using the ``expect(_:_:sourceLocation:)``
   /// or ``require(_:_:sourceLocation:)-5l63q`` macros.)
+  @_disfavoredOverload
+  @_documentation(visibility: private)
+  @available(*, deprecated, message: "Use record(_:severity:sourceLocation:) instead.")
   @discardableResult public static func record(
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
+    record(comment, severity: .error, sourceLocation: sourceLocation)
+  }
+
+  /// Records an issue that a test encounters while it's running.
+  ///
+  /// - Parameters:
+  ///   - comment: A comment describing the expectation.
+  ///   - severity: The severity level of the issue.  The testing library marks the
+  ///   test as failed if the severity is greater than ``Issue/Severity/warning``.
+  ///   The default is ``Issue/Severity/error``.
+  ///   - sourceLocation: The source location to which the issue should be
+  ///     attributed.
+  ///
+  /// - Returns: The issue that was recorded.
+  ///
+  /// Use this function if, while running a test, an issue occurs that cannot be
+  /// represented as an expectation (using the ``expect(_:_:sourceLocation:)``
+  /// or ``require(_:_:sourceLocation:)-5l63q`` macros.)
+  /// 
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
+  @discardableResult public static func record(
+    _ comment: Comment? = nil,
+    severity: Severity = .error,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) -> Self {
     let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
-    let issue = Issue(kind: .unconditional, comments: Array(comment), sourceContext: sourceContext)
+    let issue = Issue(kind: .unconditional, severity: severity, comments: Array(comment), sourceContext: sourceContext)
     return issue.record()
   }
 }
@@ -102,9 +124,34 @@ extension Issue {
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
+    record(error, comment, severity: .error, sourceLocation: sourceLocation)
+  }
+  
+  /// Record a new issue when a running test unexpectedly catches an error.
+  ///
+  /// - Parameters:
+  ///   - error: The error that caused the issue.
+  ///   - comment: A comment describing the expectation.
+  ///   - severity: The severity of the issue.
+  ///   - sourceLocation: The source location to which the issue should be
+  ///     attributed.
+  ///
+  /// - Returns: The issue that was recorded.
+  ///
+  /// This function can be used if an unexpected error is caught while running a
+  /// test and it should be treated as a test failure. If an error is thrown
+  /// from a test function, it is automatically recorded as an issue and this
+  /// function does not need to be used.
+  @_spi(Experimental)
+  @discardableResult public static func record(
+    _ error: any Error,
+    _ comment: Comment? = nil,
+    severity: Severity,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) -> Self {
     let backtrace = Backtrace(forFirstThrowOf: error) ?? Backtrace.current()
     let sourceContext = SourceContext(backtrace: backtrace, sourceLocation: sourceLocation)
-    let issue = Issue(kind: .errorCaught(error), comments: Array(comment), sourceContext: sourceContext)
+    let issue = Issue(kind: .errorCaught(error), severity: severity, comments: Array(comment), sourceContext: sourceContext)
     return issue.record()
   }
 
@@ -112,7 +159,8 @@ extension Issue {
   /// allowing it to propagate to the caller.
   ///
   /// - Parameters:
-  ///   - sourceLocation: The source location to attribute any caught error to.
+  ///   - sourceLocation: The source location to attribute any caught error to,
+  ///     if available.
   ///   - configuration: The test configuration to use when recording an issue.
   ///     The default value is ``Configuration/current``.
   ///   - body: A closure that might throw an error.
@@ -121,7 +169,7 @@ extension Issue {
   ///   caught, otherwise `nil`.
   @discardableResult
   static func withErrorRecording(
-    at sourceLocation: SourceLocation,
+    at sourceLocation: SourceLocation?,
     configuration: Configuration? = nil,
     _ body: () throws -> Void
   ) -> (any Error)? {
@@ -138,6 +186,9 @@ extension Issue {
       // This error is thrown by expectation checking functions to indicate a
       // condition evaluated to `false`. Those functions record their own issue,
       // so we don't need to record another one redundantly.
+    } catch let error where SkipInfo(error) != nil {
+      // This error represents control flow rather than an issue, so we suppress
+      // it here.
     } catch {
       let issue = Issue(for: error, sourceLocation: sourceLocation)
       issue.record(configuration: configuration)
@@ -151,7 +202,8 @@ extension Issue {
   /// issue instead of allowing it to propagate to the caller.
   ///
   /// - Parameters:
-  ///   - sourceLocation: The source location to attribute any caught error to.
+  ///   - sourceLocation: The source location to attribute any caught error to,
+  ///     if available.
   ///   - configuration: The test configuration to use when recording an issue.
   ///     The default value is ``Configuration/current``.
   ///   - isolation: The actor to which `body` is isolated, if any.
@@ -161,7 +213,7 @@ extension Issue {
   ///   caught, otherwise `nil`.
   @discardableResult
   static func withErrorRecording(
-    at sourceLocation: SourceLocation,
+    at sourceLocation: SourceLocation?,
     configuration: Configuration? = nil,
     isolation: isolated (any Actor)? = #isolation,
     _ body: () async throws -> Void
@@ -179,6 +231,9 @@ extension Issue {
       // This error is thrown by expectation checking functions to indicate a
       // condition evaluated to `false`. Those functions record their own issue,
       // so we don't need to record another one redundantly.
+    } catch let error where SkipInfo(error) != nil {
+      // This error represents control flow rather than an issue, so we suppress
+      // it here.
     } catch {
       let issue = Issue(for: error, sourceLocation: sourceLocation)
       issue.record(configuration: configuration)

@@ -9,6 +9,7 @@
 //
 
 import SwiftSyntax
+import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
 /// A structure describing a single platform/version pair from an `@available()`
@@ -22,6 +23,10 @@ struct Availability {
 
   /// The platform version, such as 1.2.3, if any.
   var version: VersionTupleSyntax?
+
+  /// Whether or not this availability attribute may need a trailing wildcard
+  /// (`*`) when it is expanded into `@available()` or `#available()`.
+  var mayNeedTrailingWildcard = true
 
   /// The `message` argument to the attribute, if any.
   var message: SimpleStringLiteralExprSyntax?
@@ -69,13 +74,14 @@ private func _createAvailabilityTraitExpr(
     "(\(literal: components.major), \(literal: components.minor), \(literal: components.patch))"
   } ?? "nil"
   let message = availability.message.map(\.trimmed).map(ExprSyntax.init) ?? "nil"
+  let trailingWildcard = availability.mayNeedTrailingWildcard ? ", *" : ""
   let sourceLocationExpr = createSourceLocationExpr(of: availability.attribute, context: context)
 
   switch (whenKeyword, availability.isSwift) {
   case (.introduced, false):
     return """
     .__available(\(literal: availability.platformName!.textWithoutBackticks), introduced: \(version), message: \(message), sourceLocation: \(sourceLocationExpr)) {
-      if #available(\(availability.platformVersion!), *) {
+      if #available(\(availability.platformVersion!)\(raw: trailingWildcard)) {
         return true
       }
       return false
@@ -114,8 +120,25 @@ private func _createAvailabilityTraitExpr(
     }
     """
 
-  case (.unavailable, _):
-    return ".__unavailable(message: \(message), sourceLocation: \(sourceLocationExpr))"
+  case (.unavailable, true):
+    // @available(swift, unavailable) is unsupported. The compiler emits a
+    // warning but doesn't prevent calling the function. Emit a no-op.
+    return ".enabled(if: true)"
+
+  case (.unavailable, false):
+    if let platformName = availability.platformName {
+      return """
+      .__available(\(literal: platformName.textWithoutBackticks), obsoleted: nil, message: \(message), sourceLocation: \(sourceLocationExpr)) {
+        #if os(\(platformName.trimmed))
+        return false
+        #else
+        return true
+        #endif
+      }
+      """
+    } else {
+      return ".__unavailable(message: \(message), sourceLocation: \(sourceLocationExpr))"
+    }
 
   default:
     fatalError("Unsupported keyword \(whenKeyword) passed to \(#function). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
@@ -151,6 +174,11 @@ func createAvailabilityTraitExprs(
     _createAvailabilityTraitExpr(from: availability, when: .obsoleted, in: context)
   }
 
+  if let attribute = decl.unavailableInEmbeddedAttribute {
+    let sourceLocationExpr = createSourceLocationExpr(of: attribute, context: context)
+    result += [".__unavailableInEmbedded(sourceLocation: \(sourceLocationExpr))"]
+  }
+
   return result
 }
 
@@ -184,8 +212,8 @@ func createSyntaxNode(
   do {
     let availableExprs: [ExprSyntax] = decl.availability(when: .introduced).lazy
       .filter { !$0.isSwift }
-      .compactMap(\.platformVersion)
-      .map { "#available(\($0), *)" }
+      .compactMap { ($0.platformVersion, $0.mayNeedTrailingWildcard ? ", *" : "") }
+      .map { "#available(\($0.0)\(raw: $0.1))" }
     if !availableExprs.isEmpty {
       let conditionList = ConditionElementListSyntax {
         for availableExpr in availableExprs {
@@ -203,14 +231,14 @@ func createSyntaxNode(
 
   // As above, but for unavailability (`#unavailable(...)`.)
   do {
-    let unavailableExprs: [ExprSyntax] = decl.availability(when: .obsoleted).lazy
+    let obsoletedExprs: [ExprSyntax] = decl.availability(when: .obsoleted).lazy
       .filter { !$0.isSwift }
       .compactMap(\.platformVersion)
       .map { "#unavailable(\($0))" }
-    if !unavailableExprs.isEmpty {
+    if !obsoletedExprs.isEmpty {
       let conditionList = ConditionElementListSyntax {
-        for unavailableExpr in unavailableExprs {
-          unavailableExpr
+        for obsoletedExpr in obsoletedExprs {
+          obsoletedExpr
         }
       }
       result = """
@@ -219,6 +247,23 @@ func createSyntaxNode(
       }
       \(result)
       """
+    }
+
+    let unavailableExprs: [ExprSyntax] = decl.availability(when: .unavailable).lazy
+      .filter { !$0.isSwift }
+      .filter { $0.version == nil }
+      .compactMap(\.platformName)
+      .map { "os(\($0.trimmed))" }
+    if !unavailableExprs.isEmpty {
+      for unavailableExpr in unavailableExprs {
+        result = """
+        #if \(unavailableExpr)
+        \(exitStatement)
+        #else
+        \(result)
+        #endif
+        """
+      }
     }
   }
 
@@ -253,6 +298,17 @@ func createSyntaxNode(
       #endif
       """
     }
+  }
+
+  // Handle Embedded Swift.
+  if decl.unavailableInEmbeddedAttribute != nil {
+    result = """
+      #if !hasFeature(Embedded)
+      \(result)
+      #else
+      \(exitStatement)
+      #endif
+      """
   }
 
   return result

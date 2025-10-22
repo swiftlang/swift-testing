@@ -48,11 +48,10 @@ and install a toolchain.
 
 #### Installing a toolchain
 
-1. Download a toolchain. A recent **6.0 development snapshot** toolchain is
-   required to build the testing library. Visit
-   [swift.org](http://swift.org/install) and download the most recent toolchain
-   from the section titled **release/6.0** under **Development Snapshots** on
-   the page for your platform.
+1. Download a toolchain. A recent **development snapshot** toolchain is required
+   to build the testing library. Visit [swift.org](https://swift.org/install),
+   select your platform, and download the most recent toolchain from the section
+   titled **release/6.x** under **Development Snapshots**.
 
    Be aware that development snapshot toolchains aren't intended for day-to-day
    development and may contain defects that affect the programs built with them.
@@ -97,6 +96,48 @@ $> swift test
 To learn how to run only specific tests or other testing options, run `swift
 test --help` to view the usage documentation.
 -->
+
+## Using CMake to build the project for macOS
+
+1. Install [CMake](https://cmake.org/) and [Ninja](https://ninja-build.org/).
+   - See the [Installing Dependencies](https://github.com/swiftlang/swift/blob/main/docs/HowToGuides/GettingStarted.md#macos)
+     section of the Swift [Getting Started](https://github.com/swiftlang/swift/blob/main/docs/HowToGuides/GettingStarted.md)
+     guide for instructions.
+
+1. Run the following command from the root of this repository to configure the
+   project to build using CMake (using the Ninja generator):
+
+   ```bash
+   cmake -G Ninja -B build
+   ```
+
+1. Run the following command to perform the build:
+
+   ```bash
+   cmake --build build
+   ```
+
+### Installing built content using CMake
+
+You can use the steps in this section to perform an install. This is primarily
+useful to validate the built content from this project which will be included in
+a Swift toolchain.
+
+1. Run the following command to (re-)configure the project with an install
+   prefix specified:
+
+   ```bash
+   cmake -G Ninja --install-prefix "$(pwd)/build/install" -B build
+   ```
+
+1. Perform the CMake build step as described in the previous section.
+
+1. Run the following command to install the built content into the
+   `build/install/` subdirectory:
+
+   ```bash
+   cmake --install build
+   ```
 
 ## Using Docker on macOS to test for Linux
 

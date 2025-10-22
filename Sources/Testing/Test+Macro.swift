@@ -54,7 +54,7 @@ public typealias __XCTestCompatibleSelector = Never
 ///   - traits: Zero or more traits to apply to this test suite.
 ///
 /// A test suite is a type that contains one or more test functions. Any
-/// copyable type (that is, any type that is not marked `~Copyable`) may be a
+/// escapable type (that is, any type that is not marked `~Escapable`) may be a
 /// test suite.
 ///
 /// The use of the `@Suite` attribute is optional; types are recognized as test
@@ -82,7 +82,7 @@ public macro Suite(
 ///   - traits: Zero or more traits to apply to this test suite.
 ///
 /// A test suite is a type that contains one or more test functions. Any
-/// copyable type (that is, any type that is not marked `~Copyable`) may be a
+/// escapable type (that is, any type that is not marked `~Escapable`) may be a
 /// test suite.
 ///
 /// The use of the `@Suite` attribute is optional; types are recognized as test
@@ -157,16 +157,16 @@ extension Test {
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
-  public static func __function(
+  public static func __function<S>(
     named testFunctionName: String,
-    in containingType: (any ~Copyable.Type)?,
+    in containingType: S.Type?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
     sourceLocation: SourceLocation,
     parameters: [__Parameter] = [],
     testFunction: @escaping @Sendable () async throws -> Void
-  ) -> Self {
+  ) -> Self where S: ~Copyable {
     // Don't use Optional.map here due to a miscompile/crash. Expand out to an
     // if expression instead. SEE: rdar://134280902
     let containingTypeInfo: TypeInfo? = if let containingType {
@@ -217,8 +217,10 @@ public macro Test<C>(
 ///   - collection: A collection of values to pass to the associated test
 ///     function.
 ///
-/// During testing, the associated test function is called once for each element
-/// in `collection`.
+/// You can prefix the expression you pass to `collection` with `try` or `await`.
+/// The testing library evaluates the expression lazily only if it determines
+/// that the associated test will run. During testing, the testing library calls
+/// the associated test function once for each element in `collection`.
 ///
 /// @Comment {
 ///   - Bug: The testing library should support variadic generics.
@@ -239,9 +241,9 @@ extension Test {
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
-  public static func __function<C>(
+  public static func __function<S, C>(
     named testFunctionName: String,
-    in containingType: (any ~Copyable.Type)?,
+    in containingType: S.Type?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
@@ -249,7 +251,7 @@ extension Test {
     sourceLocation: SourceLocation,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
-  ) -> Self where C: Collection & Sendable, C.Element: Sendable {
+  ) -> Self where S: ~Copyable, C: Collection & Sendable, C.Element: Sendable {
     let containingTypeInfo: TypeInfo? = if let containingType {
       TypeInfo(describing: containingType)
     } else {
@@ -270,7 +272,10 @@ extension Test {
 ///   - collection1: A collection of values to pass to `testFunction`.
 ///   - collection2: A second collection of values to pass to `testFunction`.
 ///
-/// During testing, the associated test function is called once for each pair of
+/// You can prefix the expressions you pass to `collection1` or `collection2`
+/// with `try` or `await`. The testing library evaluates the expressions lazily
+/// only if it determines that the associated test will run. During testing, the
+/// testing library calls the associated test function once for each pair of
 /// elements in `collection1` and `collection2`.
 ///
 /// @Comment {
@@ -298,7 +303,10 @@ public macro Test<C1, C2>(
 ///   - collection1: A collection of values to pass to `testFunction`.
 ///   - collection2: A second collection of values to pass to `testFunction`.
 ///
-/// During testing, the associated test function is called once for each pair of
+/// You can prefix the expressions you pass to `collection1` or `collection2`
+/// with `try` or `await`. The testing library evaluates the expressions lazily
+/// only if it determines that the associated test will run. During testing, the
+/// testing library calls the associated test function once for each pair of
 /// elements in `collection1` and `collection2`.
 ///
 /// @Comment {
@@ -324,8 +332,11 @@ public macro Test<C1, C2>(
 ///   - zippedCollections: Two zipped collections of values to pass to
 ///     `testFunction`.
 ///
-/// During testing, the associated test function is called once for each element
-/// in `zippedCollections`.
+/// You can prefix the expression you pass to `zippedCollections` with `try` or
+/// `await`. The testing library evaluates the expression lazily only if it
+/// determines that the associated test will run. During testing, the testing
+/// library calls the associated test function once for each element in
+/// `zippedCollections`.
 ///
 /// @Comment {
 ///   - Bug: The testing library should support variadic generics.
@@ -352,8 +363,11 @@ public macro Test<C1, C2>(
 ///   - zippedCollections: Two zipped collections of values to pass to
 ///     `testFunction`.
 ///
-/// During testing, the associated test function is called once for each element
-/// in `zippedCollections`.
+/// You can prefix the expression you pass to `zippedCollections` with `try` or
+/// `await`. The testing library evaluates the expression lazily only if it
+/// determines that the associated test will run. During testing, the testing
+/// library calls the associated test function once for each element in
+/// `zippedCollections`.
 ///
 /// @Comment {
 ///   - Bug: The testing library should support variadic generics.
@@ -374,9 +388,9 @@ extension Test {
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
-  public static func __function<C1, C2>(
+  public static func __function<S, C1, C2>(
     named testFunctionName: String,
-    in containingType: (any ~Copyable.Type)?,
+    in containingType: S.Type?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
@@ -384,7 +398,7 @@ extension Test {
     sourceLocation: SourceLocation,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
-  ) -> Self where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
+  ) -> Self where S: ~Copyable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let containingTypeInfo: TypeInfo? = if let containingType {
       TypeInfo(describing: containingType)
     } else {
@@ -402,9 +416,9 @@ extension Test {
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
-  public static func __function<C, E1, E2>(
+  public static func __function<S, C, E1, E2>(
     named testFunctionName: String,
-    in containingType: (any ~Copyable.Type)?,
+    in containingType: S.Type?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
@@ -412,7 +426,7 @@ extension Test {
     sourceLocation: SourceLocation,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable ((E1, E2)) async throws -> Void
-  ) -> Self where C: Collection & Sendable, C.Element == (E1, E2), E1: Sendable, E2: Sendable {
+  ) -> Self where S: ~Copyable, C: Collection & Sendable, C.Element == (E1, E2), E1: Sendable, E2: Sendable {
     let containingTypeInfo: TypeInfo? = if let containingType {
       TypeInfo(describing: containingType)
     } else {
@@ -433,9 +447,9 @@ extension Test {
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
-  public static func __function<Key, Value>(
+  public static func __function<S, Key, Value>(
     named testFunctionName: String,
-    in containingType: (any ~Copyable.Type)?,
+    in containingType: S.Type?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
@@ -443,7 +457,7 @@ extension Test {
     sourceLocation: SourceLocation,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable ((Key, Value)) async throws -> Void
-  ) -> Self where Key: Sendable, Value: Sendable {
+  ) -> Self where S: ~Copyable, Key: Sendable, Value: Sendable {
     let containingTypeInfo: TypeInfo? = if let containingType {
       TypeInfo(describing: containingType)
     } else {
@@ -458,9 +472,9 @@ extension Test {
   ///
   /// - Warning: This function is used to implement the `@Test` macro. Do not
   ///   call it directly.
-  public static func __function<C1, C2>(
+  public static func __function<S, C1, C2>(
     named testFunctionName: String,
-    in containingType: (any ~Copyable.Type)?,
+    in containingType: S.Type?,
     xcTestCompatibleSelector: __XCTestCompatibleSelector?,
     displayName: String? = nil,
     traits: [any TestTrait],
@@ -468,7 +482,7 @@ extension Test {
     sourceLocation: SourceLocation,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
-  ) -> Self where C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
+  ) -> Self where S: ~Copyable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let containingTypeInfo: TypeInfo? = if let containingType {
       TypeInfo(describing: containingType)
     } else {
@@ -483,6 +497,39 @@ extension Test {
     return Self(name: testFunctionName, displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo, xcTestCompatibleSelector: xcTestCompatibleSelector, testCases: caseGenerator, parameters: parameters)
   }
 }
+
+// MARK: - Test pragmas
+
+/// A macro used similarly to `#pragma` in C or `@_semantics` in the standard
+/// library.
+///
+/// - Parameters:
+///   - arguments: Zero or more context-specific arguments.
+///
+/// The use cases for this macro are subject to change over time as the needs of
+/// the testing library change. The implementation of this macro in the
+/// TestingMacros target determines how different arguments are handled.
+///
+/// - Note: This macro has compile-time effects _only_ and should not affect a
+///   compiled test target.
+///
+/// - Warning: This macro is used to implement other macros declared by the
+///   testing library. Do not use it directly.
+@attached(peer) public macro __testing(
+  semantics arguments: _const String...
+) = #externalMacro(module: "TestingMacros", type: "PragmaMacro")
+
+/// A macro used similarly to `#warning()` but in a position where only an
+/// attribute is valid.
+///
+/// - Parameters:
+///   - message: A string to emit as a warning.
+///
+/// - Warning: This macro is used to implement other macros declared by the
+///   testing library. Do not use it directly.
+@attached(peer) public macro __testing(
+  warning message: _const String
+) = #externalMacro(module: "TestingMacros", type: "PragmaMacro")
 
 // MARK: - Helper functions
 
@@ -501,6 +548,15 @@ extension Test {
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
 @inlinable public func __requiringAwait<T>(_ value: consuming T, isolation: isolated (any Actor)? = #isolation) async -> T where T: ~Copyable {
+  value
+}
+
+/// A function that abstracts away whether or not the `unsafe` keyword is needed
+/// on an expression.
+///
+/// - Warning: This function is used to implement the `@Test` macro. Do not use
+///   it directly.
+@unsafe @inlinable public func __requiringUnsafe<T>(_ value: consuming T) -> T where T: ~Copyable {
   value
 }
 

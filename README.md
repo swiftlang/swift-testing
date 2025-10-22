@@ -13,6 +13,9 @@ See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 Swift Testing is a package with expressive and intuitive APIs that make testing
 your Swift code a breeze.
 
+[![CI status badge for main branch using main toolchain](https://github.com/swiftlang/swift-testing/actions/workflows/main_using_main.yml/badge.svg?branch=main&event=push)](https://github.com/swiftlang/swift-testing/actions/workflows/main_using_main.yml)
+[![CI status badge for main branch using 6.2 toolchain](https://github.com/swiftlang/swift-testing/actions/workflows/main_using_release.yml/badge.svg?branch=main&event=push)](https://github.com/swiftlang/swift-testing/actions/workflows/main_using_release.yml)
+
 ## Feature overview
 
 ### Clear, expressive API
@@ -23,6 +26,8 @@ Swift expressions and operators, and captures the evaluated values so you can
 quickly understand what went wrong when a test fails.
 
 ```swift
+import Testing
+
 @Test func helloWorld() {
   let greeting = "Hello, world!"
   #expect(greeting == "Hello") // Expectation failed: (greeting → "Hello, world!") == "Hello"
@@ -84,25 +89,31 @@ func mentionedContinents(videoName: String) async throws {
 
 ### Cross-platform support
 
-Swift Testing works on all major platforms supported by Swift, including Apple
-platforms, Linux, and Windows, so your tests can behave more consistently when
-moving between platforms. It’s developed as open source and discussed on the
-[Swift Forums](https://forums.swift.org/c/related-projects/swift-testing) so the
-very best ideas, from anywhere, can help shape the future of testing in Swift.
+Swift Testing is included in officially-supported Swift toolchains, including
+those for Apple platforms, Linux, and Windows. To use the library, import the
+`Testing` module:
+
+```swift
+import Testing
+```
+
+You don't need to declare a package dependency to use Swift Testing. It's
+developed as open source and discussed on the
+[Swift Forums](https://forums.swift.org/c/development/swift-testing/103)
+so the very best ideas, from anywhere, can help shape the future of testing in
+Swift.
 
 The table below describes the current level of support that Swift Testing has
 for various platforms:
 
-| **Platform** | **CI Status (6.0)** | **CI Status (main)** | **Support Status** |
-|---|:-:|:-:|---|
-| **macOS** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-6.0-macos)](https://ci.swift.org/job/swift-testing-main-swift-6.0-macos/) | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-macos)](https://ci.swift.org/view/Swift%20Packages/job/swift-testing-main-swift-main-macos/) | Supported |
-| **iOS** | | | Supported |
-| **watchOS** | | | Supported |
-| **tvOS** | | | Supported |
-| **visionOS** | | | Supported |
-| **Ubuntu 22.04** | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-6.0-linux)](https://ci.swift.org/job/swift-testing-main-swift-6.0-linux/) | [![Build Status](https://ci.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-linux)](https://ci.swift.org/view/Swift%20Packages/job/swift-testing-main-swift-main-linux/) | Supported |
-| **Windows** | | [![Build Status](https://ci-external.swift.org/buildStatus/icon?job=swift-testing-main-swift-main-windows)](https://ci-external.swift.org/job/swift-testing-main-swift-main-windows/) | Supported |
-| **Wasm** | | | Experimental |
+| **Platform** | **Support Status** |
+|-|-|
+| Apple platforms | Supported |
+| Linux | Supported |
+| Windows | Supported |
+| FreeBSD, OpenBSD | Experimental |
+| Wasm | Experimental |
+| Android | Experimental |
 
 ### Works with XCTest
 
@@ -112,18 +123,17 @@ incrementally, at your own pace.
 
 ## Documentation
 
-> [!IMPORTANT]
-> This package is under active, ongoing development and requires a recent
-> **6.0 development snapshot** toolchain. Its contents and interfaces are still
-> considered experimental at this time and may change. See this
-> [Forum post](https://forums.swift.org/t/an-update-on-swift-testing-progress-and-stable-release-plans/71455)
-> for details about stable release plans.
-
 Detailed documentation for Swift Testing can be found on the
 [Swift Package Index](https://swiftpackageindex.com/swiftlang/swift-testing/main/documentation/testing).
 There, you can delve into comprehensive guides, tutorials, and API references to
 make the most out of this package. Swift Testing is included with the Swift 6
-toolchain and Xcode 16.
+toolchain and Xcode 16.  You do not need to add it as a package dependency to
+your Swift package or Xcode project.
+
+> [!IMPORTANT]
+> Swift Testing depends on upcoming language and compiler features. If you are
+> building Swift Testing from source, be aware that the main branch of this
+> repository requires a recent **main-branch development snapshot** toolchain.
 
 Other documentation resources for this project can be found in the
 [README](https://github.com/swiftlang/swift-testing/blob/main/Documentation/README.md) 

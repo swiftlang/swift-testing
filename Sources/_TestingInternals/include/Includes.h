@@ -26,8 +26,15 @@
 ///
 /// - Note: Avoid including headers that aren't actually used.
 
+#include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
+/// limits.h must be included before stdlib.h with glibc, otherwise the
+/// fortified realpath() in this module will differ from the one in SwiftGlibc.
+/// glibc bug: https://sourceware.org/bugzilla/show_bug.cgi?id=30516
+#if __has_include(<limits.h>)
+#include <limits.h>
+#endif
 /// Guard against including `signal.h` on WASI. The `signal.h` header file
 /// itself is available in wasi-libc, but it's just a stub that doesn't actually
 /// do anything. And also including it requires a special macro definition
@@ -50,6 +57,10 @@
 #include <fcntl.h>
 #elif __has_include(<sys/fcntl.h>)
 #include <sys/fcntl.h>
+#endif
+
+#if __has_include(<gnu/libc-version.h>)
+#include <gnu/libc-version.h>
 #endif
 
 #if __has_include(<sys/resource.h>) && !defined(__wasi__)
@@ -80,16 +91,16 @@
 #include <pthread.h>
 #endif
 
+#if __has_include(<pthread_np.h>)
+#include <pthread_np.h>
+#endif
+
 #if __has_include(<pty.h>)
 #include <pty.h>
 #endif
 
 #if __has_include(<pwd.h>)
 #include <pwd.h>
-#endif
-
-#if __has_include(<limits.h>)
-#include <limits.h>
 #endif
 
 #if __has_include(<spawn.h>)
@@ -123,10 +134,25 @@
 #if !SWT_NO_LIBDISPATCH
 #include <dispatch/dispatch.h>
 #endif
+
+#if !SWT_NO_DYNAMIC_LINKING
+#include <mach-o/dyld.h>
+#endif
+
+#if !SWT_NO_OS_UNFAIR_LOCK
+#include <os/lock.h>
+#endif
+#endif
+
+#if defined(__FreeBSD__)
+#include <libutil.h>
+#endif
+
+#if defined(__OpenBSD__)
+#include <util.h>
 #endif
 
 #if defined(_WIN32)
-#define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <Windows.h>
 #include <ntstatus.h>

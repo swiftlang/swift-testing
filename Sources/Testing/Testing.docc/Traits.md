@@ -10,14 +10,14 @@ See https://swift.org/LICENSE.txt for license information
 See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 -->
 
-Add traits to tests to annotate them or customize their behavior.
+Annotate test functions and suites, and customize their behavior.
 
 ## Overview
 
 Pass built-in traits to test functions or suite types to comment, categorize, 
-classify, and modify runtime behaviors. You can also use the ``Trait``, ``TestTrait``, 
-and ``SuiteTrait`` protocols to create your own types that customize the 
-behavior of test functions.
+classify, and modify the runtime behavior of test suites and test functions.
+Implement the ``TestTrait``, and ``SuiteTrait`` protocols to create your own
+types that customize the behavior of your tests.
 
 ## Topics
 
@@ -30,7 +30,7 @@ behavior of test functions.
 - ``Trait/disabled(_:sourceLocation:)``
 - ``Trait/disabled(if:_:sourceLocation:)``
 - ``Trait/disabled(_:sourceLocation:_:)``
-- ``Trait/timeLimit(_:)``
+- ``Trait/timeLimit(_:)-4kzjp``
 
 ### Running tests serially or in parallel
 
@@ -48,17 +48,24 @@ behavior of test functions.
 - ``Trait/bug(_:id:_:)-10yf5``
 - ``Trait/bug(_:id:_:)-3vtpl``
 
+### Handling issues
+
+- ``Trait/compactMapIssues(_:)``
+- ``Trait/filterIssues(_:)``
+
 ### Creating custom traits
 
 - ``Trait``
 - ``TestTrait``
 - ``SuiteTrait``
+- ``TestScoping``
 
 ### Supporting types
 
 - ``Bug``
 - ``Comment``
 - ``ConditionTrait``
+- ``IssueHandlingTrait``
 - ``ParallelizationTrait``
 - ``Tag``
 - ``Tag/List``

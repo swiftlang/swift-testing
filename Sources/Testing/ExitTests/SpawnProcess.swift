@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2024–2025 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -17,7 +17,7 @@ internal import _TestingInternals
 
 /// A platform-specific value identifying a process running on the current
 /// system.
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
 typealias ProcessID = pid_t
 #elseif os(Windows)
 typealias ProcessID = HANDLE
@@ -26,7 +26,19 @@ typealias ProcessID = HANDLE
 typealias ProcessID = Never
 #endif
 
-/// Spawn a process and wait for it to terminate.
+#if os(Linux) && !SWT_NO_DYNAMIC_LINKING
+/// Close file descriptors above a given value when spawing a new process.
+///
+/// This symbol is provided because the underlying function was added to glibc
+/// relatively recently and may not be available on all targets. Checking
+/// `__GLIBC_PREREQ()` is insufficient because `_DEFAULT_SOURCE` may not be
+/// defined at the point spawn.h is first included.
+private let _posix_spawn_file_actions_addclosefrom_np = symbol(named: "posix_spawn_file_actions_addclosefrom_np").map {
+  castCFunction(at: $0, to: (@convention(c) (UnsafeMutablePointer<posix_spawn_file_actions_t>, CInt) -> CInt).self)
+}
+#endif
+
+/// Spawn a child process.
 ///
 /// - Parameters:
 ///   - executablePath: The path to the executable to spawn.
@@ -49,8 +61,7 @@ typealias ProcessID = Never
 ///   eventually pass this value to ``wait(for:)`` to avoid leaking system
 ///   resources.
 ///
-/// - Throws: Any error that prevented the process from spawning or its exit
-///   condition from being read.
+/// - Throws: Any error that prevented the process from spawning.
 func spawnExecutable(
   atPath executablePath: String,
   arguments: [String],
@@ -62,17 +73,18 @@ func spawnExecutable(
 ) throws -> ProcessID {
   // Darwin and Linux differ in their optionality for the posix_spawn types we
   // use, so use this typealias to paper over the differences.
-#if SWT_TARGET_OS_APPLE || os(FreeBSD)
+#if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD)
   typealias P<T> = T?
 #elseif os(Linux)
   typealias P<T> = T
 #endif
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
   return try withUnsafeTemporaryAllocation(of: P<posix_spawn_file_actions_t>.self, capacity: 1) { fileActions in
     let fileActions = fileActions.baseAddress!
-    guard 0 == posix_spawn_file_actions_init(fileActions) else {
-      throw CError(rawValue: swt_errno())
+    let fileActionsInitialized = posix_spawn_file_actions_init(fileActions)
+    guard 0 == fileActionsInitialized else {
+      throw CError(rawValue: fileActionsInitialized)
     }
     defer {
       _ = posix_spawn_file_actions_destroy(fileActions)
@@ -80,8 +92,9 @@ func spawnExecutable(
 
     return try withUnsafeTemporaryAllocation(of: P<posix_spawnattr_t>.self, capacity: 1) { attrs in
       let attrs = attrs.baseAddress!
-      guard 0 == posix_spawnattr_init(attrs) else {
-        throw CError(rawValue: swt_errno())
+      let attrsInitialized = posix_spawnattr_init(attrs)
+      guard 0 == attrsInitialized else {
+        throw CError(rawValue: attrsInitialized)
       }
       defer {
         _ = posix_spawnattr_destroy(attrs)
@@ -100,27 +113,47 @@ func spawnExecutable(
       withUnsafeTemporaryAllocation(of: sigset_t.self, capacity: 1) { allSignals in
         let allSignals = allSignals.baseAddress!
         sigfillset(allSignals)
+#if os(OpenBSD)
+        // On OpenBSD, attempting to set the signal handler for SIGKILL or
+        // SIGSTOP will cause the child process of a call to posix_spawn() to
+        // exit abnormally with exit code 127. See https://man.openbsd.org/sigaction.2#ERRORS
+        sigdelset(allSignals, SIGKILL)
+        sigdelset(allSignals, SIGSTOP)
+#endif
         posix_spawnattr_setsigdefault(attrs, allSignals);
         flags |= CShort(POSIX_SPAWN_SETSIGDEF)
       }
 
       // Forward standard I/O streams and any explicitly added file handles.
-#if os(Linux) || os(FreeBSD)
-      var highestFD = CInt(-1)
-#endif
+      var highestFD = max(STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO)
       func inherit(_ fileHandle: borrowing FileHandle, as standardFD: CInt? = nil) throws {
         try fileHandle.withUnsafePOSIXFileDescriptor { fd in
           guard let fd else {
             throw SystemError(description: "A child process cannot inherit a file handle without an associated file descriptor. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
           }
-          if let standardFD {
+          if let standardFD, standardFD != fd {
             _ = posix_spawn_file_actions_adddup2(fileActions, fd, standardFD)
           } else {
 #if SWT_TARGET_OS_APPLE
             _ = posix_spawn_file_actions_addinherit_np(fileActions, fd)
-#elseif os(Linux) || os(FreeBSD)
-            highestFD = max(highestFD, fd)
+#else
+            // posix_spawn_file_actions_adddup2() will automatically clear
+            // FD_CLOEXEC after forking but before execing even if the old and
+            // new file descriptors are equal. This behavior is supported by
+            // Glibc ≥ 2.29, FreeBSD, OpenBSD, and Android (Bionic) and is
+            // standardized in POSIX.1-2024 (see https://pubs.opengroup.org/onlinepubs/9799919799/functions/posix_spawn_file_actions_adddup2.html
+            // and https://www.austingroupbugs.net/view.php?id=411).
+            _ = posix_spawn_file_actions_adddup2(fileActions, fd, fd)
+#if os(Linux) && canImport(Glibc)
+            if _slowPath(glibcVersion < VersionNumber(2, 29)) {
+              // This system is using an older version of glibc that does not
+              // implement FD_CLOEXEC clearing in posix_spawn_file_actions_adddup2(),
+              // so we must clear it here in the parent process.
+              try setFD_CLOEXEC(false, onFileDescriptor: fd)
+            }
 #endif
+#endif
+            highestFD = max(highestFD, fd)
           }
         }
       }
@@ -143,14 +176,31 @@ func spawnExecutable(
 #if SWT_TARGET_OS_APPLE
       // Close all other file descriptors open in the parent.
       flags |= CShort(POSIX_SPAWN_CLOEXEC_DEFAULT)
-#elseif os(Linux) || os(FreeBSD)
+#elseif os(Linux)
+#if !SWT_NO_DYNAMIC_LINKING
       // This platform doesn't have POSIX_SPAWN_CLOEXEC_DEFAULT, but we can at
       // least close all file descriptors higher than the highest inherited one.
-      // We are assuming here that the caller didn't set FD_CLOEXEC on any of
-      // these file descriptors.
-      _ = swt_posix_spawn_file_actions_addclosefrom_np(fileActions, highestFD + 1)
+      _ = _posix_spawn_file_actions_addclosefrom_np?(fileActions, highestFD + 1)
+#endif
+#elseif os(FreeBSD)
+      // Like Linux, this platform doesn't have POSIX_SPAWN_CLOEXEC_DEFAULT.
+      // Unlike Linux, all non-EOL FreeBSD versions (≥13.1) support
+      // `posix_spawn_file_actions_addclosefrom_np`, and FreeBSD does not use
+      // glibc nor guard symbols behind `_DEFAULT_SOURCE`.
+      _ = posix_spawn_file_actions_addclosefrom_np(fileActions, highestFD + 1)
+#elseif os(OpenBSD)
+      // OpenBSD does not have posix_spawn_file_actions_addclosefrom_np().
+      // However, it does have closefrom(2), which we can call from within the
+      // spawned child process if we control its execution.
+      var environment = environment
+      environment["SWT_CLOSEFROM"] = String(describing: highestFD + 1)
 #else
 #warning("Platform-specific implementation missing: cannot close unused file descriptors")
+#endif
+
+#if SWT_TARGET_OS_APPLE && DEBUG
+      // Start the process suspended so we can attach a debugger if needed.
+      flags |= CShort(POSIX_SPAWN_START_SUSPENDED)
 #endif
 
       // Set flags; make sure to keep this call below any code that might modify
@@ -175,44 +225,55 @@ func spawnExecutable(
       }
 
       var pid = pid_t()
-      guard 0 == posix_spawn(&pid, executablePath, fileActions, attrs, argv, environ) else {
-        throw CError(rawValue: swt_errno())
+      let processSpawned = posix_spawn(&pid, executablePath, fileActions, attrs, argv, environ)
+      guard 0 == processSpawned else {
+        throw CError(rawValue: processSpawned)
       }
+#if SWT_TARGET_OS_APPLE && DEBUG
+      // Resume the process.
+      _ = kill(pid, SIGCONT) // ignore-unacceptable-language
+#endif
       return pid
     }
   }
 #elseif os(Windows)
   return try _withStartupInfoEx(attributeCount: 1) { startupInfo in
-    func inherit(_ fileHandle: borrowing FileHandle, as outWindowsHANDLE: inout HANDLE?) throws {
+    func inherit(_ fileHandle: borrowing FileHandle) throws -> HANDLE? {
       try fileHandle.withUnsafeWindowsHANDLE { windowsHANDLE in
         guard let windowsHANDLE else {
           throw SystemError(description: "A child process cannot inherit a file handle without an associated Windows handle. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
         }
-        outWindowsHANDLE = windowsHANDLE
+
+        // Ensure the file handle can be inherited by the child process.
+        guard SetHandleInformation(windowsHANDLE, DWORD(HANDLE_FLAG_INHERIT), DWORD(HANDLE_FLAG_INHERIT)) else {
+          throw Win32Error(rawValue: GetLastError())
+        }
+
+        return windowsHANDLE
       }
     }
-    func inherit(_ fileHandle: borrowing FileHandle?, as outWindowsHANDLE: inout HANDLE?) throws {
+    func inherit(_ fileHandle: borrowing FileHandle?) throws -> HANDLE? {
       if fileHandle != nil {
-        try inherit(fileHandle!, as: &outWindowsHANDLE)
+        return try inherit(fileHandle!)
       } else {
-        outWindowsHANDLE = nil
+        return nil
       }
     }
 
     // Forward standard I/O streams.
-    try inherit(standardInput, as: &startupInfo.pointee.StartupInfo.hStdInput)
-    try inherit(standardOutput, as: &startupInfo.pointee.StartupInfo.hStdOutput)
-    try inherit(standardError, as: &startupInfo.pointee.StartupInfo.hStdError)
+    startupInfo.pointee.StartupInfo.hStdInput = try inherit(standardInput)
+    startupInfo.pointee.StartupInfo.hStdOutput = try inherit(standardOutput)
+    startupInfo.pointee.StartupInfo.hStdError = try inherit(standardError)
     startupInfo.pointee.StartupInfo.dwFlags |= STARTF_USESTDHANDLES
 
     // Ensure standard I/O streams and any explicitly added file handles are
     // inherited by the child process.
     var inheritedHandles = [HANDLE?](repeating: nil, count: additionalFileHandles.count + 3)
-    try inherit(standardInput, as: &inheritedHandles[0])
-    try inherit(standardOutput, as: &inheritedHandles[1])
-    try inherit(standardError, as: &inheritedHandles[2])
+    inheritedHandles[0] = startupInfo.pointee.StartupInfo.hStdInput
+    inheritedHandles[1] = startupInfo.pointee.StartupInfo.hStdOutput
+    inheritedHandles[2] = startupInfo.pointee.StartupInfo.hStdError
     for i in 0 ..< additionalFileHandles.count {
-      try inherit(additionalFileHandles[i].pointee, as: &inheritedHandles[i + 3])
+      inheritedHandles[i + 3] = try inherit(additionalFileHandles[i].pointee)
     }
     inheritedHandles = inheritedHandles.compactMap(\.self)
 
@@ -230,26 +291,59 @@ func spawnExecutable(
       let commandLine = _escapeCommandLine(CollectionOfOne(executablePath) + arguments)
       let environ = environment.map { "\($0.key)=\($0.value)" }.joined(separator: "\0") + "\0\0"
 
-      return try commandLine.withCString(encodedAs: UTF16.self) { commandLine in
-        try environ.withCString(encodedAs: UTF16.self) { environ in
+      // CreateProcessW() may modify the command line argument, so we must make
+      // a mutable copy of it. (environ is also passed as a mutable raw pointer,
+      // but it is not documented as actually being mutated.)
+      let commandLineCopy = commandLine.withCString(encodedAs: UTF16.self) { _wcsdup($0) }
+      defer {
+        free(commandLineCopy)
+      }
+
+      // On Windows, a process holds a reference to its current working
+      // directory, which prevents other processes from deleting it. This causes
+      // code to fail if it tries to set the working directory to a temporary
+      // path. SEE: https://github.com/swiftlang/swift-testing/issues/1209
+      //
+      // This problem manifests for us when we spawn a child process without
+      // setting its working directory, which causes it to default to that of
+      // the parent process. To avoid this problem, we set the working directory
+      // of the new process to the root directory of the boot volume (which is
+      // unlikely to be deleted, one hopes).
+      //
+      // SEE: https://devblogs.microsoft.com/oldnewthing/20101109-00/?p=12323
+      let workingDirectoryPath = rootDirectoryPath
+
+      var flags = DWORD(CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT)
+#if DEBUG
+      // Start the process suspended so we can attach a debugger if needed.
+      flags |= DWORD(CREATE_SUSPENDED)
+#endif
+
+      return try environ.withCString(encodedAs: UTF16.self) { environ in
+        try workingDirectoryPath.withCString(encodedAs: UTF16.self) { workingDirectoryPath in
           var processInfo = PROCESS_INFORMATION()
 
           guard CreateProcessW(
             nil,
-            .init(mutating: commandLine),
+            commandLineCopy,
             nil,
             nil,
             true, // bInheritHandles
-            DWORD(CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT),
+            flags,
             .init(mutating: environ),
-            nil,
+            workingDirectoryPath,
             startupInfo.pointer(to: \.StartupInfo)!,
             &processInfo
           ) else {
             throw Win32Error(rawValue: GetLastError())
           }
-          _ = CloseHandle(processInfo.hThread)
 
+#if DEBUG
+          // Resume the process.
+          _ = ResumeThread(processInfo.hThread!)
+#endif
+
+          _ = CloseHandle(processInfo.hThread)
           return processInfo.hProcess!
         }
       }
@@ -352,4 +446,29 @@ private func _escapeCommandLine(_ arguments: [String]) -> String {
     }.joined(separator: " ")
 }
 #endif
+
+/// Spawn a child process and wait for it to terminate.
+///
+/// - Parameters:
+///   - executablePath: The path to the executable to spawn.
+///   - arguments: The arguments to pass to the executable, not including the
+///     executable path.
+///   - environment: The environment block to pass to the executable.
+///
+/// - Returns: The exit status of the spawned process.
+///
+/// - Throws: Any error that prevented the process from spawning or its exit
+///   condition from being read.
+///
+/// This function is a convenience that spawns the given process and waits for
+/// it to terminate. It is primarily for use by other targets in this package
+/// such as its cross-import overlays.
+package func spawnExecutableAtPathAndWait(
+  _ executablePath: String,
+  arguments: [String] = [],
+  environment: [String: String] = [:]
+) async throws -> ExitStatus {
+  let processID = try spawnExecutable(atPath: executablePath, arguments: arguments, environment: environment)
+  return try await wait(for: processID)
+}
 #endif

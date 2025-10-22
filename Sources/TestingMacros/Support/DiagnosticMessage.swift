@@ -9,7 +9,9 @@
 //
 
 import SwiftDiagnostics
+import SwiftParser
 import SwiftSyntax
+import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 import SwiftSyntaxMacroExpansion
 
@@ -91,7 +93,11 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     let result: (value: String, article: String)
     switch node.kind {
     case .functionDecl:
-      result = ("function", "a")
+      if node.cast(FunctionDeclSyntax.self).isOperator {
+        result = ("operator", "an")
+      } else {
+        result = ("function", "a")
+      }
     case .classDecl:
       result = ("class", "a")
     case .structDecl:
@@ -321,65 +327,57 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///     generic.
   ///   - attribute: The `@Test` or `@Suite` attribute.
   ///   - decl: The declaration in question (contained in `node`.)
+  ///   - escapableNonConformance: The suppressed conformance to `Escapable` for
+  ///     `decl`, if present.
   ///
   /// - Returns: A diagnostic message.
-  static func containingNodeUnsupported(_ node: some SyntaxProtocol, genericBecauseOf genericClause: Syntax? = nil, whenUsing attribute: AttributeSyntax, on decl: some SyntaxProtocol) -> Self {
+  static func containingNodeUnsupported(_ node: some SyntaxProtocol, genericBecauseOf genericClause: Syntax? = nil, whenUsing attribute: AttributeSyntax, on decl: some SyntaxProtocol, withSuppressedConformanceToEscapable escapableNonConformance: SuppressedTypeSyntax? = nil) -> Self {
     // Avoid using a syntax node from a lexical context (it won't have source
     // location information.)
     let syntax: Syntax = if let genericClause, attribute.root == genericClause.root {
       // Prefer the generic clause if available as the root cause.
       genericClause
+    } else if let escapableNonConformance, attribute.root == escapableNonConformance.root {
+      // Then the ~Escapable conformance if present.
+      Syntax(escapableNonConformance)
     } else if attribute.root == node.root {
-      // Second choice is the unsupported containing node.
+      // Next best choice is the unsupported containing node.
       Syntax(node)
     } else {
       // Finally, fall back to the attribute, which we assume is not detached.
       Syntax(attribute)
     }
+
+    // Figure out the message to present.
+    var message = "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true))"
     let generic = if genericClause != nil {
       " generic"
     } else {
       ""
     }
     if let functionDecl = node.as(FunctionDeclSyntax.self) {
-      let functionName = functionDecl.completeName
-      return Self(
-        syntax: syntax,
-        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within\(generic) function '\(functionName)'",
-        severity: .error
-      )
+      message += " within\(generic) function '\(functionDecl.completeName)'"
     } else if let namedDecl = node.asProtocol((any NamedDeclSyntax).self) {
-      let declName = namedDecl.name.textWithoutBackticks
-      return Self(
-        syntax: syntax,
-        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within\(generic) \(_kindString(for: node)) '\(declName)'",
-        severity: .error
-      )
+      message += " within\(generic) \(_kindString(for: node)) '\(namedDecl.name.textWithoutBackticks)'"
     } else if let extensionDecl = node.as(ExtensionDeclSyntax.self) {
       // Subtly different phrasing from the NamedDeclSyntax case above.
-      let nodeKind = if genericClause != nil {
-        "a generic extension to type"
+      if genericClause != nil {
+        message += " within a generic extension to type '\(extensionDecl.extendedType.trimmedDescription)'"
       } else {
-        "an extension to type"
+        message += " within an extension to type '\(extensionDecl.extendedType.trimmedDescription)'"
       }
-      let declGroupName = extensionDecl.extendedType.trimmedDescription
-      return Self(
-        syntax: syntax,
-        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within \(nodeKind) '\(declGroupName)'",
-        severity: .error
-      )
     } else {
-      let nodeKind = if genericClause != nil {
-        "a generic \(_kindString(for: node))"
+      if genericClause != nil {
+        message += " within a generic \(_kindString(for: node))"
       } else {
-        _kindString(for: node, includeA: true)
+        message += " within \(_kindString(for: node, includeA: true))"
       }
-      return Self(
-        syntax: syntax,
-        message: "Attribute \(_macroName(attribute)) cannot be applied to \(_kindString(for: decl, includeA: true)) within \(nodeKind)",
-        severity: .error
-      )
     }
+    if escapableNonConformance != nil {
+      message += " because its conformance to 'Escapable' has been suppressed"
+    }
+
+    return Self(syntax: syntax, message: message, severity: .error)
   }
 
   /// Create a diagnostic message stating that the given attribute cannot be
@@ -645,6 +643,82 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
+  /// Create a diagnostic message stating that a string literal expression
+  /// passed as the display name to a `@Test` or `@Suite` attribute is empty
+  /// but should not be.
+  ///
+  /// - Parameters:
+  ///   - decl: The declaration that has an empty display name.
+  ///   - displayNameExpr: The display name string literal expression.
+  ///   - argumentContainingDisplayName: The argument node containing the node
+  ///     `displayNameExpr`.
+  ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///
+  /// - Returns: A diagnostic message.
+  static func declaration(
+    _ decl: some NamedDeclSyntax,
+    hasEmptyDisplayName displayNameExpr: StringLiteralExprSyntax,
+    fromArgument argumentContainingDisplayName: LabeledExprListSyntax.Element,
+    using attribute: AttributeSyntax
+  ) -> Self {
+    Self(
+      syntax: Syntax(displayNameExpr),
+      message: "Attribute \(_macroName(attribute)) specifies an empty display name for this \(_kindString(for: decl))",
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Remove display name argument"),
+          changes: [.replace(oldNode: Syntax(argumentContainingDisplayName), newNode: Syntax("" as ExprSyntax))]
+        ),
+        FixIt(
+          message: MacroExpansionFixItMessage("Add display name"),
+          changes: [.replace(oldNode: Syntax(argumentContainingDisplayName), newNode: Syntax(StringLiteralExprSyntax(placeholder: "display name")))]
+        ),
+      ]
+    )
+  }
+
+  /// Create a diagnostic message stating that a declaration has two display
+  /// names.
+  ///
+  /// - Parameters:
+  ///   - decl: The declaration that has two display names.
+  ///   - displayNameFromAttribute: The display name provided by the `@Test` or
+  ///     `@Suite` attribute.
+  ///   - argumentContainingDisplayName: The argument node containing the node
+  ///     `displayNameFromAttribute`.
+  ///   - attribute: The `@Test` or `@Suite` attribute.
+  ///
+  /// - Returns: A diagnostic message.
+  static func declaration(
+    _ decl: some NamedDeclSyntax,
+    hasExtraneousDisplayName displayNameFromAttribute: StringLiteralExprSyntax,
+    fromArgument argumentContainingDisplayName: LabeledExprListSyntax.Element,
+    using attribute: AttributeSyntax
+  ) -> Self {
+    // If the name of the ambiguously-named symbol should be derived from a raw
+    // identifier, this situation is an error. If the name is not raw but is
+    // still surrounded by backticks (e.g. "func `foo`()" or "struct `if`") then
+    // lower the severity to a warning. That way, existing code structured this
+    // way doesn't suddenly fail to build.
+    let severity: DiagnosticSeverity = (decl.name.rawIdentifier != nil) ? .error : .warning
+    return Self(
+      syntax: Syntax(decl),
+      message: "Attribute \(_macroName(attribute)) specifies display name '\(displayNameFromAttribute.representedLiteralValue!)' for \(_kindString(for: decl)) with implicit display name '\(decl.name.textWithoutBackticks)'",
+      severity: severity,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Remove '\(displayNameFromAttribute.representedLiteralValue!)'"),
+          changes: [.replace(oldNode: Syntax(argumentContainingDisplayName), newNode: Syntax("" as ExprSyntax))]
+        ),
+        FixIt(
+          message: MacroExpansionFixItMessage("Rename '\(decl.name.textWithoutBackticks)'"),
+          changes: [.replace(oldNode: Syntax(decl.name), newNode: Syntax(EditorPlaceholderExprSyntax("name")))]
+        ),
+      ]
+    )
+  }
+
   /// Create a diagnostic messages stating that the expression passed to
   /// `#require()` is ambiguous.
   ///
@@ -710,22 +784,6 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     )
   }
 
-  /// Create a diagnostic message stating that a condition macro nested inside
-  /// an exit test will not record any diagnostics.
-  ///
-  /// - Parameters:
-  ///   - checkMacro: The inner condition macro invocation.
-  ///   - exitTestMacro: The containing exit test macro invocation.
-  ///
-  /// - Returns: A diagnostic message.
-  static func checkUnsupported(_ checkMacro: some FreestandingMacroExpansionSyntax, inExitTest exitTestMacro: some FreestandingMacroExpansionSyntax) -> Self {
-    Self(
-      syntax: Syntax(checkMacro),
-      message: "Expression \(_macroName(checkMacro)) will not record an issue on failure inside exit test \(_macroName(exitTestMacro))",
-      severity: .error
-    )
-  }
-
   var syntax: Syntax
 
   // MARK: - DiagnosticMessage
@@ -734,4 +792,133 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   var diagnosticID = MessageID(domain: "org.swift.testing", id: "macros")
   var severity: DiagnosticSeverity
   var fixIts: [FixIt] = []
+}
+
+// MARK: - Captured values
+
+extension DiagnosticMessage {
+  /// Create a diagnostic message stating that a specifier keyword cannot be
+  /// used with a given closure capture list item.
+  ///
+  /// - Parameters:
+  ///   - specifier: The invalid specifier.
+  ///   - capture: The closure capture list item.
+  ///
+  /// - Returns: A diagnostic message.
+  static func specifierUnsupported(_ specifier: ClosureCaptureSpecifierSyntax, on capture: ClosureCaptureSyntax) -> Self {
+    Self(
+      syntax: Syntax(specifier),
+      message: "Specifier '\(specifier.trimmed)' cannot be used with captured value '\(capture.name.textWithoutBackticks)'",
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Remove '\(specifier.trimmed)'"),
+          changes: [
+            .replace(
+              oldNode: Syntax(capture),
+              newNode: Syntax(capture.with(\.specifier, nil))
+            )
+          ]
+        ),
+      ]
+    )
+  }
+
+  /// Create a diagnostic message stating that a closure capture list item's
+  /// type is ambiguous and must be made explicit.
+  ///
+  /// - Parameters:
+  ///   - capture: The closure capture list item.
+  ///   - initializerClause: The existing initializer clause, if any.
+  ///
+  /// - Returns: A diagnostic message.
+  static func typeOfCaptureIsAmbiguous(_ capture: ClosureCaptureSyntax, initializedWith initializerClause: InitializerClauseSyntax? = nil) -> Self {
+    let castValueExpr: some ExprSyntaxProtocol = if let initializerClause {
+      ExprSyntax(initializerClause.value.trimmed)
+    } else {
+      ExprSyntax(DeclReferenceExprSyntax(baseName: capture.name.trimmed))
+    }
+    let initializerValueExpr = ExprSyntax(
+      AsExprSyntax(
+        expression: castValueExpr,
+        asKeyword: .keyword(.as, leadingTrivia: .space, trailingTrivia: .space),
+        type: TypeSyntax.placeholder("T")
+      )
+    )
+    let placeholderInitializerClause = if let initializerClause {
+      initializerClause.with(\.value, initializerValueExpr)
+    } else {
+      InitializerClauseSyntax(
+        equal: .equalToken(leadingTrivia: .space, trailingTrivia: .space),
+        value: initializerValueExpr
+      )
+    }
+
+    return Self(
+      syntax: Syntax(capture),
+      message: "Type of captured value '\(capture.name.textWithoutBackticks)' is ambiguous",
+      severity: .error,
+      fixIts: [
+        FixIt(
+          message: MacroExpansionFixItMessage("Add '= \(castValueExpr) as T'"),
+          changes: [
+            .replace(
+              oldNode: Syntax(capture),
+              newNode: Syntax(capture.with(\.initializer, placeholderInitializerClause))
+            )
+          ]
+        ),
+      ]
+    )
+  }
+
+  /// Create a diagnostic message stating that a captured value must conform to
+  /// `Sendable` and `Codable`.
+  ///
+  /// - Parameters:
+  ///   - valueExpr: The captured value.
+  ///   - nameExpr: The name of the capture list item corresponding to
+  ///     `valueExpr`.
+  ///
+  /// - Returns: A diagnostic message.
+  static func capturedValueMustBeSendableAndCodable(_ valueExpr: ExprSyntax, name nameExpr: StringLiteralExprSyntax) -> Self {
+    let name = nameExpr.representedLiteralValue ?? valueExpr.trimmedDescription
+    return Self(
+      syntax: Syntax(valueExpr),
+      message: "Type of captured value '\(name)' must conform to 'Sendable' and 'Codable'",
+      severity: .error
+    )
+  }
+
+  /// Create a diagnostic message stating that an expression macro is not
+  /// supported in a generic context.
+  ///
+  /// - Parameters:
+  ///   - macro: The invalid macro.
+  ///   - genericClause: The child node on `genericDecl` that makes it generic.
+  ///   - genericDecl: The generic declaration to which `genericClause` is
+  ///     attached, possibly equal to `decl`.
+  ///
+  /// - Returns: A diagnostic message.
+  static func expressionMacroUnsupported(_ macro: some FreestandingMacroExpansionSyntax, inGenericContextBecauseOf genericClause: some SyntaxProtocol, on genericDecl: some SyntaxProtocol) -> Self {
+    if let functionDecl = genericDecl.as(FunctionDeclSyntax.self) {
+      return Self(
+        syntax: Syntax(macro),
+        message: "Cannot call macro '\(_macroName(macro))' within generic function '\(functionDecl.completeName)'",
+        severity: .error
+      )
+    } else if let namedDecl = genericDecl.asProtocol((any NamedDeclSyntax).self) {
+      return Self(
+        syntax: Syntax(macro),
+        message: "Cannot call macro '\(_macroName(macro))' within generic \(_kindString(for: genericDecl)) '\(namedDecl.name.trimmed)'",
+        severity: .error
+      )
+    } else {
+      return Self(
+        syntax: Syntax(macro),
+        message: "Cannot call macro '\(_macroName(macro))' within a generic \(_kindString(for: genericDecl))",
+        severity: .error
+      )
+    }
+  }
 }

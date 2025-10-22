@@ -9,17 +9,30 @@
 //
 
 @testable import Testing
+private import _TestingInternals
 
 @Suite("Locked Tests")
 struct LockTests {
-  @Test("Mutating a value within withLock(_:)")
+  @Test("Locking and unlocking")
   func locking() {
-    let value = Locked(rawValue: 0)
-
-    #expect(value.rawValue == 0)
-    value.withLock { value in
+    let lock = Locked(rawValue: 0)
+    #expect(lock.rawValue == 0)
+    lock.withLock { value in
       value = 1
     }
-    #expect(value.rawValue == 1)
+    #expect(lock.rawValue == 1)
+  }
+
+  @Test("Repeatedly accessing a lock")
+  func lockRepeatedly() async {
+    let lock = Locked(rawValue: 0)
+    await withTaskGroup { taskGroup in
+      for _ in 0 ..< 100_000 {
+        taskGroup.addTask {
+          lock.increment()
+        }
+      }
+    }
+    #expect(lock.rawValue == 100_000)
   }
 }

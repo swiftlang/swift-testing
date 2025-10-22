@@ -73,6 +73,13 @@ struct FileHandle: ~Copyable, Sendable {
       return
     }
 
+    // On Windows, "N" is used rather than "e" to signify that a file handle is
+    // not inherited.
+    var mode = mode
+    if let eIndex = mode.firstIndex(of: "e") {
+      mode.replaceSubrange(eIndex ... eIndex, with: "N")
+    }
+
     // Windows deprecates fopen() as insecure, so call _wfopen_s() instead.
     let fileHandle = try path.withCString(encodedAs: UTF16.self) { path in
       try mode.withCString(encodedAs: UTF16.self) { mode in
@@ -98,8 +105,12 @@ struct FileHandle: ~Copyable, Sendable {
   ///   - path: The path to read from.
   ///
   /// - Throws: Any error preventing the stream from being opened.
+  ///
+  /// By default, the resulting file handle is not inherited by any child
+  /// processes (that is, `FD_CLOEXEC` is set on POSIX-like systems and
+  /// `HANDLE_FLAG_INHERIT` is cleared on Windows.).
   init(forReadingAtPath path: String) throws {
-    try self.init(atPath: path, mode: "rb")
+    try self.init(atPath: path, mode: "reb")
   }
 
   /// Initialize an instance of this type to write to the given path.
@@ -108,8 +119,12 @@ struct FileHandle: ~Copyable, Sendable {
   ///   - path: The path to write to.
   ///
   /// - Throws: Any error preventing the stream from being opened.
+  ///
+  /// By default, the resulting file handle is not inherited by any child
+  /// processes (that is, `FD_CLOEXEC` is set on POSIX-like systems and
+  /// `HANDLE_FLAG_INHERIT` is cleared on Windows.).
   init(forWritingAtPath path: String) throws {
-    try self.init(atPath: path, mode: "wb")
+    try self.init(atPath: path, mode: "web")
   }
 
   /// Initialize an instance of this type with an existing C file handle.
@@ -215,7 +230,7 @@ struct FileHandle: ~Copyable, Sendable {
   /// descriptor, `nil` is passed to `body`.
   borrowing func withUnsafePOSIXFileDescriptor<R>(_ body: (CInt?) throws -> R) rethrows -> R {
     try withUnsafeCFILEHandle { handle in
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || os(WASI)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
       let fd = fileno(handle)
 #elseif os(Windows)
       let fd = _fileno(handle)
@@ -274,7 +289,7 @@ struct FileHandle: ~Copyable, Sendable {
   /// other threads.
   borrowing func withLock<R>(_ body: () throws -> R) rethrows -> R {
     try withUnsafeCFILEHandle { handle in
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
       flockfile(handle)
       defer {
         funlockfile(handle)
@@ -309,7 +324,7 @@ extension FileHandle {
     // If possible, reserve enough space in the resulting buffer to contain
     // the contents of the file being read.
     var size: Int?
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || os(WASI)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
     withUnsafePOSIXFileDescriptor { fd in
       var s = stat()
       if let fd, 0 == fstat(fd, &s) {
@@ -445,6 +460,17 @@ extension FileHandle {
 #if !SWT_NO_PIPES
 // MARK: - Pipes
 
+#if !SWT_TARGET_OS_APPLE && !os(Windows) && !SWT_NO_DYNAMIC_LINKING
+/// Create a pipe with flags.
+///
+/// This function declaration is provided because `pipe2()` is only declared if
+/// `_GNU_SOURCE` is set, but setting it causes build errors due to conflicts
+/// with Swift's Glibc module.
+private let _pipe2 = symbol(named: "pipe2").map {
+  castCFunction(at: $0, to: (@convention(c) (UnsafeMutablePointer<CInt>, CInt) -> CInt).self)
+}
+#endif
+
 extension FileHandle {
   /// Make a pipe connecting two new file handles.
   ///
@@ -461,15 +487,36 @@ extension FileHandle {
   /// - Bug: This function should return a tuple containing the file handles
   ///   instead of returning them via `inout` arguments. Swift does not support
   ///   tuples with move-only elements. ([104669935](rdar://104669935))
+  ///
+  /// By default, the resulting file handles are not inherited by any child
+  /// processes (that is, `FD_CLOEXEC` is set on POSIX-like systems and
+  /// `HANDLE_FLAG_INHERIT` is cleared on Windows.).
   static func makePipe(readEnd: inout FileHandle?, writeEnd: inout FileHandle?) throws {
+#if !os(Windows)
+    var pipe2Called = false
+#endif
+
     var (fdReadEnd, fdWriteEnd) = try withUnsafeTemporaryAllocation(of: CInt.self, capacity: 2) { fds in
 #if os(Windows)
-      guard 0 == _pipe(fds.baseAddress, 0, _O_BINARY) else {
+      guard 0 == _pipe(fds.baseAddress, 0, _O_BINARY | _O_NOINHERIT) else {
         throw CError(rawValue: swt_errno())
       }
 #else
-      guard 0 == pipe(fds.baseAddress!) else {
-        throw CError(rawValue: swt_errno())
+#if !SWT_TARGET_OS_APPLE && !os(Windows) && !SWT_NO_DYNAMIC_LINKING
+      if let _pipe2 {
+        guard 0 == _pipe2(fds.baseAddress!, O_CLOEXEC) else {
+          throw CError(rawValue: swt_errno())
+        }
+        pipe2Called = true
+      }
+#endif
+
+      if !pipe2Called {
+        // pipe2() is not available. Use pipe() instead and simulate O_CLOEXEC
+        // to the best of our ability.
+        guard 0 == pipe(fds.baseAddress!) else {
+          throw CError(rawValue: swt_errno())
+        }
       }
 #endif
       return (fds[0], fds[1])
@@ -478,6 +525,15 @@ extension FileHandle {
       Self._close(fdReadEnd)
       Self._close(fdWriteEnd)
     }
+
+#if !os(Windows)
+    if !pipe2Called {
+      // pipe2() is not available. Use pipe() instead and simulate O_CLOEXEC
+      // to the best of our ability.
+      try setFD_CLOEXEC(true, onFileDescriptor: fdReadEnd)
+      try setFD_CLOEXEC(true, onFileDescriptor: fdWriteEnd)
+    }
+#endif
 
     do {
       defer {
@@ -505,7 +561,7 @@ extension FileHandle {
 extension FileHandle {
   /// Is this file handle a TTY or PTY?
   var isTTY: Bool {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android) || os(WASI)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
     // If stderr is a TTY and TERM is set, that's good enough for us.
     withUnsafePOSIXFileDescriptor { fd in
       if let fd, 0 != isatty(fd), let term = Environment.variable(named: "TERM"), !term.isEmpty {
@@ -532,7 +588,7 @@ extension FileHandle {
 #if !SWT_NO_PIPES
   /// Is this file handle a pipe or FIFO?
   var isPipe: Bool {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(Android)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
     withUnsafePOSIXFileDescriptor { fd in
       guard let fd else {
         return false
@@ -580,4 +636,118 @@ func appendPathComponent(_ pathComponent: String, to path: String) -> String {
   "\(path)/\(pathComponent)"
 #endif
 }
+
+/// Check if a file exists at a given path.
+///
+/// - Parameters:
+///   - path: The path to check.
+///
+/// - Returns: Whether or not the path `path` exists on disk.
+func fileExists(atPath path: String) -> Bool {
+#if os(Windows)
+  path.withCString(encodedAs: UTF16.self) { path in
+    PathFileExistsW(path)
+  }
+#else
+  0 == access(path, F_OK)
+#endif
+}
+
+/// Resolve a relative path or a path containing symbolic links to a canonical
+/// absolute path.
+///
+/// - Parameters:
+///   - path: The path to resolve.
+///
+/// - Returns: A fully resolved copy of `path`. If `path` is already fully
+///   resolved, the resulting string may differ slightly but refers to the same
+///   file system object. If the path could not be resolved, returns `nil`.
+func canonicalizePath(_ path: String) -> String? {
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+  path.withCString { path in
+    if let resolvedCPath = realpath(path, nil) {
+      defer {
+        free(resolvedCPath)
+      }
+      return String(validatingCString: resolvedCPath)
+    }
+    return nil
+  }
+#elseif os(Windows)
+  path.withCString(encodedAs: UTF16.self) { path in
+    if let resolvedCPath = _wfullpath(nil, path, 0) {
+      defer {
+        free(resolvedCPath)
+      }
+      return String.decodeCString(resolvedCPath, as: UTF16.self)?.result
+    }
+    return nil
+  }
+#else
+#warning("Platform-specific implementation missing: cannot resolve paths")
+  return nil
+#endif
+}
+
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+/// Set the given file descriptor's `FD_CLOEXEC` flag.
+///
+/// - Parameters:
+///   - flag: The new value of `fd`'s `FD_CLOEXEC` flag.
+///   - fd: The file descriptor.
+///
+/// - Throws: Any error that occurred while setting the flag.
+func setFD_CLOEXEC(_ flag: Bool, onFileDescriptor fd: CInt) throws {
+  switch swt_getfdflags(fd) {
+  case -1:
+    // An error occurred reading the flags for this file descriptor.
+    throw CError(rawValue: swt_errno())
+  case let oldValue:
+    let newValue = if flag {
+      oldValue | FD_CLOEXEC
+    } else {
+      oldValue & ~FD_CLOEXEC
+    }
+    if oldValue == newValue {
+      // No need to make a second syscall as nothing has changed.
+      return
+    }
+    if -1 == swt_setfdflags(fd, newValue) {
+      // An error occurred setting the flags for this file descriptor.
+      throw CError(rawValue: swt_errno())
+    }
+  }
+}
+#endif
+
+/// The path to the root directory of the boot volume.
+///
+/// On Windows, this string is usually of the form `"C:\"`. On UNIX-like
+/// platforms, it is always equal to `"/"`.
+let rootDirectoryPath: String = {
+#if os(Windows)
+  var result: String?
+
+  // The boot volume is, except in some legacy scenarios, the volume that
+  // contains the system Windows directory. For an explanation of the difference
+  // between the Windows directory and the _system_ Windows directory, see
+  // https://devblogs.microsoft.com/oldnewthing/20140723-00/?p=423 .
+  let count = GetSystemWindowsDirectoryW(nil, 0)
+  if count > 0 {
+    withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: Int(count) + 1) { buffer in
+      _ = GetSystemWindowsDirectoryW(buffer.baseAddress!, UINT(buffer.count))
+      let rStrip = PathCchStripToRoot(buffer.baseAddress!, buffer.count)
+      if rStrip == S_OK || rStrip == S_FALSE {
+        result = String.decodeCString(buffer.baseAddress!, as: UTF16.self)?.result
+      }
+    }
+  }
+
+  // If we weren't able to get a path, fall back to "C:\" on the assumption that
+  // it's the common case and most likely correct.
+  return result ?? #"C:\"#
+#else
+  return "/"
+#endif
+}()
 #endif

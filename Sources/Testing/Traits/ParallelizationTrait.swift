@@ -8,39 +8,44 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-/// A type that affects whether or not a test or suite is parallelized.
+/// A type that defines whether the testing library runs this test serially
+/// or in parallel.
 ///
-/// When added to a parameterized test function, this trait causes that test to
-/// run its cases serially instead of in parallel. When applied to a
-/// non-parameterized test function, this trait has no effect. When applied to a
-/// test suite, this trait causes that suite to run its contained test functions
-/// and sub-suites serially instead of in parallel.
+/// When you add this trait to a parameterized test function, that test runs its
+/// cases serially instead of in parallel. This trait has no effect when you
+/// apply it to a non-parameterized test function.
 ///
-/// This trait is recursively applied: if it is applied to a suite, any
-/// parameterized tests or test suites contained in that suite are also
-/// serialized (as are any tests contained in those suites, and so on.)
+/// When you add this trait to a test suite, that suite runs its
+/// contained test functions (including their cases, when parameterized) and
+/// sub-suites serially instead of in parallel. If the sub-suites have children,
+/// they also run serially.
 ///
 /// This trait does not affect the execution of a test relative to its peers or
-/// to unrelated tests. This trait has no effect if test parallelization is
-/// globally disabled (by, for example, passing `--no-parallel` to the
+/// to unrelated tests. This trait has no effect if you disable test
+/// parallelization globally (for example, by passing `--no-parallel` to the
 /// `swift test` command.)
 ///
 /// To add this trait to a test, use ``Trait/serialized``.
-public struct ParallelizationTrait: TestTrait, SuiteTrait {
-  public var isRecursive: Bool {
-    true
+public struct ParallelizationTrait: TestTrait, SuiteTrait {}
+
+// MARK: - TestScoping
+
+extension ParallelizationTrait: TestScoping {
+  public func scopeProvider(for test: Test, testCase: Test.Case?) -> Self? {
+    // When applied to a test function, this trait should provide scope to the
+    // test function itself, not its individual test cases, since that allows
+    // Runner to correctly interpret the configuration setting to disable
+    // parallelization.
+    test.isSuite || testCase == nil ? self : nil
   }
-}
 
-// MARK: - SPIAwareTrait
-
-@_spi(ForToolsIntegrationOnly)
-extension ParallelizationTrait: SPIAwareTrait {
-  public func prepare(for test: Test, action: inout Runner.Plan.Action) async throws {
-    if case var .run(options) = action {
-      options.isParallelizationEnabled = false
-      action = .run(options: options)
+  public func provideScope(for test: Test, testCase: Test.Case?, performing function: @Sendable () async throws -> Void) async throws {
+    guard var configuration = Configuration.current else {
+      throw SystemError(description: "There is no current Configuration when attempting to provide scope for test '\(test.name)'. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
     }
+
+    configuration.isParallelizationEnabled = false
+    try await Configuration.withCurrent(configuration, perform: function)
   }
 }
 

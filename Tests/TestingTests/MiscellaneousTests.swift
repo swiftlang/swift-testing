@@ -9,6 +9,12 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) import _TestDiscovery
+private import _TestingInternals
+
+#if canImport(Foundation)
+private import Foundation
+#endif
 
 @Test(/* name unspecified */ .hidden)
 @Sendable func freeSyncFunction() {}
@@ -123,10 +129,24 @@ struct SendableTests: Sendable {
 
   @Test(.hidden, arguments: FixtureData.stringReturningClosureArray)
   func parameterizedAcceptingFunction(f: @Sendable () -> String) {}
+
+  @Test(.hidden) func throwKeywordInExpectation() throws {
+    #expect(UInt() == UInt(try #require(Int("0"))))
+  }
+
+  @Test(.hidden) func asyncKeywordInExpectation() async {
+    func f() async -> Int { 0 }
+    #expect(UInt() == UInt(await f()))
+  }
 }
 
 @Suite("Named Sendable test type", .hidden)
 struct NamedSendableTests: Sendable {}
+
+// This is meant to help detect unqualified usages of the `Actor` protocol from
+// Swift's `_Concurrency` module in macro expansion code, since it's possible
+// for another module to declare a type with that name.
+private class Actor {}
 
 #if !SWT_NO_GLOBAL_ACTORS
 @Suite(.hidden)
@@ -224,11 +244,13 @@ struct TestsWithAsyncArguments {
 }
 
 @Test(
+  .hidden,
   arguments: [0] // Meaningful trivia: This line comment should be omitted during macro expansion
 )
 func parameterizedTestWithTrailingComment(value: Int) {}
 
 @Suite(
+  .hidden,
   .serialized // Meaningful trivia: This line comment should be omitted during macro expansion
 )
 private struct SuiteWithTraitContainingTrailingComment {}
@@ -273,6 +295,29 @@ struct MiscellaneousTests {
   func namedMemberFunctionTest() async throws {
     let testType = try #require(await test(for: NamedSendableTests.self))
     #expect(testType.displayName == "Named Sendable test type")
+  }
+
+  @Test func `Test with raw identifier gets a display name`() throws {
+    let test = try #require(Test.current)
+    #expect(test.displayName == "Test with raw identifier gets a display name")
+    #expect(test.name == "`Test with raw identifier gets a display name`()")
+    let id = test.id
+    #expect(id.moduleName == "TestingTests")
+    #expect(id.nameComponents == ["MiscellaneousTests", "`Test with raw identifier gets a display name`()"])
+  }
+
+  @Test func `Suite type with raw identifier gets a display name`() throws {
+    struct `Suite With De Facto Display Name` {}
+    let typeInfo = TypeInfo(describing: `Suite With De Facto Display Name`.self)
+    let suite = Test(traits: [], sourceLocation: #_sourceLocation, containingTypeInfo: typeInfo, isSynthesized: true)
+    #expect(suite.name == "`Suite With De Facto Display Name`")
+    let displayName = try #require(suite.displayName)
+    #expect(displayName == "Suite With De Facto Display Name")
+  }
+
+  @Test(arguments: [0])
+  func `Test with raw identifier and raw identifier parameter labels can compile`(`argument name` i: Int) {
+    #expect(i == 0)
   }
 
   @Test("Free functions are runnable")
@@ -515,7 +560,7 @@ struct MiscellaneousTests {
     let line = 12345
     let column = 67890
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-    let testFunction = Test.__function(named: "myTestFunction()", in: nil, xcTestCompatibleSelector: nil, displayName: nil, traits: [], sourceLocation: sourceLocation) {}
+    let testFunction = Test.__function(named: "myTestFunction()", in: nil as Never.Type?, xcTestCompatibleSelector: nil, displayName: nil, traits: [], sourceLocation: sourceLocation) {}
     #expect(String(describing: testFunction.id) == "Module.myTestFunction()/Y.swift:12345:67890")
   }
 
@@ -539,17 +584,6 @@ struct MiscellaneousTests {
     #expect(id.nameComponents.isEmpty)
     #expect(id.sourceLocation == nil)
     #expect(id.keyPathRepresentation == [""])
-  }
-
-  @Test("Test.all deduping")
-  func allTestDeduping() {
-    let tests = [Test(name: "A") {}, Test(name: "B") {}, Test(name: "C") {}, Test(name: "D") {}, Test(name: "E") {}, Test(name: "F") {}, Test(name: "G") {},]
-    var duplicatedTests = tests
-    duplicatedTests += tests
-    duplicatedTests.shuffle()
-    let mappedTests = Test.testsByID(duplicatedTests)
-    #expect(mappedTests.count == tests.count)
-    #expect(mappedTests.values.allSatisfy { tests.contains($0) })
   }
 
   @Test("failureBreakpoint() call")

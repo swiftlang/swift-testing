@@ -12,22 +12,15 @@
 
 @Suite("Parallelization Trait Tests", .tags(.traitRelated))
 struct ParallelizationTraitTests {
-  @Test(".serialized trait is recursively applied")
-  func serializedTrait() async {
-    var configuration = Configuration()
-    configuration.isParallelizationEnabled = true
-    let plan = await Runner.Plan(selecting: OuterSuite.self, configuration: configuration)
-    for step in plan.steps {
-      #expect(step.action.isParallelizationEnabled == false, "Step \(step) should have had parallelization disabled")
-    }
-  }
-
-  @Test(".serialized trait serializes parameterized test")
-  func serializesParameterizedTestFunction() async {
+  @Test(".serialized trait serializes parameterized test", arguments: await [
+    Runner.Plan(selecting: OuterSuite.self),
+    Runner.Plan(selecting: "globalParameterized(i:)"),
+  ])
+  func serializesParameterizedTestFunction(plan: Runner.Plan) async {
     var configuration = Configuration()
     configuration.isParallelizationEnabled = true
 
-    let indicesRecorded = Locked<[Int]>(rawValue: [])
+    let indicesRecorded = Locked<[Int]>()
     configuration.eventHandler = { event, _ in
       if case let .issueRecorded(issue) = event.kind,
          let comment = issue.comments.first,
@@ -43,7 +36,6 @@ struct ParallelizationTraitTests {
       }
     }
 
-    let plan = await Runner.Plan(selecting: OuterSuite.self, configuration: configuration)
     let runner = Runner(plan: plan, configuration: configuration)
     await runner.run()
 
@@ -68,4 +60,9 @@ private struct OuterSuite {
       }
     }
   }
+}
+
+@Test(.hidden, .serialized, arguments: 0 ..< 10_000)
+private func globalParameterized(i: Int) {
+  Issue.record("PARAMETERIZED\(i)")
 }

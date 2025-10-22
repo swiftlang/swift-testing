@@ -46,16 +46,50 @@ Symbols marked `private` should be given a leading underscore to emphasize that
 they are private. Symbols marked `fileprivate`, `internal`, etc. should not have
 a leading underscore (except for those `public` symbols mentioned above.)
 
-Exported C and C++ symbols that are exported should be given the prefix `swt_`
-and should otherwise be named using the same lowerCamelCase naming rules as in
-Swift. Use the `SWT_EXTERN` macro to ensure that symbols are consistently
-visible in C, C++, and Swift. For example:
+Symbols that provide storage for higher-visibility symbols can be underscored if
+their preferred names would otherwise conflict. For example:
+
+```swift
+private var _errorCount: Int
+
+public var errorCount: Int {
+  get {
+    _errorCount
+  }
+  set {
+    precondition(newValue >= 0, "Error count cannot be negative")
+    _errorCount = newValue
+  }
+}
+```
+
+Properties, variables, and constants in Swift whose access level is `public` or
+greater, or which have the `@usableFromInline` attribute, must have an
+explicitly specified type even if they have an initialization expression and the
+compiler could infer their type. This is meant to protect against future changes
+to the code called by the initialization expression causing the inferred type of
+its property to change unknowingly, which could break clients. Properties with
+lower access levels may have an inferred type.
+
+C and C++ symbols that are used by the testing library should be given the
+prefix `swt_` and should otherwise be named using the same lowerCamelCase naming
+rules as in Swift. Use the `SWT_EXTERN` macro to ensure that symbols are
+consistently visible in C, C++, and Swift. For example:
 
 ```c
 SWT_EXTERN bool swt_isDebugModeEnabled(void);
 
 SWT_EXTERN void swt_setDebugModeEnabled(bool isEnabled);
 ```
+
+> [!NOTE]
+> If a symbol is meant to be **publicly visible** and can be called by modules
+> other than Swift Testing, use the prefix `swift_testing_` instead of `swt_`
+> for consistency with the Swift standard library:
+>
+> ```c
+> SWT_EXTERN void swift_testing_debugIfNeeded(void);
+> ```
 
 C and C++ types should be given the prefix `SWT` and should otherwise be named
 using the same UpperCamelCase naming rules as in Swift. For example:

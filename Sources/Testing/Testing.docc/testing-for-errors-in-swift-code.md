@@ -26,7 +26,7 @@ If the code throws an error, then your test fails.
 
 To check that the code under test throws a specific error, or to continue a
 longer test function after the code throws an error, pass that error as the
-first argument of ``expect(throws:_:sourceLocation:performing:)-1xr34``, and
+first argument of ``expect(throws:_:sourceLocation:performing:)-7du1h``, and
 pass a closure that calls the code under test:
 
 ```swift
@@ -43,6 +43,22 @@ records an issue. Other overloads of ``expect(_:_:sourceLocation:)`` let you
 test that the code throws an error of a given type, or matches an arbitrary
 Boolean test. Similar overloads of ``require(_:_:sourceLocation:)-5l63q`` stop
 running your test if the code doesn't throw the expected error.
+
+### Validate that your code throws any error
+
+To check that the code under test throws an error of any type, pass
+`(any Error).self` as the first argument to either
+``expect(throws:_:sourceLocation:performing:)-1hfms`` or
+``require(throws:_:sourceLocation:performing:)-7n34r``:
+
+```swift
+@Test func cannotAddToppingToPizzaBeforeStartOfList() {
+  var order = PizzaToppings(bases: [.calzone, .deepCrust])
+  #expect(throws: (any Error).self) {
+    try order.add(topping: .mozarella, toPizzasIn: -1..<0)
+  }
+}
+```
 
 ### Validate that your code doesn't throw an error
 
@@ -65,4 +81,23 @@ the error to `Never`:
 If the closure throws _any_ error, the testing library records an issue.
 If you need the test to stop when the code throws an error, include the
 code inline in the test function instead of wrapping it in a call to
-``expect(throws:_:sourceLocation:performing:)-1xr34``.
+``expect(throws:_:sourceLocation:performing:)-7du1h``.
+
+## Inspect an error thrown by your code
+
+When you use `#expect(throws:)` or `#require(throws:)` and the error matches the
+expectation, it is returned to the caller so that you can perform additional
+validation. If the expectation fails because no error was thrown or an error of
+a different type was thrown, `#expect(throws:)` returns `nil`:
+
+```swift
+@Test func cannotAddMarshmallowsToPizza() throws {
+  let error = #expect(throws: PizzaToppings.InvalidToppingError.self) {
+    try Pizza.current.add(topping: .marshmallows)
+  }
+  #expect(error?.topping == .marshmallows)
+  #expect(error?.reason == .dessertToppingOnly)
+}
+```
+
+If you aren't sure what type of error will be thrown, pass `(any Error).self`.

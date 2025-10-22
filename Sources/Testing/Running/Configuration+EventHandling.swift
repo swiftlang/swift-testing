@@ -23,6 +23,26 @@ extension Configuration {
     var contextCopy = copy context
     contextCopy.configuration = self
     contextCopy.configuration?.eventHandler = { _, _ in }
-    eventHandler(event, contextCopy)
+    return eventHandler(event, contextCopy)
+  }
+}
+
+extension Configuration.EventHandlingOptions {
+  /// Determine whether the specified event should be handled according to the
+  /// options in this instance.
+  ///
+  /// - Parameters:
+  ///   - event: The event to consider handling.
+  ///
+  /// - Returns: Whether or not the event should be handled or suppressed.
+  func shouldHandleEvent(_ event: borrowing Event) -> Bool {
+    switch event.kind {
+    case let .issueRecorded(issue):
+      issue.severity > .warning || isWarningIssueRecordedEventEnabled
+    case .expectationChecked:
+      isExpectationCheckedEventEnabled
+    default:
+      true
+    }
   }
 }

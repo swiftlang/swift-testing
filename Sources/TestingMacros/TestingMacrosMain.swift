@@ -24,11 +24,16 @@ struct TestingMacrosMain: CompilerPlugin {
       RequireMacro.self,
       AmbiguousRequireMacro.self,
       NonOptionalRequireMacro.self,
+      RequireThrowsMacro.self,
       RequireThrowsNeverMacro.self,
       ExitTestExpectMacro.self,
       ExitTestRequireMacro.self,
+      ExitTestCapturedValueMacro.self,
+      ExitTestBadCapturedValueMacro.self,
+      ExitTestIncorrectlyCapturedValueMacro.self,
       TagMacro.self,
       SourceLocationMacro.self,
+      PragmaMacro.self,
     ]
   }
 }

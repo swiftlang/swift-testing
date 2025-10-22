@@ -61,16 +61,17 @@ extension WithAttributesSyntax {
         }.first
 
       var lastPlatformName: TokenSyntax? = nil
-      var asteriskEncountered = false
+      var wildcardEncountered = false
+      let hasWildcard = entries.contains(where: \.isWildcard)
       return entries.compactMap { entry in
         switch entry {
         case let .availabilityVersionRestriction(restriction) where whenKeyword == .introduced:
-          return Availability(attribute: attribute, platformName: restriction.platform, version: restriction.version, message: message)
+          return Availability(attribute: attribute, platformName: restriction.platform, version: restriction.version, mayNeedTrailingWildcard: hasWildcard, message: message)
         case let .token(token):
           if case .identifier = token.tokenKind {
             lastPlatformName = token
-          } else if case let .binaryOperator(op) = token.tokenKind, op == "*" {
-            asteriskEncountered = true
+          } else if entry.isWildcard {
+            wildcardEncountered = true
             // It is syntactically valid to specify a platform name without a
             // version in an availability declaration, and it's used to resolve
             // a custom availability definition specified via the
@@ -80,10 +81,14 @@ extension WithAttributesSyntax {
             if let lastPlatformName, whenKeyword == .introduced {
               return Availability(attribute: attribute, platformName: lastPlatformName, version: nil, message: message)
             }
-          } else if case let .keyword(keyword) = token.tokenKind, keyword == whenKeyword, asteriskEncountered {
-            // Match the "always this availability" construct, i.e.
-            // `@available(*, deprecated)` and `@available(*, unavailable)`.
-            return Availability(attribute: attribute, platformName: lastPlatformName, version: nil, message: message)
+          } else if case let .keyword(keyword) = token.tokenKind, keyword == whenKeyword {
+            if wildcardEncountered {
+              // Match the "always this availability" construct, i.e.
+              // `@available(*, deprecated)` and `@available(*, unavailable)`.
+              return Availability(attribute: attribute, platformName: lastPlatformName, version: nil, message: message)
+            } else if keyword == .unavailable {
+              return Availability(attribute: attribute, platformName: lastPlatformName, version: nil, message: message)
+            }
           }
         case let .availabilityLabeledArgument(argument):
           if argument.label.tokenKind == .keyword(whenKeyword), case let .version(version) = argument.value {
@@ -101,13 +106,13 @@ extension WithAttributesSyntax {
   /// The first `@available(*, noasync)` or `@_unavailableFromAsync` attribute
   /// on this instance, if any.
   var noasyncAttribute: AttributeSyntax? {
-    availability(when: .noasync).first?.attribute ?? attributes.lazy
-      .compactMap { attribute in
-        if case let .attribute(attribute) = attribute {
-          return attribute
-        }
-        return nil
-      }.first { $0.attributeNameText == "_unavailableFromAsync" }
+    availability(when: .noasync).first?.attribute
+      ?? attributes(named: "_unavailableFromAsync", inModuleNamed: "Swift").first
+  }
+
+  /// The first `@_unavailableInEmbedded` attribute on this instance, if any.
+  var unavailableInEmbeddedAttribute: AttributeSyntax? {
+    attributes(named: "_unavailableInEmbedded", inModuleNamed: "Swift").first
   }
 
   /// Find all attributes on this node, if any, with the given name.
@@ -138,5 +143,15 @@ extension AttributeSyntax {
       .tokens(viewMode: .fixedUp)
       .map(\.textWithoutBackticks)
       .joined()
+  }
+}
+
+extension AvailabilityArgumentSyntax.Argument {
+  var isWildcard: Bool {
+    if case let .token(token) = self,
+       case let .binaryOperator(op) = token.tokenKind, op == "*" {
+      return true
+    }
+    return false
   }
 }

@@ -426,7 +426,7 @@ final class RunnerTests: XCTestCase {
 
   func testExpectationCheckedEventHandlingWhenDisabled() async {
     var configuration = Configuration()
-    configuration.deliverExpectationCheckedEvents = false
+    configuration.eventHandlingOptions.isExpectationCheckedEventEnabled = false
     configuration.eventHandler = { event, _ in
       if case .expectationChecked = event.kind {
         XCTFail("Expectation checked event was posted unexpectedly")
@@ -459,7 +459,7 @@ final class RunnerTests: XCTestCase {
 #endif
 
     var configuration = Configuration()
-    configuration.deliverExpectationCheckedEvents = true
+    configuration.eventHandlingOptions.isExpectationCheckedEventEnabled = true
     configuration.eventHandler = { event, _ in
       guard case let .expectationChecked(expectation) = event.kind else {
         return
@@ -501,7 +501,7 @@ final class RunnerTests: XCTestCase {
 
   func testPoundIfTrueTestFunctionRuns() async throws {
     let testStarted = expectation(description: "Test started")
-    testStarted.expectedFulfillmentCount = 4
+    testStarted.expectedFulfillmentCount = 5
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       if case .testStarted = event.kind {
@@ -522,7 +522,7 @@ final class RunnerTests: XCTestCase {
 
   func testPoundIfFalseTestFunctionDoesNotRun() async throws {
     let testStarted = expectation(description: "Test started")
-    testStarted.expectedFulfillmentCount = 2
+    testStarted.expectedFulfillmentCount = 3
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       if case .testStarted = event.kind {
@@ -545,7 +545,7 @@ final class RunnerTests: XCTestCase {
 
   func testPoundIfFalseElseTestFunctionRuns() async throws {
     let testStarted = expectation(description: "Test started")
-    testStarted.expectedFulfillmentCount = 4
+    testStarted.expectedFulfillmentCount = 5
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       if case .testStarted = event.kind {
@@ -568,7 +568,7 @@ final class RunnerTests: XCTestCase {
 
   func testPoundIfFalseElseIfTestFunctionRuns() async throws {
     let testStarted = expectation(description: "Test started")
-    testStarted.expectedFulfillmentCount = 4
+    testStarted.expectedFulfillmentCount = 5
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       if case .testStarted = event.kind {
@@ -606,9 +606,9 @@ final class RunnerTests: XCTestCase {
   func testNoasyncTestsAreCallable() async throws {
     let testStarted = expectation(description: "Test started")
 #if !SWT_NO_GLOBAL_ACTORS
-    testStarted.expectedFulfillmentCount = 6
+    testStarted.expectedFulfillmentCount = 7
 #else
-    testStarted.expectedFulfillmentCount = 5
+    testStarted.expectedFulfillmentCount = 6
 #endif
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
@@ -636,6 +636,14 @@ final class RunnerTests: XCTestCase {
     @Test(.hidden)
     @available(macOS 999.0, iOS 999.0, watchOS 999.0, tvOS 999.0, visionOS 999.0, *)
     func futureAvailable() {}
+
+    @Test(.hidden)
+    @available(macOS, unavailable)
+    @available(iOS, unavailable)
+    @available(watchOS, unavailable)
+    @available(tvOS, unavailable)
+    @available(visionOS, unavailable)
+    func perPlatformUnavailable() {}
 
     @Test(.hidden)
     @available(macOS, introduced: 999.0)
@@ -673,10 +681,10 @@ final class RunnerTests: XCTestCase {
     let testStarted = expectation(description: "Test started")
     let testSkipped = expectation(description: "Test skipped")
 #if SWT_TARGET_OS_APPLE
-    testStarted.expectedFulfillmentCount = 4
-    testSkipped.expectedFulfillmentCount = 7
+    testStarted.expectedFulfillmentCount = 5
+    testSkipped.expectedFulfillmentCount = 8
 #else
-    testStarted.expectedFulfillmentCount = 2
+    testStarted.expectedFulfillmentCount = 3
     testSkipped.expectedFulfillmentCount = 2
 #endif
     var configuration = Configuration()
@@ -719,6 +727,14 @@ final class RunnerTests: XCTestCase {
     func unavailable() {}
 
 #if SWT_TARGET_OS_APPLE
+    @Test(.hidden)
+    @available(macOS, unavailable, message: "Expected Message")
+    @available(iOS, unavailable, message: "Expected Message")
+    @available(watchOS, unavailable, message: "Expected Message")
+    @available(tvOS, unavailable, message: "Expected Message")
+    @available(visionOS, unavailable, message: "Expected Message")
+    func perPlatformUnavailable() {}
+
     @Test(.hidden)
     @available(macOS, introduced: 999.0, message: "Expected Message")
     @available(iOS, introduced: 999.0, message: "Expected Message")
@@ -766,7 +782,7 @@ final class RunnerTests: XCTestCase {
   func testAvailableWithSwiftVersion() async throws {
     let testStarted = expectation(description: "Test started")
     let testSkipped = expectation(description: "Test skipped")
-    testStarted.expectedFulfillmentCount = 3
+    testStarted.expectedFulfillmentCount = 4
     testSkipped.expectedFulfillmentCount = 2
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
@@ -792,7 +808,7 @@ final class RunnerTests: XCTestCase {
     }
 
     let testStarted = expectation(description: "Test started")
-    testStarted.expectedFulfillmentCount = 2
+    testStarted.expectedFulfillmentCount = 3
     var configuration = Configuration()
     configuration.eventHandler = { event, _ in
       if case .testStarted = event.kind {
@@ -800,6 +816,29 @@ final class RunnerTests: XCTestCase {
       }
     }
     await runTest(for: AvailableWithDefinedAvailabilityTests.self, configuration: configuration)
+    await fulfillment(of: [testStarted], timeout: 0.0)
+  }
+
+  @Suite(.hidden) struct UnavailableInEmbeddedTests {
+    @Test(.hidden)
+    @_unavailableInEmbedded
+    func embedded() {}
+  }
+
+  func testUnavailableInEmbeddedAttribute() async throws {
+    let testStarted = expectation(description: "Test started")
+#if !hasFeature(Embedded)
+    testStarted.expectedFulfillmentCount = 3
+#else
+    testStarted.isInverted = true
+#endif
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      if case .testStarted = event.kind {
+        testStarted.fulfill()
+      }
+    }
+    await runTest(for: UnavailableInEmbeddedTests.self, configuration: configuration)
     await fulfillment(of: [testStarted], timeout: 0.0)
   }
 
@@ -903,9 +942,9 @@ final class RunnerTests: XCTestCase {
     let testStarted = expectation(description: "Test started")
     let testSkipped = expectation(description: "Test skipped")
 #if SWT_TARGET_OS_APPLE
-    testStarted.expectedFulfillmentCount = 4
+    testStarted.expectedFulfillmentCount = 5
 #else
-    testStarted.expectedFulfillmentCount = 3
+    testStarted.expectedFulfillmentCount = 4
 #endif
     testSkipped.isInverted = true
     var configuration = Configuration()

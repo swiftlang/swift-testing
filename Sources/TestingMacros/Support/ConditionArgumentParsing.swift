@@ -9,6 +9,7 @@
 //
 
 import SwiftSyntax
+import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
 /// The result of parsing the condition argument passed to `#expect()` or
@@ -312,17 +313,6 @@ private func _exprFromOptionalChainedExpr(_ expr: some ExprSyntaxProtocol) -> (E
 ///
 /// - Returns: An instance of ``Condition`` describing `expr`.
 private func _parseCondition(from expr: FunctionCallExprSyntax, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
-  // If the member function call involves the `try` or `await` keywords, assume
-  // we cannot expand it. This check cannot handle expressions like
-  // `try #expect(a.b(c))` where `b()` is throwing because the `try` keyword
-  // is outside the macro expansion. SEE: rdar://109470248
-  let containsTryOrAwait = expr.tokens(viewMode: .sourceAccurate).lazy
-    .map(\.tokenKind)
-    .contains { $0 == .keyword(.try) || $0 == .keyword(.await) }
-  if containsTryOrAwait {
-    return Condition(expression: expr)
-  }
-
   // We do not support function calls with trailing closures because the
   // transform required to forward them requires more information than is
   // available solely from the syntax tree.
@@ -477,6 +467,11 @@ private func _parseCondition(negating expr: ExprSyntax, isParenthetical: Bool, f
 ///
 /// - Returns: An instance of ``Condition`` describing `expr`.
 private func _parseCondition(from expr: ExprSyntax, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
+  // Handle closures with a single expression in them (e.g. { $0.foo() })
+  if let closureExpr = expr.as(ClosureExprSyntax.self) {
+    return _parseCondition(from: closureExpr, for: macro, in: context)
+  }
+
   if let infixOperator = expr.as(InfixOperatorExprSyntax.self),
      let op = infixOperator.operator.as(BinaryOperatorExprSyntax.self) {
     return _parseCondition(from: expr, leftOperand: infixOperator.leftOperand, operator: op, rightOperand: infixOperator.rightOperand, for: macro, in: context)
@@ -487,11 +482,6 @@ private func _parseCondition(from expr: ExprSyntax, for macro: some Freestanding
     return _parseCondition(from: isExpr, for: macro, in: context)
   } else if let asExpr = expr.as(AsExprSyntax.self) {
     return _parseCondition(from: asExpr, for: macro, in: context)
-  }
-
-  // Handle closures with a single expression in them (e.g. { $0.foo() })
-  if let closureExpr = expr.as(ClosureExprSyntax.self) {
-    return _parseCondition(from: closureExpr, for: macro, in: context)
   }
 
   // Handle function calls and member accesses.
@@ -526,6 +516,13 @@ private func _parseCondition(from expr: ExprSyntax, for macro: some Freestanding
 ///
 /// - Returns: An instance of ``Condition`` describing `expr`.
 func parseCondition(from expr: ExprSyntax, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
+  // If the condition involves the `unsafe`, `try`, or `await` keywords, assume
+  // we cannot expand it.
+  let effectKeywordsToApply = findEffectKeywords(in: expr).union(findEffectKeywords(in: context))
+  guard effectKeywordsToApply.intersection([.unsafe, .try, .await]).isEmpty else {
+    return Condition(expression: expr)
+  }
+
   _diagnoseTrivialBooleanValue(from: expr, for: macro, in: context)
   let result = _parseCondition(from: expr, for: macro, in: context)
   return result

@@ -32,7 +32,7 @@ extension Event {
       /// On Windows, `GetFileType()` returns `FILE_TYPE_CHAR` for console file
       /// handles, and the [Console API](https://learn.microsoft.com/en-us/windows/console/)
       /// can be used to perform more complex console operations.
-      public var useANSIEscapeCodes = false
+      public var useANSIEscapeCodes: Bool = false
 
       /// The supported color bit depth when adding color to the output using
       /// [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code).
@@ -58,7 +58,7 @@ extension Event {
       /// If the SF&nbsp;Symbols app is not installed on the system where the
       /// output is being rendered, the effect of setting the value of this
       /// property to `true` is unspecified.
-      public var useSFSymbols = false
+      public var useSFSymbols: Bool = false
 #endif
 
       /// Storage for ``tagColors``.
@@ -136,7 +136,7 @@ extension Event.Symbol {
   ///
   /// - Returns: A string representation of `self` appropriate for writing to
   ///   a stream.
-  fileprivate func stringValue(options: Event.ConsoleOutputRecorder.Options) -> String {
+  package func stringValue(options: Event.ConsoleOutputRecorder.Options) -> String {
     let useColorANSIEscapeCodes = options.useANSIEscapeCodes && options.ansiColorBitDepth >= 4
 
     var symbolCharacter = String(unicodeCharacter)
@@ -162,10 +162,14 @@ extension Event.Symbol {
           return "\(_ansiEscapeCodePrefix)90m\(symbolCharacter)\(_resetANSIEscapeCode)"
         }
         return "\(_ansiEscapeCodePrefix)92m\(symbolCharacter)\(_resetANSIEscapeCode)"
+      case .passWithWarnings:
+        return "\(_ansiEscapeCodePrefix)93m\(symbolCharacter)\(_resetANSIEscapeCode)"
       case .fail:
         return "\(_ansiEscapeCodePrefix)91m\(symbolCharacter)\(_resetANSIEscapeCode)"
       case .warning:
         return "\(_ansiEscapeCodePrefix)93m\(symbolCharacter)\(_resetANSIEscapeCode)"
+      case .attachment:
+        return "\(_ansiEscapeCodePrefix)94m\(symbolCharacter)\(_resetANSIEscapeCode)"
       case .details:
         return symbolCharacter
       }
@@ -302,18 +306,40 @@ extension Event.ConsoleOutputRecorder {
   ///   destination.
   @discardableResult public func record(_ event: borrowing Event, in context: borrowing Event.Context) -> Bool {
     let messages = _humanReadableOutputRecorder.record(event, in: context)
-    for message in messages {
-      let symbol = message.symbol?.stringValue(options: options) ?? " "
 
-      if case .details = message.symbol, options.useANSIEscapeCodes, options.ansiColorBitDepth > 1 {
+    // Padding to use in place of a symbol for messages that don't have one.
+    var padding = " "
+#if os(macOS) || (os(iOS) && targetEnvironment(macCatalyst))
+    if options.useSFSymbols {
+      padding = "  "
+    }
+#endif
+
+    let lines = messages.lazy.map { [test = context.test] message in
+      let symbol = message.symbol?.stringValue(options: options) ?? padding
+
+      if case .details = message.symbol {
         // Special-case the detail symbol to apply grey to the entire line of
-        // text instead of just the symbol.
-        write("\(_ansiEscapeCodePrefix)90m\(symbol) \(message.stringValue)\(_resetANSIEscapeCode)\n")
+        // text instead of just the symbol. Details may be multi-line messages,
+        // so split the message on newlines and indent all lines to align them
+        // to the indentation provided by the symbol.
+        var lines = message.stringValue.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+        lines = CollectionOfOne(lines[0]) + lines.dropFirst().map { line in
+          "\(padding) \(line)"
+        }
+        let stringValue = lines.joined(separator: "\n")
+        if options.useANSIEscapeCodes, options.ansiColorBitDepth > 1 {
+          return "\(_ansiEscapeCodePrefix)90m\(symbol) \(stringValue)\(_resetANSIEscapeCode)\n"
+        } else {
+          return "\(symbol) \(stringValue)\n"
+        }
       } else {
-        let colorDots = context.test.map(\.tags).map { self.colorDots(for: $0) } ?? ""
-        write("\(symbol) \(colorDots)\(message.stringValue)\n")
+        let colorDots = test.map { self.colorDots(for: $0.tags) } ?? ""
+        return "\(symbol) \(colorDots)\(message.stringValue)\n"
       }
     }
+
+    write(lines.joined())
     return !messages.isEmpty
   }
 

@@ -8,8 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-/// A type that defines a condition which must be satisfied for a test to be
-/// enabled.
+/// A type that defines a condition which must be satisfied for the testing
+/// library to enable a test.
 ///
 /// To add this trait to a test, use one of the following functions:
 ///
@@ -19,44 +19,27 @@
 /// - ``Trait/disabled(if:_:sourceLocation:)``
 /// - ``Trait/disabled(_:sourceLocation:_:)``
 public struct ConditionTrait: TestTrait, SuiteTrait {
-  /// An enumeration describing the kinds of conditions that can be represented
-  /// by an instance of this type.
+  /// An enumeration that describes the conditions that an instance of this type
+  /// can represent.
   enum Kind: Sendable {
-    /// The trait is conditional on the result of calling a function.
+    /// Enabling the test is conditional on the result of calling a function.
     ///
     /// - Parameters:
     ///   - body: The function to call. The result of this function determines
-    ///     if the condition is satisfied or not. If this function returns
-    ///     `false` and a comment is also returned, it is used in place of the
-    ///     value of the associated trait's ``ConditionTrait/comment`` property.
-    ///     If this function returns `true`, the returned comment is ignored.
-    case conditional(_ body: @Sendable () async throws -> (Bool, comment: Comment?))
-
-    /// Create an instance of this type associated with a trait that is
-    /// conditional on the result of calling a function.
-    ///
-    /// - Parameters:
-    ///   - body: The function to call. The result of this function determines
-    ///     whether or not the condition was met.
-    ///
-    /// - Returns: An instance of this type.
-    static func conditional(_ body: @escaping @Sendable () async throws -> Bool) -> Self {
-      conditional { () -> (Bool, comment: Comment?) in
-        return (try await body(), nil)
-      }
-    }
+    ///     if the condition is satisfied or not.
+    case conditional(_ body: @Sendable () async throws -> Bool)
 
     /// The trait is unconditional and always has the same result.
     ///
     /// - Parameters:
-    ///   - value: Whether or not the condition was met.
+    ///   - value: Whether or not the test is enabled.
     case unconditional(_ value: Bool)
   }
 
-  /// The kind of condition represented by this instance.
+  /// The kind of condition represented by this trait.
   var kind: Kind
 
-  /// Whether or not this trait has a condition that is evaluated at runtime.
+  /// Whether this trait's condition is constant, or evaluated at runtime.
   ///
   /// If this trait was created using a function such as
   /// ``disabled(_:sourceLocation:)`` that unconditionally enables or disables a
@@ -77,28 +60,38 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
 
   public var comments: [Comment]
 
-  /// The source location where this trait was specified.
+  /// The source location where this trait is specified.
   public var sourceLocation: SourceLocation
-
-  public func prepare(for test: Test) async throws {
-    let result: Bool
-    var commentOverride: Comment?
-
+  
+  /// Evaluate this instance's underlying condition.
+  ///
+  /// - Returns: The result of evaluating this instance's underlying condition.
+  ///
+  /// The evaluation is performed each time this function is called, and is not
+  /// cached.
+  /// 
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
+  /// }
+  public func evaluate() async throws -> Bool {
     switch kind {
     case let .conditional(condition):
-      (result, commentOverride) = try await condition()
+      try await condition()
     case let .unconditional(unconditionalValue):
-      result = unconditionalValue
+      unconditionalValue
     }
+  }
 
-    if !result {
+  public func prepare(for test: Test) async throws {
+    let isEnabled = try await evaluate()
+    if !isEnabled {
       // We don't need to consider including a backtrace here because it will
       // primarily contain frames in the testing library, not user code. If an
       // error was thrown by a condition evaluated above, the caller _should_
       // attempt to get the backtrace of the caught error when creating an issue
       // for it, however.
-      let sourceContext = SourceContext(backtrace: nil, sourceLocation: sourceLocation)
-      throw SkipInfo(comment: commentOverride ?? comments.first, sourceContext: sourceContext)
+      try Test.cancel(comments.first, sourceLocation: sourceLocation)
     }
   }
 
@@ -110,18 +103,17 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
 // MARK: -
 
 extension Trait where Self == ConditionTrait {
-  /// Construct a condition trait that causes a test to be disabled if it
-  /// returns `false`.
+  /// Constructs a condition trait that disables a test if it returns `false`.
   ///
   /// - Parameters:
-  ///   - condition: A closure containing the trait's custom condition logic. If
-  ///     this closure returns `true`, the test is allowed to run. Otherwise,
-  ///     the test is skipped.
-  ///   - comment: An optional, user-specified comment describing this trait.
+  ///   - condition: A closure that contains the trait's custom condition logic.
+  ///     If this closure returns `true`, the trait allows the test to run.
+  ///     Otherwise, the testing library skips the test.
+  ///   - comment: An optional comment that describes this trait.
   ///   - sourceLocation: The source location of the trait.
   ///
-  /// - Returns: An instance of ``ConditionTrait`` that will evaluate the
-  ///   specified closure.
+  /// - Returns: An instance of ``ConditionTrait`` that evaluates the
+  ///   closure you provide.
   ///
   /// @Comment {
   ///   - Bug: `condition` cannot be `async` without making this function
@@ -136,18 +128,17 @@ extension Trait where Self == ConditionTrait {
     Self(kind: .conditional(condition), comments: Array(comment), sourceLocation: sourceLocation)
   }
 
-  /// Construct a condition trait that causes a test to be disabled if it
-  /// returns `false`.
+  /// Constructs a condition trait that disables a test if it returns `false`.
   ///
   /// - Parameters:
-  ///   - comment: An optional, user-specified comment describing this trait.
+  ///   - comment: An optional comment that describes this trait.
   ///   - sourceLocation: The source location of the trait.
-  ///   - condition: A closure containing the trait's custom condition logic. If
-  ///     this closure returns `true`, the test is allowed to run. Otherwise,
-  ///     the test is skipped.
+  ///   - condition: A closure that contains the trait's custom condition logic.
+  ///     If this closure returns `true`, the trait allows the test to run.
+  ///     Otherwise, the testing library skips the test.
   ///
-  /// - Returns: An instance of ``ConditionTrait`` that will evaluate the
-  ///   specified closure.
+  /// - Returns: An instance of ``ConditionTrait`` that evaluates the
+  ///   closure you provide.
   public static func enabled(
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation,
@@ -156,13 +147,13 @@ extension Trait where Self == ConditionTrait {
     Self(kind: .conditional(condition), comments: Array(comment), sourceLocation: sourceLocation)
   }
 
-  /// Construct a condition trait that disables a test unconditionally.
+  /// Constructs a condition trait that disables a test unconditionally.
   ///
   /// - Parameters:
-  ///   - comment: An optional, user-specified comment describing this trait.
+  ///   - comment: An optional comment that describes this trait.
   ///   - sourceLocation: The source location of the trait.
   ///
-  /// - Returns: An instance of ``ConditionTrait`` that will always disable the
+  /// - Returns: An instance of ``ConditionTrait`` that always disables the
   ///   test to which it is added.
   public static func disabled(
     _ comment: Comment? = nil,
@@ -171,18 +162,17 @@ extension Trait where Self == ConditionTrait {
     Self(kind: .unconditional(false), comments: Array(comment), sourceLocation: sourceLocation)
   }
 
-  /// Construct a condition trait that causes a test to be disabled if it
-  /// returns `true`.
+  /// Constructs a condition trait that disables a test if its value is true.
   ///
   /// - Parameters:
-  ///   - condition: A closure containing the trait's custom condition logic. If
-  ///     this closure returns `false`, the test is allowed to run. Otherwise,
-  ///     the test is skipped.
-  ///   - comment: An optional, user-specified comment describing this trait.
+  ///   - condition: A closure that contains the trait's custom condition logic.
+  ///     If this closure returns `false`, the trait allows the test to run.
+  ///     Otherwise, the testing library skips the test.
+  ///   - comment: An optional comment that describes this trait.
   ///   - sourceLocation: The source location of the trait.
   ///
-  /// - Returns: An instance of ``ConditionTrait`` that will evaluate the
-  ///   specified closure.
+  /// - Returns: An instance of ``ConditionTrait`` that evaluates the
+  ///   closure you provide.
   ///
   /// @Comment {
   ///   - Bug: `condition` cannot be `async` without making this function
@@ -197,17 +187,16 @@ extension Trait where Self == ConditionTrait {
     Self(kind: .conditional { !(try condition()) }, comments: Array(comment), sourceLocation: sourceLocation)
   }
 
-  /// Construct a condition trait that causes a test to be disabled if it
-  /// returns `true`.
+  /// Constructs a condition trait that disables a test if its value is true.
   ///
   /// - Parameters:
-  ///   - comment: An optional, user-specified comment describing this trait.
+  ///   - comment: An optional comment that describes this trait.
   ///   - sourceLocation: The source location of the trait.
-  ///   - condition: A closure containing the trait's custom condition logic. If
-  ///     this closure returns `false`, the test is allowed to run. Otherwise,
-  ///     the test is skipped.
+  ///   - condition: A closure that contains the trait's custom condition logic.
+  ///     If this closure returns `false`, the trait allows the test to run.
+  ///     Otherwise, the testing library skips the test.
   ///
-  /// - Returns: An instance of ``ConditionTrait`` that will evaluate the
+  /// - Returns: An instance of ``ConditionTrait`` that evaluates the
   ///   specified closure.
   public static func disabled(
     _ comment: Comment? = nil,

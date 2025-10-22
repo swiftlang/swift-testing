@@ -10,6 +10,10 @@
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
 
+#if canImport(Foundation)
+private import Foundation
+#endif
+
 @Suite("Confirmation Tests")
 struct ConfirmationTests {
   @Test("Successful confirmations")
@@ -47,13 +51,50 @@ struct ConfirmationTests {
     }
   }
 
+  @Test func confirmationFailureCanBeDescribed() async {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      if case let .issueRecorded(issue) = event.kind {
+        #expect(String(describing: issue).contains("time(s)"))
+      }
+    }
+
+    await Test {
+      await confirmation(expectedCount: 1...) { _ in }
+      await confirmation(expectedCount: 1...2) { _ in }
+      await confirmation(expectedCount: 1..<3) { _ in }
+    }.run(configuration: configuration)
+  }
+
+  @Test func confirmationFailureCanBeDescribedAsSingleValue() async {
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      if case let .issueRecorded(issue) = event.kind {
+        #expect(!String(describing: issue).contains("time(s)"))
+      }
+    }
+
+    await Test {
+      await confirmation(expectedCount: 1...1) { _ in }
+      await confirmation(expectedCount: 1..<2) { _ in }
+      await confirmation(expectedCount: Int.max...Int.max) { _ in }
+#if !SWT_NO_EXIT_TESTS
+      await withKnownIssue("Crashes in Swift standard library (rdar://139568287)") {
+        await #expect(processExitsWith: .success) {
+          await confirmation(expectedCount: Int.max...) { _ in }
+        }
+      }
+#endif
+    }.run(configuration: configuration)
+  }
+
 #if !SWT_NO_EXIT_TESTS
   @Test("Confirmation requires positive count")
   func positiveCount() async {
-    await #expect(exitsWith: .failure) {
+    await #expect(processExitsWith: .failure) {
       await confirmation { $0.confirm(count: 0) }
     }
-    await #expect(exitsWith: .failure) {
+    await #expect(processExitsWith: .failure) {
       await confirmation { $0.confirm(count: -1) }
     }
   }

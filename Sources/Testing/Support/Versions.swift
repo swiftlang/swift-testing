@@ -9,6 +9,7 @@
 //
 
 private import _TestingInternals
+private import SwiftShims
 
 /// A human-readable string describing the current operating system's version.
 ///
@@ -31,7 +32,7 @@ let operatingSystemVersion: String = {
   default:
     return "\(productVersion) (\(buildNumber))"
   }
-#elseif !SWT_NO_UNAME && (SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD))
+#elseif !SWT_NO_UNAME && (SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD))
   var name = utsname()
   if 0 == uname(&name) {
     let release = withUnsafeBytes(of: name.release) { release in
@@ -65,7 +66,7 @@ let operatingSystemVersion: String = {
   // basically always lies on Windows 10, so don't bother calling it on a
   // fallback path.
   let RtlGetVersion = symbol(in: GetModuleHandleA("ntdll.dll"), named: "RtlGetVersion").map {
-    unsafeBitCast($0, to: (@convention(c) (UnsafeMutablePointer<OSVERSIONINFOW>) -> NTSTATUS).self)
+    castCFunction(at: $0, to: (@convention(c) (UnsafeMutablePointer<OSVERSIONINFOW>) -> NTSTATUS).self)
   }
   if let RtlGetVersion {
     var versionInfo = OSVERSIONINFOW()
@@ -128,9 +129,26 @@ let simulatorVersion: String = {
 /// an event writer.
 ///
 /// This value is not part of the public interface of the testing library.
-var testingLibraryVersion: String {
-  swt_getTestingLibraryVersion().flatMap(String.init(validatingCString:)) ?? "unknown"
-}
+let testingLibraryVersion: String = {
+  var result = swt_getTestingLibraryVersion().flatMap(String.init(validatingCString:)) ?? "unknown"
+
+  // Get details of the git commit used when compiling the testing library.
+  var commitHash: UnsafePointer<CChar>?
+  var commitModified = CBool(false)
+  swt_getTestingLibraryCommit(&commitHash, &commitModified)
+
+  if let commitHash = commitHash.flatMap(String.init(validatingCString:)) {
+    // Truncate to 15 characters of the hash to match `swift --version`.
+    let commitHash = commitHash.prefix(15)
+    if commitModified {
+      result = "\(result) (\(commitHash) - modified)"
+    } else {
+      result = "\(result) (\(commitHash))"
+    }
+  }
+
+  return result
+}()
 
 /// Get the LLVM target triple used to build the testing library, if available.
 ///
@@ -141,17 +159,68 @@ var targetTriple: String? {
 
 /// A human-readable string describing the Swift Standard Library's version.
 ///
-/// This value's format is platform-specific and is not meant to be
-/// machine-readable. It is added to the output of a test run when using
-/// an event writer.
+/// This value is unavailable on some earlier Apple runtime targets. On those
+/// targets, this property has a value of `5.0.0`.
 ///
 /// This value is not part of the public interface of the testing library.
-let swiftStandardLibraryVersion: String = {
-  if #available(_swiftVersionAPI, *) {
-    return String(describing: _SwiftStdlibVersion.current)
+let swiftStandardLibraryVersion: VersionNumber? = {
+  guard #available(_swiftVersionAPI, *) else {
+    return VersionNumber(5, 0)
   }
-  return "unknown"
+  let packedValue = _SwiftStdlibVersion.current._value
+  return VersionNumber(
+    majorComponent: .init((packedValue & 0xFFFF0000) >> 16),
+    minorComponent: .init((packedValue & 0x0000FF00) >> 8),
+    patchComponent: .init((packedValue & 0x000000FF) >> 0)
+  )
 }()
+
+/// The version of the Swift compiler used to build the testing library.
+///
+/// This value is determined at compile time by the Swift compiler. For more
+/// information, see [Version.h](https://github.com/swiftlang/swift/blob/main/include/swift/Basic/Version.h)
+/// and [ClangImporter.cpp](https://github.com/swiftlang/swift/blob/main/lib/ClangImporter/ClangImporter.cpp)
+/// in the Swift repository.
+///
+/// This value is not part of the public interface of the testing library.
+var swiftCompilerVersion: VersionNumber {
+  let packedValue = swt_getSwiftCompilerVersion()
+  if packedValue == 0, let swiftStandardLibraryVersion {
+    // The compiler did not supply its version. This is currently expected on
+    // non-Darwin targets in particular. Substitute the stdlib version (which
+    // should generally be aligned on non-Darwin targets.)
+    return swiftStandardLibraryVersion
+  }
+  return VersionNumber(
+    majorComponent: .init((packedValue % 1_000_000_000_000_000) / 1_000_000_000_000),
+    minorComponent: .init((packedValue % 1_000_000_000_000)     / 1_000_000_000),
+    patchComponent: .init((packedValue % 1_000_000_000)         / 1_000_000)
+  )
+}
+
+#if os(Linux) && canImport(Glibc)
+/// The (runtime, not compile-time) version of glibc in use on this system.
+///
+/// This value is not part of the public interface of the testing library.
+let glibcVersion: VersionNumber = {
+  // Default to the statically available version number if the function call
+  // fails for some reason.
+  var major = Int(clamping: __GLIBC__)
+  var minor = Int(clamping: __GLIBC_MINOR__)
+
+  if let strVersion = gnu_get_libc_version() {
+    withUnsafeMutablePointer(to: &major) { major in
+      withUnsafeMutablePointer(to: &minor) { minor in
+        withVaList([major, minor]) { args in
+          _ = vsscanf(strVersion, "%zd.%zd", args)
+        }
+      }
+    }
+  }
+
+  return VersionNumber(majorComponent: .init(clamping: major), minorComponent: .init(clamping: minor))
+}()
+#endif
 
 // MARK: - sysctlbyname() Wrapper
 

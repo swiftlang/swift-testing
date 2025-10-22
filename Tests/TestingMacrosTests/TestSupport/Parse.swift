@@ -10,6 +10,7 @@
 
 @testable import TestingMacros
 
+import SwiftBasicFormat
 import SwiftDiagnostics
 import SwiftOperators
 import SwiftParser
@@ -18,17 +19,19 @@ import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 import SwiftSyntaxMacroExpansion
 
-fileprivate let allMacros: [String: any Macro.Type] = [
+fileprivate let allMacros: [String: any (Macro & Sendable).Type] = [
   "expect": ExpectMacro.self,
   "require": RequireMacro.self,
   "requireAmbiguous": AmbiguousRequireMacro.self, // different name needed only for unit testing
   "requireNonOptional": NonOptionalRequireMacro.self, // different name needed only for unit testing
+  "requireThrows": RequireThrowsMacro.self, // different name needed only for unit testing
   "requireThrowsNever": RequireThrowsNeverMacro.self, // different name needed only for unit testing
   "expectExitTest": ExitTestRequireMacro.self, // different name needed only for unit testing
   "requireExitTest": ExitTestRequireMacro.self, // different name needed only for unit testing
   "Suite": SuiteDeclarationMacro.self,
   "Test": TestDeclarationMacro.self,
   "Tag": TagMacro.self,
+  "__testing": PragmaMacro.self,
 ]
 
 func parse(_ sourceCode: String, activeMacros activeMacroNames: [String] = [], removeWhitespace: Bool = false) throws -> (sourceCode: String, diagnostics: [Diagnostic]) {

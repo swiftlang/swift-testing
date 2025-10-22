@@ -8,8 +8,14 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+import SwiftDiagnostics
 public import SwiftSyntax
+import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
+
+#if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY
+#error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand @Suite")
+#endif
 
 /// A type describing the expansion of the `@Suite` attribute macro.
 ///
@@ -19,12 +25,13 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
   public static func expansion(
     of node: AttributeSyntax,
     providingMembersOf declaration: some DeclGroupSyntax,
+    conformingTo protocols: [TypeSyntax],
     in context: some MacroExpansionContext
   ) throws -> [DeclSyntax] {
     guard _diagnoseIssues(with: declaration, suiteAttribute: node, in: context) else {
       return []
     }
-    return _createTestContainerDecls(for: declaration, suiteAttribute: node, in: context)
+    return _createSuiteDecls(for: declaration, suiteAttribute: node, in: context)
   }
 
   public static func expansion(
@@ -96,8 +103,7 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
     return !diagnostics.lazy.map(\.severity).contains(.error)
   }
 
-  /// Create a declaration for a type that conforms to the `__TestContainer`
-  /// protocol and which contains the given suite type.
+  /// Create the declarations necessary to discover a suite at runtime.
   ///
   /// - Parameters:
   ///   - declaration: The type declaration the result should encapsulate.
@@ -106,7 +112,7 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
   ///
   /// - Returns: An array of declarations providing runtime information about
   ///   the test suite type `declaration`.
-  private static func _createTestContainerDecls(
+  private static func _createSuiteDecls(
     for declaration: some DeclGroupSyntax,
     suiteAttribute: AttributeSyntax,
     in context: some MacroExpansionContext
@@ -126,32 +132,54 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
     // Parse the @Suite attribute.
     let attributeInfo = AttributeInfo(byParsing: suiteAttribute, on: declaration, in: context)
 
-    // The emitted type must be public or the compiler can optimize it away
-    // (since it is not actually used anywhere that the compiler can see.)
-    //
-    // The emitted type must be deprecated to avoid causing warnings in client
-    // code since it references the suite metatype, which may be deprecated
-    // to allow test functions to validate deprecated APIs. The emitted type is
-    // also annotated unavailable, since it's meant only for use by the testing
-    // library at runtime. The compiler does not allow combining 'unavailable'
-    // and 'deprecated' into a single availability attribute: rdar://111329796
-    let typeName = declaration.type.tokens(viewMode: .fixedUp).map(\.textWithoutBackticks).joined()
-    let enumName = context.makeUniqueName("__🟠$test_container__suite__\(typeName)")
+    let generatorName = context.makeUniqueName("generator")
+    result.append(
+      """
+      @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
+      @Sendable private static func \(generatorName)() async -> Testing.Test {
+        .__type(
+          \(declaration.type.trimmed).self,
+          \(raw: attributeInfo.functionArgumentList(in: context))
+        )
+      }
+      """
+    )
+
+    let accessorName = context.makeUniqueName("accessor")
+    result.append(
+      """
+      @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
+      private nonisolated static let \(accessorName): Testing.__TestContentRecordAccessor = { outValue, type, _, _ in
+        Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
+      }
+      """
+    )
+
+    let testContentRecordName = context.makeUniqueName("testContentRecord")
+    result.append(
+      makeTestContentRecordDecl(
+        named: testContentRecordName,
+        in: declaration.type,
+        ofKind: .testDeclaration,
+        accessingWith: accessorName,
+        context: attributeInfo.testContentRecordFlags
+      )
+    )
+
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+    // Emit a type that contains a reference to the test content record.
+    let enumName = context.makeUniqueName("__🟡$")
     result.append(
       """
       @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
-      enum \(enumName): Testing.__TestContainer {
-        static var __tests: [Testing.Test] {
-          get async {[
-            .__type(
-              \(declaration.type.trimmed).self,
-              \(raw: attributeInfo.functionArgumentList(in: context))
-            )
-          ]}
+      enum \(enumName): Testing.__TestContentRecordContainer {
+        nonisolated static var __testContentRecord: Testing.__TestContentRecord {
+          unsafe \(testContentRecordName)
         }
       }
       """
     )
+#endif
 
     return result
   }

@@ -15,7 +15,7 @@ extension Runner {
     public enum Action: Sendable {
       /// A type describing options to apply to actions of case
       /// ``Runner/Plan/Action/run(options:)`` when they are run.
-      public struct RunOptions: Sendable, Codable {
+      public struct RunOptions: Sendable {
         /// Whether or not this step should be run in parallel with other tests.
         ///
         /// By default, all steps in a runner plan are run in parallel if the
@@ -28,7 +28,13 @@ extension Runner {
         /// ## See Also
         ///
         /// - ``ParallelizationTrait``
-        public var isParallelizationEnabled: Bool
+        @available(*, deprecated, message: "The 'isParallelizationEnabled' property is deprecated and no longer used. Its value is always false.")
+        public var isParallelizationEnabled: Bool {
+          get {
+            false
+          }
+          set {}
+        }
       }
 
       /// The test should be run.
@@ -64,19 +70,6 @@ extension Runner {
           // case.
           return true
         }
-      }
-
-      /// Whether or not this action enables parallelization.
-      ///
-      /// If this action is of case ``run(options:)``, the value of this
-      /// property equals the value of its associated
-      /// ``RunOptions/isParallelizationEnabled`` property. Otherwise, the value
-      /// of this property is `nil`.
-      var isParallelizationEnabled: Bool? {
-        if case let .run(options) = self {
-          return options.isParallelizationEnabled
-        }
-        return nil
       }
     }
 
@@ -141,8 +134,8 @@ extension Runner.Plan {
   /// The traits in `testGraph.value?.traits` are added to each node in
   /// `testGraph`, and then this function is called recursively on each child
   /// node.
-  private static func _recursivelyApplyTraits(_ parentTraits: [any Trait] = [], to testGraph: inout Graph<String, Test?>) {
-    let traits: [any SuiteTrait] = (parentTraits + (testGraph.value?.traits ?? [])).lazy
+  private static func _recursivelyApplyTraits(_ parentTraits: [any SuiteTrait] = [], to testGraph: inout Graph<String, Test?>) {
+    let traits: [any SuiteTrait] = parentTraits + (testGraph.value?.traits ?? []).lazy
       .compactMap { $0 as? any SuiteTrait }
       .filter(\.isRecursive)
 
@@ -152,6 +145,138 @@ extension Runner.Plan {
       child.value?.traits.insert(contentsOf: traits, at: 0)
       return child
     }
+  }
+
+  /// Recursively synthesize test instances representing suites for all missing
+  /// values in the specified test graph.
+  ///
+  /// - Parameters:
+  ///   - graph: The graph in which suites should be synthesized.
+  ///   - nameComponents: The name components of the suite to synthesize, based
+  ///     on the key path from the root node of the test graph to `graph`.
+  private static func _recursivelySynthesizeSuites(in graph: inout Graph<String, Test?>, nameComponents: [String] = []) {
+    // The recursive function. This is a local function to simplify the initial
+    // call which does not need to pass the `sourceLocation:` inout argument.
+    func synthesizeSuites(in graph: inout Graph<String, Test?>, nameComponents: [String] = [], sourceLocation: inout SourceLocation?) {
+      for (key, var childGraph) in graph.children {
+        synthesizeSuites(in: &childGraph, nameComponents: nameComponents + [key], sourceLocation: &sourceLocation)
+        graph.children[key] = childGraph
+      }
+
+      if let test = graph.value {
+        sourceLocation = test.sourceLocation
+      } else if let unqualifiedName = nameComponents.last, let sourceLocation {
+        // Don't synthesize suites representing modules.
+        if nameComponents.count <= 1 {
+          return
+        }
+
+        // Don't synthesize suites for nodes in the graph which are the
+        // immediate ancestor of a test function. That level of the hierarchy is
+        // used to disambiguate test functions which have equal names but
+        // different source locations.
+        if let firstChildTest = graph.children.values.first?.value, !firstChildTest.isSuite {
+          return
+        }
+
+        let typeInfo = TypeInfo(fullyQualifiedNameComponents: nameComponents, unqualifiedName: unqualifiedName)
+
+        // Note: When a suite is synthesized, it does not have an accurate
+        // source location, so we use the source location of a close descendant
+        // test. We do this instead of falling back to some "unknown"
+        // placeholder in an attempt to preserve the correct sort ordering.
+        graph.value = Test(traits: [], sourceLocation: sourceLocation, containingTypeInfo: typeInfo, isSynthesized: true)
+      }
+    }
+
+    var sourceLocation: SourceLocation?
+    synthesizeSuites(in: &graph, sourceLocation: &sourceLocation)
+  }
+
+  /// The basic "run" action.
+  private static let _runAction = Action.run(options: .init())
+
+  /// Determine what action to perform for a given test by preparing its traits.
+  ///
+  /// - Parameters:
+  ///   - test: The test whose action will be determined.
+  ///
+  /// - Returns:The action to take for `test`.
+  private static func _determineAction(for test: inout Test) async -> Action {
+    let result: Action
+
+    // We use a task group here with a single child task so that, if the trait
+    // code calls Test.cancel() we don't end up cancelling the entire test run.
+    // We could also model this as an unstructured task except that they aren't
+    // available in the "task-to-thread" concurrency model.
+    //
+    // FIXME: Parallelize this work. Calling `prepare(...)` on all traits and
+    // evaluating all test arguments should be safely parallelizable.
+    (test, result) = await withTaskGroup(returning: (Test, Action).self) { [test] taskGroup in
+      let testName = test.humanReadableName()
+      let (taskName, taskAction) = if test.isSuite {
+        ("suite \(testName)", "evaluating traits")
+      } else {
+        // TODO: split the task group's single task into two serially-run subtasks
+        ("test \(testName)", "evaluating traits and test cases")
+      }
+      taskGroup.addTask(name: decorateTaskName(taskName, withAction: taskAction)) {
+        var test = test
+        var action = _runAction
+
+        await Test.withCurrent(test) {
+          do {
+            var firstCaughtError: (any Error)?
+
+            for trait in test.traits {
+              do {
+                try await trait.prepare(for: test)
+              } catch {
+                if let skipInfo = SkipInfo(error) {
+                  action = .skip(skipInfo)
+                  break
+                } else {
+                  // Only preserve the first caught error
+                  firstCaughtError = firstCaughtError ?? error
+                }
+              }
+            }
+
+            // If no trait specified that the test should be skipped, but one
+            // did throw an error, then the action is to record an issue for
+            // that error.
+            if case .run = action, let error = firstCaughtError {
+              action = .recordIssue(Issue(for: error))
+            }
+          }
+
+          // If the test is still planned to run (i.e. nothing thus far has
+          // caused it to be skipped), evaluate its test cases now.
+          //
+          // The argument expressions of each test are captured in closures so
+          // they can be evaluated lazily only once it is determined that the
+          // test will run, to avoid unnecessary work. But now is the
+          // appropriate time to evaluate them.
+          if case .run = action {
+            do {
+              try await test.evaluateTestCases()
+            } catch {
+              if let skipInfo = SkipInfo(error) {
+                action = .skip(skipInfo)
+              } else {
+                action = .recordIssue(Issue(for: error))
+              }
+            }
+          }
+        }
+
+        return (test, action)
+      }
+
+      return await taskGroup.first { _ in true }!
+    }
+
+    return result
   }
 
   /// Construct a graph of runner plan steps for the specified tests.
@@ -172,7 +297,7 @@ extension Runner.Plan {
     // Convert the list of test into a graph of steps. The actions for these
     // steps will all be .run() *unless* an error was thrown while examining
     // them, in which case it will be .recordIssue().
-    let runAction = Action.run(options: .init(isParallelizationEnabled: configuration.isParallelizationEnabled))
+    let runAction = _runAction
     var testGraph = Graph<String, Test?>()
     var actionGraph = Graph<String, Action>(value: runAction)
     for test in tests {
@@ -180,11 +305,6 @@ extension Runner.Plan {
       testGraph.insertValue(test, at: idComponents)
       actionGraph.insertValue(runAction, at: idComponents, intermediateValue: runAction)
     }
-
-    // Ensure the trait lists are complete for all nested tests. (Make sure to
-    // do this before we start calling configuration.testFilter or prepare(for:)
-    // or we'll miss the recursively-added traits.)
-    _recursivelyApplyTraits(to: &testGraph)
 
     // Remove any tests that should be filtered out per the runner's
     // configuration. The action graph is not modified here: actions that lose
@@ -203,10 +323,20 @@ extension Runner.Plan {
       // and that is already guarded earlier in the SwiftPM entry point.
     }
 
-    // For each test value, determine the appropriate action for it.
+    // Synthesize suites for nodes in the test graph for which they are missing.
+    _recursivelySynthesizeSuites(in: &testGraph)
+
+    // Recursively apply all recursive suite traits to children.
     //
-    // FIXME: Parallelize this work. Calling `prepare(...)` on all traits and
-    // evaluating all test arguments should be safely parallelizable.
+    // This must be done _before_ calling `prepare(for:)` on the traits below.
+    // It is safe to do this _after_ filtering the test graph since filtering
+    // internally propagates information about traits which are needed to
+    // correctly evaluate the filter. It's also more efficient, since it avoids
+    // needlessly applying non-filtering related traits to tests which might be
+    // filtered out.
+    _recursivelyApplyTraits(to: &testGraph)
+
+    // For each test value, determine the appropriate action for it.
     testGraph = await testGraph.mapValues { keyPath, test in
       // Skip any nil test, which implies this node is just a placeholder and
       // not actual test content.
@@ -214,50 +344,12 @@ extension Runner.Plan {
         return nil
       }
 
-      var action = runAction
-      var firstCaughtError: (any Error)?
-
       // Walk all the traits and tell each to prepare to run the test.
       // If any throw a `SkipInfo` error at this stage, stop walking further.
       // But if any throw another kind of error, keep track of the first error
       // but continue walking, because if any subsequent traits throw a
       // `SkipInfo`, the error should not be recorded.
-      for trait in test.traits {
-        do {
-          if let trait = trait as? any SPIAwareTrait {
-            try await trait.prepare(for: test, action: &action)
-          } else {
-            try await trait.prepare(for: test)
-          }
-        } catch let error as SkipInfo {
-          action = .skip(error)
-          break
-        } catch {
-          // Only preserve the first caught error
-          firstCaughtError = firstCaughtError ?? error
-        }
-      }
-
-      // If no trait specified that the test should be skipped, but one did
-      // throw an error, then the action is to record an issue for that error.
-      if case .run = action, let error = firstCaughtError {
-        action = .recordIssue(Issue(for: error))
-      }
-
-      // If the test is still planned to run (i.e. nothing thus far has caused
-      // it to be skipped), evaluate its test cases now.
-      //
-      // The argument expressions of each test are captured in closures so they
-      // can be evaluated lazily only once it is determined that the test will
-      // run, to avoid unnecessary work. But now is the appropriate time to
-      // evaluate them.
-      if case .run = action {
-        do {
-          try await test.evaluateTestCases()
-        } catch {
-          action = .recordIssue(Issue(for: error))
-        }
-      }
+      var action = await _determineAction(for: &test)
 
       // If the test is parameterized but has no cases, mark it as skipped.
       if case .run = action, let testCases = test.testCases, testCases.first(where: { _ in true }) == nil {
@@ -301,6 +393,29 @@ extension Runner.Plan {
   ///   - configuration: The configuration to use for planning.
   public init(configuration: Configuration) async {
     await self.init(tests: Test.all, configuration: configuration)
+  }
+}
+
+extension Runner.Plan.Action.RunOptions: Codable {
+  private enum CodingKeys: CodingKey {
+    case isParallelizationEnabled
+  }
+
+  public init(from decoder: any Decoder) throws {
+    // No-op. This initializer cannot be synthesized since `CodingKeys` includes
+    // a case representing a non-stored property. See comment about the
+    // `isParallelizationEnabled` property in `encode(to:)`.
+    self.init()
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+
+    // The `isParallelizationEnabled` property was removed after this type was
+    // first introduced. Its value was never actually used in a meaningful way
+    // by known clients, but its absence can cause decoding errors, so to avoid
+    // such problems, continue encoding a hardcoded value.
+    try container.encode(false, forKey: .isParallelizationEnabled)
   }
 }
 
@@ -391,7 +506,7 @@ extension Runner.Plan.Step {
 }
 
 extension Runner.Plan.Action {
-  /// A serializable snapshot of a ``Runner/Plan-swift.struct/Step/Action``
+  /// A serializable snapshot of a ``Runner/Plan-swift.struct/Action``
   /// instance.
   @_spi(ForToolsIntegrationOnly)
   public enum Snapshot: Sendable, Codable {

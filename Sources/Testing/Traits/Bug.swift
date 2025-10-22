@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-/// A type representing a bug report tracked by a test.
+/// A type that represents a bug report tracked by a test.
 ///
 /// To add this trait to a test, use one of the following functions:
 ///
@@ -16,7 +16,7 @@
 /// - ``Trait/bug(_:id:_:)-10yf5``
 /// - ``Trait/bug(_:id:_:)-3vtpl``
 public struct Bug {
-  /// A URL linking to more information about the bug, if available.
+  /// A URL that links to more information about the bug, if available.
   ///
   /// The value of this property represents a URL conforming to
   /// [RFC 3986](https://www.ietf.org/rfc/rfc3986.txt).
@@ -59,42 +59,42 @@ extension Bug: TestTrait, SuiteTrait {
 }
 
 extension Trait where Self == Bug {
-  /// Construct a bug to track with a test.
+  /// Constructs a bug to track with a test.
   ///
   /// - Parameters:
-  ///   - url: A URL referring to this bug in the associated bug-tracking
+  ///   - url: A URL that refers to this bug in the associated bug-tracking
   ///     system.
   ///   - title: Optionally, the human-readable title of the bug.
   ///
-  /// - Returns: An instance of ``Bug`` representing the specified bug.
+  /// - Returns: An instance of ``Bug`` that represents the specified bug.
   public static func bug(_ url: _const String, _ title: Comment? = nil) -> Self {
     Self(url: url, title: title)
   }
 
-  /// Construct a bug to track with a test.
+  /// Constructs a bug to track with a test.
   ///
   /// - Parameters:
-  ///   - url: A URL referring to this bug in the associated bug-tracking
+  ///   - url: A URL that refers to this bug in the associated bug-tracking
   ///     system.
   ///   - id: The unique identifier of this bug in its associated bug-tracking
   ///     system.
   ///   - title: Optionally, the human-readable title of the bug.
   ///
-  /// - Returns: An instance of ``Bug`` representing the specified bug.
+  /// - Returns: An instance of ``Bug`` that represents the specified bug.
   public static func bug(_ url: _const String? = nil, id: some Numeric, _ title: Comment? = nil) -> Self {
     Self(url: url, id: String(describing: id), title: title)
   }
 
-  /// Construct a bug to track with a test.
+  /// Constructs a bug to track with a test.
   ///
   /// - Parameters:
-  ///   - url: A URL referring to this bug in the associated bug-tracking
+  ///   - url: A URL that refers to this bug in the associated bug-tracking
   ///     system.
   ///   - id: The unique identifier of this bug in its associated bug-tracking
   ///     system.
   ///   - title: Optionally, the human-readable title of the bug.
   ///
-  /// - Returns: An instance of ``Bug`` representing the specified bug.
+  /// - Returns: An instance of ``Bug`` that represents the specified bug.
   public static func bug(_ url: _const String? = nil, id: _const String, _ title: Comment? = nil) -> Self {
     Self(url: url, id: id, title: title)
   }
