@@ -407,7 +407,31 @@ extension FileHandle {
     let hasContiguousStorage: Void? = try bytes.withContiguousStorageIfAvailable { bytes in
       try write(bytes, flushAfterward: flushAfterward)
     }
-    precondition(hasContiguousStorage != nil, "byte sequence must provide contiguous storage: \(bytes)")
+
+    // (Very) slow path: write one byte at a time.
+    if hasContiguousStorage == nil {
+      try withUnsafeCFILEHandle { file in
+        defer {
+          if flushAfterward {
+            fflush(file)
+          }
+        }
+
+        try withLock {
+          for byte in bytes {
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+            if EOF == putc_unlocked(CInt(byte), file) {
+              throw CError(rawValue: swt_errno())
+            }
+#else
+            if EOF == _fputc_nolock(CInt(byte), file) {
+              throw CError(rawValue: swt_errno())
+            }
+#endif
+          }
+        }
+      }
+    }
   }
 
   /// Write a sequence of bytes to this file handle.

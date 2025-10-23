@@ -131,6 +131,13 @@ extension ABI.EncodedAttachment: Attachable {
 #endif
   }
 
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) throws -> some Collection<UInt8> {
+    if let bytes = _bytes?.rawValue {
+      return bytes
+    }
+    return try withUnsafeBytes(for: attachment) { Array($0) }
+  }
+
   borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
     _preferredName ?? suggestedName
   }

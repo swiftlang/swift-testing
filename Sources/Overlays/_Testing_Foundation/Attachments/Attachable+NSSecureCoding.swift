@@ -21,6 +21,40 @@ public import Foundation
 ///   @Available(Xcode, introduced: 26.0)
 /// }
 extension Attachable where Self: NSSecureCoding {
+  /// The common implementation of `withUnsafeBytes(for:_:)` and `bytes(for:)`.
+  ///
+  /// - Parameters:
+  ///   - attachment: The attachment that is requesting a buffer (that is, the
+  ///     attachment containing this instance.)
+  ///
+  /// - Returns: A buffer containing property list data representing this value.
+  ///
+  /// - Throws: Any error that prevented encoding the value.
+  private func _data(for attachment: borrowing Attachment<Self>) throws -> Data {
+    let format = try EncodingFormat(for: attachment)
+
+    var data = try NSKeyedArchiver.archivedData(withRootObject: self, requiringSecureCoding: true)
+    switch format {
+    case .default:
+      // The default format is just what NSKeyedArchiver produces.
+      break
+    case let .propertyListFormat(propertyListFormat):
+      // BUG: Foundation does not offer a variant of
+      // NSKeyedArchiver.archivedData(withRootObject:requiringSecureCoding:)
+      // that is Swift-safe (throws errors instead of exceptions) and lets the
+      // caller specify the output format. Work around this issue by decoding
+      // the archive re-encoding it manually.
+      if propertyListFormat != .binary {
+        let plist = try PropertyListSerialization.propertyList(from: data, format: nil)
+        data = try PropertyListSerialization.data(fromPropertyList: plist, format: propertyListFormat, options: 0)
+      }
+    case .json:
+      throw CocoaError(.propertyListWriteInvalid, userInfo: [NSLocalizedDescriptionKey: "An instance of \(type(of: self)) cannot be encoded as JSON. Specify a property list format instead."])
+    }
+
+    return data
+  }
+
   /// Encode this object using [`NSKeyedArchiver`](https://developer.apple.com/documentation/foundation/nskeyedarchiver)
   /// into a buffer, then call a function and pass that buffer to it.
   ///
@@ -56,28 +90,11 @@ extension Attachable where Self: NSSecureCoding {
   ///   @Available(Xcode, introduced: 26.0)
   /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    let format = try EncodingFormat(for: attachment)
+    try _data(for: attachment).withUnsafeBytes(body)
+  }
 
-    var data = try NSKeyedArchiver.archivedData(withRootObject: self, requiringSecureCoding: true)
-    switch format {
-    case .default:
-      // The default format is just what NSKeyedArchiver produces.
-      break
-    case let .propertyListFormat(propertyListFormat):
-      // BUG: Foundation does not offer a variant of
-      // NSKeyedArchiver.archivedData(withRootObject:requiringSecureCoding:)
-      // that is Swift-safe (throws errors instead of exceptions) and lets the
-      // caller specify the output format. Work around this issue by decoding
-      // the archive re-encoding it manually.
-      if propertyListFormat != .binary {
-        let plist = try PropertyListSerialization.propertyList(from: data, format: nil)
-        data = try PropertyListSerialization.data(fromPropertyList: plist, format: propertyListFormat, options: 0)
-      }
-    case .json:
-      throw CocoaError(.propertyListWriteInvalid, userInfo: [NSLocalizedDescriptionKey: "An instance of \(type(of: self)) cannot be encoded as JSON. Specify a property list format instead."])
-    }
-
-    return try data.withUnsafeBytes(body)
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) throws -> Data {
+    try _data(for: attachment)
   }
 }
 #endif

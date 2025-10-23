@@ -25,7 +25,12 @@ public import Foundation
 extension Attachable where Self: Encodable & NSSecureCoding {
   @_documentation(visibility: private)
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try _Testing_Foundation.withUnsafeBytes(encoding: self, for: attachment, body)
+    try data(encoding: self, for: attachment).withUnsafeBytes(body)
+  }
+
+  @_documentation(visibility: private)
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) throws -> Data {
+    try data(encoding: self, for: attachment)
   }
 }
 #endif

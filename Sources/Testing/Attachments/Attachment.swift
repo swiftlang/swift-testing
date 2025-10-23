@@ -159,6 +159,7 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
   init<A>(_ attachment: Attachment<A>) where A: Attachable & Sendable & ~Copyable {
     _estimatedAttachmentByteCount = { attachment.attachableValue.estimatedAttachmentByteCount }
     _withUnsafeBytes = { try attachment.withUnsafeBytes($0) }
+    _bytes = { try AnyCollection(attachment.bytes) }
     _preferredName = { attachment.attachableValue.preferredName(for: attachment, basedOn: $0) }
   }
 
@@ -180,6 +181,12 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
       result = try body(bytes)
     }
     return result
+  }
+
+  private var _bytes: @Sendable () throws -> AnyCollection<UInt8>
+
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) throws -> some Collection<UInt8> {
+    try _bytes()
   }
 
   /// The implementation of ``preferredName(for:basedOn:)`` borrowed from the
@@ -392,6 +399,12 @@ extension Attachment where AttachableValue: ~Copyable {
   @inlinable public borrowing func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try attachableValue.withUnsafeBytes(for: self, body)
   }
+
+  public var bytes: some Collection<UInt8> {
+    @inlinable get throws {
+      try attachableValue.bytes(for: self)
+    }
+  }
 }
 
 #if !SWT_NO_FILE_IO
@@ -492,9 +505,7 @@ extension Attachment where AttachableValue: ~Copyable {
 
     // There should be no code path that leads to this call where the attachable
     // value is nil.
-    try withUnsafeBytes { buffer in
-      try file!.write(buffer)
-    }
+    try file!.write(bytes)
 
     return result
   }

@@ -24,5 +24,9 @@ extension Data: Attachable {
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }
+
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) throws -> Data {
+    copy self
+  }
 }
 #endif

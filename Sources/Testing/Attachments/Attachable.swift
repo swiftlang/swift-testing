@@ -80,6 +80,10 @@ public protocol Attachable: ~Copyable {
   /// }
   borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
 
+  associatedtype AttachableBytes: Collection<UInt8> = Array<UInt8>
+
+  borrowing func bytes(for attachment: borrowing Attachment<Self>) throws -> AttachableBytes
+
   /// Generate a preferred name for the given attachment.
   ///
   /// - Parameters:
@@ -113,6 +117,12 @@ extension Attachable where Self: ~Copyable {
   }
 }
 
+extension Attachable where Self: ~Copyable, Self.AttachableBytes == Array<UInt8> {
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) throws -> AttachableBytes {
+    try withUnsafeBytes(for: attachment) { Array($0) }
+  }
+}
+
 extension Attachable where Self: Collection, Element == UInt8 {
   public var estimatedAttachmentByteCount: Int? {
     count
@@ -141,17 +151,29 @@ extension Array<UInt8>: Attachable {
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }
+
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) throws -> Self {
+    copy self
+  }
 }
 
 extension ContiguousArray<UInt8>: Attachable {
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
   }
+
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) throws -> Self {
+    copy self
+  }
 }
 
 extension ArraySlice<UInt8>: Attachable {
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try withUnsafeBytes(body)
+  }
+
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) throws -> Self {
+    copy self
   }
 }
 
@@ -162,6 +184,10 @@ extension String: Attachable {
       try body(UnsafeRawBufferPointer(utf8))
     }
   }
+
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) throws -> UTF8View {
+    utf8
+  }
 }
 
 extension Substring: Attachable {
@@ -170,5 +196,9 @@ extension Substring: Attachable {
     return try selfCopy.withUTF8 { utf8 in
       try body(UnsafeRawBufferPointer(utf8))
     }
+  }
+
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) throws -> UTF8View {
+    utf8
   }
 }

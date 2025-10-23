@@ -10,7 +10,7 @@
 
 #if canImport(Foundation)
 public import Testing
-private import Foundation
+internal import Foundation
 
 /// A common implementation of ``withUnsafeBytes(for:_:)`` that is used when a
 /// type conforms to `Encodable`, whether or not it also conforms to
@@ -27,7 +27,7 @@ private import Foundation
 ///
 /// - Throws: Whatever is thrown by `body`, or any error that prevented the
 ///   creation of the buffer.
-func withUnsafeBytes<E, R>(encoding attachableValue: borrowing E, for attachment: borrowing Attachment<E>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R where E: Attachable & Encodable {
+func data<E>(encoding attachableValue: borrowing E, for attachment: borrowing Attachment<E>) throws -> Data where E: Attachable & Encodable {
   let format = try EncodingFormat(for: attachment)
 
   let data: Data
@@ -47,7 +47,7 @@ func withUnsafeBytes<E, R>(encoding attachableValue: borrowing E, for attachment
     data = try JSONEncoder().encode(attachableValue)
   }
 
-  return try data.withUnsafeBytes(body)
+  return data
 }
 
 // Implement the protocol requirements generically for any encodable value by
@@ -96,7 +96,11 @@ extension Attachable where Self: Encodable {
   ///   @Available(Xcode, introduced: 26.0)
   /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try _Testing_Foundation.withUnsafeBytes(encoding: self, for: attachment, body)
+    try data(encoding: self, for: attachment).withUnsafeBytes(body)
+  }
+
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) throws -> some Collection<UInt8> {
+    try data(encoding: self, for: attachment)
   }
 }
 #endif

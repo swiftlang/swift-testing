@@ -40,7 +40,16 @@ private import UniformTypeIdentifiers
 
 @available(_uttypesAPI, *)
 extension _AttachableImageWrapper: Attachable, AttachableWrapper where Image: AttachableAsCGImage {
-  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<_AttachableImageWrapper>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  /// The common implementation of `withUnsafeBytes(for:_:)` and `bytes(for:)`.
+  ///
+  /// - Parameters:
+  ///   - attachment: The attachment that is requesting a buffer (that is, the
+  ///     attachment containing this instance.)
+  ///
+  /// - Returns: A buffer containing image data representing this value.
+  ///
+  /// - Throws: Any error that prevented encoding the image.
+  private func _data(for attachment: borrowing Attachment<_AttachableImageWrapper>) throws -> NSData {
     let data = NSMutableData()
 
     // Convert the image to a CGImage.
@@ -68,12 +77,21 @@ extension _AttachableImageWrapper: Attachable, AttachableWrapper where Image: At
       throw ImageAttachmentError.couldNotConvertImage
     }
 
+    return data
+  }
+
+  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<_AttachableImageWrapper>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     // Pass the bits of the image out to the body. Note that we have an
     // NSMutableData here so we have to use slightly different API than we would
     // with an instance of Data.
+    let data = try _data(for: attachment)
     return try withExtendedLifetime(data) {
       try body(UnsafeRawBufferPointer(start: data.bytes, count: data.length))
     }
+  }
+
+  public borrowing func bytes(for attachment: borrowing Attachment<_AttachableImageWrapper>) throws -> some Collection<UInt8> {
+    try _data(for: attachment)
   }
 
   public borrowing func preferredName(for attachment: borrowing Attachment<_AttachableImageWrapper>, basedOn suggestedName: String) -> String {

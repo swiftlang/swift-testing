@@ -39,6 +39,10 @@ extension _AttachableURLWrapper: AttachableWrapper {
     try data.withUnsafeBytes(body)
   }
 
+  public borrowing func bytes(for attachment: borrowing Attachment<Self>) throws -> some Collection<UInt8> {
+    data
+  }
+
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
     // What extension should we have on the filename so that it has the same
     // type as the original file (or, in the case of a compressed directory, is
