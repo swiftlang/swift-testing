@@ -206,6 +206,9 @@ extension __ExpectationContext {
   @_disfavoredOverload
   public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> T where T: ~Copyable {
     // TODO: add support for borrowing non-copyable expressions (need @lifetime)
+    if #available(_castingWithNonCopyableGenerics, *), let value = boxCopyableValue(value) {
+      _ = captureValue(value, id)
+    }
     return value
   }
 #endif
@@ -332,13 +335,10 @@ extension __ExpectationContext {
   ///
   /// - Returns: The result of calling `op(lhs, rhs)`.
   ///
-  /// This overload of `__cmp()` serves as a catch-all for operands that are not
-  /// collections or otherwise are not interesting to the testing library.
-  ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   @inlinable public func __cmp<T, U>(
-    _ op: (T, U) throws -> Bool,
+    _ op: (borrowing T, borrowing U) throws -> Bool,
     _ opID: __ExpressionID,
     _ lhs: borrowing T,
     _ lhsID: __ExpressionID,
@@ -349,6 +349,52 @@ extension __ExpectationContext {
 
     if !result {
       captureDifferences(lhs, rhs, opID)
+    }
+
+    return result
+  }
+
+  /// Compare two values using `==` or `!=`.
+  ///
+  /// - Parameters:
+  ///   - lhs: The left-hand operand.
+  ///   - lhsID: A value that uniquely identifies the expression represented by
+  ///     `lhs` in the context of the expectation currently being evaluated.
+  ///   - rhs: The right-hand operand.
+  ///   - rhsID: A value that uniquely identifies the expression represented by
+  ///     `rhs` in the context of the expectation currently being evaluated.
+  ///   - op: A function that performs an operation on `lhs` and `rhs`.
+  ///   - opID: A value that uniquely identifies the expression represented by
+  ///     `op` in the context of the expectation currently being evaluated.
+  ///
+  /// - Returns: The result of calling `op(lhs, rhs)`.
+  ///
+  /// This overload of `__cmp()` handles move-only values.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  public func __cmp<T, U>(
+    _ op: (borrowing T, borrowing U) throws -> Bool,
+    _ opID: __ExpressionID,
+    _ lhs: borrowing T,
+    _ lhsID: __ExpressionID,
+    _ rhs: borrowing U,
+    _ rhsID: __ExpressionID
+  ) rethrows -> Bool where T: ~Copyable, U: ~Copyable {
+    let result = try captureValue(op(lhs, rhs), opID)
+
+    if #available(_castingWithNonCopyableGenerics, *) {
+      let lhs = boxCopyableValue(lhs)
+      if let lhs {
+        _ = captureValue(lhs, lhsID)
+      }
+      let rhs = boxCopyableValue(rhs)
+      if let rhs {
+        _ = captureValue(rhs, rhsID)
+      }
+      if !result {
+        captureDifferences(lhs, rhs, opID)
+      }
     }
 
     return result
