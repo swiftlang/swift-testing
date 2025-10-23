@@ -83,7 +83,7 @@ public protocol _AttachableByAddressAsIWICBitmapSource {
 ///
 /// This protocol is not part of the public interface of the testing library. It
 /// encapsulates Windows-specific logic for image attachments.
-package protocol AttachableAsIWICBitmapSource: AttachableAsImage, SendableMetatype {
+package protocol AttachableAsIWICBitmapSource: AttachableAsImage {
   /// Create a WIC bitmap representing an instance of this type.
   ///
   /// - Parameters:

@@ -67,7 +67,7 @@
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 @available(_uttypesAPI, *)
-public protocol AttachableAsImage: SendableMetatype {
+public protocol AttachableAsImage {
   /// Encode a representation of this image in a given image format.
   ///
   /// - Parameters:

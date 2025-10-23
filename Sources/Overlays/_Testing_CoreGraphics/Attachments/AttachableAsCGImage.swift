@@ -20,7 +20,7 @@ private import UniformTypeIdentifiers
 /// This protocol is not part of the public interface of the testing library. It
 /// encapsulates Apple-specific logic for image attachments.
 @available(_uttypesAPI, *)
-package protocol AttachableAsCGImage: AttachableAsImage, SendableMetatype {
+package protocol AttachableAsCGImage: AttachableAsImage {
   /// An instance of `CGImage` representing this image.
   ///
   /// - Throws: Any error that prevents the creation of an image.
