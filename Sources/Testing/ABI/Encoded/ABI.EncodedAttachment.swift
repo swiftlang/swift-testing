@@ -42,7 +42,7 @@ extension ABI {
       path = attachment.fileSystemPath
 
       if V.includesExperimentalFields {
-        _preferredName = attachment.preferredName
+        _preferredName = attachment.uncheckedPreferredName
 
         if path == nil {
           _bytes = try? attachment.withUnsafeBytes { bytes in

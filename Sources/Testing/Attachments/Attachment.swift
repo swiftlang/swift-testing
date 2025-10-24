@@ -78,6 +78,19 @@ public struct Attachment<AttachableValue> where AttachableValue: Attachable & ~C
 
   /// A filename to use when saving this attachment.
   ///
+  /// The value of this property is equal to ``preferredName`` if the test
+  /// author specified a preferred name when creating the attachment. Otherwise,
+  /// the value of this property is `nil`.
+  @_spi(ForToolsIntegrationOnly)
+  public var uncheckedPreferredName: String? {
+    if let _preferredName, !_preferredName.isEmpty {
+      return attachableValue.preferredName(for: self, basedOn: _preferredName)
+    }
+    return nil
+  }
+
+  /// A filename to use when saving this attachment.
+  ///
   /// The value of this property is used as a hint to the testing library. The
   /// testing library may substitute a different filename as needed. If the
   /// value of this property has not been explicitly set, the testing library
@@ -88,12 +101,7 @@ public struct Attachment<AttachableValue> where AttachableValue: Attachable & ~C
   ///   @Available(Xcode, introduced: 26.0)
   /// }
   public var preferredName: String {
-    let suggestedName = if let _preferredName, !_preferredName.isEmpty {
-      _preferredName
-    } else {
-      Self.defaultPreferredName
-    }
-    return attachableValue.preferredName(for: self, basedOn: suggestedName)
+    uncheckedPreferredName ?? attachableValue.preferredName(for: self, basedOn: Self.defaultPreferredName)
   }
 
   /// The source location of this instance.
