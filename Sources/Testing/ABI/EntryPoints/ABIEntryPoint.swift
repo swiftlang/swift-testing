@@ -48,9 +48,12 @@ extension ABI.v0 {
   public static var entryPoint: EntryPoint {
     return { configurationJSON, recordHandler in
       let args = try configurationJSON.map { configurationJSON in
-        try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON)
+        let configurationJSON = RawSpan(_unsafeBytes: configurationJSON)
+        return try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON)
       }
-      let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args?.eventStreamVersionNumber, encodeAsJSONLines: false, forwardingTo: recordHandler)
+      let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args?.eventStreamVersionNumber, encodeAsJSONLines: false) { recordJSON in
+        recordJSON.withUnsafeBytes(recordHandler)
+      }
 
       switch await Testing.entryPoint(passing: args, eventHandler: eventHandler) {
       case EXIT_SUCCESS, EXIT_NO_TESTS_FOUND:

@@ -22,7 +22,11 @@ extension Data: Attachable {
   ///   @Available(Xcode, introduced: 26.0)
   /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try withUnsafeBytes(body)
+    try default_withUnsafeBytes(for: attachment, body)
+  }
+
+  public borrowing func withBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (borrowing RawSpan) throws -> R) throws -> R {
+    try body(bytes)
   }
 }
 #endif

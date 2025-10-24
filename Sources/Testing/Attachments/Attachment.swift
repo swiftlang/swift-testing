@@ -158,7 +158,7 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
 
   init<A>(_ attachment: Attachment<A>) where A: Attachable & Sendable & ~Copyable {
     _estimatedAttachmentByteCount = { attachment.attachableValue.estimatedAttachmentByteCount }
-    _withUnsafeBytes = { try attachment.withUnsafeBytes($0) }
+    _withBytes = { try attachment.attachableValue.withBytes(for: attachment, $0) }
     _preferredName = { attachment.attachableValue.preferredName(for: attachment, basedOn: $0) }
   }
 
@@ -170,13 +170,17 @@ public struct AnyAttachable: AttachableWrapper, Sendable, Copyable {
     _estimatedAttachmentByteCount()
   }
 
-  /// The implementation of ``withUnsafeBytes(for:_:)`` borrowed from the
-  /// original attachment.
-  private var _withUnsafeBytes: @Sendable ((UnsafeRawBufferPointer) throws -> Void) throws -> Void
+  public borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try default_withUnsafeBytes(for: attachment, body)
+  }
 
-  public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  /// The implementation of ``withBytes(for:_:)`` borrowed from the original
+  /// attachment.
+  private var _withBytes: @Sendable ((borrowing RawSpan) throws -> Void) throws -> Void
+
+  public borrowing func withBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (borrowing RawSpan) throws -> R) throws -> R {
     var result: R!
-    try _withUnsafeBytes { bytes in
+    try _withBytes { bytes in
       result = try body(bytes)
     }
     return result
@@ -330,7 +334,7 @@ extension Attachment where AttachableValue: ~Copyable {
   /// }
   public static func record(_ attachment: consuming Self, sourceLocation: SourceLocation = #_sourceLocation) {
     do {
-      let bufferCopy = try attachment.withUnsafeBytes { Array($0) }
+      let bufferCopy = try attachment.withBytes { Array($0) }
       Attachment<Array>.record(bufferCopy, sourceLocation: sourceLocation)
     } catch {
       let sourceContext = SourceContext(backtrace: .current(), sourceLocation: sourceLocation)
@@ -390,8 +394,33 @@ extension Attachment where AttachableValue: ~Copyable {
   ///   @Available(Swift, introduced: 6.2)
   ///   @Available(Xcode, introduced: 26.0)
   /// }
+  @available(swift, deprecated: 100000.0, message: "Use 'withBytes(_:)' instead")
   @inlinable public borrowing func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
     try attachableValue.withUnsafeBytes(for: self, body)
+  }
+
+  /// Call a function and pass a span representing the value of this
+  /// instance's ``attachableValue-2tnj5`` property to it.
+  ///
+  /// - Parameters:
+  ///   - body: A function to call. A temporary buffer containing a data
+  ///     representation of this instance is passed to it.
+  ///
+  /// - Returns: Whatever is returned by `body`.
+  ///
+  /// - Throws: Whatever is thrown by `body`, or any error that prevented the
+  ///   creation of the span.
+  ///
+  /// The testing library uses this function when saving an attachment. This
+  /// function calls the ``Attachable/withUnsafeBytes(for:_:)`` function on this
+  /// attachment's ``attachableValue-2tnj5`` property.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  ///   @Available(Xcode, introduced: 26.0)
+  /// }
+  @inlinable public borrowing func withBytes<R>(_ body: (borrowing RawSpan) throws -> R) throws -> R {
+    try attachableValue.withBytes(for: self, body)
   }
 }
 

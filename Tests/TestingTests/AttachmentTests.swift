@@ -282,8 +282,8 @@ struct AttachmentTests {
 
         #expect(attachment.preferredName == temporaryFileName)
         #expect(throws: Never.self) {
-          try attachment.withUnsafeBytes { buffer in
-            #expect(buffer.count == data.count)
+          try attachment.withBytes { buffer in
+            #expect(buffer.byteCount == data.count)
           }
         }
         valueAttached()
@@ -314,7 +314,8 @@ struct AttachmentTests {
         }
 
         #expect(attachment.preferredName == "\(temporaryDirectoryName).zip")
-        try! attachment.withUnsafeBytes { buffer in
+        try! attachment.withBytes { buffer in
+          let buffer = Array(buffer)
           #expect(buffer.count > 32)
           #expect(buffer[0] == UInt8(ascii: "P"))
           #expect(buffer[1] == UInt8(ascii: "K"))
@@ -452,9 +453,9 @@ extension AttachmentTests {
     func test(_ value: some Attachable) throws {
       #expect(value.estimatedAttachmentByteCount == 6)
       let attachment = Attachment(value)
-      try attachment.withUnsafeBytes { buffer in
-        #expect(buffer.elementsEqual("abc123".utf8))
-        #expect(buffer.count == 6)
+      try attachment.withBytes { buffer in
+        #expect(Array(buffer).elementsEqual("abc123".utf8))
+        #expect(buffer.byteCount == 6)
       }
     }
 
@@ -711,7 +712,7 @@ extension AttachmentTests {
       }
 
       let attachment = Attachment(icon, named: "diamond.jpeg")
-      try attachment.withUnsafeBytes { buffer in
+      try attachment.withBytes { buffer in
         #expect(buffer.count > 32)
       }
     }
@@ -751,7 +752,7 @@ extension AttachmentTests {
       }
 
       let attachment = Attachment(bitmap, named: "diamond.png")
-      try attachment.withUnsafeBytes { buffer in
+      try attachment.withBytes { buffer in
         #expect(buffer.count > 32)
       }
       Attachment.record(attachment)
@@ -799,7 +800,7 @@ extension AttachmentTests {
       }
 
       let attachment = Attachment(wicBitmap, named: "diamond.png")
-      try attachment.withUnsafeBytes { buffer in
+      try attachment.withBytes { buffer in
         #expect(buffer.count > 32)
       }
       Attachment.record(attachment)
@@ -812,7 +813,7 @@ extension AttachmentTests {
       }
 
       let attachment = Attachment(wicBitmapSource, named: "diamond.png")
-      try attachment.withUnsafeBytes { buffer in
+      try attachment.withBytes { buffer in
         #expect(buffer.count > 32)
       }
       Attachment.record(attachment)
@@ -851,14 +852,18 @@ struct MyAttachable: Attachable, ~Copyable {
   var string: String
   var errorToThrow: (any Error)?
 
-  func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try default_withUnsafeBytes(for: attachment, body)
+  }
+
+  borrowing func withBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (borrowing RawSpan) throws -> R) throws -> R {
     if let errorToThrow {
       throw errorToThrow
     }
 
     var string = string
     return try string.withUTF8 { buffer in
-      try body(.init(buffer))
+      try body(RawSpan(_unsafeElements: buffer))
     }
   }
 }
@@ -869,11 +874,15 @@ extension MyAttachable: Sendable {}
 struct MySendableAttachable: Attachable, Sendable {
   var string: String
 
-  func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try default_withUnsafeBytes(for: attachment, body)
+  }
+
+  borrowing func withBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (borrowing RawSpan) throws -> R) throws -> R {
     #expect(attachment.attachableValue.string == string)
     var string = string
     return try string.withUTF8 { buffer in
-      try body(.init(buffer))
+      try body(RawSpan(_unsafeElements: buffer))
     }
   }
 }
@@ -881,10 +890,14 @@ struct MySendableAttachable: Attachable, Sendable {
 struct MySendableAttachableWithDefaultByteCount: Attachable, Sendable {
   var string: String
 
-  func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+  borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try default_withUnsafeBytes(for: attachment, body)
+  }
+
+  borrowing func withBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (borrowing RawSpan) throws -> R) throws -> R {
     var string = string
     return try string.withUTF8 { buffer in
-      try body(.init(buffer))
+      try body(RawSpan(_unsafeElements: buffer))
     }
   }
 }

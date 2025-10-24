@@ -113,7 +113,7 @@ func loadTagColors(fromFileInDirectoryAtPath swiftTestingDirectoryPath: String? 
   // nil is a valid decoded color value (representing "no color") that we can
   // use for merging tag color data from multiple sources, but it is not valid
   // as an actual tag color, so we have a step here that filters it.
-  return try tagColorsData.withUnsafeBytes { tagColorsData in
+  return try tagColorsData.withBytes { tagColorsData in
     try JSON.decode([Tag: Tag.Color?].self, from: tagColorsData)
       .compactMapValues { $0 }
   }

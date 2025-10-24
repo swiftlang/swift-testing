@@ -408,9 +408,7 @@ extension JSON {
   /// - Throws: Whatever is thrown by the decoding process.
   @_disfavoredOverload
   static func decode<T>(_ type: T.Type, from jsonRepresentation: Data) throws -> T where T: Decodable {
-    try jsonRepresentation.withUnsafeBytes { bytes in
-      try JSON.decode(type, from: bytes)
-    }
+    try JSON.decode(type, from: jsonRepresentation.bytes)
   }
 #endif
 }

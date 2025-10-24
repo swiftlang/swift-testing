@@ -226,7 +226,7 @@ private import _TestingInternals
           return
         }
         #expect(throws: Never.self) {
-          try attachment.withUnsafeBytes { bytes in
+          try attachment.withBytes { bytes in
             #expect(Array(bytes) == Self.attachmentPayload)
           }
         }

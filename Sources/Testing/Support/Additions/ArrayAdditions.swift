@@ -20,7 +20,49 @@ extension Array {
   init(_ optionalValue: Element?) {
     self = optionalValue.map { [$0] } ?? []
   }
+
+  init(_ bytes: borrowing RawSpan) where Element == UInt8 {
+    self = bytes.withUnsafeBytes { Array($0) }
+  }
+
+  func withSpan<R, E>(_ body: (borrowing Span<Element>) throws(E) -> R) throws(E) -> R {
+    try self[...].withSpan(body)
+  }
+
+  func withBytes<R, E>(_ body: (borrowing RawSpan) throws(E) -> R) throws(E) -> R where Element: BitwiseCopyable {
+    try self[...].withBytes(body)
+  }
 }
+
+// MARK: -
+
+extension ArraySlice {
+  func withSpan<R, E>(_ body: (borrowing Span<Element>) throws(E) -> R) throws(E) -> R {
+#if SWT_TARGET_OS_APPLE
+    do {
+      return try withUnsafeBufferPointer { buffer in
+        try body(Span(_unsafeElements: buffer))
+      }
+    } catch {
+      throw error as! E
+    }
+#else
+    try body(span)
+#endif
+  }
+
+  func withBytes<R, E>(_ body: (borrowing RawSpan) throws(E) -> R) throws(E) -> R where Element: BitwiseCopyable {
+#if SWT_TARGET_OS_APPLE
+    try withSpan { span throws(E) in
+      try body(span.bytes)
+    }
+#else
+    try body(span.bytes)
+#endif
+  }
+}
+
+// MARK: -
 
 /// Get the number of elements in a parameter pack.
 ///

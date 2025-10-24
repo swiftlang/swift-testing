@@ -365,6 +365,23 @@ extension FileHandle {
 // MARK: - Writing
 
 extension FileHandle {
+  /// Write a span of bytes to this file handle.
+  ///
+  /// - Parameters:
+  ///   - bytes: The bytes to write. This untyped span is interpreted as a
+  ///     sequence of `UInt8` values.
+  ///   - flushAfterward: Whether or not to flush the file (with `fflush()`)
+  ///     after writing. If `true`, `fflush()` is called even if an error
+  ///     occurred while writing.
+  ///
+  /// - Throws: Any error that occurred while writing `bytes`. If an error
+  ///   occurs while flushing the file, it is not thrown.
+  func write(_ bytes: borrowing RawSpan, flushAfterward: Bool = true) throws {
+    try bytes.withUnsafeBytes { bytes in
+      try write(bytes, flushAfterward: flushAfterward)
+    }
+  }
+
   /// Write a sequence of bytes to this file handle.
   ///
   /// - Parameters:
@@ -384,9 +401,11 @@ extension FileHandle {
         }
       }
 
-      let countWritten = fwrite(bytes.baseAddress!, MemoryLayout<UInt8>.stride, bytes.count, file)
-      if countWritten < bytes.count {
-        throw CError(rawValue: swt_errno())
+      if let baseAddress = bytes.baseAddress {
+        let countWritten = fwrite(baseAddress, MemoryLayout<UInt8>.stride, bytes.count, file)
+        if countWritten < bytes.count {
+          throw CError(rawValue: swt_errno())
+        }
       }
     }
   }

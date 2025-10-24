@@ -10,24 +10,20 @@
 
 #if canImport(Foundation)
 public import Testing
-private import Foundation
+internal import Foundation
 
-/// A common implementation of ``withUnsafeBytes(for:_:)`` that is used when a
-/// type conforms to `Encodable`, whether or not it also conforms to
-/// `NSSecureCoding`.
+/// The common implementation of ``withUnsafeBytes(for:_:)`` and
+/// ``withBytes(for:_:)`` for types conforming to `Encodable`.
 ///
 /// - Parameters:
 ///   - attachableValue: The value to encode.
-///   - attachment: The attachment that is requesting a buffer (that is, the
-///     attachment containing this instance.)
-///   - body: A function to call. A temporary buffer containing a data
-///     representation of this instance is passed to it.
+///   - attachment: The attachment that is requesting data (that is, the
+///     attachment containing `attachableValue`.)
 ///
-/// - Returns: Whatever is returned by `body`.
+/// - Returns: An encoded representation `attachableValue`.
 ///
-/// - Throws: Whatever is thrown by `body`, or any error that prevented the
-///   creation of the buffer.
-func withUnsafeBytes<E, R>(encoding attachableValue: borrowing E, for attachment: borrowing Attachment<E>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R where E: Attachable & Encodable {
+/// - Throws: Any error that prevented creation of the data.
+func _data<E>(encoding attachableValue: borrowing E, for attachment: borrowing Attachment<E>) throws -> Data where E: Attachable & Encodable {
   let format = try EncodingFormat(for: attachment)
 
   let data: Data
@@ -47,7 +43,7 @@ func withUnsafeBytes<E, R>(encoding attachableValue: borrowing E, for attachment
     data = try JSONEncoder().encode(attachableValue)
   }
 
-  return try data.withUnsafeBytes(body)
+  return data
 }
 
 // Implement the protocol requirements generically for any encodable value by
@@ -96,7 +92,42 @@ extension Attachable where Self: Encodable {
   ///   @Available(Xcode, introduced: 26.0)
   /// }
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try _Testing_Foundation.withUnsafeBytes(encoding: self, for: attachment, body)
+    try default_withUnsafeBytes(for: attachment, body)
+  }
+
+  /// Encode this value into a span using either [`PropertyListEncoder`](https://developer.apple.com/documentation/foundation/propertylistencoder)
+  /// or [`JSONEncoder`](https://developer.apple.com/documentation/foundation/jsonencoder),
+  /// then call a function and pass that span to it.
+  ///
+  /// - Parameters:
+  ///   - attachment: The attachment that is requesting a span (that is, the
+  ///     attachment containing this instance.)
+  ///   - body: A function to call. A temporary span containing a data
+  ///     representation of this instance is passed to it.
+  ///
+  /// - Returns: Whatever is returned by `body`.
+  ///
+  /// - Throws: Whatever is thrown by `body`, or any error that prevented the
+  ///   creation of the span.
+  ///
+  /// The testing library uses this function when writing an attachment to a
+  /// test report or to a file on disk. The encoding used depends on the path
+  /// extension specified by the value of `attachment`'s ``Testing/Attachment/preferredName``
+  /// property:
+  ///
+  /// | Extension | Encoding Used | Encoder Used |
+  /// |-|-|-|
+  /// | `".xml"` | XML property list | [`PropertyListEncoder`](https://developer.apple.com/documentation/foundation/propertylistencoder) |
+  /// | `".plist"` | Binary property list | [`PropertyListEncoder`](https://developer.apple.com/documentation/foundation/propertylistencoder) |
+  /// | None, `".json"` | JSON | [`JSONEncoder`](https://developer.apple.com/documentation/foundation/jsonencoder) |
+  ///
+  /// OpenStep-style property lists are not supported. If a value conforms to
+  /// _both_ [`Encodable`](https://developer.apple.com/documentation/swift/encodable)
+  /// _and_ [`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding),
+  /// the default implementation of this function uses the value's conformance
+  /// to `Encodable`.
+  public borrowing func withBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (borrowing RawSpan) throws -> R) throws -> R {
+    try body(_data(encoding: self, for: attachment).bytes)
   }
 }
 #endif

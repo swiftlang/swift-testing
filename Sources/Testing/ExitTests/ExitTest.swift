@@ -719,7 +719,7 @@ extension ExitTest {
     }
 
     return try? idString.withUTF8 { idBuffer in
-      try JSON.decode(ExitTest.ID.self, from: UnsafeRawBufferPointer(idBuffer))
+      try JSON.decode(ExitTest.ID.self, from: idBuffer.span.bytes)
     }
   }
 
@@ -875,7 +875,9 @@ extension ExitTest {
       // Insert a specific variable that tells the child process which exit test
       // to run.
       try JSON.withEncoding(of: exitTest.id) { json in
-        childEnvironment[Self._idEnvironmentVariableName] = String(decoding: json, as: UTF8.self)
+        json.withUnsafeBytes { json in
+          childEnvironment[Self._idEnvironmentVariableName] = String(decoding: json, as: UTF8.self)
+        }
       }
 
       typealias ResultUpdater = @Sendable (inout ExitTest.Result) -> Void
@@ -1012,8 +1014,8 @@ extension ExitTest {
 
     for recordJSON in bytes.split(whereSeparator: \.isASCIINewline) where !recordJSON.isEmpty {
       do {
-        try recordJSON.withUnsafeBufferPointer { recordJSON in
-          try Self._processRecord(.init(recordJSON), fromBackChannel: backChannel)
+        try recordJSON.withBytes { recordJSON in
+          try Self._processRecord(recordJSON, fromBackChannel: backChannel)
         }
       } catch {
         // NOTE: an error caught here indicates a decoding problem.
@@ -1031,7 +1033,7 @@ extension ExitTest {
   ///   - backChannel: The file handle that `recordJSON` was read from.
   ///
   /// - Throws: Any error encountered attempting to decode or process the JSON.
-  private static func _processRecord(_ recordJSON: UnsafeRawBufferPointer, fromBackChannel backChannel: borrowing FileHandle) throws {
+  private static func _processRecord(_ recordJSON: borrowing RawSpan, fromBackChannel backChannel: borrowing FileHandle) throws {
     let record = try JSON.decode(ABI.Record<ABI.BackChannelVersion>.self, from: recordJSON)
     guard case let .event(event) = record.kind else {
       return
@@ -1098,7 +1100,7 @@ extension ExitTest {
       var capturedValue = capturedValue
 
       func open<T>(_ type: T.Type) throws -> T where T: Codable & Sendable {
-        return try capturedValueJSON.withUnsafeBytes { capturedValueJSON in
+        return try capturedValueJSON.withBytes { capturedValueJSON in
           try JSON.decode(type, from: capturedValueJSON)
         }
       }
@@ -1123,7 +1125,7 @@ extension ExitTest {
   /// This function should only be used when the process was started via the
   /// `__swiftPMEntryPoint()` function. The effect of using it under other
   /// configurations is undefined.
-  private borrowing func _withEncodedCapturedValuesForEntryPoint(_ body: (UnsafeRawBufferPointer) throws -> Void) throws -> Void {
+  private borrowing func _withEncodedCapturedValuesForEntryPoint(_ body: (borrowing RawSpan) throws -> Void) throws -> Void {
     for capturedValue in capturedValues {
       try JSON.withEncoding(of: capturedValue.wrappedValue!) { capturedValueJSON in
         try JSON.asJSONLine(capturedValueJSON, body)

@@ -45,7 +45,7 @@ extension ABI {
         _preferredName = attachment.preferredName
 
         if path == nil {
-          _bytes = try? attachment.withUnsafeBytes { bytes in
+          _bytes = try? attachment.withBytes { bytes in
             return Bytes(rawValue: [UInt8](bytes))
           }
         }
@@ -67,10 +67,12 @@ extension ABI.EncodedAttachment.Bytes: Codable {
   func encode(to encoder: any Encoder) throws {
 #if canImport(Foundation)
     // If possible, encode this structure as Base64 data.
-    try rawValue.withUnsafeBytes { rawValue in
-      let data = Data(bytesNoCopy: .init(mutating: rawValue.baseAddress!), count: rawValue.count, deallocator: .none)
-      var container = encoder.singleValueContainer()
-      try container.encode(data)
+    try rawValue.withBytes { bytes in
+      try bytes.withUnsafeBytes { bytes in
+        let data = Data(bytesNoCopy: .init(mutating: bytes.baseAddress!), count: rawValue.count, deallocator: .none)
+        var container = encoder.singleValueContainer()
+        try container.encode(data)
+      }
     }
 #else
     // Otherwise, it's an array of integers.
@@ -108,8 +110,12 @@ extension ABI.EncodedAttachment: Attachable {
   fileprivate struct BytesUnavailableError: Error {}
 
   borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try default_withUnsafeBytes(for: attachment, body)
+  }
+
+  borrowing func withBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (borrowing RawSpan) throws -> R) throws -> R {
     if let bytes = _bytes?.rawValue {
-      return try bytes.withUnsafeBytes(body)
+      return try bytes.withBytes(body)
     }
 
 #if !SWT_NO_FILE_IO
@@ -120,11 +126,12 @@ extension ABI.EncodedAttachment: Attachable {
     // Leverage Foundation's file-mapping logic since we're using Data anyway.
     let url = URL(fileURLWithPath: path, isDirectory: false)
     let bytes = try Data(contentsOf: url, options: [.mappedIfSafe])
+    return try body(bytes.bytes)
 #else
     let fileHandle = try FileHandle(forReadingAtPath: path)
     let bytes = try fileHandle.readToEnd()
+    return try bytes.withBytes(body)
 #endif
-    return try bytes.withUnsafeBytes(body)
 #else
     // Cannot read the attachment from disk on this platform.
     throw BytesUnavailableError()

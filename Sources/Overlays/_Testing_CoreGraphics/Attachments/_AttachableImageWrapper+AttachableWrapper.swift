@@ -41,6 +41,10 @@ private import UniformTypeIdentifiers
 @available(_uttypesAPI, *)
 extension _AttachableImageWrapper: Attachable, AttachableWrapper where Image: AttachableAsCGImage {
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<_AttachableImageWrapper>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try default_withUnsafeBytes(for: attachment, body)
+  }
+
+  public borrowing func withBytes<R>(for attachment: borrowing Attachment<_AttachableImageWrapper>, _ body: (borrowing RawSpan) throws -> R) throws -> R {
     let data = NSMutableData()
 
     // Convert the image to a CGImage.
@@ -72,7 +76,7 @@ extension _AttachableImageWrapper: Attachable, AttachableWrapper where Image: At
     // NSMutableData here so we have to use slightly different API than we would
     // with an instance of Data.
     return try withExtendedLifetime(data) {
-      try body(UnsafeRawBufferPointer(start: data.bytes, count: data.length))
+      try body(RawSpan(_unsafeStart: data.bytes, byteCount: data.length))
     }
   }
 

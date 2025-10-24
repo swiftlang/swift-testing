@@ -74,11 +74,44 @@ public protocol Attachable: ~Copyable {
   /// etc., but it would not be idiomatic for the buffer to contain a textual
   /// description of the image.
   ///
+  /// @DeprecationSummary {
+  ///   Implement ``withBytes(for:_:)`` instead. The testing library does not
+  ///   call this function. In the future, the default implementation of this
+  ///   function will automatically call ``withBytes(for:_:)``.
+  /// }
+  ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.2)
   ///   @Available(Xcode, introduced: 26.0)
   /// }
+  @available(swift, deprecated: 100000.0, message: "Use 'withBytes(for:_:)' instead")
   borrowing func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R
+
+  /// Call a function and pass a span representing this instance to it.
+  ///
+  /// - Parameters:
+  ///   - attachment: The attachment that is requesting a span (that is, the
+  ///     attachment containing this instance.)
+  ///   - body: A function to call. A temporary span containing a data
+  ///     representation of this instance is passed to it.
+  ///
+  /// - Returns: Whatever is returned by `body`.
+  ///
+  /// - Throws: Whatever is thrown by `body`, or any error that prevented the
+  ///   creation of the span.
+  ///
+  /// The testing library uses this function when saving an attachment. The
+  /// format of the span is implementation-defined, but should be "idiomatic"
+  /// for this type: for example, if this type represents an image, it would be
+  /// appropriate for the span to contain an image in PNG format, JPEG format,
+  /// etc., but it would not be idiomatic for the span to contain a textual
+  /// description of the image.
+  ///
+  /// The default implementation of this function calls ``withUnsafeBytes(for:_:)``.
+  /// In the future, you will need to implement this function instead of
+  /// ``withUnsafeBytes(for:_:)``, and the default implementation of this
+  /// function will be removed.
+  borrowing func withBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (borrowing RawSpan) throws -> R) throws -> R
 
   /// Generate a preferred name for the given attachment.
   ///
@@ -111,6 +144,21 @@ extension Attachable where Self: ~Copyable {
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
     suggestedName
   }
+
+  /// The default implementation of ``withUnsafeBytes(for:_:)`` used by types in
+  /// the testing library.
+  package borrowing func default_withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try withBytes(for: attachment) { bytes in
+      try bytes.withUnsafeBytes(body)
+    }
+  }
+
+  @available(swift, deprecated: 1000000.0, message: "Types that conform to 'Attachable' must implement 'withBytes(for:_:)'")
+  public borrowing func withBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (borrowing RawSpan) throws -> R) throws -> R {
+    try withUnsafeBytes(for: attachment) { bytes in
+      try body(RawSpan(_unsafeBytes: bytes))
+    }
+  }
 }
 
 extension Attachable where Self: Collection, Element == UInt8 {
@@ -139,36 +187,62 @@ extension Attachable where Self: StringProtocol {
 // developers can attach raw data when needed.
 extension Array<UInt8>: Attachable {
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try withUnsafeBytes(body)
+    try default_withUnsafeBytes(for: attachment, body)
+  }
+
+  public borrowing func withBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (borrowing RawSpan) throws -> R) throws -> R {
+    try withUnsafeBytes { bytes in
+      try body(RawSpan(_unsafeBytes: bytes))
+    }
   }
 }
 
 extension ContiguousArray<UInt8>: Attachable {
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try withUnsafeBytes(body)
+    try default_withUnsafeBytes(for: attachment, body)
+  }
+
+  public borrowing func withBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (borrowing RawSpan) throws -> R) throws -> R {
+    try withUnsafeBytes { bytes in
+      try body(RawSpan(_unsafeBytes: bytes))
+    }
   }
 }
 
 extension ArraySlice<UInt8>: Attachable {
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try withUnsafeBytes(body)
+    try default_withUnsafeBytes(for: attachment, body)
+  }
+
+  public borrowing func withBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (borrowing RawSpan) throws -> R) throws -> R {
+    try withUnsafeBytes { bytes in
+      try body(RawSpan(_unsafeBytes: bytes))
+    }
   }
 }
 
 extension String: Attachable {
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    var selfCopy = self
+    try default_withUnsafeBytes(for: attachment, body)
+  }
+
+  public borrowing func withBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (borrowing RawSpan) throws -> R) throws -> R {
+    var selfCopy = copy self
     return try selfCopy.withUTF8 { utf8 in
-      try body(UnsafeRawBufferPointer(utf8))
+      try body(RawSpan(_unsafeElements: utf8))
     }
   }
 }
 
 extension Substring: Attachable {
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    var selfCopy = self
+    try default_withUnsafeBytes(for: attachment, body)
+  }
+
+  public borrowing func withBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (borrowing RawSpan) throws -> R) throws -> R {
+    var selfCopy = copy self
     return try selfCopy.withUTF8 { utf8 in
-      try body(UnsafeRawBufferPointer(utf8))
+      try body(RawSpan(_unsafeElements: utf8))
     }
   }
 }

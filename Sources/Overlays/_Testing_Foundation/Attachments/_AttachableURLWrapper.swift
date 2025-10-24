@@ -36,7 +36,11 @@ extension _AttachableURLWrapper: AttachableWrapper {
   }
 
   public func withUnsafeBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
-    try data.withUnsafeBytes(body)
+    try default_withUnsafeBytes(for: attachment, body)
+  }
+
+  public borrowing func withBytes<R>(for attachment: borrowing Attachment<Self>, _ body: (borrowing RawSpan) throws -> R) throws -> R {
+    try body(data.bytes)
   }
 
   public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
