@@ -74,10 +74,15 @@ func spawnExecutable(
 ) throws -> ProcessID {
   // Darwin and Linux differ in their optionality for the posix_spawn types we
   // use, so use this typealias to paper over the differences.
-#if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD) || os(Android)
-  typealias P<T> = T?
+#if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD)
+  typealias posix_spawn_file_actions_p = posix_spawn_file_actions_t?
+  typealias posix_spawnattr_p = posix_spawnattr_t?
 #elseif os(Linux)
-  typealias P<T> = T
+  typealias posix_spawn_file_actions_p = posix_spawn_file_actions_t
+  typealias posix_spawnattr_p = posix_spawnattr_t
+#elseif os(Android)
+  typealias posix_spawn_file_actions_p = posix_spawn_file_actions_t?
+  typealias posix_spawnattr_p = posix_spawnattr_t
 #endif
 
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
