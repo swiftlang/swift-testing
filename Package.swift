@@ -377,7 +377,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
       .define("SWT_TARGET_OS_APPLE", .whenApple()),
 
-      .define("SWT_NO_EXIT_TESTS", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]))),
+      .define("SWT_NO_EXIT_TESTS", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi]))),
       .define("SWT_NO_PROCESS_SPAWNING", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]))),
       .define("SWT_NO_SNAPSHOT_TYPES", .whenEmbedded(or: .whenApple(false))),
       .define("SWT_NO_DYNAMIC_LINKING", .whenEmbedded(or: .when(platforms: [.wasi]))),
@@ -437,7 +437,7 @@ extension Array where Element == PackageDescription.CXXSetting {
 
     result += [
       .define("SWT_NO_EXIT_TESTS", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]))),
-      .define("SWT_NO_PROCESS_SPAWNING", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi, .android]))),
+      .define("SWT_NO_PROCESS_SPAWNING", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi]))),
       .define("SWT_NO_SNAPSHOT_TYPES", .whenEmbedded(or: .whenApple(false))),
       .define("SWT_NO_DYNAMIC_LINKING", .whenEmbedded(or: .when(platforms: [.wasi]))),
       .define("SWT_NO_PIPES", .whenEmbedded(or: .when(platforms: [.wasi]))),

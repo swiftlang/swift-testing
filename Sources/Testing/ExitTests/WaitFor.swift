@@ -11,7 +11,7 @@
 #if !SWT_NO_PROCESS_SPAWNING
 internal import _TestingInternals
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
 /// Block the calling thread, wait for the target process to exit, and return
 /// a value describing the conditions under which it exited.
 ///
@@ -78,7 +78,7 @@ func wait(for pid: consuming pid_t) async throws -> ExitStatus {
 
   return try _blockAndWait(for: pid)
 }
-#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
 /// A mapping of awaited child PIDs to their corresponding Swift continuations.
 private nonisolated(unsafe) let _childProcessContinuations = {
   let result = ManagedBuffer<[pid_t: CheckedContinuation<ExitStatus, any Error>], pthread_mutex_t>.create(
@@ -189,8 +189,9 @@ private let _createWaitThread: Void = {
     { _ in
       // Set the thread name to help with diagnostics. Note that different
       // platforms support different thread name lengths. See MAXTHREADNAMESIZE
-      // on Darwin, TASK_COMM_LEN on Linux, MAXCOMLEN on FreeBSD, and _MAXCOMLEN
-      // on OpenBSD. We try to maximize legibility in the available space.
+      // on Darwin, TASK_COMM_LEN on Linux, MAXCOMLEN on FreeBSD, _MAXCOMLEN on
+      // OpenBSD, and MAX_TASK_COMM_LEN on Android. We try to maximize
+      // legibility in the available space.
 #if SWT_TARGET_OS_APPLE
       _ = pthread_setname_np("Swift Testing exit test monitor")
 #elseif os(Linux)
@@ -201,6 +202,8 @@ private let _createWaitThread: Void = {
       pthread_set_name_np(pthread_self(), "SWT ex test monitor")
 #elseif os(OpenBSD)
       pthread_set_name_np(pthread_self(), "SWT exit test monitor")
+#elseif os(Android)
+      _ = pthread_setname_np(pthread_self(), "SWT ExT monitor")
 #else
 #warning("Platform-specific implementation missing: thread naming unavailable")
 #endif
@@ -233,6 +236,7 @@ private let _createWaitThread: Void = {
 ///
 /// On Apple platforms, the libdispatch-based implementation above is more
 /// efficient because it does not need to permanently reserve a thread.
+@available(Android 28, *)
 func wait(for pid: consuming pid_t) async throws -> ExitStatus {
   let pid = consume pid
 

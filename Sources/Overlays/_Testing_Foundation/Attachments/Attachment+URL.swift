@@ -160,6 +160,13 @@ private let _archiverPath: String? = {
 /// an archive (currently of `.zip` format, although this is subject to change.)
 private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> Data {
 #if !SWT_NO_PROCESS_SPAWNING
+#if os(Android)
+  guard #available(Android 28, *) else {
+    // API level 28 corresponds to Android 9 Pie.
+    throw CocoaError(.featureUnsupported, userInfo: [NSLocalizedDescriptionKey: "Attaching directories to tests requires Android 9 (API level 28) or newer."])
+  }
+#endif
+
   let temporaryName = "\(UUID().uuidString).zip"
   let temporaryURL = FileManager.default.temporaryDirectory.appendingPathComponent(temporaryName)
   defer {
@@ -180,12 +187,15 @@ private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> 
   // OpenBSD's tar(1) does not support writing PKZIP archives, and /usr/bin/zip
   // tool is an optional install, so we check if it's present before trying to
   // execute it.
-#if os(Linux) || os(OpenBSD)
+  //
+  // TODO: figure out whether tar or zip is available on Android and where it's stored
+#if os(Linux) || os(OpenBSD) || os(Android)
   let archiverPath = "/bin/sh"
-#if os(Linux)
+#if os(Linux) || os(Android)
   let trueArchiverPath = "/usr/bin/zip"
 #else
   let trueArchiverPath = "/usr/local/bin/zip"
+#endif
   var isDirectory = false
   if !FileManager.default.fileExists(atPath: trueArchiverPath, isDirectory: &isDirectory) || isDirectory {
     throw CocoaError(.fileNoSuchFile, userInfo: [
@@ -193,7 +203,6 @@ private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> 
       NSFilePathErrorKey: trueArchiverPath
     ])
   }
-#endif
 #elseif SWT_TARGET_OS_APPLE || os(FreeBSD)
   let archiverPath = "/usr/bin/tar"
 #elseif os(Windows)
@@ -211,7 +220,7 @@ private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> 
   let sourcePath = directoryURL.path
   let destinationPath = temporaryURL.path
   let arguments = {
-#if os(Linux) || os(OpenBSD)
+#if os(Linux) || os(OpenBSD) || os(Android)
     // The zip command constructs relative paths from the current working
     // directory rather than from command-line arguments.
     ["-c", #"cd "$0" && "$1" "$2" --recurse-paths ."#, sourcePath, trueArchiverPath, destinationPath]

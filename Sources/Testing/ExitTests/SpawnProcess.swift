@@ -17,7 +17,7 @@ internal import _TestingInternals
 
 /// A platform-specific value identifying a process running on the current
 /// system.
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
 typealias ProcessID = pid_t
 #elseif os(Windows)
 typealias ProcessID = HANDLE
@@ -62,6 +62,7 @@ private let _posix_spawn_file_actions_addclosefrom_np = symbol(named: "posix_spa
 ///   resources.
 ///
 /// - Throws: Any error that prevented the process from spawning.
+@available(Android 28, *)
 func spawnExecutable(
   atPath executablePath: String,
   arguments: [String],
@@ -75,11 +76,11 @@ func spawnExecutable(
   // use, so use this typealias to paper over the differences.
 #if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD)
   typealias P<T> = T?
-#elseif os(Linux)
+#elseif os(Linux) || os(Android)
   typealias P<T> = T
 #endif
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
   return try withUnsafeTemporaryAllocation(of: P<posix_spawn_file_actions_t>.self, capacity: 1) { fileActions in
     let fileActions = fileActions.baseAddress!
     let fileActionsInitialized = posix_spawn_file_actions_init(fileActions)
@@ -194,6 +195,9 @@ func spawnExecutable(
       // spawned child process if we control its execution.
       var environment = environment
       environment["SWT_CLOSEFROM"] = String(describing: highestFD + 1)
+#elseif os(Android)
+      // Android does not have posix_spawn_file_actions_addclosefrom_np() nor
+      // closefrom(2), so we don't attempt this operation there.
 #else
 #warning("Platform-specific implementation missing: cannot close unused file descriptors")
 #endif
@@ -463,6 +467,7 @@ private func _escapeCommandLine(_ arguments: [String]) -> String {
 /// This function is a convenience that spawns the given process and waits for
 /// it to terminate. It is primarily for use by other targets in this package
 /// such as its cross-import overlays.
+@available(Android 28, *)
 package func spawnExecutableAtPathAndWait(
   _ executablePath: String,
   arguments: [String] = [],

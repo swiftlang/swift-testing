@@ -34,7 +34,9 @@ private import _TestingInternals
 ///   @Available(Swift, introduced: 6.2)
 ///   @Available(Xcode, introduced: 26.0)
 /// }
-#if SWT_NO_EXIT_TESTS
+#if !SWT_NO_EXIT_TESTS
+@available(Android 28, *)
+#else
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
@@ -223,6 +225,8 @@ extension ExitTest {
     // as I can tell, special-case RLIMIT_CORE=1.
     var rl = rlimit(rlim_cur: 0, rlim_max: 0)
     _ = setrlimit(RLIMIT_CORE, &rl)
+#elseif os(Android)
+    // TODO: "tombstoned_intercept"?
 #elseif os(Windows)
     // On Windows, similarly disable Windows Error Reporting and the Windows
     // Error Reporting UI. Note we expect to be the first component to call
@@ -698,7 +702,7 @@ extension ExitTest {
   ///   back to a (new) file handle with `_makeFileHandle()`, or `nil` if the
   ///   file handle could not be converted to a string.
   private static func _makeEnvironmentVariable(for fileHandle: borrowing FileHandle) -> String? {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
     return fileHandle.withUnsafePOSIXFileDescriptor { fd in
       fd.map(String.init(describing:))
     }

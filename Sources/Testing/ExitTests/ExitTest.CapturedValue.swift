@@ -11,7 +11,9 @@
 private import _TestingInternals
 
 @_spi(ForToolsIntegrationOnly)
-#if SWT_NO_EXIT_TESTS
+#if !SWT_NO_EXIT_TESTS
+@available(Android 28, *)
+#else
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
