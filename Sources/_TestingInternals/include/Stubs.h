@@ -132,9 +132,8 @@ static char *_Nullable *_Null_unspecified swt_environ(void) {
 /// This function is provided because `si_pid` is a complex macro on some
 /// platforms and cannot be imported directly into Swift. It is renamed back to
 /// `siginfo_t.si_pid` in Swift.
-SWT_SWIFT_NAME(getter:siginfo_t.si_pid(self:))
-static pid_t swt_siginfo_t_si_pid(const siginfo_t *siginfo) {
-  return siginfo->si_pid;
+static pid_t swt_siginfo_t_si_pid(siginfo_t siginfo) {
+  return siginfo.si_pid;
 }
 #endif
 
@@ -144,9 +143,8 @@ static pid_t swt_siginfo_t_si_pid(const siginfo_t *siginfo) {
 /// This function is provided because `si_status` is a complex macro on some
 /// platforms and cannot be imported directly into Swift. It is renamed back to
 /// `siginfo_t.si_status` in Swift.
-SWT_SWIFT_NAME(getter:siginfo_t.si_status(self:))
-static int swt_siginfo_t_si_status(const siginfo_t *siginfo) {
-  return siginfo->si_status;
+static int swt_siginfo_t_si_status(siginfo_t siginfo) {
+  return siginfo.si_status;
 }
 #endif
 

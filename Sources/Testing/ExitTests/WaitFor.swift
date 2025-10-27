@@ -29,9 +29,9 @@ private func _blockAndWait(for pid: consuming pid_t) throws -> ExitStatus {
     if 0 == waitid(P_PID, id_t(pid), &siginfo, WEXITED) {
       switch siginfo.si_code {
       case .init(CLD_EXITED):
-        return .exitCode(siginfo.si_status)
+        return .exitCode(swt_siginfo_t_si_status(siginfo))
       case .init(CLD_KILLED), .init(CLD_DUMPED):
-        return .signal(siginfo.si_status)
+        return .signal(swt_siginfo_t_si_status(siginfo))
       default:
         throw SystemError(description: "Unexpected siginfo_t value. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new and include this information: \(String(reflecting: siginfo))")
       }
@@ -146,7 +146,7 @@ private let _createWaitThread: Void = {
     // continuation (if available) before reaping.
     var siginfo = siginfo_t()
     if 0 == waitid(P_ALL, 0, &siginfo, WEXITED | WNOWAIT) {
-      if case let pid = siginfo.si_pid, pid != 0 {
+      if case let pid = swt_siginfo_t_si_pid(siginfo), pid != 0 {
         let continuation = _withLockedChildProcessContinuations { childProcessContinuations, _ in
           childProcessContinuations.removeValue(forKey: pid)
         }
