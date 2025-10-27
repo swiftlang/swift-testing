@@ -126,7 +126,6 @@ static char *_Nullable *_Null_unspecified swt_environ(void) {
 }
 #endif
 
-#if !defined(__ANDROID__)
 #if __has_include(<signal.h>) && defined(si_pid)
 /// Get the value of the `si_pid` field of a `siginfo_t` structure.
 ///
@@ -149,7 +148,6 @@ SWT_SWIFT_NAME(getter:siginfo_t.si_status(self:))
 static int swt_siginfo_t_si_status(const siginfo_t *siginfo) {
   return siginfo->si_status;
 }
-#endif
 #endif
 
 /// Get the value of `EEXIST`.
