@@ -146,6 +146,7 @@ let package = Package(
         "_Testing_UIKit",
         "_Testing_WinSDK",
         "MemorySafeTestingTests",
+        "NonisolatedNonsendingTests",
       ],
       swiftSettings: .packageSettings,
       linkerSettings: [
@@ -165,6 +166,17 @@ let package = Package(
       ],
       path: "Tests/_MemorySafeTestingTests",
       swiftSettings: .packageSettings + [.strictMemorySafety()]
+    ),
+
+    .testTarget(
+      name: "NonisolatedNonsendingTests",
+      dependencies: [
+        "Testing",
+      ],
+      path: "Tests/_NonisolatedNonsendingTests",
+      swiftSettings: .packageSettings + [
+        .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
+      ]
     ),
 
     .macro(
