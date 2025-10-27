@@ -72,23 +72,26 @@ func spawnExecutable(
   standardError: borrowing FileHandle? = nil,
   additionalFileHandles: [UnsafePointer<FileHandle>] = []
 ) throws -> ProcessID {
-  // Darwin and Linux differ in their optionality for the posix_spawn types we
-  // use, so use this typealias to paper over the differences.
+  // Darwin, the BSDs, Linux, and Android all differ in their optionality for
+  // the posix_spawn types we use, so use this typealias and helper function to
+  // paper over the differences.
 #if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD)
-  typealias posix_spawn_file_actions_p = posix_spawn_file_actions_t?
-  typealias posix_spawnattr_p = posix_spawnattr_t?
+  typealias P<T> = T?
+  func asArgument<T>(_ p: UnsafeMutableBufferPointer<T?>) -> UnsafeMutablePointer<T?> { p.baseAddress! }
 #elseif os(Linux)
-  typealias posix_spawn_file_actions_p = posix_spawn_file_actions_t
-  typealias posix_spawnattr_p = posix_spawnattr_t
+  typealias P<T> = T
+  func asArgument<T>(_ p: UnsafeMutableBufferPointer<T>) -> UnsafeMutablePointer<T> { p.baseAddress! }
 #elseif os(Android)
-  typealias posix_spawn_file_actions_p = posix_spawn_file_actions_t?
-  typealias posix_spawnattr_p = posix_spawnattr_t
+  typealias P<T> = T?
+  func asArgument<T>(_ p: UnsafeMutableBufferPointer<T?>) -> UnsafeMutablePointer<T> {
+    UnsafeMutableRawPointer(p.baseAddress!).bindMemory(to: T.self, capacity: 1)
+  }
 #endif
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
-  return try withUnsafeTemporaryAllocation(of: posix_spawn_file_actions_p.self, capacity: 1) { fileActions in
-    let fileActions = fileActions.baseAddress!
-    let fileActionsInitialized = posix_spawn_file_actions_init(fileActions)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+  return try withUnsafeTemporaryAllocation(of: P<posix_spawn_file_actions_t>.self, capacity: 1) { fileActions in
+    let fileActionsInitialized = posix_spawn_file_actions_init(fileActions.baseAddress!)
+    let fileActions = asArgument(fileActions)
     guard 0 == fileActionsInitialized else {
       throw CError(rawValue: fileActionsInitialized)
     }
@@ -96,9 +99,9 @@ func spawnExecutable(
       _ = posix_spawn_file_actions_destroy(fileActions)
     }
 
-    return try withUnsafeTemporaryAllocation(of: posix_spawnattr_p.self, capacity: 1) { attrs in
-      let attrs = attrs.baseAddress!
-      let attrsInitialized = posix_spawnattr_init(attrs)
+    return try withUnsafeTemporaryAllocation(of: P<posix_spawnattr_t>.self, capacity: 1) { attrs in
+      let attrsInitialized = posix_spawnattr_init(attrs.baseAddress!)
+      let attrs = asArgument(attrs)
       guard 0 == attrsInitialized else {
         throw CError(rawValue: attrsInitialized)
       }
