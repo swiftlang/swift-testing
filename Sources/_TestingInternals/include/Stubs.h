@@ -126,7 +126,8 @@ static char *_Nullable *_Null_unspecified swt_environ(void) {
 }
 #endif
 
-#if __has_include(<signal.h>) && defined(si_pid)
+#if !SWT_NO_PROCESS_SPAWNING && __has_include(<signal.h>)
+#if defined(__APPLE__) || defined(si_pid)
 /// Get the value of the `si_pid` field of a `siginfo_t` structure.
 ///
 /// This function is provided because `si_pid` is a complex macro on some
@@ -137,7 +138,7 @@ static pid_t swt_siginfo_t_si_pid(siginfo_t siginfo) {
 }
 #endif
 
-#if __has_include(<signal.h>) && defined(si_status)
+#if defined(__APPLE__) || defined(si_status)
 /// Get the value of the `si_status` field of a `siginfo_t` structure.
 ///
 /// This function is provided because `si_status` is a complex macro on some
@@ -146,6 +147,7 @@ static pid_t swt_siginfo_t_si_pid(siginfo_t siginfo) {
 static int swt_siginfo_t_si_status(siginfo_t siginfo) {
   return siginfo.si_status;
 }
+#endif
 #endif
 
 /// Get the value of `EEXIST`.
