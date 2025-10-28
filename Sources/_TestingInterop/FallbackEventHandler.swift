@@ -27,7 +27,7 @@ private nonisolated(unsafe) let _fallbackEventHandler = {
 }()
 #else
 /// The installed event handler.
-private nonisolated(unsafe) let _fallbackEventHandler = Atomic<UnsafeRawPointer?>(nil)
+private nonisolated(unsafe) let _fallbackEventHandler = Atomic<Unmanaged<AnyObject>?>(nil)
 #endif
 
 /// A type describing a fallback event handler that testing API can invoke as an
@@ -68,7 +68,7 @@ package func _swift_testing_getFallbackEventHandler() -> FallbackEventHandler? {
   }
 #else
   return _fallbackEventHandler.load(ordering: .sequentiallyConsistent).flatMap { fallbackEventHandler in
-    unsafeBitCast(fallbackEventHandler, to: FallbackEventHandler?.self)
+    fallbackEventHandler?.takeUnretainedValue() as? FallbackEventHandler
   }
 #endif
 }
@@ -86,8 +86,10 @@ package func _swift_testing_getFallbackEventHandler() -> FallbackEventHandler? {
 @_cdecl("_swift_testing_installFallbackEventHandler")
 @usableFromInline
 package func _swift_testing_installFallbackEventHandler(_ handler: FallbackEventHandler) -> CBool {
+  var result = false
+
 #if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK
-  return _fallbackEventHandler.withUnsafeMutablePointers { fallbackEventHandler, lock in
+  result = _fallbackEventHandler.withUnsafeMutablePointers { fallbackEventHandler, lock in
     os_unfair_lock_lock(lock)
     defer {
       os_unfair_lock_unlock(lock)
@@ -99,8 +101,15 @@ package func _swift_testing_installFallbackEventHandler(_ handler: FallbackEvent
     return true
   }
 #else
-  let handler = unsafeBitCast(handler, to: UnsafeRawPointer.self)
-  return _fallbackEventHandler.compareExchange(expected: nil, desired: handler, ordering: .sequentiallyConsistent).exchanged
+  let handler = Unmanaged.passRetained(handler as? AnyObject)
+  defer {
+    if !result {
+      handler.release()
+    }
+  }
+
+  result = _fallbackEventHandler.compareExchange(expected: nil, desired: handler, ordering: .sequentiallyConsistent).exchanged
 #endif
+  return result
 }
 #endif
