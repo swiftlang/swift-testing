@@ -68,7 +68,7 @@ package func _swift_testing_getFallbackEventHandler() -> FallbackEventHandler? {
   }
 #else
   return _fallbackEventHandler.load(ordering: .sequentiallyConsistent).flatMap { fallbackEventHandler in
-    fallbackEventHandler?.takeUnretainedValue() as? FallbackEventHandler
+    fallbackEventHandler.takeUnretainedValue() as? FallbackEventHandler
   }
 #endif
 }
