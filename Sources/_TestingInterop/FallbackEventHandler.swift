@@ -101,7 +101,7 @@ package func _swift_testing_installFallbackEventHandler(_ handler: FallbackEvent
     return true
   }
 #else
-  let handler = Unmanaged.passRetained(handler as? AnyObject)
+  let handler = Unmanaged.passRetained(handler as AnyObject)
   defer {
     if !result {
       handler.release()
