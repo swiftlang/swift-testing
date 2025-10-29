@@ -169,7 +169,8 @@ extension Test: TestCancellable {
   ///     attribute the cancellation.
   ///
   /// - Throws: An error indicating that the current test or test case has been
-  ///   cancelled.
+  ///   cancelled. The testing library does not treat this error as a test
+  ///   failure.
   ///
   /// The testing library runs each test and each test case in its own task.
   /// When you call this function, the testing library cancels the task
@@ -206,7 +207,6 @@ extension Test: TestCancellable {
   /// - Important: If the current task is not associated with a test (for
   ///   example, because it was created with [`Task.detached(name:priority:operation:)`](https://developer.apple.com/documentation/swift/task/detached(name:priority:operation:)-795w1))
   ///   this function records an issue and cancels the current task.
-  @_spi(Experimental)
   public static func cancel(_ comment: Comment? = nil, sourceLocation: SourceLocation = #_sourceLocation) throws -> Never {
     let skipInfo = SkipInfo(comment: comment, sourceContext: SourceContext(backtrace: nil, sourceLocation: sourceLocation))
     try Self.cancel(with: skipInfo)
