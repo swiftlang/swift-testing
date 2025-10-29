@@ -226,6 +226,7 @@ let package = Package(
       name: "_TestingInterop_DO_NOT_USE",
       dependencies: ["_TestingInternals",],
       path: "Sources/_TestingInterop",
+      exclude: ["CMakeLists.txt"],
       cxxSettings: .packageSettings,
       swiftSettings: .packageSettings
     ),
