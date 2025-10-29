@@ -158,7 +158,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   ) -> ExprSyntax {
     _rewriteDepth += 1
     if _rewriteDepth > _maximumRewriteDepth {
-      // At least 2 ancestors of this node have already been rewritten, so do
+      // At least _n_ ancestors of this node have already been rewritten, so do
       // not recursively rewrite further. This is necessary to limit the added
       // exponentional complexity we're throwing at the type checker.
       return ExprSyntax(originalNode())
