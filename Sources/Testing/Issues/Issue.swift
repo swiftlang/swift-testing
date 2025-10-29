@@ -38,6 +38,19 @@ public struct Issue: Sendable {
     /// confirmed too few or too many times.
     indirect case confirmationMiscounted(actual: Int, expected: any RangeExpression & Sendable)
 
+    /// An issue due to a polling confirmation having failed.
+    ///
+    /// - Parameters:
+    ///   - reason: The ``PollingFailedError.Reason`` behind why the polling
+    ///     confirmation failed.
+    ///
+    /// This issue can occur when calling ``confirmation(_:until:within:pollingEvery:isolation:sourceLocation:_:)-455gr``
+    /// or
+    /// ``confirmation(_:until:within:pollingEvery:isolation:sourceLocation:_:)-5tnlk``
+    /// whenever the polling fails, as described in ``PollingStopCondition``.
+    @_spi(Experimental)
+    case pollingConfirmationFailed(reason: PollingFailedError.Reason)
+
     /// An issue due to an `Error` being thrown by a test function and caught by
     /// the testing library.
     ///
@@ -295,6 +308,8 @@ extension Issue.Kind: CustomStringConvertible {
         }
       }
       return "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(String(describingForTest: expected)) time(s)"
+    case .pollingConfirmationFailed:
+      return "Polling confirmation failed"
     case let .errorCaught(error):
       return "Caught error: \(error)"
     case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
@@ -434,6 +449,15 @@ extension Issue.Kind {
     /// too few or too many times.
     indirect case confirmationMiscounted(actual: Int, expected: Int)
 
+    /// An issue due to a polling confirmation having failed.
+    ///
+    /// This issue can occur when calling ``confirmation(_:until:within:pollingEvery:isolation:sourceLocation:_:)-455gr``
+    /// or
+    /// ``confirmation(_:until:within:pollingEvery:isolation:sourceLocation:_:)-5tnlk``
+    /// whenever the polling fails, as described in ``PollingStopCondition``.
+    @_spi(Experimental)
+    case pollingConfirmationFailed
+
     /// An issue due to an `Error` being thrown by a test function and caught by
     /// the testing library.
     ///
@@ -477,6 +501,8 @@ extension Issue.Kind {
           .expectationFailed(Expectation.Snapshot(snapshotting: expectation))
       case .confirmationMiscounted:
           .unconditional
+      case .pollingConfirmationFailed:
+          .pollingConfirmationFailed
       case let .errorCaught(error), let .valueAttachmentFailed(error):
           .errorCaught(ErrorSnapshot(snapshotting: error))
       case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
@@ -495,6 +521,7 @@ extension Issue.Kind {
       case unconditional
       case expectationFailed
       case confirmationMiscounted
+      case pollingConfirmationFailed
       case errorCaught
       case timeLimitExceeded
       case knownIssueNotRecorded
@@ -567,6 +594,8 @@ extension Issue.Kind {
                                                                         forKey: .confirmationMiscounted)
         try confirmationMiscountedContainer.encode(actual, forKey: .actual)
         try confirmationMiscountedContainer.encode(expected, forKey: .expected)
+      case .pollingConfirmationFailed:
+        try container.encode(true, forKey: .pollingConfirmationFailed)
       case let .errorCaught(error):
         var errorCaughtContainer = container.nestedContainer(keyedBy: _CodingKeys._ErrorCaughtKeys.self, forKey: .errorCaught)
         try errorCaughtContainer.encode(error, forKey: .error)
@@ -622,6 +651,8 @@ extension Issue.Kind.Snapshot: CustomStringConvertible {
       }
     case let .confirmationMiscounted(actual: actual, expected: expected):
       "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(expected.counting("time"))"
+    case .pollingConfirmationFailed:
+      "Polling confirmation failed"
     case let .errorCaught(error):
       "Caught error: \(error)"
     case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
