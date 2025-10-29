@@ -29,6 +29,9 @@ public struct __ExpressionID: Sendable {
 
   /// An enumeration that attempts to efficiently store the key path elements
   /// corresponding to an expression ID.
+  ///
+  /// Instances of this type can be used to produce keys and key paths for an
+  /// instance of `Graph` whose key type is `UInt32`.
   fileprivate enum Elements: Sendable {
     /// This ID does not use any words.
     ///
@@ -56,79 +59,71 @@ extension __ExpressionID.Elements: Equatable, Hashable {}
 
 // MARK: - Collection
 
-extension __ExpressionID {
-  /// A type representing the elements in a key path produced from the unique
-  /// identifier of an expression.
-  ///
-  /// Instances of this type can be used to produce keys and key paths for an
-  /// instance of `Graph` whose key type is `UInt32`.
-  private struct _KeyPathForGraph: Collection {
-    /// Underlying storage for the collection.
-    var elements: __ExpressionID.Elements
-
-    var count: Int {
-      switch elements {
-      case .none:
-        0
-      case let .packed(word):
-        word.nonzeroBitCount
-      case let .keyPath(keyPath):
-        keyPath.count
-      }
-    }
-
-    var startIndex: Int {
-      switch elements {
-      case .none, .keyPath:
-        0
-      case let .packed(word):
-        word.trailingZeroBitCount
-      }
-    }
-
-    var endIndex: Int {
-      switch elements {
-      case .none:
-        0
-      case .packed:
-        UInt64.bitWidth
-      case let .keyPath(keyPath):
-        keyPath.count
-      }
-    }
-
-    func index(after i: Int) -> Int {
-      let uncheckedNextIndex = i + 1
-      switch elements {
-      case .none, .keyPath:
-        return uncheckedNextIndex
-      case let .packed(word):
-        // Mask off the low bits including the one at `i`. The trailing zero
-        // count of the resulting value equals the next actual bit index.
-        let maskedWord = word & (~0 << uncheckedNextIndex)
-        return maskedWord.trailingZeroBitCount
-      }
-    }
-
-    subscript(position: Int) -> UInt32 {
-      switch elements {
-      case .none:
-        swt_unreachable()
-      case .packed:
-        UInt32(position)
-      case let .keyPath(keyPath):
-        keyPath[position]
-      }
+extension __ExpressionID.Elements: Collection {
+  var count: Int {
+    switch self {
+    case .none:
+      0
+    case let .packed(word):
+      word.nonzeroBitCount
+    case let .keyPath(keyPath):
+      keyPath.count
     }
   }
 
+  var startIndex: Int {
+    switch self {
+    case .none, .keyPath:
+      0
+    case let .packed(word):
+      word.trailingZeroBitCount
+    }
+  }
+
+  var endIndex: Int {
+    switch self {
+    case .none:
+      0
+    case .packed:
+      UInt64.bitWidth
+    case let .keyPath(keyPath):
+      keyPath.count
+    }
+  }
+
+  func index(after i: Int) -> Int {
+    let uncheckedNextIndex = i + 1
+    switch self {
+    case .none, .keyPath:
+      return uncheckedNextIndex
+    case let .packed(word):
+      // Mask off the low bits including the one at `i`. The trailing zero
+      // count of the resulting value equals the next actual bit index.
+      let maskedWord = word & (~0 << uncheckedNextIndex)
+      return maskedWord.trailingZeroBitCount
+    }
+  }
+
+  subscript(position: Int) -> UInt32 {
+    switch self {
+    case .none:
+      swt_unreachable()
+    case .packed:
+      UInt32(position)
+    case let .keyPath(keyPath):
+      keyPath[position]
+    }
+  }
+}
+
+extension __ExpressionID {
   /// A representation of this instance suitable for use as a key path in an
   /// instance of `Graph` where the key type is `UInt32`.
   ///
   /// The values in this collection, being swift-syntax node IDs, are never more
   /// than 32 bits wide.
   var keyPathRepresentation: some Collection<UInt32> {
-    _KeyPathForGraph(elements: elements)
+    elements
   }
 }
 
