@@ -76,6 +76,12 @@ package func _swift_testing_getFallbackEventHandler() -> FallbackEventHandler? {
     return fallbackEventHandler.pointee
   }
 #else
+  // If we had a setter, this load would present a race condition because
+  // another thread could store a new value in between the load and the call to
+  // `takeUnretainedValue()`, resulting in a use-after-free on this thread. We
+  // would need a full lock in order to avoid that problem. However, because we
+  // instead have a one-time installation function, we can be sure that the
+  // loaded value (if non-nil) will never be replaced with another value.
   return _fallbackEventHandler.load(ordering: .sequentiallyConsistent).map { fallbackEventHandler in
     fallbackEventHandler.takeUnretainedValue().rawValue
   }
