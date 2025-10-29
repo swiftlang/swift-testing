@@ -206,7 +206,7 @@ struct ConditionMacroTests {
   }
 
   @Test("Deep expression IDs", arguments: [
-    ##"#expect(a(b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q)"##:
+    ##"#expect(a(b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q))"##:
       ##"__ec(q, Testing.__ExpressionID(66, 65, 4))"##,
   ]) func deepExpressionID(input: String, expectedOutput: String) throws {
     let (expectedOutput, _) = try parse(expectedOutput, removeWhitespace: true)
