@@ -162,15 +162,32 @@ extension __ExpectationContext {
   ///   - value: The value to pass through.
   ///   - id: A value that uniquely identifies the represented expression in the
   ///     context of the expectation currently being evaluated.
+  ///   - timing: When the value represented by this instance was captured.
+  ///
+  /// - Returns: `value`, verbatim.
+  ///
+  /// This function helps overloads of `callAsFunction(_:_:)` disambiguate
+  /// themselves and avoid accidental recursion.
+  func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID, timing: Expression.Value.Timing?) -> T {
+    let value = copy value
+    runtimeValues[id] = { Expression.Value(reflecting: value, timing: timing) }
+    return value
+  }
+
+  /// Capture information about a value for use if the expectation currently
+  /// being evaluated fails.
+  ///
+  /// - Parameters:
+  ///   - value: The value to pass through.
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
   ///
   /// - Returns: `value`, verbatim.
   ///
   /// This function helps overloads of `callAsFunction(_:_:)` disambiguate
   /// themselves and avoid accidental recursion.
   @usableFromInline func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID) -> T {
-    let value = copy value
-    runtimeValues[id] = { Expression.Value(reflecting: value) }
-    return value
+    captureValue(value, id, timing: nil)
   }
 
   /// Capture information about a value for use if the expectation currently
@@ -185,9 +202,22 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @_disfavoredOverload
   @inlinable public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> T {
     captureValue(value, id)
+  }
+
+  /// Capture information about a value passed `inout` to a function call after
+  /// the function has returned.
+  ///
+  /// - Parameters:
+  ///   - value: The value that was passed `inout` (i.e. with the `&` operator.)
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+  public func __inoutAfter<T>(_ value: borrowing T, _ id: __ExpressionID) {
+    _ = captureValue(value, id, timing: .after)
   }
 
 #if SWT_SUPPORTS_MOVE_ONLY_EXPRESSION_EXPANSION
@@ -204,14 +234,13 @@ extension __ExpectationContext {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   @_disfavoredOverload
-  public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> T where T: ~Copyable {
+  public func callAsFunction<T>(_ value: consuming T, _ id: __ExpressionID) -> T where T: ~Copyable {
     // TODO: add support for borrowing non-copyable expressions (need @lifetime)
     if #available(_castingWithNonCopyableGenerics, *), let value = boxCopyableValue(value) {
       _ = captureValue(value, id)
     }
     return value
   }
-#endif
 
   /// Capture information about a value passed `inout` to a function call after
   /// the function has returned.
@@ -223,9 +252,13 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public func __inoutAfter<T>(_ value: T, _ id: __ExpressionID) {
-    runtimeValues[id] = { Expression.Value(reflecting: value, timing: .after) }
+  @_disfavoredOverload
+  public func __inoutAfter<T>(_ value: borrowing T, _ id: __ExpressionID) where T: ~Copyable {
+    if #available(_castingWithNonCopyableGenerics, *), let value = boxCopyableValue(value) {
+      __inoutAfter(value, id)
+    }
   }
+#endif
 }
 
 // MARK: - Collection comparison and diffing

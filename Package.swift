@@ -386,7 +386,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
     result += [
       .enableUpcomingFeature("ExistentialAny"),
-      .enableExperimentalFeature("NonescapableTypes"),
 
       .enableExperimentalFeature("AccessLevelOnImport"),
       .enableUpcomingFeature("InternalImportsByDefault"),

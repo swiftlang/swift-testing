@@ -50,7 +50,6 @@ add_library(Testing
   Expectations/Expectation+Macro.swift
   Expectations/ExpectationChecking+Macro.swift
   Expectations/ExpectationContext.swift
-  Expectations/ExpectationContext+Pointers.swift
   Issues/Confirmation.swift
   Issues/ErrorSnapshot.swift
   Issues/Issue.swift
