@@ -345,8 +345,8 @@ extension __ExpectationContext where Output: ~Copyable {
         }
         differences[opID] = {
           func open<E>(_: E.Type) -> CollectionDifference<Any> where E: Equatable {
-            let lhs: some BidirectionalCollection<E> = lhs.lazy.map { unsafeBitCast($0, to: E.self) }
-            let rhs: some BidirectionalCollection<E> = rhs.lazy.map { unsafeBitCast($0, to: E.self) }
+            let lhs: some BidirectionalCollection<E> = lhs.lazy.map { $0 as! E }
+            let rhs: some BidirectionalCollection<E> = rhs.lazy.map { $0 as! E }
             return CollectionDifference<Any>(lhs.difference(from: rhs))
           }
           return open(elementType)
