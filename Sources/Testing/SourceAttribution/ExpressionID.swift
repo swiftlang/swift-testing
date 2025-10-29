@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 /// A type providing unique identifiers for expressions captured during
 /// expansion of the `#expect()` and `#require()` macros.
 ///
@@ -111,7 +113,7 @@ extension __ExpressionID {
     subscript(position: Int) -> UInt32 {
       switch elements {
       case .none:
-        fatalError("Unreachable")
+        swt_unreachable()
       case .packed:
         UInt32(position)
       case let .keyPath(keyPath):

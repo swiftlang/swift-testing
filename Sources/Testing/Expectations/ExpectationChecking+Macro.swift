@@ -52,14 +52,14 @@
 /// By _returning_ the error this function "throws", we can customize whether or
 /// not we throw that error during macro resolution without affecting any errors
 /// thrown by the condition expression passed to it.
-func check(
+func check<T>(
   _ condition: Bool,
-  expectationContext: consuming __ExpectationContext,
+  expectationContext: consuming __ExpectationContext<T>,
   mismatchedErrorDescription: @autoclosure () -> String?,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> {
+) -> Result<Void, any Error> where T: ~Copyable {
   let expectationContext = consume expectationContext
 
   // Post an event for the expectation regardless of whether or not it passed.
@@ -101,13 +101,13 @@ func check(
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
 public func __checkCondition(
-  _ condition: (__ExpectationContext) throws -> Bool,
+  _ condition: (__ExpectationContext<Bool>) throws -> Bool,
   sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) rethrows -> Result<Void, any Error> {
-  let expectationContext = __ExpectationContext.init(sourceCode: sourceCode())
+  let expectationContext = __ExpectationContext<Bool>(sourceCode: sourceCode())
   let condition = try condition(expectationContext)
 
   return check(
@@ -126,13 +126,13 @@ public func __checkCondition(
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
 public func __checkCondition<T>(
-  _ optionalValue: (__ExpectationContext) throws -> T?,
+  _ optionalValue: (__ExpectationContext<T?>) throws -> T?,
   sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) rethrows -> Result<T, any Error> where T: ~Copyable {
-  let expectationContext = __ExpectationContext(sourceCode: sourceCode())
+  let expectationContext = __ExpectationContext<T?>(sourceCode: sourceCode())
   let optionalValue = try optionalValue(expectationContext)
 
   let result = check(
@@ -160,14 +160,14 @@ public func __checkCondition<T>(
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
 public func __checkConditionAsync(
-  _ condition: (__ExpectationContext) async throws -> Bool,
+  _ condition: (__ExpectationContext<Bool>) async throws -> Bool,
   sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
 ) async rethrows -> Result<Void, any Error> {
-  let expectationContext = __ExpectationContext(sourceCode: sourceCode())
+  let expectationContext = __ExpectationContext<Bool>(sourceCode: sourceCode())
   let condition = try await condition(expectationContext)
 
   return check(
@@ -186,14 +186,14 @@ public func __checkConditionAsync(
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
 public func __checkConditionAsync<T>(
-  _ optionalValue: (__ExpectationContext) async throws -> sending T?,
+  _ optionalValue: (__ExpectationContext<T?>) async throws -> sending T?,
   sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
 ) async rethrows -> Result<T, any Error> where T: ~Copyable {
-  let expectationContext = __ExpectationContext(sourceCode: sourceCode())
+  let expectationContext = __ExpectationContext<T?>(sourceCode: sourceCode())
   let optionalValue = try await optionalValue(expectationContext)
 
   let result = check(
@@ -228,7 +228,7 @@ public func __checkEscapedCondition(
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) -> Result<Void, any Error> {
-  let expectationContext = __ExpectationContext(sourceCode: sourceCode())
+  let expectationContext = __ExpectationContext<Bool>(sourceCode: sourceCode())
 
   return check(
     condition,
@@ -255,7 +255,7 @@ public func __checkEscapedCondition<T>(
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) -> Result<T, any Error> where T: ~Copyable {
-  let expectationContext = __ExpectationContext(sourceCode: sourceCode())
+  let expectationContext = __ExpectationContext<T?>(sourceCode: sourceCode())
 
   let result = check(
     optionalValue != nil,
@@ -382,7 +382,7 @@ public func __checkClosureCall(
     mismatchExplanationValue = "an error was thrown when none was expected: \(_description(of: error))"
   }
 
-  let expectationContext = __ExpectationContext(sourceCode: sourceCode())
+  let expectationContext = __ExpectationContext<Bool>(sourceCode: sourceCode())
   return check(
     success,
     expectationContext: expectationContext,
@@ -420,7 +420,7 @@ public func __checkClosureCall(
     mismatchExplanationValue = "an error was thrown when none was expected: \(_description(of: error))"
   }
 
-  let expectationContext = __ExpectationContext(sourceCode: sourceCode())
+  let expectationContext = __ExpectationContext<Bool>(sourceCode: sourceCode())
   return check(
     success,
     expectationContext: expectationContext,
@@ -504,7 +504,7 @@ public func __checkClosureCall<R>(
   isRequired: Bool,
   sourceLocation: SourceLocation
 ) -> Result<(any Error)?, any Error> {
-  let expectationContext = __ExpectationContext(sourceCode: sourceCode())
+  let expectationContext = __ExpectationContext<(any Error)?>(sourceCode: sourceCode())
 
   var errorMatches = false
   var mismatchExplanationValue: String? = nil
@@ -556,7 +556,7 @@ public func __checkClosureCall<R>(
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
 ) async -> Result<(any Error)?, any Error> {
-  let expectationContext = __ExpectationContext(sourceCode: sourceCode())
+  let expectationContext = __ExpectationContext<(any Error)?>(sourceCode: sourceCode())
 
   var errorMatches = false
   var mismatchExplanationValue: String? = nil

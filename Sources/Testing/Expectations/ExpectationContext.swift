@@ -16,9 +16,13 @@
 /// various subexpressions of the macro's condition argument. The nature of the
 /// collected information is subject to change over time.
 ///
+/// Instances of this type do _not_ conform to [`Sendable`](https://developer.apple.com/documentation/swift/sendable)
+/// because they may capture non-sendable state generated during the evaluation
+/// of an expression.
+///
 /// - Warning: This type is used to implement the `#expect()` and `#require()`
 ///   macros. Do not use it directly.
-public final class __ExpectationContext {
+public final class __ExpectationContext<Output> where Output: ~Copyable {
   /// The source code representations of any captured expressions.
   ///
   /// Unlike the rest of the state in this type, the source code dictionary is
@@ -150,11 +154,11 @@ public final class __ExpectationContext {
 }
 
 @available(*, unavailable)
-extension __ExpectationContext: Sendable {}
+extension __ExpectationContext: Sendable where Output: ~Copyable {}
 
 // MARK: - Expression capturing
 
-extension __ExpectationContext {
+extension __ExpectationContext where Output: ~Copyable {
   /// Capture information about a value for use if the expectation currently
   /// being evaluated fails.
   ///
@@ -263,7 +267,7 @@ extension __ExpectationContext {
 
 // MARK: - Collection comparison and diffing
 
-extension __ExpectationContext {
+extension __ExpectationContext where Output: ~Copyable {
   /// Generate a description of a previously-computed collection difference.
   ///
   /// - Parameters:
@@ -387,6 +391,7 @@ extension __ExpectationContext {
     return result
   }
 
+#if SWT_SUPPORTS_MOVE_ONLY_EXPRESSION_EXPANSION
   /// Compare two values using `==` or `!=`.
   ///
   /// - Parameters:
@@ -406,6 +411,7 @@ extension __ExpectationContext {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
+  @_disfavoredOverload
   public func __cmp<T, U>(
     _ op: (borrowing T, borrowing U) throws -> Bool,
     _ opID: __ExpressionID,
@@ -432,11 +438,12 @@ extension __ExpectationContext {
 
     return result
   }
+#endif
 }
 
 // MARK: - Casting
 
-extension __ExpectationContext {
+extension __ExpectationContext where Output: ~Copyable {
   /// Perform a conditional cast (`as?`) on a value.
   ///
   /// - Parameters:

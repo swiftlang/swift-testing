@@ -521,7 +521,7 @@ func callExitTest(
   }
 
   // Plumb the exit test's result through the general expectation machinery.
-  let expectationContext = __ExpectationContext(
+  let expectationContext = __ExpectationContext<Bool>(
     sourceCode: [.root: String(describingForTest: expectedExitCondition)],
     runtimeValues: [.root: { Expression.Value(reflecting: result.exitStatus) }]
   )

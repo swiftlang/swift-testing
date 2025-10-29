@@ -743,7 +743,12 @@ extension ConditionMacro {
                 type: TypeSyntax(
                   MemberTypeSyntax(
                     baseType: IdentifierTypeSyntax(name: .identifier("Testing")),
-                    name: .identifier("__ExpectationContext")
+                    name: .identifier("__ExpectationContext"),
+                    genericArgumentClause: returnType.map { returnType in
+                      GenericArgumentClauseSyntax {
+                        GenericArgumentSyntax(argument: .type(TypeSyntax(returnType)))
+                      }
+                    }
                   )
                 )
               )
