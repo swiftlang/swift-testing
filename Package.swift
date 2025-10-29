@@ -209,6 +209,13 @@ let package = Package(
       cxxSettings: .packageSettings,
       swiftSettings: .packageSettings + .enableLibraryEvolution()
     ),
+    .target(
+      name: "_TestingInterop_DO_NOT_USE", // just so we can confirm it compiles
+      dependencies: ["_TestingInternals",],
+      path: "Sources/_TestingInterop",
+      cxxSettings: .packageSettings,
+      swiftSettings: .packageSettings
+    ),
 
     // Cross-import overlays (not supported by Swift Package Manager)
     .target(
