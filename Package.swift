@@ -105,6 +105,17 @@ let package = Package(
       )
     )
 
+#if DEBUG
+    // Build _TestingInterop for debugging/testing purposes only. It is
+    // important that clients do not link to this product/target.
+    result += [
+      .library(
+        name: "_TestingInterop_DO_NOT_USE",
+        targets: ["_TestingInterop_DO_NOT_USE"]
+      )
+    ]
+#endif
+
     return result
   }(),
 
@@ -210,7 +221,9 @@ let package = Package(
       swiftSettings: .packageSettings + .enableLibraryEvolution()
     ),
     .target(
-      name: "_TestingInterop_DO_NOT_USE", // just so we can confirm it compiles
+      // Build _TestingInterop for debugging/testing purposes only. It is
+      // important that clients do not link to this product/target.
+      name: "_TestingInterop_DO_NOT_USE",
       dependencies: ["_TestingInternals",],
       path: "Sources/_TestingInterop",
       cxxSettings: .packageSettings,
