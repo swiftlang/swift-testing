@@ -237,15 +237,7 @@ func spawnExecutable(
 
       var pid = pid_t()
 #if os(Android)
-      let processSpawned = fileActions.withMemoryRebound(to: posix_spawn_file_actions_t?.self, capacity: 1) { fileActions in
-        attrs.withMemoryRebound(to: posix_spawnattr_t?.self, capacity: 1) { attrs in
-          argv.withUnsafeBufferPointer { argv in
-            argv.withMemoryRebound(to: UnsafeMutablePointer<CChar>.self) { argv in
-              posix_spawn(&pid, executablePath, fileActions, attrs, argv.baseAddress!, environ)
-            }
-          }
-        }
-      }
+      let processSpawned = swt_posix_spawn(&pid, executablePath, fileActions, attrs, argv, environ)
 #else
       let processSpawned = posix_spawn(&pid, executablePath, fileActions, attrs, argv, environ)
 #endif
