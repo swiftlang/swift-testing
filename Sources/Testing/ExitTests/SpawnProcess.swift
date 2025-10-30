@@ -95,7 +95,7 @@ func spawnExecutable(
     return try withUnsafeTemporaryAllocation(of: P<posix_spawnattr_t>.self, capacity: 1) { attrs in
       let attrs = attrs.baseAddress!
 #if os(Android)
-      let attrsInitialized = attrs.withMemoryRebound(to: Optional<posix_spawnattr_t>.self, capacity: 1) { attrs in
+      let attrsInitialized = attrs.withMemoryRebound(to: posix_spawnattr_t?.self, capacity: 1) { attrs in
         posix_spawnattr_init(attrs)
       }
 #else
