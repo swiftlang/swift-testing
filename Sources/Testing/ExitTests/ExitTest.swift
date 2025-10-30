@@ -229,7 +229,7 @@ extension ExitTest {
     // Android inherits the RLIMIT_CORE=1 special case from Linux.
     // SEE: https://android.googlesource.com/kernel/common/+/refs/heads/android-mainline/fs/coredump.c#978
     var rl = rlimit(rlim_cur: 1, rlim_max: 1)
-    _ = setrlimit(CInt(RLIMIT_CORE.rawValue), &rl)
+    _ = setrlimit(RLIMIT_CORE, &rl)
 
     // In addition, Android installs signal handlers in native processes that
     // cause the system to generate "tombstone" files. Suppress those too by
@@ -238,7 +238,7 @@ extension ExitTest {
     // SEE: https://android.googlesource.com/platform/system/core/+/main/debuggerd/include/debuggerd/handler.h#81
     let BIONIC_SIGNAL_DEBUGGER = __SIGRTMIN + 3
     for sig in [SIGABRT, SIGBUS, SIGFPE, SIGILL, SIGSEGV, SIGSTKFLT, SIGSYS, SIGTRAP, BIONIC_SIGNAL_DEBUGGER] {
-      _ = signal(sig, SIG_DFL)
+      _ = signal(sig, swt_SIG_DFL())
     }
 #elseif os(Windows)
     // On Windows, similarly disable Windows Error Reporting and the Windows

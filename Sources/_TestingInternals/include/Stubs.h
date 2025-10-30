@@ -131,8 +131,7 @@ static char *_Nullable *_Null_unspecified swt_environ(void) {
 /// Get the value of the `si_pid` field of a `siginfo_t` structure.
 ///
 /// This function is provided because `si_pid` is a complex macro on some
-/// platforms and cannot be imported directly into Swift. It is renamed back to
-/// `siginfo_t.si_pid` in Swift.
+/// platforms and cannot be imported directly into Swift.
 static pid_t swt_siginfo_t_si_pid(siginfo_t siginfo) {
   return siginfo.si_pid;
 }
@@ -142,12 +141,20 @@ static pid_t swt_siginfo_t_si_pid(siginfo_t siginfo) {
 /// Get the value of the `si_status` field of a `siginfo_t` structure.
 ///
 /// This function is provided because `si_status` is a complex macro on some
-/// platforms and cannot be imported directly into Swift. It is renamed back to
-/// `siginfo_t.si_status` in Swift.
+/// platforms and cannot be imported directly into Swift.
 static int swt_siginfo_t_si_status(siginfo_t siginfo) {
   return siginfo.si_status;
 }
 #endif
+
+/// Get the default signal handler.
+///
+/// This function is provided because `SIG_DFL` is a complex macro on some
+/// platforms and cannot be imported directly into Swift.
+static sig_t swt_SIG_DFL(void) {
+  return SIG_DFL;
+}
+
 #endif
 
 /// Get the value of `EEXIST`.
