@@ -184,24 +184,13 @@ extension ConditionMacro {
           useEscapeHatch = true
         }
 
-        if useEscapeHatch {
-          expandedFunctionName = .identifier("__checkEscapedCondition")
-
-          checkArguments.append(firstArgument)
-          checkArguments.append(
-            Argument(
-              label: "sourceCode",
-              expression: createDictionaryExpr(forSourceCodeOf: originalArgumentExpr)
-            )
-          )
-
-        } else {
+        if !useEscapeHatch {
           if effectKeywordsToApply.contains(.await) {
             expandedFunctionName = .identifier("__checkConditionAsync")
           }
 
           let expressionContextName = context.makeUniqueClosureParameterName("__ec", in: originalArgumentExpr)
-          let (closureExpr, rewrittenNodes) = rewrite(
+          let resultOfRewrite = rewrite(
             originalArgumentExpr,
             usingExpressionContextNamed: expressionContextName,
             for: macro,
@@ -210,15 +199,32 @@ extension ConditionMacro {
             returnType: returnType,
             in: context
           )
-          checkArguments.append(Argument(expression: closureExpr))
+          if let (closureExpr, rewrittenNodes) = resultOfRewrite {
+            checkArguments.append(Argument(expression: closureExpr))
 
+            checkArguments.append(
+              Argument(
+                label: "sourceCode",
+                expression: createDictionaryExpr(
+                  forSourceCodeOf: rewrittenNodes,
+                  rootedAt: originalArgumentExpr
+                )
+              )
+            )
+          } else {
+            // The rewrite was cancelled, so switch to the escape hatch.
+            useEscapeHatch = true
+          }
+        }
+
+        if useEscapeHatch {
+          expandedFunctionName = .identifier("__checkEscapedCondition")
+
+          checkArguments.append(firstArgument)
           checkArguments.append(
             Argument(
               label: "sourceCode",
-              expression: createDictionaryExpr(
-                forSourceCodeOf: rewrittenNodes,
-                rootedAt: originalArgumentExpr
-              )
+              expression: createDictionaryExpr(forSourceCodeOf: originalArgumentExpr)
             )
           )
         }

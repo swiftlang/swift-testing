@@ -122,6 +122,10 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   /// the rewritten syntax tree.
   var teardownItems = [CodeBlockItemSyntax]()
 
+  /// Whether or not the entire operation was cancelled mid-flight (e.g. due to
+  /// encountering an expression that we cannot expand.)
+  var isCancelled = false
+
   init(in context: C, for macro: M, rootedAt effectiveRootNode: Syntax, expressionContextName: TokenSyntax) {
     self.context = context
     self.macro = macro
@@ -512,6 +516,20 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
     return ExprSyntax(node)
   }
 
+  // MARK: - Variadics
+
+  override func visit(_ node: PackExpansionExprSyntax) -> ExprSyntax {
+    // We cannot expand parameter pack expressions.
+    isCancelled = true
+    return ExprSyntax(node)
+  }
+
+  override func visit(_ node: PackElementExprSyntax) -> ExprSyntax {
+    // We cannot expand parameter pack expressions.
+    isCancelled = true
+    return ExprSyntax(node)
+  }
+
   // MARK: - Casts
 
   /// Rewrite an `is` or `as?` cast.
@@ -658,10 +676,10 @@ extension ConditionMacro {
   ///     known at macro expansion time.
   ///   - context: The macro context in which the expression is being parsed.
   ///
-  /// - Returns: A tuple containing the rewritten copy of `node`, a list of all
-  ///   the nodes within `node` (possibly including `node` itself) that were
-  ///   rewritten, and a code block containing code that should be inserted into
-  ///   the lexical scope of `node` _before_ its rewritten equivalent.
+  /// - Returns: The expanded form of `node` as a closure expression that calls
+  ///   the expression context named `expressionContextName` as well as the set
+  ///   of rewritten subnodes in `node`, or `nil` if the expression could not be
+  ///   rewritten.
   static func rewrite(
     _ node: some ExprSyntaxProtocol,
     usingExpressionContextNamed expressionContextName: TokenSyntax,
@@ -670,11 +688,14 @@ extension ConditionMacro {
     effectKeywordsToApply: Set<Keyword>,
     returnType: (some TypeSyntaxProtocol)?,
     in context: some MacroExpansionContext
-  ) -> (ClosureExprSyntax, rewrittenNodes: Set<Syntax>) {
+  ) -> (ClosureExprSyntax, rewrittenNodes: Set<Syntax>)? {
     _diagnoseTrivialBooleanValue(from: ExprSyntax(node), for: macro, in: context)
 
     let contextInserter = _ContextInserter(in: context, for: macro, rootedAt: Syntax(effectiveRootNode), expressionContextName: expressionContextName)
     var expandedExpr = contextInserter.rewrite(node, detach: true).cast(ExprSyntax.self)
+    if contextInserter.isCancelled {
+      return nil
+    }
     let rewrittenNodes = contextInserter.rewrittenNodes
 
     // Insert additional effect keywords/thunks as needed.
