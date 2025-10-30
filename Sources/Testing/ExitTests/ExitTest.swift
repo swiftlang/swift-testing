@@ -34,7 +34,9 @@ private import _TestingInternals
 ///   @Available(Swift, introduced: 6.2)
 ///   @Available(Xcode, introduced: 26.0)
 /// }
-#if SWT_NO_EXIT_TESTS
+#if !SWT_NO_EXIT_TESTS
+@available(Android 28, *)
+#else
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
@@ -223,6 +225,21 @@ extension ExitTest {
     // as I can tell, special-case RLIMIT_CORE=1.
     var rl = rlimit(rlim_cur: 0, rlim_max: 0)
     _ = setrlimit(RLIMIT_CORE, &rl)
+#elseif os(Android)
+    // Android inherits the RLIMIT_CORE=1 special case from Linux.
+    // SEE: https://android.googlesource.com/kernel/common/+/refs/heads/android-mainline/fs/coredump.c#978
+    var rl = rlimit(rlim_cur: 1, rlim_max: 1)
+    _ = setrlimit(RLIMIT_CORE, &rl)
+
+    // In addition, Android installs signal handlers in native processes that
+    // cause the system to generate "tombstone" files. Suppress those too by
+    // resetting all signal handlers to SIG_DFL. debuggerd_register_handlers()
+    // is not exported, so we must manually walk all the signals it handles.
+    // SEE: https://android.googlesource.com/platform/system/core/+/main/debuggerd/include/debuggerd/handler.h#81
+    let BIONIC_SIGNAL_DEBUGGER = __SIGRTMIN + 3
+    for sig in [SIGABRT, SIGBUS, SIGFPE, SIGILL, SIGSEGV, SIGSTKFLT, SIGSYS, SIGTRAP, BIONIC_SIGNAL_DEBUGGER] {
+      _ = signal(sig, swt_SIG_DFL())
+    }
 #elseif os(Windows)
     // On Windows, similarly disable Windows Error Reporting and the Windows
     // Error Reporting UI. Note we expect to be the first component to call
@@ -662,7 +679,7 @@ extension ExitTest {
     Environment.setVariable(nil, named: name)
 
     var fd: CInt?
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
     fd = CInt(environmentVariable)
 #elseif os(Windows)
     if let handle = UInt(environmentVariable).flatMap(HANDLE.init(bitPattern:)) {
@@ -699,7 +716,7 @@ extension ExitTest {
   ///   back to a (new) file handle with `_makeFileHandle()`, or `nil` if the
   ///   file handle could not be converted to a string.
   private static func _makeEnvironmentVariable(for fileHandle: borrowing FileHandle) -> String? {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
     return fileHandle.withUnsafePOSIXFileDescriptor { fd in
       fd.map(String.init(describing:))
     }

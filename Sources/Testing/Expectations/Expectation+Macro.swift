@@ -876,7 +876,9 @@ public macro require<R>(
 /// }
 @freestanding(expression)
 @discardableResult
-#if SWT_NO_EXIT_TESTS
+#if !SWT_NO_EXIT_TESTS
+@available(Android 28, *)
+#else
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
@@ -924,7 +926,9 @@ public macro expect(
 /// }
 @freestanding(expression)
 @discardableResult
-#if SWT_NO_EXIT_TESTS
+#if !SWT_NO_EXIT_TESTS
+@available(Android 28, *)
+#else
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
