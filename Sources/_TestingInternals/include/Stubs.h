@@ -161,7 +161,7 @@ static sig_t swt_SIG_DFL(void) {
 /// This function is provided because the nullability for `posix_spawn(3)` is
 /// incorrectly specified in the Android NDK.
 static int swt_posix_spawn(
-  pid_t *pid, const char *path,
+  pid_t *_Nullable pid, const char *path,
   const posix_spawn_file_actions_t _Nonnull *_Nullable fileActions,
   const posix_spawnattr_t _Nonnull *_Nullable attrs,
   char *const _Nullable argv[_Nonnull], char *const _Nullable env[_Nonnull]
