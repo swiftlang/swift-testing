@@ -43,8 +43,15 @@ public import SwiftSyntaxMacros
 /// argument (if present) and `sourceLocation` argument are placed at the end of
 /// the generated function call's argument list.
 public protocol ConditionMacro: ExpressionMacro, Sendable {
+  /// Whether or not the macro tries to parse/expand its condition argument.
+  static var parsesConditionArgument: Bool { get }
+
   /// Whether or not the macro's expansion may throw an error.
   static var isThrowing: Bool { get }
+
+  /// The name of the module containing the `__check()` function this macro
+  /// expands to call.
+  static var checkFunctionModuleName: DeclReferenceExprSyntax { get }
 }
 
 // MARK: -
@@ -71,6 +78,14 @@ extension ConditionMacro {
 
   public static var formatMode: FormatMode {
     .disabled
+  }
+
+  public static var parsesConditionArgument: Bool {
+    true
+  }
+
+  public static var checkFunctionModuleName: DeclReferenceExprSyntax {
+    DeclReferenceExprSyntax(baseName: .identifier("Testing"))
   }
 
   /// Perform the expansion of this condition macro.
@@ -115,7 +130,7 @@ extension ConditionMacro {
     // Construct the argument list to __check().
     let expandedFunctionName: TokenSyntax
     var checkArguments = [Argument]()
-    do {
+    if parsesConditionArgument {
       if let trailingClosureIndex {
         // Include all arguments other than the "comment" and "sourceLocation"
         // arguments here.
@@ -156,7 +171,19 @@ extension ConditionMacro {
 
         expandedFunctionName = conditionArgument.expandedFunctionName
       }
+    } else {
+      // Include all arguments other than the "comment" and "sourceLocation"
+      // arguments here.
+      checkArguments += macroArguments.indices.lazy
+        .filter { $0 != commentIndex }
+        .filter { $0 != isolationArgumentIndex }
+        .filter { $0 != sourceLocationArgumentIndex }
+        .map { macroArguments[$0] }
 
+      expandedFunctionName = .identifier("__check")
+    }
+
+    do {
       // Capture any comments as well -- either in source, preceding the
       // expression macro or one of its lexical context nodes, or as an argument
       // to the macro.
@@ -201,7 +228,7 @@ extension ConditionMacro {
     }
 
     // Construct and return the call to __check().
-    let call: ExprSyntax = "Testing.\(expandedFunctionName)(\(LabeledExprListSyntax(checkArguments)))"
+    let call: ExprSyntax = "\(checkFunctionModuleName).\(expandedFunctionName)(\(LabeledExprListSyntax(checkArguments)))"
     if isThrowing {
       return "\(call).__required()"
     }
@@ -278,6 +305,10 @@ public protocol RefinedConditionMacro: ConditionMacro {
 extension RefinedConditionMacro {
   public static var isThrowing: Bool {
     Base.isThrowing
+  }
+
+  public static var parsesConditionArgument: Bool {
+    Base.parsesConditionArgument
   }
 }
 
@@ -671,3 +702,30 @@ public struct ExitTestExpectMacro: ExitTestConditionMacro {
 public struct ExitTestRequireMacro: ExitTestConditionMacro {
   public typealias Base = RequireMacro
 }
+
+// MARK: - Exit tests using Process/NSTask/Subprocess
+
+public struct ExpectNSTaskExitsWithMacro: RefinedConditionMacro {
+  public typealias Base = ExpectMacro
+
+  public static var parsesConditionArgument: Bool {
+    false
+  }
+
+  public static var checkFunctionModuleName: DeclReferenceExprSyntax {
+    DeclReferenceExprSyntax(baseName: .identifier("_Testing_Foundation"))
+  }
+}
+
+public struct RequireNSTaskExitsWithMacro: RefinedConditionMacro {
+  public typealias Base = RequireMacro
+
+  public static var parsesConditionArgument: Bool {
+    false
+  }
+
+  public static var checkFunctionModuleName: DeclReferenceExprSyntax {
+    DeclReferenceExprSyntax(baseName: .identifier("_Testing_Foundation"))
+  }
+}
+

@@ -11,6 +11,11 @@
 @testable @_spi(ForToolsIntegrationOnly) import Testing
 private import _TestingInternals
 
+#if canImport(Foundation) && canImport(_Testing_Foundation)
+import Foundation
+@_spi(Experimental) import _Testing_Foundation
+#endif
+
 #if !SWT_NO_EXIT_TESTS
 @Suite("Exit test tests") struct ExitTestTests {
   @Test("Signal names are reported (where supported)") func signalName() {
@@ -626,6 +631,41 @@ private import _TestingInternals
   }
 #endif
 }
+
+#if canImport(Foundation) && canImport(_Testing_Foundation)
+struct `Exit tests using Foundation.Process` {
+#if !os(Windows)
+  @Test func `can consume stdout`() async throws {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/bin/echo", isDirectory: false)
+    process.arguments = ["Hello world!"]
+    process.standardOutput = Pipe()
+    let result = try await #require(process, exitsWith: .success, observing: [\.standardOutputContent])
+    #expect(result.standardOutputContent.contains("Hello world!".utf8))
+  }
+
+  @Test func `detects exit status`() async throws {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/bin/cat", isDirectory: false)
+    process.arguments = ["ceci n'est pas un fichier"]
+    await #expect(process, exitsWith: .failure)
+  }
+
+  @Test func `reports errors back to caller`() async throws {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/bin/this executable does not exist", isDirectory: false)
+    await withKnownIssue {
+      await #expect(process, exitsWith: .failure)
+    } matching: { issue in
+      if case .system = issue.kind {
+        return true
+      }
+      return false
+    }
+  }
+#endif
+}
+#endif
 
 // MARK: - Fixtures
 

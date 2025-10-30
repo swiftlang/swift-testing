@@ -326,7 +326,7 @@ public struct __Expression: Sendable {
   ///
   /// - Returns: A copy of `self` with information about the specified runtime
   ///   value captured for future use.
-  func capturingRuntimeValue(_ value: (some Any)?) -> Self {
+  package func capturingRuntimeValue(_ value: (some Any)?) -> Self {
     var result = self
     result.runtimeValue = value.flatMap(Value.init(reflecting:))
     if case let .negation(subexpression, isParenthetical) = kind, let value = value as? Bool {
@@ -348,7 +348,7 @@ public struct __Expression: Sendable {
   ///
   /// If the ``kind`` of `self` is ``Kind/generic`` or ``Kind/stringLiteral``,
   /// this function is equivalent to ``capturingRuntimeValue(_:)``.
-  func capturingRuntimeValues<each T>(_ firstValue: (some Any)?, _ additionalValues: repeat (each T)?) -> Self {
+  package func capturingRuntimeValues<each T>(_ firstValue: (some Any)?, _ additionalValues: repeat (each T)?) -> Self {
     var result = self
 
     // Convert the variadic generic argument list to an array.

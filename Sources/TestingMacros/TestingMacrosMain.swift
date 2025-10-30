@@ -26,6 +26,8 @@ struct TestingMacrosMain: CompilerPlugin {
       NonOptionalRequireMacro.self,
       RequireThrowsMacro.self,
       RequireThrowsNeverMacro.self,
+      ExpectNSTaskExitsWithMacro.self,
+      RequireNSTaskExitsWithMacro.self,
       ExitTestExpectMacro.self,
       ExitTestRequireMacro.self,
       ExitTestCapturedValueMacro.self,
