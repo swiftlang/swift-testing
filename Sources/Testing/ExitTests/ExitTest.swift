@@ -679,7 +679,7 @@ extension ExitTest {
     Environment.setVariable(nil, named: name)
 
     var fd: CInt?
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
     fd = CInt(environmentVariable)
 #elseif os(Windows)
     if let handle = UInt(environmentVariable).flatMap(HANDLE.init(bitPattern:)) {

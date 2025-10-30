@@ -88,7 +88,7 @@ func spawnExecutable(
   }
 #endif
 
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
   return try withUnsafeTemporaryAllocation(of: P<posix_spawn_file_actions_t>.self, capacity: 1) { fileActions in
     let fileActionsInitialized = posix_spawn_file_actions_init(fileActions.baseAddress!)
     let fileActions = asArgument(fileActions)
