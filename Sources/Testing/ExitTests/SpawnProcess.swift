@@ -77,21 +77,14 @@ func spawnExecutable(
   // paper over the differences.
 #if SWT_TARGET_OS_APPLE || os(FreeBSD) || os(OpenBSD)
   typealias P<T> = T?
-  func asArgument<T>(_ p: UnsafeMutableBufferPointer<T?>) -> UnsafeMutablePointer<T?> { p.baseAddress! }
-#elseif os(Linux)
+#elseif os(Linux) || os(Android)
   typealias P<T> = T
-  func asArgument<T>(_ p: UnsafeMutableBufferPointer<T>) -> UnsafeMutablePointer<T> { p.baseAddress! }
-#elseif os(Android)
-  typealias P<T> = T?
-  func asArgument<T>(_ p: UnsafeMutableBufferPointer<T?>) -> UnsafeMutablePointer<T> {
-    UnsafeMutableRawPointer(p.baseAddress!).bindMemory(to: T.self, capacity: 1)
-  }
 #endif
 
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
   return try withUnsafeTemporaryAllocation(of: P<posix_spawn_file_actions_t>.self, capacity: 1) { fileActions in
-    let fileActionsInitialized = posix_spawn_file_actions_init(fileActions.baseAddress!)
-    let fileActions = asArgument(fileActions)
+    let fileActions = fileActions.baseAddress!
+    let fileActionsInitialized = posix_spawn_file_actions_init(fileActions)
     guard 0 == fileActionsInitialized else {
       throw CError(rawValue: fileActionsInitialized)
     }
@@ -100,8 +93,14 @@ func spawnExecutable(
     }
 
     return try withUnsafeTemporaryAllocation(of: P<posix_spawnattr_t>.self, capacity: 1) { attrs in
-      let attrsInitialized = posix_spawnattr_init(attrs.baseAddress!)
-      let attrs = asArgument(attrs)
+      let attrs = attrs.baseAddress!
+#if os(Android)
+      let attrsInitialized = attrs.withMemoryRebound(to: Optional<posix_spawnattr_t>.self, capacity: 1) { attrs in
+        posix_spawnattr_init(attrs)
+      }
+#else
+      let attrsInitialized = posix_spawnattr_init(attrs)
+#endif
       guard 0 == attrsInitialized else {
         throw CError(rawValue: attrsInitialized)
       }
@@ -237,7 +236,19 @@ func spawnExecutable(
       }
 
       var pid = pid_t()
+#if os(Android)
+      let processSpawned = fileActions.withMemoryRebound(to: posix_spawn_file_actions_t?.self, capacity: 1) { fileActions in
+        attrs.withMemoryRebound(to: posix_spawnattr_t?.self, capacity: 1) { attrs in
+          argv.withUnsafeBufferPointer { argv in
+            argv.withMemoryRebound(to: UnsafeMutablePointer<CChar>.self) { argv in
+              posix_spawn(&pid, executablePath, fileActions, attrs, argv.baseAddress!, environ)
+            }
+          }
+        }
+      }
+#else
       let processSpawned = posix_spawn(&pid, executablePath, fileActions, attrs, argv, environ)
+#endif
       guard 0 == processSpawned else {
         throw CError(rawValue: processSpawned)
       }
