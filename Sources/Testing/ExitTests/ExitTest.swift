@@ -226,7 +226,20 @@ extension ExitTest {
     var rl = rlimit(rlim_cur: 0, rlim_max: 0)
     _ = setrlimit(RLIMIT_CORE, &rl)
 #elseif os(Android)
-    // TODO: "tombstoned_intercept"?
+    // Android inherits the RLIMIT_CORE=1 special case from Linux.
+    // SEE: https://android.googlesource.com/kernel/common/+/refs/heads/android-mainline/fs/coredump.c#978
+    var rl = rlimit(rlim_cur: 1, rlim_max: 1)
+    _ = setrlimit(CInt(RLIMIT_CORE.rawValue), &rl)
+
+    // In addition, Android installs signal handlers in native processes that
+    // cause the system to generate "tombstone" files. Suppress those too by
+    // resetting all signal handlers to SIG_DFL. debuggerd_register_handlers()
+    // is not exported, so we must manually walk all the signals it handles.
+    // SEE: https://android.googlesource.com/platform/system/core/+/main/debuggerd/include/debuggerd/handler.h#81
+    let BIONIC_SIGNAL_DEBUGGER = __SIGRTMIN + 3
+    for sig in [SIGABRT, SIGBUS, SIGFPE, SIGILL, SIGSEGV, SIGSTKFLT, SIGSYS, SIGTRAP, BIONIC_SIGNAL_DEBUGGER] {
+      _ = signal(sig, SIG_DFL)
+    }
 #elseif os(Windows)
     // On Windows, similarly disable Windows Error Reporting and the Windows
     // Error Reporting UI. Note we expect to be the first component to call
