@@ -368,13 +368,13 @@ extension BuildSettingCondition {
 ///
 /// This constant is used to conditionally enable features on Android only on
 /// newer compilers.
-static let androidIfCompiler6_3: some Collection<Platform> = {
+nonisolated(unsafe) var androidIfCompiler6_3: some Collection<Platform> {
 #if compiler(>=6.3)
   CollectionOfOne(.android)
 #else
   EmptyCollection()
 #endif
-}()
+}
 
 extension Array where Element == PackageDescription.SwiftSetting {
   /// Settings intended to be applied to every Swift target in this package.
