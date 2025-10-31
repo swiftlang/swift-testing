@@ -8,6 +8,38 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+actor ConcurrencyLimiter {
+  @TaskLocal
+  static var shared = ConcurrencyLimiter()
+
+  static let limit = 24
+
+  var activeTasks = 0
+  var waitingContinuations = [CheckedContinuation<Void, Never>]()
+
+  init() {}
+
+  func acquire() async {
+    if activeTasks < Self.limit {
+      activeTasks += 1
+      return
+    }
+
+    await withCheckedContinuation { continuation in
+      waitingContinuations.append(continuation)
+    }
+  }
+
+  func release() {
+    activeTasks -= 1
+
+    if activeTasks < Self.limit && !waitingContinuations.isEmpty {
+      waitingContinuations.removeFirst().resume()
+      activeTasks += 1
+    }
+  }
+}
+
 /// A type that runs tests according to a given configuration.
 @_spi(ForToolsIntegrationOnly)
 public struct Runner: Sendable {
@@ -387,7 +419,14 @@ extension Runner {
 
         try await withTimeLimit(for: step.test, configuration: configuration) {
           try await _applyScopingTraits(for: step.test, testCase: testCase) {
-            try await testCase.body()
+            await ConcurrencyLimiter.shared.acquire()
+            do {
+              try await testCase.body()
+            } catch {
+              await ConcurrencyLimiter.shared.release()
+              throw error
+            }
+            await ConcurrencyLimiter.shared.release()
           }
         } timeoutHandler: { timeLimit in
           let issue = Issue(
@@ -403,7 +442,9 @@ extension Runner {
 
   /// Run the tests in this runner's plan.
   public func run() async {
-    await Self._run(self)
+    await ConcurrencyLimiter.$shared.withValue(ConcurrencyLimiter()) {
+      await Self._run(self)
+    }
   }
 
   /// Run the tests in a runner's plan with a given configuration.
