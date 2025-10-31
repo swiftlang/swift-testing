@@ -556,10 +556,9 @@ test function with an instance of this trait type to control whether it runs:
   }
 }
 
-If a test has already started running and you determine it cannot complete and
-should end early without failing, use ``Test/cancel(_:sourceLocation:)`` instead
-of [`XCTSkip`](https://developer.apple.com/documentation/xctest/xctskip) to
-cancel the task associated with the current test:
+If a test is running and you determine it cannot complete and should end early
+without failing, use ``Test/cancel(_:sourceLocation:)`` instead of [`XCTSkip`](https://developer.apple.com/documentation/xctest/xctskip)
+to cancel the task associated with the current test:
 
 @Row {
   @Column {

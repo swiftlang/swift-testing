@@ -123,9 +123,8 @@ func makeSundae() async throws { ... }
 
 ### End a test after it has already started
 
-If a test has already started running and you determine it cannot complete and
-should end early without failing, use ``Test/cancel(_:sourceLocation:)`` to
-cancel the test:
+If a test is running and you determine it cannot complete and should end early
+without failing, use ``Test/cancel(_:sourceLocation:)`` to cancel the test:
 
 ```swift
 @Test("Can make sundaes")
