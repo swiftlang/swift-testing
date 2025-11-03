@@ -180,6 +180,41 @@ static int swt_setfdflags(int fd, int flags) {
 }
 #endif
 
+#if defined(__OpenBSD__)
+/// Storage for the early working directory.
+static _Atomic(const char *_Nullable) swt_earlyCWD = NULL;
+
+/// At process start (before `main()` is called), capture the current working
+/// directory.
+///
+/// This function is necessary on OpenBSD so that we can (as correctly as
+/// possible) resolve the executable path when the first argument is a relative
+/// path (which can occur when manually invoking the test executable.)
+///
+/// - Important: Do not call this function. It is automatically called by the
+///   loader when the process starts. To get the early current working
+///   directory, call ``swt_getEarlyCWD()`` instead.
+static void swt_captureEarlyCWD(void) {
+  static char buffer[PATH_MAX * 2];
+  if (getcwd(buffer, sizeof(buffer))) {
+    // stdatomic.h is missing on OpenBSD 7.7, so use clang's builtins instead.
+    const char *expectingNULL = NULL;
+    __c11_atomic_store(&swt_earlyCWD, buffer, __ATOMIC_SEQ_CST);
+  }
+}
+
+/// Get the current working directory as it was set shortly after the process
+/// started and before `main()` has been called.
+///
+/// This function is necessary on OpenBSD so that we can (as correctly as
+/// possible) resolve the executable path when the first argument is a relative
+/// path (which can occur when manually invoking the test executable.)
+static const char *_Nullable swt_getEarlyCWD(void) {
+  // stdatomic.h is missing on OpenBSD 7.7, so use clang's builtins instead.
+  return __c11_atomic_load(&swt_earlyCWD, __ATOMIC_SEQ_CST);
+}
+#endif
+
 SWT_ASSUME_NONNULL_END
 
 #endif

@@ -10,6 +10,17 @@
 
 private import _TestingInternals
 
+#if os(OpenBSD)
+/// At process start (before `main()` is called), capture the current working
+/// directory.
+///
+/// -Note: This function is the only valid caller of `swt_captureEarlyCWD()`.
+@_section(".init_array.101") @_used
+private let _captureEarlyCWD: @convention(c) () -> Void = {
+  swt_captureEarlyCWD()
+}
+#endif
+
 extension CommandLine {
   /// The path to the current process' executable.
   static var executablePath: String {
@@ -33,6 +44,15 @@ extension CommandLine {
       }
       return result!
 #elseif os(Linux) || os(Android)
+      guard var argv0 = arguments.first, argv0.contains("/") else {
+        throw CError(rawValue: ENOEXEC)
+      }
+      if argv0.first != "/",
+         let earlyCWD = _earlyCWD.flatMap(String.init(validatingCString:)),
+         !earlyCWD.isEmpty {
+        argv0 = "\(earlyCWD)/\(argv0)"
+      }
+      return argv0
       return try withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(PATH_MAX) * 2) { buffer in
         let readCount = readlink("/proc/self/exe", buffer.baseAddress!, buffer.count - 1)
         guard readCount >= 0 else {
@@ -57,10 +77,16 @@ extension CommandLine {
       }
 #elseif os(OpenBSD)
       // OpenBSD does not have API to get a path to the running executable. Use
-      // arguments[0]. We do a basic sniff test for a path-like string, but
-      // otherwise return argv[0] verbatim.
-      guard let argv0 = arguments.first, argv0.contains("/") else {
+      // arguments[0]. We do a basic sniff test for a path-like string, and
+      // prepend the early CWD if it looks like a relative path, but otherwise
+      // return argv[0] verbatim.
+      guard var argv0 = arguments.first, argv0.contains("/") else {
         throw CError(rawValue: ENOEXEC)
+      }
+      if argv0.first != "/",
+         let earlyCWD = swt_getEarlyCWD().flatMap(String.init(validatingCString:)),
+         !earlyCWD.isEmpty {
+        argv0 = "\(earlyCWD)/\(argv0)"
       }
       return argv0
 #elseif os(Windows)
