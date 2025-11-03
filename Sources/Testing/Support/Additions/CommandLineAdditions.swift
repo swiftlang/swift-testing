@@ -44,15 +44,6 @@ extension CommandLine {
       }
       return result!
 #elseif os(Linux) || os(Android)
-      guard var argv0 = arguments.first, argv0.contains("/") else {
-        throw CError(rawValue: ENOEXEC)
-      }
-      if argv0.first != "/",
-         let earlyCWD = _earlyCWD.flatMap(String.init(validatingCString:)),
-         !earlyCWD.isEmpty {
-        argv0 = "\(earlyCWD)/\(argv0)"
-      }
-      return argv0
       return try withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(PATH_MAX) * 2) { buffer in
         let readCount = readlink("/proc/self/exe", buffer.baseAddress!, buffer.count - 1)
         guard readCount >= 0 else {
