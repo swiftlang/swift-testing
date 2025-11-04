@@ -49,14 +49,10 @@ public struct Configuration: Sendable {
   @_spi(Experimental)
   public var maximumParallelizationWidth: Int {
     get {
-      serializer?.maximumWidth ?? .max
+      serializer.maximumWidth
     }
     set {
-      if newValue < .max {
-        serializer = Serializer(maximumWidth: maximumParallelizationWidth)
-      } else {
-        serializer = nil
-      }
+      serializer = Serializer(maximumWidth: newValue)
     }
   }
 
@@ -64,9 +60,10 @@ public struct Configuration: Sendable {
   ///
   /// - Note: This serializer is ignored if ``isParallelizationEnabled`` is
   ///   `false`.
-  var serializer: Serializer? = Self._cpuCoreCount.flatMap { cpuCoreCount in
-    Serializer(maximumWidth: max(1, cpuCoreCount) * 2)
-  }
+  var serializer: Serializer = {
+    let cpuCoreCount = Self._cpuCoreCount.map { max(1, $0) * 2 } ?? .max
+    return Serializer(maximumWidth: cpuCoreCount)
+  }()
 
   /// How to symbolicate backtraces captured during a test run.
   ///

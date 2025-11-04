@@ -359,8 +359,8 @@ extension Runner {
     }
 
     await _forEach(in: testCases.enumerated(), namingTasksWith: taskNamer) { _, testCase in
-      if _configuration.isParallelizationEnabled, let serializer = _configuration.serializer {
-        await serializer.run { await _runTestCase(testCase, within: step) }
+      if _configuration.isParallelizationEnabled {
+        await _configuration.serializer.run { await _runTestCase(testCase, within: step) }
       } else {
         await _runTestCase(testCase, within: step)
       }
