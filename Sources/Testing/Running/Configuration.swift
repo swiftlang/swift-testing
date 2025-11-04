@@ -25,21 +25,16 @@ public struct Configuration: Sendable {
   /// The number of CPU cores on the current system, or `nil` if that
   /// information is not available.
   private static var _cpuCoreCount: Int? {
-#if SWT_TARGET_OS_APPLE
-    var result: Int32 = -1
-    var mib: [Int32] = [CTL_HW, HW_NCPU]
-    var resultByteCount = MemoryLayout<Int32>.stride
-    guard 0 == sysctl(&mib, UInt32(mib.count), &result, &resultByteCount, nil, 0) else {
-      return nil
-    }
-    return Int(result)
-#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
     return Int(sysconf(Int32(_SC_NPROCESSORS_CONF)))
 #elseif os(Windows)
     var siInfo = SYSTEM_INFO()
     GetSystemInfo(&siInfo)
     return Int(siInfo.dwNumberOfProcessors)
+#elseif os(WASI)
+    return 1
 #else
+#warning("Platform-specific implementation missing: CPU core count unavailable")
     return nil
 #endif
 
