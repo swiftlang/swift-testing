@@ -210,6 +210,9 @@ public struct __CommandLineArguments_v0: Sendable {
   /// The value of the `--parallel` or `--no-parallel` argument.
   public var parallel: Bool?
 
+  /// The maximum number of test tasks to run in parallel.
+  public var experimentalMaximumParallelizationWidth: Int?
+
   /// The value of the `--symbolicate-backtraces` argument.
   public var symbolicateBacktraces: String?
 
@@ -336,6 +339,7 @@ extension __CommandLineArguments_v0: Codable {
   enum CodingKeys: String, CodingKey {
     case listTests
     case parallel
+    case experimentalMaximumParallelizationWidth
     case symbolicateBacktraces
     case verbose
     case veryVerbose
@@ -485,6 +489,11 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   if args.contains("--no-parallel") {
     result.parallel = false
   }
+  if let maximumParallelizationWidth = args.argumentValue(forLabel: "--experimental-maximum-parallelization-width").flatMap(Int.init)
+    ?? Environment.variable(named: "SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH").flatMap(Int.init) {
+    // TODO: decide if we want to repurpose --num-workers for this use case?
+    result.experimentalMaximumParallelizationWidth = maximumParallelizationWidth
+  }
 
   // Whether or not to symbolicate backtraces in the event stream.
   if let symbolicateBacktraces = args.argumentValue(forLabel: "--symbolicate-backtraces") {
@@ -546,6 +555,10 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
 
   // Parallelization (on by default)
   configuration.isParallelizationEnabled = args.parallel ?? true
+  if let maximumParallelizationWidth = args.experimentalMaximumParallelizationWidth {
+    try! FileHandle.stderr.write("MAX WIDTH: \(maximumParallelizationWidth)\n")
+    configuration.maximumParallelizationWidth = maximumParallelizationWidth
+  }
 
   // Whether or not to symbolicate backtraces in the event stream.
   if let symbolicateBacktraces = args.symbolicateBacktraces {
