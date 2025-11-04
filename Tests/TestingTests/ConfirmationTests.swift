@@ -153,26 +153,15 @@ struct UnsuccessfulConfirmationTests {
   }
 
   @Test(.hidden, arguments: [
-    1 ... 2 as any ExpectedCount,
+    1 ... 2 as any RangeExpression<Int> & Sequence<Int> & Sendable,
     1 ..< 2,
     1 ..< 3,
     999...,
   ])
-  func confirmedOutOfRange(_ range: any ExpectedCount) async {
+  @available(_compositionOfParameterizedProtocols, *)
+  func confirmedOutOfRange(_ range: any RangeExpression<Int> & Sequence<Int> & Sendable) async {
     await confirmation(expectedCount: range) { (thingHappened) async in
       thingHappened(count: 3)
     }
   }
 }
-
-// MARK: -
-
-/// Needed since we don't have generic test functions, so we need a concrete
-/// argument type for `confirmedOutOfRange(_:)`. Although we can now write
-/// `any RangeExpression<Int> & Sequence<Int> & Sendable` as of Swift 6.2
-/// (per [swiftlang/swift#76705](https://github.com/swiftlang/swift/pull/76705)),
-/// attempting to form an array of such values crashes at runtime. ([163980446](rdar://163980446))
-protocol ExpectedCount: RangeExpression, Sequence, Sendable where Bound == Int, Element == Int {}
-extension ClosedRange<Int>: ExpectedCount {}
-extension PartialRangeFrom<Int>: ExpectedCount {}
-extension Range<Int>: ExpectedCount {}
