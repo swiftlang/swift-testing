@@ -65,7 +65,7 @@ public struct Configuration: Sendable {
   /// - Note: This serializer is ignored if ``isParallelizationEnabled`` is
   ///   `false`.
   var serializer: Serializer? = Self._cpuCoreCount.flatMap { cpuCoreCount in
-    Serializer(maximumWidth: cpuCoreCount * 2)
+    Serializer(maximumWidth: max(1, cpuCoreCount) * 2)
   }
 
   /// How to symbolicate backtraces captured during a test run.
