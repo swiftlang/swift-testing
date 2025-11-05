@@ -10,17 +10,6 @@
 
 private import _TestingInternals
 
-#if os(OpenBSD)
-/// At process start (before `main()` is called), capture the current working
-/// directory.
-///
-/// -Note: This function is the only valid caller of `swt_captureEarlyCWD()`.
-@_section(".init_array.101") @_used
-private let _captureEarlyCWD: @convention(c) () -> Void = {
-  swt_captureEarlyCWD()
-}
-#endif
-
 extension CommandLine {
   /// The path to the current process' executable.
   static var executablePath: String {
