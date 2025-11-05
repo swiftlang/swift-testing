@@ -23,13 +23,17 @@ private func configurationForEntryPoint(withArguments args: [String]) throws -> 
 /// Reads event stream output from the provided file matching event stream
 /// version `V`.
 private func decodedEventStreamRecords<V: ABI.Version>(fromPath filePath: String) throws -> [ABI.Record<V>] {
-  try FileHandle(forReadingAtPath: filePath).readToEnd()
-    .split(whereSeparator: \.isASCIINewline)
-    .map { line in
-      try line.withUnsafeBytes { line in
-        return try JSON.decode(ABI.Record<V>.self, from: line)
+  var result = [ABI.Record<V>]()
+  let fileHandle = try FileHandle(forReadingAtPath: filePath)
+  while !fileHandle.isAtEnd {
+    let lineJSON = try fileHandle.read(until: \.isASCIINewline)
+    if !lineJSON.isEmpty {
+      try lineJSON.withUnsafeBytes { lineJSON in
+        try result.append(JSON.decode(ABI.Record<V>.self, from: lineJSON))
       }
     }
+  }
+  return result
 }
 
 @Suite("Swift Package Manager Integration Tests")
