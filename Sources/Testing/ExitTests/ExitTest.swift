@@ -1001,26 +1001,20 @@ extension ExitTest {
   ///   - backChannel: The file handle to read from. Reading continues until an
   ///     error is encountered or the end of the file is reached.
   private static func _processRecords(fromBackChannel backChannel: borrowing FileHandle) {
-    let bytes: [UInt8]
     do {
-      bytes = try backChannel.readToEnd()
+      try backChannel.read(delimitingWhere: \.isASCIINewline) { recordJSON, _ in
+        if recordJSON.isEmpty {
+          return // skip empty lines
+        }
+        try recordJSON.withUnsafeBufferPointer { recordJSON in
+          try Self._processRecord(.init(recordJSON), fromBackChannel: backChannel)
+        }
+      }
     } catch {
       // NOTE: an error caught here indicates an I/O problem.
       // TODO: should we record these issues as systemic instead?
       Issue(for: error).record()
       return
-    }
-
-    for recordJSON in bytes.split(whereSeparator: \.isASCIINewline) where !recordJSON.isEmpty {
-      do {
-        try recordJSON.withUnsafeBufferPointer { recordJSON in
-          try Self._processRecord(.init(recordJSON), fromBackChannel: backChannel)
-        }
-      } catch {
-        // NOTE: an error caught here indicates a decoding problem.
-        // TODO: should we record these issues as systemic instead?
-        Issue(for: error).record()
-      }
     }
   }
 
@@ -1089,8 +1083,11 @@ extension ExitTest {
     guard let fileHandle = Self._makeFileHandle(forEnvironmentVariableNamed: "SWT_CAPTURED_VALUES", mode: "rb") else {
       return
     }
-    let capturedValuesJSON = try fileHandle.readToEnd()
-    let capturedValuesJSONLines = capturedValuesJSON.split(whereSeparator: \.isASCIINewline)
+    var capturedValuesJSONLines = [[UInt8]]()
+    capturedValuesJSONLines.reserveCapacity(capturedValues.count)
+    try fileHandle.read(delimitingWhere: \.isASCIINewline) { line, _ in
+      capturedValuesJSONLines.append(line)
+    }
     assert(capturedValues.count == capturedValuesJSONLines.count, "Expected to decode \(capturedValues.count) captured value(s) for the current exit test, but received \(capturedValuesJSONLines.count). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
 
     // Walk the list of captured values' types, map them to their JSON blobs,

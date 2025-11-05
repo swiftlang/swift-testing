@@ -211,7 +211,7 @@ struct FileHandle: ~Copyable, Sendable {
   ///
   /// Use this function when calling C I/O interfaces such as `fputs()` on the
   /// underlying C file handle.
-  borrowing func withUnsafeCFILEHandle<R>(_ body: (SWT_FILEHandle) throws -> R) rethrows -> R {
+  borrowing func withUnsafeCFILEHandle<R>(_ body: (SWT_FILEHandle) throws -> R) rethrows -> R where R: ~Copyable {
     try body(_fileHandle)
   }
 
@@ -228,7 +228,7 @@ struct FileHandle: ~Copyable, Sendable {
   /// that require a file descriptor instead of the standard `FILE *`
   /// representation. If the file handle cannot be converted to a file
   /// descriptor, `nil` is passed to `body`.
-  borrowing func withUnsafePOSIXFileDescriptor<R>(_ body: (CInt?) throws -> R) rethrows -> R {
+  borrowing func withUnsafePOSIXFileDescriptor<R>(_ body: (CInt?) throws -> R) rethrows -> R where R: ~Copyable {
     try withUnsafeCFILEHandle { handle in
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
       let fd = fileno(handle)
@@ -260,7 +260,7 @@ struct FileHandle: ~Copyable, Sendable {
   /// that require the file's `HANDLE` representation instead of the standard
   /// `FILE *` representation. If the file handle cannot be converted to a
   /// Windows handle, `nil` is passed to `body`.
-  borrowing func withUnsafeWindowsHANDLE<R>(_ body: (HANDLE?) throws -> R) rethrows -> R {
+  borrowing func withUnsafeWindowsHANDLE<R>(_ body: (HANDLE?) throws -> R) rethrows -> R where R: ~Copyable {
     try withUnsafePOSIXFileDescriptor { fd in
       guard let fd else {
         return try body(nil)
@@ -287,7 +287,7 @@ struct FileHandle: ~Copyable, Sendable {
   /// to the underlying file. It can be used when, for example, write operations
   /// are split across multiple calls but must not be interleaved with writes on
   /// other threads.
-  borrowing func withLock<R>(_ body: () throws -> R) rethrows -> R {
+  borrowing func withLock<R>(_ body: () throws -> R) rethrows -> R where R: ~Copyable {
     try withUnsafeCFILEHandle { handle in
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
       flockfile(handle)
@@ -354,11 +354,85 @@ extension FileHandle {
             let endIndex = buffer.index(buffer.startIndex, offsetBy: countRead)
             result.append(contentsOf: buffer[..<endIndex])
           }
-        } while 0 == feof(file)
+        } while !isAtEnd
       }
     }
 
     return result
+  }
+
+  /// Read until a byte matching the given function is encountered.
+  ///
+  /// - Parameters:
+  ///   - isDelimiter: A function that determines if the given byte marks the
+  ///     end of the read operation.
+  ///
+  /// - Returns: A copy of the contents of the file handle starting at the
+  ///   current offset and ending at either the first delimiter byte or the end
+  ///   of the file (whichever comes first). The delimiter byte is not included
+  ///   in the result.
+  ///
+  /// - Throws: Any error that occurred while reading the file or that was
+  ///   thrown by `isDelimiter`.
+  func read(until isDelimiter: (UInt8) throws -> Bool) throws -> [UInt8] {
+    var line = [UInt8]()
+    line.reserveCapacity(1024)
+
+    try withUnsafeCFILEHandle { file in
+      try withLock {
+        repeat {
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+          let byteRead = getc_unlocked(file)
+#elseif os(Windows)
+          let byteRead = _fgetc_nolock(file)
+#else
+          let byteRead = fgetc(file)
+#endif
+          if byteRead == EOF {
+            if 0 != ferror(file) {
+              throw CError(rawValue: swt_errno())
+            }
+          } else if let byteRead = UInt8(exactly: byteRead) {
+            if try isDelimiter(byteRead) {
+              break
+            } else {
+              line.append(byteRead)
+            }
+          }
+        } while !isAtEnd
+      }
+    }
+
+    return line
+  }
+
+  /// Read until the end of the file, yielding sequences of bytes read delimited
+  /// by bytes that match the given function.
+  ///
+  /// - Parameters:
+  ///   - isDelimiter: A function that determines if the given byte marks the
+  ///     end of the read operation.
+  ///   - body: A function to call for each subsequence of bytes read. Set the
+  ///     `stop` argument to `true` to exit the loop early.
+  ///
+  /// - Throws: Any error that occurred while reading the file or that was
+  ///   thrown by `isDelimiter` or `body`.
+  ///
+  /// Use this function to, for example, read lines delimited by `"\n"` from the
+  /// file.
+  ///
+  /// This function does not produce a sequence because it would require
+  /// consuming the file handle and also because it would limit the ability of
+  /// the caller to handle I/O errors that occur while reading.
+  borrowing func read(delimitingWhere isDelimiter: (UInt8) throws -> Bool, _ body: ([UInt8], _ stop: inout Bool) throws -> Void) throws {
+    var stop = false
+    while !stop {
+      let bytesRead = try read(until: isDelimiter)
+      if bytesRead.isEmpty && isAtEnd {
+        break
+      }
+      try body(bytesRead, &stop)
+    }
   }
 }
 
@@ -559,6 +633,13 @@ extension FileHandle {
 // MARK: - Attributes
 
 extension FileHandle {
+  /// Is the current cursor offset at the end of the file?
+  var isAtEnd: Bool {
+    withUnsafeCFILEHandle { file in
+      0 != feof(file)
+    }
+  }
+
   /// Is this file handle a TTY or PTY?
   var isTTY: Bool {
 #if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
