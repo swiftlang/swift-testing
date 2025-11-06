@@ -147,13 +147,15 @@ static int swt_siginfo_t_si_status(siginfo_t siginfo) {
 }
 #endif
 
+#if __has_include(<signal.h>) && !defined(__wasi__)
 /// Get the default signal handler.
 ///
 /// This function is provided because `SIG_DFL` is a complex macro on some
 /// platforms and cannot be imported directly into Swift.
-static sig_t _Null_unspecified swt_SIG_DFL(void) {
+static __typeof__(SIG_DFL) _Null_unspecified swt_SIG_DFL(void) {
   return SIG_DFL;
 }
+#endif
 
 #if defined(__ANDROID__)
 /// Call `posix_spawn(3)`.
