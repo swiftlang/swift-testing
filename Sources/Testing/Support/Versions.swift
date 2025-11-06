@@ -90,6 +90,7 @@ let operatingSystemVersion: String = {
   }
 #elseif os(WASI)
   // WASI does not have an API to get the current WASI or Wasm version.
+  // wasi-libc does have uname(3), but it's stubbed out.
 #else
 #warning("Platform-specific implementation missing: OS version unavailable")
 #endif
