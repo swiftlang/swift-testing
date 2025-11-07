@@ -66,6 +66,12 @@ extension Runner {
     .current ?? .init()
   }
 
+  /// Context to apply to a test run.
+  struct Context: Sendable {
+    /// A serializer used to reduce parallelism among test cases.
+    var testCaseSerializer: Serializer
+  }
+
   /// Apply the custom scope for any test scope providers of the traits
   /// associated with a specified test by calling their
   /// ``TestScoping/provideScope(for:testCase:performing:)`` function.
@@ -179,6 +185,7 @@ extension Runner {
   ///
   /// - Parameters:
   ///   - stepGraph: The subgraph whose root value, a step, is to be run.
+  ///   - context: Context for the test run.
   ///
   /// - Throws: Whatever is thrown from the test body. Thrown errors are
   ///   normally reported as test failures.
@@ -193,7 +200,7 @@ extension Runner {
   /// ## See Also
   ///
   /// - ``Runner/run()``
-  private static func _runStep(atRootOf stepGraph: Graph<String, Plan.Step?>) async throws {
+  private static func _runStep(atRootOf stepGraph: Graph<String, Plan.Step?>, context: Context) async throws {
     // Whether to send a `.testEnded` event at the end of running this step.
     // Some steps' actions may not require a final event to be sent — for
     // example, a skip event only sends `.testSkipped`.
@@ -250,18 +257,18 @@ extension Runner {
           try await _applyScopingTraits(for: step.test, testCase: nil) {
             // Run the test function at this step (if one is present.)
             if let testCases = step.test.testCases {
-              await _runTestCases(testCases, within: step)
+              await _runTestCases(testCases, within: step, context: context)
             }
 
             // Run the children of this test (i.e. the tests in this suite.)
-            try await _runChildren(of: stepGraph)
+            try await _runChildren(of: stepGraph, context: context)
           }
         }
       }
     } else {
       // There is no test at this node in the graph, so just skip down to the
       // child nodes.
-      try await _runChildren(of: stepGraph)
+      try await _runChildren(of: stepGraph, context: context)
     }
   }
 
@@ -286,10 +293,11 @@ extension Runner {
   /// - Parameters:
   ///   - stepGraph: The subgraph whose root value, a step, will be used to
   ///     find children to run.
+  ///   - context: Context for the test run.
   ///
   /// - Throws: Whatever is thrown from the test body. Thrown errors are
   ///   normally reported as test failures.
-  private static func _runChildren(of stepGraph: Graph<String, Plan.Step?>) async throws {
+  private static func _runChildren(of stepGraph: Graph<String, Plan.Step?>, context: Context) async throws {
     let childGraphs = if _configuration.isParallelizationEnabled {
       // Explicitly shuffle the steps to help detect accidental dependencies
       // between tests due to their ordering.
@@ -331,7 +339,7 @@ extension Runner {
 
     // Run the child nodes.
     try await _forEach(in: childGraphs.lazy.map(\.value), namingTasksWith: taskNamer) { childGraph in
-      try await _runStep(atRootOf: childGraph)
+      try await _runStep(atRootOf: childGraph, context: context)
     }
   }
 
@@ -340,10 +348,11 @@ extension Runner {
   /// - Parameters:
   ///   - testCases: The test cases to be run.
   ///   - step: The runner plan step associated with this test case.
+  ///   - context: Context for the test run.
   ///
   /// If parallelization is supported and enabled, the generated test cases will
   /// be run in parallel using a task group.
-  private static func _runTestCases(_ testCases: some Sequence<Test.Case>, within step: Plan.Step) async {
+  private static func _runTestCases(_ testCases: some Sequence<Test.Case>, within step: Plan.Step, context: Context) async {
     let configuration = _configuration
 
     // Apply the configuration's test case filter.
@@ -362,9 +371,9 @@ extension Runner {
 
     await _forEach(in: testCases.enumerated(), namingTasksWith: taskNamer) { _, testCase in
       if configuration.isParallelizationEnabled {
-        await configuration.serializer.run { await _runTestCase(testCase, within: step) }
+        await context.testCaseSerializer.run { await _runTestCase(testCase, within: step, context: context) }
       } else {
-        await _runTestCase(testCase, within: step)
+        await _runTestCase(testCase, within: step, context: context)
       }
     }
   }
@@ -374,10 +383,11 @@ extension Runner {
   /// - Parameters:
   ///   - testCase: The test case to run.
   ///   - step: The runner plan step associated with this test case.
+  ///   - context: Context for the test run.
   ///
   /// This function sets ``Test/Case/current``, then invokes the test case's
   /// body closure.
-  private static func _runTestCase(_ testCase: Test.Case, within step: Plan.Step) async {
+  private static func _runTestCase(_ testCase: Test.Case, within step: Plan.Step, context: Context) async {
     let configuration = _configuration
 
     Event.post(.testCaseStarted, for: (step.test, testCase), configuration: configuration)
@@ -434,6 +444,14 @@ extension Runner {
       eventHandler(event, context)
     }
 
+    // Context to pass into the test run. We intentionally don't pass the Runner
+    // itself (implicitly as `self` nor as an argument) because we don't want to
+    // accidentally depend on e.g. the `configuration` property rather than the
+    // current configuration.
+    let context = Context(
+      testCaseSerializer: Serializer(maximumWidth: runner.configuration.maximumParallelizationWidth)
+    )
+
     await Configuration.withCurrent(runner.configuration) {
       // Post an event for every test in the test plan being run. These events
       // are turned into JSON objects if JSON output is enabled.
@@ -460,7 +478,7 @@ extension Runner {
             taskAction = "running iteration #\(iterationIndex + 1)"
           }
           _ = taskGroup.addTaskUnlessCancelled(name: decorateTaskName("test run", withAction: taskAction)) {
-            try? await _runStep(atRootOf: runner.plan.stepGraph)
+            try? await _runStep(atRootOf: runner.plan.stepGraph, context: context)
           }
           await taskGroup.waitForAll()
         }

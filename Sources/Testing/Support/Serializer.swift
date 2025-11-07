@@ -8,12 +8,33 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
+/// The number of CPU cores on the current system, or `nil` if that
+/// information is not available.
+var cpuCoreCount: Int? {
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
+  return Int(sysconf(Int32(_SC_NPROCESSORS_CONF)))
+#elseif os(Windows)
+  var siInfo = SYSTEM_INFO()
+  GetSystemInfo(&siInfo)
+  return Int(siInfo.dwNumberOfProcessors)
+#elseif os(WASI)
+  return 1
+#else
+#warning("Platform-specific implementation missing: CPU core count unavailable")
+  return nil
+#endif
+}
+
 /// A type whose instances can run a series of work items in strict order.
 ///
 /// When a work item is scheduled on an instance of this type, it runs after any
 /// previously-scheduled work items. If it suspends, subsequently-scheduled work
 /// items do not start running; they must wait until the suspended work item
 /// either returns or throws an error.
+///
+/// This type is not part of the public interface of the testing library.
 final actor Serializer {
   /// The maximum number of work items that may run concurrently.
   nonisolated let maximumWidth: Int
@@ -36,7 +57,7 @@ final actor Serializer {
   /// - Returns: Whatever is returned from `workItem`.
   ///
   /// - Throws: Whatever is thrown by `workItem`.
-  func run<R>(_ workItem: @Sendable @isolated(any) () async throws -> R) async rethrows -> R where R: Sendable {
+  func run<R>(_ workItem: @isolated(any) @Sendable () async throws -> R) async rethrows -> R where R: Sendable {
     _currentWidth += 1
     defer {
       // Resume the next scheduled closure.

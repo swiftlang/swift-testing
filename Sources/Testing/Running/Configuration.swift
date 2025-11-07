@@ -22,48 +22,17 @@ public struct Configuration: Sendable {
   /// Whether or not to parallelize the execution of tests and test cases.
   public var isParallelizationEnabled: Bool = true
 
-  /// The number of CPU cores on the current system, or `nil` if that
-  /// information is not available.
-  private static var _cpuCoreCount: Int? {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
-    return Int(sysconf(Int32(_SC_NPROCESSORS_CONF)))
-#elseif os(Windows)
-    var siInfo = SYSTEM_INFO()
-    GetSystemInfo(&siInfo)
-    return Int(siInfo.dwNumberOfProcessors)
-#elseif os(WASI)
-    return 1
-#else
-#warning("Platform-specific implementation missing: CPU core count unavailable")
-    return nil
-#endif
-
-  }
-
   /// The maximum width of parallelization.
   ///
   /// The value of this property determines how many tests (or rather, test
   /// cases) will run in parallel. The default value of this property is equal
   /// to twice the number of CPU cores reported by the operating system, or
   /// `Int.max` if that value is not available.
-  @_spi(Experimental)
-  public var maximumParallelizationWidth: Int {
-    get {
-      serializer.maximumWidth
-    }
-    set {
-      serializer = Serializer(maximumWidth: newValue)
-    }
-  }
-
-  /// The serializer that backs ``maximumParallelizationWidth``.
   ///
-  /// - Note: This serializer is ignored if ``isParallelizationEnabled`` is
-  ///   `false`.
-  var serializer: Serializer = {
-    let cpuCoreCount = Self._cpuCoreCount.map { max(1, $0) * 2 } ?? .max
-    return Serializer(maximumWidth: cpuCoreCount)
-  }()
+  /// If the value of ``isParallelizationEnabled`` is `false`, this property has
+  /// no effect.
+  @_spi(Experimental)
+  public var maximumParallelizationWidth: Int = cpuCoreCount.map { max(1, $0) * 2 } ?? .max
 
   /// How to symbolicate backtraces captured during a test run.
   ///
