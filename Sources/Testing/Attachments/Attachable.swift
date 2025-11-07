@@ -131,6 +131,13 @@ extension Attachable where Self: StringProtocol {
     // SEE: https://github.com/swiftlang/swift/blob/main/stdlib/public/core/StringUTF8View.swift
     utf8.count
   }
+
+  public borrowing func preferredName(for attachment: borrowing Attachment<Self>, basedOn suggestedName: String) -> String {
+    if suggestedName.contains(".") {
+      return suggestedName
+    }
+    return "\(suggestedName).txt"
+  }
 }
 
 // MARK: - Default conformances
