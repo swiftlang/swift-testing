@@ -38,4 +38,3 @@ const char *swt_getEarlyCWD(void) {
   return nullptr;
 #endif
 }
-#endif
