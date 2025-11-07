@@ -47,7 +47,7 @@ extension CommandLine {
           }
           if readCount < buffer.count {
             buffer[readCount] = 0 // NUL-terminate the string.
-            return String(cString: buffer.baseAddress!)
+            result = String(cString: buffer.baseAddress!)
           } else {
             bufferCount += Int(PATH_MAX) // add more space and try again
           }
