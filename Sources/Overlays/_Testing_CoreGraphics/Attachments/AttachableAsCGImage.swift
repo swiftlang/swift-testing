@@ -50,17 +50,17 @@ package protocol AttachableAsCGImage: AttachableAsImage {
   var attachmentScaleFactor: CGFloat { get }
 }
 
-/// The set of type identifiers supported by Image I/O.
+/// All type identifiers supported by Image I/O.
 @available(_uttypesAPI, *)
 private let _supportedTypeIdentifiers = Set(CGImageDestinationCopyTypeIdentifiers() as? [String] ?? [])
 
-/// The set of content types supported by Image I/O.
+/// All content types supported by Image I/O.
 @available(_uttypesAPI, *)
 private let _supportedContentTypes = {
 #if canImport(UniformTypeIdentifiers_Private)
-  Set(UTType._types(identifiers: _supportedTypeIdentifiers).values)
+  UTType._types(identifiers: _supportedTypeIdentifiers).values
 #else
-  Set(_supportedTypeIdentifiers.compactMap(UTType.init(_:)))
+  _supportedTypeIdentifiers.compactMap(UTType.init(_:))
 #endif
 }()
 
@@ -80,7 +80,11 @@ extension AttachableAsCGImage {
     // Convert the image to a CGImage.
     let attachableCGImage = try attachableCGImage
 
-    // Determine the base content type to use.
+    // Determine the base content type to use. We do a naïve case-sensitive
+    // string comparison on the identifier first as it's faster than querying
+    // the corresponding UTType instances (because it doesn't need to touch the
+    // Launch Services database). The common cases where the developer passes
+    // no image format or passes .png/.jpeg are covered by the fast path.
     var contentType = imageFormat.contentType
     if !_supportedTypeIdentifiers.contains(contentType.identifier) {
       guard let baseType = _supportedContentTypes.first(where: contentType.conforms(to:)) else {
