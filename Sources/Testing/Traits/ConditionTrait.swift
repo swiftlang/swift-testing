@@ -98,6 +98,14 @@ public struct ConditionTrait: TestTrait, SuiteTrait {
   public var isRecursive: Bool {
     true
   }
+  
+  /// Indicates whether the result of the evaluated condition
+  /// should be logically inverted.
+  ///
+  /// This allows the system to track if the condition's result
+  /// has been negated,
+  /// which is useful to differ `disabled(_:)` from `enabled(_:)`
+  internal var isInverted: Bool = false
 }
 
 // MARK: -
@@ -125,7 +133,10 @@ extension Trait where Self == ConditionTrait {
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
-    Self(kind: .conditional(condition), comments: Array(comment), sourceLocation: sourceLocation)
+    Self(kind: .conditional(condition),
+         comments: Array(comment),
+         sourceLocation: sourceLocation,
+         isInverted: false)
   }
 
   /// Constructs a condition trait that disables a test if it returns `false`.
@@ -144,7 +155,10 @@ extension Trait where Self == ConditionTrait {
     sourceLocation: SourceLocation = #_sourceLocation,
     _ condition: @escaping @Sendable () async throws -> Bool
   ) -> Self {
-    Self(kind: .conditional(condition), comments: Array(comment), sourceLocation: sourceLocation)
+    Self(kind: .conditional(condition),
+         comments: Array(comment),
+         sourceLocation: sourceLocation,
+         isInverted: false)
   }
 
   /// Constructs a condition trait that disables a test unconditionally.
@@ -159,7 +173,10 @@ extension Trait where Self == ConditionTrait {
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
-    Self(kind: .unconditional(false), comments: Array(comment), sourceLocation: sourceLocation)
+    Self(kind: .unconditional(false),
+         comments: Array(comment),
+         sourceLocation: sourceLocation,
+         isInverted: true)
   }
 
   /// Constructs a condition trait that disables a test if its value is true.
@@ -184,7 +201,10 @@ extension Trait where Self == ConditionTrait {
     _ comment: Comment? = nil,
     sourceLocation: SourceLocation = #_sourceLocation
   ) -> Self {
-    Self(kind: .conditional { !(try condition()) }, comments: Array(comment), sourceLocation: sourceLocation)
+    Self(kind: .conditional { !(try condition()) },
+         comments: Array(comment),
+         sourceLocation: sourceLocation,
+         isInverted: true)
   }
 
   /// Constructs a condition trait that disables a test if its value is true.
@@ -203,6 +223,88 @@ extension Trait where Self == ConditionTrait {
     sourceLocation: SourceLocation = #_sourceLocation,
     _ condition: @escaping @Sendable () async throws -> Bool
   ) -> Self {
-    Self(kind: .conditional { !(try await condition()) }, comments: Array(comment), sourceLocation: sourceLocation)
+    Self(kind: .conditional { !(try await condition()) },
+         comments: Array(comment),
+         sourceLocation: sourceLocation,
+         isInverted: true)
+  }
+}
+
+
+extension Trait where Self == ConditionTrait {
+  /// Combines two ``ConditionTrait`` conditions using the AND (`&&`) operator.
+  ///
+  /// Use this operator to group two conditions such that
+  /// the resulting ``GroupedConditionTraits``
+  /// evaluates to `true` **only if both** subconditions are `true`.
+  ///
+  /// - Example:
+  ///   ```swift
+  ///   struct AppFeature {
+  ///     static let isFeatureEnabled: Bool = true
+  ///     static let osIsAndroid: Bool = true
+  ///
+  ///     static let featureCondition: ConditionTrait = .disabled(if: isFeatureEnabled)
+  ///     static let osCondition: ConditionTrait = .disabled(if: osIsAndroid)
+  ///   }
+  ///
+  ///   @Test(AppFeature.featureCondition && AppFeature.osCondition)
+  ///   func foo() {}
+  ///
+  ///   @Test(.disabled(if: AppFeature.isFeatureEnabled && AppFeature.osIsAndroid))
+  ///   func bar() {}
+  ///   ```
+  ///   In this example, both `foo` and `bar` will be disabled only when **both**
+  ///   `AppFeature.isFeatureEnabled` is `true` and the OS is Android.
+  ///
+  /// - Parameters:
+  ///   - lhs: The left-hand side condition.
+  ///   - rhs: The right-hand side condition.
+  /// - Returns: A ``GroupedConditionTraits`` instance
+  ///   representing the AND of the two conditions.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
+  public static func &&(lhs: Self, rhs: Self) -> GroupedConditionTraits {
+    GroupedConditionTraits(.and(.trait(lhs), .trait(rhs)))
+  }
+
+  /// Combines two ``ConditionTrait`` conditions using the OR (`||`) operator.
+  ///
+  /// Use this operator to group two conditions such that
+  /// the resulting ``GroupedConditionTraits``
+  /// evaluates to `true` if **either** of the subconditions is `true`.
+  ///
+  /// - Example:
+  ///   ```swift
+  ///   struct AppFeature {
+  ///     static let isInternalBuild: Bool = false
+  ///     static let isSimulator: Bool = true
+  ///
+  ///     static let buildCondition: ConditionTrait = .enabled(if: isInternalBuild)
+  ///     static let platformCondition: ConditionTrait = .enabled(if: isSimulator)
+  ///   }
+  ///
+  ///   @Test(AppFeature.buildCondition || AppFeature.platformCondition)
+  ///   func foo() {}
+  ///
+  ///   @Test(.enabled(if: AppFeature.isInternalBuild || AppFeature.isSimulator))
+  ///   func bar() {}
+  ///   ```
+  ///   In this example, both `foo` and `bar` will be enabled when **either**
+  ///   the build is internal or running on a simulator.
+  ///
+  /// - Parameters:
+  ///   - lhs: The left-hand side condition.
+  ///   - rhs: The right-hand side condition.
+  /// - Returns: A ``GroupedConditionTraits`` instance
+  ///   representing the OR of the two conditions.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.2)
+  /// }
+  public static func ||(lhs: Self, rhs: Self) -> GroupedConditionTraits {
+    GroupedConditionTraits(.or(.trait(lhs), .trait(rhs)))
   }
 }
