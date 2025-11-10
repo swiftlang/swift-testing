@@ -488,9 +488,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   // Parallelization (on by default)
   if args.contains("--no-parallel") {
     result.parallel = false
-  }
-  if let maximumParallelizationWidth = args.argumentValue(forLabel: "--experimental-maximum-parallelization-width").flatMap(Int.init)
-    ?? Environment.variable(named: "SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH").flatMap(Int.init) {
+  } else if let maximumParallelizationWidth = Environment.variable(named: "SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH").flatMap(Int.init) {
     // TODO: decide if we want to repurpose --num-workers for this use case?
     result.experimentalMaximumParallelizationWidth = maximumParallelizationWidth
   }
