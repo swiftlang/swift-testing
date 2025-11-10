@@ -68,7 +68,7 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
   private nonisolated \(staticKeyword(for: typeName)) let \(name): Testing.__TestContentRecord = (
     \(kindExpr), \(kind.commentRepresentation)
     0,
-    unsafe \(accessorName),
+    \(accessorName),
     \(contextExpr),
     0
   )
