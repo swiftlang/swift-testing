@@ -547,8 +547,7 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   // Parallelization (on by default)
   if let parallel = args.parallel {
     configuration.isParallelizationEnabled = parallel
-  }
-  if let maximumParallelizationWidth = Environment.variable(named: "SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH").flatMap(Int.init) {
+  } else if let maximumParallelizationWidth = Environment.variable(named: "SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH").flatMap(Int.init) {
     // TODO: decide if we want to repurpose --num-workers for this use case?
     if maximumParallelizationWidth < 1 {
       throw _EntryPointError.invalidArgument("--experimental-maximum-parallelization-width", value: String(describing: maximumParallelizationWidth))
