@@ -210,9 +210,6 @@ public struct __CommandLineArguments_v0: Sendable {
   /// The value of the `--parallel` or `--no-parallel` argument.
   public var parallel: Bool?
 
-  /// The maximum number of test tasks to run in parallel.
-  public var experimentalMaximumParallelizationWidth: Int?
-
   /// The value of the `--symbolicate-backtraces` argument.
   public var symbolicateBacktraces: String?
 
@@ -339,7 +336,6 @@ extension __CommandLineArguments_v0: Codable {
   enum CodingKeys: String, CodingKey {
     case listTests
     case parallel
-    case experimentalMaximumParallelizationWidth
     case symbolicateBacktraces
     case verbose
     case veryVerbose
@@ -488,9 +484,6 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
   // Parallelization (on by default)
   if args.contains("--no-parallel") {
     result.parallel = false
-  } else if let maximumParallelizationWidth = Environment.variable(named: "SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH").flatMap(Int.init) {
-    // TODO: decide if we want to repurpose --num-workers for this use case?
-    result.experimentalMaximumParallelizationWidth = maximumParallelizationWidth
   }
 
   // Whether or not to symbolicate backtraces in the event stream.
@@ -552,8 +545,11 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   var configuration = Configuration()
 
   // Parallelization (on by default)
-  configuration.isParallelizationEnabled = args.parallel ?? true
-  if let maximumParallelizationWidth = args.experimentalMaximumParallelizationWidth {
+  if let parallel = args.parallel {
+    configuration.isParallelizationEnabled = parallel
+  }
+  if let maximumParallelizationWidth = Environment.variable(named: "SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH").flatMap(Int.init) {
+    // TODO: decide if we want to repurpose --num-workers for this use case?
     if maximumParallelizationWidth < 1 {
       throw _EntryPointError.invalidArgument("--experimental-maximum-parallelization-width", value: String(describing: maximumParallelizationWidth))
     }
