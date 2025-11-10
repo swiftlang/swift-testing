@@ -67,9 +67,9 @@ extension Runner {
   }
 
   /// Context to apply to a test run.
-  struct Context: Sendable {
+  private struct _Context: Sendable {
     /// A serializer used to reduce parallelism among test cases.
-    var testCaseSerializer: Serializer
+    var testCaseSerializer: Serializer?
   }
 
   /// Apply the custom scope for any test scope providers of the traits
@@ -200,7 +200,7 @@ extension Runner {
   /// ## See Also
   ///
   /// - ``Runner/run()``
-  private static func _runStep(atRootOf stepGraph: Graph<String, Plan.Step?>, context: Context) async throws {
+  private static func _runStep(atRootOf stepGraph: Graph<String, Plan.Step?>, context: _Context) async throws {
     // Whether to send a `.testEnded` event at the end of running this step.
     // Some steps' actions may not require a final event to be sent — for
     // example, a skip event only sends `.testSkipped`.
@@ -297,7 +297,7 @@ extension Runner {
   ///
   /// - Throws: Whatever is thrown from the test body. Thrown errors are
   ///   normally reported as test failures.
-  private static func _runChildren(of stepGraph: Graph<String, Plan.Step?>, context: Context) async throws {
+  private static func _runChildren(of stepGraph: Graph<String, Plan.Step?>, context: _Context) async throws {
     let childGraphs = if _configuration.isParallelizationEnabled {
       // Explicitly shuffle the steps to help detect accidental dependencies
       // between tests due to their ordering.
@@ -352,7 +352,7 @@ extension Runner {
   ///
   /// If parallelization is supported and enabled, the generated test cases will
   /// be run in parallel using a task group.
-  private static func _runTestCases(_ testCases: some Sequence<Test.Case>, within step: Plan.Step, context: Context) async {
+  private static func _runTestCases(_ testCases: some Sequence<Test.Case>, within step: Plan.Step, context: _Context) async {
     let configuration = _configuration
 
     // Apply the configuration's test case filter.
@@ -370,8 +370,10 @@ extension Runner {
     }
 
     await _forEach(in: testCases.enumerated(), namingTasksWith: taskNamer) { _, testCase in
-      if configuration.isParallelizationEnabled {
-        await context.testCaseSerializer.run { await _runTestCase(testCase, within: step, context: context) }
+      if let testCaseSerializer = context.testCaseSerializer {
+        // Note that if .serialized is applied to an inner scope, we still use
+        // this serializer (if set) so that we don't overcommit.
+        await testCaseSerializer.run { await _runTestCase(testCase, within: step, context: context) }
       } else {
         await _runTestCase(testCase, within: step, context: context)
       }
@@ -387,7 +389,7 @@ extension Runner {
   ///
   /// This function sets ``Test/Case/current``, then invokes the test case's
   /// body closure.
-  private static func _runTestCase(_ testCase: Test.Case, within step: Plan.Step, context: Context) async {
+  private static func _runTestCase(_ testCase: Test.Case, within step: Plan.Step, context: _Context) async {
     let configuration = _configuration
 
     Event.post(.testCaseStarted, for: (step.test, testCase), configuration: configuration)
@@ -451,9 +453,16 @@ extension Runner {
     // itself (implicitly as `self` nor as an argument) because we don't want to
     // accidentally depend on e.g. the `configuration` property rather than the
     // current configuration.
-    let context = Context(
-      testCaseSerializer: Serializer(maximumWidth: runner.configuration.maximumParallelizationWidth)
-    )
+    let context: _Context = {
+      var context = _Context()
+
+      let maximumParallelizationWidth = runner.configuration.maximumParallelizationWidth
+      if maximumParallelizationWidth > 1 && maximumParallelizationWidth < .max {
+        context.testCaseSerializer = Serializer(maximumWidth: runner.configuration.maximumParallelizationWidth)
+      }
+
+      return context
+    }()
 
     await Configuration.withCurrent(runner.configuration) {
       // Post an event for every test in the test plan being run. These events

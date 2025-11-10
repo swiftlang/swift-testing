@@ -27,6 +27,12 @@ var cpuCoreCount: Int? {
 #endif
 }
 
+/// The default parallelization width when parallelized testing is enabled.
+var defaultParallelizationWidth: Int {
+  // cpuCoreCount.map { max(1, $0) * 2 } ?? .max
+  .max
+}
+
 /// A type whose instances can run a series of work items in strict order.
 ///
 /// When a work item is scheduled on an instance of this type, it runs after any
