@@ -191,6 +191,14 @@ public struct Event: Sendable {
   /// The instant at which the event occurred.
   public var instant: Test.Clock.Instant
 
+  var _timeSpentRunning = UInt64(0) // nanoseconds
+
+  @_spi(Experimental)
+  @available(_clockAPI, *)
+  public var timeSpentRunning: Duration {
+    .nanoseconds(_timeSpentRunning)
+  }
+
 #if DEBUG
   /// Whether or not this event was deferred.
   ///

@@ -25,3 +25,12 @@ func decorateTaskName(_ taskName: String?, withAction action: String?) -> String
     return "\(prefix) \(taskName)\(action)"
   }
 }
+
+extension Task<Never, Never> {
+  @_silgen_name("_swift_task_setTimeSpentRunningTracked")
+  private static func _setTimeSpentRunningTracked(_ newValue: Bool) -> Bool
+
+  static func trackTimeSpentRunning() {
+    _ = _setTimeSpentRunningTracked(true)
+  }
+}

@@ -67,6 +67,8 @@ extension Event {
         /// The instant at which the test started.
         var startInstant: Test.Clock.Instant
 
+        var timeSpentRunning = UInt64(0) // nanoseconds
+
         /// The number of issues recorded for the test, grouped by their
         /// level of severity.
         var issueCount: [Issue.Severity: Int] = [:]
@@ -321,6 +323,9 @@ extension Event.HumanReadableOutputRecorder {
       
       case .testCaseStarted:
         context.testData[keyPath] = .init(startInstant: instant)
+      
+      case .testCaseEnded:
+        context.testData[keyPath]?.timeSpentRunning = event._timeSpentRunning
 
       case let .testCancelled(skipInfo), let .testCaseCancelled(skipInfo):
         context.testData[keyPath]?.cancellationInfo = skipInfo
@@ -419,6 +424,17 @@ extension Event.HumanReadableOutputRecorder {
       } else {
         ""
       }
+      let timeSpentRunning = testDataGraph.map { testDataGraph in
+        var timeSpentRunning = UInt64(0) // nanoseconds
+        var count = 0
+        for testData in testDataGraph.children.values.lazy.compactMap(\.value) {
+          timeSpentRunning += testData.timeSpentRunning
+          count += 1
+        }
+        let timeSpentRunningSeconds = Double(timeSpentRunning) / 1_000_000_000.0
+        let avgTimeSpentRunningSeconds = timeSpentRunningSeconds / Double(count)
+        return " (CPU: \(timeSpentRunningSeconds) sec, avg. \(avgTimeSpentRunningSeconds) sec/case)"
+      } ?? ""
       var cancellationComment = "."
       let (symbol, verbed): (Event.Symbol, String)
       if issues.errorIssueCount > 0 {
@@ -435,7 +451,7 @@ extension Event.HumanReadableOutputRecorder {
       var result = [
         Message(
           symbol: symbol,
-          stringValue: "\(_capitalizedTitle(for: test)) \(testName)\(testCasesCount) \(verbed) after \(duration)\(issues.description)\(cancellationComment)"
+          stringValue: "\(_capitalizedTitle(for: test)) \(testName)\(testCasesCount) \(verbed) after \(duration)\(timeSpentRunning)\(issues.description)\(cancellationComment)"
         )
       ]
       if issues.errorIssueCount > 0 {
