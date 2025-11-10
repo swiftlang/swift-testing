@@ -244,7 +244,7 @@ extension DiscoverableAsTestContent {
     return SectionBounds.all(.testContent).lazy.flatMap { sb in
       sb.buffer.withMemoryRebound(to: _TestContentRecord.self) { records in
         (0 ..< records.count).lazy
-          .map { (records.baseAddress! + $0) as UnsafePointer<_TestContentRecord> }
+          .map { records.baseAddress! + $0 }
           .filter { $0.pointee.kind == kind }
           .map { TestContentRecord<Self>(imageAddress: sb.imageAddress, recordAddress: $0) }
       }

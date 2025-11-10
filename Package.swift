@@ -385,11 +385,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
       .enableUpcomingFeature("MemberImportVisibility"),
 
-      // This setting is enabled in the package, but not in the toolchain build
-      // (via CMake). Enabling it is dependent on acceptance of the @section
-      // proposal via Swift Evolution.
-      .enableExperimentalFeature("SymbolLinkageMarkers"),
-
       .enableUpcomingFeature("InferIsolatedConformances"),
 
       // When building as a package, the macro plugin always builds as an
