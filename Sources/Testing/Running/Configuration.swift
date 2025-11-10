@@ -43,8 +43,8 @@ public struct Configuration: Sendable {
   ///   not available.
   /// }
   ///
-  /// If the value of ``isParallelizationEnabled`` is `false`, this property has
-  /// no effect.
+  /// - Note: Setting the value of this property implicitly sets the value of
+  ///   the ``isParallelizationEnabled`` property.
   @_spi(Experimental)
   public var maximumParallelizationWidth: Int = defaultParallelizationWidth
 
