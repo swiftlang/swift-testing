@@ -556,7 +556,9 @@ public func configurationForEntryPoint(from args: __CommandLineArguments_v0) thr
   // Parallelization (on by default)
   configuration.isParallelizationEnabled = args.parallel ?? true
   if let maximumParallelizationWidth = args.experimentalMaximumParallelizationWidth {
-    try! FileHandle.stderr.write("MAX WIDTH: \(maximumParallelizationWidth)\n")
+    if maximumParallelizationWidth < 1 {
+      throw _EntryPointError.invalidArgument("--experimental-maximum-parallelization-width", value: String(describing: maximumParallelizationWidth))
+    }
     configuration.maximumParallelizationWidth = maximumParallelizationWidth
   }
 

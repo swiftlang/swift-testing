@@ -46,6 +46,7 @@ final actor Serializer {
   private var _continuations = [CheckedContinuation<Void, Never>]()
 
   init(maximumWidth: Int = 1) {
+    precondition(maximumWidth >= 1, "Invalid serializer width \(maximumWidth).")
     self.maximumWidth = maximumWidth
   }
 
