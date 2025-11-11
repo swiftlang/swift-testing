@@ -67,6 +67,14 @@ extension Runner {
   }
 
   /// Context to apply to a test run.
+  ///
+  /// Instances of this type are passed directly to the various functions in
+  /// this file and represent context for the run itself. As such, they are not
+  /// task-local nor are they meant to change as the test run progresses.
+  ///
+  /// This type is distinct from ``Configuration`` which _can_ change on a
+  /// per-test basis. If you find yourself wanting to modify a property of this
+  /// type at runtime, it may be better-suited for ``Configuration`` instead.
   private struct _Context: Sendable {
     /// A serializer used to reduce parallelism among test cases.
     var testCaseSerializer: Serializer?
