@@ -30,7 +30,7 @@ struct Locked<T> {
   private final class _Storage: ManagedBuffer<T, pthread_mutex_t> {
     deinit {
       withUnsafeMutablePointerToElements { lock in
-        _ = lock.deinitialize(count: 1)
+        _ = pthread_mutex_destroy(lock)
       }
     }
   }
