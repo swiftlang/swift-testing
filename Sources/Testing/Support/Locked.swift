@@ -30,8 +30,16 @@ struct Locked<T> {
   private final class _Storage {
     let mutex: Mutex<T>
 
+#if os(Linux) || os(Android)
+    // The Linux implementation of Mutex terminates if `_tryLock()` is called on
+    // the owning thread. (Other platforms just return `false`.) So, on Linux,
+    // we also track the thread ID of the owner.
+    let owningThreadID: Atomic<pid_t>
+#endif
+
     init(_ rawValue: consuming sending T) {
       mutex = Mutex(rawValue)
+      owningThreadID = Atomic(0)
     }
   }
 #endif
@@ -88,6 +96,12 @@ extension Locked {
     return result
 #else
     try _storage.mutex.withLock { rawValue in
+#if os(Linux) || os(Android)
+      _storage.owningThreadID.store(gettid(), ordering: .sequentiallyConsistent)
+      defer {
+        _storage.owningThreadID.store(0, ordering: .sequentiallyConsistent)
+      }
+#endif
       try body(&rawValue)
     }
 #endif
@@ -119,7 +133,20 @@ extension Locked {
     }
     return result
 #else
+#if os(Linux) || os(Android)
+    let tid = gettid()
+    if _storage.owningThreadID.load(ordering: .sequentiallyConsistent) == tid {
+      // This thread already holds the lock.
+      return nil
+    }
+#endif
     try _storage.mutex.withLockIfAvailable { rawValue in
+#if os(Linux) || os(Android)
+      _storage.owningThreadID.store(tid, ordering: .sequentiallyConsistent)
+      defer {
+        _storage.owningThreadID.store(0, ordering: .sequentiallyConsistent)
+      }
+#endif
       try body(&rawValue)
     }
 #endif
