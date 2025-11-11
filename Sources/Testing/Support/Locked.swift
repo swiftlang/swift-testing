@@ -102,7 +102,7 @@ extension Locked {
         _storage.owningThreadID.store(0, ordering: .sequentiallyConsistent)
       }
 #endif
-      try body(&rawValue)
+      return try body(&rawValue)
     }
 #endif
   }
@@ -147,7 +147,7 @@ extension Locked {
         _storage.owningThreadID.store(0, ordering: .sequentiallyConsistent)
       }
 #endif
-      try body(&rawValue)
+      return try body(&rawValue)
     }
 #endif
   }
