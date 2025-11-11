@@ -140,7 +140,7 @@ extension Locked {
       return nil
     }
 #endif
-    try _storage.mutex.withLockIfAvailable { rawValue in
+    return try _storage.mutex.withLockIfAvailable { rawValue in
 #if os(Linux) || os(Android)
       _storage.owningThreadID.store(tid, ordering: .sequentiallyConsistent)
       defer {
