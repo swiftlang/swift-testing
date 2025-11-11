@@ -152,14 +152,6 @@ static int swt_siginfo_t_si_status(const siginfo_t *siginfo) {
 #endif
 #endif
 
-#if defined(__linux__) || defined(__ANDROID__)
-/// Get the current thread's ID.
-///
-/// This function is redeclared here because it is guarded by `_GNU_SOURCE` in
-/// the platform headers.
-SWT_EXTERN pid_t gettid(void);
-#endif
-
 /// Get the value of `EEXIST`.
 ///
 /// This function is provided because `EEXIST` is a complex macro in wasi-libc
