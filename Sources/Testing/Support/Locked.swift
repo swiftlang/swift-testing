@@ -92,6 +92,38 @@ extension Locked {
     }
 #endif
   }
+
+  /// Try to acquire the lock and invoke a function while it is held.
+  ///
+  /// - Parameters:
+  ///   - body: A closure to invoke while the lock is held.
+  ///
+  /// - Returns: Whatever is returned by `body`, or `nil` if the lock could not
+  ///   be acquired.
+  ///
+  /// - Throws: Whatever is thrown by `body`.
+  ///
+  /// This function can be used to synchronize access to shared data from a
+  /// synchronous caller. Wherever possible, use actor isolation or other Swift
+  /// concurrency tools.
+  func withLockIfAvailable<R>(_ body: (inout T) throws -> sending R) rethrows -> sending R? where R: ~Copyable {
+#if SWT_TARGET_OS_APPLE && canImport(os)
+    nonisolated(unsafe) let result: R? = try _storage.withUnsafeMutablePointers { rawValue, lock in
+      guard os_unfair_lock_trylock(lock) else {
+        return nil
+      }
+      defer {
+        os_unfair_lock_unlock(lock)
+      }
+      return try body(&rawValue.pointee)
+    }
+    return result
+#else
+    try _storage.mutex.withLockIfAvailable { rawValue in
+      try body(&rawValue)
+    }
+#endif
+  }
 }
 
 // MARK: - Additions
