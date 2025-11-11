@@ -26,20 +26,20 @@ struct Locked<T> {
   /// A type providing storage for the underlying lock and wrapped value.
 #if SWT_TARGET_OS_APPLE && canImport(os)
   private typealias _Storage = ManagedBuffer<T, os_unfair_lock_s>
+#elseif !SWT_FIXED_85448 && (os(Linux) || os(Android))
+  private final class _Storage: ManagedBuffer<T, pthread_mutex_t> {
+    deinit {
+      withUnsafeMutablePointerToElements { lock in
+        _ = lock.deinitialize(count: 1)
+      }
+    }
+  }
 #else
   private final class _Storage {
     let mutex: Mutex<T>
 
-#if os(Linux) || os(Android)
-    // The Linux implementation of Mutex terminates if `_tryLock()` is called on
-    // the owning thread. (Other platforms just return `false`.) So, on Linux,
-    // we also track the thread ID of the owner.
-    let owningThreadID: Atomic<pid_t>
-#endif
-
     init(_ rawValue: consuming sending T) {
       mutex = Mutex(rawValue)
-      owningThreadID = Atomic(0)
     }
   }
 #endif
@@ -56,6 +56,11 @@ extension Locked: RawRepresentable {
     _storage = .create(minimumCapacity: 1, makingHeaderWith: { _ in rawValue })
     _storage.withUnsafeMutablePointerToElements { lock in
       lock.initialize(to: .init())
+    }
+#elseif !SWT_FIXED_85448 && (os(Linux) || os(Android))
+    _storage = _Storage.create(minimumCapacity: 1, makingHeaderWith: { _ in rawValue }) as! _Storage
+    _storage.withUnsafeMutablePointerToElements { lock in
+      _ = pthread_mutex_init(lock, nil)
     }
 #else
     nonisolated(unsafe) let rawValue = rawValue
@@ -85,26 +90,29 @@ extension Locked {
   /// synchronous caller. Wherever possible, use actor isolation or other Swift
   /// concurrency tools.
   func withLock<R>(_ body: (inout T) throws -> sending R) rethrows -> sending R where R: ~Copyable {
+    nonisolated(unsafe) let result: R
 #if SWT_TARGET_OS_APPLE && canImport(os)
-    nonisolated(unsafe) let result = try _storage.withUnsafeMutablePointers { rawValue, lock in
+    result = try _storage.withUnsafeMutablePointers { rawValue, lock in
       os_unfair_lock_lock(lock)
       defer {
         os_unfair_lock_unlock(lock)
       }
       return try body(&rawValue.pointee)
     }
-    return result
-#else
-    try _storage.mutex.withLock { rawValue in
-#if os(Linux) || os(Android)
-      _storage.owningThreadID.store(gettid(), ordering: .sequentiallyConsistent)
+#elseif !SWT_FIXED_85448 && (os(Linux) || os(Android))
+     result = try _storage.withUnsafeMutablePointers { rawValue, lock in
+      pthread_mutex_lock(lock)
       defer {
-        _storage.owningThreadID.store(0, ordering: .sequentiallyConsistent)
+        pthread_mutex_unlock(lock)
       }
-#endif
+      return try body(&rawValue.pointee)
+    }
+#else
+    result = try _storage.mutex.withLock { rawValue in
       return try body(&rawValue)
     }
 #endif
+    return result
   }
 
   /// Try to acquire the lock and invoke a function while it is held.
@@ -121,8 +129,9 @@ extension Locked {
   /// synchronous caller. Wherever possible, use actor isolation or other Swift
   /// concurrency tools.
   func withLockIfAvailable<R>(_ body: (inout T) throws -> sending R) rethrows -> sending R? where R: ~Copyable {
+    nonisolated(unsafe) let result: R?
 #if SWT_TARGET_OS_APPLE && canImport(os)
-    nonisolated(unsafe) let result: R? = try _storage.withUnsafeMutablePointers { rawValue, lock in
+    result = try _storage.withUnsafeMutablePointers { rawValue, lock in
       guard os_unfair_lock_trylock(lock) else {
         return nil
       }
@@ -131,25 +140,22 @@ extension Locked {
       }
       return try body(&rawValue.pointee)
     }
-    return result
-#else
-#if os(Linux) || os(Android)
-    let tid = gettid()
-    if _storage.owningThreadID.load(ordering: .sequentiallyConsistent) == tid {
-      // This thread already holds the lock.
-      return nil
-    }
-#endif
-    try _storage.mutex.withLockIfAvailable { rawValue in
-#if os(Linux) || os(Android)
-      _storage.owningThreadID.store(tid, ordering: .sequentiallyConsistent)
-      defer {
-        _storage.owningThreadID.store(0, ordering: .sequentiallyConsistent)
+#elseif !SWT_FIXED_85448 && (os(Linux) || os(Android))
+    result = try _storage.withUnsafeMutablePointers { rawValue, lock in
+      guard 0 == pthread_mutex_trylock(lock) else {
+        return nil
       }
-#endif
+      defer {
+        pthread_mutex_unlock(lock)
+      }
+      return try body(&rawValue.pointee)
+    }
+#else
+    result = try _storage.mutex.withLockIfAvailable { rawValue in
       return try body(&rawValue)
     }
 #endif
+    return result
   }
 }
 
