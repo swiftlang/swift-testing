@@ -142,9 +142,14 @@ extension TestCancellable {
 private func _cancel<T>(_ cancellableValue: T?, for testAndTestCase: (Test?, Test.Case?), skipInfo: SkipInfo) where T: TestCancellable {
   if cancellableValue != nil, let taskCanceller = _currentTaskCancellers[ObjectIdentifier(T.self)] {
     // Try to cancel the task associated with `T`, if any. If we succeed, post a
-    // corresponding event with the relevant skip info.
+    // corresponding event with the relevant skip info. If we fail, we still
+    // attempt to cancel the current *task* in order to honor our API contract.
     if taskCanceller.cancel(with: skipInfo) {
       Event.post(T.makeCancelledEventKind(with: skipInfo), for: testAndTestCase)
+    } else {
+      withUnsafeCurrentTask { task in
+        task?.cancel()
+      }
     }
   } else {
     // The current task isn't associated with a test/case, so just cancel the
