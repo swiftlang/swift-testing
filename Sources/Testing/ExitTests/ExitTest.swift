@@ -381,6 +381,7 @@ extension ExitTest {
 #if compiler(>=6.2)
   @safe
 #endif
+  @_disfavoredOverload
   public static func __store<T>(
     _ id: (UInt64, UInt64, UInt64, UInt64),
     _ body: T,
