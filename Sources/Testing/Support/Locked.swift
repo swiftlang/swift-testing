@@ -109,7 +109,7 @@ extension Locked {
     }
 #else
     result = try _storage.mutex.withLock { rawValue in
-      return try body(&rawValue)
+      try body(&rawValue)
     }
 #endif
     return result
