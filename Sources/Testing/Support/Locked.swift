@@ -9,7 +9,9 @@
 //
 
 internal import _TestingInternals
+#if canImport(Synchronization)
 private import Synchronization
+#endif
 
 /// A type that wraps a value requiring access from a synchronous caller during
 /// concurrent execution.
@@ -24,7 +26,7 @@ private import Synchronization
 /// This type is not part of the public interface of the testing library.
 struct Locked<T> {
   /// A type providing storage for the underlying lock and wrapped value.
-#if SWT_TARGET_OS_APPLE && canImport(os)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK
   private typealias _Storage = ManagedBuffer<T, os_unfair_lock_s>
 #elseif !SWT_FIXED_85448 && (os(Linux) || os(Android))
   private final class _Storage: ManagedBuffer<T, pthread_mutex_t> {
@@ -52,7 +54,7 @@ extension Locked: Sendable where T: Sendable {}
 
 extension Locked: RawRepresentable {
   init(rawValue: T) {
-#if SWT_TARGET_OS_APPLE && canImport(os)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK
     _storage = .create(minimumCapacity: 1, makingHeaderWith: { _ in rawValue })
     _storage.withUnsafeMutablePointerToElements { lock in
       lock.initialize(to: .init())
@@ -91,7 +93,7 @@ extension Locked {
   /// concurrency tools.
   func withLock<R>(_ body: (inout T) throws -> sending R) rethrows -> sending R where R: ~Copyable {
     nonisolated(unsafe) let result: R
-#if SWT_TARGET_OS_APPLE && canImport(os)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK
     result = try _storage.withUnsafeMutablePointers { rawValue, lock in
       os_unfair_lock_lock(lock)
       defer {
@@ -130,7 +132,7 @@ extension Locked {
   /// concurrency tools.
   func withLockIfAvailable<R>(_ body: (inout T) throws -> sending R) rethrows -> sending R? where R: ~Copyable {
     nonisolated(unsafe) let result: R?
-#if SWT_TARGET_OS_APPLE && canImport(os)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK
     result = try _storage.withUnsafeMutablePointers { rawValue, lock in
       guard os_unfair_lock_trylock(lock) else {
         return nil
