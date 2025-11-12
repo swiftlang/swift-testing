@@ -36,7 +36,7 @@ struct Locked<T> {
       }
     }
   }
-#else
+#elseif canImport(Synchronization)
   private final class _Storage {
     let mutex: Mutex<T>
 
@@ -44,6 +44,8 @@ struct Locked<T> {
       mutex = Mutex(rawValue)
     }
   }
+#else
+#error("Platform-specific misconfiguration: no mutex or lock type available")
 #endif
 
   /// Storage for the underlying lock and wrapped value.
@@ -64,9 +66,11 @@ extension Locked: RawRepresentable {
     _storage.withUnsafeMutablePointerToElements { lock in
       _ = pthread_mutex_init(lock, nil)
     }
-#else
+#elseif canImport(Synchronization)
     nonisolated(unsafe) let rawValue = rawValue
     _storage = _Storage(rawValue)
+#else
+#error("Platform-specific misconfiguration: no mutex or lock type available")
 #endif
   }
 
@@ -109,10 +113,12 @@ extension Locked {
       }
       return try body(&rawValue.pointee)
     }
-#else
+#elseif canImport(Synchronization)
     result = try _storage.mutex.withLock { rawValue in
       try body(&rawValue)
     }
+#else
+#error("Platform-specific misconfiguration: no mutex or lock type available")
 #endif
     return result
   }
@@ -152,10 +158,12 @@ extension Locked {
       }
       return try body(&rawValue.pointee)
     }
-#else
+#elseif canImport(Synchronization)
     result = try _storage.mutex.withLockIfAvailable { rawValue in
       return try body(&rawValue)
     }
+#else
+#error("Platform-specific misconfiguration: no mutex or lock type available")
 #endif
     return result
   }
