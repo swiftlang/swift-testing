@@ -23,10 +23,10 @@ add_library(Testing
   ABI/Encoded/ABI.EncodedIssue.swift
   ABI/Encoded/ABI.EncodedMessage.swift
   ABI/Encoded/ABI.EncodedTest.swift
-  Attachments/Images/_AttachableAsImage.swift
+  Attachments/Images/AttachableAsImage.swift
   Attachments/Images/_AttachableImageWrapper.swift
   Attachments/Images/AttachableImageFormat.swift
-  Attachments/Images/Attachment+_AttachableAsImage.swift
+  Attachments/Images/Attachment+AttachableAsImage.swift
   Attachments/Images/ImageAttachmentError.swift
   Attachments/Attachable.swift
   Attachments/AttachableWrapper.swift
@@ -93,6 +93,7 @@ add_library(Testing
   Support/Graph.swift
   Support/JSON.swift
   Support/Locked.swift
+  Support/Serializer.swift
   Support/VersionNumber.swift
   Support/Versions.swift
   Discovery+Macro.swift
