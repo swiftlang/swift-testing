@@ -223,16 +223,13 @@ extension Test: TestCancellable {
   /// current test has been cancelled, but does not attempt to cancel the test a
   /// second time.
   ///
-  /// @Comment {
-  ///   TODO: Document the interaction between an exit test and test
-  ///   cancellation. In particular, the error thrown by this function isn't
-  ///   thrown into the parent process and task cancellation doesn't propagate
-  ///   (because the exit test _de facto_ runs in a detached task.)
-  /// }
-  ///
   /// - Important: If the current task is not associated with a test (for
   ///   example, because it was created with [`Task.detached(name:priority:operation:)`](https://developer.apple.com/documentation/swift/task/detached(name:priority:operation:)-795w1))
   ///   this function records an issue and cancels the current task.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
   public static func cancel(_ comment: Comment? = nil, sourceLocation: SourceLocation = #_sourceLocation) throws -> Never {
     let skipInfo = SkipInfo(comment: comment, sourceContext: SourceContext(backtrace: nil, sourceLocation: sourceLocation))
     try Self.cancel(with: skipInfo)
