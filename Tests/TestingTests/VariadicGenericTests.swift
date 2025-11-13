@@ -11,7 +11,6 @@
 import Testing
 private import _TestingInternals
 
-#if SWT_FIXED_161205293
 @Test func stringsAsCStringArguments() {
   let abc = "abc"
   let _123 = "123"
@@ -68,4 +67,3 @@ private import _TestingInternals
   func f(_ p: UnsafePointer<String>?) -> Bool { true }
   #expect(f(array))
 }
-#endif
