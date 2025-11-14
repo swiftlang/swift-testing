@@ -248,6 +248,20 @@ public struct __Expression: Sendable {
         self.children = children
       }
     }
+
+    /// Initialize an instance of this type representing a value of the
+    /// specified type that could not be captured (due to e.g. not conforming to
+    /// `Copyable`.)
+    ///
+    /// - Parameters:
+    ///   - type: The type of the uncaptured value.
+    init?<T>(failingToReflectInstanceOf type: T.Type) where T: ~Copyable {
+      let typeInfo = TypeInfo(describing: type)
+      self.description = "<instance of '\(typeInfo.unqualifiedName)'>"
+      self.debugDescription = "<instance of '\(typeInfo.fullyQualifiedName)'>"
+      self.typeInfo = typeInfo
+      self.isCollection = false
+    }
   }
 
   /// A representation of the runtime value of this expression.

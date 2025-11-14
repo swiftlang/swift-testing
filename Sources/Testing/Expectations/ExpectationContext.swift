@@ -176,7 +176,7 @@ extension __ExpectationContext where Output: ~Copyable {
   ///
   /// This function helps overloads of `callAsFunction(_:_:)` disambiguate
   /// themselves and avoid accidental recursion.
-  func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID, timing: Expression.Value.Timing?) -> T {
+  func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID, timing: Expression.Value.Timing? = nil) -> T {
     let value = copy value
     runtimeValues[id] = { Expression.Value(reflecting: value, timing: timing) }
     return value
@@ -198,6 +198,18 @@ extension __ExpectationContext where Output: ~Copyable {
     captureValue(value, id, timing: nil)
   }
 
+  /// Capture information about a value that we cannot capture directly (e.g.
+  /// because it does not conform to `Copyable`).
+  ///
+  /// - Parameters:
+  ///   - value: The value to pass through.
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  @usableFromInline func failToCaptureValue<T>(_ value: borrowing T, _ id: __ExpressionID) -> Void where T: ~Copyable {
+    let value = Expression.Value(failingToReflectInstanceOf: T.self)
+    runtimeValues[id] = { value }
+  }
+
   /// Capture information about a value for use if the expectation currently
   /// being evaluated fails.
   ///
@@ -211,13 +223,46 @@ extension __ExpectationContext where Output: ~Copyable {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
 #if SWT_EXPERIMENTAL_REF_TYPE_ENABLED
-  @_lifetime(immortal)
   @inlinable public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> Ref<T> {
     Ref(captureValue(value, id))
   }
 #else
   @inlinable public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> T {
     captureValue(value, id)
+  }
+#endif
+
+  /// Capture information about a value for use if the expectation currently
+  /// being evaluated fails.
+  ///
+  /// - Parameters:
+  ///   - value: The value to pass through.
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  ///
+  /// - Returns: `value`, verbatim.
+  ///
+  /// - Warning: This function is used to implement the `#expect()` and
+  ///   `#require()` macros. Do not call it directly.
+#if SWT_EXPERIMENTAL_REF_TYPE_ENABLED
+  @_disfavoredOverload
+  public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> Ref<T> where T: ~Copyable {
+    if #available(_castingWithNonCopyableGenerics, *), let value = boxCopyableValue(value) {
+      _ = captureValue(value, id)
+    } else {
+      failToCaptureValue(value, id)
+    }
+    return Ref(value)
+  }
+#elseif SWT_SUPPORTS_MOVE_ONLY_EXPRESSION_EXPANSION
+  @_disfavoredOverload
+  public func callAsFunction<T>(_ value: consuming T, _ id: __ExpressionID) -> T where T: ~Copyable {
+    if #available(_castingWithNonCopyableGenerics, *), let value = boxCopyableValue(value) {
+      _ = captureValue(value, id)
+    } else {
+      failToCaptureValue(value, id)
+    }
+    return value
   }
 #endif
 
@@ -233,28 +278,6 @@ extension __ExpectationContext where Output: ~Copyable {
   ///   `#require()` macros. Do not call it directly.
   public func __inoutAfter<T>(_ value: borrowing T, _ id: __ExpressionID) {
     _ = captureValue(value, id, timing: .after)
-  }
-
-#if SWT_EXPERIMENTAL_REF_TYPE_ENABLED
-  /// Capture information about a value for use if the expectation currently
-  /// being evaluated fails.
-  ///
-  /// - Parameters:
-  ///   - value: The value to pass through.
-  ///   - id: A value that uniquely identifies the represented expression in the
-  ///     context of the expectation currently being evaluated.
-  ///
-  /// - Returns: `value`, verbatim.
-  ///
-  /// - Warning: This function is used to implement the `#expect()` and
-  ///   `#require()` macros. Do not call it directly.
-  @_lifetime(immortal)
-  @_disfavoredOverload
-  public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> Ref<T> where T: ~Copyable {
-    if #available(_castingWithNonCopyableGenerics, *), let value = boxCopyableValue(value) {
-      _ = captureValue(value, id)
-    }
-    return Ref(value)
   }
 
   /// Capture information about a value passed `inout` to a function call after
@@ -273,7 +296,6 @@ extension __ExpectationContext where Output: ~Copyable {
       __inoutAfter(value, id)
     }
   }
-#endif
 }
 
 // MARK: - Collection comparison and diffing
@@ -516,11 +538,10 @@ extension __ExpectationContext {
   ///
   /// This type is adapted from the [`Ref<T>`](https://github.com/apple/swift-collections/blob/main/Sources/ContainersPreview/Ref.swift)
   /// type in the `swift-collections` package.
-  @safe public struct Ref<T: ~Copyable>: Copyable, ~Escapable {
+  @safe public struct Ref<T>: Copyable where T: ~Copyable {
     /// Storage for the address of the referenced value.
     private nonisolated(unsafe) let _unsafeAddress: UnsafePointer<T>
 
-    @_lifetime(immortal)
     public init(_ value: borrowing @_addressable T) {
       _unsafeAddress = UnsafePointer(Builtin.unprotectedAddressOfBorrow(value))
     }

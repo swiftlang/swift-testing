@@ -65,7 +65,7 @@ func subexpressionShowcase() async throws {
     borrowing func h() -> Bool { false }
     consuming func j() -> Bool { false }
   }
-#if false
+#if SWT_EXPERIMENTAL_REF_TYPE_ENABLED
   // Unsupported: move-only types have too many constraints that cannot be
   // resolved by inspecting syntax. Borrowing calls cannot be boxed (at least
   // until we get @lifetime) and the compiler forbids making consuming calls in
@@ -76,7 +76,9 @@ func subexpressionShowcase() async throws {
   // the expression.
   let s = S()
   #expect(s.h())
+#if false
   #expect(s.j()) // consuming -- this DOES still fail, no syntax-level way to tell
+#endif
 #endif
 
   let s2 = S()
