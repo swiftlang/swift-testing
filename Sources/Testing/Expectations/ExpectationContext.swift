@@ -8,6 +8,10 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if SWT_EXPERIMENTAL_REF_TYPE_ENABLED
+private import Builtin
+#endif
+
 /// A type representing the context within a call to the `#expect()` and
 /// `#require()` macros.
 ///
@@ -206,9 +210,16 @@ extension __ExpectationContext where Output: ~Copyable {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
+#if SWT_EXPERIMENTAL_REF_TYPE_ENABLED
+  @_lifetime(immortal)
+  @inlinable public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> Ref<T> {
+    Ref(captureValue(value, id))
+  }
+#else
   @inlinable public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> T {
     captureValue(value, id)
   }
+#endif
 
   /// Capture information about a value passed `inout` to a function call after
   /// the function has returned.
@@ -224,7 +235,7 @@ extension __ExpectationContext where Output: ~Copyable {
     _ = captureValue(value, id, timing: .after)
   }
 
-#if SWT_SUPPORTS_MOVE_ONLY_EXPRESSION_EXPANSION
+#if SWT_EXPERIMENTAL_REF_TYPE_ENABLED
   /// Capture information about a value for use if the expectation currently
   /// being evaluated fails.
   ///
@@ -237,13 +248,13 @@ extension __ExpectationContext where Output: ~Copyable {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
+  @_lifetime(immortal)
   @_disfavoredOverload
-  public func callAsFunction<T>(_ value: consuming T, _ id: __ExpressionID) -> T where T: ~Copyable {
-    // TODO: add support for borrowing non-copyable expressions (need @lifetime)
+  public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> Ref<T> where T: ~Copyable {
     if #available(_castingWithNonCopyableGenerics, *), let value = boxCopyableValue(value) {
       _ = captureValue(value, id)
     }
-    return value
+    return Ref(value)
   }
 
   /// Capture information about a value passed `inout` to a function call after
@@ -495,3 +506,32 @@ extension __ExpectationContext where Output: ~Copyable {
     __as(value, valueID, type, typeID) != nil
   }
 }
+
+#if SWT_EXPERIMENTAL_REF_TYPE_ENABLED
+// MARK: -
+
+extension __ExpectationContext {
+  /// A type that provides borrow-like semantics for a value captured by an
+  /// expectation context.
+  ///
+  /// This type is adapted from the [`Ref<T>`](https://github.com/apple/swift-collections/blob/main/Sources/ContainersPreview/Ref.swift)
+  /// type in the `swift-collections` package.
+  @safe public struct Ref<T: ~Copyable>: Copyable, ~Escapable {
+    /// Storage for the address of the referenced value.
+    private nonisolated(unsafe) let _unsafeAddress: UnsafePointer<T>
+
+    @_lifetime(immortal)
+    public init(_ value: borrowing @_addressable T) {
+      _unsafeAddress = UnsafePointer(Builtin.unprotectedAddressOfBorrow(value))
+    }
+
+    public subscript() -> T {
+      unsafeAddress {
+        _unsafeAddress
+      }
+    }
+  }
+}
+
+extension __ExpectationContext.Ref: Sendable where T: Sendable {}
+#endif

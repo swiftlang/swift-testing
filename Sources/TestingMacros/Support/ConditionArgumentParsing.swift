@@ -181,20 +181,30 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
       ExprSyntax(expressionContextNameExpr)
     }
 
-    var result = FunctionCallExprSyntax(
-      calledExpression: calledExpr,
-      leftParen: .leftParenToken(),
-      rightParen: .rightParenToken()
-    ) {
-      LabeledExprSyntax(expression: node.trimmed)
-      LabeledExprSyntax(expression: originalNode.expressionID(rootedAt: effectiveRootNode))
-      for argument in additionalArguments {
-        LabeledExprSyntax(argument)
+    var result = ExprSyntax(
+      FunctionCallExprSyntax(
+        calledExpression: calledExpr,
+        leftParen: .leftParenToken(),
+        rightParen: .rightParenToken()
+      ) {
+        LabeledExprSyntax(expression: node.trimmed)
+        LabeledExprSyntax(expression: originalNode.expressionID(rootedAt: effectiveRootNode))
+        for argument in additionalArguments {
+          LabeledExprSyntax(argument)
+        }
       }
-    }
+    )
 
-    result.leadingTrivia = originalNode.leadingTrivia
-    result.trailingTrivia = originalNode.trailingTrivia
+#if SWT_EXPERIMENTAL_REF_TYPE_ENABLED
+    if functionName == nil {
+      result = ExprSyntax(
+        SubscriptCallExprSyntax(
+          calledExpression: result,
+          arguments: []
+        )
+      )
+    }
+#endif
 
     // If the resulting expression has an optional type due to containing an
     // optional chaining expression (e.g. `foo?`) *and* its immediate parent
@@ -205,14 +215,17 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
       let optionalChainFinder = _OptionalChainFinder(viewMode: .sourceAccurate)
       optionalChainFinder.walk(node)
       if optionalChainFinder.optionalChainFound {
-        return ExprSyntax(OptionalChainingExprSyntax(expression: result))
+        result = ExprSyntax(OptionalChainingExprSyntax(expression: result))
       }
 
     default:
       break
     }
 
-    return ExprSyntax(result)
+    result.leadingTrivia = originalNode.leadingTrivia
+    result.trailingTrivia = originalNode.trailingTrivia
+
+    return result
   }
 
   /// Rewrite a given syntax node by inserting a call to the expression context
