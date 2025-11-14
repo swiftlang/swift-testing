@@ -472,7 +472,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
     result.append(
       """
       @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-      @c private nonisolated \(staticKeyword(for: typeName)) func \(accessorName)(_ outValue: UnsafeMutableRawPointer, _ type: UnsafeRawPointer, _: UnsafeRawPointer?, _ reserved: UInt) {
+      @c private nonisolated \(staticKeyword(for: typeName)) func \(accessorName)(_ outValue: UnsafeMutableRawPointer, _ type: UnsafeRawPointer, _: UnsafeRawPointer?, _: UInt) -> CBool {
         Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
       }
       """

@@ -507,7 +507,7 @@ extension ExitTestConditionMacro {
         """
         @available(*, deprecated, message: "This type is an implementation detail of the testing library. Do not use it directly.")
         enum \(enumName) {
-          @c private nonisolated static func accessor(_ outValue: UnsafeMutableRawPointer, _ type: UnsafeRawPointer, _ hint: UnsafeRawPointer?, _ reserved: UInt) {
+          @c private nonisolated static func accessor(_ outValue: UnsafeMutableRawPointer, _ type: UnsafeRawPointer, _ hint: UnsafeRawPointer?, _: UInt) -> CBool {
             Testing.ExitTest.__store(
               \(idExpr),
               \(bodyThunkName),

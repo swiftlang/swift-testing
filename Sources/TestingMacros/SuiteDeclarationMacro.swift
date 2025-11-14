@@ -145,7 +145,7 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
     result.append(
       """
       @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-      @c private nonisolated static func \(accessorName)(_ outValue: UnsafeMutableRawPointer, _ type: UnsafeRawPointer, _ hint: UnsafeRawPointer?, _ reserved: UInt) {
+      @c private nonisolated static func \(accessorName)(_ outValue: UnsafeMutableRawPointer, _ type: UnsafeRawPointer, _ hint: UnsafeRawPointer?, _: UInt) -> CBool {
         Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
       }
       """
