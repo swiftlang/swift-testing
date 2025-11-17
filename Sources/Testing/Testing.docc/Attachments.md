@@ -160,7 +160,7 @@ extension SalesReport: Attachable {
     for attachment: borrowing Attachment<Self>,
     basedOn suggestedName: String
   ) -> String {
-    if suggestedName.lastIndex(of: ".") != nil {
+    if suggestedName.contains(".") {
       // The name already contains a path extension, so don't append another.
       return suggestedName
     }
@@ -185,6 +185,10 @@ after your tests finish running:
 - When using Swift Package Manager's `swift test` command, you can pass the
   `--attachments-path` option. The testing library saves attachments to the
   specified directory.
+
+  If you do not pass the `--attachments-path` option, the testing library does
+  not save any attachments you record.
+
 
 ## Topics
 
