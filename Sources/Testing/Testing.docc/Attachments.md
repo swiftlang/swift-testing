@@ -129,7 +129,7 @@ extension SalesReport: Attachable {
 
 If your type conforms to [`Sendable`](https://developer.apple.com/documentation/swift/sendable),
 the testing library avoids calling this function until it needs to save the
-attachment. If your type does _not_ conform to [`Sendable`](https://developer.apple.com/documentation/swift/sendable),
+attachment. If your type  _doesn't_ conform to [`Sendable`](https://developer.apple.com/documentation/swift/sendable),
 the testing library calls this function as soon as you record the attachment.
 
 #### Customize attachment behavior
