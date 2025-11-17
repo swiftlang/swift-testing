@@ -62,7 +62,7 @@ extension Attachment {
   ///
   /// This function creates a new instance of ``Attachment`` wrapping `image`
   /// and immediately attaches it to the current test. The testing library uses
-  /// the image format specified by `imageFormat`. Pass `nil` to let the testing
+  /// the image format that `imageFormat` specifies. Pass `nil` to let the testing
   /// library decide which image format to use. If you pass `nil`, then the
   /// image format that the testing library uses depends on the path extension
   /// you specify in `preferredName`, if any. If you do not specify a path
