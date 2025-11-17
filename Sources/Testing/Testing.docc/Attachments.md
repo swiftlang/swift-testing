@@ -161,7 +161,7 @@ extension SalesReport: Attachable {
     basedOn suggestedName: String
   ) -> String {
     if suggestedName.lastIndex(of: ".") != nil {
-      // The name already contains a path extension, so do not append another.
+      // The name already contains a path extension, so don't append another.
       return suggestedName
     }
 
