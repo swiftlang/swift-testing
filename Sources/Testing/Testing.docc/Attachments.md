@@ -41,7 +41,7 @@ these types automatically conform to ``Attachable``.
 
 You can also attach an instance of [`String`](https://developer.apple.com/documentation/swift/string)
 or [`Substring`](https://developer.apple.com/documentation/swift/substring). The
-testing library assumes that it should treat attached strings as UTF-8 text
+testing library treats attached strings as UTF-8 text
 files. If you want to save a string as an attachment using a different encoding,
 convert it to [`Data`](https://developer.apple.com/documentation/foundation/data)
 using [`data(using:allowLossyConversion:)`](https://developer.apple.com/documentation/swift/stringprotocol/data(using:allowlossyconversion:))
