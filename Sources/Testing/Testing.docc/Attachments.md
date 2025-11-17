@@ -36,7 +36,7 @@ struct SalesReport { ... }
 You can attach an instance of [`Array<UInt8>`](https://developer.apple.com/documentation/swift/array),
 [`ContiguousArray<UInt8>`](https://developer.apple.com/documentation/swift/contiguousarray),
 [`ArraySlice<UInt8>`](https://developer.apple.com/documentation/swift/arrayslice),
-or [`Data`](https://developer.apple.com/documentation/foundation/data) as
+or [`Data`](https://developer.apple.com/documentation/foundation/data) because
 these types automatically conform to ``Attachable``.
 
 You can also attach an instance of [`String`](https://developer.apple.com/documentation/swift/string)
