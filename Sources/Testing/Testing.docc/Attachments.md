@@ -80,7 +80,7 @@ extension SalesReport: Encodable, Attachable {}
 
 You can attach instances of the following system-provided image types to a test:
 
-| Platform | Supported Types |
+| Platform | Supported types |
 |-|-|
 | macOS | [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage), [`CIImage`](https://developer.apple.com/documentation/coreimage/ciimage), [`NSImage`](https://developer.apple.com/documentation/appkit/nsimage) |
 | iOS, tvOS, and visionOS | [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage), [`CIImage`](https://developer.apple.com/documentation/coreimage/ciimage), [`UIImage`](https://developer.apple.com/documentation/uikit/uiimage) |
