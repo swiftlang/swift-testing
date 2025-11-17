@@ -101,7 +101,7 @@ struct SalesReport { ... }
 ```
 
 If you don't specify an image format when attaching an image to a test, the
-testing library infers which format to use based on the preferred name you pass.
+testing library selects the format to use based on the preferred name you pass.
 
 ### Attach other values
 
