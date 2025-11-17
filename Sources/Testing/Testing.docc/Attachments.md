@@ -72,7 +72,7 @@ extension SalesReport: Encodable, Attachable {}
 }
 ```
 
-- Important: The testing library only provides these default implementations if
+- Important: The testing library provides these default implementations only if
   your test target imports the [Foundation](https://developer.apple.com/documentation/foundation)
   module.
 
