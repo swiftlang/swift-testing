@@ -309,8 +309,7 @@ extension Event.ConsoleOutputRecorder {
     
     // Print failure summary when run ends
     if case .runEnded = event.kind {
-      let summary = _humanReadableOutputRecorder.generateFailureSummary(options: options)
-      if !summary.isEmpty {
+      if let summary = _humanReadableOutputRecorder.generateFailureSummary(options: options) {
         // Add blank line before summary and after summary for visual separation
         write("\n\(summary)\n")
       }
