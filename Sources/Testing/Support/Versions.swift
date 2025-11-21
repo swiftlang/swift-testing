@@ -77,7 +77,7 @@ let operatingSystemVersion: String = {
       // Include Service Pack details if available.
       if versionInfo.szCSDVersion.0 != 0 {
         withUnsafeBytes(of: versionInfo.szCSDVersion) { szCSDVersion in
-          szCSDVersion.withMemoryRebound(to: wchar_t.self) { szCSDVersion in
+          szCSDVersion.withMemoryRebound(to: CWideChar.self) { szCSDVersion in
             if let szCSDVersion = String.decodeCString(szCSDVersion.baseAddress!, as: UTF16.self)?.result {
               result += " (\(szCSDVersion))"
             }
@@ -89,9 +89,8 @@ let operatingSystemVersion: String = {
     }
   }
 #elseif os(WASI)
-  if let version = swt_getWASIVersion().flatMap(String.init(validatingCString:)) {
-    return version
-  }
+  // WASI does not have an API to get the current WASI or Wasm version.
+  // wasi-libc does have uname(3), but it's stubbed out.
 #else
 #warning("Platform-specific implementation missing: OS version unavailable")
 #endif

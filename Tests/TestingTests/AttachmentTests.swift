@@ -62,6 +62,14 @@ struct AttachmentTests {
   }
 #endif
 
+  @Test func preferredNameOfStringAttachment() {
+    let attachment1 = Attachment("", named: "abc123")
+    #expect(attachment1.preferredName == "abc123.txt")
+
+    let attachment2 = Attachment("", named: "abc123.html")
+    #expect(attachment2.preferredName == "abc123.html")
+  }
+
 #if !SWT_NO_FILE_IO
   func compare(_ attachableValue: borrowing MySendableAttachable, toContentsOfFileAtPath filePath: String) throws {
     let file = try FileHandle(forReadingAtPath: filePath)
@@ -594,6 +602,33 @@ extension AttachmentTests {
       }
       if let ext = format.contentType.preferredFilenameExtension {
         #expect(attachment.preferredName == ("diamond" as NSString).appendingPathExtension(ext))
+      }
+    }
+
+    @available(_uttypesAPI, *)
+    @Test func attachCGImageWithCustomUTType() throws {
+      let contentType = try #require(UTType(tag: "derived-from-jpeg", tagClass: .filenameExtension, conformingTo: .jpeg))
+      let format = AttachableImageFormat(contentType: contentType)
+      let image = try Self.cgImage.get()
+      let attachment = Attachment(image, named: "diamond", as: format)
+      #expect(attachment.attachableValue === image)
+      try attachment.attachableValue.withUnsafeBytes(for: attachment) { buffer in
+        #expect(buffer.count > 32)
+      }
+      if let ext = format.contentType.preferredFilenameExtension {
+        #expect(attachment.preferredName == ("diamond" as NSString).appendingPathExtension(ext))
+      }
+    }
+
+    @available(_uttypesAPI, *)
+    @Test func attachCGImageWithUnsupportedImageType() throws {
+      let contentType = try #require(UTType(tag: "unsupported-image-format", tagClass: .filenameExtension, conformingTo: .image))
+      let format = AttachableImageFormat(contentType: contentType)
+      let image = try Self.cgImage.get()
+      let attachment = Attachment(image, named: "diamond", as: format)
+      #expect(attachment.attachableValue === image)
+      #expect(throws: ImageAttachmentError.self) {
+        try attachment.attachableValue.withUnsafeBytes(for: attachment) { _ in }
       }
     }
 

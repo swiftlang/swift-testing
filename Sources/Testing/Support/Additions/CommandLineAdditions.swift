@@ -33,14 +33,27 @@ extension CommandLine {
       }
       return result!
 #elseif os(Linux) || os(Android)
-      return try withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(PATH_MAX) * 2) { buffer in
-        let readCount = readlink("/proc/self/exe", buffer.baseAddress!, buffer.count - 1)
-        guard readCount >= 0 else {
-          throw CError(rawValue: swt_errno())
+      var result: String?
+#if DEBUG
+      var bufferCount = Int(1) // force looping
+#else
+      var bufferCount = Int(PATH_MAX)
+#endif
+      while result == nil {
+        try withUnsafeTemporaryAllocation(of: CChar.self, capacity: bufferCount) { buffer in
+          let readCount = readlink("/proc/self/exe", buffer.baseAddress!, buffer.count)
+          guard readCount >= 0 else {
+            throw CError(rawValue: swt_errno())
+          }
+          if readCount < buffer.count {
+            buffer[readCount] = 0 // NUL-terminate the string.
+            result = String(cString: buffer.baseAddress!)
+          } else {
+            bufferCount += Int(PATH_MAX) // add more space and try again
+          }
         }
-        buffer[readCount] = 0 // NUL-terminate the string.
-        return String(cString: buffer.baseAddress!)
       }
+      return result!
 #elseif os(FreeBSD)
       var mib = [CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1]
       return try mib.withUnsafeMutableBufferPointer { mib in
@@ -77,7 +90,7 @@ extension CommandLine {
       var bufferCount = Int(MAX_PATH)
 #endif
       while result == nil {
-        try withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: bufferCount) { buffer in
+        try withUnsafeTemporaryAllocation(of: CWideChar.self, capacity: bufferCount) { buffer in
           SetLastError(DWORD(ERROR_SUCCESS))
           _ = GetModuleFileNameW(nil, buffer.baseAddress!, DWORD(buffer.count))
           switch GetLastError() {
