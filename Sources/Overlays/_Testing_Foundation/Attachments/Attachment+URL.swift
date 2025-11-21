@@ -161,7 +161,7 @@ private let _archiverPath: String? = {
 private func _compressContentsOfDirectory(at directoryURL: URL) async throws -> Data {
 #if !SWT_NO_PROCESS_SPAWNING
 #if os(Android)
-  guard #available(Android 28, *) else {
+  guard #available(_posixSpawnAPI, *) else {
     // API level 28 corresponds to Android 9 Pie.
     throw CocoaError(.featureUnsupported, userInfo: [NSLocalizedDescriptionKey: "Attaching directories to tests requires Android 9 (API level 28) or newer."])
   }

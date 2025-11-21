@@ -62,7 +62,7 @@ private let _posix_spawn_file_actions_addclosefrom_np = symbol(named: "posix_spa
 ///   resources.
 ///
 /// - Throws: Any error that prevented the process from spawning.
-@available(Android 28, *)
+@available(_posixSpawnAPI, *)
 func spawnExecutable(
   atPath executablePath: String,
   arguments: [String],
@@ -476,7 +476,7 @@ private func _escapeCommandLine(_ arguments: [String]) -> String {
 /// This function is a convenience that spawns the given process and waits for
 /// it to terminate. It is primarily for use by other targets in this package
 /// such as its cross-import overlays.
-@available(Android 28, *)
+@available(_posixSpawnAPI, *)
 package func spawnExecutableAtPathAndWait(
   _ executablePath: String,
   arguments: [String] = [],

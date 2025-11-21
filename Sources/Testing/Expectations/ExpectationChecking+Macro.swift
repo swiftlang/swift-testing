@@ -1146,7 +1146,7 @@ public func __checkClosureCall<R>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-@available(Android 28, *)
+@available(_posixSpawnAPI, *)
 public func __checkClosureCall(
   identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
   processExitsWith expectedExitCondition: ExitTest.Condition,
@@ -1178,7 +1178,7 @@ public func __checkClosureCall(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-@available(Android 28, *)
+@available(_posixSpawnAPI, *)
 public func __checkClosureCall<each T>(
   identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
   encodingCapturedValues capturedValues: (repeat each T),

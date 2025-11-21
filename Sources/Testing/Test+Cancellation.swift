@@ -160,7 +160,7 @@ private func _cancel<T>(_ cancellableValue: T?, for testAndTestCase: (Test?, Tes
 
     var inExitTest = false
 #if !SWT_NO_EXIT_TESTS
-    if #available(Android 28, *) {
+    if #available(_posixSpawnAPI, *) {
       inExitTest = (ExitTest.current != nil)
     }
 #endif

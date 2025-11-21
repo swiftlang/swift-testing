@@ -234,7 +234,7 @@ public struct Configuration: Sendable {
 #if !SWT_NO_EXIT_TESTS
   /// Storage for ``exitTestHandler``.
   private var _exitTestHandler: (any Sendable)? = {
-    if #available(Android 28, *) {
+    if #available(_posixSpawnAPI, *) {
       return { exitTest in
         throw SystemError(description: "Exit test support has not been implemented by the current testing infrastructure.")
       } as ExitTest.Handler
@@ -249,7 +249,7 @@ public struct Configuration: Sendable {
   /// When using the `swift test` command from Swift Package Manager, this
   /// property is pre-configured. Otherwise, the default value of this property
   /// records an issue indicating that it has not been configured.
-	@available(Android 28, *)
+	@available(_posixSpawnAPI, *)
   public var exitTestHandler: ExitTest.Handler {
     get {
       _exitTestHandler as! ExitTest.Handler

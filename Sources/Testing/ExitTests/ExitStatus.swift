@@ -24,7 +24,7 @@ private import _TestingInternals
 ///   @Available(Xcode, introduced: 26.0)
 /// }
 #if !SWT_NO_PROCESS_SPAWNING
-@available(Android 28, *)
+@available(_posixSpawnAPI, *)
 #else
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
@@ -94,7 +94,7 @@ public enum ExitStatus: Sendable {
 // MARK: - Equatable
 
 #if !SWT_NO_PROCESS_SPAWNING
-@available(Android 28, *)
+@available(_posixSpawnAPI, *)
 #else
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
@@ -116,7 +116,7 @@ private let _sigabbrev_np = symbol(named: "sigabbrev_np").map {
 #endif
 
 #if !SWT_NO_PROCESS_SPAWNING
-@available(Android 28, *)
+@available(_posixSpawnAPI, *)
 #else
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")

@@ -11,7 +11,7 @@
 private import _TestingInternals
 
 #if !SWT_NO_EXIT_TESTS
-@available(Android 28, *)
+@available(_posixSpawnAPI, *)
 #else
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
@@ -61,7 +61,7 @@ extension ExitTest {
 // MARK: -
 
 #if !SWT_NO_EXIT_TESTS
-@available(Android 28, *)
+@available(_posixSpawnAPI, *)
 #else
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
@@ -183,7 +183,7 @@ extension ExitTest.Condition {
 // MARK: - CustomStringConvertible
 
 #if !SWT_NO_EXIT_TESTS
-@available(Android 28, *)
+@available(_posixSpawnAPI, *)
 #else
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
@@ -208,7 +208,7 @@ extension ExitTest.Condition: CustomStringConvertible {
 // MARK: - Comparison
 
 #if !SWT_NO_EXIT_TESTS
-@available(Android 28, *)
+@available(_posixSpawnAPI, *)
 #else
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
