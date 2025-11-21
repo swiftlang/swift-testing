@@ -191,6 +191,17 @@ extension ExitTest {
 
 // MARK: - Invocation
 
+#if os(Android) && !SWT_NO_DYNAMIC_LINKING
+/// Close a range of file descriptors.
+///
+/// This function declaration is provided because `close_range()` is only
+/// declared if `_GNU_SOURCE` is set, but setting it causes build errors due to
+/// conflicts with Swift's Glibc module.
+private let _close_range = symbol(named: "close_range").map {
+  castCFunction(at: $0, to: (@convention(c) (CUnsignedInt, CUnsignedInt, CInt) -> CInt).self)
+}
+#endif
+
 @_spi(ForToolsIntegrationOnly)
 extension ExitTest {
   /// Disable crash reporting, crash logging, or core dumps for the current
@@ -295,11 +306,16 @@ extension ExitTest {
     }
 #endif
 
-#if os(OpenBSD)
+#if os(OpenBSD) || (os(Android) && !SWT_NO_DYNAMIC_LINKING)
     // OpenBSD does not have posix_spawn_file_actions_addclosefrom_np().
     // However, it does have closefrom(2), which we call here as a best effort.
+    // Android has close_range(2) which serves the same purpose.
     if let from = Environment.variable(named: "SWT_CLOSEFROM").flatMap(CInt.init) {
+#if os(OpenBSD)
       _ = closefrom(from)
+#else
+      _ = _close_range?(CUnsignedInt(bitPattern: from), .max, 0)
+#endif
     }
 #endif
 
