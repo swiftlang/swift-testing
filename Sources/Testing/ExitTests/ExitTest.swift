@@ -151,6 +151,7 @@ public struct ExitTest: Sendable, ~Copyable {
 #if !SWT_NO_EXIT_TESTS
 // MARK: - Current
 
+@available(Android 28, *)
 extension ExitTest {
   /// Storage for ``current``.
   ///
@@ -203,6 +204,7 @@ private let _close_range = symbol(named: "close_range").map {
 #endif
 
 @_spi(ForToolsIntegrationOnly)
+@available(Android 28, *)
 extension ExitTest {
   /// Disable crash reporting, crash logging, or core dumps for the current
   /// process.
@@ -340,6 +342,7 @@ extension ExitTest {
 
 // MARK: - Discovery
 
+@available(Android 28, *)
 extension ExitTest {
   /// A type representing an exit test as a test content record.
   fileprivate struct Record: Sendable, DiscoverableAsTestContent {
@@ -438,6 +441,7 @@ extension ExitTest {
 }
 
 @_spi(ForToolsIntegrationOnly)
+@available(Android 28, *)
 extension ExitTest {
   /// Find the exit test function at the given source location.
   ///
@@ -491,6 +495,7 @@ extension ExitTest {
 /// This function contains the common implementation for all
 /// `await #expect(processExitsWith:) { }` invocations regardless of calling
 /// convention.
+@available(Android 28, *)
 func callExitTest(
   identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
   encodingCapturedValues capturedValues: [ExitTest.CapturedValue],
@@ -577,6 +582,7 @@ extension ABI {
 }
 
 @_spi(ForToolsIntegrationOnly)
+@available(Android 28, *)
 extension ExitTest {
   /// A barrier value to insert into the standard output and standard error
   /// streams immediately before and after the body of an exit test runs in

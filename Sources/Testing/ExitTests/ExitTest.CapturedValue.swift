@@ -133,6 +133,7 @@ extension ExitTest {
 #if !SWT_NO_EXIT_TESTS
 // MARK: - Collection conveniences
 
+@available(Android 28, *)
 extension Array where Element == ExitTest.CapturedValue {
   init<each T>(_ wrappedValues: repeat each T) where repeat each T: Codable & Sendable {
     self.init()
@@ -145,6 +146,7 @@ extension Array where Element == ExitTest.CapturedValue {
   }
 }
 
+@available(Android 28, *)
 extension Collection where Element == ExitTest.CapturedValue {
   /// Cast the elements in this collection to a tuple of their wrapped values.
   ///

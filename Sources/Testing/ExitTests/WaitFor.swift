@@ -62,6 +62,7 @@ private func _blockAndWait(for pid: consuming pid_t) throws -> ExitStatus {
 /// - Note: The open-source implementation of libdispatch available on Linux
 ///   and other platforms does not support `DispatchSourceProcess`. Those
 ///   platforms use an alternate implementation below.
+@available(Android 28, *)
 func wait(for pid: consuming pid_t) async throws -> ExitStatus {
   let pid = consume pid
 
