@@ -20,6 +20,7 @@ internal import _TestingInternals
 ///
 /// - Throws: If the exit status of the process with ID `pid` cannot be
 ///   determined (i.e. it does not represent an exit condition.)
+@available(Android 28, *)
 private func _blockAndWait(for pid: consuming pid_t) throws -> ExitStatus {
   let pid = consume pid
 
@@ -80,6 +81,7 @@ func wait(for pid: consuming pid_t) async throws -> ExitStatus {
 }
 #elseif SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
 /// A mapping of awaited child PIDs to their corresponding Swift continuations.
+@available(Android 28, *)
 private nonisolated(unsafe) let _childProcessContinuations = {
   let result = ManagedBuffer<[pid_t: CheckedContinuation<ExitStatus, any Error>], pthread_mutex_t>.create(
     minimumCapacity: 1,
@@ -101,6 +103,7 @@ private nonisolated(unsafe) let _childProcessContinuations = {
 /// - Returns: Whatever is returned by `body`.
 ///
 /// - Throws: Whatever is thrown by `body`.
+@available(Android 28, *)
 private func _withLockedChildProcessContinuations<R>(
   _ body: (
     _ childProcessContinuations: inout [pid_t: CheckedContinuation<ExitStatus, any Error>],
@@ -119,6 +122,7 @@ private func _withLockedChildProcessContinuations<R>(
 
 /// A condition variable used to suspend the waiter thread created by
 /// `_createWaitThread()` when there are no child processes to await.
+@available(Android 28, *)
 private nonisolated(unsafe) let _waitThreadNoChildrenCondition = {
   let result = UnsafeMutablePointer<pthread_cond_t>.allocate(capacity: 1)
   _ = pthread_cond_init(result, nil)
@@ -138,6 +142,7 @@ private let _pthread_setname_np = symbol(named: "pthread_setname_np").map {
 
 /// Create a waiter thread that is responsible for waiting for child processes
 /// to exit.
+@available(Android 28, *)
 private let _createWaitThread: Void = {
   // The body of the thread's run loop.
   func waitForAnyChild() {
