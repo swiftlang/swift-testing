@@ -34,7 +34,9 @@ private import _TestingInternals
 ///   @Available(Swift, introduced: 6.2)
 ///   @Available(Xcode, introduced: 26.0)
 /// }
-#if SWT_NO_EXIT_TESTS
+#if !SWT_NO_EXIT_TESTS
+@available(_posixSpawnAPI, *)
+#else
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Exit tests are not available on this platform.")
 #endif
@@ -149,6 +151,7 @@ public struct ExitTest: Sendable, ~Copyable {
 #if !SWT_NO_EXIT_TESTS
 // MARK: - Current
 
+@available(_posixSpawnAPI, *)
 extension ExitTest {
   /// Storage for ``current``.
   ///
@@ -189,7 +192,19 @@ extension ExitTest {
 
 // MARK: - Invocation
 
+#if os(Android) && !SWT_NO_DYNAMIC_LINKING
+/// Close a range of file descriptors.
+///
+/// This function declaration is provided because `close_range()` is only
+/// declared if `_GNU_SOURCE` is set, but setting it causes build errors due to
+/// conflicts with Swift's Glibc module.
+private let _close_range = symbol(named: "close_range").map {
+  castCFunction(at: $0, to: (@convention(c) (CUnsignedInt, CUnsignedInt, CInt) -> CInt).self)
+}
+#endif
+
 @_spi(ForToolsIntegrationOnly)
+@available(_posixSpawnAPI, *)
 extension ExitTest {
   /// Disable crash reporting, crash logging, or core dumps for the current
   /// process.
@@ -223,6 +238,21 @@ extension ExitTest {
     // as I can tell, special-case RLIMIT_CORE=1.
     var rl = rlimit(rlim_cur: 0, rlim_max: 0)
     _ = setrlimit(RLIMIT_CORE, &rl)
+#elseif os(Android)
+    // Android inherits the RLIMIT_CORE=1 special case from Linux.
+    // SEE: https://android.googlesource.com/kernel/common/+/refs/heads/android-mainline/fs/coredump.c#978
+    var rl = rlimit(rlim_cur: 1, rlim_max: 1)
+    _ = setrlimit(RLIMIT_CORE, &rl)
+
+    // In addition, Android installs signal handlers in native processes that
+    // cause the system to generate "tombstone" files. Suppress those too by
+    // resetting all signal handlers to SIG_DFL. debuggerd_register_handlers()
+    // is not exported, so we must manually walk all the signals it handles.
+    // SEE: https://android.googlesource.com/platform/system/core/+/main/debuggerd/include/debuggerd/handler.h#81
+    let BIONIC_SIGNAL_DEBUGGER = __SIGRTMIN + 3
+    for sig in [SIGABRT, SIGBUS, SIGFPE, SIGILL, SIGSEGV, SIGSTKFLT, SIGSYS, SIGTRAP, BIONIC_SIGNAL_DEBUGGER] {
+      _ = signal(sig, swt_SIG_DFL())
+    }
 #elseif os(Windows)
     // On Windows, similarly disable Windows Error Reporting and the Windows
     // Error Reporting UI. Note we expect to be the first component to call
@@ -278,11 +308,16 @@ extension ExitTest {
     }
 #endif
 
-#if os(OpenBSD)
+#if os(OpenBSD) || (os(Android) && !SWT_NO_DYNAMIC_LINKING)
     // OpenBSD does not have posix_spawn_file_actions_addclosefrom_np().
     // However, it does have closefrom(2), which we call here as a best effort.
+    // Android has close_range(2) which serves the same purpose.
     if let from = Environment.variable(named: "SWT_CLOSEFROM").flatMap(CInt.init) {
+#if os(OpenBSD)
       _ = closefrom(from)
+#else
+      _ = _close_range?(CUnsignedInt(bitPattern: from), .max, 0)
+#endif
     }
 #endif
 
@@ -307,6 +342,7 @@ extension ExitTest {
 
 // MARK: - Discovery
 
+@available(_posixSpawnAPI, *)
 extension ExitTest {
   /// A type representing an exit test as a test content record.
   fileprivate struct Record: Sendable, DiscoverableAsTestContent {
@@ -405,6 +441,7 @@ extension ExitTest {
 }
 
 @_spi(ForToolsIntegrationOnly)
+@available(_posixSpawnAPI, *)
 extension ExitTest {
   /// Find the exit test function at the given source location.
   ///
@@ -458,6 +495,7 @@ extension ExitTest {
 /// This function contains the common implementation for all
 /// `await #expect(processExitsWith:) { }` invocations regardless of calling
 /// convention.
+@available(_posixSpawnAPI, *)
 func callExitTest(
   identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
   encodingCapturedValues capturedValues: [ExitTest.CapturedValue],
@@ -544,6 +582,7 @@ extension ABI {
 }
 
 @_spi(ForToolsIntegrationOnly)
+@available(_posixSpawnAPI, *)
 extension ExitTest {
   /// A barrier value to insert into the standard output and standard error
   /// streams immediately before and after the body of an exit test runs in
@@ -662,7 +701,7 @@ extension ExitTest {
     Environment.setVariable(nil, named: name)
 
     var fd: CInt?
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
     fd = CInt(environmentVariable)
 #elseif os(Windows)
     if let handle = UInt(environmentVariable).flatMap(HANDLE.init(bitPattern:)) {
@@ -699,7 +738,7 @@ extension ExitTest {
   ///   back to a (new) file handle with `_makeFileHandle()`, or `nil` if the
   ///   file handle could not be converted to a string.
   private static func _makeEnvironmentVariable(for fileHandle: borrowing FileHandle) -> String? {
-#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD)
+#if SWT_TARGET_OS_APPLE || os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
     return fileHandle.withUnsafePOSIXFileDescriptor { fd in
       fd.map(String.init(describing:))
     }
