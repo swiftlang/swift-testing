@@ -180,6 +180,17 @@ static int swt_setfdflags(int fd, int flags) {
 }
 #endif
 
+#if !SWT_NO_INTEROP
+
+typedef void (*FallbackEventHandler)(const char *recordJSONSchemaVersionNumber,
+                                     const void *recordJSONBaseAddress,
+                                     long recordJSONByteCount,
+                                     const void *_Nullable reserved);
+
+FallbackEventHandler _Nullable _swift_testing_getFallbackEventHandler();
+
+#endif
+
 SWT_ASSUME_NONNULL_END
 
 #endif
