@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2024-2026 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -73,10 +73,30 @@ extension ABI {
     /// is `nil`.
     var isParameterized: Bool?
 
+
+    /// An equivalent of ``tags`` that preserved ABIv6.3 support.
+    var _tags: [String]?
+
     /// The tags associated with the test.
     ///
-    /// - Warning: Tags are not yet part of the JSON schema.
-    var _tags: [String]?
+    /// @Metadata {
+    ///   @Available(Swift, introduced: 6.4)
+    /// }
+    var tags: [String]?
+
+    /// The bugs associated with the test.
+    ///
+    /// @Metadata {
+    ///   @Available(Swift, introduced: 6.4)
+    /// }
+    var bugs: [Bug]?
+
+    /// The time limits associated with the test.
+    ///
+    /// @Metadata {
+    ///   @Available(Swift, introduced: 6.4)
+    /// }
+    var timeLimit: Double?
 
     init(encoding test: borrowing Test) {
       if test.isSuite {
@@ -95,11 +115,25 @@ extension ABI {
         if isParameterized == true {
           _testCases = test.uncheckedTestCases?.map(EncodedTestCase.init(encoding:))
         }
-
         let tags = test.tags
         if !tags.isEmpty {
-          _tags = tags.map(String.init(describing:))
+          self._tags = tags.map(String.init(describing:))
         }
+      }
+
+      if V.versionNumber >= ABI.v6_4.versionNumber {
+        self.tags = test.tags.sorted().map { tag in
+          switch tag.kind {
+            case .staticMember(let value): value
+          }
+        }
+        let bugs = test.associatedBugs
+        if !bugs.isEmpty {
+          self.bugs = bugs
+        }
+        self.timeLimit = test.timeLimit
+          .map(TimeValue.init)
+          .map(Double.init)
       }
     }
   }

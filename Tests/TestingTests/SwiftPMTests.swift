@@ -367,6 +367,8 @@ struct SwiftPMTests {
           ("--event-stream-output-path", "--event-stream-version", ABI.v0.versionNumber),
           ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v0.versionNumber),
           ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v6_3.versionNumber),
+          ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v6_4.versionNumber),
+          ("--event-stream-output-path", "--event-stream-version", ABI.v6_4.versionNumber),
         ])
   func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: VersionNumber) async throws {
     let version = try #require(ABI.version(forVersionNumber: version))
@@ -381,9 +383,19 @@ struct SwiftPMTests {
     defer {
       _ = remove(temporaryFilePath)
     }
+    let testTimeLimit = 3
+    let expectedArgs = ["argument1", "argument2"]
     do {
       let configuration = try configurationForEntryPoint(withArguments: ["PATH", outputArgumentName, temporaryFilePath, versionArgumentName, "\(version.versionNumber)"])
-      let test = Test(.tags(.blue)) {}
+      let test = Test(
+        .tags(.blue),
+        .bug("https://my.defect.com/1234"),
+        .bug("other defect"),
+        .timeLimit(Swift.Duration.seconds(testTimeLimit + 100)),
+        .timeLimit(Swift.Duration.seconds(testTimeLimit)),
+        .timeLimit(Swift.Duration.seconds(testTimeLimit + 10)),
+        arguments: expectedArgs as [String]
+      ) {_ in}
       let eventContext = Event.Context(test: test, testCase: nil, configuration: nil)
 
       configuration.handleEvent(Event(.testDiscovered, testID: test.id, testCaseID: nil), in: eventContext)
@@ -407,10 +419,26 @@ struct SwiftPMTests {
     #expect(testRecords.count == 1)
     for testRecord in testRecords {
       if version.includesExperimentalFields {
+        let actualTestCases = testRecord._testCases
+        let testCases = try #require(actualTestCases)
+        #expect(testCases.count == expectedArgs.count)
         #expect(testRecord._tags != nil)
       } else {
-        #expect(testRecord._tags == nil)
+        #expect(testRecord._testCases == nil)
       }
+
+      if version.versionNumber >= ABI.v6_4.versionNumber {
+        let testTags = try #require(testRecord.tags)
+        #expect(testTags.count >= 1)
+        for tag in testTags {
+          #expect(!tag.starts(with: "."))
+        }
+        let bugs = try #require(testRecord.bugs)
+        #expect(bugs.count == 2)
+        let timeLimit = try #require(testRecord.timeLimit)
+        #expect(timeLimit == Double(testTimeLimit))
+      }
+
     }
     let eventRecords = decodedRecords.compactMap { record in
       if case let .event(event) = record.kind {

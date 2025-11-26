@@ -43,11 +43,11 @@ extension ABI {
   }
 
   /// The current supported ABI version (ignoring any experimental versions.)
-  typealias CurrentVersion = v6_3
+  typealias CurrentVersion = v6_4
 
   /// The highest defined and supported ABI version (including any experimental
   /// versions.)
-  typealias HighestVersion = v6_3
+  typealias HighestVersion = v6_4
 
 #if !hasFeature(Embedded)
   /// Get the type representing a given ABI version.
@@ -85,6 +85,8 @@ extension ABI {
     }
 
     return switch versionNumber {
+    case ABI.v6_4.versionNumber...:
+      ABI.v6_4.self
     case ABI.v6_3.versionNumber...:
       ABI.v6_3.self
     case ABI.v0.versionNumber...:
@@ -164,6 +166,18 @@ extension ABI {
   public enum v6_3: Sendable, Version {
     static var versionNumber: VersionNumber {
       VersionNumber(6, 3)
+    }
+  }
+
+  /// A namespace and type for ABI version 6.4 symbols.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.4).
+  /// }
+  @_spi(Experimental)
+  public enum v6_4: Sendable, Version {
+    static var versionNumber: VersionNumber {
+      VersionNumber(6, 4)
     }
   }
 
