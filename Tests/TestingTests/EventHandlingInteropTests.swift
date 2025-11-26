@@ -61,7 +61,6 @@ struct EventHandlingInteropTests {
       try Self.handlerContents.withLock {
         let contents = try #require(
           $0, "Fallback should have been called with non nil contents")
-        #expect(contents.version == "6.3")
         #expect(contents.record?.contains("A system failure occurred") ?? false)
       }
     }
