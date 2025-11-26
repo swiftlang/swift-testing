@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2024-2025 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -75,8 +75,24 @@ extension ABI {
 
     /// The tags associated with the test.
     ///
-    /// - Warning: Tags are not yet part of the JSON schema.
-    var _tags: [String]?
+    /// @Metadata {
+    ///   @Available(Swift, introduced: 6.4)
+    /// }
+    var tags: [Tag]?
+
+    /// The bugs associated with the test.
+    ///
+    /// @Metadata {
+    ///   @Available(Swift, introduced: 6.4)
+    /// }
+    var bugs: [Bug]?
+
+    /// The time limits associated with the test.
+    ///
+    /// @Metadata {
+    ///   @Available(Swift, introduced: 6.4)
+    /// }
+    var timeLimit: Double?
 
     init(encoding test: borrowing Test) {
       if test.isSuite {
@@ -95,10 +111,21 @@ extension ABI {
         if isParameterized == true {
           _testCases = test.uncheckedTestCases?.map(EncodedTestCase.init(encoding:))
         }
+      }
 
-        let tags = test.tags
-        if !tags.isEmpty {
-          _tags = tags.map(String.init(describing:))
+      /// TODO: before merging the change,  update the code so it the version of the upcoming release.  6.4 does not exist.
+      if V.versionNumber >= ABI.v6_4.versionNumber {
+        self.tags = test.tags.sorted()
+        // From version 6.3 onwards, bugs are included as an experimental
+        // field.
+        let bugs = test.traits.compactMap { $0 as? Bug }
+        if !bugs.isEmpty {
+          self.bugs = bugs
+        }
+        if #available(_clockAPI , *) {
+          self.timeLimit = test.timeLimit
+            .map(TimeValue.init)
+            .map(Double.init)
         }
       }
     }

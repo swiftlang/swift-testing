@@ -48,16 +48,20 @@ public struct Tag: Sendable {
   public init(userProvidedStringValue stringValue: String) {
     self.init(_codableStringValue: stringValue)
   }
+
+  private func toString() -> String {
+    switch kind {
+    case let .staticMember(name):
+      "\(name)"
+    }
+  }
 }
 
 // MARK: - CustomStringConvertible
 
 extension Tag: CustomStringConvertible {
   public var description: String {
-    switch kind {
-    case let .staticMember(name):
-      ".\(name)"
-    }
+    self.toString()
   }
 }
 
@@ -95,10 +99,7 @@ extension Tag: Codable, CodingKeyRepresentable {
 
   /// This instance represented as a string, suitable for encoding.
   private var _codableStringValue: String {
-    switch kind {
-    case let .staticMember(name):
-      ".\(name)"
-    }
+    self.toString()
   }
 
   public func encode(to encoder: any Encoder) throws {
