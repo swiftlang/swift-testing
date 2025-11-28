@@ -155,20 +155,7 @@ private let testingLibraryDiscoverableEntryPoint: Library.Record.EntryPoint = { 
   }
 }
 
-#if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
-@_section("__DATA_CONST,__swift5_tests")
-#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
-@_section("swift5_tests")
-#elseif os(Windows)
-@_section(".sw5test$B")
-#else
-@__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
-#endif
-@_used
-private let testingLibraryRecord: __TestContentRecord = (
-  0x6D61696E, /* 'main' */
-  0,
-  { outValue, type, hint, _ in
+private func testingLibraryDiscoverableAccessor(_ outValue: UnsafeMutableRawPointer, _ type: UnsafeRawPointer, _ hint: UnsafeRawPointer?, _ reserved: UInt) -> CBool {
     return false
 // #if !hasFeature(Embedded)
 //     guard type.load(as: Any.Type.self) == Library.Record.self else {
@@ -194,7 +181,22 @@ private let testingLibraryRecord: __TestContentRecord = (
 //       )
 //     }
 //     return true
-  },
+}
+
+#if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
+@_section("__DATA_CONST,__swift5_tests")
+#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+@_section("swift5_tests")
+#elseif os(Windows)
+@_section(".sw5test$B")
+#else
+@__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
+#endif
+@_used
+private let testingLibraryRecord: __TestContentRecord = (
+  0x6D61696E, /* 'main' */
+  0,
+  testingLibraryDiscoverableAccessor,
   0,
   0
 )
