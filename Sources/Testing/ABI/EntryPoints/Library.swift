@@ -14,7 +14,7 @@ private import _TestingInternals
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 public struct Library: Sendable {
   /* @c */ fileprivate struct Record {
-    typealias EntryPoint = @convention(c) (
+    typealias EntryPoint = @Sendable @convention(c) (
       _ configurationJSON: UnsafeRawPointer,
       _ configurationJSONByteCount: Int,
       _ reserved: UInt,
@@ -23,14 +23,14 @@ public struct Library: Sendable {
       _ completionHandler: CompletionHandler
     ) -> Void
 
-    typealias RecordJSONHandler = @convention(c) (
+    typealias RecordJSONHandler = @Sendable @convention(c) (
       _ recordJSON: UnsafeRawPointer,
       _ recordJSONByteCount: Int,
       _ reserved: UInt,
       _ context: UnsafeRawPointer
     ) -> Void
 
-    typealias CompletionHandler = @convention(c) (
+    typealias CompletionHandler = @Sendable @convention(c) (
       _ exitCode: CInt,
       _ reserved: UInt,
       _ context: UnsafeRawPointer
