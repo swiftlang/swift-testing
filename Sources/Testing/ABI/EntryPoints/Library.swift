@@ -8,14 +8,14 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-private import _TestDiscovery
+@_spi(Experimental) @_spi(ForToolsIntegrationOnly) private import _TestDiscovery
 private import _TestingInternals
 
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
 public struct Library: Sendable {
   /* @c */ fileprivate struct Record {
     typealias EntryPoint = @convention(c) (
-      _ configurationJSON: UnsafeRawBufferPointer,
+      _ configurationJSON: UnsafeMutableRawPointer,
       _ configurationJSONByteCount: Int,
       _ reserved: UInt,
       _ context: UnsafeMutableRawPointer,
@@ -24,7 +24,7 @@ public struct Library: Sendable {
     ) -> Void
 
     typealias RecordJSONHandler = @convention(c) (
-      _ recordJSON: UnsafeRawBufferPointer,
+      _ recordJSON: UnsafeMutableRawPointer,
       _ recordJSONByteCount: Int,
       _ reserved: UInt,
       _ context: UnsafeMutableRawPointer
@@ -36,7 +36,7 @@ public struct Library: Sendable {
       _ context: UnsafeMutableRawPointer
     ) -> Void
 
-    var name: UnsafePointer<CChar>
+    nonisolated(unsafe) var name: UnsafePointer<CChar>
     var entryPoint: EntryPoint
     var reserved: UInt
   }
