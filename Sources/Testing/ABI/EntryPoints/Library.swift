@@ -184,15 +184,15 @@ private func testingLibraryDiscoverableAccessor(_ outValue: UnsafeMutableRawPoin
 }
 
 #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
-@_section("__DATA_CONST,__swift5_tests")
+@section("__DATA_CONST,__swift5_tests")
 #elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
-@_section("swift5_tests")
+@section("swift5_tests")
 #elseif os(Windows)
-@_section(".sw5test$B")
+@section(".sw5test$B")
 #else
 @__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
 #endif
-@_used
+@used
 private let testingLibraryRecord: __TestContentRecord = (
   0x6D61696E, /* 'main' */
   0,
