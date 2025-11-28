@@ -138,6 +138,7 @@ extension Library {
 
 private let testingLibraryDiscoverableEntryPoint: Library.Record.EntryPoint = { configurationJSON, configurationJSONByteCount, _, context, recordJSONHandler, completionHandler in
   do {
+    nonisolated(unsafe) let context = context
     let configurationJSON = UnsafeRawBufferPointer(start: configurationJSON, count: configurationJSONByteCount)
     let args = try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON)
     let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: false) { recordJSON in
