@@ -140,7 +140,7 @@ private let testingLibraryDiscoverableEntryPoint: Library.Record.EntryPoint = { 
   do {
     let configurationJSON = UnsafeRawBufferPointer(start: configurationJSON, count: configurationJSONByteCount)
     let args = try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON)
-    let eventHandler = try eventHandlerForStrecamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: false) { recordJSON in
+    let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: false) { recordJSON in
        recordJSONHandler(recordJSON.baseAddress!, recordJSON.count, 0, context)
     }
 
