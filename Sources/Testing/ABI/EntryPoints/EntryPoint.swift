@@ -331,6 +331,9 @@ public struct __CommandLineArguments_v0: Sendable {
 
   /// The value of the `--attachments-path` argument.
   public var attachmentsPath: String?
+
+  /// The value of the `--testing-library` argument.
+  public var testingLibrary: String?
 }
 
 extension __CommandLineArguments_v0: Codable {
@@ -353,6 +356,7 @@ extension __CommandLineArguments_v0: Codable {
     case repetitions
     case repeatUntil
     case attachmentsPath
+    case testingLibrary
   }
 }
 
@@ -465,6 +469,11 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     }
   }
 #endif
+
+  // Testing library
+  if let testingLibrary = args.argumentValue(forLabel: "--testing-library") {
+    result.testingLibrary = testingLibrary
+  }
 
   // XML output
   if let xunitOutputPath = args.argumentValue(forLabel: "--xunit-output") {
