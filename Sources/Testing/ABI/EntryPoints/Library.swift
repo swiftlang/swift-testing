@@ -173,7 +173,7 @@ private let testingLibraryRecord: __TestContentRecord = (
       return false
     }
 #endif
-    let hint = hint.map { hint.load(as: UnsafePointer<CChar>.self) }
+    let hint = hint.map { $0.load(as: UnsafePointer<CChar>.self) }
     if let hint {
       guard let hint = String(validatingCString: hint),
             String(hint.filter(\.isLetter)).lowercased() == "swifttesting" else {
