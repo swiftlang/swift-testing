@@ -196,4 +196,3 @@ private let testingLibraryRecord: __TestContentRecord = (
   0,
   0
 )
-}
