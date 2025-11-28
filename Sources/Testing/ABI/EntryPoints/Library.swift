@@ -115,7 +115,7 @@ extension Library.Record: DiscoverableAsTestContent {
 extension Library {
   public init?(named name: String) {
     let result = name.withCString { name in
-      TestContentRecord<Record>.allTestContentRecords().lazy
+      Record.allTestContentRecords().lazy
         .compactMap { $0.load(withHint: name) }
         .map(Self.init(_record:))
         .first
@@ -128,7 +128,7 @@ extension Library {
   }
 
   public static var all: some Sequence<Self> {
-    TestContentRecord<Record>.allTestContentRecords().lazy
+    Record.allTestContentRecords().lazy
       .compactMap { $0.load() }
       .map(Self.init(_record:))
   }
