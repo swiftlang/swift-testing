@@ -15,25 +15,25 @@ private import _TestingInternals
 public struct Library: Sendable {
   /* @c */ fileprivate struct Record {
     typealias EntryPoint = @convention(c) (
-      _ configurationJSON: UnsafeMutableRawPointer,
+      _ configurationJSON: UnsafeRawPointer,
       _ configurationJSONByteCount: Int,
       _ reserved: UInt,
-      _ context: UnsafeMutableRawPointer,
+      _ context: UnsafeRawPointer,
       _ recordJSONHandler: RecordJSONHandler,
       _ completionHandler: CompletionHandler
     ) -> Void
 
     typealias RecordJSONHandler = @convention(c) (
-      _ recordJSON: UnsafeMutableRawPointer,
+      _ recordJSON: UnsafeRawPointer,
       _ recordJSONByteCount: Int,
       _ reserved: UInt,
-      _ context: UnsafeMutableRawPointer
+      _ context: UnsafeRawPointer
     ) -> Void
 
     typealias CompletionHandler = @convention(c) (
       _ exitCode: CInt,
       _ reserved: UInt,
-      _ context: UnsafeMutableRawPointer
+      _ context: UnsafeRawPointer
     ) -> Void
 
     nonisolated(unsafe) var name: UnsafePointer<CChar>
