@@ -169,30 +169,31 @@ private let testingLibraryRecord: __TestContentRecord = (
   0x6D61696E, /* 'main' */
   0,
   { outValue, type, hint, _ in
-#if !hasFeature(Embedded)
-    guard type.load(as: Any.Type.self) == Library.Record.self else {
-      return false
-    }
-#endif
-    let hint = hint.map { $0.load(as: UnsafePointer<CChar>.self) }
-    if let hint {
-      guard let hint = String(validatingCString: hint),
-            String(hint.filter(\.isLetter)).lowercased() == "swifttesting" else {
-        return false
-      }
-    }
-    let name: StaticString = "Swift Testing"
-    name.utf8Start.withMemoryRebound(to: CChar.self, capacity: name.utf8CodeUnitCount + 1) { name in
-      _ = outValue.initializeMemory(
-        as: Library.Record.self,
-        to: .init(
-          name: name,
-          entryPoint: testingLibraryDiscoverableEntryPoint,
-          reserved: 0
-        )
-      )
-    }
-    return true
+    return false
+// #if !hasFeature(Embedded)
+//     guard type.load(as: Any.Type.self) == Library.Record.self else {
+//       return false
+//     }
+// #endif
+//     let hint = hint.map { $0.load(as: UnsafePointer<CChar>.self) }
+//     if let hint {
+//       guard let hint = String(validatingCString: hint),
+//             String(hint.filter(\.isLetter)).lowercased() == "swifttesting" else {
+//         return false
+//       }
+//     }
+//     let name: StaticString = "Swift Testing"
+//     name.utf8Start.withMemoryRebound(to: CChar.self, capacity: name.utf8CodeUnitCount + 1) { name in
+//       _ = outValue.initializeMemory(
+//         as: Library.Record.self,
+//         to: .init(
+//           name: name,
+//           entryPoint: testingLibraryDiscoverableEntryPoint,
+//           reserved: 0
+//         )
+//       )
+//     }
+//     return true
   },
   0,
   0
