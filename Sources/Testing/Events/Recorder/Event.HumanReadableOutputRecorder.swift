@@ -164,7 +164,7 @@ extension Event {
       var result = ""
 
       // Build fully qualified name
-      var fullyQualifiedName = fullyQualifiedName(for: failedTest)
+      let fullyQualifiedName = fullyQualifiedName(for: failedTest)
 
       result += "\(symbol) \(fullyQualifiedName)\n"
 
