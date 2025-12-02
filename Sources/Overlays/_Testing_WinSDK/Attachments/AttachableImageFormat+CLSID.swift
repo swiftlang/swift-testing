@@ -195,7 +195,7 @@ extension AttachableImageFormat {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
   /// }
-#if compiler(>=6.3) && !SWT_FIXED_84466
+#if compiler(>=6.3) && canImport(_GUID)
   @_spi(_)
 #endif
   public var encoderCLSID: CLSID {
@@ -223,7 +223,7 @@ extension AttachableImageFormat {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
   /// }
-#if compiler(>=6.3) && !SWT_FIXED_84466
+#if compiler(>=6.3) && canImport(_GUID)
   @_spi(_)
 #endif
   public init(encoderCLSID: CLSID, encodingQuality: Float = 1.0) {
