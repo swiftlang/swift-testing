@@ -20,7 +20,7 @@ protocol to create your own attachable types.
 ### Attach data or strings
 
 If your test produces encoded data that you want to save as an attachment, you
-can call ``Attachment/record(_:named:sourceLocation:)``:
+can call ``Attachment/record(_:named:sourceLocation:)``.
 
 ```swift
 struct SalesReport { ... }
@@ -56,7 +56,7 @@ you can extend it to add conformance to ``Attachable``. When you import the
 [Foundation](https://developer.apple.com/documentation/foundation) module, the
 testing library automatically provides a default implementation of
 ``Attachable`` to types that also conform to [`Encodable`](https://developer.apple.com/documentation/swift/encodable)
-or [`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding):
+or [`NSSecureCoding`](https://developer.apple.com/documentation/foundation/nssecurecoding).
 
 ```swift
 import Testing
@@ -88,7 +88,7 @@ You can attach instances of the following system-provided image types to a test:
 | Windows | [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps), [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons), [`IWICBitmapSource`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapsource) (including its subclasses declared by Windows Imaging Component) |
 
 When you attach an image to a test, you can specify the image format to use in
-addition to a preferred name:
+addition to a preferred name.
 
 ```swift
 struct SalesReport { ... }
@@ -109,7 +109,7 @@ If you have a value that needs a custom encoded representation when you save it
 as an attachment, implement ``Attachable/withUnsafeBytes(for:_:)``. The
 implementation of this function calls its `body` argument and passes the encoded
 representation of `self` or, if a failure occurs, throws an error representing
-that failure:
+that failure.
 
 ```swift
 struct SalesReport { ... }
@@ -137,7 +137,7 @@ the testing library calls this function as soon as you record the attachment.
 If you can reliably estimate in advance how large the encoded representation
 will be, implement ``Attachable/estimatedAttachmentByteCount``. The testing
 library uses the value of this property as a hint to optimize memory and disk
-usage:
+usage.
 
 ```swift
 extension SalesReport: Attachable {
@@ -149,8 +149,8 @@ extension SalesReport: Attachable {
 }
 ```
 
-You can also implement ``Attachable/preferredName(for:basedOn:)`` if you wish to
-customize the name of the attachment when it is saved:
+You can also implement ``Attachable/preferredName(for:basedOn:)`` if you want to
+customize the name of the attachment when saving it.
 
 ```swift
 extension SalesReport: Attachable {
