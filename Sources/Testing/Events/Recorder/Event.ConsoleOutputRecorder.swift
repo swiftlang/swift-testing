@@ -307,8 +307,9 @@ extension Event.ConsoleOutputRecorder {
   @discardableResult public func record(_ event: borrowing Event, in context: borrowing Event.Context) -> Bool {
     let messages = _humanReadableOutputRecorder.record(event, in: context)
     
-    // Print failure summary when run ends
-    if case .runEnded = event.kind {
+    // Print failure summary when run ends, unless an environment variable is
+    // set to explicitly disable it.
+    if case .runEnded = event.kind, Environment.flag(named: "SWT_FAILURE_SUMMARY_ENABLED") != false {
       if let summary = _humanReadableOutputRecorder.generateFailureSummary(options: options) {
         // Add blank line before summary and after summary for visual separation
         write("\n\(summary)\n")
