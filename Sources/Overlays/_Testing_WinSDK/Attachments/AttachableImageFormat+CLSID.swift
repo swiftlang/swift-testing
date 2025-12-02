@@ -195,6 +195,9 @@ extension AttachableImageFormat {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
   /// }
+#if compiler(>=6.3) && canImport(_GUID)
+  @_spi(_)
+#endif
   public var encoderCLSID: CLSID {
     kind.encoderCLSID
   }
@@ -220,6 +223,9 @@ extension AttachableImageFormat {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
   /// }
+#if compiler(>=6.3) && canImport(_GUID)
+  @_spi(_)
+#endif
   public init(encoderCLSID: CLSID, encodingQuality: Float = 1.0) {
     let encoderCLSID = CLSID.Wrapper(encoderCLSID)
     let kind: Kind = if encoderCLSID == CLSID.Wrapper(CLSID_WICPngEncoder) {
