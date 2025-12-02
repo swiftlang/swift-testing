@@ -274,7 +274,7 @@ extension Event {
           /// The source location where the issue occurred.
           var sourceLocation: SourceLocation?
 
-          /// A detailed description of what failed (using expanded debug description).
+          /// A detailed description of what failed (using expanded description).
           var description: String
 
           /// Whether this issue is a known issue.
