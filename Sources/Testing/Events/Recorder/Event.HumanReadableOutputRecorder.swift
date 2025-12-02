@@ -585,7 +585,7 @@ extension Event.HumanReadableOutputRecorder {
         }
 
         context.testData[keyPath] = testData
-
+      
       case .testCaseStarted:
         context.testData[keyPath] = .init(startInstant: instant)
 
