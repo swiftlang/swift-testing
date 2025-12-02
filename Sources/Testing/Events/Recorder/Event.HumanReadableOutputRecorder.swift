@@ -907,7 +907,7 @@ extension Event.HumanReadableOutputRecorder {
   ///
   /// - Returns: A formatted string containing the failure summary, or `nil`
   ///   if there were no failures.
-  public func generateFailureSummary(options: Event.ConsoleOutputRecorder.Options) -> String? {
+  func generateFailureSummary(options: Event.ConsoleOutputRecorder.Options) -> String? {
     let context = _context.rawValue
     let summary = Event.TestRunSummary(from: context.testData)
     return summary.formatted(with: options)
