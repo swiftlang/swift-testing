@@ -547,8 +547,9 @@ extension Event.HumanReadableOutputRecorder {
           testData.issueCount[issue.severity] = issueCount + 1
         }
 
-        // Store individual issue information for failure summary (only for errors)
-        if issue.severity == .error {
+        // Store individual issue information for failure summary, but only for
+        // issues whose severity is error or greater.
+        if issue.severity >= .error {
           // Extract detailed failure message
           let description: String
           if case let .expectationFailed(expectation) = issue.kind {
