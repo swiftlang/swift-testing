@@ -146,11 +146,10 @@ extension Event {
     ///
     /// - Returns: A string containing the header line.
     private func header() -> String {
-      let failedTestsCount = failedTests.count
-      let testWord = failedTestsCount.counting("test")
+      let failedTestsPhrase = failedTests.count.counting("test")
       let totalIssuesCount = failedTests.reduce(0) { $0 + $1.issues.count }
-      let issueWord = totalIssuesCount.counting("issue")
-      return "Test run had \(failedTestsCount) failed \(testWord) with \(totalIssuesCount) \(issueWord):\n"
+      let issuesPhrase = totalIssuesCount.counting("issue")
+      return "Test run had \(failedTestsPhrase) which recorded \(issuesPhrase) total:\n"
     }
 
     /// Format a single failed test entry.
