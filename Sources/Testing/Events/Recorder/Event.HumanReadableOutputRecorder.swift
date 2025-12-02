@@ -158,7 +158,8 @@ extension Event {
     ///   - failedTest: The failed test to format.
     ///   - symbol: The failure symbol string to use.
     ///
-    /// - Returns: A formatted string representing the failed test and its issues.
+    /// - Returns: A formatted string representing the failed test and its
+    ///   issues.
     private func formatFailedTest(_ failedTest: FailedTest, withSymbol symbol: String) -> String {
       var result = ""
 
@@ -185,7 +186,8 @@ extension Event {
     /// - Parameters:
     ///   - failedTest: The failed test.
     ///
-    /// - Returns: The fully qualified name, with display name substituted if available.
+    /// - Returns: The fully qualified name, with display name substituted if
+    ///   available.
     private func fullyQualifiedName(for failedTest: FailedTest) -> String {
       var name = failedTest.path.joined(separator: "/")
 
