@@ -207,7 +207,7 @@ extension Event {
     private func formatIssue(_ issue: IssueInfo) -> String {
       var result = "  - \(issue.description)\n"
       if let location = issue.sourceLocation {
-        result += "    at \(location.fileID):\(location.line)\n"
+        result += "      at \(location)\n"
       }
       return result
     }
