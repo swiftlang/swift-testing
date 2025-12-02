@@ -126,10 +126,8 @@ extension Event {
         return nil
       }
 
-      var summary = ""
-
-      // Add header with failure count
-      summary += header()
+      // Begin with the summary header.
+      var summary = header()
 
       // Get the failure symbol
       let failSymbol = Event.Symbol.fail.stringValue(options: options)
