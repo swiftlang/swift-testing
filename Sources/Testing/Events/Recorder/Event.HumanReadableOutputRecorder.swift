@@ -187,11 +187,11 @@ extension Event {
     /// - Returns: The fully qualified name, with display name substituted if
     ///   available.
     private func fullyQualifiedName(for failedTest: FailedTest) -> String {
-      var name = failedTest.path.joined(separator: "/")
+      var name = failedTest.path.dropFirst().joined(separator: "/")
 
       // Use display name for the last component if available
       if let displayName = failedTest.displayName, !failedTest.path.isEmpty {
-        let pathWithoutLast = failedTest.path.dropLast()
+        let pathWithoutLast = failedTest.path.dropFirst().dropLast()
         name = (pathWithoutLast + [#""\#(displayName)""#]).joined(separator: "/")
       }
 
