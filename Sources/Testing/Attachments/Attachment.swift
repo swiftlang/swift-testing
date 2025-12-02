@@ -19,19 +19,6 @@ private import _TestingInternals
 /// record the attachment, call ``Attachment/record(_:sourceLocation:)``.
 /// Alternatively, pass your attachable value directly to ``Attachment/record(_:named:sourceLocation:)``.
 ///
-/// By default, the testing library saves your attachments as soon as you call
-/// ``Attachment/record(_:sourceLocation:)`` or
-/// ``Attachment/record(_:named:sourceLocation:)``. You can access saved
-/// attachments after your tests finish running:
-///
-/// - When using Xcode, you can access attachments from the test report.
-/// - When using Visual Studio Code, the testing library saves attachments to
-///   `.build/attachments` by default. Visual Studio Code reports the paths to
-///   individual attachments in its Tests Results panel.
-/// - When using Swift Package Manager's `swift test` command, you can pass the
-///   `--attachments-path` option. The testing library saves attachments to the
-///   specified directory.
-///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
 ///   @Available(Xcode, introduced: 26.0)
