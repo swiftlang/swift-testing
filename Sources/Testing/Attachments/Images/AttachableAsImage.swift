@@ -45,9 +45,9 @@
 /// Instead, the testing library provides additional initializers on [`Attachment`](https://developer.apple.com/documentation/testing/attachment)
 /// that take instances of such types and handle converting them to image data when needed.
 ///
-/// You do not generally need to add your own conformances to this protocol. If
-/// you have an image in another format that needs to be attached to a test,
-/// first convert it to an instance of one of the types above.
+/// You do not generally need to add your own conformances to this protocol. For
+/// a list of types that automatically conform to this protocol, see
+/// <doc:Attachments#Attach-images>.
 ///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
