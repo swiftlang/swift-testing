@@ -13,8 +13,7 @@ extension Event {
   ///
   /// This type encapsulates the logic for collecting failed tests from a test
   /// data graph and formatting them into a human-readable failure summary.
-  @_spi(ForToolsIntegrationOnly)
-  public struct TestRunSummary: Sendable {
+  private struct TestRunSummary: Sendable {
     /// Information about a single failed test.
     struct FailedTest: Sendable {
       /// The full hierarchical path to the test (e.g., suite names).
