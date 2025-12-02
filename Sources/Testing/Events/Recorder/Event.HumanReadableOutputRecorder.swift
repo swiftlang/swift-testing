@@ -187,15 +187,17 @@ extension Event {
     /// - Returns: The fully qualified name, with display name substituted if
     ///   available.
     private func fullyQualifiedName(for failedTest: FailedTest) -> String {
-      var name = failedTest.path.dropFirst().joined(separator: "/")
+      // Omit the leading path component representing the module name from the
+      // fully-qualified name of the test.
+      let path = failedTest.path.dropFirst()
 
-      // Use display name for the last component if available
-      if let displayName = failedTest.displayName, !failedTest.path.isEmpty {
-        let pathWithoutLast = failedTest.path.dropFirst().dropLast()
-        name = (pathWithoutLast + [#""\#(displayName)""#]).joined(separator: "/")
+      // Use display name for the last component if available. Otherwise, join
+      // the path components.
+      return if let displayName = failedTest.displayName, !failedTest.path.isEmpty {
+        (path.dropLast() + [#""\#(displayName)""#]).joined(separator: "/")
+      } else {
+        path.joined(separator: "/")
       }
-
-      return name
     }
 
     /// Format a single issue entry.
