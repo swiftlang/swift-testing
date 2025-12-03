@@ -18,7 +18,9 @@ extension GUID: @retroactive Equatable, @retroactive Hashable {
     }
   }
 
-  public static func ==(lhs: Self, rhs: Self) -> Bool {
+  // SEE: https://github.com/swiftlang/swift/pull/85196
+  @_implements(Equatable, ==(_:_:))
+  public static func __equals(lhs: Self, rhs: Self) -> Bool {
     lhs._uint128Value == rhs._uint128Value
   }
 
