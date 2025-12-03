@@ -9,20 +9,20 @@
 //
 
 #if compiler(<6.3) && os(Windows)
-internal import WinSDK
+public import WinSDK
 
-extension GUID: @retroactive Equatable, Hashable {
+extension GUID: @retroactive Equatable, @retroactive Hashable {
   private var _uint128Value: UInt128 {
-    withUnsafeBytes(of: rawValue) { buffer in
+    withUnsafeBytes(of: self) { buffer in
       buffer.baseAddress!.loadUnaligned(as: UInt128.self)
     }
   }
 
-  static func ==(lhs: Self, rhs: Self) -> Bool {
+  public static func ==(lhs: Self, rhs: Self) -> Bool {
     lhs._uint128Value == rhs._uint128Value
   }
 
-  func hash(into hasher: inout Hasher) {
+  public func hash(into hasher: inout Hasher) {
     hasher.combine(_uint128Value)
   }
 }
