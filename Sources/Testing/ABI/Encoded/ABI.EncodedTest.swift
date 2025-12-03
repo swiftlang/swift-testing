@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2024-2025 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -74,9 +74,13 @@ extension ABI {
     var isParameterized: Bool?
 
     /// The tags associated with the test.
-    ///
-    /// - Warning: Tags are not yet part of the JSON schema.
-    var _tags: [String]?
+    var tags: [String]?
+
+    // The bugs associated with the test.
+    var bugs: [Bug]?
+
+    /// The time limits associated with the test.
+    var timeLimit: Int?
 
     init(encoding test: borrowing Test) {
       if test.isSuite {
@@ -95,10 +99,23 @@ extension ABI {
         if isParameterized == true {
           _testCases = test.uncheckedTestCases?.map(EncodedTestCase.init(encoding:))
         }
+      }
 
+      if V.versionNumber >= ABI.v6_3.versionNumber {
         let tags = test.tags
         if !tags.isEmpty {
-          _tags = tags.map(String.init(describing:))
+          self.tags = tags.map(String.init(describing:))
+        }
+        // From version 6.3 onwards, bugs are included as an experimental
+        // field.
+        let bugs = test.traits.compactMap { $0 as? Bug }
+        if !bugs.isEmpty {
+          self.bugs = bugs
+        }
+        if #available(_clockAPI , *) {
+          if let seconds = test.timeLimit?.components.seconds {
+            self.timeLimit = Int(seconds)
+          }
         }
       }
     }
