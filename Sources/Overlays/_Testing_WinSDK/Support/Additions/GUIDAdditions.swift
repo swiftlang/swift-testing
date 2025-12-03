@@ -11,11 +11,7 @@
 #if compiler(<6.3) && os(Windows)
 internal import WinSDK
 
-/// A protocol that obscures the `Equatable` and `Hashable` protocols so we
-/// don't need to publicly declare that `GUID` conforms to them.
-protocol GUIDProtocol: Equatable, Hashable {}
-
-extension GUID: GUIDProtocol {
+extension GUID: @retroactive Equatable, Hashable {
   private var _uint128Value: UInt128 {
     withUnsafeBytes(of: rawValue) { buffer in
       buffer.baseAddress!.loadUnaligned(as: UInt128.self)
