@@ -76,6 +76,29 @@ extension SalesReport: Encodable, Attachable {}
   your test target imports the [Foundation](https://developer.apple.com/documentation/foundation)
   module.
 
+### Attach files and directories
+
+If you have a file you want to save as an attachment, you can attach it using
+its file URL. The testing library must read or map the file before attaching it
+to your test, and those operations can fail, so you must explicitly create an
+instance of ``Attachment`` before you record it.
+
+```swift
+import Foundation
+
+@Test func `sales report adds up`() async throws {
+  let salesReport = await generateSalesReport()
+  try salesReport.validate()
+  let salesReportURL = try salesReport.save()
+  let attachment = try await Attachment(contentsOf: salesReportURL)
+  Attachment.record(attachment)
+}
+```
+
+You can also attach a directory to a test using its file URL. When you attach a
+directory to a test, the testing library creates a ZIP file containing the
+directory's contents, then attaches that ZIP file in place of the directory.
+
 ### Attach images
 
 You can attach instances of the following system-provided image types to a test:
