@@ -13,10 +13,6 @@ public import SwiftSyntax
 import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
 
-#if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY
-#error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand @Suite")
-#endif
-
 /// A type describing the expansion of the `@Suite` attribute macro.
 ///
 /// This type is used to implement the `@Suite` attribute macro. Do not use it
@@ -149,7 +145,7 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
     result.append(
       """
       @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
-      private nonisolated static let \(accessorName): Testing.__TestContentRecordAccessor = { outValue, type, _, _ in
+      @c private nonisolated static func \(accessorName)(_ outValue: UnsafeMutableRawPointer, _ type: UnsafeRawPointer, _ hint: UnsafeRawPointer?, _: UInt) -> CBool {
         Testing.Test.__store(\(generatorName), into: outValue, asTypeAt: type)
       }
       """
@@ -166,7 +162,7 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
       )
     )
 
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
+#if compiler(<6.3)
     // Emit a type that contains a reference to the test content record.
     let enumName = context.makeUniqueName("__🟡$")
     result.append(
