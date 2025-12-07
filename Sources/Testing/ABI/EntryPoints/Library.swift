@@ -9,24 +9,37 @@
 //
 
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly) private import _TestDiscovery
-private import _TestingInternals
+internal import _TestingInternals
 
 /// A type representing a testing library such as Swift Testing or XCTest.
 @_spi(Experimental)
 public struct Library: Sendable {
+  /// The underlying instance of ``SWTLibrary``.
+  ///
   /// - Important: The in-memory layout of ``Library`` must _exactly_ match the
   ///   layout of this type. As such, it must not contain any other stored
   ///   properties.
-  private nonisolated(unsafe) var _library: SWTLibrary
+  nonisolated(unsafe) var rawValue: SWTLibrary
 
   /// The human-readable name of this library.
   ///
   /// For example, the value of this property for an instance of this type that
   /// represents the Swift Testing library is `"Swift Testing"`.
   public var name: String {
-    String(validatingCString: _library.name) ?? ""
+    String(validatingCString: rawValue.name) ?? ""
   }
 
+  /// The canonical form of the "hint" to run the testing library's tests at
+  /// runtime.
+  ///
+  /// For example, the value of this property for an instance of this type that
+  /// represents the Swift Testing library is `"swift-testing"`.
+  @_spi(ForToolsIntegrationOnly)
+  public var canonicalHint: String {
+    String(validatingCString: rawValue.canonicalHint) ?? ""
+  }
+
+#if !SWT_NO_RUNTIME_LIBRARY_DISCOVERY
   /// Call the entry point function of this library.
   @_spi(ForToolsIntegrationOnly)
   public func callEntryPoint(
@@ -35,9 +48,28 @@ public struct Library: Sendable {
       _ recordJSON: UnsafeRawBufferPointer
     ) -> Void = { _ in }
   ) async -> CInt {
+    var recordHandler = recordHandler
+
     let configurationJSON: [UInt8]
     do {
       let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments)
+
+      // Event stream output
+      // Automatically write record JSON as JSON lines to the event stream if
+      // specified by the user.
+      if let eventStreamOutputPath = args.eventStreamOutputPath {
+        let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
+        recordHandler = { [oldRecordHandler = recordHandler] recordJSON in
+          JSON.asJSONLine(recordJSON) { recordJSON in
+            _ = try? file.withLock {
+              try file.write(recordJSON)
+              try file.write("\n")
+            }
+          }
+          oldRecordHandler(recordJSON)
+        }
+      }
+
       configurationJSON = try JSON.withEncoding(of: args) { configurationJSON in
         configurationJSON.withMemoryRebound(to: UInt8.self) { Array($0) }
       }
@@ -58,7 +90,7 @@ public struct Library: Sendable {
         ) as AnyObject
       ).toOpaque()
       configurationJSON.withUnsafeBytes { configurationJSON in
-        _library.entryPoint(
+        rawValue.entryPoint(
           configurationJSON.baseAddress!,
           configurationJSON.count,
           0,
@@ -80,8 +112,10 @@ public struct Library: Sendable {
       }
     }
   }
+#endif
 }
 
+#if !SWT_NO_RUNTIME_LIBRARY_DISCOVERY
 // MARK: - Discovery
 
 /// A helper protocol that prevents the conformance of ``Library`` to
@@ -106,11 +140,11 @@ extension Library {
   }()
 
   @_spi(ForToolsIntegrationOnly)
-  public init?(named name: String) {
+  public init?(withHint hint: String) {
     Self._validateMemoryLayout
-    let result = name.withCString { name in
+    let result = hint.withCString { hint in
       Library.allTestContentRecords().lazy
-        .compactMap { $0.load(withHint: name) }
+        .compactMap { $0.load(withHint: hint) }
         .first
     }
     if let result {
@@ -126,45 +160,75 @@ extension Library {
     return Library.allTestContentRecords().lazy.compactMap { $0.load() }
   }
 }
-
-// MARK: - Our very own entry point
-
-private let _discoverableEntryPoint: SWTLibraryEntryPoint = { configurationJSON, configurationJSONByteCount, _, context, recordJSONHandler, completionHandler in
-  // Capture appropriate state from the arguments to forward into the canonical
-  // entry point function.
-  let contextBitPattern = UInt(bitPattern: context)
-  let configurationJSON = UnsafeRawBufferPointer(start: configurationJSON, count: configurationJSONByteCount)
-  var args: __CommandLineArguments_v0
-  let eventHandler: Event.Handler
-  do {
-    args = try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON)
-    eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: false) { recordJSON in
-      let context = UnsafeRawPointer(bitPattern: contextBitPattern)!
-      recordJSONHandler(recordJSON.baseAddress!, recordJSON.count, 0, context)
-    }
-  } catch {
-    // TODO: more advanced error recovery?
-    return completionHandler(EXIT_FAILURE, 0, context)
-  }
-
-  // Avoid infinite recursion. (Other libraries don't need to clear this field.)
-  args.testingLibrary = nil
-
-#if !SWT_NO_UNSTRUCTURED_TASKS
-  Task.detached { [args] in
-    let context = UnsafeRawPointer(bitPattern: contextBitPattern)!
-    let exitCode = await Testing.entryPoint(passing: args, eventHandler: eventHandler)
-    completionHandler(exitCode, 0, context)
-  }
-#else
-  let exitCode = Task.runInline { [args] in
-    await Testing.entryPoint(passing: args, eventHandler: eventHandler)
-  }
-  completionHandler(exitCode, 0, context)
 #endif
+
+// MARK: - Referring to Swift Testing directly
+
+extension Library {
+  /// TheABI  entry point function for the testing library, thunked so that it
+  /// is compatible with the ``Library`` ABI.
+  private static let _libraryRecordEntryPoint: SWTLibraryEntryPoint = { configurationJSON, configurationJSONByteCount, _, context, recordJSONHandler, completionHandler in
+#if !SWT_NO_RUNTIME_LIBRARY_DISCOVERY
+    // Capture appropriate state from the arguments to forward into the canonical
+    // entry point function.
+    let contextBitPattern = UInt(bitPattern: context)
+    let configurationJSON = UnsafeRawBufferPointer(start: configurationJSON, count: configurationJSONByteCount)
+    var args: __CommandLineArguments_v0
+    let eventHandler: Event.Handler
+    do {
+      args = try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON)
+      eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: false) { recordJSON in
+        let context = UnsafeRawPointer(bitPattern: contextBitPattern)!
+        recordJSONHandler(recordJSON.baseAddress!, recordJSON.count, 0, context)
+      }
+    } catch {
+      // TODO: more advanced error recovery?
+      return completionHandler(EXIT_FAILURE, 0, context)
+    }
+
+    // Avoid infinite recursion and double JSON output. (Other libraries don't
+    // need to clear these fields.)
+    args.testingLibrary = nil
+    args.eventStreamOutputPath = nil
+
+    // Create an async context and run tests within it.
+#if !SWT_NO_UNSTRUCTURED_TASKS
+    Task.detached { [args] in
+      let context = UnsafeRawPointer(bitPattern: contextBitPattern)!
+      let exitCode = await Testing.entryPoint(passing: args, eventHandler: eventHandler)
+      completionHandler(exitCode, 0, context)
+    }
+#else
+    let exitCode = Task.runInline { [args] in
+      await Testing.entryPoint(passing: args, eventHandler: eventHandler)
+    }
+    completionHandler(exitCode, 0, context)
+#endif
+#else
+    // There is no way to call this function without pointer shenanigans because
+    // we are not exposing `callEntryPoint()` nor are we emitting a record into
+    // the test content section.
+    swt_unreachable()
+#endif
+  }
+
+  /// An instance of this type representing Swift Testing itself.
+  static let swiftTesting: Self = {
+    Self(
+      rawValue: .init(
+        name: StaticString("Swift Testing").constUTF8CString,
+        canonicalHint: StaticString("swift-testing").constUTF8CString,
+        entryPoint: _libraryRecordEntryPoint,
+        reserved: (0, 0, 0, 0, 0)
+      )
+    )
+  }()
 }
 
-private func _discoverableAccessor(_ outValue: UnsafeMutableRawPointer, _ type: UnsafeRawPointer, _ hint: UnsafeRawPointer?, _ reserved: UInt) -> CBool {
+#if !SWT_NO_RUNTIME_LIBRARY_DISCOVERY
+// MARK: - Our very own library record
+
+private func _libraryRecordAccessor(_ outValue: UnsafeMutableRawPointer, _ type: UnsafeRawPointer, _ hint: UnsafeRawPointer?, _ reserved: UInt) -> CBool {
 #if !hasFeature(Embedded)
   // Make sure that the caller supplied the right Swift type. If a testing
   // library is implemented in a language other than Swift, they can either:
@@ -189,17 +253,13 @@ private func _discoverableAccessor(_ outValue: UnsafeMutableRawPointer, _ type: 
   // Initialize the provided memory to the (ABI-stable) library structure.
   _ = outValue.initializeMemory(
     as: SWTLibrary.self,
-    to: .init(
-      name: swt_getSwiftTestingLibraryName(),
-      entryPoint: _discoverableEntryPoint,
-      reserved: (0, 0, 0, 0, 0, 0)
-    )
+    to: Library.swiftTesting.rawValue
   )
 
   return true
 }
 
-#if compiler(>=6.3)
+#if compiler(>=6.3) && hasFeature(CompileTimeValuesPreview)
 #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
 @section("__DATA_CONST,__swift5_tests")
 #elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
@@ -210,7 +270,7 @@ private func _discoverableAccessor(_ outValue: UnsafeMutableRawPointer, _ type: 
 //@__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
 #endif
 @used
-#else
+#elseif hasFeature(SymbolLinkageMarkers)
 #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
 @_section("__DATA_CONST,__swift5_tests")
 #elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
@@ -222,10 +282,11 @@ private func _discoverableAccessor(_ outValue: UnsafeMutableRawPointer, _ type: 
 #endif
 @_used
 #endif
-private let testingLibraryRecord: __TestContentRecord = (
-  0x6D61696E, /* 'main' */
-  0,
-  { _discoverableAccessor($0, $1, $2, $3) },
-  0,
-  0
+private let _libraryRecord: __TestContentRecord = (
+  kind: 0x6D61696E, /* 'main' */
+  reserved1: 0,
+  accessor: _libraryRecordAccessor,
+  context: 0,
+  reserved2: 0
 )
+#endif

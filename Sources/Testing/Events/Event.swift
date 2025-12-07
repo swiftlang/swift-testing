@@ -13,6 +13,21 @@
 public struct Event: Sendable {
   /// An enumeration describing the various kinds of event that can be observed.
   public enum Kind: Sendable {
+    /// A library was discovered during test run planning.
+    ///
+    /// - Parameters:
+    /// 	- library: A description of the discovered library.
+    ///
+    /// This event is recorded once, before events of kind ``testDiscovered``,
+    /// and indicates which testing library's tests will run.
+    ///
+    /// This event is also posted once per library when
+    /// `swift test --experimental-list-libraries` is called. In that case,
+    /// events are posted for all discovered libraries regardless of whether or
+    /// not they would run.
+    @_spi(Experimental)
+    indirect case libraryDiscovered(_ library: Library)
+
     /// A test was discovered during test run planning.
     ///
     /// This event is recorded once per discovered test when ``Runner/run()`` is
@@ -378,6 +393,18 @@ extension Event {
 extension Event.Kind {
   /// A serializable enumeration describing the various kinds of event that can be observed.
   public enum Snapshot: Sendable, Codable {
+    /// A library was discovered during test run planning.
+    ///
+    /// This event is recorded once, before events of kind ``testDiscovered``,
+    /// and indicates which testing library's tests will run.
+    ///
+    /// This event is also posted once per library when
+    /// `swift test --experimental-list-libraries` is called. In that case,
+    /// events are posted for all discovered libraries regardless of whether or
+    /// not they would run.
+    @_spi(Experimental)
+    case libraryDiscovered
+
     /// A test was discovered during test run planning.
     ///
     /// This event is recorded once per discovered test when ``Runner/run()`` is
@@ -523,6 +550,8 @@ extension Event.Kind {
     ///   - kind: The original event kind to snapshot.
     public init(snapshotting kind: Event.Kind) {
       switch kind {
+      case .libraryDiscovered:
+        self = .libraryDiscovered
       case .testDiscovered:
         self = .testDiscovered
       case .runStarted:

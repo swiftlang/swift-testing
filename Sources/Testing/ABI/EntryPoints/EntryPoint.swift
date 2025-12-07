@@ -30,17 +30,19 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
 
   do {
 #if !SWT_NO_EXIT_TESTS
-      // If an exit test was specified, run it. `exitTest` returns `Never`.
-      if let exitTest = ExitTest.findInEnvironmentForEntryPoint() {
-        await exitTest()
-      }
+    // If an exit test was specified, run it. `exitTest` returns `Never`.
+    if let exitTest = ExitTest.findInEnvironmentForEntryPoint() {
+      await exitTest()
+    }
 #endif
 
     let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments)
 
-    if let library = args.testingLibrary.flatMap(Library.init(named:)) {
+#if !SWT_NO_RUNTIME_LIBRARY_DISCOVERY
+    if let library = args.testingLibrary.flatMap(Library.init(withHint:)) {
       return await library.callEntryPoint(passing: args)
     }
+#endif
 
     // Configure the test runner.
     var configuration = try configurationForEntryPoint(from: args)
@@ -96,7 +98,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
 
     // The set of matching tests (or, in the case of `swift test list`, the set
     // of all tests.)
-    let tests: [Test]
+    var tests = [Test]()
 
     if args.listTests ?? false {
       tests = await Array(Test.all)
@@ -116,6 +118,28 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
       // JSON objects if JSON output is enabled.
       for test in tests {
         Event.post(.testDiscovered, for: (test, nil), configuration: configuration)
+      }
+    } else if args.experimentalListLibraries ?? false {
+#if !SWT_NO_RUNTIME_LIBRARY_DISCOVERY
+      let libraries = Library.all
+#else
+      let libraries = [Library.swiftTesting]
+#endif
+
+      if args.verbosity > .min {
+        for library in libraries {
+          // Print the test ID to stdout (classical CLI behavior.)
+#if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
+          try? FileHandle.stdout.write("\(library.name) (\(library.canonicalHint))\n")
+#else
+          print("\(library.name) (\(library.canonicalHint))")
+#endif
+        }
+      }
+
+      // Post an event for every discovered library (as with tests above).
+      for library in libraries {
+        Event.post(.libraryDiscovered(library), for: (nil, nil), configuration: configuration)
       }
     } else {
       // Run the tests.
@@ -211,6 +235,9 @@ public struct __CommandLineArguments_v0: Sendable {
 
   /// The value of the `--list-tests` argument.
   public var listTests: Bool?
+
+  /// The value of the `--experimental-list-libraries` argument.
+  public var experimentalListLibraries: Bool?
 
   /// The value of the `--parallel` or `--no-parallel` argument.
   public var parallel: Bool?
@@ -346,6 +373,7 @@ extension __CommandLineArguments_v0: Codable {
   // do not end up with leading underscores when encoded.
   enum CodingKeys: String, CodingKey {
     case listTests
+    case experimentalListLibraries
     case parallel
     case experimentalMaximumParallelizationWidth
     case symbolicateBacktraces
@@ -476,7 +504,7 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
 #endif
 
   // Testing library
-  if let testingLibrary = args.argumentValue(forLabel: "--testing-library") {
+  if let testingLibrary = Environment.variable(named: "SWT_EXPERIMENTAL_LIBRARY") ?? args.argumentValue(forLabel: "--testing-library") {
     result.testingLibrary = testingLibrary
   }
 
@@ -497,6 +525,9 @@ func parseCommandLineArguments(from args: [String]) throws -> __CommandLineArgum
     // Allow the "list" subcommand explicitly in place of "--list-tests". This
     // makes invocation from e.g. Wasmtime a bit more intuitive/idiomatic.
     result.listTests = true
+  }
+  if Environment.flag(named: "SWT_EXPERIMENTAL_LIST_LIBRARIES") == true || args.contains("--experimental-list-libraries") {
+    result.experimentalListLibraries = true
   }
 
   // Parallelization (on by default)

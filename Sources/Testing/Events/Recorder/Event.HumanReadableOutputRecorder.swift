@@ -349,7 +349,7 @@ extension Event.HumanReadableOutputRecorder {
 
     // Finally, produce any messages for the event.
     switch event.kind {
-    case .testDiscovered:
+    case .libraryDiscovered, .testDiscovered:
       // Suppress events of this kind from output as they are not generally
       // interesting in human-readable output.
       break

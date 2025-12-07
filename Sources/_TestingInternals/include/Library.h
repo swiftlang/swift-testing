@@ -41,15 +41,10 @@ typedef void (* SWTLibraryEntryPoint)(
 /// A C type that provides the in-memory layout of the ``Library`` Swift type.
 typedef struct SWTLibrary {
   const char *name;
+  const char *canonicalHint; // TODO: better name
   SWTLibraryEntryPoint entryPoint;
-  uintptr_t reserved[6];
+  uintptr_t reserved[5];
 } SWTLibrary;
-
-/// Get the name of the testing library (i.e. `"Swift Testing"`) as a
-/// statically-allocated C string.
-static inline const char *swt_getSwiftTestingLibraryName(void) {
-  return "Swift Testing";
-}
 
 SWT_ASSUME_NONNULL_END
 

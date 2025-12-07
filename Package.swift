@@ -389,6 +389,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       // (via CMake). Enabling it is dependent on acceptance of the @section
       // proposal via Swift Evolution.
       .enableExperimentalFeature("SymbolLinkageMarkers"),
+      .enableExperimentalFeature("CompileTimeValuesPreview"),
 
       .enableUpcomingFeature("InferIsolatedConformances"),
 

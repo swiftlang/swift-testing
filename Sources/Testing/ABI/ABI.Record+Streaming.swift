@@ -24,7 +24,13 @@ extension ABI.Version {
 
     let humanReadableOutputRecorder = Event.HumanReadableOutputRecorder()
     return { [eventHandler = eventHandlerCopy] event, context in
-      if case .testDiscovered = event.kind, let test = context.test {
+      if case let .libraryDiscovered(library) = event.kind {
+        if let libraryRecord = ABI.Record<Self>(encoding: library) {
+          try? JSON.withEncoding(of: libraryRecord) { libraryJSON in
+            eventHandler(libraryJSON)
+          }
+        }
+      } else if case .testDiscovered = event.kind, let test = context.test {
         try? JSON.withEncoding(of: ABI.Record<Self>(encoding: test)) { testJSON in
           eventHandler(testJSON)
         }
@@ -47,24 +53,25 @@ extension ABI.Xcode16 {
     forwardingTo eventHandler: @escaping @Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void
   ) -> Event.Handler {
     return { event, context in
-      if case .testDiscovered = event.kind {
+      switch event.kind {
+      case .libraryDiscovered, .testDiscovered:
         // Discard events of this kind rather than forwarding them to avoid a
         // crash in Xcode 16 (which does not expect any events to occur before
         // .runStarted.)
         return
-      }
-
-      struct EventAndContextSnapshot: Codable {
-        var event: Event.Snapshot
-        var eventContext: Event.Context.Snapshot
-      }
-      let snapshot = EventAndContextSnapshot(
-        event: Event.Snapshot(snapshotting: event),
-        eventContext: Event.Context.Snapshot(snapshotting: context)
-      )
-      try? JSON.withEncoding(of: snapshot) { eventAndContextJSON in
-        eventAndContextJSON.withUnsafeBytes { eventAndContextJSON in
-          eventHandler(eventAndContextJSON)
+      default:
+        struct EventAndContextSnapshot: Codable {
+          var event: Event.Snapshot
+          var eventContext: Event.Context.Snapshot
+        }
+        let snapshot = EventAndContextSnapshot(
+          event: Event.Snapshot(snapshotting: event),
+          eventContext: Event.Context.Snapshot(snapshotting: context)
+        )
+        try? JSON.withEncoding(of: snapshot) { eventAndContextJSON in
+          eventAndContextJSON.withUnsafeBytes { eventAndContextJSON in
+            eventHandler(eventAndContextJSON)
+          }
         }
       }
     }
