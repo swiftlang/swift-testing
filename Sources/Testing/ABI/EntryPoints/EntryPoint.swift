@@ -104,6 +104,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     // The set of matching tests (or, in the case of `swift test list`, the set
     // of all tests.)
     var tests = [Test]()
+    var libraries = [Library]()
 
     if args.listTests == true {
       tests = await Array(Test.all)
@@ -126,18 +127,19 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
       }
     } else if args.experimentalListLibraries == true {
 #if !SWT_NO_RUNTIME_LIBRARY_DISCOVERY
-      let libraries = Library.all
+      libraries = Array(Library.all)
 #else
-      let libraries = [Library.swiftTesting]
+      libraries = [Library.swiftTesting]
 #endif
 
       if args.verbosity > .min {
         for library in libraries {
           // Print the test ID to stdout (classical CLI behavior.)
+          let libraryDescription = "\(library.name) (swift test --experimental-testing-library \(library.canonicalHint))"
 #if SWT_TARGET_OS_APPLE && !SWT_NO_FILE_IO
-          try? FileHandle.stdout.write("\(library.name) (\(library.canonicalHint))\n")
+          try? FileHandle.stdout.write("\(libraryDescription)\n")
 #else
-          print("\(library.name) (\(library.canonicalHint))")
+          print(libraryDescription)
 #endif
         }
       }
@@ -156,7 +158,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     // If there were no matching tests, exit with a dedicated exit code so that
     // the caller (assumed to be Swift Package Manager) can implement special
     // handling.
-    if tests.isEmpty {
+    if tests.isEmpty && libraries.isEmpty {
       exitCode.withLock { exitCode in
         if exitCode == EXIT_SUCCESS {
           exitCode = EXIT_NO_TESTS_FOUND
