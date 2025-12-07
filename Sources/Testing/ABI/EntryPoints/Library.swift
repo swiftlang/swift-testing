@@ -19,10 +19,6 @@ public struct Library: Sendable {
   ///   properties.
   private nonisolated(unsafe) var _library: SWTLibrary
 
-  fileprivate init(_ library: SWTLibrary) {
-    _library = library
-  }
-
   /// The human-readable name of this library.
   ///
   /// For example, the value of this property for an instance of this type that

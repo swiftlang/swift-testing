@@ -16,44 +16,20 @@
 
 SWT_ASSUME_NONNULL_BEGIN
 
-/*
-  fileprivate typealias EntryPoint = @Sendable @convention(c) (
-    _ configurationJSON: UnsafeRawPointer,
-    _ configurationJSONByteCount: Int,
-    _ reserved: UInt,
-    _ context: UnsafeRawPointer,
-    _ recordJSONHandler: EntryPointRecordJSONHandler,
-    _ completionHandler: EntryPointCompletionHandler
-  ) -> Void
-
-  fileprivate typealias EntryPointRecordJSONHandler = @Sendable @convention(c) (
-    _ recordJSON: UnsafeRawPointer,
-    _ recordJSONByteCount: Int,
-    _ reserved: UInt,
-    _ context: UnsafeRawPointer
-  ) -> Void
-
-  fileprivate typealias EntryPointCompletionHandler = @Sendable @convention(c) (
-    _ exitCode: CInt,
-    _ reserved: UInt,
-    _ context: UnsafeRawPointer
-  ) -> Void
-*/
-
-typedef void (* SWT_SENDABLE SWTLibraryEntryPointRecordJSONHandler)(
+typedef void (* SWTLibraryEntryPointRecordJSONHandler)(
   const void *recordJSON,
   size_t recordJSONByteCount,
   uintptr_t reserved,
   const void *_Null_unspecified context
 );
 
-typedef void (* SWT_SENDABLE SWTLibraryEntryPointCompletionHandler)(
+typedef void (* SWTLibraryEntryPointCompletionHandler)(
   int exitCode,
   uintptr_t reserved,
   const void *_Null_unspecified context
 );
 
-typedef void (* SWT_SENDABLE SWTLibraryEntryPoint)(
+typedef void (* SWTLibraryEntryPoint)(
   const void *configurationJSON,
   size_t configurationJSONByteCount,
   uintptr_t reserved,
@@ -65,7 +41,7 @@ typedef void (* SWT_SENDABLE SWTLibraryEntryPoint)(
 /// A C type that provides the in-memory layout of the ``Library`` Swift type.
 typedef struct SWTLibrary {
   const char *name;
-  SWTLibraryEntryPoint SWT_SENDABLE entryPoint;
+  SWTLibraryEntryPoint entryPoint;
   uintptr_t reserved[6];
 } SWTLibrary;
 
