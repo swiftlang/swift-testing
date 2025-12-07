@@ -127,7 +127,10 @@ extension Library {
       }
     }
 
-    completionHandler(EXIT_SUCCESS, 0, context)
+    var resultJSON = "0"
+    resultJSON.withUTF8 { resultJSON in
+      completionHandler(resultJSON.baseAddress!, resultJSON.count, 0, context)
+    }
   }
 
   static let mock: Self = {

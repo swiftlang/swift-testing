@@ -13,7 +13,7 @@ internal import _TestingInternals
 
 /// A type representing a testing library such as Swift Testing or XCTest.
 @_spi(Experimental)
-public struct Library: Sendable, BitwiseCopyable {
+public struct Library: Sendable {
   /// The underlying instance of ``SWTLibrary``.
   ///
   /// - Important: The in-memory layout of ``Library`` must _exactly_ match the
@@ -41,47 +41,69 @@ public struct Library: Sendable, BitwiseCopyable {
 
 #if !SWT_NO_RUNTIME_LIBRARY_DISCOVERY
   /// Call the entry point function of this library.
+  ///
+  /// - Parameters:
+  ///   - args: The arguments to pass to the testing library as its
+  ///     configuration JSON.
+  ///   - recordHandler: A callback to invoke once per record.
+  ///
+  /// - Returns: A process exit code such as `EXIT_SUCCESS`.
+  ///
+  /// - Warning: The signature of this function is subject to change as
+  ///   `__CommandLineArguments_v0` is not a stable interface.
   @_spi(ForToolsIntegrationOnly)
   public func callEntryPoint(
     passing args: __CommandLineArguments_v0? = nil,
-    recordHandler: @escaping @Sendable (
-      _ recordJSON: UnsafeRawBufferPointer
-    ) -> Void = { _ in }
+    recordHandler: (@Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void)? = nil
   ) async -> CInt {
-    var recordHandler = recordHandler
-
-    let configurationJSON: [UInt8]
     do {
-      let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments)
-
-      // Event stream output
-      // Automatically write record JSON as JSON lines to the event stream if
-      // specified by the user.
-      if let eventStreamOutputPath = args.eventStreamOutputPath {
-        let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
-        recordHandler = { [oldRecordHandler = recordHandler] recordJSON in
-          JSON.asJSONLine(recordJSON) { recordJSON in
-            _ = try? file.withLock {
-              try file.write(recordJSON)
-              try file.write("\n")
-            }
-          }
-          oldRecordHandler(recordJSON)
-        }
-      }
-
-      configurationJSON = try JSON.withEncoding(of: args) { configurationJSON in
-        configurationJSON.withMemoryRebound(to: UInt8.self) { Array($0) }
-      }
+      return try await _callEntryPoint(passing: args, recordHandler: recordHandler)
     } catch {
       // TODO: more advanced error recovery?
       return EXIT_FAILURE
     }
+  }
 
-    return await withCheckedContinuation { continuation in
+  /// The implementation of ``callEntryPoint(passing:recordHandler:)``.
+  ///
+  /// - Parameters:
+  /// 	- args: The arguments to pass to the testing library as its
+  ///     configuration JSON.
+  ///   - recordHandler: A callback to invoke once per record.
+  ///
+  /// - Returns: A process exit code such as `EXIT_SUCCESS`.
+	private func _callEntryPoint(
+    passing args: __CommandLineArguments_v0?,
+    recordHandler: (@Sendable (_ recordJSON: UnsafeRawBufferPointer) -> Void)?
+  ) async throws -> CInt {
+    var recordHandler = recordHandler
+
+    let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments)
+
+    // Event stream output
+    // Automatically write record JSON as JSON lines to the event stream if
+    // specified by the user.
+    if let eventStreamOutputPath = args.eventStreamOutputPath {
+      let file = try FileHandle(forWritingAtPath: eventStreamOutputPath)
+      recordHandler = { [oldRecordHandler = recordHandler] recordJSON in
+        JSON.asJSONLine(recordJSON) { recordJSON in
+          _ = try? file.withLock {
+            try file.write(recordJSON)
+            try file.write("\n")
+          }
+        }
+        oldRecordHandler?(recordJSON)
+      }
+    }
+
+    let configurationJSON = try JSON.withEncoding(of: args) { configurationJSON in
+      configurationJSON.withMemoryRebound(to: UInt8.self) { Array($0) }
+    }
+
+    let resultJSON: [UInt8] = await withCheckedContinuation { continuation in
       struct Context {
-        var continuation: CheckedContinuation<CInt, Never>
-        var recordHandler: @Sendable (UnsafeRawBufferPointer) -> Void
+        var continuation: CheckedContinuation<[UInt8], Never>
+        var recordHandler: (@Sendable (UnsafeRawBufferPointer) -> Void)?
       }
       let context = Unmanaged.passRetained(
         Context(
@@ -100,16 +122,27 @@ public struct Library: Sendable, BitwiseCopyable {
               return
             }
             let recordJSON = UnsafeRawBufferPointer(start: recordJSON, count: recordJSONByteCount)
-            context.recordHandler(recordJSON)
+            context.recordHandler?(recordJSON)
           },
-          /* completionHandler: */ { exitCode, _, context in
+          /* completionHandler: */ { resultJSON, resultJSONByteCount, _, context in
             guard let context = Unmanaged<AnyObject>.fromOpaque(context!).takeRetainedValue() as? Context else {
               return
             }
-            context.continuation.resume(returning: exitCode)
+            // TODO: interpret more complex results than a process exit code
+            let resultJSON = [UInt8](UnsafeRawBufferPointer(start: resultJSON, count: resultJSONByteCount))
+            context.continuation.resume(returning: resultJSON)
           }
         )
       }
+    }
+
+    do {
+      return try resultJSON.withUnsafeBytes { resultJSON in
+        try JSON.decode(CInt.self, from: resultJSON)
+      }
+    } catch {
+      // TODO: more advanced error recovery?
+      return EXIT_FAILURE
     }
   }
 #endif
@@ -141,6 +174,13 @@ extension Library {
     assert(MemoryLayout<Library>.alignment == MemoryLayout<SWTLibrary>.alignment, "Library.alignment (\(MemoryLayout<Library>.alignment)) != SWTLibrary.alignment (\(MemoryLayout<SWTLibrary>.alignment)). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
   }()
 
+  /// Create an instance of this type representing the testing library with the
+  /// given hint.
+  ///
+  /// - Parameters:
+  /// 	- hint: The hint to match against such as `"swift-testing"`.
+  ///
+  /// If no matching testing library is found, this initializer returns `nil`.
   @_spi(ForToolsIntegrationOnly)
   public init?(withHint hint: String) {
     Self._validateMemoryLayout
@@ -156,6 +196,7 @@ extension Library {
     }
   }
 
+  /// All testing libraries known to the system including Swift Testing.
   @_spi(ForToolsIntegrationOnly)
   public static var all: some Sequence<Self> {
     Self._validateMemoryLayout
@@ -167,7 +208,7 @@ extension Library {
 // MARK: - Referring to Swift Testing directly
 
 extension Library {
-  /// TheABI  entry point function for the testing library, thunked so that it
+  /// The ABI entry point function for the testing library, thunked so that it
   /// is compatible with the ``Library`` ABI.
   private static let _libraryRecordEntryPoint: SWTLibraryEntryPoint = { configurationJSON, configurationJSONByteCount, _, context, recordJSONHandler, completionHandler in
 #if !SWT_NO_RUNTIME_LIBRARY_DISCOVERY
@@ -184,8 +225,11 @@ extension Library {
         recordJSONHandler(recordJSON.baseAddress!, recordJSON.count, 0, context)
       }
     } catch {
-      // TODO: more advanced error recovery?
-      return completionHandler(EXIT_FAILURE, 0, context)
+      // TODO: interpret more complex results than a process exit code
+      var resultJSON = "\(EXIT_FAILURE)"
+      return resultJSON.withUTF8 { resultJSON in
+        completionHandler(resultJSON.baseAddress!, resultJSON.count, 0, context)
+      }
     }
 
     // Avoid infinite recursion and double JSON output. (Other libraries don't
@@ -194,17 +238,18 @@ extension Library {
     args.eventStreamOutputPath = nil
 
     // Create an async context and run tests within it.
-#if !SWT_NO_UNSTRUCTURED_TASKS
-    Task.detached { [args] in
+    let run = { [args] in
       let context = UnsafeRawPointer(bitPattern: contextBitPattern)!
       let exitCode = await Testing.entryPoint(passing: args, eventHandler: eventHandler)
-      completionHandler(exitCode, 0, context)
+      var resultJSON = "\(exitCode)"
+      resultJSON.withUTF8 { resultJSON in
+        completionHandler(resultJSON.baseAddress!, resultJSON.count, 0, context)
+      }
     }
+#if !SWT_NO_UNSTRUCTURED_TASKS
+    Task.detached { await run() }
 #else
-    let exitCode = Task.runInline { [args] in
-      await Testing.entryPoint(passing: args, eventHandler: eventHandler)
-    }
-    completionHandler(exitCode, 0, context)
+    Task.runInline { await run() }
 #endif
 #else
     // There is no way to call this function without pointer shenanigans because
@@ -215,7 +260,7 @@ extension Library {
   }
 
   /// An instance of this type representing Swift Testing itself.
-  static let swiftTesting: Self = {
+  public static let swiftTesting: Self = {
     Self(
       rawValue: .init(
         name: StaticString("Swift Testing").constUTF8CString,

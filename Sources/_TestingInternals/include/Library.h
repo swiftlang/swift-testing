@@ -24,7 +24,8 @@ typedef void (* SWTLibraryEntryPointRecordJSONHandler)(
 );
 
 typedef void (* SWTLibraryEntryPointCompletionHandler)(
-  int exitCode,
+  const void *resultJSON,
+  size_t resultJSONByteCount,
   uintptr_t reserved,
   const void *_Null_unspecified context
 );

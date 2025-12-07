@@ -39,7 +39,8 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments)
 
 #if !SWT_NO_RUNTIME_LIBRARY_DISCOVERY
-    if let library = args.testingLibrary.flatMap(Library.init(withHint:)) {
+    if args.experimentalListLibraries != true,
+       let library = args.testingLibrary.flatMap(Library.init(withHint:)) {
       return await library.callEntryPoint(passing: args)
     }
 #endif
@@ -100,7 +101,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     // of all tests.)
     var tests = [Test]()
 
-    if args.listTests ?? false {
+    if args.listTests == true {
       tests = await Array(Test.all)
 
       if args.verbosity > .min {
@@ -119,7 +120,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
       for test in tests {
         Event.post(.testDiscovered, for: (test, nil), configuration: configuration)
       }
-    } else if args.experimentalListLibraries ?? false {
+    } else if args.experimentalListLibraries == true {
 #if !SWT_NO_RUNTIME_LIBRARY_DISCOVERY
       let libraries = Library.all
 #else
