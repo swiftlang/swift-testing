@@ -37,6 +37,11 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
 #endif
 
     let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments)
+
+    if let library = args.testingLibrary.flatMap(Library.init(named:)) {
+      return await library.callEntryPoint(passing: args)
+    }
+
     // Configure the test runner.
     var configuration = try configurationForEntryPoint(from: args)
 

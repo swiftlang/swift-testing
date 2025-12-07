@@ -11,42 +11,28 @@
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly) private import _TestDiscovery
 private import _TestingInternals
 
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+/// A type representing a testing library such as Swift Testing or XCTest.
+@_spi(Experimental)
 public struct Library: Sendable {
-  /* @c */ fileprivate struct Record {
-    typealias EntryPoint = @Sendable @convention(c) (
-      _ configurationJSON: UnsafeRawPointer,
-      _ configurationJSONByteCount: Int,
-      _ reserved: UInt,
-      _ context: UnsafeRawPointer,
-      _ recordJSONHandler: RecordJSONHandler,
-      _ completionHandler: CompletionHandler
-    ) -> Void
+  /// - Important: The in-memory layout of ``Library`` must _exactly_ match the
+  ///   layout of this type. As such, it must not contain any other stored
+  ///   properties.
+  private nonisolated(unsafe) var _library: SWTLibrary
 
-    typealias RecordJSONHandler = @Sendable @convention(c) (
-      _ recordJSON: UnsafeRawPointer,
-      _ recordJSONByteCount: Int,
-      _ reserved: UInt,
-      _ context: UnsafeRawPointer
-    ) -> Void
-
-    typealias CompletionHandler = @Sendable @convention(c) (
-      _ exitCode: CInt,
-      _ reserved: UInt,
-      _ context: UnsafeRawPointer
-    ) -> Void
-
-    nonisolated(unsafe) var name: UnsafePointer<CChar>
-    var entryPoint: EntryPoint
-    var reserved: UInt
+  fileprivate init(_ library: SWTLibrary) {
+    _library = library
   }
 
-  private var _record: Record
-
+  /// The human-readable name of this library.
+  ///
+  /// For example, the value of this property for an instance of this type that
+  /// represents the Swift Testing library is `"Swift Testing"`.
   public var name: String {
-    String(validatingCString: _record.name) ?? ""
+    String(validatingCString: _library.name) ?? ""
   }
 
+  /// Call the entry point function of this library.
+  @_spi(ForToolsIntegrationOnly)
   public func callEntryPoint(
     passing args: __CommandLineArguments_v0? = nil,
     recordHandler: @escaping @Sendable (
@@ -61,7 +47,7 @@ public struct Library: Sendable {
       }
     } catch {
       // TODO: more advanced error recovery?
-      return EINVAL
+      return EXIT_FAILURE
     }
 
     return await withCheckedContinuation { continuation in
@@ -76,20 +62,20 @@ public struct Library: Sendable {
         ) as AnyObject
       ).toOpaque()
       configurationJSON.withUnsafeBytes { configurationJSON in
-        _record.entryPoint(
+        _library.entryPoint(
           configurationJSON.baseAddress!,
           configurationJSON.count,
           0,
           context,
           /* recordJSONHandler: */ { recordJSON, recordJSONByteCount, _, context in
-            guard let context = Unmanaged<AnyObject>.fromOpaque(context).takeUnretainedValue() as? Context else {
+            guard let context = Unmanaged<AnyObject>.fromOpaque(context!).takeUnretainedValue() as? Context else {
               return
             }
             let recordJSON = UnsafeRawBufferPointer(start: recordJSON, count: recordJSONByteCount)
             context.recordHandler(recordJSON)
           },
           /* completionHandler: */ { exitCode, _, context in
-            guard let context = Unmanaged<AnyObject>.fromOpaque(context).takeRetainedValue() as? Context else {
+            guard let context = Unmanaged<AnyObject>.fromOpaque(context!).takeRetainedValue() as? Context else {
               return
             }
             context.continuation.resume(returning: exitCode)
@@ -102,22 +88,33 @@ public struct Library: Sendable {
 
 // MARK: - Discovery
 
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-extension Library.Record: DiscoverableAsTestContent {
-  static var testContentKind: TestContentKind {
+/// A helper protocol that prevents the conformance of ``Library`` to
+/// ``DiscoverableAsTestContent`` from being emitted into the testing library's
+/// Swift module or interface files.
+private protocol _DiscoverableAsTestContent: DiscoverableAsTestContent {}
+
+extension Library: _DiscoverableAsTestContent {
+  fileprivate static var testContentKind: TestContentKind {
     "main"
   }
 
-  typealias TestContentAccessorHint = UnsafePointer<CChar>
+  fileprivate typealias TestContentAccessorHint = UnsafePointer<CChar>
 }
 
-@_spi(Experimental) @_spi(ForToolsIntegrationOnly)
+@_spi(Experimental)
 extension Library {
+  private static let _validateMemoryLayout: Void = {
+    assert(MemoryLayout<Library>.size == MemoryLayout<SWTLibrary>.size, "Library.size (\(MemoryLayout<Library>.size)) != SWTLibrary.size (\(MemoryLayout<SWTLibrary>.size)). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+    assert(MemoryLayout<Library>.stride == MemoryLayout<SWTLibrary>.stride, "Library.stride (\(MemoryLayout<Library>.stride)) != SWTLibrary.stride (\(MemoryLayout<SWTLibrary>.stride)). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+    assert(MemoryLayout<Library>.alignment == MemoryLayout<SWTLibrary>.alignment, "Library.alignment (\(MemoryLayout<Library>.alignment)) != SWTLibrary.alignment (\(MemoryLayout<SWTLibrary>.alignment)). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+  }()
+
+  @_spi(ForToolsIntegrationOnly)
   public init?(named name: String) {
+    Self._validateMemoryLayout
     let result = name.withCString { name in
-      Record.allTestContentRecords().lazy
+      Library.allTestContentRecords().lazy
         .compactMap { $0.load(withHint: name) }
-        .map(Self.init(_record:))
         .first
     }
     if let result {
@@ -127,60 +124,83 @@ extension Library {
     }
   }
 
+  @_spi(ForToolsIntegrationOnly)
   public static var all: some Sequence<Self> {
-    Record.allTestContentRecords().lazy
-      .compactMap { $0.load() }
-      .map(Self.init(_record:))
+    Self._validateMemoryLayout
+    return Library.allTestContentRecords().lazy.compactMap { $0.load() }
   }
 }
 
 // MARK: - Our very own entry point
 
-private let testingLibraryDiscoverableEntryPoint: Library.Record.EntryPoint = { configurationJSON, configurationJSONByteCount, _, context, recordJSONHandler, completionHandler in
+private let _discoverableEntryPoint: SWTLibraryEntryPoint = { configurationJSON, configurationJSONByteCount, _, context, recordJSONHandler, completionHandler in
+  // Capture appropriate state from the arguments to forward into the canonical
+  // entry point function.
+  let contextBitPattern = UInt(bitPattern: context)
+  let configurationJSON = UnsafeRawBufferPointer(start: configurationJSON, count: configurationJSONByteCount)
+  var args: __CommandLineArguments_v0
+  let eventHandler: Event.Handler
   do {
-    nonisolated(unsafe) let context = context
-    let configurationJSON = UnsafeRawBufferPointer(start: configurationJSON, count: configurationJSONByteCount)
-    let args = try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON)
-    let eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: false) { recordJSON in
-       recordJSONHandler(recordJSON.baseAddress!, recordJSON.count, 0, context)
-    }
-
-    Task.detached {
-      let exitCode = await Testing.entryPoint(passing: args, eventHandler: eventHandler)
-      completionHandler(exitCode, 0, context)
+    args = try JSON.decode(__CommandLineArguments_v0.self, from: configurationJSON)
+    eventHandler = try eventHandlerForStreamingEvents(withVersionNumber: args.eventStreamVersionNumber, encodeAsJSONLines: false) { recordJSON in
+      let context = UnsafeRawPointer(bitPattern: contextBitPattern)!
+      recordJSONHandler(recordJSON.baseAddress!, recordJSON.count, 0, context)
     }
   } catch {
     // TODO: more advanced error recovery?
-    return completionHandler(EINVAL, 0, context)
+    return completionHandler(EXIT_FAILURE, 0, context)
   }
+
+  // Avoid infinite recursion. (Other libraries don't need to clear this field.)
+  args.testingLibrary = nil
+
+#if !SWT_NO_UNSTRUCTURED_TASKS
+  Task.detached { [args] in
+    let context = UnsafeRawPointer(bitPattern: contextBitPattern)!
+    let exitCode = await Testing.entryPoint(passing: args, eventHandler: eventHandler)
+    completionHandler(exitCode, 0, context)
+  }
+#else
+  let exitCode = Task.runInline { [args] in
+    await Testing.entryPoint(passing: args, eventHandler: eventHandler)
+  }
+  completionHandler(exitCode, 0, context)
+#endif
 }
 
-private func testingLibraryDiscoverableAccessor(_ outValue: UnsafeMutableRawPointer, _ type: UnsafeRawPointer, _ hint: UnsafeRawPointer?, _ reserved: UInt) -> CBool {
+private func _discoverableAccessor(_ outValue: UnsafeMutableRawPointer, _ type: UnsafeRawPointer, _ hint: UnsafeRawPointer?, _ reserved: UInt) -> CBool {
+#if !hasFeature(Embedded)
+  // Make sure that the caller supplied the right Swift type. If a testing
+  // library is implemented in a language other than Swift, they can either:
+  // ignore this argument; or ask the Swift runtime for the type metadata
+  // pointer and compare it against the value `type.pointee` (`*type` in C).
+  guard type.load(as: Any.Type.self) == Library.self else {
     return false
-// #if !hasFeature(Embedded)
-//     guard type.load(as: Any.Type.self) == Library.Record.self else {
-//       return false
-//     }
-// #endif
-//     let hint = hint.map { $0.load(as: UnsafePointer<CChar>.self) }
-//     if let hint {
-//       guard let hint = String(validatingCString: hint),
-//             String(hint.filter(\.isLetter)).lowercased() == "swifttesting" else {
-//         return false
-//       }
-//     }
-//     let name: StaticString = "Swift Testing"
-//     name.utf8Start.withMemoryRebound(to: CChar.self, capacity: name.utf8CodeUnitCount + 1) { name in
-//       _ = outValue.initializeMemory(
-//         as: Library.Record.self,
-//         to: .init(
-//           name: name,
-//           entryPoint: testingLibraryDiscoverableEntryPoint,
-//           reserved: 0
-//         )
-//       )
-//     }
-//     return true
+  }
+#endif
+
+  // Check if the name of the testing library the caller wants is equivalent to
+  // "Swift Testing", ignoring case and punctuation. (If the caller did not
+  // specify a library name, the caller wants records for all libraries.)
+  let hint = hint.map { $0.load(as: UnsafePointer<CChar>.self) }
+  if let hint {
+    guard let hint = String(validatingCString: hint),
+          String(hint.filter(\.isLetter)).lowercased() == "swifttesting" else {
+      return false
+    }
+  }
+
+  // Initialize the provided memory to the (ABI-stable) library structure.
+  _ = outValue.initializeMemory(
+    as: SWTLibrary.self,
+    to: .init(
+      name: swt_getSwiftTestingLibraryName(),
+      entryPoint: _discoverableEntryPoint,
+      reserved: (0, 0, 0, 0, 0, 0)
+    )
+  )
+
+  return true
 }
 
 #if compiler(>=6.3)
@@ -194,11 +214,22 @@ private func testingLibraryDiscoverableAccessor(_ outValue: UnsafeMutableRawPoin
 //@__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
 #endif
 @used
+#else
+#if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
+@_section("__DATA_CONST,__swift5_tests")
+#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+@_section("swift5_tests")
+#elseif os(Windows)
+@_section(".sw5test$B")
+#else
+//@__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
+#endif
+@_used
+#endif
 private let testingLibraryRecord: __TestContentRecord = (
   0x6D61696E, /* 'main' */
   0,
-  testingLibraryDiscoverableAccessor,
+  _discoverableAccessor,
   0,
   0
 )
-#endif

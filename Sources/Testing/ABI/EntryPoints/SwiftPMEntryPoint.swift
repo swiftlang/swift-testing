@@ -59,13 +59,6 @@ public func __swiftPMEntryPoint(passing args: __CommandLineArguments_v0? = nil) 
   }
 #endif
 
-  // FIXME: this is probably the wrong layering for this check
-  if let args = try? args ?? parseCommandLineArguments(from: CommandLine.arguments),
-     let libraryName = args.testingLibrary,
-     let library = Library(named: libraryName) {
-    return await library.callEntryPoint(passing: args)
-  }
-
   return await entryPoint(passing: args, eventHandler: nil)
 }
 
