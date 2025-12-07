@@ -225,7 +225,7 @@ private func _discoverableAccessor(_ outValue: UnsafeMutableRawPointer, _ type: 
 private let testingLibraryRecord: __TestContentRecord = (
   0x6D61696E, /* 'main' */
   0,
-  _discoverableAccessor,
+  { _discoverableAccessor($0, $1, $2, $3) },
   0,
   0
 )
