@@ -13,7 +13,7 @@ internal import _TestingInternals
 
 /// A type representing a testing library such as Swift Testing or XCTest.
 @_spi(Experimental)
-public struct Library: Sendable {
+public struct Library: Sendable, BitwiseCopyable {
   /// The underlying instance of ``SWTLibrary``.
   ///
   /// - Important: The in-memory layout of ``Library`` must _exactly_ match the
@@ -133,6 +133,8 @@ extension Library: _DiscoverableAsTestContent {
 
 @_spi(Experimental)
 extension Library {
+  /// Perform a one-time check that the in-memory layout of ``Library`` matches
+  /// that of ``SWTLibrary``.
   private static let _validateMemoryLayout: Void = {
     assert(MemoryLayout<Library>.size == MemoryLayout<SWTLibrary>.size, "Library.size (\(MemoryLayout<Library>.size)) != SWTLibrary.size (\(MemoryLayout<SWTLibrary>.size)). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
     assert(MemoryLayout<Library>.stride == MemoryLayout<SWTLibrary>.stride, "Library.stride (\(MemoryLayout<Library>.stride)) != SWTLibrary.stride (\(MemoryLayout<SWTLibrary>.stride)). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
