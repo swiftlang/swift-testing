@@ -39,8 +39,12 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     let args = try args ?? parseCommandLineArguments(from: CommandLine.arguments)
 
 #if !SWT_NO_RUNTIME_LIBRARY_DISCOVERY
+    // If the user requested a different testing library, run it instead of
+    // Swift Testing. (If they requested Swift Testing, we're already here so
+    // there's no real need to recurse).
     if args.experimentalListLibraries != true,
-       let library = args.testingLibrary.flatMap(Library.init(withHint:)) {
+       let library = args.testingLibrary.flatMap(Library.init(withHint:)),
+       library.canonicalHint != "swift-testing" {
       return await library.callEntryPoint(passing: args)
     }
 #endif
