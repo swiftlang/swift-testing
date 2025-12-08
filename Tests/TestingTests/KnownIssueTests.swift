@@ -574,6 +574,26 @@ final class KnownIssueTests: XCTestCase {
     await fulfillment(of: [issueRecorded, knownIssueNotRecorded], timeout: 0.0)
   }
 
+  func testKnownIssueWithRequiredExpectationFailure() async {
+    let issueRecorded = expectation(description: "Issue recorded")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case .issueRecorded = event.kind else {
+        return
+      }
+      issueRecorded.fulfill()
+    }
+
+    await Test {
+      withKnownIssue {
+        try #require(Bool(false))
+      }
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [issueRecorded], timeout: 0.0)
+  }
+
   func testAsyncKnownIssueThatDoesNotAlwaysOccur() async {
     struct MyError: Error {}
 
@@ -615,24 +635,3 @@ func mainActorIsolatedKnownIssue() async {
   }.run(configuration: .init())
 }
 #endif
-
-@Test func `withKnownIssue containing a #require failure`() {
-  withKnownIssue {
-    try #require(Bool(false))
-  }
-}
-
-@Test func `withKnownIssue w/custom matcher containing a #require failure`() throws {
-  try withKnownIssue {
-    try #require(Bool(false))
-  } matching: { issue in
-    return switch issue.kind {
-    case .expectationFailed:
-      true
-    case .errorCaught(_ as ExpectationFailedError):
-      true
-    default:
-      false
-    }
-  }
-}

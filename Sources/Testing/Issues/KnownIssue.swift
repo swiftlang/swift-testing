@@ -77,17 +77,19 @@ struct KnownIssueScope: Sendable {
 ///   - sourceLocation: The source location to which the issue should be
 ///     attributed.
 private func _matchError(_ error: any Error, in scope: KnownIssueScope, comment: Comment?, sourceLocation: SourceLocation) throws {
+  // ExpectationFailedError is thrown by expectation checking functions to
+  // indicate a condition evaluated to `false`. Those functions record their
+  // own issue, so we don't need to create a new issue and attempt to match it.
+  if error is ExpectationFailedError {
+    return
+  }
+
   let sourceContext = SourceContext(backtrace: Backtrace(forFirstThrowOf: error), sourceLocation: sourceLocation)
   var issue = Issue(kind: .errorCaught(error), comments: [], sourceContext: sourceContext)
   if let context = scope.matcher(issue) {
     // It's a known issue, so mark it as such before recording it.
     issue.knownIssueContext = context
     issue.record()
-  } else if error is ExpectationFailedError {
-    // This error is thrown by expectation checking functions to indicate a
-    // condition evaluated to `false`. Those functions record their own issue,
-    // so we don't need to rethrow this error and let another issue be recorded
-    // since that would be redundant.
   } else {
     // Rethrow the error, allowing the caller to catch it or for it to propagate
     // to the runner to record it as an issue.
@@ -124,18 +126,6 @@ private func _handleMiscount(by matchCounter: Locked<Int>, comment: Comment?, so
 ///
 /// - Returns: Whether or not `issue` is known to occur.
 public typealias KnownIssueMatcher = @Sendable (_ issue: Issue) -> Bool
-
-// TODO: Document
-/// The default known issue matcher, which matches all issues except those
-@usableFromInline
-var defaultKnownIssueMatcher: KnownIssueMatcher {
-  { issue in
-    if case .errorCaught(_ as ExpectationFailedError) = issue.kind {
-      return false
-    }
-    return true
-  }
-}
 
 /// Invoke a function that has a known issue that is expected to occur during
 /// its execution.
@@ -175,7 +165,7 @@ public func withKnownIssue(
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: () throws -> Void
 ) {
-  try? withKnownIssue(comment, isIntermittent: isIntermittent, sourceLocation: sourceLocation, body, matching: defaultKnownIssueMatcher)
+  try? withKnownIssue(comment, isIntermittent: isIntermittent, sourceLocation: sourceLocation, body, matching: { _ in true })
 }
 
 /// Invoke a function that has a known issue that is expected to occur during
@@ -232,7 +222,7 @@ public func withKnownIssue(
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: () throws -> Void,
   when precondition: () -> Bool = { true },
-  matching issueMatcher: @escaping KnownIssueMatcher = defaultKnownIssueMatcher
+  matching issueMatcher: @escaping KnownIssueMatcher = { _ in true }
 ) rethrows {
   guard precondition() else {
     return try body()
@@ -292,7 +282,7 @@ public func withKnownIssue(
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: () async throws -> Void
 ) async {
-  try? await withKnownIssue(comment, isIntermittent: isIntermittent, isolation: isolation, sourceLocation: sourceLocation, body, matching: defaultKnownIssueMatcher)
+  try? await withKnownIssue(comment, isIntermittent: isIntermittent, isolation: isolation, sourceLocation: sourceLocation, body, matching: { _ in true })
 }
 
 /// Invoke a function that has a known issue that is expected to occur during
@@ -351,7 +341,7 @@ public func withKnownIssue(
   sourceLocation: SourceLocation = #_sourceLocation,
   _ body: () async throws -> Void,
   when precondition: () async -> Bool = { true },
-  matching issueMatcher: @escaping KnownIssueMatcher = defaultKnownIssueMatcher
+  matching issueMatcher: @escaping KnownIssueMatcher = { _ in true }
 ) async rethrows {
   guard await precondition() else {
     return try await body()
