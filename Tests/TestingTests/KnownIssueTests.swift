@@ -615,3 +615,24 @@ func mainActorIsolatedKnownIssue() async {
   }.run(configuration: .init())
 }
 #endif
+
+@Test func `withKnownIssue containing a #require failure`() {
+  withKnownIssue {
+    try #require(Bool(false))
+  }
+}
+
+@Test func `withKnownIssue w/custom matcher containing a #require failure`() throws {
+  try withKnownIssue {
+    try #require(Bool(false))
+  } matching: { issue in
+    return switch issue.kind {
+    case .expectationFailed:
+      true
+    case .errorCaught(_ as ExpectationFailedError):
+      true
+    default:
+      false
+    }
+  }
+}
