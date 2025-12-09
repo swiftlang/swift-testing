@@ -79,8 +79,8 @@ extension SalesReport: Encodable, Attachable {}
 ### Attach files and directories
 
 If you have a file you want to save as an attachment, you can attach it using
-its file URL. The testing library must read or map the file before attaching it
-to your test, and those operations can fail, so you must explicitly create an
+its file URL. The testing library needs to read or map the file before attaching it
+to your test, and those operations can fail, so you need to explicitly create an
 instance of ``Attachment`` before you record it.
 
 ```swift
