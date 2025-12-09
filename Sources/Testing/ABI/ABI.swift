@@ -43,7 +43,7 @@ extension ABI {
   }
 
   /// The current supported ABI version (ignoring any experimental versions.)
-  typealias CurrentVersion = v0
+  typealias CurrentVersion = v6_3
 
   /// The highest defined and supported ABI version (including any experimental
   /// versions.)
