@@ -59,6 +59,12 @@ extension ABI {
   /// - Returns: A type conforming to ``ABI/Version`` that represents the given
   ///   ABI version, or `nil` if no such type exists.
   static func version(forVersionNumber versionNumber: VersionNumber = ABI.CurrentVersion.versionNumber) -> (any Version.Type)? {
+    // Special-case the experimental ABI version number (which is intentionally
+    // higher than any Swift release's version number).
+    if versionNumber == ExperimentalVersion.versionNumber {
+      return ExperimentalVersion.self
+    }
+
     if versionNumber > ABI.HighestVersion.versionNumber {
       // If the caller requested an ABI version higher than the current Swift
       // compiler version and it's not an ABI version we've explicitly defined,

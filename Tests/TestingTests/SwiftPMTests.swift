@@ -363,6 +363,7 @@ struct SwiftPMTests {
           ("--event-stream-output-path", "--event-stream-version", ABI.v0.versionNumber),
           ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v0.versionNumber),
           ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.v6_3.versionNumber),
+          ("--experimental-event-stream-output", "--experimental-event-stream-version", ABI.ExperimentalVersion.versionNumber),
         ])
   func eventStreamOutput(outputArgumentName: String, versionArgumentName: String, version: VersionNumber) async throws {
     let version = try #require(ABI.version(forVersionNumber: version))
@@ -382,6 +383,9 @@ struct SwiftPMTests {
       let test = Test(.tags(.blue)) {}
       let eventContext = Event.Context(test: test, testCase: nil, configuration: nil)
 
+      if V.includesExperimentalFields {
+        configuration.handleEvent(Event(.libraryDiscovered(.swiftTesting), testID: test.id, testCaseID: nil), in: eventContext)
+      }
       configuration.handleEvent(Event(.testDiscovered, testID: test.id, testCaseID: nil), in: eventContext)
       configuration.handleEvent(Event(.runStarted, testID: nil, testCaseID: nil), in: eventContext)
       do {

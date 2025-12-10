@@ -475,6 +475,7 @@ extension Runner {
     await Configuration.withCurrent(runner.configuration) {
       // Post an event for every test in the test plan being run. These events
       // are turned into JSON objects if JSON output is enabled.
+      Event.post(.libraryDiscovered(.swiftTesting), for: (nil, nil), configuration: runner.configuration)
       for test in runner.plan.steps.lazy.map(\.test) {
         Event.post(.testDiscovered, for: (test, nil), configuration: runner.configuration)
       }
