@@ -65,7 +65,7 @@ extension ABI {
   ///   ABI version, or `nil` if no such type exists.
   static func version(
     forVersionNumber versionNumber: VersionNumber,
-    givenSwiftCompilerVersion swiftCompilerVersion: VersionNumber = swiftCompilerVersion
+    givenSwiftCompilerVersion swiftCompilerVersion: @autoclosure () -> VersionNumber = swiftCompilerVersion
   ) -> (any Version.Type)? {
     if versionNumber > ABI.HighestVersion.versionNumber {
       // If the caller requested an ABI version higher than the current Swift
@@ -79,7 +79,7 @@ extension ABI {
       // Note also that building an old version of Swift Testing with a newer
       // compiler may produce incorrect results here. We don't generally support
       // that configuration though.
-      if versionNumber > swiftCompilerVersion {
+      if versionNumber > swiftCompilerVersion() {
         return nil
       }
     }
