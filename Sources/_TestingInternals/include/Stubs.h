@@ -180,8 +180,7 @@ static int swt_setfdflags(int fd, int flags) {
 }
 #endif
 
-// __SWIFT_COMPILER_VERSION is a packed value. The comparison below is >= 6.3
-#if (!defined(__SWIFT_COMPILER_VERSION) || __SWIFT_COMPILER_VERSION >= 6003000000000) && !SWT_NO_INTEROP
+#if !SWT_NO_INTEROP
 
 /// A type describing a fallback event handler that testing API can invoke as an
 /// alternate method of reporting test events to the current test runner.
@@ -195,7 +194,7 @@ static int swt_setfdflags(int fd, int flags) {
 ///   - reserved: Reserved for future use.
 typedef void (* SWTFallbackEventHandler)(const char *recordJSONSchemaVersionNumber,
                                       const void *recordJSONBaseAddress,
-                                      long recordJSONByteCount,
+                                      size_t recordJSONByteCount,
                                       const void *_Nullable reserved);
 
 /// Get the current fallback event handler.
