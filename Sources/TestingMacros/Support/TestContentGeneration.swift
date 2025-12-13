@@ -63,12 +63,19 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
     IntegerLiteralExprSyntax(context, radix: .binary)
   }
 
+  var accessorExpr: ExprSyntax = if let typeName {
+    "\(typeName.trimmed).\(accessorName)"
+  } else {
+    "\(accessorName)"
+  }
+  accessorExpr = "{ unsafe \(accessorExpr)($0, $1, $2, $3) }"
+
   var result: DeclSyntax = """
   @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
   private nonisolated \(staticKeyword(for: typeName)) let \(name): Testing.__TestContentRecord = (
     \(kindExpr), \(kind.commentRepresentation)
     0,
-    unsafe { unsafe \(accessorName)($0, $1, $2, $3) },
+    \(accessorExpr),
     \(contextExpr),
     0
   )
