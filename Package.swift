@@ -385,11 +385,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
       .enableUpcomingFeature("MemberImportVisibility"),
 
-      // This setting is enabled in the package, but not in the toolchain build
-      // (via CMake). Enabling it is dependent on acceptance of the @section
-      // proposal via Swift Evolution.
-      .enableExperimentalFeature("SymbolLinkageMarkers"),
-
       .enableUpcomingFeature("InferIsolatedConformances"),
 
       // When building as a package, the macro plugin always builds as an
@@ -409,6 +404,21 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .define("SWT_NO_LEGACY_TEST_DISCOVERY", .whenEmbedded()),
       .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
     ]
+
+#if compiler(>=6.3)
+#if !SWT_FIXED_85411
+    // Work around https://github.com/swiftlang/swift/issues/85411
+    result += [
+      .enableExperimentalFeature("CompileTimeValuesPreview"),
+    ]
+#endif
+#else
+    // This setting is enabled in the package, but not in the toolchain build
+    // (via CMake). The @section attribute is formally supported in Swift 6.3.
+    result += [
+      .enableExperimentalFeature("SymbolLinkageMarkers"),
+    ]
+#endif
 
     return result
   }

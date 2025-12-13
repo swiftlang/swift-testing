@@ -58,7 +58,7 @@ struct DiscoveryTests {
   }
 #endif
 
-#if !SWT_NO_DYNAMIC_LINKING && hasFeature(SymbolLinkageMarkers)
+#if !SWT_NO_DYNAMIC_LINKING && ((compiler(>=6.3) && hasFeature(CompileTimeValuesPreview)) || hasFeature(SymbolLinkageMarkers))
   struct MyTestContent: DiscoverableAsTestContent {
     typealias TestContentAccessorHint = UInt32
 
@@ -80,6 +80,18 @@ struct DiscoveryTests {
       record.context
     }
 
+#if compiler(>=6.3) && hasFeature(CompileTimeValuesPreview)
+#if objectFormat(MachO)
+    @section("__DATA_CONST,__swift5_tests")
+#elseif objectFormat(ELF) || objectFormat(Wasm)
+    @section("swift5_tests")
+#elseif objectFormat(COFF)
+    @section(".sw5test$B")
+#else
+    @__testing(warning: "Platform-specific implementation missing: object format unknown")
+#endif
+    @used
+#else
 #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
     @_section("__DATA_CONST,__swift5_tests")
 #elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
@@ -90,6 +102,7 @@ struct DiscoveryTests {
     @__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
 #endif
     @_used
+#endif
     private static let record: __TestContentRecord = (
       0xABCD1234,
       0,
@@ -144,7 +157,7 @@ struct DiscoveryTests {
   }
 #endif
 
-#if !SWT_NO_LEGACY_TEST_DISCOVERY && hasFeature(SymbolLinkageMarkers)
+#if !SWT_NO_LEGACY_TEST_DISCOVERY && ((compiler(>=6.3) && hasFeature(CompileTimeValuesPreview)) || hasFeature(SymbolLinkageMarkers))
   @Test("Legacy test discovery finds the same number of tests") func discoveredTestCount() async {
     let oldFlag = Environment.variable(named: "SWT_USE_LEGACY_TEST_DISCOVERY")
     defer {

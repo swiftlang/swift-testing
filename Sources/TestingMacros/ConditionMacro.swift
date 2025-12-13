@@ -13,8 +13,8 @@ public import SwiftSyntax
 import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
 
-#if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY
-#error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand #expect(processExitsWith:)")
+#if !((compiler(>=6.3) && hasFeature(CompileTimeValuesPreview)) || hasFeature(SymbolLinkageMarkers)) && SWT_NO_LEGACY_TEST_DISCOVERY
+#error("Platform-specific misconfiguration: either CompileTimeValuesPreview, SymbolLinkageMarkers, or legacy test discovery is required to expand #expect(processExitsWith:)")
 #endif
 
 /// A protocol containing the common implementation for the expansions of the
