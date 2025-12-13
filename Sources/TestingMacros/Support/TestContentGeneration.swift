@@ -63,31 +63,36 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
     IntegerLiteralExprSyntax(context, radix: .binary)
   }
 
+  var accessorExpr: ExprSyntax = if let typeName {
+    "\(typeName.trimmed).\(accessorName)"
+  } else {
+    "\(accessorName)"
+  }
+  accessorExpr = "{ unsafe \(accessorExpr)($0, $1, $2, $3) }"
+
   var result: DeclSyntax = """
   @available(*, deprecated, message: "This property is an implementation detail of the testing library. Do not use it directly.")
   private nonisolated \(staticKeyword(for: typeName)) let \(name): Testing.__TestContentRecord = (
     \(kindExpr), \(kind.commentRepresentation)
     0,
-    unsafe \(accessorName),
+    \(accessorExpr),
     \(contextExpr),
     0
   )
   """
 
-#if hasFeature(SymbolLinkageMarkers)
+#if compiler(>=6.3)
   result = """
-  #if hasFeature(SymbolLinkageMarkers)
   #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
-  @_section("__DATA_CONST,__swift5_tests")
+  @section("__DATA_CONST,__swift5_tests")
   #elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
-  @_section("swift5_tests")
+  @section("swift5_tests")
   #elseif os(Windows)
-  @_section(".sw5test$B")
+  @section(".sw5test$B")
   #else
   @Testing.__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
   #endif
-  @_used
-  #endif
+  @used
   \(result)
   """
 #endif
