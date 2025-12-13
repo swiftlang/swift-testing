@@ -13,8 +13,8 @@ public import SwiftSyntax
 import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
 
-#if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY
-#error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand @Test")
+#if !((compiler(>=6.3) && hasFeature(CompileTimeValuesPreview)) || hasFeature(SymbolLinkageMarkers)) && SWT_NO_LEGACY_TEST_DISCOVERY
+#error("Platform-specific misconfiguration: either CompileTimeValuesPreview, SymbolLinkageMarkers, or legacy test discovery is required to expand @Test")
 #endif
 
 /// A type describing the expansion of the `@Test` attribute macro.

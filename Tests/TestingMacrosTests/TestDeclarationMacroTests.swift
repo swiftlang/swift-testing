@@ -472,7 +472,9 @@ struct TestDeclarationMacroTests {
   func differentFunctionTypes(input: String, expectedTypeName: String?, otherCode: String?) throws {
     let (output, _) = try parse(input)
 
-#if hasFeature(SymbolLinkageMarkers)
+#if compiler(>=6.3) && hasFeature(CompileTimeValuesPreview)
+    #expect(output.contains("@section"))
+#elseif hasFeature(SymbolLinkageMarkers)
     #expect(output.contains("@_section"))
 #endif
 #if !SWT_NO_LEGACY_TEST_DISCOVERY
