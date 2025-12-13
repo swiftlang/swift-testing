@@ -15,18 +15,6 @@
 ///
 /// - ``Trait/savingAttachments(if:)``
 ///
-/// By default, the testing library saves your attachments as soon as you call
-/// ``Attachment/record(_:named:sourceLocation:)``. You can access saved
-/// attachments after your tests finish running:
-///
-/// - When using Xcode, you can access attachments from the test report.
-/// - When using Visual Studio Code, the testing library saves attachments to
-///   `.build/attachments` by default. Visual Studio Code reports the paths to
-///   individual attachments in its Tests Results panel.
-/// - When using Swift Package Manager's `swift test` command, you can pass the
-///   `--attachments-path` option. The testing library saves attachments to the
-///   specified directory.
-///
 /// If you add an instance of this trait type to a test, any attachments that
 /// test records are stored in memory until the test finishes running. The
 /// testing library then evaluates the instance's condition and, if the
@@ -228,18 +216,6 @@ extension Trait where Self == AttachmentSavingTrait {
   /// - Returns: An instance of ``AttachmentSavingTrait`` that evaluates the
   ///   closure you provide.
   ///
-  /// By default, the testing library saves your attachments as soon as you call
-  /// ``Attachment/record(_:named:sourceLocation:)``. You can access saved
-  /// attachments after your tests finish running:
-  ///
-  /// - When using Xcode, you can access attachments from the test report.
-  /// - When using Visual Studio Code, the testing library saves attachments to
-  ///   `.build/attachments` by default. Visual Studio Code reports the paths to
-  ///   individual attachments in its Tests Results panel.
-  /// - When using Swift Package Manager's `swift test` command, you can pass
-  ///   the `--attachments-path` option. The testing library saves attachments
-  ///   to the specified directory.
-  ///
   /// If you add this trait to a test, any attachments that test records are
   /// stored in memory until the test finishes running. The testing library then
   /// evaluates `condition` and, if the condition is met, saves the attachments.
@@ -265,18 +241,6 @@ extension Trait where Self == AttachmentSavingTrait {
   ///
   /// - Returns: An instance of ``AttachmentSavingTrait`` that evaluates the
   ///   closure you provide.
-  ///
-  /// By default, the testing library saves your attachments as soon as you call
-  /// ``Attachment/record(_:named:sourceLocation:)``. You can access saved
-  /// attachments after your tests finish running:
-  ///
-  /// - When using Xcode, you can access attachments from the test report.
-  /// - When using Visual Studio Code, the testing library saves attachments
-  ///   to `.build/attachments` by default. Visual Studio Code reports the paths
-  ///   to individual attachments in its Tests Results panel.
-  /// - When using Swift Package Manager's `swift test` command, you can pass
-  ///   the `--attachments-path` option. The testing library saves attachments
-  ///   to the specified directory.
   ///
   /// If you add this trait to a test, any attachments that test records are
   /// stored in memory until the test finishes running. The testing library then
@@ -304,18 +268,6 @@ extension Trait where Self == AttachmentSavingTrait {
   ///
   /// - Returns: An instance of ``AttachmentSavingTrait`` that evaluates the
   ///   closure you provide.
-  ///
-  /// By default, the testing library saves your attachments as soon as you call
-  /// ``Attachment/record(_:named:sourceLocation:)``. You can access saved
-  /// attachments after your tests finish running:
-  ///
-  /// - When using Xcode, you can access attachments from the test report.
-  /// - When using Visual Studio Code, the testing library saves attachments
-  ///   to `.build/attachments` by default. Visual Studio Code reports the paths
-  ///   to individual attachments in its Tests Results panel.
-  /// - When using Swift Package Manager's `swift test` command, you can pass
-  ///   the `--attachments-path` option. The testing library saves attachments
-  ///   to the specified directory.
   ///
   /// If you add this trait to a test, any attachments that test records are
   /// stored in memory until the test finishes running. The testing library then
