@@ -55,7 +55,7 @@ because it has several downsides:
   Swift Testing doesn't always declare a dependency on one of the prebuilt tags,
   circumventing this time-saver.) Additionally, the locally-built macro plugin
   and SwiftSyntax will be built for debug, without optimizations.
-* **It may not integrate as well with spporting tools/IDEs as a built-in copy.**
+* **It may not integrate as well with supporting tools/IDEs as a built-in copy.**
   Tools which integrate with Swift Testing such as Swift Package Manager or
   Apple's Xcode IDE often optimize for the copy included in the same
   distribution. Some features may not work as well or be missing entirely when
@@ -68,7 +68,7 @@ because it has several downsides:
     a target dependency on the `Testing` target from the locally-built
     [swift-testing][] package.
   * On platforms which don't support a two-level linker namespace, it can fail
-    to link due to duplicate defintions for the symbols in the `Testing` library.
+    to link due to duplicate definitions for the symbols in the `Testing` library.
 * **It may misbehave at runtime.** Even if your build doesn't encounter one of
   the failures mentioned above, mixing built-in and package copies of Swift
   Testing can lead to runtime problems, such as issues (e.g. `#expect` failures)
