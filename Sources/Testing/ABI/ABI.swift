@@ -161,7 +161,6 @@ extension ABI {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
   /// }
-  @_spi(Experimental)
   public enum v6_3: Sendable, Version {
     static var versionNumber: VersionNumber {
       VersionNumber(6, 3)
