@@ -94,10 +94,10 @@ extension Tag: Codable, CodingKeyRepresentable {
   }
 
   /// This instance represented as a string, suitable for encoding.
-  private var _codableStringValue: String {
+  package var _codableStringValue: String {
     switch kind {
     case let .staticMember(name):
-      ".\(name)"
+      "\(name)"
     }
   }
 
