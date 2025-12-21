@@ -592,8 +592,6 @@ let xcTestClass: AnyClass? = {
 #endif
 }()
 
-import XCTest
-
 /// Run a test function as an XCTest-compatible method.
 ///
 /// This overload is used for types that are classes. If the type is not a
