@@ -16,7 +16,6 @@ struct NonCopyableTests: ~Copyable {
   @Test borrowing func borrowMe() {}
   @Test consuming func consumeMe() {}
   @Test mutating func mutateMe() {}
-  @Test borrowing func testNotAnXCTestCaseMethod() {}
 
   @Test borrowing func typeComparison() {
     let lhs = TypeInfo(describing: Self.self)
@@ -30,4 +29,8 @@ struct NonCopyableTests: ~Copyable {
   @Test borrowing func mangledTypeName() {
     #expect(TypeInfo(describing: Self.self).mangledName != nil)
   }
+}
+
+extension NonCopyableTests {
+  @Test borrowing func testNotAnXCTestCaseMethod() {}
 }

@@ -99,7 +99,7 @@ struct ObjCAndXCTestInteropTests {
         if case let .issueRecorded(issue) = event.kind,
            case .apiMisused = issue.kind,
            let comment = issue.comments.first,
-           comment == "The @Test attribute cannot be applied to methods on a subclass of XCTestCase." {
+           comment == "The 'Test' attribute cannot be applied to a method on a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'." {
           issueRecorded()
         }
       }
