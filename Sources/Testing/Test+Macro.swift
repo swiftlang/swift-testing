@@ -588,7 +588,7 @@ let xcTestClass: AnyClass? = {
 #if _runtime(_ObjC)
   objc_getClass("XCTest") as? AnyClass
 #else
-  _typeByName("6XCTest0A4CaseC") as? AnyClass // _mangledTypeName(XCTest.XCTest.self)
+  _typeByName("6XCTestAAC") as? AnyClass // _mangledTypeName(XCTest.XCTest.self)
 #endif
 }()
 
@@ -607,9 +607,6 @@ public func __invokeXCTestMethod<T>(
   onInstanceOf xcTestSubclass: T.Type,
   sourceLocation: SourceLocation
 ) async throws -> Bool where T: AnyObject {
-  if #available(macOS 11, *) {
-    print(_mangledTypeName(XCTest.self)!)
-  }
   // All classes will end up on this code path, so only record an issue if it is
   // really an XCTest.XCTest subclass.
   guard let xcTestClass, isClass(xcTestSubclass, subclassOf: xcTestClass) else {
