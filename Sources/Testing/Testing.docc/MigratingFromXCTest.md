@@ -49,9 +49,10 @@ source file contains mixed test content.
 
 XCTest groups related sets of test methods in test classes: classes that inherit
 from the [`XCTestCase`](https://developer.apple.com/documentation/xctest/xctestcase)
-class provided by the [XCTest](https://developer.apple.com/documentation/xctest) framework. The testing library doesn't require
-that test functions be instance members of types. Instead, they can be _free_ or
-_global_ functions, or can be `static` or `class` members of a type.
+class provided by the [XCTest](https://developer.apple.com/documentation/xctest) framework.
+The testing library doesn't require that test functions be instance members of
+types. Instead, they can be _free_ or _global_ functions, or can be `static` or
+`class` members of a type.
 
 If you want to group your test functions together, you can do so by placing them
 in a Swift type. The testing library refers to such a type as a _suite_. These

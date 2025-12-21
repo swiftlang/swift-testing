@@ -568,14 +568,14 @@ public var __defaultSynchronousIsolationContext: (any Actor)? {
   Configuration.current?.defaultSynchronousIsolationContext ?? #isolation
 }
 
-/// Run a test function as an `XCTestCase`-compatible method.
+/// Run a test function as an XCTest-compatible method.
 ///
 /// This overload is used for types that are not classes. It always returns
 /// `false`.
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not call
 ///   it directly.
-@inlinable public func __invokeXCTestCaseMethod<T>(
+@inlinable public func __invokeXCTestMethod<T>(
   _ selector: __XCTestCompatibleSelector?,
   onInstanceOf type: T.Type,
   sourceLocation: SourceLocation
@@ -583,39 +583,41 @@ public var __defaultSynchronousIsolationContext: (any Actor)? {
   false
 }
 
-// TODO: implement a hook in XCTest that __invokeXCTestCaseMethod() can call to
-// run an XCTestCase nested in the current @Test function.
-
-/// The `XCTestCase` Objective-C class.
-let xcTestCaseClass: AnyClass? = {
+/// The `XCTest.XCTest` Objective-C class.
+let xcTestClass: AnyClass? = {
 #if _runtime(_ObjC)
-  objc_getClass("XCTestCase") as? AnyClass
+  objc_getClass("XCTest") as? AnyClass
 #else
-  _typeByName("6XCTest0A4CaseC") as? AnyClass // _mangledTypeName(XCTest.XCTestCase.self)
+  _typeByName("6XCTest0A4CaseC") as? AnyClass // _mangledTypeName(XCTest.XCTest.self)
 #endif
 }()
 
-/// Run a test function as an `XCTestCase`-compatible method.
+import XCTest
+
+/// Run a test function as an XCTest-compatible method.
 ///
 /// This overload is used for types that are classes. If the type is not a
-/// subclass of `XCTestCase`, or if XCTest is not loaded in the current process,
-/// this function returns immediately.
+/// subclass of `XCTest.XCTest`, or if XCTest is not loaded in the current
+/// process, this function returns immediately.
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not call
 ///   it directly.
-public func __invokeXCTestCaseMethod<T>(
+public func __invokeXCTestMethod<T>(
   _ selector: __XCTestCompatibleSelector?,
-  onInstanceOf xcTestCaseSubclass: T.Type,
+  onInstanceOf xcTestSubclass: T.Type,
   sourceLocation: SourceLocation
 ) async throws -> Bool where T: AnyObject {
+  if #available(macOS 11, *) {
+    print(_mangledTypeName(XCTest.self)!)
+  }
   // All classes will end up on this code path, so only record an issue if it is
-  // really an XCTestCase subclass.
-  guard let xcTestCaseClass, isClass(xcTestCaseSubclass, subclassOf: xcTestCaseClass) else {
+  // really an XCTest.XCTest subclass.
+  guard let xcTestClass, isClass(xcTestSubclass, subclassOf: xcTestClass) else {
     return false
   }
   let issue = Issue(
     kind: .apiMisused,
-    comments: ["The @Test attribute cannot be applied to methods on a subclass of XCTestCase."],
+    comments: ["The 'Test' attribute cannot be applied to a method on a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'."],
     sourceContext: .init(backtrace: nil, sourceLocation: sourceLocation)
   )
   issue.record()
