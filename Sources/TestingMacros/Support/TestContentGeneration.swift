@@ -74,7 +74,23 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
   )
   """
 
-#if hasFeature(SymbolLinkageMarkers)
+#if compiler(>=6.3) && hasFeature(CompileTimeValuesPreview)
+  result = """
+  #if compiler(>=6.3) && hasFeature(CompileTimeValuesPreview)
+  #if objectFormat(MachO)
+  @section("__DATA_CONST,__swift5_tests")
+  #elseif objectFormat(ELF) || objectFormat(Wasm)
+  @section("swift5_tests")
+  #elseif objectFormat(COFF)
+  @section(".sw5test$B")
+  #else
+  @Testing.__testing(warning: "Platform-specific implementation missing: object format unknown")
+  #endif
+  @used
+  #endif
+  \(result)
+  """
+#elseif hasFeature(SymbolLinkageMarkers)
   result = """
   #if hasFeature(SymbolLinkageMarkers)
   #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
