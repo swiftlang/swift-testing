@@ -27,7 +27,7 @@ jobs:
       enable_android_sdk_build: true
   soundness:
     name: Soundness
-    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.3
+    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.4
     with:
       license_header_check_project_name: "Swift"
       docs_check_enabled: false
