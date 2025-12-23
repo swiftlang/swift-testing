@@ -363,19 +363,6 @@ extension BuildSettingCondition {
   }
 }
 
-/// A constant set of platforms including Android when the compiler is 6.3 or
-/// newer.
-///
-/// This constant is used to conditionally enable features on Android only on
-/// newer compilers.
-nonisolated(unsafe) var androidIfCompiler6_3: some Collection<Platform> {
-#if compiler(>=6.3)
-  CollectionOfOne(.android)
-#else
-  EmptyCollection()
-#endif
-}
-
 extension Array where Element == PackageDescription.SwiftSetting {
   /// Settings intended to be applied to every Swift target in this package.
   /// Analogous to project-level build settings in an Xcode project.
@@ -411,8 +398,8 @@ extension Array where Element == PackageDescription.SwiftSetting {
 
       .define("SWT_TARGET_OS_APPLE", .whenApple()),
 
-      .define("SWT_NO_EXIT_TESTS", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi] + androidIfCompiler6_3))),
-      .define("SWT_NO_PROCESS_SPAWNING", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi] + androidIfCompiler6_3))),
+      .define("SWT_NO_EXIT_TESTS", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi]))),
+      .define("SWT_NO_PROCESS_SPAWNING", .whenEmbedded(or: .when(platforms: [.iOS, .watchOS, .tvOS, .visionOS, .wasi]))),
       .define("SWT_NO_SNAPSHOT_TYPES", .whenEmbedded(or: .whenApple(false))),
       .define("SWT_NO_DYNAMIC_LINKING", .whenEmbedded(or: .when(platforms: [.wasi]))),
       .define("SWT_NO_PIPES", .whenEmbedded(or: .when(platforms: [.wasi]))),
