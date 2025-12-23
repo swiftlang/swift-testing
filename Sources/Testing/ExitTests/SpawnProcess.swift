@@ -196,7 +196,7 @@ func spawnExecutable(
       // `posix_spawn_file_actions_addclosefrom_np`, and FreeBSD does not use
       // glibc nor guard symbols behind `_DEFAULT_SOURCE`.
       _ = posix_spawn_file_actions_addclosefrom_np(fileActions, highestFD + 1)
-#elseif os(OpenBSD) || (os(Android) && !SWT_NO_DYNAMIC_LINKING)
+#elseif os(OpenBSD) || os(Android)
       // OpenBSD does not have posix_spawn_file_actions_addclosefrom_np().
       // However, it does have closefrom(2), which we can call from within the
       // spawned child process if we control its execution. Android has
