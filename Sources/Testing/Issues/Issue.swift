@@ -304,13 +304,13 @@ extension Issue.Kind: CustomStringConvertible {
       }
       return "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(String(describingForTest: expected)) time(s)"
     case let .errorCaught(error):
-      return "Caught error: \(error)"
+      return "Caught error: \(String(describingForTest: error))"
     case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
       return "Time limit was exceeded: \(TimeValue(timeLimitComponents))"
     case .knownIssueNotRecorded:
       return "Known issue was not recorded"
     case let .valueAttachmentFailed(error):
-      return "Caught error while saving attachment: \(error)"
+      return "Caught error while saving attachment: \(String(describingForTest: error))"
     case .apiMisused:
       return "An API was misused"
     case .system:
