@@ -19,19 +19,6 @@ private import _TestingInternals
 /// record the attachment, call ``Attachment/record(_:sourceLocation:)``.
 /// Alternatively, pass your attachable value directly to ``Attachment/record(_:named:sourceLocation:)``.
 ///
-/// By default, the testing library saves your attachments as soon as you call
-/// ``Attachment/record(_:sourceLocation:)`` or
-/// ``Attachment/record(_:named:sourceLocation:)``. You can access saved
-/// attachments after your tests finish running:
-///
-/// - When using Xcode, you can access attachments from the test report.
-/// - When using Visual Studio Code, the testing library saves attachments to
-///   `.build/attachments` by default. Visual Studio Code reports the paths to
-///   individual attachments in its Tests Results panel.
-/// - When using Swift Package Manager's `swift test` command, you can pass the
-///   `--attachments-path` option. The testing library saves attachments to the
-///   specified directory.
-///
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.2)
 ///   @Available(Xcode, introduced: 26.0)
@@ -104,7 +91,8 @@ public struct Attachment<AttachableValue> where AttachableValue: Attachable & ~C
   ///
   /// The value of this property is used when recording issues associated with
   /// the attachment.
-  var sourceLocation: SourceLocation
+  @_spi(ForToolsIntegrationOnly)
+  public internal(set) var sourceLocation: SourceLocation
 }
 
 extension Attachment: Sendable where AttachableValue: Sendable {}
@@ -501,6 +489,24 @@ extension Attachment where AttachableValue: ~Copyable {
   }
 }
 
+extension Runner {
+  /// Modify this runner's configured event handler so that it handles "value
+  /// attached" events and saves attachments where necessary.
+  mutating func configureAttachmentHandling() {
+    configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
+      var event = copy event
+      if case .valueAttached = event.kind {
+        guard let configuration = context.configuration,
+              configuration.handleValueAttachedEvent(&event, in: context) else {
+          // The attachment could not be handled, so suppress this event.
+          return
+        }
+      }
+      oldEventHandler(event, context)
+    }
+  }
+}
+
 extension Configuration {
   /// Handle the given "value attached" event.
   ///
@@ -517,7 +523,7 @@ extension Configuration {
   /// not need to call it elsewhere. It automatically saves the attachment
   /// associated with `event` and modifies `event` to include the path where the
   /// attachment was saved.
-  func handleValueAttachedEvent(_ event: inout Event, in eventContext: borrowing Event.Context) -> Bool {
+  fileprivate func handleValueAttachedEvent(_ event: inout Event, in eventContext: borrowing Event.Context) -> Bool {
     guard let attachmentsPath else {
       // If there is no path to which attachments should be written, there's
       // nothing to do here. The event handler may still want to handle it.
