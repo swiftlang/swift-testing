@@ -58,7 +58,10 @@ let operatingSystemVersion: String = {
   }
 #elseif os(Android)
   if let version = systemProperty(named: "ro.build.version.release") {
-    return "Android \(version)"
+    let apiLevel = systemProperty(named: "ro.build.version.sdk").map { apiLevel in
+      " (API Level \(apiLevel))"
+    } ?? ""
+    return "Android \(version)\(apiLevel)"
   }
 #elseif os(Windows)
   // See if we can query the kernel directly, bypassing the fake-out logic added
