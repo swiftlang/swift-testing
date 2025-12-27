@@ -14,7 +14,7 @@ private import ObjectiveC
 #endif
 
 /// A structure describing the bounds of a Swift metadata section.
-struct SectionBounds: Sendable {
+struct SectionBounds: Sendable, BitwiseCopyable {
   /// The base address of the image containing the section, if known.
   nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
 
