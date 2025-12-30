@@ -302,10 +302,11 @@ struct SwiftPMTests {
 
   @Test("New-but-not-experimental ABI version")
   func newButNotExperimentalABIVersion() async throws {
-    var versionNumber = ABI.CurrentVersion.versionNumber
-    versionNumber.patchComponent += 1
-    let version = try #require(ABI.version(forVersionNumber: versionNumber))
-    #expect(version.versionNumber == ABI.v0.versionNumber)
+    let currentVersionNumber = ABI.CurrentVersion.versionNumber
+    var newerVersionNumber = currentVersionNumber
+    newerVersionNumber.patchComponent += 1
+    let version = try #require(ABI.version(forVersionNumber: newerVersionNumber, givenSwiftCompilerVersion: newerVersionNumber))
+    #expect(version.versionNumber == currentVersionNumber)
   }
 
   @Test("Unsupported ABI version")
