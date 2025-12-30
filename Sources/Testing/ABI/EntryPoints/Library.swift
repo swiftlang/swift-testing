@@ -13,13 +13,13 @@ internal import _TestingInternals
 
 /// A type representing a testing library such as Swift Testing or XCTest.
 @_spi(Experimental)
-public struct Library: Sendable {
-  /// The underlying instance of ``SWTLibrary``.
+@frozen public struct Library: Sendable {
+  /// The underlying instance of ``Library/Record``.
   ///
   /// - Important: The in-memory layout of ``Library`` must _exactly_ match the
-  ///   layout of this type. As such, it must not contain any other stored
-  ///   properties.
-  nonisolated(unsafe) var rawValue: SWTLibrary
+  ///   layout of ``Library/Record``. As such, ``Library`` must not contain any
+  ///   other stored properties.
+  nonisolated(unsafe) var rawValue: Record
 
   /// The human-readable name of this library.
   ///
@@ -149,6 +149,42 @@ public struct Library: Sendable {
 }
 
 #if !SWT_NO_RUNTIME_LIBRARY_DISCOVERY
+// MARK: - C structure
+
+extension Library {
+  @usableFromInline typealias EntryPoint = @convention(c) (
+    _ configurationJSON: UnsafeRawPointer,
+    _ configurationJSONByteCount: Int,
+    _ reserved: UInt,
+    _ context: UnsafeRawPointer?,
+    _ recordJSONHandler: EntryPointRecordJSONHandler,
+    _ completionHandler: EntryPointCompletionHandler
+  ) -> Void
+
+  @usableFromInline typealias EntryPointRecordJSONHandler = @convention(c) (
+    _ recordJSON: UnsafeRawPointer,
+    _ recordJSONByteCount: Int,
+    _ reserved: UInt,
+    _ context: UnsafeRawPointer?
+  ) -> Void
+
+  @usableFromInline typealias EntryPointCompletionHandler = @convention(c) (
+    _ resultJSON: UnsafeRawPointer,
+    _ resultJSONByteCount: Int,
+    _ reserved: UInt,
+    _ context: UnsafeRawPointer?
+  ) -> Void
+
+  /// A type that provides the C-compatible in-memory layout of the ``Library``
+  /// Swift type.
+  @usableFromInline typealias Record = (
+    name: UnsafePointer<CChar>,
+    canonicalHint: UnsafePointer<CChar>,
+    entryPoint: EntryPoint,
+    reserved: (UInt, UInt, UInt, UInt, UInt)
+  )
+}
+
 // MARK: - Discovery
 
 /// A helper protocol that prevents the conformance of ``Library`` to
@@ -167,11 +203,11 @@ extension Library: _DiscoverableAsTestContent {
 @_spi(Experimental)
 extension Library {
   /// Perform a one-time check that the in-memory layout of ``Library`` matches
-  /// that of ``SWTLibrary``.
+  /// that of ``Library/Record``.
   private static let _validateMemoryLayout: Void = {
-    assert(MemoryLayout<Library>.size == MemoryLayout<SWTLibrary>.size, "Library.size (\(MemoryLayout<Library>.size)) != SWTLibrary.size (\(MemoryLayout<SWTLibrary>.size)). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
-    assert(MemoryLayout<Library>.stride == MemoryLayout<SWTLibrary>.stride, "Library.stride (\(MemoryLayout<Library>.stride)) != SWTLibrary.stride (\(MemoryLayout<SWTLibrary>.stride)). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
-    assert(MemoryLayout<Library>.alignment == MemoryLayout<SWTLibrary>.alignment, "Library.alignment (\(MemoryLayout<Library>.alignment)) != SWTLibrary.alignment (\(MemoryLayout<SWTLibrary>.alignment)). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+    assert(MemoryLayout<Library>.size == MemoryLayout<Library.Record>.size, "Library.size (\(MemoryLayout<Library>.size)) != Library.Record.size (\(MemoryLayout<Library.Record>.size)). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+    assert(MemoryLayout<Library>.stride == MemoryLayout<Library.Record>.stride, "Library.stride (\(MemoryLayout<Library>.stride)) != Library.Record.stride (\(MemoryLayout<Library.Record>.stride)). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+    assert(MemoryLayout<Library>.alignment == MemoryLayout<Library.Record>.alignment, "Library.alignment (\(MemoryLayout<Library>.alignment)) != Library.Record.alignment (\(MemoryLayout<Library.Record>.alignment)). Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
   }()
 
   /// Create an instance of this type representing the testing library with the
@@ -210,7 +246,7 @@ extension Library {
 extension Library {
   /// The ABI entry point function for the testing library, thunked so that it
   /// is compatible with the ``Library`` ABI.
-  private static let _libraryRecordEntryPoint: SWTLibraryEntryPoint = { configurationJSON, configurationJSONByteCount, _, context, recordJSONHandler, completionHandler in
+  private static let _libraryRecordEntryPoint: Library.EntryPoint = { configurationJSON, configurationJSONByteCount, _, context, recordJSONHandler, completionHandler in
 #if !SWT_NO_RUNTIME_LIBRARY_DISCOVERY
     // Capture appropriate state from the arguments to forward into the canonical
     // entry point function.
@@ -238,7 +274,7 @@ extension Library {
     args.eventStreamOutputPath = nil
 
     // Create an async context and run tests within it.
-    let run = { [args] in
+    let run = { @Sendable [args] in
       let context = UnsafeRawPointer(bitPattern: contextBitPattern)!
       let exitCode = await Testing.entryPoint(passing: args, eventHandler: eventHandler)
       var resultJSON = "\(exitCode)"
@@ -246,6 +282,7 @@ extension Library {
         completionHandler(resultJSON.baseAddress!, resultJSON.count, 0, context)
       }
     }
+    
 #if !SWT_NO_UNSTRUCTURED_TASKS
     Task.detached { await run() }
 #else
@@ -262,7 +299,7 @@ extension Library {
   /// An instance of this type representing Swift Testing itself.
   public static let swiftTesting: Self = {
     Self(
-      rawValue: .init(
+      rawValue: (
         name: StaticString("Swift Testing").constUTF8CString,
         canonicalHint: StaticString("swift-testing").constUTF8CString,
         entryPoint: _libraryRecordEntryPoint,
@@ -289,6 +326,9 @@ private func _libraryRecordAccessor(_ outValue: UnsafeMutableRawPointer, _ type:
   // Check if the name of the testing library the caller wants is equivalent to
   // "Swift Testing", ignoring case and punctuation. (If the caller did not
   // specify a library name, the caller wants records for all libraries.)
+  //
+  // Other libraries may opt to compare their hint values differently or accept
+  // multiple different strings/patterns.
   let hint = hint.map { $0.load(as: UnsafePointer<CChar>.self) }
   if let hint {
     guard let hint = String(validatingCString: hint),
@@ -298,10 +338,7 @@ private func _libraryRecordAccessor(_ outValue: UnsafeMutableRawPointer, _ type:
   }
 
   // Initialize the provided memory to the (ABI-stable) library structure.
-  _ = outValue.initializeMemory(
-    as: SWTLibrary.self,
-    to: Library.swiftTesting.rawValue
-  )
+  _ = outValue.initializeMemory(as: Library.self, to: .swiftTesting)
 
   return true
 }

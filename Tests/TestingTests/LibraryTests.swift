@@ -51,7 +51,7 @@ struct `Library tests` {
 // MARK: - Fixtures
 
 extension Library {
-  private static let _mockRecordEntryPoint: SWTLibraryEntryPoint = { configurationJSON, configurationJSONByteCount, _, context, recordJSONHandler, completionHandler in
+  private static let _mockRecordEntryPoint: Library.EntryPoint = { configurationJSON, configurationJSONByteCount, _, context, recordJSONHandler, completionHandler in
     let tests: [[String: Any]] = [
       [
         "kind": "function",
@@ -133,16 +133,14 @@ extension Library {
     }
   }
 
-  static let mock: Self = {
-    Self(
-      rawValue: .init(
-        name: StaticString("Mock Testing Library").constUTF8CString,
-        canonicalHint: StaticString("mock").constUTF8CString,
-        entryPoint: _mockRecordEntryPoint,
-        reserved: (0, 0, 0, 0, 0)
-      )
+  static let mock = Self(
+    rawValue: (
+      name: StaticString("Mock Testing Library").constUTF8CString,
+      canonicalHint: StaticString("mock").constUTF8CString,
+      entryPoint: _mockRecordEntryPoint,
+      reserved: (0, 0, 0, 0, 0)
     )
-  }()
+  )
 }
 
 #if compiler(>=6.3) && hasFeature(CompileTimeValuesPreview)
@@ -196,10 +194,7 @@ private func _mockLibraryRecordAccessor(_ outValue: UnsafeMutableRawPointer, _ t
   }
 
   // Initialize the provided memory to the (ABI-stable) library structure.
-  _ = outValue.initializeMemory(
-    as: SWTLibrary.self,
-    to: Library.mock.rawValue
-  )
+  _ = outValue.initializeMemory(as: Library.self, to: .mock)
 
   return true
 }
