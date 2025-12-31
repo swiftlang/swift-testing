@@ -72,9 +72,10 @@ extension SectionBounds.Kind {
 /// An array containing all of the test content section bounds known to the
 /// testing library.
 private nonisolated(unsafe) let _sectionBounds = {
+  let kindCount = SectionBounds.Kind.allCases.count
   let result = ManagedBuffer<ContiguousArray<ContiguousArray<SectionBounds>>, pthread_mutex_t>.create(
     minimumCapacity: 1,
-    makingHeaderWith: { _ in [[], []] }
+    makingHeaderWith: { _ in .init(repeating: [], count: kindCount) }
   )
 
   result.withUnsafeMutablePointers { sectionBounds, lock in
