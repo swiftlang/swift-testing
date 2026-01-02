@@ -23,14 +23,9 @@ struct SectionBounds: Sendable {
 
   /// An enumeration describing the different sections discoverable by the
   /// testing library.
-  enum Kind: Equatable, Hashable, CaseIterable {
+  enum Kind: Int, Equatable, Hashable, CaseIterable {
     /// The test content metadata section.
     case testContent
-
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-    /// The type metadata section.
-    case typeMetadata
-#endif
   }
 
   /// All section bounds of the given kind found in the current process.
@@ -61,10 +56,6 @@ extension SectionBounds.Kind {
     switch self {
     case .testContent:
       ("__DATA_CONST", "__swift5_tests")
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-    case .typeMetadata:
-      ("__TEXT", "__swift5_types")
-#endif
     }
   }
 }
@@ -72,9 +63,10 @@ extension SectionBounds.Kind {
 /// An array containing all of the test content section bounds known to the
 /// testing library.
 private nonisolated(unsafe) let _sectionBounds = {
-  let result = ManagedBuffer<[SectionBounds.Kind: [SectionBounds]], pthread_mutex_t>.create(
+  let kindCount = SectionBounds.Kind.allCases.count
+  let result = ManagedBuffer<ContiguousArray<ContiguousArray<SectionBounds>>, pthread_mutex_t>.create(
     minimumCapacity: 1,
-    makingHeaderWith: { _ in [:] }
+    makingHeaderWith: { _ in .init(repeating: [], count: kindCount) }
   )
 
   result.withUnsafeMutablePointers { sectionBounds, lock in
@@ -82,7 +74,7 @@ private nonisolated(unsafe) let _sectionBounds = {
 
     let imageCount = Int(clamping: _dyld_image_count())
     for kind in SectionBounds.Kind.allCases {
-      sectionBounds.pointee[kind, default: []].reserveCapacity(imageCount)
+      sectionBounds.pointee[kind.rawValue].reserveCapacity(imageCount)
     }
   }
 
@@ -121,7 +113,7 @@ private let _startCollectingSectionBounds: Void = {
           defer {
             pthread_mutex_unlock(lock)
           }
-          sectionBounds.pointee[kind]!.append(sb)
+          sectionBounds.pointee[kind.rawValue].append(sb)
         }
       }
     }
@@ -145,14 +137,14 @@ private let _startCollectingSectionBounds: Void = {
 ///
 /// - Returns: An array of structures describing the bounds of all known test
 ///   content sections in the current process.
-private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
+private func _sectionBounds(_ kind: SectionBounds.Kind) -> some RandomAccessCollection<SectionBounds> {
   _startCollectingSectionBounds
   return _sectionBounds.withUnsafeMutablePointers { sectionBounds, lock in
     pthread_mutex_lock(lock)
     defer {
       pthread_mutex_unlock(lock)
     }
-    return sectionBounds.pointee[kind]!
+    return sectionBounds.pointee[kind.rawValue]
   }
 }
 
@@ -189,10 +181,6 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> [SectionBounds] {
       let range = switch context.pointee.kind {
       case .testContent:
         sections.swift5_tests
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-      case .typeMetadata:
-        sections.swift5_type_metadata
-#endif
       }
       let start = UnsafeRawPointer(bitPattern: range.start)
       let size = Int(clamping: range.length)
@@ -284,10 +272,6 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> some Sequence<Section
   let sectionName = switch kind {
   case .testContent:
     ".sw5test"
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-  case .typeMetadata:
-    ".sw5tymd"
-#endif
   }
   return HMODULE.all.lazy.compactMap { _findSection(named: sectionName, in: $0) }
 }
@@ -335,25 +319,13 @@ private struct _SectionBound: Sendable, ~Copyable {
 #if SWT_TARGET_OS_APPLE
 @_silgen_name(raw: "section$start$__DATA_CONST$__swift5_tests") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
 @_silgen_name(raw: "section$end$__DATA_CONST$__swift5_tests") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-@_silgen_name(raw: "section$start$__TEXT$__swift5_types") private nonisolated(unsafe) var _typeMetadataSectionBegin: _SectionBound
-@_silgen_name(raw: "section$end$__TEXT$__swift5_types") private nonisolated(unsafe) var _typeMetadataSectionEnd: _SectionBound
-#endif
 #elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
 @_silgen_name(raw: "__start_swift5_tests") private nonisolated(unsafe) var _testContentSectionBegin: _SectionBound
 @_silgen_name(raw: "__stop_swift5_tests") private nonisolated(unsafe) var _testContentSectionEnd: _SectionBound
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-@_silgen_name(raw: "__start_swift5_type_metadata") private nonisolated(unsafe) var _typeMetadataSectionBegin: _SectionBound
-@_silgen_name(raw: "__stop_swift5_type_metadata") private nonisolated(unsafe) var _typeMetadataSectionEnd: _SectionBound
-#endif
 #else
 #warning("Platform-specific implementation missing: Runtime test discovery unavailable (static)")
 private nonisolated(unsafe) let _testContentSectionBegin = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 16)
 private nonisolated(unsafe) let _testContentSectionEnd = _testContentSectionBegin
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-private nonisolated(unsafe) let _typeMetadataSectionBegin = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 16)
-private nonisolated(unsafe) let _typeMetadataSectionEnd = _typeMetadataSectionBegin
-#endif
 #endif
 
 /// The common implementation of ``SectionBounds/all(_:)`` for platforms that do
@@ -368,10 +340,6 @@ private func _sectionBounds(_ kind: SectionBounds.Kind) -> CollectionOfOne<Secti
   let range = switch kind {
   case .testContent:
     _testContentSectionBegin ..< _testContentSectionEnd
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
-  case .typeMetadata:
-    _typeMetadataSectionBegin ..< _typeMetadataSectionEnd
-#endif
   }
   let buffer = UnsafeRawBufferPointer(start: range.lowerBound, count: range.count)
   let sb = SectionBounds(imageAddress: nil, buffer: buffer)
