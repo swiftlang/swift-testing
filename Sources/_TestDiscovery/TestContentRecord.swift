@@ -64,7 +64,7 @@ extension DiscoverableAsTestContent {
 /// ``DiscoverableAsTestContent/allTestContentRecords()`` on a type that
 /// conforms to ``DiscoverableAsTestContent``.
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
+public struct TestContentRecord<T>: BitwiseCopyable where T: DiscoverableAsTestContent {
   /// The base address of the image containing this instance, if known.
   ///
   /// The type of this pointer is platform-dependent:
