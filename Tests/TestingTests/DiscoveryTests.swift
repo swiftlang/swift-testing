@@ -105,7 +105,7 @@ struct DiscoveryTests {
         _ = outValue.initializeMemory(as: Self.self, to: .init(value: expectedValue))
         return true
       },
-      UInt(truncatingIfNeeded: UInt64(0x0204060801030507)),
+      0x02040608,
       0
     )
   }
