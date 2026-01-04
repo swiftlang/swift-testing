@@ -58,10 +58,7 @@ let operatingSystemVersion: String = {
   }
 #elseif os(Android)
   if let version = systemProperty(named: "ro.build.version.release") {
-    let apiLevel = systemProperty(named: "ro.build.version.sdk").map { apiLevel in
-      " (API Level \(apiLevel))"
-    } ?? ""
-    return "Android \(version)\(apiLevel)"
+    return "Android \(version)"
   }
 #elseif os(Windows)
   // See if we can query the kernel directly, bypassing the fake-out logic added
@@ -121,6 +118,20 @@ let simulatorVersion: String = {
   default:
     return "\(productVersion) (\(buildNumber))"
   }
+}()
+#endif
+
+#if os(Android)
+/// A human-readable string describing the current device's supported Android
+/// API level.
+///
+/// This value's format is platform-specific and is not meant to be
+/// machine-readable. It is added to the output of a test run when using
+/// an event writer.
+///
+/// This value is not part of the public interface of the testing library.
+let apiLevel: String = {
+  systemProperty(named: "ro.build.version.sdk") ?? "unknown"
 }()
 #endif
 
