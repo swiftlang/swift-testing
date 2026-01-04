@@ -94,12 +94,20 @@ public struct Issue: Sendable {
     ///
     /// An issue with warning severity does not cause the test it's associated
     /// with to be marked as a failure, but is noted in the results.
+    ///
+    /// @Metadata {
+    ///   @Available(Swift, introduced: 6.3)
+    /// }
     case warning
 
     /// The severity level for an issue which represents an error in a test.
     ///
     /// An issue with error severity causes the test it's associated with to be
     /// marked as a failure.
+    ///
+    /// @Metadata {
+    ///   @Available(Swift, introduced: 6.3)
+    /// }
     case error
   }
 
@@ -296,13 +304,13 @@ extension Issue.Kind: CustomStringConvertible {
       }
       return "Confirmation was confirmed \(actual.counting("time")), but expected to be confirmed \(String(describingForTest: expected)) time(s)"
     case let .errorCaught(error):
-      return "Caught error: \(error)"
+      return "Caught error: \(String(describingForTest: error))"
     case let .timeLimitExceeded(timeLimitComponents: timeLimitComponents):
       return "Time limit was exceeded: \(TimeValue(timeLimitComponents))"
     case .knownIssueNotRecorded:
       return "Known issue was not recorded"
     case let .valueAttachmentFailed(error):
-      return "Caught error while saving attachment: \(error)"
+      return "Caught error while saving attachment: \(String(describingForTest: error))"
     case .apiMisused:
       return "An API was misused"
     case .system:

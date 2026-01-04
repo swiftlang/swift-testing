@@ -8,6 +8,9 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+/// @Metadata {
+///   @Available(Swift, introduced: 6.3)
+/// }
 #if SWT_NO_IMAGE_ATTACHMENTS
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
@@ -25,15 +28,6 @@ extension Attachment {
   ///   - sourceLocation: The source location of the call to this initializer.
   ///     This value is used when recording issues associated with the
   ///     attachment.
-  ///
-  /// You can attach instances of the following system-provided image types to a
-  /// test:
-  ///
-  /// | Platform | Supported Types |
-  /// |-|-|
-  /// | macOS | [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage), [`CIImage`](https://developer.apple.com/documentation/coreimage/ciimage), [`NSImage`](https://developer.apple.com/documentation/appkit/nsimage) |
-  /// | iOS, watchOS, tvOS, and visionOS | [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage), [`CIImage`](https://developer.apple.com/documentation/coreimage/ciimage), [`UIImage`](https://developer.apple.com/documentation/uikit/uiimage) |
-  /// | Windows | [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps), [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons), [`IWICBitmapSource`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapsource) (including its subclasses declared by Windows Imaging Component) |
   ///
   /// The testing library uses the image format specified by `imageFormat`. Pass
   /// `nil` to let the testing library decide which image format to use. If you
@@ -67,22 +61,14 @@ extension Attachment {
   ///   - sourceLocation: The source location of the call to this function.
   ///
   /// This function creates a new instance of ``Attachment`` wrapping `image`
-  /// and immediately attaches it to the current test. You can attach instances
-  /// of the following system-provided image types to a test:
-  ///
-  /// | Platform | Supported Types |
-  /// |-|-|
-  /// | macOS | [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage), [`CIImage`](https://developer.apple.com/documentation/coreimage/ciimage), [`NSImage`](https://developer.apple.com/documentation/appkit/nsimage) |
-  /// | iOS, watchOS, tvOS, and visionOS | [`CGImage`](https://developer.apple.com/documentation/coregraphics/cgimage), [`CIImage`](https://developer.apple.com/documentation/coreimage/ciimage), [`UIImage`](https://developer.apple.com/documentation/uikit/uiimage) |
-  /// | Windows | [`HBITMAP`](https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps), [`HICON`](https://learn.microsoft.com/en-us/windows/win32/menurc/icons), [`IWICBitmapSource`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapsource) (including its subclasses declared by Windows Imaging Component) |
-  ///
-  /// The testing library uses the image format specified by `imageFormat`. Pass
-  /// `nil` to let the testing library decide which image format to use. If you
-  /// pass `nil`, then the image format that the testing library uses depends on
-  /// the path extension you specify in `preferredName`, if any. If you do not
-  /// specify a path extension, or if the path extension you specify doesn't
-  /// correspond to an image format the operating system knows how to write, the
-  /// testing library selects an appropriate image format for you.
+  /// and immediately attaches it to the current test. The testing library uses
+  /// the image format that `imageFormat` specifies. Pass `nil` to let the testing
+  /// library select which image format to use. If you pass `nil`, the
+  /// image format that the testing library uses depends on the path extension
+  /// you specify in `preferredName`, if any. If you don't specify a path
+  /// extension, or if the path extension you specify doesn't correspond to an
+  /// image format the operating system knows how to write, the testing library
+  /// selects an appropriate image format for you.
   ///
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
@@ -100,14 +86,17 @@ extension Attachment {
 
 // MARK: -
 
-@_spi(Experimental) // STOP: not part of ST-0014
 #if SWT_NO_IMAGE_ATTACHMENTS
 @_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 @available(_uttypesAPI, *)
-extension Attachment where AttachableValue: AttachableWrapper, AttachableValue.Wrapped: _AttachableAsImage {
-  /// The image format to use when encoding the represented image.
+extension Attachment where AttachableValue: AttachableWrapper, AttachableValue.Wrapped: AttachableAsImage {
+  /// The image format to use when encoding the represented image, if specified.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
   @_disfavoredOverload public var imageFormat: AttachableImageFormat? {
     // FIXME: no way to express `where AttachableValue == _AttachableImageWrapper<???>` on a property (see rdar://47559973)
     (attachableValue as? _AttachableImageWrapper<AttachableValue.Wrapped>)?.imageFormat
