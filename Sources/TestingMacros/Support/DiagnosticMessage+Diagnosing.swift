@@ -293,26 +293,27 @@ func makeGenericGuardDecl(
 /// - Returns: Whether or not `decl` inherits from `XCTest.XCTest`. If the
 ///   result could not be determined from the available syntax, returns `nil`.
 func declarationInheritsFromXCTestClass(_ decl: some DeclSyntaxProtocol) -> Bool? {
-  if let decl = decl.asProtocol((any DeclGroupSyntax).self) {
-    let xctestClassNames = ["XCTest", "XCTestCase", "XCTestSuite"]
-    let inheritsFromXCTestClass = xctestClassNames.contains { className in
-      decl.inherits(fromTypeNamed: className, inModuleNamed: "XCTest")
-    }
-    if inheritsFromXCTestClass {
-      // We can plainly see the inheritance, so return `true`. Note we don't
-      // return `false` along this branch because we can't be sure it doesn't
-      // inherit via an intermediate class, typealias, etc.
-      return true
-    }
-  }
-
   switch decl.kind {
   case .structDecl, .enumDecl:
     // Value types can never inherit from XCTest.XCTest because it's a class, so
     // we can confidently return `false` here.
     return false
+
   default:
-    // We couldn't tell either way.
-    return nil
+    if let decl = decl.asProtocol((any DeclGroupSyntax).self) {
+      let xctestClassNames = ["XCTest", "XCTestCase", "XCTestSuite"]
+      let inheritsFromXCTestClass = xctestClassNames.contains { className in
+        decl.inherits(fromTypeNamed: className, inModuleNamed: "XCTest")
+      }
+      if inheritsFromXCTestClass {
+        // We can plainly see the inheritance, so return `true`. Note we don't
+        // return `false` along this branch because we can't be sure it doesn't
+        // inherit via an intermediate class, typealias, etc.
+        return true
+      }
+    }
   }
+
+  // We couldn't tell either way.
+  return nil
 }
