@@ -26,3 +26,9 @@ struct ZipTests {
     #expect(i == j)
   }
 }
+
+@Suite enum Flarn: ~Escapable {
+  @Test static func flimbleflamble() {
+    #expect(false)
+  }
+}

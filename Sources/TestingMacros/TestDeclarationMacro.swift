@@ -125,11 +125,12 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       }
     }
 
-    // Disallow non-escapable types as suites. In order to support them, the
-    // compiler team needs to finish implementing the lifetime dependency
-    // feature so that `init()`, ``__requiringTry()`, and `__requiringAwait()`
-    // can be correctly expressed.
-    if let containingType = lexicalContext.first?.asProtocol((any DeclGroupSyntax).self),
+    // Disallow instance functions on non-escapable types as test functions. In
+    // order to support them, the compiler team needs to finish implementing the
+    // lifetime dependency feature so that `init()`, ``__requiringTry()`, and
+    // `__requiringAwait()` can be correctly expressed.
+    if !function.isStaticOrClass,
+       let containingType = lexicalContext.first?.asProtocol((any DeclGroupSyntax).self),
        let inheritedTypes = containingType.inheritanceClause?.inheritedTypes {
       let escapableNonConformances = inheritedTypes
         .map(\.type)
