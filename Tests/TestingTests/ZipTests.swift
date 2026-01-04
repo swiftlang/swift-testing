@@ -21,7 +21,7 @@ struct ZipTests {
     }
   }
 
-  @Test("All elements of two ranges are equal", arguments: zip(0 ..< 10, 0 ..< 10))
+@Test("All elements of two ranges are equal", arguments: zip(0 ..< 10, 0 ..< 10))
   func allElementsEqual(i: Int, j: Int) {
     #expect(i == j)
   }
