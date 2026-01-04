@@ -64,7 +64,7 @@ extension DiscoverableAsTestContent {
 /// ``DiscoverableAsTestContent/allTestContentRecords()`` on a type that
 /// conforms to ``DiscoverableAsTestContent``.
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-public struct TestContentRecord<T>: BitwiseCopyable where T: DiscoverableAsTestContent {
+public struct TestContentRecord<T> where T: DiscoverableAsTestContent {
   /// The base address of the image containing this instance, if known.
   ///
   /// The type of this pointer is platform-dependent:
@@ -85,7 +85,7 @@ public struct TestContentRecord<T>: BitwiseCopyable where T: DiscoverableAsTestC
   public private(set) nonisolated(unsafe) var imageAddress: UnsafeRawPointer?
 
   /// A type defining storage for the underlying test content record.
-  private enum _RecordStorage {
+  private enum _RecordStorage: BitwiseCopyable {
     /// The test content record is stored by address.
     case atAddress(UnsafePointer<_TestContentRecord>)
 
