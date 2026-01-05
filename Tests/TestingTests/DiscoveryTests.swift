@@ -90,7 +90,7 @@ struct DiscoveryTests {
     @__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
 #endif
     @used
-    private static let record: __TestContentRecord = (
+    fileprivate static let record: __TestContentRecord = (
       0xABCD1234,
       0,
       { outValue, type, hint, _ in
@@ -110,7 +110,7 @@ struct DiscoveryTests {
     )
   }
 
-  @Test func testDiscovery() async {
+  @Test func testDiscovery() {
     // Check the type of the test record sequence (it should be lazy.)
     let allRecordsSeq = MyTestContent.allTestContentRecords()
 #if SWT_FIXED_143080508
@@ -142,5 +142,22 @@ struct DiscoveryTests {
       && record.context == MyTestContent.expectedContext
     })
   }
+
+#if !SWT_NO_LEGACY_TEST_DISCOVERY
+  struct `__🟡$LegacyTestContentRecord`: __TestContentRecordContainer {
+    static var __testContentRecord: __TestContentRecord {
+      MyTestContent.record
+    }
+  }
+
+  @Test func legacyTestDiscovery() throws {
+    let allRecords = Array(MyTestContent.allTypeMetadataBasedTestContentRecords())
+    #expect(allRecords.count == 1)
+    let record = try #require(allRecords.first)
+    #expect(record.context == MyTestContent.expectedContext)
+    let content = try #require(record.load())
+    #expect(content.value == MyTestContent.expectedValue)
+  }
+#endif
 #endif
 }
