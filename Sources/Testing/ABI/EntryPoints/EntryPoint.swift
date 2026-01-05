@@ -131,7 +131,7 @@ func entryPoint(passing args: __CommandLineArguments_v0?, eventHandler: Event.Ha
     }
   } catch {
 #if !SWT_NO_FILE_IO
-    try? FileHandle.stderr.write("\(error)\n")
+    try? FileHandle.stderr.write("\(String(describingForTest: error))\n")
 #endif
 
     exitCode.withLock { exitCode in
