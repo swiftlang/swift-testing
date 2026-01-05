@@ -158,7 +158,8 @@ public struct SuiteDeclarationMacro: MemberMacro, PeerMacro, Sendable {
         in: declaration.type,
         ofKind: .testDeclaration,
         accessingWith: accessorName,
-        context: attributeInfo.testContentRecordFlags
+        context: attributeInfo.testContentRecordFlags,
+        in: context
       )
     )
 
