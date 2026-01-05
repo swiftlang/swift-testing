@@ -205,7 +205,7 @@ public func __checkFunctionCall<T, each U, E>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<Void, ExpectationFailedError> {
+) throws(E) -> Result<Void, ExpectationFailedError> {
   let condition = try functionCall(lhs, repeat each arguments)
   return __checkValue(
     condition,
@@ -233,7 +233,7 @@ public func __checkFunctionCall<T, Arg0, E>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<Void, ExpectationFailedError> {
+) throws(E) -> Result<Void, ExpectationFailedError> {
   let condition = try functionCall(lhs, argument0)
   return __checkValue(
     condition,
@@ -260,7 +260,7 @@ public func __checkFunctionCall<T, Arg0, Arg1, E>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<Void, ExpectationFailedError> {
+) throws(E) -> Result<Void, ExpectationFailedError> {
   let condition = try functionCall(lhs, argument0, argument1)
   return __checkValue(
     condition,
@@ -287,7 +287,7 @@ public func __checkFunctionCall<T, Arg0, Arg1, Arg2, E>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<Void, ExpectationFailedError> {
+) throws(E) -> Result<Void, ExpectationFailedError> {
   let condition = try functionCall(lhs, argument0, argument1, argument2)
   return __checkValue(
     condition,
@@ -314,7 +314,7 @@ public func __checkFunctionCall<T, Arg0, Arg1, Arg2, Arg3, E>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<Void, ExpectationFailedError> {
+) throws(E) -> Result<Void, ExpectationFailedError> {
   let condition = try functionCall(lhs, argument0, argument1, argument2, argument3)
   return __checkValue(
     condition,
@@ -344,7 +344,7 @@ public func __checkInoutFunctionCall<T, /*each*/ U, E>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<Void, ExpectationFailedError> {
+) throws(E) -> Result<Void, ExpectationFailedError> {
   let condition = try functionCall(lhs, /*repeat each*/ &arguments)
   return __checkValue(
     condition,
@@ -375,7 +375,7 @@ public func __checkFunctionCall<T, each U, E, R>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<R, ExpectationFailedError> {
+) throws(E) -> Result<R, ExpectationFailedError> {
   let optionalValue = try functionCall(lhs, repeat each arguments)
   return __checkValue(
     optionalValue,
@@ -403,7 +403,7 @@ public func __checkFunctionCall<T, Arg0, E, R>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<R, ExpectationFailedError> {
+) throws(E) -> Result<R, ExpectationFailedError> {
   let optionalValue = try functionCall(lhs, argument0)
   return __checkValue(
     optionalValue,
@@ -430,7 +430,7 @@ public func __checkFunctionCall<T, Arg0, Arg1, E, R>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<R, ExpectationFailedError> {
+) throws(E) -> Result<R, ExpectationFailedError> {
   let optionalValue = try functionCall(lhs, argument0, argument1)
   return __checkValue(
     optionalValue,
@@ -457,7 +457,7 @@ public func __checkFunctionCall<T, Arg0, Arg1, Arg2, E, R>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<R, ExpectationFailedError> {
+) throws(E) -> Result<R, ExpectationFailedError> {
   let optionalValue = try functionCall(lhs, argument0, argument1, argument2)
   return __checkValue(
     optionalValue,
@@ -484,7 +484,7 @@ public func __checkFunctionCall<T, Arg0, Arg1, Arg2, Arg3, E, R>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<R, ExpectationFailedError> {
+) throws(E) -> Result<R, ExpectationFailedError> {
   let optionalValue = try functionCall(lhs, argument0, argument1, argument2, argument3)
   return __checkValue(
     optionalValue,
@@ -515,7 +515,7 @@ public func __checkInoutFunctionCall<T, /*each*/ U, E, R>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<R, ExpectationFailedError> {
+) throws(E) -> Result<R, ExpectationFailedError> {
   let optionalValue = try functionCall(lhs, /*repeat each*/ &arguments)
   return __checkValue(
     optionalValue,
