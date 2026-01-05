@@ -9,13 +9,14 @@
 //
 
 #if os(Windows)
-@_spi(Experimental) public import Testing
 public import WinSDK
 
-@_spi(Experimental)
+/// @Metadata {
+///   @Available(Swift, introduced: 6.3)
+/// }
 extension AttachableImageFormat {
-  private static let _encoderPathExtensionsByCLSID = Result<[UInt128: [String]], any Error> {
-    var result = [UInt128: [String]]()
+  private static let _encoderPathExtensionsByCLSID = Result {
+    var result = [CLSID.Wrapper: [String]]()
 
     // Create an imaging factory.
     let factory = try IWICImagingFactory.create()
@@ -68,7 +69,7 @@ extension AttachableImageFormat {
         continue
       }
       let extensions = _pathExtensions(for: info)
-      result[UInt128(clsid)] = extensions
+      result[CLSID.Wrapper(clsid)] = extensions
     }
 
     return result
@@ -135,21 +136,7 @@ extension AttachableImageFormat {
             0 == _wcsicmp(pathExtension, encoderExt)
           }
         }
-      }.map { CLSID($0.key) }
-  }
-
-  /// Get the `CLSID` value of the WIC image encoder corresponding to the same
-  /// image format as the given path extension.
-  ///
-  /// - Parameters:
-  ///   - pathExtension: The path extension for which a `CLSID` value is needed.
-  ///
-  /// - Returns: An instance of `CLSID` referring to a a WIC image encoder, or
-  ///   `nil` if one could not be determined.
-  private static func _computeEncoderCLSID(forPathExtension pathExtension: String) -> CLSID? {
-    pathExtension.withCString(encodedAs: UTF16.self) { pathExtension in
-      _computeEncoderCLSID(forPathExtension: pathExtension)
-    }
+      }.map { $0.key.rawValue }
   }
 
   /// Get the `CLSID` value of the WIC image encoder corresponding to the same
@@ -161,7 +148,7 @@ extension AttachableImageFormat {
   ///
   /// - Returns: An instance of `CLSID` referring to a a WIC image encoder, or
   ///   `nil` if one could not be determined.
-  private static func _computeEncoderCLSID(forPreferredName preferredName: String) -> CLSID? {
+  static func computeEncoderCLSID(forPreferredName preferredName: String) -> CLSID? {
     preferredName.withCString(encodedAs: UTF16.self) { (preferredName) -> CLSID? in
       // Get the path extension on the preferred name, if any.
       var dot: PCWSTR?
@@ -170,37 +157,6 @@ extension AttachableImageFormat {
       }
       return _computeEncoderCLSID(forPathExtension: dot + 1)
     }
-  }
-
-  /// Get the `CLSID` value of the WIC image encoder to use when encoding an
-  /// image.
-  ///
-  /// - Parameters:
-  ///   - imageFormat: The image format to use, or `nil` if the developer did
-  ///     not specify one.
-  ///   - preferredName: The preferred name of the image for which a type is
-  ///     needed.
-  ///
-  /// - Returns: An instance of `CLSID` referring to a a WIC image encoder. If
-  ///   none could be derived from `imageFormat` or `preferredName`, the PNG
-  ///   encoder is used.
-  ///
-  /// This function is not part of the public interface of the testing library.
-  static func computeEncoderCLSID(for imageFormat: Self?, withPreferredName preferredName: String) -> CLSID {
-    if let clsid = imageFormat?.encoderCLSID {
-      return clsid
-    }
-
-    // The developer didn't specify a CLSID, or we couldn't figure one out from
-    // context, so try to derive one from the preferred name's path extension.
-    if let inferredCLSID = _computeEncoderCLSID(forPreferredName: preferredName) {
-      return inferredCLSID
-    }
-
-    // We couldn't derive a concrete type from the path extension, so default
-    // to PNG. Unlike Apple platforms, there's no abstract "image" type on
-    // Windows so we don't need to make any more decisions.
-    return CLSID_WICPngEncoder
   }
 
   /// Append the path extension preferred by WIC for the image format
@@ -216,13 +172,13 @@ extension AttachableImageFormat {
   static func appendPathExtension(for clsid: CLSID, to preferredName: String) -> String {
     // If there's already a CLSID associated with the filename, and it matches
     // the one passed to us, no changes are needed.
-    if let existingCLSID = _computeEncoderCLSID(forPreferredName: preferredName), clsid == existingCLSID {
+    if let existingCLSID = computeEncoderCLSID(forPreferredName: preferredName), CLSID.Wrapper(clsid) == CLSID.Wrapper(existingCLSID) {
       return preferredName
     }
 
     // Find the preferred path extension for the encoder with the given CLSID.
     let encoderPathExtensionsByCLSID = (try? _encoderPathExtensionsByCLSID.get()) ?? [:]
-    if let ext = encoderPathExtensionsByCLSID[UInt128(clsid)]?.first {
+    if let ext = encoderPathExtensionsByCLSID[CLSID.Wrapper(clsid)]?.first {
       return "\(preferredName).\(ext)"
     }
 
@@ -235,15 +191,12 @@ extension AttachableImageFormat {
   ///
   /// For example, if this image format equals ``png``, the value of this
   /// property equals [`CLSID_WICPngEncoder`](https://learn.microsoft.com/en-us/windows/win32/wic/-wic-guids-clsids#wic-guids-and-clsids).
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
   public var encoderCLSID: CLSID {
-    switch kind {
-    case .png:
-      CLSID_WICPngEncoder
-    case .jpeg:
-      CLSID_WICJpegEncoder
-    case let .systemValue(clsid):
-      clsid as! CLSID
-    }
+    kind.encoderCLSID
   }
 
   /// Construct an instance of this type with the `CLSID` value of a Windows
@@ -263,14 +216,20 @@ extension AttachableImageFormat {
   /// result is undefined. For a list of image encoder classes supported by WIC,
   /// see the documentation for the [`IWICBitmapEncoder`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapencoder)
   /// class.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
   public init(encoderCLSID: CLSID, encodingQuality: Float = 1.0) {
-    if encoderCLSID == CLSID_WICPngEncoder {
-      self = .png
-    } else if encoderCLSID == CLSID_WICJpegEncoder {
-      self = .jpeg
+    let encoderCLSID = CLSID.Wrapper(encoderCLSID)
+    let kind: Kind = if encoderCLSID == CLSID.Wrapper(CLSID_WICPngEncoder) {
+      .png
+    } else if encoderCLSID == CLSID.Wrapper(CLSID_WICJpegEncoder) {
+      .jpeg
     } else {
-      self.init(kind: .systemValue(encoderCLSID), encodingQuality: encodingQuality)
+      .systemValue(encoderCLSID)
     }
+    self.init(kind: kind, encodingQuality: encodingQuality)
   }
 
   /// Construct an instance of this type with the given path extension and
@@ -293,6 +252,10 @@ extension AttachableImageFormat {
   ///   must conform to [`UTType.image`](https://developer.apple.com/documentation/uniformtypeidentifiers/uttype-swift.struct/image).
   /// - On Windows, there must be a corresponding subclass of [`IWICBitmapEncoder`](https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapencoder)
   ///   registered with Windows Imaging Component.
+  ///
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
   public init?(pathExtension: String, encodingQuality: Float = 1.0) {
     let pathExtension = pathExtension.drop { $0 == "." }
 
@@ -303,6 +266,62 @@ extension AttachableImageFormat {
       return nil
     }
     self.init(encoderCLSID: encoderCLSID, encodingQuality: encodingQuality)
+  }
+}
+
+// MARK: - CustomStringConvertible, CustomDebugStringConvertible
+
+extension AttachableImageFormat.Kind: CustomStringConvertible, CustomDebugStringConvertible {
+  /// The `CLSID` value of the Windows Imaging Component (WIC) encoder class
+  /// that corresponds to this image format.
+  fileprivate var encoderCLSID: CLSID {
+    switch self {
+    case .png:
+      CLSID_WICPngEncoder
+    case .jpeg:
+      CLSID_WICJpegEncoder
+    case let .systemValue(clsid):
+      (clsid as! CLSID.Wrapper).rawValue
+    }
+  }
+
+  /// Get a description of the given `CLSID` value.
+  ///
+  /// - Parameters:
+  ///   - clsid: The `CLSID` value to describe.
+  ///
+  /// - Returns: A description of `clsid`.
+  private static func _description(of clsid: CLSID) -> String {
+    var clsid = clsid
+    var buffer: RPC_WSTR?
+    if RPC_S_OK == UuidToStringW(&clsid, &buffer) {
+      defer {
+        RpcStringFreeW(&buffer)
+      }
+      if let result = String.decodeCString(buffer, as: UTF16.self)?.result {
+        return result
+      }
+    }
+    return String(describing: clsid)
+  }
+
+  package var description: String {
+    let clsid = encoderCLSID
+    let encoderPathExtensionsByCLSID = (try? AttachableImageFormat._encoderPathExtensionsByCLSID.get()) ?? [:]
+    if let ext = encoderPathExtensionsByCLSID[CLSID.Wrapper(clsid)]?.first {
+      return "\(ext.uppercased()) format"
+    }
+    return Self._description(of: clsid)
+  }
+
+  package var debugDescription: String {
+    let clsid = encoderCLSID
+    let clsidDescription = Self._description(of: clsid)
+    let encoderPathExtensionsByCLSID = (try? AttachableImageFormat._encoderPathExtensionsByCLSID.get()) ?? [:]
+    if let ext = encoderPathExtensionsByCLSID[CLSID.Wrapper(clsid)]?.first {
+      return "\(ext.uppercased()) format (\(clsidDescription))"
+    }
+    return clsidDescription
   }
 }
 #endif

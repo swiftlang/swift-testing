@@ -36,13 +36,14 @@ extension NSImageRep {
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
 /// }
-extension NSImage: AttachableAsCGImage {
+@available(_uttypesAPI, *)
+extension NSImage: AttachableAsImage, AttachableAsCGImage {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
   /// }
-  public var attachableCGImage: CGImage {
+  package var attachableCGImage: CGImage {
     get throws {
-      let ctm = AffineTransform(scale: _attachmentScaleFactor) as NSAffineTransform
+      let ctm = AffineTransform(scale: attachmentScaleFactor) as NSAffineTransform
       guard let result = cgImage(forProposedRect: nil, context: nil, hints: [.ctm: ctm]) else {
         throw ImageAttachmentError.couldNotCreateCGImage
       }
@@ -50,12 +51,16 @@ extension NSImage: AttachableAsCGImage {
     }
   }
 
-  public var _attachmentScaleFactor: CGFloat {
+  package var attachmentScaleFactor: CGFloat {
     let maxRepWidth = representations.lazy
       .map { CGFloat($0.pixelsWide) / $0.size.width }
       .filter { $0 > 0.0 }
       .max()
     return maxRepWidth ?? 1.0
+  }
+
+  public func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try withUnsafeBytesImpl(as: imageFormat, body)
   }
 
   public func _copyAttachableValue() -> Self {

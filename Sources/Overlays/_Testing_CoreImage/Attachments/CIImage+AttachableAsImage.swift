@@ -15,17 +15,22 @@ public import _Testing_CoreGraphics
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
 /// }
-extension CIImage: AttachableAsCGImage {
+@available(_uttypesAPI, *)
+extension CIImage: AttachableAsImage, AttachableAsCGImage {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
   /// }
-  public var attachableCGImage: CGImage {
+  package var attachableCGImage: CGImage {
     get throws {
       guard let result = CIContext().createCGImage(self, from: extent) else {
         throw ImageAttachmentError.couldNotCreateCGImage
       }
       return result
     }
+  }
+
+  public func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try withUnsafeBytesImpl(as: imageFormat, body)
   }
 
   public func _copyAttachableValue() -> Self {

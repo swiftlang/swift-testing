@@ -14,12 +14,17 @@ public import CoreGraphics
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
 /// }
-extension CGImage: AttachableAsCGImage {
+@available(_uttypesAPI, *)
+extension CGImage: AttachableAsImage, AttachableAsCGImage {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
   /// }
-  public var attachableCGImage: CGImage {
+  package var attachableCGImage: CGImage {
     self
+  }
+
+  public func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try withUnsafeBytesImpl(as: imageFormat, body)
   }
 }
 #endif

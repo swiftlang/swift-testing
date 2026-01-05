@@ -47,9 +47,9 @@ extension Runner {
       return
     }
 
-    configuration.eventHandler = { [eventHandler = configuration.eventHandler] event, context in
+    configuration.eventHandler = { [oldEventHandler = configuration.eventHandler] event, context in
       RuntimeState.$current.withValue(existingRuntimeState) {
-        eventHandler(event, context)
+        oldEventHandler(event, context)
       }
     }
   }

@@ -9,21 +9,18 @@
 //
 
 #if os(Windows)
-private import Testing
-public import WinSDK
+package import WinSDK
 
-@_spi(Experimental)
-extension UnsafeMutablePointer: _AttachableAsImage, AttachableAsIWICBitmapSource where Pointee: _AttachableByAddressAsIWICBitmapSource {
-  public func copyAttachableIWICBitmapSource() throws -> UnsafeMutablePointer<IWICBitmapSource> {
-    let factory = try IWICImagingFactory.create()
-    defer {
-      _ = factory.pointee.lpVtbl.pointee.Release(factory)
-    }
-    return try _copyAttachableIWICBitmapSource(using: factory)
+/// @Metadata {
+///   @Available(Swift, introduced: 6.3)
+/// }
+extension UnsafeMutablePointer: AttachableAsImage, AttachableAsIWICBitmapSource where Pointee: _AttachableByAddressAsIWICBitmapSource {
+  package func copyAttachableIWICBitmapSource(using factory: UnsafeMutablePointer<IWICImagingFactory>) throws -> UnsafeMutablePointer<IWICBitmapSource> {
+    try Pointee._copyAttachableIWICBitmapSource(from: self, using: factory)
   }
 
-  public func _copyAttachableIWICBitmapSource(using factory: UnsafeMutablePointer<IWICImagingFactory>) throws -> UnsafeMutablePointer<IWICBitmapSource> {
-    try Pointee._copyAttachableIWICBitmapSource(from: self, using: factory)
+  public func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try withUnsafeBytesImpl(as: imageFormat, body)
   }
 
   public func _copyAttachableValue() -> Self {

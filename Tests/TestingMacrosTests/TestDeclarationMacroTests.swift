@@ -415,7 +415,12 @@ struct TestDeclarationMacroTests {
         [
           #"#if os(moofOS)"#,
           #".__available("moofOS", obsoleted: nil, message: "Moof!", "#,
-        ]
+        ],
+      #"@available(customAvailabilityDomain) @Test func f() {}"#:
+        [
+          #".__available("customAvailabilityDomain", introduced: nil, "#,
+          #"guard #available (customAvailabilityDomain) else"#,
+        ],
     ]
   )
   func availabilityAttributeCapture(input: String, expectedOutputs: [String]) throws {
@@ -479,14 +484,6 @@ struct TestDeclarationMacroTests {
     if let otherCode {
       #expect(output.contains(otherCode))
     }
-  }
-
-  @Test("Self. in @Test attribute is removed")
-  func removeSelfKeyword() throws {
-    let (output, _) = try parse("@Test(arguments: Self.nested.uniqueArgsName, NoTouching.thisOne) func f() {}")
-    #expect(output.contains("nested.uniqueArgsName"))
-    #expect(!output.contains("Self.nested.uniqueArgsName"))
-    #expect(output.contains("NoTouching.thisOne"))
   }
 
   @Test("Display name is preserved",

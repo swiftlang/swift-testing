@@ -47,7 +47,7 @@ extension Attachment where AttachableValue == _AttachableURLWrapper {
   ///
   /// When you call this initializer and pass it the URL of a file, it reads or
   /// maps the contents of that file into memory. When you call this initializer
-  /// and pass it the URL of a directory, it creates a temporary zip file of the
+  /// and pass it the URL of a directory, it creates a temporary ZIP file of the
   /// directory before reading or mapping it into memory. These operations may
   /// take some time, so this initializer suspends the calling task until they
   /// are complete.
@@ -121,14 +121,14 @@ private let _archiverPath: String? = {
     return nil
   }
 
-  return withUnsafeTemporaryAllocation(of: wchar_t.self, capacity: Int(bufferCount)) { buffer -> String? in
+  return withUnsafeTemporaryAllocation(of: CWideChar.self, capacity: Int(bufferCount)) { buffer -> String? in
     let bufferCount = GetSystemDirectoryW(buffer.baseAddress!, UINT(buffer.count))
     guard bufferCount > 0 && bufferCount < buffer.count else {
       return nil
     }
 
     return _archiverName.withCString(encodedAs: UTF16.self) { archiverName -> String? in
-      var result: UnsafeMutablePointer<wchar_t>?
+      var result: UnsafeMutablePointer<CWideChar>?
 
       let flags = ULONG(PATHCCH_ALLOW_LONG_PATHS.rawValue)
       guard S_OK == PathAllocCombine(buffer.baseAddress!, archiverName, flags, &result) else {

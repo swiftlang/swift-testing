@@ -1663,6 +1663,23 @@ final class IssueTests: XCTestCase {
 
     await fulfillment(of: [expectationFailed, apiMisused], timeout: 0.0)
   }
+
+  private struct ErrorWithTestDescription: Error, CustomStringConvertible, CustomTestStringConvertible {
+    var description: String {
+      XCTFail("Invoked .description instead of .testDescription")
+      return "WRONG"
+    }
+
+    var testDescription: String {
+      return "RIGHT"
+    }
+  }
+
+  func testErrorCaughtIssueUsesTestDescription() {
+    let error = ErrorWithTestDescription()
+    let issue = Issue(kind: .errorCaught(error), severity: .error, comments: [], sourceContext: .init())
+    #expect(String(describing: issue).contains("RIGHT"))
+  }
 }
 #endif
 

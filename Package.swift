@@ -105,6 +105,17 @@ let package = Package(
       )
     )
 
+#if DEBUG
+    // Build _TestingInterop for debugging/testing purposes only. It is
+    // important that clients do not link to this product/target.
+    result += [
+      .library(
+        name: "_TestingInterop_DO_NOT_USE",
+        targets: ["_TestingInterop_DO_NOT_USE"]
+      )
+    ]
+#endif
+
     return result
   }(),
 
@@ -208,6 +219,16 @@ let package = Package(
       exclude: ["CMakeLists.txt"],
       cxxSettings: .packageSettings,
       swiftSettings: .packageSettings + .enableLibraryEvolution()
+    ),
+    .target(
+      // Build _TestingInterop for debugging/testing purposes only. It is
+      // important that clients do not link to this product/target.
+      name: "_TestingInterop_DO_NOT_USE",
+      dependencies: ["_TestingInternals",],
+      path: "Sources/_TestingInterop",
+      exclude: ["CMakeLists.txt"],
+      cxxSettings: .packageSettings,
+      swiftSettings: .packageSettings
     ),
 
     // Cross-import overlays (not supported by Swift Package Manager)
@@ -348,9 +369,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
   static var packageSettings: Self {
     var result = availabilityMacroSettings
 
-    if buildingForDevelopment {
-      result.append(.unsafeFlags(["-require-explicit-sendable"]))
-    }
+    result.append(.treatWarning("ExplicitSendable", as: .warning))
 
     if buildingForEmbedded {
       result.append(.enableExperimentalFeature("Embedded"))
@@ -406,6 +425,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .enableExperimentalFeature("AvailabilityMacro=_regexAPI:macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0"),
       .enableExperimentalFeature("AvailabilityMacro=_swiftVersionAPI:macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0"),
       .enableExperimentalFeature("AvailabilityMacro=_typedThrowsAPI:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
+      .enableExperimentalFeature("AvailabilityMacro=_castingWithNonCopyableGenerics:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
 
       .enableExperimentalFeature("AvailabilityMacro=_distantFuture:macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0, visionOS 99.0"),
     ]

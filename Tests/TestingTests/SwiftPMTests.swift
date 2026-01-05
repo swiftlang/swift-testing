@@ -59,6 +59,25 @@ struct SwiftPMTests {
     #expect(!configuration.isParallelizationEnabled)
   }
 
+  @Test("--experimental-maximum-parallelization-width argument")
+  func maximumParallelizationWidth() throws {
+    var configuration = try configurationForEntryPoint(withArguments: ["PATH", "--experimental-maximum-parallelization-width", "12345"])
+    #expect(configuration.isParallelizationEnabled)
+    #expect(configuration.maximumParallelizationWidth == 12345)
+
+    configuration = try configurationForEntryPoint(withArguments: ["PATH", "--experimental-maximum-parallelization-width", "1"])
+    #expect(!configuration.isParallelizationEnabled)
+    #expect(configuration.maximumParallelizationWidth == 1)
+
+    configuration = try configurationForEntryPoint(withArguments: ["PATH", "--experimental-maximum-parallelization-width", "\(Int.max)"])
+    #expect(configuration.isParallelizationEnabled)
+    #expect(configuration.maximumParallelizationWidth == .max)
+
+    #expect(throws: (any Error).self) {
+      _ = try configurationForEntryPoint(withArguments: ["PATH", "--experimental-maximum-parallelization-width", "0"])
+    }
+  }
+
   @Test("--symbolicate-backtraces argument",
     arguments: [
       (String?.none, Backtrace.SymbolicationMode?.none),
@@ -143,6 +162,13 @@ struct SwiftPMTests {
     let planTests = plan.steps.map(\.test)
     #expect(!planTests.contains(test1))
     #expect(planTests.contains(test2))
+  }
+
+  @Test("--filter or --skip argument as last argument")
+  @available(_regexAPI, *)
+  func filterOrSkipAsLast() async throws {
+    _ = try configurationForEntryPoint(withArguments: ["PATH", "--filter"])
+    _ = try configurationForEntryPoint(withArguments: ["PATH", "--skip"])
   }
 
   @Test(".hidden trait", .tags(.traitRelated))
@@ -276,10 +302,11 @@ struct SwiftPMTests {
 
   @Test("New-but-not-experimental ABI version")
   func newButNotExperimentalABIVersion() async throws {
-    var versionNumber = ABI.CurrentVersion.versionNumber
-    versionNumber.patchComponent += 1
-    let version = try #require(ABI.version(forVersionNumber: versionNumber))
-    #expect(version.versionNumber == ABI.v0.versionNumber)
+    let currentVersionNumber = ABI.CurrentVersion.versionNumber
+    var newerVersionNumber = currentVersionNumber
+    newerVersionNumber.patchComponent += 1
+    let version = try #require(ABI.version(forVersionNumber: newerVersionNumber, givenSwiftCompilerVersion: newerVersionNumber))
+    #expect(version.versionNumber == currentVersionNumber)
   }
 
   @Test("Unsupported ABI version")
@@ -491,5 +518,26 @@ struct SwiftPMTests {
   func verbosity() throws {
     let args = try parseCommandLineArguments(from: ["PATH", "--verbosity", "12345"])
     #expect(args.verbosity == 12345)
+  }
+
+  @Test("--foo=bar form")
+  func equalsSignForm() throws {
+    // We can split the string and parse the result correctly.
+    do {
+      let args = try parseCommandLineArguments(from: ["PATH", "--verbosity=12345"])
+      #expect(args.verbosity == 12345)
+    }
+
+    // We don't overrun the string and correctly handle empty values.
+    do {
+      let args = try parseCommandLineArguments(from: ["PATH", "--xunit-output="])
+      #expect(args.xunitOutput == "")
+    }
+
+    // We split at the first equals-sign.
+    do {
+      let args = try parseCommandLineArguments(from: ["PATH", "--xunit-output=abc=123"])
+      #expect(args.xunitOutput == "abc=123")
+    }
   }
 }

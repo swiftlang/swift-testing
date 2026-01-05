@@ -77,7 +77,7 @@ let operatingSystemVersion: String = {
       // Include Service Pack details if available.
       if versionInfo.szCSDVersion.0 != 0 {
         withUnsafeBytes(of: versionInfo.szCSDVersion) { szCSDVersion in
-          szCSDVersion.withMemoryRebound(to: wchar_t.self) { szCSDVersion in
+          szCSDVersion.withMemoryRebound(to: CWideChar.self) { szCSDVersion in
             if let szCSDVersion = String.decodeCString(szCSDVersion.baseAddress!, as: UTF16.self)?.result {
               result += " (\(szCSDVersion))"
             }
@@ -89,9 +89,8 @@ let operatingSystemVersion: String = {
     }
   }
 #elseif os(WASI)
-  if let version = swt_getWASIVersion().flatMap(String.init(validatingCString:)) {
-    return version
-  }
+  // WASI does not have an API to get the current WASI or Wasm version.
+  // wasi-libc does have uname(3), but it's stubbed out.
 #else
 #warning("Platform-specific implementation missing: OS version unavailable")
 #endif
@@ -119,6 +118,20 @@ let simulatorVersion: String = {
   default:
     return "\(productVersion) (\(buildNumber))"
   }
+}()
+#endif
+
+#if os(Android)
+/// A human-readable string describing the current device's supported Android
+/// API level.
+///
+/// This value's format is platform-specific and is not meant to be
+/// machine-readable. It is added to the output of a test run when using
+/// an event writer.
+///
+/// This value is not part of the public interface of the testing library.
+let apiLevel: String = {
+  systemProperty(named: "ro.build.version.sdk") ?? "unknown"
 }()
 #endif
 

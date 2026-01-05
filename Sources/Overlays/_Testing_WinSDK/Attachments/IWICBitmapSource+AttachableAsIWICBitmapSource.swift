@@ -9,7 +9,6 @@
 //
 
 #if os(Windows)
-private import Testing
 public import WinSDK
 
 /// - Important: The casts in this file to `IUnknown` are safe insofar as we use
@@ -34,31 +33,14 @@ public import WinSDK
 /// allows us to reuse code across all subclasses of `IWICBitmapSource`.
 protocol IWICBitmapSourceProtocol: _AttachableByAddressAsIWICBitmapSource {}
 
-@_spi(Experimental)
 extension IWICBitmapSource: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
-
-@_spi(Experimental)
 extension IWICBitmap: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
-
-@_spi(Experimental)
 extension IWICBitmapClipper: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
-
-@_spi(Experimental)
 extension IWICBitmapFlipRotator: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
-
-@_spi(Experimental)
 extension IWICBitmapFrameDecode: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
-
-@_spi(Experimental)
 extension IWICBitmapScaler: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
-
-@_spi(Experimental)
 extension IWICColorTransform: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
-
-@_spi(Experimental)
 extension IWICFormatConverter: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
-
-@_spi(Experimental)
 extension IWICPlanarFormatConverter: _AttachableByAddressAsIWICBitmapSource, IWICBitmapSourceProtocol {}
 
 // MARK: - Upcasting conveniences
@@ -96,7 +78,6 @@ extension UnsafeMutablePointer where Pointee: IWICBitmapSourceProtocol {
 
 // MARK: - _AttachableByAddressAsIWICBitmapSource implementation
 
-@_spi(Experimental)
 extension IWICBitmapSourceProtocol {
   public static func _copyAttachableIWICBitmapSource(
     from imageAddress: UnsafeMutablePointer<Self>,
@@ -120,7 +101,6 @@ extension IWICBitmapSourceProtocol {
 }
 
 extension IWICBitmapSource {
-  @_spi(Experimental)
   public static func _copyAttachableIWICBitmapSource(
     from imageAddress: UnsafeMutablePointer<Self>,
     using factory: UnsafeMutablePointer<IWICImagingFactory>

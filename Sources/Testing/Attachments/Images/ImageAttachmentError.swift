@@ -12,6 +12,7 @@ private import _TestingInternals
 
 /// A type representing an error that can occur when attaching an image.
 #if SWT_NO_IMAGE_ATTACHMENTS
+@_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 package enum ImageAttachmentError: Error {
@@ -24,6 +25,9 @@ package enum ImageAttachmentError: Error {
 
   /// The image could not be converted.
   case couldNotConvertImage
+
+  /// The specified content type is not supported by Image I/O.
+  case unsupportedImageFormat(_ typeIdentifier: String)
 #elseif os(Windows)
   /// A call to `QueryInterface()` failed.
   case queryInterfaceFailed(Any.Type, CLong)
@@ -43,6 +47,7 @@ package enum ImageAttachmentError: Error {
 }
 
 #if SWT_NO_IMAGE_ATTACHMENTS
+@_unavailableInEmbedded
 @available(*, unavailable, message: "Image attachments are not available on this platform.")
 #endif
 extension ImageAttachmentError: CustomStringConvertible {
@@ -55,6 +60,8 @@ extension ImageAttachmentError: CustomStringConvertible {
       "Could not create the Core Graphics image destination to encode this image."
     case .couldNotConvertImage:
       "Could not convert the image to the specified format."
+    case let .unsupportedImageFormat(typeIdentifier):
+      "Could not convert the image to the format '\(typeIdentifier)' because the system does not support it."
     }
 #elseif os(Windows)
     switch self {
