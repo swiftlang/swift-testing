@@ -71,7 +71,15 @@ extension SectionBounds.Kind {
 
 /// An array containing all of the test content section bounds known to the
 /// testing library.
+///
+/// Indices into this array are equivalent to the `rawValue` values of instances
+/// of ``SectionBounds/Kind``.
 private nonisolated(unsafe) let _sectionBounds = {
+  // We generate a contiguous array here rather than a dictionary because the
+  // former has less overall bridging with the Objective-C runtime (reducing the
+  // risk of reentrance while holding the libobjc lock) and because the set of
+  // keys or indices is closed, so an array lookup is always more efficient than
+  // a hashtable lookup.
   let kindCount = SectionBounds.Kind.allCases.count
   let result = ManagedBuffer<ContiguousArray<ContiguousArray<SectionBounds>>, pthread_mutex_t>.create(
     minimumCapacity: 1,
