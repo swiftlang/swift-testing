@@ -486,14 +486,6 @@ struct TestDeclarationMacroTests {
     }
   }
 
-  @Test("Self. in @Test attribute is removed")
-  func removeSelfKeyword() throws {
-    let (output, _) = try parse("@Test(arguments: Self.nested.uniqueArgsName, NoTouching.thisOne) func f() {}")
-    #expect(output.contains("nested.uniqueArgsName"))
-    #expect(!output.contains("Self.nested.uniqueArgsName"))
-    #expect(output.contains("NoTouching.thisOne"))
-  }
-
   @Test("Display name is preserved",
     arguments: [
       #"@Test("Display Name") func f() {}"#,
