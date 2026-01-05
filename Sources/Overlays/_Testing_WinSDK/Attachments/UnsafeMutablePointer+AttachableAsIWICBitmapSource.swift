@@ -19,6 +19,10 @@ extension UnsafeMutablePointer: AttachableAsImage, AttachableAsIWICBitmapSource 
     try Pointee._copyAttachableIWICBitmapSource(from: self, using: factory)
   }
 
+  public func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try withUnsafeBytesImpl(as: imageFormat, body)
+  }
+
   public func _copyAttachableValue() -> Self {
     Pointee._copyAttachableValue(at: self)
   }
