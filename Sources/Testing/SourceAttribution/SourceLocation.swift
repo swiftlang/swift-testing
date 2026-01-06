@@ -215,24 +215,17 @@ extension SourceLocation: Codable {
   ///
   /// - Returns: A file path constructed from `filePath` and `moduleName`.
   private static func _synthesizeFileID(fromFilePath filePath: String, inModuleNamed moduleName: String = "__C") -> String {
-    let fileName: String?
-#if os(Windows)
-    fileName = filePath.withCString(encodedAs: UTF16.self) { filePath in
-      let filePath = _wcsdup(filePath)!
-      defer {
-        free(filePath)
-      }
-      if S_OK == PathCchRemoveBackslash(filePath, wcslen(filePath) + 1),
-         let fileName = PathFindFileNameW(filePath) {
-        return String.decodeCString(fileName, as: UTF16.self)?.result
-      }
-      return nil
-    }
-#elseif os(OpenBSD)
-    // basename(3) is not thread-safe on OpenBSD. Approximate it instead.
-    // SEE: https://man.openbsd.org/basename.3
-    fileName = {
+    let fileName: String? = {
       var filePath = filePath[...]
+
+#if os(Windows)
+      // On Windows, replace backslashes in the path with slashes. (This is an
+      // admittedly naïve approach, but this function is not a hot path.)
+      filePath = {
+        let characters = filePath.map { $0 == #"\"# ? "/" : $0 }
+        return String(characters)[...]
+      }()
+#endif
 
       // Trim any trailing slashes, then take the substring following the last
       // (remaining) slash, if any.
@@ -245,18 +238,6 @@ extension SourceLocation: Codable {
       }
       return nil
     }()
-#else
-    fileName = {
-      let filePath = strdup(filePath)!
-      defer {
-        free(filePath)
-      }
-      if let fileName = swt_basename(filePath) {
-        return String(validatingCString: fileName)
-      }
-      return nil
-    }()
-#endif
     return "\(moduleName)/\(fileName ?? filePath)"
   }
 }
