@@ -369,9 +369,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
   static var packageSettings: Self {
     var result = availabilityMacroSettings
 
-    if buildingForDevelopment {
-      result.append(.unsafeFlags(["-require-explicit-sendable"]))
-    }
+    result.append(.treatWarning("ExplicitSendable", as: .warning))
 
     if buildingForEmbedded {
       result.append(.enableExperimentalFeature("Embedded"))

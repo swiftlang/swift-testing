@@ -32,7 +32,7 @@ private import _TestingInternals
 ///   in the compiler.
 /// }
 @_spi(Experimental) @_spi(ForToolsIntegrationOnly)
-@frozen public struct TestContentKind: Sendable, RawRepresentable {
+@frozen public struct TestContentKind: Sendable, BitwiseCopyable, RawRepresentable {
   public var rawValue: UInt32
 
   @inlinable public init(rawValue: UInt32) {

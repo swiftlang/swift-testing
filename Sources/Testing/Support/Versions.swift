@@ -121,6 +121,20 @@ let simulatorVersion: String = {
 }()
 #endif
 
+#if os(Android)
+/// A human-readable string describing the current device's supported Android
+/// API level.
+///
+/// This value's format is platform-specific and is not meant to be
+/// machine-readable. It is added to the output of a test run when using
+/// an event writer.
+///
+/// This value is not part of the public interface of the testing library.
+let apiLevel: String = {
+  systemProperty(named: "ro.build.version.sdk") ?? "unknown"
+}()
+#endif
+
 /// A human-readable string describing the testing library's version.
 ///
 /// This value's format is platform-specific and is not meant to be
