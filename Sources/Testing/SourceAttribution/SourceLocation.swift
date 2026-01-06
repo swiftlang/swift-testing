@@ -8,6 +8,8 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+private import _TestingInternals
+
 /// A type representing a location in source code.
 public struct SourceLocation: Sendable {
   /// The file ID of the source file.
@@ -71,7 +73,6 @@ public struct SourceLocation: Sendable {
   }
 
   /// The path to the source file.
-  @_spi(Experimental)
   public var filePath: String
 
   /// The line in the source file.
@@ -188,7 +189,6 @@ extension SourceLocation: Codable {
 
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: _CodingKeys.self)
-    fileID = try container.decode(String.self, forKey: .fileID)
     line = try container.decode(Int.self, forKey: .line)
     column = try container.decode(Int.self, forKey: .column)
 
@@ -196,6 +196,46 @@ extension SourceLocation: Codable {
     // file path.
     filePath = try container.decodeIfPresent(String.self, forKey: .filePath)
       ?? container.decode(String.self, forKey: ._filePath)
+
+    // If the file ID is not present (i.e. this is a foreign source location),
+    // we'll synthesize it
+    fileID = try container.decodeIfPresent(String.self, forKey: .fileID)
+      ?? Self._synthesizeFileID(fromFilePath: filePath)
+  }
+
+  /// Synthesize a file ID from the given file path and module name.
+  ///
+  /// - Parameters:
+  ///   - filePath: The file path.
+  ///   - moduleName: The module name.
+  ///
+  /// - Returns: A file path constructed from `filePath` and `moduleName`.
+  private static func _synthesizeFileID(fromFilePath filePath: String, inModuleNamed moduleName: String = "__C") -> String {
+#if os(Windows)
+    let fileName = filePath.withCString(encodedAs: UTF16.self) { filePath in
+      let filePath = _wcsdup(filePath)
+      defer {
+        free(filePath)
+      }
+      if S_OK == PathCchRemoveBackslash(filePath, wcslen(filePath) + 1),
+         let fileName = PathFindFileNameW(filePath) {
+        return String.decodeCString(fileName, as: UTF16.self)?.result
+      }
+      return nil
+    }
+#else
+    var fileName = {
+      let filePath = strdup(filePath)
+      defer {
+        free(filePath)
+      }
+      if let fileName = basename(filePath) {
+        return String(validatingCString: fileName)
+      }
+      return nil
+    }()
+#endif
+    return "\(moduleName)/\(fileName ?? filePath)"
   }
 }
 
