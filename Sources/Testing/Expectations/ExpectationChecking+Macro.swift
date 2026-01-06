@@ -24,9 +24,9 @@
 ///     failure.
 ///   - sourceLocation: The source location of the expectation.
 ///
-/// - Returns: A `Result<Void, any Error>`. If `condition` is `true`, the result
-///   is `.success`. If `condition` is `false`, the result is an instance of
-///   ``ExpectationFailedError`` describing the failure.
+/// - Returns: A `Result<Void, ExpectationFailedError>`. If `condition` is
+///   `true`, the result is `.success`. If `condition` is `false`, the result is
+///   an instance of ``ExpectationFailedError`` describing the failure.
 ///
 /// If the condition evaluates to `false`, an ``Issue`` is recorded for the test
 /// that is running in the current task.
@@ -59,7 +59,7 @@ func check<T>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> where T: ~Copyable {
+) -> Result<Void, ExpectationFailedError> where T: ~Copyable {
   let expectationContext = consume expectationContext
 
   // Post an event for the expectation regardless of whether or not it passed.
@@ -100,13 +100,13 @@ func check<T>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkCondition(
-  _ condition: (__ExpectationContext<Bool>) throws -> Bool,
+public func __checkCondition<E>(
+  _ condition: (__ExpectationContext<Bool>) throws(E) -> Bool,
   sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<Void, any Error> {
+) throws(E) -> Result<Void, ExpectationFailedError> {
   let expectationContext = __ExpectationContext<Bool>(sourceCode: sourceCode())
   let condition = try condition(expectationContext)
 
@@ -125,13 +125,13 @@ public func __checkCondition(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkCondition<T>(
-  _ optionalValue: (__ExpectationContext<T?>) throws -> T?,
+public func __checkCondition<T, E>(
+  _ optionalValue: (__ExpectationContext<T?>) throws(E) -> T?,
   sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) rethrows -> Result<T, any Error> where T: ~Copyable {
+) throws(E) -> Result<T, ExpectationFailedError> where T: ~Copyable {
   let expectationContext = __ExpectationContext<T?>(sourceCode: sourceCode())
   let optionalValue = try optionalValue(expectationContext)
 
@@ -159,14 +159,14 @@ public func __checkCondition<T>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkConditionAsync(
-  _ condition: (__ExpectationContext<Bool>) async throws -> Bool,
+public func __checkConditionAsync<E>(
+  _ condition: (__ExpectationContext<Bool>) async throws(E) -> Bool,
   sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async rethrows -> Result<Void, any Error> {
+) async throws(E) -> Result<Void, ExpectationFailedError> {
   let expectationContext = __ExpectationContext<Bool>(sourceCode: sourceCode())
   let condition = try await condition(expectationContext)
 
@@ -185,14 +185,14 @@ public func __checkConditionAsync(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkConditionAsync<T>(
-  _ optionalValue: (__ExpectationContext<T?>) async throws -> sending T?,
+public func __checkConditionAsync<T, E>(
+  _ optionalValue: (__ExpectationContext<T?>) async throws(E) -> sending T?,
   sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async rethrows -> Result<T, any Error> where T: ~Copyable {
+) async throws(E) -> Result<T, ExpectationFailedError> where T: ~Copyable {
   let expectationContext = __ExpectationContext<T?>(sourceCode: sourceCode())
   let optionalValue = try await optionalValue(expectationContext)
 
@@ -227,7 +227,7 @@ public func __checkEscapedCondition(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> {
+) -> Result<Void, ExpectationFailedError> {
   let expectationContext = __ExpectationContext<Bool>(sourceCode: sourceCode())
 
   return check(
@@ -254,7 +254,7 @@ public func __checkEscapedCondition<T>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<T, any Error> where T: ~Copyable {
+) -> Result<T, ExpectationFailedError> where T: ~Copyable {
   let expectationContext = __ExpectationContext<T?>(sourceCode: sourceCode())
 
   let result = check(
@@ -291,7 +291,7 @@ public func __checkClosureCall<E>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<E?, any Error> where E: Error {
+) -> Result<E?, ExpectationFailedError> where E: Error {
   if errorType == Never.self {
     __checkClosureCall(
       throws: Never.self,
@@ -330,7 +330,7 @@ public func __checkClosureCall<E>(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<E?, any Error> where E: Error {
+) async -> Result<E?, ExpectationFailedError> where E: Error {
   if errorType == Never.self {
     await __checkClosureCall(
       throws: Never.self,
@@ -372,7 +372,7 @@ public func __checkClosureCall(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<Void, any Error> {
+) -> Result<Void, ExpectationFailedError> {
   var success = true
   var mismatchExplanationValue: String? = nil
   do {
@@ -410,7 +410,7 @@ public func __checkClosureCall(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<Void, any Error> {
+) async -> Result<Void, ExpectationFailedError> {
   var success = true
   var mismatchExplanationValue: String? = nil
   do {
@@ -447,7 +447,7 @@ public func __checkClosureCall<E>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<E?, any Error> where E: Error & Equatable {
+) -> Result<E?, ExpectationFailedError> where E: Error & Equatable {
   __checkClosureCall(
     performing: body,
     throws: { true == (($0 as? E) == error) },
@@ -474,7 +474,7 @@ public func __checkClosureCall<E>(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<E?, any Error> where E: Error & Equatable {
+) async -> Result<E?, ExpectationFailedError> where E: Error & Equatable {
   await __checkClosureCall(
     performing: body,
     throws: { true == (($0 as? E) == error) },
@@ -503,7 +503,7 @@ public func __checkClosureCall<R>(
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
-) -> Result<(any Error)?, any Error> {
+) -> Result<(any Error)?, ExpectationFailedError> {
   let expectationContext = __ExpectationContext<(any Error)?>(sourceCode: sourceCode())
 
   var errorMatches = false
@@ -555,7 +555,7 @@ public func __checkClosureCall<R>(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<(any Error)?, any Error> {
+) async -> Result<(any Error)?, ExpectationFailedError> {
   let expectationContext = __ExpectationContext<(any Error)?>(sourceCode: sourceCode())
 
   var errorMatches = false
@@ -613,7 +613,7 @@ public func __checkClosureCall(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<ExitTest.Result?, any Error> {
+) async -> Result<ExitTest.Result?, ExpectationFailedError> {
   await callExitTest(
     identifiedBy: exitTestID,
     encodingCapturedValues: [],
@@ -645,7 +645,7 @@ public func __checkClosureCall<each T>(
   isRequired: Bool,
   isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
-) async -> Result<ExitTest.Result?, any Error> where repeat each T: Codable & Sendable {
+) async -> Result<ExitTest.Result?, ExpectationFailedError> where repeat each T: Codable & Sendable {
   await callExitTest(
     identifiedBy: exitTestID,
     encodingCapturedValues: Array(repeat each capturedValues),

@@ -407,14 +407,14 @@ extension __ExpectationContext where Output: ~Copyable {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __cmp<T, U>(
-    _ op: (borrowing T, borrowing U) throws -> Bool,
+  @inlinable public func __cmp<T, U, E>(
+    _ op: (borrowing T, borrowing U) throws(E) -> Bool,
     _ opID: __ExpressionID,
     _ lhs: borrowing T,
     _ lhsID: __ExpressionID,
     _ rhs: borrowing U,
     _ rhsID: __ExpressionID
-  ) rethrows -> Bool {
+  ) throws(E) -> Bool {
     let result = try captureValue(op(captureValue(lhs, lhsID), captureValue(rhs, rhsID)), opID)
 
     if !result {
@@ -445,14 +445,14 @@ extension __ExpectationContext where Output: ~Copyable {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   @_disfavoredOverload
-  public func __cmp<T, U>(
-    _ op: (borrowing T, borrowing U) throws -> Bool,
+  public func __cmp<T, U, E>(
+    _ op: (borrowing T, borrowing U) throws(E) -> Bool,
     _ opID: __ExpressionID,
     _ lhs: borrowing T,
     _ lhsID: __ExpressionID,
     _ rhs: borrowing U,
     _ rhsID: __ExpressionID
-  ) rethrows -> Bool where T: ~Copyable, U: ~Copyable {
+  ) throws(E) -> Bool where T: ~Copyable, U: ~Copyable {
     let result = try captureValue(op(lhs, rhs), opID)
 
     if #available(_castingWithNonCopyableGenerics, *) {
