@@ -113,6 +113,16 @@ func subexpressionShowcase() async throws {
   }
   #expect(await k2(true))
 
+  class NonSendableClass {
+    var string: String = ""
+  }
+  func k3(_ x: NonSendableClass) async -> Bool {
+    (x as NonSendableClass?) == nil
+  }
+  let nonSendableObject = NonSendableClass()
+  #expect(await k3(nonSendableObject))
+  extendLifetime(nonSendableObject)
+
 #if false
   // Unsupported: __ec necessarily captures non-sendable state, so this will
   // fail to compile because it is capturing __ec in a sendable closure. We

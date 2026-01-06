@@ -159,12 +159,11 @@ public func __checkCondition<T, E>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkConditionAsync<E>(
+public nonisolated(nonsending) func __checkConditionAsync<E>(
   _ condition: (__ExpectationContext<Bool>) async throws(E) -> Bool,
   sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
-  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
 ) async throws(E) -> Result<Void, ExpectationFailedError> {
   let expectationContext = __ExpectationContext<Bool>(sourceCode: sourceCode())
@@ -185,12 +184,11 @@ public func __checkConditionAsync<E>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkConditionAsync<T, E>(
+public nonisolated(nonsending) func __checkConditionAsync<T, E>(
   _ optionalValue: (__ExpectationContext<T?>) async throws(E) -> sending T?,
   sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
-  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
 ) async throws(E) -> Result<T, ExpectationFailedError> where T: ~Copyable {
   let expectationContext = __ExpectationContext<T?>(sourceCode: sourceCode())
@@ -322,13 +320,12 @@ public func __checkClosureCall<E>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkClosureCall<E>(
+public nonisolated(nonsending) func __checkClosureCall<E>(
   throws errorType: E.Type,
   performing body: () async throws -> sending some Any,
   sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
-  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
 ) async -> Result<E?, ExpectationFailedError> where E: Error {
   if errorType == Never.self {
@@ -338,7 +335,6 @@ public func __checkClosureCall<E>(
       sourceCode: sourceCode(),
       comments: comments(),
       isRequired: isRequired,
-      isolation: isolation,
       sourceLocation: sourceLocation
     ).map { _ in nil }
   } else {
@@ -349,7 +345,6 @@ public func __checkClosureCall<E>(
       sourceCode: sourceCode(),
       comments: comments(),
       isRequired: isRequired,
-      isolation: isolation,
       sourceLocation: sourceLocation
     ).map { $0 as? E }
   }
@@ -402,13 +397,12 @@ public func __checkClosureCall(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkClosureCall(
+public nonisolated(nonsending) func __checkClosureCall(
   throws _: Never.Type,
   performing body: () async throws -> sending some Any,
   sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
-  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
 ) async -> Result<Void, ExpectationFailedError> {
   var success = true
@@ -466,13 +460,12 @@ public func __checkClosureCall<E>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkClosureCall<E>(
+public nonisolated(nonsending) func __checkClosureCall<E>(
   throws error: E,
   performing body: () async throws -> sending some Any,
   sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
-  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
 ) async -> Result<E?, ExpectationFailedError> where E: Error & Equatable {
   await __checkClosureCall(
@@ -482,7 +475,6 @@ public func __checkClosureCall<E>(
     sourceCode: sourceCode(),
     comments: comments(),
     isRequired: isRequired,
-    isolation: isolation,
     sourceLocation: sourceLocation
   ).map { $0 as? E }
 }
@@ -546,14 +538,13 @@ public func __checkClosureCall<R>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkClosureCall<R>(
+public nonisolated(nonsending) func __checkClosureCall<R>(
   performing body: () async throws -> sending R,
   throws errorMatcher: (any Error) async throws -> Bool,
   mismatchExplanation: ((any Error) -> String)? = nil,
   sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
-  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
 ) async -> Result<(any Error)?, ExpectationFailedError> {
   let expectationContext = __ExpectationContext<(any Error)?>(sourceCode: sourceCode())
@@ -603,7 +594,7 @@ public func __checkClosureCall<R>(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkClosureCall(
+public nonisolated(nonsending) func __checkClosureCall(
   identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
   processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
@@ -611,7 +602,6 @@ public func __checkClosureCall(
 	sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
-  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
 ) async -> Result<ExitTest.Result?, ExpectationFailedError> {
   await callExitTest(
@@ -634,7 +624,7 @@ public func __checkClosureCall(
 ///
 /// - Warning: This function is used to implement the `#expect()` and
 ///   `#require()` macros. Do not call it directly.
-public func __checkClosureCall<each T>(
+public nonisolated(nonsending) func __checkClosureCall<each T>(
   identifiedBy exitTestID: (UInt64, UInt64, UInt64, UInt64),
   encodingCapturedValues capturedValues: (repeat each T),
   processExitsWith expectedExitCondition: ExitTest.Condition,
@@ -643,7 +633,6 @@ public func __checkClosureCall<each T>(
   sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
-  isolation: isolated (any Actor)? = #isolation,
   sourceLocation: SourceLocation
 ) async -> Result<ExitTest.Result?, ExpectationFailedError> where repeat each T: Codable & Sendable {
   await callExitTest(
