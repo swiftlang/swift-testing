@@ -221,10 +221,10 @@ extension SourceLocation: Codable {
 #if os(Windows)
       // On Windows, replace backslashes in the path with slashes. (This is an
       // admittedly naïve approach, but this function is not a hot path.)
-      filePath = {
+      do {
         let characters = filePath.map { $0 == #"\"# ? "/" : $0 }
-        return String(characters)[...]
-      }()
+        filePath = String(characters)[...]
+      }
 #endif
 
       // Trim any trailing slashes, then take the substring following the last
