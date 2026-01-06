@@ -126,6 +126,16 @@ static char *_Nullable *_Null_unspecified swt_environ(void) {
 }
 #endif
 
+#if !SWT_NO_FILE_IO && __has_include(<libgen.h>)
+/// Get the base name from a path by modifying the buffer containing that path.
+///
+/// This function is provided because `basename(3)` is defined via a macro on
+/// some platforms.
+static char *_Nullable swt_basename(char *path) {
+  return basename(path);
+}
+#endif
+
 #if !defined(__ANDROID__)
 #if __has_include(<signal.h>) && defined(si_pid)
 /// Get the value of the `si_pid` field of a `siginfo_t` structure.

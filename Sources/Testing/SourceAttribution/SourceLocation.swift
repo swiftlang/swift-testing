@@ -217,7 +217,7 @@ extension SourceLocation: Codable {
   private static func _synthesizeFileID(fromFilePath filePath: String, inModuleNamed moduleName: String = "__C") -> String {
 #if os(Windows)
     let fileName = filePath.withCString(encodedAs: UTF16.self) { filePath in
-      let filePath = _wcsdup(filePath)
+      let filePath = _wcsdup(filePath)!
       defer {
         free(filePath)
       }
@@ -229,11 +229,11 @@ extension SourceLocation: Codable {
     }
 #else
     var fileName = {
-      let filePath = strdup(filePath)
+      let filePath = strdup(filePath)!
       defer {
         free(filePath)
       }
-      if let fileName = basename(filePath) {
+      if let fileName = swt_basename(filePath) {
         return String(validatingCString: fileName)
       }
       return nil
