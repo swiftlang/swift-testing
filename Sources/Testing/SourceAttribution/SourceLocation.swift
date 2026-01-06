@@ -189,18 +189,22 @@ extension SourceLocation: Codable {
 
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: _CodingKeys.self)
-    line = try container.decode(Int.self, forKey: .line)
-    column = try container.decode(Int.self, forKey: .column)
+    let fileID = try container.decodeIfPresent(String.self, forKey: .fileID)
+    let line = try container.decode(Int.self, forKey: .line)
+    let column = try container.decode(Int.self, forKey: .column)
 
     // For simplicity's sake, we won't be picky about which key contains the
     // file path.
-    filePath = try container.decodeIfPresent(String.self, forKey: .filePath)
+    let filePath = try container.decodeIfPresent(String.self, forKey: .filePath)
       ?? container.decode(String.self, forKey: ._filePath)
 
-    // If the file ID is not present (i.e. this is a foreign source location),
-    // we'll synthesize it
-    fileID = try container.decodeIfPresent(String.self, forKey: .fileID)
-      ?? Self._synthesizeFileID(fromFilePath: filePath)
+    self.init(fileIDSynthesizingIfNeeded: fileID, filePath: filePath, line: line, column: column)
+  }
+
+  init(fileIDSynthesizingIfNeeded fileID: String?, filePath: String, line: Int, column: Int) {
+    // Synthesize the file ID if needed.
+    let fileID = fileID ?? Self._synthesizeFileID(fromFilePath: filePath)
+    self.init(fileID: fileID, filePath: filePath, line: line, column: column)
   }
 
   /// Synthesize a file ID from the given file path and module name.
