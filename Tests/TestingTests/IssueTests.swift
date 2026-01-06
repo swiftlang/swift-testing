@@ -148,6 +148,7 @@ final class IssueTests: XCTestCase {
     static func k(_ x: inout Int) -> Bool { false }
     static func m(_ x: Bool) -> Bool { false }
     static func n(_ x: Int) throws -> Bool { false }
+    static func p(_ x: (Int) throws -> Int) rethrows -> Bool { false }
   }
 
   func testMemberFunctionCall() async throws {
@@ -216,6 +217,29 @@ final class IssueTests: XCTestCase {
 
     await Test {
       #expect(TypeWithMemberFunctions.h({ }))
+    }.run(configuration: configuration)
+
+    await fulfillment(of: [expectationFailed], timeout: 0.0)
+  }
+
+  func testMemberFunctionCallWithRethrowingKeyPathArgument() async throws {
+    let expectationFailed = expectation(description: "Expectation failed")
+
+    var configuration = Configuration()
+    configuration.eventHandler = { event, _ in
+      guard case let .issueRecorded(issue) = event.kind else {
+        return
+      }
+      if case let .expectationFailed(expectation) = issue.kind {
+        expectationFailed.fulfill()
+        let desc = expectation.evaluatedExpression.expandedDescription()
+        XCTAssertFalse(desc.contains("(Function)"))
+        XCTAssertFalse(desc.contains("(("))
+      }
+    }
+
+    await Test {
+      #expect(TypeWithMemberFunctions.p(\.bitWidth))
     }.run(configuration: configuration)
 
     await fulfillment(of: [expectationFailed], timeout: 0.0)
