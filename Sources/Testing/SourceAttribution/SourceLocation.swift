@@ -215,8 +215,9 @@ extension SourceLocation: Codable {
   ///
   /// - Returns: A file path constructed from `filePath` and `moduleName`.
   private static func _synthesizeFileID(fromFilePath filePath: String, inModuleNamed moduleName: String = "__C") -> String {
+    let fileName: String?
 #if os(Windows)
-    let fileName = filePath.withCString(encodedAs: UTF16.self) { filePath in
+    fileName = filePath.withCString(encodedAs: UTF16.self) { filePath in
       let filePath = _wcsdup(filePath)!
       defer {
         free(filePath)
@@ -227,8 +228,25 @@ extension SourceLocation: Codable {
       }
       return nil
     }
+#elseif os(OpenBSD)
+    // basename(3) is not thread-safe on OpenBSD. Approximate it instead.
+    // SEE: https://man.openbsd.org/basename.3
+    fileName = {
+      var filePath = filePath[...]
+
+      // Trim any trailing slashes, then take the substring following the last
+      // (remaining) slash, if any.
+      if let lastNonSlashCharacter = filePath.lastIndex(where: { $0 != "/" }) {
+        filePath = filePath[...lastNonSlashCharacter]
+        if let lastSlashCharacter = filePath.lastIndex(of: "/") {
+          filePath = filePath[lastSlashCharacter...].dropFirst()
+        }
+        return String(filePath)
+      }
+      return nil
+    }()
 #else
-    var fileName = {
+    fileName = {
       let filePath = strdup(filePath)!
       defer {
         free(filePath)
