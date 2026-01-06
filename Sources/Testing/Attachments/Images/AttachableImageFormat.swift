@@ -17,8 +17,8 @@
 /// instance of this type, the testing library infers which format to use based
 /// on the attachment's preferred name.
 ///
-/// The PNG and JPEG image formats are always supported. The set of additional
-/// supported image formats is platform-specific:
+/// The testing library always supports the PNG and JPEG image formats. The set
+/// of additional supported image formats is platform-specific:
 ///
 /// - On Apple platforms, you can use [`CGImageDestinationCopyTypeIdentifiers()`](https://developer.apple.com/documentation/imageio/cgimagedestinationcopytypeidentifiers())
 ///   from the [Image I/O framework](https://developer.apple.com/documentation/imageio)

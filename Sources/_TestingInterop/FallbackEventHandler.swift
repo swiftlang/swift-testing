@@ -64,7 +64,11 @@ package typealias FallbackEventHandler = @Sendable @convention(c) (
 /// Get the current fallback event handler.
 ///
 /// - Returns: The currently-set handler function, if any.
+#if compiler(>=6.3)
+@c
+#else
 @_cdecl("_swift_testing_getFallbackEventHandler")
+#endif
 @usableFromInline
 package func _swift_testing_getFallbackEventHandler() -> FallbackEventHandler? {
 #if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK && !hasFeature(Embedded)
@@ -96,7 +100,11 @@ package func _swift_testing_getFallbackEventHandler() -> FallbackEventHandler? {
 /// The fallback event handler can only be installed once per process, typically
 /// by the first testing library to run. If this function has already been
 /// called and the handler set, it does not replace the previous handler.
+#if compiler(>=6.3)
+@c
+#else
 @_cdecl("_swift_testing_installFallbackEventHandler")
+#endif
 @usableFromInline
 package func _swift_testing_installFallbackEventHandler(_ handler: FallbackEventHandler) -> CBool {
   var result = false

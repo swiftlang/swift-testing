@@ -47,7 +47,7 @@ extension Attachment where AttachableValue == _AttachableURLWrapper {
   ///
   /// When you call this initializer and pass it the URL of a file, it reads or
   /// maps the contents of that file into memory. When you call this initializer
-  /// and pass it the URL of a directory, it creates a temporary zip file of the
+  /// and pass it the URL of a directory, it creates a temporary ZIP file of the
   /// directory before reading or mapping it into memory. These operations may
   /// take some time, so this initializer suspends the calling task until they
   /// are complete.
