@@ -148,7 +148,7 @@ final class IssueTests: XCTestCase {
     static func k(_ x: inout Int) -> Bool { false }
     static func m(_ x: Bool) -> Bool { false }
     static func n(_ x: Int) throws -> Bool { false }
-    static func p(_ x: (Int) throws -> Int) rethrows -> Bool { false }
+    static func p<E>(_ x: (Int) throws(E) -> Int) throws(E) -> Bool { false }
   }
 
   func testMemberFunctionCall() async throws {
@@ -222,7 +222,7 @@ final class IssueTests: XCTestCase {
     await fulfillment(of: [expectationFailed], timeout: 0.0)
   }
 
-  func testMemberFunctionCallWithRethrowingKeyPathArgument() async throws {
+  func testMemberFunctionCallWithTypedThrowsAndKeyPathArgument() async throws {
     let expectationFailed = expectation(description: "Expectation failed")
 
     var configuration = Configuration()
