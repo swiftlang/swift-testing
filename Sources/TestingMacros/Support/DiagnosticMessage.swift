@@ -375,6 +375,8 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
     }
     if escapableNonConformance != nil {
       message += " because its conformance to 'Escapable' has been suppressed"
+    } else if let decl = node.as(DeclSyntax.self), declarationInheritsFromXCTestClass(decl) == true {
+      message += " because it is a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'"
     }
 
     return Self(syntax: syntax, message: message, severity: .error)
@@ -529,7 +531,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   }
 
   /// Create a diagnostic message stating that `@Test` or `@Suite` is
-  /// incompatible with `XCTestCase` and its subclasses.
+  /// incompatible with `XCTest.XCTest` and its subclasses.
   ///
   /// - Parameters:
   ///   - decl: The expression or declaration referring to the unsupported
@@ -537,10 +539,10 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///   - attribute: The `@Test` or `@Suite` attribute.
   ///
   /// - Returns: A diagnostic message.
-  static func xcTestCaseNotSupported(_ decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
+  static func xcTestSubclassNotSupported(_ decl: some SyntaxProtocol, whenUsing attribute: AttributeSyntax) -> Self {
     Self(
       syntax: Syntax(decl),
-      message: "Attribute \(_macroName(attribute)) cannot be applied to a subclass of 'XCTestCase'",
+      message: "Attribute \(_macroName(attribute)) cannot be applied to a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'",
       severity: .error
     )
   }
