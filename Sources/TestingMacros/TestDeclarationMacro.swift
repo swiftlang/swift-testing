@@ -485,8 +485,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
         in: typeName,
         ofKind: .testDeclaration,
         accessingWith: accessorName,
-        context: attributeInfo.testContentRecordFlags,
-        in: context
+        context: attributeInfo.testContentRecordFlags
       )
     )
 

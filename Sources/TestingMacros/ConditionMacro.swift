@@ -487,8 +487,7 @@ extension ExitTestConditionMacro {
         named: .identifier("testContentRecord"),
         in: TypeSyntax(IdentifierTypeSyntax(name: enumName)),
         ofKind: .exitTest,
-        accessingWith: .identifier("accessor"),
-        in: context
+        accessingWith: .identifier("accessor")
       )
 
       // Create another local type for legacy test discovery.
