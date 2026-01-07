@@ -53,14 +53,13 @@ extension ABI.EncodedSourceLocation: Codable {}
 
 extension SourceLocation {
   init?<V>(_ sourceLocation: ABI.EncodedSourceLocation<V>) {
+    let fileID = sourceLocation.fileID
     guard let filePath = sourceLocation.filePath ?? sourceLocation._filePath else {
       return nil
     }
-    self.init(
-      fileIDSynthesizingIfNeeded: sourceLocation.fileID,
-      filePath: filePath,
-      line: sourceLocation.line,
-      column: sourceLocation.column
-    )
+    let line = max(1, sourceLocation.line)
+    let column = max(1, sourceLocation.column)
+
+    self.init(fileIDSynthesizingIfNeeded: fileID, filePath: filePath, line: line, column: column)
   }
 }

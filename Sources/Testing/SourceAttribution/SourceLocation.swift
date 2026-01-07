@@ -189,7 +189,7 @@ extension SourceLocation: Codable {
 
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: _CodingKeys.self)
-    let fileID = try container.decodeIfPresent(String.self, forKey: .fileID)
+    let fileID = try container.decode(String.self, forKey: .fileID)
     let line = try container.decode(Int.self, forKey: .line)
     let column = try container.decode(Int.self, forKey: .column)
 
@@ -198,7 +198,7 @@ extension SourceLocation: Codable {
     let filePath = try container.decodeIfPresent(String.self, forKey: .filePath)
       ?? container.decode(String.self, forKey: ._filePath)
 
-    self.init(fileIDSynthesizingIfNeeded: fileID, filePath: filePath, line: line, column: column)
+    self.init(fileID: fileID, filePath: filePath, line: line, column: column)
   }
 
   init(fileIDSynthesizingIfNeeded fileID: String?, filePath: String, line: Int, column: Int) {

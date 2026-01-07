@@ -39,7 +39,9 @@ array (also defined as in JSON) whose elements all follow rule `<T>`.
 <bool> ::= true | false ; as in JSON
 
 <source-location> ::= {
-  "fileID": <string>, ; the Swift file ID of the file
+  ["fileID": <string>,] ; the Swift file ID of the file if available, as per
+                        ; SE-0274 § "Specification of the #file string format"
+  "filePath": <string>, ; the compile-time path to the file
   "line": <number>,
   "column": <number>,
 }
