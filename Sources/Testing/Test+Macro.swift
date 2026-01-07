@@ -538,7 +538,8 @@ extension Test {
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
-@inlinable public func __requiringTry<T>(_ value: consuming T) throws -> T where T: ~Copyable {
+@_lifetime(copy value)
+@inlinable public func __requiringTry<T>(_ value: consuming T) throws -> T where T: ~Copyable & ~Escapable {
   value
 }
 
@@ -547,7 +548,8 @@ extension Test {
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
-@inlinable public func __requiringAwait<T>(_ value: consuming T, isolation: isolated (any Actor)? = #isolation) async -> T where T: ~Copyable {
+@_lifetime(copy value)
+@inlinable public func __requiringAwait<T>(_ value: consuming T, isolation: isolated (any Actor)? = #isolation) async -> T where T: ~Copyable & ~Escapable {
   value
 }
 
@@ -556,7 +558,8 @@ extension Test {
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
-@unsafe @inlinable public func __requiringUnsafe<T>(_ value: consuming T) -> T where T: ~Copyable {
+@_lifetime(copy value)
+@unsafe @inlinable public func __requiringUnsafe<T>(_ value: consuming T) -> T where T: ~Copyable & ~Escapable {
   value
 }
 
@@ -579,7 +582,7 @@ public var __defaultSynchronousIsolationContext: (any Actor)? {
   _ selector: __XCTestCompatibleSelector?,
   onInstanceOf type: T.Type,
   sourceLocation: SourceLocation
-) async throws -> Bool where T: ~Copyable {
+) async throws -> Bool where T: ~Copyable & ~Escapable {
   false
 }
 

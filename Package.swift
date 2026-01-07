@@ -390,6 +390,9 @@ extension Array where Element == PackageDescription.SwiftSetting {
       // proposal via Swift Evolution.
       .enableExperimentalFeature("SymbolLinkageMarkers"),
 
+      // Enabled to allow tests to be added to ~Escapable suites.
+      .enableExperimentalFeature("Lifetimes"),
+
       .enableUpcomingFeature("InferIsolatedConformances"),
 
       // When building as a package, the macro plugin always builds as an
