@@ -52,7 +52,7 @@ array (also defined as in JSON) whose elements all follow rule `<T>`.
 }
 
 <version> ::= "version": <version-number>
-<version-number> ::= 0 | "<version core>" (see https://semver.org)
+<version-number> ::= 0 | "<version core>" ; as per https://semver.org
 ```
 
 <!--
