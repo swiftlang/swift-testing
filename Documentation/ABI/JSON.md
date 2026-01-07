@@ -51,7 +51,8 @@ array (also defined as in JSON) whose elements all follow rule `<T>`.
   "since1970": <number>, ; floating-point seconds since 1970-01-01 00:00:00 UT
 }
 
-<version> ::= "version": 0 ; will be incremented as the format changes
+<version> ::= "version": <version-number>
+<version-number> ::= 0 | "<version core>" (see https://semver.org)
 ```
 
 <!--
