@@ -30,6 +30,12 @@ extension ABI {
     init(encoding sourceLocation: borrowing SourceLocation) {
       fileID = sourceLocation.fileID
 
+      // When using the 6.3 schema, don't encode synthesized file IDs.
+      if V.versionNumber >= ABI.v6_3.versionNumber,
+         sourceLocation.moduleName == SourceLocation.synthesizedModuleName {
+        fileID = nil
+      }
+
       // When using the 6.3 schema, we encode both "filePath" and "_filePath" to
       // ease migration for existing tools.
       if V.versionNumber >= ABI.v6_3.versionNumber {

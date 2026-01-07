@@ -207,6 +207,11 @@ extension SourceLocation: Codable {
     self.init(fileID: fileID, filePath: filePath, line: line, column: column)
   }
 
+  /// The name of the ersatz Swift module used for synthesized file IDs.
+  static var synthesizedModuleName: String {
+    "__C"
+  }
+
   /// Synthesize a file ID from the given file path and module name.
   ///
   /// - Parameters:
@@ -214,7 +219,7 @@ extension SourceLocation: Codable {
   ///   - moduleName: The module name.
   ///
   /// - Returns: A file path constructed from `filePath` and `moduleName`.
-  private static func _synthesizeFileID(fromFilePath filePath: String, inModuleNamed moduleName: String = "__C") -> String {
+  private static func _synthesizeFileID(fromFilePath filePath: String, inModuleNamed moduleName: String = synthesizedModuleName) -> String {
     let fileName: String? = {
       var filePath = filePath[...]
 
