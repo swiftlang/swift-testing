@@ -38,7 +38,7 @@ extension ABI {
     var displayName: String?
 
     /// The source location of this test.
-    var sourceLocation: SourceLocation
+    var sourceLocation: EncodedSourceLocation<V>
 
     /// A type implementing the JSON encoding of ``Test/ID`` for the ABI entry
     /// point and event stream output.
@@ -87,7 +87,7 @@ extension ABI {
       }
       name = test.name
       displayName = test.displayName
-      sourceLocation = test.sourceLocation
+      sourceLocation = EncodedSourceLocation(encoding: test.sourceLocation)
       id = ID(encoding: test.id)
 
       // Experimental fields

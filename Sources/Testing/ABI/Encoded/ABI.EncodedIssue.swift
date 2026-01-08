@@ -46,7 +46,7 @@ extension ABI {
     var isKnown: Bool
 
     /// The location in source where this issue occurred, if available.
-    var sourceLocation: SourceLocation?
+    var sourceLocation: EncodedSourceLocation<V>?
 
     /// The backtrace where this issue occurred, if available.
     ///
@@ -61,7 +61,7 @@ extension ABI {
     init(encoding issue: borrowing Issue, in eventContext: borrowing Event.Context) {
       // >= v0
       isKnown = issue.isKnown
-      sourceLocation = issue.sourceLocation
+      sourceLocation = issue.sourceLocation.map { EncodedSourceLocation(encoding: $0) }
 
       // >= v6.3
       if V.versionNumber >= ABI.v6_3.versionNumber {
