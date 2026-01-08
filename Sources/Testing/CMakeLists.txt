@@ -6,6 +6,7 @@
 # See https://swift.org/LICENSE.txt for license information
 # See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
+include(ModuleABIName)
 add_library(Testing
   ABI/EntryPoints/ABIEntryPoint.swift
   ABI/EntryPoints/EntryPoint.swift

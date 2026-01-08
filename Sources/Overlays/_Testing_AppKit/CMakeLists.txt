@@ -7,6 +7,7 @@
 # See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  include(ModuleABIName)
   add_library(_Testing_AppKit
     Attachments/NSImage+AttachableAsImage.swift
     ReexportTesting.swift)
