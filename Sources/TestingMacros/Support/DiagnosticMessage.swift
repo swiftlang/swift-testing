@@ -327,19 +327,14 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
   ///     generic.
   ///   - attribute: The `@Test` or `@Suite` attribute.
   ///   - decl: The declaration in question (contained in `node`.)
-  ///   - escapableNonConformance: The suppressed conformance to `Escapable` for
-  ///     `decl`, if present.
   ///
   /// - Returns: A diagnostic message.
-  static func containingNodeUnsupported(_ node: some SyntaxProtocol, genericBecauseOf genericClause: Syntax? = nil, whenUsing attribute: AttributeSyntax, on decl: some SyntaxProtocol, withSuppressedConformanceToEscapable escapableNonConformance: SuppressedTypeSyntax? = nil) -> Self {
+  static func containingNodeUnsupported(_ node: some SyntaxProtocol, genericBecauseOf genericClause: Syntax? = nil, whenUsing attribute: AttributeSyntax, on decl: some SyntaxProtocol) -> Self {
     // Avoid using a syntax node from a lexical context (it won't have source
     // location information.)
     let syntax: Syntax = if let genericClause, attribute.root == genericClause.root {
       // Prefer the generic clause if available as the root cause.
       genericClause
-    } else if let escapableNonConformance, attribute.root == escapableNonConformance.root {
-      // Then the ~Escapable conformance if present.
-      Syntax(escapableNonConformance)
     } else if attribute.root == node.root {
       // Next best choice is the unsupported containing node.
       Syntax(node)
@@ -373,9 +368,7 @@ struct DiagnosticMessage: SwiftDiagnostics.DiagnosticMessage {
         message += " within \(_kindString(for: node, includeA: true))"
       }
     }
-    if escapableNonConformance != nil {
-      message += " because its conformance to 'Escapable' has been suppressed"
-    } else if let decl = node.as(DeclSyntax.self), declarationInheritsFromXCTestClass(decl) == true {
+    if let decl = node.as(DeclSyntax.self), declarationInheritsFromXCTestClass(decl) == true {
       message += " because it is a subclass of 'XCTest', 'XCTestCase', or 'XCTestSuite'"
     }
 

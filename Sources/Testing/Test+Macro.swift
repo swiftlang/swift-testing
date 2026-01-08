@@ -105,12 +105,12 @@ extension Test {
   ///
   /// - Warning: This function is used to implement the `@Suite` macro. Do not
   ///   call it directly.
-  public static func __type(
-    _ containingType: any ~Copyable.Type,
+  public static func __type<S>(
+    _ containingType: S.Type,
     displayName: String? = nil,
     traits: [any SuiteTrait],
     sourceLocation: SourceLocation
-  ) -> Self {
+  ) -> Self where S: ~Copyable & ~Escapable {
     let containingTypeInfo = TypeInfo(describing: containingType)
     return Self(displayName: displayName, traits: traits, sourceLocation: sourceLocation, containingTypeInfo: containingTypeInfo)
   }
@@ -166,7 +166,7 @@ extension Test {
     sourceLocation: SourceLocation,
     parameters: [__Parameter] = [],
     testFunction: @escaping @Sendable () async throws -> Void
-  ) -> Self where S: ~Copyable {
+  ) -> Self where S: ~Copyable & ~Escapable {
     // Don't use Optional.map here due to a miscompile/crash. Expand out to an
     // if expression instead. SEE: rdar://134280902
     let containingTypeInfo: TypeInfo? = if let containingType {
@@ -251,7 +251,7 @@ extension Test {
     sourceLocation: SourceLocation,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C.Element) async throws -> Void
-  ) -> Self where S: ~Copyable, C: Collection & Sendable, C.Element: Sendable {
+  ) -> Self where S: ~Copyable & ~Escapable, C: Collection & Sendable, C.Element: Sendable {
     let containingTypeInfo: TypeInfo? = if let containingType {
       TypeInfo(describing: containingType)
     } else {
@@ -398,7 +398,7 @@ extension Test {
     sourceLocation: SourceLocation,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
-  ) -> Self where S: ~Copyable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
+  ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let containingTypeInfo: TypeInfo? = if let containingType {
       TypeInfo(describing: containingType)
     } else {
@@ -426,7 +426,7 @@ extension Test {
     sourceLocation: SourceLocation,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable ((E1, E2)) async throws -> Void
-  ) -> Self where S: ~Copyable, C: Collection & Sendable, C.Element == (E1, E2), E1: Sendable, E2: Sendable {
+  ) -> Self where S: ~Copyable & ~Escapable, C: Collection & Sendable, C.Element == (E1, E2), E1: Sendable, E2: Sendable {
     let containingTypeInfo: TypeInfo? = if let containingType {
       TypeInfo(describing: containingType)
     } else {
@@ -457,7 +457,7 @@ extension Test {
     sourceLocation: SourceLocation,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable ((Key, Value)) async throws -> Void
-  ) -> Self where S: ~Copyable, Key: Sendable, Value: Sendable {
+  ) -> Self where S: ~Copyable & ~Escapable, Key: Sendable, Value: Sendable {
     let containingTypeInfo: TypeInfo? = if let containingType {
       TypeInfo(describing: containingType)
     } else {
@@ -482,7 +482,7 @@ extension Test {
     sourceLocation: SourceLocation,
     parameters paramTuples: [__Parameter],
     testFunction: @escaping @Sendable (C1.Element, C2.Element) async throws -> Void
-  ) -> Self where S: ~Copyable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
+  ) -> Self where S: ~Copyable & ~Escapable, C1: Collection & Sendable, C1.Element: Sendable, C2: Collection & Sendable, C2.Element: Sendable {
     let containingTypeInfo: TypeInfo? = if let containingType {
       TypeInfo(describing: containingType)
     } else {
@@ -538,7 +538,8 @@ extension Test {
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
-@inlinable public func __requiringTry<T>(_ value: consuming T) throws -> T where T: ~Copyable {
+@_lifetime(copy value)
+@inlinable public func __requiringTry<T>(_ value: consuming T) throws -> T where T: ~Copyable & ~Escapable {
   value
 }
 
@@ -547,7 +548,8 @@ extension Test {
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
-@inlinable public func __requiringAwait<T>(_ value: consuming T, isolation: isolated (any Actor)? = #isolation) async -> T where T: ~Copyable {
+@_lifetime(copy value)
+@inlinable public func __requiringAwait<T>(_ value: consuming T, isolation: isolated (any Actor)? = #isolation) async -> T where T: ~Copyable & ~Escapable {
   value
 }
 
@@ -556,7 +558,8 @@ extension Test {
 ///
 /// - Warning: This function is used to implement the `@Test` macro. Do not use
 ///   it directly.
-@unsafe @inlinable public func __requiringUnsafe<T>(_ value: consuming T) -> T where T: ~Copyable {
+@_lifetime(copy value)
+@unsafe @inlinable public func __requiringUnsafe<T>(_ value: consuming T) -> T where T: ~Copyable & ~Escapable {
   value
 }
 
@@ -579,7 +582,7 @@ public var __defaultSynchronousIsolationContext: (any Actor)? {
   _ selector: __XCTestCompatibleSelector?,
   onInstanceOf type: T.Type,
   sourceLocation: SourceLocation
-) async throws -> Bool where T: ~Copyable {
+) async throws -> Bool where T: ~Copyable & ~Escapable {
   false
 }
 
