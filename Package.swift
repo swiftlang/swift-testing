@@ -177,6 +177,13 @@ let package = Package(
       path: "Tests/_MemorySafeTestingTests",
       swiftSettings: .packageSettings + [.strictMemorySafety()]
     ),
+    .testTarget(
+      name: "SubexpressionShowcase",
+      dependencies: [
+        "Testing",
+      ],
+      swiftSettings: .packageSettings
+    ),
 
     .macro(
       name: "TestingMacros",
@@ -409,6 +416,17 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .define("SWT_NO_LEGACY_TEST_DISCOVERY", .whenEmbedded()),
       .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
     ]
+
+    if Context.environment["SWT_EXPERIMENTAL_REF_TYPE_ENABLED"] != nil {
+      result += [
+        .define("SWT_EXPERIMENTAL_REF_TYPE_ENABLED"),
+
+        .enableExperimentalFeature("BuiltinModule"),
+        .enableExperimentalFeature("Lifetimes"),
+        .enableExperimentalFeature("AddressableParameters"),
+        .enableExperimentalFeature("AddressableTypes"),
+      ]
+    }
 
     return result
   }
