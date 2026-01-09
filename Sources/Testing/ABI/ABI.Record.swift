@@ -18,6 +18,11 @@ extension ABI {
   struct Record<V>: Sendable where V: ABI.Version {
     /// An enumeration describing the various kinds of record.
     enum Kind: Sendable {
+      /// A testing library.
+      ///
+      /// - Warning: Testing libraries are not yet part of the JSON schema.
+    	case library(EncodedLibrary<V>)
+
       /// A test record.
       case test(EncodedTest<V>)
 
@@ -27,6 +32,13 @@ extension ABI {
 
     /// The kind of record.
     var kind: Kind
+
+    init?(encoding library: borrowing Library) {
+      guard V.includesExperimentalFields else {
+        return nil
+      }
+      kind = .library(EncodedLibrary(encoding: library))
+    }
 
     init(encoding test: borrowing Test) {
       kind = .test(EncodedTest(encoding: test))
@@ -58,6 +70,9 @@ extension ABI.Record: Codable {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encode(V.versionNumber, forKey: .version)
     switch kind {
+    case let .library(library):
+      try container.encode("_library", forKey: .kind)
+      try container.encode(library, forKey: .payload)
     case let .test(test):
       try container.encode("test", forKey: .kind)
       try container.encode(test, forKey: .payload)
@@ -92,6 +107,9 @@ extension ABI.Record: Codable {
     try validateVersionNumber(versionNumber)
 
     switch try container.decode(String.self, forKey: .kind) {
+    case "_library":
+      let library = try container.decode(ABI.EncodedLibrary<V>.self, forKey: .payload)
+      kind = .library(library)
     case "test":
       let test = try container.decode(ABI.EncodedTest<V>.self, forKey: .payload)
       kind = .test(test)
