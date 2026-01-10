@@ -142,9 +142,20 @@ let package = Package(
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
       cxxSettings: .packageSettings,
       swiftSettings: .packageSettings + .enableLibraryEvolution(),
-      linkerSettings: [
-        .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd]))
-      ]
+      linkerSettings: {
+        var result = [LinkerSetting]()
+        result += [
+          .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd]))
+        ]
+#if compiler(>=6.3)
+        result += [
+          .linkedFramework("_TestingInterop", .whenApple()),
+          .linkedLibrary("_TestingInterop", .whenApple(false)),
+        ]
+#endif
+
+        return result
+      }()
     ),
     .testTarget(
       name: "TestingTests",
