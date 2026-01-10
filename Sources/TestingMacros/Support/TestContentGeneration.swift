@@ -68,15 +68,28 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
   private nonisolated \(staticKeyword(for: typeName)) let \(name): Testing.__TestContentRecord = (
     \(kindExpr), \(kind.commentRepresentation)
     0,
-    unsafe \(accessorName),
+    { unsafe \(accessorName)($0, $1, $2, $3) },
     \(contextExpr),
     0
   )
   """
 
-#if hasFeature(SymbolLinkageMarkers)
+#if compiler(>=6.3)
   result = """
-  #if hasFeature(SymbolLinkageMarkers)
+  #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
+  @section("__DATA_CONST,__swift5_tests")
+  #elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+  @section("swift5_tests")
+  #elseif os(Windows)
+  @section(".sw5test$B")
+  #else
+  @Testing.__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
+  #endif
+  @used
+  \(result)
+  """
+#else
+  result = """
   #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
   @_section("__DATA_CONST,__swift5_tests")
   #elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
@@ -87,7 +100,6 @@ func makeTestContentRecordDecl(named name: TokenSyntax, in typeName: TypeSyntax?
   @Testing.__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
   #endif
   @_used
-  #endif
   \(result)
   """
 #endif

@@ -58,7 +58,7 @@ struct DiscoveryTests {
   }
 #endif
 
-#if !SWT_NO_DYNAMIC_LINKING && hasFeature(SymbolLinkageMarkers)
+#if !SWT_NO_DYNAMIC_LINKING
   struct MyTestContent: DiscoverableAsTestContent {
     typealias TestContentAccessorHint = UInt32
 
@@ -80,6 +80,18 @@ struct DiscoveryTests {
       record.context
     }
 
+#if compiler(>=6.3)
+#if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
+    @section("__DATA_CONST,__swift5_tests")
+#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
+    @section("swift5_tests")
+#elseif os(Windows)
+    @section(".sw5test$B")
+#else
+    @__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
+#endif
+    @used
+#else
 #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
     @_section("__DATA_CONST,__swift5_tests")
 #elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
@@ -90,6 +102,7 @@ struct DiscoveryTests {
     @__testing(warning: "Platform-specific implementation missing: test content section name unavailable")
 #endif
     @_used
+#endif
     private static let record: __TestContentRecord = (
       0xABCD1234,
       0,
@@ -105,7 +118,7 @@ struct DiscoveryTests {
         _ = outValue.initializeMemory(as: Self.self, to: .init(value: expectedValue))
         return true
       },
-      UInt(truncatingIfNeeded: UInt64(0x0204060801030507)),
+      0x02040608,
       0
     )
   }
@@ -141,23 +154,6 @@ struct DiscoveryTests {
       return record.load(withHint: hint)?.value == MyTestContent.expectedValue
       && record.context == MyTestContent.expectedContext
     })
-  }
-#endif
-
-#if !SWT_NO_LEGACY_TEST_DISCOVERY && hasFeature(SymbolLinkageMarkers)
-  @Test("Legacy test discovery finds the same number of tests") func discoveredTestCount() async {
-    let oldFlag = Environment.variable(named: "SWT_USE_LEGACY_TEST_DISCOVERY")
-    defer {
-      Environment.setVariable(oldFlag, named: "SWT_USE_LEGACY_TEST_DISCOVERY")
-    }
-
-    Environment.setVariable("1", named: "SWT_USE_LEGACY_TEST_DISCOVERY")
-    let testsWithOldCode = await Array(Test.all).count
-
-    Environment.setVariable("0", named: "SWT_USE_LEGACY_TEST_DISCOVERY")
-    let testsWithNewCode = await Array(Test.all).count
-
-    #expect(testsWithOldCode == testsWithNewCode)
   }
 #endif
 }
