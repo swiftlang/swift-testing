@@ -214,7 +214,7 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
     return value
   }
 
-#if hasFeature(NonCopyableSubscriptArguments)
+#if SWT_FIXED_168010783
   /// Capture information about a value for use if the expectation currently
   /// being evaluated fails.
   ///
