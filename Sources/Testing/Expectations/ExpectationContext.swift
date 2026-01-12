@@ -166,47 +166,14 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   ///   - value: The value to pass through.
   ///   - id: A value that uniquely identifies the represented expression in the
   ///     context of the expectation currently being evaluated.
-  ///   - timing: When the value represented by this instance was captured.
-  ///
-  /// - Returns: `value`, verbatim.
-  ///
-  /// This function helps subscript overloads disambiguate themselves and avoid
-  /// accidental recursion.
-  func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID, timing: Expression.Value.Timing? = nil) {
-    let value = copy value
-    runtimeValues[id] = { Expression.Value(reflecting: value, timing: timing) }
-  }
-
-  /// Capture information about a value for use if the expectation currently
-  /// being evaluated fails.
-  ///
-  /// - Parameters:
-  ///   - value: The value to pass through.
-  ///   - id: A value that uniquely identifies the represented expression in the
-  ///     context of the expectation currently being evaluated.
   ///
   /// - Returns: `value`, verbatim.
   ///
   /// This function helps subscript overloads disambiguate themselves and avoid
   /// accidental recursion.
   func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID) {
-    captureValue(value, id, timing: nil)
-  }
-
-  /// Capture information about a value that we cannot capture directly (e.g.
-  /// because it does not conform to `Copyable`).
-  ///
-  /// - Parameters:
-  ///   - value: The value to pass through.
-  ///   - id: A value that uniquely identifies the represented expression in the
-  ///     context of the expectation currently being evaluated.
-  @_disfavoredOverload
-  func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID, timing: Expression.Value.Timing? = nil) where T: ~Copyable & ~Escapable {
-    if #available(_castingWithNonCopyableGenerics, *), let value = makeExistential(value) {
-      captureValue(value, id, timing: timing)
-    } else {
-      runtimeValues[id] = { Expression.Value(failingToReflectInstanceOf: T.self, timing: timing) }
-    }
+    let value = copy value
+    runtimeValues[id] = { Expression.Value(reflecting: value) }
   }
 
   /// Capture information about a value for use if the expectation currently
@@ -223,7 +190,11 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   /// accidental recursion.
   @_disfavoredOverload
   func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID) where T: ~Copyable & ~Escapable {
-    captureValue(value, id, timing: nil)
+    if #available(_castingWithNonCopyableGenerics, *), let value = makeExistential(value) {
+      captureValue(value, id)
+    } else {
+      runtimeValues[id] = { Expression.Value(failingToReflectInstanceOf: T.self) }
+    }
   }
 
   /// Capture information about a value for use if the expectation currently
@@ -276,7 +247,7 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   public func __inoutAfter<T>(_ value: inout T, _ id: __ExpressionID) {
-    captureValue(value, id, timing: .after)
+    captureValue(value, id)
   }
 
   /// Capture information about a value passed `inout` to a function call after
@@ -291,7 +262,7 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   ///   `#require()` macros. Do not call it directly.
   @_disfavoredOverload
   public func __inoutAfter<T>(_ value: inout T, _ id: __ExpressionID) where T: ~Copyable & ~Escapable {
-    captureValue(value, id, timing: .after)
+    captureValue(value, id)
   }
 }
 
