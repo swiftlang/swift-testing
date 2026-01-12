@@ -111,7 +111,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   var effectiveRootNode: Syntax
 
   /// The name of the instance of `__ExpectationContext` to call.
-  var expressionContextNameExpr: DeclReferenceExprSyntax
+  var expectationContextNameExpr: DeclReferenceExprSyntax
 
   /// A list of any syntax nodes that have been rewritten.
   ///
@@ -126,11 +126,11 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   /// encountering an expression that we cannot expand.)
   var isCancelled = false
 
-  init(in context: C, for macro: M, rootedAt effectiveRootNode: Syntax, expressionContextName: TokenSyntax) {
+  init(in context: C, for macro: M, rootedAt effectiveRootNode: Syntax, expectationContextName: TokenSyntax) {
     self.context = context
     self.macro = macro
     self.effectiveRootNode = effectiveRootNode
-    self.expressionContextNameExpr = DeclReferenceExprSyntax(baseName: expressionContextName.trimmed)
+    self.expectationContextNameExpr = DeclReferenceExprSyntax(baseName: expectationContextName.trimmed)
     super.init()
   }
 
@@ -187,7 +187,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
       ExprSyntax(
         FunctionCallExprSyntax(
           calledExpression: MemberAccessExprSyntax(
-            base: expressionContextNameExpr,
+            base: expectationContextNameExpr,
             name: functionName
           ),
           leftParen: .leftParenToken(),
@@ -198,7 +198,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
     } else {
       ExprSyntax(
         SubscriptCallExprSyntax(
-          calledExpression: expressionContextNameExpr,
+          calledExpression: expectationContextNameExpr,
           arguments: argumentList
         )
       )
@@ -676,7 +676,7 @@ extension ConditionMacro {
   ///   - node: The root of a syntax tree to rewrite. This node may not itself
   ///     be the root of the overall syntax tree—it's just the root of the
   ///     subtree that we're rewriting.
-  ///   - expressionContextName: The name of the instance of
+  ///   - expectationContextName: The name of the instance of
   ///     `__ExpectationContext` to call at runtime.
   ///   - macro: The macro expression.
   ///   - effectiveRootNode: The node to treat as the root of the syntax tree
@@ -688,12 +688,12 @@ extension ConditionMacro {
   ///   - context: The macro context in which the expression is being parsed.
   ///
   /// - Returns: The expanded form of `node` as a closure expression that calls
-  ///   the expression context named `expressionContextName` as well as the set
+  ///   the expression context named `expectationContextName` as well as the set
   ///   of rewritten subnodes in `node`, or `nil` if the expression could not be
   ///   rewritten.
   static func rewrite(
     _ node: some ExprSyntaxProtocol,
-    usingExpressionContextNamed expressionContextName: TokenSyntax,
+    usingExpectationContextNamed expectationContextName: TokenSyntax,
     for macro: some FreestandingMacroExpansionSyntax,
     rootedAt effectiveRootNode: some SyntaxProtocol,
     effectKeywordsToApply: Set<Keyword>,
@@ -702,7 +702,7 @@ extension ConditionMacro {
   ) -> (ClosureExprSyntax, rewrittenNodes: Set<Syntax>)? {
     _diagnoseTrivialBooleanValue(from: ExprSyntax(node), for: macro, in: context)
 
-    let contextInserter = _ContextInserter(in: context, for: macro, rootedAt: Syntax(effectiveRootNode), expressionContextName: expressionContextName)
+    let contextInserter = _ContextInserter(in: context, for: macro, rootedAt: Syntax(effectiveRootNode), expectationContextName: expectationContextName)
     var expandedExpr = contextInserter.rewrite(node, detach: true).cast(ExprSyntax.self)
     if contextInserter.isCancelled {
       return nil
@@ -770,7 +770,7 @@ extension ConditionMacro {
           ClosureParameterClauseSyntax(
             parameters: ClosureParameterListSyntax {
               ClosureParameterSyntax(
-                firstName: expressionContextName,
+                firstName: expectationContextName,
                 colon: .colonToken(trailingTrivia: .space),
                 type: TypeSyntax(
                   MemberTypeSyntax(

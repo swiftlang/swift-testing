@@ -189,10 +189,10 @@ extension ConditionMacro {
             expandedFunctionName = .identifier("__checkConditionAsync")
           }
 
-          let expressionContextName = context.makeUniqueClosureParameterName("__ec", in: originalArgumentExpr)
+          let expectationContextName = context.makeUniqueClosureParameterName("__ec", in: originalArgumentExpr)
           let resultOfRewrite = rewrite(
             originalArgumentExpr,
-            usingExpressionContextNamed: expressionContextName,
+            usingExpectationContextNamed: expectationContextName,
             for: macro,
             rootedAt: originalArgumentExpr,
             effectKeywordsToApply: effectKeywordsToApply,
