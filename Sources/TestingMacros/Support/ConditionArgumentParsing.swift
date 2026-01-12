@@ -516,8 +516,8 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
     // `inout`, so it should be sufficient to capture it in a `defer` statement
     // that runs after the expression is evaluated.
 
-    let rewrittenExpr = _rewrite(node.expression, calling: .identifier("__inoutAfter"))
-    if rewrittenExpr != ExprSyntax(node.expression) {
+    let rewrittenExpr = _rewrite(node, calling: .identifier("__inoutAfter"))
+    if rewrittenExpr != ExprSyntax(node) {
       let teardownItem = CodeBlockItemSyntax(item: .expr(rewrittenExpr))
       teardownItems.append(teardownItem)
     }

@@ -29,7 +29,8 @@ extension _Copier: _CopierProtocol where Referent: Copyable & Escapable {
 }
 #endif
 
-/// Copy a value to an existential box if its type conforms to `Copyable`.
+/// Copy a value to an existential box if its type conforms to `Copyable` and
+/// `Escapable`.
 ///
 /// - Parameters:
 ///   - value: The value to copy.

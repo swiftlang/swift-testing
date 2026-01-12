@@ -275,7 +275,7 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public func __inoutAfter<T>(_ value: borrowing T, _ id: __ExpressionID) {
+  public func __inoutAfter<T>(_ value: inout T, _ id: __ExpressionID) {
     captureValue(value, id, timing: .after)
   }
 
@@ -290,7 +290,7 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   @_disfavoredOverload
-  public func __inoutAfter<T>(_ value: borrowing T, _ id: __ExpressionID) where T: ~Copyable & ~Escapable {
+  public func __inoutAfter<T>(_ value: inout T, _ id: __ExpressionID) where T: ~Copyable & ~Escapable {
     captureValue(value, id, timing: .after)
   }
 }
