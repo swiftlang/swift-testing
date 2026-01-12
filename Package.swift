@@ -376,7 +376,9 @@ extension Array where Element == PackageDescription.SwiftSetting {
   static var packageSettings: Self {
     var result = availabilityMacroSettings
 
+#if compiler(>=6.3)
     result.append(.treatWarning("ExplicitSendable", as: .warning))
+#endif
 
     if buildingForEmbedded {
       result.append(.enableExperimentalFeature("Embedded"))

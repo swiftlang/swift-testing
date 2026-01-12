@@ -1,0 +1,70 @@
+name: Manual OpenBSD/amd64 build (7.8)
+
+on:
+  workflow_dispatch:
+
+env:
+  META_DATA_CONTENT: |
+      {
+        "instance-id": "iid-local01",
+        "dsmode": "local"
+      }
+  USER_DATA_CONTENT: |
+      #cloud-config
+      timezone: UTC
+      write_files:
+      - content: |
+          set -ex
+          function atexit {
+              echo 1 > /tmp/result
+              tar cvf /dev/sd1c -C /tmp result
+              halt -p;
+          }
+          trap atexit EXIT
+          printf '\033\143'
+          export PATH=/usr/local/bin:$PATH
+          mount /dev/sd3c /mnt
+          cp -r /mnt/repo /home/repo/
+          cd /home/repo/
+          swift test
+          echo $? > /tmp/result
+          tar cvf /dev/sd1c -C /tmp result
+          halt -p
+        path: /etc/rc.local
+        permissions: '0755'
+
+jobs:
+  openbsd:
+    name: OpenBSD
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: ghcr.io/3405691582/openbsd-swift-amd64:7.8
+      env:
+        CPU: "4"
+        MEM: "16G"
+        KVM: "-enable-kvm"
+      options: --device /dev/kvm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Write cloud-init files
+        run: |
+            echo "$META_DATA_CONTENT" > /usr/local/share/cidata/meta-data
+            echo "$USER_DATA_CONTENT" > /usr/local/share/cidata/user-data
+
+      - name: Prepare cloud-init
+        run: |
+            cp -r $GITHUB_WORKSPACE /usr/local/share/cidata/repo/ && \
+            cat /usr/local/share/cidata/meta-data && \
+            cat /usr/local/share/cidata/user-data && \
+            ls /usr/local/share/cidata
+
+      - name: Run
+        run: /usr/local/bin/cmd.sh
+
+      - name: Report
+        run: |
+            ls -l /usr/local/share/tape && \
+            exit $(cat /usr/local/share/tape/result)
