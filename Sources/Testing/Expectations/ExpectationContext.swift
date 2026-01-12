@@ -171,27 +171,10 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   ///
   /// This function helps subscript overloads disambiguate themselves and avoid
   /// accidental recursion.
-  func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID) {
-    let value = copy value
-    runtimeValues[id] = { Expression.Value(reflecting: value) }
-  }
-
-  /// Capture information about a value for use if the expectation currently
-  /// being evaluated fails.
-  ///
-  /// - Parameters:
-  ///   - value: The value to pass through.
-  ///   - id: A value that uniquely identifies the represented expression in the
-  ///     context of the expectation currently being evaluated.
-  ///
-  /// - Returns: `value`, verbatim.
-  ///
-  /// This function helps subscript overloads disambiguate themselves and avoid
-  /// accidental recursion.
-  @_disfavoredOverload
   func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID) where T: ~Copyable & ~Escapable {
     if #available(_castingWithNonCopyableGenerics, *), let value = makeExistential(value) {
-      captureValue(value, id)
+      let value = copy value
+      runtimeValues[id] = { Expression.Value(reflecting: value) }
     } else {
       runtimeValues[id] = { Expression.Value(failingToReflectInstanceOf: T.self) }
     }
@@ -246,21 +229,6 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public func __inoutAfter<T>(_ value: inout T, _ id: __ExpressionID) {
-    captureValue(value, id)
-  }
-
-  /// Capture information about a value passed `inout` to a function call after
-  /// the function has returned.
-  ///
-  /// - Parameters:
-  ///   - value: The value that was passed `inout` (i.e. with the `&` operator.)
-  ///   - id: A value that uniquely identifies the represented expression in the
-  ///     context of the expectation currently being evaluated.
-  ///
-  /// - Warning: This function is used to implement the `#expect()` and
-  ///   `#require()` macros. Do not call it directly.
-  @_disfavoredOverload
   public func __inoutAfter<T>(_ value: inout T, _ id: __ExpressionID) where T: ~Copyable & ~Escapable {
     captureValue(value, id)
   }
@@ -375,47 +343,6 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public func __cmp<T, U, E>(
-    _ op: (borrowing T, borrowing U) throws(E) -> Bool,
-    _ opID: __ExpressionID,
-    _ lhs: borrowing T,
-    _ lhsID: __ExpressionID,
-    _ rhs: borrowing U,
-    _ rhsID: __ExpressionID
-  ) throws(E) -> Bool {
-    captureValue(lhs, lhsID)
-    captureValue(rhs, rhsID)
-
-    let result = try op(lhs, rhs)
-    captureValue(result, opID)
-
-    if !result {
-      captureDifferences(lhs, rhs, opID)
-    }
-
-    return result
-  }
-
-  /// Compare two values using `==` or `!=`.
-  ///
-  /// - Parameters:
-  ///   - lhs: The left-hand operand.
-  ///   - lhsID: A value that uniquely identifies the expression represented by
-  ///     `lhs` in the context of the expectation currently being evaluated.
-  ///   - rhs: The right-hand operand.
-  ///   - rhsID: A value that uniquely identifies the expression represented by
-  ///     `rhs` in the context of the expectation currently being evaluated.
-  ///   - op: A function that performs an operation on `lhs` and `rhs`.
-  ///   - opID: A value that uniquely identifies the expression represented by
-  ///     `op` in the context of the expectation currently being evaluated.
-  ///
-  /// - Returns: The result of calling `op(lhs, rhs)`.
-  ///
-  /// This overload of `__cmp()` handles move-only and non-escaping values.
-  ///
-  /// - Warning: This function is used to implement the `#expect()` and
-  ///   `#require()` macros. Do not call it directly.
-  @_disfavoredOverload
   public func __cmp<T, U, E>(
     _ op: (borrowing T, borrowing U) throws(E) -> Bool,
     _ opID: __ExpressionID,
