@@ -228,7 +228,7 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   /// - Warning: This subscript is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   @_disfavoredOverload
-  public subscript<T>(value: borrowing T, id: __ExpressionID) -> Void where T: ~Copyable & ~Escapable {
+  public subscript<T>(value: borrowing T, id: __ExpressionID) -> T where T: ~Copyable & ~Escapable {
     _read {
       captureValue(value, id)
       yield value
