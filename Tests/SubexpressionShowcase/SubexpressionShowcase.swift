@@ -65,7 +65,7 @@ func subexpressionShowcase() async throws {
     borrowing func h() -> Bool { false }
     consuming func j() -> Bool { false }
   }
-#if SWT_EXPERIMENTAL_REF_TYPE_ENABLED
+#if false
   // Unsupported: move-only types have too many constraints that cannot be
   // resolved by inspecting syntax. Borrowing calls cannot be boxed (at least
   // until we get @lifetime) and the compiler forbids making consuming calls in

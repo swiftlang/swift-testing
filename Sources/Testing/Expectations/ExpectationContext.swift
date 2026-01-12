@@ -8,10 +8,6 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if SWT_EXPERIMENTAL_REF_TYPE_ENABLED
-private import Builtin
-#endif
-
 /// A type representing the context within a call to the `#expect()` and
 /// `#require()` macros.
 ///
@@ -26,7 +22,7 @@ private import Builtin
 ///
 /// - Warning: This type is used to implement the `#expect()` and `#require()`
 ///   macros. Do not use it directly.
-public final class __ExpectationContext<Output> where Output: ~Copyable {
+public final class __ExpectationContext<Output> where Output: ~Copyable & ~Escapable {
   /// The source code representations of any captured expressions.
   ///
   /// Unlike the rest of the state in this type, the source code dictionary is
@@ -158,11 +154,11 @@ public final class __ExpectationContext<Output> where Output: ~Copyable {
 }
 
 @available(*, unavailable)
-extension __ExpectationContext: Sendable where Output: ~Copyable {}
+extension __ExpectationContext: Sendable where Output: ~Copyable & ~Escapable {}
 
 // MARK: - Expression capturing
 
-extension __ExpectationContext where Output: ~Copyable {
+extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   /// Capture information about a value for use if the expectation currently
   /// being evaluated fails.
   ///
@@ -174,12 +170,11 @@ extension __ExpectationContext where Output: ~Copyable {
   ///
   /// - Returns: `value`, verbatim.
   ///
-  /// This function helps overloads of `callAsFunction(_:_:)` disambiguate
-  /// themselves and avoid accidental recursion.
-  func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID, timing: Expression.Value.Timing? = nil) -> T {
+  /// This function helps subscript overloads disambiguate themselves and avoid
+  /// accidental recursion.
+  func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID, timing: Expression.Value.Timing? = nil) {
     let value = copy value
     runtimeValues[id] = { Expression.Value(reflecting: value, timing: timing) }
-    return value
   }
 
   /// Capture information about a value for use if the expectation currently
@@ -192,9 +187,9 @@ extension __ExpectationContext where Output: ~Copyable {
   ///
   /// - Returns: `value`, verbatim.
   ///
-  /// This function helps overloads of `callAsFunction(_:_:)` disambiguate
-  /// themselves and avoid accidental recursion.
-  @usableFromInline func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID) -> T {
+  /// This function helps subscript overloads disambiguate themselves and avoid
+  /// accidental recursion.
+  @usableFromInline func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID) {
     captureValue(value, id, timing: nil)
   }
 
@@ -205,9 +200,12 @@ extension __ExpectationContext where Output: ~Copyable {
   ///   - value: The value to pass through.
   ///   - id: A value that uniquely identifies the represented expression in the
   ///     context of the expectation currently being evaluated.
-  @usableFromInline func failToCaptureValue<T>(_ value: borrowing T, _ id: __ExpressionID) -> Void where T: ~Copyable {
-    let value = Expression.Value(failingToReflectInstanceOf: T.self)
-    runtimeValues[id] = { value }
+  func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID, timing: Expression.Value.Timing? = nil) where T: ~Copyable & ~Escapable {
+    if #available(_castingWithNonCopyableGenerics, *), let value = makeExistential(value) {
+      captureValue(value, id, timing: timing)
+    } else {
+      runtimeValues[id] = { Expression.Value(failingToReflectInstanceOf: T.self, timing: timing) }
+    }
   }
 
   /// Capture information about a value for use if the expectation currently
@@ -220,18 +218,14 @@ extension __ExpectationContext where Output: ~Copyable {
   ///
   /// - Returns: `value`, verbatim.
   ///
-  /// - Warning: This function is used to implement the `#expect()` and
+  /// - Warning: This subscript is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-#if SWT_EXPERIMENTAL_REF_TYPE_ENABLED
-  @inlinable public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> Ref<T> {
-    Ref(captureValue(value, id))
-  }
-#else
-  @inlinable public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> T {
+  @inlinable public subscript<T>(value: /* borrowing */ T, id: __ExpressionID) -> T {
     captureValue(value, id)
+    return value
   }
-#endif
 
+#if hasFeature(NonCopyableSubscriptArguments)
   /// Capture information about a value for use if the expectation currently
   /// being evaluated fails.
   ///
@@ -242,27 +236,14 @@ extension __ExpectationContext where Output: ~Copyable {
   ///
   /// - Returns: `value`, verbatim.
   ///
-  /// - Warning: This function is used to implement the `#expect()` and
+  /// - Warning: This subscript is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-#if SWT_EXPERIMENTAL_REF_TYPE_ENABLED
   @_disfavoredOverload
-  public func callAsFunction<T>(_ value: borrowing T, _ id: __ExpressionID) -> Ref<T> where T: ~Copyable {
-    if #available(_castingWithNonCopyableGenerics, *), let value = boxCopyableValue(value) {
-      _ = captureValue(value, id)
-    } else {
-      failToCaptureValue(value, id)
+  public subscript<T>(value: borrowing T, id: __ExpressionID) -> Void where T: ~Copyable & ~Escapable {
+    _read {
+      captureValue(value, id)
+      yield value
     }
-    return Ref(value)
-  }
-#elseif SWT_SUPPORTS_MOVE_ONLY_EXPRESSION_EXPANSION
-  @_disfavoredOverload
-  public func callAsFunction<T>(_ value: consuming T, _ id: __ExpressionID) -> T where T: ~Copyable {
-    if #available(_castingWithNonCopyableGenerics, *), let value = boxCopyableValue(value) {
-      _ = captureValue(value, id)
-    } else {
-      failToCaptureValue(value, id)
-    }
-    return value
   }
 #endif
 
@@ -277,7 +258,7 @@ extension __ExpectationContext where Output: ~Copyable {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   public func __inoutAfter<T>(_ value: borrowing T, _ id: __ExpressionID) {
-    _ = captureValue(value, id, timing: .after)
+    captureValue(value, id, timing: .after)
   }
 
   /// Capture information about a value passed `inout` to a function call after
@@ -291,16 +272,14 @@ extension __ExpectationContext where Output: ~Copyable {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   @_disfavoredOverload
-  public func __inoutAfter<T>(_ value: borrowing T, _ id: __ExpressionID) where T: ~Copyable {
-    if #available(_castingWithNonCopyableGenerics, *), let value = boxCopyableValue(value) {
-      __inoutAfter(value, id)
-    }
+  public func __inoutAfter<T>(_ value: borrowing T, _ id: __ExpressionID) where T: ~Copyable & ~Escapable {
+    captureValue(value, id, timing: .after)
   }
 }
 
 // MARK: - Collection comparison and diffing
 
-extension __ExpectationContext where Output: ~Copyable {
+extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   /// Generate a description of a previously-computed collection difference.
   ///
   /// - Parameters:
@@ -415,7 +394,11 @@ extension __ExpectationContext where Output: ~Copyable {
     _ rhs: borrowing U,
     _ rhsID: __ExpressionID
   ) throws(E) -> Bool {
-    let result = try captureValue(op(captureValue(lhs, lhsID), captureValue(rhs, rhsID)), opID)
+    captureValue(lhs, lhsID)
+    captureValue(rhs, rhsID)
+
+    let result = try op(lhs, rhs)
+    captureValue(result, opID)
 
     if !result {
       captureDifferences(lhs, rhs, opID)
@@ -424,7 +407,6 @@ extension __ExpectationContext where Output: ~Copyable {
     return result
   }
 
-#if SWT_SUPPORTS_MOVE_ONLY_EXPRESSION_EXPANSION
   /// Compare two values using `==` or `!=`.
   ///
   /// - Parameters:
@@ -440,7 +422,7 @@ extension __ExpectationContext where Output: ~Copyable {
   ///
   /// - Returns: The result of calling `op(lhs, rhs)`.
   ///
-  /// This overload of `__cmp()` handles move-only values.
+  /// This overload of `__cmp()` handles move-only and non-escaping values.
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
@@ -452,31 +434,27 @@ extension __ExpectationContext where Output: ~Copyable {
     _ lhsID: __ExpressionID,
     _ rhs: borrowing U,
     _ rhsID: __ExpressionID
-  ) throws(E) -> Bool where T: ~Copyable, U: ~Copyable {
-    let result = try captureValue(op(lhs, rhs), opID)
+  ) throws(E) -> Bool where T: ~Copyable & ~Escapable, U: ~Copyable & ~Escapable {
+    captureValue(lhs, lhsID)
+    captureValue(rhs, rhsID)
 
-    if #available(_castingWithNonCopyableGenerics, *) {
-      let lhs = boxCopyableValue(lhs)
-      if let lhs {
-        _ = captureValue(lhs, lhsID)
-      }
-      let rhs = boxCopyableValue(rhs)
-      if let rhs {
-        _ = captureValue(rhs, rhsID)
-      }
-      if !result {
-        captureDifferences(lhs, rhs, opID)
-      }
+    let result = try op(lhs, rhs)
+    captureValue(result, opID)
+
+    if !result,
+       #available(_castingWithNonCopyableGenerics, *),
+       let lhs = makeExistential(lhs),
+       let rhs = makeExistential(rhs) {
+      captureDifferences(lhs, rhs, opID)
     }
 
     return result
   }
-#endif
 }
 
 // MARK: - Casting
 
-extension __ExpectationContext where Output: ~Copyable {
+extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   /// Perform a conditional cast (`as?`) on a value.
   ///
   /// - Parameters:
@@ -496,11 +474,14 @@ extension __ExpectationContext where Output: ~Copyable {
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
   @inlinable public func __as<T, U>(_ value: borrowing T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> U? {
-    let result = captureValue(value, valueID) as? U
+    let value = copy value
+
+    captureValue(value, valueID)
+    let result = value as? U
 
     if result == nil {
-      let correctType = Swift.type(of: (copy value) as Any)
-      _ = captureValue(correctType, typeID)
+      let correctType = Swift.type(of: value as Any)
+      captureValue(correctType, typeID)
     }
 
     return result
@@ -528,31 +509,3 @@ extension __ExpectationContext where Output: ~Copyable {
     __as(value, valueID, type, typeID) != nil
   }
 }
-
-#if SWT_EXPERIMENTAL_REF_TYPE_ENABLED
-// MARK: -
-
-extension __ExpectationContext {
-  /// A type that provides borrow-like semantics for a value captured by an
-  /// expectation context.
-  ///
-  /// This type is adapted from the [`Ref<T>`](https://github.com/apple/swift-collections/blob/main/Sources/ContainersPreview/Ref.swift)
-  /// type in the `swift-collections` package.
-  @safe public struct Ref<T>: Copyable where T: ~Copyable {
-    /// Storage for the address of the referenced value.
-    private nonisolated(unsafe) let _unsafeAddress: UnsafePointer<T>
-
-    public init(_ value: borrowing @_addressable T) {
-      _unsafeAddress = UnsafePointer(Builtin.unprotectedAddressOfBorrow(value))
-    }
-
-    public subscript() -> T {
-      unsafeAddress {
-        _unsafeAddress
-      }
-    }
-  }
-}
-
-extension __ExpectationContext.Ref: Sendable where T: Sendable {}
-#endif

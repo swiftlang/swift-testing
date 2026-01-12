@@ -9,17 +9,22 @@
 //
 
 #if !hasFeature(Embedded)
-/// A helper protocol for ``boxCopyableValue(_:)``.
-private protocol _CopyablePointer {
+/// A helper protocol for ``makeExistential(_:)``.
+private protocol _CopierProtocol<Referent> {
+  associatedtype Referent
+
   /// Load the value at this address into an existential box.
   ///
   /// - Returns: The value at this address.
-  func load() -> Any
+  static func load(from value: Referent) -> Any?
 }
 
-extension UnsafePointer: _CopyablePointer where Pointee: Copyable {
-  func load() -> Any {
-    pointee
+/// A helper type for ``makeExistential(_:)``
+private struct _Copier<Referent> where Referent: ~Copyable & ~Escapable {}
+
+extension _Copier: _CopierProtocol where Referent: Copyable & Escapable {
+  static func load(from value: Referent) -> Any? {
+    value
   }
 }
 #endif
@@ -35,13 +40,14 @@ extension UnsafePointer: _CopyablePointer where Pointee: Copyable {
 /// When using Embedded Swift, this function always returns `nil`.
 #if !hasFeature(Embedded)
 @available(_castingWithNonCopyableGenerics, *)
-func boxCopyableValue(_ value: borrowing some ~Copyable) -> Any? {
-  withUnsafePointer(to: value) { address in
-    return (address as? any _CopyablePointer)?.load()
+func makeExistential<T>(_ value: borrowing T) -> Any? where T: ~Copyable & ~Escapable {
+  if let type = _Copier<T>.self as? any _CopierProtocol<T>.Type {
+    return type.load(from: value)
   }
+  return nil
 }
 #else
-func boxCopyableValue(_ value: borrowing some ~Copyable) -> Void? {
+func makeExistential<T>(_ value: borrowing T) -> Void? where T: ~Copyable & ~Escapable {
   nil
 }
 #endif

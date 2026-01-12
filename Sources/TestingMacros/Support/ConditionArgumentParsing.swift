@@ -141,7 +141,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
   private var _rewriteDepth = 0
 
   /// Rewrite a given syntax node by inserting a call to the expression context
-  /// (or rather, its `callAsFunction(_:_:)` member).
+  /// (or rather, a subscript thereof).
   ///
   /// - Parameters:
   ///   - node: The node to rewrite.
@@ -175,36 +175,34 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
     let additionalArguments = additionalArguments()
     rewrittenNodes.insert(Syntax(originalNode))
 
-    let calledExpr: ExprSyntax = if let functionName {
-      ExprSyntax(MemberAccessExprSyntax(base: expressionContextNameExpr, name: functionName))
-    } else {
-      ExprSyntax(expressionContextNameExpr)
+    let argumentList = LabeledExprListSyntax {
+      LabeledExprSyntax(expression: node.trimmed)
+      LabeledExprSyntax(expression: originalNode.expressionID(rootedAt: effectiveRootNode))
+      for argument in additionalArguments {
+        LabeledExprSyntax(argument)
+      }
     }
 
-    var result = ExprSyntax(
-      FunctionCallExprSyntax(
-        calledExpression: calledExpr,
-        leftParen: .leftParenToken(),
-        rightParen: .rightParenToken()
-      ) {
-        LabeledExprSyntax(expression: node.trimmed)
-        LabeledExprSyntax(expression: originalNode.expressionID(rootedAt: effectiveRootNode))
-        for argument in additionalArguments {
-          LabeledExprSyntax(argument)
-        }
-      }
-    )
-
-#if SWT_EXPERIMENTAL_REF_TYPE_ENABLED
-    if functionName == nil {
-      result = ExprSyntax(
+    var result = if let functionName {
+      ExprSyntax(
+        FunctionCallExprSyntax(
+          calledExpression: MemberAccessExprSyntax(
+            base: expressionContextNameExpr,
+            name: functionName
+          ),
+          leftParen: .leftParenToken(),
+          arguments: argumentList,
+          rightParen: .rightParenToken()
+        )
+      )
+    } else {
+      ExprSyntax(
         SubscriptCallExprSyntax(
-          calledExpression: result,
-          arguments: []
+          calledExpression: expressionContextNameExpr,
+          arguments: argumentList
         )
       )
     }
-#endif
 
     // If the resulting expression has an optional type due to containing an
     // optional chaining expression (e.g. `foo?`) *and* its immediate parent

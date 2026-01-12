@@ -190,6 +190,7 @@ public struct __Expression: Sendable {
 
       self.init(describing: subject)
       self.label = label
+      self.timing = timing
 
       let mirror = Mirror(reflecting: subject)
 
@@ -255,11 +256,14 @@ public struct __Expression: Sendable {
     ///
     /// - Parameters:
     ///   - type: The type of the uncaptured value.
-    init?<T>(failingToReflectInstanceOf type: T.Type) where T: ~Copyable {
+    ///   - timing: When the value represented by this instance failed to be
+    ///     captured.
+    init?<T>(failingToReflectInstanceOf type: T.Type, timing: Timing? = nil) where T: ~Copyable & ~Escapable {
       let typeInfo = TypeInfo(describing: type)
       self.description = "<instance of '\(typeInfo.unqualifiedName)'>"
       self.debugDescription = "<instance of '\(typeInfo.fullyQualifiedName)'>"
       self.typeInfo = typeInfo
+      self.timing = timing
       self.isCollection = false
     }
   }
