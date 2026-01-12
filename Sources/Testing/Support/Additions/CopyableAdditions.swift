@@ -11,6 +11,7 @@
 #if !hasFeature(Embedded)
 /// A helper protocol for ``makeExistential(_:)``.
 private protocol _CopierProtocol<Referent> {
+  /// The type of value that a conforming type can copy.
   associatedtype Referent
 
   /// Load the value at this address into an existential box.
