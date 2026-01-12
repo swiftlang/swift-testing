@@ -189,7 +189,7 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   ///
   /// This function helps subscript overloads disambiguate themselves and avoid
   /// accidental recursion.
-  @usableFromInline func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID) {
+  func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID) {
     captureValue(value, id, timing: nil)
   }
 
@@ -200,6 +200,7 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   ///   - value: The value to pass through.
   ///   - id: A value that uniquely identifies the represented expression in the
   ///     context of the expectation currently being evaluated.
+  @_disfavoredOverload
   func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID, timing: Expression.Value.Timing? = nil) where T: ~Copyable & ~Escapable {
     if #available(_castingWithNonCopyableGenerics, *), let value = makeExistential(value) {
       captureValue(value, id, timing: timing)
@@ -218,9 +219,26 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   ///
   /// - Returns: `value`, verbatim.
   ///
+  /// This function helps subscript overloads disambiguate themselves and avoid
+  /// accidental recursion.
+  @_disfavoredOverload
+  func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID) where T: ~Copyable & ~Escapable {
+    captureValue(value, id, timing: nil)
+  }
+
+  /// Capture information about a value for use if the expectation currently
+  /// being evaluated fails.
+  ///
+  /// - Parameters:
+  ///   - value: The value to pass through.
+  ///   - id: A value that uniquely identifies the represented expression in the
+  ///     context of the expectation currently being evaluated.
+  ///
+  /// - Returns: `value`, verbatim.
+  ///
   /// - Warning: This subscript is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public subscript<T>(value: /* borrowing */ T, id: __ExpressionID) -> T {
+  public subscript<T>(value: /* borrowing */ T, id: __ExpressionID) -> T {
     captureValue(value, id)
     return value
   }
@@ -316,7 +334,7 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   /// This function performs additional type checking of `lhs` and `rhs` at
   /// runtime. If we instead overload the caller (`__cmp()`) it puts extra
   /// compile-time pressure on the type checker that we don't want.
-  @usableFromInline func captureDifferences<T, U>(_ lhs: T, _ rhs: U, _ opID: __ExpressionID) {
+  func captureDifferences<T, U>(_ lhs: T, _ rhs: U, _ opID: __ExpressionID) {
 #if !hasFeature(Embedded) // no existentials
     if let lhs = lhs as? any StringProtocol {
       func open<V>(_ lhs: V, _ rhs: U) where V: StringProtocol {
@@ -386,7 +404,7 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __cmp<T, U, E>(
+  public func __cmp<T, U, E>(
     _ op: (borrowing T, borrowing U) throws(E) -> Bool,
     _ opID: __ExpressionID,
     _ lhs: borrowing T,
@@ -473,7 +491,7 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __as<T, U>(_ value: borrowing T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> U? {
+  public func __as<T, U>(_ value: borrowing T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> U? {
     let value = copy value
 
     captureValue(value, valueID)
@@ -505,7 +523,7 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   ///
   /// - Warning: This function is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  @inlinable public func __is<T, U>(_ value: borrowing T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> Bool {
+  public func __is<T, U>(_ value: borrowing T, _ valueID: __ExpressionID, _ type: U.Type, _ typeID: __ExpressionID) -> Bool {
     __as(value, valueID, type, typeID) != nil
   }
 }
