@@ -342,6 +342,18 @@ struct ConditionMacroTests {
     #expect(diagnostics.count == 0)
   }
 
+  @Test("#expect() expansion escape hatches",
+    arguments: [
+      "#expect(x.y() as Bool)",
+      "#expect((x.y()) as Bool)",
+      "#expect((x.y() as Bool))",
+    ]
+  )
+  func escapeHatches(input: String) throws {
+    let (actualOutput, _) = try parse(input)
+    #expect(actualOutput.contains("Testing.__checkEscapedCondition"))
+  }
+
   @Test("as! warns when used with #require()",
     arguments: ["#expect(x as! T)", "#require(x as! T)",]
   )

@@ -81,6 +81,17 @@ func subexpressionShowcase() async throws {
 #endif
 #endif
 
+  do {
+    struct E: ~Escapable {
+      borrowing func h() -> Bool { false }
+      consuming func j() -> Bool { false }
+    }
+
+    let e = E()
+    #expect(e.h())
+    #expect(e.j())
+  }
+
   let s2 = S()
   _ = try #require(.some(consume s2))
 

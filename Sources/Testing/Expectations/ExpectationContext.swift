@@ -191,9 +191,11 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   ///
   /// - Warning: This subscript is used to implement the `#expect()` and
   ///   `#require()` macros. Do not call it directly.
-  public subscript<T>(value: /* borrowing */ T, id: __ExpressionID) -> T {
-    captureValue(value, id)
-    return value
+  public subscript<T>(value: /* borrowing */ T, id: __ExpressionID) -> T where T: ~Escapable {
+    @_lifetime(borrow value) get {
+      captureValue(value, id)
+      return value
+    }
   }
 
 #if SWT_FIXED_109329233
@@ -211,7 +213,7 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   ///   `#require()` macros. Do not call it directly.
   @_disfavoredOverload
   public subscript<T>(value: borrowing T, id: __ExpressionID) -> T where T: ~Copyable & ~Escapable {
-    _read {
+    @_lifetime(borrow value) _read {
       captureValue(value, id)
       yield value
     }

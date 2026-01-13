@@ -175,7 +175,8 @@ extension ConditionMacro {
         effectKeywordsToApplyOverall = effectKeywordsToApply.subtracting(effectKeywordsFromLexicalContext)
 
         var useEscapeHatch = false
-        if let asExpr = originalArgumentExpr.as(AsExprSyntax.self), asExpr.questionOrExclamationMark == nil {
+        if let asExpr = (removeParentheses(from: originalArgumentExpr) ?? originalArgumentExpr).as(AsExprSyntax.self),
+           asExpr.questionOrExclamationMark == nil {
           // "Escape hatch" for x as Bool to avoid the full recursive expansion.
           useEscapeHatch = true
         } else if effectKeywordsToApply.contains(.consume) {
