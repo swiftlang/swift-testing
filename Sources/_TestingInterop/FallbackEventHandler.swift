@@ -8,7 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
-#if !SWT_NO_INTEROP
+#if compiler(>=6.3) && !SWT_NO_INTEROP
 #if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK && !hasFeature(Embedded)
 private import _TestingInternals
 #else
