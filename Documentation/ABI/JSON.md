@@ -222,3 +222,14 @@ sufficient information to display the event in a human-readable format.
   ["testID": <test-id>,
     ["testCase": <test-case>]]
 -->
+
+## See Also
+
+### Relevant Swift Evolution proposals
+
+| Proposal Number | Summary | Swift Version | Schema Version |
+|:-|-|-:|-:|
+| [ST-0002](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0002-json-abi.md) | Introduced the initial version of this JSON schema. | 6.0 | `0` |
+| [ST-0009](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0009-attachments.md#integration-with-supporting-tools) | Added attachments. | 6.2 | `0` |
+| [ST-0013](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0013-issue-severity-warning.md#event-stream) | Added test issue severity. | 6.3 | `"6.3"` |
+| [ST-0016](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0016-test-cancellation.md#integration-with-supporting-tools) | Added test cancellation. | 6.3 | `"6.3"` |
