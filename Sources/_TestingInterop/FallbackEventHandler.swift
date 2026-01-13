@@ -22,7 +22,9 @@ private nonisolated(unsafe) let _fallbackEventHandler = {
     minimumCapacity: 1,
     makingHeaderWith: { _ in nil }
   )
-  result.withUnsafeMutablePointerToHeader { $0.initialize(to: nil) }
+  result.withUnsafeMutablePointerToElements { lock in
+    lock.initialize(to: .init())
+  }
   return result
 }()
 #else
