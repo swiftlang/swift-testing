@@ -85,9 +85,9 @@ extension ABI {
         if let error = issue.error {
           _error = EncodedError(encoding: error, in: eventContext)
         }
-      }
-      if case let .expectationFailed(expectation) = issue.kind {
-        _expectation = EncodedExpectation(encoding: expectation, in: eventContext)
+        if case let .expectationFailed(expectation) = issue.kind {
+          _expectation = EncodedExpectation(encoding: expectation, in: eventContext)
+        }
       }
     }
   }
