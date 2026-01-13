@@ -233,3 +233,4 @@ sufficient information to display the event in a human-readable format.
 | [ST-0009](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0009-attachments.md#integration-with-supporting-tools) | Added attachments. | 6.2 | `0` |
 | [ST-0013](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0013-issue-severity-warning.md#event-stream) | Added test issue severity. | 6.3 | `"6.3"` |
 | [ST-0016](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0016-test-cancellation.md#integration-with-supporting-tools) | Added test cancellation. | 6.3 | `"6.3"` |
+| [ST-NNNN](https://github.com/swiftlang/swift-evolution/blob/jgrynspan/swift-testing-sourcelocation-filepath/proposals/testing/NNNN-sourcelocation-filepath.md#detailed-design) | Added `filePath`. | 6.3 | `"6.3"` |
