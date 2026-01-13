@@ -14,9 +14,9 @@ private import _TestingInternals
 /// expansion of the `#expect()` and `#require()` macros.
 ///
 /// This type tries to optimize for expressions in shallow syntax trees whose
-/// unique identifiers require 64 bits or fewer. Wider unique identifiers are
-/// stored as arrays of 64-bit words. In the future, this type may use
-/// [`StaticBigInt`](https://developer.apple.com/documentation/swift/staticbigint)
+/// unique identifiers require 128 bits or fewer (64 or fewer on Apple platforms
+/// due to ABI constraints). Wider unique identifiers are stored as arrays of
+/// integers. In the future, this type may use [`StaticBigInt`](https://developer.apple.com/documentation/swift/staticbigint)
 /// to represent expression identifiers instead.
 ///
 /// - Warning: This type is used to implement the `#expect()` and `#require()`
@@ -41,10 +41,11 @@ public struct __ExpressionID: Sendable {
 
     /// This ID packs its corresponding key path value into a single word whose
     /// value is not `0`.
-    case packed(_ word: UInt64)
+    case packed(_ word: IntegerLiteralType)
 
-    /// This ID contains key path elements that do not fit in a 64-bit integer,
-    /// so they are not packed and map directly to the represented key path.
+    /// This ID contains key path elements that do not fit in an instance of
+    /// ``IntegerLiteralType``. The elements are not packed and map directly to
+    /// the represented key path.
     indirect case keyPath(_ keyPath: [UInt32])
   }
 
@@ -85,7 +86,7 @@ extension __ExpressionID.Elements: Collection {
     case .none:
       0
     case .packed:
-      UInt64.bitWidth
+      __ExpressionID.IntegerLiteralType.bitWidth
     case let .keyPath(keyPath):
       keyPath.count
     }
@@ -154,7 +155,13 @@ extension __ExpressionID: CustomStringConvertible, CustomDebugStringConvertible 
 // MARK: - ExpressibleByIntegerLiteral
 
 extension __ExpressionID: ExpressibleByIntegerLiteral {
-  public init(integerLiteral: UInt64) {
+#if SWT_TARGET_OS_APPLE
+  public typealias IntegerLiteralType = UInt64
+#else
+  public typealias IntegerLiteralType = UInt128
+#endif
+
+  public init(integerLiteral: IntegerLiteralType) {
     if integerLiteral == 0 {
       self.init(elements: .none)
     } else {

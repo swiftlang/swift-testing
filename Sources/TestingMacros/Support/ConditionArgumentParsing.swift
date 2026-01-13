@@ -177,7 +177,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
 
     let argumentList = LabeledExprListSyntax {
       LabeledExprSyntax(expression: node.trimmed)
-      LabeledExprSyntax(expression: originalNode.expressionID(rootedAt: effectiveRootNode))
+      LabeledExprSyntax(expression: originalNode.expressionID(rootedAt: effectiveRootNode, in: context))
       for argument in additionalArguments {
         LabeledExprSyntax(argument)
       }
@@ -495,9 +495,9 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
         calling: .identifier("__cmp"),
         passing: [
           Argument(expression: _visitChild(node.leftOperand)),
-          Argument(expression: node.leftOperand.expressionID(rootedAt: effectiveRootNode)),
+          Argument(expression: node.leftOperand.expressionID(rootedAt: effectiveRootNode, in: context)),
           Argument(expression: _visitChild(node.rightOperand)),
-          Argument(expression: node.rightOperand.expressionID(rootedAt: effectiveRootNode))
+          Argument(expression: node.rightOperand.expressionID(rootedAt: effectiveRootNode, in: context))
         ]
       )
     }
@@ -569,7 +569,7 @@ private final class _ContextInserter<C, M>: SyntaxRewriter where C: MacroExpansi
             declName: DeclReferenceExprSyntax(baseName: .keyword(.self))
           )
         ),
-        Argument(expression: type.expressionID(rootedAt: effectiveRootNode))
+        Argument(expression: type.expressionID(rootedAt: effectiveRootNode, in: context))
       ]
     )
   }
@@ -867,11 +867,12 @@ private final class _DollarIdentifierReplacer: SyntaxRewriter {
 ///     dictionary literal.
 ///   - effectiveRootNode: The node to treat as the root of the syntax tree
 ///     for the purposes of generating expression ID values.
+///   - context: The macro context in which the expression is being parsed.
 ///
 /// - Returns: A dictionary literal expression whose keys are expression IDs and
 ///   whose values are string literals containing the source code of the syntax
 ///   nodes in `nodes`.
-func createDictionaryExpr(forSourceCodeOf nodes: some Sequence<some SyntaxProtocol>, rootedAt effectiveRootNode: some SyntaxProtocol) -> DictionaryExprSyntax {
+func createDictionaryExpr(forSourceCodeOf nodes: some Sequence<some SyntaxProtocol>, rootedAt effectiveRootNode: some SyntaxProtocol, in context: some MacroExpansionContext) -> DictionaryExprSyntax {
   // Sort the nodes. This isn't strictly necessary for correctness but it does
   // make the produced code more consistent.
   let nodes = nodes.sorted { $0.id < $1.id }
@@ -879,7 +880,7 @@ func createDictionaryExpr(forSourceCodeOf nodes: some Sequence<some SyntaxProtoc
   return DictionaryExprSyntax {
     for node in nodes {
       DictionaryElementSyntax(
-        key: node.expressionID(rootedAt: effectiveRootNode),
+        key: node.expressionID(rootedAt: effectiveRootNode, in: context),
         value: StringLiteralExprSyntax(content: node.trimmedDescription)
       )
     }
@@ -892,10 +893,11 @@ func createDictionaryExpr(forSourceCodeOf nodes: some Sequence<some SyntaxProtoc
 /// - Parameters:
 ///   - node: The nodes whose source code should be included in the resulting
 ///     dictionary literal. This node is treated as the root node.
+///   - context: The macro context in which the expression is being parsed.
 ///
 /// - Returns: A dictionary literal expression containing one key/value pair
 ///   where the key is the expression ID of `node` and the value is its source
 ///   code.
-func createDictionaryExpr(forSourceCodeOf node: some SyntaxProtocol) -> DictionaryExprSyntax {
-  createDictionaryExpr(forSourceCodeOf: CollectionOfOne(node), rootedAt: node)
+func createDictionaryExpr(forSourceCodeOf node: some SyntaxProtocol, in context: some MacroExpansionContext) -> DictionaryExprSyntax {
+  createDictionaryExpr(forSourceCodeOf: CollectionOfOne(node), rootedAt: node, in: context)
 }

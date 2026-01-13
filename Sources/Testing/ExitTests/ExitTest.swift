@@ -463,7 +463,7 @@ nonisolated(nonsending) func callExitTest(
   encodingCapturedValues capturedValues: [ExitTest.CapturedValue],
   processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable],
-  sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
+  sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String>,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation

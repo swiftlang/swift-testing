@@ -8,6 +8,7 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+import SwiftIfConfig
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
@@ -178,5 +179,14 @@ extension MacroExpansionContext {
   ///   - message: The message to emit into the build log.
   func debug(_ message: some Any, node: some SyntaxProtocol) {
     diagnose(DiagnosticMessage(syntax: Syntax(node), message: String(describing: message), severity: .warning))
+  }
+}
+
+// MARK: - Build configuration
+
+extension BuildConfiguration {
+  /// Whether or not the target OS appears to be a Darwin-based (i.e. Apple) OS.
+  func isDarwinTargetOS() throws -> Bool {
+    try isActiveTargetRuntime(name: "_ObjC") || isActiveTargetObjectFormat(name: "MachO")
   }
 }

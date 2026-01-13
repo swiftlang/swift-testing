@@ -163,7 +163,7 @@ extension ConditionMacro {
         checkArguments.append(
           Argument(
             label: "sourceCode",
-            expression: createDictionaryExpr(forSourceCodeOf: nodeForSourceCodeArgument)
+            expression: createDictionaryExpr(forSourceCodeOf: nodeForSourceCodeArgument, in: context)
           )
         )
 
@@ -207,7 +207,8 @@ extension ConditionMacro {
                 label: "sourceCode",
                 expression: createDictionaryExpr(
                   forSourceCodeOf: rewrittenNodes,
-                  rootedAt: originalArgumentExpr
+                  rootedAt: originalArgumentExpr,
+                  in: context
                 )
               )
             )
@@ -224,7 +225,7 @@ extension ConditionMacro {
           checkArguments.append(
             Argument(
               label: "sourceCode",
-              expression: createDictionaryExpr(forSourceCodeOf: originalArgumentExpr)
+              expression: createDictionaryExpr(forSourceCodeOf: originalArgumentExpr, in: context)
             )
           )
         }

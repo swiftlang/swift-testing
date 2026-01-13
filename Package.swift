@@ -398,7 +398,6 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .enableExperimentalFeature("SymbolLinkageMarkers"),
 
       .enableUpcomingFeature("InferIsolatedConformances"),
-      .enableExperimentalFeature("Lifetimes"),
 
       // When building as a package, the macro plugin always builds as an
       // executable rather than a library.

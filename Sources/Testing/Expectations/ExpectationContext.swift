@@ -30,7 +30,7 @@ public final class __ExpectationContext<Output> where Output: ~Copyable & ~Escap
   /// if an issue is recorded (or more rarely if passing expectations are
   /// reported to the current event handler.) So we can store the dictionary as
   /// a closure instead of always paying the cost to allocate and initialize it.
-  private var _sourceCode: @Sendable () -> [__ExpressionID: String]
+  private var _sourceCode: @Sendable () -> KeyValuePairs<__ExpressionID, String>
 
   /// The runtime values of any captured expressions.
   ///
@@ -48,7 +48,7 @@ public final class __ExpectationContext<Output> where Output: ~Copyable & ~Escap
   var differences: [__ExpressionID: () -> CollectionDifference<Any>?]
 
   init(
-    sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String] = [:],
+    sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String> = [:],
     runtimeValues: [__ExpressionID: () -> Expression.Value?] = [:],
     differences: [__ExpressionID: () -> CollectionDifference<Any>?] = [:]
   ) {

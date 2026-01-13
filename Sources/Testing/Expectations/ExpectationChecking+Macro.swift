@@ -102,7 +102,7 @@ func check<T>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkCondition<E>(
   _ condition: (__ExpectationContext<Bool>) throws(E) -> Bool,
-  sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
+  sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String>,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -127,7 +127,7 @@ public func __checkCondition<E>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkCondition<T, E>(
   _ optionalValue: (__ExpectationContext<T?>) throws(E) -> T?,
-  sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
+  sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String>,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -161,7 +161,7 @@ public func __checkCondition<T, E>(
 ///   `#require()` macros. Do not call it directly.
 public nonisolated(nonsending) func __checkConditionAsync<E>(
   _ condition: (__ExpectationContext<Bool>) async throws(E) -> Bool,
-  sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
+  sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String>,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -186,7 +186,7 @@ public nonisolated(nonsending) func __checkConditionAsync<E>(
 ///   `#require()` macros. Do not call it directly.
 public nonisolated(nonsending) func __checkConditionAsync<T, E>(
   _ optionalValue: (__ExpectationContext<T?>) async throws(E) -> sending T?,
-  sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
+  sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String>,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -221,7 +221,7 @@ public nonisolated(nonsending) func __checkConditionAsync<T, E>(
 ///   `#require()` macros. Do not call it directly.
 public func __checkEscapedCondition(
   _ condition: Bool,
-  sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
+  sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String>,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -248,7 +248,7 @@ public func __checkEscapedCondition(
 ///   `#require()` macros. Do not call it directly.
 public func __checkEscapedCondition<T>(
   _ optionalValue: consuming T?,
-  sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
+  sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String>,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -285,7 +285,7 @@ public func __checkEscapedCondition<T>(
 public func __checkClosureCall<E>(
   throws errorType: E.Type,
   performing body: () throws -> some Any,
-  sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
+  sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String>,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -323,7 +323,7 @@ public func __checkClosureCall<E>(
 public nonisolated(nonsending) func __checkClosureCall<E>(
   throws errorType: E.Type,
   performing body: () async throws -> sending some Any,
-  sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
+  sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String>,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -363,7 +363,7 @@ public nonisolated(nonsending) func __checkClosureCall<E>(
 public func __checkClosureCall(
   throws _: Never.Type,
   performing body: () throws -> some Any,
-  sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
+  sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String>,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -400,7 +400,7 @@ public func __checkClosureCall(
 public nonisolated(nonsending) func __checkClosureCall(
   throws _: Never.Type,
   performing body: () async throws -> sending some Any,
-  sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
+  sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String>,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -437,7 +437,7 @@ public nonisolated(nonsending) func __checkClosureCall(
 public func __checkClosureCall<E>(
   throws error: E,
   performing body: () throws -> some Any,
-  sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
+  sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String>,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -463,7 +463,7 @@ public func __checkClosureCall<E>(
 public nonisolated(nonsending) func __checkClosureCall<E>(
   throws error: E,
   performing body: () async throws -> sending some Any,
-  sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
+  sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String>,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -491,7 +491,7 @@ public func __checkClosureCall<R>(
   performing body: () throws -> R,
   throws errorMatcher: (any Error) throws -> Bool,
   mismatchExplanation: ((any Error) -> String)? = nil,
-  sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
+  sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String>,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -542,7 +542,7 @@ public nonisolated(nonsending) func __checkClosureCall<R>(
   performing body: () async throws -> sending R,
   throws errorMatcher: (any Error) async throws -> Bool,
   mismatchExplanation: ((any Error) -> String)? = nil,
-  sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
+  sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String>,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -599,7 +599,7 @@ public nonisolated(nonsending) func __checkClosureCall(
   processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
   performing _: @convention(c) () -> Void,
-	sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
+	sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String>,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
@@ -630,7 +630,7 @@ public nonisolated(nonsending) func __checkClosureCall<each T>(
   processExitsWith expectedExitCondition: ExitTest.Condition,
   observing observedValues: [any PartialKeyPath<ExitTest.Result> & Sendable] = [],
   performing _: @convention(c) () -> Void,
-  sourceCode: @escaping @autoclosure @Sendable () -> [__ExpressionID: String],
+  sourceCode: @escaping @autoclosure @Sendable () -> KeyValuePairs<__ExpressionID, String>,
   comments: @autoclosure () -> [Comment],
   isRequired: Bool,
   sourceLocation: SourceLocation
