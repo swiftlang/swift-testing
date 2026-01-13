@@ -173,7 +173,6 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
   /// accidental recursion.
   func captureValue<T>(_ value: borrowing T, _ id: __ExpressionID) where T: ~Copyable & ~Escapable {
     if #available(_castingWithNonCopyableGenerics, *), let value = makeExistential(value) {
-      let value = copy value
       runtimeValues[id] = { Expression.Value(reflecting: value) }
     } else {
       runtimeValues[id] = { Expression.Value(failingToReflectInstanceOf: T.self) }
