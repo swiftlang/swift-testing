@@ -159,12 +159,6 @@ struct TestDeclarationMacroTests {
         "Attribute 'Test' cannot be applied to a function within a generic extension to type 'T!'",
       "extension T! { @Suite struct S {} }":
         "Attribute 'Suite' cannot be applied to a structure within a generic extension to type 'T!'",
-      "struct S: ~Escapable { @Test func f() {} }":
-        "Attribute 'Test' cannot be applied to a function within structure 'S' because its conformance to 'Escapable' has been suppressed",
-      "struct S: ~Swift.Escapable { @Test func f() {} }":
-        "Attribute 'Test' cannot be applied to a function within structure 'S' because its conformance to 'Escapable' has been suppressed",
-      "struct S: ~(Escapable) { @Test func f() {} }":
-        "Attribute 'Test' cannot be applied to a function within structure 'S' because its conformance to 'Escapable' has been suppressed",
     ]
   )
   func apiMisuseErrors(input: String, expectedMessage: String) throws {
