@@ -10,13 +10,12 @@
 
 @testable @_spi(ForToolsIntegrationOnly) import Testing
 
-@Suite("Non-Copyable Tests")
-struct NonCopyableTests: ~Copyable {
+@Suite("Non-Copyable/Non-Escapable Tests")
+struct NonCopyableTests: ~Copyable & ~Escapable {
   @Test static func staticMe() {}
   @Test borrowing func borrowMe() {}
   @Test consuming func consumeMe() {}
   @Test mutating func mutateMe() {}
-  @Test borrowing func testNotAnXCTestCaseMethod() {}
 
   @Test borrowing func typeComparison() {
     let lhs = TypeInfo(describing: Self.self)
@@ -30,4 +29,8 @@ struct NonCopyableTests: ~Copyable {
   @Test borrowing func mangledTypeName() {
     #expect(TypeInfo(describing: Self.self).mangledName != nil)
   }
+}
+
+extension NonCopyableTests {
+  @Test borrowing func testNotAnXCTestCaseMethod() {}
 }

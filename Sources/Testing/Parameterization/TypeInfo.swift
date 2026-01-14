@@ -18,7 +18,7 @@ public struct TypeInfo: Sendable {
     ///
     /// - Parameters:
     ///   - type: The concrete metatype.
-    case type(_ type: any ~Copyable.Type)
+    case type(_ type: any (~Copyable & ~Escapable).Type)
 
     /// The type info represents a metatype, but a reference to that metatype is
     /// not available at runtime.
@@ -38,7 +38,7 @@ public struct TypeInfo: Sendable {
   ///
   /// If this instance was created from a type name, or if it was previously
   /// encoded and decoded, the value of this property is `nil`.
-  public var type: (any ~Copyable.Type)? {
+  public var type: (any (~Copyable & ~Escapable).Type)? {
     if case let .type(type) = _kind {
       return type
     }
@@ -79,7 +79,7 @@ public struct TypeInfo: Sendable {
   ///
   /// - Parameters:
   ///   - type: The type which this instance should describe.
-  init(describing type: (some ~Copyable).Type) {
+  init<T>(describing type: T.Type) where T: ~Copyable & ~Escapable {
     _kind = .type(type)
   }
 
@@ -101,7 +101,7 @@ public struct TypeInfo: Sendable {
   ///
   /// - Parameters:
   ///   - value: The value whose type this instance should describe.
-  init<T>(describingTypeOf value: borrowing T) where T: ~Copyable {
+  init<T>(describingTypeOf value: borrowing T) where T: ~Copyable & ~Escapable {
     self.init(describing: T.self)
   }
 }

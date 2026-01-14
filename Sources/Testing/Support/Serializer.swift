@@ -42,13 +42,8 @@ var defaultParallelizationWidth: Int {
 /// items do not start running; they must wait until the suspended work item
 /// either returns or throws an error.
 ///
-/// The generic type parameter `T` is unused. It avoids warnings when multiple
-/// copies of the testing library are loaded into a runner process on platforms
-/// which use the Objective-C runtime, due to non-generic actor types being
-/// implemented as classes there.
-///
 /// This type is not part of the public interface of the testing library.
-final actor Serializer<T> {
+final actor Serializer {
   /// The maximum number of work items that may run concurrently.
   nonisolated let maximumWidth: Int
 
