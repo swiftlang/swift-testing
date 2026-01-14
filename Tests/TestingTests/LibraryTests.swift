@@ -143,7 +143,7 @@ extension Library {
   )
 }
 
-#if compiler(>=6.3) && hasFeature(CompileTimeValuesPreview)
+#if compiler(>=6.3)
 #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
 @section("__DATA_CONST,__swift5_tests")
 #elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)

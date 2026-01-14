@@ -343,7 +343,7 @@ private func _libraryRecordAccessor(_ outValue: UnsafeMutableRawPointer, _ type:
   return true
 }
 
-#if compiler(>=6.3) && hasFeature(CompileTimeValuesPreview)
+#if compiler(>=6.3)
 #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
 @section("__DATA_CONST,__swift5_tests")
 #elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android) || os(WASI)
@@ -369,7 +369,7 @@ private func _libraryRecordAccessor(_ outValue: UnsafeMutableRawPointer, _ type:
 private let _libraryRecord: __TestContentRecord = (
   kind: 0x6D61696E, /* 'main' */
   reserved1: 0,
-  accessor: _libraryRecordAccessor,
+  accessor: { _libraryRecordAccessor($0, $1, $2, $3) },
   context: 0,
   reserved2: 0
 )
