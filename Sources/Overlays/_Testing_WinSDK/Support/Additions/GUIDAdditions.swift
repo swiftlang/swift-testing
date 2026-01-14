@@ -46,10 +46,10 @@ extension GUID.Wrapper: Equatable, Hashable, CustomStringConvertible {
   func hash(into hasher: inout Hasher) {
     hasher.combine(_uint128Value)
   }
+#endif
 
   var description: String {
     String(describing: rawValue)
   }
-#endif
 }
 #endif
