@@ -50,6 +50,19 @@ func subexpressionShowcase() async throws {
 
   #expect(!Bool(true))
 
+#if false
+  // Unsupported: mutating member functions require inout semantics we can't
+  // provide (since we can't see where we might need to insert an `&` sigil).
+  // However, we _can_ provide a reasonable diagnostic for it now!
+  do {
+    struct S {
+      mutating func f() -> Bool { false }
+    }
+    var s = S()
+    #expect(s.f())
+  }
+#endif
+
   do {
     let n = Int.random(in: 0 ..< 100)
     var m = n

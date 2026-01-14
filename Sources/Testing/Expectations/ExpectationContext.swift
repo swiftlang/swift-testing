@@ -196,6 +196,9 @@ extension __ExpectationContext where Output: ~Copyable & ~Escapable {
       captureValue(value, id)
       return value
     }
+
+    @available(*, unavailable, message: "Cannot mutate the condition argument of macro 'expect(_:_:)' or 'require(_:_:)'")
+    set {}
   }
 
 #if SWT_FIXED_109329233
