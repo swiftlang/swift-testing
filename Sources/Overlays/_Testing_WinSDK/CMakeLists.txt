@@ -7,6 +7,7 @@
 # See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  include(ModuleABIName)
   add_library(_Testing_WinSDK
     Attachments/_AttachableImageWrapper+AttachableWrapper.swift
     Attachments/AttachableAsIWICBitmapSource.swift

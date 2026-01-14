@@ -134,21 +134,6 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       }
     }
 
-    // Disallow non-escapable types as suites. In order to support them, the
-    // compiler team needs to finish implementing the lifetime dependency
-    // feature so that `init()`, ``__requiringTry()`, and `__requiringAwait()`
-    // can be correctly expressed.
-    if let containingType = lexicalContext.first?.asProtocol((any DeclGroupSyntax).self),
-       let inheritedTypes = containingType.inheritanceClause?.inheritedTypes {
-      let escapableNonConformances = inheritedTypes
-        .map(\.type)
-        .compactMap { $0.as(SuppressedTypeSyntax.self) }
-        .filter { $0.type.isNamed("Escapable", inModuleNamed: "Swift") }
-      for escapableNonConformance in escapableNonConformances {
-        diagnostics.append(.containingNodeUnsupported(containingType, whenUsing: testAttribute, on: function, withSuppressedConformanceToEscapable: escapableNonConformance))
-      }
-    }
-
     return !diagnostics.lazy.map(\.severity).contains(.error)
   }
 

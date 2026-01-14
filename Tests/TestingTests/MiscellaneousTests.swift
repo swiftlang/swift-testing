@@ -272,6 +272,14 @@ struct MultiLineSuite {
   _ = try #require(x?[...].last)
 }
 
+extension Bool {
+  func throwingValue() throws -> Bool { self }
+}
+
+@Test(.hidden) func `Effectful keywords are found in the lexical context of an expression macro`() throws {
+  try #expect(true.throwingValue())
+}
+
 @Suite("Miscellaneous tests")
 struct MiscellaneousTests {
   @Test("Free function's name")
