@@ -376,6 +376,9 @@ extension Event.HumanReadableOutputRecorder {
 #else
         comments.append("OS Version: \(operatingSystemVersion)")
 #endif
+#if os(Android)
+        comments.append("API Level: \(apiLevel)")
+#endif
       }
       return CollectionOfOne(
         Message(

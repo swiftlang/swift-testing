@@ -20,6 +20,7 @@ private import UIKitCore_Private
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
 /// }
+@available(_uttypesAPI, *)
 extension UIImage: AttachableAsImage, AttachableAsCGImage {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
@@ -65,6 +66,10 @@ extension UIImage: AttachableAsImage, AttachableAsCGImage {
 
   package var attachmentScaleFactor: CGFloat {
     scale
+  }
+
+  public func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try withUnsafeBytesImpl(as: imageFormat, body)
   }
 }
 #endif

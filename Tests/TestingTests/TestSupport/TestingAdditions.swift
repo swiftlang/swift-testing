@@ -18,6 +18,13 @@ import XCTest
 import Foundation
 #endif
 
+/// The ABI name of the testing library's main module.
+///
+/// This can be different than the target name ("Testing") whenever the module
+/// ABI name is customized at build time, as it is in certain deployment
+/// contexts.
+let testingModuleABIName = TypeInfo(describing: Test.self).fullyQualifiedNameComponents.first!
+
 extension Tag {
   /// A tag indicating that a test is related to a trait.
   @Tag static var traitRelated: Self

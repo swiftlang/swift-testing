@@ -36,6 +36,7 @@ extension NSImageRep {
 /// @Metadata {
 ///   @Available(Swift, introduced: 6.3)
 /// }
+@available(_uttypesAPI, *)
 extension NSImage: AttachableAsImage, AttachableAsCGImage {
   /// @Metadata {
   ///   @Available(Swift, introduced: 6.3)
@@ -56,6 +57,10 @@ extension NSImage: AttachableAsImage, AttachableAsCGImage {
       .filter { $0 > 0.0 }
       .max()
     return maxRepWidth ?? 1.0
+  }
+
+  public func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try withUnsafeBytesImpl(as: imageFormat, body)
   }
 
   public func _copyAttachableValue() -> Self {
