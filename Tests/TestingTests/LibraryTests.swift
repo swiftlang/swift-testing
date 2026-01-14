@@ -169,7 +169,7 @@ extension Library {
 private let _mockLibraryRecord: __TestContentRecord = (
   kind: 0x6D61696E, /* 'main' */
   reserved1: 0,
-  accessor: _mockLibraryRecordAccessor,
+  accessor: { _mockLibraryRecordAccessor($0, $1, $2, $3) },
   context: 0,
   reserved2: 0
 )
