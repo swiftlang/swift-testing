@@ -174,7 +174,7 @@ private let _mockLibraryRecord: __TestContentRecord = (
   reserved2: 0
 )
 
-private func _mockLibraryRecordAccessor(_ outValue: UnsafeMutableRawPointer, _ type: UnsafeRawPointer, _ hint: UnsafeRawPointer?, _ reserved: UInt) -> CBool {
+private let _mockLibraryRecordAccessor: __TestContentRecordAccessor = { outValue, type, hint, _ in
 #if !hasFeature(Embedded)
   // Make sure that the caller supplied the right Swift type. If a testing
   // library is implemented in a language other than Swift, they can either:
