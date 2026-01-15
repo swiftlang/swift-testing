@@ -13,10 +13,6 @@ public import SwiftSyntax
 import SwiftSyntaxBuilder
 public import SwiftSyntaxMacros
 
-#if !hasFeature(SymbolLinkageMarkers) && SWT_NO_LEGACY_TEST_DISCOVERY
-#error("Platform-specific misconfiguration: either SymbolLinkageMarkers or legacy test discovery is required to expand @Test")
-#endif
-
 /// A type describing the expansion of the `@Test` attribute macro.
 ///
 /// This type is used to implement the `@Test` attribute macro. Do not use it
@@ -491,7 +487,7 @@ public struct TestDeclarationMacro: PeerMacro, Sendable {
       )
     )
 
-#if !SWT_NO_LEGACY_TEST_DISCOVERY
+#if compiler(<6.3)
     // Emit a type that contains a reference to the test content record.
     let enumName = context.makeUniqueName(thunking: functionDecl, withPrefix: "__🟡$")
     result.append(
