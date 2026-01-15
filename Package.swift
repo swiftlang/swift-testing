@@ -1,4 +1,4 @@
-// swift-tools-version: 6.1
+// swift-tools-version: 6.2
 
 //
 // This source file is part of the Swift.org open source project
@@ -92,6 +92,7 @@ let package = Package(
           "_Testing_CoreGraphics",
           "_Testing_CoreImage",
           "_Testing_UIKit",
+          "_Testing_WinSDK",
         ]
       )
     ]
@@ -104,18 +105,30 @@ let package = Package(
       )
     )
 
+#if DEBUG
+    // Build _TestingInterop for debugging/testing purposes only. It is
+    // important that clients do not link to this product/target.
+    result += [
+      .library(
+        name: "_TestingInterop_DO_NOT_USE",
+        targets: ["_TestingInterop_DO_NOT_USE"]
+      )
+    ]
+#endif
+
     return result
   }(),
 
-  traits: [
-    .trait(
-      name: "ExperimentalExitTestValueCapture",
-      description: "Enable experimental support for capturing values in exit tests"
-    ),
-  ],
-
   dependencies: [
-    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "602.0.0-latest"),
+    // swift-syntax periodically publishes a new tag with a suffix of the format
+    // "-prerelease-YYYY-MM-DD". We always want to use the most recent tag
+    // associated with a particular Swift version, without needing to hardcode
+    // an exact tag and manually keep it up-to-date. Specifying the suffix
+    // "-latest" on this dependency is a workaround which causes Swift package
+    // manager to use the lexicographically highest-sorted tag with the
+    // specified semantic version, meaning the most recent "prerelease" tag will
+    // always be used.
+    .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "603.0.0-latest"),
   ],
 
   targets: [
@@ -128,7 +141,7 @@ let package = Package(
       ],
       exclude: ["CMakeLists.txt", "Testing.swiftcrossimport"],
       cxxSettings: .packageSettings,
-      swiftSettings: .packageSettings + .enableLibraryEvolution(),
+      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("Testing"),
       linkerSettings: [
         .linkedLibrary("execinfo", .when(platforms: [.custom("freebsd"), .openbsd]))
       ]
@@ -142,9 +155,13 @@ let package = Package(
         "_Testing_CoreImage",
         "_Testing_Foundation",
         "_Testing_UIKit",
+        "_Testing_WinSDK",
         "MemorySafeTestingTests",
       ],
-      swiftSettings: .packageSettings
+      swiftSettings: .packageSettings,
+      linkerSettings: [
+        .linkedLibrary("util", .when(platforms: [.openbsd]))
+      ]
     ),
 
     // Use a plain `.target` instead of a `.testTarget` to avoid the unnecessary
@@ -158,7 +175,7 @@ let package = Package(
         "Testing",
       ],
       path: "Tests/_MemorySafeTestingTests",
-      swiftSettings: .packageSettings + .strictMemorySafety
+      swiftSettings: .packageSettings + [.strictMemorySafety()]
     ),
 
     .macro(
@@ -172,21 +189,15 @@ let package = Package(
         .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
       ],
       exclude: ["CMakeLists.txt"],
-      swiftSettings: .packageSettings + {
-        var result = [PackageDescription.SwiftSetting]()
-
+      swiftSettings: .packageSettings + [
         // The only target which needs the ability to import this macro
         // implementation target's module is its unit test target. Users of the
         // macros this target implements use them via their declarations in the
         // Testing module. This target's module is never distributed to users,
         // but as an additional guard against accidental misuse, this specifies
         // the unit test target as the only allowable client.
-        if buildingForDevelopment {
-          result.append(.unsafeFlags(["-Xfrontend", "-allowable-client", "-Xfrontend", "TestingMacrosTests"]))
-        }
-
-        return result
-      }()
+        .unsafeFlags(["-Xfrontend", "-allowable-client", "-Xfrontend", "TestingMacrosTests"]),
+      ]
     ),
 
     // "Support" targets: These targets are not meant to be used directly by
@@ -201,7 +212,17 @@ let package = Package(
       dependencies: ["_TestingInternals",],
       exclude: ["CMakeLists.txt"],
       cxxSettings: .packageSettings,
-      swiftSettings: .packageSettings + .enableLibraryEvolution()
+      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("_TestDiscovery")
+    ),
+    .target(
+      // Build _TestingInterop for debugging/testing purposes only. It is
+      // important that clients do not link to this product/target.
+      name: "_TestingInterop_DO_NOT_USE",
+      dependencies: ["_TestingInternals",],
+      path: "Sources/_TestingInterop",
+      exclude: ["CMakeLists.txt"],
+      cxxSettings: .packageSettings,
+      swiftSettings: .packageSettings + .moduleABIName("_TestingInterop")
     ),
 
     // Cross-import overlays (not supported by Swift Package Manager)
@@ -212,7 +233,8 @@ let package = Package(
         "_Testing_CoreGraphics",
       ],
       path: "Sources/Overlays/_Testing_AppKit",
-      swiftSettings: .packageSettings + .enableLibraryEvolution()
+      exclude: ["CMakeLists.txt"],
+      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("Testing")
     ),
     .target(
       name: "_Testing_CoreGraphics",
@@ -220,7 +242,8 @@ let package = Package(
         "Testing",
       ],
       path: "Sources/Overlays/_Testing_CoreGraphics",
-      swiftSettings: .packageSettings + .enableLibraryEvolution()
+      exclude: ["CMakeLists.txt"],
+      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("_Testing_CoreGraphics")
     ),
     .target(
       name: "_Testing_CoreImage",
@@ -229,7 +252,8 @@ let package = Package(
         "_Testing_CoreGraphics",
       ],
       path: "Sources/Overlays/_Testing_CoreImage",
-      swiftSettings: .packageSettings + .enableLibraryEvolution()
+      exclude: ["CMakeLists.txt"],
+      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("_Testing_CoreImage")
     ),
     .target(
       name: "_Testing_Foundation",
@@ -241,7 +265,7 @@ let package = Package(
       // The Foundation module only has Library Evolution enabled on Apple
       // platforms, and since this target's module publicly imports Foundation,
       // it can only enable Library Evolution itself on those platforms.
-      swiftSettings: .packageSettings + .enableLibraryEvolution(.whenApple())
+      swiftSettings: .packageSettings + .enableLibraryEvolution(.whenApple()) + .moduleABIName("_Testing_Foundation")
     ),
     .target(
       name: "_Testing_UIKit",
@@ -251,7 +275,17 @@ let package = Package(
         "_Testing_CoreImage",
       ],
       path: "Sources/Overlays/_Testing_UIKit",
-      swiftSettings: .packageSettings + .enableLibraryEvolution()
+      exclude: ["CMakeLists.txt"],
+      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("_Testing_UIKit")
+    ),
+    .target(
+      name: "_Testing_WinSDK",
+      dependencies: [
+        "Testing",
+      ],
+      path: "Sources/Overlays/_Testing_WinSDK",
+      exclude: ["CMakeLists.txt"],
+      swiftSettings: .packageSettings + .enableLibraryEvolution() + .moduleABIName("_Testing_WinSDK")
     ),
 
     // Utility targets: These are utilities intended for use when developing
@@ -329,9 +363,9 @@ extension Array where Element == PackageDescription.SwiftSetting {
   static var packageSettings: Self {
     var result = availabilityMacroSettings
 
-    if buildingForDevelopment {
-      result.append(.unsafeFlags(["-require-explicit-sendable"]))
-    }
+#if compiler(>=6.3)
+    result.append(.treatWarning("ExplicitSendable", as: .warning))
+#endif
 
     if buildingForEmbedded {
       result.append(.enableExperimentalFeature("Embedded"))
@@ -348,21 +382,10 @@ extension Array where Element == PackageDescription.SwiftSetting {
       // This setting is enabled in the package, but not in the toolchain build
       // (via CMake). Enabling it is dependent on acceptance of the @section
       // proposal via Swift Evolution.
-      //
-      // FIXME: Re-enable this once a CI blocker is resolved:
-      // https://github.com/swiftlang/swift-testing/issues/1138.
-//      .enableExperimentalFeature("SymbolLinkageMarkers"),
+      .enableExperimentalFeature("SymbolLinkageMarkers"),
 
-      // This setting is no longer needed when building with a 6.2 or later
-      // toolchain now that SE-0458 has been accepted and implemented, but it is
-      // needed in order to preserve support for building with 6.1 development
-      // snapshot toolchains. (Production 6.1 toolchains can build the testing
-      // library even without this setting since this experimental feature is
-      // _suppressible_.) This setting can be removed once the minimum supported
-      // toolchain for building the testing library is ≥ 6.2. It is not needed
-      // in the CMake settings since that is expected to build using a
-      // new-enough toolchain.
-      .enableExperimentalFeature("AllowUnsafeAttribute"),
+      // Enabled to allow tests to be added to ~Escapable suites.
+      .enableExperimentalFeature("Lifetimes"),
 
       .enableUpcomingFeature("InferIsolatedConformances"),
 
@@ -378,18 +401,11 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .define("SWT_NO_DYNAMIC_LINKING", .whenEmbedded(or: .when(platforms: [.wasi]))),
       .define("SWT_NO_PIPES", .whenEmbedded(or: .when(platforms: [.wasi]))),
       .define("SWT_NO_FOUNDATION_FILE_COORDINATION", .whenEmbedded(or: .whenApple(false))),
+      .define("SWT_NO_IMAGE_ATTACHMENTS", .whenEmbedded(or: .when(platforms: [.linux, .custom("freebsd"), .openbsd, .wasi, .android]))),
 
       .define("SWT_NO_LEGACY_TEST_DISCOVERY", .whenEmbedded()),
       .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
     ]
-
-    // Unconditionally enable 'ExperimentalExitTestValueCapture' when building
-    // for development.
-    if buildingForDevelopment {
-      result += [
-        .define("ExperimentalExitTestValueCapture")
-      ]
-    }
 
     return result
   }
@@ -408,6 +424,7 @@ extension Array where Element == PackageDescription.SwiftSetting {
       .enableExperimentalFeature("AvailabilityMacro=_regexAPI:macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0"),
       .enableExperimentalFeature("AvailabilityMacro=_swiftVersionAPI:macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0"),
       .enableExperimentalFeature("AvailabilityMacro=_typedThrowsAPI:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
+      .enableExperimentalFeature("AvailabilityMacro=_castingWithNonCopyableGenerics:macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0"),
 
       .enableExperimentalFeature("AvailabilityMacro=_distantFuture:macOS 99.0, iOS 99.0, watchOS 99.0, tvOS 99.0, visionOS 99.0"),
     ]
@@ -429,16 +446,28 @@ extension Array where Element == PackageDescription.SwiftSetting {
     return result
   }
 
-  /// Settings necessary to enable Strict Memory Safety, introduced in
-  /// [SE-0458: Opt-in Strict Memory Safety Checking](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0458-strict-memory-safety.md#swiftpm-integration).
-  static var strictMemorySafety: Self {
-#if compiler(>=6.2)
-    // FIXME: Adopt official `.strictMemorySafety()` condition once the minimum
-    // supported toolchain is 6.2.
-    [.unsafeFlags(["-strict-memory-safety"])]
-#else
-    []
-#endif
+  /// Create a Swift setting which specifies the module ABI name to use when
+  /// building the target with the specified name.
+  ///
+  /// - Parameters:
+  ///   - targetName The name of the target for which an ABI name should be
+  ///     specified.
+  ///
+  /// - Returns: A Swift setting that specifies the ABI name of the module of
+  ///   the target named `targetName`.
+  ///
+  /// This function simplifies the process of specifying a custom module ABI
+  /// name for various targets in this package. The module ABI name is given a
+  /// suffix for all targets in this package which emit a module that is also
+  /// included in the built-in copy of Swift Testing in Swift toolchains and
+  /// vendor distributions. Without this, there can be runtime collisions; for
+  /// example, on Darwin platforms (where Swift uses the Objective-C runtime),
+  /// a non-generic Swift class type causes a warning from the runtime about
+  /// duplicate class definitions. Specifying a distinct ABI name for each
+  /// module related to Swift Testing loaded into a runner process avoids this
+  /// issue.
+  static func moduleABIName(_ targetName: String) -> Self {
+    [.unsafeFlags(["-module-abi-name", "\(targetName)_package"])]
   }
 }
 
@@ -460,16 +489,16 @@ extension Array where Element == PackageDescription.CXXSetting {
       .define("SWT_NO_LIBDISPATCH", .whenEmbedded()),
     ]
 
-    // Capture the testing library's version as a C++ string constant.
+    // Capture the testing library's commit info as C++ constants.
     if let git {
-      let testingLibraryVersion = if let tag = git.currentTag {
-        tag
-      } else if git.hasUncommittedChanges {
-        "\(git.currentCommit) (modified)"
-      } else {
-        git.currentCommit
+      result.append(.define("SWT_TESTING_LIBRARY_COMMIT_HASH", to: #""\#(git.currentCommit)""#))
+      if git.hasUncommittedChanges {
+        result.append(.define("SWT_TESTING_LIBRARY_COMMIT_MODIFIED", to: "1"))
       }
-      result.append(.define("SWT_TESTING_LIBRARY_VERSION", to: #""\#(testingLibraryVersion)""#))
+    } else if let gitHubSHA = Context.environment["GITHUB_SHA"] {
+      // When building in GitHub Actions, the git command may fail to get us the
+      // commit hash, so check if GitHub shared it with us instead.
+      result.append(.define("SWT_TESTING_LIBRARY_COMMIT_HASH", to: #""\#(gitHubSHA)""#))
     }
 
     return result

@@ -106,7 +106,9 @@ func findEffectKeywords(in node: some SyntaxProtocol) -> Set<Keyword> {
 /// - Returns: A set of effectful keywords such as `await` that are present in
 ///   `context` and would apply to an expression macro during its expansion.
 func findEffectKeywords(in context: some MacroExpansionContext) -> Set<Keyword> {
-  let result = context.lexicalContext.reversed().lazy
+  // The lexical context is ordered from innermost to outermost, and we are most
+  // interested in keywords near the macro expansion, so don't use reversed().
+  let result = context.lexicalContext.lazy
     .prefix { _continueKind(for: $0) == .visitChildren }
     .compactMap { $0.as(ExprSyntax.self) }
     .compactMap(_effectKeyword(for:))
@@ -129,17 +131,6 @@ extension BidirectionalCollection<Syntax> {
 }
 
 // MARK: - Inserting effect keywords/thunks
-
-/// Whether or not the `unsafe` expression keyword is supported.
-var isUnsafeKeywordSupported: Bool {
-  // The 'unsafe' keyword was introduced in 6.2 as part of SE-0458. Older
-  // toolchains are not aware of it.
-#if compiler(>=6.2)
-  true
-#else
-  false
-#endif
-}
 
 /// Make a function call expression to an effectful thunk function provided by
 /// the testing library.
@@ -184,8 +175,7 @@ func applyEffectfulKeywords(_ effectfulKeywords: Set<Keyword>, to expr: some Exp
 
   let needAwait = effectfulKeywords.contains(.await) && !expr.is(AwaitExprSyntax.self)
   let needTry = effectfulKeywords.contains(.try) && !expr.is(TryExprSyntax.self)
-
-  let needUnsafe = isUnsafeKeywordSupported && effectfulKeywords.contains(.unsafe) && !expr.is(UnsafeExprSyntax.self)
+  let needUnsafe = effectfulKeywords.contains(.unsafe) && !expr.is(UnsafeExprSyntax.self)
 
   // First, add thunk function calls.
   if insertThunkCalls {

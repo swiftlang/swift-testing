@@ -24,7 +24,7 @@ struct TypeInfoTests {
     ),
     (
       [Test].self,
-      TypeInfo(fullyQualifiedName: "Swift.Array<Testing.Test>", unqualifiedName: "Array<Test>", mangledName: "")
+      TypeInfo(fullyQualifiedName: "Swift.Array<\(testingModuleABIName).Test>", unqualifiedName: "Array<Test>", mangledName: "")
     ),
     (
       (key: String, value: Int).self,
@@ -122,6 +122,11 @@ struct TypeInfoTests {
     #expect(!TypeInfo(describing: String.self).isSwiftEnumeration)
     #expect(TypeInfo(describing: SomeEnum.self).isSwiftEnumeration)
   }
+
+  @Test func typeOfMoveOnlyValueIsInferred() {
+    let value = MoveOnlyType()
+    #expect(TypeInfo(describingTypeOf: value).unqualifiedName == "MoveOnlyType")
+  }
 }
 
 // MARK: - Fixtures
@@ -131,3 +136,5 @@ extension String {
 }
 
 private enum SomeEnum {}
+
+private struct MoveOnlyType: ~Copyable {}

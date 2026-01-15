@@ -36,6 +36,10 @@ extension ABI {
       guard let event = EncodedEvent<V>(encoding: event, in: eventContext, messages: messages) else {
         return nil
       }
+      if !V.includesExperimentalFields && event.kind.rawValue.first == "_" {
+        // Don't encode experimental event kinds.
+        return nil
+      }
       kind = .event(event)
     }
   }
@@ -66,8 +70,17 @@ extension ABI.Record: Codable {
   init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
 
-    let versionNumber = try container.decode(Int.self, forKey: .version)
-    if versionNumber != V.versionNumber {
+    func validateVersionNumber(_ versionNumber: VersionNumber) throws {
+      if versionNumber == V.versionNumber {
+        return
+      }
+#if !hasFeature(Embedded)
+      // Allow for alternate version numbers if they correspond to the expected
+      // record version (e.g. "1.2.3" might map to `v1_2_0` without a problem.)
+      if ABI.version(forVersionNumber: versionNumber) == V.self {
+        return
+      }
+#endif
       throw DecodingError.dataCorrupted(
         DecodingError.Context(
           codingPath: decoder.codingPath + CollectionOfOne(CodingKeys.version as any CodingKey),
@@ -75,6 +88,8 @@ extension ABI.Record: Codable {
         )
       )
     }
+    let versionNumber = try container.decode(VersionNumber.self, forKey: .version)
+    try validateVersionNumber(versionNumber)
 
     switch try container.decode(String.self, forKey: .kind) {
     case "test":

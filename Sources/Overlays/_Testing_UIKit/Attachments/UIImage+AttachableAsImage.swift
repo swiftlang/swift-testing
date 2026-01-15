@@ -1,7 +1,7 @@
 //
 // This source file is part of the Swift.org open source project
 //
-// Copyright (c) 2024 Apple Inc. and the Swift project authors
+// Copyright (c) 2024–2025 Apple Inc. and the Swift project authors
 // Licensed under Apache License v2.0 with Runtime Library Exception
 //
 // See https://swift.org/LICENSE.txt for license information
@@ -10,17 +10,22 @@
 
 #if SWT_TARGET_OS_APPLE && canImport(UIKit)
 public import UIKit
-@_spi(Experimental) public import _Testing_CoreGraphics
-@_spi(Experimental) private import _Testing_CoreImage
+public import _Testing_CoreGraphics
 
-private import ImageIO
+package import ImageIO
 #if canImport(UIKitCore_Private)
 private import UIKitCore_Private
 #endif
 
-@_spi(Experimental)
-extension UIImage: AttachableAsCGImage {
-  public var attachableCGImage: CGImage {
+/// @Metadata {
+///   @Available(Swift, introduced: 6.3)
+/// }
+@available(_uttypesAPI, *)
+extension UIImage: AttachableAsImage, AttachableAsCGImage {
+  /// @Metadata {
+  ///   @Available(Swift, introduced: 6.3)
+  /// }
+  package var attachableCGImage: CGImage {
     get throws {
 #if canImport(UIKitCore_Private)
       // _UIImageGetCGImageRepresentation() is an internal UIKit function that
@@ -45,8 +50,8 @@ extension UIImage: AttachableAsCGImage {
     }
   }
 
-  public var _attachmentOrientation: UInt32 {
-    let result: CGImagePropertyOrientation = switch imageOrientation {
+  package var attachmentOrientation: CGImagePropertyOrientation {
+    switch imageOrientation {
     case .up: .up
     case .down: .down
     case .left: .left
@@ -57,11 +62,14 @@ extension UIImage: AttachableAsCGImage {
     case .rightMirrored: .rightMirrored
     @unknown default: .up
     }
-    return result.rawValue
   }
 
-  public var _attachmentScaleFactor: CGFloat {
+  package var attachmentScaleFactor: CGFloat {
     scale
+  }
+
+  public func withUnsafeBytes<R>(as imageFormat: AttachableImageFormat, _ body: (UnsafeRawBufferPointer) throws -> R) throws -> R {
+    try withUnsafeBytesImpl(as: imageFormat, body)
   }
 }
 #endif

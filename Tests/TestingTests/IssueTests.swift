@@ -484,7 +484,7 @@ final class IssueTests: XCTestCase {
   }
 
   func testCastAsAnyProtocol() async {
-    // Sanity check that we parse types cleanly.
+    // Check that we parse types cleanly.
     await Test {
       #expect((1 as Any) is any Numeric)
       _ = try #require((1 as Any) as? any Numeric)
@@ -1636,6 +1636,23 @@ final class IssueTests: XCTestCase {
     }.run(configuration: configuration)
 
     await fulfillment(of: [expectationFailed, apiMisused], timeout: 0.0)
+  }
+
+  private struct ErrorWithTestDescription: Error, CustomStringConvertible, CustomTestStringConvertible {
+    var description: String {
+      XCTFail("Invoked .description instead of .testDescription")
+      return "WRONG"
+    }
+
+    var testDescription: String {
+      return "RIGHT"
+    }
+  }
+
+  func testErrorCaughtIssueUsesTestDescription() {
+    let error = ErrorWithTestDescription()
+    let issue = Issue(kind: .errorCaught(error), severity: .error, comments: [], sourceContext: .init())
+    #expect(String(describing: issue).contains("RIGHT"))
   }
 }
 #endif

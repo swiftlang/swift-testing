@@ -223,6 +223,92 @@ extension Runner.Plan {
     synthesizeSuites(in: &graph, sourceLocation: &sourceLocation)
   }
 
+  /// The basic "run" action.
+  private static let _runAction = Action.run(options: .init())
+
+  /// Determine what action to perform for a given test by preparing its traits.
+  ///
+  /// - Parameters:
+  ///   - test: The test whose action will be determined.
+  ///
+  /// - Returns:The action to take for `test`.
+  private static func _determineAction(for test: inout Test) async -> Action {
+    let result: Action
+
+    // We use a task group here with a single child task so that, if the trait
+    // code calls Test.cancel() we don't end up cancelling the entire test run.
+    // We could also model this as an unstructured task except that they aren't
+    // available in the "task-to-thread" concurrency model.
+    //
+    // FIXME: Parallelize this work. Calling `prepare(...)` on all traits and
+    // evaluating all test arguments should be safely parallelizable.
+    (test, result) = await withTaskGroup(returning: (Test, Action).self) { [test] taskGroup in
+      let testName = test.humanReadableName()
+      let (taskName, taskAction) = if test.isSuite {
+        ("suite \(testName)", "evaluating traits")
+      } else {
+        // TODO: split the task group's single task into two serially-run subtasks
+        ("test \(testName)", "evaluating traits and test cases")
+      }
+      taskGroup.addTask(name: decorateTaskName(taskName, withAction: taskAction)) {
+        var test = test
+        var action = _runAction
+
+        await Test.withCurrent(test) {
+          do {
+            var firstCaughtError: (any Error)?
+
+            for trait in test.traits {
+              do {
+                try await trait.prepare(for: test)
+              } catch {
+                if let skipInfo = SkipInfo(error) {
+                  action = .skip(skipInfo)
+                  break
+                } else {
+                  // Only preserve the first caught error
+                  firstCaughtError = firstCaughtError ?? error
+                }
+              }
+            }
+
+            // If no trait specified that the test should be skipped, but one
+            // did throw an error, then the action is to record an issue for
+            // that error.
+            if case .run = action, let error = firstCaughtError {
+              action = .recordIssue(Issue(for: error))
+            }
+          }
+
+          // If the test is still planned to run (i.e. nothing thus far has
+          // caused it to be skipped), evaluate its test cases now.
+          //
+          // The argument expressions of each test are captured in closures so
+          // they can be evaluated lazily only once it is determined that the
+          // test will run, to avoid unnecessary work. But now is the
+          // appropriate time to evaluate them.
+          if case .run = action {
+            do {
+              try await test.evaluateTestCases()
+            } catch {
+              if let skipInfo = SkipInfo(error) {
+                action = .skip(skipInfo)
+              } else {
+                action = .recordIssue(Issue(for: error))
+              }
+            }
+          }
+        }
+
+        return (test, action)
+      }
+
+      return await taskGroup.first { _ in true }!
+    }
+
+    return result
+  }
+
   /// Construct a graph of runner plan steps for the specified tests.
   ///
   /// - Parameters:
@@ -241,7 +327,7 @@ extension Runner.Plan {
     // Convert the list of test into a graph of steps. The actions for these
     // steps will all be .run() *unless* an error was thrown while examining
     // them, in which case it will be .recordIssue().
-    let runAction = Action.run(options: .init())
+    let runAction = _runAction
     var testGraph = Graph<String, Test?>()
     var actionGraph = Graph<String, Action>(value: runAction)
     for test in tests {
@@ -284,9 +370,6 @@ extension Runner.Plan {
     _recursivelyReduceTraits(in: &testGraph)
 
     // For each test value, determine the appropriate action for it.
-    //
-    // FIXME: Parallelize this work. Calling `prepare(...)` on all traits and
-    // evaluating all test arguments should be safely parallelizable.
     testGraph = await testGraph.mapValues { keyPath, test in
       // Skip any nil test, which implies this node is just a placeholder and
       // not actual test content.
@@ -294,46 +377,12 @@ extension Runner.Plan {
         return nil
       }
 
-      var action = runAction
-      var firstCaughtError: (any Error)?
-
       // Walk all the traits and tell each to prepare to run the test.
       // If any throw a `SkipInfo` error at this stage, stop walking further.
       // But if any throw another kind of error, keep track of the first error
       // but continue walking, because if any subsequent traits throw a
       // `SkipInfo`, the error should not be recorded.
-      for trait in test.traits {
-        do {
-          try await trait.prepare(for: test)
-        } catch let error as SkipInfo {
-          action = .skip(error)
-          break
-        } catch {
-          // Only preserve the first caught error
-          firstCaughtError = firstCaughtError ?? error
-        }
-      }
-
-      // If no trait specified that the test should be skipped, but one did
-      // throw an error, then the action is to record an issue for that error.
-      if case .run = action, let error = firstCaughtError {
-        action = .recordIssue(Issue(for: error))
-      }
-
-      // If the test is still planned to run (i.e. nothing thus far has caused
-      // it to be skipped), evaluate its test cases now.
-      //
-      // The argument expressions of each test are captured in closures so they
-      // can be evaluated lazily only once it is determined that the test will
-      // run, to avoid unnecessary work. But now is the appropriate time to
-      // evaluate them.
-      if case .run = action {
-        do {
-          try await test.evaluateTestCases()
-        } catch {
-          action = .recordIssue(Issue(for: error))
-        }
-      }
+      var action = await _determineAction(for: &test)
 
       // If the test is parameterized but has no cases, mark it as skipped.
       if case .run = action, let testCases = test.testCases, testCases.first(where: { _ in true }) == nil {

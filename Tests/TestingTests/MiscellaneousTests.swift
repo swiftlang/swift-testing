@@ -272,6 +272,14 @@ struct MultiLineSuite {
   _ = try #require(x?[...].last)
 }
 
+extension Bool {
+  func throwingValue() throws -> Bool { self }
+}
+
+@Test(.hidden) func `Effectful keywords are found in the lexical context of an expression macro`() throws {
+  try #expect(true.throwingValue())
+}
+
 @Suite("Miscellaneous tests")
 struct MiscellaneousTests {
   @Test("Free function's name")
@@ -297,7 +305,6 @@ struct MiscellaneousTests {
     #expect(testType.displayName == "Named Sendable test type")
   }
 
-#if compiler(>=6.2) && hasFeature(RawIdentifiers)
   @Test func `Test with raw identifier gets a display name`() throws {
     let test = try #require(Test.current)
     #expect(test.displayName == "Test with raw identifier gets a display name")
@@ -320,7 +327,6 @@ struct MiscellaneousTests {
   func `Test with raw identifier and raw identifier parameter labels can compile`(`argument name` i: Int) {
     #expect(i == 0)
   }
-#endif
 
   @Test("Free functions are runnable")
   func freeFunction() async throws {
@@ -562,7 +568,7 @@ struct MiscellaneousTests {
     let line = 12345
     let column = 67890
     let sourceLocation = SourceLocation(fileID: fileID, filePath: filePath, line: line, column: column)
-    let testFunction = Test.__function(named: "myTestFunction()", in: nil, xcTestCompatibleSelector: nil, displayName: nil, traits: [], sourceLocation: sourceLocation) {}
+    let testFunction = Test.__function(named: "myTestFunction()", in: nil as Never.Type?, xcTestCompatibleSelector: nil, displayName: nil, traits: [], sourceLocation: sourceLocation) {}
     #expect(String(describing: testFunction.id) == "Module.myTestFunction()/Y.swift:12345:67890")
   }
 

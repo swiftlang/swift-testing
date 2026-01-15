@@ -113,6 +113,13 @@ func spawnExecutable(
       withUnsafeTemporaryAllocation(of: sigset_t.self, capacity: 1) { allSignals in
         let allSignals = allSignals.baseAddress!
         sigfillset(allSignals)
+#if os(OpenBSD)
+        // On OpenBSD, attempting to set the signal handler for SIGKILL or
+        // SIGSTOP will cause the child process of a call to posix_spawn() to
+        // exit abnormally with exit code 127. See https://man.openbsd.org/sigaction.2#ERRORS
+        sigdelset(allSignals, SIGKILL)
+        sigdelset(allSignals, SIGSTOP)
+#endif
         posix_spawnattr_setsigdefault(attrs, allSignals);
         flags |= CShort(POSIX_SPAWN_SETSIGDEF)
       }
@@ -137,8 +144,8 @@ func spawnExecutable(
             // standardized in POSIX.1-2024 (see https://pubs.opengroup.org/onlinepubs/9799919799/functions/posix_spawn_file_actions_adddup2.html
             // and https://www.austingroupbugs.net/view.php?id=411).
             _ = posix_spawn_file_actions_adddup2(fileActions, fd, fd)
-#if canImport(Glibc) && !os(FreeBSD) && !os(OpenBSD)
-            if _slowPath(glibcVersion.major < 2 || (glibcVersion.major == 2 && glibcVersion.minor < 29)) {
+#if os(Linux) && canImport(Glibc)
+            if _slowPath(glibcVersion < VersionNumber(2, 29)) {
               // This system is using an older version of glibc that does not
               // implement FD_CLOEXEC clearing in posix_spawn_file_actions_adddup2(),
               // so we must clear it here in the parent process.
@@ -224,7 +231,7 @@ func spawnExecutable(
       }
 #if SWT_TARGET_OS_APPLE && DEBUG
       // Resume the process.
-      _ = kill(pid, SIGCONT)
+      _ = kill(pid, SIGCONT) // ignore-unacceptable-language
 #endif
       return pid
     }

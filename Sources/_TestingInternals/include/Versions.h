@@ -16,6 +16,20 @@
 
 SWT_ASSUME_NONNULL_BEGIN
 
+/// Get the version of the compiler used to build the testing library.
+///
+/// - Returns: An integer containing the packed major, minor, and patch
+///   components of the compiler version. For more information, see
+///   [ClangImporter.cpp](https://github.com/swiftlang/swift/blob/36246a2c8e9501cd29a75f34c9631a8f4e2e1e9b/lib/ClangImporter/ClangImporter.cpp#L647)
+///   in the Swift repository.
+static inline uint64_t swt_getSwiftCompilerVersion(void) {
+#if defined(__SWIFT_COMPILER_VERSION)
+  return __SWIFT_COMPILER_VERSION;
+#else
+  return 0;
+#endif
+}
+
 /// Get the human-readable version of the testing library.
 ///
 /// - Returns: A human-readable string describing the version of the testing
@@ -24,29 +38,20 @@ SWT_ASSUME_NONNULL_BEGIN
 ///   other conditions. Do not attempt to parse it.
 SWT_EXTERN const char *_Nullable swt_getTestingLibraryVersion(void);
 
+/// Get details of the source control (git) commit from which the testing
+/// library was built.
+///
+/// - Parameters:
+///   - outHash: On return, set to a pointer to a string containing the commit
+///     hash from which the testing library was built.
+///   - outModified: On return, whether or not there were uncommitted changes.
+SWT_EXTERN void swt_getTestingLibraryCommit(const char *_Nullable *_Nonnull outHash, bool *outModified);
+
 /// Get the LLVM target triple used to build the testing library.
 ///
 /// - Returns: A string containing the LLVM target triple used to build the
 ///   testing library, or `nullptr` if that information is not available.
 SWT_EXTERN const char *_Nullable swt_getTargetTriple(void);
-
-#if defined(__wasi__)
-/// Get the version of the C standard library and runtime used by WASI, if
-/// available.
-///
-/// This function is provided because `WASI_SDK_VERSION` may or may not be
-/// defined and may or may not be a complex macro.
-///
-/// For more information about the `WASI_SDK_VERSION` macro, see
-/// [wasi-libc-#490](https://github.com/WebAssembly/wasi-libc/issues/490).
-static const char *_Nullable swt_getWASIVersion(void) {
-#if defined(WASI_SDK_VERSION)
-  return WASI_SDK_VERSION;
-#else
-  return 0;
-#endif
-}
-#endif
 
 SWT_ASSUME_NONNULL_END
 

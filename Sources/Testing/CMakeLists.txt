@@ -3,9 +3,10 @@
 # Copyright (c) 2024 Apple Inc. and the Swift project authors
 # Licensed under Apache License v2.0 with Runtime Library Exception
 #
-# See http://swift.org/LICENSE.txt for license information
-# See http://swift.org/CONTRIBUTORS.txt for Swift project authors
+# See https://swift.org/LICENSE.txt for license information
+# See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 
+include(ModuleABIName)
 add_library(Testing
   ABI/EntryPoints/ABIEntryPoint.swift
   ABI/EntryPoints/EntryPoint.swift
@@ -21,11 +22,17 @@ add_library(Testing
   ABI/Encoded/ABI.EncodedIssue.swift
   ABI/Encoded/ABI.EncodedMessage.swift
   ABI/Encoded/ABI.EncodedTest.swift
+  Attachments/Images/AttachableAsImage.swift
+  Attachments/Images/_AttachableImageWrapper.swift
+  Attachments/Images/AttachableImageFormat.swift
+  Attachments/Images/Attachment+AttachableAsImage.swift
+  Attachments/Images/ImageAttachmentError.swift
   Attachments/Attachable.swift
   Attachments/AttachableWrapper.swift
   Attachments/Attachment.swift
   Events/Clock.swift
   Events/Event.swift
+  Events/Recorder/Event.AdvancedConsoleOutputRecorder.swift
   Events/Recorder/Event.ConsoleOutputRecorder.swift
   Events/Recorder/Event.HumanReadableOutputRecorder.swift
   Events/Recorder/Event.JUnitXMLRecorder.swift
@@ -58,7 +65,6 @@ add_library(Testing
   Running/Runner.Plan+Dumping.swift
   Running/Runner.RuntimeState.swift
   Running/Runner.swift
-  Running/Serializer.swift
   Running/SkipInfo.swift
   SourceAttribution/Backtrace.swift
   SourceAttribution/Backtrace+Symbolication.swift
@@ -71,8 +77,10 @@ add_library(Testing
   Support/Additions/ArrayAdditions.swift
   Support/Additions/CollectionDifferenceAdditions.swift
   Support/Additions/CommandLineAdditions.swift
+  Support/Additions/CopyableAdditions.swift
   Support/Additions/NumericAdditions.swift
   Support/Additions/ResultAdditions.swift
+  Support/Additions/TaskAdditions.swift
   Support/Additions/WinSDKAdditions.swift
   Support/CartesianProduct.swift
   Support/CError.swift
@@ -83,15 +91,18 @@ add_library(Testing
   Support/Graph.swift
   Support/JSON.swift
   Support/Locked.swift
-  Support/Locked+Platform.swift
+  Support/Serializer.swift
+  Support/VersionNumber.swift
   Support/Versions.swift
   Discovery+Macro.swift
   Test.ID.Selection.swift
   Test.ID.swift
   Test.swift
+  Test+Cancellation.swift
   Test+Discovery.swift
   Test+Discovery+Legacy.swift
   Test+Macro.swift
+  Traits/AttachmentSavingTrait.swift
   Traits/Bug.swift
   Traits/Comment.swift
   Traits/Comment+Macro.swift
@@ -118,7 +129,8 @@ if(NOT APPLE)
   endif()
   target_link_libraries(Testing PUBLIC
     Foundation)
-  if (CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+  if (CMAKE_SYSTEM_NAME STREQUAL "FreeBSD" OR
+      CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
     target_link_libraries(Testing PUBLIC execinfo)
   endif()
 endif()

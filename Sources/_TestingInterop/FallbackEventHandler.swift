@@ -1,0 +1,134 @@
+//
+// This source file is part of the Swift.org open source project
+//
+// Copyright (c) 2025 Apple Inc. and the Swift project authors
+// Licensed under Apache License v2.0 with Runtime Library Exception
+//
+// See https://swift.org/LICENSE.txt for license information
+// See https://swift.org/CONTRIBUTORS.txt for Swift project authors
+//
+
+#if !SWT_NO_INTEROP
+#if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK && !hasFeature(Embedded)
+private import _TestingInternals
+#else
+private import Synchronization
+#endif
+
+#if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK && !hasFeature(Embedded)
+/// The installed event handler.
+private nonisolated(unsafe) let _fallbackEventHandler = {
+  let result = ManagedBuffer<FallbackEventHandler?, os_unfair_lock>.create(
+    minimumCapacity: 1,
+    makingHeaderWith: { _ in nil }
+  )
+  result.withUnsafeMutablePointerToElements { lock in
+    lock.initialize(to: .init())
+  }
+  return result
+}()
+#else
+/// `Atomic`-compatible storage for ``FallbackEventHandler``.
+private final class _FallbackEventHandlerStorage: Sendable, RawRepresentable {
+  let rawValue: FallbackEventHandler
+
+  init(rawValue: FallbackEventHandler) {
+    self.rawValue = rawValue
+  }
+}
+
+/// The installed event handler.
+private let _fallbackEventHandler = AtomicLazyReference<_FallbackEventHandlerStorage>()
+#endif
+
+/// A type describing a fallback event handler that testing API can invoke as an
+/// alternate method of reporting test events to the current test runner.
+///
+/// For example, an `XCTAssert` failure in the body of a Swift Testing test
+/// cannot record issues directly with the Swift Testing runner. Instead, the
+/// framework packages the assertion failure as a JSON `Event` and invokes this
+/// handler to report the failure.
+///
+/// - Parameters:
+///   - recordJSONSchemaVersionNumber: The JSON schema version used to encode
+///     the event record.
+///   - recordJSONBaseAddress: A pointer to the first byte of the encoded event.
+///   - recordJSONByteCount: The size of the encoded event in bytes.
+///   - reserved: Reserved for future use.
+@usableFromInline
+package typealias FallbackEventHandler = @Sendable @convention(c) (
+  _ recordJSONSchemaVersionNumber: UnsafePointer<CChar>,
+  _ recordJSONBaseAddress: UnsafeRawPointer,
+  _ recordJSONByteCount: Int,
+  _ reserved: UnsafeRawPointer?
+) -> Void
+
+/// Get the current fallback event handler.
+///
+/// - Returns: The currently-set handler function, if any.
+#if compiler(>=6.3)
+@c
+#else
+@_cdecl("_swift_testing_getFallbackEventHandler")
+#endif
+@usableFromInline
+package func _swift_testing_getFallbackEventHandler() -> FallbackEventHandler? {
+#if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK && !hasFeature(Embedded)
+  return _fallbackEventHandler.withUnsafeMutablePointers { fallbackEventHandler, lock in
+    os_unfair_lock_lock(lock)
+    defer {
+      os_unfair_lock_unlock(lock)
+    }
+    return fallbackEventHandler.pointee
+  }
+#else
+  // If we had a setter, this load would present a race condition because
+  // another thread could store a new value in between the load and the call to
+  // `takeUnretainedValue()`, resulting in a use-after-free on this thread. We
+  // would need a full lock in order to avoid that problem. However, because we
+  // instead have a one-time installation function, we can be sure that the
+  // loaded value (if non-nil) will never be replaced with another value.
+  return _fallbackEventHandler.load()?.rawValue
+#endif
+}
+
+/// Set the current fallback event handler if one has not already been set.
+///
+/// - Parameters:
+///   - handler: The handler function to set.
+///
+/// - Returns: Whether or not `handler` was installed.
+///
+/// The fallback event handler can only be installed once per process, typically
+/// by the first testing library to run. If this function has already been
+/// called and the handler set, it does not replace the previous handler.
+#if compiler(>=6.3)
+@c
+#else
+@_cdecl("_swift_testing_installFallbackEventHandler")
+#endif
+@usableFromInline
+package func _swift_testing_installFallbackEventHandler(_ handler: FallbackEventHandler) -> CBool {
+  var result = false
+
+#if SWT_TARGET_OS_APPLE && !SWT_NO_OS_UNFAIR_LOCK && !hasFeature(Embedded)
+  result = _fallbackEventHandler.withUnsafeMutablePointers { fallbackEventHandler, lock in
+    os_unfair_lock_lock(lock)
+    defer {
+      os_unfair_lock_unlock(lock)
+    }
+    guard fallbackEventHandler.pointee == nil else {
+      return false
+    }
+    fallbackEventHandler.pointee = handler
+    return true
+  }
+#else
+  let handler = _FallbackEventHandlerStorage(rawValue: handler)
+  let stored = _fallbackEventHandler.storeIfNil(handler)
+  result = (handler === stored)
+#endif
+
+  return result
+}
+#endif
