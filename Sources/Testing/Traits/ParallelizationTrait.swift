@@ -35,6 +35,7 @@ private import ObjectiveC
 ///
 /// To add this trait to a test, use ``Trait/serialized``.
 public struct ParallelizationTrait: TestTrait, SuiteTrait {
+#if !hasFeature(Embedded)
   /// A type that describes a data-based dependency that a test may have.
   ///
   /// When a test has a dependency, the testing library assumes it cannot run at
@@ -78,8 +79,10 @@ public struct ParallelizationTrait: TestTrait, SuiteTrait {
 
   /// A mapping of dependencies to serializers.
   private static nonisolated(unsafe) let _serializers = Locked<[Dependency.Kind: Serializer]>()
+#endif
 }
 
+#if !hasFeature(Embedded)
 // MARK: - Parallelization over a dependency
 
 extension ParallelizationTrait {
@@ -141,6 +144,7 @@ extension ParallelizationTrait {
     return other
   }
 }
+#endif
 
 // MARK: - TestScoping
 
@@ -159,6 +163,7 @@ extension ParallelizationTrait: TestScoping {
     }
 
     configuration.isParallelizationEnabled = false
+#if !hasFeature(Embedded)
     try await Configuration.withCurrent(configuration) {
       if test.isSuite {
         // Suites do not need to use a serializer since they don't run their own
@@ -200,6 +205,9 @@ extension ParallelizationTrait: TestScoping {
         }
       }
     }
+#else
+    try await Configuration.withCurrent(configuration, perform: function)
+#endif
   }
 }
 
@@ -216,6 +224,7 @@ extension Trait where Self == ParallelizationTrait {
   }
 }
 
+#if !hasFeature(Embedded)
 @_spi(Experimental)
 extension Trait where Self == ParallelizationTrait {
   /// Constructs a trait that describes a dependency on a Swift type.
@@ -359,8 +368,10 @@ extension Trait where Self == ParallelizationTrait {
   public static func serialized(for tag: Tag) -> Self {
     Self(dependency: .init(kind: .tag(tag)))
   }
+#endif
 }
 
+#if !hasFeature(Embedded)
 // MARK: - Unbounded dependencies (*)
 
 @_spi(Experimental)
@@ -433,3 +444,4 @@ extension Trait where Self == ParallelizationTrait {
     swt_unreachable()
   }
 }
+#endif

@@ -40,6 +40,7 @@ public protocol Trait: Sendable {
   /// The default implementation of this method does nothing.
   func prepare(for test: Test) async throws
 
+#if !hasFeature(Embedded)
   /// Combine this trait with another instance of the same trait type.
   ///
   /// - Parameters:
@@ -57,6 +58,7 @@ public protocol Trait: Sendable {
   /// to child suites and test functions.
   @_spi(Experimental)
   func _reduce(into other: any Trait) -> (any Trait)?
+#endif
 
   /// The user-provided comments for this trait.
   ///
@@ -270,11 +272,13 @@ public protocol SuiteTrait: Trait {
 extension Trait {
   public func prepare(for test: Test) async throws {}
 
+#if !hasFeature(Embedded)
   /// - Warning: This function is experimental. It is publicly visible due to
   ///   Swift language requirements. It may be removed in a future update.
   public func _reduce(into other: any Trait) -> (any Trait)? {
     nil
   }
+#endif
 
   public var comments: [Comment] {
     []
