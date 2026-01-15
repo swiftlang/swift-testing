@@ -284,18 +284,18 @@ extension Runner {
               try await _postingTestStartedAndEndedEvents(for: step, configuration: configuration) {
                 // Run the test function at this step (if one is present.)
                 if let testCases = step.test.testCases {
-                  try await _runTestCases(testCases, within: step)
+                  await _runTestCases(testCases, within: step, context: context)
                 }
 
                 // Run the children of this test (i.e. the tests in this suite.)
-                try await _runChildren(of: stepGraph)
+                try await _runChildren(of: stepGraph, context: context)
               }
             }
           default:
             // Skipping this step or otherwise not running it. Post appropriate
             // started/ended events for the test and walk any child nodes.
             try await _postingTestStartedAndEndedEvents(for: step, configuration: configuration) {
-              try await _runChildren(of: stepGraph)
+              try await _runChildren(of: stepGraph, context: context)
             }
           }
         }
