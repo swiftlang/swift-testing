@@ -368,8 +368,8 @@ extension Trait where Self == ParallelizationTrait {
   public static func serialized(for tag: Tag) -> Self {
     Self(dependency: .init(kind: .tag(tag)))
   }
-#endif
 }
+#endif
 
 #if !hasFeature(Embedded)
 // MARK: - Unbounded dependencies (*)
