@@ -231,8 +231,8 @@ extension Trait where Self == ParallelizationTrait {
 #if !hasFeature(Embedded)
 extension ParallelizationTrait: CustomStringConvertible {
   public var description: String {
-    if let kind = dependency?.kind {
-      return ".serialized(for: \(kind))"
+    if let dependency {
+      return ".serialized(for: \(dependency))"
     }
     return ".serialized"
   }
