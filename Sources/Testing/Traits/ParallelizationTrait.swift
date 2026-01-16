@@ -263,39 +263,6 @@ extension ParallelizationTrait: CustomStringConvertible {
 
 @_spi(Experimental)
 extension Trait where Self == ParallelizationTrait {
-  /// Constructs a trait that describes a test's dependency on shared state.
-  ///
-  /// - Parameters:
-  ///   - dependency: The test dependency.
-  ///
-  /// - Returns: An instance of ``ParallelizationTrait`` that marks any test it
-  ///   is applied to as dependent on `dependency`.
-  ///
-  /// Use this trait when you write a test function that is dependent on some
-  /// global or shared mutable state. For example, to mark a test as dependent
-  /// on one or more environment variables in the current process:
-  ///
-  /// ```swift
-  /// @Test(.serialized(for: .environment))
-  /// func `Freezer door works`() {
-  ///   let freezer = FoodTruck.shared.freezer
-  ///   freezer.openDoor()
-  ///   #expect(freezer.isOpen)
-  ///   freezer.closeDoor()
-  ///   #expect(!freezer.isOpen)
-  /// }
-  /// ```
-  ///
-  /// To mark a test as dependent on the complete state of the program, pass
-  /// ``ParallelizationTrait/Dependency/Unbounded``.
-  ///
-  /// ## See Also
-  ///
-  /// - ``ParallelizationTrait``
-  public static func serialized(for dependency: ParallelizationTrait.Dependency) -> Self {
-    Self(dependency: dependency)
-  }
-
   /// Constructs a trait that describes a test's dependency on shared state
   /// using a tag.
   ///
@@ -332,7 +299,8 @@ extension Trait where Self == ParallelizationTrait {
   ///
   /// - ``ParallelizationTrait``
   public static func serialized(for tag: Tag) -> Self {
-    .serialized(for: .init(kind: .tag(tag)))
+    let dependency = ParallelizationTrait.Dependency(kind: .tag(tag))
+    return Self(dependency: dependency)
   }
 
   /// Constructs a trait that describes a test's dependency on shared state
@@ -366,7 +334,8 @@ extension Trait where Self == ParallelizationTrait {
   /// - ``ParallelizationTrait``
   public static func serialized<T>(for type: T.Type) -> Self where T: ~Copyable & ~Escapable {
     let typeInfo = TypeInfo(describing: type)
-    return .serialized(for: .init(kind: .type(typeInfo)))
+    let dependency = ParallelizationTrait.Dependency(kind: .type(typeInfo))
+    return Self(dependency: dependency)
   }
 }
 
@@ -441,7 +410,8 @@ extension Trait where Self == ParallelizationTrait {
   ///
   /// - ``ParallelizationTrait``
   public static func serialized(for _: Self.Dependency.Unbounded) -> Self {
-    Self(dependency: .init(kind: .unbounded))
+    let dependency = ParallelizationTrait.Dependency(kind: .unbounded)
+    return Self(dependency: dependency)
   }
 }
 #endif
