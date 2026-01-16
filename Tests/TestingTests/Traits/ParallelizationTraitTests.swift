@@ -61,16 +61,21 @@ struct ParallelizationTraitTestsWithDependencies {
     return try #require(traits[0].dependency?.kind)
   }
 
+  func dependency<T>(on type: T.Type) -> ParallelizationTrait.Dependency.Kind where T: ~Copyable & ~Escapable {
+    let typeInfo = TypeInfo(describing: type)
+    return ParallelizationTrait.Dependency.Kind.type(typeInfo)
+  }
+
   @Test(.serialized(for: Dependency1.self))
   func type() throws {
     let dependency = try dependency()
-    #expect(dependency == .keyPath(\Dependency1.self))
+    #expect(dependency == self.dependency(on: Dependency1.self))
   }
 
   @Test(.serialized(for: Dependency1.self), .serialized(for: Dependency1.self))
   func duplicates() throws {
     let dependency = try dependency()
-    #expect(dependency == .keyPath(\Dependency1.self))
+    #expect(dependency == self.dependency(on: Dependency1.self))
   }
 
   @Test(.serialized(for: Dependency1.self), .serialized(for: Dependency2.self))
@@ -82,25 +87,21 @@ struct ParallelizationTraitTestsWithDependencies {
   @Test(.serialized(for: Dependency1.self), .serialized, arguments: [0])
   func mixedDependencyAndNot(_: Int) throws {
     let dependency = try dependency()
-    #expect(dependency == .keyPath(\Dependency1.self))
+    if ParallelizationTrait.isSerializedWithoutArgumentsAppliedGlobally {
+      #expect(dependency == .unbounded)
+    } else {
+      #expect(dependency == self.dependency(on: Dependency1.self))
+    }
   }
 
   @Test(.serialized, .serialized(for: Dependency1.self), arguments: [0])
   func mixedNotAndDependency(_: Int) throws {
     let dependency = try dependency()
-    #expect(dependency == .keyPath(\Dependency1.self))
-  }
-
-  @Test(unsafe .serialized(for: dependency3))
-  func pointer() throws {
-    let dependency = try dependency()
-    #expect(dependency == .address(dependency3))
-  }
-
-  @Test(unsafe .serialized(for: dependency3), unsafe .serialized(for: dependency4))
-  func multiplePointers() throws {
-    let dependency = try dependency()
-    #expect(dependency == .unbounded)
+    if ParallelizationTrait.isSerializedWithoutArgumentsAppliedGlobally {
+      #expect(dependency == .unbounded)
+    } else {
+      #expect(dependency == self.dependency(on: Dependency1.self))
+    }
   }
 
   @Test(.serialized(for: .tagDependency))
@@ -109,47 +110,17 @@ struct ParallelizationTraitTestsWithDependencies {
     #expect(dependency == .tag(.tagDependency))
   }
 
-  @Test(.serialized(for: Environment.self))
-  func environment() throws {
+  @Test(.serialized(for: .tagDependency), .serialized(for: *))
+  func tagAndUnbounded() throws {
     let dependency = try dependency()
-    #expect(dependency == .environ)
+    #expect(dependency == .unbounded)
   }
 
-#if !SWT_NO_ENVIRONMENT_VARIABLES
-#if canImport(Foundation)
-  @Test(.serialized(for: ProcessInfo.self))
-  func foundationEnvironment() throws {
+  @Test(.serialized(for: *), .serialized(for: .tagDependency))
+  func unboundedAndTag() throws {
     let dependency = try dependency()
-    #expect(dependency == .environ)
+    #expect(dependency == .unbounded)
   }
-#endif
-
-#if SWT_TARGET_OS_APPLE
-  @Test(unsafe .serialized(for: _NSGetEnviron()))
-  func appleCRTEnvironOuterPointer() throws {
-    let dependency = try dependency()
-    #expect(dependency == .environ)
-  }
-
-  @Test(unsafe .serialized(for: _NSGetEnviron()!.pointee!))
-  func appleCRTEnviron() throws {
-    let dependency = try dependency()
-    #expect(dependency == .environ)
-  }
-#elseif os(Linux) || os(FreeBSD) || os(OpenBSD) || os(Android)
-  @Test(unsafe .serialized(for: swt_environ()))
-  func posixEnviron() throws {
-    let dependency = try dependency()
-    #expect(dependency == .environ)
-  }
-#elseif os(WASI)
-  @Test(unsafe .serialized(for: __wasilibc_get_environ()))
-  func wasiEnviron() throws {
-    let dependency = try dependency()
-    #expect(dependency == .environ)
-  }
-#endif
-#endif
 }
 
 // MARK: - Fixtures
