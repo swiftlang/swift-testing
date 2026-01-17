@@ -9,6 +9,11 @@
 //
 
 @testable @_spi(Experimental) @_spi(ForToolsIntegrationOnly) import Testing
+private import _TestingInternals
+
+#if canImport(Foundation)
+import Foundation
+#endif
 
 @Suite("Parallelization Trait Tests", .tags(.traitRelated))
 struct ParallelizationTraitTests {
@@ -46,6 +51,78 @@ struct ParallelizationTraitTests {
   }
 }
 
+// MARK: -
+
+@Suite("Parallelization Trait Tests with Dependencies")
+struct ParallelizationTraitTestsWithDependencies {
+  func dependency() throws -> ParallelizationTrait.Dependency.Kind {
+    let traits = try #require(Test.current?.traits.compactMap { $0 as? ParallelizationTrait })
+    try #require(traits.count == 1)
+    return try #require(traits[0].dependency?.kind)
+  }
+
+  func dependency<T>(on type: T.Type) -> ParallelizationTrait.Dependency.Kind where T: ~Copyable & ~Escapable {
+    let typeInfo = TypeInfo(describing: type)
+    return ParallelizationTrait.Dependency.Kind.type(typeInfo)
+  }
+
+  @Test(.serialized(for: Dependency1.self))
+  func type() throws {
+    let dependency = try dependency()
+    #expect(dependency == self.dependency(on: Dependency1.self))
+  }
+
+  @Test(.serialized(for: Dependency1.self), .serialized(for: Dependency1.self))
+  func duplicates() throws {
+    let dependency = try dependency()
+    #expect(dependency == self.dependency(on: Dependency1.self))
+  }
+
+  @Test(.serialized(for: Dependency1.self), .serialized(for: Dependency2.self))
+  func multiple() throws {
+    let dependency = try dependency()
+    #expect(dependency == .unbounded)
+  }
+
+  @Test(.serialized(for: Dependency1.self), .serialized, arguments: [0])
+  func mixedDependencyAndNot(_: Int) throws {
+    let dependency = try dependency()
+    if ParallelizationTrait.isSerializedWithoutArgumentsAppliedGlobally {
+      #expect(dependency == .unbounded)
+    } else {
+      #expect(dependency == self.dependency(on: Dependency1.self))
+    }
+  }
+
+  @Test(.serialized, .serialized(for: Dependency1.self), arguments: [0])
+  func mixedNotAndDependency(_: Int) throws {
+    let dependency = try dependency()
+    if ParallelizationTrait.isSerializedWithoutArgumentsAppliedGlobally {
+      #expect(dependency == .unbounded)
+    } else {
+      #expect(dependency == self.dependency(on: Dependency1.self))
+    }
+  }
+
+  @Test(.serialized(for: .tagDependency))
+  func tag() throws {
+    let dependency = try dependency()
+    #expect(dependency == .tag(.tagDependency))
+  }
+
+  @Test(.serialized(for: .tagDependency), .serialized(for: *))
+  func tagAndUnbounded() throws {
+    let dependency = try dependency()
+    #expect(dependency == .unbounded)
+  }
+
+  @Test(.serialized(for: *), .serialized(for: .tagDependency))
+  func unboundedAndTag() throws {
+    let dependency = try dependency()
+    #expect(dependency == .unbounded)
+  }
+}
+
 // MARK: - Fixtures
 
 @Suite(.hidden, .serialized)
@@ -65,4 +142,19 @@ private struct OuterSuite {
 @Test(.hidden, .serialized, arguments: 0 ..< 10_000)
 private func globalParameterized(i: Int) {
   Issue.record("PARAMETERIZED\(i)")
+}
+
+private struct Dependency1 {
+  var x = 0
+  var y = 0
+}
+
+private struct Dependency2 {}
+
+private nonisolated(unsafe) let dependency3 = UnsafeMutablePointer<CChar>.allocate(capacity: 1)
+
+private nonisolated(unsafe) let dependency4 = UnsafeMutablePointer<CChar>.allocate(capacity: 1)
+
+extension Tag {
+  @Tag fileprivate static var tagDependency: Self
 }

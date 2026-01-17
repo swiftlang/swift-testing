@@ -8,6 +8,12 @@
 // See https://swift.org/CONTRIBUTORS.txt for Swift project authors
 //
 
+#if canImport(Foundation) && _runtime(_ObjC)
+private import ObjectiveC
+#endif
+
+// TODO: update this documentation to clarify .serialized vs. .serialized(for:)
+
 /// A type that defines whether the testing library runs this test serially
 /// or in parallel.
 ///
@@ -26,7 +32,108 @@
 /// `swift test` command.)
 ///
 /// To add this trait to a test, use ``Trait/serialized``.
-public struct ParallelizationTrait: TestTrait, SuiteTrait {}
+public struct ParallelizationTrait: TestTrait, SuiteTrait {
+#if !hasFeature(Embedded)
+  /// A type that describes a data-based dependency that a test may have.
+  ///
+  /// When a test has a dependency, the testing library assumes it cannot run at
+  /// the same time as other tests with the same dependency.
+  ///
+  /// ## See Also
+  ///
+  /// - ``Trait/serialized(for:)-(ParallelizationTrait.Dependency)``
+  @_spi(Experimental)
+  public struct Dependency: Sendable {
+    /// An enumeration describing the supported kinds of dependencies.
+    enum Kind: Sendable, Equatable, Hashable {
+      /// An unbounded dependency.
+      case unbounded
+
+      /// A dependency on a tag.
+      case tag(Tag)
+
+      /// A dependency on a Swift type.
+      case type(TypeInfo)
+    }
+
+    /// The kind of this dependency.
+    var kind: Kind
+  }
+
+  /// This instance's dependency, if any.
+  ///
+  /// If the value of this property is `nil`, it is the otherwise-unspecialized
+  /// ``serialized`` trait.
+  var dependency: Dependency?
+
+  /// A mapping of dependencies to serializers.
+  private static let _serializers = Locked<[Dependency.Kind: Serializer]>()
+#endif
+}
+
+#if !hasFeature(Embedded)
+// MARK: - Parallelization over a dependency
+
+extension ParallelizationTrait {
+  public var isRecursive: Bool {
+    // If the trait has a dependency, apply it to child tests/suites so that
+    // they are able to "see" parent suites' dependencies and correctly account
+    // for them.
+    dependency != nil
+  }
+
+  public func prepare(for test: Test) async throws {
+    guard let dependency else {
+      return
+    }
+
+    // Ensure a serializer has been created for this trait's dependency (except
+    // .unbounded which is special-cased.)
+    let kind = dependency.kind
+    if kind != .unbounded {
+      Self._serializers.withLock { serializers in
+        if serializers[kind] == nil {
+          serializers[kind] = Serializer()
+        }
+      }
+    }
+  }
+
+  public func _reduce(into other: any Trait) -> (any Trait)? {
+    guard var other = other as? Self else {
+      // The other trait is not a ParallelizationTrait instance, so ignore it.
+      return nil
+    }
+
+    let selfKind = dependency?.kind
+    let otherKind = other.dependency?.kind
+
+    switch (selfKind, otherKind) {
+    case (.none, .none),
+      (.some, .some) where selfKind == otherKind:
+      // Both traits have equivalent (or no) dependencies. Use the other trait
+      // and discard this one.
+      break
+    case (.some, .some):
+      // The two traits have different dependencies. Combine them into a single
+      // .unbounded dependency.
+      other = .serialized(for: *)
+    case (.some, .none):
+      // This trait specifies a dependency, but the other one does not. Use this
+      // trait and discard the other one.
+      other = self
+    case (.none, .some):
+      // The other trait specifies a dependency, but this one does not. Use the
+      // other trait and discard this one.
+      break
+    }
+
+    // NOTE: We always reduce to a single ParallelizationTrait instance, so this
+    // function always returns the other instance.
+    return other
+  }
+}
+#endif
 
 // MARK: - TestScoping
 
@@ -45,11 +152,64 @@ extension ParallelizationTrait: TestScoping {
     }
 
     configuration.isParallelizationEnabled = false
+#if !hasFeature(Embedded)
+    try await Configuration.withCurrent(configuration) {
+      if test.isSuite {
+        // Suites do not need to use a serializer since they don't run their own
+        // code. Test functions within the suite will use serializers as needed.
+        return try await function()
+      }
+      guard let dependency else {
+        // This trait does not specify a dependency to serialize for.
+        return try await function()
+      }
+
+      switch dependency.kind {
+      case .unbounded:
+        try await withoutActuallyEscaping(function) { function in
+          // The function we're running depends on all global state, so it
+          // should be serialized by all serializers that were created by
+          // prepare(). See Runner._applyScopingTraits() for an explanation of
+          // what this code does.
+          // TODO: share an implementation with that function?
+          let function = Self._serializers.rawValue.values.lazy
+            .reduce(function) { function, serializer in
+              {
+                try await serializer.run {
+                  try await function()
+                }
+              }
+            }
+          try await function()
+        }
+      case let kind:
+        // This test function has declared a single dependency, so fetch the
+        // serializer for that dependency and run the test in serial with any
+        // other tests that have the same dependency.
+        let serializer = Self._serializers.withLock { serializers in
+          guard let serializer = serializers[kind] else {
+            fatalError("Failed to find serializer for serialization trait '\(self)'. Please file a bug report at https://github.com/swiftlang/swift-testing/issues/new")
+          }
+          return serializer
+        }
+        try await serializer.run {
+          try await function()
+        }
+      }
+    }
+#else
     try await Configuration.withCurrent(configuration, perform: function)
+#endif
   }
 }
 
 // MARK: -
+
+extension ParallelizationTrait {
+  /// Whether or not ``Trait/serialized`` (with no arguments) applies globally
+  /// (i.e. is equivalent to ``Trait/serialized(for:)-(Self.Dependency.Unbounded)``).
+  static let isSerializedWithoutArgumentsAppliedGlobally = Environment.flag(named: "SWT_SERIALIZED_TRAIT_APPLIES_GLOBALLY") ?? false
+}
 
 extension Trait where Self == ParallelizationTrait {
   /// A trait that serializes the test to which it is applied.
@@ -58,6 +218,200 @@ extension Trait where Self == ParallelizationTrait {
   ///
   /// - ``ParallelizationTrait``
   public static var serialized: Self {
-    Self()
+    if ParallelizationTrait.isSerializedWithoutArgumentsAppliedGlobally {
+      .serialized(for: *)
+    } else {
+      Self()
+    }
   }
 }
+
+// MARK: - CustomStringConvertible
+
+#if !hasFeature(Embedded)
+extension ParallelizationTrait: CustomStringConvertible {
+  public var description: String {
+    if let dependency {
+      return ".serialized(for: \(dependency))"
+    }
+    return ".serialized"
+  }
+}
+
+extension ParallelizationTrait.Dependency: CustomStringConvertible {
+  public var description: String {
+    switch kind {
+    case .unbounded:
+      "*"
+    case let .tag(tag):
+      String(describingForTest: tag)
+    case let .type(typeInfo):
+      "(\(typeInfo.fullyQualifiedName)).self)"
+    }
+  }
+}
+#else
+extension ParallelizationTrait: CustomStringConvertible {
+  public var description: String {
+    ".serialized"
+  }
+}
+#endif
+
+#if !hasFeature(Embedded)
+// MARK: - Dependencies
+
+@_spi(Experimental)
+extension Trait where Self == ParallelizationTrait {
+  /// Constructs a trait that describes a test's dependency on shared state
+  /// using a tag.
+  ///
+  /// - Parameters:
+  ///   - tag: The tag representing the dependency.
+  ///
+  /// - Returns: An instance of ``ParallelizationTrait`` that marks any test it
+  ///   is applied to as dependent on `tag`.
+  ///
+  /// Use this trait when you write a test function is dependent on global
+  /// mutable state and you want to describe that state using a test tag.
+  ///
+  /// ```swift
+  /// extension Tag {
+  ///   @Tag static var freezer: Self
+  /// }
+  ///
+  /// @Test(.serialized(for: .freezer))
+  /// func `Freezer door works`() {
+  ///   let freezer = FoodTruck.shared.freezer
+  ///   freezer.openDoor()
+  ///   #expect(freezer.isOpen)
+  ///   freezer.closeDoor()
+  ///   #expect(!freezer.isOpen)
+  /// }
+  /// ```
+  ///
+  /// When you apply ``Trait/serialized(for:)-(Tag)`` to a test, the testing
+  /// library does _not_ automatically add `tag` to the test. Conversely, if you
+  /// add `tag` to a test using the ``Trait/tags(_:)`` trait, the testing
+  /// library does _not_ automatically serialize the test.
+  ///
+  /// ## See Also
+  ///
+  /// - ``ParallelizationTrait``
+  public static func serialized(for tag: Tag) -> Self {
+    let dependency = ParallelizationTrait.Dependency(kind: .tag(tag))
+    return Self(dependency: dependency)
+  }
+
+  /// Constructs a trait that describes a test's dependency on shared state
+  /// using a type.
+  ///
+  /// - Parameters:
+  ///   - type: The type representing the dependency.
+  ///
+  /// - Returns: An instance of ``ParallelizationTrait`` that marks any test it
+  ///   is applied to as dependent on `type`.
+  ///
+  /// Use this trait when you write a test function is dependent on global
+  /// mutable state and you want to describe that state using a Swift type.
+  ///
+  /// ```swift
+  /// @Test(.serialized(for: Freezer.self))
+  /// func `Freezer door works`() {
+  ///   let freezer = FoodTruck.shared.freezer
+  ///   freezer.openDoor()
+  ///   #expect(freezer.isOpen)
+  ///   freezer.closeDoor()
+  ///   #expect(!freezer.isOpen)
+  /// }
+  /// ```
+  ///
+  /// If you use `type` as a test suite, the testing library does _not_
+  /// automatically serialize test functions declared within `type`.
+  ///
+  /// ## See Also
+  ///
+  /// - ``ParallelizationTrait``
+  public static func serialized<T>(for type: T.Type) -> Self where T: ~Copyable & ~Escapable {
+    let typeInfo = TypeInfo(describing: type)
+    let dependency = ParallelizationTrait.Dependency(kind: .type(typeInfo))
+    return Self(dependency: dependency)
+  }
+}
+
+// MARK: - Unbounded dependencies (*)
+
+@_spi(Experimental)
+extension ParallelizationTrait.Dependency {
+  /// An unbounded dependency.
+  ///
+  /// An unbounded dependency is a dependency on the complete state of the
+  /// current process. To specify an unbounded dependency when using
+  /// ``Trait/serialized(for:)-(Self.Unbounded)``, pass a reference
+  /// to this function.
+  ///
+  /// ```swift
+  /// @Test(.serialized(for: *))
+  /// func `All food truck environment variables`() { ... }
+  /// ```
+  ///
+  /// If a test has more than one dependency, the testing library automatically
+  /// treats it as if it is dependent on the program's complete state.
+  ///
+  /// ## See Also
+  ///
+  /// - ``ParallelizationTrait``
+  @_documentation(visibility: private)
+  public static func *(_: Self, _: Never) {}
+
+  /// A type describing unbounded dependencies.
+  ///
+  /// An unbounded dependency is a dependency on the complete state of the
+  /// current process. To specify an unbounded dependency when using
+  /// ``Trait/serialized(for:)-(Self.Dependency.Unbounded)``, pass a reference
+  /// to the `*` operator.
+  ///
+  /// ```swift
+  /// @Test(.serialized(for: *))
+  /// func `All food truck environment variables`() { ... }
+  /// ```
+  ///
+  /// If a test has more than one dependency, the testing library automatically
+  /// treats it as if it is dependent on the program's complete state.
+  ///
+  /// ## See Also
+  ///
+  /// - ``ParallelizationTrait``
+  public typealias Unbounded = (Self, Never) -> Void
+}
+
+@_spi(Experimental)
+extension Trait where Self == ParallelizationTrait {
+  /// Constructs a trait that describes a dependency on the complete state of
+  /// the current process.
+  ///
+  /// - Returns: An instance of ``ParallelizationTrait`` that adds a dependency
+  ///   on the complete state of the current process to any test it is applied
+  ///   to.
+  ///
+  /// Pass `*` to ``serialized(for:)-(Self.Dependency.Unbounded)`` when you
+  /// write a test function is dependent on global mutable state in the current
+  /// process that cannot be fully described or that isn't known until runtime.
+  ///
+  /// ```swift
+  /// @Test(.serialized(for: *))
+  /// func `All food truck environment variables`() { ... }
+  /// ```
+  ///
+  /// If a test has more than one dependency, the testing library automatically
+  /// treats it as if it is dependent on the program's complete state.
+  ///
+  /// ## See Also
+  ///
+  /// - ``ParallelizationTrait``
+  public static func serialized(for _: Self.Dependency.Unbounded) -> Self {
+    let dependency = ParallelizationTrait.Dependency(kind: .unbounded)
+    return Self(dependency: dependency)
+  }
+}
+#endif
