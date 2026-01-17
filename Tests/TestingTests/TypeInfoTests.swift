@@ -24,7 +24,7 @@ struct TypeInfoTests {
     ),
     (
       [Test].self,
-      TypeInfo(fullyQualifiedName: "Swift.Array<Testing.Test>", unqualifiedName: "Array<Test>", mangledName: "")
+      TypeInfo(fullyQualifiedName: "Swift.Array<\(testingModuleABIName).Test>", unqualifiedName: "Array<Test>", mangledName: "")
     ),
     (
       (key: String, value: Int).self,

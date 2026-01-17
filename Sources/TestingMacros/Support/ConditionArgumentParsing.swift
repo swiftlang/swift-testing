@@ -507,23 +507,32 @@ private func _parseCondition(from expr: ExprSyntax, for macro: some Freestanding
 
 // MARK: -
 
-/// Parse a condition argument from an arbitrary expression.
-///
-/// - Parameters:
-///   - expr: The condition expression to parse.
-///   - macro: The macro expression being expanded.
-///   - context: The macro context in which the expression is being parsed.
-///
-/// - Returns: An instance of ``Condition`` describing `expr`.
-func parseCondition(from expr: ExprSyntax, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
-  // If the condition involves the `unsafe`, `try`, or `await` keywords, assume
-  // we cannot expand it.
-  let effectKeywordsToApply = findEffectKeywords(in: expr).union(findEffectKeywords(in: context))
-  guard effectKeywordsToApply.intersection([.unsafe, .try, .await]).isEmpty else {
-    return Condition(expression: expr)
-  }
+extension ConditionMacro {
+  /// Parse a condition argument from an arbitrary expression.
+  ///
+  /// - Parameters:
+  ///   - expr: The condition expression to parse.
+  ///   - macro: The macro expression being expanded.
+  ///   - context: The macro context in which the expression is being parsed.
+  ///
+  /// - Returns: An instance of ``Condition`` describing `expr`.
+  static func parseCondition(from expr: ExprSyntax, for macro: some FreestandingMacroExpansionSyntax, in context: some MacroExpansionContext) -> Condition {
+    // If the condition involves the `unsafe`, `try`, or `await` keywords, assume
+    // we cannot expand it.
+    let effectKeywordsFromNode = findEffectKeywords(in: expr)
+    guard effectKeywordsFromNode.intersection([.unsafe, .try, .await]).isEmpty else {
+      return Condition(expression: expr)
+    }
+    let effectKeywordsInLexicalContext = findEffectKeywords(in: context)
+    guard effectKeywordsInLexicalContext.intersection([.unsafe, .await]).isEmpty else {
+      return Condition(expression: expr)
+    }
+    if !isThrowing && effectKeywordsInLexicalContext.contains(.try) {
+      return Condition(expression: expr)
+    }
 
-  _diagnoseTrivialBooleanValue(from: expr, for: macro, in: context)
-  let result = _parseCondition(from: expr, for: macro, in: context)
-  return result
+    _diagnoseTrivialBooleanValue(from: expr, for: macro, in: context)
+    let result = _parseCondition(from: expr, for: macro, in: context)
+    return result
+  }
 }

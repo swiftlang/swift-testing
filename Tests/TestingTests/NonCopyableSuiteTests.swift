@@ -10,8 +10,8 @@
 
 @testable @_spi(ForToolsIntegrationOnly) import Testing
 
-@Suite("Non-Copyable Tests")
-struct NonCopyableTests: ~Copyable {
+@Suite("Non-Copyable/Non-Escapable Tests")
+struct NonCopyableTests: ~Copyable & ~Escapable {
   @Test static func staticMe() {}
   @Test borrowing func borrowMe() {}
   @Test consuming func consumeMe() {}
