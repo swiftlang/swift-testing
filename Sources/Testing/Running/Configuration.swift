@@ -28,7 +28,11 @@ public struct Configuration: Sendable {
       maximumParallelizationWidth > 1
     }
     set {
-      maximumParallelizationWidth = newValue ? defaultParallelizationWidth : 1
+      if newValue {
+        maximumParallelizationWidth = max(maximumParallelizationWidth, defaultParallelizationWidth)
+      } else {
+        maximumParallelizationWidth = 1
+      }
     }
   }
 

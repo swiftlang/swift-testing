@@ -159,6 +159,10 @@ struct TestDeclarationMacroTests {
         "Attribute 'Test' cannot be applied to a function within a generic extension to type 'T!'",
       "extension T! { @Suite struct S {} }":
         "Attribute 'Suite' cannot be applied to a structure within a generic extension to type 'T!'",
+      "extension [1 of T] { @Test func f() {} }":
+        "Attribute 'Test' cannot be applied to a function within a generic extension to type '[1 of T]'",
+      "extension [1 of T] { @Suite struct S {} }":
+        "Attribute 'Suite' cannot be applied to a structure within a generic extension to type '[1 of T]'",
     ]
   )
   func apiMisuseErrors(input: String, expectedMessage: String) throws {

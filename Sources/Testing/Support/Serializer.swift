@@ -30,10 +30,14 @@ private var _cpuCoreCount: Int? {
 #endif
 
 /// The default parallelization width when parallelized testing is enabled.
-var defaultParallelizationWidth: Int {
+let defaultParallelizationWidth: Int = {
   // _cpuCoreCount.map { max(1, $0) * 2 } ?? .max
-  .max
-}
+  if let environmentValue = Environment.variable(named: "SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH").flatMap(Int.init),
+     environmentValue > 0 {
+    return environmentValue
+  }
+  return .max
+}()
 
 /// A type whose instances can run a series of work items in strict order.
 ///

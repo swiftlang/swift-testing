@@ -189,10 +189,7 @@ func diagnoseIssuesWithLexicalContext(
     diagnostics.append(.genericDeclarationNotSupported(decl, whenUsing: attribute, becauseOf: genericClause, on: lexicalContext))
   } else if let whereClause = lexicalContext.genericWhereClause {
     diagnostics.append(.genericDeclarationNotSupported(decl, whenUsing: attribute, becauseOf: whereClause, on: lexicalContext))
-  } else if [.arrayType, .dictionaryType, .optionalType, .implicitlyUnwrappedOptionalType].contains(lexicalContext.type.kind) {
-    // These types are all syntactic sugar over generic types (Array<T>,
-    // Dictionary<T>, and Optional<T>) and are just as unsupported. T! is
-    // unsupported in this position, but it's still forbidden so don't even try!
+  } else if [.arrayType, .dictionaryType, .optionalType, .implicitlyUnwrappedOptionalType, .inlineArrayType].contains(lexicalContext.type.kind) {
     diagnostics.append(.genericDeclarationNotSupported(decl, whenUsing: attribute, becauseOf: lexicalContext.type, on: lexicalContext))
   }
 
