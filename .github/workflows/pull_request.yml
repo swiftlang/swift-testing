@@ -14,7 +14,7 @@ concurrency:
 jobs:
   tests:
     name: Test
-    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.2
+    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.5
     with:
       linux_swift_versions: '["nightly-main", "nightly-6.3", "nightly-6.2"]'
       linux_os_versions: '["amazonlinux2", "jammy"]'
